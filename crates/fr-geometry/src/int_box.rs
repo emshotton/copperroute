@@ -218,8 +218,6 @@ impl IntBox {
             second_nearest_projection_x = point.x;
             second_nearest_projection_y = self.ur.y;
         }
-        let _ = min_diff;
-        let _ = second_min_diff;
 
         let mut result = Vec::with_capacity(max_result_points);
         result.push(IntPoint::new(nearest_projection_x, nearest_projection_y));
@@ -267,11 +265,13 @@ impl IntBox {
 
     /// Returns a deterministic tie-breaking id for the box. Inlines `IntPoint.getId()` (`31 * x +
     /// y`, IntPoint.java:126-128; not exposed as a public method on `IntPoint` — see the "not
-    /// ported" note there — since this is its only caller).
+    /// ported" note there — since this is its only caller). Java `int` arithmetic wraps silently
+    /// on overflow; this is a hash-shaped value, not a magnitude, so `wrapping_*` reproduces that
+    /// (plain `*`/`+` would panic on overflow in a debug/test build, e.g. for `IntBox::EMPTY`).
     pub fn get_id(&self) -> i32 {
-        let ll_id = 31 * self.ll.x + self.ll.y;
-        let ur_id = 31 * self.ur.x + self.ur.y;
-        31 * ll_id + ur_id
+        let ll_id = 31i32.wrapping_mul(self.ll.x).wrapping_add(self.ll.y);
+        let ur_id = 31i32.wrapping_mul(self.ur.x).wrapping_add(self.ur.y);
+        31i32.wrapping_mul(ll_id).wrapping_add(ur_id)
     }
 
     /// Java `isBounded()`: always true for an `IntBox`.
@@ -597,9 +597,9 @@ impl IntBox {
         result
     }
 
-    /// Calculates the pieces of `d` (this box's surrounding box) after cutting this box out of
-    /// it. Java `IntBox.cutoutFrom(IntBox d)`: called as `self.cutout_from(d)` where `self` is the
-    /// piece being removed and `d` is the box it is removed from.
+    /// Calculates the pieces of `d` left after cutting `self` out of it. Java
+    /// `IntBox.cutoutFrom(IntBox d)`: called as `self.cutout_from(d)` where `self` is the piece
+    /// being removed and `d` is the box it is removed from.
     pub fn cutout_from(&self, d: &IntBox) -> Vec<IntBox> {
         let c = self.intersection(d);
         if self.is_empty() || c.dimension() < self.dimension() {
@@ -648,7 +648,7 @@ impl IntBox {
         result.to_vec()
     }
 
-    // added in Task 12 (IntOctagon): isIntOctagon-adjacent boundingOctagon(), union(IntOctagon),
+    // added in Task 12 (IntOctagon): boundingOctagon(), union(IntOctagon),
     // intersection(IntOctagon), intersects(IntOctagon), intersects(Circle), enlarge(double) ->
     // IntOctagon, compare(IntOctagon, int), toIntOctagon(), isContainedIn(IntOctagon),
     // cutoutFrom(IntOctagon).
@@ -818,5 +818,18 @@ mod tests {
         assert_eq!(x.bounding_box(), x);
         assert_eq!(x.nearest_part(&b(20, 20, 30, 30)), b(20, 20, 20, 20));
         assert!(IntBox::EMPTY.is_empty());
+    }
+
+    #[test]
+    fn get_id_wraps_like_java() {
+        // Java `int` arithmetic wraps silently on overflow; `get_id` is a hash-shaped value, so
+        // this must reproduce that rather than panic. Hand-derived from IntBox.java:248 /
+        // IntPoint.java:126-128 for IntBox::EMPTY (ll = ur = (CRIT_INT, CRIT_INT)/(-CRIT_INT,
+        // -CRIT_INT)):
+        //   ll_id = 31 * CRIT_INT + CRIT_INT       = 31 * 33_554_432 + 33_554_432 = 1_073_741_824
+        //   ur_id = 31 * -CRIT_INT + -CRIT_INT      = -1_073_741_824
+        //   id    = wrapping(31 * ll_id + ur_id)    = i32::MIN (31 * 1_073_741_824 overflows i32,
+        //                                              and Java's `int` wraps the same way).
+        assert_eq!(IntBox::EMPTY.get_id(), i32::MIN);
     }
 }
