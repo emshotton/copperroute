@@ -12,6 +12,7 @@ use crate::int_point::IntPoint;
 use crate::limits::{CRIT_INT, SQRT2, java_round};
 use crate::line::Line;
 use crate::side::Side;
+use crate::simplex::Simplex;
 use crate::vector::Vector;
 use std::fmt;
 
@@ -1560,17 +1561,44 @@ impl IntOctagon {
         result.to_vec()
     }
 
-    // not ported: the private `precalculatedToSimplex` memo field — it only caches `toSimplex()`,
-    // which itself is deferred to Task 14.
-    // added in Task 13 (TileShape / RegularTileShape / Shape / ShapeBoundingDirections):
-    // boundingTile(), simplify() -> TileShape, contains(RegularTileShape),
-    // union(RegularTileShape), intersection(TileShape), intersects(Shape), boundingShape(dirs),
-    // compare(RegularTileShape, int), cutout(TileShape).
-    // added in Task 14 (Simplex / Circle / FortyfiveDegreeDirection): toSimplex(),
-    // intersection(Simplex), intersects(Simplex), intersects(Circle), cutoutFrom(Simplex),
-    // borderPoint(IntPoint, FortyfiveDegreeDirection) [goes into bounding_directions.rs],
-    // nearestBorderProjections(IntPoint, int) [iterates FortyfiveDegreeDirection.values() and
-    // calls borderPoint, so it cannot be ported before that enum exists].
+    /// Returns an object of class `Simplex` defining the same shape (IntOctagon.java:556-570).
+    /// The eight border lines are already sorted in ascending direction; the redundant ones (a
+    /// non-square octagon whose diagonal or orthogonal bounds do not bite) are removed.
+    pub fn to_simplex(&self) -> Simplex {
+        if self.is_empty() {
+            return Simplex::EMPTY;
+        }
+        let lines: Vec<Line> = (0..8).map(|i| self.border_line(i)).collect();
+        Simplex::new(lines).remove_redundant_lines()
+    }
+
+    /// Java `intersection(Simplex other)`: `other.intersection(this)`, which dispatches to
+    /// `Simplex.intersection(IntOctagon)`.
+    pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
+        other.intersection_octagon(self)
+    }
+
+    /// Java `intersects(Simplex other)`: `other.intersects(this)`, which dispatches to
+    /// `Simplex.intersects(IntOctagon)`.
+    pub fn intersects_simplex(&self, other: &Simplex) -> bool {
+        other.intersects_octagon(self)
+    }
+
+    /// Java `cutoutFrom(Simplex simplex)`: `this.toSimplex().cutoutFrom(simplex)`.
+    pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
+        self.to_simplex().cutout_from(simplex)
+    }
+
+    // not ported: the private `precalculatedToSimplex` memo field — it is a pure cache of
+    // `toSimplex()` and would make `IntOctagon` non-`Copy` for no behavioral gain.
+    // added in Task 14 (TileShape / RegularTileShape / Shape / Circle /
+    // ShapeBoundingDirections / FortyfiveDegreeDirection): boundingTile(), simplify() ->
+    // TileShape, contains(RegularTileShape), union(RegularTileShape), intersection(TileShape),
+    // intersects(Shape), intersects(Circle), boundingShape(dirs), compare(RegularTileShape, int),
+    // cutout(TileShape), borderPoint(IntPoint, FortyfiveDegreeDirection) [goes into
+    // bounding_directions.rs], nearestBorderProjections(IntPoint, int) [iterates
+    // FortyfiveDegreeDirection.values() and calls borderPoint, so it cannot be ported before that
+    // enum exists].
 }
 
 impl fmt::Display for IntOctagon {

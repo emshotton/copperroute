@@ -7,11 +7,13 @@
 //! are added in Tasks 12-14 (see the marker at the end of this file).
 
 use crate::float_point::FloatPoint;
+use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::limits::{CRIT_INT, java_round};
 use crate::line::Line;
 use crate::side::Side;
+use crate::simplex::Simplex;
 use crate::vector::Vector;
 
 /// Implements functionality of orthogonal rectangles in the plane with integer coordinates.
@@ -264,15 +266,14 @@ impl IntBox {
         *self
     }
 
-    /// Returns a deterministic tie-breaking id for the box. Inlines `IntPoint.getId()` (`31 * x +
-    /// y`, IntPoint.java:126-128; not exposed as a public method on `IntPoint` — see the "not
-    /// ported" note there — since this is its only caller). Java `int` arithmetic wraps silently
-    /// on overflow; this is a hash-shaped value, not a magnitude, so `wrapping_*` reproduces that
-    /// (plain `*`/`+` would panic on overflow in a debug/test build, e.g. for `IntBox::EMPTY`).
+    /// Returns a deterministic tie-breaking id for the box (Java `31 * ll.getId() + ur.getId()`,
+    /// IntBox.java:246-249). Java `int` arithmetic wraps silently on overflow; this is a
+    /// hash-shaped value, not a magnitude, so `wrapping_*` reproduces that (plain `*`/`+` would
+    /// panic on overflow in a debug/test build, e.g. for `IntBox::EMPTY`).
     pub fn get_id(&self) -> i32 {
-        let ll_id = 31i32.wrapping_mul(self.ll.x).wrapping_add(self.ll.y);
-        let ur_id = 31i32.wrapping_mul(self.ur.x).wrapping_add(self.ur.y);
-        31i32.wrapping_mul(ll_id).wrapping_add(ur_id)
+        31i32
+            .wrapping_mul(self.ll.get_id())
+            .wrapping_add(self.ur.get_id())
     }
 
     /// Java `isBounded()`: always true for an `IntBox`.
@@ -706,13 +707,44 @@ impl IntBox {
         self.to_int_octagon().cutout_from_octagon(oct)
     }
 
-    // added in Task 13 (TileShape / RegularTileShape / Shape / ShapeBoundingDirections):
-    // simplify() -> TileShape, borderLineCount(), boundingTile(), union(RegularTileShape),
-    // intersection(TileShape), intersects(Shape), contains(RegularTileShape) [generic dispatch;
-    // the IntBox-typed overload is already ported directly above], boundingShape(dirs),
-    // compare(RegularTileShape, int), cutout(TileShape).
-    // added in Task 14 (Simplex / Circle): intersection(Simplex), intersects(Simplex),
-    // toSimplex(), cutoutFrom(Simplex), intersects(Circle).
+    /// Returns an object of class `Simplex` defining the same shape (IntBox.java:572-586). The
+    /// four lines are already sorted in ascending direction, and this is Java's *raw*
+    /// `new Simplex(lines)` — it does not remove redundant lines.
+    pub fn to_simplex(&self) -> Simplex {
+        let lines = if self.is_empty() {
+            Vec::new()
+        } else {
+            vec![
+                Line::from_direction(self.ll, &IntDirection::RIGHT),
+                Line::from_direction(self.ur, &IntDirection::UP),
+                Line::from_direction(self.ur, &IntDirection::LEFT),
+                Line::from_direction(self.ll, &IntDirection::DOWN),
+            ]
+        };
+        Simplex::new(lines)
+    }
+
+    /// Java `intersection(Simplex other)`: `other.intersection(this.toSimplex())`.
+    pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
+        other.intersection(&self.to_simplex())
+    }
+
+    /// Java `intersects(Simplex other)`: `other.intersects(toSimplex())`.
+    pub fn intersects_simplex(&self, other: &Simplex) -> bool {
+        other.intersects(&self.to_simplex())
+    }
+
+    /// Java `cutoutFrom(Simplex simplex)`: `this.toSimplex().cutoutFrom(simplex)`.
+    pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
+        self.to_simplex().cutout_from(simplex)
+    }
+
+    // added in Task 14 (TileShape / RegularTileShape / Shape / Circle /
+    // ShapeBoundingDirections): simplify() -> TileShape, borderLineCount(), boundingTile(),
+    // union(RegularTileShape), intersection(TileShape), intersects(Shape),
+    // contains(RegularTileShape) [generic dispatch; the IntBox-typed overload is already ported
+    // directly above], boundingShape(dirs), compare(RegularTileShape, int), cutout(TileShape),
+    // intersects(Circle).
 }
 
 #[cfg(test)]

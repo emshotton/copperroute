@@ -36,7 +36,14 @@ impl IntPoint {
     // equality on x/y matches Java's `equals`; Java's custom `31 * x + y` hash is not needed by
     // any behavior we port).
     // not ported: `isInfinite` — always `false` for IntPoint, unused outside geometry/planar.
-    // not ported: `getId` — tie-breaking id unused outside geometry/planar.
+
+    /// Returns a deterministic tie-breaking id for this point (Java `31 * x + y`,
+    /// IntPoint.java:126-128). Java `int` arithmetic wraps silently on overflow; this is a
+    /// hash-shaped value, not a magnitude, so `wrapping_*` reproduces that (plain `*`/`+` would
+    /// panic on overflow in a debug/test build).
+    pub fn get_id(&self) -> i32 {
+        31i32.wrapping_mul(self.x).wrapping_add(self.y)
+    }
 
     /// Returns the translation of this point by vector.
     pub fn translate_by(&self, vector: &IntVector) -> IntPoint {

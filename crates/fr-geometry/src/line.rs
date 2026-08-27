@@ -32,9 +32,8 @@ use crate::vector::Vector;
 /// plus the same direction sense) but does **not** override `hashCode`, so Java's own
 /// `equals`/`hashCode` contract is broken and `Line`s in hash containers behave by identity. This
 /// port derives structural `PartialEq`/`Eq`/`Hash` on the two end points instead, which is a
-/// lawful pair. Java's geometric test is `overlaps` plus a direction check; the only Java caller
-/// is `Simplex.removeRedundantLines`, so `equals`/`fastEquals`/`getId` are added in Task 14 (see
-/// the marker at the end of the `impl` block).
+/// lawful pair. Java's geometric test is `overlaps` plus a direction check; it is available as
+/// [`Line::equals_geometric`], next to [`Line::fast_equals`] and [`Line::get_id`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Line {
     /// The first point defining this line.
@@ -510,9 +509,59 @@ impl Line {
         (sum as f64).sqrt() as f32
     }
 
-    // added in Task 14: is_on_the_left(&TileShape), is_on_the_right(&TileShape),
-    //   equals (Java's geometric `Line.equals`), fast_equals, get_id — all three of the latter
-    //   are used only by `Simplex` (Simplex.java:668, 892, 76).
+    /// Java's geometric `Line.equals(Object)` (Line.java:57-79): two lines are equal when each
+    /// end point of `other` is collinear with this line **and** the two direction vectors point
+    /// the same way. Named `equals_geometric` because the derived `PartialEq`/`Eq`/`Hash` on this
+    /// type is the structural end-point comparison (see the type-level note above); Java's own
+    /// `equals`/`hashCode` pair is inconsistent, so the two tests are kept apart here.
+    ///
+    /// Java's leading `if (this == other) return true;` reference shortcut is **not** ported:
+    /// Rust has no object identity to test here. The two agree except for a degenerate line
+    /// (`a == b`, zero direction) compared with itself, where Java's shortcut returns `true` and
+    /// the geometric test below returns `false` (`Signum::Zero`, not `Positive`).
+    ///
+    /// The only Java caller is `Simplex.borderLineIndex` (Simplex.java:666-673).
+    pub fn equals_geometric(&self, other: &Line) -> bool {
+        if self.side_of_int_point(&other.a) != Side::Collinear {
+            return false;
+        }
+        if self.side_of_int_point(&other.b) != Side::Collinear {
+            return false;
+        }
+        let dir1 = self.b.difference_by(&self.a);
+        let dir2 = other.b.difference_by(&other.a);
+        dir1.projection(&dir2) == Signum::Positive
+    }
+
+    /// Returns true, if this and other define the same line. Is designed for good performance,
+    /// but works only for lines consisting of IntPoints (Line.java:79-97).
+    ///
+    /// Java computes the determinant in `double`; per the porting conventions a `double` used
+    /// only for the *sign* of a product of coordinate differences becomes `i64` here.
+    ///
+    /// Used by `Simplex.removeRedundantLines` (Simplex.java:892) to skip duplicate lines.
+    pub fn fast_equals(&self, other: &Line) -> bool {
+        let dx1 = other.a.x as i64 - self.a.x as i64;
+        let dy1 = other.a.y as i64 - self.a.y as i64;
+        let dx2 = self.b.x as i64 - self.a.x as i64;
+        let dy2 = self.b.y as i64 - self.a.y as i64;
+        let det = dx1 * dy2 - dx2 * dy1;
+        if det != 0 {
+            return false;
+        }
+        self.direction() == other.direction()
+    }
+
+    /// Returns a deterministic tie-breaking id for this line (Java `31 * a.getId() + b.getId()`,
+    /// Line.java:53-55). Java `int` arithmetic wraps silently on overflow; this is a hash-shaped
+    /// value, so `wrapping_*` reproduces that. Used by `Simplex.getId` (Simplex.java:76).
+    pub fn get_id(&self) -> i32 {
+        31i32
+            .wrapping_mul(self.a.get_id())
+            .wrapping_add(self.b.get_id())
+    }
+
+    // added in Task 14: is_on_the_left(&TileShape), is_on_the_right(&TileShape).
 }
 
 #[cfg(test)]
@@ -814,6 +863,41 @@ mod tests {
         let right = l(0, 0, 1, 0);
         assert_eq!(degenerate.compare_to(&right), std::cmp::Ordering::Greater);
         assert_eq!(right.compare_to(&degenerate), std::cmp::Ordering::Equal);
+    }
+
+    /// Java's `Line.equals` is geometric (collinear end points + same direction sense), unlike
+    /// the derived structural `PartialEq` on this type.
+    #[test]
+    fn equals_geometric_and_fast_equals() {
+        let base = l(0, 0, 10, 0);
+        let same_line_other_points = l(-7, 0, 3, 0);
+        assert_ne!(base, same_line_other_points); // structural
+        assert!(base.equals_geometric(&same_line_other_points)); // geometric
+        assert!(base.fast_equals(&same_line_other_points));
+        // Opposite direction: collinear, but the projection is negative.
+        let opposite = base.opposite();
+        assert!(!base.equals_geometric(&opposite));
+        assert!(!base.fast_equals(&opposite));
+        // Parallel but not collinear.
+        let parallel = l(0, 3, 10, 3);
+        assert!(!base.equals_geometric(&parallel));
+        assert!(!base.fast_equals(&parallel));
+        // Different direction through the same point.
+        assert!(!base.equals_geometric(&l(0, 0, 0, 10)));
+        assert!(!base.fast_equals(&l(0, 0, 0, 10)));
+        // A degenerate line is *not* geometrically equal to itself: Java only returns true there
+        // through the `this == other` reference shortcut, which has no Rust counterpart.
+        let degenerate = l(4, 4, 4, 4);
+        assert!(!degenerate.equals_geometric(&degenerate));
+    }
+
+    #[test]
+    fn get_id_is_the_java_hash_and_wraps() {
+        // 31 * (31 * 1 + 2) + (31 * 3 + 4) = 31 * 33 + 97 = 1120
+        assert_eq!(l(1, 2, 3, 4).get_id(), 1120);
+        assert_eq!(IntPoint::new(1, 2).get_id(), 33);
+        // Java `int` arithmetic wraps silently; this must not panic in a debug build.
+        let _ = l(i32::MAX, i32::MAX, i32::MIN, i32::MIN).get_id();
     }
 
     #[test]

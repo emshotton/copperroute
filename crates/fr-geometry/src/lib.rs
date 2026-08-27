@@ -18,6 +18,7 @@ pub mod rational_point;
 pub mod rational_vector;
 pub mod side;
 pub mod signum;
+pub mod simplex;
 pub mod vector;
 
 pub use bigint_direction::BigIntDirection;
@@ -36,4 +37,5 @@ pub use rational_point::RationalPoint;
 pub use rational_vector::RationalVector;
 pub use side::Side;
 pub use signum::Signum;
+pub use simplex::Simplex;
 pub use vector::Vector;
