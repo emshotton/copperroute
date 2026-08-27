@@ -3,12 +3,14 @@
 
 pub mod bigint_aux;
 pub mod int_direction;
+pub mod int_point;
 pub mod int_vector;
 pub mod limits;
 pub mod side;
 pub mod signum;
 
 pub use int_direction::IntDirection;
+pub use int_point::IntPoint;
 pub use int_vector::IntVector;
 pub use limits::{CRIT_INT, java_round};
 pub use side::Side;
