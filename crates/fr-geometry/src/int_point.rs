@@ -279,7 +279,81 @@ impl IntPoint {
         FloatPoint::new(self.x as f64, self.y as f64)
     }
 
-    // added in Task 10: side_of_line, perpendicular_projection, perpendicular_direction
+    /// Returns the side of a line on which this point lies. Java `IntPoint.sideOf(Line)`.
+    ///
+    /// Note the direction of the answer: this is the *point's* view (`v1.sideOf(v2)` with
+    /// `v1 = this - line.a`, `v2 = line.b - line.a`). `Line::side_of` negates it to get the
+    /// line's view.
+    pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
+        let v1 = self.difference_by(&line.a);
+        let v2 = line.b.difference_by(&line.a);
+        v1.side_of(&v2)
+    }
+
+    /// Returns the nearest point to this point on line. Java `IntPoint.perpendicularProjection`.
+    ///
+    /// Ported verbatim: the exact projection is
+    /// `((vx*vx*px + vx*vy*py + det*vy) / D, (vx*vy*px + vy*vy*py - det*vx) / D)` with
+    /// `v = line.b - line.a`, `det = line.a.determinant(line.b)` and `D = vx*vx + vy*vy`.
+    /// Unlike Java's `RationalPoint` counterpart, which adds where this subtracts (see
+    /// `RationalPoint::perpendicular_projection`), this is the mathematically correct formula.
+    ///
+    /// Java has no `CRIT_INT` guard on the demoted result here (unlike `RationalPoint`), so a
+    /// projection that divides out exactly always becomes an `IntPoint`.
+    pub fn perpendicular_projection(&self, line: &crate::line::Line) -> crate::point::Point {
+        use num_bigint::BigInt;
+        use num_integer::Integer;
+        use num_traits::{Signed, ToPrimitive, Zero};
+
+        // this function is at the moment only implemented for lines consisting of IntPoints.
+        // The general implementation is still missing.
+        let v = line.b.difference_by(&line.a);
+        let vxvx = BigInt::from(v.x as i64 * v.x as i64);
+        let vyvy = BigInt::from(v.y as i64 * v.y as i64);
+        let vxvy = BigInt::from(v.x as i64 * v.y as i64);
+        let mut denominator = &vxvx + &vyvy;
+        let det = BigInt::from(line.a.determinant(&line.b));
+        let point_x = BigInt::from(self.x);
+        let point_y = BigInt::from(self.y);
+
+        let tmp1 = &vxvx * &point_x;
+        let tmp2 = &vxvy * &point_y;
+        let tmp1 = tmp1 + tmp2;
+        let tmp2 = &det * BigInt::from(v.y);
+        let mut proj_x = tmp1 + tmp2;
+
+        let tmp1 = &vxvy * &point_x;
+        let tmp2 = &vyvy * &point_y;
+        let tmp1 = tmp1 + tmp2;
+        let tmp2 = &det * BigInt::from(v.x);
+        let mut proj_y = tmp1 - tmp2;
+
+        if !denominator.is_zero() {
+            if denominator.is_negative() {
+                denominator = -denominator;
+                proj_x = -proj_x;
+                proj_y = -proj_y;
+            }
+            if proj_x.mod_floor(&denominator).is_zero() && proj_y.mod_floor(&denominator).is_zero()
+            {
+                proj_x /= &denominator;
+                proj_y /= &denominator;
+                return crate::point::Point::Int(IntPoint::new(
+                    proj_x.to_i32().expect("projection fits an i32"),
+                    proj_y.to_i32().expect("projection fits an i32"),
+                ));
+            }
+        }
+        crate::point::Point::Rational(crate::rational_point::RationalPoint::new(
+            proj_x,
+            proj_y,
+            denominator,
+        ))
+    }
+
+    // not ported here: `Point.perpendicularDirection(Line)` is a concrete method of the
+    // abstract `Point` class in Java, inherited (not overridden) by `IntPoint`; it lives on
+    // `Point` in this port (see `point.rs`).
     // added in Task 11: surrounding_box, is_contained_in
     // added in Task 12: surrounding_octagon
 }
@@ -375,6 +449,26 @@ mod tests {
         //   then IntVector.sideOf negates the double-dispatch result → ON_THE_LEFT.
         let s = IntPoint::new(0, 1).side_of(&IntPoint::new(0, 0), &IntPoint::new(1, 0));
         assert_eq!(s, Side::OnTheLeft);
+    }
+
+    #[test]
+    fn side_of_line_and_perpendicular_projection() {
+        use crate::line::Line;
+        use crate::point::Point;
+        // IntPoint.sideOf(Line): v1 = this - line.a, v2 = line.b - line.a, then v1.sideOf(v2)
+        // (which negates the determinant's Side, see `IntVector::side_of`).
+        // this=(3,4), line=(0,0)->(10,0): v1=(3,4), v2=(10,0); 3*0 - 4*10 = -40 -> OnTheRight,
+        // negated -> OnTheLeft. (`Line::side_of` negates once more; this is the raw point view.)
+        let line = Line::from_coords(0, 0, 10, 0);
+        assert_eq!(IntPoint::new(3, 4).side_of_line(&line), Side::OnTheLeft);
+        assert_eq!(IntPoint::new(3, -4).side_of_line(&line), Side::OnTheRight);
+        assert_eq!(IntPoint::new(3, 0).side_of_line(&line), Side::Collinear);
+        // Perpendicular projection onto the right diagonal through the origin.
+        let diag = Line::from_coords(0, 0, 1, 1);
+        assert_eq!(
+            IntPoint::new(4, 0).perpendicular_projection(&diag),
+            Point::Int(IntPoint::new(2, 2))
+        );
     }
 
     #[test]

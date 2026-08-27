@@ -190,7 +190,44 @@ impl Point {
         }
     }
 
-    // added in Task 10: side_of_line, perpendicular_projection, perpendicular_direction
+    /// Returns the side of a line on which this point lies. Java `Point.sideOf(Line)` is
+    /// abstract; both concrete overrides are unfolded here.
+    pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
+        match self {
+            Point::Int(p) => p.side_of_line(line),
+            Point::Rational(p) => p.side_of_line(line),
+        }
+    }
+
+    /// Returns the nearest point to this point on line. Java `Point.perpendicularProjection` is
+    /// abstract; the two overrides differ in more than the representation — see
+    /// [`RationalPoint::perpendicular_projection`] for the sign bug the rational one carries.
+    pub fn perpendicular_projection(&self, line: &crate::line::Line) -> Point {
+        match self {
+            Point::Int(p) => p.perpendicular_projection(line),
+            Point::Rational(p) => p.perpendicular_projection(line),
+        }
+    }
+
+    /// Calculates the perpendicular direction from this point to line. Returns `Direction::NULL`
+    /// (i.e. `Direction::Int(IntDirection::NULL)`), if this point lies on line.
+    ///
+    /// This is Java's `Point.perpendicularDirection(Line)`, a concrete method of the abstract
+    /// class inherited by both `IntPoint` and `RationalPoint`. It is a different function from
+    /// `Line::perpendicular_direction(&Point)`, which searches for the nearest side and returns
+    /// `null` for a point on the line.
+    pub fn perpendicular_direction(&self, line: &crate::line::Line) -> crate::direction::Direction {
+        let side = self.side_of_line(line);
+        if side == Side::Collinear {
+            return crate::direction::Direction::Int(crate::int_direction::IntDirection::NULL);
+        }
+        if side == Side::OnTheRight {
+            crate::direction::Direction::Int(line.direction().turn_45_degree(2))
+        } else {
+            crate::direction::Direction::Int(line.direction().turn_45_degree(6))
+        }
+    }
+
     // added in Task 11: surrounding_box, is_contained_in
     // added in Task 12: surrounding_octagon
     // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
@@ -478,5 +515,68 @@ mod cross_representation_tests {
     fn rational_point_rejects_a_negative_denominator() {
         // Java throws IllegalArgumentException here (RationalPoint.java:36-38).
         let _ = RationalPoint::new(b(1), b(1), b(-1));
+    }
+
+    #[test]
+    fn side_of_line_perpendicular_projection_and_direction() {
+        use crate::direction::Direction;
+        use crate::int_direction::IntDirection;
+        use crate::line::Line;
+        use crate::side::Side;
+
+        let line = Line::from_coords(0, 0, 10, 0);
+        let above = Point::Int(IntPoint::new(3, 4));
+        let above_rational = Point::Rational(RationalPoint::new(b(3), b(4), b(1)));
+        // Both representations take the same `Point.sideOf(p1, p2)` route and must agree.
+        assert_eq!(above.side_of_line(&line), Side::OnTheLeft);
+        assert_eq!(above_rational.side_of_line(&line), Side::OnTheLeft);
+        assert_eq!(
+            Point::Int(IntPoint::new(3, 0)).side_of_line(&line),
+            Side::Collinear
+        );
+
+        let diag = Line::from_coords(0, 0, 1, 1);
+        assert_eq!(
+            Point::Int(IntPoint::new(4, 0)).perpendicular_projection(&diag),
+            Point::Int(IntPoint::new(2, 2))
+        );
+
+        // Point.perpendicularDirection(Line): ON_THE_LEFT -> direction().turn45Degree(6).
+        assert_eq!(
+            above.perpendicular_direction(&line),
+            Direction::Int(IntDirection::DOWN)
+        );
+        assert_eq!(
+            Point::Int(IntPoint::new(3, -4)).perpendicular_direction(&line),
+            Direction::Int(IntDirection::UP)
+        );
+        // Java returns Direction.NULL for a point on the line.
+        assert_eq!(
+            Point::Int(IntPoint::new(3, 0)).perpendicular_direction(&line),
+            Direction::Int(IntDirection::NULL)
+        );
+    }
+
+    /// Java quirk, reproduced verbatim: `RationalPoint.perpendicularProjection` (RationalPoint
+    /// .java:262) computes `projY = tmp1.add(tmp2)` where `IntPoint.perpendicularProjection`
+    /// (IntPoint.java:160) computes `projY = tmp1.subtract(tmp2)`. The `IntPoint` version is the
+    /// mathematically correct perpendicular projection; the `RationalPoint` version is not,
+    /// whenever the line does not pass through the origin (i.e. `det != 0`).
+    #[test]
+    fn rational_perpendicular_projection_keeps_javas_sign_bug() {
+        use crate::line::Line;
+        // Line y = x + 1 through (0,1) and (1,2): v = (1,1), det = a.determinant(b) = -1.
+        let line = Line::from_coords(0, 1, 1, 2);
+        let point = IntPoint::new(2, 0);
+        // Correct projection of (2,0) onto y = x + 1 is (0.5, 1.5) = (1, 3, 2).
+        assert_eq!(
+            Point::Int(point).perpendicular_projection(&line),
+            Point::Rational(RationalPoint::new(b(1), b(3), b(2)))
+        );
+        // The same point in rational form takes Java's buggy branch and lands on (0.5, 0.5).
+        assert_eq!(
+            Point::Rational(RationalPoint::new(b(2), b(0), b(1))).perpendicular_projection(&line),
+            Point::Rational(RationalPoint::new(b(1), b(1), b(2)))
+        );
     }
 }

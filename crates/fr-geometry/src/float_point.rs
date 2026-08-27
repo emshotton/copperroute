@@ -172,7 +172,11 @@ impl FloatPoint {
         FloatPoint::new(self.x - other.x, self.y - other.y)
     }
 
-    // added in Task 10: projection_approx(&Line)
+    /// Returns an approximation of the perpendicular projection of this point onto line.
+    pub fn projection_approx(&self, line: &crate::line::Line) -> FloatPoint {
+        let float_line = crate::float_line::FloatLine::new(line.a.to_float(), line.b.to_float());
+        float_line.perpendicular_projection(self)
+    }
 
     /// Calculates the scalar product of (p1 - this) with (p2 - this).
     ///
@@ -644,6 +648,18 @@ mod tests {
         assert_eq!(
             FloatPoint::new(f64::NEG_INFINITY, 0.0).to_string(),
             "(-\u{221e} , 0)"
+        );
+    }
+
+    #[test]
+    fn projection_approx_onto_a_line() {
+        use crate::line::Line;
+        // FloatPoint.projectionApprox(Line) builds a FloatLine from the line's end points and
+        // delegates to FloatLine.perpendicularProjection.
+        let line = Line::from_coords(0, 0, 10, 0);
+        assert_eq!(
+            FloatPoint::new(3.0, 4.0).projection_approx(&line),
+            FloatPoint::new(3.0, 0.0)
         );
     }
 }

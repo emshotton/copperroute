@@ -23,6 +23,7 @@ use crate::float_point::FloatPoint;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
 use crate::rational_vector::{RationalVector, big_to_f64};
+use crate::side::Side;
 
 /// Implementation of a `Point` in the projective plane, with infinite-precision coordinates.
 #[derive(Debug, Clone)]
@@ -137,7 +138,78 @@ impl RationalPoint {
         }
     }
 
-    // added in Task 10: side_of_line, perpendicular_projection, perpendicular_direction
+    /// Returns the side of a line on which this point lies. Java `RationalPoint.sideOf(Line)`
+    /// forwards to `Point.sideOf(line.a, line.b)`; with `line.a`/`line.b` being `IntPoint`s that
+    /// unfolds to the `(Rational, Int)` arms of `Point::difference_by` and `Vector::side_of`.
+    pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
+        let v1 = self.difference_by_int(&line.a);
+        let v2 = line.b.difference_by(&line.a);
+        v1.side_of_int(&v2)
+    }
+
+    /// Returns the nearest point to this point on line. Java
+    /// `RationalPoint.perpendicularProjection`.
+    ///
+    /// **Java bug, reproduced verbatim.** RationalPoint.java:262 computes
+    /// `projY = tmp1.add(tmp2)` where the otherwise identical `IntPoint.perpendicularProjection`
+    /// (IntPoint.java:160) computes `projY = tmp1.subtract(tmp2)`. The `IntPoint` sign is the
+    /// mathematically correct one, so for any line not through the origin (`det != 0`) this
+    /// method returns a point that is not the perpendicular projection. It is kept as-is for
+    /// behavioural parity; see the test in `point.rs`.
+    ///
+    /// The other difference to the `IntPoint` version is real and intentional in Java: this one
+    /// guards the demotion to `IntPoint` with `Limits.CRIT_INT_BIG` and falls back to
+    /// `denominator = ONE`.
+    pub fn perpendicular_projection(&self, line: &crate::line::Line) -> crate::point::Point {
+        use num_traits::ToPrimitive;
+
+        // this function is at the moment only implemented for lines consisting of IntPoints.
+        // The general implementation is still missing.
+        let v = line.b.difference_by(&line.a);
+        let vxvx = BigInt::from(v.x as i64 * v.x as i64);
+        let vyvy = BigInt::from(v.y as i64 * v.y as i64);
+        let vxvy = BigInt::from(v.x as i64 * v.y as i64);
+        let mut denominator = &vxvx + &vyvy;
+        let det = BigInt::from(line.a.determinant(&line.b));
+
+        let tmp1 = &vxvx * &self.x;
+        let tmp2 = &vxvy * &self.y;
+        let tmp1 = tmp1 + tmp2;
+        let tmp2 = &det * BigInt::from(v.y) * &self.z;
+        let mut proj_x = tmp1 + tmp2;
+
+        let tmp1 = &vxvy * &self.x;
+        let tmp2 = &vyvy * &self.y;
+        let tmp1 = tmp1 + tmp2;
+        let tmp2 = &det * BigInt::from(v.x) * &self.z;
+        // `add`, not `subtract` — see the doc comment above.
+        let mut proj_y = tmp1 + tmp2;
+
+        if !denominator.is_zero() {
+            if denominator.is_negative() {
+                denominator = -denominator;
+                proj_x = -proj_x;
+                proj_y = -proj_y;
+            }
+            if proj_x.mod_floor(&denominator).is_zero() && proj_y.mod_floor(&denominator).is_zero()
+            {
+                proj_x /= &denominator;
+                proj_y /= &denominator;
+                let crit = crate::limits::crit_int_big();
+                if proj_x.abs() <= crit && proj_y.abs() <= crit {
+                    return crate::point::Point::Int(IntPoint::new(
+                        proj_x.to_i32().expect("|proj_x| <= CRIT_INT"),
+                        proj_y.to_i32().expect("|proj_y| <= CRIT_INT"),
+                    ));
+                }
+                denominator = BigInt::one();
+            }
+        }
+        crate::point::Point::Rational(RationalPoint::new(proj_x, proj_y, denominator))
+    }
+
+    // not ported here: `Point.perpendicularDirection(Line)` is inherited from the abstract
+    // `Point` class in Java; it lives on `Point` in this port (see `point.rs`).
     // added in Task 11: surrounding_box, is_contained_in
     // added in Task 12: surrounding_octagon
     // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
