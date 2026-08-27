@@ -568,7 +568,8 @@ impl Line {
             .wrapping_add(self.b.get_id())
     }
 
-    // added in Task 14: is_on_the_left(&TileShape), is_on_the_right(&TileShape).
+    // ported in Task 14: `is_on_the_left(&TileShape)` and `is_on_the_right(&TileShape)` live in
+    // `tile_shape.rs`, next to the enum they take.
 }
 
 #[cfg(test)]

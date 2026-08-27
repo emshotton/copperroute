@@ -739,12 +739,19 @@ impl IntBox {
         self.to_simplex().cutout_from(simplex)
     }
 
-    // added in Task 14 (TileShape / RegularTileShape / Shape / Circle /
-    // ShapeBoundingDirections): simplify() -> TileShape, borderLineCount(), boundingTile(),
-    // union(RegularTileShape), intersection(TileShape), intersects(Shape),
-    // contains(RegularTileShape) [generic dispatch; the IntBox-typed overload is already ported
-    // directly above], boundingShape(dirs), compare(RegularTileShape, int), cutout(TileShape),
-    // intersects(Circle).
+    /// Java `borderLineCount()`: a box always has 4 border lines (IntBox.java:42-45).
+    pub fn border_line_count(&self) -> usize {
+        4
+    }
+
+    // ported in Task 14, but in the modules that own the types they mention:
+    // `tile_shape.rs` has `simplify() -> TileShape`, `boundingTile()` and the
+    // `TileShape`-/`RegularTileShape`-typed `union`, `intersection`, `intersects`, `contains`,
+    // `compare` and `cutout` (all on the `TileShape` / `RegularTileShape` enums, where Java's
+    // double dispatch collapses into one `match`); `bounding_directions.rs` has
+    // `boundingShape(dirs)`.
+    // added in Task 17 (Circle / Shape): intersects(Circle) and the `Shape`-typed
+    // `intersects(Shape)`.
 }
 
 #[cfg(test)]

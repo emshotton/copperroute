@@ -1591,14 +1591,15 @@ impl IntOctagon {
 
     // not ported: the private `precalculatedToSimplex` memo field — it is a pure cache of
     // `toSimplex()` and would make `IntOctagon` non-`Copy` for no behavioral gain.
-    // added in Task 14 (TileShape / RegularTileShape / Shape / Circle /
-    // ShapeBoundingDirections / FortyfiveDegreeDirection): boundingTile(), simplify() ->
-    // TileShape, contains(RegularTileShape), union(RegularTileShape), intersection(TileShape),
-    // intersects(Shape), intersects(Circle), boundingShape(dirs), compare(RegularTileShape, int),
-    // cutout(TileShape), borderPoint(IntPoint, FortyfiveDegreeDirection) [goes into
-    // bounding_directions.rs], nearestBorderProjections(IntPoint, int) [iterates
-    // FortyfiveDegreeDirection.values() and calls borderPoint, so it cannot be ported before that
-    // enum exists].
+    // ported in Task 14, but in the modules that own the types they mention:
+    // `tile_shape.rs` has `boundingTile()`, `simplify() -> TileShape` and the
+    // `TileShape`-/`RegularTileShape`-typed `contains`, `union`, `intersection`, `intersects`,
+    // `compare` and `cutout` (all on the `TileShape` / `RegularTileShape` enums, where Java's
+    // double dispatch collapses into one `match`); `bounding_directions.rs` has
+    // `boundingShape(dirs)`, `borderPoint(IntPoint, FortyfiveDegreeDirection)` and
+    // `nearestBorderProjections(IntPoint, int)`.
+    // added in Task 17 (Circle / Shape): intersects(Circle) and the `Shape`-typed
+    // `intersects(Shape)`.
 }
 
 impl fmt::Display for IntOctagon {

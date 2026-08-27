@@ -3,6 +3,7 @@
 
 pub mod bigint_aux;
 pub mod bigint_direction;
+pub mod bounding_directions;
 pub mod direction;
 pub mod float_line;
 pub mod float_point;
@@ -16,12 +17,15 @@ pub mod line;
 pub mod point;
 pub mod rational_point;
 pub mod rational_vector;
+pub mod regular_tile_shape;
 pub mod side;
 pub mod signum;
 pub mod simplex;
+pub mod tile_shape;
 pub mod vector;
 
 pub use bigint_direction::BigIntDirection;
+pub use bounding_directions::{FortyfiveDegreeDirection, ShapeBoundingDirections};
 pub use direction::Direction;
 pub use float_line::FloatLine;
 pub use float_point::FloatPoint;
@@ -35,7 +39,9 @@ pub use line::Line;
 pub use point::Point;
 pub use rational_point::RationalPoint;
 pub use rational_vector::RationalVector;
+pub use regular_tile_shape::RegularTileShape;
 pub use side::Side;
 pub use signum::Signum;
 pub use simplex::Simplex;
+pub use tile_shape::TileShape;
 pub use vector::Vector;

@@ -10,8 +10,8 @@
 //! is fixed by `Line::side_of` (Task 10) and is used verbatim by every side test below.
 //!
 //! Java's `Simplex` extends `TileShape` → `PolylineShape`; the methods inherited from those two
-//! (and the ones whose signature mentions `TileShape`, `Shape` or `Circle`) arrive in Task 14 —
-//! see the marker at the end of the `impl` block.
+//! (and the ones whose signature mentions `TileShape`) live on the `TileShape` enum in
+//! `tile_shape.rs` — see the marker at the end of the `impl` block.
 
 use crate::direction::Direction;
 use crate::float_point::FloatPoint;
@@ -1053,11 +1053,14 @@ impl Simplex {
         }
     }
 
-    // added in Task 14 (TileShape / Shape / Circle / ShapeBoundingDirections): simplify(),
-    // boundingShape(dirs), intersection(TileShape), cutout(TileShape), intersects(Shape),
-    // intersects(Circle), plus the concrete methods `Simplex` inherits from `TileShape` and
-    // `PolylineShape` (area(), circumference(), contains(...), borderDistance(...),
-    // nearestPoint(...), divideIntoSections(), ...).
+    // ported in Task 14, but in the modules that own the types they mention: `tile_shape.rs`
+    // has `simplify() -> TileShape`, the `TileShape`-typed `intersection` / `cutout` and every
+    // concrete method `Simplex` inherits from `TileShape` and `PolylineShape` (area(),
+    // circumference(), contains(...), borderDistance(...), nearestPoint(...),
+    // divideIntoSections(), ...), all as methods of the `TileShape` enum;
+    // `bounding_directions.rs` has `boundingShape(dirs)`.
+    // added in Task 17 (Circle / Shape): intersects(Circle) and the `Shape`-typed
+    // `intersects(Shape)`.
 }
 
 /// Java `innerCorner.perpendicularDirection(outerLine)` (Point.java:101-113) narrowed back to the
