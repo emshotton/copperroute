@@ -2,7 +2,11 @@
 //! of half-planes, where a half-plane is the positive side of a directed line.
 //!
 //! The half-plane of a directed line `l` is `{ p : l.side_of(p) == Side::OnTheRight }` — every
-//! interior point of a simplex is `OnTheRight` of every one of its border lines. That convention
+//! interior point of a simplex satisfies that for every one of its border lines. Read the
+//! predicate literally: [`Line::side_of`] answers where the *line* lies as seen from the point,
+//! so the half-plane collects the points that have the line on their right, which are the points
+//! lying *geometrically to the left* of the directed line. For the upward line `x = 0` (from
+//! `(0, 0)` towards `(0, 1)`) the half-plane is therefore `x <= 0`, not `x >= 0`. That convention
 //! is fixed by `Line::side_of` (Task 10) and is used verbatim by every side test below.
 //!
 //! Java's `Simplex` extends `TileShape` → `PolylineShape`; the methods inherited from those two
@@ -106,7 +110,9 @@ impl Simplex {
     /// index no is > 0.
     ///
     /// Java clamps an out-of-range index (after a warning); the negative half of that clamp
-    /// cannot happen for a `usize`.
+    /// cannot happen for a `usize`. On an *empty* simplex the clamp makes Java index `lines[-2]`
+    /// and throw `ArrayIndexOutOfBoundsException`; the `false` returned here is this port's
+    /// totalization of that, not observed Java behaviour.
     pub fn corner_is_bounded(&self, corner_index: usize) -> bool {
         if self.lines.is_empty() {
             return false;
@@ -1162,7 +1168,9 @@ mod tests {
 
     #[test]
     fn unbounded_simplex() {
-        // The half-plane on the right of the upward line x = 0, i.e. `x >= 0`.
+        // The half-plane of the upward line x = 0, i.e. `x <= 0`: `Line::side_of` reports where
+        // the line is as seen from the point, so the half-plane is geometrically on the *left*
+        // of the directed line (see the module doc).
         let s = Simplex::from_lines(vec![Line::from_coords(0, 0, 0, 1)]);
         assert!(!s.is_bounded());
         assert_eq!(s.dimension(), 2);
@@ -1302,7 +1310,10 @@ mod tests {
         let e = Simplex::EMPTY;
         assert!(e.is_empty());
         assert_eq!(e.dimension(), -1);
-        // Java: `isBounded` is true for 0 lines, `cornerIsBounded` is false.
+        // Java: `isBounded` is true for 0 lines. `cornerIsBounded(0)` on the other hand *throws*
+        // in Java (`no` is clamped to `lines.length - 1 == -1`, then `lines[-2]` raises
+        // ArrayIndexOutOfBoundsException, Simplex.java:86-109); `false` here is this port's
+        // totalization of that, not observed Java behaviour.
         assert!(e.is_bounded());
         assert!(!e.corner_is_bounded(0));
         assert_eq!(e.corner_approx(0), None);

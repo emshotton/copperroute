@@ -540,6 +540,13 @@ impl Line {
     /// only for the *sign* of a product of coordinate differences becomes `i64` here.
     ///
     /// Used by `Simplex.removeRedundantLines` (Simplex.java:892) to skip duplicate lines.
+    ///
+    /// One deliberate divergence in the final `direction()` comparison: `IntDirection`'s
+    /// `PartialEq` starts with a structural `(x, y)` shortcut, so two `NULL` (zero) directions
+    /// compare *equal* here, whereas Java's `Direction.equals` on two distinct zero-direction
+    /// objects returns `false` (they are collinear, but their projection is `Signum.ZERO`, not
+    /// `POSITIVE`). A zero direction only arises from a degenerate line with `a == b`, so the
+    /// difference is unreachable for the lines `Simplex` actually builds.
     pub fn fast_equals(&self, other: &Line) -> bool {
         let dx1 = other.a.x as i64 - self.a.x as i64;
         let dy1 = other.a.y as i64 - self.a.y as i64;
