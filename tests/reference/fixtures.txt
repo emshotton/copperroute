@@ -1,0 +1,4 @@
+tutorial_board|examples/tutorial_board/tutorial_board.dsn
+Issue026-J2_reference|fixtures/Issue026-J2_reference.dsn
+Issue103-Board-Unrouted|fixtures/Issue103-Board-Unrouted.dsn
+Issue143-rpi_splitter|fixtures/Issue143-rpi_splitter.dsn
