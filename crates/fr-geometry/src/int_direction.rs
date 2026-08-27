@@ -113,18 +113,19 @@ impl IntDirection {
 
     /// Returns `Ordering::Greater`, if the angle between p1 and this direction is bigger than the
     /// angle between p2 and this direction, `Ordering::Equal`, if p1 is equal to p2, and
-    /// `Ordering::Less` otherwise.
+    /// `Ordering::Less` otherwise. Java: `p1.compareTo(this) >= 0` etc. — uses `compare_to`
+    /// (not `Ord`; see its doc comment).
     pub fn compare_from(&self, p1: &IntDirection, p2: &IntDirection) -> Ordering {
-        if p1.cmp(self) != Ordering::Less {
-            if p2.cmp(self) != Ordering::Less {
-                p1.cmp(p2)
+        if p1.compare_to(self) != Ordering::Less {
+            if p2.compare_to(self) != Ordering::Less {
+                p1.compare_to(p2)
             } else {
                 Ordering::Less
             }
-        } else if p2.cmp(self) != Ordering::Less {
+        } else if p2.compare_to(self) != Ordering::Less {
             Ordering::Greater
         } else {
-            p1.cmp(p2)
+            p1.compare_to(p2)
         }
     }
 
@@ -164,7 +165,7 @@ impl IntDirection {
     /// case split treats it inconsistently depending on which argument it appears as): e.g.
     /// `compare_direct(RIGHT, NULL) == Equal` but `compare_direct(NULL, RIGHT) == Greater`. Java's
     /// public `Direction.compareTo(Direction)` does not call this with `(self, other)` directly —
-    /// see `Ord::cmp` below, which reproduces the public method's actual double-dispatch order.
+    /// see `compare_to` below, which reproduces the public method's actual double-dispatch order.
     fn compare_direct(receiver: &IntDirection, param: &IntDirection) -> Ordering {
         if receiver.y > 0 {
             if param.y < 0 {
@@ -209,9 +210,7 @@ impl IntDirection {
             _ => Ordering::Equal,
         }
     }
-}
 
-impl Ord for IntDirection {
     /// Port of the public `Direction.compareTo(Direction other)`:
     /// ```java
     /// public int compareTo(Direction otherDirection) {
@@ -221,17 +220,15 @@ impl Ord for IntDirection {
     /// For two `IntDirection`s, `otherDirection.compareTo(this)` dispatches virtually on
     /// `otherDirection` (= our `other`) and invokes its package-private direct algorithm with
     /// receiver = `other`, param = `this` (= our `self`). So `self.compareTo(other) =
-    /// -compare_direct(other, self)`. Because `compare_direct` is not antisymmetric (see its doc
-    /// comment), this must evaluate it with the arguments swapped exactly as Java does — it is
-    /// NOT equivalent to `compare_direct(self, other)`.
-    fn cmp(&self, other: &Self) -> Ordering {
+    /// -compare_direct(other, self)`.
+    ///
+    /// This is **not** an `Ord`/`PartialOrd` impl, deliberately: Java's own `compareTo` is not
+    /// antisymmetric when one operand is `NULL` (the zero vector has no angle) —
+    /// `RIGHT.compareTo(NULL) == -1` but `NULL.compareTo(RIGHT) == 0` — so it cannot satisfy
+    /// Rust's `Ord` contract. Sort with `slice::sort_by(|a, b| a.compare_to(b))`, exactly as Java
+    /// code sorts `Direction`s with this method.
+    pub fn compare_to(&self, other: &IntDirection) -> Ordering {
         Self::compare_direct(other, self).reverse()
-    }
-}
-
-impl PartialOrd for IntDirection {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -246,12 +243,12 @@ impl PartialEq for IntDirection {
     /// }
     /// ```
     /// (the reference-identity shortcut is implied by the structural check below). Deliberately
-    /// NOT `self.cmp(other) == Ordering::Equal`: `Ord::cmp`'s underlying `compare_direct` is not a
-    /// reliable equality test at the `NULL` boundary (see its doc comment) — that mismatch is
-    /// exactly why Java defines `equals` independently of `compareTo`, and this must match, since
-    /// later code (e.g. `Simplex`, `Point`) tests `dir == Direction.NULL`. This formulation
-    /// correctly makes `RIGHT != NULL`, `LEFT != NULL`, `NULL == NULL`, and `IntDirection::new(2,
-    /// 2) == RIGHT45`.
+    /// NOT `self.compare_to(other) == Ordering::Equal`: `compare_to`'s underlying `compare_direct`
+    /// is not a reliable equality test at the `NULL` boundary (see its doc comment) — that
+    /// mismatch is exactly why Java defines `equals` independently of `compareTo`, and this must
+    /// match, since later code (e.g. `Simplex`, `Point`) tests `dir == Direction.NULL`. This
+    /// formulation correctly makes `RIGHT != NULL`, `LEFT != NULL`, `NULL == NULL`, and
+    /// `IntDirection::new(2, 2) == RIGHT45`.
     fn eq(&self, other: &Self) -> bool {
         (self.x == other.x && self.y == other.y)
             || (self.side_of(other) == Side::Collinear
@@ -278,25 +275,32 @@ impl Hash for IntDirection {
 }
 
 impl fmt::Display for IntDirection {
-    /// Port of `Direction.toString`.
+    /// Port of `Direction.toString`, which checks `this.compareTo(CONST) == 0` for each named
+    /// constant in turn (not `equals`) — ported here via `compare_to`, matching Java's own
+    /// method choice exactly.
+    ///
+    /// Quirk, faithfully reproduced: because `compare_to` is not antisymmetric at `NULL` (see its
+    /// doc comment), `IntDirection::NULL.compare_to(&IntDirection::RIGHT) == Ordering::Equal`, so
+    /// `NULL.to_string()` returns `"RIGHT"`, never reaching the `NULL` arm below. This is Java's
+    /// actual `toString()` behaviour for `Direction.NULL`, not a bug introduced by this port.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = if *self == IntDirection::RIGHT {
+        let name = if self.compare_to(&IntDirection::RIGHT) == Ordering::Equal {
             "RIGHT"
-        } else if *self == IntDirection::RIGHT45 {
+        } else if self.compare_to(&IntDirection::RIGHT45) == Ordering::Equal {
             "UP-RIGHT"
-        } else if *self == IntDirection::UP {
+        } else if self.compare_to(&IntDirection::UP) == Ordering::Equal {
             "UP"
-        } else if *self == IntDirection::UP45 {
+        } else if self.compare_to(&IntDirection::UP45) == Ordering::Equal {
             "UP-LEFT"
-        } else if *self == IntDirection::LEFT {
+        } else if self.compare_to(&IntDirection::LEFT) == Ordering::Equal {
             "LEFT"
-        } else if *self == IntDirection::LEFT45 {
+        } else if self.compare_to(&IntDirection::LEFT45) == Ordering::Equal {
             "DOWN-LEFT"
-        } else if *self == IntDirection::DOWN {
+        } else if self.compare_to(&IntDirection::DOWN) == Ordering::Equal {
             "DOWN"
-        } else if *self == IntDirection::DOWN45 {
+        } else if self.compare_to(&IntDirection::DOWN45) == Ordering::Equal {
             "DOWN-RIGHT"
-        } else if *self == IntDirection::NULL {
+        } else if self.compare_to(&IntDirection::NULL) == Ordering::Equal {
             "NULL"
         } else {
             "UNKNOWN"
@@ -324,15 +328,36 @@ mod tests {
             IntDirection::DOWN45,
         ];
         for w in order.windows(2) {
-            assert_eq!(w[0].cmp(&w[1]), Ordering::Less, "{} < {}", w[0], w[1]);
+            assert_eq!(
+                w[0].compare_to(&w[1]),
+                Ordering::Less,
+                "{} < {}",
+                w[0],
+                w[1]
+            );
         }
         assert_eq!(
-            IntDirection::DOWN45.cmp(&IntDirection::RIGHT),
+            IntDirection::DOWN45.compare_to(&IntDirection::RIGHT),
             Ordering::Greater
         );
         assert_eq!(
-            IntDirection::new(3, 1).cmp(&IntDirection::new(1, 3)),
+            IntDirection::new(3, 1).compare_to(&IntDirection::new(1, 3)),
             Ordering::Less
+        );
+    }
+
+    #[test]
+    fn compare_to_is_not_antisymmetric_at_null() {
+        // Java's own public Direction.compareTo has this asymmetry: RIGHT.compareTo(NULL) == -1
+        // but NULL.compareTo(RIGHT) == 0. This is why `compare_to` is an inherent method, not an
+        // `Ord`/`PartialOrd` impl (see its doc comment).
+        assert_eq!(
+            IntDirection::RIGHT.compare_to(&IntDirection::NULL),
+            Ordering::Less
+        );
+        assert_eq!(
+            IntDirection::NULL.compare_to(&IntDirection::RIGHT),
+            Ordering::Equal
         );
     }
 
