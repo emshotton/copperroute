@@ -246,7 +246,15 @@ impl Point {
         }
     }
 
-    // added in Task 12: surrounding_octagon
+    /// Creates the smallest `IntOctagon` containing this point. Java
+    /// `Point.surroundingOctagon()` is abstract; both concrete overrides are unfolded here.
+    pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
+        match self {
+            Point::Int(p) => p.surrounding_octagon(),
+            Point::Rational(p) => p.surrounding_octagon(),
+        }
+    }
+
     // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
 }
 
@@ -408,6 +416,24 @@ mod cross_representation_tests {
         IntPoint { x: 3, y: 9 },
         IntPoint { x: -2, y: -7 },
     ];
+
+    /// `Point.surroundingOctagon()` dispatches to `IntPoint`/`RationalPoint`; an integral
+    /// rational point must round to exactly the same degenerate octagon as the `IntPoint`
+    /// (`floor == ceil` on every one of `RationalPoint.surroundingOctagon`'s eight bounds).
+    #[test]
+    fn surrounding_octagon_dispatches_and_agrees_on_integral_points() {
+        for p in &SAMPLES {
+            let expected = p.surrounding_octagon();
+            assert_eq!(Point::Int(*p).surrounding_octagon(), expected, "int {p}");
+            assert_eq!(rat(p).surrounding_octagon(), expected, "rational {p}");
+        }
+        // A genuinely fractional point: 7/2, 3/2 -> x-y = 2, x+y = 5
+        let half = RationalPoint::new(b(7), b(3), b(2));
+        assert_eq!(
+            half.surrounding_octagon(),
+            crate::int_octagon::IntOctagon::new(3, 1, 4, 2, 2, 2, 5, 5)
+        );
+    }
 
     /// Every dispatch arm must agree with the plain `IntPoint` result whenever the operands are
     /// small enough for both representations — the check that Java's two-level dispatch was

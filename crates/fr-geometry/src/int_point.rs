@@ -367,7 +367,15 @@ impl IntPoint {
         self.x >= box_.ll.x && self.y >= box_.ll.y && self.x <= box_.ur.x && self.y <= box_.ur.y
     }
 
-    // added in Task 12: surrounding_octagon
+    /// Creates the smallest `IntOctagon` containing this point. Java
+    /// `IntPoint.surroundingOctagon()` (IntPoint.java:62-68): a degenerate octagon whose four
+    /// diagonal bounds all collapse onto the point's own `x - y` and `x + y`.
+    pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
+        let tmp1 = self.x - self.y;
+        let tmp2 = self.x + self.y;
+
+        crate::int_octagon::IntOctagon::new(self.x, self.y, self.x, self.y, tmp1, tmp1, tmp2, tmp2)
+    }
 }
 
 impl fmt::Display for IntPoint {

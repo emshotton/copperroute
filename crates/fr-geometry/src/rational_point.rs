@@ -243,7 +243,26 @@ impl RationalPoint {
         self.y <= tmp
     }
 
-    // added in Task 12: surrounding_octagon
+    /// Creates the smallest `IntOctagon` containing this point. Java
+    /// `RationalPoint.surroundingOctagon()` (RationalPoint.java:126-142). As in Java, the
+    /// rounding goes through the `double` approximation of this rational point.
+    pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
+        let fp = self.to_float();
+        let lx = fp.x.floor() as i32;
+        let ly = fp.y.floor() as i32;
+        let rx = fp.x.ceil() as i32;
+        let uy = fp.y.ceil() as i32;
+
+        let tmp = fp.x - fp.y;
+        let ulx = tmp.floor() as i32;
+        let lrx = tmp.ceil() as i32;
+
+        let tmp = fp.x + fp.y;
+        let llx = tmp.floor() as i32;
+        let urx = tmp.ceil() as i32;
+        crate::int_octagon::IntOctagon::new(lx, ly, rx, uy, ulx, lrx, llx, urx)
+    }
+
     // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
 }
 

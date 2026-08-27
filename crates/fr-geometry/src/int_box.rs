@@ -7,6 +7,7 @@
 //! are added in Tasks 12-14 (see the marker at the end of this file).
 
 use crate::float_point::FloatPoint;
+use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::limits::{CRIT_INT, java_round};
 use crate::line::Line;
@@ -648,17 +649,70 @@ impl IntBox {
         result.to_vec()
     }
 
-    // added in Task 12 (IntOctagon): boundingOctagon(), union(IntOctagon),
-    // intersection(IntOctagon), intersects(IntOctagon), intersects(Circle), enlarge(double) ->
-    // IntOctagon, compare(IntOctagon, int), toIntOctagon(), isContainedIn(IntOctagon),
-    // cutoutFrom(IntOctagon).
+    /// Returns an object of class `IntOctagon` defining the same shape. IntBox.java:565-569.
+    pub fn to_int_octagon(&self) -> IntOctagon {
+        IntOctagon::new(
+            self.ll.x,
+            self.ll.y,
+            self.ur.x,
+            self.ur.y,
+            self.ll.x - self.ur.y,
+            self.ur.x - self.ll.y,
+            self.ll.x + self.ll.y,
+            self.ur.x + self.ur.y,
+        )
+    }
+
+    /// Java `boundingOctagon()`: `return toIntOctagon();`
+    pub fn bounding_octagon(&self) -> IntOctagon {
+        self.to_int_octagon()
+    }
+
+    /// Java `union(IntOctagon other)`: `return other.union(toIntOctagon());`
+    pub fn union_octagon(&self, other: &IntOctagon) -> IntOctagon {
+        other.union(&self.to_int_octagon())
+    }
+
+    /// Java `intersection(IntOctagon other)`: `return other.intersection(this.toIntOctagon());`
+    pub fn intersection_octagon(&self, other: &IntOctagon) -> IntOctagon {
+        other.intersection(&self.to_int_octagon())
+    }
+
+    /// Java `intersects(IntOctagon other)`: `return other.intersects(toIntOctagon());`
+    pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
+        other.intersects_octagon(&self.to_int_octagon())
+    }
+
+    /// Java `isContainedIn(IntOctagon other)`: `return other.contains(toIntOctagon());`, and
+    /// `RegularTileShape.contains(other)` is `other.isContainedIn(this)`.
+    pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
+        self.to_int_octagon().is_contained_in_octagon(other)
+    }
+
+    /// Enlarges the box by `offset`. Contrary to the `offset()` method the result is an
+    /// `IntOctagon`, not an `IntBox`. Java: `return boundingOctagon().offset(offset);`
+    pub fn enlarge(&self, offset: f64) -> IntOctagon {
+        self.bounding_octagon().offset(offset)
+    }
+
+    /// Java `compare(IntOctagon other, int edgeIndex)`:
+    /// `return toIntOctagon().compare(other, edgeIndex);`
+    pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
+        self.to_int_octagon().compare_octagon(other, edge_index)
+    }
+
+    /// Java `cutoutFrom(IntOctagon oct)`: `return this.toIntOctagon().cutoutFrom(oct);`
+    pub fn cutout_from_octagon(&self, oct: &IntOctagon) -> Vec<IntOctagon> {
+        self.to_int_octagon().cutout_from_octagon(oct)
+    }
+
     // added in Task 13 (TileShape / RegularTileShape / Shape / ShapeBoundingDirections):
     // simplify() -> TileShape, borderLineCount(), boundingTile(), union(RegularTileShape),
     // intersection(TileShape), intersects(Shape), contains(RegularTileShape) [generic dispatch;
     // the IntBox-typed overload is already ported directly above], boundingShape(dirs),
     // compare(RegularTileShape, int), cutout(TileShape).
-    // added in Task 14 (Simplex): intersection(Simplex), intersects(Simplex), toSimplex(),
-    // cutoutFrom(Simplex).
+    // added in Task 14 (Simplex / Circle): intersection(Simplex), intersects(Simplex),
+    // toSimplex(), cutoutFrom(Simplex), intersects(Circle).
 }
 
 #[cfg(test)]
