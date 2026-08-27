@@ -153,55 +153,79 @@ impl IntDirection {
     }
 }
 
-impl Ord for IntDirection {
-    /// Port of the package-private `IntDirection.compareTo(IntDirection other)`. The public
-    /// `Direction.compareTo(Direction)` is `-otherDirection.compareTo(this)` (double dispatch);
-    /// for two `IntDirection`s that collapses back to calling this direct algorithm with `self`
-    /// and `other` in the natural order (the algorithm is antisymmetric), so it is ported here
-    /// verbatim as `Ord::cmp`.
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.y > 0 {
-            if other.y < 0 {
+impl IntDirection {
+    /// Literal port of the package-private `IntDirection.compareTo(IntDirection other)`.
+    /// `receiver`'s fields are Java's bare `x`/`y` inside that method body; `param` is Java's
+    /// `other` parameter.
+    ///
+    /// **This function is NOT antisymmetric in general** — `compare_direct(a, b)` is not always
+    /// `compare_direct(b, a).reverse()`. In particular it disagrees with its own mirror image
+    /// whenever one side is `NULL` (the zero vector has no angle, so the algorithm's half-plane
+    /// case split treats it inconsistently depending on which argument it appears as): e.g.
+    /// `compare_direct(RIGHT, NULL) == Equal` but `compare_direct(NULL, RIGHT) == Greater`. Java's
+    /// public `Direction.compareTo(Direction)` does not call this with `(self, other)` directly —
+    /// see `Ord::cmp` below, which reproduces the public method's actual double-dispatch order.
+    fn compare_direct(receiver: &IntDirection, param: &IntDirection) -> Ordering {
+        if receiver.y > 0 {
+            if param.y < 0 {
                 return Ordering::Less;
             }
-            if other.y == 0 {
-                return if other.x > 0 {
+            if param.y == 0 {
+                return if param.x > 0 {
                     Ordering::Greater
                 } else {
                     Ordering::Less
                 };
             }
-        } else if self.y < 0 {
-            if other.y >= 0 {
+        } else if receiver.y < 0 {
+            if param.y >= 0 {
                 return Ordering::Greater;
             }
         } else {
-            // self.y == 0
-            if self.x > 0 {
-                return if other.y != 0 || other.x < 0 {
+            // receiver.y == 0
+            if receiver.x > 0 {
+                return if param.y != 0 || param.x < 0 {
                     Ordering::Less
                 } else {
                     Ordering::Equal
                 };
             }
-            // self.x <= 0 (Java's comment says "x < 0", but the code covers x == 0, i.e. NULL,
-            // too — it is simply the `else` of the `x > 0` check above)
-            if other.y > 0 || (other.y == 0 && other.x > 0) {
+            // receiver.x <= 0 (Java's comment says "x < 0", but the code covers x == 0, i.e.
+            // NULL, too — it is simply the `else` of the `x > 0` check above)
+            if param.y > 0 || (param.y == 0 && param.x > 0) {
                 return Ordering::Greater;
             }
-            if other.y < 0 {
+            if param.y < 0 {
                 return Ordering::Less;
             }
             return Ordering::Equal;
         }
 
-        // now this direction and other are located in the same open horizontal half plane
-        let determinant = other.x as i64 * self.y as i64 - other.y as i64 * self.x as i64;
+        // now receiver and param are located in the same open horizontal half plane
+        let determinant = param.x as i64 * receiver.y as i64 - param.y as i64 * receiver.x as i64;
         match determinant.signum() {
             1 => Ordering::Greater,
             -1 => Ordering::Less,
             _ => Ordering::Equal,
         }
+    }
+}
+
+impl Ord for IntDirection {
+    /// Port of the public `Direction.compareTo(Direction other)`:
+    /// ```java
+    /// public int compareTo(Direction otherDirection) {
+    ///   return -otherDirection.compareTo(this);   // double dispatch
+    /// }
+    /// ```
+    /// For two `IntDirection`s, `otherDirection.compareTo(this)` dispatches virtually on
+    /// `otherDirection` (= our `other`) and invokes its package-private direct algorithm with
+    /// receiver = `other`, param = `this` (= our `self`). So `self.compareTo(other) =
+    /// -compare_direct(other, self)`. Because `compare_direct` is not antisymmetric (see its doc
+    /// comment), this must evaluate it with the arguments swapped exactly as Java does — it is
+    /// NOT equivalent to `compare_direct(self, other)`.
+    fn cmp(&self, other: &Self) -> Ordering {
+        Self::compare_direct(other, self).reverse()
     }
 }
 
@@ -212,18 +236,36 @@ impl PartialOrd for IntDirection {
 }
 
 impl PartialEq for IntDirection {
-    /// Java's `equals` is angular (collinear + same sense), so e.g. `IntDirection::new(2, 2) ==
-    /// RIGHT45` is `true`. Must agree with `Ord`, so this is defined via `cmp`.
+    /// Port of `Direction.equals`:
+    /// ```java
+    /// public final boolean equals(Object other) {
+    ///   ...
+    ///   if (this.sideOf(otherDirection) != Side.COLLINEAR) return false;
+    ///   // check, that dir and other_dir do not point into opposite directions
+    ///   return thisVector.projection(otherVector) == Signum.POSITIVE;
+    /// }
+    /// ```
+    /// (the reference-identity shortcut is implied by the structural check below). Deliberately
+    /// NOT `self.cmp(other) == Ordering::Equal`: `Ord::cmp`'s underlying `compare_direct` is not a
+    /// reliable equality test at the `NULL` boundary (see its doc comment) — that mismatch is
+    /// exactly why Java defines `equals` independently of `compareTo`, and this must match, since
+    /// later code (e.g. `Simplex`, `Point`) tests `dir == Direction.NULL`. This formulation
+    /// correctly makes `RIGHT != NULL`, `LEFT != NULL`, `NULL == NULL`, and `IntDirection::new(2,
+    /// 2) == RIGHT45`.
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
+        (self.x == other.x && self.y == other.y)
+            || (self.side_of(other) == Side::Collinear
+                && self.projection(other) == Signum::Positive)
     }
 }
 
 impl Eq for IntDirection {}
 
 impl Hash for IntDirection {
-    /// Hashes the normalized (gcd-divided) coordinate pair, so that `Hash` stays consistent with
-    /// the angular `Eq` above (equal directions of different magnitude hash the same).
+    /// Hashes the normalized (gcd-divided) coordinate pair (with `(0, 0)` for `NULL`), so that
+    /// `Hash` stays consistent with the `PartialEq` above: any two directions with `self ==
+    /// other` are collinear with the same sense (or structurally identical, i.e. both `NULL`), so
+    /// they always reduce to the same primitive coordinate pair.
     fn hash<H: Hasher>(&self, state: &mut H) {
         let gcd = crate::bigint_aux::binary_gcd(self.x.abs(), self.y.abs());
         let normalized = if gcd > 0 {
@@ -363,5 +405,38 @@ mod tests {
     #[test]
     fn angle_approx_of_up_is_half_pi() {
         assert!((IntDirection::UP.angle_approx() - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn null_is_not_equal_to_axis_directions_but_equals_itself() {
+        // Per Java's `Direction.equals`: NULL (the zero vector) has no angle, so a non-zero
+        // direction's projection onto it is always Signum.ZERO, never POSITIVE — NULL is never
+        // equal to a real direction, even though it is trivially collinear with everything.
+        assert_ne!(IntDirection::RIGHT, IntDirection::NULL);
+        assert_ne!(IntDirection::NULL, IntDirection::RIGHT);
+        assert_ne!(IntDirection::LEFT, IntDirection::NULL);
+        assert_eq!(IntDirection::NULL, IntDirection::NULL);
+    }
+
+    #[test]
+    fn angular_equality_ignores_magnitude_and_hashes_match() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::Hasher as _;
+
+        assert_eq!(IntDirection::new(2, 2), IntDirection::RIGHT45);
+
+        let mut h1 = DefaultHasher::new();
+        IntDirection::new(2, 2).hash(&mut h1);
+        let mut h2 = DefaultHasher::new();
+        IntDirection::RIGHT45.hash(&mut h2);
+        assert_eq!(h1.finish(), h2.finish());
+    }
+
+    #[test]
+    fn middle_approx_of_right_and_up_is_right45() {
+        assert_eq!(
+            IntDirection::RIGHT.middle_approx(&IntDirection::UP),
+            IntDirection::RIGHT45
+        );
     }
 }
