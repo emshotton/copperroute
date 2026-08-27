@@ -296,7 +296,16 @@ impl FloatPoint {
         self.y >= min_y - tolerance && self.y <= max_y + tolerance
     }
 
-    // added in Task 11: bounding_box() -> IntBox
+    /// Creates the smallest IntBox with integer coordinates containing this point, rounding
+    /// outward. Java `FloatPoint.boundingBox()`.
+    pub fn bounding_box(&self) -> crate::int_box::IntBox {
+        crate::int_box::IntBox::from_coords(
+            self.x.floor() as i32,
+            self.y.floor() as i32,
+            self.x.ceil() as i32,
+            self.y.ceil() as i32,
+        )
+    }
 
     /// Calculates the touching points of the tangents from this point to a circle around
     /// to_point with radius distance. Solves the quadratic equation which results by

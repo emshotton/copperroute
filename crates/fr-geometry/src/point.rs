@@ -228,7 +228,24 @@ impl Point {
         }
     }
 
-    // added in Task 11: surrounding_box, is_contained_in
+    /// Creates the smallest Box with integer coordinates containing this point. Java
+    /// `Point.surroundingBox()` is abstract; both concrete overrides are unfolded here.
+    pub fn surrounding_box(&self) -> crate::int_box::IntBox {
+        match self {
+            Point::Int(p) => p.surrounding_box(),
+            Point::Rational(p) => p.surrounding_box(),
+        }
+    }
+
+    /// Returns true, if this point lies in the interior or on the border of box. Java
+    /// `Point.isContainedIn(IntBox)` is abstract; both concrete overrides are unfolded here.
+    pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
+        match self {
+            Point::Int(p) => p.is_contained_in(box_),
+            Point::Rational(p) => p.is_contained_in(box_),
+        }
+    }
+
     // added in Task 12: surrounding_octagon
     // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
 }

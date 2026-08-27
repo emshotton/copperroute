@@ -354,7 +354,19 @@ impl IntPoint {
     // not ported here: `Point.perpendicularDirection(Line)` is a concrete method of the
     // abstract `Point` class in Java, inherited (not overridden) by `IntPoint`; it lives on
     // `Point` in this port (see `point.rs`).
-    // added in Task 11: surrounding_box, is_contained_in
+
+    /// Creates the smallest Box with integer coordinates containing this point. Java
+    /// `IntPoint.surroundingBox()`.
+    pub fn surrounding_box(&self) -> crate::int_box::IntBox {
+        crate::int_box::IntBox::new(*self, *self)
+    }
+
+    /// Returns true, if this point lies in the interior or on the border of box. Java
+    /// `IntPoint.isContainedIn(IntBox)`.
+    pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
+        self.x >= box_.ll.x && self.y >= box_.ll.y && self.x <= box_.ur.x && self.y <= box_.ur.y
+    }
+
     // added in Task 12: surrounding_octagon
 }
 

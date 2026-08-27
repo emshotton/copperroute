@@ -210,7 +210,39 @@ impl RationalPoint {
 
     // not ported here: `Point.perpendicularDirection(Line)` is inherited from the abstract
     // `Point` class in Java; it lives on `Point` in this port (see `point.rs`).
-    // added in Task 11: surrounding_box, is_contained_in
+
+    /// Creates the smallest Box with integer coordinates containing this point. Java
+    /// `RationalPoint.surroundingBox()`.
+    pub fn surrounding_box(&self) -> crate::int_box::IntBox {
+        let fp = self.to_float();
+        crate::int_box::IntBox::from_coords(
+            fp.x.floor() as i32,
+            fp.y.floor() as i32,
+            fp.x.ceil() as i32,
+            fp.y.ceil() as i32,
+        )
+    }
+
+    /// Returns true, if this point lies in the interior or on the border of box. Java
+    /// `RationalPoint.isContainedIn(IntBox)`. `z` is always `>= 0` (`RationalPoint::new`), so
+    /// multiplying through by `z` preserves comparison direction.
+    pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
+        let tmp = BigInt::from(box_.ll.x) * &self.z;
+        if self.x < tmp {
+            return false;
+        }
+        let tmp = BigInt::from(box_.ll.y) * &self.z;
+        if self.y < tmp {
+            return false;
+        }
+        let tmp = BigInt::from(box_.ur.x) * &self.z;
+        if self.x > tmp {
+            return false;
+        }
+        let tmp = BigInt::from(box_.ur.y) * &self.z;
+        self.y <= tmp
+    }
+
     // added in Task 12: surrounding_octagon
     // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
 }
