@@ -47,6 +47,10 @@ impl FloatPoint {
     }
 
     // not ported: `boundingOctagon(FloatPoint[])` — depends on `IntOctagon` (Task 12).
+    // not ported: `toString(Locale)` (FloatPoint.java:469-473) — GUI-only locale variant of
+    // the hard-coded English `Display` impl below, unused outside `geometry/planar`.
+    // not ported: `toString(Locale, int, int)` (FloatPoint.java:476-484) — padded GUI display
+    // string, unused outside `geometry/planar`.
 
     /// Returns the square of the distance from this point to the zero point.
     pub fn size_square(&self) -> f64 {
@@ -438,7 +442,21 @@ impl FloatPoint {
     /// regardless of the platform default, so this hard-codes the same formatting rather than
     /// taking a locale parameter (Java's `toString(Locale)` overload, used only by other
     /// locales, is not ported — GUI-only, unused outside `geometry/planar`).
+    ///
+    /// `NumberFormat.format` handles non-finite doubles specially rather than throwing: `NaN`
+    /// prints as `"NaN"`, and the infinities print as `"\u{221e}"`/`"-\u{221e}"` (verified against
+    /// a standalone `javac`/`java` run of `NumberFormat.getInstance(Locale.ENGLISH).format(...)`).
+    /// Handled before the fixed-precision path below, which would otherwise panic: `format!("{:.4}",
+    /// _)` renders non-finite values as `"NaN"`/`"inf"`/`"-inf"`, none of which contain a `.` for
+    /// `split_once` to find.
     fn format_component(value: f64) -> String {
+        if value.is_nan() {
+            return "NaN".to_string();
+        }
+        if value.is_infinite() {
+            return if value > 0.0 { "\u{221e}" } else { "-\u{221e}" }.to_string();
+        }
+
         let negative = value.is_sign_negative();
         let formatted = format!("{:.4}", value.abs());
         let (int_part, frac_part) = formatted
@@ -478,12 +496,21 @@ impl fmt::Display for FloatPoint {
     /// (FloatPoint.java:469-473): `"(" + nf.format(x) + " , " + nf.format(y) + ")"` with
     /// `NumberFormat.getInstance(Locale.ENGLISH)` and `setMaximumFractionDigits(4)`.
     ///
-    /// One known deviation: Java's `NumberFormat` rounds `HALF_EVEN` against the shortest
-    /// round-trip decimal string of the double (so an exact quarter-cent value like `5.0E-5`
-    /// rounds to `"0"`), whereas Rust's `{:.4}` rounds against the exact binary value of the
-    /// double (so the same input, whose true binary value is a hair above `5e-5`, rounds to
-    /// `"0.0001"`). This only differs on doubles that are exact decimal ties at the 4th fraction
-    /// digit, which do not arise from any PCB coordinate computed in this crate; reproducing
+    /// Java's `toString(Locale)` (FloatPoint.java:469-473) and `toString(Locale, int, int)`
+    /// (FloatPoint.java:476-484) overloads — used only for other locales / GUI padded display —
+    /// are not ported.
+    ///
+    /// Two known deviations, both from Rust's `{:.4}` formatting the *exact binary expansion* of
+    /// the double where Java's `NumberFormat` formats its *shortest round-trip decimal digits*:
+    /// * doubles that are exact decimal ties at the 4th fraction digit round differently (e.g.
+    ///   `5.0E-5`, whose true binary value sits a hair above the decimal midpoint, rounds to
+    ///   `"0"` in Java's `HALF_EVEN` but `"0.0001"` here);
+    /// * doubles at or beyond `2^53` (`CRIT_DOUBLE`, e.g. `f32::MAX as f64`, which
+    ///   `RationalPoint::to_float` returns for a point at infinity) can render different digits
+    ///   entirely, since the exact binary expansion of such a magnitude no longer matches its
+    ///   shortest round-trip decimal representation.
+    ///
+    /// Neither arises from any finite PCB coordinate computed in this crate, so reproducing
     /// Java's shortest-round-trip-then-round-half-even algorithm exactly was judged not worth the
     /// complexity for a diagnostic `Display` impl.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -599,5 +626,24 @@ mod tests {
             "(1,234,567.8912 , -0)"
         );
         assert_eq!(FloatPoint::new(100.0, 0.1).to_string(), "(100 , 0.1)");
+    }
+
+    #[test]
+    fn display_of_non_finite_coordinates_matches_java() {
+        // Verified against a standalone `javac`/`java` run of
+        // `NumberFormat.getInstance(Locale.ENGLISH).format(...)`:
+        //   NaN              -> "NaN"
+        //   Double.POSITIVE_INFINITY -> "∞"
+        //   Double.NEGATIVE_INFINITY -> "-∞"
+        // These are reachable in practice: `RationalVector::to_float` divides by a zero
+        // denominator, and `FloatLine::translate` divides by zero on a degenerate segment.
+        assert_eq!(
+            FloatPoint::new(f64::NAN, f64::INFINITY).to_string(),
+            "(NaN , \u{221e})"
+        );
+        assert_eq!(
+            FloatPoint::new(f64::NEG_INFINITY, 0.0).to_string(),
+            "(-\u{221e} , 0)"
+        );
     }
 }
