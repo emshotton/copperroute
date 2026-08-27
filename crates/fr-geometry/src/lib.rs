@@ -2,16 +2,28 @@
 //! `app.freerouting.geometry.planar` — exact integer/rational arithmetic.
 
 pub mod bigint_aux;
+pub mod bigint_direction;
+pub mod direction;
 pub mod int_direction;
 pub mod int_point;
 pub mod int_vector;
 pub mod limits;
+pub mod point;
+pub mod rational_point;
+pub mod rational_vector;
 pub mod side;
 pub mod signum;
+pub mod vector;
 
+pub use bigint_direction::BigIntDirection;
+pub use direction::Direction;
 pub use int_direction::IntDirection;
 pub use int_point::IntPoint;
 pub use int_vector::IntVector;
 pub use limits::{CRIT_INT, java_round};
+pub use point::Point;
+pub use rational_point::RationalPoint;
+pub use rational_vector::RationalVector;
 pub use side::Side;
 pub use signum::Signum;
+pub use vector::Vector;
