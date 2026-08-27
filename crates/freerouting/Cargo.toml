@@ -1,0 +1,18 @@
+[package]
+name = "freerouting"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "freerouting"
+path = "src/main.rs"
+
+[dependencies]
+fr-geometry = { path = "../fr-geometry" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -1,0 +1,4 @@
+/target
+/tools/*.jar
+/tests/reference/_scratch/
+/.superpowers/
