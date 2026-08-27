@@ -19,9 +19,10 @@ use num_integer::Integer;
 use num_traits::{One, Signed, Zero};
 
 use crate::bigint_aux;
+use crate::float_point::FloatPoint;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
-use crate::rational_vector::RationalVector;
+use crate::rational_vector::{RationalVector, big_to_f64};
 
 /// Implementation of a `Point` in the projective plane, with infinite-precision coordinates.
 #[derive(Debug, Clone)]
@@ -121,7 +122,21 @@ impl RationalPoint {
         tmp1.cmp(&tmp2)
     }
 
-    // added in Task 9: to_float
+    /// Approximates the coordinates of this point by float coordinates.
+    ///
+    /// Java special-cases `z == 0` (the line at infinity) and substitutes `Float.MAX_VALUE` — a
+    /// `float` constant, implicitly widened to `double` — for both coordinates, rather than
+    /// letting the division produce `Infinity`/`NaN` (RationalPoint.java:48-59). Reproduced
+    /// verbatim, including the `f32::MAX` (not `f64::MAX`) magnitude.
+    pub fn to_float(&self) -> FloatPoint {
+        let zd = big_to_f64(&self.z);
+        if zd == 0.0 {
+            FloatPoint::new(f32::MAX as f64, f32::MAX as f64)
+        } else {
+            FloatPoint::new(big_to_f64(&self.x) / zd, big_to_f64(&self.y) / zd)
+        }
+    }
+
     // added in Task 10: side_of_line, perpendicular_projection, perpendicular_direction
     // added in Task 11: surrounding_box, is_contained_in
     // added in Task 12: surrounding_octagon

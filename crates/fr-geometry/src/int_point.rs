@@ -6,6 +6,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 
+use crate::float_point::FloatPoint;
 use crate::int_vector::IntVector;
 use crate::side::Side;
 
@@ -273,7 +274,11 @@ impl IntPoint {
         pole.translate_by(&v)
     }
 
-    // added in Task 9: to_float
+    /// Converts this point to a FloatPoint.
+    pub fn to_float(&self) -> FloatPoint {
+        FloatPoint::new(self.x as f64, self.y as f64)
+    }
+
     // added in Task 10: side_of_line, perpendicular_projection, perpendicular_direction
     // added in Task 11: surrounding_box, is_contained_in
     // added in Task 12: surrounding_octagon

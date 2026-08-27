@@ -13,6 +13,7 @@ use num_traits::{One, Signed, ToPrimitive, Zero};
 use crate::bigint_aux;
 use crate::bigint_direction::BigIntDirection;
 use crate::direction::Direction;
+use crate::float_point::FloatPoint;
 use crate::int_direction::IntDirection;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
@@ -160,17 +161,16 @@ impl RationalVector {
     /// Java `RationalVector.scalarProduct(RationalVector other)`: computed on the `toFloat()`
     /// approximations of both vectors.
     pub fn scalar_product_rational(&self, other: &RationalVector) -> f64 {
-        let (x1, y1) = self.approx_xy();
-        let (x2, y2) = other.approx_xy();
-        x1 * x2 + y1 * y2
+        let v1 = self.to_float();
+        let v2 = other.to_float();
+        v1.x * v2.x + v1.y * v2.y
     }
 
-    /// Java `RationalVector.toFloat()`, inlined as a plain `(f64, f64)` pair until `FloatPoint`
-    /// exists (Task 9). Note Java does not special-case `z == 0` here (unlike `RationalPoint`),
-    /// so a zero denominator yields infinities/NaN — reproduced.
-    pub(crate) fn approx_xy(&self) -> (f64, f64) {
+    /// Java `RationalVector.toFloat()`. Note Java does not special-case `z == 0` here (unlike
+    /// `RationalPoint::to_float`), so a zero denominator yields infinities/NaN — reproduced.
+    pub fn to_float(&self) -> FloatPoint {
         let zd = big_to_f64(&self.z);
-        (big_to_f64(&self.x) / zd, big_to_f64(&self.y) / zd)
+        FloatPoint::new(big_to_f64(&self.x) / zd, big_to_f64(&self.y) / zd)
     }
 
     /// Turns this vector by factor times 90 degree.
@@ -244,9 +244,13 @@ impl RationalVector {
         bigint_aux::determinant(&self.x, &self.y, &other.x, &other.y)
     }
 
-    // added in Task 9: to_float, change_length_approx
-    // (Java's `RationalVector.changeLengthApprox` only logs
-    //  "RationalVector: change_length_approx not yet implemented" and returns `this`.)
+    /// Java `RationalVector.changeLengthApprox(double)`: not actually implemented in Java either
+    /// — it logs "RationalVector: change_length_approx not yet implemented" and returns `this`
+    /// unchanged (RationalVector.java:196-200). `fr-geometry` has no `tracing` dependency, so the
+    /// log is dropped; the no-op return value is reproduced.
+    pub fn change_length_approx(&self, _length: f64) -> Vector {
+        Vector::Rational(self.clone())
+    }
 }
 
 impl PartialEq for RationalVector {
@@ -331,7 +335,8 @@ mod tests {
     #[test]
     fn approximations() {
         let v = RationalVector::new(b(3), b(4), b(2));
-        assert_eq!(v.approx_xy(), (1.5, 2.0));
+        let approx = v.to_float();
+        assert_eq!((approx.x, approx.y), (1.5, 2.0));
         assert_eq!(
             v.scalar_product_rational(&RationalVector::new(b(2), b(2), b(1))),
             1.5 * 2.0 + 2.0 * 2.0
@@ -340,5 +345,12 @@ mod tests {
             v.scalar_product_int(&IntVector::new(2, 2)),
             1.5 * 2.0 + 2.0 * 2.0
         );
+    }
+
+    #[test]
+    fn change_length_approx_is_an_unimplemented_no_op() {
+        // Java: RationalVector.changeLengthApprox logs a warning and returns `this` unchanged.
+        let v = RationalVector::new(b(3), b(4), b(2));
+        assert_eq!(v.change_length_approx(100.0), Vector::Rational(v));
     }
 }

@@ -19,6 +19,7 @@ use num_integer::Integer;
 use num_traits::{One, Signed, ToPrimitive, Zero};
 
 use crate::direction::Direction;
+use crate::float_point::FloatPoint;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
 use crate::limits::{CRIT_INT, crit_int_big};
@@ -204,34 +205,23 @@ impl Vector {
         }
     }
 
-    /// Java `toFloat()`, inlined as a plain `(f64, f64)` pair until `FloatPoint` exists (Task 9).
-    pub(crate) fn approx_xy(&self) -> (f64, f64) {
+    /// Approximates the coordinates of this vector by float coordinates. Java `Vector.toFloat()`.
+    pub fn to_float(&self) -> FloatPoint {
         match self {
-            Vector::Int(v) => (v.x as f64, v.y as f64),
-            Vector::Rational(v) => v.approx_xy(),
-        }
-    }
-
-    /// Java `toFloat().size()`, inlined until `FloatPoint` exists (Task 9).
-    fn approx_size(&self) -> f64 {
-        match self {
-            Vector::Int(v) => v.length_approx(),
-            Vector::Rational(v) => {
-                let (x, y) = v.approx_xy();
-                f64::hypot(x, y)
-            }
+            Vector::Int(v) => v.to_float(),
+            Vector::Rational(v) => v.to_float(),
         }
     }
 
     /// Returns an approximation of the Euclidean length of this vector.
     pub fn length_approx(&self) -> f64 {
-        self.approx_size()
+        self.to_float().size()
     }
 
     /// Returns an approximation of the cosinus of the angle between this vector and other.
     pub fn cos_angle(&self, other: &Vector) -> f64 {
         let mut result = self.scalar_product(other);
-        result /= self.approx_size() * other.approx_size();
+        result /= self.to_float().size() * other.to_float().size();
         result
     }
 
@@ -271,7 +261,24 @@ impl Vector {
         }
     }
 
-    // added in Task 9: to_float, change_length_approx
+    /// Returns an approximation vector of this vector with the same direction and length
+    /// `length`. Java `Vector.changeLengthApprox(double)` is abstract and implemented per
+    /// concrete subclass:
+    /// * `IntVector.changeLengthApprox` (IntVector.java:188-191) computes
+    ///   `this.toFloat().changeSize(length).round().differenceBy(Point.ZERO)` — translated
+    ///   directly below via `Point::difference_by`, so it reduces through the same
+    ///   `Point`/`Vector` dispatch Java uses.
+    /// * `RationalVector.changeLengthApprox` is an unimplemented no-op that returns `this`
+    ///   unchanged (see `RationalVector::change_length_approx`).
+    pub fn change_length_approx(&self, length: f64) -> Vector {
+        match self {
+            Vector::Int(v) => {
+                let new_point = v.to_float().change_size(length).round();
+                Point::Int(new_point).difference_by(&Point::ZERO)
+            }
+            Vector::Rational(v) => v.change_length_approx(length),
+        }
+    }
 }
 
 impl From<IntVector> for Vector {
@@ -453,6 +460,22 @@ mod tests {
         assert_eq!(
             rat(&v).to_normalized_direction(),
             Vector::Int(v).to_normalized_direction()
+        );
+    }
+
+    #[test]
+    fn change_length_approx_scales_int_vectors_and_no_ops_rational_ones() {
+        // Java `IntVector.changeLengthApprox`: toFloat().changeSize(length).round().differenceBy
+        // (Point.ZERO). (3, 4) has length 5, scaled to 10 gives exactly (6, 8).
+        assert_eq!(
+            Vector::Int(IntVector::new(3, -4)).change_length_approx(10.0),
+            Vector::Int(IntVector::new(6, -8))
+        );
+        // Java `RationalVector.changeLengthApprox` is an unimplemented no-op returning `this`.
+        let v = RationalVector::new(b(3), b(4), b(2));
+        assert_eq!(
+            Vector::Rational(v.clone()).change_length_approx(100.0),
+            Vector::Rational(v)
         );
     }
 

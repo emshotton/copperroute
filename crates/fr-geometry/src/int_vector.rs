@@ -1,6 +1,7 @@
 //! Port of `app.freerouting.geometry.planar.IntVector`: an implementation of the (abstract, in
 //! Java) `Vector` interface via a tuple of `i32` coordinates.
 
+use crate::float_point::FloatPoint;
 use crate::int_direction::IntDirection;
 use crate::side::Side;
 use crate::signum::Signum;
@@ -132,11 +133,14 @@ impl IntVector {
         self.x as f64 * other.x as f64 + self.y as f64 * other.y as f64
     }
 
-    // to_float() is deferred to Task 9, once `FloatPoint` exists.
+    /// Converts this vector to a FloatPoint.
+    pub fn to_float(&self) -> FloatPoint {
+        FloatPoint::new(self.x as f64, self.y as f64)
+    }
 
     /// Returns an approximation of the Euclidean length of this vector.
     pub fn length_approx(&self) -> f64 {
-        f64::hypot(self.x as f64, self.y as f64)
+        self.to_float().size()
     }
 
     /// Returns an approximation of the cosinus of the angle between this vector and other.

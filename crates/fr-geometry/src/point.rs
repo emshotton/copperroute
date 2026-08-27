@@ -11,6 +11,7 @@ use num_bigint::BigInt;
 use num_integer::Integer;
 use num_traits::{One, Signed, ToPrimitive, Zero};
 
+use crate::float_point::FloatPoint;
 use crate::int_point::IntPoint;
 use crate::limits::{CRIT_INT, crit_int_big};
 use crate::rational_point::RationalPoint;
@@ -181,7 +182,14 @@ impl Point {
         pole.translate_by(&v)
     }
 
-    // added in Task 9: to_float
+    /// Approximates the coordinates of this point by float coordinates. Java `Point.toFloat()`.
+    pub fn to_float(&self) -> FloatPoint {
+        match self {
+            Point::Int(p) => p.to_float(),
+            Point::Rational(p) => p.to_float(),
+        }
+    }
+
     // added in Task 10: side_of_line, perpendicular_projection, perpendicular_direction
     // added in Task 11: surrounding_box, is_contained_in
     // added in Task 12: surrounding_octagon

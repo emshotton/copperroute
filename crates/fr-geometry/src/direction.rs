@@ -121,16 +121,15 @@ impl Direction {
 
     /// Calculates an approximation of the direction in the middle of this direction and other.
     ///
-    /// `FloatPoint` does not exist yet (Task 9), so this uses plain `f64` math instead of
-    /// `getVector().toFloat()`; the arithmetic is identical. As in Java, the intermediate vector
-    /// is a plain `IntVector`, so the result is always a `Direction::Int`.
+    /// Java `getVector().toFloat()`. As in Java, the intermediate vector is a plain `IntVector`,
+    /// so the result is always a `Direction::Int`.
     pub fn middle_approx(&self, other: &Direction) -> Direction {
-        let (x1, y1) = self.get_vector().approx_xy();
-        let (x2, y2) = other.get_vector().approx_xy();
-        let length1 = f64::hypot(x1, y1);
-        let length2 = f64::hypot(x2, y2);
-        let x = x1 / length1 + x2 / length2;
-        let y = y1 / length1 + y2 / length2;
+        let v1 = self.get_vector().to_float();
+        let v2 = other.get_vector().to_float();
+        let length1 = v1.size();
+        let length2 = v2.size();
+        let x = v1.x / length1 + v2.x / length2;
+        let y = v1.y / length1 + v2.y / length2;
         const SCALE_FACTOR: f64 = 1000.0;
         let vm = IntVector::new(
             java_round(x * SCALE_FACTOR) as i32,
