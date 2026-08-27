@@ -3,7 +3,7 @@ use num_integer::Integer;
 
 /// Calculates the determinant of the vectors (x1, y1) and (x2, y2).
 /// Returns x1*y2 - x2*y1.
-pub fn determinant(x1: &BigInt, y2: &BigInt, x2: &BigInt, y1: &BigInt) -> BigInt {
+pub fn determinant(x1: &BigInt, y1: &BigInt, x2: &BigInt, y2: &BigInt) -> BigInt {
     let tmp1 = x1 * y2;
     let tmp2 = x2 * y1;
     tmp1 - tmp2
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn determinant_and_rational_add() {
-        assert_eq!(determinant(&b(1), &b(4), &b(3), &b(2)), b(-2));
+        assert_eq!(determinant(&b(1), &b(2), &b(3), &b(4)), b(-2));
         let r = add_rational_coordinates(&[b(1), b(2), b(3)], &[b(1), b(1), b(3)]);
         assert_eq!(r, [b(2), b(3), b(3)]);
         let r = add_rational_coordinates(&[b(1), b(2), b(3)], &[b(1), b(1), b(2)]);
