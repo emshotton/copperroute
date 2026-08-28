@@ -41,11 +41,39 @@ whole-branch review: **merge with fixes**; fix wave applied and re-reviewed clea
 - `docs/java-quirks.md` process note over-claims `grep "obligation:"` coverage (only the two MCP notes carry the token).
 
 ## Obligations for later plans (details in `docs/java-quirks.md`)
-- Plan 2: `PolylineError` → pass abort; memo cache for convex pieces; `equals_geometric` not `==` for `Line`; `border_line_index == None` on box/octagon is a Java stub, not "not a border line"; marker-hygiene sweep (`// Java bug:` literal prefix).
+- Plan 2 (closed out by Plan 2 Task 16 — see `docs/plan-2-handoff.md`):
+  - `PolylineError` → pass abort: **discharged.** `Polyline::from_lines`'s `Err` propagates as
+    `BoardError::Normalization` (`crates/fr-board/src/error.rs`); `Board::combine_at_end` aborts
+    the pass on it exactly as Java's pass-level `catch (Exception)` does (quirk #22).
+  - Memo cache for convex pieces: **discharged in Task 10.** `fr-geometry` still recomputes
+    `split_to_convex` per call (deliberately — quirk #30's per-call `Random`), but the memo moved
+    up to the item level: `ObstacleAreaData::convex_pieces` / `BoardOutline::keepout_convex_pieces`,
+    both `OnceLock<Option<Vec<TileShape>>>`, cleared at the same points that clear the absolute-area
+    memo (`docs/java-quirks.md` candidate table).
+  - `equals_geometric` not `==` for `Line`: **not discharged — remains a Plan 7 obligation,
+    unchanged.** Plan 2 added no new call site: the one place `equals_geometric` is used
+    (`Simplex::border_line_index`) predates Plan 2 entirely. The two Java call sites Plan 2 could
+    have reached — `TraceTightener.repositionLine` / `TraceTightenerAnyAngle.repositionLine` — are
+    shove machinery, explicitly out of Plan 2's scope (self-review: "Deliberately excluded …
+    shove/tighten/forced (§9, Plans 6/7)"). The nearest look-alike site, `PolylineTrace.change`'s
+    line-by-line diff, compares by **structural** equality on purpose (quirk #74) — not
+    `equals_geometric` — because the port's `Line` is a `Copy` value type with no identity to base
+    Java's reference comparison on; that quirk documents the resulting divergence and hands Plan 7
+    the decision.
+  - `border_line_index == None` on box/octagon is a Java stub, not "not a border line":
+    **discharged.** `ShapeAndEntrySide::new` (`crates/fr-board/src/structure/shape_entry_side.rs`)
+    reads `border_line_index` and documents the stub's `-1`/`None` at the call site rather than
+    conflating it with "no such line" (quirk #7's original caller); quirk #68 separately covers the
+    constructor's own `!=`-by-reference defect.
+  - Marker-hygiene sweep (`// Java bug:` literal prefix): **done in Task 14.** All nine audited
+    directories are at 0 missing members; grep confirms no stray casing variants
+    (`// Java Bug:`, `//java bug:`, etc.) exist in `crates/fr-board/src`; eight `docs/java-quirks.md`
+    citation/count errors found by a method-by-method self-review were corrected (see Task 14's
+    report, `.superpowers/sdd/2026-08-28-plan-2-board-model/task-14-report.md` §4).
 - Plans 6/7: `catch_unwind`/`Result` boundaries at `AutoroutePassRunner.java:144` (per pass) and `BatchAutorouterThread.java:537` (per item); Java `catch (Exception)` does not catch `StackOverflowError`.
 - Plan 5: apply Java flag normalisation (`-oit /100`, `-mp`/`-mt` clamps, `-us`/`-is` folding) in `fr-settings`.
 - Plan 8: MCP handler shape (progress sink, cancel token, reader thread); `id: null`; bare `-drc`.
 - Before `fr-dsn` formats floats: `FloatPoint::Display` differs from Java `NumberFormat` above 2^53 and at 4th-digit ties.
 
 ## Open items for the user
-- Post-parity improvement candidates are listed in `docs/java-quirks.md` (`i128` fast path in `Line::intersection` is the big one) and `docs/geometry-library-survey.md` (`i_overlay` for copper pours).
+- Post-parity improvement candidates are listed in `docs/java-quirks.md` (`i128` fast path in `Line::intersection` is the big one) and `docs/geometry-library-survey.md`. Note the latter's `i_overlay` entry is **superseded**: Plan 2 confirmed `ConductionArea`'s `i_overlay`-shaped fill cache is renderer-only and unreachable from routing (quirk #59), so `i_overlay` is not needed unless a renderer is ported later — see `docs/geometry-library-survey.md` §(vi) as amended by Plan 2 Task 16.

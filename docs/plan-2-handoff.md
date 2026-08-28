@@ -1,0 +1,441 @@
+# Plan 2 hand-off — board model (`fr-board`)
+
+Branch `plan-2-board`, 41 commits on top of `main` before this task's commit. Final
+whole-branch review is still **pending** (this task closes out Plan 2's own
+obligations first, per the brief).
+
+## Delivered
+
+- `fr-board`: 40 source modules / 25.6k LOC across `ids`, `error`, `structure`
+  (`Layer`/`LayerStructure`/`Component(s)`/`BoardOutline`/`ShapeAndEntrySide`),
+  `library` (`Padstack(s)`/`Package(s)`/`LogicalPart(s)`/`BoardLibrary`), `rules`
+  (`ClearanceMatrix`/`Net(s)`/`NetClass(es)`/`ViaInfo(s)`/`ViaRule`/`BoardRules`),
+  `datastructures` (`ShapeTree`/`MinAreaTree` arena, `TimeLimit`,
+  `PlanarDelaunayTriangulation`), `items` (the `Item` enum, `ItemHeader`,
+  `Connectable`, drill items, areas/outlines, `PolylineTrace` + normalisation),
+  `searchtree` (`ShapeSearchTree`, `SearchTreeManager`, `ShapeTraceEntries`) and
+  `board` (`Board` — the non-shove half of `BasicBoard`/`RoutingBoard`: insert/
+  remove protocol, connectivity queries, `normalize_all_traces`, `deep_copy`,
+  structural hash, `ChangedArea`, `Communication`).
+- `docs/java-quirks.md`: 83 pinned quirks (36-83 added in this plan; 1-35 were
+  Plan 1's), the totalizations table, and a candidate/obligation table whose
+  bolded "(Plan N obligation)" rows are the forward-obligation register.
+- Differential harness extended with six board-level driver pairs:
+  `p2t3`/`p2t3r` (`ShapeTree`/`MinAreaTree`), `p2t10` (`ShapeSearchTree`/
+  `SearchTreeManager`, 9 modes), `p2t11` (`Board`, modes 0-11), `p2t13`
+  (`PlanarDelaunayTriangulation`, 8 modes) and `p2t15` (a randomised board-scale
+  sweep, 20 runs across 10 seeds × 2 sizes). All are exact matches against the
+  JVM except `p2t11` mode 11's one documented, deliberate divergence (see
+  Evidence).
+- `scripts/audit-port.sh` (generalised from `scripts/audit-geometry-port.sh`)
+  and a clean audit across all nine Java source directories this plan ports.
+- 572 tests in `fr-board` (301 unit + 271 across nine integration-test files;
+  1 deliberately `#[ignore]`d — the non-terminating ladder-hang reproduction),
+  851 across the whole workspace.
+
+## Rulings made during execution (cost if wrong noted where it applies)
+
+1. **`BTreeMap<ItemId, Item>` keyed by Java id**, not `slotmap` as the spec's
+   §6 suggested (plan ruling #1). Ids are load-bearing (`Leaf` ordering, `getId`
+   at 55 call sites, the SES writer, hash detection); a slotmap key would need a
+   parallel id field anyway. Cost if wrong: O(log n) lookups instead of O(1) —
+   negligible at PCB scale. **Amended after Task 10** — see Corrections, below.
+2. **`TreeObject { Item(ItemId), Room(RoomId) }` enum** in the search tree
+   (plan ruling #2), because Java's autoroute inserts
+   `CompleteFreeSpaceExpansionRoom` into the same `ShapeTree`. `RoomId` is
+   reserved; Plan 6 populates it. **Corrected by Task 5** — see Corrections.
+3. **`ConductionArea`'s `java.awt.geom.Area` fill cache is not ported**
+   (plan ruling #3); the geometry-library survey confirmed it is renderer-only
+   (no caller outside the paint path), so `i_overlay` is not a Plan 2
+   dependency. `docs/geometry-library-survey.md` §(vi) amended by this task.
+4. **`RoutingBoard` is split** (plan ruling #4): its non-shove state
+   (`changed_area`, `check_trace_segment`, the *removal* half of
+   `remove_items_and_pull_tight`, the failure-log hook, `max_trace_half_width`
+   bookkeeping) is `Board`, here; the shove/forced-via/pull-tight entry points
+   arrive in Plan 7 as an extension trait `RoutingBoardExt` in `fr-router`.
+5. **Dispatch order** `1,2,3,4,5,6,7,8,10,11,9,12,13,14,15,16` (plan ruling #5)
+   — Task 9 (trace normalisation) needed `Board` (Task 11) to exist first, so
+   it ran after it despite its lower task number.
+6. **User authorization carried forward** (2026-08-28, verbatim): "keep
+   running the implementation, assume I say yes to planning/starting all the
+   future phases." Applies to writing Plans 3-8, executing them
+   subagent-driven, and merging each plan to `main` locally after a clean
+   final review. Still stops for destructive/irreversible ops,
+   security-sensitive actions, pushes to a remote (none configured), or a plan
+   so broken every path is a guess.
+7. **`java_to_lower`/`java_to_upper` are Java's *simple* case mappings**, not
+   Rust's full mapping (Task 2, plan-wide ruling): U+0130 must special-case to
+   `'i'` and the 27 Greek-ypogegrammeni characters must special-case on the
+   uppercase side, or `"İ".equalsIgnoreCase("ı")`-style comparisons diverge.
+   The helper lives at `crates/fr-board/src/rules/mod.rs` — **see Open Items**:
+   it is currently `pub(crate)`, not exported, so Plan 3's `fr-dsn` cannot
+   reuse it as the ruling intended without a visibility change first.
+8. **`MinAreaTree::remove_leaf` panics on a double removal** where Java
+   silently corrupts the tree (Task 3, confirmed by review; quirk #39). No
+   Java caller removes the same leaf twice today (callers do the bookkeeping
+   that prevents it), so the panic is unreachable in every port so far — but
+   Task 10 and Plan 6 must re-examine this if a path emerges where two owners
+   can hold the same `LeafId` (autoroute rooms leaving `completeExpansionRooms`
+   are the likely candidate).
+9. **The tree owns the bounding-shape step** (Task 3, confirmed by review):
+   `insert_tiles(&[TileShape]) -> Vec<Option<LeafId>>` applies
+   `ShapeTree.insert`'s implicit `boundingShape` call itself, rather than
+   trusting callers to pre-bound shapes (as a raw `insert` signature would
+   require Task 10 to remember for every caller, on pain of a 45°-regime tree
+   silently storing box bounds).
+10. **`is_obstacle` takes no `&BoardRules`** (Task 5): Java's own
+    `isObstacle` never reads `ignoreConduction` directly —
+    `RoutingBoard.changeConductionIsObstacle` instead pushes it into each
+    `ConductionArea`'s own field (quirk #50). Task 11 ports that push
+    verbatim, including its two-line "latch, not mirror" defect.
+11. **Item memo caches use `std::sync::OnceLock`, not `Cell`/`RefCell`**
+    (Task 6, plan-wide ruling, confirmed by review). The four Java memo
+    fields (`precalculatedFirstLayer/LastLayer/MinWidth`,
+    `precalculatedShapes`) are real interior mutability in Java too, and
+    dropping them would change behaviour (quirk #51: `minWidth` survives
+    `clearDerivedData`). `Cell`/`RefCell` were the first attempt but make
+    `Via`/`Pin` `!Sync`, conflicting with `Board: Send + Sync` (needed for
+    Plan 7's `rayon` workers); `OnceLock` keeps both. `ItemCtx<'a>{ library,
+    components, rules }` replaces Java's `Item.board` back-pointer, threaded
+    through the dispatch methods that reach a drill-item body; `Board` builds
+    it inline in `&mut self` contexts via the `item_ctx!` macro, not a
+    `fn ctx(&self)` that would borrow the whole board.
+12. **`fr-geometry`'s per-call `Random` in `split_to_convex` (quirk #30) is
+    kept; the memo moved to the item level** (Task 7): Java memoises
+    `precalculatedConvexPieces` once per shape lifetime, which this port's
+    geometry layer deliberately does not (reproducibility under concurrent
+    calls, Plan 1's improvement). The obligation — restoring Java's amortised
+    cost without losing that property — was discharged by adding
+    `OnceLock<Option<Vec<TileShape>>>` caches to `ObstacleAreaData` and
+    `BoardOutline`, cleared at the same five invalidation points as the
+    absolute-area memo.
+13. **Deferral-marker format is line-based** (Task 8, plan-wide ruling): the
+    Java method name must sit on the same line as `added in Task/Plan N:`,
+    because `audit-port.sh`'s regex is line-based; a marker split across two
+    lines is invisible to the audit and gives a false "zero missing".
+14. **`deep_copy` keeps the cloned tree arena rather than rebuilding it**
+    (Task 12, JVM-verified): Java's `readObject` rebuilds the search tree by
+    reinserting every item in descending-id order (quirk #77), which gives a
+    *different* physical tree shape than the original — `deep_copy` derives
+    `Clone` on the arena instead, which is strictly more faithful (nothing
+    ported ever observes raw tree shape; every real query canonicalizes into
+    an ordered set). It **must** reset every Java-transient field regardless:
+    `revision = 0`, `changed_area = None`, `shove_failing_obstacle = None`,
+    `shove_failing_layer = 0` (not `-1` — quirk #79, Java's own field
+    initializer is skipped by deserialization too).
+15. **Quirk #82 (Delaunay in-circle vacuous on axis-aligned input) is a real,
+    user-visible Java bug and must not be fixed pre-parity** (Task 13,
+    JVM-verified: square grids lose edges at every tested size, and a 7×7
+    grid disconnects in ~1.4e-4 of random 20-point draws). Plan 5 inherits
+    this as a hard constraint on `NetIncompletes`, not a free improvement.
+
+## Corrections to the plan discovered during execution
+
+1. **Item iteration order is descending id, not JVM-dependent hash order**
+   (Task 10, JVM-verified, amending plan ruling #1). `UndoableObjects.objects`
+   —what `board.itemList` actually is — is a `ConcurrentSkipListMap` keyed by
+   the *reversed* `Item.compareTo` (quirk #44's subtraction bug), so every
+   Java walk of the board's items runs in **descending** item id: deterministic,
+   but the opposite of the "hash order" the plan first assumed. This is not
+   cosmetic — `MinAreaTree`'s insertion heuristic is order-dependent, so it
+   decides the physical shape of every search tree Java builds. Every port of
+   a Java `itemList`/`getItems()` walk must therefore be
+   `items.values().rev()` (`Board::items_in_board_order`), never the ascending
+   default a `BTreeMap` gives for free. Verified directly on the JVM (`p2t10`'s
+   board: both `itemList` and `getItems()` give `5 4 3 2 1`) and the resulting
+   tree structures are byte-identical to Java in all four `p2t10` modes that
+   exercise it. The plan document itself was amended (commit
+   `5b4e10a docs(plan-2): amend ruling 1 — Java item iteration is descending
+   id`).
+2. **`TreeObject`'s `Ord` is Java's `Item.compareTo` exactly, not the
+   "obvious" ascending reading** (Task 5, corrects plan ruling #2,
+   JVM-verified). Java's subtraction is backwards — `result = item.id - id`
+   with `item` the *argument* — so items sort by **descending** id, and
+   because `CompleteFreeSpaceExpansionRoom.compareTo` returns `-1` against a
+   non-room argument, **rooms sort before items**, descending among
+   themselves too. The port's `impl Ord for TreeObject` is hand-written to
+   match (the derived ordering would give ascending ids with items first).
+   The `p2t3`/`p2t3r` differential goldens had themselves been transcribed
+   with the subtraction the "obvious" way round in Task 3 — which is what
+   made the port's *own* ordering ascending in the first place and hid the
+   defect until Task 5's from-scratch reading of `Item.compareTo` caught it;
+   both goldens were regenerated from unmodified Java and re-run to confirm.
+3. **The `BTreeMap<ItemId, Item>` decision (ruling #1) gained a second,
+   independent justification.** It was originally justified only by id
+   load-bearing-ness and O(log n) cost. Task 10's finding (correction #1,
+   above) means the map's ordering is not just a convenience: every
+   consumer of a board-wide item walk must reverse it to match Java, and
+   getting that backwards would silently reshape every search tree built
+   from a fresh `Board`, not just return items in a cosmetically different
+   order.
+4. **`Item.compareTo` (Item.java:93-103) is a genuine Java bug**, and the two
+   corrections above are downstream of it, not independent design choices:
+   the subtraction being backwards is what makes both `itemList` iteration
+   and `TreeSet<Leaf>`/search-tree result order run descending. It is pinned
+   as quirk #44, with the full JVM-verified caller list (`Leaf.compareTo`
+   delegates to it) and the `p2t3`/`p2t10`/`p2t11` differential coverage that
+   depends on getting it right.
+
+## Parked residuals (grouped by task; Task 14's citation sweep already
+resolved the items marked ✓ below — verified against the committed tree)
+
+- **Task 1:** `FixedState` doc comments were rewritten relative to Java's
+  (swapped-looking) comment text; `LayerStructure::count()` was added and
+  labelled as not a Java method.
+- **Task 2:** `Net` exposes both a `contains_plane` field and a method of the
+  same name; Java-final fields are mutable (crate-wide convention, not
+  Task 2-specific). Two `Network.java` line citations in
+  `clearance_matrix.rs` are off by one. 16 UCD-version-skew code points
+  between Rust's Unicode tables and JDK 23's are enumerated in code but
+  unreachable from any DSN identifier.
+- **Task 3:** `ShapeTree`'s `PartialEq` compares the whole arena, including
+  `Free` slots — not semantic (per-live-leaf) equality. Doc wording ("skip
+  the index" → "leave a `None` at that index", `shape_tree.rs:532`); the
+  `Node` generation field is `pub` rather than crate-private; `free()` is not
+  double-free-guarded; the generation counter wraps at 2^32 (unreachable in
+  practice); the per-node release `assert!` in the `overlaps` hot loop has an
+  uncharacterised cost — **flagged for Plan 6 to measure** once real
+  autoroute-scale trees exist; the `p2t3` Java twin emits stderr noise
+  (cosmetic, harness-only).
+- **Task 4:** Java-final library fields are `pub` mutable (the crate-wide
+  convention, noted again here since Task 4 is where library fields start);
+  `drill_radius`'s cache-drop justification relies on padstack name
+  immutability, which is asserted but not enforced by the type system.
+- **Task 7:** ✓ quirks rows #46/#50's stale `mod.rs` citations, corrected to
+  `items/area.rs` (Task 14 §4 items 1-2). ✓ `BOARD_OUTLINE_HALF_WIDTH`
+  narrowed from `pub` to `pub(crate)` with the intra-doc link replaced by
+  plain text (Task 14 §4 item 3). Still open: `ItemCtx::bounding_box` could
+  be passed by value (`IntBox` is `Copy`) rather than by reference;
+  `get_trace_connection_shape`'s doc comment overstates cold-cache fidelity;
+  `BoardOutline`'s `PartialEq` includes the keepout memo, a deliberate
+  asymmetry with the absolute-area memo that wants an explicit note.
+- **Task 8:** `split_polyline_at_point`'s granularity was deferred to Task 9's
+  re-implementation of Java's per-candidate loop (done); `trace_geometry_
+  characterization` passes `layer_count: None`. ✓ `trace.rs:87`'s "five"
+  Plan-7-marker count corrected to six (Task 14 §4 item 4).
+- **Task 9:** `normalize_suppressed_net_nos` is `pub` where Java's field is
+  private; `split_trace` inlines its clip filter instead of calling
+  `clip_intersects_segment`; `split_traces` silently skips a dead trace (a
+  totalization, not a bug — recorded in the totalizations table).
+- **Task 10:** `calculate_board_outline_tree_shapes` should call
+  `polyline.offset_shape` (non-virtual in Java, `ShapeSearchTree.java:982`),
+  not the virtual `self.offset_shape`; a `changeOrder == true` merge test/
+  mode is still missing; `validate_entries`'s `None`-skip needed (and now
+  has) a quirks row (#64); quirks #61/#63 said "four modes" where there are
+  eight (wording, not a data error); a `usize` underflow exists in
+  `change_entries` where Java's `int` arithmetic clamps; per-insert shape
+  clones are a perf cost, not a correctness one; a stray `.gitignore` entry;
+  `run.sh`'s `JAVA25_HOME` path is version-pinned.
+- **Task 11:** `pick_nearest_routing_item`'s tie-break order is unverified
+  against Java beyond the driver's coverage; the `ShapeAndEntrySide`
+  reference-vs-value `!=` and `store_trace`'s self-compare are both now
+  fully documented as quirks (#68, #69) rather than open questions. ✓ quirk
+  #63's stale reference, the `DrillItem.getTileShapeOnLayer` citation
+  (`:308-315` → `:252-260`), and two further off-by-1-2 citations
+  (`connectivity.rs`, `ConductionArea::normal_contacts`) were all corrected
+  in Task 14 §4 (items 5-7). Still open: `remove_items`'s totalization
+  behaviour (documented in the totalizations table, not re-verified against
+  a second Java path); the `connection_items` order test doesn't actually
+  pin order (needs a two-branch fixture); a redundant re-borrow at
+  `query.rs:531`.
+- **Task 12:** `DefaultHasher` is a same-process contract only, not
+  cross-Rust-version stable — acceptable per quirk #78's own reasoning
+  (nothing compares this hash across processes or languages), but worth
+  restating since a naive reader might expect hash stability. Java's
+  `BoardHistoryTest` was not ported as a standalone test file; it needs
+  Plans 3/5/6 machinery (DSN import, DRC, autoroute) to be meaningful.
+- **Task 13:** A report file-length figure, a `p2t13` README row's
+  placement/JDK header, and a test helper misnamed `Lcg` are all cosmetic.
+- **Task 14:** "not ported: lives in fr-geometry" wording for
+  `BigIntAux`/`Signum` could be sharper; the `saveForUndo` marker label
+  undersells its actual callers; a report §5 sub-count has an arithmetic
+  slip (report-only, not a code issue).
+- **Task 15:** The deep-copy replay in `p2t15` cannot observe the quirk-#77
+  tree-layout difference by design (no `toArray()` call in the driver); the
+  round-trip test's overlap assertions are inert (no obstacle in the fixture
+  actually hits the probe box); the entry-counter snapshot in the driver's
+  output is output-neutral (present but never differs). Coverage-hole notes
+  are duplicated across two README sections (cosmetic).
+
+## Obligations for later plans
+
+**Plan 3 (DSN/KiCad import):**
+- **Ladder hang on import (quirk #76).** `PolylineTrace.split`'s entry
+  re-walk never terminates on a 4+-rung ladder on one net, in Java and in the
+  port alike, and `io/specctra/parser/Wiring.java:347` ends every DSN read
+  with `board.normalizeAllTraces()` — so an imported design containing that
+  pattern hangs the reader in both languages today. Plan 3 must decide before
+  wiring the DSN reader: bound the walk (a deliberate divergence from a Java
+  hang, which has no observable output to preserve parity with), or run
+  import normalisation under `TimeLimit`/`StopCheck` so the reader can
+  abandon it.
+- **`ViaInfoId` renumbering across `ViaInfos::remove`.** Java's `ViaRule`
+  holds `ViaInfo` object references, so removing one from the middle of the
+  list disturbs no rule. This port addresses via infos by index, so the same
+  removal shifts every later index and can silently re-point a rule at the
+  wrong via. `io/specctra/RulesReader.java:340-350` is the one non-GUI Java
+  caller (remove-then-add-with-the-same-name); whoever ports that file must
+  renumber the rules, replace in place, or remove only from the tail.
+- **`Board::new` requires via-padstack population before any via lookup.**
+  `BoardLibrary::remove_via_padstack`/`get_mirrored_via_padstack` panic on
+  Java's null `viaPadstacks` (quirks #42-43); `Board::new`'s own doc comment
+  states the obligation ("a caller that will use those two must populate the
+  library before handing it over") — the DSN/KiCad reader is that caller.
+- **`java_to_lower`/`java_to_upper` visibility gap.** Ruling #7 above: the
+  helper this plan built for Java-exact case folding
+  (`crates/fr-board/src/rules/mod.rs`) is `pub(crate)`, not exported from
+  `fr-board`'s public surface. Plan 3 cannot `use fr_board::...` it as
+  ruling #9 (Task 2) originally intended without either widening its
+  visibility (a small, low-risk change) or duplicating the ~40-line helper
+  in `fr-dsn`. **Flagged here rather than fixed**, since this task's brief is
+  docs-only; see Open items for the user.
+
+**Plan 5 (DRC/autorouter core):**
+- **Quirk #82 (Delaunay in-circle degenerate on axis-aligned input) must
+  not be fixed while porting `NetIncompletes`.** It is a real, JVM-verified
+  Java bug (square grids lose edges at every size; a 7×7 grid can
+  disconnect), reproduced byte-for-byte by this port. Fixing it changes
+  which airlines the ratsnest emits and therefore what the autorouter
+  routes — a post-parity change only, once DRC parity against the Java
+  engine is proven, with the ratsnest expectations re-baselined in the same
+  commit.
+- **`Board::clearance_violations`/`clearance_violation_count` are markers,
+  not implementations.** `Item.clearanceViolations`
+  (Item.java:363-469, `Via`'s override at Via.java:88-112,
+  `calculateClearanceBetweenTwoShapes` at Item.java:471-493) and
+  `clearanceViolationCount` (Item.java:357-361) are explicitly deferred
+  (`items/mod.rs`, `connectivity.rs:992`) because they build
+  `drc.ClearanceViolation` objects, which is Plan 5's DRC layer to define.
+- Apply Java's flag normalisation (`-oit /100`, `-mp`/`-mt` clamps,
+  `-us`/`-is` folding) in `fr-settings` (carried forward from Plan 1's
+  hand-off, still open).
+
+**Plan 6 (autoroute expansion rooms):**
+- **`RoomId`/`TreeObject` room ordering must be re-checked once rooms are
+  real.** `TreeObject::Ord` (`ids.rs`) already encodes Java's
+  `CompleteFreeSpaceExpansionRoom.compareTo` (rooms sort before items,
+  descending among themselves — quirk #44), verified only against the
+  *absence* of rooms so far (`RoomId` is reserved, unpopulated). Plan 6 must
+  confirm the ordering holds once `TreeObject::Room` values actually exist in
+  a tree.
+- **`ShapeSearchTree::complete_shape`/`divide_large_room` are unimplemented
+  stubs** (`searchtree/shape_search_tree.rs:1608-1618`, marked
+  `// added in Plan 6:`), naming `ShapeSearchTree.java:580-693`,
+  `ShapeSearchTree45Degree.java:95-281`, `ShapeSearchTree90Degree.java:38-191`
+  and `ShapeSearchTree.java:1095-1118`/`ShapeSearchTree45Degree.java:288-298`.
+- **`AutorouteInfo` is an opaque placeholder** (`items/header.rs`) standing
+  in for `autoroute.ItemAutorouteInfo`; Plan 6 gives it a real body. It is
+  reachable only through `ItemHeader::autoroute_info`/`get_autoroute_info`
+  so that `Board::deep_copy` can drop it wholesale (`clear_autoroute_info`),
+  matching Java's per-run scratch-data semantics.
+- **`ShapeSearchTree::get_tree_shape`'s `&self` cold-cache recompute path
+  cannot replicate Java's `clearDerivedData()` side effect** (dropping
+  `autorouteInfo`), because it only has `&self` (Task 11 NOTE). Re-check this
+  once autoroute scratch is a real, populated field rather than the empty
+  `AutorouteInfo` placeholder.
+- **Per-node release `assert!` in the `overlaps` hot loop has an
+  uncharacterised cost** (Task 3 minor, deferred): measure once Plan 6's
+  autoroute-scale trees exist; soften to `debug_assert!` only if profiling
+  shows it matters and Java's own crash-on-corruption behaviour (quirk #39)
+  is preserved some other way.
+
+**Plan 7 (shove/tighten/forced-via routing):**
+- **Quirk #74's early return is a decision, not a default.** `Board::
+  change_trace` compares polylines by *value* (the port's `Line` is a
+  `Copy` type with no identity to base Java's reference comparison on),
+  which lets it take an early return Java's identity comparison never can.
+  `change_trace` has no production caller in Plan 2 — Java's are
+  `correctConnectionToPin` and `TraceShover`, both Plan 7. **Recommended
+  in the quirk's own text:** drop the port's early return so `changeEntries`
+  + `normalize` always run, since Java only takes its early return for an
+  array identity-identical to the one already stored — not a case that can
+  arise for a `Copy` value type.
+- **`equals_geometric` at the `TraceTightener` call sites remains entirely
+  open** (see ruling — not a correction — above): `Line.equals`
+  (quirk #34) has four Java call sites; one (`Simplex::border_line_index`)
+  predates Plan 2 in `fr-geometry`; the other three
+  (`TraceTightener.repositionLine`, `TraceTightenerAnyAngle.repositionLine`
+  ×2) are untouched and must use `equals_geometric`, never `==`, when
+  ported — using `==` there would silently disable the guard those methods
+  exist for.
+- **`RoutingBoardExt` is the shove/pull-tight extension trait**
+  (plan ruling #4, `fr-router`): `Trace.pullTight`/`PolylineTrace.pullTight`
+  and the `TraceShover` family are marked `// added in Plan 7:` in
+  `items/trace.rs` and land there, not in `fr-board`.
+- **`changed_area`'s reset depends on `deep_copy`, not on being cleared
+  independently.** `Board::deep_copy` resets `changed_area` to `None`
+  because a stale non-`None` value surviving a copy would corrupt the next
+  autoroute pass's bookkeeping (`board/snapshot.rs` module doc); Plan 7's
+  `TraceShover`/`PolylineTrace.change` are the two dereferencing callers, and
+  neither exists yet — this is a documented dependency for Plan 7 to build
+  against, not a bug.
+- **`catch_unwind`/`Result` recovery boundaries** at
+  `AutoroutePassRunner.java:144` (per pass) and
+  `BatchAutorouterThread.java:537` (per item) — Java's `catch (Exception)`
+  recovers and continues routing where several ported panics (Java NPE
+  equivalents: `PolygonShape.intersects` stack overflow, `Polyline`
+  normalisation, `TileShape.rotateApprox`) would otherwise abort the whole
+  run. Both Java boundaries catch `Exception`, not `Throwable`, so they do
+  **not** recover from a `StackOverflowError` either (quirk #27) — that one
+  crashes the whole run in both languages, and a Rust panic there is
+  correctly fatal, not a gap.
+
+**Plan 8 (MCP/CLI polish, carried from Plan 1, unaffected by Plan 2):**
+- MCP concurrency (progress sink, cancel token, reader thread) and legacy-CLI
+  value normalisation — both already tabulated in `docs/java-quirks.md`'s
+  candidate/obligation table and untouched by this plan.
+
+## Evidence
+
+**Differential harness** (`scripts/differential/`, `JDK 25` for these six
+drivers — see `scripts/differential/README.md` "Requirements"):
+
+| Driver | Coverage | Modes | Result |
+|---|---|---|---|
+| `p2t3` | `ShapeTree`/`MinAreaTree`, fixed script | — | 132 lines, 0 diff — exact match |
+| `p2t3r` (400 ops, seed 42, mode 0) | randomised, orthogonal (`IntBox`) bounds | mode 0 | 109,940 lines, 0 diff |
+| `p2t3r` (2000 ops, seed 42, mode 1) | randomised, 45°/`IntOctagon` bounds, `insert_tiles`/`remove_opt`/in-place re-keying | mode 1 | 2,898,938 lines, 0 diff |
+| `p2t10` | `ShapeSearchTree`/`SearchTreeManager` | 9 modes (0-8) | every mode exact match, 17-88 lines each |
+| `p2t11` | `Board` — insert/remove, connectivity, normalisation, snapshots | modes 0-11 (12) | modes 0-10 exact match (5-66 lines each); **mode 11** (20 lines) has 2 documented diff lines — `treeArrayCopy`/`treeArraysEqual` only, the deliberate tree-rebuild-vs-clone divergence (ruling #14/quirk #77); every other line (`transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces`) matches |
+| `p2t13` | `PlanarDelaunayTriangulation` | 8 modes (0-7) | mode 0 (50 points): 141 lines, 0 diff; modes 1-7 (30 points, seed 7): 7-172 lines each, 0 diff — includes quirk #82's square/grid reproduction |
+| `p2t15` | randomised board-scale sweep: pin/via/trace insertion, `normalizeAllTraces`, 100 `overlappingObjects` + 50 clearance queries, `deepCopy` + re-dump + replay, `hashEqual` | 10 seeds × {30, 120} = 20 runs | every run 0 diff, 499-1111 lines each; re-confirms `p2t10` (9 modes)/`p2t11` (11 modes)/`p2t13` (mode 0) unregressed alongside it |
+
+The one non-zero-diff cell across all six drivers (`p2t11` mode 11's two
+lines) is the single place this plan's own choice diverges from Java on
+purpose (ruling #14), not an unexplained gap.
+
+**Test counts** (verified by running `cargo test` on the committed tree,
+not taken from any report):
+- `fr-board`: 572 passed, 0 failed, 1 ignored (`a_four_rung_ladder_never_
+  finishes_normalizing`, the quirk-#76 non-terminating reproduction — the
+  test exists precisely because it cannot pass), across 1 unit-test binary
+  and 10 integration-test files.
+- Whole workspace (`fr-board`, `fr-geometry`, `freerouting`, `parity`): 851
+  passed, 0 failed, 1 ignored.
+- `scripts/audit-port.sh` runs clean (exit 0, zero missing members) against
+  all nine Java source directories this plan ports: `board/model/items`,
+  `board/model/structure`, `board/facade`, `board/searchtree`, `board/trace`,
+  `board/state`, `rules`, `core/library`, `datastructures`.
+
+## Open items for the user
+
+- **`java_to_lower`/`java_to_upper` are `pub(crate)`, not exported.** The
+  plan-wide ruling that created them (Task 2) says to "reuse [them] in
+  fr-dsn (Plan 3)", but as committed they are private to `fr-board`. This
+  task's brief is docs-only (no code changes beyond doc comments), so the
+  gap is recorded here rather than fixed silently. Plan 3 (or a small,
+  reviewed fix-up before it) needs to either widen the two functions'
+  visibility to `pub` or accept duplicating the ~40-line helper.
+- **`p2t11` mode 11's tree-rebuild-vs-clone divergence (quirk #77) was
+  accepted, not defaulted into**, and is worth the user's own read: this
+  port's `deep_copy` is *more* faithful to the pre-copy board than Java's own
+  round trip (which changes tree shape on every clone via reinsertion), but
+  it means a raw `ShapeTree.toArray()` comparison between the two engines
+  will never match after a copy. Nothing ported observes that order today.
+- Post-parity improvement candidates remain listed in `docs/java-quirks.md`
+  (Delaunay's exact in-circle predicate, `i128` fast paths inherited from
+  Plan 1) and `docs/geometry-library-survey.md` (now amended: `i_overlay` is
+  off the table entirely unless a renderer is ever built).
+- Plan 2's final whole-branch review has not yet run; this task's own
+  verification (fmt, `cargo doc`, full test suite, audit script, evidence
+  cross-check against the committed tree) is not a substitute for it.

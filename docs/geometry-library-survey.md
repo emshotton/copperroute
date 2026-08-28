@@ -106,17 +106,27 @@ convex tiles**, one per interior line, with a look-ahead "cut off outstanding co
 `intersection_approx` and a `2·halfWidth²` distance test (`polyline.rs:520-565`). Different data
 shape, different count, float-heuristic-dependent. Not substitutable.
 
-### (vi) Polygon booleans for `ConductionArea` — **Good fit: `i_overlay`**
-This is the one place §6 sanctions a crate, because Java itself uses `java.awt.geom.Area` and
-parity is metric (area, point containment). `i_overlay` is the standout: **native `i32`/`i64`
-integer API** (so results come back as exact `IntPoint` corners with no rounding step),
-union/intersection/difference/xor, holes, self-intersections, even-odd/non-zero/positive/negative
-fill rules, MIT/Apache, ~3.5M recent downloads, released 2026-08-16. Alternatives are all f64 at the
-API boundary: `geo`'s `BooleanOps`, `geo-clipper` (ISC, Clipper1 FFI, last release 2025-02),
-`clipper2` (C++ FFI), `clipper2-rust` (BSL-1.0, immature). **Caveat that keeps this off the
-"free" list:** a `ConductionArea` boundary flows into `split_to_convex` → search tree. Different
-vertex counts from `awt.geom.Area` therefore perturb routing even though the *region* matches.
-Budget a metric-tolerance discussion, and pick the fill rule to match `Area`'s winding behaviour.
+### (vi) Polygon booleans for `ConductionArea` — **Not needed: the fill cache is renderer-only**
+**Amended by Plan 2 Task 16 (ruling #3, `docs/superpowers/plans/2026-08-28-plan-2-board-model.md`).**
+This section originally read `ConductionArea`'s `java.awt.geom.Area`-based detailed fill cache as
+the one place §6 sanctions a crate for polygon booleans. Plan 2 Task 7 read the full method group —
+`getDetailedFillArea`/`warmDetailedFillCache`/`ensureDetailedFillCache`/`getAwtAreaInBoardUnits`/
+`getAwtAreaFromShapeInBoardUnits` (ConductionArea.java:42-43,83-307) — and confirmed the survey's
+concern does not apply: `getDetailedFillArea` has no caller outside the paint path, and nothing that
+computation produces ever reaches the search tree, `split_to_convex`, or any routing query. It is
+**not ported** (`docs/java-quirks.md` quirk #59); `ConductionArea::warm_detailed_fill_cache` in
+`crates/fr-board/src/items/area.rs` is kept as an empty public method (the group's only entry point
+reachable from outside the class), and `i_overlay` is **not** a Plan 2 dependency. `i_overlay`
+remains the standout candidate — **native `i32`/`i64` integer API** (so results come back as exact
+`IntPoint` corners with no rounding step), union/intersection/difference/xor, holes,
+self-intersections, even-odd/non-zero/positive/negative fill rules, MIT/Apache, ~3.5M recent
+downloads, released 2026-08-16, versus `geo`'s `BooleanOps` (f64), `geo-clipper` (ISC, Clipper1 FFI,
+last release 2025-02), `clipper2` (C++ FFI) and `clipper2-rust` (BSL-1.0, immature) — **but only if
+a renderer is ever ported**, which is out of scope for every routing/DRC/DSN plan on the roadmap.
+Whoever takes that on should re-read `ensureDetailedFillCache` in full rather than reconstructing it
+from this survey; the thermal-spoke geometry (ConductionArea.java:172-192) is not obvious, and the
+same vertex-count-vs-`split_to_convex` caveat this section used to raise would apply to *that* code,
+not to anything Plan 2 built.
 
 ### (vii) Spatial index for Plan 2 — **No fit for the 45° regime; Partial elsewhere**
 `rstar` does support integer scalars via `RTreeNum`, so `IntBox` keys are expressible. Two blockers:
@@ -146,15 +156,18 @@ generic vector type would erase. `i_float`'s `IntPoint` collides with ours for t
    interior-disjoint, union area equals input. Also validates `Simplex::cutout_from` coverage.
 4. **Bump `num-bigint` 0.4 → 0.5.1** (with the `mod`/`to_f64` semantics re-checked by test).
 
-**When Plan 2 reaches `ConductionArea`**
-5. **`i_overlay` in production** for copper-pour booleans — the sanctioned §6 slot. Prefer it over
-   `geo`/Clipper wrappers specifically because it is integer-native. Log the vertex-count →
-   `split_to_convex` → search-tree coupling as a metric-parity risk before wiring it in.
+**Not reached — Plan 2 confirmed `ConductionArea`'s fill cache is renderer-only (§(vi), amended)**
+5. ~~`i_overlay` in production for copper-pour booleans~~ — moot. The detailed fill cache
+   (`ensureDetailedFillCache` et al.) has no caller outside the GUI paint path and is not ported
+   (quirk #59); nothing Plan 2 built needs a polygon-boolean crate. Revisit only if a renderer is
+   ever ported, at which point the vertex-count → `split_to_convex` → search-tree coupling this
+   section used to flag is still the right caveat to budget for.
 
 **Post-parity only, and each is a behaviour change, not a refactor**
 6. `dashu` (or `malachite`, licence permitting) as the bigint backend, once a differential test
    against `num-bigint` over the fixture corpus is green.
-7. `rstar` for auxiliary, order-insensitive indexes; never as the router's `ShapeSearchTree`.
+7. `rstar` for auxiliary, order-insensitive indexes; never as the router's `ShapeSearchTree` — Plan 2
+   Task 3/10 ported `MinAreaTree` by hand instead, as this survey recommended.
 
 **Explicit "no good fit"**: convex tiles (`Simplex`/`IntOctagon`) and their intersection/cutout,
 `split_to_convex`, `offset_shapes`, rational points, and the router's search tree. In each case the
