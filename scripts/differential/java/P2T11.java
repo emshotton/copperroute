@@ -48,6 +48,7 @@ public class P2T11 {
       case 3 -> dumpChangedArea();
       case 4 -> dumpCompensated();
       case 5 -> dumpShapeTraceEntries();
+      case 6 -> dumpCyclesAndInserters();
       default -> throw new IllegalArgumentException("mode " + mode);
     }
   }
@@ -622,6 +623,192 @@ public class P2T11 {
         System.out.println("trace " + it.getId() + " corners=" + cornerList(t));
       }
     }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 6: cycles, overlaps, the remaining inserters and the trace-geometry adapter
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * A board with a genuine cycle (two traces between the same pair of vias) and a trace whose two
+   * ends both land inside one conduction area, which is what `isOverlap` looks for.
+   *
+   * <p>Ids: 1 outline, 2 via A, 3 via B, 4 the direct trace, 5 the detour trace, 6 the conduction
+   * area, 7 the trace inside it.
+   */
+  static void buildCycleBoard() {
+    Layer[] layers = {new Layer("front", true), new Layer("back", true)};
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
+    BoardRules rules = new BoardRules(ls, cm);
+    rules.createDefaultNetClass();
+    Communication comm = new Communication();
+    board =
+        new RoutingBoard(
+            new IntBox(-10000, -10000, 10000, 10000),
+            ls,
+            new PolylineShape[0],
+            0,
+            rules,
+            comm);
+    board.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    board.library.packages = new app.freerouting.core.library.Packages(board.library.padstacks);
+    rules.nets.add("N1", 1, false);
+    rules.nets.add("N2", 1, false);
+    rules.nets.add("N3", 1, false);
+    ConvexShape[] thru = {new IntBox(-70, -70, 70, 70), new IntBox(-70, -70, 70, 70)};
+    thruPad = board.library.padstacks.add("thru", thru, true, false);
+    board.insertVia(thruPad, new IntPoint(0, 0), new int[] {1}, 1, FixedState.UNFIXED, true);
+    board.insertVia(thruPad, new IntPoint(2000, 0), new int[] {1}, 1, FixedState.UNFIXED, true);
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Point[] {new IntPoint(0, 0), new IntPoint(2000, 0)}),
+        0,
+        30,
+        new int[] {1},
+        1,
+        FixedState.UNFIXED);
+    board.insertTraceWithoutCleaning(
+        new Polyline(
+            new Point[] {
+              new IntPoint(0, 0),
+              new IntPoint(0, 1000),
+              new IntPoint(2000, 1000),
+              new IntPoint(2000, 0)
+            }),
+        0,
+        30,
+        new int[] {1},
+        1,
+        FixedState.UNFIXED);
+    board.insertConductionArea(
+        new IntBox(4000, 0, 6000, 2000), 0, new int[] {3}, 1, true, FixedState.UNFIXED);
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Point[] {new IntPoint(4200, 200), new IntPoint(5800, 1800)}),
+        0,
+        30,
+        new int[] {3},
+        1,
+        FixedState.UNFIXED);
+    // Two pinless components, one on each side, so `ComponentObstacleArea.isFront` has a real
+    // component to read (with `componentId == 0` it throws — quirk #49).
+    Package pkg =
+        board.library.packages.add(
+            "pkg",
+            new Package.Pin[0],
+            new Shape[0],
+            new double[0],
+            new boolean[0],
+            new Package.Keepout[0],
+            new Package.Keepout[0],
+            new Package.Keepout[0],
+            true);
+    board.components.add(new IntPoint(0, 0), 0, true, pkg);
+    board.components.add(new IntPoint(0, 0), 0, false, pkg);
+  }
+
+  static void dumpCyclesAndInserters() {
+    buildCycleBoard();
+    System.out.println("mode=6");
+    System.out.println("items=" + ids(board.getItems()));
+    for (int id : new int[] {4, 5, 7}) {
+      Trace t = (Trace) board.getItem(id);
+      System.out.println(
+          "trace " + id
+              + " startContacts=" + ids(t.getStartContacts())
+              + " endContacts=" + ids(t.getEndContacts())
+              + " isOverlap=" + t.isOverlap()
+              + " isCycle=" + t.isCycle()
+              + " isTail=" + t.isTail());
+    }
+    System.out.println("connectionItems(4)=" + ids(board.getItem(4).getConnectionItems()));
+
+    // `PolylineTraceSearchTreeAdapter` is package-private, so this driver cannot reach it; its
+    // five methods are `Board::trace_has_default_entries`, `replace_trace_geometry`,
+    // `merge_trace_entries_in_front`/`_at_end` and `change_trace_entries`, and the
+    // `SearchTreeManager` bodies they forward to are covered by `p2t10` modes 3, 5 and 8.
+
+    System.out.println("--- removeIfCycle(4)");
+    buildCycleBoard();
+    System.out.println("removed=" + board.removeIfCycle((Trace) board.getItem(4)));
+    System.out.println("items=" + ids(board.getItems()));
+
+    System.out.println("--- reduceNetsOfRouteItems");
+    buildCycleBoard();
+    board.getItem(4).netNumbers = new int[] {1, 2};
+    System.out.println("result=" + board.reduceNetsOfRouteItems());
+    System.out.println("nets(4)=" + Arrays.toString(board.getItem(4).netNumbers));
+
+    System.out.println("--- deleteAllTracksAndVias");
+    buildCycleBoard();
+    board.deleteAllTracksAndVias();
+    System.out.println("items=" + ids(board.getItems()));
+
+    System.out.println("--- clearAllItemTemporaryAutorouteData");
+    buildCycleBoard();
+    board.clearAllItemTemporaryAutorouteData();
+    System.out.println("items=" + ids(board.getItems()));
+
+    System.out.println("--- the remaining inserters");
+    buildCycleBoard();
+    Via escape =
+        board.insertEscapeVia(thruPad, new IntPoint(-2000, 0), new int[] {1}, 1, FixedState.UNFIXED, 0);
+    System.out.println(
+        "escapeVia id=" + escape.getId()
+            + " isEscapeVia=" + escape.isEscapeVia
+            + " smdLayer=" + escape.escapeViaSmdLayer
+            + " attachAllowed=" + escape.attachAllowed);
+    Item viaObstacle =
+        board.insertViaObstacle(new IntBox(-4000, 0, -3000, 1000), 0, 1, FixedState.UNFIXED);
+    System.out.println("viaObstacle id=" + viaObstacle.getId() + " class=" + viaObstacle.getClass().getSimpleName());
+    for (int componentId : new int[] {1, 2}) {
+      Item componentObstacle =
+          board.insertComponentObstacle(
+              new IntBox(-6000, 1200 * componentId, -5000, 1200 * componentId + 1000),
+              0,
+              new IntVector(0, 0),
+              0,
+              false,
+              1,
+              componentId,
+              "ko" + componentId,
+              FixedState.UNFIXED);
+      System.out.println(
+          "componentObstacle id=" + componentObstacle.getId()
+              + " component=" + componentId
+              + " class=" + componentObstacle.getClass().getSimpleName()
+              + " isFront=" + ((app.freerouting.board.model.items.ComponentObstacleArea) componentObstacle).isFront()
+              + " name=" + componentObstacle.componentName());
+    }
+    Item obstacleOfComponent =
+        board.insertObstacle(
+            new IntBox(-8000, 0, -7000, 1000),
+            0,
+            new IntVector(10, 20),
+            0,
+            false,
+            1,
+            0,
+            "keepout",
+            FixedState.UNFIXED);
+    System.out.println(
+        "obstacleOfComponent id=" + obstacleOfComponent.getId()
+            + " bbox=" + box(obstacleOfComponent.boundingBox()));
+    Item outline =
+        board.insertComponentOutline(
+            new IntBox(-9000, 3000, -8000, 4000),
+            true,
+            new IntVector(0, 0),
+            0,
+            0,
+            true,
+            false,
+            true,
+            FixedState.UNFIXED);
+    System.out.println(
+        "componentOutline id=" + outline.getId()
+            + " class=" + outline.getClass().getSimpleName()
+            + " tiles=" + outline.tileShapeCount());
+    System.out.println("items=" + ids(board.getItems()) + " revision=" + board.getRevision());
   }
 
   static String cornerList(PolylineTrace t) {

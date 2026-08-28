@@ -1486,10 +1486,13 @@ impl Board {
     /// Port of `ComponentObstacleArea.isFront` (ComponentObstacleArea.java:83-87):
     /// `component == null || component.placedOnFront()`.
     ///
-    /// Java's `board.components.get(componentId)` returns `null` for a component id it does not
-    /// know — except that [`Components::get`](crate::structure::Components::get) *panics* out of
-    /// range, faithfully to `Vector.elementAt` (quirk #49). The bounds check therefore lives
-    /// here, and answers Java's `true` for a missing component.
+    /// Java's expression reads as "`null` means front", but
+    /// [`Components::get`](crate::structure::Components::get) *panics* out of range, faithfully
+    /// to `Vector.elementAt` (quirk #49) — so on an item that belongs to no component Java
+    /// throws rather than taking its own `null` branch. Verified on the JVM
+    /// (`scripts/differential/java/P2T11.java` mode 6).
+    // totalized: the bounds check lives here and answers the `component == null` value, `true`,
+    // where Java throws `ArrayIndexOutOfBoundsException`. See docs/java-quirks.md.
     pub fn component_obstacle_area_is_front(&self, id: ItemId) -> bool {
         let Some(Item::ComponentObstacleArea(area)) = self.items.get(&id) else {
             return true;

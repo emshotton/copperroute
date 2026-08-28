@@ -28,6 +28,7 @@ fn main() {
         3 => dump_changed_area(&mut board),
         4 => dump_compensated(&mut board),
         5 => dump_shape_trace_entries(),
+        6 => dump_cycles_and_inserters(),
         _ => panic!("mode {mode}"),
     }
 }
@@ -823,6 +824,268 @@ fn dump_shape_trace_entries() {
             println!("trace {} corners={}", id, corner_list(t));
         }
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mode 6: cycles, overlaps, the remaining inserters
+// ---------------------------------------------------------------------------------------------
+
+/// A board with a genuine cycle (two traces between the same pair of vias) and a trace whose two
+/// ends both land inside one conduction area.
+fn build_cycle_board() -> (Board, fr_board::PadstackId) {
+    let ls = layers();
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(layers(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut padstacks = Padstacks::new(layers());
+    let thru_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-70, -70, 70, 70)));
+    let thru_pad = padstacks.add(
+        "thru",
+        vec![Some(thru_shape.clone()), Some(thru_shape)],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let pkg = packages.add(
+        "pkg",
+        Vec::new(),
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, false, pkg);
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        IntBox::from_coords(-10_000, -10_000, 10_000, 10_000),
+        rules,
+        BoardLibrary::new(padstacks, packages),
+        components,
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+    board.rules.nets.add("N2", 1, false, default_class);
+    board.rules.nets.add("N3", 1, false, default_class);
+    board.insert_via(
+        thru_pad,
+        Point::new(0, 0),
+        vec![1],
+        1,
+        FixedState::Unfixed,
+        true,
+    );
+    board.insert_via(
+        thru_pad,
+        Point::new(2000, 0),
+        vec![1],
+        1,
+        FixedState::Unfixed,
+        true,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(0, 0), Point::new(2000, 0)]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[
+            Point::new(0, 0),
+            Point::new(0, 1000),
+            Point::new(2000, 1000),
+            Point::new(2000, 0),
+        ]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_conduction_area(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            4000, 0, 6000, 2000,
+        )))),
+        0,
+        vec![3],
+        1,
+        true,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(4200, 200), Point::new(5800, 1800)]),
+        0,
+        30,
+        vec![3],
+        1,
+        FixedState::Unfixed,
+    );
+    (board, thru_pad)
+}
+
+fn dump_cycles_and_inserters() {
+    let (board, _) = build_cycle_board();
+    println!("mode=6");
+    println!("items={}", ids(board.items_in_board_order()));
+    for id in [4u32, 5, 7] {
+        println!(
+            "trace {id} startContacts={} endContacts={} isOverlap={} isCycle={} isTail={}",
+            ids(descending(board.trace_start_contacts(ItemId(id)))),
+            ids(descending(board.trace_end_contacts(ItemId(id)))),
+            board.is_overlap(ItemId(id)),
+            board.is_trace_cycle(ItemId(id)),
+            board.is_tail(ItemId(id))
+        );
+    }
+    println!(
+        "connectionItems(4)={}",
+        ids(descending(
+            board.connection_items(ItemId(4), StopConnectionOption::None)
+        ))
+    );
+
+    println!("--- removeIfCycle(4)");
+    let (mut board, _) = build_cycle_board();
+    println!("removed={}", board.remove_if_cycle(ItemId(4)));
+    println!("items={}", ids(board.items_in_board_order()));
+
+    println!("--- reduceNetsOfRouteItems");
+    let (mut board, _) = build_cycle_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 2];
+    println!("result={}", board.reduce_nets_of_route_items());
+    println!(
+        "nets(4)={}",
+        net_array(board.get_item(ItemId(4)).expect("a trace").net_nos())
+    );
+
+    println!("--- deleteAllTracksAndVias");
+    let (mut board, _) = build_cycle_board();
+    board.delete_all_tracks_and_vias();
+    println!("items={}", ids(board.items_in_board_order()));
+
+    println!("--- clearAllItemTemporaryAutorouteData");
+    let (mut board, _) = build_cycle_board();
+    board.clear_all_item_temporary_autoroute_data();
+    println!("items={}", ids(board.items_in_board_order()));
+
+    println!("--- the remaining inserters");
+    let (mut board, thru_pad) = build_cycle_board();
+    let escape = board.insert_escape_via(
+        thru_pad,
+        Point::new(-2000, 0),
+        vec![1],
+        1,
+        FixedState::Unfixed,
+        0,
+    );
+    let via = match board.get_item(escape).expect("the escape via") {
+        Item::Via(v) => v,
+        _ => unreachable!(),
+    };
+    println!(
+        "escapeVia id={escape} isEscapeVia={} smdLayer={} attachAllowed={}",
+        via.is_escape_via, via.escape_via_smd_layer, via.attach_allowed
+    );
+    let via_obstacle = board.insert_via_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -4000, 0, -3000, 1000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    println!(
+        "viaObstacle id={via_obstacle} class={}",
+        class_name(board.get_item(via_obstacle).expect("the keepout"))
+    );
+    for component_id in [1i32, 2] {
+        let keepout = board.insert_component_obstacle_of_component(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -6000,
+                1200 * component_id,
+                -5000,
+                1200 * component_id + 1000,
+            )))),
+            0,
+            Vector::from(IntVector::new(0, 0)),
+            0.0,
+            false,
+            1,
+            component_id,
+            Some(format!("ko{component_id}")),
+            FixedState::Unfixed,
+        );
+        println!(
+            "componentObstacle id={keepout} component={component_id} class={} isFront={} name={}",
+            class_name(board.get_item(keepout).expect("the keepout")),
+            board.component_obstacle_area_is_front(keepout),
+            board.item_component_name(keepout).unwrap_or("null")
+        );
+    }
+    let obstacle_of_component = board.insert_obstacle_of_component(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -8000, 0, -7000, 1000,
+        )))),
+        0,
+        Vector::from(IntVector::new(10, 20)),
+        0.0,
+        false,
+        1,
+        0,
+        Some("keepout".to_string()),
+        FixedState::Unfixed,
+    );
+    let ctx = board.ctx();
+    println!(
+        "obstacleOfComponent id={obstacle_of_component} bbox={}",
+        boxs(
+            &board
+                .get_item(obstacle_of_component)
+                .expect("the keepout")
+                .bounding_box(&ctx)
+        )
+    );
+    let outline = board
+        .insert_component_outline(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -9000, 3000, -8000, 4000,
+            )))),
+            true,
+            Vector::from(IntVector::new(0, 0)),
+            0.0,
+            0,
+            true,
+            false,
+            true,
+            FixedState::Unfixed,
+        )
+        .expect("a bounded area");
+    let ctx = board.ctx();
+    println!(
+        "componentOutline id={outline} class={} tiles={}",
+        class_name(board.get_item(outline).expect("the outline")),
+        board
+            .get_item(outline)
+            .expect("the outline")
+            .tile_shape_count(&ctx)
+    );
+    println!(
+        "items={} revision={}",
+        ids(board.items_in_board_order()),
+        board.revision()
+    );
 }
 
 fn corner_list(t: &PolylineTrace) -> String {

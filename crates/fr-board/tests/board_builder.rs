@@ -949,6 +949,105 @@ pub fn shove_board() -> Board {
     board
 }
 
+/// The board `P2T11.java` mode 6 builds: a genuine cycle (two traces between the same pair of
+/// vias) plus a trace whose two ends both land inside one conduction area, and two pinless
+/// components (one per side) so `ComponentObstacleArea.isFront` has something to read.
+///
+/// Ids: 1 outline, 2 via A at `(0, 0)`, 3 via B at `(2000, 0)`, 4 the direct trace, 5 the
+/// detour trace, 6 the conduction area, 7 the trace inside it.
+pub fn cycle_board() -> (Board, PadstackId) {
+    let ls = layers();
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(layers(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut padstacks = Padstacks::new(layers());
+    let thru_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-70, -70, 70, 70)));
+    let thru_pad = padstacks.add(
+        "thru",
+        vec![Some(thru_shape.clone()), Some(thru_shape)],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let pkg = packages.add(
+        "pkg",
+        Vec::new(),
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, false, pkg);
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(padstacks, packages),
+        components,
+        Communication::default(),
+    );
+    for name in ["N1", "N2", "N3"] {
+        board.rules.nets.add(name, 1, false, default_class);
+    }
+    for x in [0, 2000] {
+        board.insert_via(
+            thru_pad,
+            Point::new(x, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            true,
+        );
+    }
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(0, 0), Point::new(2000, 0)]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[
+            Point::new(0, 0),
+            Point::new(0, 1000),
+            Point::new(2000, 1000),
+            Point::new(2000, 0),
+        ]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_conduction_area(
+        fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            4000, 0, 6000, 2000,
+        )))),
+        0,
+        vec![3],
+        1,
+        true,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(4200, 200), Point::new(5800, 1800)]),
+        0,
+        30,
+        vec![3],
+        1,
+        FixedState::Unfixed,
+    );
+    (board, thru_pad)
+}
+
 /// A set of item ids in Java's `TreeSet<Item>` order — **descending** id (quirk #44) — as the
 /// bare numbers, so a test can transcribe `P2T11.java`'s output verbatim.
 pub fn descending(set: std::collections::BTreeSet<ItemId>) -> Vec<u32> {

@@ -1493,6 +1493,282 @@ fn cutout_traces_skips_the_own_net_and_cuts_the_rest_in_board_order() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Cycles, overlaps and the remaining inserters (`P2T11.java` mode 6)
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn a_trace_reachable_from_itself_by_two_paths_is_a_cycle() {
+    // `P2T11.java` mode 6: two traces between the same pair of vias, so both are cycles, and a
+    // trace whose two ends both land inside one conduction area, which makes it an *overlap*
+    // (Trace.java:227-232) and therefore a cycle at Trace.java:275.
+    let (board, _) = board_builder::cycle_board();
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![7, 6, 5, 4, 3, 2, 1]
+    );
+    for (id, start, end) in [(4u32, vec![5, 2], vec![5, 3]), (5, vec![4, 2], vec![4, 3])] {
+        assert_eq!(descending(board.trace_start_contacts(ItemId(id))), start);
+        assert_eq!(descending(board.trace_end_contacts(ItemId(id))), end);
+        assert!(board.is_overlap(ItemId(id)), "trace {id}");
+        assert!(board.is_trace_cycle(ItemId(id)), "trace {id}");
+        assert!(!board.is_tail(ItemId(id)), "trace {id}");
+    }
+    // The trace inside the conduction area contacts it at both ends.
+    assert_eq!(descending(board.trace_start_contacts(ItemId(7))), vec![6]);
+    assert_eq!(descending(board.trace_end_contacts(ItemId(7))), vec![6]);
+    assert!(board.is_overlap(ItemId(7)));
+    assert!(board.is_trace_cycle(ItemId(7)));
+    // Item.java:711-719: the direct trace has two contacts at each end, so its connection stops
+    // at itself.
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
+        vec![4]
+    );
+}
+
+#[test]
+fn remove_if_cycle_removes_the_connection_of_a_cycling_trace() {
+    // `P2T11.java` mode 6: `removed=true`, `items=[7 6 5 3 2 1]`.
+    let (mut board, _) = board_builder::cycle_board();
+    assert!(board.remove_if_cycle(ItemId(4)));
+    assert_eq!(nums(board.items_in_board_order()), vec![7, 6, 5, 3, 2, 1]);
+    // A trace that is not a cycle is left alone (BasicBoard.java:1339-1341).
+    let mut board = p2t11_board();
+    assert!(!board.remove_if_cycle(ItemId(4)));
+    assert!(board.get_item(ItemId(4)).is_some());
+}
+
+#[test]
+fn reduce_nets_of_route_items_reduces_but_always_reports_false() {
+    // `P2T11.java` mode 6: `result=false`, `nets(4)=[1]` — quirk #66. The trace is put on nets
+    // 1 and 2; net 2 is dropped because its contacts do not carry it, and the method still
+    // reports that nothing happened (RoutingBoard.java:1285,1355).
+    let (mut board, _) = board_builder::cycle_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 2];
+    assert!(!board.reduce_nets_of_route_items());
+    assert_eq!(
+        board.get_item(ItemId(4)).expect("a trace").net_nos(),
+        &[1],
+        "net 2 was reduced away even though the return value says otherwise"
+    );
+}
+
+#[test]
+fn delete_all_tracks_and_vias_leaves_only_the_areas_and_the_outline() {
+    // `P2T11.java` mode 6: `items=[6 1]`. Java deletes straight from `itemList` and leaves the
+    // search trees holding leaves for the removed items; the port removes them from the trees
+    // too (`totalized`, docs/java-quirks.md), so the item list matches and the trees stay sane.
+    let (mut board, _) = board_builder::cycle_board();
+    board.delete_all_tracks_and_vias();
+    assert_eq!(nums(board.items_in_board_order()), vec![6, 1]);
+    // Nothing is left indexed where the direct trace ran.
+    assert!(board.pick_items(&Point::new(1000, 0), Some(0)).is_empty());
+}
+
+#[test]
+fn the_remaining_typed_inserters_match_the_jvm() {
+    // `P2T11.java` mode 6's `--- the remaining inserters` block.
+    let (mut board, thru_pad) = board_builder::cycle_board();
+    let escape = board.insert_escape_via(
+        thru_pad,
+        Point::new(-2000, 0),
+        vec![1],
+        1,
+        FixedState::Unfixed,
+        0,
+    );
+    assert_eq!(escape, ItemId(8));
+    match board.get_item(escape).expect("the escape via") {
+        Item::Via(via) => {
+            // BasicBoard.java:318-320: an escape via always allows attachment.
+            assert!(via.is_escape_via);
+            assert_eq!(via.escape_via_smd_layer, 0);
+            assert!(via.attach_allowed);
+        }
+        other => panic!("not a via: {other}"),
+    }
+
+    let via_obstacle = board.insert_via_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -4000, 0, -3000, 1000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    assert!(matches!(
+        board.get_item(via_obstacle),
+        Some(Item::ViaObstacleArea(_))
+    ));
+
+    // ComponentObstacleArea.isFront (ComponentObstacleArea.java:83-87) reads the *board's*
+    // component list: component 1 is on the front, component 2 on the back.
+    for (component_id, is_front) in [(1i32, true), (2, false)] {
+        let keepout = board.insert_component_obstacle_of_component(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -6000,
+                1200 * component_id,
+                -5000,
+                1200 * component_id + 1000,
+            )))),
+            0,
+            Vector::from(IntVector::new(0, 0)),
+            0.0,
+            false,
+            1,
+            component_id,
+            Some(format!("ko{component_id}")),
+            FixedState::Unfixed,
+        );
+        assert!(matches!(
+            board.get_item(keepout),
+            Some(Item::ComponentObstacleArea(_))
+        ));
+        assert_eq!(board.component_obstacle_area_is_front(keepout), is_front);
+        assert_eq!(
+            board.item_component_name(keepout),
+            Some(format!("Component#{component_id}").as_str())
+        );
+        // ComponentObstacleArea.java:38: the constructor drops the net numbers.
+        assert!(
+            board
+                .get_item(keepout)
+                .expect("the keepout")
+                .net_nos()
+                .is_empty()
+        );
+    }
+
+    // The component overload of `insertObstacle` applies the translation.
+    let of_component = board.insert_obstacle_of_component(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -8000, 0, -7000, 1000,
+        )))),
+        0,
+        Vector::from(IntVector::new(10, 20)),
+        0.0,
+        false,
+        1,
+        0,
+        Some("keepout".to_string()),
+        FixedState::Unfixed,
+    );
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(of_component)
+            .expect("the area")
+            .bounding_box(&ctx),
+        IntBox::from_coords(-7990, 20, -6990, 1020)
+    );
+
+    let outline = board
+        .insert_component_outline(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -9000, 3000, -8000, 4000,
+            )))),
+            true,
+            Vector::from(IntVector::new(0, 0)),
+            0.0,
+            0,
+            true,
+            false,
+            true,
+            FixedState::Unfixed,
+        )
+        .expect("a bounded area");
+    // ComponentOutline.tileShapeCount (ComponentOutline.java:129-132) is literally 0.
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(outline)
+            .expect("the outline")
+            .tile_shape_count(&ctx),
+        0
+    );
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    );
+    assert_eq!(board.revision(), 13);
+}
+
+#[test]
+fn component_obstacle_area_is_front_answers_true_for_an_item_of_no_component() {
+    // `totalized` (docs/java-quirks.md): with `componentId == 0`,
+    // `board.components.get(0)` is `Vector.elementAt(-1)` and Java throws
+    // `ArrayIndexOutOfBoundsException` (quirk #49) — verified on the JVM while writing
+    // `P2T11.java` mode 6. The port bounds-checks and answers the `component == null` value the
+    // method's own expression would have produced.
+    let (mut board, _) = board_builder::cycle_board();
+    let keepout = board.insert_component_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -6000, 0, -5000, 1000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    assert_eq!(
+        board.get_item(keepout).expect("the keepout").component_id(),
+        0
+    );
+    assert!(board.component_obstacle_area_is_front(keepout));
+}
+
+// ---------------------------------------------------------------------------------------------
+// The trace-geometry adapter (`PolylineTraceSearchTreeAdapter`, package-private in Java)
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
+    // `PolylineTraceSearchTreeAdapter` is package-private, so `P2T11.java` cannot reach it; the
+    // `SearchTreeManager` bodies these five forward to are pinned by `p2t10` modes 3, 5 and 8.
+    let mut board = p2t11_board();
+    // PolylineTraceSearchTreeAdapter.java:22-26.
+    assert!(board.trace_has_default_entries(ItemId(4), ItemId(5)));
+    assert!(!board.trace_has_default_entries(ItemId(4), ItemId(99)));
+
+    // PolylineTraceSearchTreeAdapter.java:34-40: remove, swap the polyline, drop the derived
+    // data, insert again.
+    let moved = Polyline::from_points(&[Point::new(-1000, 3000), Point::new(0, 3000)]);
+    assert!(board.replace_trace_geometry(ItemId(4), moved));
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(ItemId(4))
+            .expect("a trace")
+            .bounding_box(&ctx),
+        IntBox::from_coords(-1030, 2970, 30, 3030)
+    );
+    // The old location no longer answers, the new one does.
+    assert!(!descending(board.pick_items(&Point::new(-500, 0), Some(0))).contains(&4));
+    assert!(descending(board.pick_items(&Point::new(-500, 3000), Some(0))).contains(&4));
+    assert!(!board.replace_trace_geometry(ItemId(7), Polyline::from_points(&[])));
+
+    // PolylineTraceSearchTreeAdapter.java:62-66.
+    let mut board = p2t11_board();
+    let new_polyline = Polyline::from_points(&[
+        Point::new(0, 0),
+        Point::new(1000, 0),
+        Point::new(1000, 500),
+        Point::new(1000, 1000),
+    ]);
+    assert!(board.change_trace_entries(ItemId(5), &new_polyline, 1, 1));
+    assert!(!board.change_trace_entries(ItemId(7), &new_polyline, 1, 1));
+
+    // The two merge wrappers refuse anything that is not a pair of distinct traces.
+    let mut board = p2t11_board();
+    let joined = Polyline::from_points(&[Point::new(-1000, 0), Point::new(0, 0)]);
+    assert!(!board.merge_trace_entries_in_front(ItemId(4), ItemId(4), &joined, 1, 1));
+    assert!(!board.merge_trace_entries_at_end(ItemId(4), ItemId(7), &joined, 1, 1));
+}
+
+// ---------------------------------------------------------------------------------------------
 // The ported Java tests
 // ---------------------------------------------------------------------------------------------
 

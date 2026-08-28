@@ -220,6 +220,7 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t11` (mode 3) | 39 | 0 | exact match (changed area, conduction latch, `moveBy`, net queries) |
 | `p2t11` (mode 4) | 20 | 0 | exact match (host-CAD section width, clearance compensation, 90-degree checks) |
 | `p2t11` (mode 5) | 31 | 0 | exact match (`ShapeTraceEntries`, `ShapeEntrySide`, `ShapeAndEntrySide`) |
+| `p2t11` (mode 6) | 24 | 0 | exact match (cycles/overlaps, `removeIfCycle`, the remaining inserters) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -293,6 +294,14 @@ The four modes cover:
   parallel sentinel), and `ShapeTraceEntries.storeItems` /
   `nextSubstituteTracePiece` / `cutoutTrace` / `cutoutTraces` over three traces
   crossing one square.
+
+* **6** — a board with a genuine cycle (two traces between one pair of vias)
+  and a trace whose two ends both sit inside one conduction area, so
+  `isOverlap`/`isCycle`/`removeIfCycle` have a positive case; then
+  `reduceNetsOfRouteItems` (which reduces a net and still returns `false`,
+  quirk #66), `deleteAllTracksAndVias`, and the five typed inserters modes 0-5
+  do not reach — the escape via, the via keepout, the two component-owned
+  overloads and the component outline.
 
 Two Java findings came out of it, both now in `docs/java-quirks.md`:
 `Item.getAllNetNames` joins `Net::toString` (`"Net #1 (N1)"`), not the bare
