@@ -2278,7 +2278,18 @@ fn dump_deep_copy(board: &mut Board) {
     println!("items={}", ids(board.items_in_board_order()));
     println!("treeArrayBefore={}", tree_array(board));
 
+    // Task 12 review: `deep_copy` must reset every transient field Java's `readObject` drops,
+    // not just the search tree and `normalize_suppressed_net_nos` — drive all four to a
+    // non-default value first so the copy's reset is a real check, not a vacuous one.
+    board.start_marking_changed_area();
+    board.shove_failing_obstacle = Some(ItemId(4));
+    board.shove_failing_layer = 3;
+    println!("transientBefore={}", transient_state(board));
+
     let copy = board.deep_copy();
+
+    println!("transientOriginalAfterCopy={}", transient_state(board));
+    println!("transientCopy={}", transient_state(&copy));
 
     println!("treeArrayOriginalAfterCopy={}", tree_array(board));
     println!("treeArrayCopy={}", tree_array(&copy));
@@ -2317,6 +2328,22 @@ fn dump_deep_copy(board: &mut Board) {
         "hashEqualAfterMutation={}",
         board.structural_hash() == copy.structural_hash()
     );
+}
+
+/// The four transient fields `deep_copy` resets besides the search tree and
+/// `normalize_suppressed_net_nos` — the Rust twin of `P2T11.transientState`.
+fn transient_state(board: &Board) -> String {
+    format!(
+        "revision={} changedArea={} shoveFailingObstacle={} shoveFailingLayer={}",
+        board.revision(),
+        if board.changed_area.is_some() {
+            "set"
+        } else {
+            "null"
+        },
+        opt_id(board.shove_failing_obstacle),
+        board.shove_failing_layer
+    )
 }
 
 /// Every leaf of the default tree's `to_array()`, as `"id:shape_index"` pairs, left to right —

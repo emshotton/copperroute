@@ -225,7 +225,7 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t11` (mode 8) | 47 | 0 | exact match (`split(IntOctagon)`, `change`, `normalize`, and quirk #22 out of `combineAtStart`) |
 | `p2t11` (mode 9) | 35 | 0 | exact match (`combineTraces`/`normalizeTraces`/`normalizeAllTraces`/`splitTraces` and the five callers that end in one of them) |
 | `p2t11` (mode 10) | 5 | 0 | exact match (the 4000-segment `CombineStackOverflowTest` fixture, rebuilt by hand) |
-| `p2t11` (mode 11) | 16 | 2 | `treeArrayCopy`/`treeArraysEqual` only — the documented tree-rebuild-vs-clone divergence (Task 12, see below); every `overlappingObjects`/`hashEqual`/`diffTraces` line matches |
+| `p2t11` (mode 11) | 20 | 2 | `treeArrayCopy`/`treeArraysEqual` only — the documented tree-rebuild-vs-clone divergence (Task 12, see below); every `transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces` line matches |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -346,7 +346,16 @@ padstack, two nets) — the shape `PolylineTraceSplitTest.createTestBoard` build
   Both engines fold them into one 31-line trace. Takes a segment count as a
   second argument (`run.sh p2t11 10 400`).
 * **11** — Task 12's `deep_copy`/`structural_hash`/`diff_traces`, on the same
-  board mode 0 builds. Prints the default tree's `toArray()` (as `id:shapeIndex`
+  board mode 0 builds. First drives all four `transient` fields
+  `deepCopy()`/`deep_copy()` must reset besides the search tree and
+  `normalizeSuppressedNetNos`/`normalize_suppressed_net_nos` to a non-default
+  value (`startMarkingChangedArea`, `setShoveFailingObstacle`,
+  `setShoveFailingLayer`; `revision` is already non-zero from `build()`'s
+  inserts) and prints `revision`/`changedArea`/`shoveFailingObstacle`/
+  `shoveFailingLayer` before the copy, on the original again afterwards
+  (unchanged — `deepCopy` must not mutate `self`) and on the copy (all four
+  reset — matching on both sides, including `shoveFailingLayer=0`, not `-1`,
+  see below). Then prints the default tree's `toArray()` (as `id:shapeIndex`
   pairs) before `deepCopy()`/`deep_copy()`, prints it again on the original
   afterwards (unchanged in both languages) and on the copy, then an
   `overlappingObjects` probe, `getHash()`/`structural_hash()` equality and
@@ -363,9 +372,14 @@ padstack, two nets) — the shape `PolylineTraceSplitTest.createTestBoard` build
   more faithful choice, not a shortcut), so the port's `treeArraysEqual` prints
   `true`. The two `treeArrayCopy`/`treeArraysEqual` lines are consequently the
   *only* diff (`diff scripts/differential/build/{p2t11.j.out,p2t11.r.out}`
-  after `run.sh p2t11 11`), and every other line — including the two
-  `overlappingObjects` probes taken on both sides of the `deepCopy` — matches,
-  which is the evidence that the divergence is invisible to every real query.
+  after `run.sh p2t11 11`), and every other line — including the transient-field
+  reset and the two `overlappingObjects` probes taken on both sides of the
+  `deepCopy` — matches, which is the evidence that the tree-shape divergence is
+  invisible to every real query. `shoveFailingLayer` is itself a Java quirk
+  (quirk #79, `docs/java-quirks.md`): its `= -1` field initializer never runs
+  on deserialization, so it comes back as the plain `int` default `0`, not the
+  `-1` sentinel a freshly built board starts with — reproduced, and pinned by
+  `transientCopy`'s `shoveFailingLayer=0` matching on both sides.
 
 Two Java findings came out of it, both now in `docs/java-quirks.md`:
 `Item.getAllNetNames` joins `Net::toString` (`"Net #1 (N1)"`), not the bare

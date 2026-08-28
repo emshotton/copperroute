@@ -6,14 +6,46 @@
 //! `BasicBoard.clone` (BasicBoard.java:158-161) is `BoardSnapshotManager.deserialize(
 //! getSnapshotManager().serialize(false))`: a full Java-serialization round trip of the whole
 //! object graph. `RoutingBoard.deepCopy` (RoutingBoard.java:1414-1420) delegates to
-//! `RoutingBoardUndoFacade.deepCopy`, which does the same round trip and then calls
-//! `clearAllItemTemporaryAutorouteData()` and `finishAutoroute()` on the result.
+//! `RoutingBoardUndoFacade.deepCopy`, which does the *same* round trip and then calls
+//! `clearAllItemTemporaryAutorouteData()` and `finishAutoroute()` on the result. So
+//! `BasicBoard.clone()`'s port is [`Board::deep_copy`] **minus** those last two steps — not the
+//! derived [`Clone`] impl below, which does none of the resets the next section describes.
 //!
 //! `global-constraints.md` forbids `Serializable` in this port, so [`Board`] derives [`Clone`]
-//! instead (`board/mod.rs`) — every field clones by value, and `ShapeTree`'s arena clone keeps
-//! every [`crate::LeafId`] valid because the whole arena (nodes, root, leaf count) is copied as
-//! one unit. [`Board::deep_copy`] is `clone()` plus the two post-processing steps
-//! `RoutingBoardUndoFacade.deepCopy` runs on top of the round trip.
+//! instead (`board/mod.rs`), but for a different job: a plain, field-for-field in-memory copy —
+//! `ShapeTree`'s arena clones by value, so every [`crate::LeafId`] stays valid — that this task
+//! substitutes for Java's `generateSnapshot`/`popSnapshot`/`undo`/`redo` (`board/mod.rs`'s
+//! `not ported:` notes on those four; a `board.clone()` is what a Plan-7 caller takes before a
+//! trial mutation it might have to revert). A derived `clone()` copies *every* field, including
+//! the ones `readObject` resets, exactly as they stood; it is not a port of `BasicBoard.clone()`
+//! at all.
+//!
+//! # The transient fields
+//!
+//! Java's `readObject` (BasicBoard.java:1388-1400, the hook every deserialization — hence every
+//! `clone()`/`deepCopy()` — runs through) resets every field either class marks `transient`
+//! rather than restoring it, because a `transient` field is never written to the stream to begin
+//! with. Besides the search tree and `normalizeSuppressedNetNos` (`Board`'s struct doc; both
+//! covered in the next section), that is:
+//!
+//! - `BasicBoard.revision` (BasicBoard.java:97) — comes back `0`, the same value a freshly
+//!   constructed board starts at (Java's plain `int` default).
+//! - `RoutingBoard.changedArea` (RoutingBoard.java:67) — comes back `null`.
+//! - `RoutingBoard.shoveFailingObstacle` (RoutingBoard.java:72) — comes back `null`.
+//! - `RoutingBoard.shoveFailingLayer` (RoutingBoard.java:73) — **Java bug:** its `= -1` field
+//!   initializer is a declaration-site initializer, compiled into every constructor
+//!   `RoutingBoard` has; deserialization calls none of them (the object is allocated directly and
+//!   only `readObject` runs), so this `transient int` comes back at the language default, `0` —
+//!   not the `-1` sentinel a freshly-built board starts with, so a cloned/deep-copied board
+//!   disagrees with a fresh one about what "no failing layer yet" looks like. Reproduced
+//!   (`docs/java-quirks.md`); [`Board::deep_copy`] sets it to `0` to match Java, not `-1`.
+//!
+//! [`Board::deep_copy`] resets all four explicitly: the port's `clone()` is an ordinary
+//! `#[derive(Clone)]` with no `transient` concept, so left alone it would copy every one of them
+//! as they stood on `self`. `changed_area` in particular is Plan 7's: `optChangedArea` early-
+//! returns on a `null` one, `PolylineTrace.change` (:994-996) and `TraceShover` (:572) both
+//! dereference it, and `deep_copy` runs once per autoroute pass/optimizer task — a stale
+//! non-`None` `changed_area` surviving a copy would corrupt the next pass's bookkeeping.
 //!
 //! # The search-tree question
 //!
@@ -74,14 +106,18 @@
 //! inspects the hash's value, only whether two boards produce the same one.
 //!
 //! [`Board::structural_hash`] is **not** a hash of the same bytes and is not comparable across
-//! languages — Java hashes a serialized object graph including every item kind, this hashes only
-//! the geometry the task brief names. That is sufficient for the contract `BoardHistory` actually
-//! needs: on any board this crate can build, the items besides traces and vias (pins, outlines,
-//! obstacle areas, keepouts, the rules and library) are fixed for the duration of one autorouting
-//! run — only traces and vias change from pass to pass — so two boards differing only in those
-//! fixed items are not boards any real caller ever compares, and two boards differing in a trace
-//! or a via always differ here too. See `docs/java-quirks.md` for the "hash values are not
-//! byte-comparable with Java; only same-board equality semantics are" quirk row.
+//! languages — Java hashes a serialized object graph including every item kind, this hashes a
+//! trace's `(id, layer, half_width, polyline corners, net numbers, clearance class, fixed
+//! state)` and a via's `(id, layer range, center, padstack, net numbers, clearance class, fixed
+//! state)` and nothing else. The two are not a strict "differ iff" pair — Java's `itemList`
+//! serialization also covers pins, the outline, obstacle/conduction areas, keepouts and the
+//! rules/library, none of which this hashes — but for every field it does cover on a trace or a
+//! via, a change there changes both hashes, and on any board this crate can build the items
+//! outside that coverage (pins, outlines, obstacle areas, keepouts, the rules and library) are
+//! fixed for the duration of one autorouting run — only traces and vias change from pass to pass
+//! — so within one run, this hash's equality answers agree with Java's. See `docs/java-quirks.md`
+//! for the "hash values are not byte-comparable with Java; only same-board equality semantics
+//! are" quirk row.
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::DefaultHasher;
@@ -93,23 +129,35 @@ use crate::items::Item;
 use super::Board;
 
 impl Board {
-    /// Port of `RoutingBoard.deepCopy` (RoutingBoard.java:1414-1420) /
-    /// `RoutingBoardUndoFacade.deepCopy` (RoutingBoardUndoFacade.java:45-63): a deep copy with
-    /// every item's per-run autoroute scratch cleared, ready to stand in for the Java "snapshot"
-    /// this port has no undo stack to hold.
+    /// Port of `BasicBoard.clone` (BasicBoard.java:158-161), `RoutingBoard.deepCopy`
+    /// (RoutingBoard.java:1414-1420) and `RoutingBoardUndoFacade.deepCopy`
+    /// (RoutingBoardUndoFacade.java:45-63) in one method — the module doc explains why the two
+    /// Java methods share almost this whole body (the same `readObject`) and differ only in the
+    /// last two steps.
     ///
-    /// Java's round trip is `clone()` (see the module doc); this is `self.clone()` plus the three
-    /// things `RoutingBoardUndoFacade.deepCopy` does to the freshly deserialized copy:
-    /// `clearAllItemTemporaryAutorouteData()` ([`Self::clear_autoroute_scratch`]), the
-    /// `normalizeSuppressedNetNos` reset that in Java happens for free inside `readObject`
-    /// (BasicBoard.java:1392 — every deserialization goes through it, so every clone starts with
-    /// an empty set; the port's `clone()` does not run that reset, so `deep_copy` does it
-    /// explicitly, exactly as `Board`'s struct doc promises), and `finishAutoroute()`
-    /// ([`Self::finish_autoroute`]).
+    /// `self.clone()` (the derived `impl Clone for Board`) copies every field as-is, including
+    /// the ones Java's `readObject` resets; this method is `clone()` plus those resets — the
+    /// search tree is handled by the clone itself (module doc, "The search-tree question"),
+    /// `normalize_suppressed_net_nos`/`revision`/`changed_area`/`shove_failing_obstacle`/
+    /// `shove_failing_layer` are reset explicitly below (module doc, "The transient fields") —
+    /// plus the two things `RoutingBoardUndoFacade.deepCopy` adds on top of the plain
+    /// `BasicBoard.clone()` round trip: `clearAllItemTemporaryAutorouteData()`
+    /// ([`Self::clear_autoroute_scratch`]) and `finishAutoroute()` ([`Self::finish_autoroute`]).
     pub fn deep_copy(&self) -> Board {
         let mut copy = self.clone();
-        copy.clear_autoroute_scratch();
+
+        // Every field Java's `readObject` (BasicBoard.java:1388-1400) resets rather than
+        // restores from the stream, because none of them survive Java serialization
+        // (`transient`) — module doc, "The transient fields".
         copy.normalize_suppressed_net_nos.clear();
+        copy.revision = 0; // BasicBoard.java:97.
+        copy.changed_area = None; // RoutingBoard.java:67.
+        copy.shove_failing_obstacle = None; // RoutingBoard.java:72.
+        // Java bug: the language default, not the `-1` sentinel — module doc's
+        // `shoveFailingLayer` entry has the full argument.
+        copy.shove_failing_layer = 0; // RoutingBoard.java:73.
+
+        copy.clear_autoroute_scratch();
         copy.finish_autoroute();
         copy
     }
@@ -141,8 +189,14 @@ impl Board {
 
     /// Port of `BasicBoard.getHash` (BasicBoard.java:163-166) / `BoardSnapshotManager.getHash`
     /// (:57-71): a deterministic hash over every trace's `(id, layer, half_width, polyline
-    /// corners)` and every via's `(id, layer range, center, padstack)`, in ascending item-id
-    /// order.
+    /// corners, net numbers, clearance class, fixed state)` and every via's `(id, layer range,
+    /// center, padstack, net numbers, clearance class, fixed state)`, in ascending item-id order.
+    /// The last three fields of each tuple are not in the task brief's list; they are added so
+    /// that every `Item` field Java's `itemList` serialization would observe *for these two
+    /// kinds* is covered too (module doc, "The hash") — net numbers, clearance class and fixed
+    /// state can all change on a live trace/via (`assign_net_no`, `change_clearance_class_index`,
+    /// a `FixedState` upgrade) without moving geometry, and each is a real distinguishing fact
+    /// about routing state.
     ///
     /// Not a port of Java's *algorithm* (MD5 over a serialized byte stream) — see the module doc
     /// for why a same-board equality test over this narrower, crate-native input is the faithful
@@ -165,6 +219,9 @@ impl Board {
                     trace.get_layer().hash(&mut hasher);
                     trace.get_half_width().hash(&mut hasher);
                     trace.polyline().corners().hash(&mut hasher);
+                    item.net_nos().hash(&mut hasher);
+                    item.clearance_class().hash(&mut hasher);
+                    item.get_fixed_state().hash(&mut hasher);
                 }
                 Item::Via(via) => {
                     1u8.hash(&mut hasher);
@@ -173,6 +230,9 @@ impl Board {
                     via.last_layer(&ctx).hash(&mut hasher);
                     via.get_center().hash(&mut hasher);
                     via.get_padstack_id().hash(&mut hasher);
+                    item.net_nos().hash(&mut hasher);
+                    item.clearance_class().hash(&mut hasher);
+                    item.get_fixed_state().hash(&mut hasher);
                 }
                 _ => {}
             }
@@ -241,7 +301,13 @@ mod tests {
         let mut board = board();
         insert_trace(&mut board, 1, 100, 500);
         let mut copy = board.deep_copy();
-        assert_eq!(copy, board);
+
+        // A full `PartialEq` would fail here: `deep_copy` deliberately resets the transient
+        // bookkeeping the module doc's "The transient fields" section describes (`revision` in
+        // particular has already advanced past the two inserts above), so the items and the
+        // structural hash are what should agree.
+        assert_eq!(copy.items, board.items);
+        assert_eq!(copy.structural_hash(), board.structural_hash());
 
         let trace = board.get_traces()[0];
         copy.remove_item(trace);
@@ -304,6 +370,42 @@ mod tests {
         let copy = board.deep_copy();
         assert!(copy.normalize_suppressed_net_nos.is_empty());
         assert!(board.normalize_suppressed_net_nos.contains(&3));
+    }
+
+    #[test]
+    fn deep_copy_resets_transient_bookkeeping() {
+        // Module doc, "The transient fields": `revision`, `changed_area`,
+        // `shove_failing_obstacle` and `shove_failing_layer` are all Java `transient` fields
+        // `readObject` resets rather than restores, so `deep_copy` must reset them explicitly —
+        // `self.clone()` alone would carry every one of these over unchanged.
+        let mut board = board();
+        let trace = insert_trace(&mut board, 1, 100, 500);
+        assert_ne!(
+            board.revision(),
+            0,
+            "the two inserts above must have advanced it"
+        );
+
+        board.start_marking_changed_area();
+        assert!(board.changed_area.is_some());
+        board.shove_failing_obstacle = Some(trace);
+        board.shove_failing_layer = 3;
+
+        let copy = board.deep_copy();
+
+        assert_eq!(copy.revision(), 0);
+        assert!(copy.changed_area.is_none());
+        assert!(copy.shove_failing_obstacle.is_none());
+        // Java bug (module doc): the reset value is `0`, the `int` default — not the `-1`
+        // sentinel a freshly constructed board starts with — because deserialization never runs
+        // `shoveFailingLayer`'s `= -1` field initializer.
+        assert_eq!(copy.shove_failing_layer, 0);
+
+        // `self` is untouched: `deep_copy` must not mutate the board it is called on.
+        assert_ne!(board.revision(), 0);
+        assert!(board.changed_area.is_some());
+        assert_eq!(board.shove_failing_obstacle, Some(trace));
+        assert_eq!(board.shove_failing_layer, 3);
     }
 
     #[test]

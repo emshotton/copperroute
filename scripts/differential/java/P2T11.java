@@ -1623,7 +1623,18 @@ public class P2T11 {
     System.out.println("items=" + ids(board.getItems()));
     System.out.println("treeArrayBefore=" + treeArray(board));
 
+    // Task 12 review: `deepCopy` must reset every `transient` field `readObject` drops, not just
+    // the search tree and `normalizeSuppressedNetNos` — drive all four to a non-default value
+    // first so the copy's reset is a real check, not a vacuous one.
+    board.startMarkingChangedArea();
+    board.setShoveFailingObstacle(board.getItem(4));
+    board.setShoveFailingLayer(3);
+    System.out.println("transientBefore=" + transientState(board));
+
     RoutingBoard copy = board.deepCopy();
+
+    System.out.println("transientOriginalAfterCopy=" + transientState(board));
+    System.out.println("transientCopy=" + transientState(copy));
 
     System.out.println("treeArrayOriginalAfterCopy=" + treeArray(board));
     System.out.println("treeArrayCopy=" + treeArray(copy));
@@ -1650,6 +1661,19 @@ public class P2T11 {
         "overlappingObjects(copy,probe,0)=" + objectIds(copy.overlappingObjects(probe, 0)));
     System.out.println("diffTracesAfterMutation=" + board.diffTraces(copy));
     System.out.println("hashEqualAfterMutation=" + board.getHash().equals(copy.getHash()));
+  }
+
+  /**
+   * The four `transient` fields `readObject` resets besides the search tree and
+   * `normalizeSuppressedNetNos`: `revision`, `changedArea`, `shoveFailingObstacle` and
+   * `shoveFailingLayer`.
+   */
+  static String transientState(RoutingBoard b) {
+    Item obstacle = b.getShoveFailingObstacle();
+    return "revision=" + b.getRevision()
+        + " changedArea=" + (b.changedArea == null ? "null" : "set")
+        + " shoveFailingObstacle=" + (obstacle == null ? "null" : Integer.toString(obstacle.getId()))
+        + " shoveFailingLayer=" + b.getShoveFailingLayer();
   }
 
   /** Every leaf of the default tree's `toArray()`, as `"id:shapeIndex"` pairs, left to right. */

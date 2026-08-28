@@ -151,7 +151,14 @@ pub(crate) use item_ctx;
 // `board/facade/BoardSnapshotManager.java` and `RoutingBoardUndoFacade.java`) with
 // `Board::clone`/`Board::deep_copy` (`board/snapshot.rs` has the full account, including why the
 // search trees clone rather than rebuild):
-// renamed: `BasicBoard.clone` (BasicBoard.java:158-161) -> the derived `impl Clone for Board`.
+// renamed: `BasicBoard.clone` (BasicBoard.java:158-161) -> `Board::deep_copy` minus the
+// `clearAllItemTemporaryAutorouteData`/`finishAutoroute` tail (`board/snapshot.rs` module doc,
+// "What Java's `clone`/`deepCopy` actually do") — both Java methods round-trip through the
+// same `serialize`/`deserialize`, so both reset every transient field (`revision`,
+// `normalizeSuppressedNetNos`, the search tree, `changedArea`, `shoveFailingObstacle`,
+// `shoveFailingLayer`); `deepCopy` additionally clears autoroute scratch and calls
+// `finishAutoroute`. The derived `impl Clone for Board` is not this method — it is Task 12's
+// substitute for `generateSnapshot`/`popSnapshot`/`undo`/`redo` below, which clear nothing.
 // renamed: `BasicBoard.getHash` (BasicBoard.java:163-166) -> `Board::structural_hash`.
 // ported: `BasicBoard.diffTraces` (BasicBoard.java:168-171) -> `Board::diff_traces`.
 // ported: `RoutingBoard.deepCopy` (RoutingBoard.java:1414-1420) -> `Board::deep_copy`.

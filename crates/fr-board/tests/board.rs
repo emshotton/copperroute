@@ -1870,8 +1870,12 @@ fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
 /// Java builds a one-layer board with a `TileShape` outline and inserts one trace, then checks
 /// `getOutline`, `getItem`, `getItems` and `getTraces`. The observer count (`observer.newItems`)
 /// is not ported — `global-constraints.md` drops board observers. Java's `serialize(false)` +
-/// `BasicBoard.deserialize` round trip (:45-46) is exactly what `BasicBoard.clone` is
-/// (`board/snapshot.rs`'s module doc), so the port takes `board.clone()`; `getHash()` ->
+/// `BasicBoard.deserialize` round trip (:45-46) is exactly what `BasicBoard.clone` is, whose port
+/// is [`Board::deep_copy`] minus the autoroute-clearing tail (`board/snapshot.rs`'s module doc) —
+/// **not** `board.clone()`: the derived `Clone` copies every field as-is, including the
+/// `transient` ones Java's round trip resets, and is Task 12's substitute for
+/// `generateSnapshot`/`popSnapshot` instead (which clear nothing, being an in-place undo
+/// snapshot of the *same* board rather than a copy standing in for a fresh one). `getHash()` ->
 /// [`Board::structural_hash`]. Java's `assertNotNull(restored.searchTreeManager)` (:50) has no
 /// port — the port's search trees are never `null`.
 #[test]
@@ -1883,7 +1887,7 @@ fn item_queries_remain_stable() {
     assert!(board.get_items().any(|item| item.id() == trace));
     assert_eq!(board.get_traces().len(), 1);
 
-    let restored = board.clone();
+    let restored = board.deep_copy();
     assert_eq!(board.structural_hash(), restored.structural_hash());
     assert_eq!(board.get_traces().len(), restored.get_traces().len());
 }
