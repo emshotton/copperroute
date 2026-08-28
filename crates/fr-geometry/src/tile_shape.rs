@@ -24,6 +24,7 @@ use crate::int_box::IntBox;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
+use crate::limits::{JAVA_DOUBLE_MIN_VALUE, java_min};
 use crate::line::Line;
 use crate::point::Point;
 use crate::side::Side;
@@ -358,6 +359,13 @@ impl TileShape {
                     return i32::MAX as f64;
                 }
                 let corner_count = self.border_line_count();
+                if corner_count == 0 {
+                    // Java assigns `prevCorner = cornerApprox(cornerCount - 1)` = `cornerApprox(-1)`,
+                    // which `Simplex.cornerApprox` answers with `null` for a line-less simplex
+                    // (Simplex.java:172-175 — the `null` check precedes the index clamp). The loop
+                    // then runs zero times and the sum stays 0.
+                    return 0.0;
+                }
                 let mut result = 0.0;
                 let mut prev_corner = self.corner_approx_at(corner_count - 1);
                 for i in 0..corner_count {
@@ -837,7 +845,7 @@ impl TileShape {
         let from_point_f = from_point.to_float();
         let mut result = 0;
         let corner_count = self.border_line_count();
-        let mut min_dist = f64::MIN_POSITIVE;
+        let mut min_dist = JAVA_DOUBLE_MIN_VALUE;
         for i in 0..corner_count {
             let current_distance = self.corner_approx_at(i).distance(&from_point_f);
             if current_distance < min_dist {
@@ -1015,7 +1023,7 @@ impl TileShape {
                 result = -1.0;
                 break;
             }
-            result = result.min(line.signed_distance(&current_corner));
+            result = java_min(result, line.signed_distance(&current_corner));
         }
         result
     }
@@ -1825,6 +1833,10 @@ mod tests {
         assert_eq!(e.diagonal_corner_segment(), None);
         assert_eq!(e.area(), 0.0); // bounded, but dimension() == -1 < 2
         assert_eq!(e.length(), 0.0);
+        // Java's PolylineShape.circumference assigns `prevCorner = cornerApprox(-1)`, which
+        // `Simplex.cornerApprox` answers with null for 0 lines (Simplex.java:172-175); the loop
+        // then runs zero times and 0 is returned. It does not throw.
+        assert_eq!(e.circumference(), 0.0);
         assert_eq!(e.divide_into_sections(4.0), vec![e.clone()]);
         // Java dereferences a null nearest point here; this port totalizes to f64::MAX.
         assert_eq!(e.distance(&FloatPoint::ZERO), f64::MAX);

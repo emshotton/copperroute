@@ -34,7 +34,7 @@ pub use int_direction::IntDirection;
 pub use int_octagon::IntOctagon;
 pub use int_point::IntPoint;
 pub use int_vector::IntVector;
-pub use limits::{CRIT_INT, java_round};
+pub use limits::{CRIT_INT, JAVA_DOUBLE_MIN_VALUE, java_max, java_min, java_round};
 pub use line::Line;
 pub use point::Point;
 pub use rational_point::RationalPoint;

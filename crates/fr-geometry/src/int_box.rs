@@ -10,7 +10,7 @@ use crate::float_point::FloatPoint;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
-use crate::limits::{CRIT_INT, java_round};
+use crate::limits::{CRIT_INT, java_max, java_round};
 use crate::line::Line;
 use crate::side::Side;
 use crate::simplex::Simplex;
@@ -245,15 +245,17 @@ impl IntBox {
         horizontal_weight: f64,
         vertical_weight: f64,
     ) -> f64 {
-        let max_ll_x = (self.ll.x as f64).max(other.ll.x as f64);
-        let max_ll_y = (self.ll.y as f64).max(other.ll.y as f64);
-        let min_ur_x = (self.ur.x as f64).min(other.ur.x as f64);
-        let min_ur_y = (self.ur.y as f64).min(other.ur.y as f64);
+        // Java's operands here are `int`s, so these are `Math.max(int, int)` / `Math.min(int,
+        // int)` widened to `double` on assignment — integer min/max, not `Math.min(double, ...)`.
+        let max_ll_x = self.ll.x.max(other.ll.x) as f64;
+        let max_ll_y = self.ll.y.max(other.ll.y) as f64;
+        let min_ur_x = self.ur.x.min(other.ur.x) as f64;
+        let min_ur_y = self.ur.y.min(other.ur.y) as f64;
 
         if min_ur_x >= max_ll_x {
-            (vertical_weight * (max_ll_y - min_ur_y)).max(0.0)
+            java_max(vertical_weight * (max_ll_y - min_ur_y), 0.0)
         } else if min_ur_y >= max_ll_y {
-            (horizontal_weight * (max_ll_x - min_ur_x)).max(0.0)
+            java_max(horizontal_weight * (max_ll_x - min_ur_x), 0.0)
         } else {
             let delta_x = (max_ll_x - min_ur_x) * horizontal_weight;
             let delta_y = (max_ll_y - min_ur_y) * vertical_weight;

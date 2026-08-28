@@ -9,7 +9,7 @@
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_point::IntPoint;
-use crate::limits::{CRIT_INT, SQRT2, java_round};
+use crate::limits::{CRIT_INT, SQRT2, java_max, java_min, java_round};
 use crate::line::Line;
 use crate::side::Side;
 use crate::simplex::Simplex;
@@ -328,7 +328,7 @@ impl IntOctagon {
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
             .max(self.lower_right_diagonal_x - self.upper_left_diagonal_x)
             as f64;
-        width1.max(width2 / SQRT2)
+        java_max(width1, width2 / SQRT2)
     }
 
     /// Java `minWidth()`: the two `Math.min` of `int` differences, the diagonal one scaled down
@@ -338,7 +338,7 @@ impl IntOctagon {
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
             .min(self.lower_right_diagonal_x - self.upper_left_diagonal_x)
             as f64;
-        width1.min(width2 / SQRT2)
+        java_min(width1, width2 / SQRT2)
     }
 
     /// Returns this octagon offsetted by `distance`. If `distance > 0` the offset is to the

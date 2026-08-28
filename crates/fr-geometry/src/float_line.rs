@@ -4,7 +4,7 @@
 //! instead (a later task).
 
 use crate::float_point::FloatPoint;
-use crate::limits::CRIT_INT;
+use crate::limits::{CRIT_INT, java_min};
 
 /// A line in the plane, defined by two `FloatPoint`s.
 ///
@@ -115,7 +115,7 @@ impl FloatLine {
         if projection.is_contained_in_box(&self.a, &self.b, 0.01) {
             point.distance(&projection)
         } else {
-            point.distance(&self.a).min(point.distance(&self.b))
+            java_min(point.distance(&self.a), point.distance(&self.b))
         }
     }
 
@@ -197,7 +197,7 @@ impl FloatLine {
             return *self;
         }
         let length = (dx * dx + dy * dy).sqrt();
-        let effective_offset = offset.min(length / 2.0);
+        let effective_offset = java_min(offset, length / 2.0);
         let new_a = FloatPoint::new(
             self.a.x + (dx * effective_offset) / length,
             self.a.y + (dy * effective_offset) / length,

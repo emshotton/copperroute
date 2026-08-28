@@ -19,7 +19,7 @@ use crate::int_box::IntBox;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
-use crate::limits::CRIT_INT;
+use crate::limits::{CRIT_INT, java_max, java_min};
 use crate::line::Line;
 use crate::point::Point;
 use crate::side::Side;
@@ -456,10 +456,10 @@ impl Simplex {
         let mut urx = i32::MIN as f64;
         let mut ury = i32::MIN as f64;
         for current in self.corner_approx_arr() {
-            llx = llx.min(current.x);
-            lly = lly.min(current.y);
-            urx = urx.max(current.x);
-            ury = ury.max(current.y);
+            llx = java_min(llx, current.x);
+            lly = java_min(lly, current.y);
+            urx = java_max(urx, current.x);
+            ury = java_max(ury, current.y);
         }
         let lower_left = IntPoint::new(llx.floor() as i32, lly.floor() as i32);
         let upper_right = IntPoint::new(urx.ceil() as i32, ury.ceil() as i32);
@@ -478,23 +478,23 @@ impl Simplex {
         let mut llx = i32::MAX as f64;
         let mut urx = i32::MIN as f64;
         for current in self.corner_approx_arr() {
-            lx = lx.min(current.x);
-            ly = ly.min(current.y);
-            rx = rx.max(current.x);
-            uy = uy.max(current.y);
+            lx = java_min(lx, current.x);
+            ly = java_min(ly, current.y);
+            rx = java_max(rx, current.x);
+            uy = java_max(uy, current.y);
 
             let tmp = current.x - current.y;
-            ulx = ulx.min(tmp);
-            lrx = lrx.max(tmp);
+            ulx = java_min(ulx, tmp);
+            lrx = java_max(lrx, tmp);
 
             let tmp = current.x + current.y;
-            llx = llx.min(tmp);
-            urx = urx.max(tmp);
+            llx = java_min(llx, tmp);
+            urx = java_max(urx, tmp);
         }
-        if lx.min(ly) < -(CRIT_INT as f64)
-            || rx.max(uy) > CRIT_INT as f64
-            || ulx.min(llx) < -(CRIT_INT as f64)
-            || lrx.max(urx) > CRIT_INT as f64
+        if java_min(lx, ly) < -(CRIT_INT as f64)
+            || java_max(rx, uy) > CRIT_INT as f64
+            || java_min(ulx, llx) < -(CRIT_INT as f64)
+            || java_max(lrx, urx) > CRIT_INT as f64
         {
             // result is not bounded
             return None;
