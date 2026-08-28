@@ -57,6 +57,21 @@ for dir in board/model/items board/model/structure board/facade \
 done
 ```
 
+**What that zero does and does not prove.** The script's *positive* match is
+crate-wide, not per class: for a Java `Foo.getBar`, it accepts any
+`fn get_bar…` anywhere under `crates/fr-board/src`, with no check that the
+`fn` it found belongs to the Rust counterpart of `Foo`. Java method names
+repeat heavily across classes — 357 of the 750 distinct `class`/`method` pairs
+these nine directories declare share their method name with at least one other
+class in the same set — so for those the audit proves the name is ported
+*somewhere*, collectively, rather than on the right type. It is still a real
+check (a name nobody ported at all fails, and the `not ported:`/`renamed:`/
+`added in Task N:`/`added in Plan N:` markers are exact), and the per-class
+evidence for this crate is the Java citation in every ported body's doc
+comment plus the differential drivers. Scoping the `fn` match to the Rust type
+that stands in for each Java class is a **Plan 3 obligation**, recorded in
+`docs/java-quirks.md`'s obligation table.
+
 ## Type mapping
 
 | Java | Rust |

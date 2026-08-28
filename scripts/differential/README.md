@@ -92,26 +92,9 @@ methods with dozens of branches.
     quirk #77's tree-layout divergence never appears and the driver is
     zero-diff. `run.sh p2t15 <seed> <n>` diffs it against `p2t15.rs`.
 
-    Two notes on what this driver does and does not prove: the
-    `overlappingTreeEntriesWithClearance` tie-break counter
-    (`ShapeSearchTree.lastGeneratedEntryId`/`SearchTreeManager`'s per-instance
-    counter, quirk noted under Task 10) is snapshotted and restored around
-    each query rather than left running across all 50 — this is provably
-    output-neutral, not a shortcut: the counter is used only as a monotonic
-    tie-break *within* one query's own sort (Task 10/11's `query()` helpers do
-    the same, resetting to 0 every call), so its absolute starting value
-    never changes which entry wins a tie, only the numbers involved. And
-    three coverage holes a reviewer might otherwise look for and not find
-    here: the per-item tile dump prints each tile's *bounding box*, not the
-    tile shape itself (so it cannot by itself distinguish an octagon from a
-    box with the same axis-aligned extent — see `consistency.rs`'s
-    `forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones`
-    for why that distinction needs `TileShape::contains_tile`, not
-    `bounding_box`); the overlap/clearance probes are box shapes only, never
-    octagons (already covered by `P2T10`/`P2T11`'s fixed scripts); and every
-    padstack and area shape this driver builds is axis-aligned, so the
-    `DrillItem`/`ObstacleArea` 45-vs-90-degree tile-shape branch that a
-    rotated or diagonal footprint would exercise is a no-op here.
+    What this driver does and does not prove — the tie-break counter's
+    snapshot/restore, and the three coverage holes it deliberately does not
+    claim — is written out once, under "`p2t15` sweep (Plan 2 Task 15)" below.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
     Twin: `p2t3r`. Drives `insert(Storable)` (so the *tree* applies its bounding
     directions), `remove(Leaf[])` on arrays with deliberate `null` holes,

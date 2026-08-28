@@ -29,9 +29,9 @@ obligations first, per the brief).
   Evidence).
 - `scripts/audit-port.sh` (generalised from `scripts/audit-geometry-port.sh`)
   and a clean audit across all nine Java source directories this plan ports.
-- 572 tests in `fr-board` (301 unit + 271 across nine integration-test files;
+- 575 tests in `fr-board` (301 unit + 274 across ten integration-test files;
   1 deliberately `#[ignore]`d — the non-terminating ladder-hang reproduction),
-  851 across the whole workspace.
+  854 across the whole workspace.
 
 ## Rulings made during execution (cost if wrong noted where it applies)
 
@@ -67,11 +67,14 @@ obligations first, per the brief).
    Rust's full mapping (Task 2, plan-wide ruling): U+0130 must special-case to
    `'i'` and the 27 Greek-ypogegrammeni characters must special-case on the
    uppercase side, or `"İ".equalsIgnoreCase("ı")`-style comparisons diverge.
-   The helper lives at `crates/fr-board/src/rules/mod.rs` — **see Open Items**:
-   `java_to_lower`/`java_to_upper` themselves are plain private `fn`s (no
-   visibility modifier at all — only the sibling `equals_ignore_case`/
-   `compare_to_ignore_case` are `pub(crate)`), so Plan 3's `fr-dsn` cannot
-   reuse them as the ruling intended without a visibility change first.
+   The helper lives at `crates/fr-board/src/rules/mod.rs`. `java_to_lower` and
+   `java_to_upper` are **`pub`**, and re-exported from `lib.rs` and from
+   `fr_board::prelude`, so Plan 3's `fr-dsn` can `use fr_board::java_to_lower`
+   directly and reuse them as the ruling intended. (They were plain private
+   `fn`s as first committed; the final-review fix wave widened them. Their
+   siblings `equals_ignore_case`/`compare_to_ignore_case` stay `pub(crate)` —
+   widen those too if `fr-dsn` needs the string-level fold rather than the
+   per-character one.)
 8. **`MinAreaTree::remove_leaf` panics on a double removal** where Java
    silently corrupts the tree (Task 3, confirmed by review; quirk #39). No
    Java caller removes the same leaf twice today (callers do the bookkeeping
@@ -304,8 +307,9 @@ resolved the items marked ✓ below — verified against the committed tree)
   tree-layout difference by design (no `toArray()` call in the driver); the
   round-trip test's overlap assertions are inert (no obstacle in the fixture
   actually hits the probe box); the entry-counter snapshot in the driver's
-  output is output-neutral (present but never differs). Coverage-hole notes
-  are duplicated across two README sections (cosmetic).
+  output is output-neutral (present but never differs). (The coverage-hole
+  notes that used to be duplicated across two `scripts/differential/README.md`
+  sections are now written once, in the `p2t15` sweep section.)
 
 ## Obligations for later plans
 
@@ -331,17 +335,24 @@ resolved the items marked ✓ below — verified against the committed tree)
   Java's null `viaPadstacks` (quirks #42-43); `Board::new`'s own doc comment
   states the obligation ("a caller that will use those two must populate the
   library before handing it over") — the DSN/KiCad reader is that caller.
-- **`java_to_lower`/`java_to_upper` visibility gap.** Ruling #7 above: the
-  two functions this plan built for Java-exact case folding
-  (`crates/fr-board/src/rules/mod.rs`) are plain private `fn`s — no
-  visibility modifier, not even `pub(crate)` — so they are invisible outside
-  `rules/mod.rs` itself, let alone outside `fr-board`. Plan 3 cannot
-  `use fr_board::...` them as ruling #9 (Task 2) originally intended without
-  either widening their visibility (a small, low-risk change — at least
-  `pub(crate)`, and `pub` plus a `lib.rs` re-export if Plan 3 needs them from
-  outside the crate) or duplicating the ~40-line helper in `fr-dsn`.
-  **Flagged here rather than fixed**, since this task's brief is docs-only;
-  see Open items for the user.
+- ~~**`java_to_lower`/`java_to_upper` visibility gap.**~~ **Discharged in the
+  final-review fix wave**, not carried into Plan 3: both are `pub` in
+  `crates/fr-board/src/rules/mod.rs` and re-exported from `lib.rs` and the
+  prelude, so `fr-dsn` can `use fr_board::{java_to_lower, java_to_upper};`
+  exactly as ruling #7 intended. Left listed here so the trail from the ruling
+  to the fix is readable.
+- **Scope `audit-port.sh`'s `fn` match per Java class.** The script's positive
+  branch is `grep -rqE "fn <snake>…" <crate src>` over the *whole* crate, so
+  for `Foo.getBar` any `fn get_bar…` anywhere satisfies the check — including
+  one on an unrelated type. 357 of the 750 distinct `class`/`method` pairs in
+  Plan 2's nine directories share a method name with another class in the same
+  set, so for those the audit is collective, not per class. (The marker
+  branches — `not ported:`/`renamed:`/`added in Task N:`/`added in Plan N:` —
+  are exact and unaffected, and a wholly unported name still fails.) Plan 3
+  should carry a class → Rust-type map (or a per-file `impl` scan) into the
+  script so the positive match lands on the right type, and re-run the nine
+  Plan 2 directories under the tightened script before adding `fr-dsn`'s own.
+  **Do not weaken the script to make this go away.**
 
 **Plan 5 (DRC/autorouter core):**
 - **Quirk #82 (Delaunay in-circle degenerate on axis-aligned input) must
@@ -371,9 +382,13 @@ resolved the items marked ✓ below — verified against the committed tree)
   *absence* of rooms so far (`RoomId` is reserved, unpopulated). Plan 6 must
   confirm the ordering holds once `TreeObject::Room` values actually exist in
   a tree.
-- **`ShapeSearchTree::complete_shape`/`divide_large_room` are unimplemented
-  stubs** (`searchtree/shape_search_tree.rs:1608-1618`, marked
-  `// added in Plan 6:`), naming `ShapeSearchTree.java:580-693`,
+- **`ShapeSearchTree::complete_shape`/`divide_large_room` are not written at
+  all** — there is no stub function to fill in, only two `// added in Plan 6:`
+  comment markers at the end of
+  `searchtree/shape_search_tree.rs` (~:1625-1635) recording what belongs there
+  and why it cannot land yet (both take and return
+  `IncompleteFreeSpaceExpansionRoom`, which is `autoroute/expansion`). The
+  markers name `ShapeSearchTree.java:580-693`,
   `ShapeSearchTree45Degree.java:95-281`, `ShapeSearchTree90Degree.java:38-191`
   and `ShapeSearchTree.java:1095-1118`/`ShapeSearchTree45Degree.java:288-298`.
 - **`AutorouteInfo` is an opaque placeholder** (`items/header.rs`) standing
@@ -459,30 +474,41 @@ purpose (ruling #16), not an unexplained gap.
 
 **Test counts** (verified by running `cargo test` on the committed tree,
 not taken from any report):
-- `fr-board`: 572 passed, 0 failed, 1 ignored (`a_four_rung_ladder_never_
+- `fr-board`: 575 passed, 0 failed, 1 ignored (`a_four_rung_ladder_never_
   finishes_normalizing`, the quirk-#76 non-terminating reproduction — the
   test exists precisely because it cannot pass), across 1 unit-test binary
   and 10 integration-test files.
-- Whole workspace (`fr-board`, `fr-geometry`, `freerouting`, `parity`): 851
+- Whole workspace (`fr-board`, `fr-geometry`, `freerouting`, `parity`): 854
   passed, 0 failed, 1 ignored.
 - `scripts/audit-port.sh` runs clean (exit 0, zero missing members) against
   all nine Java source directories this plan ports: `board/model/items`,
   `board/model/structure`, `board/facade`, `board/searchtree`, `board/trace`,
   `board/state`, `rules`, `core/library`, `datastructures`.
+  **Read that zero precisely.** The script's positive match is *crate-wide by
+  name*: for `Foo.getBar` it accepts any `fn get_bar…` anywhere under
+  `crates/fr-board/src`, with no check that the `fn` sits on the Rust type
+  that stands in for `Foo`. Java method names repeat heavily — 357 of the 750
+  distinct `class`/`method` pairs these nine directories declare share a
+  method name with at least one other class in the same set — so for those the
+  audit proves the name is ported *somewhere*, collectively, not per class.
+  The `not ported:`/`renamed:`/`added in Task N:`/`added in Plan N:` marker
+  branches *are* exact (they match the Java method name verbatim), and a name
+  nobody ported at all still fails the audit; the per-class evidence is the
+  Java citation carried in every ported body's doc comment plus the
+  differential drivers. Scoping the `fn` match per Java class is a Plan 3
+  obligation (below).
 
 ## Open items for the user
 
-- **`java_to_lower`/`java_to_upper` have no visibility modifier at all** —
-  plain private `fn`s in `crates/fr-board/src/rules/mod.rs`, not even
-  `pub(crate)` (only their sibling `equals_ignore_case`/
-  `compare_to_ignore_case` are `pub(crate)`). The plan-wide ruling that
-  created them (Task 2) says to "reuse [them] in fr-dsn (Plan 3)", but as
-  committed they are invisible outside that one module. This task's brief
-  is docs-only (no code changes beyond doc comments), so the gap is recorded
-  here rather than fixed silently. Plan 3 (or a small, reviewed fix-up before
-  it) needs to either widen the two functions' visibility (at minimum
-  `pub(crate)`; `pub` plus a `lib.rs` re-export if `fr-dsn` needs them from
-  outside the crate) or accept duplicating the ~40-line helper.
+- ~~**`java_to_lower`/`java_to_upper` have no visibility modifier at all**~~ —
+  **done in the final-review fix wave.** Both are now `pub` in
+  `crates/fr-board/src/rules/mod.rs` and re-exported from `lib.rs` and from
+  `fr_board::prelude`, so Plan 3's `fr-dsn` can reuse them
+  (`use fr_board::{java_to_lower, java_to_upper};`) instead of duplicating the
+  ~40-line helper, which is what the plan-wide ruling that created them
+  (Task 2, ruling #7) intended. Their string-level siblings
+  `equals_ignore_case`/`compare_to_ignore_case` are still `pub(crate)`; widen
+  them the same way if `fr-dsn` wants the whole-string fold.
 - **`p2t11` mode 11's tree-rebuild-vs-clone divergence (quirk #77) was
   accepted, not defaulted into**, and is worth the user's own read: this
   port's `deep_copy` is *more* faithful to the pre-copy board than Java's own
