@@ -2,3 +2,5 @@
 /tools/*.jar
 /tests/reference/_scratch/
 /.superpowers/
+/scripts/differential/rust/target/
+/scripts/differential/build/
