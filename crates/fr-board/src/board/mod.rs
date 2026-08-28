@@ -62,6 +62,7 @@ pub mod connectivity;
 pub mod query;
 pub mod shape_trace_entries;
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use fr_geometry::{Area, IntBox, Point, Polyline, PolylineShapeRef, TileShape, Vector};
@@ -413,6 +414,10 @@ impl Board {
     /// Port of `BasicBoard.removeItems` (BasicBoard.java:636-647) and the identical
     /// `BoardItemRepository.removeItems` (BoardItemRepository.java:202-212): removes every item
     /// it is allowed to, and reports whether all of them went.
+    // totalized: Java's parameter is a `Collection<Item>` of live references, so "an item the
+    // board does not have" cannot arise there (a `null` element would NPE at
+    // `isDeletionForbidden`). This takes `ItemId`s, because the port keys items by id, and skips
+    // an id the board does not have. See docs/java-quirks.md.
     pub fn remove_items(&mut self, ids: impl IntoIterator<Item = ItemId>) -> bool {
         let mut result = true;
         for id in ids {
@@ -1399,6 +1404,59 @@ impl Board {
         }
         let default_tree = self.default_tree_id();
         self.item_tree_shape(id, default_tree, index)
+    }
+
+    /// Port of `Item.getTreeShape(ShapeTree, int)` (Item.java:212-226) for the `&self` callers:
+    /// the cached shape, or the recomputed one when the cache is cold.
+    ///
+    /// Java *stores* what it recomputes (Item.java:233-236); this cannot, because `&self` cannot
+    /// mutate the item. Use [`Self::item_tree_shape`] wherever the caller already has `&mut
+    /// self` — it stores, so a cold cache costs one `calculateTreeShapes` instead of one per
+    /// call. The result is the same either way.
+    pub fn item_tree_shape_ref(
+        &self,
+        id: ItemId,
+        tree: TreeId,
+        index: usize,
+    ) -> Option<Cow<'_, TileShape>> {
+        let item = self.items.get(&id)?;
+        let search_tree = self.trees.trees().find(|t| t.id() == tree)?;
+        search_tree.get_tree_shape(item, index, &self.ctx())
+    }
+
+    /// Port of `Item.getTileShape(int)` (Item.java:194-201) for the `&self` callers — see
+    /// [`Self::item_tree_shape_ref`] — together with `ObstacleArea.getTileShape`
+    /// (ObstacleArea.java:197-205), which splits the area itself and never consults a tree.
+    pub fn item_tile_shape_ref(&self, id: ItemId, index: usize) -> Option<Cow<'_, TileShape>> {
+        let ctx = self.ctx();
+        let item = self.items.get(&id)?;
+        match item {
+            Item::ObstacleArea(i) => return i.get_tile_shape(index, &ctx).map(Cow::Owned),
+            Item::ConductionArea(i) => return i.get_tile_shape(index, &ctx).map(Cow::Owned),
+            Item::ViaObstacleArea(i) => return i.get_tile_shape(index, &ctx).map(Cow::Owned),
+            Item::ComponentObstacleArea(i) => return i.get_tile_shape(index, &ctx).map(Cow::Owned),
+            _ => {}
+        }
+        self.item_tree_shape_ref(id, self.default_tree_id(), index)
+    }
+
+    /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:308-315) for the `&self`
+    /// callers — see [`Self::item_tree_shape_ref`].
+    pub fn drill_item_tile_shape_on_layer_ref(
+        &self,
+        id: ItemId,
+        layer: usize,
+    ) -> Option<Cow<'_, TileShape>> {
+        let ctx = self.ctx();
+        let item = self.items.get(&id)?;
+        if !item.is_drill_item() {
+            return None;
+        }
+        let from_layer = item.first_layer(&ctx);
+        if layer < from_layer || layer > item.last_layer(&ctx) {
+            return None;
+        }
+        self.item_tile_shape_ref(id, layer - from_layer)
     }
 
     /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:308-315), **with** the lazy

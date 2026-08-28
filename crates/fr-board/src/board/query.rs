@@ -275,7 +275,11 @@ impl Board {
     ) -> bool {
         // BasicBoard.java:1055-1069: Java builds a temporary `PolylineTrace` that is never
         // inserted, purely to reach `tileShapeCount()`, `getTileShape(i)` and
-        // `touchingPinsAtEndCorners()`. The port computes the same three things directly.
+        // `touchingPinsAtEndCorners()`. The port computes the same three things directly — but
+        // the temporary still runs `Item`'s constructor, whose `id <= 0` branch draws from
+        // `board.communication.idGenerator` (Item.java:85-90), so the id sequence advances by one
+        // per call and every later insert on the board is numbered accordingly.
+        self.new_item_id();
         //
         // `getTileShape(i)` on that temporary goes through the default tree
         // (Item.java:194-201 -> ShapeSearchTree.java:992-1004), so the shapes carry the
@@ -516,11 +520,15 @@ impl Board {
             {
                 continue;
             }
-            let Some(obstacle_shape) = obstacle.get_tree_shape(default_tree, entry.shape_index)
+            // RoutingBoardSearchFacade.java:76-78: `getTreeShape(defaultTree, index)`, which
+            // recomputes if the item's cache was dropped since insertion (Item.java:212-226).
+            let Some(obstacle_shape) =
+                self.item_tree_shape_ref(obstacle_id, default_tree, entry.shape_index)
             else {
                 continue;
             };
-            let obstacle_shape = obstacle_shape.clone();
+            let obstacle_shape = obstacle_shape.into_owned();
+            let obstacle = &self.items[&obstacle_id];
             // RoutingBoardSearchFacade.java:82-93.
             let (current_offset_shape, shorten_value) = if compensation_used {
                 let compensation = self
@@ -695,7 +703,14 @@ impl Board {
     ) -> Option<ItemId> {
         let ctx = self.ctx();
         let point_shape = TileShape::Box(TileShape::get_instance_from_point(location));
-        let found_items = self.overlapping_items(&Area::Shape(point_shape.into()), layer);
+        // `BasicBoard.overlappingItems` answers a `TreeSet<Item>`, i.e. **descending id**
+        // (quirk #44), and the order decides which of two equidistant candidates wins the
+        // `currentDistance < minDist` test (RoutingBoardSearchFacade.java:185,193).
+        let found_items: Vec<ItemId> = self
+            .overlapping_items(&Area::Shape(point_shape.into()), layer)
+            .into_iter()
+            .rev()
+            .collect();
         let pick_location = location.to_float();
         let mut min_dist = f64::from(i32::MAX);
         let mut nearest_item: Option<ItemId> = None;

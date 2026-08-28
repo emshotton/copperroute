@@ -194,7 +194,6 @@ impl Board {
             return result;
         }
         let ctx = self.ctx();
-        let default_tree = self.default_tree_id();
         for i in 0..item.tile_shape_count(&ctx) {
             let shape_layer = item.shape_layer(i, &ctx);
             // Item.java:531-533: the layer overload skips the shapes on other layers.
@@ -203,7 +202,8 @@ impl Board {
             {
                 continue;
             }
-            let Some(shape) = item.get_tile_shape(default_tree, i, &ctx) else {
+            // Item.java:505-506,536-537: `getTileShape(i)`, which recomputes on a cold cache.
+            let Some(shape) = self.item_tile_shape_ref(id, i) else {
                 continue;
             };
             for object in self.overlapping_objects(&shape, Some(shape_layer)) {
@@ -618,9 +618,11 @@ impl Board {
     /// The three-argument overload `getConnectionItems()` (Item.java:693-695) is
     /// `stop_option = None`.
     ///
-    /// The outer loop over `contacts` is order-independent: each iteration walks a chain and
-    /// unions it into `result`, and the chain a contact starts is decided by geometry, not by
-    /// iteration order.
+    /// The outer loop runs over `getNormalContacts()`, a `TreeSet<Item>`, i.e. **descending id**
+    /// (quirk #44) — and the order is load-bearing under
+    /// [`StopConnectionOption::FanoutVia`], because `isFanoutVia(result)` (Item.java:735) reads
+    /// the partially built result set, so which chain is walked first changes what the later
+    /// ones are allowed to cross.
     pub fn connection_items(
         &self,
         id: ItemId,
@@ -635,7 +637,7 @@ impl Board {
         if item.is_routable() {
             result.insert(id);
         }
-        for start_contact in contacts {
+        for start_contact in contacts.into_iter().rev() {
             // Item.java:705-709.
             let Some(mut prev_contact_point) = self.normal_contact_point(id, start_contact) else {
                 continue;

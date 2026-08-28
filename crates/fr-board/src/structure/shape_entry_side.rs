@@ -249,8 +249,11 @@ impl ShapeAndEntrySide {
             return None;
         };
         let search_tree = board.trees.get_default_tree();
-        let item = board.get_item(trace_id)?;
-        let mut current_shape = item.get_tree_shape(search_tree.id(), index)?.clone();
+        // ShapeAndEntrySide.java:28: `trace.getTreeShape(searchTree, index)`, which recomputes if
+        // the trace's cache was dropped since insertion (Item.java:212-226).
+        let mut current_shape = board
+            .item_tree_shape_ref(trace_id, search_tree.id(), index)?
+            .into_owned();
         let mut current_from_side: Option<ShapeEntrySide> = None;
         if orthogonal {
             // ShapeAndEntrySide.java:32-33.
@@ -265,7 +268,13 @@ impl ShapeAndEntrySide {
             if let Some(end_cutline) = end_cutline {
                 let cut_plane = TileShape::get_instance_from_line(end_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                if tmp_shape != current_shape && !tmp_shape.is_empty() {
+                // Java bug: ShapeAndEntrySide.java:41 reads `tmpShape != currentShape &&
+                // !tmpShape.isEmpty()`, but `!=` on two `TileShape` references is *identity*, and
+                // `Simplex.intersection(Simplex)` always allocates (Simplex.java:620-630), so the
+                // first half is always true. The effective condition is just "non-empty" — which
+                // means the cut counts as a cut even when it removed nothing. Reproduced; see
+                // docs/java-quirks.md.
+                if !tmp_shape.is_empty() {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_end = true;
                 }
@@ -275,7 +284,8 @@ impl ShapeAndEntrySide {
             if let Some(start_cutline) = start_cutline {
                 let cut_plane = TileShape::get_instance_from_line(start_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                if tmp_shape != current_shape && !tmp_shape.is_empty() {
+                // Java bug: ShapeAndEntrySide.java:50, the same identity comparison as above.
+                if !tmp_shape.is_empty() {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_start = true;
                 }

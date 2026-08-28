@@ -660,6 +660,35 @@ fn dump_checks(board: &mut Board) {
         "containsTraceTails([4,5], [])={}",
         board.contains_trace_tails([ItemId(4), ItemId(5)], &[])
     );
+
+    // `checkPolylineTrace` builds a temporary `PolylineTrace` (BasicBoard.java:1055-1065) whose
+    // `Item` constructor draws an id from the generator (Item.java:85-90).
+    println!("idBefore={}", board.communication.id_gen.max_generated_id());
+    board.check_polyline_trace(
+        &Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]),
+        0,
+        30,
+        &[1],
+        1,
+    );
+    println!(
+        "idAfterOneCheck={}",
+        board.communication.id_gen.max_generated_id()
+    );
+    let inserted = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-4000, 3000), Point::new(-3000, 3000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    println!(
+        "insertedId={inserted} items={}",
+        ids(board.items_in_board_order())
+    );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1238,6 +1267,17 @@ fn dump_changed_area(board: &mut Board) {
     println!(
         "cl(4)={}",
         board.get_item(ItemId(4)).expect("trace").clearance_class()
+    );
+    // No `validate` in between: `changeClearanceClassIndex` left the trace with tree leaves and
+    // an empty shape cache, so the two queries below have to recompute (Item.java:212-238).
+    let cold_probe = TileShape::Box(IntBox::from_coords(-600, -100, -400, 100));
+    println!(
+        "overlappingObjects after change={}",
+        objects(&board.overlapping_objects(&cold_probe, Some(0)))
+    );
+    println!(
+        "overlappingItemsWithClearance after change={}",
+        ids(board.overlapping_items_with_clearance(&cold_probe, Some(0), &[], 1))
     );
     println!("validate(4)={}", board.validate_item(ItemId(4)));
 

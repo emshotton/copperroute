@@ -216,8 +216,8 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t10` (mode 8) | 39 | 0 | exact match (the `changeOrder` half of both merges: head-to-head, tail-to-tail) |
 | `p2t11` (mode 0) | 59 | 0 | exact match (insert/remove protocol, item-list and search queries) |
 | `p2t11` (mode 1) | 66 | 0 | exact match (the connectivity family) |
-| `p2t11` (mode 2) | 27 | 0 | exact match (`checkTraceSegment` and the check queries) |
-| `p2t11` (mode 3) | 39 | 0 | exact match (changed area, conduction latch, `moveBy`, net queries) |
+| `p2t11` (mode 2) | 30 | 0 | exact match (`checkTraceSegment`, the check queries, and the id `checkPolylineTrace` consumes) |
+| `p2t11` (mode 3) | 41 | 0 | exact match (changed area, conduction latch, `moveBy`, the cold shape cache, net queries) |
 | `p2t11` (mode 4) | 20 | 0 | exact match (host-CAD section width, clearance compensation, 90-degree checks) |
 | `p2t11` (mode 5) | 31 | 0 | exact match (`ShapeTraceEntries`, `ShapeEntrySide`, `ShapeAndEntrySide`) |
 | `p2t11` (mode 6) | 24 | 0 | exact match (cycles/overlaps, `removeIfCycle`, the remaining inserters) |
@@ -274,7 +274,9 @@ The four modes cover:
 * **2** — `checkTraceSegment` (free, blocked, own-net, foreign-net, degenerate,
   shove-filtered and wide-clearance), `checkShape`, `checkTraceShape` with and
   without a contact-pin set, `checkPolylineTrace`, `checkMoveItem`,
-  `checkChangeNet`, `pickNearestRoutingItem`, `getTraceTail`.
+  `checkChangeNet`, `pickNearestRoutingItem`, `getTraceTail` — and the id
+  sequence, because `checkPolylineTrace`'s temporary `PolylineTrace` draws one
+  from the generator even though it is never inserted (Item.java:85-90).
 * **4** — a 90-degree board whose `Communication` names a host CAD system at
   resolution 10, so `ShapeSearchTree.calculateTreeShapes(ObstacleArea)`'s
   section width drops from 50000 to `min(500 * 10, 50000) = 5000`
@@ -283,7 +285,9 @@ The four modes cover:
   again, which is what pins `checkPolylineTrace` taking its temporary trace's
   tile shapes from the tree (compensated) rather than from the bare polyline.
 * **3** — the `ChangedArea` lifecycle, `changeConductionIsObstacle`'s latch
-  (quirk #50), `unfillConductionAreas`, `moveBy`, `changeClearanceClassIndex`,
+  (quirk #50), `unfillConductionAreas`, `moveBy`, `changeClearanceClassIndex`
+  *followed immediately by two queries* (which is what proves `getTreeShape`
+  recomputes a cache that `clearDerivedData` emptied without a re-insert),
   `makeConductive`, `generateKeepoutOutside` and the five `Net` board queries.
 
 * **5** — the shove-support classes Plan 7 needs ready-made: all four
@@ -306,8 +310,10 @@ The four modes cover:
 Two Java findings came out of it, both now in `docs/java-quirks.md`:
 `Item.getAllNetNames` joins `Net::toString` (`"Net #1 (N1)"`), not the bare
 name; and `Item.getTileShape` really does lazily recompute the tree-shape cache
-(Item.java:227-238), which is the only thing that keeps `validate()` true after
-`changeClearanceClassIndex` has cleared the derived data.
+(Item.java:212-238) — which is what keeps every query working, not just
+`validate()`, after `changeClearanceClassIndex` has cleared the derived data.
+Mode 3 pins it with no `validate` in between, so nothing else warms the cache
+first.
 
 ## Harness maintenance note (Task 18)
 

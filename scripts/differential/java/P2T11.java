@@ -482,6 +482,27 @@ public class P2T11 {
     System.out.println(
         "containsTraceTails([4,5], [])="
             + board.containsTraceTails(List.of(board.getItem(4), board.getItem(5)), new int[0]));
+
+    // `checkPolylineTrace` builds a temporary `PolylineTrace` (BasicBoard.java:1055-1065) whose
+    // `Item` constructor draws an id from the generator (Item.java:85-90), so the next real
+    // insert is *not* the id you would get from the item count.
+    System.out.println("idBefore=" + board.communication.idGenerator.maxGeneratedId());
+    board.checkPolylineTrace(
+        new Polyline(new Point[] {new IntPoint(-4000, 4000), new IntPoint(-3000, 4000)}),
+        0,
+        30,
+        new int[] {1},
+        1);
+    System.out.println("idAfterOneCheck=" + board.communication.idGenerator.maxGeneratedId());
+    PolylineTrace inserted =
+        board.insertTraceWithoutCleaning(
+            new Polyline(new Point[] {new IntPoint(-4000, 3000), new IntPoint(-3000, 3000)}),
+            0,
+            30,
+            new int[] {1},
+            1,
+            FixedState.UNFIXED);
+    System.out.println("insertedId=" + inserted.getId() + " items=" + ids(board.getItems()));
   }
 
   // -------------------------------------------------------------------------------------------
@@ -906,6 +927,17 @@ public class P2T11 {
     System.out.println("--- changeClearanceClassIndex(4, 2)");
     board.getItem(4).changeClearanceClassIndex(2);
     System.out.println("cl(4)=" + board.getItem(4).clearanceClassIndex());
+    // Item.changeClearanceClassIndex clears the derived data and, with clearance compensation
+    // off, does *not* re-insert (Item.java:944-949) — so the item keeps its tree leaves with an
+    // empty shape cache, and the next query has to recompute (Item.java:212-238). No `validate`
+    // in between, so nothing else warms the cache first.
+    System.out.println(
+        "overlappingObjects after change="
+            + objectIds(board.overlappingObjects(new IntBox(-600, -100, -400, 100), 0)));
+    System.out.println(
+        "overlappingItemsWithClearance after change="
+            + ids(board.overlappingItemsWithClearance(
+                new IntBox(-600, -100, -400, 100), 0, new int[0], 1)));
     System.out.println("validate(4)=" + board.getItem(4).validate());
 
     System.out.println("--- makeConductive(7, 3)");

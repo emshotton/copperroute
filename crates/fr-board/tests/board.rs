@@ -1056,6 +1056,92 @@ fn move_item_by_moves_the_item_and_its_tree_entries() {
 }
 
 #[test]
+fn a_query_after_change_clearance_class_index_recomputes_the_cold_shape_cache() {
+    // `P2T11.java` mode 3, the two `after change` lines. `Item.changeClearanceClassIndex`
+    // (Item.java:944-949) clears the derived data and, with clearance compensation off, does
+    // **not** re-insert — so the trace keeps its tree leaves with an empty shape cache. Java's
+    // `getTreeShape` recomputes on that miss (Item.java:212-238); the port used to panic.
+    //
+    // No `validate` (or anything else that would warm the cache) runs in between.
+    let mut board = p2t11_board();
+    assert!(!board.trees.is_clearance_compensation_used());
+    assert!(board.change_clearance_class_index(ItemId(4), 0));
+    let probe = TileShape::Box(IntBox::from_coords(-600, -100, -400, 100));
+    let found: Vec<u32> = board
+        .overlapping_objects(&probe, Some(0))
+        .into_iter()
+        .map(|o| match o {
+            TreeObject::Item(id) => id.0,
+            TreeObject::Room(_) => unreachable!(),
+        })
+        .collect();
+    assert_eq!(found, vec![4]);
+    assert_eq!(
+        nums(board.overlapping_items_with_clearance(&probe, Some(0), &[], 1)),
+        vec![4]
+    );
+    // The tree itself still reads the shape, through `ShapeSearchTree::get_tree_shape`.
+    let tree = board.trees.get_default_tree();
+    let item = board.get_item(ItemId(4)).expect("the trace");
+    assert!(tree.get_tree_shape(item, 0, &board.ctx()).is_some());
+    // ... and so do the `&self` board wrappers the connectivity family uses.
+    assert!(board.item_tile_shape_ref(ItemId(4), 0).is_some());
+    assert_eq!(descending(board.all_contacts(ItemId(4))), vec![6, 2]);
+    // Index past the end is still `None` (Item.java:222-224).
+    assert!(board.item_tile_shape_ref(ItemId(4), 9).is_none());
+}
+
+#[test]
+fn check_polyline_trace_consumes_an_item_id_like_javas_temporary_trace() {
+    // `P2T11.java` mode 2's `idBefore` / `idAfterOneCheck` / `insertedId` lines.
+    // `BasicBoard.checkPolylineTrace` builds a `PolylineTrace` it never inserts
+    // (BasicBoard.java:1055-1065), and `Item`'s constructor draws an id for it
+    // (Item.java:85-90) — so the id sequence advances even though the board does not.
+    let mut board = p2t11_board();
+    assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(8));
+    let free = Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]);
+    assert!(board.check_polyline_trace(&free, 0, 30, &[1], 1));
+    assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(9));
+    // Two more checks, two more ids — the count does not depend on the answer.
+    let blocked = Polyline::from_points(&[Point::new(1500, 2500), Point::new(2500, 2500)]);
+    assert!(!board.check_polyline_trace(&blocked, 0, 30, &[1], 1));
+    assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(10));
+    let inserted = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-4000, 3000), Point::new(-3000, 3000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert_eq!(inserted, ItemId(11));
+}
+
+#[test]
+fn connection_items_walks_its_start_contacts_in_descending_id() {
+    // Item.java:700: `getNormalContacts()` is a `TreeSet<Item>`, i.e. descending id (quirk #44),
+    // and under `FANOUT_VIA` the walk reads the partially built `result`
+    // (`isFanoutVia(result)`, Item.java:735), so the order decides membership.
+    //
+    // On the fixture board every option answers the same set, which is what
+    // `P2T11.java` mode 1 pins; this test pins the *order* the outer loop runs in by checking
+    // that the first chain walked is the one seeded by the highest-id contact.
+    let board = p2t11_board();
+    let contacts = board.normal_contacts(ItemId(4));
+    assert_eq!(descending(contacts.clone()), vec![6, 2]);
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::FanoutVia)),
+        vec![6, 5, 4]
+    );
+}
+
+#[test]
 fn change_clearance_class_index_writes_the_class_and_keeps_validate_happy() {
     // `P2T11.java` mode 3: `cl(4)=2`, `validate(4)=true`. Item.java:944-949 clears the derived
     // data, which is what makes `validate` need the lazy tree-shape fill (Item.java:227-238).
@@ -1835,14 +1921,11 @@ fn characterization_board() -> Board {
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers, 10);
     let mut rules = BoardRules::new(layers.clone(), clearance_matrix);
     rules.create_default_net_class();
-    let outline = vec![PolylineShapeRef::Polygon(
-        fr_geometry::PolygonShape::from_points(&[
-            Point::new(0, 0),
-            Point::new(1000, 0),
-            Point::new(1000, 1000),
-            Point::new(0, 1000),
-        ]),
-    )];
+    // BoardServiceCharacterizationTest.java:101: `TileShape.getInstance(0, 0, 1000, 1000)`, an
+    // `IntBox`, not a polygon.
+    let outline = vec![PolylineShapeRef::Tile(TileShape::Box(IntBox::from_coords(
+        0, 0, 1000, 1000,
+    )))];
     Board::new(
         outline,
         0,

@@ -207,7 +207,6 @@ impl ShapeTraceEntries {
 
     /// Port of the private `ShapeTraceEntries.storeTrace` (ShapeTraceEntries.java:323-442).
     fn store_trace(&mut self, board: &Board, trace_id: ItemId) -> bool {
-        let ctx = board.ctx();
         let search_tree = board.trees.get_default_tree();
         let Some(item @ Item::Trace(trace)) = board.get_item(trace_id) else {
             return true;
@@ -277,6 +276,15 @@ impl ShapeTraceEntries {
                     match contact_item {
                         Item::Trace(contact_trace) => {
                             // ShapeTraceEntries.java:379-386.
+                            //
+                            // Java bug: the third disjunct is
+                            // `contactItem.clearanceClassIndex() != contactTrace
+                            // .clearanceClassIndex()` (ShapeTraceEntries.java:381), and
+                            // `contactItem` *is* `contactTrace` — the pattern variable bound one
+                            // line above. It compares an item with itself, so it is always false;
+                            // the intent was plainly `trace.clearanceClassIndex()`, i.e. "the
+                            // contact has a different clearance class from the trace being
+                            // stored". Reproduced; see docs/java-quirks.md.
                             if (contact_item.is_shove_fixed(&board.rules)
                                 || contact_trace.get_half_width() != trace.get_half_width()
                                 || contact_item.clearance_class()
@@ -287,13 +295,23 @@ impl ShapeTraceEntries {
                                 return false;
                             }
                         }
-                        Item::Via(via) => {
+                        Item::Via(_) => {
                             // ShapeTraceEntries.java:387-412.
-                            let Some(via_shape) =
-                                via.get_tile_shape_on_layer(search_tree.id(), self.layer, &ctx)
-                            else {
-                                continue;
-                            };
+                            // ShapeTraceEntries.java:388: `via.getTileShapeOnLayer(layer)`,
+                            // which recomputes on a cold cache (Item.java:212-226). Java has no
+                            // `continue` here — a `null` shape NPEs at `.smallestRadius()` — so
+                            // the `expect` reproduces that rather than silently skipping the
+                            // `++contactCount` below.
+                            let via_shape = board
+                                .drill_item_tile_shape_on_layer_ref(*contact_id, self.layer)
+                                .unwrap_or_else(|| {
+                                    panic!(
+                                        "ShapeTraceEntries.storeTrace: via {contact_id} has no \
+                                         shape on layer {} — Java NPEs here too \
+                                         (ShapeTraceEntries.java:388-391)",
+                                        self.layer
+                                    )
+                                });
                             let mut via_trace_diff = via_shape.smallest_radius()
                                 - f64::from(
                                     search_tree.compensated_half_width(trace, &board.rules),

@@ -2,6 +2,7 @@
 //! `ShapeSearchTree45Degree.java` and `ShapeSearchTree90Degree.java`, collapsed into one
 //! angle-parameterised type (see the module docs for the mapping table).
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 
 use fr_geometry::bounding_directions::ShapeBoundingDirections;
@@ -712,28 +713,66 @@ impl ShapeSearchTree {
         }
     }
 
-    /// The stored tree shape of an object already in this tree.
+    /// Port of `Item.getTreeShape(ShapeTree, int)` (Item.java:212-226) **including its lazy
+    /// recompute**: the cached shape when there is one, and otherwise the value
+    /// `getPrecalculatedTreeShapes` would have computed and stored (Item.java:227-238).
     ///
-    /// Java writes `currentObject.getTreeShape(this, index)` (Item.java:212-226), which
-    /// recomputes on a miss. Every object with a leaf in this tree was warmed by
-    /// [`Self::insert_item`], and its shapes are dropped only together with its entries, so a
-    /// miss here means the tree and the item list disagree.
+    /// Java stores what it recomputes; this cannot, because the item is borrowed immutably —
+    /// so a cold cache costs a `calculateTreeShapes` per call instead of one per item.
+    /// [`crate::Board::item_tree_shape`] is the `&mut` variant that does store, and every
+    /// `&mut self` board method uses it. The only way to reach a cold cache at all is an item
+    /// whose `clearDerivedData()` ran without a re-insert — `Item.changeClearanceClassIndex`
+    /// with clearance compensation off (Item.java:944-949) is the one board-level path that
+    /// does that.
+    ///
+    /// `None` for Java's two `null` returns: an index past the end even after the recompute,
+    /// and a `null` element (a drill layer with no pad and no synthesised hole obstacle,
+    /// ShapeSearchTree.java:882).
+    pub fn get_tree_shape<'a>(
+        &self,
+        item: &'a Item,
+        index: usize,
+        ctx: &ItemCtx<'_>,
+    ) -> Option<Cow<'a, TileShape>> {
+        // Item.java:218-221: an out-of-range index drops the derived data and recomputes once.
+        // With nothing else cached to drop, that is just the recompute below.
+        if let Some(shapes) = item.header().get_precalculated_tree_shapes(self.id)
+            && index < shapes.len()
+        {
+            return shapes[index].as_ref().map(Cow::Borrowed);
+        }
+        let mut shapes = self.calculate_tree_shapes(item, ctx);
+        if index >= shapes.len() {
+            return None;
+        }
+        shapes.swap_remove(index).map(Cow::Owned)
+    }
+
+    /// The tree shape of an object already in this tree, recomputing it if the item's cache was
+    /// dropped since insertion — see [`Self::get_tree_shape`], which this is
+    /// `currentObject.getTreeShape(this, index)` (e.g. ShapeSearchTree.java:424,499).
     fn tree_shape_of<'a>(
         &self,
         entry: TreeEntry<TreeObject>,
         items: &'a impl ItemLookup,
-    ) -> &'a TileShape {
+        ctx: &ItemCtx<'_>,
+    ) -> Cow<'a, TileShape> {
         match entry.object {
-            TreeObject::Item(id) => items
-                .item(id)
-                .and_then(|item| item.get_tree_shape(self.id, entry.shape_index))
-                .unwrap_or_else(|| {
-                    panic!(
-                        "ShapeSearchTree: item {id} has a leaf for shape {} in tree {:?} but no \
-                         cached shape for it",
-                        entry.shape_index, self.id
-                    )
-                }),
+            TreeObject::Item(id) => {
+                let item = items.item(id).unwrap_or_else(|| {
+                    panic!("ShapeSearchTree: item {id} has a leaf but is not in the item list")
+                });
+                self.get_tree_shape(item, entry.shape_index, ctx)
+                    .unwrap_or_else(|| {
+                        // Java hands the `null` straight to `intersects`/`enlarge` and throws a
+                        // NullPointerException; a leaf without a shape is the same inconsistency.
+                        panic!(
+                            "ShapeSearchTree: item {id} has a leaf for shape {} in tree {:?} but \
+                             no shape for it — Java NPEs here too",
+                            entry.shape_index, self.id
+                        )
+                    })
+            }
             // added in Plan 6: `CompleteFreeSpaceExpansionRoom.getTreeShape`
             // (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java) — rooms are inserted
             // into this same tree by the autorouter (plan-rulings.md #2), which Plan 6 adds.
@@ -808,11 +847,11 @@ impl ShapeSearchTree {
                 if self.ignore_object(*entry, layer, ignore_net_nos, items, ctx) {
                     return false;
                 }
-                let current_shape = self.tree_shape_of(*entry, items);
+                let current_shape = self.tree_shape_of(*entry, items, ctx);
                 // ShapeSearchTree.java:421-427: for two octagons the bounds test already
                 // decided it, so Java skips the intersection check "for performance reasons".
                 // `currentShape instanceof IntOctagon` is again a type test.
-                if is_45_degree && matches!(current_shape, TileShape::Octagon(_)) {
+                if is_45_degree && matches!(*current_shape, TileShape::Octagon(_)) {
                     return true;
                 }
                 current_shape.intersects(shape)
@@ -948,7 +987,7 @@ impl ShapeSearchTree {
                 current_half_clearance = tmp_half_clearance;
                 current_offset_shape = shape.enlarge(f64::from(current_half_clearance));
             }
-            let tmp_shape = self.tree_shape_of(sorted.entry, items);
+            let tmp_shape = self.tree_shape_of(sorted.entry, items, ctx);
             let tmp_offset_shape = tmp_shape.enlarge(f64::from(current_half_clearance));
             if current_offset_shape.intersects(&tmp_offset_shape) {
                 result.push(sorted.entry);
