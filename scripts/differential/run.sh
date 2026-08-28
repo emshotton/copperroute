@@ -17,7 +17,7 @@ OUT="$BUILD/classes"
 
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
-  echo "  drivers: t14, t15, t16r, e15, d17" >&2
+  echo "  drivers: t14, t15, t16r, e15, d17, p2t3" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -27,12 +27,29 @@ driver="${1:-}"
 [[ -n "$driver" ]] || usage
 shift
 
+# `javapkg` is the driver's Java package; `golden` is set only for drivers that
+# have no Rust twin binary — those diff Java against a checked-in expected
+# output instead of against a freshly built Rust program.
+javapkg="geometry.planar"
+golden=""
+extra_java_sources=()
 case "$driver" in
   t14) javaclass=T14; default_args=(200) ;;
   t15) javaclass=T15; default_args=(200 42) ;;
   t16r) javaclass=T16R; default_args=(200 42 0) ;;
   e15) javaclass=E15; default_args=() ;;
   d17) javaclass=D17; default_args=(200 0) ;;
+  p2t3)
+    javaclass=P2T3
+    javapkg="datastructures"
+    default_args=()
+    golden="$DIFF_ROOT/P2T3.expected.out"
+    extra_java_sources=(
+      "$JAVA_DIR/datastructures/ShapeTree.java"
+      "$JAVA_DIR/datastructures/MinAreaTree.java"
+      "$JAVA_DIR/datastructures/ArrayStack.java"
+    )
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -59,24 +76,36 @@ fi
 
 echo "== compiling Java ($javaclass) against $JAVA_DIR =="
 mkdir -p "$OUT"
-"$JAVAC" -d "$OUT" \
-  "$JAVA_DIR"/geometry/planar/*.java \
-  "$JAVA_DIR"/datastructures/Signum.java \
-  "$JAVA_DIR"/datastructures/BigIntAux.java \
-  "$JAVA_DIR"/datastructures/Stoppable.java \
-  "$DIFF_ROOT/java/support/FRLogger.java" \
-  "$DIFF_ROOT/java/$javaclass.java"
-
-echo "== building Rust twin ($driver) =="
-(cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
-RUST_BIN="$DIFF_ROOT/rust/target/release/$driver"
+javac_sources=(
+  "$JAVA_DIR"/geometry/planar/*.java
+  "$JAVA_DIR/datastructures/Signum.java"
+  "$JAVA_DIR/datastructures/BigIntAux.java"
+  "$JAVA_DIR/datastructures/Stoppable.java"
+)
+for extra in ${extra_java_sources+"${extra_java_sources[@]}"}; do
+  javac_sources+=("$extra")
+done
+javac_sources+=("$DIFF_ROOT/java/support/FRLogger.java" "$DIFF_ROOT/java/$javaclass.java")
+"$JAVAC" -d "$OUT" "${javac_sources[@]}"
 
 j_out="$BUILD/$driver.j.out"
 r_out="$BUILD/$driver.r.out"
 
-echo "== running ($driver ${args[*]:-}) =="
-"$JAVABIN" -cp "$OUT" "app.freerouting.geometry.planar.$javaclass" "${args[@]}" >"$j_out"
-"$RUST_BIN" "${args[@]}" >"$r_out"
+if [[ -n "$golden" ]]; then
+  # No Rust twin: the Rust side of this driver is a `cargo test` integration
+  # test, so compare the Java run against the checked-in expected output.
+  echo "== running ($driver ${args[*]:-}) =="
+  "$JAVABIN" -cp "$OUT" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
+  cp "$golden" "$r_out"
+else
+  echo "== building Rust twin ($driver) =="
+  (cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
+  RUST_BIN="$DIFF_ROOT/rust/target/release/$driver"
+
+  echo "== running ($driver ${args[*]:-}) =="
+  "$JAVABIN" -cp "$OUT" "app.freerouting.$javapkg.$javaclass" "${args[@]}" >"$j_out"
+  "$RUST_BIN" "${args[@]}" >"$r_out"
+fi
 
 echo "== diffing =="
 if diff -q "$j_out" "$r_out" >/dev/null; then

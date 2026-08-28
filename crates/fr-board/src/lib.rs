@@ -7,11 +7,13 @@
 //! `FRLogger` calls from the Java source are dropped during porting, and invariant-guard logs
 //! become `debug_assert!`.
 
+pub mod datastructures;
 pub mod error;
 pub mod ids;
 pub mod rules;
 pub mod structure;
 
+pub use datastructures::{LeafId, Node, NodeId, ShapeTree, StopCheck, TimeLimit, TreeEntry};
 pub use error::BoardError;
 pub use ids::{
     ItemId, ItemIdGenerator, NetClassId, PadstackId, RoomId, TreeId, TreeObject, ViaInfoId,
@@ -28,7 +30,8 @@ pub mod prelude {
     pub use crate::{
         AngleRestriction, BoardError, BoardRules, ClearanceClassIndexed, ClearanceMatrix,
         DefaultItemClearanceClasses, FixedState, ItemClass, ItemId, ItemIdGenerator, Layer,
-        LayerStructure, Net, NetClass, NetClassId, NetClasses, Nets, PadstackId, PadstackLookup,
-        RoomId, TreeId, TreeObject, Unit, ViaInfo, ViaInfoId, ViaInfos, ViaRule, ViaRuleId,
+        LayerStructure, LeafId, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId,
+        PadstackId, PadstackLookup, RoomId, ShapeTree, StopCheck, TimeLimit, TreeEntry, TreeId,
+        TreeObject, Unit, ViaInfo, ViaInfoId, ViaInfos, ViaRule, ViaRuleId,
     };
 }
