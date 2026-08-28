@@ -1078,9 +1078,10 @@ pub fn set_clearance_rule(
             continue;
         }
         let current_pair: [String; 2] = if rule.clearance_class_pairs.len() == 2 {
-            // Java bug: this branch ignores `currentString` entirely and re-reads the first two
-            // entries of the whole list on **every** iteration (Structure.java:734-744), so a
-            // two-entry `(type a b)` applies the same pair twice; and the `for i` loop that
+            // Java bug: Structure.setClearanceRule — this branch ignores `currentString` entirely
+            // and re-reads the first two entries of the whole list on **every** iteration
+            // (Structure.java:734-744), so a two-entry `(type a b)` applies the same pair
+            // twice; and the `for i` loop that
             // strips the quotes tests `currentPair[1]`'s leading `_` on both iterations, i.e.
             // once before `currentPair[1]`'s own quotes have been stripped and once after.
             // Reproduced verbatim.
@@ -1333,7 +1334,7 @@ fn create_board(
         .bounding_shape
         .as_ref()
         .expect("assigned just above when it was None");
-    // totalized: the same `Shape.boundingBox()` null as above (Structure.java:1169).
+    // totalized: Structure.createBoard — the same `Shape.boundingBox()` null as above (:1169).
     let Some(bounding_box) = bounding_shape.bounding_box() else {
         p.board_outline_ok = false;
         return Ok(false);
@@ -1366,7 +1367,7 @@ fn create_board(
     }
     // make scalefactor smaller, if there is a danger of integer overflow.
     //
-    // Java bug: `scaleFactor` is an `int` and `/= 10` is **integer** division
+    // Java bug: Structure.createBoard — `scaleFactor` is an `int` and `/= 10` is **integer** division
     // (Structure.java:1211-1214), so it truncates to 0 as soon as the loop runs more times than
     // the resolution has decimal digits — which happens for any board whose boundary reaches
     // `CRIT_INT / 5 == 6_710_886` in DSN units, whatever the resolution. `CoordinateTransform`
