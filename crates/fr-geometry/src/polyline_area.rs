@@ -42,17 +42,19 @@ impl PolylineArea {
     /// Java's `dividePiece.cutout(holePiece)` returns `null` when `holePiece` is a `Simplex` of
     /// dimension < 2 (Simplex.java:706-710), and the loop that follows raises a
     /// `NullPointerException`; this port keeps that crash observable instead of inventing a
-    /// value, panicking when `cutout` answers `None`. See the `// totalized:` note below.
+    /// value, panicking when `cutout` answers `None`. See the panic below.
     fn cutout_hole_piece(
         divide_piece: &TileShape,
         hole_piece: &TileShape,
         pieces: &mut Vec<TileShape>,
     ) {
-        // totalized: Java raises a NullPointerException on `resultPieces.length` when
-        // `TileShape.cutout` answers null (a hole piece that is a Simplex of dimension < 2).
-        // `PolylineArea.splitToConvex` filters hole *shapes* of dimension < 2 one level up
+        // Java raises a NullPointerException on `resultPieces.length` when `TileShape.cutout`
+        // answers null (a hole piece that is a Simplex of dimension < 2). `PolylineArea.
+        // splitToConvex` filters hole *shapes* of dimension < 2 one level up
         // (PolylineArea.java:177-180), but not the individual convex pieces, so the panic below
-        // keeps the crash observable rather than inventing a value.
+        // keeps the crash observable rather than inventing a value. Not a `// totalized:` case
+        // (that tag is for crash->value divergences; this is crash->panic, i.e. the crash stays
+        // a crash).
         let result_pieces = divide_piece
             .cutout(hole_piece)
             .expect("TileShape.cutout returned null: the hole piece is a Simplex of dimension < 2");

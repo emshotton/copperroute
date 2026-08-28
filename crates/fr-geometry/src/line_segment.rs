@@ -421,8 +421,6 @@ impl LineSegment {
     /// # Panics
     /// When the computed stair width rounds to 0, exactly where Java throws
     /// `ArithmeticException: / by zero`.
-    // not ported: LineSegment.stairApproximation45 — implemented as stair_approximation_45
-    // below; audit-script false positive (trailing-digit camelCase).
     pub fn stair_approximation_45(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
         let start_point = self.start_point().to_float().round();
         let end_point = self.end_point().to_float().round();

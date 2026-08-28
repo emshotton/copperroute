@@ -1,6 +1,11 @@
 [package]
 name = "fr-geometry-differential"
 version = "0.1.0"
+# Kept at 2021, not the repo-wide 2024: edition 2024 reserves `gen` as a
+# keyword, and t14.rs/t15.rs both use `gen` as a function name (ported
+# verbatim from the scratch harness). This package is excluded from every
+# workspace-wide gate (fmt/clippy/test), so the edition mismatch has no
+# effect on those.
 edition = "2021"
 publish = false
 

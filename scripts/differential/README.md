@@ -35,8 +35,10 @@ methods with dozens of branches.
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` by path and
   builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`, `e15`, `d17`.
-- `run.sh <driver> [seed]` — compiles the requested Java driver against the
-  real sources, builds the matching Rust binary, runs both, and diffs stdout.
+- `run.sh <driver> [args...]` — compiles the requested Java driver against
+  the real sources, builds the matching Rust binary, runs both (passing
+  `args` through unchanged to each side, or a per-driver default smoke run
+  if none are given), and diffs stdout.
 
 ## Running it
 
@@ -47,9 +49,17 @@ Requirements:
   repo's root (override with `FREEROUTING_JAVA_DIR`).
 
 ```sh
-./scripts/differential/run.sh t15 42     # LineSegment, seed 42
-./scripts/differential/run.sh d17        # PolygonShape/PolylineArea/Circle
+./scripts/differential/run.sh t15               # LineSegment, default smoke run (200 iters, seed 42)
+./scripts/differential/run.sh t15 2000 12345    # LineSegment, 2000 iters, seed 12345
+./scripts/differential/run.sh d17               # PolygonShape/PolylineArea/Circle, mode 0
+./scripts/differential/run.sh d17 200 2         # ...mode 2 (Circle)
 ```
+
+Extra arguments **replace** the whole default list, not just one field — for
+`t15` that means passing a bare iteration count on its own
+(`run.sh t15 2000`) leaves the required `seed` argument missing and Java
+exits with `ArrayIndexOutOfBoundsException`. Pass every positional argument
+the driver expects, or none at all.
 
 `run.sh`:
 1. Compiles the driver together with the real `geometry/planar/*.java`, the
@@ -57,25 +67,67 @@ Requirements:
    and the local `FRLogger` stand-in, into `build/classes/`.
 2. Builds the matching Rust binary (`cargo build --release --bin <driver>`
    inside `rust/`).
-3. Runs both (fixed argument conventions per driver — see `run.sh`; the
-   `seed` argument only applies to `t15` and `t16r`, which take a runtime
-   seed on both sides) and diffs `build/<driver>.j.out` against
-   `build/<driver>.r.out`.
+3. Runs both, passing through whatever arguments follow `<driver>` on the
+   command line to *both* sides unchanged, and diffs `build/<driver>.j.out`
+   against `build/<driver>.r.out`. With no extra arguments each driver falls
+   back to a fixed default — a **smoke run**, not full coverage — defined at
+   the top of `run.sh`: `t14 200`, `t15 200 42`, `t16r 200 42 0`, `e15` (no
+   arguments), `d17 200 0`.
 
 `build/` and `rust/target/` are gitignored scratch output.
 
+### Per-driver arguments and mode coverage
+
+- `t14 <iters>` — `Simplex`. No mode/seed argument (the seed is a fixed
+  constant baked into both the Java and Rust generators).
+- `t15 <iters> <seed> [c]` — `LineSegment`. `seed` and the optional shape
+  constant `c` are both read on the Java and the Rust side.
+- `t16r <iters> <seed> <mode>` — `Polyline`. Modes `0`, `1`, and `4` all
+  exercise the same general polyline-fuzzing path with different point-count
+  profiles (verified: all three reproduce the same category of diffs, see
+  below); mode `3` exercises a distinct, smaller "pool of shared points"
+  scenario and — verified — matches Java exactly (0 diffs over 400 lines at
+  seed 42).
+- `e15` — `LineSegment.stairApproximation` edge cases. No arguments; it's a
+  fixed sequence of edge-case calls, not seeded generation.
+- `d17 <cases> <mode>` — `PolygonShape`/`PolylineArea`/`Circle`. Java's
+  `D17.java` only branches explicitly on mode `0` (polygon) and `1`
+  (polyline area); every other mode value, including `2`, falls through to
+  its final `else`, which is the `Circle` case (`D17.java`'s own comment
+  reads `// 0 = polygon, 1 = polyline area, 2 = circle`, but `2` isn't a
+  distinct branch — it's just what falls through). `d17.rs` mirrors that
+  exact structure: explicit `mode == 0`/`mode == 1` branches, then an
+  unconditional `else` that is `Circle`. **Verified** by running
+  `run.sh d17 200 <mode>` for `mode` in `0`, `1`, `2`: all three **match
+  exactly**. The one mode that does *not* match is `3` — see "Harness
+  maintenance note" below; Java's placeholder for the never-real
+  `splitPiecesForDiff` branch and Rust's `Circle` fallthrough disagree, so
+  avoid `mode 3` when running `d17` by hand.
+
 ## Known, expected diffs
 
-`d17` matches exactly. `t14`, `t15`, `t16r`, and `e15` still report a handful
-of diff lines — all of them already-documented, deliberate divergences from
-`docs/java-quirks.md`'s `totalized` section (e.g. `Simplex.EMPTY` edge cases,
-`LineSegment.stairApproximation` on a non-positive width) plus one purely
-cosmetic difference: the Java drivers tag a caught exception with its real
-class name (`EXC:ArithmeticException`), while the Rust drivers catch a panic
-via `catch_unwind` and can only report `EXC:panic` (Rust panics don't carry a
-Java-style exception type). Neither is a regression; re-run after any future
-`geometry/planar` change and compare new diff lines against
-`docs/java-quirks.md` before treating them as bugs.
+Verified at HEAD, default smoke-run arguments, JDK 23:
+
+| driver | lines | diff lines | classification |
+|---|---|---|---|
+| `d17` (mode 0) | 200 | 0 | exact match |
+| `e15` | 16 | 3 | `LineSegment.stairApproximation`/`45` on a non-finite width (quirk #21) |
+| `t15` (seed 42) | 11747 | 44 | 42 cosmetic (`EXC:ArithmeticException` vs `EXC:panic`, see below) + 2 sign-of-zero in `LineSegment.startPointApprox`/`endPointApprox` (quirk #14) |
+| `t16r` (mode 0, seed 42) | 9200 | 72 | all `lineSegment`/`offsetBox` fields: `LineSegment(Polyline, no)` with `no` out of its valid range (Java constructs a degenerate object with null internal lines that later NPEs; Rust's `LineSegment::from_polyline`/`Polyline::offset_box` return `None` up front — the `offsetBox` case is the `Polyline.offsetBox(halfWidth, no)` row in the `totalized` table) |
+| `t14` | 17997 | 145 | `Simplex.EMPTY` / degenerate-shape edge cases already in the `totalized` table |
+
+Every diff line traces to an already-documented, deliberate divergence in
+`docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
+difference that recurs across every driver: the Java drivers tag a caught
+exception with its real class name (`EXC:ArithmeticException`,
+`EXC:NullPointerException`, ...), while the Rust drivers catch a panic via
+`catch_unwind` and can only report the generic `EXC:panic` (a Rust panic
+doesn't carry a Java-style exception type). Neither is a regression; re-run
+after any future `geometry/planar` change and compare new diff lines against
+`docs/java-quirks.md` before treating them as bugs — and re-run with a
+different seed/iteration count (not just the smoke-run default) for anything
+touching the classes above, since the default only samples a few hundred
+cases.
 
 ## Harness maintenance note (Task 18)
 
