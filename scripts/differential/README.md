@@ -40,7 +40,9 @@ methods with dozens of branches.
     mode 3 adds the clearance matrix, `clearanceCompensationValue`,
     `changeItemShape`, `changeEntries` and `setClearanceCompensationUsed`, and
     mode 4 covers obstacle/conduction areas, both `BoardOutline` branches and
-    the synthesised drill-hole obstacle.
+    the synthesised drill-hole obstacle, mode 5 the three entry-surgery methods
+    and mode 6 `reduceTraceShapeAtTiePin`. Together the seven modes reach every
+    public `ShapeSearchTree` method except `completeShape`/`divideLargeRoom`.
     `crates/fr-board/tests/{board_builder,search_tree}.rs` were written from
     this driver's output.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
@@ -162,14 +164,16 @@ the driver expects, or none at all.
   (default 62) is the share of insert ops, the rest split between re-keying and
   removal.
 - `p2t10 <mode>` — `ShapeSearchTree`/`SearchTreeManager`. `mode` is `0` for a
-  45-degree board, `1` for 90-degree, `2` for no angle restriction, `3` for
-  the clearance matrix plus the in-place mutation methods, and `4` for a
-  three-layer board with a real outline polygon, an obstacle area, a conduction
-  area and a via whose middle layer has no pad. Run **all five**: modes 0-2
-  differ only in which subclass `getAutorouteTree` builds (the whole point of
-  the angle-parameterised port), and mode 4 is the only one that reaches
-  `calculateTreeShapes(ObstacleArea)`, `calculateTreeShapes(BoardOutline)` —
-  both branches — and the `drillHoleObstacle`/`drillHoleClearanceDelta` pair.
+  45-degree board, `1` for 90-degree, `2` for no angle restriction, `3` for the
+  clearance matrix plus `changeItemShape`/`changeEntries`/
+  `setClearanceCompensationUsed`, `4` for a three-layer board with a real
+  outline polygon, an obstacle area, a conduction area and a via whose middle
+  layer has no pad, `5` for `mergeEntriesAtEnd`/`mergeEntriesInFront`/
+  `reuseEntriesAfterCutout`, and `6` for `reduceTraceShapeAtTiePin`. Run **all
+  seven**: between them they reach every public `ShapeSearchTree` method except
+  `completeShape`/`divideLargeRoom` (Plan 6). Modes 0-2 differ only in which
+  subclass `getAutorouteTree` builds, which is the whole point of the
+  angle-parameterised port.
 - `d17 <cases> <mode>` — `PolygonShape`/`PolylineArea`/`Circle`. Java's
   `D17.java` only branches explicitly on mode `0` (polygon) and `1`
   (polyline area); every other mode value, including `2`, falls through to
@@ -203,6 +207,8 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t10` (mode 2) | 88 | 0 | exact match (no angle restriction, base-class `enlarge`) |
 | `p2t10` (mode 3) | 68 | 0 | exact match (mutators + clearance compensation) |
 | `p2t10` (mode 4) | 80 | 0 | exact match (areas, both outline branches, drill-hole obstacle) |
+| `p2t10` (mode 5) | 54 | 0 | exact match (the three entry-surgery methods) |
+| `p2t10` (mode 6) | 33 | 0 | exact match (`reduceTraceShapeAtTiePin`) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic

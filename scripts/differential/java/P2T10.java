@@ -26,6 +26,16 @@ public class P2T10 {
       dumpAreas();
       return;
     }
+    if (mode == 5) {
+      buildTraces();
+      dumpTraces();
+      return;
+    }
+    if (mode == 6) {
+      build(0);
+      dumpTiePin();
+      return;
+    }
     build(mode);
     if (mode == 3) {
       mutate();
@@ -177,6 +187,162 @@ public class P2T10 {
 
     TileShape probe = new IntBox(500, -500, 1500, 1500);
     query("default_keepout", board.searchTreeManager.getDefaultTree(), probe, 0, new int[0], 1);
+  }
+
+  static PolylineTrace traceA;
+  static PolylineTrace traceB;
+
+  /** Mode 5: the three "used internally for performance improvement" entry-surgery methods. */
+  static void buildTraces() {
+    Layer[] layers = {new Layer("front", true), new Layer("back", true)};
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
+    BoardRules rules = new BoardRules(ls, cm);
+    Communication comm = new Communication();
+    IntBox bbox = new IntBox(-10000, -10000, 10000, 10000);
+    board = new BasicBoard(bbox, ls, new PolylineShape[0], 0, rules, comm);
+    board.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    board.library.packages = new app.freerouting.core.library.Packages(board.library.padstacks);
+
+    // Two traces meeting head-to-tail at (0, 400).
+    traceA =
+        board.insertTraceWithoutCleaning(
+            new Polyline(
+                new Point[] {new IntPoint(-500, 0), new IntPoint(0, 0), new IntPoint(0, 400)}),
+            0,
+            30,
+            new int[] {1},
+            1,
+            FixedState.UNFIXED);
+    traceB =
+        board.insertTraceWithoutCleaning(
+            new Polyline(
+                new Point[] {
+                  new IntPoint(0, 400), new IntPoint(500, 400), new IntPoint(500, 900)
+                }),
+            0,
+            30,
+            new int[] {1},
+            1,
+            FixedState.UNFIXED);
+  }
+
+  static void dumpTraces() {
+    ShapeSearchTree def = board.searchTreeManager.getDefaultTree();
+    System.out.println("mode=5");
+    System.out.println(
+        "traceA shapes=" + traceA.tileShapeCount() + " traceB shapes=" + traceB.tileShapeCount());
+    dumpTree("before", def);
+
+    Polyline joined =
+        new Polyline(
+            new Point[] {
+              new IntPoint(-500, 0),
+              new IntPoint(0, 0),
+              new IntPoint(0, 400),
+              new IntPoint(500, 400),
+              new IntPoint(500, 900)
+            });
+    System.out.println("joined lines=" + joined.lines.length);
+    System.out.println("--- mergeEntriesAtEnd(from=traceB, to=traceA, joined, 1, 4)");
+    def.mergeEntriesAtEnd(traceB, traceA, joined, 1, 4);
+    dumpTree("after_mergeAtEnd", def);
+    System.out.println("validateEntries(traceA)=" + def.validateEntries(traceA));
+    System.out.println(
+        "traceA treeShapeCount=" + traceA.treeShapeCount(def)
+            + " traceB treeShapeCount=" + traceB.treeShapeCount(def));
+
+    // A fresh board for mergeEntriesInFront, whose index arithmetic is the mirror image.
+    buildTraces();
+    def = board.searchTreeManager.getDefaultTree();
+    System.out.println("--- mergeEntriesInFront(from=traceA, to=traceB, joined, 1, 4)");
+    def.mergeEntriesInFront(traceA, traceB, joined, 1, 4);
+    dumpTree("after_mergeInFront", def);
+    System.out.println("validateEntries(traceB)=" + def.validateEntries(traceB));
+    System.out.println(
+        "traceA treeShapeCount=" + traceA.treeShapeCount(def)
+            + " traceB treeShapeCount=" + traceB.treeShapeCount(def));
+
+    // A third board for reuseEntriesAfterCutout: a five-corner trace cut in the middle, with the
+    // two pieces built directly (they are not on the board yet, exactly as
+    // ShapeTraceEntries.fastCutoutTrace builds them).
+    buildTraces();
+    def = board.searchTreeManager.getDefaultTree();
+    PolylineTrace longTrace =
+        board.insertTraceWithoutCleaning(
+            new Polyline(
+                new Point[] {
+                  new IntPoint(-1000, -1000),
+                  new IntPoint(-1000, 0),
+                  new IntPoint(0, 0),
+                  new IntPoint(0, 1000),
+                  new IntPoint(1000, 1000),
+                  new IntPoint(1000, 2000)
+                }),
+            0,
+            30,
+            new int[] {1},
+            1,
+            FixedState.UNFIXED);
+    System.out.println("--- reuseEntriesAfterCutout(long, start, end)");
+    System.out.println("long shapes=" + longTrace.tileShapeCount());
+    PolylineTrace startPiece =
+        new PolylineTrace(
+            new Polyline(
+                new Point[] {
+                  new IntPoint(-1000, -1000), new IntPoint(-1000, 0), new IntPoint(0, 0)
+                }),
+            0,
+            30,
+            new int[] {1},
+            1,
+            0,
+            0,
+            FixedState.UNFIXED,
+            board);
+    PolylineTrace endPiece =
+        new PolylineTrace(
+            new Polyline(
+                new Point[] {
+                  new IntPoint(0, 1000), new IntPoint(1000, 1000), new IntPoint(1000, 2000)
+                }),
+            0,
+            30,
+            new int[] {1},
+            1,
+            0,
+            0,
+            FixedState.UNFIXED,
+            board);
+    def.reuseEntriesAfterCutout(longTrace, startPiece, endPiece);
+    dumpTree("after_cutout", def);
+    ShapeTree.Leaf[] fromEntries = longTrace.getSearchTreeEntries(def);
+    StringBuilder sb = new StringBuilder("long entries:");
+    for (ShapeTree.Leaf leaf : fromEntries) {
+      sb.append(' ').append(leaf == null ? "null" : objId(leaf.object) + "/" + leaf.shapeIndexInObject);
+    }
+    System.out.println(sb);
+    System.out.println("start entries=" + startPiece.getSearchTreeEntries(def).length
+        + " end entries=" + endPiece.getSearchTreeEntries(def).length);
+    System.out.println("validateEntries(start)=" + def.validateEntries(startPiece)
+        + " validateEntries(end)=" + def.validateEntries(endPiece));
+  }
+
+  /** Mode 6: `reduceTraceShapeAtTiePin`, whose pin sits on the trace's first corner. */
+  static void dumpTiePin() {
+    ShapeSearchTree def = board.searchTreeManager.getDefaultTree();
+    app.freerouting.board.model.items.Pin tiePin =
+        (app.freerouting.board.model.items.Pin) board.getItem(2);
+    PolylineTrace trace = (PolylineTrace) board.getItem(4);
+    System.out.println("mode=6");
+    System.out.println(
+        "pin center=" + tiePin.getCenter() + " trace firstCorner=" + trace.firstCorner());
+    System.out.println("pinShape=" + shp(tiePin.getTreeShapeOnLayer(def, trace.getLayer())));
+    dumpTree("before", def);
+    System.out.println("--- reduceTraceShapeAtTiePin(pin 2, trace 4)");
+    def.reduceTraceShapeAtTiePin(tiePin, trace);
+    dumpTree("after", def);
+    System.out.println("validateEntries(4)=" + def.validateEntries(trace));
   }
 
   static void dump(int mode) {

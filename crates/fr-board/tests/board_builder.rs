@@ -509,3 +509,112 @@ impl Default for AreaFixture {
         Self::new()
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The two-trace board for the entry-surgery methods (`P2T10.java` mode 5)
+// ---------------------------------------------------------------------------------------------
+
+/// Two traces meeting head-to-tail at `(0, 400)`, on a two-layer board with an empty outline —
+/// the fixture `mergeEntriesAtEnd`, `mergeEntriesInFront` and `reuseEntriesAfterCutout` are
+/// exercised on. Ids match `P2T10.java` mode 5: outline 1, `trace_a` 2, `trace_b` 3.
+pub struct TraceFixture {
+    pub library: BoardLibrary,
+    pub components: Components,
+    pub rules: BoardRules,
+    pub bounding_box: IntBox,
+    pub items: BTreeMap<ItemId, Item>,
+    pub manager: SearchTreeManager,
+}
+
+impl TraceFixture {
+    pub fn new() -> TraceFixture {
+        let rules = BoardRules::new(
+            layers(),
+            ClearanceMatrix::get_default_instance(&layers(), 200),
+        );
+        let mut items = BTreeMap::new();
+        items.insert(
+            ItemId(1),
+            Item::BoardOutline(BoardOutline::new(
+                ItemHeader::new(ItemId(1), Vec::new(), 0, 0, FixedState::SystemFixed),
+                Vec::new(),
+            )),
+        );
+        items.insert(
+            ItemId(2),
+            Item::Trace(trace_piece(2, &[(-500, 0), (0, 0), (0, 400)])),
+        );
+        items.insert(
+            ItemId(3),
+            Item::Trace(trace_piece(3, &[(0, 400), (500, 400), (500, 900)])),
+        );
+        let mut fixture = TraceFixture {
+            library: BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+            components: Components::new(),
+            rules,
+            bounding_box: BOUNDING_BOX,
+            items,
+            manager: SearchTreeManager::new(),
+        };
+        let mut items = std::mem::take(&mut fixture.items);
+        let ctx = ItemCtx {
+            library: &fixture.library,
+            components: &fixture.components,
+            rules: &fixture.rules,
+            bounding_box: &fixture.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        for item in items.values_mut() {
+            fixture.manager.insert(item, &ctx);
+        }
+        fixture.items = items;
+        fixture
+    }
+
+    pub fn ctx(&self) -> ItemCtx<'_> {
+        ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        }
+    }
+
+    pub fn take_trace(&mut self, id: u32) -> PolylineTrace {
+        match self.items.remove(&ItemId(id)).expect("a trace") {
+            Item::Trace(trace) => trace,
+            _ => panic!("item {id} is not a trace"),
+        }
+    }
+
+    pub fn put_trace(&mut self, id: u32, trace: PolylineTrace) {
+        self.items.insert(ItemId(id), Item::Trace(trace));
+    }
+
+    pub fn tree(&self) -> &ShapeSearchTree {
+        self.manager.get_default_tree()
+    }
+}
+
+impl Default for TraceFixture {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A half-width-30 trace on layer 0, net 1, clearance class 1.
+pub fn trace_piece(id: u32, corners: &[(i32, i32)]) -> PolylineTrace {
+    PolylineTrace::new(
+        ItemHeader::new(ItemId(id), vec![1], 1, 0, FixedState::Unfixed),
+        Polyline::from_points(
+            &corners
+                .iter()
+                .map(|(x, y)| Point::new(*x, *y))
+                .collect::<Vec<_>>(),
+        ),
+        0,
+        30,
+        None,
+    )
+}

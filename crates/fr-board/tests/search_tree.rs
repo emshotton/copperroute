@@ -1133,3 +1133,242 @@ fn a_drill_layer_without_a_pad_has_no_leaf_when_hole_clearance_is_off() {
         Some(oct(920, -80, 1080, 80, 840, 1160, 840, 1160))
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// The entry-surgery family (`P2T10.java` modes 5 and 6)
+// ---------------------------------------------------------------------------------------------
+
+/// The joined polyline both merge tests hand over: the two fixture traces end to end.
+fn joined_polyline() -> Polyline {
+    Polyline::from_points(&[
+        Point::new(-500, 0),
+        Point::new(0, 0),
+        Point::new(0, 400),
+        Point::new(500, 400),
+        Point::new(500, 900),
+    ])
+}
+
+fn trace_shapes(f: &board_builder::TraceFixture, id: u32) -> Vec<Option<TileShape>> {
+    let tree = f.tree().id();
+    let item = &f.items[&ItemId(id)];
+    (0..item.tree_shape_count(tree))
+        .map(|i| item.get_tree_shape(tree, i).cloned())
+        .collect()
+}
+
+#[test]
+fn merge_entries_at_end_appends_the_source_trace_behind_the_link_shapes() {
+    // P2T10 mode 5. `toTrace` keeps its head entry, the two link shapes are inserted, and
+    // `fromTrace`'s tail entry is re-keyed onto `toTrace` at its new index
+    // (ShapeSearchTree.java:279-296). `fromTrace` keeps its own (now stale) entry array, which
+    // is what the caller removes next.
+    let mut f = board_builder::TraceFixture::new();
+    assert_eq!(f.tree().size(), 4);
+    let mut trace_a = f.take_trace(2);
+    let mut trace_b = f.take_trace(3);
+    let rules_snapshot = f.rules.clone();
+    let tree = f.manager.get_default_tree_mut();
+    tree.merge_entries_at_end(
+        &mut trace_b,
+        &mut trace_a,
+        &joined_polyline(),
+        1,
+        4,
+        &rules_snapshot,
+    );
+    f.put_trace(2, trace_a);
+    f.put_trace(3, trace_b);
+
+    assert_eq!(f.tree().size(), 4);
+    assert_eq!(
+        leaves(f.tree())
+            .into_iter()
+            .map(|(id, index, _)| (id, index))
+            .collect::<Vec<_>>(),
+        vec![(2, 0), (2, 1), (2, 2), (2, 3)],
+        "every leaf now belongs to the target trace"
+    );
+    assert_eq!(
+        trace_shapes(&f, 2),
+        vec![
+            Some(oct(-530, -30, 30, 30, -542, 42, -542, 42)),
+            Some(oct(-30, -30, 30, 430, -442, 42, -42, 442)),
+            Some(oct(-30, 370, 530, 430, -442, 142, 358, 942)),
+            Some(oct(470, 370, 530, 930, -442, 142, 858, 1442)),
+        ]
+    );
+    assert_eq!(trace_shapes(&f, 3).len(), 2);
+    assert!(f.manager.validate_entries(&f.items[&ItemId(2)]));
+}
+
+#[test]
+fn merge_entries_in_front_prepends_the_source_trace_before_the_link_shapes() {
+    // P2T10 mode 5, the mirror image: `fromTrace`'s entries move to the *front* of `toTrace`,
+    // re-keyed onto it (ShapeSearchTree.java:205-216), and `toTrace`'s own tail entries are
+    // renumbered in place (:217-222).
+    let mut f = board_builder::TraceFixture::new();
+    let mut trace_a = f.take_trace(2);
+    let mut trace_b = f.take_trace(3);
+    let rules_snapshot = f.rules.clone();
+    let tree = f.manager.get_default_tree_mut();
+    tree.merge_entries_in_front(
+        &mut trace_a,
+        &mut trace_b,
+        &joined_polyline(),
+        1,
+        4,
+        &rules_snapshot,
+    );
+    f.put_trace(2, trace_a);
+    f.put_trace(3, trace_b);
+
+    assert_eq!(f.tree().size(), 4);
+    assert_eq!(
+        leaves(f.tree())
+            .into_iter()
+            .map(|(id, index, _)| (id, index))
+            .collect::<Vec<_>>(),
+        vec![(3, 0), (3, 1), (3, 2), (3, 3)]
+    );
+    assert_eq!(
+        trace_shapes(&f, 3),
+        vec![
+            Some(oct(-530, -30, 30, 30, -542, 42, -542, 42)),
+            Some(oct(-30, -30, 30, 430, -442, 42, -42, 442)),
+            Some(oct(-30, 370, 530, 430, -442, 142, 358, 942)),
+            Some(oct(470, 370, 530, 930, -442, 142, 858, 1442)),
+        ]
+    );
+    assert!(f.manager.validate_entries(&f.items[&ItemId(3)]));
+}
+
+#[test]
+fn reuse_entries_after_cutout_hands_the_ends_over_and_holes_the_source_array() {
+    // P2T10 mode 5. Only the *first* entry of the start piece and the *last* of the end piece
+    // are transferred (`startPieceLeafArr.length - 1` and the `1..endLen` loop,
+    // ShapeSearchTree.java:323-345); the two leaves at the new cut are minted. The transferred
+    // slots are nulled in the source array, which is exactly the holed `Leaf[]`
+    // `ShapeTree.remove` has to tolerate — the middle entries stay, so removing the source trace
+    // afterwards deletes them and nothing else.
+    let mut f = board_builder::TraceFixture::new();
+    let mut long_item = Item::Trace(board_builder::trace_piece(
+        4,
+        &[
+            (-1000, -1000),
+            (-1000, 0),
+            (0, 0),
+            (0, 1000),
+            (1000, 1000),
+            (1000, 2000),
+        ],
+    ));
+    let ctx = ItemCtx {
+        library: &f.library,
+        components: &f.components,
+        rules: &f.rules,
+        bounding_box: &f.bounding_box,
+        max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+    };
+    f.manager.insert(&mut long_item, &ctx);
+    assert_eq!(f.manager.get_default_tree().size(), 9);
+
+    let Item::Trace(mut long_trace) = long_item else {
+        unreachable!()
+    };
+    let mut start_piece = board_builder::trace_piece(5, &[(-1000, -1000), (-1000, 0), (0, 0)]);
+    let mut end_piece = board_builder::trace_piece(6, &[(0, 1000), (1000, 1000), (1000, 2000)]);
+    f.manager.get_default_tree_mut().reuse_entries_after_cutout(
+        &mut long_trace,
+        &mut start_piece,
+        &mut end_piece,
+        &ctx,
+    );
+
+    let tree_id = f.manager.get_default_tree().id();
+    let from_entries = long_trace
+        .hdr
+        .get_tree_entries(tree_id)
+        .expect("entries")
+        .to_vec();
+    assert_eq!(from_entries.len(), 5);
+    assert!(
+        from_entries[0].is_none(),
+        "index 0 was handed to the start piece"
+    );
+    assert!(
+        from_entries[4].is_none(),
+        "index 4 was handed to the end piece"
+    );
+    assert!(from_entries[1..4].iter().all(Option::is_some));
+    assert_eq!(
+        start_piece
+            .hdr
+            .get_tree_entries(tree_id)
+            .expect("entries")
+            .len(),
+        2
+    );
+    assert_eq!(
+        end_piece
+            .hdr
+            .get_tree_entries(tree_id)
+            .expect("entries")
+            .len(),
+        2
+    );
+    // Two leaves were minted (the two new cut ends), none removed.
+    assert_eq!(f.manager.get_default_tree().size(), 11);
+    assert!(
+        f.manager
+            .get_default_tree()
+            .validate_entries(&Item::Trace(start_piece))
+    );
+    assert!(
+        f.manager
+            .get_default_tree()
+            .validate_entries(&Item::Trace(end_piece))
+    );
+}
+
+#[test]
+fn reduce_trace_shape_at_tie_pin_cuts_the_pin_out_of_the_end_tile() {
+    // P2T10 mode 6: the SMD pin of the main fixture sits exactly on the trace's first corner, so
+    // `reduceTraceShapeAtTiePin` (ShapeSearchTree.java:817-846) cuts the pin's tree shape out of
+    // the trace's first tile. `[-530, -30 .. 30, 30]` becomes `[-450, -30 .. 30, 30]` — the pin
+    // shape reaches to x = -450 — and the leaf is replaced through `changeItemShape`.
+    let mut f = BoardFixture::new();
+    f.insert_all();
+    let id = f.manager.get_default_tree().id();
+
+    let Item::Pin(pin) = f.items[&ItemId(2)].clone() else {
+        panic!("item 2 is the SMD pin")
+    };
+    let Item::Trace(mut trace) = f.items.remove(&ItemId(4)).expect("item 4") else {
+        panic!("item 4 is the signal trace")
+    };
+    {
+        let ctx = ItemCtx {
+            library: &f.library,
+            components: &f.components,
+            rules: &f.rules,
+            bounding_box: &f.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        f.manager
+            .get_default_tree_mut()
+            .reduce_trace_shape_at_tie_pin(&pin, &mut trace, &ctx);
+    }
+    f.items.insert(ItemId(4), Item::Trace(trace));
+
+    assert_eq!(
+        shapes(&f, id, 4),
+        vec![
+            Some(oct(-450, -30, 30, 30, -480, 42, -480, 42)),
+            Some(oct(-30, -30, 30, 430, -442, 42, -42, 442)),
+            Some(oct(-30, 370, 530, 430, -442, 142, 358, 942)),
+        ]
+    );
+    assert_eq!(f.tree(id).size(), 8);
+    assert!(f.manager.validate_entries(&f.items[&ItemId(4)]));
+}

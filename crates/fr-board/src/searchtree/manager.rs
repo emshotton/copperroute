@@ -241,20 +241,17 @@ impl SearchTreeManager {
         items: &mut [&mut Item],
         ctx: &ItemCtx<'_>,
     ) -> &mut ShapeSearchTree {
-        // SearchTreeManager.java:141-145.
-        let existing = if self.default_tree.compensated_clearance_class() == clearance_class_index {
-            Some(usize::MAX)
-        } else {
-            self.compensated
-                .iter()
-                .position(|tree| tree.compensated_clearance_class() == clearance_class_index)
-        };
-        if let Some(index) = existing {
-            return if index == usize::MAX {
-                &mut self.default_tree
-            } else {
-                &mut self.compensated[index]
-            };
+        // SearchTreeManager.java:141-145. Java's `compensatedSearchTrees` includes the default
+        // tree, and it is first in the list, so it is the first candidate here too.
+        if self.default_tree.compensated_clearance_class() == clearance_class_index {
+            return &mut self.default_tree;
+        }
+        if let Some(index) = self
+            .compensated
+            .iter()
+            .position(|tree| tree.compensated_clearance_class() == clearance_class_index)
+        {
+            return &mut self.compensated[index];
         }
 
         // SearchTreeManager.java:147-161.

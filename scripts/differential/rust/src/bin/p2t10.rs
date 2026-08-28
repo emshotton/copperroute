@@ -10,6 +10,7 @@
 use std::collections::BTreeMap;
 
 use fr_board::prelude::*;
+use fr_board::LeafId;
 use fr_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef,
     Shape, Simplex, TileShape, Vector,
@@ -350,6 +351,316 @@ fn dump_areas(board: &mut Board) {
     );
 }
 
+/// Mode 5: the entry-surgery methods. `traceA` is item 2, `traceB` item 3; the empty board
+/// outline keeps item 1, matching `BasicBoard`'s own numbering.
+fn build_traces() -> Board {
+    let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
+    let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+    let rules = BoardRules::new(layers(), clearance_matrix);
+    let mut items = BTreeMap::new();
+    items.insert(
+        ItemId(1),
+        Item::BoardOutline(BoardOutline::new(
+            ItemHeader::new(ItemId(1), Vec::new(), 0, 0, FixedState::SystemFixed),
+            Vec::new(),
+        )),
+    );
+    items.insert(
+        ItemId(2),
+        Item::Trace(PolylineTrace::new(
+            ItemHeader::new(ItemId(2), vec![1], 1, 0, FixedState::Unfixed),
+            Polyline::from_points(&[
+                Point::new(-500, 0),
+                Point::new(0, 0),
+                Point::new(0, 400),
+            ]),
+            0,
+            30,
+            None,
+        )),
+    );
+    items.insert(
+        ItemId(3),
+        Item::Trace(PolylineTrace::new(
+            ItemHeader::new(ItemId(3), vec![1], 1, 0, FixedState::Unfixed),
+            Polyline::from_points(&[
+                Point::new(0, 400),
+                Point::new(500, 400),
+                Point::new(500, 900),
+            ]),
+            0,
+            30,
+            None,
+        )),
+    );
+    let mut board = Board {
+        library: BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        components: Components::new(),
+        rules,
+        bounding_box: BOUNDING_BOX,
+        items,
+        manager: SearchTreeManager::new(),
+    };
+    board.insert_all();
+    board
+}
+
+fn take_trace(board: &mut Board, id: u32) -> PolylineTrace {
+    match board.items.remove(&ItemId(id)).expect("trace") {
+        Item::Trace(trace) => trace,
+        _ => unreachable!(),
+    }
+}
+
+fn dump_traces(board: &mut Board) {
+    let default_id = board.manager.get_default_tree().id();
+    println!("mode=5");
+    let (a, b) = (
+        match &board.items[&ItemId(2)] {
+            Item::Trace(t) => t.tile_shape_count(),
+            _ => unreachable!(),
+        },
+        match &board.items[&ItemId(3)] {
+            Item::Trace(t) => t.tile_shape_count(),
+            _ => unreachable!(),
+        },
+    );
+    println!("traceA shapes={a} traceB shapes={b}");
+    dump_tree(board, "before", default_id);
+
+    let joined = Polyline::from_points(&[
+        Point::new(-500, 0),
+        Point::new(0, 0),
+        Point::new(0, 400),
+        Point::new(500, 400),
+        Point::new(500, 900),
+    ]);
+    println!("joined lines={}", joined.lines().len());
+    println!("--- mergeEntriesAtEnd(from=traceB, to=traceA, joined, 1, 4)");
+    let mut trace_a = take_trace(board, 2);
+    let mut trace_b = take_trace(board, 3);
+    {
+        let rules = &board.rules;
+        board.manager.get_default_tree_mut().merge_entries_at_end(
+            &mut trace_b,
+            &mut trace_a,
+            &joined,
+            1,
+            4,
+            rules,
+        );
+    }
+    board.items.insert(ItemId(2), Item::Trace(trace_a));
+    board.items.insert(ItemId(3), Item::Trace(trace_b));
+    dump_tree(board, "after_mergeAtEnd", default_id);
+    println!(
+        "validateEntries(traceA)={}",
+        board
+            .tree(default_id)
+            .validate_entries(&board.items[&ItemId(2)])
+    );
+    println!(
+        "traceA treeShapeCount={} traceB treeShapeCount={}",
+        board.items[&ItemId(2)].tree_shape_count(default_id),
+        board.items[&ItemId(3)].tree_shape_count(default_id)
+    );
+
+    let mut board = build_traces();
+    let default_id = board.manager.get_default_tree().id();
+    println!("--- mergeEntriesInFront(from=traceA, to=traceB, joined, 1, 4)");
+    let mut trace_a = take_trace(&mut board, 2);
+    let mut trace_b = take_trace(&mut board, 3);
+    {
+        let rules = &board.rules;
+        board.manager.get_default_tree_mut().merge_entries_in_front(
+            &mut trace_a,
+            &mut trace_b,
+            &joined,
+            1,
+            4,
+            rules,
+        );
+    }
+    board.items.insert(ItemId(2), Item::Trace(trace_a));
+    board.items.insert(ItemId(3), Item::Trace(trace_b));
+    dump_tree(&board, "after_mergeInFront", default_id);
+    println!(
+        "validateEntries(traceB)={}",
+        board
+            .tree(default_id)
+            .validate_entries(&board.items[&ItemId(3)])
+    );
+    println!(
+        "traceA treeShapeCount={} traceB treeShapeCount={}",
+        board.items[&ItemId(2)].tree_shape_count(default_id),
+        board.items[&ItemId(3)].tree_shape_count(default_id)
+    );
+
+    let mut board = build_traces();
+    let default_id = board.manager.get_default_tree().id();
+    let long_trace = PolylineTrace::new(
+        ItemHeader::new(ItemId(4), vec![1], 1, 0, FixedState::Unfixed),
+        Polyline::from_points(&[
+            Point::new(-1000, -1000),
+            Point::new(-1000, 0),
+            Point::new(0, 0),
+            Point::new(0, 1000),
+            Point::new(1000, 1000),
+            Point::new(1000, 2000),
+        ]),
+        0,
+        30,
+        None,
+    );
+    let mut long_item = Item::Trace(long_trace);
+    {
+        let ctx = ItemCtx {
+            library: &board.library,
+            components: &board.components,
+            rules: &board.rules,
+            bounding_box: &board.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        board.manager.insert(&mut long_item, &ctx);
+    }
+    board.items.insert(ItemId(4), long_item);
+    println!("--- reuseEntriesAfterCutout(long, start, end)");
+    println!(
+        "long shapes={}",
+        match &board.items[&ItemId(4)] {
+            Item::Trace(t) => t.tile_shape_count(),
+            _ => unreachable!(),
+        }
+    );
+    let mut start_piece = PolylineTrace::new(
+        ItemHeader::new(ItemId(5), vec![1], 1, 0, FixedState::Unfixed),
+        Polyline::from_points(&[
+            Point::new(-1000, -1000),
+            Point::new(-1000, 0),
+            Point::new(0, 0),
+        ]),
+        0,
+        30,
+        None,
+    );
+    let mut end_piece = PolylineTrace::new(
+        ItemHeader::new(ItemId(6), vec![1], 1, 0, FixedState::Unfixed),
+        Polyline::from_points(&[
+            Point::new(0, 1000),
+            Point::new(1000, 1000),
+            Point::new(1000, 2000),
+        ]),
+        0,
+        30,
+        None,
+    );
+    let mut long_trace = take_trace(&mut board, 4);
+    {
+        let ctx = ItemCtx {
+            library: &board.library,
+            components: &board.components,
+            rules: &board.rules,
+            bounding_box: &board.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        board
+            .manager
+            .get_default_tree_mut()
+            .reuse_entries_after_cutout(
+                &mut long_trace,
+                &mut start_piece,
+                &mut end_piece,
+                &ctx,
+            );
+    }
+    let long_entries: Vec<Option<LeafId>> = long_trace
+        .hdr
+        .get_tree_entries(default_id)
+        .expect("entries")
+        .to_vec();
+    let start_len = start_piece.hdr.get_tree_entries(default_id).expect("entries").len();
+    let end_len = end_piece.hdr.get_tree_entries(default_id).expect("entries").len();
+    let start_item = Item::Trace(start_piece);
+    let end_item = Item::Trace(end_piece);
+    board.items.insert(ItemId(4), Item::Trace(long_trace));
+    dump_tree(&board, "after_cutout", default_id);
+    let mut line = String::from("long entries:");
+    for entry in &long_entries {
+        match entry {
+            None => line.push_str(" null"),
+            Some(leaf) => {
+                let e = board.tree(default_id).tree().leaf_entry(*leaf);
+                let TreeObject::Item(ItemId(id)) = e.object else {
+                    unreachable!()
+                };
+                line.push_str(&format!(" {id}/{}", e.shape_index));
+            }
+        }
+    }
+    println!("{line}");
+    println!("start entries={start_len} end entries={end_len}");
+    println!(
+        "validateEntries(start)={} validateEntries(end)={}",
+        board.tree(default_id).validate_entries(&start_item),
+        board.tree(default_id).validate_entries(&end_item)
+    );
+}
+
+/// Mode 6: `reduceTraceShapeAtTiePin` — the SMD pin sits exactly on the trace's first corner.
+fn dump_tie_pin(board: &mut Board) {
+    let default_id = board.manager.get_default_tree().id();
+    println!("mode=6");
+    let pin = match &board.items[&ItemId(2)] {
+        Item::Pin(pin) => pin.clone(),
+        _ => unreachable!(),
+    };
+    let trace_layer = match &board.items[&ItemId(4)] {
+        Item::Trace(t) => t.get_layer(),
+        _ => unreachable!(),
+    };
+    {
+        let ctx = board.ctx();
+        println!(
+            "pin center={} trace firstCorner={}",
+            pt(&pin.get_center(&ctx)),
+            pt(&match &board.items[&ItemId(4)] {
+                Item::Trace(t) => t.first_corner().expect("a corner"),
+                _ => unreachable!(),
+            })
+        );
+        println!(
+            "pinShape={}",
+            shp(pin
+                .get_tree_shape_on_layer(default_id, trace_layer, &ctx)
+                .expect("a shape"))
+        );
+    }
+    dump_tree(board, "before", default_id);
+    println!("--- reduceTraceShapeAtTiePin(pin 2, trace 4)");
+    let mut trace = take_trace(board, 4);
+    {
+        let ctx = ItemCtx {
+            library: &board.library,
+            components: &board.components,
+            rules: &board.rules,
+            bounding_box: &board.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        board
+            .manager
+            .get_default_tree_mut()
+            .reduce_trace_shape_at_tie_pin(&pin, &mut trace, &ctx);
+    }
+    board.items.insert(ItemId(4), Item::Trace(trace));
+    dump_tree(board, "after", default_id);
+    println!(
+        "validateEntries(4)={}",
+        board
+            .tree(default_id)
+            .validate_entries(&board.items[&ItemId(4)])
+    );
+}
+
 fn angle_name(angle: AngleRestriction) -> &'static str {
     match angle {
         AngleRestriction::None => "NONE",
@@ -369,6 +680,14 @@ fn class_name(item: &Item) -> &'static str {
         Item::ComponentObstacleArea(_) => "ComponentObstacleArea",
         Item::ComponentOutline(_) => "ComponentOutline",
         Item::BoardOutline(_) => "BoardOutline",
+    }
+}
+
+/// Java `IntPoint.toString()` is `"(" + x + "," + y + ")"`.
+fn pt(p: &Point) -> String {
+    match p {
+        Point::Int(p) => format!("({},{})", p.x, p.y),
+        other => format!("{other:?}"),
     }
 }
 
@@ -707,6 +1026,16 @@ fn main() {
     if mode == 4 {
         let mut board = build_areas();
         dump_areas(&mut board);
+        return;
+    }
+    if mode == 5 {
+        let mut board = build_traces();
+        dump_traces(&mut board);
+        return;
+    }
+    if mode == 6 {
+        let mut board = build(0);
+        dump_tie_pin(&mut board);
         return;
     }
     let mut board = build(mode);
