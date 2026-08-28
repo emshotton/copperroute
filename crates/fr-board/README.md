@@ -161,11 +161,12 @@ outputs can be diffed byte-for-byte. The board-model-relevant drivers
 | `P2T10.java` / `p2t10` | `ShapeSearchTree`/`SearchTreeManager` — every public method except `completeShape`/`divideLargeRoom` (Plan 6), across 9 modes (angle restrictions, clearance matrix, areas/outline branches, entry-surgery, tie-pin reduction, skewed outlines) | `p2t10` |
 | `P2T11.java` / `p2t11` | the real `RoutingBoard` — insert/remove protocol, connectivity, `checkTraceSegment`, changed area, conduction latch, `ShapeTraceEntries`, cycles/overlaps, `PolylineTrace.combine`/`split`/`normalize`, and the tree-rebuild-vs-clone divergence around `deepCopy`, across 12 modes | `p2t11` |
 | `P2T13.java` / `p2t13` | `PlanarDelaunayTriangulation` — random points, square, collinear triple, degenerate edges, two-corner objects, grid, tiny range, circle, across 8 modes | `p2t13` |
+| `P2T15.java` / `p2t15` | the ONE randomised board-level driver (Task 15) — `n` random pins/vias/traces plus fixed obstacle/conduction areas through the real `RoutingBoard`/`Board`, `normalizeAllTraces`, every item's fields, 150 overlap/clearance queries, the same queries replayed against `deepCopy`, and a `hashEqual` boolean | `p2t15` |
 
-Requirements: JDK ≥ 23 (`JAVA_HOME`) for most drivers; `p2t10`, `p2t11`, and
-`p2t13` additionally need a **JDK 25** (`JAVA25_HOME`), and `p2t10`/`p2t11`
-need the clone's built jar (`FREEROUTING_JAR`, from `./gradlew build` in a
-sibling `../freerouting` checkout).
+Requirements: JDK ≥ 23 (`JAVA_HOME`) for most drivers; `p2t10`, `p2t11`,
+`p2t13` and `p2t15` additionally need a **JDK 25** (`JAVA25_HOME`), and
+`p2t10`/`p2t11`/`p2t15` need the clone's built jar (`FREEROUTING_JAR`, from
+`./gradlew build` in a sibling `../freerouting` checkout).
 
 ```sh
 ./scripts/differential/run.sh p2t3                    # fixed script, no arguments
@@ -174,13 +175,20 @@ sibling `../freerouting` checkout).
 ./scripts/differential/run.sh p2t10 0                  # mode 0 of 8 (45-degree board)
 ./scripts/differential/run.sh p2t11 0                  # mode 0 of 12 (insert/remove, item-list, queries)
 ./scripts/differential/run.sh p2t13 50 42 0            # 50 points, seed 42, mode 0 (random)
+./scripts/differential/run.sh p2t15 42 30              # seed 42, 30 random items (the default)
 ```
 
-All modes of all five drivers match Java exactly at HEAD except `p2t11`
+All modes of all six drivers match Java exactly at HEAD except `p2t11`
 mode 11, whose two diffing fields (`treeArrayCopy`/`treeArraysEqual`) are
 the documented, deliberate divergence between Java's tree-rebuild-on-`clone`
 and this port's tree-clone-on-`deep_copy` (Task 12) — every other field on
-that mode matches, including `hashEqual` and `diffTraces`.
+that mode matches, including `hashEqual` and `diffTraces`. `p2t15` is
+zero-diff at every one of 10 seeds × `n` ∈ {30, 120} (`scripts/differential/README.md`
+has the full sweep table), and `crates/fr-board/tests/consistency.rs` covers
+the same properties (insert/remove round trips, `deep_copy`, 45- vs.
+90-degree tree bounds, `normalize_traces` idempotence, descending item
+iteration, `Board: Send + Sync + Clone`) as fast, seeded unit tests rather
+than a JVM-diffing driver.
 
 ## Package-private classes
 

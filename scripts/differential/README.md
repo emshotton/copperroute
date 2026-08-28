@@ -55,6 +55,34 @@ methods with dozens of branches.
     freerouting code. Prints the input corners, the permutation the class's
     fixed-seed shuffle produces, `getEdgeLines()` in iteration order and
     `validate()`.
+  - `P2T15.java` — the ONE randomised board-level driver (Plan 2 Task 15).
+    Twin: `p2t15`. Declares `package app.freerouting.datastructures;` and,
+    like `P2T10.java`/`P2T11.java`, is compiled and run against the clone's own
+    `../freerouting/build/libs/freerouting-current-executable.jar` on a
+    **JDK 25** (`JAVA25_HOME`) rather than from source, because it needs the
+    whole board stack. Builds a real
+    `app.freerouting.board.facade.RoutingBoard` — two layers, two padstacks
+    (`smd` layer-0-only, `thru` both layers) making up one two-pin package,
+    four nets, two clearance classes (`1` default, `2` "wide") — then drives a
+    shared xorshift stream (the same `state ^= state<<13; ^= state>>>7;
+    ^= state<<17;` generator every other randomised driver uses) through `n`
+    random `insertPin`/`insertVia`/`insertTraceWithoutCleaning` calls plus
+    three fixed obstacle areas and three fixed conduction areas, calls
+    `normalizeAllTraces`, and dumps: every item in board order (descending
+    id, quirk #63) — id, kind, layer range, nets, clearance class, bounding
+    box, tile shape count and each tile's bounding box; the default tree's
+    `overlappingObjects` for 50 random query boxes on each of the two layers;
+    `overlappingTreeEntriesWithClearance` as `(id, shapeIndex)` lists for 50
+    random shapes/layers/clearance classes/ignore-net arrays; `deepCopy`, then
+    the same 150 queries replayed against the copy; and a `hashEqual` boolean
+    (`getHash().equals(...)` vs. `structural_hash() == structural_hash()` —
+    compared as booleans, not values, because the two hash algorithms are not
+    byte-comparable, `docs/java-quirks.md`). Deliberately never prints
+    `toArray()`/tree internals (unlike `P2T10`/`P2T11`, which reach into
+    `ShapeTree`'s protected fields for exactly that reason) — every query goes
+    through public API, so quirk #77's tree-layout divergence never appears
+    and the driver is zero-diff. `run.sh p2t15 <seed> <n>` diffs it against
+    `p2t15.rs`.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
     Twin: `p2t3r`. Drives `insert(Storable)` (so the *tree* applies its bounding
     directions), `remove(Leaf[])` on arrays with deliberate `null` holes,
@@ -106,7 +134,7 @@ methods with dozens of branches.
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
-  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`.
+  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -123,7 +151,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 
@@ -218,11 +246,24 @@ the driver expects, or none at all.
   maintenance note" below; Java's placeholder for the never-real
   `splitPiecesForDiff` branch and Rust's `Circle` fallthrough disagree, so
   avoid `mode 3` when running `d17` by hand.
+- `p2t15 <seed> <n>` — the ONE randomised board-level driver (Plan 2 Task
+  15). `n` random pins/vias/traces plus three fixed obstacle areas and three
+  fixed conduction areas, `normalizeAllTraces`, then every item, 100
+  `overlappingObjects` queries (50 per layer), 50
+  `overlappingTreeEntriesWithClearance` queries, the same 150 queries
+  replayed against a `deepCopy`, and a `hashEqual` boolean. No mode argument:
+  every run exercises the same mix. **Verified** at 10 seeds
+  (1/2/3/7/42/555/77/12345/999983/20260828) × `n` in `{30, 120}` — all 20
+  runs **match exactly**, 402-708 lines each depending on how normalisation
+  folds the random traces together. Also re-verified that this sweep does
+  not regress `p2t10` (all 9 modes), `p2t11` (all 11 modes reached by the
+  differential driver — mode 11's one documented divergence unchanged) or
+  `p2t13` (mode 0).
 
 ## Known, expected diffs
 
 Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
-`p2t11` and `p2t13`, which need a JDK 25 (see Requirements above):
+`p2t11`, `p2t13` and `p2t15`, which need a JDK 25 (see Requirements above):
 
 | driver | lines | diff lines | classification |
 |---|---|---|---|
@@ -257,6 +298,8 @@ Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
 | `p2t11` (mode 11) | 20 | 2 | `treeArrayCopy`/`treeArraysEqual` only — the documented tree-rebuild-vs-clone divergence (Task 12, see below); every `transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces` line matches |
 | `p2t13` (mode 0, 50 points) | 141 | 0 | exact match |
 | `p2t13` (modes 1-7, `30 7 <mode>`) | 7-172 | 0 | exact match (square, collinear triple, duplicates, two-corner objects, grid, tiny range, circle) |
+| `p2t15` (seed 42, n=30, default) | 413 | 0 | exact match |
+| `p2t15` (10 seeds × n∈{30,120}) | 402-708 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -419,6 +462,55 @@ name; and `Item.getTileShape` really does lazily recompute the tree-shape cache
 `validate()`, after `changeClearanceClassIndex` has cleared the derived data.
 Mode 3 pins it with no `validate` in between, so nothing else warms the cache
 first.
+
+## `p2t15` sweep (Plan 2 Task 15)
+
+`p2t15` consolidates Task 15's brief into the ONE randomised board-level
+driver: a shared xorshift stream drives `n` random pin/via/trace insertions
+plus three fixed obstacle areas and three fixed conduction areas through the
+real `RoutingBoard`/`Board`, `normalizeAllTraces`/`normalize_all_traces`,
+every item's fields (id, kind, layer range, nets, clearance class, bounding
+box, tile shapes), 100 `overlappingObjects` queries, 50
+`overlappingTreeEntriesWithClearance` queries, the same 150 queries replayed
+against a `deepCopy`/`deep_copy`, and a `hashEqual` boolean. Swept at 10 seeds
+× `n` ∈ {30, 120} — every one of the 20 runs matches exactly, zero diff lines:
+
+| seed | n | lines | diff |
+|---|---|---|---|
+| 1 | 30 | 405 | 0 |
+| 1 | 120 | 695 | 0 |
+| 2 | 30 | 408 | 0 |
+| 2 | 120 | 695 | 0 |
+| 3 | 30 | 406 | 0 |
+| 3 | 120 | 707 | 0 |
+| 7 | 30 | 404 | 0 |
+| 7 | 120 | 664 | 0 |
+| 42 | 30 | 413 | 0 |
+| 42 | 120 | 672 | 0 |
+| 555 | 30 | 402 | 0 |
+| 555 | 120 | 695 | 0 |
+| 77 | 30 | 407 | 0 |
+| 77 | 120 | 674 | 0 |
+| 12345 | 30 | 407 | 0 |
+| 12345 | 120 | 677 | 0 |
+| 999983 | 30 | 405 | 0 |
+| 999983 | 120 | 708 | 0 |
+| 20260828 | 30 | 407 | 0 |
+| 20260828 | 120 | 689 | 0 |
+
+The line count varies with the seed because `normalizeAllTraces` folds
+however many of the random traces happen to touch end-to-end into fewer,
+longer traces before the driver dumps the item list — fewer surviving items
+means fewer `item …`/`tile[…]` lines. No line in any of the 20 runs differs
+from its Rust counterpart, so there is nothing in this driver's output to add
+to `docs/java-quirks.md`: it reaches no code path Tasks 10-13 hadn't already
+exercised, just through a randomised, board-scale lens instead of the fixed
+scripts those tasks wrote by hand. The re-run of `p2t10` (all 9 modes),
+`p2t11` (all 11 modes the differential driver reaches) and `p2t13` (mode 0)
+alongside this sweep confirms Task 15 did not regress any earlier driver;
+`p2t11` mode 11's one pre-existing, documented `treeArraysEqual` divergence
+(the tree-rebuild-vs-clone question, see the `p2t11` section above) is
+unchanged.
 
 ## Harness maintenance note (Task 18)
 
