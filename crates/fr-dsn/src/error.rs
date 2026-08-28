@@ -23,6 +23,28 @@ pub enum DsnError {
         scope: String,
     },
 
+    /// The input does not fit Java's fixed 16 MiB lexer buffer.
+    ///
+    /// Java allocates `zzBuffer` once as a `char[16 * 1024 * 1024]`
+    /// (`SpecctraDsnStreamReader.java:40`) and its hand-rolled `nextString` indexes that buffer
+    /// with no refill, so a larger file is mis-lexed rather than rejected; the port refuses it
+    /// instead (see [`crate::lexer::DsnScanner::new`]).
+    #[error("input is {units} UTF-16 code units, which exceeds the {limit}-unit lexer buffer")]
+    InputTooLarge {
+        /// The input's length in UTF-16 code units.
+        units: usize,
+        /// `ZZ_BUFFERSIZE`.
+        limit: usize,
+    },
+
+    /// The scanner could not match the input, or a numeric literal did not fit its Java type.
+    ///
+    /// Java throws here — `Error("Error: could not match input")` from `zzScanError`
+    /// (`SpecctraDsnStreamReader.java:833`), or a `NumberFormatException` out of
+    /// `Integer.valueOf`/`Double.valueOf`.
+    #[error("lexer: {0}")]
+    Scan(String),
+
     /// A `fr-board` operation invoked while building or reading the board failed.
     #[error(transparent)]
     Board(#[from] BoardError),

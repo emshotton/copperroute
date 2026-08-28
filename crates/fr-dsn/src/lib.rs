@@ -9,6 +9,8 @@
 
 pub mod error;
 pub mod format;
+pub mod keyword;
+pub mod lexer;
 pub mod parser;
 
 pub use error::{BoardMetadata, BoardReadResult, DsnError, FileFormat};
@@ -16,12 +18,15 @@ pub use format::{
     DSN_RESERVED, IdentifierType, IndentFileWriter, SES_RESERVED, format_placement_rotation,
     java_double_to_string, java_float_to_string, java_rint, java_round, java_round_to_int,
 };
+pub use keyword::Keyword;
+pub use lexer::{DsnScanner, LexicalState, Token};
 
 /// Re-exports every public type of the crate, for `use fr_dsn::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        BoardMetadata, BoardReadResult, DSN_RESERVED, DsnError, FileFormat, IdentifierType,
-        IndentFileWriter, SES_RESERVED, format_placement_rotation, java_double_to_string,
-        java_float_to_string, java_rint, java_round, java_round_to_int,
+        BoardMetadata, BoardReadResult, DSN_RESERVED, DsnError, DsnScanner, FileFormat,
+        IdentifierType, IndentFileWriter, Keyword, LexicalState, SES_RESERVED, Token,
+        format_placement_rotation, java_double_to_string, java_float_to_string, java_rint,
+        java_round, java_round_to_int,
     };
 }

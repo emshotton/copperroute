@@ -6,3 +6,4 @@
 /scripts/differential/build/
 /scripts/gen-reference/build/
 /scripts/differential/out/
+__pycache__/

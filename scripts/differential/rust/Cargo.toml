@@ -75,3 +75,8 @@ path = "src/bin/p2t15.rs"
 [[bin]]
 name = "p3t2"
 path = "src/bin/p3t2.rs"
+
+# Plan 3 Task 3: the Specctra DSN lexer's token stream over a file.
+[[bin]]
+name = "p3t3"
+path = "src/bin/p3t3.rs"

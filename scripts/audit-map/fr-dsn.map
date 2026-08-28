@@ -4,3 +4,6 @@
 # once a task starts porting it, or the audit falls back to a crate-wide (weaker) check for it.
 IdentifierType      format/identifier.rs
 IndentFileWriter    format/indent_writer.rs
+SpecctraDsnStreamReader  lexer/*.rs
+IJFlexScanner            lexer/*.rs
+Keyword                  keyword.rs

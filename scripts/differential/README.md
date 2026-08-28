@@ -153,13 +153,30 @@ methods with dozens of branches.
     but 0) `formatPlacementRotation`, one line per value, prefixed by the raw
     bits in hex. This is the driver behind `fr-dsn`'s
     `format::double` — the module every DSN/SES writer's byte-parity rests on.
+  - `P3T3.java` — the Specctra DSN lexer's token stream (Plan 3 Task 3). Twin:
+    `p3t3`. Takes a **file path** and prints one line per token —
+    `<index> <TAG> <value> <lexicalStateAfterTheToken>`, with `TAG` one of
+    `OPEN`/`CLOSE`/`KW`/`STR`/`INT`/`DBL` and a final `<index> EOF - <state>`
+    line. A `KW`'s value is the *field name* of the `Keyword` singleton the
+    scanner returned (found by reflection over `Keyword`'s public static
+    fields), not `Keyword.getName()`: the field name is the identity the
+    parser dispatches on, and it is identical between the pinned 2.3.0 jar and
+    the clone's HEAD, whose fifteen renamed `getName()` strings are plan 3
+    ruling 1's subject. Uniquely, it runs against
+    **`tools/freerouting-2.3.0.jar`** (plan 3 ruling 10, `FREEROUTING_JAR_230`)
+    rather than the clone's build; the scanner's entry point is looked up
+    reflectively because 2.3.0 spells it `next_token` and HEAD `nextToken`.
+    The driver also rebinds `System.out` before FRLogger can load, because
+    action 2 of the scanner logs one `WARN` line per non-ANSI character and
+    that would interleave with the token stream.
 
 - `rust/` — a standalone Cargo package, `fr-geometry-differential`, **not** a
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
-  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`.
-  Since Plan 3 it also depends on `fr-dsn` by path (for `p3t2`).
+  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
+  `p3t3`. Since Plan 3 it also depends on `fr-dsn` by path (for `p3t2` and
+  `p3t3`).
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -179,6 +196,12 @@ Requirements:
 - For `p2t10`/`p2t11`/`p2t15`/`p3t2` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
+- For `p3t3` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
+  `tools/freerouting-2.3.0.jar` (`FREEROUTING_JAR_230`) — the pinned release
+  jar, gitignored like the clone's build output, downloaded from the
+  freerouting 2.3.0 release (it is also what `scripts/gen-reference.sh` uses).
+  Plan 3 ruling 10 makes 2.3.0, not the clone's HEAD, the parity baseline for
+  every `p3t*` driver that reads or writes a design file.
 
 ```sh
 ./scripts/differential/run.sh t15               # LineSegment, default smoke run (200 iters, seed 42)
@@ -304,6 +327,27 @@ the driver expects, or none at all.
   smoke run at 100k found two real porting bugs (Java's even-last-digit tie
   rule — see "`p3t2`" below), so the volume is doing work.
 
+- `p3t3 <file>` — the Specctra DSN lexer's token stream over one file (Plan 3
+  Task 3): the driver behind `fr-dsn`'s `lexer` module, whose DFA tables are
+  generated from the Java by `scripts/gen-lexer-tables.py`. The default
+  argument is `tests/reference/tutorial_board/roundtrip.dsn`. **Verified** over
+  the whole corpus — all 105 `.dsn`, 12 `.ses` and 7 `.rules` fixtures in
+  `../freerouting/fixtures/` plus the 8 files under `tests/reference/`, 132
+  files, **0 diff lines** (Task 15 re-runs this as the corpus gate). To repeat
+  the sweep without recompiling per file, run `run.sh p3t3` once and then loop
+  the two binaries it left behind:
+
+  ```sh
+  ./scripts/differential/run.sh p3t3            # compiles both sides
+  jar=tools/freerouting-2.3.0.jar
+  for f in ../freerouting/fixtures/*.{dsn,ses,rules} tests/reference/*/*.{dsn,ses}; do
+    java -cp "scripts/differential/build/classes-p3t3:$jar" \
+      app.freerouting.io.specctra.P3T3 "$f" > /tmp/j.out
+    ./scripts/differential/rust/target/release/p3t3 "$f" > /tmp/r.out
+    diff -q /tmp/j.out /tmp/r.out || echo "DIFF $f"
+  done
+  ```
+
 ## Known, expected diffs
 
 Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
@@ -349,6 +393,10 @@ Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
 | `p3t2` (mode 2, seed 42) | 1000000 | 0 | exact match (integers in ±10^7) |
 | `p3t2` (mode 3, seed 42) | 1000000 | 0 | exact match (rotations in [0, 360), three decimals) |
 | `p3t2` (all four modes, seed 7) | 13000000 | 0 | exact match (same counts, second seed) |
+| `p3t3` (`tests/reference/tutorial_board/roundtrip.dsn`, the default) | 80308 | 0 | exact match |
+| `p3t3` (all 105 `fixtures/*.dsn`) | 105 files, 73-205603 lines each | 0 | exact match on every file |
+| `p3t3` (all 12 `fixtures/*.ses` + 7 `fixtures/*.rules`) | 19 files | 0 | exact match on every file |
+| `p3t3` (the 8 `tests/reference/*/{roundtrip.dsn,unrouted.ses}`) | 8 files | 0 | exact match on every file |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic

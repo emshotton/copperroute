@@ -21,13 +21,17 @@ JAVABIN="$JAVA_HOME/bin/java"
 # override either of these if your checkout differs.
 JAVA25_HOME="${JAVA25_HOME:-/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home}"
 FREEROUTING_JAR="${FREEROUTING_JAR:-$FREEROUTING_JAVA_DIR/build/libs/freerouting-current-executable.jar}"
+# The pinned 2.3.0 release jar, which is the parity baseline `tests/reference/` was generated
+# with (Plan 3 ruling 10): the `p3t*` drivers run against this one, not the clone's HEAD build.
+FREEROUTING_JAR_230="${FREEROUTING_JAR_230:-$ROOT/tools/freerouting-2.3.0.jar}"
 
 BUILD="$DIFF_ROOT/build"
 OUT="$BUILD/classes"
 
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
-  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2" >&2
+  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
+  echo "           p3t3" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -48,6 +52,8 @@ needs_jar=0
 # but with the JDK 25 the shipping jar is built for, because the driver's ground truth depends on
 # `java.util.Collections.shuffle`/`java.util.Random` — runtime library code, not freerouting code.
 needs_jdk25=0
+# Set by `p3t3`: use the pinned 2.3.0 jar rather than the clone's HEAD build (ruling 10).
+needs_jar_230=0
 # The `datastructures` classes the Plan 2 Task 3 drivers exercise.
 shapetree_sources=(
   "$JAVA_DIR/datastructures/ShapeTree.java"
@@ -105,6 +111,16 @@ case "$driver" in
     default_args=(100000 42 0)
     needs_jar=1
     ;;
+  p3t3)
+    # The Specctra lexer's token stream over one file. Runs against the pinned 2.3.0 jar
+    # (ruling 10); the driver looks the scanner's entry point up reflectively because it is
+    # `next_token` there and `nextToken` at the clone's HEAD.
+    javaclass=P3T3
+    javapkg="io.specctra"
+    default_args=("$ROOT/tests/reference/tutorial_board/roundtrip.dsn")
+    needs_jar=1
+    needs_jar_230=1
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -112,6 +128,10 @@ if [[ $# -gt 0 ]]; then
   args=("$@")
 else
   args=("${default_args[@]}")
+fi
+
+if [[ "$needs_jar_230" -eq 1 ]]; then
+  FREEROUTING_JAR="$FREEROUTING_JAR_230"
 fi
 
 if [[ "$needs_jar" -eq 1 ]]; then
