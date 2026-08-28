@@ -872,14 +872,16 @@ fn p2t11_board_with_host_cad(host_cad: bool) -> Board {
         1,
         FixedState::Unfixed,
     );
-    board.insert_via(
-        thru_pad,
-        Point::new(0, 0),
-        vec![1],
-        1,
-        FixedState::Unfixed,
-        true,
-    );
+    board
+        .insert_via(
+            thru_pad,
+            Point::new(0, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            true,
+        )
+        .expect("no normalisation failure");
     board.insert_obstacle(
         fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
             2000, 2000, 3000, 3000,
@@ -997,14 +999,16 @@ pub fn cycle_board() -> (Board, PadstackId) {
         board.rules.nets.add(name, 1, false, default_class);
     }
     for x in [0, 2000] {
-        board.insert_via(
-            thru_pad,
-            Point::new(x, 0),
-            vec![1],
-            1,
-            FixedState::Unfixed,
-            true,
-        );
+        board
+            .insert_via(
+                thru_pad,
+                Point::new(x, 0),
+                vec![1],
+                1,
+                FixedState::Unfixed,
+                true,
+            )
+            .expect("no normalisation failure");
     }
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(0, 0), Point::new(2000, 0)]),

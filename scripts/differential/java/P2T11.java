@@ -27,7 +27,10 @@ import java.util.*;
  * through the real `app.freerouting.board.facade.RoutingBoard`.
  *
  * <p>Modes: 0 insert/remove + queries, 1 connectivity, 2 the check queries, 3 the changed area and
- * the conduction/net bookkeeping.
+ * the conduction/net bookkeeping, 4 the compensated 90-degree board, 5 `ShapeTraceEntries`, 6
+ * cycles and the last inserters, 7 `PolylineTrace.combine` (Task 9), 8 `PolylineTrace.split` and
+ * `normalize` (Task 9), 9 `BasicBoard`'s four normalisation loops and the five Task-11 methods
+ * whose bodies end in normalisation (Task 9).
  */
 public class P2T11 {
 
@@ -49,6 +52,10 @@ public class P2T11 {
       case 4 -> dumpCompensated();
       case 5 -> dumpShapeTraceEntries();
       case 6 -> dumpCyclesAndInserters();
+      case 7 -> dumpCombine();
+      case 8 -> dumpSplitAndNormalize();
+      case 9 -> dumpBoardNormalizationLoops();
+      case 10 -> dumpCombineStackOverflow(args.length > 1 ? Integer.parseInt(args[1]) : 4000);
       default -> throw new IllegalArgumentException("mode " + mode);
     }
   }
@@ -973,6 +980,626 @@ public class P2T11 {
       sb.append(layer).append(":").append(oct(board.changedArea.getArea(layer)));
     }
     return sb.toString();
+  }
+
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 7: `PolylineTrace.combine` — `combineAtStart` (:201-332), `combineAtEnd` (:341-456)
+  // -------------------------------------------------------------------------------------------
+
+  /** A bare board with no components, the shape `PolylineTraceSplitTest.createTestBoard` builds. */
+  static RoutingBoard traceBoard(int layerCount) {
+    Layer[] layers = new Layer[layerCount];
+    for (int i = 0; i < layerCount; i++) {
+      layers[i] = new Layer("l" + i, true);
+    }
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 10);
+    BoardRules rules = new BoardRules(ls, cm);
+    rules.createDefaultNetClass();
+    RoutingBoard b =
+        new RoutingBoard(
+            new IntBox(-2000000, -2000000, 2000000, 2000000),
+            ls,
+            new PolylineShape[] {
+              new PolygonShape(
+                  new Point[] {
+                    new IntPoint(-1000000, -1000000),
+                    new IntPoint(1000000, -1000000),
+                    new IntPoint(1000000, 1000000),
+                    new IntPoint(-1000000, 1000000)
+                  })
+            },
+            0,
+            rules,
+            new Communication());
+    b.rules.nets.add("N1", 1, false);
+    b.rules.nets.add("N2", 1, false);
+    b.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    ConvexShape[] viaShapes = new ConvexShape[layerCount];
+    for (int i = 0; i < layerCount; i++) {
+      viaShapes[i] = new IntBox(-300, -300, 300, 300);
+    }
+    tracePad = b.library.padstacks.add("via", viaShapes, true, false);
+    return b;
+  }
+
+  static Point[] pts(int... xy) {
+    Point[] result = new Point[xy.length / 2];
+    for (int i = 0; i < result.length; i++) {
+      result[i] = new IntPoint(xy[2 * i], xy[2 * i + 1]);
+    }
+    return result;
+  }
+
+  static PolylineTrace tr(int layer, int halfWidth, int net, FixedState fixed, int... xy) {
+    return board.insertTraceWithoutCleaning(
+        new Polyline(pts(xy)), layer, halfWidth, new int[] {net}, 1, fixed);
+  }
+
+  static String entryCount(Item item) {
+    ShapeTree.Leaf[] entries = item.getSearchTreeEntries(board.searchTreeManager.getDefaultTree());
+    return entries == null ? "null" : Integer.toString(entries.length);
+  }
+
+  static String corners(PolylineTrace t) {
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < t.cornerCount(); i++) {
+      if (i > 0) {
+        sb.append(" ");
+      }
+      sb.append(point(t.polyline().corner(i)));
+    }
+    return sb.append("]").toString();
+  }
+
+  static String traceLine(PolylineTrace t) {
+    return "#"
+        + t.getId()
+        + " onBoard="
+        + t.isOnTheBoard()
+        + " layer="
+        + t.getLayer()
+        + " hw="
+        + t.getHalfWidth()
+        + " lines="
+        + t.polyline().lines.length
+        + " tiles="
+        + t.tileShapeCount()
+        + " entries="
+        + entryCount(t)
+        + " corners="
+        + corners(t);
+  }
+
+  /** Every trace still in the item list, in the item list's own (descending id) order. */
+  static String traces() {
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+    for (Item it : board.getItems()) {
+      if (it instanceof PolylineTrace t) {
+        if (!first) {
+          sb.append(" | ");
+        }
+        first = false;
+        sb.append(traceLine(t));
+      }
+    }
+    return first ? "(none)" : sb.toString();
+  }
+
+  static void dumpCombine() {
+    System.out.println("mode=7");
+
+    // A: combineAtStart, straight order, two collinear segments (skipLine == true).
+    board = traceBoard(1);
+    PolylineTrace a2 = tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    System.out.println("A before: " + traces());
+    System.out.println("A combine(#" + a2.getId() + ")=" + a2.combine());
+    System.out.println("A after:  " + traces());
+    System.out.println("A items=" + ids(board.getItems()) + " revision=" + board.getRevision());
+
+    // B: combineAtStart, reverse order — the other trace starts at this trace's start corner.
+    board = traceBoard(1);
+    PolylineTrace b2 = tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 0, 0);
+    System.out.println("B combine(#" + b2.getId() + ")=" + b2.combine());
+    System.out.println("B after:  " + traces());
+
+    // C: combineAtEnd, straight order, with the changed area being marked.
+    board = traceBoard(1);
+    board.startMarkingChangedArea();
+    PolylineTrace c1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("C combine(#" + c1.getId() + ")=" + c1.combine());
+    System.out.println("C after:  " + traces());
+    System.out.println("C changedArea=" + changedArea());
+
+    // D: combineAtEnd, reverse order.
+    board = traceBoard(1);
+    PolylineTrace d1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 20000, 0, 10000, 0);
+    System.out.println("D combine(#" + d1.getId() + ")=" + d1.combine());
+    System.out.println("D after:  " + traces());
+
+    // E: combineAtEnd on a corner (skipLine == false — the join lines are not parallel).
+    board = traceBoard(1);
+    PolylineTrace e1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 10000, 10000);
+    System.out.println("E combine(#" + e1.getId() + ")=" + e1.combine());
+    System.out.println("E after:  " + traces());
+
+    // F: three traces meeting at one point — `contacts.size() != 1` at both ends.
+    board = traceBoard(1);
+    PolylineTrace f1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 10000, 10000);
+    System.out.println("F combine(#" + f1.getId() + ")=" + f1.combine());
+    System.out.println("F after:  " + traces());
+
+    // G: a different half width refuses.
+    board = traceBoard(1);
+    PolylineTrace g1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 500, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("G combine(#" + g1.getId() + ")=" + g1.combine());
+    System.out.println("G after:  " + traces());
+
+    // H: a different fixed state refuses.
+    board = traceBoard(1);
+    PolylineTrace h1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.SHOVE_FIXED, 10000, 0, 20000, 0);
+    System.out.println("H combine(#" + h1.getId() + ")=" + h1.combine());
+    System.out.println("H after:  " + traces());
+
+    // I: a different net refuses (`netsEqual`).
+    board = traceBoard(1);
+    PolylineTrace i1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 2, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("I combine(#" + i1.getId() + ")=" + i1.combine());
+    System.out.println("I after:  " + traces());
+
+    // J: a chain of five collinear segments, combined from the middle — the iterative loop
+    // (PolylineTrace.java:175-192) absorbs at the start first, then at the end, until neither
+    // half can grow.
+    board = traceBoard(1);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    PolylineTrace j3 = tr(0, 1000, 1, FixedState.UNFIXED, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 30000, 0, 40000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 40000, 0, 50000, 0);
+    System.out.println("J before: " + traces());
+    System.out.println("J combine(#" + j3.getId() + ")=" + j3.combine());
+    System.out.println("J after:  " + traces());
+
+    // K: `PolylineTraceSplitTest.testCombineAtEndRecoversMissingDefaultTreeEntries` (:353-379) —
+    // the trace has lost its default-tree entries, so `hasDefaultEntries` sends the join down the
+    // `replaceGeometry` fallback instead of `mergeEntriesAtEnd`.
+    board = traceBoard(1);
+    PolylineTrace k1 = tr(0, 1000, 1, FixedState.UNFIXED, 10000, 10000, 20000, 10000);
+    PolylineTrace k2 = tr(0, 1000, 1, FixedState.UNFIXED, 20000, 10000, 30000, 10000);
+    board.searchTreeManager.remove(k1);
+    k1.setOnTheBoard(true);
+    System.out.println("K entriesBefore=" + entryCount(k1));
+    System.out.println("K combine(#" + k1.getId() + ")=" + k1.combine());
+    System.out.println("K firstOnBoard=" + k1.isOnTheBoard() + " secondOnBoard=" + k2.isOnTheBoard());
+    System.out.println("K entriesAfter=" + entryCount(k1));
+    System.out.println("K after:  " + traces());
+
+    // L: an L-shaped three-corner trace absorbed at its start by a straight one.
+    board = traceBoard(1);
+    PolylineTrace l1 = tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 10000, 10000, 20000, 10000);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    System.out.println("L combine(#" + l1.getId() + ")=" + l1.combine());
+    System.out.println("L after:  " + traces());
+
+    // M: a conduction area at the join is dropped by `ignoreAreas` (PolylineTrace.java:206-209),
+    // so the two traces still see exactly one contact and combine.
+    board = traceBoard(1);
+    board.insertConductionArea(
+        new IntBox(9000, -1000, 11000, 1000), 0, new int[] {1}, 1, true, FixedState.UNFIXED);
+    PolylineTrace m1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("M combine(#" + m1.getId() + ")=" + m1.combine());
+    System.out.println("M after:  " + traces());
+    System.out.println("M items=" + ids(board.getItems()));
+  }
+
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 8: `PolylineTrace.split(IntOctagon)` (:464-691) and `normalize` (:801-803)
+  // -------------------------------------------------------------------------------------------
+
+  /** The `Padstack` mode 8/9's vias use; `traceBoard` installs it into every board. */
+  static Padstack tracePad;
+
+  static String splitResult(Collection<PolylineTrace> pieces) {
+    StringBuilder sb = new StringBuilder("[");
+    boolean first = true;
+    for (PolylineTrace t : pieces) {
+      if (!first) {
+        sb.append(" ");
+      }
+      first = false;
+      sb.append("#").append(t.getId()).append(t.isOnTheBoard() ? "" : "(off)");
+    }
+    return sb.append("]").toString();
+  }
+
+  static void dumpSplitAndNormalize() {
+    System.out.println("mode=8");
+
+    // S1: `PolylineTraceSplitTest.testSplitPreservesNonOverlappingSegments` (:220-293) — a
+    // four-corner trace and a second trace lying on its middle segment.
+    board = traceBoard(1);
+    PolylineTrace s1 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("S1 before: " + traces());
+    System.out.println("S1 split=" + splitResult(s1.split((IntOctagon) null)));
+    System.out.println("S1 after:  " + traces());
+
+    // S2: `PolylineTraceSplitTest.testSplitDoesNotRemoveValidSegments` (:61-216) — the bug-report
+    // geometry: two traces combined, then an overlapping third inserted, then a split.
+    board = traceBoard(1);
+    tr(
+        0, 1000, 98, FixedState.UNFIXED,
+        1291423, -987076, 1270000, -975000, 1250000, -970000, 1243227, -964893);
+    PolylineTrace s2b = tr(0, 1000, 98, FixedState.UNFIXED, 1243227, -964893, 1241414, -964893);
+    System.out.println("S2 combine=" + s2b.combine());
+    System.out.println("S2 combined: " + traces());
+    PolylineTrace s2combined = null;
+    for (Item it : board.getItems()) {
+      if (it instanceof PolylineTrace t && t.containsNet(98) && t.isOnTheBoard()) {
+        s2combined = t;
+        break;
+      }
+    }
+    System.out.println("S2 pick=#" + s2combined.getId() + " first=" + point(s2combined.firstCorner())
+        + " last=" + point(s2combined.lastCorner()));
+    tr(0, 1000, 98, FixedState.UNFIXED, 1243227, -964893, 1242000, -960000, 1241171, -952775);
+    System.out.println("S2 split=" + splitResult(s2combined.split((IntOctagon) null)));
+    System.out.println("S2 after:  " + traces());
+
+    // S3: the same S1 board, but a `clipShape` that misses the overlap entirely
+    // (PolylineTrace.java:475-479).
+    board = traceBoard(1);
+    PolylineTrace s3 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    IntOctagon clipAway = new IntBox(100000, 100000, 110000, 110000).boundingOctagon();
+    System.out.println("S3 split(clip away)=" + splitResult(s3.split(clipAway)));
+    System.out.println("S3 after:  " + traces());
+    IntOctagon clipOver = new IntBox(-1000, -1000, 31000, 1000).boundingOctagon();
+    System.out.println("S3 split(clip over)=" + splitResult(s3.split(clipOver)));
+    System.out.println("S3 after2: " + traces());
+
+    // S4: the `DrillItem` branch (PolylineTrace.java:649-661) — a via sitting in the middle of a
+    // one-segment trace. `split(i + 1, splitLine)`'s result is discarded, so `ownTraceSplit`
+    // stays false and the collection Java returns is *not* the two pieces.
+    board = traceBoard(1);
+    board.insertVia(tracePad, new IntPoint(10000, 0), new int[] {1}, 1, FixedState.UNFIXED, true);
+    PolylineTrace s4 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 20000, 0);
+    System.out.println("S4 before: " + traces());
+    System.out.println("S4 split=" + splitResult(s4.split((IntOctagon) null)));
+    System.out.println("S4 after:  " + traces());
+    System.out.println("S4 items=" + ids(board.getItems()));
+
+    // S5: `normalize(null)` over the S1 geometry — split, then combine each piece.
+    board = traceBoard(1);
+    PolylineTrace s5 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("S5 normalize=" + s5.normalize(null));
+    System.out.println("S5 after:  " + traces());
+
+    // S6: normalize on a board where nothing overlaps — no split, no combine.
+    board = traceBoard(1);
+    PolylineTrace s6 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    System.out.println("S6 normalize=" + s6.normalize(null));
+    System.out.println("S6 after:  " + traces());
+
+    // S7: normalize where the only change is a combine (PolylineTraceNormalization.java:122-125).
+    board = traceBoard(1);
+    PolylineTrace s7 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("S7 normalize=" + s7.normalize(null));
+    System.out.println("S7 after:  " + traces());
+
+    // S8: the conduction-area cycle branch (PolylineTrace.java:662-681) — both end corners of the
+    // trace are contacts of the same-net area, so the trace is removed and the result is empty.
+    board = traceBoard(1);
+    board.insertConductionArea(
+        new IntBox(-1000, -1000, 21000, 1000), 0, new int[] {1}, 1, true, FixedState.UNFIXED);
+    PolylineTrace s8 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 20000, 0);
+    System.out.println("S8 split=" + splitResult(s8.split((IntOctagon) null)));
+    System.out.println("S8 onBoard=" + s8.isOnTheBoard() + " items=" + ids(board.getItems()));
+
+    // S9: a trace of a non-normal net is never split (PolylineTrace.java:466-470).
+    board = traceBoard(1);
+    PolylineTrace s9 = tr(0, 1000, 0, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 0, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("S9 split=" + splitResult(s9.split((IntOctagon) null)));
+    System.out.println("S9 after:  " + traces());
+
+    // S10: two traces crossing at right angles — both get split at the crossing point.
+    board = traceBoard(1);
+    PolylineTrace s10 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 20000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, -10000, 10000, 10000);
+    System.out.println("S10 before: " + traces());
+    System.out.println("S10 split=" + splitResult(s10.split((IntOctagon) null)));
+    System.out.println("S10 after:  " + traces());
+
+    // S11: a USER_FIXED trace refuses to split (`isDeletionForbidden`, PolylineTrace.java:727).
+    board = traceBoard(1);
+    PolylineTrace s11 =
+        tr(0, 1000, 1, FixedState.USER_FIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("S11 split=" + splitResult(s11.split((IntOctagon) null)));
+    System.out.println("S11 after:  " + traces());
+    System.out.println("S11 normalize=" + s11.normalize(null));
+    System.out.println("S11 after2: " + traces());
+
+    // S12: `PolylineTrace.change` (PolylineTrace.java:936-1005) on a live trace. The new
+    // polyline's very first line differs, so both `indexOfFirstDifferentLine` and the port's
+    // structural comparison answer 0 and the whole entry array is rebuilt.
+    board = traceBoard(1);
+    PolylineTrace s12 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0);
+    System.out.println("S12 before: " + traces());
+    s12.change(new Polyline(pts(0, 0, 10000, 5000, 20000, 0)));
+    System.out.println("S12 after:  " + traces());
+
+    // S13: `change` on a trace that is not on the board just swaps the polyline (:937-941).
+    board = traceBoard(1);
+    PolylineTrace s13 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    board.searchTreeManager.remove(s13);
+    s13.change(new Polyline(pts(0, 0, 30000, 0)));
+    System.out.println(
+        "S13 onBoard=" + s13.isOnTheBoard() + " corners=" + corners(s13)
+            + " entries=" + entryCount(s13));
+    System.out.println("S13 items=" + ids(board.getItems()));
+
+    // S14: quirk #22 reached through `combineAtStart`. The joined line array is
+    // `[D, C, B, C, D, X, Y]`, on which `Polyline.removeOverlaps` cancels its way down to
+    // `newLength == 0` and reads `tmpArr[-1]` (Polyline.java:148). Java throws out of
+    // `combineAtStart`; the port answers `BoardError::Normalization`. Neither touches the board.
+    board = traceBoard(1);
+    Line lineA = new Line(new IntPoint(0, 0), new IntPoint(1000, 0));
+    Line lineB = new Line(new IntPoint(0, 0), new IntPoint(0, 1000));
+    Line lineC = new Line(new IntPoint(0, 0), new IntPoint(1000, 1000));
+    Line lineD = new Line(new IntPoint(2000, 2000), new IntPoint(3000, 2000));
+    Line lineX = new Line(new IntPoint(4000, 2000), new IntPoint(4000, 3000));
+    Line lineY = new Line(new IntPoint(4000, 5000), new IntPoint(5000, 5000));
+    PolylineTrace s14 =
+        board.insertTraceWithoutCleaning(
+            new Polyline(new Line[] {lineA, lineB, lineC, lineD, lineX, lineY}),
+            0,
+            100,
+            new int[] {1},
+            1,
+            FixedState.UNFIXED);
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Line[] {lineD, lineC, lineB}),
+        0,
+        100,
+        new int[] {1},
+        1,
+        FixedState.UNFIXED);
+    System.out.println("S14 before: " + traces());
+    try {
+      System.out.println("S14 combine=" + s14.combine());
+    } catch (RuntimeException e) {
+      System.out.println("S14 combine=threw " + e.getClass().getSimpleName());
+    }
+    System.out.println("S14 after:  " + traces());
+
+    // S15: the same board through `normalize`, `normalizeTraces` and `normalizeAllTraces` — the
+    // outer loops have no catch of their own (BasicBoard.java:709-795,798-885), so whatever
+    // `split`/`combine` does to the geometry first decides whether the exception still escapes.
+    board = traceBoard(1);
+    PolylineTrace s15 =
+        board.insertTraceWithoutCleaning(
+            new Polyline(new Line[] {lineA, lineB, lineC, lineD, lineX, lineY}),
+            0,
+            100,
+            new int[] {1},
+            1,
+            FixedState.UNFIXED);
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Line[] {lineD, lineC, lineB}),
+        0,
+        100,
+        new int[] {1},
+        1,
+        FixedState.UNFIXED);
+    try {
+      System.out.println("S15 normalize=" + s15.normalize(null));
+    } catch (RuntimeException e) {
+      System.out.println("S15 normalize=threw " + e.getClass().getSimpleName());
+    }
+    System.out.println("S15 after:  " + traces());
+    try {
+      System.out.println("S15 normalizeTraces(1)=" + board.normalizeTraces(1));
+    } catch (RuntimeException e) {
+      System.out.println("S15 normalizeTraces(1)=threw " + e.getClass().getSimpleName());
+    }
+    System.out.println("S15 after2: " + traces());
+
+    // S16: `insertTrace`'s own `catch (Exception)` (BasicBoard.java:230-241) — the trace is
+    // inserted and kept even though its normalisation blew up.
+    board = traceBoard(1);
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Line[] {lineA, lineB, lineC, lineD, lineX, lineY}),
+        0,
+        100,
+        new int[] {1},
+        1,
+        FixedState.UNFIXED);
+    board.insertTrace(
+        new Polyline(new Line[] {lineD, lineC, lineB}), 0, 100, new int[] {1}, 1,
+        FixedState.UNFIXED);
+    System.out.println("S16 after:  " + traces());
+    System.out.println("S16 items=" + ids(board.getItems()));
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 9: `BasicBoard`'s four normalisation loops, plus the five methods whose bodies end in
+  // one of them
+  // -------------------------------------------------------------------------------------------
+
+  static void dumpBoardNormalizationLoops() {
+    System.out.println("mode=9");
+
+    // N1: `insertTrace(Polyline, …)` (BasicBoard.java:209-242) — the `normalize` tail runs.
+    board = traceBoard(1);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    board.insertTrace(
+        new Polyline(pts(10000, 0, 20000, 0)), 0, 1000, new int[] {1}, 1, FixedState.UNFIXED);
+    System.out.println("N1 after:  " + traces());
+
+    // N2: the same through `insertTrace(Point[], …)` (:248-262), with the changed area on so the
+    // `clipShape` branch (:224-229) is taken.
+    board = traceBoard(1);
+    board.startMarkingChangedArea();
+    board.markAllChangedArea();
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    board.insertTrace(pts(10000, 0, 20000, 0), 0, 1000, new int[] {1}, 1, FixedState.UNFIXED);
+    System.out.println("N2 after:  " + traces());
+
+    // N3: `combineTraces(netNumber)` (:683-706) over a five-segment chain, and over all nets.
+    board = traceBoard(1);
+    for (int i = 0; i < 5; i++) {
+      tr(0, 1000, 1, FixedState.UNFIXED, i * 10000, 0, (i + 1) * 10000, 0);
+    }
+    tr(0, 1000, 2, FixedState.UNFIXED, 0, 50000, 10000, 50000);
+    tr(0, 1000, 2, FixedState.UNFIXED, 10000, 50000, 20000, 50000);
+    System.out.println("N3 before: " + traces());
+    System.out.println("N3 combineTraces(1)=" + board.combineTraces(1));
+    System.out.println("N3 after:  " + traces());
+    System.out.println("N3 combineTraces(-1)=" + board.combineTraces(-1));
+    System.out.println("N3 after2: " + traces());
+    System.out.println("N3 combineTraces(-1) again=" + board.combineTraces(-1));
+
+    // N4: `normalizeTraces(netNumber)` (:709-795).
+    board = traceBoard(1);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("N4 before: " + traces());
+    System.out.println("N4 normalizeTraces(1)=" + board.normalizeTraces(1));
+    System.out.println("N4 after:  " + traces());
+    System.out.println("N4 normalizeTraces(1) again=" + board.normalizeTraces(1));
+    System.out.println("N4 after2: " + traces());
+
+    // N5: `normalizeAllTraces()` (:798-885) over two nets at once.
+    board = traceBoard(1);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    tr(0, 1000, 2, FixedState.UNFIXED, 0, 50000, 10000, 50000);
+    tr(0, 1000, 2, FixedState.UNFIXED, 10000, 50000, 20000, 50000);
+    System.out.println("N5 before: " + traces());
+    System.out.println("N5 normalizeAllTraces=" + board.normalizeAllTraces());
+    System.out.println("N5 after:  " + traces());
+    System.out.println("N5 normalizeAllTraces again=" + board.normalizeAllTraces());
+
+    // N6: `splitTraces(location, layer, netNumber)` (:891-907).
+    board = traceBoard(1);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 20000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, -10000, 10000, 10000);
+    System.out.println("N6 before: " + traces());
+    System.out.println("N6 splitTraces(hit)=" + board.splitTraces(new IntPoint(10000, 0), 0, 1));
+    System.out.println("N6 after:  " + traces());
+    System.out.println("N6 splitTraces(miss)=" + board.splitTraces(new IntPoint(90000, 0), 0, 1));
+
+    // N7: `insertVia`'s `splitTraces` loop (:287-293) — the via lands on an existing trace.
+    board = traceBoard(2);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 20000, 0);
+    System.out.println("N7 before: " + traces());
+    Via n7via =
+        board.insertVia(tracePad, new IntPoint(10000, 0), new int[] {1}, 1, FixedState.UNFIXED, true);
+    System.out.println("N7 via=#" + n7via.getId());
+    System.out.println("N7 after:  " + traces());
+    System.out.println("N7 items=" + ids(board.getItems()));
+
+    // N8: `RoutingBoard.connectToTrace` (:1116-1170) — its `insertTrace` tail normalises.
+    board = traceBoard(1);
+    PolylineTrace n8 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 20000, 0);
+    System.out.println(
+        "N8 connectToTrace=" + board.connectToTrace(new IntPoint(10000, 5000), n8, 1000, 1));
+    System.out.println("N8 after:  " + traces());
+    System.out.println("N8 items=" + ids(board.getItems()));
+
+    // N9: `RoutingBoard.removeTraceTails` (:1193-1238) — its `combineTraces(netNumber)` tail
+    // (:1236) runs once the stub is gone, joining the two traces the stub used to fork.
+    board = traceBoard(1);
+    tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 10000, 10000);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 10000, 0, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("N9 before: " + traces());
+    System.out.println(
+        "N9 removeTraceTails=" + board.removeTraceTails(1, Item.StopConnectionOption.NONE));
+    System.out.println("N9 after:  " + traces());
+
+    // N10: `DrillItem.moveBy`'s `insertTrace` tail (DrillItem.java:137-143) — a via with a
+    // contacting trace, moved.
+    board = traceBoard(1);
+    Via n10via =
+        board.insertVia(tracePad, new IntPoint(10000, 0), new int[] {1}, 1, FixedState.UNFIXED, true);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("N10 before: " + traces());
+    n10via.moveBy(new IntVector(0, 10000));
+    System.out.println("N10 after:  " + traces());
+    System.out.println("N10 items=" + ids(board.getItems()));
+  }
+
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 10: the `CombineStackOverflowTest` fixture, rebuilt by hand
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * The wiring of `fixtures/Issue723-CombineStackOverflow.dsn`, generated rather than parsed: a
+   * single GND net drawn as a boustrophedon of 200-unit collinear segments, 280 horizontal per
+   * row plus one vertical connector, starting at (130000, -107000) — exactly the 4000
+   * `(wire (path F.Cu 152.4 …))` entries of the fixture, in the same order.
+   *
+   * <p>`src/test/java/app/freerouting/fixtures/CombineStackOverflowTest.java` drives this through
+   * `DsnReader.readBoard`, which is Plan 3; the two board calls it ends in are
+   * `insertTraceWithoutCleaning` per wire (Wiring.java:530-535) and one `normalizeAllTraces`
+   * (Wiring.java:347).
+   */
+  static void dumpCombineStackOverflow(int segmentCount) {
+    System.out.println("mode=10 segments=" + segmentCount);
+    board = traceBoard(1);
+    int x = 130000;
+    int y = -107000;
+    int dx = 200;
+    int emitted = 0;
+    int inRow = 0;
+    while (emitted < segmentCount) {
+      int nextX = x;
+      int nextY = y;
+      if (inRow < 280) {
+        nextX = x + dx;
+        inRow++;
+      } else {
+        nextY = y + 200;
+        inRow = 0;
+        dx = -dx;
+      }
+      board.insertTraceWithoutCleaning(
+          new Polyline(new Point[] {new IntPoint(x, y), new IntPoint(nextX, nextY)}),
+          0,
+          76,
+          new int[] {1},
+          1,
+          FixedState.UNFIXED);
+      x = nextX;
+      y = nextY;
+      emitted++;
+    }
+    System.out.println("inserted=" + board.getTraces().size() + " lastCorner=" + point(new IntPoint(x, y)));
+    boolean changed = board.normalizeAllTraces();
+    System.out.println("normalizeAllTraces=" + changed);
+    System.out.println("traces=" + board.getTraces().size());
+    System.out.println("after: " + traces());
   }
 
   // -------------------------------------------------------------------------------------------

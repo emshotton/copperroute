@@ -5,14 +5,17 @@
 //! the Java driver prints.
 //!
 //! Modes: `0` insert/remove + the item-list and search queries, `1` connectivity, `2` the check
-//! queries including `checkTraceSegment`, `3` the changed area and the board-level bookkeeping.
+//! queries including `checkTraceSegment`, `3` the changed area and the board-level bookkeeping,
+//! `4` the compensated 90-degree board, `5` `ShapeTraceEntries`, `6` cycles and the last
+//! inserters, `7` `PolylineTrace.combine`, `8` `PolylineTrace.split`/`normalize`, `9`
+//! `BasicBoard`'s four normalisation loops, `10` the `CombineStackOverflowTest` fixture.
 
 use std::collections::BTreeSet;
 
 use fr_board::prelude::*;
 use fr_geometry::{
-    Area, IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
-    Vector,
+    Area, IntBox, IntVector, Line, Point, PolygonShape, Polyline, PolylineShapeRef, Shape,
+    TileShape, Vector,
 };
 use fr_board::ItemIdGenerator;
 
@@ -29,6 +32,14 @@ fn main() {
         4 => dump_compensated(&mut board),
         5 => dump_shape_trace_entries(),
         6 => dump_cycles_and_inserters(),
+        7 => dump_combine(),
+        8 => dump_split_and_normalize(),
+        9 => dump_board_normalization_loops(),
+        10 => dump_combine_stack_overflow(
+            std::env::args()
+                .nth(2)
+                .map_or(4000, |a| a.parse().expect("segment count")),
+        ),
         _ => panic!("mode {mode}"),
     }
 }
@@ -147,14 +158,16 @@ fn build(host_cad: bool) -> Board {
         1,
         FixedState::Unfixed,
     );
-    board.insert_via(
-        thru_pad,
-        Point::new(0, 0),
-        vec![1],
-        1,
-        FixedState::Unfixed,
-        true,
-    );
+    board
+        .insert_via(
+            thru_pad,
+            Point::new(0, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            true,
+        )
+        .expect("insertVia");
     board.insert_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
             2000, 2000, 3000, 3000,
@@ -902,22 +915,26 @@ fn build_cycle_board() -> (Board, fr_board::PadstackId) {
     board.rules.nets.add("N1", 1, false, default_class);
     board.rules.nets.add("N2", 1, false, default_class);
     board.rules.nets.add("N3", 1, false, default_class);
-    board.insert_via(
-        thru_pad,
-        Point::new(0, 0),
-        vec![1],
-        1,
-        FixedState::Unfixed,
-        true,
-    );
-    board.insert_via(
-        thru_pad,
-        Point::new(2000, 0),
-        vec![1],
-        1,
-        FixedState::Unfixed,
-        true,
-    );
+    board
+        .insert_via(
+            thru_pad,
+            Point::new(0, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            true,
+        )
+        .expect("insertVia");
+    board
+        .insert_via(
+            thru_pad,
+            Point::new(2000, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            true,
+        )
+        .expect("insertVia");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(0, 0), Point::new(2000, 0)]),
         0,
@@ -1011,14 +1028,16 @@ fn dump_cycles_and_inserters() {
 
     println!("--- the remaining inserters");
     let (mut board, thru_pad) = build_cycle_board();
-    let escape = board.insert_escape_via(
-        thru_pad,
-        Point::new(-2000, 0),
-        vec![1],
-        1,
-        FixedState::Unfixed,
-        0,
-    );
+    let escape = board
+        .insert_escape_via(
+            thru_pad,
+            Point::new(-2000, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            0,
+        )
+        .expect("insertEscapeVia");
     let via = match board.get_item(escape).expect("the escape via") {
         Item::Via(v) => v,
         _ => unreachable!(),
@@ -1240,7 +1259,9 @@ fn dump_changed_area(board: &mut Board) {
     println!("--- removeTraceTails(1, NONE)");
     println!(
         "removed={}",
-        board.remove_trace_tails(1, StopConnectionOption::None)
+        board
+            .remove_trace_tails(1, StopConnectionOption::None)
+            .expect("removeTraceTails")
     );
     println!("items={}", ids(board.items_in_board_order()));
 
@@ -1388,6 +1409,850 @@ fn net_array(net_nos: &[i32]) -> String {
 
 fn boxs(b: &IntBox) -> String {
     format!("Box[{},{}..{},{}]", b.ll.x, b.ll.y, b.ur.x, b.ur.y)
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Modes 7-10: trace normalisation (Task 9)
+// ---------------------------------------------------------------------------------------------
+
+/// The twin of `P2T11.traceBoard`: a bare board with no components, one padstack, two nets and a
+/// square outline — the shape `PolylineTraceSplitTest.createTestBoard` (:31-49) builds.
+fn trace_board(layer_count: usize) -> (Board, PadstackId) {
+    let ls = LayerStructure::new(
+        (0..layer_count)
+            .map(|i| Layer::new(format!("l{i}"), true))
+            .collect(),
+    );
+    let cm = ClearanceMatrix::get_default_instance(&ls, 10);
+    let mut rules = BoardRules::new(ls.clone(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+
+    let mut padstacks = Padstacks::new(ls);
+    let trace_pad = padstacks.add(
+        "via",
+        (0..layer_count)
+            .map(|_| {
+                Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                    -300, -300, 300, 300,
+                ))))
+            })
+            .collect(),
+        true,
+        false,
+    );
+    let library = BoardLibrary::new(padstacks, Packages::new());
+
+    let outline = vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+        Point::new(-1_000_000, -1_000_000),
+        Point::new(1_000_000, -1_000_000),
+        Point::new(1_000_000, 1_000_000),
+        Point::new(-1_000_000, 1_000_000),
+    ]))];
+    let mut board = Board::new(
+        outline,
+        0,
+        IntBox::from_coords(-2_000_000, -2_000_000, 2_000_000, 2_000_000),
+        rules,
+        library,
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+    board.rules.nets.add("N2", 1, false, default_class);
+    (board, trace_pad)
+}
+
+fn pts(xy: &[i32]) -> Vec<Point> {
+    xy.chunks(2).map(|c| Point::new(c[0], c[1])).collect()
+}
+
+fn tr(
+    board: &mut Board,
+    layer: usize,
+    half_width: i32,
+    net: i32,
+    fixed: FixedState,
+    xy: &[i32],
+) -> ItemId {
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&pts(xy)),
+            layer,
+            half_width,
+            vec![net],
+            1,
+            fixed,
+        )
+        .expect("insertTraceWithoutCleaning")
+}
+
+fn entry_count(board: &Board, id: ItemId) -> String {
+    let tree = board.default_tree_id();
+    match board
+        .get_item(id)
+        .and_then(|item| item.get_search_tree_entries(tree))
+    {
+        None => "null".to_string(),
+        Some(entries) => entries.len().to_string(),
+    }
+}
+
+fn corners(trace: &PolylineTrace) -> String {
+    let polyline = trace.polyline();
+    format!(
+        "[{}]",
+        (0..trace.corner_count())
+            .map(|i| point(polyline.corner(i).as_ref()))
+            .collect::<Vec<_>>()
+            .join(" ")
+    )
+}
+
+fn trace_line(board: &Board, id: ItemId) -> String {
+    let item = board.get_item(id).expect("a trace");
+    let Item::Trace(trace) = item else {
+        unreachable!("not a trace")
+    };
+    format!(
+        "#{} onBoard={} layer={} hw={} lines={} tiles={} entries={} corners={}",
+        id.0,
+        item.is_on_the_board(),
+        trace.get_layer(),
+        trace.get_half_width(),
+        trace.polyline().lines().len(),
+        trace.tile_shape_count(),
+        entry_count(board, id),
+        corners(trace)
+    )
+}
+
+/// Every trace still in the item list, in the item list's own (descending id) order.
+fn traces(board: &Board) -> String {
+    let lines: Vec<String> = board
+        .items_in_board_order()
+        .into_iter()
+        .filter(|id| board.get_item(*id).is_some_and(Item::is_trace))
+        .map(|id| trace_line(board, id))
+        .collect();
+    if lines.is_empty() {
+        "(none)".to_string()
+    } else {
+        lines.join(" | ")
+    }
+}
+
+fn dump_combine() {
+    println!("mode=7");
+
+    // A: combineAtStart, straight order, two collinear segments (skipLine == true).
+    let (mut board, _) = trace_board(1);
+    let a2 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    println!("A before: {}", traces(&board));
+    println!("A combine(#{})={}", a2.0, board.combine_trace(a2).expect("combine"));
+    println!("A after:  {}", traces(&board));
+    println!(
+        "A items={} revision={}",
+        ids(board.items_in_board_order()),
+        board.revision()
+    );
+
+    // B: combineAtStart, reverse order.
+    let (mut board, _) = trace_board(1);
+    let b2 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 0, 0]);
+    println!("B combine(#{})={}", b2.0, board.combine_trace(b2).expect("combine"));
+    println!("B after:  {}", traces(&board));
+
+    // C: combineAtEnd, straight order, with the changed area being marked.
+    let (mut board, _) = trace_board(1);
+    board.start_marking_changed_area();
+    let c1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("C combine(#{})={}", c1.0, board.combine_trace(c1).expect("combine"));
+    println!("C after:  {}", traces(&board));
+    println!("C changedArea={}", changed_area(&board));
+
+    // D: combineAtEnd, reverse order.
+    let (mut board, _) = trace_board(1);
+    let d1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[20000, 0, 10000, 0]);
+    println!("D combine(#{})={}", d1.0, board.combine_trace(d1).expect("combine"));
+    println!("D after:  {}", traces(&board));
+
+    // E: combineAtEnd on a corner (skipLine == false).
+    let (mut board, _) = trace_board(1);
+    let e1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 10000, 10000]);
+    println!("E combine(#{})={}", e1.0, board.combine_trace(e1).expect("combine"));
+    println!("E after:  {}", traces(&board));
+
+    // F: three traces meeting at one point.
+    let (mut board, _) = trace_board(1);
+    let f1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 10000, 10000]);
+    println!("F combine(#{})={}", f1.0, board.combine_trace(f1).expect("combine"));
+    println!("F after:  {}", traces(&board));
+
+    // G: a different half width refuses.
+    let (mut board, _) = trace_board(1);
+    let g1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 500, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("G combine(#{})={}", g1.0, board.combine_trace(g1).expect("combine"));
+    println!("G after:  {}", traces(&board));
+
+    // H: a different fixed state refuses.
+    let (mut board, _) = trace_board(1);
+    let h1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::ShoveFixed, &[10000, 0, 20000, 0]);
+    println!("H combine(#{})={}", h1.0, board.combine_trace(h1).expect("combine"));
+    println!("H after:  {}", traces(&board));
+
+    // I: a different net refuses.
+    let (mut board, _) = trace_board(1);
+    let i1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 2, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("I combine(#{})={}", i1.0, board.combine_trace(i1).expect("combine"));
+    println!("I after:  {}", traces(&board));
+
+    // J: a chain of five collinear segments, combined from the middle.
+    let (mut board, _) = trace_board(1);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    let j3 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[20000, 0, 30000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[30000, 0, 40000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[40000, 0, 50000, 0]);
+    println!("J before: {}", traces(&board));
+    println!("J combine(#{})={}", j3.0, board.combine_trace(j3).expect("combine"));
+    println!("J after:  {}", traces(&board));
+
+    // K: `PolylineTraceSplitTest.testCombineAtEndRecoversMissingDefaultTreeEntries` (:353-379).
+    let (mut board, _) = trace_board(1);
+    let k1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 10000, 20000, 10000]);
+    let k2 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[20000, 10000, 30000, 10000]);
+    {
+        let mut item = board.items.remove(&k1).expect("the first trace");
+        board.trees.remove(&mut item);
+        item.set_on_the_board(true);
+        board.items.insert(k1, item);
+    }
+    println!("K entriesBefore={}", entry_count(&board, k1));
+    println!("K combine(#{})={}", k1.0, board.combine_trace(k1).expect("combine"));
+    println!(
+        "K firstOnBoard={} secondOnBoard={}",
+        board.get_item(k1).is_some_and(Item::is_on_the_board),
+        board.get_item(k2).is_some_and(Item::is_on_the_board)
+    );
+    println!("K entriesAfter={}", entry_count(&board, k1));
+    println!("K after:  {}", traces(&board));
+
+    // L: an L-shaped three-corner trace absorbed at its start by a straight one.
+    let (mut board, _) = trace_board(1);
+    let l1 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[10000, 0, 10000, 10000, 20000, 10000],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    println!("L combine(#{})={}", l1.0, board.combine_trace(l1).expect("combine"));
+    println!("L after:  {}", traces(&board));
+
+    // M: a conduction area at the join is dropped by `ignoreAreas`.
+    let (mut board, _) = trace_board(1);
+    board.insert_conduction_area(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            9000, -1000, 11000, 1000,
+        )))),
+        0,
+        vec![1],
+        1,
+        true,
+        FixedState::Unfixed,
+    );
+    let m1 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("M combine(#{})={}", m1.0, board.combine_trace(m1).expect("combine"));
+    println!("M after:  {}", traces(&board));
+    println!("M items={}", ids(board.items_in_board_order()));
+}
+
+fn split_result(board: &Board, pieces: &[ItemId]) -> String {
+    format!(
+        "[{}]",
+        pieces
+            .iter()
+            .map(|id| {
+                if board.get_item(*id).is_some_and(Item::is_on_the_board) {
+                    format!("#{}", id.0)
+                } else {
+                    format!("#{}(off)", id.0)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    )
+}
+
+fn dump_split_and_normalize() {
+    println!("mode=8");
+
+    // S1: `PolylineTraceSplitTest.testSplitPreservesNonOverlappingSegments` (:220-293).
+    let (mut board, _) = trace_board(1);
+    let s1 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("S1 before: {}", traces(&board));
+    let pieces = board.split_trace(s1, None).expect("split");
+    println!("S1 split={}", split_result(&board, &pieces));
+    println!("S1 after:  {}", traces(&board));
+
+    // S2: `PolylineTraceSplitTest.testSplitDoesNotRemoveValidSegments` (:61-216).
+    let (mut board, _) = trace_board(1);
+    tr(
+        &mut board,
+        0,
+        1000,
+        98,
+        FixedState::Unfixed,
+        &[1291423, -987076, 1270000, -975000, 1250000, -970000, 1243227, -964893],
+    );
+    let s2b = tr(
+        &mut board,
+        0,
+        1000,
+        98,
+        FixedState::Unfixed,
+        &[1243227, -964893, 1241414, -964893],
+    );
+    println!("S2 combine={}", board.combine_trace(s2b).expect("combine"));
+    println!("S2 combined: {}", traces(&board));
+    let s2combined = board
+        .items_in_board_order()
+        .into_iter()
+        .find(|id| {
+            board.get_item(*id).is_some_and(|item| {
+                item.is_trace() && item.contains_net(98) && item.is_on_the_board()
+            })
+        })
+        .expect("the combined trace");
+    let Some(Item::Trace(combined)) = board.get_item(s2combined) else {
+        unreachable!()
+    };
+    println!(
+        "S2 pick=#{} first={} last={}",
+        s2combined.0,
+        point(combined.first_corner().as_ref()),
+        point(combined.last_corner().as_ref())
+    );
+    tr(
+        &mut board,
+        0,
+        1000,
+        98,
+        FixedState::Unfixed,
+        &[1243227, -964893, 1242000, -960000, 1241171, -952775],
+    );
+    let pieces = board.split_trace(s2combined, None).expect("split");
+    println!("S2 split={}", split_result(&board, &pieces));
+    println!("S2 after:  {}", traces(&board));
+
+    // S3: the same S1 board, but a `clipShape` that misses the overlap entirely.
+    let (mut board, _) = trace_board(1);
+    let s3 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    let clip_away = IntBox::from_coords(100_000, 100_000, 110_000, 110_000).bounding_octagon();
+    let pieces = board.split_trace(s3, Some(&clip_away)).expect("split");
+    println!("S3 split(clip away)={}", split_result(&board, &pieces));
+    println!("S3 after:  {}", traces(&board));
+    let clip_over = IntBox::from_coords(-1000, -1000, 31000, 1000).bounding_octagon();
+    let pieces = board.split_trace(s3, Some(&clip_over)).expect("split");
+    println!("S3 split(clip over)={}", split_result(&board, &pieces));
+    println!("S3 after2: {}", traces(&board));
+
+    // S4: the `DrillItem` branch (PolylineTrace.java:649-661).
+    let (mut board, pad) = trace_board(1);
+    board
+        .insert_via(pad, Point::new(10000, 0), vec![1], 1, FixedState::Unfixed, true)
+        .expect("insertVia");
+    let s4 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
+    println!("S4 before: {}", traces(&board));
+    let pieces = board.split_trace(s4, None).expect("split");
+    println!("S4 split={}", split_result(&board, &pieces));
+    println!("S4 after:  {}", traces(&board));
+    println!("S4 items={}", ids(board.items_in_board_order()));
+
+    // S5: `normalize(null)` over the S1 geometry.
+    let (mut board, _) = trace_board(1);
+    let s5 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("S5 normalize={}", board.normalize_trace(s5, None).expect("normalize"));
+    println!("S5 after:  {}", traces(&board));
+
+    // S6: normalize on a board where nothing overlaps.
+    let (mut board, _) = trace_board(1);
+    let s6 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    println!("S6 normalize={}", board.normalize_trace(s6, None).expect("normalize"));
+    println!("S6 after:  {}", traces(&board));
+
+    // S7: normalize where the only change is a combine.
+    let (mut board, _) = trace_board(1);
+    let s7 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("S7 normalize={}", board.normalize_trace(s7, None).expect("normalize"));
+    println!("S7 after:  {}", traces(&board));
+
+    // S8: the conduction-area cycle branch (PolylineTrace.java:662-681).
+    let (mut board, _) = trace_board(1);
+    board.insert_conduction_area(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -1000, -1000, 21000, 1000,
+        )))),
+        0,
+        vec![1],
+        1,
+        true,
+        FixedState::Unfixed,
+    );
+    let s8 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
+    let pieces = board.split_trace(s8, None).expect("split");
+    println!("S8 split={}", split_result(&board, &pieces));
+    println!(
+        "S8 onBoard={} items={}",
+        board.get_item(s8).is_some_and(Item::is_on_the_board),
+        ids(board.items_in_board_order())
+    );
+
+    // S9: a trace of a non-normal net is never split.
+    let (mut board, _) = trace_board(1);
+    let s9 = tr(
+        &mut board,
+        0,
+        1000,
+        0,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 0, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    let pieces = board.split_trace(s9, None).expect("split");
+    println!("S9 split={}", split_result(&board, &pieces));
+    println!("S9 after:  {}", traces(&board));
+
+    // S10: two traces crossing at right angles.
+    let (mut board, _) = trace_board(1);
+    let s10 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
+    tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[10000, -10000, 10000, 10000],
+    );
+    println!("S10 before: {}", traces(&board));
+    let pieces = board.split_trace(s10, None).expect("split");
+    println!("S10 split={}", split_result(&board, &pieces));
+    println!("S10 after:  {}", traces(&board));
+
+    // S11: a USER_FIXED trace refuses to split.
+    let (mut board, _) = trace_board(1);
+    let s11 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::UserFixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    let pieces = board.split_trace(s11, None).expect("split");
+    println!("S11 split={}", split_result(&board, &pieces));
+    println!("S11 after:  {}", traces(&board));
+    println!("S11 normalize={}", board.normalize_trace(s11, None).expect("normalize"));
+    println!("S11 after2: {}", traces(&board));
+
+    // S12: `PolylineTrace.change` (PolylineTrace.java:936-1005) on a live trace.
+    let (mut board, _) = trace_board(1);
+    let s12 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0],
+    );
+    println!("S12 before: {}", traces(&board));
+    board.change_trace(s12, Polyline::from_points(&pts(&[0, 0, 10000, 5000, 20000, 0])));
+    println!("S12 after:  {}", traces(&board));
+
+    // S13: `change` on a trace that is not on the board just swaps the polyline (:937-941).
+    let (mut board, _) = trace_board(1);
+    let s13 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    {
+        let mut item = board.items.remove(&s13).expect("the trace");
+        board.trees.remove(&mut item);
+        board.items.insert(s13, item);
+    }
+    board.change_trace(s13, Polyline::from_points(&pts(&[0, 0, 30000, 0])));
+    let Some(Item::Trace(changed)) = board.get_item(s13) else {
+        unreachable!()
+    };
+    println!(
+        "S13 onBoard={} corners={} entries={}",
+        board.get_item(s13).is_some_and(Item::is_on_the_board),
+        corners(changed),
+        entry_count(&board, s13)
+    );
+    println!("S13 items={}", ids(board.items_in_board_order()));
+
+    // S14: quirk #22 reached through `combineAtStart`; see `P2T11.java`.
+    let (mut board, _) = trace_board(1);
+    let line_a = Line::from_coords(0, 0, 1000, 0);
+    let line_b = Line::from_coords(0, 0, 0, 1000);
+    let line_c = Line::from_coords(0, 0, 1000, 1000);
+    let line_d = Line::from_coords(2000, 2000, 3000, 2000);
+    let line_x = Line::from_coords(4000, 2000, 4000, 3000);
+    let line_y = Line::from_coords(4000, 5000, 5000, 5000);
+    let s14 = board
+        .insert_trace_without_cleaning(
+            Polyline::from_lines(vec![line_a, line_b, line_c, line_d, line_x, line_y])
+                .expect("a six-line polyline"),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_lines(vec![line_d, line_c, line_b]).expect("a three-line polyline"),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    println!("S14 before: {}", traces(&board));
+    match board.combine_trace(s14) {
+        Ok(changed) => println!("S14 combine={changed}"),
+        // The port's `BoardError::Normalization(NormalizationIndexUnderflow)` *is* Java's
+        // `ArrayIndexOutOfBoundsException` out of `Polyline.removeOverlaps` (quirk #22).
+        Err(BoardError::Normalization(_)) => {
+            println!("S14 combine=threw ArrayIndexOutOfBoundsException");
+        }
+        Err(other) => println!("S14 combine=threw {other:?}"),
+    }
+    println!("S14 after:  {}", traces(&board));
+
+    // S15: the same board through `normalize` and `normalizeTraces`; see `P2T11.java`.
+    let (mut board, _) = trace_board(1);
+    let s15 = board
+        .insert_trace_without_cleaning(
+            Polyline::from_lines(vec![line_a, line_b, line_c, line_d, line_x, line_y])
+                .expect("a six-line polyline"),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_lines(vec![line_d, line_c, line_b]).expect("a three-line polyline"),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    match board.normalize_trace(s15, None) {
+        Ok(changed) => println!("S15 normalize={changed}"),
+        Err(BoardError::Normalization(_)) => {
+            println!("S15 normalize=threw ArrayIndexOutOfBoundsException");
+        }
+        Err(other) => println!("S15 normalize=threw {other:?}"),
+    }
+    println!("S15 after:  {}", traces(&board));
+    match board.normalize_traces(1) {
+        Ok(changed) => println!("S15 normalizeTraces(1)={changed}"),
+        Err(BoardError::Normalization(_)) => {
+            println!("S15 normalizeTraces(1)=threw ArrayIndexOutOfBoundsException");
+        }
+        Err(other) => println!("S15 normalizeTraces(1)=threw {other:?}"),
+    }
+    println!("S15 after2: {}", traces(&board));
+
+    // S16: `insertTrace`'s own catch (BasicBoard.java:230-241).
+    let (mut board, _) = trace_board(1);
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_lines(vec![line_a, line_b, line_c, line_d, line_x, line_y])
+                .expect("a six-line polyline"),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    board.insert_trace(
+        Polyline::from_lines(vec![line_d, line_c, line_b]).expect("a three-line polyline"),
+        0,
+        100,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    println!("S16 after:  {}", traces(&board));
+    println!("S16 items={}", ids(board.items_in_board_order()));
+}
+
+fn dump_board_normalization_loops() {
+    println!("mode=9");
+
+    // N1: `insertTrace(Polyline, …)` (BasicBoard.java:209-242).
+    let (mut board, _) = trace_board(1);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    board.insert_trace(
+        Polyline::from_points(&pts(&[10000, 0, 20000, 0])),
+        0,
+        1000,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    println!("N1 after:  {}", traces(&board));
+
+    // N2: the same through `insertTrace(Point[], …)`, with the changed area on.
+    let (mut board, _) = trace_board(1);
+    board.start_marking_changed_area();
+    board.mark_all_changed_area();
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    board.insert_trace_at_points(
+        &pts(&[10000, 0, 20000, 0]),
+        0,
+        1000,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    println!("N2 after:  {}", traces(&board));
+
+    // N3: `combineTraces(netNumber)` (:683-706).
+    let (mut board, _) = trace_board(1);
+    for i in 0..5 {
+        tr(
+            &mut board,
+            0,
+            1000,
+            1,
+            FixedState::Unfixed,
+            &[i * 10000, 0, (i + 1) * 10000, 0],
+        );
+    }
+    tr(&mut board, 0, 1000, 2, FixedState::Unfixed, &[0, 50000, 10000, 50000]);
+    tr(&mut board, 0, 1000, 2, FixedState::Unfixed, &[10000, 50000, 20000, 50000]);
+    println!("N3 before: {}", traces(&board));
+    println!("N3 combineTraces(1)={}", board.combine_traces(1).expect("combine"));
+    println!("N3 after:  {}", traces(&board));
+    println!("N3 combineTraces(-1)={}", board.combine_traces(-1).expect("combine"));
+    println!("N3 after2: {}", traces(&board));
+    println!(
+        "N3 combineTraces(-1) again={}",
+        board.combine_traces(-1).expect("combine")
+    );
+
+    // N4: `normalizeTraces(netNumber)` (:709-795).
+    let (mut board, _) = trace_board(1);
+    tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("N4 before: {}", traces(&board));
+    println!("N4 normalizeTraces(1)={}", board.normalize_traces(1).expect("normalize"));
+    println!("N4 after:  {}", traces(&board));
+    println!(
+        "N4 normalizeTraces(1) again={}",
+        board.normalize_traces(1).expect("normalize")
+    );
+    println!("N4 after2: {}", traces(&board));
+
+    // N5: `normalizeAllTraces()` (:798-885).
+    let (mut board, _) = trace_board(1);
+    tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    tr(&mut board, 0, 1000, 2, FixedState::Unfixed, &[0, 50000, 10000, 50000]);
+    tr(&mut board, 0, 1000, 2, FixedState::Unfixed, &[10000, 50000, 20000, 50000]);
+    println!("N5 before: {}", traces(&board));
+    println!(
+        "N5 normalizeAllTraces={}",
+        board.normalize_all_traces().expect("normalize")
+    );
+    println!("N5 after:  {}", traces(&board));
+    println!(
+        "N5 normalizeAllTraces again={}",
+        board.normalize_all_traces().expect("normalize")
+    );
+
+    // N6: `splitTraces(location, layer, netNumber)` (:891-907).
+    let (mut board, _) = trace_board(1);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
+    tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[10000, -10000, 10000, 10000],
+    );
+    println!("N6 before: {}", traces(&board));
+    println!(
+        "N6 splitTraces(hit)={}",
+        board
+            .split_traces(&Point::new(10000, 0), 0, 1)
+            .expect("splitTraces")
+    );
+    println!("N6 after:  {}", traces(&board));
+    println!(
+        "N6 splitTraces(miss)={}",
+        board
+            .split_traces(&Point::new(90000, 0), 0, 1)
+            .expect("splitTraces")
+    );
+
+    // N7: `insertVia`'s `splitTraces` loop (:287-293).
+    let (mut board, pad) = trace_board(2);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
+    println!("N7 before: {}", traces(&board));
+    let n7via = board
+        .insert_via(pad, Point::new(10000, 0), vec![1], 1, FixedState::Unfixed, true)
+        .expect("insertVia");
+    println!("N7 via=#{}", n7via.0);
+    println!("N7 after:  {}", traces(&board));
+    println!("N7 items={}", ids(board.items_in_board_order()));
+
+    // N8: `RoutingBoard.connectToTrace` (:1116-1170).
+    let (mut board, _) = trace_board(1);
+    let n8 = tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
+    println!(
+        "N8 connectToTrace={}",
+        board.connect_to_trace(&Point::new(10000, 5000), n8, 1000, 1)
+    );
+    println!("N8 after:  {}", traces(&board));
+    println!("N8 items={}", ids(board.items_in_board_order()));
+
+    // N9: `RoutingBoard.removeTraceTails` (:1193-1238) and its `combineTraces` tail (:1236).
+    let (mut board, _) = trace_board(1);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 10000, 10000]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 10000, 0, 0]);
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("N9 before: {}", traces(&board));
+    println!(
+        "N9 removeTraceTails={}",
+        board
+            .remove_trace_tails(1, StopConnectionOption::None)
+            .expect("removeTraceTails")
+    );
+    println!("N9 after:  {}", traces(&board));
+
+    // N10: `DrillItem.moveBy`'s `insertTrace` tail (DrillItem.java:137-143).
+    let (mut board, pad) = trace_board(1);
+    let n10via = board
+        .insert_via(pad, Point::new(10000, 0), vec![1], 1, FixedState::Unfixed, true)
+        .expect("insertVia");
+    tr(&mut board, 0, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
+    println!("N10 before: {}", traces(&board));
+    board
+        .move_item_by(n10via, &Vector::Int(IntVector::new(0, 10000)))
+        .expect("moveBy");
+    println!("N10 after:  {}", traces(&board));
+    println!("N10 items={}", ids(board.items_in_board_order()));
+}
+
+/// The wiring of `fixtures/Issue723-CombineStackOverflow.dsn`, generated rather than parsed; see
+/// `P2T11.dumpCombineStackOverflow`.
+fn dump_combine_stack_overflow(segment_count: u32) {
+    println!("mode=10 segments={segment_count}");
+    let (mut board, _) = trace_board(1);
+    let mut x = 130_000i32;
+    let mut y = -107_000i32;
+    let mut dx = 200i32;
+    let mut emitted = 0u32;
+    let mut in_row = 0u32;
+    while emitted < segment_count {
+        let (next_x, next_y) = if in_row < 280 {
+            in_row += 1;
+            (x + dx, y)
+        } else {
+            in_row = 0;
+            dx = -dx;
+            (x, y + 200)
+        };
+        board.insert_trace_without_cleaning(
+            Polyline::from_two_points(&Point::new(x, y), &Point::new(next_x, next_y)),
+            0,
+            76,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        x = next_x;
+        y = next_y;
+        emitted += 1;
+    }
+    println!(
+        "inserted={} lastCorner={}",
+        board.get_traces().len(),
+        point(Some(&Point::new(x, y)))
+    );
+    println!(
+        "normalizeAllTraces={}",
+        board.normalize_all_traces().expect("normalizeAllTraces")
+    );
+    println!("traces={}", board.get_traces().len());
+    println!("after: {}", traces(&board));
 }
 
 fn oct(o: &fr_geometry::IntOctagon) -> String {

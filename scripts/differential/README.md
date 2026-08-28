@@ -221,6 +221,10 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t11` (mode 4) | 20 | 0 | exact match (host-CAD section width, clearance compensation, 90-degree checks) |
 | `p2t11` (mode 5) | 31 | 0 | exact match (`ShapeTraceEntries`, `ShapeEntrySide`, `ShapeAndEntrySide`) |
 | `p2t11` (mode 6) | 24 | 0 | exact match (cycles/overlaps, `removeIfCycle`, the remaining inserters) |
+| `p2t11` (mode 7) | 35 | 0 | exact match (`PolylineTrace.combine`, both halves, both orders, every refusal) |
+| `p2t11` (mode 8) | 47 | 0 | exact match (`split(IntOctagon)`, `change`, `normalize`, and quirk #22 out of `combineAtStart`) |
+| `p2t11` (mode 9) | 35 | 0 | exact match (`combineTraces`/`normalizeTraces`/`normalizeAllTraces`/`splitTraces` and the five callers that end in one of them) |
+| `p2t11` (mode 10) | 5 | 0 | exact match (the 4000-segment `CombineStackOverflowTest` fixture, rebuilt by hand) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -260,7 +264,7 @@ own `build/libs/freerouting-current-executable.jar` (`FREEROUTING_JAR`),
 because it compiles against the built board stack rather than against the
 `geometry/planar` sources.
 
-The four modes cover:
+The eleven modes cover:
 
 * **0** — `BasicBoard`'s constructor (which inserts the `BoardOutline` as item
   1), the id the generator hands each typed inserter, `revision` after every
@@ -306,6 +310,40 @@ The four modes cover:
   quirk #66), `deleteAllTracksAndVias`, and the five typed inserters modes 0-5
   do not reach — the escape via, the via keepout, the two component-owned
   overloads and the component outline.
+
+Modes 7-10 are Task 9's, and each builds its own bare board (no components, one
+padstack, two nets) — the shape `PolylineTraceSplitTest.createTestBoard` builds:
+
+* **7** — `PolylineTrace.combine`: `combineAtStart` and `combineAtEnd`, each in
+  straight and reversed order, with and without the `skipLine` shortcut; the
+  four refusals (a forked contact point, a different half width, a different
+  fixed state, a foreign net); a five-segment chain combined from the middle,
+  which is the loop `CombineStackOverflowTest` forced; the "path 2 requires
+  entries in the default tree" fallback of
+  `PolylineTraceSplitTest.testCombineAtEndRecoversMissingDefaultTreeEntries`;
+  and `ignoreAreas` dropping a conduction area from the contact set.
+* **8** — `PolylineTrace.split(IntOctagon)`: the two board-dependent
+  `PolylineTraceSplitTest` split cases, the `clipShape` filter, the `DrillItem`
+  branch (quirk #73), the `ConductionArea` cycle branch, a non-normal net, two
+  traces crossing at right angles, a `USER_FIXED` refusal; then `normalize` in
+  its three outcomes, `change` on a live and on an off-board trace (quirk #74),
+  and — scenarios S14-S16 — quirk #22 reached through `combineAtStart`, where
+  the JVM throws `ArrayIndexOutOfBoundsException` out of `combine()` and the
+  port answers `BoardError::Normalization`, with `insertTrace`'s own
+  `catch (Exception)` swallowing it at the same place Java's does.
+* **9** — `combineTraces` (one net, then all nets, then a no-op call),
+  `normalizeTraces`, `normalizeAllTraces`, `splitTraces`, and the five methods
+  Task 11 had to leave uncovered because their bodies end in normalisation:
+  `insertTrace` (both overloads), `insertVia`'s `splitTraces` loop (on a
+  *two*-layer board, since `fromLayer..toLayer` is empty for a one-layer
+  padstack), `connectToTrace`, `removeTraceTails`' `combineTraces` tail and
+  `DrillItem.moveBy`'s `insertTrace` tail.
+* **10** — `fixtures/Issue723-CombineStackOverflow.dsn`, generated rather than
+  parsed (the DSN reader is Plan 3): 4000 collinear 200-unit segments in a
+  15-row boustrophedon, inserted with `insertTraceWithoutCleaning` and then
+  `normalizeAllTraces`, which is the pair of board calls `Wiring.java` makes.
+  Both engines fold them into one 31-line trace. Takes a segment count as a
+  second argument (`run.sh p2t11 10 400`).
 
 Two Java findings came out of it, both now in `docs/java-quirks.md`:
 `Item.getAllNetNames` joins `Net::toString` (`"Net #1 (N1)"`), not the bare

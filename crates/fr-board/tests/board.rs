@@ -1021,7 +1021,11 @@ fn unfill_conduction_areas_clears_both_flags_and_reinserts() {
 fn remove_trace_tails_finds_nothing_on_a_fully_contacted_net() {
     // `P2T11.java` mode 3: `removed=false`, and the item list is untouched.
     let mut board = p2t11_board();
-    assert!(!board.remove_trace_tails(1, StopConnectionOption::None));
+    assert!(
+        !board
+            .remove_trace_tails(1, StopConnectionOption::None)
+            .expect("no normalisation failure")
+    );
     assert_eq!(
         nums(board.items_in_board_order()),
         vec![8, 7, 6, 5, 4, 3, 2, 1]
@@ -1659,14 +1663,16 @@ fn delete_all_tracks_and_vias_leaves_only_the_areas_and_the_outline() {
 fn the_remaining_typed_inserters_match_the_jvm() {
     // `P2T11.java` mode 6's `--- the remaining inserters` block.
     let (mut board, thru_pad) = board_builder::cycle_board();
-    let escape = board.insert_escape_via(
-        thru_pad,
-        Point::new(-2000, 0),
-        vec![1],
-        1,
-        FixedState::Unfixed,
-        0,
-    );
+    let escape = board
+        .insert_escape_via(
+            thru_pad,
+            Point::new(-2000, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            0,
+        )
+        .expect("no normalisation failure");
     assert_eq!(escape, ItemId(8));
     match board.get_item(escape).expect("the escape via") {
         Item::Via(via) => {
@@ -2072,7 +2078,11 @@ fn remove_trace_tails_removes_a_stub() {
         )
         .expect("a straight two-corner trace");
     assert!(board.is_tail(stray));
-    assert!(board.remove_trace_tails(1, StopConnectionOption::None));
+    assert!(
+        board
+            .remove_trace_tails(1, StopConnectionOption::None)
+            .expect("no normalisation failure")
+    );
     assert_eq!(board.get_item(stray), None);
     // Everything else survives: the chain has no other stub.
     assert_eq!(
