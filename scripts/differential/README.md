@@ -41,8 +41,9 @@ methods with dozens of branches.
     `changeItemShape`, `changeEntries` and `setClearanceCompensationUsed`, and
     mode 4 covers obstacle/conduction areas, both `BoardOutline` branches and
     the synthesised drill-hole obstacle, mode 5 the three entry-surgery methods
-    and mode 6 `reduceTraceShapeAtTiePin`. Together the seven modes reach every
-    public `ShapeSearchTree` method except `completeShape`/`divideLargeRoom`.
+    mode 6 `reduceTraceShapeAtTiePin` and mode 7 a skewed outline whose line
+    bands are `Simplex`es. Together the eight modes reach every public
+    `ShapeSearchTree` method except `completeShape`/`divideLargeRoom`.
     `crates/fr-board/tests/{board_builder,search_tree}.rs` were written from
     this driver's output.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
@@ -169,8 +170,10 @@ the driver expects, or none at all.
   `setClearanceCompensationUsed`, `4` for a three-layer board with a real
   outline polygon, an obstacle area, a conduction area and a via whose middle
   layer has no pad, `5` for `mergeEntriesAtEnd`/`mergeEntriesInFront`/
-  `reuseEntriesAfterCutout`, and `6` for `reduceTraceShapeAtTiePin`. Run **all
-  seven**: between them they reach every public `ShapeSearchTree` method except
+  `reuseEntriesAfterCutout`, `6` for `reduceTraceShapeAtTiePin`, and `7` for an
+  outline whose edges run in none of the trees' directions (so the line bands
+  are `Simplex`es the 45-degree override has to regularise). Run **all eight**:
+  between them they reach every public `ShapeSearchTree` method except
   `completeShape`/`divideLargeRoom` (Plan 6). Modes 0-2 differ only in which
   subclass `getAutorouteTree` builds, which is the whole point of the
   angle-parameterised port.
@@ -209,6 +212,7 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t10` (mode 4) | 80 | 0 | exact match (areas, both outline branches, drill-hole obstacle) |
 | `p2t10` (mode 5) | 54 | 0 | exact match (the three entry-surgery methods) |
 | `p2t10` (mode 6) | 33 | 0 | exact match (`reduceTraceShapeAtTiePin`) |
+| `p2t10` (mode 7) | 17 | 0 | exact match (skewed outline: `Simplex` bands regularised) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic

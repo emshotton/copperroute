@@ -36,6 +36,11 @@ public class P2T10 {
       dumpTiePin();
       return;
     }
+    if (mode == 7) {
+      buildSkewedOutline();
+      dumpSkewedOutline();
+      return;
+    }
     build(mode);
     if (mode == 3) {
       mutate();
@@ -326,6 +331,35 @@ public class P2T10 {
         + " end entries=" + endPiece.getSearchTreeEntries(def).length);
     System.out.println("validateEntries(start)=" + def.validateEntries(startPiece)
         + " validateEntries(end)=" + def.validateEntries(endPiece));
+  }
+
+  /**
+   * Mode 7: an outline whose edges run in none of the tree's directions, so the bands
+   * `calculateTreeShapes(BoardOutline)` builds around them are `Simplex`es — which the 45-degree
+   * and 90-degree overrides then have to regularise.
+   */
+  static void buildSkewedOutline() {
+    Layer[] layers = {new Layer("front", true), new Layer("back", true)};
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
+    BoardRules rules = new BoardRules(ls, cm);
+    Communication comm = new Communication();
+    IntBox bbox = new IntBox(-5000, -5000, 5000, 5000);
+    PolylineShape[] outline = {
+      new PolygonShape(
+          new Point[] {
+            new IntPoint(0, 0), new IntPoint(3000, 500), new IntPoint(1000, 2500)
+          })
+    };
+    board = new BasicBoard(bbox, ls, outline, 1, rules, comm);
+    board.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    board.library.packages = new app.freerouting.core.library.Packages(board.library.padstacks);
+  }
+
+  static void dumpSkewedOutline() {
+    System.out.println("mode=7");
+    dumpTree("default", board.searchTreeManager.getDefaultTree());
+    dumpTree("autoroute_cc1", board.searchTreeManager.getAutorouteTree(1));
   }
 
   /** Mode 6: `reduceTraceShapeAtTiePin`, whose pin sits on the trace's first corner. */

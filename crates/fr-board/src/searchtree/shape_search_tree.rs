@@ -508,7 +508,13 @@ impl ShapeSearchTree {
                             // as the `null` tree shape it would have produced.
                             _ => None,
                         };
-                        result.push(shape);
+                        // The 45-degree / 90-degree overrides map over the *whole* result of
+                        // `super.calculateTreeShapes(outline)`, this branch included
+                        // (ShapeSearchTree45Degree.java:534-540,
+                        // ShapeSearchTree90Degree.java:477-483). A band around a border line is
+                        // a `Simplex` unless the line happens to run in one of the tree's own
+                        // directions, so this is not a no-op for a skewed outline.
+                        result.push(shape.map(|shape| self.regularise(shape)));
                         previous = current;
                     }
                 }
@@ -786,8 +792,11 @@ impl ShapeSearchTree {
         let Some(bounds) = self.tree.bounding_shape(shape) else {
             return Vec::new();
         };
-        // ShapeSearchTree.java:405: the redundancy shortcut below keys on the *query* shape.
-        let is_45_degree = shape.is_int_octagon();
+        // ShapeSearchTree.java:405: `shape instanceof IntOctagon` — a **type** test, not
+        // `TileShape.isIntOctagon()`, which is the geometric "can be converted to one" predicate
+        // and is true for an `IntBox` as well (IntBox.java:32). The shortcut below must key on
+        // the type, so this is `matches!(.., TileShape::Octagon(_))`.
+        let is_45_degree = matches!(shape, TileShape::Octagon(_));
         self.tree
             .overlaps(&bounds)
             .into_iter()
@@ -798,7 +807,8 @@ impl ShapeSearchTree {
                 let current_shape = self.tree_shape_of(*entry, items);
                 // ShapeSearchTree.java:421-427: for two octagons the bounds test already
                 // decided it, so Java skips the intersection check "for performance reasons".
-                if is_45_degree && current_shape.is_int_octagon() {
+                // `currentShape instanceof IntOctagon` is again a type test.
+                if is_45_degree && matches!(current_shape, TileShape::Octagon(_)) {
                     return true;
                 }
                 current_shape.intersects(shape)

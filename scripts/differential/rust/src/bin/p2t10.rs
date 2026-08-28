@@ -661,6 +661,37 @@ fn dump_tie_pin(board: &mut Board) {
     );
 }
 
+/// Mode 7: an outline whose edges run in none of the tree's directions.
+fn build_skewed_outline() -> Board {
+    let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
+    let rules = BoardRules::new(
+        layers(),
+        ClearanceMatrix::get_default_instance(&layers(), 200),
+    );
+    let mut items = BTreeMap::new();
+    items.insert(
+        ItemId(1),
+        Item::BoardOutline(BoardOutline::new(
+            ItemHeader::new(ItemId(1), Vec::new(), 1, 0, FixedState::SystemFixed),
+            vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+                Point::new(0, 0),
+                Point::new(3000, 500),
+                Point::new(1000, 2500),
+            ]))],
+        )),
+    );
+    let mut board = Board {
+        library: BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        components: Components::new(),
+        rules,
+        bounding_box: IntBox::from_coords(-5000, -5000, 5000, 5000),
+        items,
+        manager: SearchTreeManager::new(),
+    };
+    board.insert_all();
+    board
+}
+
 fn angle_name(angle: AngleRestriction) -> &'static str {
     match angle {
         AngleRestriction::None => "NONE",
@@ -1036,6 +1067,15 @@ fn main() {
     if mode == 6 {
         let mut board = build(0);
         dump_tie_pin(&mut board);
+        return;
+    }
+    if mode == 7 {
+        let mut board = build_skewed_outline();
+        println!("mode=7");
+        let default_id = board.manager.get_default_tree().id();
+        dump_tree(&board, "default", default_id);
+        let auto = board.autoroute_tree(1);
+        dump_tree(&board, "autoroute_cc1", auto);
         return;
     }
     let mut board = build(mode);

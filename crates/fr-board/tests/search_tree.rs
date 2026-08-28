@@ -1372,3 +1372,54 @@ fn reduce_trace_shape_at_tie_pin_cuts_the_pin_out_of_the_end_tile() {
     assert_eq!(f.tree(id).size(), 8);
     assert!(f.manager.validate_entries(&f.items[&ItemId(4)]));
 }
+
+#[test]
+fn the_45_degree_override_regularises_the_outline_line_bands_too() {
+    // P2T10 mode 7. `ShapeSearchTree45Degree.calculateTreeShapes(BoardOutline)`
+    // (ShapeSearchTree45Degree.java:532-541) maps `boundingOctagon()` over the *whole* result of
+    // `super.calculateTreeShapes(outline)`, which includes the line-band branch
+    // (ShapeSearchTree.java:966-987) — not just the keepout one. Around an edge that runs in
+    // none of the tree's directions the band is a `Simplex`, so the mapping is not a no-op: the
+    // base tree stores `Simplex`es and the 45-degree tree the octagons around them.
+    let mut f = board_builder::TraceFixture::skewed_outline();
+    let default_id = f.manager.get_default_tree().id();
+    let outline = &f.items[&ItemId(1)];
+    assert_eq!(
+        outline.tree_shape_count(default_id),
+        6,
+        "3 edges x 2 layers"
+    );
+    assert!(
+        (0..6).all(|i| matches!(
+            outline.get_tree_shape(default_id, i),
+            Some(TileShape::Simplex(_))
+        )),
+        "the base tree keeps the raw offset shapes"
+    );
+
+    let auto = f.build_autoroute_tree(1);
+    let outline = &f.items[&ItemId(1)];
+    assert!(
+        (0..6).all(|i| matches!(outline.get_tree_shape(auto, i), Some(TileShape::Octagon(_)))),
+        "the 45-degree tree regularises every band"
+    );
+    assert_eq!(
+        outline.get_tree_shape(auto, 0).cloned(),
+        Some(oct(-200, -200, 3200, 700, -283, 2783, -283, 3783))
+    );
+    assert_eq!(
+        outline.get_tree_shape(auto, 1).cloned(),
+        Some(oct(800, 300, 3200, 2700, -1783, 2783, 3217, 3783))
+    );
+    assert_eq!(
+        outline.get_tree_shape(auto, 2).cloned(),
+        Some(oct(-200, -200, 1200, 2700, -1783, 283, -283, 3783))
+    );
+    // Layer-major: indices 3..6 repeat 0..3.
+    for i in 0..3 {
+        assert_eq!(
+            outline.get_tree_shape(auto, i).cloned(),
+            outline.get_tree_shape(auto, i + 3).cloned()
+        );
+    }
+}

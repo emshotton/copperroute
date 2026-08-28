@@ -571,6 +571,71 @@ impl TraceFixture {
         fixture
     }
 
+    /// The same two-layer board carrying **only** a board outline whose edges run in none of the
+    /// trees' directions, so the bands `calculateTreeShapes(BoardOutline)` builds around them are
+    /// `Simplex`es. `P2T10.java` mode 7 builds the same board.
+    pub fn skewed_outline() -> TraceFixture {
+        let rules = BoardRules::new(
+            layers(),
+            ClearanceMatrix::get_default_instance(&layers(), 200),
+        );
+        let mut items = BTreeMap::new();
+        items.insert(
+            ItemId(1),
+            Item::BoardOutline(BoardOutline::new(
+                ItemHeader::new(ItemId(1), Vec::new(), 1, 0, FixedState::SystemFixed),
+                vec![PolylineShapeRef::Polygon(
+                    fr_geometry::PolygonShape::from_points(&[
+                        Point::new(0, 0),
+                        Point::new(3000, 500),
+                        Point::new(1000, 2500),
+                    ]),
+                )],
+            )),
+        );
+        let mut fixture = TraceFixture {
+            library: BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+            components: Components::new(),
+            rules,
+            bounding_box: IntBox::from_coords(-5000, -5000, 5000, 5000),
+            items,
+            manager: SearchTreeManager::new(),
+        };
+        let mut items = std::mem::take(&mut fixture.items);
+        let ctx = ItemCtx {
+            library: &fixture.library,
+            components: &fixture.components,
+            rules: &fixture.rules,
+            bounding_box: &fixture.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        for item in items.values_mut() {
+            fixture.manager.insert(item, &ctx);
+        }
+        fixture.items = items;
+        fixture
+    }
+
+    /// `SearchTreeManager.getAutorouteTree(clearanceClassIndex)` over this fixture's items.
+    pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
+        let mut items = std::mem::take(&mut self.items);
+        let ctx = ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+        let id = self
+            .manager
+            .get_autoroute_tree(clearance_class_index, &mut refs, &ctx)
+            .id();
+        drop(refs);
+        self.items = items;
+        id
+    }
+
     pub fn ctx(&self) -> ItemCtx<'_> {
         ItemCtx {
             library: &self.library,
