@@ -1726,6 +1726,27 @@ mod tests {
         );
     }
 
+    /// The one production-reachable NaN site in this module. A degenerate `Line` (`a == b`) makes
+    /// `Line::signed_distance` compute `det / length` = `0.0 / 0.0` = NaN, and Java's
+    /// `Math.min(result, line.signedDistance(currentCorner))` (TileShape.java:635) *propagates*
+    /// that NaN into the result. Rust's `f64::min` would absorb it instead and leave the
+    /// `Integer.MAX_VALUE` seed, so `distance_to_the_left` goes through `limits::java_min`.
+    ///
+    /// The degenerate line reaches the `java_min` call because every corner tests `Collinear`:
+    /// `side_of_float` sees `det == 0`, and the exact `side_of` fallback sees `0` as well, so the
+    /// `OnTheRight` early-out with its `-1.0` sentinel never fires.
+    #[test]
+    fn distance_to_the_left_propagates_nan_for_degenerate_line() {
+        let degenerate = Line::from_coords(5, 5, 5, 5);
+        assert!(
+            degenerate
+                .signed_distance(&FloatPoint::new(0.0, 0.0))
+                .is_nan()
+        );
+        assert!(bx().distance_to_the_left(&degenerate).is_nan());
+        assert!(tri().distance_to_the_left(&degenerate).is_nan());
+    }
+
     #[test]
     fn is_intersected_interior_by_points_crossings() {
         let b = bx();
