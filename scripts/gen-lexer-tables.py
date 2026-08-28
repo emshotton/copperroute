@@ -100,7 +100,9 @@ def unpack_cmap(packed: list[int], limit: int) -> list[int]:
     """`zzUnpackCMap` (SpecctraDsnStreamReader.java:704) — run-length (count, value) pairs.
 
     The Java loop is bounded by the literal packed length (`while (i < 274)`), which this
-    generator asserts against the literal it actually decoded.
+    generator asserts against the literal it actually decoded. `[value] * count` differs from
+    Java's `do { … } while (--count > 0)` only for `count == 0`, which would emit one entry
+    there and none here — and the unpacked-length assertions below would catch that.
     """
     if len(packed) != limit:
         raise SystemExit(
@@ -118,7 +120,11 @@ def unpack_cmap(packed: list[int], limit: int) -> list[int]:
 
 
 def unpack_pairs(packed: list[int], size: int, decrement: bool) -> list[int]:
-    """`zzUnpackAction`/`zzUnpackAttribute` (`decrement=False`) and `zzUnpackTrans` (`True`)."""
+    """`zzUnpackAction`/`zzUnpackAttribute` (`decrement=False`) and `zzUnpackTrans` (`True`).
+
+    As in `unpack_cmap`, `[value] * count` differs from Java's `do`-`while` only for `count == 0`,
+    which the length check at the end of this function would catch.
+    """
     out: list[int] = []
     i = 0
     while i < len(packed):
@@ -151,11 +157,11 @@ def unpack_rowmap(packed: list[int], size: int) -> list[int]:
 # --- emission ------------------------------------------------------------------------------
 
 
-def java_int(source: str, pattern: str) -> int:
+def java_int(source: str, pattern: str, base: int = 10) -> int:
     m = re.search(pattern, source)
     if m is None:
         raise SystemExit(f"error: {pattern} not found in the Java source")
-    return int(m.group(1))
+    return int(m.group(1), base)
 
 
 def render(name: str, doc: str, ty: str, values: list[int], per_line: int) -> str:
@@ -181,8 +187,7 @@ def main() -> int:
     ).stdout.strip()
 
     cmap_limit = java_int(source, r"while \(i < (\d+)\) \{\n      int count = packed\.charAt")
-    cmap_size = java_int(source, r"char\[\] map = new char\[0x(10000)\];")
-    cmap_size = 0x10000 if cmap_size == 10000 else cmap_size
+    cmap_size = java_int(source, r"char\[\] map = new char\[0x([0-9A-Fa-f]+)\];", base=16)
     action_size = java_int(
         source, r"zzUnpackAction\(\) \{\n    int\[\] result = new int\[(\d+)\]"
     )
@@ -205,7 +210,7 @@ def main() -> int:
 
     # The scanner has no ZZ_LEXSTATE table: JFlex omits it when the specification uses no
     # `%bol`/BOL-sensitive rules, and the driver seeds `zzState = zzLexicalState` directly
-    # (SpecctraDsnStreamReader.java:896). Nothing to emit.
+    # (SpecctraDsnStreamReader.java:899). Nothing to emit.
 
     print(f"ZZ_CMAP:      {len(cmap)} entries, max class {max(cmap)}", file=sys.stderr)
     print(f"ZZ_ACTION:    {len(action)} entries, max {max(action)}", file=sys.stderr)
@@ -231,7 +236,7 @@ def main() -> int:
 //!
 //! This scanner has **no `ZZ_LEXSTATE` table** — JFlex emits one only for BOL-sensitive
 //! specifications; here the driver seeds `zz_state` from the lexical state directly
-//! (`SpecctraDsnStreamReader.java:896`).
+//! (`SpecctraDsnStreamReader.java:899`).
 
 /// `ZZ_BUFFERSIZE` (`SpecctraDsnStreamReader.java:40`): the fixed size of Java's `zzBuffer`.
 pub const ZZ_BUFFERSIZE: usize = {buffer_size};

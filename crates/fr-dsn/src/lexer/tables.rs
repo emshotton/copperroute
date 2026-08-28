@@ -16,7 +16,7 @@
 //!
 //! This scanner has **no `ZZ_LEXSTATE` table** — JFlex emits one only for BOL-sensitive
 //! specifications; here the driver seeds `zz_state` from the lexical state directly
-//! (`SpecctraDsnStreamReader.java:896`).
+//! (`SpecctraDsnStreamReader.java:899`).
 
 /// `ZZ_BUFFERSIZE` (`SpecctraDsnStreamReader.java:40`): the fixed size of Java's `zzBuffer`.
 pub const ZZ_BUFFERSIZE: usize = 16777216;

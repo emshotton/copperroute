@@ -30,7 +30,7 @@ const YYEOF: i32 = -1;
 
 /// The scanner's eight lexical states (`SpecctraDsnStreamReader.java:29-37`).
 ///
-/// The driver seeds the DFA with `zzState = zzLexicalState` (`:896`), so the discriminants are
+/// The driver seeds the DFA with `zzState = zzLexicalState` (`:899`), so the discriminants are
 /// load-bearing: they are DFA state numbers, not just tags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LexicalState {
@@ -178,8 +178,8 @@ impl DsnScanner {
     /// `nextToken` (`:877`) — resumes scanning until the next regular expression matches, the
     /// end of input is reached (`Ok(None)`, Java's `null`) or the input cannot be matched.
     ///
-    /// The body is the JFlex driver loop (`:877-940`) followed by the action switch
-    /// (`:940-1728`), transcribed arm by arm.
+    /// The body is the JFlex driver loop (`:877-947`) followed by the action switch
+    /// (`:947-1728`), transcribed arm by arm.
     pub fn next_token(&mut self) -> Result<Option<Token>, DsnError> {
         let zz_end_read_l = self.buffer.len() as isize;
 
@@ -806,10 +806,9 @@ impl DsnScanner {
     /// comments say "spaces, tabs" — a tab is part of a string here, a backspace is not.
     pub fn next_string_with(&mut self, ignore_newline: bool, leading: char) -> String {
         let leading = u32::from(leading);
-        // Java reuses the DFA's `stringBuffer` field here (`stringBuffer.setLength(0)` first); a
-        // local is equivalent, because every reader of that field (actions 10 and 11) is
-        // preceded by the action 6/7 that clears it.
-        let mut string_buffer = String::new();
+        // Java accumulates into the DFA's `stringBuffer` field here (`stringBuffer.setLength(0)`
+        // first); a local is equivalent, because every reader of that field (actions 10 and 11)
+        // is preceded by the action 6/7 that clears it.
         let mut i: isize = 0;
 
         // `skipLeading`
@@ -830,11 +829,11 @@ impl DsnScanner {
         let mut skip_last_char = false;
         // Java indexes `zzBuffer[zzMarkedPos + i]` here with no bounds check.
         // totalized: nextString returns the empty string where Java reads past the end of the
-        // input (`ArrayIndexOutOfBoundsException` on a buffer sized to the file, or a run of
-        // unwritten `\0`s in the real 16 MiB one). No reachable caller observes it: every DSN
-        // scope this scanner is used inside ends with `)`.
+        // input — `ArrayIndexOutOfBoundsException` once the skip loop has run to the end of the
+        // 16 MiB buffer, and before that a string of unwritten `\0`s. No reachable caller
+        // observes it: every DSN scope this scanner is used inside ends with `)`.
         let Some(unit) = self.unit_at(self.zz_marked_pos + i) else {
-            return string_buffer;
+            return String::new();
         };
         let quoted = unit == 34;
         if quoted {
@@ -851,6 +850,10 @@ impl DsnScanner {
             |unit: u16| stop_at.contains(&unit) || (!quoted && u32::from(unit) == leading);
 
         // Read the actual string until a stop character.
+        // totalized: nextString stops at the end of the input; Java's loop is bounded by
+        // `zzBuffer.length`, not by the text, so a token that reaches the end of the file without
+        // a stop character comes back with the remaining millions of unwritten `\0`s appended
+        // (`"foo"` here, `"foo\0\0…"` there). Same unreachability as the early return above.
         let mut units: Vec<u16> = Vec::new();
         while let Some(unit) = self.unit_at(self.zz_marked_pos + i) {
             if is_stop(unit) {
@@ -859,7 +862,7 @@ impl DsnScanner {
             units.push(unit);
             i += 1;
         }
-        string_buffer.push_str(&String::from_utf16_lossy(&units));
+        let string_buffer = String::from_utf16_lossy(&units);
 
         if skip_last_char {
             i += 1;
@@ -890,7 +893,7 @@ impl DsnScanner {
     /// `nextStringList(char)` (`:1802`) — reads strings until an empty one.
     ///
     /// The first string is allowed to be empty and is then dropped: a workaround for the KiCad 8
-    /// bug that starts a net list with a `""` entry (Java's comment at `:1801-1804`).
+    /// bug that starts a net list with a `""` entry (Java's comment at `:1805-1808`).
     pub fn next_string_list_sep(&mut self, separator: char) -> Vec<String> {
         let mut result = Vec::new();
 
@@ -953,7 +956,10 @@ impl DsnScanner {
 /// - a leading `+` is not accepted, and neither is leading whitespace: `"+1"` and `" 1"` fail
 ///   where the DFA happily lexes `+5` as an integer;
 /// - `"NaN"` (before any sign) and `"∞"` are accepted; `"Infinity"` is not;
-/// - it fails (Java: `ParseException`, here `None`) only when no digit was consumed.
+/// - it fails (Java: `ParseException`, here `None`) only when no digit was consumed;
+/// - a digit is an **ASCII** digit here, where Java's `DecimalFormat.subparse` accepts any
+///   Unicode `Nd` code point through `Character.digit(ch, 10)` — see the `// totalized:` note on
+///   the loop below.
 ///
 /// Verified against JDK 25's `NumberFormat` over the cases above; see the Task 3 report.
 pub fn java_number_format_parse(text: &str) -> Option<f64> {
@@ -986,6 +992,14 @@ pub fn java_number_format_parse(text: &str) -> Option<f64> {
     let mut saw_exponent = false;
     let mut exponent: i64 = 0;
 
+    // totalized: nextDouble answers `None` for a value whose digits are all non-ASCII Unicode
+    // `Nd` code points — and stops early where ASCII and non-ASCII digits mix — while Java's
+    // `DecimalFormat.subparse` reads them all through `Character.digit(ch, 10)` (JDK 25:
+    // `"１２"` → 12.0, `"٣"` → 3.0, `"1２3"` → 123.0 against `None`, `None`, `Some(1.0)` here).
+    // Porting that needs a Unicode `Nd` table, which `fr-dsn` has no
+    // dependency for and no fixture needs; `docs/java-quirks.md`'s `totalized` table records it.
+    // Only the `nextString` bypass can reach it — the DFA's own number rules are ASCII-only — so
+    // it would take a fullwidth digit inside a `(width …)`-style value.
     while pos < chars.len() {
         let ch = chars[pos];
         if ch.is_ascii_digit() {
@@ -1041,4 +1055,34 @@ pub fn java_number_format_parse(text: &str) -> Option<f64> {
     let sign = if negative { "-" } else { "" };
     let scale = integer_digits as i64 + exponent;
     format!("{sign}0.{digits}e{scale}").parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Pins the `// totalized:` divergence in [`java_number_format_parse`]: JDK 25's
+    /// `NumberFormat.getInstance(Locale.US)` answers 12.0, 3.0 and 123.0 for these three (and
+    /// 123.0 for the mixed `1２3` below), because `DecimalFormat.subparse` reads every digit
+    /// through `Character.digit(ch, 10)`.
+    #[test]
+    fn non_ascii_unicode_digits_are_not_parsed() {
+        for text in ["\u{ff11}\u{ff12}", "\u{663}", "\u{661}\u{662}\u{663}"] {
+            assert_eq!(java_number_format_parse(text), None, "{text:?}");
+        }
+        // Mixed digits stop the prefix parse instead of failing it; Java answers 123.0 here.
+        assert_eq!(java_number_format_parse("1\u{ff12}3"), Some(1.0));
+        // The ASCII spelling of the first of them still parses, so this is about the digits and
+        // not about the surrounding grammar.
+        assert_eq!(java_number_format_parse("12"), Some(12.0));
+    }
+
+    /// Pins the second `// totalized:` divergence in [`DsnScanner::next_string_with`]: a token
+    /// that reaches the end of the input without a stop character ends there, where Java's loop
+    /// runs on to the end of the 16 MiB `zzBuffer` and appends its unwritten `\0`s.
+    #[test]
+    fn a_token_running_to_the_end_of_the_input_stops_there() {
+        let mut scanner = DsnScanner::new(" foo").expect("fits");
+        assert_eq!(scanner.next_string(), "foo");
+    }
 }
