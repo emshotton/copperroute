@@ -26,6 +26,7 @@ use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::limits::{JAVA_DOUBLE_MIN_VALUE, java_min};
 use crate::line::Line;
+use crate::line_segment::LineSegment;
 use crate::point::Point;
 use crate::side::Side;
 use crate::simplex::Simplex;
@@ -1162,8 +1163,15 @@ impl TileShape {
         section_list
     }
 
-    // added in Task 15: isIntersectedInteriorBy(LineSegment) (TileShape.java:922-926) — a
-    // one-line forward to `is_intersected_interior_by_points`, waiting on `LineSegment`.
+    /// Checks if `line_segment` has a common point with the interior of this shape
+    /// (TileShape.java:922-926).
+    pub fn is_intersected_interior_by(&self, line_segment: &LineSegment) -> bool {
+        self.is_intersected_interior_by_points(
+            &line_segment.start_point(),
+            &line_segment.end_point(),
+            &line_segment.get_line(),
+        )
+    }
 
     /// Checks if the line segment defined by `start_point`, `end_point` and `line` has a common
     /// point with the interior of this shape (TileShape.java:928-1012).
