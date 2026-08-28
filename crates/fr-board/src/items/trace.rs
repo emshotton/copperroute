@@ -61,8 +61,14 @@
 // searchTree.clearanceCompensationValue(clearanceClassIndex(), layer)`.
 // added in Task 10: the protected `PolylineTrace.calculateTreeShapes`
 // (PolylineTrace.java:132-135) and `PolylineTraceSearchTreeAdapter.calculateTreeShapes` (:18-20)
-// -> `ShapeSearchTree::calculate_tree_shapes`, which is
-// [`PolylineTrace::offset_shapes`] at the compensated half width.
+// -> `ShapeSearchTree::calculate_tree_shapes`. Note that Java's body
+// (ShapeSearchTree.java:992-1004) does **not** call `Polyline.offsetShapes`: it loops
+// `tileShapeCount()` times over the *virtual* `ShapeSearchTree.offsetShape(polyline, width, i)`
+// (:1079-1081 = `polyline.offsetShape(width, i)`), which `ShapeSearchTree90Degree` overrides to
+// `polyline.offsetBox(width, i)` (ShapeSearchTree90Degree.java:486-490) — a 90-degree tree keeps
+// traces in `IntBox`es. `ShapeSearchTree45Degree` has no override. So
+// [`PolylineTrace::offset_shapes`] is the *base-class* answer only; Task 10 must dispatch per
+// tree angle, not reuse it unconditionally.
 // added in Task 11: `PolylineTraceSearchTreeAdapter.hasDefaultEntries` (:22-26),
 // `replaceGeometry` (:34-40), `mergeEntriesInFront` (:42-50), `mergeEntriesAtEnd` (:52-60) and
 // `changeEntries` (:62-66) -> `SearchTreeManager` methods; all five take the trace's board.
@@ -77,15 +83,18 @@
 // `Board::touching_pins_at_end_corners`; it calls `board.overlappingItemsWithClearance` on the
 // enlarged surrounding octagon of each end corner (`BasicBoard.java:1066` is the non-router
 // caller).
-// added in Plan 7: `Trace.checkConnectionToPin` (Trace.java:376) and
-// `PolylineTrace.checkConnectionToPin` (PolylineTrace.java:1013-1076), plus
-// `correctConnectionToPin` (:1082-1245) and `swapConnectionToPin` (:1252-1313) — the acid-trap
-// corrections, reached only from `pullTight`. They need `Board` *and* `fr-router`'s
-// `TraceTightener`.
-// added in Plan 7: `Trace.pullTight(TraceTightener)` (Trace.java:483),
-// `PolylineTrace.pullTight` (both overloads, PolylineTrace.java:809-890) and
-// `smoothenEndCornersFork` (:893-915) -> `fr-router`'s `RoutingBoardExt`
-// (plan-rulings.md #4); `TraceTightener` itself is Plan 7.
+//
+// The five Plan 7 markers below deliberately keep each deferred Java name on the *same physical
+// line* as its `added in Plan 7:` prefix: `scripts/audit-port.sh`'s marker check is a per-line
+// `grep -E "added in (Task|Plan) [0-9]+:.*\bName\b"`, so a name that wraps onto a continuation
+// line does not count as covered.
+//
+// added in Plan 7: `Trace.checkConnectionToPin` (Trace.java:376) — abstract; the body is below.
+// added in Plan 7: `PolylineTrace.checkConnectionToPin` (PolylineTrace.java:1013-1076) — needs the start/end contacts, `board.rules.getPinEdgeToTurnDist()` and `board.clearanceValue`.
+// added in Plan 7: `PolylineTrace.correctConnectionToPin` (PolylineTrace.java:1082-1245) — the acid-trap correction; needs `board.checkPolylineTrace` and `board.insertTrace`.
+// added in Plan 7: `PolylineTrace.swapConnectionToPin` (PolylineTrace.java:1252-1313) — needs the start contacts and `Pin.calcNearestExitRestrictionDirection`.
+// added in Plan 7: `Trace.pullTight` (Trace.java:483) and `PolylineTrace.pullTight` (both overloads, PolylineTrace.java:809-890) -> `fr-router`'s `RoutingBoardExt` (plan-rulings.md #4); `TraceTightener` is Plan 7 too.
+// added in Plan 7: `PolylineTrace.smoothenEndCornersFork` (PolylineTrace.java:893-915) -> `TraceTightener.smoothenEndCornersAtTrace`.
 // not ported: `PolylineTrace.write(ObjectOutputStream)` (PolylineTrace.java:926-934) — Java
 // serialization, which `global-constraints.md` excludes.
 
@@ -383,32 +392,57 @@ impl PolylineTrace {
         self.lines.split(line_index, new_end_line)
     }
 
-    /// The geometry core of `PolylineTrace.split(Point)` (PolylineTrace.java:698-712): find the
-    /// first line segment that contains `point`, build the perpendicular split line
-    /// (`segment.getLine().direction().turn45Degree(2)`) through it, and split there.
+    /// The line Java splits at when it wants to cut this trace at `point`: the perpendicular
+    /// through `point` of segment `segment_index` — `segment.getLine().direction()
+    /// .turn45Degree(2)`, then `new Line(point, thatDirection)`.
+    ///
+    /// `None` when `segment_index` is out of range, when the segment does not contain `point`,
+    /// or when `point` is not an [`IntPoint`] — Java's `LineSegment.contains` already answers
+    /// `false` for the last (LineSegment.java:155-171), so it never builds a line there.
+    ///
+    /// Java writes this three-line step twice, inline: once in `split(Point)`
+    /// (PolylineTrace.java:702-704) and once in the `DrillItem` branch of `split(IntOctagon)`
+    /// (PolylineTrace.java:655-660), which cuts the trace at a drill centre it passes through.
+    /// It is a named function here so Task 9's board-side `split` can reuse it for that branch
+    /// rather than re-deriving it.
+    pub fn perpendicular_split_line(&self, segment_index: usize, point: &Point) -> Option<Line> {
+        let segment = LineSegment::from_polyline(&self.lines, segment_index + 1)?;
+        if !segment.contains(point) {
+            return None;
+        }
+        let Point::Int(int_point) = point else {
+            return None;
+        };
+        let split_line_direction = segment.get_line().direction().turn_45_degree(2);
+        Some(Line::from_direction(*int_point, &split_line_direction))
+    }
+
+    /// The geometry core of `PolylineTrace.split(Point)` (PolylineTrace.java:698-712): scan the
+    /// line segments for the first that contains `point`, build
+    /// [`PolylineTrace::perpendicular_split_line`] through it, and split there.
     ///
     /// `None` is Java's `null` — either no segment contains the point, or every candidate split
     /// was refused by `Polyline.split`.
-    // added in Task 9: `Board::split_trace_at_point`, which replaces the two returned polylines
-    // with two inserted traces.
+    ///
+    /// **Task 9 must not wrap this method as-is.** Java's loop calls the *private*
+    /// `split(int, Line)` (PolylineTrace.java:719-760) per candidate, and that method can refuse
+    /// for four board reasons — the trace is off the board (:720-722), it is deletion-forbidden
+    /// (:727-729), the polyline split failed (:731-733), or `splitInsideDrillPadProhibited`
+    /// rejected the intersection (:738-740) — after which the `for` **continues to the next
+    /// segment** (:706-709). So the board wrapper has to run the same per-segment loop with its
+    /// own guards inside, using [`PolylineTrace::perpendicular_split_line`] and
+    /// [`PolylineTrace::split_polyline_at_line`] as its two pure steps. This method is the
+    /// board-free shape of that loop, and is what the geometry tests pin.
+    // added in Task 9: `Board::split_trace_at_point` — the per-candidate loop described above,
+    // which replaces the two returned polylines with two inserted traces.
     pub fn split_polyline_at_point(
         &self,
         point: &Point,
     ) -> Result<Option<[Polyline; 2]>, PolylineError> {
         for i in 0..self.tile_shape_count() {
-            let Some(segment) = LineSegment::from_polyline(&self.lines, i + 1) else {
+            let Some(split_line) = self.perpendicular_split_line(i, point) else {
                 continue;
             };
-            if !segment.contains(point) {
-                continue;
-            }
-            // `LineSegment.contains` is false for anything but an `IntPoint`
-            // (LineSegment.java:155-171), so this is the only reachable arm.
-            let Point::Int(int_point) = point else {
-                continue;
-            };
-            let split_line_direction = segment.get_line().direction().turn_45_degree(2);
-            let split_line = Line::from_direction(*int_point, &split_line_direction);
             if let Some(pieces) = self.split_polyline_at_line(i + 1, &split_line)? {
                 return Ok(Some(pieces));
             }

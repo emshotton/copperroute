@@ -294,6 +294,51 @@ fn trace_connection_shape_is_the_segments_one_dimensional_simplex() {
 }
 
 #[test]
+fn trace_connection_shapes_of_the_bug_report_polyline_are_simplices() {
+    // T8.java case C: none of the three segments is axis-parallel, so each `toSimplex()
+    // .simplify()` stays a `Simplex` rather than collapsing to an `IntBox`.
+    let f = Fixture::new();
+    let t = trace(1, bug_report_polyline(), 0, 1000);
+    let expected = [
+        IntBox::from_coords(1_270_000, -987_076, 1_291_423, -975_000),
+        IntBox::from_coords(1_250_000, -975_000, 1_270_000, -970_000),
+        IntBox::from_coords(1_243_227, -970_000, 1_250_000, -964_893),
+    ];
+    for (i, want) in expected.into_iter().enumerate() {
+        let shape = t
+            .get_trace_connection_shape(TreeId(0), i, &f.ctx())
+            .unwrap_or_else(|| panic!("index {i} is in range"));
+        assert!(
+            matches!(shape, TileShape::Simplex(_)),
+            "connectionShape[{i}] should stay a Simplex, got {shape:?}"
+        );
+        assert_eq!(shape.bounding_box(), want, "connectionShape[{i}]");
+        assert_eq!(shape.dimension(), 1, "connectionShape[{i}]");
+    }
+}
+
+#[test]
+fn offset_shapes_of_the_bug_report_polyline_are_three_simplices() {
+    // T8.java case C, `offsetShapes(1000)`.
+    let t = trace(1, bug_report_polyline(), 0, 1000);
+    let shapes = t.offset_shapes(t.get_half_width());
+    let expected = [
+        IntBox::from_coords(1_269_000, -988_076, 1_292_423, -974_000),
+        IntBox::from_coords(1_249_000, -976_000, 1_271_000, -969_000),
+        IntBox::from_coords(1_242_227, -971_000, 1_251_000, -963_893),
+    ];
+    assert_eq!(shapes.len(), 3);
+    for (i, want) in expected.into_iter().enumerate() {
+        assert!(
+            matches!(shapes[i], TileShape::Simplex(_)),
+            "offsetShape[{i}] should be a Simplex, got {:?}",
+            shapes[i]
+        );
+        assert_eq!(shapes[i].bounding_box(), want, "offsetShape[{i}]");
+    }
+}
+
+#[test]
 fn trace_connection_shape_out_of_range_is_none() {
     // PolylineTrace.java:919-922 warns and returns null.
     let f = Fixture::new();
@@ -465,6 +510,38 @@ fn split_polyline_at_point_on_an_l_shape_keeps_the_remaining_corner() {
 }
 
 #[test]
+fn split_polyline_at_point_at_an_interior_corner_splits_into_the_two_arms() {
+    // T8.java case D, `splitAtPoint(corner (10000,0))` — the corner is the *end* of segment 0
+    // and the *start* of segment 1, but it is neither end of the whole polyline, so
+    // `Polyline.split`'s endpoint guard (Polyline.java:770-780) does not fire and the L is cut
+    // into its two straight arms.
+    let t = trace(1, l_polyline(), 0, 500);
+    let [first, second] = t
+        .split_polyline_at_point(&p(10_000, 0))
+        .unwrap()
+        .expect("the interior corner splits the trace");
+    assert_eq!(first.first_corner(), Some(p(0, 0)));
+    assert_eq!(first.last_corner(), Some(p(10_000, 0)));
+    assert_eq!(first.corner_count(), 2);
+    assert_eq!(second.first_corner(), Some(p(10_000, 0)));
+    assert_eq!(second.last_corner(), Some(p(10_000, 10_000)));
+    assert_eq!(second.corner_count(), 2);
+}
+
+#[test]
+fn perpendicular_split_line_is_none_off_the_segment() {
+    // The named form of PolylineTrace.java:702-704, which Task 9's `DrillItem` branch
+    // (PolylineTrace.java:655-660) reuses.
+    let t = trace(1, l_polyline(), 0, 500);
+    assert!(t.perpendicular_split_line(0, &p(5000, 0)).is_some());
+    // On segment 1, not segment 0.
+    assert!(t.perpendicular_split_line(0, &p(10_000, 5000)).is_none());
+    assert!(t.perpendicular_split_line(1, &p(10_000, 5000)).is_some());
+    // Out of range.
+    assert!(t.perpendicular_split_line(2, &p(5000, 0)).is_none());
+}
+
+#[test]
 fn split_polyline_at_line_is_the_private_java_overload() {
     // PolylineTrace.java:730-737: `lines.split(lineIndex, newEndLine)`, with the
     // "array of length 2 expected" guard. A line parallel to the split line cannot split.
@@ -530,4 +607,14 @@ fn connectable_dispatch_reaches_the_trace_connection_shape() {
             .get_trace_connection_shape(TreeId(0), 0, &f.ctx())
             .is_some()
     );
+}
+
+/// `global-constraints.md` keeps `Item` shareable across threads. `PolylineTrace` has no memo
+/// field to make that hard (see `items/trace.rs`'s "No memo fields"), but the assertion is kept
+/// alongside the area and drill ones so a future memo cannot silently be a `Cell`/`RefCell`.
+#[test]
+fn polyline_trace_is_send_and_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<PolylineTrace>();
+    assert_send_sync::<Item>();
 }

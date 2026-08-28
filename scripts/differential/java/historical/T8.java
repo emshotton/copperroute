@@ -147,5 +147,11 @@ public class T8 {
     }
     Polyline[] sd2 = splitAtPoint(d, new IntPoint(10000, 0));
     System.out.println("  splitAtPoint(corner (10000,0))=" + (sd2 == null ? "null" : sd2.length));
+    if (sd2 != null) {
+      for (int i = 0; i < sd2.length; i++) {
+        System.out.println("    piece[" + i + "] first=" + pt(firstCorner(sd2[i])) + " last=" + pt(lastCorner(sd2[i]))
+            + " lineCount=" + sd2[i].lines.length + " cornerCount=" + cornerCount(sd2[i]));
+      }
+    }
   }
 }
