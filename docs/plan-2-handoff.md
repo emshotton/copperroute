@@ -68,8 +68,10 @@ obligations first, per the brief).
    `'i'` and the 27 Greek-ypogegrammeni characters must special-case on the
    uppercase side, or `"İ".equalsIgnoreCase("ı")`-style comparisons diverge.
    The helper lives at `crates/fr-board/src/rules/mod.rs` — **see Open Items**:
-   it is currently `pub(crate)`, not exported, so Plan 3's `fr-dsn` cannot
-   reuse it as the ruling intended without a visibility change first.
+   `java_to_lower`/`java_to_upper` themselves are plain private `fn`s (no
+   visibility modifier at all — only the sibling `equals_ignore_case`/
+   `compare_to_ignore_case` are `pub(crate)`), so Plan 3's `fr-dsn` cannot
+   reuse them as the ruling intended without a visibility change first.
 8. **`MinAreaTree::remove_leaf` panics on a double removal** where Java
    silently corrupts the tree (Task 3, confirmed by review; quirk #39). No
    Java caller removes the same leaf twice today (callers do the bookkeeping
@@ -113,7 +115,41 @@ obligations first, per the brief).
     Java method name must sit on the same line as `added in Task/Plan N:`,
     because `audit-port.sh`'s regex is line-based; a marker split across two
     lines is invisible to the audit and gives a false "zero missing".
-14. **`deep_copy` keeps the cloned tree arena rather than rebuilding it**
+14. **Three plan-wide rules for `Board`, all from Task 11's review** (dispatch
+    order ran Task 11 before Task 9, so this predates ruling #15 below):
+    tree-shape reads must always **recompute on a cold cache**, the way
+    Java's `Item.getTreeShape` does — never panic or silently skip a shape
+    that has not been computed yet, because every real query needs an
+    answer, not a hole; a `checkPolylineTrace`-style temporary still
+    **consumes an item id** even though it is thrown away immediately,
+    because Java's `Item` constructor calls `newId()` unconditionally — ids
+    are load-bearing (quirk #44's ordering, the SES writer, hash detection),
+    so a port that only assigns ids to items it keeps would desynchronise
+    id sequences from Java's; and every loop over a Java `TreeSet<Item>`
+    query result iterates **descending**, ported as `BTreeSet<ItemId>.rev()`,
+    the same correction as Correction #1 below applied to a
+    different collection. Cost if wrong: the first two silently produce
+    wrong-answer obstacles or off-by-one id sequences that only surface much
+    later as a mis-routed board; the third silently reverses visit order in
+    exactly the queries the differential harness was built to catch.
+15. **Quirk #74's early return and quirk #76's ladder hang are Plan 7/Plan 3
+    decisions, not defects to silently carry** (Task 9, plan-wide ruling).
+    `PolylineTrace.change` comparing `Line`s by reference (quirk #74) is
+    board-observable — the port's value comparison lets it take an early
+    return Java's identity comparison never can — and `change_trace` has no
+    production caller yet, so **Plan 7 must decide** (recommended: drop the
+    early return) before wiring `TraceShover`/`correctConnectionToPin`. A
+    ladder of four or more rungs on one net (quirk #76, the mechanism behind
+    quirk #71) hangs a single `normalize` call in both Java and the port,
+    inside one `normalize`/`normalizeTraces` pass where neither depth nor
+    iteration cap reaches it — **Plan 3 must decide** how the DSN reader
+    (`Wiring.java:347` ends every read with `normalizeAllTraces()`) handles
+    that hang before it can safely import arbitrary designs. Cost if wrong:
+    Plan 7 wiring the shove machinery over the port's early return would
+    silently under-normalise traces relative to Java; Plan 3 shipping a DSN
+    reader with no decision here means a crafted (or just unlucky) design
+    hangs the import with no way to recover.
+16. **`deep_copy` keeps the cloned tree arena rather than rebuilding it**
     (Task 12, JVM-verified): Java's `readObject` rebuilds the search tree by
     reinserting every item in descending-id order (quirk #77), which gives a
     *different* physical tree shape than the original — `deep_copy` derives
@@ -123,7 +159,7 @@ obligations first, per the brief).
     `revision = 0`, `changed_area = None`, `shove_failing_obstacle = None`,
     `shove_failing_layer = 0` (not `-1` — quirk #79, Java's own field
     initializer is skipped by deserialization too).
-15. **Quirk #82 (Delaunay in-circle vacuous on axis-aligned input) is a real,
+17. **Quirk #82 (Delaunay in-circle vacuous on axis-aligned input) is a real,
     user-visible Java bug and must not be fixed pre-parity** (Task 13,
     JVM-verified: square grids lose edges at every tested size, and a 7×7
     grid disconnects in ~1.4e-4 of random 20-point draws). Plan 5 inherits
@@ -209,10 +245,18 @@ resolved the items marked ✓ below — verified against the committed tree)
   `get_trace_connection_shape`'s doc comment overstates cold-cache fidelity;
   `BoardOutline`'s `PartialEq` includes the keepout memo, a deliberate
   asymmetry with the absolute-area memo that wants an explicit note.
+  *Resolved/superseded by Task 14:* Task 7's own report flagged its
+  Task-11-marker running count as 24, self-corrected to 25 before commit;
+  Task 14's whole-crate audit (§1) is now the authoritative count (0 missing
+  everywhere), which supersedes any interim snapshot number either way.
 - **Task 8:** `split_polyline_at_point`'s granularity was deferred to Task 9's
   re-implementation of Java's per-candidate loop (done); `trace_geometry_
   characterization` passes `layer_count: None`. ✓ `trace.rs:87`'s "five"
-  Plan-7-marker count corrected to six (Task 14 §4 item 4).
+  Plan-7-marker count corrected to six (Task 14 §4 item 4). *Resolved/
+  superseded by Task 14:* Task 8's report likewise carried its own running
+  Task-11-marker count (28) as a point-in-time snapshot; Task 14's §1
+  whole-crate audit (0 missing across all nine directories) is the count
+  that matters now, not any task's interim tally.
 - **Task 9:** `normalize_suppressed_net_nos` is `pub` where Java's field is
   private; `split_trace` inlines its clip filter instead of calling
   `clip_intersects_segment`; `split_traces` silently skips a dead trace (a
@@ -237,7 +281,13 @@ resolved the items marked ✓ below — verified against the committed tree)
   behaviour (documented in the totalizations table, not re-verified against
   a second Java path); the `connection_items` order test doesn't actually
   pin order (needs a two-branch fixture); a redundant re-borrow at
-  `query.rs:531`.
+  `query.rs:531`. *Resolved/superseded by Task 15:* Task 11's report also
+  noted, as a minor, that its characterization board's outline shape
+  (`PolylineShapeRef::Tile(TileShape::Box(...))`, matching
+  `BoardServiceCharacterizationTest.java:101`) was worth double-checking
+  against a wider fixture; Task 15's `p2t15` sweep (10 seeds × 2 sizes,
+  0 diff in all 20 runs) now exercises far more outline/board-shape
+  combinations than that one fixture, superseding the narrower note.
 - **Task 12:** `DefaultHasher` is a same-process contract only, not
   cross-Rust-version stable — acceptable per quirk #78's own reasoning
   (nothing compares this hash across processes or languages), but worth
@@ -282,13 +332,16 @@ resolved the items marked ✓ below — verified against the committed tree)
   states the obligation ("a caller that will use those two must populate the
   library before handing it over") — the DSN/KiCad reader is that caller.
 - **`java_to_lower`/`java_to_upper` visibility gap.** Ruling #7 above: the
-  helper this plan built for Java-exact case folding
-  (`crates/fr-board/src/rules/mod.rs`) is `pub(crate)`, not exported from
-  `fr-board`'s public surface. Plan 3 cannot `use fr_board::...` it as
-  ruling #9 (Task 2) originally intended without either widening its
-  visibility (a small, low-risk change) or duplicating the ~40-line helper
-  in `fr-dsn`. **Flagged here rather than fixed**, since this task's brief is
-  docs-only; see Open items for the user.
+  two functions this plan built for Java-exact case folding
+  (`crates/fr-board/src/rules/mod.rs`) are plain private `fn`s — no
+  visibility modifier, not even `pub(crate)` — so they are invisible outside
+  `rules/mod.rs` itself, let alone outside `fr-board`. Plan 3 cannot
+  `use fr_board::...` them as ruling #9 (Task 2) originally intended without
+  either widening their visibility (a small, low-risk change — at least
+  `pub(crate)`, and `pub` plus a `lib.rs` re-export if Plan 3 needs them from
+  outside the crate) or duplicating the ~40-line helper in `fr-dsn`.
+  **Flagged here rather than fixed**, since this task's brief is docs-only;
+  see Open items for the user.
 
 **Plan 5 (DRC/autorouter core):**
 - **Quirk #82 (Delaunay in-circle degenerate on axis-aligned input) must
@@ -396,13 +449,13 @@ drivers — see `scripts/differential/README.md` "Requirements"):
 | `p2t3r` (400 ops, seed 42, mode 0) | randomised, orthogonal (`IntBox`) bounds | mode 0 | 109,940 lines, 0 diff |
 | `p2t3r` (2000 ops, seed 42, mode 1) | randomised, 45°/`IntOctagon` bounds, `insert_tiles`/`remove_opt`/in-place re-keying | mode 1 | 2,898,938 lines, 0 diff |
 | `p2t10` | `ShapeSearchTree`/`SearchTreeManager` | 9 modes (0-8) | every mode exact match, 17-88 lines each |
-| `p2t11` | `Board` — insert/remove, connectivity, normalisation, snapshots | modes 0-11 (12) | modes 0-10 exact match (5-66 lines each); **mode 11** (20 lines) has 2 documented diff lines — `treeArrayCopy`/`treeArraysEqual` only, the deliberate tree-rebuild-vs-clone divergence (ruling #14/quirk #77); every other line (`transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces`) matches |
+| `p2t11` | `Board` — insert/remove, connectivity, normalisation, snapshots | modes 0-11 (12) | modes 0-10 exact match (5-66 lines each); **mode 11** (20 lines) has 2 documented diff lines — `treeArrayCopy`/`treeArraysEqual` only, the deliberate tree-rebuild-vs-clone divergence (ruling #16/quirk #77); every other line (`transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces`) matches |
 | `p2t13` | `PlanarDelaunayTriangulation` | 8 modes (0-7) | mode 0 (50 points): 141 lines, 0 diff; modes 1-7 (30 points, seed 7): 7-172 lines each, 0 diff — includes quirk #82's square/grid reproduction |
 | `p2t15` | randomised board-scale sweep: pin/via/trace insertion, `normalizeAllTraces`, 100 `overlappingObjects` + 50 clearance queries, `deepCopy` + re-dump + replay, `hashEqual` | 10 seeds × {30, 120} = 20 runs | every run 0 diff, 499-1111 lines each; re-confirms `p2t10` (9 modes)/`p2t11` (11 modes)/`p2t13` (mode 0) unregressed alongside it |
 
 The one non-zero-diff cell across all six drivers (`p2t11` mode 11's two
 lines) is the single place this plan's own choice diverges from Java on
-purpose (ruling #14), not an unexplained gap.
+purpose (ruling #16), not an unexplained gap.
 
 **Test counts** (verified by running `cargo test` on the committed tree,
 not taken from any report):
@@ -419,13 +472,17 @@ not taken from any report):
 
 ## Open items for the user
 
-- **`java_to_lower`/`java_to_upper` are `pub(crate)`, not exported.** The
-  plan-wide ruling that created them (Task 2) says to "reuse [them] in
-  fr-dsn (Plan 3)", but as committed they are private to `fr-board`. This
-  task's brief is docs-only (no code changes beyond doc comments), so the
-  gap is recorded here rather than fixed silently. Plan 3 (or a small,
-  reviewed fix-up before it) needs to either widen the two functions'
-  visibility to `pub` or accept duplicating the ~40-line helper.
+- **`java_to_lower`/`java_to_upper` have no visibility modifier at all** —
+  plain private `fn`s in `crates/fr-board/src/rules/mod.rs`, not even
+  `pub(crate)` (only their sibling `equals_ignore_case`/
+  `compare_to_ignore_case` are `pub(crate)`). The plan-wide ruling that
+  created them (Task 2) says to "reuse [them] in fr-dsn (Plan 3)", but as
+  committed they are invisible outside that one module. This task's brief
+  is docs-only (no code changes beyond doc comments), so the gap is recorded
+  here rather than fixed silently. Plan 3 (or a small, reviewed fix-up before
+  it) needs to either widen the two functions' visibility (at minimum
+  `pub(crate)`; `pub` plus a `lib.rs` re-export if `fr-dsn` needs them from
+  outside the crate) or accept duplicating the ~40-line helper.
 - **`p2t11` mode 11's tree-rebuild-vs-clone divergence (quirk #77) was
   accepted, not defaulted into**, and is worth the user's own read: this
   port's `deep_copy` is *more* faithful to the pre-copy board than Java's own
