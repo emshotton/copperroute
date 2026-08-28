@@ -81,6 +81,14 @@ pub struct ItemCtx<'a> {
     pub components: &'a Components,
     /// Java `board.rules` (`BasicBoard.rules`), which also carries `board.layerStructure`.
     pub rules: &'a BoardRules,
+    /// Java `board.boundingBox` (`BasicBoard.boundingBox`, BasicBoard.java:91), the box that
+    /// surrounds the whole design.
+    ///
+    /// Only one ported body reads it — `BoardOutline.getKeepoutArea` (BoardOutline.java:186)
+    /// builds `new PolylineArea(board.boundingBox, shapes)` — but that body is reached through
+    /// `Item::tile_shape_count`/`shape_layer`, so the box has to travel with the rest of the
+    /// context rather than being a parameter of one method.
+    pub bounding_box: &'a IntBox,
 }
 
 impl<'a> ItemCtx<'a> {

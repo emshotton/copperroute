@@ -46,6 +46,14 @@ methods with dozens of branches.
       $JD/app/freerouting/geometry/planar/*.java java/support/FRLogger.java \
       java/historical/T6.java java/historical/T6b.java && \
       java -cp out app.freerouting.geometry.planar.T6`.
+    `T7.java` and `T7b.java` (Plan 2 Task 7) do the same for
+    `ObstacleArea.getArea`, `ObstacleArea.splitToConvex`, the three
+    `ObstacleArea` transform bodies and `BoardOutline.getKeepoutArea`, and print
+    the tile counts and bounding boxes that
+    `crates/fr-board/tests/areas_and_outlines.rs` asserts (`ObstacleArea` and
+    `BoardOutline` also drag in `BasicBoard`, so their bodies are inlined too).
+    Same command, with `java/historical/T7.java java/historical/T7b.java` and
+    `app.freerouting.geometry.planar.T7`.
     The older ones: `T17.java` and `T17b.java` are fixed print-statement
     dumps written before `D17.java` existed (no seeded/diffable format, no
     Rust twin). `RD.java`, `RD2.java` were `D17.java`'s drafts. `RV17.java`

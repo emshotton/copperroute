@@ -90,6 +90,19 @@ const VIA_PADSTACK: PadstackId = PadstackId(3);
 // THT pin on a two-layer padstack (the brief's first test)
 // -------------------------------------------------------------------------------------------
 
+/// Java `BasicBoard.boundingBox` (BasicBoard.java:91). No drill-item body reads it — only
+/// `BoardOutline.getKeepoutArea` does — but [`ItemCtx`] carries it for the whole item family.
+const BOARD_BOUNDING_BOX: IntBox = IntBox {
+    ll: IntPoint {
+        x: -10_000,
+        y: -10_000,
+    },
+    ur: IntPoint {
+        x: 10_000,
+        y: 10_000,
+    },
+};
+
 #[test]
 fn tht_pin_spans_both_layers_and_places_its_shape_per_layer() {
     let library = library();
@@ -101,6 +114,7 @@ fn tht_pin_spans_both_layers_and_places_its_shape_per_layer() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![2], 1), 0);
 
@@ -158,6 +172,7 @@ fn a_back_placed_pin_mirrors_the_padstack_layers() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![2], 1), 0);
 
@@ -182,6 +197,7 @@ fn pin_min_width_takes_the_smallest_bounding_box_side_over_signal_layers() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![2], 1), 0);
     // DrillItem.minWidth (DrillItem.java:369-388): layer 0 is 20x40, layer 1 is 30x30 -> 20.
@@ -209,6 +225,7 @@ fn an_attachable_via_is_not_an_obstacle_to_a_same_net_smd_pin() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
 
     let smd_pin = Item::Pin(Pin::new(hdr(2, vec![5], 1), 0));
@@ -250,6 +267,7 @@ fn a_through_hole_pin_is_an_obstacle_to_a_same_net_via() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let tht_pin = Item::Pin(Pin::new(hdr(2, vec![5], 1), 0));
     let via = Item::Via(Via::new(
@@ -285,6 +303,7 @@ fn trace_exit_restrictions_of_a_rectangular_pad_on_a_short_package() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![5], 1), 0);
 
@@ -325,6 +344,7 @@ fn trace_exit_restrictions_of_a_rectangular_pad_on_a_long_package() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![5], 1), 0);
 
@@ -349,6 +369,7 @@ fn trace_exit_restrictions_follow_the_component_rotation() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![5], 1), 0);
 
@@ -386,6 +407,7 @@ fn via_shapes_are_the_padstack_shapes_translated_to_the_centre() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let via = Via::new(
         hdr(1, vec![5], 0),
@@ -427,6 +449,7 @@ fn translating_a_via_moves_its_centre_and_drops_the_shape_cache() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let mut via = Via::new(
         hdr(1, vec![5], 0),
@@ -475,6 +498,7 @@ fn min_width_survives_clear_derived_data() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
 
     let mut via = Via::new(hdr(1, vec![5], 0), wide, Point::new(0, 0), false);
@@ -529,6 +553,7 @@ fn pin_names_come_from_the_component_package() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![], 1), 1);
     // Pin.name (Pin.java:149-157) and Pin.getPinIndex (Pin.java:159-162).
@@ -570,6 +595,7 @@ fn nearest_trace_exit_corner_picks_the_closest_offset_pad_exit() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     // Pin.nearestTraceExitCorner (Pin.java:634-673): the pad (900,1950)..(1100,2050) offset by
     // `pinEdgeToTurnDist + traceHalfWidth` = 15 is (885,1935)..(1115,2065), and the four exit
@@ -605,6 +631,7 @@ fn a_negative_pin_edge_to_turn_dist_disables_both_exit_corner_helpers() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     assert_eq!(
         pin.nearest_trace_exit_corner(&FloatPoint::new(2000.0, 2000.0), 5, 0, &ctx),
@@ -628,6 +655,7 @@ fn calc_nearest_exit_restriction_direction_follows_where_the_trace_leaves_the_pa
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     // Pin.calcNearestExitRestrictionDirection (Pin.java:565-632). A trace leaving the pin centre
     // to the right crosses the offset pad at (1115,2000), which is the RIGHT exit corner.
@@ -666,6 +694,7 @@ fn pin_transforms_throw_the_centre_away_instead_of_moving_it() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let mut pin = Pin::new(hdr(1, vec![2], 1), 0);
     // Pin.getCenter (Pin.java:91-120) memoises into `DrillItem.center`.
@@ -700,6 +729,7 @@ fn get_trace_connection_shape_is_the_centre_point() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![2], 1), 0);
     // DrillItem.getTraceConnectionShape (DrillItem.java:358-362).
@@ -719,6 +749,7 @@ fn shape_layer_clamps_the_index_into_the_pin_layer_range() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Pin::new(hdr(1, vec![2], 1), 0);
     // DrillItem.shapeLayer (DrillItem.java:147-154).
@@ -741,6 +772,7 @@ fn item_dispatch_reaches_the_drill_item_bodies() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let pin = Item::Pin(Pin::new(hdr(1, vec![2], 1), 0));
     let via = Item::Via(Via::new(
@@ -778,6 +810,7 @@ fn item_clear_derived_data_drops_the_drill_caches() {
         library: &library,
         components: &components,
         rules: &rules,
+        bounding_box: &BOARD_BOUNDING_BOX,
     };
     let mut via = Item::Via(Via::new(
         hdr(1, vec![2], 0),
