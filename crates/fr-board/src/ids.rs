@@ -44,6 +44,44 @@ pub enum TreeObject {
     Room(RoomId),
 }
 
+/// Index of a [`crate::rules::NetClass`] in [`crate::rules::NetClasses`].
+///
+/// Java's `Net.netClass` is a `NetClass` object reference (Net.java:41); the port stores an
+/// index instead so no rules object holds a reference to another (Plan 2 design rule).
+/// `NetClasses` is a `Vector` in Java (NetClasses.java:10) and `NetClasses.get(int)`
+/// (NetClasses.java:18-21) already indexes it, so the index *is* Java's identity for a net
+/// class.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NetClassId(pub usize);
+
+/// Index of a [`crate::rules::ViaInfo`] in [`crate::rules::ViaInfos`].
+///
+/// Java's `ViaRule.list` is a `List<ViaInfo>` of object references (ViaRule.java:21); the port
+/// stores indices into `BoardRules.viaInfos` instead.
+///
+/// **Removal hazard:** `ViaInfos.remove` (ViaInfos.java:62-64) deletes from the middle of a
+/// `List`, which shifts every later index. Java is immune because its `ViaRule`s hold object
+/// references; the port is not — see [`crate::rules::ViaInfos::remove`] and the
+/// `docs/java-quirks.md` obligation-register row "`ViaInfoId` renumbering across
+/// `ViaInfos.remove`".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ViaInfoId(pub usize);
+
+/// Index of a [`crate::rules::ViaRule`] in `BoardRules::via_rules`.
+///
+/// Java's `NetClass.viaRule` is a `ViaRule` object reference (NetClass.java:28) and
+/// `BoardRules.viaRules` is a `Vector<ViaRule>` (BoardRules.java:26); the port stores the
+/// vector index. `BoardRules` never removes a via rule, so the index is stable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ViaRuleId(pub usize);
+
+/// Index of a `Padstack` in the board library's `Padstacks` (Task 4 owns both).
+///
+/// Java's `ViaInfo.padstack` is a `Padstack` object reference (ViaInfo.java:17); the port stores
+/// the index, matching Java's own `Padstack.no`/`Padstacks.get(int)` addressing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PadstackId(pub usize);
+
 /// `Integer.MAX_VALUE / 2` (ItemIdGenerator.java:23).
 const MAX_ID: u32 = i32::MAX as u32 / 2;
 

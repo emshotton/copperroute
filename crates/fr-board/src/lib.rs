@@ -9,16 +9,26 @@
 
 pub mod error;
 pub mod ids;
+pub mod rules;
 pub mod structure;
 
 pub use error::BoardError;
-pub use ids::{ItemId, ItemIdGenerator, RoomId, TreeId, TreeObject};
+pub use ids::{
+    ItemId, ItemIdGenerator, NetClassId, PadstackId, RoomId, TreeId, TreeObject, ViaInfoId,
+    ViaRuleId,
+};
+pub use rules::{
+    BoardRules, ClearanceClassIndexed, ClearanceMatrix, DefaultItemClearanceClasses, ItemClass,
+    Net, NetClass, NetClasses, Nets, PadstackLookup, ViaInfo, ViaInfos, ViaRule,
+};
 pub use structure::{AngleRestriction, FixedState, Layer, LayerStructure, Unit};
 
 /// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        AngleRestriction, BoardError, FixedState, ItemId, ItemIdGenerator, Layer, LayerStructure,
-        RoomId, TreeId, TreeObject, Unit,
+        AngleRestriction, BoardError, BoardRules, ClearanceClassIndexed, ClearanceMatrix,
+        DefaultItemClearanceClasses, FixedState, ItemClass, ItemId, ItemIdGenerator, Layer,
+        LayerStructure, Net, NetClass, NetClassId, NetClasses, Nets, PadstackId, PadstackLookup,
+        RoomId, TreeId, TreeObject, Unit, ViaInfo, ViaInfoId, ViaInfos, ViaRule, ViaRuleId,
     };
 }
