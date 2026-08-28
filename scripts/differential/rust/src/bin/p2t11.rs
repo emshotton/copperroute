@@ -14,17 +14,19 @@ use fr_geometry::{
     Area, IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
     Vector,
 };
+use fr_board::ItemIdGenerator;
 
 fn main() {
     let mode: u32 = std::env::args()
         .nth(1)
         .map_or(0, |a| a.parse().expect("mode"));
-    let mut board = build();
+    let mut board = build(mode == 4);
     match mode {
         0 => dump_insert_remove(&mut board),
         1 => dump_connectivity(&mut board),
         2 => dump_checks(&mut board),
         3 => dump_changed_area(&mut board),
+        4 => dump_compensated(&mut board),
         _ => panic!("mode {mode}"),
     }
 }
@@ -37,7 +39,7 @@ fn layers() -> LayerStructure {
     LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)])
 }
 
-fn build() -> Board {
+fn build(host_cad: bool) -> Board {
     let ls = layers();
     let mut cm = ClearanceMatrix::get_default_instance(&ls, 200);
     assert!(cm.append_class("wide"));
@@ -46,6 +48,9 @@ fn build() -> Board {
     let mut rules = BoardRules::new(layers(), cm);
     rules.create_default_net_class();
     let default_class = rules.get_default_net_class();
+    if host_cad {
+        rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
+    }
 
     let mut padstacks = Padstacks::new(layers());
     let smd_pad = padstacks.add(
@@ -98,7 +103,20 @@ fn build() -> Board {
         rules,
         library,
         components,
-        Communication::default(),
+        // Mode 4 gives the board a host CAD name and a resolution of 10, which lowers
+        // `ShapeSearchTree.calculateTreeShapes(ObstacleArea)`'s section width from 50000 to
+        // `min(500 * 10, 50000) = 5000` (ShapeSearchTree.java:916-920).
+        if host_cad {
+            Communication::new(
+                Unit::Mil,
+                10,
+                ItemIdGenerator::new(),
+                Some("KiCad".to_string()),
+                Some("7.0".to_string()),
+            )
+        } else {
+            Communication::default()
+        },
     );
     // `Nets.add` reads `netList.getBoard().rules` (Net.java:50), so the Java driver creates the
     // nets after the board; the port has no back-pointer, so the order is free — kept the same.
@@ -153,7 +171,115 @@ fn build() -> Board {
         true,
         FixedState::Unfixed,
     );
+    if host_cad {
+        board.insert_obstacle(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -9000, -9000, 9000, -8000,
+            )))),
+            0,
+            1,
+            FixedState::Unfixed,
+        );
+    }
     board
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mode 4
+// ---------------------------------------------------------------------------------------------
+
+fn dump_compensated(board: &mut Board) {
+    println!("mode=4");
+    println!(
+        "hostCadExists={} resolution(MIL)={:?} hostIsOldKicad={} hostCadIsEagle={}",
+        board.communication.host_cad_exists(),
+        board.communication.get_resolution(Unit::Mil),
+        board.communication.host_is_old_kicad(),
+        board.communication.host_cad_is_eagle()
+    );
+    println!(
+        "defaultTree={} compensationUsed={}",
+        board.trees.get_default_tree(),
+        board.trees.get_default_tree().is_clearance_compensation_used()
+    );
+    dump_tree_shapes(board, 9, "wideArea", true);
+
+    println!("--- setClearanceCompensationUsed(true)");
+    board.set_clearance_compensation_used(true);
+    println!(
+        "defaultTree={} compensationUsed={}",
+        board.trees.get_default_tree(),
+        board.trees.get_default_tree().is_clearance_compensation_used()
+    );
+    let compensation = {
+        let rules = &board.rules;
+        board
+            .trees
+            .get_default_tree()
+            .clearance_compensation_value(1, 0, rules)
+    };
+    println!("compensation(1, 0)={compensation}");
+    dump_tree_shapes(board, 4, "trace 4", true);
+    dump_tree_shapes(board, 9, "wideArea", false);
+
+    println!(
+        "checkPolylineTrace(free)={}",
+        board.check_polyline_trace(
+            &Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]),
+            0,
+            30,
+            &[1],
+            1
+        )
+    );
+    println!(
+        "checkPolylineTrace(obstacle)={}",
+        board.check_polyline_trace(
+            &Polyline::from_points(&[Point::new(1500, 2500), Point::new(2500, 2500)]),
+            0,
+            30,
+            &[1],
+            1
+        )
+    );
+    println!(
+        "checkPolylineTrace(nearArea)={}",
+        board.check_polyline_trace(
+            &Polyline::from_points(&[Point::new(-4000, -7800), Point::new(-3000, -7800)]),
+            0,
+            30,
+            &[1],
+            1
+        )
+    );
+    println!(
+        "checkTraceShape(free)={}",
+        board.check_trace_shape(
+            &TileShape::Box(IntBox::from_coords(-4500, 4000, -4000, 4500)),
+            0,
+            &[1],
+            1,
+            None
+        )
+    );
+    seg(board, "free", (-4000, 4000), (-3000, 4000), 0, &[1], 30, 1, false);
+    seg(board, "blocked", (1500, 2500), (2500, 2500), 0, &[1], 30, 1, false);
+}
+
+/// `item.treeShapeCount(def)` plus, when `with_shapes`, each shape's bounding box.
+fn dump_tree_shapes(board: &mut Board, id: u32, label: &str, with_shapes: bool) {
+    let tree = board.default_tree_id();
+    let count = board.item_tree_shape_count(ItemId(id), tree);
+    println!("{label} treeShapes={count}");
+    if !with_shapes {
+        return;
+    }
+    for i in 0..count {
+        let shape = board
+            .item_tree_shape(ItemId(id), tree, i)
+            .expect("a tree shape");
+        println!("  [{i}]={}", boxs(&shape.bounding_box()));
+    }
 }
 
 // ---------------------------------------------------------------------------------------------

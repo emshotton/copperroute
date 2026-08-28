@@ -1136,6 +1136,154 @@ fn the_net_queries_walk_the_item_list() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The host-CAD / clearance-compensated board (`P2T11.java` mode 4)
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn a_host_cad_communication_lowers_the_obstacle_area_section_width() {
+    // `P2T11.java` mode 4: `hostCadExists=true resolution(MIL)=10.0`, and the 18000-wide
+    // obstacle area comes back as four 4500-wide sections instead of one shape —
+    // ShapeSearchTree.java:916-920 lowers `maxTreeShapeWidth` to `min(500 * 10, 50000) = 5000`.
+    let mut board = board_builder::p2t11_host_cad_board();
+    assert!(board.communication.host_cad_exists());
+    assert!((board.communication.get_resolution(Unit::Mil) - 10.0).abs() < 1e-9);
+    assert!(!board.communication.host_is_old_kicad());
+    assert!(!board.communication.host_cad_is_eagle());
+    let tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(9), tree), 4);
+    let boxes: Vec<IntBox> = (0..4)
+        .map(|i| {
+            board
+                .item_tree_shape(ItemId(9), tree, i)
+                .expect("a tree shape")
+                .bounding_box()
+        })
+        .collect();
+    assert_eq!(
+        boxes,
+        vec![
+            IntBox::from_coords(-9000, -9000, -4500, -8000),
+            IntBox::from_coords(-4500, -9000, 0, -8000),
+            IntBox::from_coords(0, -9000, 4500, -8000),
+            IntBox::from_coords(4500, -9000, 9000, -8000),
+        ]
+    );
+}
+
+#[test]
+fn a_host_cad_at_a_coarse_resolution_keeps_the_fifty_thousand_default() {
+    // ShapeSearchTree.java:918-919 is a `Math.min`, so a resolution big enough to make
+    // `500 * getResolution(MIL)` exceed 50000 leaves the default in place — and the same
+    // 18000-wide area is then a single section. No `P2T11` line: Java's driver would need a
+    // third board; the `Math.min` is the citation.
+    let mut board = board_builder::p2t11_host_cad_board();
+    // Rebuild with resolution 1000: `500 * 1000 = 500000 > 50000`.
+    let coarse = Board::new(
+        Vec::new(),
+        1,
+        IntBox::from_coords(-10_000, -10_000, 10_000, 10_000),
+        board.rules.clone(),
+        board.library.clone(),
+        board.components.clone(),
+        Communication::new(
+            Unit::Mil,
+            1000,
+            ItemIdGenerator::new(),
+            Some("KiCad".to_string()),
+            Some("7.0".to_string()),
+        ),
+    );
+    let mut coarse = coarse;
+    let wide = coarse.insert_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -9000, -9000, 9000, -8000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    let tree = coarse.default_tree_id();
+    assert_eq!(coarse.item_tree_shape_count(wide, tree), 1);
+    // The fine-resolution board splits the same area four ways.
+    let fine_tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(9), fine_tree), 4);
+}
+
+#[test]
+fn set_clearance_compensation_used_rebuilds_the_board_tree() {
+    // `P2T11.java` mode 4's `--- setClearanceCompensationUsed(true)` block
+    // (SearchTreeManager.java:89-108 over `board.itemList`).
+    let mut board = board_builder::p2t11_host_cad_board();
+    assert!(
+        !board
+            .trees
+            .get_default_tree()
+            .is_clearance_compensation_used()
+    );
+    board.set_clearance_compensation_used(true);
+    assert!(
+        board
+            .trees
+            .get_default_tree()
+            .is_clearance_compensation_used()
+    );
+    assert_eq!(
+        board.trees.get_default_tree().get_key(),
+        "ShapeSearchTree_FortyfiveDegree_cc1"
+    );
+    let compensation =
+        board
+            .trees
+            .get_default_tree()
+            .clearance_compensation_value(1, 0, &board.rules);
+    assert_eq!(compensation, 100);
+    // Trace 4 is half width 30, so its one shape is now 130 wide on each side.
+    let tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
+    assert_eq!(
+        board
+            .item_tree_shape(ItemId(4), tree, 0)
+            .expect("a tree shape")
+            .bounding_box(),
+        IntBox::from_coords(-1130, -130, 130, 130)
+    );
+}
+
+#[test]
+fn check_polyline_trace_uses_the_compensated_tree_shapes() {
+    // `P2T11.java` mode 4: with compensation on, a run 200 units clear of the wide obstacle area
+    // is blocked, because `checkPolylineTrace`'s temporary trace takes its tile shapes from the
+    // default tree (BasicBoard.java:1067-1071 -> Item.java:194-201 ->
+    // ShapeSearchTree.java:992-1004), which adds the compensation to the half width.
+    let mut board = board_builder::p2t11_host_cad_board();
+    board.set_clearance_compensation_used(true);
+    let near_area = Polyline::from_points(&[Point::new(-4000, -7800), Point::new(-3000, -7800)]);
+    assert!(!board.check_polyline_trace(&near_area, 0, 30, &[1], 1));
+    // Well away from everything it is still free.
+    assert!(board.check_polyline_trace(
+        &Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]),
+        0,
+        30,
+        &[1],
+        1
+    ));
+    // `checkTraceSegment` on the compensated tree shortens by the compensation instead of the
+    // clearance (RoutingBoardSearchFacade.java:82-87): 269, not mode 2's 253.
+    assert_eq!(
+        board.check_trace_segment(
+            &Point::new(1500, 2500),
+            &Point::new(2500, 2500),
+            0,
+            &[1],
+            30,
+            1,
+            false
+        ),
+        269.0
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
 // The ported Java tests
 // ---------------------------------------------------------------------------------------------
 

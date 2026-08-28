@@ -9,6 +9,7 @@ import app.freerouting.board.model.items.Trace;
 import app.freerouting.board.model.items.Via;
 import app.freerouting.board.model.structure.*;
 import app.freerouting.board.searchtree.SearchTreeObject;
+import app.freerouting.board.searchtree.ShapeSearchTree;
 import app.freerouting.board.state.Communication;
 import app.freerouting.board.trace.PolylineTrace;
 import app.freerouting.core.library.Package;
@@ -28,17 +29,21 @@ import java.util.*;
 public class P2T11 {
 
   static RoutingBoard board;
+  /** Mode 4 only: a host CAD name and a resolution, which lower `maxTreeShapeWidth`. */
+  static boolean hostCad;
   static Padstack smdPad;
   static Padstack thruPad;
 
   public static void main(String[] args) {
     int mode = args.length > 0 ? Integer.parseInt(args[0]) : 0;
+    hostCad = mode == 4;
     build();
     switch (mode) {
       case 0 -> dumpInsertRemove();
       case 1 -> dumpConnectivity();
       case 2 -> dumpChecks();
       case 3 -> dumpChangedArea();
+      case 4 -> dumpCompensated();
       default -> throw new IllegalArgumentException("mode " + mode);
     }
   }
@@ -63,7 +68,22 @@ public class P2T11 {
     cm.setValue(2, 2, 800);
     BoardRules rules = new BoardRules(ls, cm);
     rules.createDefaultNetClass();
-    Communication comm = new Communication();
+    if (hostCad) {
+      rules.setTraceAngleRestriction(AngleRestriction.NINETY_DEGREE);
+    }
+    // Mode 4 gives the board a host CAD name and a resolution of 10, which lowers
+    // `ShapeSearchTree.calculateTreeShapes(ObstacleArea)`'s section width from 50000 to
+    // `min(500 * 10, 50000) = 5000` (ShapeSearchTree.java:916-920).
+    Communication comm =
+        hostCad
+            ? new Communication(
+                Unit.MIL,
+                10,
+                new Communication.SpecctraParserInfo("\"", "KiCad", "7.0", null, null, false),
+                new app.freerouting.io.CoordinateTransform(1, 0, 0),
+                new app.freerouting.board.actions.ItemIdGenerator(),
+                new app.freerouting.board.state.BoardObserverAdaptor())
+            : new Communication();
     IntBox bbox = new IntBox(-10000, -10000, 10000, 10000);
     PolylineShape[] outline = {
       new PolygonShape(
@@ -131,6 +151,74 @@ public class P2T11 {
     // 8: a conduction area on net 2, layer 0.
     board.insertConductionArea(
         new IntBox(-3000, -3000, -2000, -2000), 0, new int[] {2}, 1, true, FixedState.UNFIXED);
+    if (hostCad) {
+      // 9: an obstacle area wider than the lowered section width, so `divideIntoSections`
+      // actually splits it.
+      board.insertObstacle(new IntBox(-9000, -9000, 9000, -8000), 0, 1, FixedState.UNFIXED);
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 4: a 90-degree, clearance-compensated board whose communication names a host CAD
+  // -------------------------------------------------------------------------------------------
+
+  static void dumpCompensated() {
+    System.out.println("mode=4");
+    System.out.println(
+        "hostCadExists=" + board.communication.hostCadExists()
+            + " resolution(MIL)=" + board.communication.getResolution(Unit.MIL)
+            + " hostIsOldKicad=" + board.communication.hostIsOldKicad()
+            + " hostCadIsEagle=" + board.communication.hostCadIsEagle());
+    ShapeSearchTree def = board.searchTreeManager.getDefaultTree();
+    System.out.println("defaultTree=" + def + " compensationUsed=" + def.isClearanceCompensationUsed());
+    System.out.println("wideArea treeShapes=" + board.getItem(9).treeShapeCount(def));
+    for (int i = 0; i < board.getItem(9).treeShapeCount(def); i++) {
+      System.out.println("  [" + i + "]=" + box(board.getItem(9).getTreeShape(def, i).boundingBox()));
+    }
+
+    System.out.println("--- setClearanceCompensationUsed(true)");
+    board.searchTreeManager.setClearanceCompensationUsed(true);
+    def = board.searchTreeManager.getDefaultTree();
+    System.out.println("defaultTree=" + def + " compensationUsed=" + def.isClearanceCompensationUsed());
+    System.out.println("compensation(1, 0)=" + def.clearanceCompensationValue(1, 0));
+    System.out.println("trace 4 treeShapes=" + board.getItem(4).treeShapeCount(def));
+    for (int i = 0; i < board.getItem(4).treeShapeCount(def); i++) {
+      System.out.println("  [" + i + "]=" + box(board.getItem(4).getTreeShape(def, i).boundingBox()));
+    }
+    System.out.println("wideArea treeShapes=" + board.getItem(9).treeShapeCount(def));
+
+    // The compensated + 90-degree paths of the check queries: `checkPolylineTrace` builds a
+    // temporary trace whose tile shapes come from this tree, so they are boxes carrying the
+    // compensation (BasicBoard.java:1067-1071).
+    System.out.println(
+        "checkPolylineTrace(free)="
+            + board.checkPolylineTrace(
+                new Polyline(new Point[] {new IntPoint(-4000, 4000), new IntPoint(-3000, 4000)}),
+                0,
+                30,
+                new int[] {1},
+                1));
+    System.out.println(
+        "checkPolylineTrace(obstacle)="
+            + board.checkPolylineTrace(
+                new Polyline(new Point[] {new IntPoint(1500, 2500), new IntPoint(2500, 2500)}),
+                0,
+                30,
+                new int[] {1},
+                1));
+    System.out.println(
+        "checkPolylineTrace(nearArea)="
+            + board.checkPolylineTrace(
+                new Polyline(new Point[] {new IntPoint(-4000, -7800), new IntPoint(-3000, -7800)}),
+                0,
+                30,
+                new int[] {1},
+                1));
+    System.out.println(
+        "checkTraceShape(free)="
+            + board.checkTraceShape(new IntBox(-4500, 4000, -4000, 4500), 0, new int[] {1}, 1, null));
+    seg("free", new IntPoint(-4000, 4000), new IntPoint(-3000, 4000), 0, new int[] {1}, 30, 1, false);
+    seg("blocked", new IntPoint(1500, 2500), new IntPoint(2500, 2500), 0, new int[] {1}, 30, 1, false);
   }
 
   // -------------------------------------------------------------------------------------------

@@ -271,10 +271,22 @@ impl Board {
         net_nos: &[i32],
         clearance_class: usize,
     ) -> bool {
-        // BasicBoard.java:1055-1065: Java builds a temporary `PolylineTrace` that is never
-        // inserted, purely to reach `tileShapeCount()`/`getTileShape(i)` and
-        // `touchingPinsAtEndCorners()`. The port computes the same two things directly.
-        let shapes: Vec<TileShape> = polyline.offset_shapes(pen_half_width);
+        // BasicBoard.java:1055-1069: Java builds a temporary `PolylineTrace` that is never
+        // inserted, purely to reach `tileShapeCount()`, `getTileShape(i)` and
+        // `touchingPinsAtEndCorners()`. The port computes the same three things directly.
+        //
+        // `getTileShape(i)` on that temporary goes through the default tree
+        // (Item.java:194-201 -> ShapeSearchTree.java:992-1004), so the shapes carry the
+        // **compensated** half width and come from the tree's own `offsetShape` — which a
+        // 90-degree tree overrides to `offsetBox` (ShapeSearchTree90Degree.java:486-490).
+        let default_tree = self.trees.get_default_tree();
+        let compensated_half_width = pen_half_width
+            + default_tree.clearance_compensation_value(clearance_class, layer, &self.rules);
+        // `PolylineTraceGeometry.tileShapeCount` is `max(lines.length - 2, 0)`.
+        let shape_count = polyline.lines().len().saturating_sub(2);
+        let shapes: Vec<TileShape> = (0..shape_count)
+            .filter_map(|i| default_tree.offset_shape(polyline, compensated_half_width, i))
+            .collect();
         let contact_pins = self.touching_pins_at_end_corners_of(
             polyline,
             layer,

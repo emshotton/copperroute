@@ -239,12 +239,13 @@ impl Board {
         components: Components,
         communication: Communication,
     ) -> Board {
-        // ShapeSearchTree.java:916-920: `50000`, unless the board names a host CAD system.
-        let max_tree_shape_width = if communication.host_cad_exists() {
-            500.0 * communication.get_resolution(crate::structure::Unit::Mil)
-        } else {
-            crate::items::DEFAULT_MAX_TREE_SHAPE_WIDTH
-        };
+        // ShapeSearchTree.java:916-920: `50000`, lowered — `Math.min`, so never raised — to
+        // `500 * communication.getResolution(MIL)` when the board names a host CAD system.
+        let mut max_tree_shape_width = crate::items::DEFAULT_MAX_TREE_SHAPE_WIDTH;
+        if communication.host_cad_exists() {
+            max_tree_shape_width = max_tree_shape_width
+                .min(500.0 * communication.get_resolution(crate::structure::Unit::Mil));
+        }
         let mut board = Board {
             items: BTreeMap::new(),
             components,
@@ -1021,6 +1022,22 @@ impl Board {
         self.items = items;
     }
 
+    /// Port of `SearchTreeManager.setClearanceCompensationUsed`
+    /// (SearchTreeManager.java:89-108) at board level: the item-list walk Java does inside the
+    /// manager (`removeAllBoardItems`/`insertAllBoardItems`, :202-231).
+    ///
+    /// Not a `BasicBoard` method — Java's callers reach the manager directly — but the item list
+    /// it needs is the board's, in `board.itemList` order (descending id, quirk #63).
+    pub fn set_clearance_compensation_used(&mut self, value: bool) {
+        let mut items = std::mem::take(&mut self.items);
+        let ctx = item_ctx!(self);
+        let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+        self.trees
+            .set_clearance_compensation_used(value, &mut refs, &ctx);
+        drop(refs);
+        self.items = items;
+    }
+
     /// Port of `BoardOutline.generateKeepoutOutside(boolean)`'s search-tree half
     /// (BoardOutline.java:229-243): set the flag, then re-insert the outline so its tree shapes
     /// are recomputed.
@@ -1102,21 +1119,31 @@ impl Board {
         // DrillItem.java:96-110: remember the contact situation *before* the move.
         let is_drill_item = item.is_drill_item();
         let old_center = is_drill_item.then(|| self.drill_center(id).expect("a drill item"));
-        let contact_trace_info: Vec<(usize, i32, usize)> = if is_drill_item {
-            self.normal_contacts(id)
-                .into_iter()
-                .filter_map(|contact_id| match self.items.get(&contact_id) {
-                    Some(Item::Trace(trace)) => Some((
-                        trace.get_layer(),
-                        trace.get_half_width(),
-                        trace.hdr.clearance_class(),
-                    )),
-                    _ => None,
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        //
+        // Java's `Set<TraceInfo> contactTraceInfo` is a `TreeSet` whose `compareTo` is
+        // `other.layer - this.layer` (DrillItem.java:412-414) — it compares the **layer alone**,
+        // descending. So two contacting traces on the same layer collapse into one entry (the
+        // first one added wins, as `TreeSet.add` keeps the incumbent), and the connecting traces
+        // are then inserted in descending layer order. The `BTreeMap` below reproduces both:
+        // `or_insert` keeps the incumbent, and the iteration is reversed.
+        let mut by_layer: std::collections::BTreeMap<usize, (i32, usize)> =
+            std::collections::BTreeMap::new();
+        if is_drill_item {
+            // `getNormalContacts()` is a `TreeSet<Item>`, i.e. descending id (quirk #44), which
+            // is the order the "first one added wins" rule is resolved in.
+            for contact_id in self.normal_contacts(id).into_iter().rev() {
+                if let Some(Item::Trace(trace)) = self.items.get(&contact_id) {
+                    by_layer
+                        .entry(trace.get_layer())
+                        .or_insert((trace.get_half_width(), trace.hdr.clearance_class()));
+                }
+            }
+        }
+        let contact_trace_info: Vec<(usize, i32, usize)> = by_layer
+            .into_iter()
+            .rev()
+            .map(|(layer, (half_width, clearance_class))| (layer, half_width, clearance_class))
+            .collect();
 
         let mut item = self
             .items

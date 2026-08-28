@@ -758,6 +758,19 @@ pub fn trace_piece(id: u32, corners: &[(i32, i32)]) -> PolylineTrace {
 /// | 7 | an obstacle area on layer 0, well away from everything |
 /// | 8 | a conduction area on layer 0, net 2 |
 pub fn p2t11_board() -> Board {
+    p2t11_board_with_host_cad(false)
+}
+
+/// The same board with `mode == 4`'s two changes: `AngleRestriction::NinetyDegree`, and a
+/// [`Communication`] that names a host CAD system at resolution 10 — which lowers
+/// `ShapeSearchTree.calculateTreeShapes(ObstacleArea)`'s section width from 50000 to
+/// `min(500 * 10, 50000) = 5000` (ShapeSearchTree.java:916-920). It also carries a ninth item: an
+/// 18000-wide obstacle area, so that section width actually splits something.
+pub fn p2t11_host_cad_board() -> Board {
+    p2t11_board_with_host_cad(true)
+}
+
+fn p2t11_board_with_host_cad(host_cad: bool) -> Board {
     let ls = layers();
     let mut clearance_matrix = ClearanceMatrix::get_default_instance(&ls, 200);
     assert!(clearance_matrix.append_class("wide"));
@@ -766,6 +779,9 @@ pub fn p2t11_board() -> Board {
     let mut rules = BoardRules::new(layers(), clearance_matrix);
     rules.create_default_net_class();
     let default_class = rules.get_default_net_class();
+    if host_cad {
+        rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
+    }
 
     let mut padstacks = Padstacks::new(layers());
     let smd_pad = padstacks.add(
@@ -819,7 +835,17 @@ pub fn p2t11_board() -> Board {
         rules,
         BoardLibrary::new(padstacks, packages),
         components,
-        Communication::default(),
+        if host_cad {
+            Communication::new(
+                Unit::Mil,
+                10,
+                ItemIdGenerator::new(),
+                Some("KiCad".to_string()),
+                Some("7.0".to_string()),
+            )
+        } else {
+            Communication::default()
+        },
     );
     board.rules.nets.add("N1", 1, false, default_class);
     board.rules.nets.add("N2", 1, false, default_class);
@@ -872,6 +898,17 @@ pub fn p2t11_board() -> Board {
         true,
         FixedState::Unfixed,
     );
+    if host_cad {
+        // Item 9: wider than the lowered section width, so `divideIntoSections` splits it.
+        board.insert_obstacle(
+            fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -9000, -9000, 9000, -8000,
+            )))),
+            0,
+            1,
+            FixedState::Unfixed,
+        );
+    }
     board
 }
 

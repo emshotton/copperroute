@@ -218,6 +218,7 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t11` (mode 1) | 66 | 0 | exact match (the connectivity family) |
 | `p2t11` (mode 2) | 27 | 0 | exact match (`checkTraceSegment` and the check queries) |
 | `p2t11` (mode 3) | 39 | 0 | exact match (changed area, conduction latch, `moveBy`, net queries) |
+| `p2t11` (mode 4) | 20 | 0 | exact match (host-CAD section width, clearance compensation, 90-degree checks) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -272,6 +273,13 @@ The four modes cover:
   shove-filtered and wide-clearance), `checkShape`, `checkTraceShape` with and
   without a contact-pin set, `checkPolylineTrace`, `checkMoveItem`,
   `checkChangeNet`, `pickNearestRoutingItem`, `getTraceTail`.
+* **4** — a 90-degree board whose `Communication` names a host CAD system at
+  resolution 10, so `ShapeSearchTree.calculateTreeShapes(ObstacleArea)`'s
+  section width drops from 50000 to `min(500 * 10, 50000) = 5000`
+  (ShapeSearchTree.java:916-920) and an 18000-wide area comes back in four
+  pieces; then `setClearanceCompensationUsed(true)` and the check queries
+  again, which is what pins `checkPolylineTrace` taking its temporary trace's
+  tile shapes from the tree (compensated) rather than from the bare polyline.
 * **3** — the `ChangedArea` lifecycle, `changeConductionIsObstacle`'s latch
   (quirk #50), `unfillConductionAreas`, `moveBy`, `changeClearanceClassIndex`,
   `makeConductive`, `generateKeepoutOutside` and the five `Net` board queries.
