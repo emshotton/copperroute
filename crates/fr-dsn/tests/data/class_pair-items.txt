@@ -13,10 +13,10 @@ net 1 N1 subnet=1 class=Alpha plane=false
 net 2 N2 subnet=1 class=Beta plane=false
 net 3 N3 subnet=1 class=Gamma plane=false
 viapadstacks[0] 
-netclass 0 default traceCl=1 viaRule=null hw0=1250 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
-netclass 1 Alpha traceCl=2 viaRule=null hw0=1500 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
-netclass 2 Beta traceCl=3 viaRule=null hw0=2000 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
-netclass 3 Gamma traceCl=4 viaRule=null hw0=2500 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 0 default traceCl=1 viaRule=null hw=[1250,1250] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 1 Alpha traceCl=2 viaRule=null hw=[3000,0] pullTight=true shoveFixed=false minLen=10000.0 maxLen=50000.0
+netclass 2 Beta traceCl=3 viaRule=null hw=[2000,2000] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 3 Gamma traceCl=4 viaRule=null hw=[2500,2500] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
 clclasses[5] 0:null 1:default 2:Alpha 3:Beta 4:Gamma
 clrow 0 0 0 0 0 0
 clrow 1 0 2000 3000 4000 5000

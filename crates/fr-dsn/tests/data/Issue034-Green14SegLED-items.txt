@@ -1,4 +1,4 @@
-# Ground truth for `Issue034-Green14SegLED.dsn`, captured from the pinned 2.3.0 jar.
+# Ground truth for `../freerouting/fixtures/Issue034-Green14SegLED.dsn`, captured from the pinned 2.3.0 jar.
 #
 # $ export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
 # $ javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/NProbe.java
@@ -1008,7 +1008,7 @@ viapadstacks[2] Via[0-1]_800:400_um Via[0-1]_800:400_um
 viainfo 0 Via[0-1]_800:400_um padstack=Via[0-1]_800:400_um cl=1 attach=false
 viarule 0 default [Via[0-1]_800:400_um]
 viarule 1 default [Via[0-1]_800:400_um]
-netclass 0 default traceCl=1 viaRule=default hw0=1250 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 0 default traceCl=1 viaRule=default hw=[1250,1250] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
 clclasses[3] 0:null 1:default 2:smd
 clrow 0 0 0 0
 clrow 1 0 2002 2002

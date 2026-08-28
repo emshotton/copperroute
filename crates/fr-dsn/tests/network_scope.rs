@@ -13,8 +13,9 @@
 //! ```
 //!
 //! and the same for `../freerouting/fixtures/Issue034-Green14SegLED.dsn`,
-//! `../freerouting/fixtures/empty_board.dsn`, `crates/fr-dsn/tests/data/via_order.dsn` and
-//! `crates/fr-dsn/tests/data/class_pair.dsn`. Each golden repeats its own command in a `#`
+//! `../freerouting/fixtures/empty_board.dsn` and `crates/fr-dsn/tests/data/`'s
+//! `via_order.dsn`, `network_via.dsn`, `class_pair.dsn` and `alias.dsn`. Each golden repeats its
+//! own command in a `#`
 //! header. [`dump`] below reproduces `NProbe.describe`'s line format exactly, so the comparison
 //! is line-for-line over the whole file — item ids, kinds, layers, components, clearance
 //! classes and net numbers included.
@@ -182,12 +183,15 @@ fn dump(board: &Board, warnings: &[String]) -> Vec<String> {
         let via_rule = net_class
             .get_via_rule()
             .map_or("null", |id| board.rules.via_rules[id.0].name.as_str());
+        let half_widths: Vec<String> = (0..net_class.layer_count())
+            .map(|layer| net_class.get_trace_half_width(layer).to_string())
+            .collect();
         out.push(format!(
-            "netclass {i} {} traceCl={} viaRule={via_rule} hw0={} pullTight={} shoveFixed={} \
+            "netclass {i} {} traceCl={} viaRule={via_rule} hw=[{}] pullTight={} shoveFixed={} \
              minLen={:?} maxLen={:?}",
             net_class.get_name(),
             net_class.get_trace_clearance_class(),
-            net_class.get_trace_half_width(0),
+            half_widths.join(","),
             net_class.get_pull_tight(),
             net_class.is_shove_fixed(),
             net_class.get_minimum_trace_length(),
@@ -311,12 +315,53 @@ fn via_padstack_names_are_merged_normalised_and_compacted() {
     assert_matches_golden(&test_data("via_order.dsn"), "via_order-items.txt");
 }
 
+/// The other half of Network.java:1282-1313: when the `structure` scope named **no** via
+/// padstacks and no net class has a `(use_via …)`, `ReadScopeParameter.viaPadstackNames` is
+/// still `null`, so the `if (scopeParameter.viaPadstackNames != null)` guard at :1286 skips
+/// `setViaPadstacks` **entirely** — and the padstacks `Network.readViaInfo` appended along the
+/// way (`board.library.addViaPadstack`, :274) survive instead of being overwritten.
+///
+/// `network_via.dsn` is exactly that file: a `structure` with no `(via …)`, no `(class …)` at
+/// all, and two `(via <name> <padstack> default)` infos in the `network` scope. Java's answer is
+/// `viapadstacks[2] VA VB`. This is the test that fails if `via_padstack_names` ever regresses
+/// from `Option<Vec<String>>` to a plain `Vec`: an empty `Vec` takes the `Some` branch, calls
+/// `set_via_padstacks(vec![])` and the line becomes `viapadstacks[0]`.
+#[test]
+fn a_network_only_via_padstack_list_survives_because_set_via_padstacks_is_skipped() {
+    assert_matches_golden(&test_data("network_via.dsn"), "network_via-items.txt");
+
+    read_pcb(&test_data("network_via.dsn"), |_, p| {
+        let board = p.board.as_ref().expect("board built");
+        let names: Vec<&str> = board
+            .library
+            .get_via_padstacks()
+            .iter()
+            .map(|id| {
+                board
+                    .library
+                    .get_padstack(*id)
+                    .expect("resolves")
+                    .name
+                    .as_str()
+            })
+            .collect();
+        assert_eq!(names, ["VA", "VB"]);
+    });
+}
+
 // ------------------------------------------------------------------ insert_class_pairs
 
 /// `Network.addMixedClearanceRule` (Network.java:640-643) writes `(i, j)` **and** `(j, i)`, and
 /// `Network.insertClassPairs` (:557) reuses the outer iterator for the inner loop, so a
 /// `(classes Alpha Beta Gamma)` pairs `Alpha` with both of the others and never pairs `Beta`
 /// with `Gamma`.
+///
+/// `Alpha` also carries the three `insertNetClass` paths no corpus fixture exercises, all
+/// visible in the golden's `netclass 1 Alpha … hw=[3000,0] … minLen=10000.0 maxLen=50000.0`
+/// line: a `(layer_rule F.Cu (rule (width 600)))` (Network.java:499-514 — halved *before*
+/// `dsnToBoard`, so `hw[0]` is 3000), a `(use_layer F.Cu)` that deactivates `B.Cu` and zeroes
+/// its half width (`createActiveTraceLayers`, :710-727 — and it runs *after* the layer rules,
+/// which is why `hw[1]` is 0 and not 3000), and a `(length 5000 1000)` (`:475-481`, unrounded).
 #[test]
 fn class_pairs_write_both_halves_of_the_clearance_matrix() {
     assert_matches_golden(&test_data("class_pair.dsn"), "class_pair-items.txt");

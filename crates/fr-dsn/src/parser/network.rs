@@ -993,7 +993,8 @@ fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let contains_plane = p
         .layer_structure
         .as_ref()
-        .is_some_and(|ls| ls.contains_plane(&net_name));
+        .expect(LAYER_STRUCTURE_EXPECTED)
+        .contains_plane(&net_name);
     for current_pin_list in subnet_pin_lists {
         let net_id = NetId::new(net_name.clone(), subnet_number);
         if !p.netlist.contains(&net_id) {
@@ -1070,6 +1071,13 @@ fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     }
     Ok(true)
 }
+
+/// The message on every `p.layer_structure` unwrap in this module. `Structure.readScope` builds
+/// it before `Structure.createBoard` returns (Structure.java:975-978, :985-987), and Java
+/// dereferences it unguarded — `layerStructure.containsPlane` (Network.java:1394) and
+/// `layerStructure.layers.length` (:711, via `insertNetClass`) both NPE on a `null`.
+const LAYER_STRUCTURE_EXPECTED: &str =
+    "Network: the structure scope must have built the layer structure (Java NPEs here too)";
 
 /// The message on every `p.coordinate_transform` unwrap in this module — `Structure.createBoard`
 /// assigns it, and Java NPEs on the `null` a `(network …)` before a `(structure …)` would leave.
@@ -1236,9 +1244,12 @@ fn create_default_via_infos(board: &mut Board, net_class: NetClassId, attach_all
         .get_name()
         .to_string();
     for i in 0..board.library.via_padstack_count() {
-        let Some(current_padstack) = board.library.get_via_padstack(i) else {
-            continue;
-        };
+        // `i < viaPadstackCount()`, so Java's `getViaPadstack(i)` cannot be `null` either
+        // (BoardLibrary.java:44-50 returns `null` only out of range or on an unset list).
+        let current_padstack = board
+            .library
+            .get_via_padstack(i)
+            .expect("i < via_padstack_count()");
         let (padstack_name, padstack_attach_allowed) = board
             .library
             .get_padstack(current_padstack)
@@ -1327,10 +1338,7 @@ pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
 
 /// `Network.insertNetClasses` (Network.java:421-433).
 fn insert_net_classes(classes: &[DsnNetClass], p: &mut ReadScopeParameter<'_>) {
-    let layer_structure = p
-        .layer_structure
-        .clone()
-        .unwrap_or_else(|| DsnLayerStructure::new(Vec::new()));
+    let layer_structure = p.layer_structure.clone().expect(LAYER_STRUCTURE_EXPECTED);
     let coordinate_transform = p.coordinate_transform.expect(TRANSFORM_EXPECTED);
     let via_at_smd_allowed = p.via_at_smd_allowed;
     let board = p.board.as_mut().expect(BOARD_EXPECTED);
@@ -2050,8 +2058,11 @@ fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadSco
             .expect("i < pinCount")
             .clone();
         let Some(current_padstack) = board.library.padstacks.get(current_pin.padstack_no) else {
-            // "pin padstack not found" — and Java abandons the **whole** component here, pins,
-            // keepouts and outlines alike (Network.java:1013-1019).
+            // Java bug: Network.insertComponent — "pin padstack not found" `return`s rather than
+            // `continue`s (Network.java:1013-1019), so a package whose *n*th pin names a missing
+            // padstack contributes its first *n-1* pins and none of its keepouts, via keepouts,
+            // place keepouts or outlines — which shifts every later item id on the board. See
+            // `docs/java-quirks.md` #103.
             return;
         };
         let padstack_is_smd = current_padstack.from_layer() == current_padstack.to_layer();

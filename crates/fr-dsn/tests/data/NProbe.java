@@ -67,7 +67,7 @@ public final class NProbe {
       NetClass nc = board.rules.net_classes.get(i);
       out.println("netclass " + i + " " + nc.get_name() + " traceCl=" + nc.get_trace_clearance_class()
           + " viaRule=" + (nc.get_via_rule() == null ? "null" : nc.get_via_rule().name)
-          + " hw0=" + nc.get_trace_half_width(0)
+          + " hw=" + halfWidths(nc)
           + " pullTight=" + nc.get_pull_tight() + " shoveFixed=" + nc.is_shove_fixed()
           + " minLen=" + nc.get_minimum_trace_length() + " maxLen=" + nc.get_maximum_trace_length());
     }
@@ -92,6 +92,15 @@ public final class NProbe {
       out.println("logicalpart " + i + " " + board.library.logical_parts.get(i).name);
     }
     for (String w : s.warnings()) out.println("warning " + w);
+  }
+
+  static String halfWidths(NetClass nc) {
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < nc.layer_count(); i++) {
+      if (i > 0) sb.append(',');
+      sb.append(nc.get_trace_half_width(i));
+    }
+    return sb.append(']').toString();
   }
 
   static String describe(Item it, BasicBoard board) {

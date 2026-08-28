@@ -21,9 +21,9 @@ viainfo 5 VB-Beta padstack=VB cl=3 attach=false
 viarule 0 default [VA]
 viarule 1 Alpha [VA-Alpha VB-Alpha]
 viarule 2 Beta [VB-Beta]
-netclass 0 default traceCl=1 viaRule=default hw0=1250 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
-netclass 1 Alpha traceCl=2 viaRule=Alpha hw0=1500 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
-netclass 2 Beta traceCl=3 viaRule=Beta hw0=2000 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 0 default traceCl=1 viaRule=default hw=[1250,1250] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 1 Alpha traceCl=2 viaRule=Alpha hw=[1500,1500] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 2 Beta traceCl=3 viaRule=Beta hw=[2000,2000] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
 clclasses[4] 0:null 1:default 2:Alpha 3:Beta
 clrow 0 0 0 0 0
 clrow 1 0 2000 3000 4000

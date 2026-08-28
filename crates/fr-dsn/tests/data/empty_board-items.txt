@@ -10,7 +10,7 @@ layers 2
 item 1 BoardOutline cmp=0 cl=1 nets=[]
 itemcount 1
 viapadstacks[0] 
-netclass 0 default traceCl=1 viaRule=null hw0=1500 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+netclass 0 default traceCl=1 viaRule=null hw=[1500,1500] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
 clclasses[2] 0:null 1:default
 clrow 0 0 0
 clrow 1 0 0
