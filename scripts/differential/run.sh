@@ -24,7 +24,7 @@ OUT="$BUILD/classes"
 
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
-  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11" >&2
+  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -41,6 +41,10 @@ extra_java_sources=()
 # Set by `p2t10`: compile against the clone's prebuilt jar with a JDK 25 instead of against the
 # `geometry/planar` sources with a JDK 23.
 needs_jar=0
+# Set by `p2t13`: compiled from the `geometry/planar` sources like every other source-path driver,
+# but with the JDK 25 the shipping jar is built for, because the driver's ground truth depends on
+# `java.util.Collections.shuffle`/`java.util.Random` — runtime library code, not freerouting code.
+needs_jdk25=0
 # The `datastructures` classes the Plan 2 Task 3 drivers exercise.
 shapetree_sources=(
   "$JAVA_DIR/datastructures/ShapeTree.java"
@@ -76,6 +80,13 @@ case "$driver" in
     javapkg="datastructures"
     default_args=(0)
     needs_jar=1
+    ;;
+  p2t13)
+    javaclass=P2T13
+    javapkg="datastructures"
+    default_args=(50 42 0)
+    extra_java_sources=("$JAVA_DIR/datastructures/PlanarDelaunayTriangulation.java")
+    needs_jdk25=1
     ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
@@ -129,6 +140,11 @@ if [[ "$needs_jar" -eq 1 ]]; then
   fi
 fi
 
+if [[ "$needs_jdk25" -eq 1 ]]; then
+  JAVAC="$JAVA25_HOME/bin/javac"
+  JAVABIN="$JAVA25_HOME/bin/java"
+fi
+
 # Fail loudly rather than silently compiling nothing / compiling stale
 # classes: both javac and the Java sources it needs must be present before
 # we do anything else.
@@ -140,7 +156,7 @@ if [[ ! -d "$JAVA_DIR/geometry/planar" ]]; then
   exit 1
 fi
 if [[ ! -x "$JAVAC" ]]; then
-  echo "error: javac not found at $JAVAC (need JDK >= 23; set JAVA_HOME)" >&2
+  echo "error: javac not found at $JAVAC (need JDK >= 23; set JAVA_HOME, or JAVA25_HOME for p2t13)" >&2
   exit 1
 fi
 

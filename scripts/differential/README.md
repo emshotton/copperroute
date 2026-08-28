@@ -46,6 +46,15 @@ methods with dozens of branches.
     `ShapeSearchTree` method except `completeShape`/`divideLargeRoom`.
     `crates/fr-board/tests/{board_builder,search_tree}.rs` were written from
     this driver's output.
+  - `P2T13.java` — `PlanarDelaunayTriangulation` (Plan 2 Task 13). Twin:
+    `p2t13`. Declares `package app.freerouting.datastructures;` and is compiled
+    alongside the real `datastructures/PlanarDelaunayTriangulation.java` — and,
+    uniquely among the source-path drivers, with a **JDK 25** (`JAVA25_HOME`),
+    because its ground truth depends on `java.util.Random` and
+    `java.util.Collections.shuffle`, which are runtime-library code rather than
+    freerouting code. Prints the input corners, the permutation the class's
+    fixed-seed shuffle produces, `getEdgeLines()` in iteration order and
+    `validate()`.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
     Twin: `p2t3r`. Drives `insert(Storable)` (so the *tree* applies its bounding
     directions), `remove(Leaf[])` on arrays with deliberate `null` holes,
@@ -87,14 +96,17 @@ methods with dozens of branches.
     dumps written before `D17.java` existed (no seeded/diffable format, no
     Rust twin). `RD.java`, `RD2.java` were `D17.java`'s drafts. `RV17.java`
     and `R.java` pin `java.util.Random(99).nextInt(bound)` sequences used
-    elsewhere in the Java tree; nothing in the Rust port re-implements
-    `java.util.Random`, so there is nothing to diff against. None of these
-    are wired into `run.sh`.
+    elsewhere in the Java tree. (When they were written nothing in the Rust
+    port re-implemented `java.util.Random`; two ports do now —
+    `fr-geometry`'s `polygon_shape.rs` and `fr-board`'s `delaunay.rs` — and
+    `P2T13.java`/`p2t13` diff the shuffle permutation those depend on
+    directly, as the `perm=` line of their output.) None of these are wired
+    into `run.sh`.
 - `rust/` — a standalone Cargo package, `fr-geometry-differential`, **not** a
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
-  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`.
+  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -107,7 +119,11 @@ Requirements:
   of `run.sh` (it defaults to a Homebrew JDK 23 install).
 - A sibling checkout of the Java repo at `../freerouting` relative to this
   repo's root (override with `FREEROUTING_JAVA_DIR`).
-- For `p2t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t13`: a **JDK 25** (`JAVA25_HOME`) — it compiles from the
+  `geometry/planar` sources like the other source-path drivers, but on the JDK
+  the shipping jar targets, because its ground truth includes `java.util.Random`
+  and `java.util.Collections.shuffle`.
+- For `p2t10`/`p2t11` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 
@@ -177,6 +193,18 @@ the driver expects, or none at all.
   `completeShape`/`divideLargeRoom` (Plan 6). Modes 0-2 differ only in which
   subclass `getAutorouteTree` builds, which is the whole point of the
   angle-parameterised port.
+- `p2t13 <n> <seed> <mode>` — `PlanarDelaunayTriangulation`. `mode` is `0` for
+  `n` random points (one single-corner object each, coordinates in
+  `[-100000, 100000)`), `1` for the four corners of a square, `2` for a
+  collinear triple, `3` for a square plus three coincident interior points
+  (the degenerate-edge path), `4` for `n` objects of *two* corners each (so
+  `split`'s same-object short-circuit at line 157 is reachable), `5` for a 5x5
+  integer grid (maximal cocircularity and collinearity), `6` for `n` random
+  points in `[-20, 20)` (duplicates and collinear triples at a high rate), and
+  `7` for `n` points on a circle of radius 30000 (every point cocircular, so
+  every flip is decided by `insideCircle`'s `- 1.0` tolerance). All eight modes
+  match exactly; verified additionally at `n` from 5 to 400 over seeds
+  1/2/3/7/42/555/77/12345/999983/20260828.
 - `d17 <cases> <mode>` — `PolygonShape`/`PolylineArea`/`Circle`. Java's
   `D17.java` only branches explicitly on mode `0` (polygon) and `1`
   (polyline area); every other mode value, including `2`, falls through to
@@ -225,6 +253,8 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t11` (mode 8) | 47 | 0 | exact match (`split(IntOctagon)`, `change`, `normalize`, and quirk #22 out of `combineAtStart`) |
 | `p2t11` (mode 9) | 35 | 0 | exact match (`combineTraces`/`normalizeTraces`/`normalizeAllTraces`/`splitTraces` and the five callers that end in one of them) |
 | `p2t11` (mode 10) | 5 | 0 | exact match (the 4000-segment `CombineStackOverflowTest` fixture, rebuilt by hand) |
+| `p2t13` (mode 0, 50 points) | 141 | 0 | exact match |
+| `p2t13` (modes 1-7, `30 7 <mode>`) | 7-172 | 0 | exact match (square, collinear triple, duplicates, two-corner objects, grid, tiny range, circle) |
 | `p2t11` (mode 11) | 20 | 2 | `treeArrayCopy`/`treeArraysEqual` only — the documented tree-rebuild-vs-clone divergence (Task 12, see below); every `transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces` line matches |
 
 Every diff line traces to an already-documented, deliberate divergence in

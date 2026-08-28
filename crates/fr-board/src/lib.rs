@@ -18,7 +18,10 @@ pub mod searchtree;
 pub mod structure;
 
 pub use board::{Board, ChangedArea, Communication, ShapeTraceEntries, StopConnectionOption};
-pub use datastructures::{LeafId, Node, NodeId, ShapeTree, StopCheck, TimeLimit, TreeEntry};
+pub use datastructures::{
+    DelaunayCorner, DelaunayEdge, LeafId, Node, NodeId, PlanarDelaunayTriangulation, ShapeTree,
+    StopCheck, TimeLimit, TreeEntry,
+};
 pub use error::BoardError;
 pub use ids::{
     ItemId, ItemIdGenerator, NetClassId, PadstackId, RoomId, TreeId, TreeObject, ViaInfoId,
@@ -51,14 +54,15 @@ pub mod prelude {
         BoardOutline, BoardRules, ChangedArea, ClearanceClassIndexed, ClearanceMatrix,
         Communication, Component, ComponentObstacleArea, ComponentOutline, Components,
         ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH,
-        DefaultItemClearanceClasses, DrillItemData, DrillItemPadstackLookup, FixedState, Item,
-        ItemClass, ItemCtx, ItemHeader, ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout,
-        Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, Net, NetClass, NetClassId,
-        NetClasses, Nets, Node, NodeId, ObstacleArea, ObstacleAreaData, Package, PackagePin,
-        Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin, PolylineTrace,
-        RoomId, SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree,
-        ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
-        TraceExitRestriction, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo,
-        ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
+        DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge, DrillItemData,
+        DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId,
+        ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
+        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea,
+        ObstacleAreaData, Package, PackagePin, Packages, Padstack, PadstackId, PadstackLookup,
+        Padstacks, PartPin, Pin, PlanarDelaunayTriangulation, PolylineTrace, RoomId,
+        SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries,
+        ShapeTree, StopCheck, StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries,
+        TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea,
+        ViaRule, ViaRuleId,
     };
 }
