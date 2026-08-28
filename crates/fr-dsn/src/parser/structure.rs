@@ -199,13 +199,13 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
                     }
                 }
                 Token::Kw(Keyword::Via) => {
-                    // totalized: Structure.readViaPadstacks returns `null` on a non-string
-                    // entry, and Java assigns that `null` straight to
-                    // `scopeParameter.viaPadstackNames` (Structure.java:980), where
-                    // `Network.readScope` later NPEs on it. `ReadScopeParameter.via_padstack_names`
-                    // is a plain `Vec` in this port (see its docs), so the failure becomes an
-                    // empty list.
-                    p.via_padstack_names = read_via_padstacks(&mut p.scanner)?.unwrap_or_default();
+                    // `Structure.readViaPadstacks` returns `null` on a non-string entry and Java
+                    // assigns that `null` straight to `scopeParameter.viaPadstackNames`
+                    // (Structure.java:980), which is exactly the state the field starts in — so
+                    // `None` here is Java, not a totalization (Task 9 changed the field's type
+                    // from `Vec` to `Option<Vec>`; see its docs for why the distinction is
+                    // observable).
+                    p.via_padstack_names = read_via_padstacks(&mut p.scanner)?;
                 }
                 Token::Kw(Keyword::Rule) => {
                     // totalized: Rule.readScope's `null` — Java's `addAll(null)` NPEs
@@ -1049,7 +1049,7 @@ pub fn set_clearance_rule(
 }
 
 /// `Structure.containsWireClearancePair` (Structure.java:810-817).
-fn contains_wire_clearance_pair(clearance_pairs: &[String]) -> bool {
+pub(crate) fn contains_wire_clearance_pair(clearance_pairs: &[String]) -> bool {
     clearance_pairs
         .iter()
         .any(|p| p.starts_with("wire_") || p.ends_with("_wire"))

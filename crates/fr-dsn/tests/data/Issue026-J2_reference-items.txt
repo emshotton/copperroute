@@ -1,0 +1,126 @@
+# Ground truth for `Issue026-J2_reference.dsn`, captured from the pinned 2.3.0 jar.
+#
+# $ export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
+# $ javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/NProbe.java
+# $ java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/nprobe \
+#       NProbe ../freerouting/fixtures/Issue026-J2_reference.dsn
+#
+# Lines beginning with '#' are this header; everything else is compared verbatim.
+layers 2
+item 1 BoardOutline cmp=0 cl=1 nets=[]
+item 2 Pin pin=S1 cmp=1 cl=1 nets=[1,]
+item 3 Pin pin=S2 cmp=1 cl=1 nets=[1,]
+item 4 Pin pin=S3 cmp=1 cl=1 nets=[1,]
+item 5 Pin pin=S4 cmp=1 cl=1 nets=[1,]
+item 6 Pin pin=S5 cmp=1 cl=1 nets=[1,]
+item 7 Pin pin=S6 cmp=1 cl=1 nets=[1,]
+item 8 Pin pin=A1 cmp=1 cl=2 nets=[1,]
+item 9 Pin pin=B1 cmp=1 cl=2 nets=[1,]
+item 10 Pin pin=A2 cmp=1 cl=2 nets=[2,]
+item 11 Pin pin=B2 cmp=1 cl=2 nets=[3,]
+item 12 Pin pin=A3 cmp=1 cl=2 nets=[4,]
+item 13 Pin pin=B3 cmp=1 cl=2 nets=[5,]
+item 14 Pin pin=A4 cmp=1 cl=2 nets=[1,]
+item 15 Pin pin=B4 cmp=1 cl=2 nets=[1,]
+item 16 Pin pin=A5 cmp=1 cl=2 nets=[6,]
+item 17 Pin pin=B5 cmp=1 cl=2 nets=[7,]
+item 18 Pin pin=A6 cmp=1 cl=2 nets=[8,]
+item 19 Pin pin=B6 cmp=1 cl=2 nets=[9,]
+item 20 Pin pin=A7 cmp=1 cl=2 nets=[1,]
+item 21 Pin pin=B7 cmp=1 cl=2 nets=[1,]
+item 22 Pin pin=A8 cmp=1 cl=2 nets=[10,]
+item 23 Pin pin=B8 cmp=1 cl=2 nets=[11,]
+item 24 Pin pin=A9 cmp=1 cl=2 nets=[12,]
+item 25 Pin pin=B9 cmp=1 cl=2 nets=[13,]
+item 26 Pin pin=A10 cmp=1 cl=2 nets=[14,]
+item 27 Pin pin=B10 cmp=1 cl=2 nets=[15,]
+item 28 Pin pin=A11 cmp=1 cl=2 nets=[16,]
+item 29 Pin pin=B11 cmp=1 cl=2 nets=[17,]
+item 30 Pin pin=A12 cmp=1 cl=2 nets=[1,]
+item 31 Pin pin=B12 cmp=1 cl=2 nets=[1,]
+item 32 Pin pin=A13 cmp=1 cl=2 nets=[18,]
+item 33 Pin pin=B13 cmp=1 cl=2 nets=[19,]
+item 34 Pin pin=A14 cmp=1 cl=2 nets=[20,]
+item 35 Pin pin=B14 cmp=1 cl=2 nets=[19,]
+item 36 Pin pin=A15 cmp=1 cl=2 nets=[1,]
+item 37 Pin pin=B15 cmp=1 cl=2 nets=[1,]
+item 38 Pin pin=A16 cmp=1 cl=2 nets=[21,]
+item 39 Pin pin=B16 cmp=1 cl=2 nets=[22,]
+item 40 Pin pin=A17 cmp=1 cl=2 nets=[23,]
+item 41 Pin pin=B17 cmp=1 cl=2 nets=[24,]
+item 42 Pin pin=A18 cmp=1 cl=2 nets=[1,]
+item 43 Pin pin=B18 cmp=1 cl=2 nets=[1,]
+item 44 ObstacleArea layer=0 name=keepout_1 cmp=1 cl=1 nets=[]
+item 45 ObstacleArea layer=1 name=keepout_2 cmp=1 cl=1 nets=[]
+item 46 ObstacleArea layer=0 name=keepout_3 cmp=1 cl=1 nets=[]
+item 47 ObstacleArea layer=1 name=keepout_4 cmp=1 cl=1 nets=[]
+item 48 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 49 ComponentOutline layer=0 courtyard=true cmp=1 cl=0 nets=[]
+item 50 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 51 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 52 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 53 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 54 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 55 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 56 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 57 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 58 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 59 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 60 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 61 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 62 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 63 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 64 ComponentOutline layer=0 courtyard=false cmp=1 cl=0 nets=[]
+item 65 Pin pin=1 cmp=2 cl=2 nets=[1,]
+item 66 Pin pin=2 cmp=2 cl=2 nets=[2,]
+item 67 Pin pin=3 cmp=2 cl=2 nets=[4,]
+item 68 Pin pin=4 cmp=2 cl=2 nets=[1,]
+item 69 Pin pin=5 cmp=2 cl=2 nets=[6,]
+item 70 Pin pin=6 cmp=2 cl=2 nets=[8,]
+item 71 Pin pin=7 cmp=2 cl=2 nets=[1,]
+item 72 Pin pin=8 cmp=2 cl=2 nets=[3,]
+item 73 Pin pin=9 cmp=2 cl=2 nets=[5,]
+item 74 Pin pin=10 cmp=2 cl=2 nets=[1,]
+item 75 Pin pin=11 cmp=2 cl=2 nets=[17,]
+item 76 Pin pin=12 cmp=2 cl=2 nets=[10,]
+item 77 Pin pin=13 cmp=2 cl=2 nets=[16,]
+item 78 Pin pin=14 cmp=2 cl=2 nets=[14,]
+item 79 Pin pin=15 cmp=2 cl=2 nets=[19,]
+item 80 Pin pin=PAD cmp=2 cl=2 nets=[]
+item 81 Pin pin=PAD. cmp=2 cl=2 nets=[]
+itemcount 81
+net 1 GND subnet=1 class=default plane=false
+net 2 /MIPI_CSI_D0_N subnet=1 class=default plane=false
+net 3 /MIPI_CSI_CLK_N subnet=1 class=default plane=false
+net 4 /MIPI_CSI_D0_P subnet=1 class=default plane=false
+net 5 /MIPI_CSI_CLK_P subnet=1 class=default plane=false
+net 6 /MIPI_CSI_D1_N subnet=1 class=default plane=false
+net 7 Net-(J2-PadB5) subnet=1 class=default plane=false
+net 8 /MIPI_CSI_D1_P subnet=1 class=default plane=false
+net 9 Net-(J2-PadB6) subnet=1 class=default plane=false
+net 10 /MIPI_CSI_MCLK subnet=1 class=default plane=false
+net 11 Net-(J2-PadB8) subnet=1 class=default plane=false
+net 12 /MIPI_CSI_CAM_nRST subnet=1 class=default plane=false
+net 13 Net-(J2-PadB9) subnet=1 class=default plane=false
+net 14 /I2C_SDA subnet=1 class=default plane=false
+net 15 Net-(J2-PadB10) subnet=1 class=default plane=false
+net 16 /I2C_SCL subnet=1 class=default plane=false
+net 17 /MIPI_CSI_CAM_PWDN subnet=1 class=default plane=false
+net 18 Net-(J2-PadA13) subnet=1 class=default plane=false
+net 19 +3V3 subnet=1 class=default plane=false
+net 20 Net-(J2-PadA14) subnet=1 class=default plane=false
+net 21 Net-(J2-PadA16) subnet=1 class=default plane=false
+net 22 Net-(J2-PadB16) subnet=1 class=default plane=false
+net 23 Net-(J2-PadA17) subnet=1 class=default plane=false
+net 24 Net-(J2-PadB17) subnet=1 class=default plane=false
+viapadstacks[2] Via[0-1]_800:400_um Via[0-1]_800:400_um
+viainfo 0 Via[0-1]_800:400_um padstack=Via[0-1]_800:400_um cl=1 attach=false
+viarule 0 default [Via[0-1]_800:400_um]
+viarule 1 default [Via[0-1]_800:400_um]
+netclass 0 default traceCl=1 viaRule=default hw0=1250 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+clclasses[3] 0:null 1:default 2:smd
+clrow 0 0 0 0
+clrow 1 0 2002 2002
+clrow 2 0 2002 500
+component 1 J2 pkg=TE_1888019-6:TE_1888019-6 placed=true front=true lp=null
+component 2 U1 pkg=TE_1-84953-5:TE_1-84953-5 placed=true front=true lp=null

@@ -45,3 +45,5 @@ Circuit                  parser/network.rs
 NetClass                 parser/network.rs
 Net                      parser/network.rs
 NetList                  parser/network.rs
+Network                  parser/network.rs
+KiCadNetClassNames       parser/network.rs

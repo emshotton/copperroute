@@ -1,0 +1,23 @@
+# Ground truth for `crates/fr-dsn/tests/data/via_order.dsn`, captured from the pinned 2.3.0 jar.
+#
+# $ export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
+# $ javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/NProbe.java
+# $ java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/nprobe \
+#       NProbe crates/fr-dsn/tests/data/via_order.dsn
+#
+# Lines beginning with '#' are this header; everything else is compared verbatim.
+layers 2
+item 1 BoardOutline cmp=0 cl=1 nets=[]
+itemcount 1
+net 1 N1 subnet=1 class=default plane=false
+viapadstacks[4] VA VB VC VD
+viainfo 0 VA padstack=VA cl=1 attach=false
+viainfo 1 VB padstack=VB cl=1 attach=false
+viainfo 2 VC padstack=VC cl=1 attach=false
+viainfo 3 VD padstack=VD cl=1 attach=false
+viarule 0 default [VA]
+viarule 1 default [VD]
+netclass 0 default traceCl=1 viaRule=default hw0=1250 pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+clclasses[2] 0:null 1:default
+clrow 0 0 0
+clrow 1 0 2000

@@ -314,7 +314,10 @@ fn sorted_set_add(set: &mut Vec<String>, value: String) {
 /// The two orders differ only when a supplementary character (U+10000 and above, encoded as a
 /// surrogate pair whose lead unit is in U+D800..U+DBFF) is compared against a character in
 /// U+E000..U+FFFF; `str`'s own `Ord` would sort those the other way round.
-fn java_string_cmp(a: &str, b: &str) -> Ordering {
+///
+/// `pub(crate)` since Task 9: `Net.Id.compareTo` and `Net.Pin.compareTo` are `String.compareTo`
+/// chains too, and their `TreeMap`/`TreeSet` order is observable (see `parser/network.rs`).
+pub(crate) fn java_string_cmp(a: &str, b: &str) -> Ordering {
     a.encode_utf16().cmp(b.encode_utf16())
 }
 

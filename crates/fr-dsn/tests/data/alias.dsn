@@ -1,0 +1,32 @@
+(pcb alias.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary
+      (path pcb 0  0 0  100000 0  100000 100000  0 100000  0 0)
+    )
+    (rule (width 250) (clearance 200))
+  )
+  (library
+    (padstack VA (shape (circle F.Cu 800)) (shape (circle B.Cu 800)) (attach off))
+    (padstack VB (shape (circle F.Cu 900)) (shape (circle B.Cu 900)) (attach off))
+  )
+  (network
+    (net N1)
+    (net N2)
+    (class Alpha N1
+      (circuit (use_via VA))
+      (rule (width 300) (clearance 300))
+    )
+    (class Beta N2
+      (circuit (use_via VB))
+      (rule (width 400) (clearance 400))
+    )
+  )
+)

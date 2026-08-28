@@ -75,13 +75,17 @@ pub struct ReadScopeParameter<'a> {
     pub constants: Vec<Vec<String>>,
     /// `ReadScopeParameter.viaPadstackNames` (ReadScopeParameter.java:56). Java has **no field
     /// initialiser** here — this is `null` until `Structure.readScope` assigns it
-    /// (`Structure.java:980`), not merely empty. `Vec::new()` is the default here (see `new`
-    /// below) rather than `Option<Vec<String>>`, on the assumption that no reachable caller
-    /// distinguishes "never read" from "read as empty"; whichever task ports `Structure`'s
-    /// via-padstack reading (and any `Library`/`Wiring` code that consults this field before
-    /// `Structure` runs) should double-check that assumption against Java's `null` checks, if
-    /// any, before relying on it.
-    pub via_padstack_names: Vec<String>,
+    /// (`Structure.java:980`), not merely empty.
+    ///
+    /// Task 6 left this a plain `Vec`, on the assumption that no reachable caller distinguishes
+    /// "never read" from "read as empty", and asked the task that ports the consumer to check
+    /// that against Java. Task 9 did, and it is **wrong**: `Network.readScope` tests the field
+    /// against `null` twice, and both branches are observable. At Network.java:1275-1279 a
+    /// `null` makes the first net class's `useVia` list become the merged list *by reference*;
+    /// at :1286 a `null` skips `BoardLibrary.setViaPadstacks` entirely, so the via padstacks
+    /// `Network.readViaInfo` appended along the way survive instead of being overwritten by an
+    /// empty array. Hence `Option<Vec<String>>`.
+    pub via_padstack_names: Option<Vec<String>>,
     /// `ReadScopeParameter.stringQuote`.
     pub string_quote: String,
     /// `ReadScopeParameter.hostCad`.
@@ -137,7 +141,7 @@ impl<'a> ReadScopeParameter<'a> {
             logical_part_mappings: Vec::new(),
             logical_parts: Vec::new(),
             constants: Vec::new(),
-            via_padstack_names: Vec::new(),
+            via_padstack_names: None,
             string_quote: "\"".to_string(),
             host_cad: None,
             host_version: None,

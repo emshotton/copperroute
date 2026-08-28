@@ -938,7 +938,11 @@ fn generate_missing_keepout_names(keepout_type: &str, keepout_list: &mut [ReadAr
 
 /// Java's `name.replaceAll("\\.\\d+", "")` (Library.java:113,322): removes **every** `.` followed
 /// by one or more ASCII digits, anywhere in the name — not just a trailing one.
-fn strip_dot_digits(name: &str) -> String {
+///
+/// The same expression appears in `Network.readScope` (Network.java:1292), which normalises via
+/// padstack names before looking them up, and in `SesReader.processViaScope`
+/// (SesReader.java:384). `pub(crate)` for the first of those (Task 9).
+pub(crate) fn strip_dot_digits(name: &str) -> String {
     let mut out = String::with_capacity(name.len());
     let mut chars = name.chars().peekable();
     while let Some(c) = chars.next() {
@@ -978,6 +982,15 @@ mod tests {
         assert_eq!(strip_dot_digits("a.1b.23c"), "abc");
         // A dot not followed by a digit survives.
         assert_eq!(strip_dot_digits("F.Cu"), "F.Cu");
+        assert_eq!(strip_dot_digits("a."), "a.");
+        assert_eq!(strip_dot_digits(""), "");
+        // Network.java:1292's call site, on a real fixture name.
+        assert_eq!(
+            strip_dot_digits("Via[0-1]_1016:485.7_um"),
+            "Via[0-1]_1016:485_um"
+        );
+        // `\d` is ASCII-only without UNICODE_CHARACTER_CLASS, so an Arabic-Indic digit stays.
+        assert_eq!(strip_dot_digits("a.\u{0661}"), "a.\u{0661}");
         assert_eq!(strip_dot_digits("PAD."), "PAD.");
         assert_eq!(strip_dot_digits("µ.7x"), "µx");
     }

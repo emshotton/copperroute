@@ -21,14 +21,26 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+use fr_board::{
+    Board, BoardRules, FixedState, ItemClass, Keepout, NetClassId, PadstackId, PartPin, ViaInfo,
+    ViaInfoId, ViaRule, ViaRuleId,
+};
+use fr_geometry::{Area, Point, ShapeOps, Vector};
+
+use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
+use crate::format::java_round_to_int;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::{
     CLASS_CLEARANCE_SEPARATOR, read_on_off_scope, read_string_list_scope, read_string_scope,
 };
+use crate::parser::geometry::DsnLayerStructure;
+use crate::parser::library::strip_dot_digits;
+use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping, java_string_cmp};
+use crate::parser::placement::ComponentLocation;
 use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
-use crate::parser::structure::read_via_padstacks;
+use crate::parser::structure::{contains_wire_clearance_pair, read_via_padstacks};
 
 // ------------------------------------------------------------------------------ Rule.java
 
@@ -505,17 +517,34 @@ pub fn read_class_class_scope(scanner: &mut DsnScanner) -> Result<Option<DsnClas
 /// `Net.Pin` (Net.java:105-128): "sorted tuple of component name and pin name" — the DSN
 /// parser's own pin reference, resolved against the board only in `Network.insertNets` (Task 9).
 ///
-/// Deriving `Ord` over `(component_name, pin_name)` in this order reproduces `Pin.compareTo`
-/// (Net.java:115-122) exactly.
+/// `Pin.compareTo` (Net.java:115-122) compares `componentName` and then `pinName` with
+/// `String.compareTo`, which orders by UTF-16 code units — *not* by Unicode scalar value, which
+/// is what a derived `Ord` over two `String`s would give. The two disagree only when a
+/// supplementary character meets one in U+E000..U+FFFF, but the order is observable (the pin set
+/// is a `TreeSet`), so the impl below goes through [`java_string_cmp`].
 // renamed: Net.Pin -> PinRef (`Pin` is `fr_board`'s board item, which this module also names).
-// renamed: Net.Pin.compareTo -> the derived `Ord`.
+// renamed: Net.Pin.compareTo -> the `Ord` impl below.
 // renamed: Net.Pin.toString -> the `Display` impl below.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PinRef {
     /// `Net.Pin.componentName` (Net.java:107).
     pub component_name: String,
     /// `Net.Pin.pinName` (Net.java:108).
     pub pin_name: String,
+}
+
+impl Ord for PinRef {
+    /// `Net.Pin.compareTo` (Net.java:115-122).
+    fn cmp(&self, other: &PinRef) -> std::cmp::Ordering {
+        java_string_cmp(&self.component_name, &other.component_name)
+            .then_with(|| java_string_cmp(&self.pin_name, &other.pin_name))
+    }
+}
+
+impl PartialOrd for PinRef {
+    fn partial_cmp(&self, other: &PinRef) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl PinRef {
@@ -539,17 +568,33 @@ impl fmt::Display for PinRef {
 /// `Net.Id` (Net.java:84-102 — the DSN-parser's own `Net`, not `rules.Net`): the `TreeMap`/
 /// `BTreeMap` key for [`NetList`].
 ///
-/// Field order matters: deriving `Ord` over `(name, subnet_no)` in this order reproduces
-/// `Id.compareTo` exactly — `this.name.compareTo(other.name)` (plain, **not**
-/// `compareToIgnoreCase` — unlike `rules.Net.compareTo`, this one is case-sensitive), falling
-/// back to `this.subnetNumber - other.subnetNumber` only when the names are equal.
-// renamed: Net.Id.compareTo -> the derived `Ord`.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// `Id.compareTo` is `this.name.compareTo(other.name)` (plain, **not** `compareToIgnoreCase` —
+/// unlike `rules.Net.compareTo`, this one is case-sensitive) falling back to
+/// `this.subnetNumber - other.subnetNumber` when the names are equal. `String.compareTo` orders
+/// by UTF-16 code units, so the impl below goes through [`java_string_cmp`] rather than deriving
+/// `Ord`: this type keys the [`NetList`] `BTreeMap`, and `NetList.getNets`'s iteration order
+/// decides which net a multi-net pin reports first (`Network.insertComponent`,
+/// Network.java:1046).
+// renamed: Net.Id.compareTo -> the `Ord` impl below.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NetId {
     /// `Net.Id.name` (Net.java:86).
     pub name: String,
     /// `Net.Id.subnetNumber` (Net.java:87).
     pub subnet_no: i32,
+}
+
+impl Ord for NetId {
+    /// `Net.Id.compareTo` (Net.java:94-101).
+    fn cmp(&self, other: &NetId) -> std::cmp::Ordering {
+        java_string_cmp(&self.name, &other.name).then_with(|| self.subnet_no.cmp(&other.subnet_no))
+    }
+}
+
+impl PartialOrd for NetId {
+    fn partial_cmp(&self, other: &NetId) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl NetId {
@@ -678,12 +723,1672 @@ impl NetList {
 }
 
 // --------------------------------------------------------------------------- Network.java
-// added in Plan 3: Network.readScope
-/// Stub for `Network.readScope` (Network.java) — replaced with the real reader by a later task;
-/// for now this just discards the scope's body.
+// added in Task 11: Network.writeScope, Network.writeViaInfos, Network.writeViaRules, Network.writeNetClasses, Network.writeNetClass, Network.writeCircuit — the `(network …)` writers, which belong to the DSN writer half. Per plan ruling 1 they emit the 2.3.0 literals `"(via_rule"`, `"(pull_tight off)"` and `"(shove_fixed on)"`, never HEAD's camelCase spellings.
+
+/// `Network.readScope` (Network.java:1197-1323): the `(network …)` scope, and — in its tail —
+/// the point at which almost every board item is created.
+///
+/// The loop itself only *collects*: `(net …)` goes straight to `board.rules.nets` through
+/// [`read_net_scope`], while `(via …)`, `(via_rule …)`, `(class …)` and `(class_class …)` pile
+/// up in four local lists. Everything else happens after the closing bracket, in exactly this
+/// order (Network.java:1274-1322) — and because item ids are handed out in insertion order,
+/// this order *is* the id assignment for every item after the board outline and its holes:
+///
+/// 1. merge the net classes' `use_via` names into `ReadScopeParameter.via_padstack_names` and
+///    `BoardLibrary::set_via_padstacks` the resolved list (:1274-1313);
+/// 2. [`insert_via_infos`] (:1315);
+/// 3. [`insert_via_rules`] (:1317);
+/// 4. [`insert_net_classes`] (:1318);
+/// 5. [`insert_class_pairs`] (:1319);
+/// 6. [`insert_components`] (:1320) — per component: one `insert_pin` per package pin
+///    (:1035), then the package/via/place keepouts (:1082/:1093/:1104), then the component
+///    outlines (:1192);
+/// 7. [`insert_logical_parts`] (:1321).
+///
+/// Plan 2 obligation, **phase 2 of 2**: `BoardLibrary::via_padstacks` is set to the empty list
+/// by `Structure.createBoard` (see `parser/structure.rs`, "phase 1 of 2") because the padstacks
+/// the structure scope names do not exist until the `library` scope has been read; step 1 above
+/// is where the real list finally lands, merged from both scopes. Between the two phases the
+/// list is `Some(vec![])`, never `None`, so the two `BoardLibrary` methods that reproduce Java's
+/// NPE on a `null` list (quirks #42-43) cannot be reached with a `None`.
 pub fn read_network_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
-    skip_scope(&mut p.scanner)?;
+    let mut classes: Vec<DsnNetClass> = Vec::new();
+    let mut class_class_list: Vec<DsnClassClass> = Vec::new();
+    let mut via_infos: Vec<ViaInfo> = Vec::new();
+    let mut via_rules: Vec<Vec<String>> = Vec::new();
+
+    let mut prev_was_open = false;
+    loop {
+        let Some(next_token) = p.scanner.next_token()? else {
+            // "unexpected end of file" (Network.java:1211-1216).
+            return Ok(false);
+        };
+        if next_token == Token::Close {
+            // end of scope
+            break;
+        }
+        let is_open = next_token == Token::Open;
+        if prev_was_open {
+            match next_token {
+                Token::Kw(Keyword::Net) => {
+                    // Java discards `readNetScope`'s boolean (Network.java:1220-1226).
+                    read_net_scope(p)?;
+                }
+                Token::Kw(Keyword::Via) => {
+                    let board = p.board.as_mut().expect(BOARD_EXPECTED);
+                    match read_via_info(&mut p.scanner, board)? {
+                        Some(via_info) => via_infos.push(via_info),
+                        None => return Ok(false),
+                    }
+                }
+                Token::Kw(Keyword::ViaRule) => match read_via_rule(&mut p.scanner)? {
+                    Some(rule) => via_rules.push(rule),
+                    None => return Ok(false),
+                },
+                Token::Kw(Keyword::Class) => match read_net_class_scope(&mut p.scanner)? {
+                    Some(class) => classes.push(class),
+                    None => return Ok(false),
+                },
+                Token::Kw(Keyword::ClassClass) => match read_class_class_scope(&mut p.scanner)? {
+                    Some(class_class) => class_class_list.push(class_class),
+                    None => return Ok(false),
+                },
+                _ => {
+                    skip_scope(&mut p.scanner)?;
+                }
+            }
+        }
+        prev_was_open = is_open;
+    }
+
+    // Add any vias defined in the Netclasses to the list of vias to be instantiated
+    // (Network.java:1274-1280).
+    //
+    // Java bug: Network.readScope — the `else` branch assigns `n.useVia` **by reference**
+    // (:1278), so when the structure scope named no via padstacks at all the first net class's
+    // own `useVia` list becomes the merged list, and every later class's `addAll` mutates it.
+    // `Network.insertNetClass` then reads that same mutated list back out
+    // (`createViaRule(netClass.useVia, …)`, :539), so the first net class gets a via rule
+    // holding every class's vias. Reproduced below by copying the merged list back into the
+    // aliased class after the loop. See `docs/java-quirks.md`.
+    let mut aliased_class: Option<usize> = None;
+    for (index, net_class) in classes.iter().enumerate() {
+        match &mut p.via_padstack_names {
+            Some(names) => names.extend(net_class.use_via.iter().cloned()),
+            None => {
+                p.via_padstack_names = Some(net_class.use_via.clone());
+                aliased_class = Some(index);
+            }
+        }
+    }
+    if let Some(index) = aliased_class {
+        classes[index].use_via = p.via_padstack_names.clone().unwrap_or_default();
+    }
+
+    // Set the via padstacks after network parsing, so that named vias from both structure and
+    // network DSN sections are properly instantiated (Network.java:1282-1313).
+    if let Some(names) = p.via_padstack_names.clone() {
+        let board = p.board.as_mut().expect(BOARD_EXPECTED);
+        let mut via_padstacks: Vec<PadstackId> = Vec::with_capacity(names.len());
+        for current_padstack_name in &names {
+            let cleaned_name = strip_dot_digits(current_padstack_name);
+            // Java writes into `viaPadstacks[foundPadstackCount]`, i.e. it **compacts**: a name
+            // with no padstack leaves no hole, and every later via padstack moves down one index
+            // (Network.java:1291-1295, and the `System.arraycopy` shrink at :1306-1311, which is
+            // what pushing only the found ones already achieves). The name that misses is a
+            // "Library.read_scope: via padstack with name '…' not found" `FRLogger.warn` and
+            // nothing more (:1296-1303): it is not pushed onto `ReadScopeParameter.warnings`, so
+            // it leaves no trace in this port.
+            if let Some(padstack) = board.library.padstacks.get_by_name(&cleaned_name) {
+                via_padstacks.push(PadstackId(padstack.no));
+            }
+        }
+        board.library.set_via_padstacks(via_padstacks);
+    }
+
+    let via_at_smd_allowed = p.via_at_smd_allowed;
+    {
+        let board = p.board.as_mut().expect(BOARD_EXPECTED);
+        insert_via_infos(via_infos, board, via_at_smd_allowed);
+        insert_via_rules(&via_rules, board);
+    }
+    insert_net_classes(&classes, p);
+    insert_class_pairs(&class_class_list, p);
+    insert_components(p);
+    insert_logical_parts(p);
     Ok(true)
+}
+
+/// The message on every `p.board` unwrap in this module. Java reaches the board through
+/// `scopeParameter.boardHandling.getRoutingBoard()`, which returns `null` — and NPEs — until
+/// `Structure.createBoard` has run; a `(network …)` scope before `(structure …)` is the only
+/// way to get there, and the DSN format does not allow it.
+const BOARD_EXPECTED: &str =
+    "Network.readScope: the structure scope must have created the board (Java NPEs here too)";
+
+/// `String.split("_")` (Network.java:651,777), whose trailing empty strings Java drops and
+/// Rust's `str::split` keeps. Java also returns the whole input when the separator never
+/// occurs, which is why `""` splits to `[""]` and not to `[]`.
+fn java_split_underscore(text: &str) -> Vec<&str> {
+    if !text.contains('_') {
+        return vec![text];
+    }
+    let mut parts: Vec<&str> = text.split('_').collect();
+    while parts.last().is_some_and(|p| p.is_empty()) {
+        parts.pop();
+    }
+    parts
+}
+
+// -------------------------------------------------------------------- KiCadNetClassNames.java
+
+/// `io/KiCadNetClassNames.KICAD_DSN_DEFAULT` (KiCadNetClassNames.java:15): "KiCad renames its
+/// `Default` net class to `kicad_default` in Specctra DSN files to avoid colliding with
+/// Freerouting's reserved internal `default` class."
+pub const KICAD_DSN_DEFAULT: &str = "kicad_default";
+
+/// `KiCadNetClassNames.isKiCadDefaultNetClassName` (KiCadNetClassNames.java:24-30). `null` and
+/// the empty string are both false; the two matches are case-insensitive.
+// renamed: KiCadNetClassNames.isKiCadDefaultNetClassName -> is_kicad_default_net_class_name; the audit script's mechanical snake_case of the Java name is `is_ki_cad_default_net_class_name`, which no Rust reader would write.
+#[must_use]
+pub fn is_kicad_default_net_class_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    name.eq_ignore_ascii_case("default") || name.eq_ignore_ascii_case(KICAD_DSN_DEFAULT)
+}
+
+/// `KiCadNetClassNames.resolveNetClass` (KiCadNetClassNames.java:39-45): the board's *default*
+/// net class for either KiCad spelling, otherwise the class with exactly that name.
+#[must_use]
+pub fn resolve_net_class(rules: &mut BoardRules, name: &str) -> Option<NetClassId> {
+    if is_kicad_default_net_class_name(name) {
+        return Some(rules.get_default_net_class());
+    }
+    rules.net_classes.get_no(name)
+}
+
+// ------------------------------------------------------------------ the `(net …)` sub-scope
+
+/// `Network.readNetScope` (Network.java:1325-1465): one `(net <name> [<subnet>] …)` scope,
+/// creating the `rules.Net`s it names on the board as it goes.
+fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
+    // read the net name
+    let net_name = p.scanner.next_string();
+
+    let mut subnet_number = 1;
+    let mut next_token = p.scanner.next_token()?;
+    let scope_is_empty = next_token == Some(Token::Close);
+    if let Some(Token::Int(value)) = next_token {
+        // Java's `Integer` token is an `int`; the port's is an `i64` (the lexer widens), so the
+        // narrowing Java did at parse time happens here instead.
+        subnet_number = value as i32;
+    }
+    let mut pin_order_found = false;
+    let mut pin_list: Vec<PinRef> = Vec::new();
+    let mut net_rules: Vec<DsnRule> = Vec::new();
+    let mut subnet_pin_lists: Vec<Vec<PinRef>> = Vec::new();
+    if !scope_is_empty {
+        let mut prev_was_open = next_token == Some(Token::Open);
+        loop {
+            next_token = p.scanner.next_token()?;
+            let Some(token) = next_token else {
+                // "unexpected end of file" (Network.java:1362-1367).
+                return Ok(false);
+            };
+            if token == Token::Close {
+                // end of scope
+                break;
+            }
+            let is_open = token == Token::Open;
+            if prev_was_open {
+                match token {
+                    Token::Kw(Keyword::Pins) => {
+                        if !read_net_pins(&mut p.scanner, &mut pin_list)? {
+                            return Ok(false);
+                        }
+                    }
+                    Token::Kw(Keyword::Order) => {
+                        pin_order_found = true;
+                        if !read_net_pins(&mut p.scanner, &mut pin_list)? {
+                            return Ok(false);
+                        }
+                    }
+                    Token::Kw(Keyword::Fromto) => {
+                        let mut current_subnet_pin_list: Vec<PinRef> = Vec::new();
+                        if !read_net_pins(&mut p.scanner, &mut current_subnet_pin_list)? {
+                            return Ok(false);
+                        }
+                        // Java's `Set<Net.Pin> currentSubnetPinList = new TreeSet<>()`
+                        // (Network.java:1378) sorts and deduplicates before `setPins` would.
+                        current_subnet_pin_list.sort();
+                        current_subnet_pin_list.dedup();
+                        subnet_pin_lists.push(current_subnet_pin_list);
+                    }
+                    Token::Kw(Keyword::Rule) => {
+                        // totalized: Rule.readScope's `null` — Java's `addAll(null)` NPEs
+                        // (Network.java:1385).
+                        if let Some(rules) = read_rule_scope(&mut p.scanner)? {
+                            net_rules.extend(rules);
+                        }
+                    }
+                    // "layer_rule not yet implemented" — an `FRLogger.warn` and a `skipScope`
+                    // (Network.java:1386-1392).
+                    _ => {
+                        skip_scope(&mut p.scanner)?;
+                    }
+                }
+            }
+            prev_was_open = is_open;
+        }
+    }
+    if subnet_pin_lists.is_empty() {
+        if pin_order_found {
+            subnet_pin_lists = create_ordered_subnets(&pin_list);
+        } else {
+            subnet_pin_lists.push(pin_list);
+        }
+    }
+    let coordinate_transform = p.coordinate_transform.expect(TRANSFORM_EXPECTED);
+    let contains_plane = p
+        .layer_structure
+        .as_ref()
+        .is_some_and(|ls| ls.contains_plane(&net_name));
+    for current_pin_list in subnet_pin_lists {
+        let net_id = NetId::new(net_name.clone(), subnet_number);
+        if !p.netlist.contains(&net_id) {
+            let board = p.board.as_mut().expect(BOARD_EXPECTED);
+            let default_class = board.rules.get_default_net_class();
+            if p.netlist.add_net(net_id.clone()).is_some() {
+                let board = p.board.as_mut().expect(BOARD_EXPECTED);
+                board.rules.nets.add(
+                    net_id.name.clone(),
+                    net_id.subnet_no,
+                    contains_plane,
+                    default_class,
+                );
+            }
+        }
+        let Some(current_subnet) = p.netlist.get_net_mut(&net_id) else {
+            // "net not found in netlist" (Network.java:1408-1414).
+            return Ok(false);
+        };
+        current_subnet.set_pins(current_pin_list);
+        if !net_rules.is_empty() {
+            // Evaluate the net rules.
+            let board = p.board.as_mut().expect(BOARD_EXPECTED);
+            let Some(board_net_number) = board
+                .rules
+                .nets
+                .get_by_name_and_subnet(&net_id.name, net_id.subnet_no)
+                .map(|net| net.net_number)
+            else {
+                // "board net not found" (Network.java:1420-1426).
+                return Ok(false);
+            };
+            for current_object in &net_rules {
+                // "Rule not yet implemented" for anything but a width rule
+                // (Network.java:1450-1455).
+                if let DsnRule::Width(wire_width) = current_object {
+                    let default_net_rule = board.rules.get_default_net_class();
+                    // Note the division by 2 happens **after** `dsnToBoard` here, unlike
+                    // `insertNetClass` (Network.java:1441 vs :485).
+                    let trace_half_width =
+                        java_round_to_int(coordinate_transform.dsn_to_board(*wire_width) / 2.0);
+                    let default_trace_clearance_class = board
+                        .rules
+                        .net_classes
+                        .get(default_net_rule)
+                        .get_trace_clearance_class();
+                    let default_via_rule =
+                        board.rules.net_classes.get(default_net_rule).get_via_rule();
+                    let net_rule = board
+                        .rules
+                        .net_classes
+                        .find(
+                            trace_half_width,
+                            default_trace_clearance_class,
+                            default_via_rule,
+                        )
+                        // create a new net rule
+                        .unwrap_or_else(|| board.rules.get_new_net_class());
+                    board
+                        .rules
+                        .net_classes
+                        .get_mut(net_rule)
+                        .set_trace_half_width_on_all_layers(trace_half_width);
+                    board
+                        .rules
+                        .nets
+                        .get_mut(board_net_number)
+                        .expect("looked up above")
+                        .set_class(net_rule);
+                }
+            }
+        }
+        subnet_number += 1;
+    }
+    Ok(true)
+}
+
+/// The message on every `p.coordinate_transform` unwrap in this module — `Structure.createBoard`
+/// assigns it, and Java NPEs on the `null` a `(network …)` before a `(structure …)` would leave.
+const TRANSFORM_EXPECTED: &str =
+    "Network: the structure scope must have set the coordinate transform (Java NPEs here too)";
+
+/// `Network.createOrderedSubnets` (Network.java:192-208): "creates a sequence of subnets with 2
+/// pins from pinList".
+fn create_ordered_subnets(pin_list: &[PinRef]) -> Vec<Vec<PinRef>> {
+    let mut result: Vec<Vec<PinRef>> = Vec::new();
+    let mut it = pin_list.iter();
+    let Some(mut prev_pin) = it.next() else {
+        return result;
+    };
+    for next_pin in it {
+        // Java's `TreeSet` (Network.java:200) sorts the two pins and collapses a duplicate.
+        let mut current_subnet_pin_list = vec![prev_pin.clone(), next_pin.clone()];
+        current_subnet_pin_list.sort();
+        current_subnet_pin_list.dedup();
+        result.push(current_subnet_pin_list);
+        prev_pin = next_pin;
+    }
+    result
+}
+
+/// `Network.readNetPins` (Network.java:210-260): the `(pins …)`/`(order …)`/`(fromto …)` bodies,
+/// each entry a `<component>-<pin>` pair read through the scanner's hyphen-aware string bypass.
+fn read_net_pins(scanner: &mut DsnScanner, pin_list: &mut Vec<PinRef>) -> Result<bool, DsnError> {
+    loop {
+        let component_name = scanner.next_string_with(true, '-');
+        if component_name.is_empty() {
+            break;
+        }
+        scanner.yybegin(LexicalState::SpecChar);
+        // overread the hyphen
+        scanner.next_token()?;
+        let pin_name = scanner.next_string_ignoring_newline(true);
+        pin_list.push(PinRef::new(component_name, pin_name));
+    }
+
+    let next_token = scanner.next_token()?;
+    if next_token.is_none() {
+        // "unexpected end of file" (Network.java:239-245).
+        return Ok(false);
+    }
+    // A missing closing bracket is only an `FRLogger.warn` here — Java carries on and returns
+    // true (Network.java:246-253).
+    Ok(true)
+}
+
+// ------------------------------------------------------------------ the `(via …)` sub-scope
+
+/// `Network.readViaInfo` (Network.java:250-321): `(via <name> <padstack> <clearance-class>
+/// [attach])`.
+///
+/// Side effect worth naming: a padstack that is in `library.padstacks` but not yet in the via
+/// padstack list is **appended to it** here (:274), i.e. before the tail's
+/// `set_via_padstacks` overwrites the whole list. `None` is Java's `null`.
+fn read_via_info(scanner: &mut DsnScanner, board: &mut Board) -> Result<Option<ViaInfo>, DsnError> {
+    scanner.yybegin(LexicalState::Name);
+    let Some(Token::Str(name)) = scanner.next_token()? else {
+        // "string expected" (Network.java:254-259).
+        return Ok(None);
+    };
+    scanner.yybegin(LexicalState::Name);
+    let Some(Token::Str(padstack_name)) = scanner.next_token()? else {
+        return Ok(None);
+    };
+    scanner.set_scope_identifier(&padstack_name);
+    let via_padstack = match board.library.get_via_padstack_by_name(&padstack_name) {
+        Some(padstack) => padstack,
+        None => {
+            // The padstack may not yet be inserted into the list of via padstacks.
+            let Some(padstack) = board.library.padstacks.get_by_name(&padstack_name) else {
+                // "padstack not found" (Network.java:270-276).
+                return Ok(None);
+            };
+            let padstack = PadstackId(padstack.no);
+            board.library.add_via_padstack(padstack);
+            padstack
+        }
+    };
+    scanner.yybegin(LexicalState::Name);
+    let Some(Token::Str(clearance_class_name)) = scanner.next_token()? else {
+        return Ok(None);
+    };
+    // Clearance class not stored, because it is identical to the default clearance netClass.
+    let clearance_class = board
+        .rules
+        .clearance_matrix
+        .get_no(&clearance_class_name)
+        .unwrap_or_else(BoardRules::default_clearance_class);
+    let mut attach_allowed = false;
+    let mut next_token = scanner.next_token()?;
+    if next_token != Some(Token::Close) {
+        if next_token != Some(Token::Kw(Keyword::Attach)) {
+            // "Keyword.ATTACH expected" (Network.java:300-306).
+            return Ok(None);
+        }
+        attach_allowed = true;
+        next_token = scanner.next_token()?;
+        if next_token != Some(Token::Close) {
+            // "closing bracket expected" (Network.java:309-315).
+            return Ok(None);
+        }
+    }
+    Ok(Some(ViaInfo::new(
+        name,
+        via_padstack,
+        clearance_class,
+        attach_allowed,
+    )))
+}
+
+/// `Network.readViaRule` (Network.java:323-345): `(via_rule <name> <via-name>*)`, as a plain
+/// list of names — the first is the rule's, the rest are via-info names. `None` is Java's
+/// `null`.
+fn read_via_rule(scanner: &mut DsnScanner) -> Result<Option<Vec<String>>, DsnError> {
+    let mut result: Vec<String> = Vec::new();
+    loop {
+        scanner.yybegin(LexicalState::Name);
+        match scanner.next_token()? {
+            Some(Token::Close) => break,
+            Some(Token::Str(name)) => result.push(name),
+            // "string expected" (Network.java:333-338), and end of file, where Java's loop
+            // would spin: both answer `null` here.
+            _ => return Ok(None),
+        }
+    }
+    Ok(Some(result))
+}
+
+// --------------------------------------------------------------------- the insertion tail
+
+/// `Network.insertViaInfos` (Network.java:347-357): the via infos the file declared, or — when
+/// it declared none — one per via padstack, from [`create_default_via_infos`].
+fn insert_via_infos(via_infos: Vec<ViaInfo>, board: &mut Board, attach_allowed: bool) {
+    if via_infos.is_empty() {
+        // No via infos found; create default via infos from the via padstacks.
+        let default_net_class = board.rules.get_default_net_class();
+        create_default_via_infos(board, default_net_class, attach_allowed);
+        return;
+    }
+    for current_info in via_infos {
+        board.rules.via_infos.add(current_info);
+    }
+}
+
+/// `Network.createDefaultViaInfos` (Network.java:359-378): one [`ViaInfo`] per via padstack,
+/// named after the padstack for the default net class and `<padstack>-<class>` for any other
+/// (Network.java:371 — `getName()` site 4 of 4).
+fn create_default_via_infos(board: &mut Board, net_class: NetClassId, attach_allowed: bool) {
+    let clearance_class_index = board
+        .rules
+        .net_classes
+        .get(net_class)
+        .default_item_clearance_classes
+        .get(ItemClass::Via);
+    let is_default_class = net_class == board.rules.get_default_net_class();
+    let net_class_name = board
+        .rules
+        .net_classes
+        .get(net_class)
+        .get_name()
+        .to_string();
+    for i in 0..board.library.via_padstack_count() {
+        let Some(current_padstack) = board.library.get_via_padstack(i) else {
+            continue;
+        };
+        let (padstack_name, padstack_attach_allowed) = board
+            .library
+            .get_padstack(current_padstack)
+            .map(|p| (p.name.clone(), p.attach_allowed))
+            // Java dereferences the `Padstack` reference `getViaPadstack` handed back, so it
+            // cannot be missing there; an unresolvable id is a bug in this port's id plumbing.
+            .expect("a via padstack id resolves in library.padstacks");
+        let via_attach_allowed = attach_allowed && padstack_attach_allowed;
+        let via_name = if is_default_class {
+            padstack_name
+        } else {
+            format!("{padstack_name}{CLASS_CLEARANCE_SEPARATOR}{net_class_name}")
+        };
+        board.rules.via_infos.add(ViaInfo::new(
+            via_name,
+            current_padstack,
+            clearance_class_index,
+            via_attach_allowed,
+        ));
+    }
+}
+
+/// `Network.insertViaRules` (Network.java:380-392): the file's via rules, or a generated
+/// `"default"` one; then **every** net class is pointed at the *first* via rule, whatever it
+/// set itself (`getDefaultViaRule`, BoardRules.java:242-247).
+fn insert_via_rules(via_rules: &[Vec<String>], board: &mut Board) {
+    let mut rule_found = false;
+    for current_list in via_rules {
+        if current_list.len() < 2 {
+            continue;
+        }
+        if add_via_rule(current_list, board) {
+            rule_found = true;
+        }
+    }
+    if !rule_found {
+        let default_net_class = board.rules.get_default_net_class();
+        board
+            .rules
+            .create_default_via_rule(default_net_class, "default", &board.library.padstacks);
+    }
+    let default_via_rule = board.rules.get_default_via_rule();
+    for i in 0..board.rules.net_classes.count() {
+        board
+            .rules
+            .net_classes
+            .get_mut(NetClassId(i))
+            .set_via_rule(default_via_rule);
+    }
+}
+
+/// `Network.addViaRule` (Network.java:394-419): "inserts a via rule into the board. Replaces an
+/// already existing via rule with the same" [name]. Returns false — and inserts nothing — when
+/// any of the named via infos is missing.
+///
+/// Port hazard, not a Java one: removing the replaced rule shifts every later `ViaRuleId`, where
+/// Java's `Collection<ViaRule>` holds object references that survive the removal. It is safe
+/// here only because the sole caller runs before any net class has been given a via rule
+/// ([`insert_via_rules`] assigns them all afterwards); a second caller would have to renumber.
+pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
+    let mut it = name_list.iter();
+    let rule_name = it
+        .next()
+        // Java's `it.next()` on an empty list throws `NoSuchElementException`; the only caller
+        // guarantees at least two entries (Network.java:383).
+        .expect("Network.addViaRule: the name list is never empty");
+    let existing_rule = board.rules.get_via_rule(rule_name);
+    let mut current_rule = ViaRule::new(rule_name.clone());
+    let mut rule_ok = true;
+    for via_name in it {
+        match board.rules.via_infos.get_no(via_name) {
+            Some(current_via) => current_rule.append_via(current_via),
+            // "viaInfo not found" (Network.java:409).
+            None => rule_ok = false,
+        }
+    }
+    if rule_ok {
+        if let Some(existing) = existing_rule {
+            // Replace already existing rule.
+            board.rules.via_rules.remove(existing.0);
+        }
+        board.rules.via_rules.push(current_rule);
+    }
+    rule_ok
+}
+
+/// `Network.insertNetClasses` (Network.java:421-433).
+fn insert_net_classes(classes: &[DsnNetClass], p: &mut ReadScopeParameter<'_>) {
+    let layer_structure = p
+        .layer_structure
+        .clone()
+        .unwrap_or_else(|| DsnLayerStructure::new(Vec::new()));
+    let coordinate_transform = p.coordinate_transform.expect(TRANSFORM_EXPECTED);
+    let via_at_smd_allowed = p.via_at_smd_allowed;
+    let board = p.board.as_mut().expect(BOARD_EXPECTED);
+    for current_class in classes {
+        insert_net_class(
+            current_class,
+            &layer_structure,
+            board,
+            &coordinate_transform,
+            via_at_smd_allowed,
+        );
+    }
+}
+
+/// `Network.insertNetClass` (Network.java:435-546): turns one parsed `(class …)` into a board
+/// net class — including the KiCad merge (plan ruling 8): a class named `default` or
+/// `kicad_default`, in any case, updates freerouting's own default class instead of appending a
+/// second one.
+pub fn insert_net_class(
+    net_class: &DsnNetClass,
+    layer_structure: &DsnLayerStructure,
+    board: &mut Board,
+    coordinate_transform: &CoordinateTransform,
+    via_at_smd_allowed: bool,
+) {
+    let board_net_class = if is_kicad_default_net_class_name(&net_class.name) {
+        board.rules.get_default_net_class()
+    } else {
+        board.rules.append_net_class_named(&net_class.name)
+    };
+    if let Some(trace_clearance_class) = &net_class.trace_clearance_class {
+        // "clearance class not found" is an `FRLogger.warn` only (Network.java:449-455).
+        if let Some(no) = board.rules.clearance_matrix.get_no(trace_clearance_class) {
+            board
+                .rules
+                .net_classes
+                .get_mut(board_net_class)
+                .set_trace_clearance_class(no);
+        }
+    }
+    if let Some(via_rule_name) = &net_class.via_rule {
+        // "via rule not found" is an `FRLogger.warn` only (Network.java:461-465).
+        if let Some(via_rule) = board.rules.get_via_rule(via_rule_name) {
+            board
+                .rules
+                .net_classes
+                .get_mut(board_net_class)
+                .set_via_rule(Some(via_rule));
+        }
+    }
+    if net_class.max_trace_length > 0.0 {
+        let value = coordinate_transform.dsn_to_board(net_class.max_trace_length);
+        board
+            .rules
+            .net_classes
+            .get_mut(board_net_class)
+            .set_maximum_trace_length(value);
+    }
+    if net_class.min_trace_length > 0.0 {
+        let value = coordinate_transform.dsn_to_board(net_class.min_trace_length);
+        board
+            .rules
+            .net_classes
+            .get_mut(board_net_class)
+            .set_minimum_trace_length(value);
+    }
+    for current_net_name in &net_class.net_list {
+        let net_numbers: Vec<i32> = board
+            .rules
+            .nets
+            .get_by_name(current_net_name)
+            .iter()
+            .map(|net| net.net_number)
+            .collect();
+        for net_number in net_numbers {
+            board
+                .rules
+                .nets
+                .get_mut(net_number)
+                .expect("listed by get_by_name")
+                .set_class(board_net_class);
+        }
+    }
+
+    // read the trace width and clearance rules.
+
+    let mut clearance_rule_found = false;
+
+    for current_rule in &net_class.rules {
+        match current_rule {
+            DsnRule::Width(value) => {
+                // Note the division by 2 happens **before** `dsnToBoard` here, unlike
+                // `readNetScope` (Network.java:485 vs :1441).
+                let trace_half_width =
+                    java_round_to_int(coordinate_transform.dsn_to_board(value / 2.0));
+                board
+                    .rules
+                    .net_classes
+                    .get_mut(board_net_class)
+                    .set_trace_half_width_on_all_layers(trace_half_width);
+            }
+            DsnRule::Clearance(rule) => {
+                add_clearance_rule(board, board_net_class, rule, None, coordinate_transform);
+                clearance_rule_found = true;
+            }
+        }
+    }
+
+    // read the layer dependent rules.
+
+    for current_layer_rule in &net_class.layer_rules {
+        for current_layer_name in &current_layer_rule.layer_names {
+            // The **board's** layer structure, not the DSN one (Network.java:502).
+            let Some(layer_index) = board.layer_structure().get_no(current_layer_name) else {
+                // "layer not found" (Network.java:504-508).
+                continue;
+            };
+            for current_rule in &current_layer_rule.rules {
+                match current_rule {
+                    DsnRule::Width(value) => {
+                        let trace_half_width =
+                            java_round_to_int(coordinate_transform.dsn_to_board(value / 2.0));
+                        board
+                            .rules
+                            .net_classes
+                            .get_mut(board_net_class)
+                            .set_trace_half_width(layer_index, trace_half_width);
+                    }
+                    DsnRule::Clearance(rule) => {
+                        add_clearance_rule(
+                            board,
+                            board_net_class,
+                            rule,
+                            Some(layer_index),
+                            coordinate_transform,
+                        );
+                        clearance_rule_found = true;
+                    }
+                }
+            }
+        }
+    }
+
+    board
+        .rules
+        .net_classes
+        .get_mut(board_net_class)
+        .set_pull_tight(net_class.pull_tight);
+    board
+        .rules
+        .net_classes
+        .get_mut(board_net_class)
+        .set_shove_fixed(net_class.shove_fixed);
+    let mut via_infos_created = false;
+
+    if clearance_rule_found && board_net_class != board.rules.get_default_net_class() {
+        create_default_via_infos(board, board_net_class, via_at_smd_allowed);
+        via_infos_created = true;
+    }
+
+    if net_class.use_via.is_empty() {
+        if via_infos_created {
+            let name = board
+                .rules
+                .net_classes
+                .get(board_net_class)
+                .get_name()
+                .to_string();
+            board
+                .rules
+                .create_default_via_rule(board_net_class, name, &board.library.padstacks);
+        }
+    } else {
+        create_via_rule(&net_class.use_via, board_net_class, board);
+    }
+    if !net_class.use_layer.is_empty() {
+        create_active_trace_layers(
+            &net_class.use_layer,
+            layer_structure,
+            board,
+            board_net_class,
+        );
+    }
+}
+
+/// `Network.insertClassPairs` (Network.java:548-576).
+///
+/// Java bug: Network.insertClassPairs — the inner loop reuses the **outer** iterator
+/// (`Iterator<String> it2 = it1;`, :557), so it drains it. A `(class_class (classes A B C) …)`
+/// therefore produces the pairs `(A,B)` and `(A,C)` and stops: `(B,C)` is never written, and the
+/// outer loop never sees `B` or `C` as a first class. Reproduced verbatim below — the inner
+/// `for` borrows the same iterator the `while let` is driving. See `docs/java-quirks.md`.
+fn insert_class_pairs(class_classes: &[DsnClassClass], p: &mut ReadScopeParameter<'_>) {
+    let coordinate_transform = p.coordinate_transform.expect(TRANSFORM_EXPECTED);
+    let board = p.board.as_mut().expect(BOARD_EXPECTED);
+    for current_class_class in class_classes {
+        let mut it1 = current_class_class.class_names.iter();
+        while let Some(first_name) = it1.next() {
+            let Some(first_class) = resolve_net_class(&mut board.rules, first_name) else {
+                // "first class not found" (Network.java:559).
+                continue;
+            };
+            for second_name in it1.by_ref() {
+                let Some(second_class) = resolve_net_class(&mut board.rules, second_name) else {
+                    // "second class not found" (Network.java:564).
+                    continue;
+                };
+                insert_class_pair_info(
+                    current_class_class,
+                    first_class,
+                    second_class,
+                    board,
+                    &coordinate_transform,
+                );
+            }
+        }
+    }
+}
+
+/// `Network.insertClassPairInfo` (Network.java:578-619): every clearance rule of a
+/// `(class_class …)`, applied to the pair of classes.
+fn insert_class_pair_info(
+    class_class: &DsnClassClass,
+    first_class: NetClassId,
+    second_class: NetClassId,
+    board: &mut Board,
+    coordinate_transform: &CoordinateTransform,
+) {
+    for current_rule in &class_class.rules {
+        // "unexpected rule" for anything but a clearance rule (Network.java:594).
+        if let DsnRule::Clearance(current_clearance_rule) = current_rule {
+            add_mixed_clearance_rule(
+                board,
+                first_class,
+                second_class,
+                current_clearance_rule,
+                None,
+                coordinate_transform,
+            );
+        }
+    }
+    for current_layer_rule in &class_class.layer_rules {
+        for current_layer_name in &current_layer_rule.layer_names {
+            let Some(layer_index) = board.layer_structure().get_no(current_layer_name) else {
+                // "layer not found" (Network.java:600-604).
+                continue;
+            };
+            for current_rule in &current_layer_rule.rules {
+                if let DsnRule::Clearance(rule) = current_rule {
+                    add_mixed_clearance_rule(
+                        board,
+                        first_class,
+                        second_class,
+                        rule,
+                        Some(layer_index),
+                        coordinate_transform,
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// `Network.addMixedClearanceRule` (Network.java:621-676): the clearance between two *different*
+/// net classes, written into both halves of the matrix — `(i, j)` **and** `(j, i)`.
+fn add_mixed_clearance_rule(
+    board: &mut Board,
+    first_class: NetClassId,
+    second_class: NetClassId,
+    clearance_rule: &DsnClearanceRule,
+    layer_index: Option<usize>,
+    coordinate_transform: &CoordinateTransform,
+) {
+    let current_clearance =
+        java_round_to_int(coordinate_transform.dsn_to_board(clearance_rule.value));
+    let first_class_name = board
+        .rules
+        .net_classes
+        .get(first_class)
+        .get_name()
+        .to_string();
+    let first_class_no = match board.rules.clearance_matrix.get_no(&first_class_name) {
+        Some(no) => no,
+        None => {
+            board.rules.clearance_matrix.append_class(&first_class_name);
+            board
+                .rules
+                .clearance_matrix
+                .get_no(&first_class_name)
+                .expect("appendClass leaves the class present")
+        }
+    };
+    let second_class_name = board
+        .rules
+        .net_classes
+        .get(second_class)
+        .get_name()
+        .to_string();
+    let second_class_no = match board.rules.clearance_matrix.get_no(&second_class_name) {
+        Some(no) => no,
+        None => {
+            board
+                .rules
+                .clearance_matrix
+                .append_class(&second_class_name);
+            board
+                .rules
+                .clearance_matrix
+                .get_no(&second_class_name)
+                .expect("appendClass leaves the class present")
+        }
+    };
+    if clearance_rule.clearance_class_pairs.is_empty() {
+        set_clearance_both_ways(
+            board,
+            first_class_no,
+            second_class_no,
+            layer_index,
+            current_clearance,
+        );
+        return;
+    }
+    for current_string in &clearance_rule.clearance_class_pairs {
+        let current_pair = java_split_underscore(current_string);
+        if current_pair.len() != 2 {
+            continue;
+        }
+        for i in 0..2 {
+            let (current_first_class_no, current_second_class_no) = if i == 0 {
+                (
+                    get_clearance_class(board, first_class, current_pair[0]),
+                    get_clearance_class(board, second_class, current_pair[1]),
+                )
+            } else {
+                (
+                    get_clearance_class(board, second_class, current_pair[0]),
+                    get_clearance_class(board, first_class, current_pair[1]),
+                )
+            };
+            set_clearance_both_ways(
+                board,
+                current_first_class_no,
+                current_second_class_no,
+                layer_index,
+                current_clearance,
+            );
+        }
+    }
+}
+
+/// The `setValue(i, j, …); setValue(j, i, …)` pair that both `Network.addMixedClearanceRule` and
+/// `Network.addClearanceRule` write (Network.java:640-643,655-661,796-801). Not a Java method.
+fn set_clearance_both_ways(
+    board: &mut Board,
+    first_class_no: usize,
+    second_class_no: usize,
+    layer_index: Option<usize>,
+    value: i32,
+) {
+    match layer_index {
+        None => {
+            board.rules.clearance_matrix.set_value_on_all_layers(
+                first_class_no,
+                second_class_no,
+                value,
+            );
+            board.rules.clearance_matrix.set_value_on_all_layers(
+                second_class_no,
+                first_class_no,
+                value,
+            );
+        }
+        Some(layer) => {
+            board
+                .rules
+                .clearance_matrix
+                .set_value(first_class_no, second_class_no, layer, value);
+            board
+                .rules
+                .clearance_matrix
+                .set_value(second_class_no, first_class_no, layer, value);
+        }
+    }
+}
+
+/// `Network.createDefaultClearanceClasses` (Network.java:678-684) — *not* the same method as
+/// `Structure.createDefaultClearanceClasses` (Structure.java:819-824), which takes no net class
+/// and names the classes `via`/`smd`/`pin`/`area` outright rather than `<class>-via` and so on.
+fn create_default_clearance_classes(board: &mut Board, net_class: NetClassId) {
+    get_clearance_class(board, net_class, "via");
+    get_clearance_class(board, net_class, "smd");
+    get_clearance_class(board, net_class, "pin");
+    get_clearance_class(board, net_class, "area");
+}
+
+/// `Network.createViaRule` (Network.java:686-708): a via rule named after the net class, holding
+/// every via info whose padstack name is one of `use_via` **and** whose clearance class is the
+/// class's own default via clearance class.
+///
+/// not ported: the `boolean attachAllowed` parameter (Network.java:690) — Java never reads it.
+fn create_via_rule(use_via: &[String], net_class: NetClassId, board: &mut Board) {
+    let net_class_name = board
+        .rules
+        .net_classes
+        .get(net_class)
+        .get_name()
+        .to_string();
+    let mut new_via_rule = ViaRule::new(net_class_name);
+    let default_via_cl_class = board
+        .rules
+        .net_classes
+        .get(net_class)
+        .default_item_clearance_classes
+        .get(ItemClass::Via);
+    for current_via_name in use_via {
+        for i in 0..board.rules.via_infos.count() {
+            let current_via_info = ViaInfoId(i);
+            let info = board.rules.via_infos.get(current_via_info);
+            if info.get_clearance_class_index() != default_via_cl_class {
+                continue;
+            }
+            // `Padstack.name.equals` — case-sensitive, and against the *raw* `use_via` name,
+            // not the `\.\d+`-stripped one the padstack lookup used (Network.java:697).
+            let padstack_name = board
+                .library
+                .get_padstack(info.get_padstack())
+                .map(|p| p.name.as_str());
+            if padstack_name == Some(current_via_name.as_str()) {
+                new_via_rule.append_via(current_via_info);
+            }
+        }
+    }
+    board.rules.via_rules.push(new_via_rule);
+    let new_rule = ViaRuleId(board.rules.via_rules.len() - 1);
+    board
+        .rules
+        .net_classes
+        .get_mut(net_class)
+        .set_via_rule(Some(new_rule));
+}
+
+/// `Network.createActiveTraceLayers` (Network.java:710-727): only the named layers stay active,
+/// and "currently all inactive layers have tracewidth 0".
+fn create_active_trace_layers(
+    use_layer: &[String],
+    layer_structure: &DsnLayerStructure,
+    board: &mut Board,
+    net_class: NetClassId,
+) {
+    let layer_count = layer_structure.layers.len();
+    let board_net_class = board.rules.net_classes.get_mut(net_class);
+    for i in 0..layer_count {
+        board_net_class.set_active_routing_layer(i, false);
+    }
+    for cur_layer_name in use_layer {
+        // totalized: `LayerStructure.getNo` returns -1 for an unknown layer and Java hands that
+        // straight to `setActiveRoutingLayer`, which throws `ArrayIndexOutOfBoundsException`
+        // (Network.java:717-718). The port skips the layer instead.
+        let Some(current_no) = layer_structure.get_no(cur_layer_name) else {
+            continue;
+        };
+        board_net_class.set_active_routing_layer(current_no, true);
+    }
+    // currently all inactive layers have tracewidth 0.
+    for i in 0..layer_count {
+        if !board_net_class.is_active_routing_layer(i) {
+            board_net_class.set_trace_half_width(i, 0);
+        }
+    }
+}
+
+/// `Network.addClearanceRule` (Network.java:729-803): a net class's own clearance rule. When the
+/// class has no clearance class yet, one is appended and seeded with the *maximum* of the new
+/// clearance and every existing value, then made the class's default for all four item classes.
+fn add_clearance_rule(
+    board: &mut Board,
+    net_class: NetClassId,
+    rule: &DsnClearanceRule,
+    layer_index: Option<usize>,
+    coordinate_transform: &CoordinateTransform,
+) {
+    let current_clearance = java_round_to_int(coordinate_transform.dsn_to_board(rule.value));
+    let class_name = board
+        .rules
+        .net_classes
+        .get(net_class)
+        .get_name()
+        .to_string();
+    let class_no = match board.rules.clearance_matrix.get_no(&class_name) {
+        Some(no) => no,
+        None => {
+            // class not yet existing, create a new class
+            board.rules.clearance_matrix.append_class(&class_name);
+            let class_no = board
+                .rules
+                .clearance_matrix
+                .get_no(&class_name)
+                .expect("appendClass leaves the class present");
+            // set the clearance values of the new class to the maximum of currentClearance and
+            // the existing values.
+            for i in 1..board.rules.clearance_matrix.get_class_count() {
+                for j in 0..board.rules.clearance_matrix.get_layer_count() {
+                    let current_value = board
+                        .rules
+                        .clearance_matrix
+                        .get_value(class_no, i, j, false)
+                        .max(current_clearance);
+                    board
+                        .rules
+                        .clearance_matrix
+                        .set_value(class_no, i, j, current_value);
+                    board
+                        .rules
+                        .clearance_matrix
+                        .set_value(i, class_no, j, current_value);
+                }
+            }
+            board
+                .rules
+                .net_classes
+                .get_mut(net_class)
+                .default_item_clearance_classes
+                .set_all(class_no);
+            class_no
+        }
+    };
+    board
+        .rules
+        .net_classes
+        .get_mut(net_class)
+        .set_trace_clearance_class(class_no);
+    if rule.clearance_class_pairs.is_empty() {
+        match layer_index {
+            None => board.rules.clearance_matrix.set_value_on_all_layers(
+                class_no,
+                class_no,
+                current_clearance,
+            ),
+            Some(layer) => {
+                board.rules.clearance_matrix.set_value(
+                    class_no,
+                    class_no,
+                    layer,
+                    current_clearance,
+                );
+            }
+        }
+        return;
+    }
+    if contains_wire_clearance_pair(&rule.clearance_class_pairs) {
+        create_default_clearance_classes(board, net_class);
+    }
+    for current_string in &rule.clearance_class_pairs {
+        let current_pair = java_split_underscore(current_string);
+        if current_pair.len() != 2 {
+            continue;
+        }
+        let first_class_no = get_clearance_class(board, net_class, current_pair[0]);
+        let second_class_no = get_clearance_class(board, net_class, current_pair[1]);
+        set_clearance_both_ways(
+            board,
+            first_class_no,
+            second_class_no,
+            layer_index,
+            current_clearance,
+        );
+    }
+}
+
+/// `Network.getClearanceClass` (Network.java:805-865): "gets the number of the clearance class
+/// with name combined of netClassName and itemClassName. Creates a new class, if that class is
+/// not yet existing."
+fn get_clearance_class(board: &mut Board, net_class: NetClassId, item_class_name: &str) -> usize {
+    let net_class_name = board
+        .rules
+        .net_classes
+        .get(net_class)
+        .get_name()
+        .to_string();
+    let new_class_name = if item_class_name == "wire" {
+        net_class_name.clone()
+    } else {
+        format!("{net_class_name}{CLASS_CLEARANCE_SEPARATOR}{item_class_name}")
+    };
+    if let Some(found_class_no) = board.rules.clearance_matrix.get_no(&new_class_name) {
+        return found_class_no;
+    }
+    board.rules.clearance_matrix.append_class(&new_class_name);
+    let result = board
+        .rules
+        .clearance_matrix
+        .get_no(&new_class_name)
+        .expect("appendClass leaves the class present");
+    let Some(net_class_no) = board.rules.clearance_matrix.get_no(&net_class_name) else {
+        // "clearance class not found" (Network.java:844-849) — Java returns the (valid) new
+        // class number without initialising it.
+        return result;
+    };
+    // initialize the clearance values of newClassName from netClassName
+    for i in 1..board.rules.clearance_matrix.get_class_count() {
+        for j in 0..board.rules.clearance_matrix.get_layer_count() {
+            let current_value = board
+                .rules
+                .clearance_matrix
+                .get_value(net_class_no, i, j, false);
+            board
+                .rules
+                .clearance_matrix
+                .set_value(result, i, j, current_value);
+            board
+                .rules
+                .clearance_matrix
+                .set_value(i, result, j, current_value);
+        }
+    }
+    let default_item_clearance_classes = &mut board
+        .rules
+        .net_classes
+        .get_mut(net_class)
+        .default_item_clearance_classes;
+    match item_class_name {
+        "via" => default_item_clearance_classes.set(ItemClass::Via, result),
+        "pin" => default_item_clearance_classes.set(ItemClass::Pin, result),
+        "smd" => default_item_clearance_classes.set(ItemClass::Smd, result),
+        "area" => default_item_clearance_classes.set(ItemClass::Area, result),
+        // Ignore unsupported item classes.
+        _ => {}
+    }
+    result
+}
+
+// ------------------------------------------------------------- components and logical parts
+
+/// `Network.insertComponents` (Network.java:867-873): every placed component, in the order the
+/// `placement` scope read them.
+///
+/// The list is moved out of `ReadScopeParameter` and put straight back: Java iterates the live
+/// `placementList` while `insertComponent` mutates the board, which the borrow checker will not
+/// allow through a shared `&mut ReadScopeParameter`. Nothing here mutates the list itself.
+fn insert_components(p: &mut ReadScopeParameter<'_>) {
+    let placement_list = std::mem::take(&mut p.placement_list);
+    for next_lib_component in &placement_list {
+        for next_component in &next_lib_component.locations {
+            insert_component(next_component, &next_lib_component.lib_name, p);
+        }
+    }
+    p.placement_list = placement_list;
+}
+
+/// `Network.insertComponent` (Network.java:932-1195): "inserts all board components belonging to
+/// the input library component" — and, with them, the pins, keepouts and outlines whose ids this
+/// task exists to get right.
+///
+/// The order inside one component is fixed and load-bearing: every package pin
+/// (`insertPin`, :1035), then the package keepouts (`insertObstacle`, :1082), the via keepouts
+/// (`insertViaObstacle`, :1093) and the place keepouts (`insertComponentObstacle`, :1104), then
+/// every package outline (`insertComponentOutline`, :1192).
+fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadScopeParameter<'_>) {
+    let coordinate_transform = p.coordinate_transform.expect(TRANSFORM_EXPECTED);
+    let netlist = &p.netlist;
+    let board = p.board.as_mut().expect(BOARD_EXPECTED);
+
+    let current_front_package = board
+        .library
+        .packages
+        .get_by_name(lib_key, true)
+        .map(|pkg| pkg.no);
+    let current_back_package = board
+        .library
+        .packages
+        .get_by_name(lib_key, false)
+        .map(|pkg| pkg.no);
+    let (Some(current_front_package), Some(current_back_package)) =
+        (current_front_package, current_back_package)
+    else {
+        // "component package not found" (Network.java:940-947).
+        return;
+    };
+
+    let component_location = location
+        .coor
+        .map(|coor| coordinate_transform.dsn_to_board_point(&coor).round());
+    let rotation_in_degree = location.rotation;
+
+    let new_component_id = board
+        .components
+        .add(
+            location.name.clone(),
+            component_location.map(Point::Int),
+            rotation_in_degree,
+            location.is_front,
+            current_front_package,
+            current_back_package,
+            location.position_fixed,
+            location.part_number.clone(),
+        )
+        .id;
+
+    let Some(component_location) = component_location else {
+        // component is not yet placed.
+        return;
+    };
+    let component_translation = Point::Int(component_location).difference_by(&Point::ZERO);
+    let fixed_state = if location.position_fixed {
+        FixedState::SystemFixed
+    } else {
+        FixedState::Unfixed
+    };
+    let current_package = board.components.get(new_component_id).get_package();
+    let pin_count = board.library.packages.get(current_package).pin_count();
+    for i in 0..pin_count {
+        let current_pin = board
+            .library
+            .packages
+            .get(current_package)
+            .get_pin(i as i32)
+            .expect("i < pinCount")
+            .clone();
+        let Some(current_padstack) = board.library.padstacks.get(current_pin.padstack_no) else {
+            // "pin padstack not found" — and Java abandons the **whole** component here, pins,
+            // keepouts and outlines alike (Network.java:1013-1019).
+            return;
+        };
+        let padstack_is_smd = current_padstack.from_layer() == current_padstack.to_layer();
+        let pin_nets: Vec<(String, i32)> = netlist
+            .get_nets(&location.name, &current_pin.name)
+            .iter()
+            .map(|net| (net.id.name.clone(), net.id.subnet_no))
+            .collect();
+        let mut net_number_array: Vec<i32> = Vec::with_capacity(pin_nets.len());
+        for (net_name, subnet_no) in &pin_nets {
+            // "board net not found" is an `FRLogger.warn` only (Network.java:1023-1030).
+            if let Some(current_board_net) = board
+                .rules
+                .nets
+                .get_by_name_and_subnet(net_name, *subnet_no)
+            {
+                net_number_array.push(current_board_net.net_number);
+            }
+        }
+        let board_net_class = net_number_array
+            .first()
+            .and_then(|no| board.rules.nets.get(*no))
+            .map(fr_board::Net::get_net_class);
+        let net_class = board_net_class.unwrap_or_else(|| board.rules.get_default_net_class());
+        let mut clearance_class = location
+            .pin_infos
+            .get(&current_pin.name)
+            .and_then(|pin_info| {
+                board
+                    .rules
+                    .clearance_matrix
+                    .get_no(&pin_info.clearance_class)
+            });
+        if clearance_class.is_none() {
+            let default_item_clearance_classes = &board
+                .rules
+                .net_classes
+                .get(net_class)
+                .default_item_clearance_classes;
+            clearance_class = Some(if padstack_is_smd {
+                default_item_clearance_classes.get(ItemClass::Smd)
+            } else {
+                default_item_clearance_classes.get(ItemClass::Pin)
+            });
+        }
+        board.insert_pin(
+            new_component_id,
+            i as i32,
+            net_number_array,
+            clearance_class.expect("assigned above"),
+            fixed_state,
+        );
+    }
+
+    // insert the keepouts belonging to the package (k = 1 for via keepouts)
+    for k in 0..=2 {
+        let package = board.library.packages.get(current_package);
+        let (keepouts, current_keepout_infos) = match k {
+            0 => (package.keepouts.clone(), &location.keepout_infos),
+            1 => (package.via_keepouts.clone(), &location.via_keepout_infos),
+            _ => (
+                package.place_keepouts.clone(),
+                &location.place_keepout_infos,
+            ),
+        };
+        for current_keepout in &keepouts {
+            let mut layer = current_keepout.layer;
+            if layer >= board.get_layer_count() as i32 {
+                // "keepout layer is to big" (Network.java:1054-1060).
+                continue;
+            }
+            if layer >= 0 && !location.is_front {
+                layer = board.get_layer_count() as i32 - current_keepout.layer - 1;
+            }
+            let default_net_class = board.rules.get_default_net_class();
+            let mut clearance_class = board
+                .rules
+                .net_classes
+                .get(default_net_class)
+                .default_item_clearance_classes
+                .get(ItemClass::Area);
+            if let Some(keepout_info) = current_keepout_infos.get(&current_keepout.name) {
+                // Note the `> 0`, not `>= 0`: clearance class 0 does not override the default
+                // (Network.java:1073-1076).
+                if let Some(current_clearance_class) = board
+                    .rules
+                    .clearance_matrix
+                    .get_no(&keepout_info.clearance_class)
+                    && current_clearance_class > 0
+                {
+                    clearance_class = current_clearance_class;
+                }
+            }
+            if let Ok(layer) = usize::try_from(layer) {
+                insert_package_keepout(
+                    board,
+                    k,
+                    current_keepout,
+                    layer,
+                    &component_translation,
+                    rotation_in_degree,
+                    !location.is_front,
+                    clearance_class,
+                    new_component_id,
+                    fixed_state,
+                );
+            } else {
+                // insert the obstacle on all signal layers
+                for j in 0..board.layer_structure().count() {
+                    if board.layer_structure().layers[j].is_signal {
+                        insert_package_keepout(
+                            board,
+                            k,
+                            current_keepout,
+                            j,
+                            &component_translation,
+                            rotation_in_degree,
+                            !location.is_front,
+                            clearance_class,
+                            new_component_id,
+                            fixed_state,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    // insert the outline as component keepout
+    let package = board.library.packages.get(current_package);
+    let outline = package.outline.clone();
+    let outline_widths = package.outline_widths.clone();
+    let outline_is_closed = package.outline_is_closed.clone();
+    let mut courtyard_idx: i32 = -1;
+    if let Some(outline) = outline.as_ref()
+        && outline.len() > 1
+    {
+        let mut max_area = -1.0;
+        for (i, shape) in outline.iter().enumerate() {
+            let area = shape.bounding_box().area();
+            if area > max_area {
+                max_area = area;
+                courtyard_idx = i as i32;
+            }
+        }
+    }
+    if let Some(outline) = outline {
+        for (i, shape) in outline.iter().enumerate() {
+            let mut is_courtyard = i as i32 == courtyard_idx;
+            if let Some(widths) = outline_widths.as_ref()
+                && i < widths.len()
+                && widths[i] == 0.0
+            {
+                is_courtyard = true;
+            }
+            let mut is_fabrication = false;
+            if !is_courtyard
+                && let Some(widths) = outline_widths.as_ref()
+                && i < widths.len()
+                && widths[i] <= 110.0
+            {
+                is_fabrication = true;
+            }
+            let mut is_closed = false;
+            if let Some(closed) = outline_is_closed.as_ref()
+                && i < closed.len()
+            {
+                is_closed = closed[i];
+            }
+            board.insert_component_outline(
+                Area::Shape(shape.clone()),
+                location.is_front,
+                component_translation.clone(),
+                rotation_in_degree,
+                new_component_id,
+                is_courtyard,
+                is_fabrication,
+                is_closed,
+                fixed_state,
+            );
+        }
+    }
+}
+
+/// The three-way `k` switch inside `Network.insertComponent`'s keepout loop
+/// (Network.java:1080-1110 and its all-signal-layers twin at :1114-1152). Not a Java method —
+/// Java writes the same `if (k == 0) … else if (k == 1) … else …` chain twice.
+#[allow(clippy::too_many_arguments)]
+fn insert_package_keepout(
+    board: &mut Board,
+    k: i32,
+    keepout: &Keepout,
+    layer: usize,
+    translation: &Vector,
+    rotation_in_degree: f64,
+    side_changed: bool,
+    clearance_class: usize,
+    component_id: i32,
+    fixed_state: FixedState,
+) {
+    let area = keepout.area.clone();
+    let name = Some(keepout.name.clone());
+    match k {
+        0 => {
+            board.insert_obstacle_of_component(
+                area,
+                layer,
+                translation.clone(),
+                rotation_in_degree,
+                side_changed,
+                clearance_class,
+                component_id,
+                name,
+                fixed_state,
+            );
+        }
+        1 => {
+            board.insert_via_obstacle_of_component(
+                area,
+                layer,
+                translation.clone(),
+                rotation_in_degree,
+                side_changed,
+                clearance_class,
+                component_id,
+                name,
+                fixed_state,
+            );
+        }
+        _ => {
+            board.insert_component_obstacle_of_component(
+                area,
+                layer,
+                translation.clone(),
+                rotation_in_degree,
+                side_changed,
+                clearance_class,
+                component_id,
+                name,
+                fixed_state,
+            );
+        }
+    }
+}
+
+/// `Network.insertLogicalParts` (Network.java:875-930): "create the part library on the board.
+/// Can be called after the components are inserted. Returns false, if an error occurred."
+fn insert_logical_parts(p: &mut ReadScopeParameter<'_>) -> bool {
+    let logical_parts = std::mem::take(&mut p.logical_parts);
+    let logical_part_mappings = std::mem::take(&mut p.logical_part_mappings);
+    let result = insert_logical_parts_inner(&logical_parts, &logical_part_mappings, p);
+    p.logical_parts = logical_parts;
+    p.logical_part_mappings = logical_part_mappings;
+    result
+}
+
+fn insert_logical_parts_inner(
+    logical_parts: &[DsnLogicalPart],
+    logical_part_mappings: &[DsnLogicalPartMapping],
+    p: &mut ReadScopeParameter<'_>,
+) -> bool {
+    let board = p.board.as_mut().expect(BOARD_EXPECTED);
+    for next_part in logical_parts {
+        let Some(lib_package) = search_lib_package(&next_part.name, logical_part_mappings, board)
+        else {
+            return false;
+        };
+        let mut board_part_pins: Vec<PartPin> = Vec::with_capacity(next_part.part_pins.len());
+        for current_part_pin in &next_part.part_pins {
+            let Some(pin_index) = board
+                .library
+                .packages
+                .get(lib_package)
+                .get_pin_index(&current_part_pin.pin_name)
+            else {
+                // "package pin not found" (Network.java:889-895).
+                return false;
+            };
+            board_part_pins.push(PartPin::new(
+                pin_index as i32,
+                current_part_pin.pin_name.clone(),
+                current_part_pin.gate_name.clone(),
+                current_part_pin.gate_swap_code,
+                current_part_pin.gate_pin_name.clone(),
+                current_part_pin.gate_pin_swap_code,
+            ));
+        }
+        board
+            .library
+            .logical_parts
+            .add(next_part.name.clone(), board_part_pins);
+    }
+
+    for next_mapping in logical_part_mappings {
+        // "logical part not found" is an `FRLogger.warn` only, and the `null` is then assigned
+        // to every component in the mapping (Network.java:912-919).
+        let current_logical_part = board
+            .library
+            .logical_parts
+            .get_by_name(&next_mapping.name)
+            .map(|part| part.no);
+        for current_cmp_name in &next_mapping.components {
+            // "board component not found" is an `FRLogger.warn` only (Network.java:925-929).
+            if let Some(component_id) = board
+                .components
+                .get_by_name(current_cmp_name)
+                .map(|component| component.id)
+            {
+                board
+                    .components
+                    .get_mut(component_id)
+                    .set_logical_part(current_logical_part);
+            }
+        }
+    }
+    true
+}
+
+/// `Network.searchLibPackage` (Network.java:900-930): "calculates the library package belonging
+/// to the logical part with name partName. Returns null, if the package was not found."
+fn search_lib_package(
+    part_name: &str,
+    logical_part_mappings: &[DsnLogicalPartMapping],
+    board: &Board,
+) -> Option<usize> {
+    for current_mapping in logical_part_mappings {
+        if current_mapping.name == part_name {
+            // "component list empty" (Network.java:910-913, and the redundant `null` check at
+            // :915-918 that a non-empty `List<String>` cannot reach).
+            let component_name = current_mapping.components.first()?;
+            // "component not found" (Network.java:922-926).
+            let current_component = board.components.get_by_name(component_name)?;
+            return Some(current_component.get_package());
+        }
+    }
+    // "library package '…' not found" (Network.java:928).
+    None
 }
 
 #[cfg(test)]
@@ -911,6 +2616,78 @@ mod tests {
         assert!(netlist.add_net(NetId::new("GND", 1)).is_none());
         assert!(netlist.contains(&NetId::new("GND", 1)));
         assert!(!netlist.contains(&NetId::new("GND", 3)));
+    }
+
+    #[test]
+    fn net_id_and_pin_ref_order_by_utf16_code_units_like_string_compare_to() {
+        // `Net.Id.compareTo` / `Net.Pin.compareTo` are `String.compareTo` chains, which order by
+        // UTF-16 code units: a supplementary character sorts **before** U+E000..U+FFFF, the
+        // opposite of `str`'s own `Ord`.
+        assert!(NetId::new("\u{10000}", 1) < NetId::new("\u{FFFD}", 1));
+        assert!("\u{10000}" > "\u{FFFD}");
+        assert!(PinRef::new("\u{10000}", "1") < PinRef::new("\u{FFFD}", "1"));
+        assert!(PinRef::new("U1", "\u{10000}") < PinRef::new("U1", "\u{FFFD}"));
+        // …and the ordinary cases are unchanged.
+        assert!(NetId::new("GND", 1) < NetId::new("GND", 2));
+        assert!(NetId::new("GND", 9) < NetId::new("VCC", 1));
+        assert!(PinRef::new("R1", "2") < PinRef::new("U1", "1"));
+    }
+
+    #[test]
+    fn java_split_underscore_drops_trailing_empties_the_way_javas_split_does() {
+        // `String.split("_")` with the default limit removes trailing empty strings, and
+        // returns the whole input when the separator never occurs.
+        assert_eq!(java_split_underscore("via_smd"), vec!["via", "smd"]);
+        assert_eq!(java_split_underscore("smd_via_same_net").len(), 4);
+        assert_eq!(java_split_underscore("via_"), vec!["via"]);
+        assert_eq!(java_split_underscore("_via"), vec!["", "via"]);
+        assert_eq!(java_split_underscore("a__b"), vec!["a", "", "b"]);
+        assert!(java_split_underscore("_").is_empty());
+        assert_eq!(java_split_underscore(""), vec![""]);
+        assert_eq!(java_split_underscore("wire"), vec!["wire"]);
+    }
+
+    #[test]
+    fn kicad_default_net_class_names_are_matched_case_insensitively() {
+        // KiCadNetClassNames.java:24-30 (plan ruling 8).
+        assert!(is_kicad_default_net_class_name("default"));
+        assert!(is_kicad_default_net_class_name("Default"));
+        assert!(is_kicad_default_net_class_name("DEFAULT"));
+        assert!(is_kicad_default_net_class_name("kicad_default"));
+        assert!(is_kicad_default_net_class_name("KiCad_Default"));
+        assert!(!is_kicad_default_net_class_name(""));
+        assert!(!is_kicad_default_net_class_name("Power"));
+        assert!(!is_kicad_default_net_class_name("default2"));
+    }
+
+    #[test]
+    fn create_ordered_subnets_pairs_consecutive_pins() {
+        // "Creates a sequence of subnets with 2 pins from pinList" (Network.java:192-208).
+        let pins = vec![
+            PinRef::new("U1", "1"),
+            PinRef::new("R1", "2"),
+            PinRef::new("U1", "3"),
+        ];
+        let subnets = create_ordered_subnets(&pins);
+        assert_eq!(subnets.len(), 2);
+        // Each subnet is a `TreeSet`, so the pair comes out in `PinRef` order.
+        assert_eq!(
+            subnets[0],
+            vec![PinRef::new("R1", "2"), PinRef::new("U1", "1")]
+        );
+        assert_eq!(
+            subnets[1],
+            vec![PinRef::new("R1", "2"), PinRef::new("U1", "3")]
+        );
+        assert!(create_ordered_subnets(&[]).is_empty());
+        // One pin makes no subnet at all.
+        assert!(create_ordered_subnets(&pins[..1]).is_empty());
+        // A repeated pin collapses to a one-element subnet (the `TreeSet` again).
+        let repeated = vec![PinRef::new("U1", "1"), PinRef::new("U1", "1")];
+        assert_eq!(
+            create_ordered_subnets(&repeated),
+            vec![vec![PinRef::new("U1", "1")]]
+        );
     }
 
     #[test]
