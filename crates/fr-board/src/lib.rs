@@ -13,6 +13,7 @@ pub mod ids;
 pub mod items;
 pub mod library;
 pub mod rules;
+pub mod searchtree;
 pub mod structure;
 
 pub use datastructures::{LeafId, Node, NodeId, ShapeTree, StopCheck, TimeLimit, TreeEntry};
@@ -23,9 +24,9 @@ pub use ids::{
 };
 pub use items::{
     AutorouteInfo, BOARD_OUTLINE_HALF_WIDTH, ComponentObstacleArea, ComponentOutline,
-    ConductionArea, Connectable, ConnectableRef, DrillItemData, Item, ItemCtx, ItemHeader,
-    ItemKind, ObstacleArea, ObstacleAreaData, Pin, PolylineTrace, TraceExitRestriction,
-    TreeEntries, Via, ViaObstacleArea,
+    ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, Item,
+    ItemCtx, ItemHeader, ItemKind, ObstacleArea, ObstacleAreaData, Pin, PolylineTrace,
+    TraceExitRestriction, TreeEntries, Via, ViaObstacleArea,
 };
 pub use library::{
     BoardLibrary, DrillItemPadstackLookup, Keepout, LogicalPart, LogicalParts, Package, PackagePin,
@@ -35,6 +36,7 @@ pub use rules::{
     BoardRules, ClearanceClassIndexed, ClearanceMatrix, DefaultItemClearanceClasses, ItemClass,
     Net, NetClass, NetClasses, Nets, PadstackLookup, ViaInfo, ViaInfos, ViaRule,
 };
+pub use searchtree::{ItemLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
     AngleRestriction, BoardOutline, Component, Components, FixedState, Layer, LayerStructure, Unit,
 };
@@ -45,13 +47,13 @@ pub mod prelude {
         AngleRestriction, AutorouteInfo, BOARD_OUTLINE_HALF_WIDTH, BoardError, BoardLibrary,
         BoardOutline, BoardRules, ClearanceClassIndexed, ClearanceMatrix, Component,
         ComponentObstacleArea, ComponentOutline, Components, ConductionArea, Connectable,
-        ConnectableRef, DefaultItemClearanceClasses, DrillItemData, DrillItemPadstackLookup,
-        FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId, ItemIdGenerator, ItemKind,
-        Keepout, Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, Net, NetClass,
-        NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea, ObstacleAreaData, Package,
-        PackagePin, Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin,
-        PolylineTrace, RoomId, ShapeTree, StopCheck, TimeLimit, TraceExitRestriction, TreeEntries,
-        TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea,
-        ViaRule, ViaRuleId,
+        ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DefaultItemClearanceClasses, DrillItemData,
+        DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId,
+        ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
+        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea,
+        ObstacleAreaData, Package, PackagePin, Packages, Padstack, PadstackId, PadstackLookup,
+        Padstacks, PartPin, Pin, PolylineTrace, RoomId, SearchTreeManager, ShapeSearchTree,
+        ShapeTree, StopCheck, TimeLimit, TraceExitRestriction, TreeEntries, TreeEntry, TreeId,
+        TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
     };
 }

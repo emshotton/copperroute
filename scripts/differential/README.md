@@ -24,6 +24,23 @@ methods with dozens of branches.
     driver's output. Declares `package app.freerouting.datastructures;` and is
     compiled alongside the real
     `datastructures/{ShapeTree,MinAreaTree,ArrayStack}.java`.
+  - `P2T10.java` — `ShapeSearchTree`/`SearchTreeManager` (Plan 2 Task 10).
+    Twin: `p2t10`. The **only** driver that is not compiled from
+    `geometry/planar` sources: it builds a real
+    `app.freerouting.board.facade.BasicBoard` (two layers, a two-pin component,
+    two traces, an empty outline), so it drags in the whole board stack and is
+    compiled and run against the clone's own build output —
+    `../freerouting/build/libs/freerouting-current-executable.jar`, class-file
+    version 69, which needs a **JDK 25** (`JAVA25_HOME`). It declares
+    `package app.freerouting.datastructures;` so it can read the protected
+    `ShapeTree.TreeNode.boundingShape` off each leaf. Prints, per tree: the
+    key, `toArray()` with leaf bounds, every item's precalculated tree shapes,
+    and the results of `overlappingObjects` /`overlappingTreeEntries` /
+    `overlappingTreeEntriesWithClearance` / `overlappingItemsWithClearance`;
+    mode 3 adds the clearance matrix, `clearanceCompensationValue`,
+    `changeItemShape`, `changeEntries` and `setClearanceCompensationUsed`.
+    `crates/fr-board/tests/{board_builder,search_tree}.rs` were written from
+    this driver's output.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
     Twin: `p2t3r`. Drives `insert(Storable)` (so the *tree* applies its bounding
     directions), `remove(Leaf[])` on arrays with deliberate `null` holes,
@@ -72,7 +89,7 @@ methods with dozens of branches.
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
-  `e15`, `d17`, `p2t3`, `p2t3r`.
+  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -85,6 +102,9 @@ Requirements:
   of `run.sh` (it defaults to a Homebrew JDK 23 install).
 - A sibling checkout of the Java repo at `../freerouting` relative to this
   repo's root (override with `FREEROUTING_JAVA_DIR`).
+- For `p2t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+  `../freerouting/build/libs/freerouting-current-executable.jar`
+  (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 
 ```sh
 ./scripts/differential/run.sh t15               # LineSegment, default smoke run (200 iters, seed 42)
@@ -139,6 +159,11 @@ the driver expects, or none at all.
   handed. `dumpEvery` (default 1) prints the whole tree every N ops; `insertPct`
   (default 62) is the share of insert ops, the rest split between re-keying and
   removal.
+- `p2t10 <mode>` — `ShapeSearchTree`/`SearchTreeManager`. `mode` is `0` for a
+  45-degree board, `1` for 90-degree, `2` for no angle restriction and `3` for
+  the clearance matrix plus the in-place mutation methods. Run **all four**:
+  modes 0-2 differ only in which subclass `getAutorouteTree` builds, which is
+  the whole point of the angle-parameterised port.
 - `d17 <cases> <mode>` — `PolygonShape`/`PolylineArea`/`Circle`. Java's
   `D17.java` only branches explicitly on mode `0` (polygon) and `1`
   (polyline area); every other mode value, including `2`, falls through to
@@ -167,6 +192,10 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t3` | 132 | 0 | exact match |
 | `p2t3r` (400 42 0) | 109940 | 0 | exact match |
 | `p2t3r` (2000 42 1) | 2898938 | 0 | exact match (45-degree/`IntOctagon` bounds) |
+| `p2t10` (mode 0) | 88 | 0 | exact match |
+| `p2t10` (mode 1) | 88 | 0 | exact match (90-degree, `IntBox`-keyed tree) |
+| `p2t10` (mode 2) | 88 | 0 | exact match (no angle restriction, base-class `enlarge`) |
+| `p2t10` (mode 3) | 68 | 0 | exact match (mutators + clearance compensation) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -180,6 +209,20 @@ after any future `geometry/planar` change and compare new diff lines against
 different seed/iteration count (not just the smoke-run default) for anything
 touching the classes above, since the default only samples a few hundred
 cases.
+
+## A finding from `p2t10` (Plan 2 Task 10)
+
+`board.itemList` iterates in **descending item id**, deterministically:
+`UndoableObjects` stores its objects in a `ConcurrentSkipListMap<Storable, …>`
+(UndoableObjects.java:21,37), a *sorted* map keyed by `Item.compareTo`, whose
+subtraction is reversed (Item.java:98, quirk #44). Printing both
+`board.itemList` and `board.getItems()` for the driver's board gives `5 4 3 2 1`
+on every run. That order decides the *structure* of any tree built by
+`SearchTreeManager.getAutorouteTree` or rebuilt by
+`setClearanceCompensationUsed`, so the port must reproduce it — see the
+`SearchTreeManager` docs. (Plan 2's Task 16 brief describes the item order as
+"`ConcurrentHashMap` (JVM-dependent)"; for `UndoableObjects` that is not the
+case.)
 
 ## Harness maintenance note (Task 18)
 

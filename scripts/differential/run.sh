@@ -12,12 +12,19 @@ JAVA_HOME="${JAVA_HOME:-/opt/homebrew/Cellar/openjdk/23.0.2/libexec/openjdk.jdk/
 JAVAC="$JAVA_HOME/bin/javac"
 JAVABIN="$JAVA_HOME/bin/java"
 
+# `p2t10` is the one driver that cannot be compiled from `geometry/planar` sources: it needs the
+# whole board stack (BasicBoard, BoardRules, the search trees). It is compiled and run against
+# the clone's own build output instead, which is class-file version 69 and therefore needs a
+# JDK 25. Override either of these if your checkout differs.
+JAVA25_HOME="${JAVA25_HOME:-/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home}"
+FREEROUTING_JAR="${FREEROUTING_JAR:-$FREEROUTING_JAVA_DIR/build/libs/freerouting-current-executable.jar}"
+
 BUILD="$DIFF_ROOT/build"
 OUT="$BUILD/classes"
 
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
-  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r" >&2
+  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -31,6 +38,9 @@ shift
 # Java sources beyond `geometry/planar` that the driver needs compiled with it.
 javapkg="geometry.planar"
 extra_java_sources=()
+# Set by `p2t10`: compile against the clone's prebuilt jar with a JDK 25 instead of against the
+# `geometry/planar` sources with a JDK 23.
+needs_jar=0
 # The `datastructures` classes the Plan 2 Task 3 drivers exercise.
 shapetree_sources=(
   "$JAVA_DIR/datastructures/ShapeTree.java"
@@ -55,6 +65,12 @@ case "$driver" in
     default_args=(400 42 0)
     extra_java_sources=("${shapetree_sources[@]}")
     ;;
+  p2t10)
+    javaclass=P2T10
+    javapkg="datastructures"
+    default_args=(0)
+    needs_jar=1
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -62,6 +78,49 @@ if [[ $# -gt 0 ]]; then
   args=("$@")
 else
   args=("${default_args[@]}")
+fi
+
+if [[ "$needs_jar" -eq 1 ]]; then
+  JAVAC="$JAVA25_HOME/bin/javac"
+  JAVABIN="$JAVA25_HOME/bin/java"
+  if [[ ! -f "$FREEROUTING_JAR" ]]; then
+    echo "error: freerouting jar not found at $FREEROUTING_JAR" >&2
+    echo "       build it in the sibling checkout (./gradlew build), or set FREEROUTING_JAR" >&2
+    exit 1
+  fi
+  if [[ ! -x "$JAVAC" ]]; then
+    echo "error: javac not found at $JAVAC (need JDK >= 25; set JAVA25_HOME)" >&2
+    exit 1
+  fi
+  if [[ $# -gt 0 ]]; then args=("$@"); else args=("${default_args[@]}"); fi
+
+  # A dedicated output directory: `$OUT` holds the local `FRLogger` stand-in the
+  # `geometry/planar` drivers compile against, and it would shadow the jar's real one here.
+  jar_out="$BUILD/classes-$driver"
+  echo "== compiling Java ($javaclass) against $FREEROUTING_JAR =="
+  rm -rf "$jar_out"
+  mkdir -p "$jar_out"
+  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$DIFF_ROOT/java/$javaclass.java"
+
+  j_out="$BUILD/$driver.j.out"
+  r_out="$BUILD/$driver.r.out"
+
+  echo "== building Rust twin ($driver) =="
+  (cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
+
+  echo "== running ($driver ${args[*]:-}) =="
+  "$JAVABIN" -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
+  "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"} >"$r_out"
+
+  echo "== diffing =="
+  if diff -q "$j_out" "$r_out" >/dev/null; then
+    echo "MATCH: $driver ($(wc -l <"$j_out" | tr -d " ") lines)"
+    exit 0
+  else
+    echo "DIFF: $driver — see $j_out vs $r_out"
+    diff "$j_out" "$r_out" | head -40
+    exit 1
+  fi
 fi
 
 # Fail loudly rather than silently compiling nothing / compiling stale

@@ -604,6 +604,7 @@ impl Connectable for ConductionArea {
             .get_precalculated_tree_shapes(tree)
             .and_then(|shapes| shapes.get(index))
             .cloned()
+            .flatten()
     }
 }
 

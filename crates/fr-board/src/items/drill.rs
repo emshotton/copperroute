@@ -89,7 +89,23 @@ pub struct ItemCtx<'a> {
     /// `Item::tile_shape_count`/`shape_layer`, so the box has to travel with the rest of the
     /// context rather than being a parameter of one method.
     pub bounding_box: &'a IntBox,
+    /// Java `board.communication`, reduced to the one number any ported body reads from it:
+    /// the section width `ShapeSearchTree.calculateTreeShapes(ObstacleArea)` divides an
+    /// obstacle area's convex pieces into (ShapeSearchTree.java:916-920).
+    ///
+    /// Java computes it there as `50000`, lowered to `500 * communication.getResolution(MIL)`
+    /// when `communication.hostCadExists()` — i.e. when the board came from a DSN file that
+    /// named a host CAD system. `fr-board` has no `Communication` type (it is `io`/session
+    /// state, Plan 3), so the resolved number travels with the rest of the board context, the
+    /// way `bounding_box` does.
+    // added in Task 11: `Board` computes this from its `Communication` and fills it in; until
+    // then every caller passes `DEFAULT_MAX_TREE_SHAPE_WIDTH`.
+    pub max_tree_shape_width: f64,
 }
+
+/// `ShapeSearchTree.calculateTreeShapes(ObstacleArea)`'s `double maxTreeShapeWidth = 50000`
+/// (ShapeSearchTree.java:916) — the value a board with no host CAD system uses.
+pub const DEFAULT_MAX_TREE_SHAPE_WIDTH: f64 = 50000.0;
 
 impl<'a> ItemCtx<'a> {
     /// Java's `board.components.get(componentId)` with Java's `null` semantics.
@@ -547,6 +563,7 @@ impl Via {
         self.hdr
             .get_precalculated_tree_shapes(tree)
             .and_then(|shapes| shapes.get(layer - from_layer))
+            .and_then(Option::as_ref)
     }
 
     /// Port of `DrillItem.firstLayer` (DrillItem.java:161-172).
@@ -1049,6 +1066,7 @@ impl Pin {
         self.hdr
             .get_precalculated_tree_shapes(tree)
             .and_then(|shapes| shapes.get(layer - from_layer))
+            .and_then(Option::as_ref)
     }
 
     /// Port of `DrillItem.firstLayer` (DrillItem.java:161-172).

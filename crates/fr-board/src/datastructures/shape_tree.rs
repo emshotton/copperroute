@@ -561,6 +561,34 @@ impl<O: Copy + Ord> ShapeTree<O> {
             .collect()
     }
 
+    /// [`ShapeTree::insert_tiles`] for an object whose tree shapes are themselves nullable —
+    /// Java's *first* `null` return of `insert(Storable, int)`, `object.getTreeShape(this,
+    /// index) == null` (ShapeTree.java:46-49).
+    ///
+    /// That branch is not defensive: `ShapeSearchTree.calculateTreeShapes(DrillItem)` writes
+    /// `result[i] = null` (ShapeSearchTree.java:882, ShapeSearchTree45Degree.java:500,
+    /// ShapeSearchTree90Degree.java:446) for every layer on which the drill item has no pad and
+    /// the hole-clearance rule synthesises no obstacle either. The index keeps its slot in the
+    /// returned vector — `DrillItem.shapeLayer(index)` is `firstLayer() + index`
+    /// (DrillItem.java:147-154), so the numbering may not shift — but no leaf is created for it.
+    pub fn insert_tiles_opt(
+        &mut self,
+        object: O,
+        shapes: &[Option<TileShape>],
+    ) -> Vec<Option<LeafId>> {
+        shapes
+            .iter()
+            .enumerate()
+            .map(|(index, shape)| {
+                // ShapeTree.java:46-49.
+                let shape = shape.as_ref()?;
+                // ShapeTree.java:51-55.
+                let bounds = self.bounding_shape(shape)?;
+                Some(self.insert_leaf(object, index, bounds))
+            })
+            .collect()
+    }
+
     /// Inserts one leaf (ShapeTree.java:45-60 for the leaf construction, MinAreaTree.java:51-87
     /// for the placement).
     ///

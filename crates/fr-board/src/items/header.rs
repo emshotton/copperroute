@@ -53,7 +53,17 @@ pub struct TreeEntries {
     /// Java `SearchTreeInfo.entryArr` (ItemSearchTreesInfo.java:84).
     pub leaves: Option<Vec<Option<LeafId>>>,
     /// Java `SearchTreeInfo.precalculatedTreeShapes` (ItemSearchTreesInfo.java:85).
-    pub shapes: Option<Vec<TileShape>>,
+    ///
+    /// The inner `Option` is the *element* `null` Java allows and relies on:
+    /// `ShapeSearchTree.calculateTreeShapes(DrillItem)` writes `result[i] = null`
+    /// (ShapeSearchTree.java:882, and the same line in both subclass overrides,
+    /// ShapeSearchTree45Degree.java:500 / ShapeSearchTree90Degree.java:446) for a layer where the
+    /// padstack has no pad and the hole-clearance rule synthesises no obstacle either — a
+    /// through-via with unused inner layers, which is the common case. `ShapeTree.insert` then
+    /// leaves that index leafless (ShapeTree.java:46-49). The slot must stay, because
+    /// `DrillItem.shapeLayer(index)` is `firstLayer() + index` (DrillItem.java:147-154): dropping
+    /// it would renumber every later layer.
+    pub shapes: Option<Vec<Option<TileShape>>>,
 }
 
 /// The fields `Item.java` declares on its abstract base class (Item.java:41-67), and every
@@ -355,7 +365,7 @@ impl ItemHeader {
     // added in Task 10: `ShapeSearchTree::calculate_tree_shapes(&Item)` and the lazy fill at
     // Item.java:233-236 (`Item.getPrecalculatedTreeShapes`) that calls it and stores the result
     // through `set_precalculated_tree_shapes` below.
-    pub fn get_precalculated_tree_shapes(&self, tree: TreeId) -> Option<&[TileShape]> {
+    pub fn get_precalculated_tree_shapes(&self, tree: TreeId) -> Option<&[Option<TileShape>]> {
         self.tree_entries
             .get(&tree)
             .and_then(|e| e.shapes.as_deref())
@@ -367,7 +377,7 @@ impl ItemHeader {
     /// not ported: Java's `board == null` and `searchTreesInfo == null` guards
     /// (Item.java:1023-1029) — see the note on [`ItemHeader::tree_entries`] for why the second
     /// one is unreachable.
-    pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<TileShape>) {
+    pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<Option<TileShape>>) {
         self.tree_entries.entry(tree).or_default().shapes = Some(shapes);
     }
 

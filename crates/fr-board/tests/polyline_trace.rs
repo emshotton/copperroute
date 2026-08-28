@@ -60,6 +60,7 @@ impl Fixture {
             components: &self.components,
             rules: &self.rules,
             bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
         }
     }
 }
@@ -355,7 +356,7 @@ fn translate_by_moves_the_polyline_and_clears_the_derived_data() {
     // PolylineTrace.java:143-147. T8.java case A.
     let mut t = trace(1, two_point_polyline(), 0, 1000);
     t.hdr
-        .set_precalculated_tree_shapes(TreeId(0), vec![TileShape::Box(IntBox::EMPTY)]);
+        .set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(IntBox::EMPTY))]);
     t.translate_by(&Vector::Int(IntVector::new(1000, -2000)))
         .expect("translating a valid polyline cannot fail");
     assert_eq!(t.first_corner(), Some(p(11_000, 8000)));
@@ -368,7 +369,7 @@ fn turn_90_degree_turns_the_polyline_and_clears_the_derived_data() {
     // PolylineTrace.java:149-153. T8.java case A / D.
     let mut t = trace(1, two_point_polyline(), 0, 1000);
     t.hdr
-        .set_precalculated_tree_shapes(TreeId(0), vec![TileShape::Box(IntBox::EMPTY)]);
+        .set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(IntBox::EMPTY))]);
     t.turn_90_degree(1, &IntPoint::new(0, 0))
         .expect("turning a valid polyline cannot fail");
     assert_eq!(t.first_corner(), Some(p(-10_000, 10_000)));
@@ -387,7 +388,7 @@ fn rotate_approx_rotates_the_polyline_but_does_not_clear_the_derived_data() {
     // one of the four transforms with no `clearDerivedData()` call, so the cached search-tree
     // shapes survive the rotation. T8.java case A.
     let mut t = trace(1, two_point_polyline(), 0, 1000);
-    let stale = vec![TileShape::Box(IntBox::from_coords(1, 2, 3, 4))];
+    let stale = vec![Some(TileShape::Box(IntBox::from_coords(1, 2, 3, 4)))];
     t.hdr
         .set_precalculated_tree_shapes(TreeId(0), stale.clone());
     t.rotate_approx(90.0, &FloatPoint::new(0.0, 0.0));
@@ -406,7 +407,7 @@ fn change_placement_side_mirrors_vertically_and_flips_the_layer() {
     let f = Fixture::with_layers(4);
     let mut t = trace(1, two_point_polyline(), 1, 1000);
     t.hdr
-        .set_precalculated_tree_shapes(TreeId(0), vec![TileShape::Box(IntBox::EMPTY)]);
+        .set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(IntBox::EMPTY))]);
     t.change_placement_side(&IntPoint::new(0, 0), &f.ctx())
         .expect("mirroring a valid polyline cannot fail");
     assert_eq!(t.first_corner(), Some(p(-10_000, 10_000)));

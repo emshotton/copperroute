@@ -1,0 +1,573 @@
+//! Rust twin of `scripts/differential/java/P2T10.java` (Plan 2 Task 10).
+//!
+//! Builds the same two-layer board — two pins from one component, two traces, an empty board
+//! outline — through `fr-board`'s public API, then prints the same lines the Java driver prints:
+//! every item's identity, every tree's key/leaves/stored shapes, and the result of every query.
+//!
+//! Modes: `0` = 45-degree board, `1` = 90-degree, `2` = no angle restriction, `3` = the
+//! clearance-matrix dump plus the in-place mutation methods.
+
+use std::collections::BTreeMap;
+
+use fr_board::prelude::*;
+use fr_geometry::{
+    IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, Simplex, TileShape,
+};
+
+const BOUNDING_BOX: IntBox = IntBox {
+    ll: IntPoint {
+        x: -10_000,
+        y: -10_000,
+    },
+    ur: IntPoint {
+        x: 10_000,
+        y: 10_000,
+    },
+};
+
+struct Board {
+    library: BoardLibrary,
+    components: Components,
+    rules: BoardRules,
+    bounding_box: IntBox,
+    items: BTreeMap<ItemId, Item>,
+    manager: SearchTreeManager,
+}
+
+impl Board {
+    fn ctx(&self) -> ItemCtx<'_> {
+        ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        }
+    }
+
+    /// `board.itemList` order: descending id (UndoableObjects' `ConcurrentSkipListMap` keyed by
+    /// `Item.compareTo`).
+    fn board_order(&self) -> Vec<ItemId> {
+        self.items.keys().rev().copied().collect()
+    }
+
+    fn insert_all(&mut self) {
+        let mut items = std::mem::take(&mut self.items);
+        let ctx = ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        for item in items.values_mut() {
+            self.manager.insert(item, &ctx);
+        }
+        self.items = items;
+    }
+
+    fn autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
+        let mut items = std::mem::take(&mut self.items);
+        let ctx = ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+        let id = self
+            .manager
+            .get_autoroute_tree(clearance_class_index, &mut refs, &ctx)
+            .id();
+        drop(refs);
+        self.items = items;
+        id
+    }
+
+    fn tree(&self, id: TreeId) -> &ShapeSearchTree {
+        self.manager
+            .trees()
+            .find(|tree| tree.id() == id)
+            .expect("tree exists")
+    }
+}
+
+fn build(mode: i32) -> Board {
+    let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
+    let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+    assert!(clearance_matrix.append_class("wide"));
+    clearance_matrix.set_value_on_all_layers(2, 1, 600);
+    clearance_matrix.set_value_on_all_layers(2, 2, 800);
+    let mut rules = BoardRules::new(layers(), clearance_matrix);
+    rules.trace_angle_restriction = match mode {
+        1 => AngleRestriction::NinetyDegree,
+        2 => AngleRestriction::None,
+        _ => AngleRestriction::FortyFiveDegree,
+    };
+
+    let mut padstacks = Padstacks::new(layers());
+    let smd = padstacks.add(
+        "smd",
+        vec![
+            Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -50, -50, 50, 50,
+            )))),
+            None,
+        ],
+        false,
+        false,
+    );
+    let through_shape = Shape::Tile(TileShape::Octagon(IntOctagon::new(
+        -70, -70, 70, 70, -140, 140, -140, 140,
+    )));
+    let through = padstacks.add(
+        "thru",
+        vec![Some(through_shape.clone()), Some(through_shape)],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let package = packages.add(
+        "pkg",
+        vec![
+            PackagePin::new("P1", smd, IntVector::new(-500, 0).into(), 0.0),
+            PackagePin::new("P2", through, IntVector::new(500, 0).into(), 0.0),
+        ],
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let library = BoardLibrary::new(padstacks, packages);
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, package);
+
+    let mut items = BTreeMap::new();
+    items.insert(
+        ItemId(1),
+        Item::BoardOutline(BoardOutline::new(
+            ItemHeader::new(ItemId(1), Vec::new(), 0, 0, FixedState::SystemFixed),
+            Vec::new(),
+        )),
+    );
+    items.insert(
+        ItemId(2),
+        Item::Pin(Pin::new(
+            ItemHeader::new(ItemId(2), vec![1], 1, 1, FixedState::Unfixed),
+            0,
+        )),
+    );
+    items.insert(
+        ItemId(3),
+        Item::Pin(Pin::new(
+            ItemHeader::new(ItemId(3), vec![1], 1, 1, FixedState::Unfixed),
+            1,
+        )),
+    );
+    items.insert(
+        ItemId(4),
+        Item::Trace(PolylineTrace::new(
+            ItemHeader::new(ItemId(4), vec![1], 1, 0, FixedState::Unfixed),
+            Polyline::from_points(&[
+                Point::new(-500, 0),
+                Point::new(0, 0),
+                Point::new(0, 400),
+                Point::new(500, 400),
+            ]),
+            0,
+            30,
+            None,
+        )),
+    );
+    items.insert(
+        ItemId(5),
+        Item::Trace(PolylineTrace::new(
+            ItemHeader::new(ItemId(5), vec![2], 2, 0, FixedState::Unfixed),
+            Polyline::from_points(&[
+                Point::new(-800, 300),
+                Point::new(-800, 900),
+                Point::new(300, 900),
+            ]),
+            0,
+            40,
+            None,
+        )),
+    );
+
+    let mut board = Board {
+        library,
+        components,
+        rules,
+        bounding_box: BOUNDING_BOX,
+        items,
+        manager: SearchTreeManager::new(),
+    };
+    board.insert_all();
+    board
+}
+
+fn angle_name(angle: AngleRestriction) -> &'static str {
+    match angle {
+        AngleRestriction::None => "NONE",
+        AngleRestriction::FortyFiveDegree => "FORTYFIVE_DEGREE",
+        AngleRestriction::NinetyDegree => "NINETY_DEGREE",
+    }
+}
+
+fn class_name(item: &Item) -> &'static str {
+    match item {
+        Item::Trace(_) => "PolylineTrace",
+        Item::Via(_) => "Via",
+        Item::Pin(_) => "Pin",
+        Item::ObstacleArea(_) => "ObstacleArea",
+        Item::ConductionArea(_) => "ConductionArea",
+        Item::ViaObstacleArea(_) => "ViaObstacleArea",
+        Item::ComponentObstacleArea(_) => "ComponentObstacleArea",
+        Item::ComponentOutline(_) => "ComponentOutline",
+        Item::BoardOutline(_) => "BoardOutline",
+    }
+}
+
+fn b(x: &IntBox) -> String {
+    format!("[{},{}..{},{}]", x.ll.x, x.ll.y, x.ur.x, x.ur.y)
+}
+
+fn shp(s: &TileShape) -> String {
+    match s {
+        TileShape::Box(x) => format!("Box{}", b(x)),
+        TileShape::Octagon(o) => format!(
+            "Oct[{},{},{},{},{},{},{},{}]",
+            o.left_x,
+            o.bottom_y,
+            o.right_x,
+            o.top_y,
+            o.upper_left_diagonal_x,
+            o.lower_right_diagonal_x,
+            o.lower_left_diagonal_x,
+            o.upper_right_diagonal_x
+        ),
+        TileShape::Simplex(sx) => {
+            let mut out = format!("Simplex{}{{", b(&s.bounding_box()));
+            for i in 0..sx.border_line_count() {
+                if let Some(line) = sx.border_line(i) {
+                    out.push_str(&format!("({}->{})", line.a, line.b));
+                }
+            }
+            out.push('}');
+            out
+        }
+    }
+}
+
+fn bounds_class(s: &TileShape) -> &'static str {
+    match s {
+        TileShape::Box(_) => "IntBox",
+        TileShape::Octagon(_) => "IntOctagon",
+        TileShape::Simplex(_) => "Simplex",
+    }
+}
+
+fn nets(item: &Item) -> String {
+    let list: Vec<String> = item.net_nos().iter().map(i32::to_string).collect();
+    format!("[{}]", list.join(", "))
+}
+
+fn dump_items(board: &Board) {
+    let ctx = board.ctx();
+    for id in board.board_order() {
+        let item = &board.items[&id];
+        println!(
+            "item id={} class={} nets={} cc={} layers={}..{} tileShapeCount={} bbox={}",
+            id.0,
+            class_name(item),
+            nets(item),
+            item.header().clearance_class(),
+            item.first_layer(&ctx),
+            item.last_layer(&ctx),
+            item.tile_shape_count(&ctx),
+            b(&item.bounding_box(&ctx))
+        );
+    }
+}
+
+fn dump_tree(board: &Board, label: &str, id: TreeId) {
+    let tree = board.tree(id);
+    println!("tree {label} key={tree} size={}", tree.size());
+    for leaf in tree.tree().to_array() {
+        let entry = tree.tree().leaf_entry(leaf);
+        let TreeObject::Item(ItemId(obj)) = entry.object else {
+            unreachable!()
+        };
+        let bounds = tree.tree().leaf_bounds(leaf).to_tile_shape();
+        println!(
+            "  leaf obj={obj} idx={} boundsClass={} bounds={}",
+            entry.shape_index,
+            bounds_class(&bounds),
+            shp(&bounds)
+        );
+    }
+    for item_id in board.board_order() {
+        let item = &board.items[&item_id];
+        let n = item.tree_shape_count(id);
+        let mut line = String::new();
+        for i in 0..n {
+            line.push_str(&format!(
+                " [{i}]={}",
+                item.get_tree_shape(id, i).map_or("null".to_string(), shp)
+            ));
+        }
+        println!("  shapes id={} n={n}{line}", item_id.0);
+    }
+}
+
+fn query(
+    board: &mut Board,
+    label: &str,
+    id: TreeId,
+    shape: &TileShape,
+    layer: Option<usize>,
+    ignore: &[i32],
+    cc: usize,
+) {
+    let layer_text = layer.map_or(-1, |l| l as i32);
+    let ignore_text: Vec<String> = ignore.iter().map(i32::to_string).collect();
+    println!(
+        "query tree={label} shape={} layer={layer_text} ignore=[{}] cc={cc}",
+        shp(shape),
+        ignore_text.join(", ")
+    );
+    let items = std::mem::take(&mut board.items);
+    let ctx = ItemCtx {
+        library: &board.library,
+        components: &board.components,
+        rules: &board.rules,
+        bounding_box: &board.bounding_box,
+        max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+    };
+    let tree = board
+        .manager
+        .trees()
+        .find(|tree| tree.id() == id)
+        .expect("tree exists");
+    let mut counter = 0;
+
+    let objects = tree.overlapping_objects(shape, layer, ignore, &items, &ctx);
+    let mut line = String::from("  overlappingObjects:");
+    for object in &objects {
+        if let TreeObject::Item(ItemId(id)) = object {
+            line.push_str(&format!(" {id}"));
+        }
+    }
+    println!("{line}");
+
+    let entries = tree.overlapping_tree_entries(shape, layer, ignore, &items, &ctx);
+    println!("  overlappingTreeEntries:{}", pair_text(&entries));
+
+    let with_clearance = tree.overlapping_tree_entries_with_clearance(
+        shape,
+        layer,
+        ignore,
+        cc,
+        &items,
+        &ctx,
+        &mut counter,
+    );
+    println!(
+        "  overlappingTreeEntriesWithClearance:{}",
+        pair_text(&with_clearance)
+    );
+
+    let item_ids =
+        tree.overlapping_items_with_clearance(shape, layer, ignore, cc, &items, &ctx, &mut counter);
+    let mut line = String::from("  overlappingItemsWithClearance:");
+    for ItemId(id) in item_ids {
+        line.push_str(&format!(" {id}"));
+    }
+    println!("{line}");
+    board.items = items;
+}
+
+fn pair_text(entries: &[TreeEntry<TreeObject>]) -> String {
+    let mut out = String::new();
+    for entry in entries {
+        if let TreeObject::Item(ItemId(id)) = entry.object {
+            out.push_str(&format!(" {id}/{}", entry.shape_index));
+        }
+    }
+    out
+}
+
+fn dump(board: &mut Board, mode: i32) {
+    println!(
+        "mode={mode} angle={}",
+        angle_name(board.rules.trace_angle_restriction)
+    );
+    dump_items(board);
+    let default_id = board.manager.get_default_tree().id();
+    dump_tree(board, "default", default_id);
+    let auto1 = board.autoroute_tree(1);
+    dump_tree(board, "autoroute_cc1", auto1);
+    let auto2 = board.autoroute_tree(2);
+    dump_tree(board, "autoroute_cc2", auto2);
+
+    let probe = TileShape::Box(IntBox::from_coords(-600, -100, 600, 500));
+    query(board, "default", default_id, &probe, Some(0), &[], 1);
+    query(board, "default", default_id, &probe, Some(0), &[1], 1);
+    query(board, "default", default_id, &probe, None, &[], 1);
+    query(board, "default", default_id, &probe, Some(1), &[], 1);
+    query(board, "default", default_id, &probe, Some(0), &[], 2);
+    query(board, "autoroute_cc1", auto1, &probe, Some(0), &[], 1);
+
+    let small = TileShape::Box(IntBox::from_coords(-520, -20, -480, 20));
+    query(board, "default", default_id, &small, Some(0), &[], 1);
+    query(board, "default", default_id, &small, Some(0), &[1], 1);
+}
+
+fn mutate(board: &mut Board) {
+    let class_count = board.rules.clearance_matrix.get_class_count();
+    println!("matrix classCount={class_count}");
+    for i in 0..class_count {
+        let mut line = format!("  getValue({i},j,0,false):");
+        for j in 0..class_count {
+            line.push_str(&format!(
+                " {}",
+                board.rules.clearance_matrix.get_value(i, j, 0, false)
+            ));
+        }
+        line.push_str(" | withMargin:");
+        for j in 0..class_count {
+            line.push_str(&format!(
+                " {}",
+                board.rules.clearance_matrix.get_value(i, j, 0, true)
+            ));
+        }
+        line.push_str(&format!(
+            " | maxValue={}",
+            board.rules.clearance_matrix.max_value(i, 0)
+        ));
+        line.push_str(&format!(
+            " | compensation={}",
+            board.rules.clearance_matrix.clearance_compensation_value(i, 0)
+        ));
+        println!("{line}");
+    }
+
+    let default_id = board.manager.get_default_tree().id();
+    let auto1 = board.autoroute_tree(1);
+    let auto2 = board.autoroute_tree(2);
+    for id in [default_id, auto1, auto2] {
+        for cc in 0..=2 {
+            println!(
+                "clearanceCompensationValue tree={} cc={cc} layer0={}",
+                board.tree(id),
+                board
+                    .tree(id)
+                    .clearance_compensation_value(cc, 0, &board.rules)
+            );
+        }
+    }
+
+    let trace = match &board.items[&ItemId(4)] {
+        Item::Trace(trace) => trace.clone(),
+        _ => unreachable!(),
+    };
+    println!(
+        "validateEntries(4)={}",
+        board.tree(default_id).validate_entries(&board.items[&ItemId(4)])
+    );
+    println!(
+        "compensatedHalfWidth(4, default)={}",
+        board
+            .tree(default_id)
+            .compensated_half_width(&trace, &board.rules)
+    );
+    println!(
+        "compensatedHalfWidth(4, auto1)={}",
+        board.tree(auto1).compensated_half_width(&trace, &board.rules)
+    );
+
+    println!("--- changeItemShape(trace 4, 1, Box[-20,-20..20,420])");
+    let mut item = board.items.remove(&ItemId(4)).expect("item 4");
+    board.manager.get_default_tree_mut().change_item_shape(
+        &mut item,
+        1,
+        TileShape::Box(IntBox::from_coords(-20, -20, 20, 420)),
+    );
+    board.items.insert(ItemId(4), item);
+    dump_tree(board, "default_after_changeItemShape", default_id);
+
+    println!("--- changeEntries(trace 4, shifted polyline, keepStart=1, keepEnd=1)");
+    let shifted = Polyline::from_points(&[
+        Point::new(-500, 0),
+        Point::new(0, 0),
+        Point::new(0, 600),
+        Point::new(500, 600),
+    ]);
+    let mut item = board.items.remove(&ItemId(4)).expect("item 4");
+    {
+        let Item::Trace(trace) = &mut item else {
+            unreachable!()
+        };
+        let rules = &board.rules;
+        board
+            .manager
+            .get_default_tree_mut()
+            .change_entries(trace, &shifted, 1, 1, rules);
+    }
+    board.items.insert(ItemId(4), item);
+    dump_tree(board, "default_after_changeEntries", default_id);
+    println!(
+        "validateEntries(4)={}",
+        board.tree(default_id).validate_entries(&board.items[&ItemId(4)])
+    );
+
+    println!("--- setClearanceCompensationUsed(true)");
+    let mut items = std::mem::take(&mut board.items);
+    let ctx = ItemCtx {
+        library: &board.library,
+        components: &board.components,
+        rules: &board.rules,
+        bounding_box: &board.bounding_box,
+        max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+    };
+    let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+    board
+        .manager
+        .set_clearance_compensation_used(true, &mut refs, &ctx);
+    drop(refs);
+    board.items = items;
+    println!(
+        "isClearanceCompensationUsed={}",
+        board.manager.is_clearance_compensation_used()
+    );
+    let compensated = board.manager.get_default_tree().id();
+    dump_tree(board, "default_compensated", compensated);
+    let probe = TileShape::Box(IntBox::from_coords(-600, -100, 600, 500));
+    query(
+        board,
+        "default_compensated",
+        compensated,
+        &probe,
+        Some(0),
+        &[],
+        1,
+    );
+}
+
+fn main() {
+    // Silence the unused import in builds where no Simplex is printed.
+    let _ = Simplex::EMPTY;
+    let mode: i32 = std::env::args()
+        .nth(1)
+        .map_or(0, |a| a.parse().expect("mode is an integer"));
+    let mut board = build(mode);
+    if mode == 3 {
+        mutate(&mut board);
+    } else {
+        dump(&mut board, mode);
+    }
+}

@@ -91,7 +91,9 @@ pub use area::{
     ComponentObstacleArea, ComponentOutline, ConductionArea, ObstacleArea, ObstacleAreaData,
     ViaObstacleArea,
 };
-pub use drill::{DrillItemData, ItemCtx, Pin, TraceExitRestriction, Via};
+pub use drill::{
+    DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, ItemCtx, Pin, TraceExitRestriction, Via,
+};
 pub use header::{AutorouteInfo, ItemHeader, TreeEntries};
 pub use trace::PolylineTrace;
 
@@ -750,7 +752,7 @@ impl Item {
     pub fn tree_shape_count(&self, tree: TreeId) -> usize {
         self.header()
             .get_precalculated_tree_shapes(tree)
-            .map_or(0, <[TileShape]>::len)
+            .map_or(0, <[Option<TileShape>]>::len)
     }
 
     /// Port of `Item.getTreeShape(ShapeTree, int)` (Item.java:212-226), reading the cache only.
@@ -761,6 +763,7 @@ impl Item {
         self.header()
             .get_precalculated_tree_shapes(tree)
             .and_then(|shapes| shapes.get(index))
+            .and_then(Option::as_ref)
     }
 
     /// Port of `Item.setSearchTreeEntries` (Item.java:996-1006).
@@ -776,7 +779,7 @@ impl Item {
     }
 
     /// Port of `Item.setPrecalculatedTreeShapes` (Item.java:1019-1031).
-    pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<TileShape>) {
+    pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<Option<TileShape>>) {
         self.header_mut()
             .set_precalculated_tree_shapes(tree, shapes);
     }
@@ -1177,6 +1180,7 @@ mod tests {
                 components: &self.components,
                 rules: &self.rules,
                 bounding_box: &self.bounding_box,
+                max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
             }
         }
     }

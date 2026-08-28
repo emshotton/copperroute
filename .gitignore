@@ -5,3 +5,4 @@
 /scripts/differential/rust/target/
 /scripts/differential/build/
 /scripts/gen-reference/build/
+/scripts/differential/out/

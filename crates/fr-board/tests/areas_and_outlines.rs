@@ -54,6 +54,7 @@ impl Fixture {
             components: &self.components,
             rules: &self.rules,
             bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
         }
     }
 
@@ -413,13 +414,13 @@ fn conduction_area_trace_connection_shape_is_the_tree_shape() {
     assert_eq!(area.get_trace_connection_shape(tree, 0, &f.ctx()), None);
 
     let shapes = vec![
-        TileShape::Box(bx(0, 0, 10, 10)),
-        TileShape::Box(bx(10, 0, 20, 10)),
+        Some(TileShape::Box(bx(0, 0, 10, 10))),
+        Some(TileShape::Box(bx(10, 0, 20, 10))),
     ];
     area.hdr.set_precalculated_tree_shapes(tree, shapes.clone());
     assert_eq!(
         area.get_trace_connection_shape(tree, 1, &f.ctx()),
-        Some(shapes[1].clone())
+        shapes[1].clone()
     );
     assert_eq!(area.get_trace_connection_shape(tree, 2, &f.ctx()), None);
 }
@@ -436,7 +437,7 @@ fn conduction_area_clear_derived_data_drops_the_absolute_area() {
         true,
     ));
     assert_eq!(item.bounding_box(&f.ctx()), bx(100, 200, 120, 220));
-    item.set_precalculated_tree_shapes(TreeId(0), vec![TileShape::Box(bx(0, 0, 1, 1))]);
+    item.set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(bx(0, 0, 1, 1)))]);
     item.get_autoroute_info();
 
     item.clear_derived_data();
@@ -537,7 +538,7 @@ fn component_outline_clear_derived_data_does_not_clear_the_header() {
     // **not** call `super.clearDerivedData()`, unlike every other override, so the cached tree
     // shapes and the autoroute scratch survive.
     let mut item = Item::ComponentOutline(component_outline(1, true, 0.0));
-    item.set_precalculated_tree_shapes(TreeId(0), vec![TileShape::Box(bx(0, 0, 1, 1))]);
+    item.set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(bx(0, 0, 1, 1)))]);
     item.get_autoroute_info();
 
     item.clear_derived_data();

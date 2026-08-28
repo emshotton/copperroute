@@ -48,3 +48,8 @@ path = "src/bin/p2t3.rs"
 [[bin]]
 name = "p2t3r"
 path = "src/bin/p2t3r.rs"
+
+# Plan 2 Task 10: ShapeSearchTree / SearchTreeManager against the real BasicBoard.
+[[bin]]
+name = "p2t10"
+path = "src/bin/p2t10.rs"
