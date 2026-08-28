@@ -53,3 +53,8 @@ path = "src/bin/p2t3r.rs"
 [[bin]]
 name = "p2t10"
 path = "src/bin/p2t10.rs"
+
+# Plan 2 Task 11: `Board` against the real RoutingBoard.
+[[bin]]
+name = "p2t11"
+path = "src/bin/p2t11.rs"

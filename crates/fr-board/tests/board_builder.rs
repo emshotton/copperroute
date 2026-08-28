@@ -616,6 +616,59 @@ impl TraceFixture {
         fixture
     }
 
+    /// The same two-layer board carrying exactly the two traces described by `a` and `b`, so a
+    /// test can build the head-to-head and tail-to-tail pairs `mergeEntriesInFront`'s and
+    /// `mergeEntriesAtEnd`'s `changeOrder` branches (ShapeSearchTree.java:176,251) need.
+    /// `P2T10.java` mode 8 builds the same two boards.
+    pub fn merge_pair(a: &[Point], b: &[Point]) -> TraceFixture {
+        let rules = BoardRules::new(
+            layers(),
+            ClearanceMatrix::get_default_instance(&layers(), 200),
+        );
+        let mut items = BTreeMap::new();
+        items.insert(
+            ItemId(1),
+            Item::BoardOutline(BoardOutline::new(
+                ItemHeader::new(ItemId(1), Vec::new(), 0, 0, FixedState::SystemFixed),
+                Vec::new(),
+            )),
+        );
+        for (index, corners) in [a, b].into_iter().enumerate() {
+            let id = ItemId(index as u32 + 2);
+            items.insert(
+                id,
+                Item::Trace(PolylineTrace::new(
+                    ItemHeader::new(id, vec![1], 1, 0, FixedState::Unfixed),
+                    Polyline::from_points(corners),
+                    0,
+                    30,
+                    None,
+                )),
+            );
+        }
+        let mut fixture = TraceFixture {
+            library: BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+            components: Components::new(),
+            rules,
+            bounding_box: BOUNDING_BOX,
+            items,
+            manager: SearchTreeManager::new(),
+        };
+        let mut items = std::mem::take(&mut fixture.items);
+        let ctx = ItemCtx {
+            library: &fixture.library,
+            components: &fixture.components,
+            rules: &fixture.rules,
+            bounding_box: &fixture.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        for item in items.values_mut() {
+            fixture.manager.insert(item, &ctx);
+        }
+        fixture.items = items;
+        fixture
+    }
+
     /// `SearchTreeManager.getAutorouteTree(clearanceClassIndex)` over this fixture's items.
     pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
         let mut items = std::mem::take(&mut self.items);
@@ -682,4 +735,153 @@ pub fn trace_piece(id: u32, corners: &[(i32, i32)]) -> PolylineTrace {
         30,
         None,
     )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The `Board` fixture (`P2T11.java`)
+// ---------------------------------------------------------------------------------------------
+
+/// The board `scripts/differential/java/P2T11.java` builds through the real `RoutingBoard`, and
+/// against which every expectation in `tests/board.rs` is transcribed.
+///
+/// Two layers, a 10000-square bounding box, a 5000-square outline polygon, one two-pin component
+/// (an SMD pad on layer 0 at `(-1000, 0)`, a through pad on both layers at `(1000, 1000)`), and:
+///
+/// | id | item |
+/// |---|---|
+/// | 1 | the `BoardOutline`, clearance class 1 |
+/// | 2 | pin P1 (SMD, layer 0), net 1 |
+/// | 3 | pin P2 (through, layers 0-1), net 1 |
+/// | 4 | a trace on layer 0 from the SMD pin to `(0, 0)`, net 1, half width 30 |
+/// | 5 | a trace on layer 1 from `(0, 0)` to the through pin, net 1, half width 30 |
+/// | 6 | a via at `(0, 0)` joining the two, net 1 |
+/// | 7 | an obstacle area on layer 0, well away from everything |
+/// | 8 | a conduction area on layer 0, net 2 |
+pub fn p2t11_board() -> Board {
+    let ls = layers();
+    let mut clearance_matrix = ClearanceMatrix::get_default_instance(&ls, 200);
+    assert!(clearance_matrix.append_class("wide"));
+    clearance_matrix.set_value_on_all_layers(2, 1, 600);
+    clearance_matrix.set_value_on_all_layers(2, 2, 800);
+    let mut rules = BoardRules::new(layers(), clearance_matrix);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+
+    let mut padstacks = Padstacks::new(layers());
+    let smd_pad = padstacks.add(
+        "smd",
+        vec![
+            Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -50, -50, 50, 50,
+            )))),
+            None,
+        ],
+        false,
+        false,
+    );
+    let thru_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-70, -70, 70, 70)));
+    let thru_pad = padstacks.add(
+        "thru",
+        vec![Some(thru_shape.clone()), Some(thru_shape)],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let pkg = packages.add(
+        "pkg",
+        vec![
+            PackagePin::new("P1", smd_pad, IntVector::new(-1000, 0).into(), 0.0),
+            PackagePin::new("P2", thru_pad, IntVector::new(1000, 1000).into(), 0.0),
+        ],
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
+
+    let outline = vec![PolylineShapeRef::Polygon(
+        fr_geometry::PolygonShape::from_points(&[
+            Point::new(-5000, -5000),
+            Point::new(5000, -5000),
+            Point::new(5000, 5000),
+            Point::new(-5000, 5000),
+        ]),
+    )];
+    let mut board = Board::new(
+        outline,
+        1,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(padstacks, packages),
+        components,
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+    board.rules.nets.add("N2", 1, false, default_class);
+
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(-1000, 0), Point::new(0, 0)]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[
+            Point::new(0, 0),
+            Point::new(1000, 0),
+            Point::new(1000, 1000),
+        ]),
+        1,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_via(
+        thru_pad,
+        Point::new(0, 0),
+        vec![1],
+        1,
+        FixedState::Unfixed,
+        true,
+    );
+    board.insert_obstacle(
+        fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            2000, 2000, 3000, 3000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_conduction_area(
+        fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -3000, -3000, -2000, -2000,
+        )))),
+        0,
+        vec![2],
+        1,
+        true,
+        FixedState::Unfixed,
+    );
+    board
+}
+
+/// A set of item ids in Java's `TreeSet<Item>` order — **descending** id (quirk #44) — as the
+/// bare numbers, so a test can transcribe `P2T11.java`'s output verbatim.
+pub fn descending(set: std::collections::BTreeSet<ItemId>) -> Vec<u32> {
+    set.into_iter().rev().map(|id| id.0).collect()
+}
+
+/// The same for the `Vec<ItemId>` the item-list queries return (already descending).
+pub fn nums(ids: impl IntoIterator<Item = ItemId>) -> Vec<u32> {
+    ids.into_iter().map(|id| id.0).collect()
 }

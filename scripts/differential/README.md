@@ -213,6 +213,11 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t10` (mode 5) | 54 | 0 | exact match (the three entry-surgery methods) |
 | `p2t10` (mode 6) | 33 | 0 | exact match (`reduceTraceShapeAtTiePin`) |
 | `p2t10` (mode 7) | 17 | 0 | exact match (skewed outline: `Simplex` bands regularised) |
+| `p2t10` (mode 8) | 39 | 0 | exact match (the `changeOrder` half of both merges: head-to-head, tail-to-tail) |
+| `p2t11` (mode 0) | 59 | 0 | exact match (insert/remove protocol, item-list and search queries) |
+| `p2t11` (mode 1) | 66 | 0 | exact match (the connectivity family) |
+| `p2t11` (mode 2) | 27 | 0 | exact match (`checkTraceSegment` and the check queries) |
+| `p2t11` (mode 3) | 39 | 0 | exact match (changed area, conduction latch, `moveBy`, net queries) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -240,6 +245,42 @@ on every run. That order decides the *structure* of any tree built by
 `SearchTreeManager` docs. (Plan 2's Task 16 brief describes the item order as
 "`ConcurrentHashMap` (JVM-dependent)"; for `UndoableObjects` that is not the
 case.)
+
+## `p2t11` (Plan 2 Task 11)
+
+`p2t11` drives the *real* `app.freerouting.board.facade.RoutingBoard` and
+`fr-board`'s `Board` over the same two-layer board — a 5000-square outline, a
+two-pin component (SMD pad on layer 0, through pad on both), two traces, a via
+joining them, an obstacle area and a conduction area — and prints every public
+query's answer. Like `p2t10` it needs a JDK 25 (`JAVA25_HOME`) and the clone's
+own `build/libs/freerouting-current-executable.jar` (`FREEROUTING_JAR`),
+because it compiles against the built board stack rather than against the
+`geometry/planar` sources.
+
+The four modes cover:
+
+* **0** — `BasicBoard`'s constructor (which inserts the `BoardOutline` as item
+  1), the id the generator hands each typed inserter, `revision` after every
+  step, all eleven item-list queries, the three overlap queries, and the
+  removal protocol including the refusal to delete a `SYSTEM_FIXED` outline.
+* **1** — `getNormalContacts`/`getAllContacts`/`getConnectedSet`/
+  `getUnconnectedSet`/`getConnectionItems`/`normalContactPoint`/
+  `getRatsnestCorners`/`isTail`/`isOverlap`/`isCycle`/`isFanoutVia`/
+  `getConnectedSets`/`touchingPinsAtEndCorners`/`validate`, over a
+  pin-trace-via-trace-pin chain that crosses layers.
+* **2** — `checkTraceSegment` (free, blocked, own-net, foreign-net, degenerate,
+  shove-filtered and wide-clearance), `checkShape`, `checkTraceShape` with and
+  without a contact-pin set, `checkPolylineTrace`, `checkMoveItem`,
+  `checkChangeNet`, `pickNearestRoutingItem`, `getTraceTail`.
+* **3** — the `ChangedArea` lifecycle, `changeConductionIsObstacle`'s latch
+  (quirk #50), `unfillConductionAreas`, `moveBy`, `changeClearanceClassIndex`,
+  `makeConductive`, `generateKeepoutOutside` and the five `Net` board queries.
+
+Two Java findings came out of it, both now in `docs/java-quirks.md`:
+`Item.getAllNetNames` joins `Net::toString` (`"Net #1 (N1)"`), not the bare
+name; and `Item.getTileShape` really does lazily recompute the tree-shape cache
+(Item.java:227-238), which is the only thing that keeps `validate()` true after
+`changeClearanceClassIndex` has cleared the derived data.
 
 ## Harness maintenance note (Task 18)
 

@@ -302,16 +302,13 @@ impl Board {
         let half_width = trace.get_half_width();
         let clearance_class = trace.hdr.clearance_class();
         let net_nos = trace.hdr.net_nos.clone();
-        let mut result = self.touching_pins_at_end_corners_of(
+        self.touching_pins_at_end_corners_of(
             &polyline,
             layer,
             half_width,
             &net_nos,
             clearance_class,
-        );
-        // The trace itself is not a pin, so nothing to exclude; kept explicit for the reader.
-        result.remove(&id);
-        result
+        )
     }
 
     /// The body of `Trace.touchingPinsAtEndCorners` (Trace.java:390-410) expressed over a bare
@@ -585,13 +582,17 @@ impl Board {
         if let Some(ignore_items) = ignore_items {
             ignore_items.insert(id);
         }
-        let default_tree = self.default_tree_id();
         let net_nos = item.net_nos().to_vec();
         let clearance_class = item.clearance_class();
-        let moved: Vec<(TileShape, usize)> = (0..item.tile_shape_count(&ctx))
-            .filter_map(|i| {
-                item.get_tile_shape(default_tree, i, &ctx)
-                    .map(|shape| (shape.translate_by(vector), item.shape_layer(i, &ctx)))
+        let shape_layers: Vec<usize> = (0..item.tile_shape_count(&ctx))
+            .map(|i| item.shape_layer(i, &ctx))
+            .collect();
+        let moved: Vec<(TileShape, usize)> = shape_layers
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, layer)| {
+                self.item_tile_shape(id, i)
+                    .map(|shape| (shape.translate_by(vector), layer))
             })
             .collect();
         let bounding_box = self.bounding_box;
@@ -637,13 +638,14 @@ impl Board {
         let Some(item) = self.items.get(&id) else {
             return false;
         };
-        let default_tree = self.default_tree_id();
         let clearance_class = item.clearance_class();
-        let shapes: Vec<(TileShape, usize)> = (0..item.tile_shape_count(&ctx))
-            .filter_map(|i| {
-                item.get_tile_shape(default_tree, i, &ctx)
-                    .map(|shape| (shape, item.shape_layer(i, &ctx)))
-            })
+        let shape_layers: Vec<usize> = (0..item.tile_shape_count(&ctx))
+            .map(|i| item.shape_layer(i, &ctx))
+            .collect();
+        let shapes: Vec<(TileShape, usize)> = shape_layers
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, layer)| self.item_tile_shape(id, i).map(|shape| (shape, layer)))
             .collect();
         for (shape, shape_layer) in shapes {
             let obstacles = self.overlapping_items_with_clearance(

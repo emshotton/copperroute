@@ -662,6 +662,161 @@ fn dump_tie_pin(board: &mut Board) {
 }
 
 /// Mode 7: an outline whose edges run in none of the tree's directions.
+/// Mode 8: the `changeOrder == true` half of `mergeEntriesInFront` (ShapeSearchTree.java:176)
+/// and `mergeEntriesAtEnd` (:251) — two traces meeting head-to-head or tail-to-tail, so
+/// `fromTrace`'s entries have to be transferred in reverse.
+fn dump_change_order_merges() {
+    let joined = Polyline::from_points(&[
+        Point::new(-500, -500),
+        Point::new(-500, 0),
+        Point::new(0, 0),
+        Point::new(500, 0),
+        Point::new(500, 500),
+    ]);
+    println!("mode=8");
+
+    let mut board = build_merge_pair(
+        &[
+            Point::new(0, 0),
+            Point::new(-500, 0),
+            Point::new(-500, -500),
+        ],
+        &[Point::new(0, 0), Point::new(500, 0), Point::new(500, 500)],
+    );
+    let default_id = board.manager.get_default_tree().id();
+    let (first_a, first_b) = (trace_first_corner(&board, 2), trace_first_corner(&board, 3));
+    println!(
+        "headToHead changeOrder={} traceA shapes={} traceB shapes={}",
+        first_a == first_b,
+        trace_shape_count(&board, 2),
+        trace_shape_count(&board, 3)
+    );
+    dump_tree(&board, "before_inFront", default_id);
+    println!("--- mergeEntriesInFront(from=traceA, to=traceB, joined, 1, 4)");
+    let mut trace_a = take_trace(&mut board, 2);
+    let mut trace_b = take_trace(&mut board, 3);
+    {
+        let rules = &board.rules;
+        board.manager.get_default_tree_mut().merge_entries_in_front(
+            &mut trace_a,
+            &mut trace_b,
+            &joined,
+            1,
+            4,
+            rules,
+        );
+    }
+    board.items.insert(ItemId(2), Item::Trace(trace_a));
+    board.items.insert(ItemId(3), Item::Trace(trace_b));
+    dump_tree(&board, "after_inFront", default_id);
+    println!(
+        "validateEntries(traceB)={}",
+        board
+            .tree(default_id)
+            .validate_entries(&board.items[&ItemId(3)])
+    );
+
+    let mut board = build_merge_pair(
+        &[
+            Point::new(-500, -500),
+            Point::new(-500, 0),
+            Point::new(0, 0),
+        ],
+        &[Point::new(500, 500), Point::new(500, 0), Point::new(0, 0)],
+    );
+    let default_id = board.manager.get_default_tree().id();
+    let (last_a, last_b) = (trace_last_corner(&board, 2), trace_last_corner(&board, 3));
+    println!(
+        "tailToTail changeOrder={} traceA shapes={} traceB shapes={}",
+        last_a == last_b,
+        trace_shape_count(&board, 2),
+        trace_shape_count(&board, 3)
+    );
+    dump_tree(&board, "before_atEnd", default_id);
+    println!("--- mergeEntriesAtEnd(from=traceA, to=traceB, joined, 1, 4)");
+    let mut trace_a = take_trace(&mut board, 2);
+    let mut trace_b = take_trace(&mut board, 3);
+    {
+        let rules = &board.rules;
+        board.manager.get_default_tree_mut().merge_entries_at_end(
+            &mut trace_a,
+            &mut trace_b,
+            &joined,
+            1,
+            4,
+            rules,
+        );
+    }
+    board.items.insert(ItemId(2), Item::Trace(trace_a));
+    board.items.insert(ItemId(3), Item::Trace(trace_b));
+    dump_tree(&board, "after_atEnd", default_id);
+    println!(
+        "validateEntries(traceB)={}",
+        board
+            .tree(default_id)
+            .validate_entries(&board.items[&ItemId(3)])
+    );
+}
+
+fn trace_shape_count(board: &Board, id: u32) -> usize {
+    match &board.items[&ItemId(id)] {
+        Item::Trace(t) => t.tile_shape_count(),
+        _ => unreachable!(),
+    }
+}
+
+fn trace_first_corner(board: &Board, id: u32) -> Point {
+    match &board.items[&ItemId(id)] {
+        Item::Trace(t) => t.first_corner().expect("a corner"),
+        _ => unreachable!(),
+    }
+}
+
+fn trace_last_corner(board: &Board, id: u32) -> Point {
+    match &board.items[&ItemId(id)] {
+        Item::Trace(t) => t.last_corner().expect("a corner"),
+        _ => unreachable!(),
+    }
+}
+
+/// A fresh two-layer board carrying exactly the two traces described by `a` and `b`.
+fn build_merge_pair(a: &[Point], b: &[Point]) -> Board {
+    let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
+    let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+    let rules = BoardRules::new(layers(), clearance_matrix);
+    let mut items = BTreeMap::new();
+    items.insert(
+        ItemId(1),
+        Item::BoardOutline(BoardOutline::new(
+            ItemHeader::new(ItemId(1), Vec::new(), 0, 0, FixedState::SystemFixed),
+            Vec::new(),
+        )),
+    );
+    for (index, corners) in [a, b].into_iter().enumerate() {
+        let id = ItemId(index as u32 + 2);
+        items.insert(
+            id,
+            Item::Trace(PolylineTrace::new(
+                ItemHeader::new(id, vec![1], 1, 0, FixedState::Unfixed),
+                Polyline::from_points(corners),
+                0,
+                30,
+                None,
+            )),
+        );
+    }
+    let mut board = Board {
+        library: BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        components: Components::new(),
+        rules,
+        bounding_box: BOUNDING_BOX,
+        items,
+        manager: SearchTreeManager::new(),
+    };
+    board.insert_all();
+    board
+}
+
 fn build_skewed_outline() -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let rules = BoardRules::new(
@@ -1067,6 +1222,10 @@ fn main() {
     if mode == 6 {
         let mut board = build(0);
         dump_tie_pin(&mut board);
+        return;
+    }
+    if mode == 8 {
+        dump_change_order_merges();
         return;
     }
     if mode == 7 {

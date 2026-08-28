@@ -1296,25 +1296,93 @@ impl Board {
         true
     }
 
+    // -- the lazily filled tree-shape cache (Item.java:194-238) ---------------------------------
+
+    /// Port of the private `Item.getPrecalculatedTreeShapes(ShapeTree)` (Item.java:227-238): the
+    /// cached array for `tree`, **computed and stored on first use**.
+    ///
+    /// This is the lazy fill Task 10 could not do: `ShapeSearchTree::calculate_tree_shapes` needs
+    /// the tree, the item and the board context at once, which only `Board` holds. `None` if the
+    /// board has no such item; otherwise the length of the cached array.
+    fn fill_tree_shapes(&mut self, id: ItemId, tree: TreeId) -> Option<usize> {
+        let item = self.items.get(&id)?;
+        if let Some(shapes) = item.header().get_precalculated_tree_shapes(tree) {
+            return Some(shapes.len());
+        }
+        let search_tree = self.trees.trees().find(|t| t.id() == tree)?;
+        let ctx = item_ctx!(self);
+        let shapes = search_tree.calculate_tree_shapes(item, &ctx);
+        let len = shapes.len();
+        self.items
+            .get_mut(&id)
+            .expect("Board::fill_tree_shapes: present, just read")
+            .set_precalculated_tree_shapes(tree, shapes);
+        Some(len)
+    }
+
+    /// Port of `Item.treeShapeCount(ShapeTree)` (Item.java:203-210), **with** the lazy fill —
+    /// `Item::tree_shape_count` reads the cache only.
+    pub fn item_tree_shape_count(&mut self, id: ItemId, tree: TreeId) -> usize {
+        self.fill_tree_shapes(id, tree).unwrap_or(0)
+    }
+
+    /// Port of `Item.getTreeShape(ShapeTree, int)` (Item.java:212-226), **with** the lazy fill
+    /// and its one `clearDerivedData()` retry (Item.java:218-221) — `Item::get_tree_shape` reads
+    /// the cache only.
+    pub fn item_tree_shape(&mut self, id: ItemId, tree: TreeId, index: usize) -> Option<TileShape> {
+        let len = self.fill_tree_shapes(id, tree)?;
+        if index >= len {
+            // Item.java:218-221: drop everything derived and recompute once.
+            self.items.get_mut(&id)?.clear_derived_data();
+            if index >= self.fill_tree_shapes(id, tree)? {
+                return None;
+            }
+        }
+        self.items.get(&id)?.get_tree_shape(tree, index).cloned()
+    }
+
+    /// Port of `Item.getTileShape(int)` (Item.java:194-201) — [`Self::item_tree_shape`] against
+    /// the default tree — and its one override, `ObstacleArea.getTileShape`
+    /// (ObstacleArea.java:197-205), which the three area subclasses inherit and which splits the
+    /// area itself instead of consulting a tree.
+    pub fn item_tile_shape(&mut self, id: ItemId, index: usize) -> Option<TileShape> {
+        {
+            let ctx = item_ctx!(self);
+            let item = self.items.get(&id)?;
+            match item {
+                Item::ObstacleArea(i) => return i.get_tile_shape(index, &ctx),
+                Item::ConductionArea(i) => return i.get_tile_shape(index, &ctx),
+                Item::ViaObstacleArea(i) => return i.get_tile_shape(index, &ctx),
+                Item::ComponentObstacleArea(i) => return i.get_tile_shape(index, &ctx),
+                _ => {}
+            }
+        }
+        let default_tree = self.default_tree_id();
+        self.item_tree_shape(id, default_tree, index)
+    }
+
     /// Port of `Item.validate` (Item.java:796-807) and its one override, `Trace.validate`
     /// (Trace.java:447-456), which additionally rejects a trace whose first and last corner are
     /// equal. Java's two `FRLogger.warn` calls are dropped.
-    pub fn validate_item(&self, id: ItemId) -> bool {
+    ///
+    /// `&mut self` because `getTileShape` fills the tree-shape cache on the way
+    /// (Item.java:227-238), and `changeClearanceClassIndex` leaves it cold.
+    pub fn validate_item(&mut self, id: ItemId) -> bool {
+        let ctx = self.ctx();
         let Some(item) = self.items.get(&id) else {
             return true;
         };
-        let ctx = self.ctx();
-        let default_tree = self.default_tree_id();
         let mut result = self.trees.validate_entries(item);
-        for i in 0..item.tile_shape_count(&ctx) {
-            match item.get_tile_shape(default_tree, i, &ctx) {
+        let shape_count = item.tile_shape_count(&ctx);
+        for i in 0..shape_count {
+            match self.item_tile_shape(id, i) {
                 Some(shape) if !shape.is_empty() => {}
                 // Java's `getTileShape(i).isEmpty()` NPEs on a `null` shape; a `None` here is the
                 // same inconsistency the check exists to catch, so it counts as a failure.
                 _ => result = false,
             }
         }
-        if let Item::Trace(trace) = item
+        if let Some(Item::Trace(trace)) = self.items.get(&id)
             && trace.first_corner() == trace.last_corner()
         {
             // Trace.java:451-454.
@@ -1495,13 +1563,14 @@ impl Board {
     /// Port of `Item.getAllNetNames` (Item.java:1283-1288): the net names joined with `,`, or
     /// the literal `"no nets"` when the item is on none.
     ///
-    /// The elements are `Net::toString`, which is `Net.name` (Net.java:161-164).
+    /// The elements are `Net::toString` (Net.java:54-56), i.e. `"Net #<n> (<name>)"` — not the
+    /// bare name.
     pub fn all_net_names(&self, id: ItemId) -> String {
-        let names: Vec<&str> = self
+        let names: Vec<String> = self
             .all_nets(id)
             .into_iter()
             .filter_map(|net_number| self.rules.nets.get(net_number))
-            .map(|net| net.name.as_str())
+            .map(ToString::to_string)
             .collect();
         if names.is_empty() {
             return "no nets".to_string();
@@ -1590,14 +1659,15 @@ impl Board {
                 continue;
             }
             let ctx = self.ctx();
-            let default_tree = self.default_tree_id();
-            let shapes: Vec<(TileShape, usize)> = (0..item.tile_shape_count(&ctx))
-                .filter_map(|i| {
-                    item.get_tile_shape(default_tree, i, &ctx)
-                        .map(|shape| (shape, item.shape_layer(i, &ctx)))
-                })
+            let shape_layers: Vec<usize> = (0..item.tile_shape_count(&ctx))
+                .map(|i| item.shape_layer(i, &ctx))
                 .collect();
             let net_nos = item.net_nos().to_vec();
+            let shapes: Vec<(TileShape, usize)> = shape_layers
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, layer)| self.item_tile_shape(id, i).map(|shape| (shape, layer)))
+                .collect();
             for (shape, layer) in shapes {
                 self.mark_changed_area(&shape, layer);
             }

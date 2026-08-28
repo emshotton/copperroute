@@ -20,6 +20,19 @@
 //! | `Item.getRatsnestCorners` + three overrides | [`Board::ratsnest_corners`] |
 //! | `Pin.getSwappablePins` (Pin.java:391-427) | [`Board::swappable_pins`] |
 //!
+//! # The tree-shape cache
+//!
+//! The three bodies here that need an item's tile shapes (`getAllContacts`,
+//! `ConductionArea.getNormalContacts`) read the *cache*
+//! ([`Item::get_tile_shape`](crate::Item::get_tile_shape)) rather than
+//! [`Board::item_tile_shape`], which would fill it. They are `&self` and the fill is `&mut self`.
+//! The board's own insert protocol fills the cache for every tree
+//! ([`Board::insert_item`] -> `SearchTreeManager::insert`), so the only way to reach a cold cache
+//! here is an item whose `clearDerivedData()` ran without a re-insert — which on this board means
+//! `Board::change_clearance_class_index` with clearance compensation off. Documented rather than
+//! worked around; the `&mut self` query paths (`check_move_item`, `check_change_net`,
+//! `validate_item`, `remove_items_marking_changed_area`) do use the lazy fill.
+//!
 //! # Set ordering
 //!
 //! Every one of these returns a `TreeSet<Item>` in Java, which iterates by `Item.compareTo` —

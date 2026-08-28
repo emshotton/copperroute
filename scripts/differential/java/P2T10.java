@@ -41,6 +41,10 @@ public class P2T10 {
       dumpSkewedOutline();
       return;
     }
+    if (mode == 8) {
+      dumpChangeOrderMerges();
+      return;
+    }
     build(mode);
     if (mode == 3) {
       mutate();
@@ -331,6 +335,78 @@ public class P2T10 {
         + " end entries=" + endPiece.getSearchTreeEntries(def).length);
     System.out.println("validateEntries(start)=" + def.validateEntries(startPiece)
         + " validateEntries(end)=" + def.validateEntries(endPiece));
+  }
+
+  /**
+   * Mode 8: the `changeOrder == true` half of `mergeEntriesInFront` (ShapeSearchTree.java:176)
+   * and `mergeEntriesAtEnd` (:251) — two traces that meet head-to-head or tail-to-tail, so the
+   * entries of `fromTrace` have to be transferred in reverse.
+   */
+  static void dumpChangeOrderMerges() {
+    // Head to head at (0, 0): both traces start there.
+    buildMergePair(
+        new Point[] {new IntPoint(0, 0), new IntPoint(-500, 0), new IntPoint(-500, -500)},
+        new Point[] {new IntPoint(0, 0), new IntPoint(500, 0), new IntPoint(500, 500)});
+    ShapeSearchTree def = board.searchTreeManager.getDefaultTree();
+    Polyline joined =
+        new Polyline(
+            new Point[] {
+              new IntPoint(-500, -500),
+              new IntPoint(-500, 0),
+              new IntPoint(0, 0),
+              new IntPoint(500, 0),
+              new IntPoint(500, 500)
+            });
+    System.out.println("mode=8");
+    System.out.println(
+        "headToHead changeOrder="
+            + traceA.firstCorner().equals(traceB.firstCorner())
+            + " traceA shapes="
+            + traceA.tileShapeCount()
+            + " traceB shapes="
+            + traceB.tileShapeCount());
+    dumpTree("before_inFront", def);
+    System.out.println("--- mergeEntriesInFront(from=traceA, to=traceB, joined, 1, 4)");
+    def.mergeEntriesInFront(traceA, traceB, joined, 1, 4);
+    dumpTree("after_inFront", def);
+    System.out.println("validateEntries(traceB)=" + def.validateEntries(traceB));
+
+    // Tail to tail at (0, 0): both traces end there.
+    buildMergePair(
+        new Point[] {new IntPoint(-500, -500), new IntPoint(-500, 0), new IntPoint(0, 0)},
+        new Point[] {new IntPoint(500, 500), new IntPoint(500, 0), new IntPoint(0, 0)});
+    def = board.searchTreeManager.getDefaultTree();
+    System.out.println(
+        "tailToTail changeOrder="
+            + traceA.lastCorner().equals(traceB.lastCorner())
+            + " traceA shapes="
+            + traceA.tileShapeCount()
+            + " traceB shapes="
+            + traceB.tileShapeCount());
+    dumpTree("before_atEnd", def);
+    System.out.println("--- mergeEntriesAtEnd(from=traceA, to=traceB, joined, 1, 4)");
+    def.mergeEntriesAtEnd(traceA, traceB, joined, 1, 4);
+    dumpTree("after_atEnd", def);
+    System.out.println("validateEntries(traceB)=" + def.validateEntries(traceB));
+  }
+
+  /** A fresh two-layer board carrying exactly the two traces described by `a` and `b`. */
+  static void buildMergePair(Point[] a, Point[] b) {
+    Layer[] layers = {new Layer("front", true), new Layer("back", true)};
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
+    BoardRules rules = new BoardRules(ls, cm);
+    Communication comm = new Communication();
+    IntBox bbox = new IntBox(-10000, -10000, 10000, 10000);
+    board = new BasicBoard(bbox, ls, new PolylineShape[0], 0, rules, comm);
+    board.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    board.library.packages = new app.freerouting.core.library.Packages(board.library.padstacks);
+    traceA =
+        board.insertTraceWithoutCleaning(
+            new Polyline(a), 0, 30, new int[] {1}, 1, FixedState.UNFIXED);
+    traceB =
+        board.insertTraceWithoutCleaning(
+            new Polyline(b), 0, 30, new int[] {1}, 1, FixedState.UNFIXED);
   }
 
   /**

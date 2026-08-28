@@ -24,7 +24,7 @@ OUT="$BUILD/classes"
 
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
-  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10" >&2
+  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -67,6 +67,12 @@ case "$driver" in
     ;;
   p2t10)
     javaclass=P2T10
+    javapkg="datastructures"
+    default_args=(0)
+    needs_jar=1
+    ;;
+  p2t11)
+    javaclass=P2T11
     javapkg="datastructures"
     default_args=(0)
     needs_jar=1

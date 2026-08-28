@@ -1202,6 +1202,117 @@ fn merge_entries_at_end_appends_the_source_trace_behind_the_link_shapes() {
     assert!(f.manager.validate_entries(&f.items[&ItemId(2)]));
 }
 
+/// The joined polyline `P2T10.java` mode 8 merges the head-to-head and tail-to-tail pairs with.
+fn change_order_joined_polyline() -> fr_geometry::Polyline {
+    fr_geometry::Polyline::from_points(&[
+        Point::new(-500, -500),
+        Point::new(-500, 0),
+        Point::new(0, 0),
+        Point::new(500, 0),
+        Point::new(500, 500),
+    ])
+}
+
+#[test]
+fn merge_entries_in_front_reverses_the_source_trace_when_the_two_meet_head_to_head() {
+    // P2T10 mode 8. `changeOrder` (ShapeSearchTree.java:176) is true when the two traces share
+    // their *first* corner, and it flips two things: the entry `fromTrace` gives up is its
+    // **first** rather than its last (:181-186), and its remaining entries are transferred in
+    // reverse (:206-210).
+    let mut f = board_builder::TraceFixture::merge_pair(
+        &[
+            Point::new(0, 0),
+            Point::new(-500, 0),
+            Point::new(-500, -500),
+        ],
+        &[Point::new(0, 0), Point::new(500, 0), Point::new(500, 500)],
+    );
+    assert_eq!(f.tree().size(), 4);
+    let mut trace_a = f.take_trace(2);
+    let mut trace_b = f.take_trace(3);
+    assert_eq!(trace_a.first_corner(), trace_b.first_corner());
+    let rules_snapshot = f.rules.clone();
+    f.manager.get_default_tree_mut().merge_entries_in_front(
+        &mut trace_a,
+        &mut trace_b,
+        &change_order_joined_polyline(),
+        1,
+        4,
+        &rules_snapshot,
+    );
+    f.put_trace(2, trace_a);
+    f.put_trace(3, trace_b);
+
+    assert_eq!(f.tree().size(), 4);
+    assert_eq!(
+        leaves(f.tree())
+            .into_iter()
+            .map(|(id, index, _)| (id, index))
+            .collect::<Vec<_>>(),
+        vec![(3, 3), (3, 2), (3, 1), (3, 0)],
+        "every leaf now belongs to the target trace"
+    );
+    // The first shape is `traceA`'s **last** segment: the transfer ran backwards.
+    assert_eq!(
+        trace_shapes(&f, 3),
+        vec![
+            Some(oct(-530, -530, -470, 30, -542, 42, -1042, -458)),
+            Some(oct(-530, -30, 530, 30, -542, 542, -542, 542)),
+            Some(oct(470, -30, 530, 530, -42, 542, 458, 1042)),
+            Some(oct(470, -30, 530, 530, -42, 542, 458, 1042)),
+        ]
+    );
+    assert!(f.manager.validate_entries(&f.items[&ItemId(3)]));
+}
+
+#[test]
+fn merge_entries_at_end_reverses_the_source_trace_when_the_two_meet_tail_to_tail() {
+    // P2T10 mode 8, the mirror image: `changeOrder` (ShapeSearchTree.java:251) is true when the
+    // two traces share their *last* corner.
+    let mut f = board_builder::TraceFixture::merge_pair(
+        &[
+            Point::new(-500, -500),
+            Point::new(-500, 0),
+            Point::new(0, 0),
+        ],
+        &[Point::new(500, 500), Point::new(500, 0), Point::new(0, 0)],
+    );
+    let mut trace_a = f.take_trace(2);
+    let mut trace_b = f.take_trace(3);
+    assert_eq!(trace_a.last_corner(), trace_b.last_corner());
+    let rules_snapshot = f.rules.clone();
+    f.manager.get_default_tree_mut().merge_entries_at_end(
+        &mut trace_a,
+        &mut trace_b,
+        &change_order_joined_polyline(),
+        1,
+        4,
+        &rules_snapshot,
+    );
+    f.put_trace(2, trace_a);
+    f.put_trace(3, trace_b);
+
+    assert_eq!(f.tree().size(), 4);
+    assert_eq!(
+        leaves(f.tree())
+            .into_iter()
+            .map(|(id, index, _)| (id, index))
+            .collect::<Vec<_>>(),
+        vec![(3, 3), (3, 1), (3, 0), (3, 2)],
+        "every leaf now belongs to the target trace"
+    );
+    assert_eq!(
+        trace_shapes(&f, 3),
+        vec![
+            Some(oct(470, -30, 530, 530, -42, 542, 458, 1042)),
+            Some(oct(-530, -30, 530, 30, -542, 542, -542, 542)),
+            Some(oct(470, -30, 530, 530, -42, 542, 458, 1042)),
+            Some(oct(-530, -530, -470, 30, -542, 42, -1042, -458)),
+        ]
+    );
+    assert!(f.manager.validate_entries(&f.items[&ItemId(3)]));
+}
+
 #[test]
 fn merge_entries_in_front_prepends_the_source_trace_before_the_link_shapes() {
     // P2T10 mode 5, the mirror image: `fromTrace`'s entries move to the *front* of `toTrace`,
