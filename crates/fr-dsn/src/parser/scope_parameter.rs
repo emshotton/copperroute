@@ -83,10 +83,11 @@ pub struct ReadScopeParameter<'a> {
     pub host_version: Option<String>,
     /// `ReadScopeParameter.dsnFileGeneratedByHost`.
     pub dsn_file_generated_by_host: bool,
-    /// `ReadScopeParameter.writeResolution` (ReadScopeParameter.java:77,
-    /// `Communication.SpecctraParserInfo.WriteResolution`) — filled by `Parser.readScope`
-    /// (Parser.java:213). Added in Plan 3 Task 5, which is the task that ports its only writer.
-    pub write_resolution: Option<header::WriteResolution>,
+    /// `ReadScopeParameter.writeResolution` (ReadScopeParameter.java:77) — filled by
+    /// `Parser.readScope` (Parser.java:213). The type lives in `fr-board`, where Java keeps it
+    /// too (`Communication.SpecctraParserInfo.WriteResolution`); Task 10's `read_board` is what
+    /// assembles this and the four sibling fields below into the board's `Communication`.
+    pub write_resolution: Option<fr_board::WriteResolution>,
     /// `ReadScopeParameter.boardOutlineOk`.
     pub board_outline_ok: bool,
     /// `ReadScopeParameter.coordinateTransform`.

@@ -16,7 +16,7 @@
 
 use std::io::Write;
 
-use fr_board::{Communication, Unit};
+use fr_board::{Communication, Unit, WriteResolution};
 
 use crate::error::DsnError;
 use crate::format::{IdentifierType, IndentFileWriter};
@@ -24,51 +24,6 @@ use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::read_string_scope;
 use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
-
-/// `board/state/Communication.java`'s nested `SpecctraParserInfo.WriteResolution`
-/// (Communication.java:134-143) — DSN export metadata that `fr-board` deliberately left to Plan
-/// 3 (`crates/fr-board/src/board/communication.rs`: "added in Plan 3: the nested class
-/// `SpecctraParserInfo.WriteResolution`").
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WriteResolution {
-    /// `WriteResolution.charName`.
-    pub char_name: String,
-    /// `WriteResolution.positiveInt`.
-    pub positive_int: i32,
-}
-
-impl WriteResolution {
-    /// `WriteResolution(String, int)` (Communication.java:140-143).
-    #[must_use]
-    pub fn new(char_name: impl Into<String>, positive_int: i32) -> WriteResolution {
-        WriteResolution {
-            char_name: char_name.into(),
-            positive_int,
-        }
-    }
-}
-
-/// `board/state/Communication.java`'s nested `SpecctraParserInfo` (Communication.java:106-145),
-/// the `parser` scope's payload — the other half of the same `fr-board` obligation.
-///
-/// Java's `hostCad`, `hostVersion`, `constants` and `writeResolution` are all nullable and all
-/// tested for `null` by `Parser.writeScope`; `constants`'s `null` and its empty collection
-/// produce identical output, so it is a plain `Vec` here.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct SpecctraParserInfo {
-    /// `SpecctraParserInfo.stringQuote` — "character for quoting strings in a dsn-File".
-    pub string_quote: String,
-    /// `SpecctraParserInfo.hostCad`.
-    pub host_cad: Option<String>,
-    /// `SpecctraParserInfo.hostVersion`.
-    pub host_version: Option<String>,
-    /// `SpecctraParserInfo.constants`.
-    pub constants: Vec<Vec<String>>,
-    /// `SpecctraParserInfo.writeResolution`.
-    pub write_resolution: Option<WriteResolution>,
-    /// `SpecctraParserInfo.dsnFileGeneratedByHost`.
-    pub dsn_file_generated_by_host: bool,
-}
 
 /// `Parser.readWriteSolution` (Parser.java:18-51) — the `(write_resolution <name> <int>)` scope.
 /// (Java's own spelling of the method name; it reads a *resolution*.)
@@ -130,7 +85,7 @@ fn read_quote_char(scanner: &mut DsnScanner) -> Result<Option<String>, DsnError>
 // renamed: Parser.writeScope -> write_parser_scope (this file holds three classes' scopes).
 pub fn write_parser_scope<W: Write>(
     file: &mut IndentFileWriter<W>,
-    parser_info: &SpecctraParserInfo,
+    parser_info: &Communication,
     identifier_type: &IdentifierType,
     reduced: bool,
 ) {
@@ -169,10 +124,10 @@ pub fn write_parser_scope<W: Write>(
         file.new_line();
         file.write("(write_resolution ");
         // `charName.substring(0, 1)` (Parser.java:134) — the unit's initial letter only.
-        // // Java bug: an empty `charName` throws `StringIndexOutOfBoundsException` here; the
-        // port's `chars().next()` writes nothing instead. No reader produces an empty name (the
-        // lexer cannot return a zero-length `Str` for this scope), so no reachable caller sees
-        // the difference. See docs/java-quirks.md.
+        // totalized: Parser.writeScope throws `StringIndexOutOfBoundsException` on an empty
+        // `charName`; the port's `chars().next()` writes nothing instead. No reachable caller
+        // observes it: the lexer cannot return a zero-length `Str` for this scope, so
+        // `read_write_solution` cannot build such a `WriteResolution`. See docs/java-quirks.md.
         if let Some(first) = write_resolution.char_name.chars().next() {
             file.write(&first.to_string());
         }
@@ -265,6 +220,13 @@ pub fn write_resolution_scope<W: Write>(
 
 /// `Resolution.readScope` (Resolution.java:27-72): `(resolution <unit> <int>)`, writing both
 /// into the shared [`ReadScopeParameter`].
+///
+/// Assignment order differs harmlessly from Java's: Java assigns `scopeParameter.unit =
+/// Unit.fromString(...)` and *then* tests it for `null` (Resolution.java:39-47), so a bad unit
+/// name leaves `scopeParameter.unit` **null** before the `false` return; the port validates
+/// first and leaves the field at its previous value. No caller observes it — every one of Java's
+/// `readScope` callers abandons the read on `false` (`ScopeKeyword.readScope`
+/// propagates it straight out), and Java's `unit` would be a `null` nothing may read anyway.
 // renamed: Resolution.readScope -> read_resolution_scope.
 pub fn read_resolution_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     // read the unit

@@ -17,14 +17,16 @@ use crate::structure::Unit;
 /// `io.CoordinateTransform` used only when writing a Specctra file back out — Plan 3 owns the
 /// DSN/SES layer.
 ///
-/// The fourth, `specctraParserInfo` (Communication.java:29), is reduced to the two strings that
-/// the three predicates below actually read: `hostCad` and `hostVersion`
-/// (Communication.java:61-90). The rest of it — the string quote, the constants list, the write
-/// resolution and `dsnFileGeneratedByHost` — is parser metadata that only the DSN reader and
-/// writer look at.
-// renamed: the nested class `Communication.SpecctraParserInfo` (Communication.java:106-145) -> the two fields `host_cad`/`host_version` on this struct.
-// added in Plan 3: the rest of `SpecctraParserInfo` — `stringQuote`, `constants`, `dsnFileGeneratedByHost` — is DSN parser metadata that only the reader and the writer look at.
-// added in Plan 3: the nested class `SpecctraParserInfo.WriteResolution` (Communication.java:134-143), which is DSN export metadata.
+/// The fourth, `specctraParserInfo` (Communication.java:29), is **flattened onto this struct**:
+/// its six fields become `string_quote`, `host_cad`, `host_version`, `constants`,
+/// `write_resolution` and `dsn_file_generated_by_host` below, and its nullability is carried by
+/// the `Option`s on the four fields Java allows to be `null`. Java's own
+/// `specctraParserInfo == null` guard (Communication.java:61,68,88) therefore has no counterpart:
+/// a `Communication` always has parser info, and "no parser info" is the all-defaults value
+/// Java's own no-argument constructor already builds (`new SpecctraParserInfo("\"", null, null,
+/// null, null, false)`, Communication.java:53). Every predicate below reads the same fields Java
+/// reads through the nested object.
+// renamed: the nested class `Communication.SpecctraParserInfo` (Communication.java:106-145) -> the six fields `string_quote`/`host_cad`/`host_version`/`constants`/`write_resolution`/`dsn_file_generated_by_host` on this struct.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Communication {
     /// Java `final Unit unit` (Communication.java:20): mil, inch or mm.
@@ -40,11 +42,66 @@ pub struct Communication {
     pub host_cad: Option<String>,
     /// Java `specctraParserInfo.hostVersion` (Communication.SpecctraParserInfo:112).
     pub host_version: Option<String>,
+    /// Java `specctraParserInfo.stringQuote` (Communication.java:109): "character for quoting
+    /// strings in a dsn-File". Read by `DsnWriter.writePcbScope` (DsnWriter.java:67),
+    /// `SesWriter.write` (SesWriter.java:64) and `RulesWriter.write` (RulesWriter.java:63) to
+    /// build their `IdentifierType`, and written back out by `Parser.writeScope`.
+    pub string_quote: String,
+    /// Java `specctraParserInfo.constants` (Communication.java:113), a
+    /// `Collection<String[]>` — the `(constant <name> <value>)` scopes of the DSN `parser`
+    /// scope, kept verbatim so they can be written back out. Java's `null` and its empty
+    /// collection are indistinguishable to `Parser.writeScope` (it `null`-checks and then
+    /// iterates), so this is a plain `Vec`.
+    pub constants: Vec<Vec<String>>,
+    /// Java `specctraParserInfo.writeResolution` (Communication.java:114); `None` is Java's
+    /// `null`, which `Parser.writeScope` tests for (Parser.java:131).
+    pub write_resolution: Option<WriteResolution>,
+    /// Java `specctraParserInfo.dsnFileGeneratedByHost` (Communication.java:115): false once the
+    /// DSN reader has seen a `(generated_by_freerouting)` marker. Java's no-argument
+    /// `Communication()` seeds it `false` (Communication.java:53), which is what
+    /// [`Communication::default`] does too.
+    pub dsn_file_generated_by_host: bool,
+}
+
+/// Port of `Communication.SpecctraParserInfo.WriteResolution` (Communication.java:133-143):
+/// "resolution metadata for Specctra DSN export".
+///
+/// `char_name` stays a `String` rather than becoming a [`Unit`]: the DSN reader stores whatever
+/// token the `(write_resolution …)` scope carried (`Parser.readWriteSolution`, Parser.java:22-27,
+/// accepts any string), and `Parser.writeScope` writes only its **first character**
+/// (`charName.substring(0, 1)`, Parser.java:134) — neither of which round-trips through a
+/// four-variant enum.
+///
+/// not ported: `Serializable` — this port has no Java object serialization.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WriteResolution {
+    /// Java `WriteResolution.charName` (Communication.java:136).
+    pub char_name: String,
+    /// Java `WriteResolution.positiveInt` (Communication.java:137).
+    pub positive_int: i32,
+}
+
+impl WriteResolution {
+    /// Port of `WriteResolution(String, int)` (Communication.java:140-143).
+    pub fn new(char_name: impl Into<String>, positive_int: i32) -> WriteResolution {
+        WriteResolution {
+            char_name: char_name.into(),
+            positive_int,
+        }
+    }
 }
 
 impl Communication {
     /// Port of the six-argument `Communication` constructor (Communication.java:34-47), minus
-    /// the three not-ported fields.
+    /// the three not-ported fields and minus the four flattened `SpecctraParserInfo` fields that
+    /// no `Communication::new` caller sets.
+    ///
+    /// Java passes a whole `SpecctraParserInfo`; flattening it would make this a nine-argument
+    /// constructor. The four fields not named here take the values Java's own no-argument
+    /// constructor gives them (`stringQuote = "\""`, no constants, no write resolution,
+    /// `dsnFileGeneratedByHost = false`, Communication.java:53); a caller that has real parser
+    /// info — the DSN reader — sets them with struct-update syntax over this or
+    /// [`Communication::default`], since every field is `pub`.
     pub fn new(
         unit: Unit,
         resolution: i32,
@@ -58,6 +115,7 @@ impl Communication {
             id_gen,
             host_cad,
             host_version,
+            ..Communication::default()
         }
     }
 
@@ -120,8 +178,9 @@ impl Communication {
 
 impl Default for Communication {
     /// Port of the no-argument `Communication()` constructor (Communication.java:50-58):
-    /// `Unit.MIL`, resolution 1, a fresh `ItemIdGenerator`, and a `SpecctraParserInfo` whose
-    /// `hostCad` and `hostVersion` are both `null`.
+    /// `Unit.MIL`, resolution 1, a fresh `ItemIdGenerator`, and `new SpecctraParserInfo("\"",
+    /// null, null, null, null, false)` — note `dsnFileGeneratedByHost` is seeded **false**, not
+    /// true (Communication.java:53).
     fn default() -> Communication {
         Communication {
             unit: Unit::Mil,
@@ -129,6 +188,10 @@ impl Default for Communication {
             id_gen: ItemIdGenerator::new(),
             host_cad: None,
             host_version: None,
+            string_quote: "\"".to_string(),
+            constants: Vec::new(),
+            write_resolution: None,
+            dsn_file_generated_by_host: false,
         }
     }
 }
@@ -136,6 +199,39 @@ impl Default for Communication {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_default_carries_javas_default_specctra_parser_info() {
+        // Communication.java:53 — `new SpecctraParserInfo("\"", null, null, null, null, false)`.
+        let communication = Communication::default();
+        assert_eq!(communication.string_quote, "\"");
+        assert!(communication.constants.is_empty());
+        assert_eq!(communication.write_resolution, None);
+        assert!(!communication.dsn_file_generated_by_host);
+    }
+
+    #[test]
+    fn new_fills_the_parser_info_fields_it_does_not_take_from_the_default() {
+        let communication = Communication::new(
+            Unit::Mm,
+            1000,
+            ItemIdGenerator::new(),
+            Some("KiCad".to_string()),
+            None,
+        );
+        assert_eq!(communication.unit, Unit::Mm);
+        assert_eq!(communication.resolution, 1000);
+        assert_eq!(communication.string_quote, "\"");
+        assert!(!communication.dsn_file_generated_by_host);
+    }
+
+    #[test]
+    fn write_resolution_keeps_the_raw_char_name() {
+        // Communication.java:140-143 — `charName` is whatever token the DSN carried, not a Unit.
+        let write_resolution = WriteResolution::new("mil", 10);
+        assert_eq!(write_resolution.char_name, "mil");
+        assert_eq!(write_resolution.positive_int, 10);
+    }
 
     #[test]
     fn the_default_matches_javas_no_argument_constructor() {

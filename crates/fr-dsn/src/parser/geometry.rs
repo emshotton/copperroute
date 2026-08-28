@@ -34,7 +34,9 @@ use std::io::Write;
 /// `no` is `i32`, not an index type: Java's two shared constants ([`DsnLayer::pcb`] and
 /// [`DsnLayer::signal`], Layer.java:11,14) both carry `-1`, "this object describes more than one
 /// layer" (Layer.java:24-25).
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+// not ported: a `Default` for `Layer` — Java has no no-argument `Layer` constructor, and a
+// derived one would mean `no: 0`, a real layer number (the component side), not an absent one.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnLayer {
     /// `Layer.name`.
     pub name: String,
@@ -194,6 +196,11 @@ impl DsnRectangle {
     }
 
     /// `Rectangle.boundingBox` (Rectangle.java:24-27): a rectangle is its own bounding box.
+    ///
+    /// Java returns `this` — the *same* object, so a caller that mutated the returned
+    /// `Rectangle.layer` (the one non-final field on `Shape`) would mutate the receiver. This
+    /// returns a clone; no Java caller relies on the aliasing (`Structure.createBoard`
+    /// immediately `union`s the results into fresh `Rectangle`s, Structure.java:1161-1163).
     #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
         self.clone()
@@ -283,9 +290,13 @@ impl DsnRectangle {
 
 // ---------------------------------------------------------------------- Circle.java
 
-/// `io/specctra/parser/Circle.java`: `coor[0]` is the diameter, `coor[1]`/`coor[2]` the centre
-/// (Circle.java:15-18 calls `coor[0]` "the radius", but every producer and consumer treats it as
-/// the diameter — `transformToBoard` halves it, `CoordinateTransform.boardToDsn` doubles it).
+/// `io/specctra/parser/Circle.java`: `coor[0]` is the diameter, `coor[1]`/`coor[2]` the centre.
+///
+/// Java's own comment calls `coor[0]` "the radius" (Circle.java:15-18) but its producers and
+/// consumers treat it as a diameter — `transformToBoard`/`transformToBoardRel` halve it
+/// (Circle.java:40,48) and `CoordinateTransform.boardToDsn(Shape, Layer)` fills it with `2 *
+/// boardToDsn(radius)` (CoordinateTransform.java:99). [`DsnCircle::bounding_box`] is the one
+/// place that follows the comment instead of the code, and is wrong because of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnCircle {
     /// `Shape.layer`.
@@ -322,7 +333,17 @@ impl DsnCircle {
         Shape::Circle(Circle::new(IntPoint::new(x, y), radius))
     }
 
-    /// `Circle.boundingBox` (Circle.java:56-64).
+    /// `Circle.boundingBox` (Circle.java:56-64) — **twice** the box the circle actually needs.
+    //
+    // Java bug: Circle.boundingBox treats `coor[0]` as a radius (`coor[1] ± coor[0]`) while
+    // every other user of the field treats it as a diameter — `Circle.transformToBoard` halves
+    // it (`dsnToBoard(coor[0]) / 2`, Circle.java:40), `transformToBoardRel` halves it
+    // (:48), and `CoordinateTransform.boardToDsn(Shape, Layer)` fills it with `2 *
+    // boardToDsn(radius)` (CoordinateTransform.java:99). So this box is 2x too wide and 2x too
+    // tall. Reachable: `Structure.createBoard` unions the outline shapes' `boundingBox()` and
+    // derives the board size and DSN scale factor from the result (Structure.java:1161-1167), so
+    // a circular board outline is sized from a doubled box. Reproduced verbatim — see
+    // docs/java-quirks.md.
     #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
         DsnRectangle::new(

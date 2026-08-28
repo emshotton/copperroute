@@ -19,7 +19,7 @@ pub mod structure;
 
 pub use board::{
     Board, ChangedArea, Communication, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS,
-    ShapeTraceEntries, StopConnectionOption,
+    ShapeTraceEntries, StopConnectionOption, WriteResolution,
 };
 pub use datastructures::{
     DelaunayCorner, DelaunayEdge, LeafId, Node, NodeId, PlanarDelaunayTriangulation, ShapeTree,
@@ -69,6 +69,6 @@ pub mod prelude {
         ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries, ShapeTree, StopCheck,
         StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries, TreeEntry, TreeId,
         TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
-        compare_to_ignore_case, equals_ignore_case, java_to_lower, java_to_upper,
+        WriteResolution, compare_to_ignore_case, equals_ignore_case, java_to_lower, java_to_upper,
     };
 }

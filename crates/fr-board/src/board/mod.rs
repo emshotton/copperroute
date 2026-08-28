@@ -71,7 +71,7 @@ use std::collections::BTreeMap;
 use fr_geometry::{Area, IntBox, Point, Polyline, PolylineShapeRef, TileShape, Vector};
 
 pub use changed_area::ChangedArea;
-pub use communication::Communication;
+pub use communication::{Communication, WriteResolution};
 pub use connectivity::StopConnectionOption;
 pub use normalize::MAX_NORMALIZE_ITERATIONS;
 pub use shape_trace_entries::ShapeTraceEntries;

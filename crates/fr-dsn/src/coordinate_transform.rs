@@ -36,10 +36,10 @@ impl CoordinateTransform {
 
     /// `boardToDsn(double)` (CoordinateTransform.java:34-36): "scales a value from the board to
     /// the external coordinate system".
-    ///
-    /// // Java bug: a `scaleFactor` of 0 makes this `±Infinity` (or `NaN` for a value of 0)
-    /// rather than throwing, because `/` on `double`s is IEEE division. Reproduced exactly — see
-    /// docs/java-quirks.md.
+    //
+    // Java bug: CoordinateTransform.boardToDsn with a `scaleFactor` of 0 yields `±Infinity` (or
+    // `NaN` for a value of 0) rather than throwing, because `/` on `double`s is IEEE division.
+    // Reproduced exactly — see docs/java-quirks.md.
     #[must_use]
     pub fn board_to_dsn(&self, value: f64) -> f64 {
         value / self.scale_factor

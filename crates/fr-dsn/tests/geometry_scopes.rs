@@ -3,14 +3,16 @@
 //! LayerStructure}.java`) and the header scopes
 //! (`io/specctra/parser/{Parser,Resolution,Unit}.java`).
 
-use fr_board::{Communication, ItemIdGenerator, Layer as BoardLayer, LayerStructure, Unit};
+use fr_board::{
+    Communication, ItemIdGenerator, Layer as BoardLayer, LayerStructure, Unit, WriteResolution,
+};
 use fr_dsn::parser::geometry::{
     DsnCircle, DsnLayer, DsnLayerStructure, DsnPolygon, DsnPolygonPath, DsnPolylinePath,
     DsnRectangle, DsnShape, read_area_scope, read_scope as read_shape_scope,
 };
 use fr_dsn::parser::header::{
-    SpecctraParserInfo, WriteResolution, read_parser_scope, read_resolution_scope, read_unit_scope,
-    write_parser_scope, write_resolution_scope, write_unit_scope,
+    read_parser_scope, read_resolution_scope, read_unit_scope, write_parser_scope,
+    write_resolution_scope, write_unit_scope,
 };
 use fr_dsn::parser::scope_parameter::{DsnReadOptions, ReadScopeParameter};
 use fr_dsn::{CoordinateTransform, DSN_RESERVED, DsnScanner, IdentifierType, IndentFileWriter};
@@ -153,6 +155,16 @@ fn circle_write_scope_and_write_scope_int() {
         render(|f| circle.write_scope_int(f, &identifier())),
         "\n(circle signal 5 2 3)"
     );
+}
+
+#[test]
+fn circle_bounding_box_is_javas_doubled_box() {
+    // Java bug (quirks row 93): Circle.boundingBox:56-64 spends the whole of `coor[0]` on each
+    // side, though `coor[0]` is a diameter everywhere else (Circle.java:40,48;
+    // CoordinateTransform.java:99). A diameter-4 circle at (10, 20) needs
+    // `[8, 18, 12, 22]`; Java answers twice that. Reproduced, not fixed.
+    let circle = DsnCircle::new(DsnLayer::signal(), [4.0, 10.0, 20.0]);
+    assert_eq!(circle.bounding_box().coor, [6.0, 16.0, 14.0, 24.0]);
 }
 
 #[test]
@@ -374,13 +386,12 @@ fn the_two_shared_layer_constants_have_the_java_names_and_numbers() {
 
 #[test]
 fn write_parser_scope_uses_the_2_3_0_snake_case_literals() {
-    let info = SpecctraParserInfo {
-        string_quote: "\"".to_string(),
+    let info = Communication {
         host_cad: Some("KiCad".to_string()),
         host_version: Some("8.0.1".to_string()),
         constants: vec![vec!["a".to_string(), "b".to_string()]],
         write_resolution: Some(WriteResolution::new("mil", 10)),
-        dsn_file_generated_by_host: false,
+        ..Communication::default()
     };
     let out = render(|f| write_parser_scope(f, &info, &identifier(), false));
     assert_eq!(
@@ -399,13 +410,9 @@ fn write_parser_scope_uses_the_2_3_0_snake_case_literals() {
 
 #[test]
 fn write_parser_scope_reduced_drops_the_quote_and_the_freerouting_marker() {
-    let info = SpecctraParserInfo {
-        string_quote: "\"".to_string(),
+    let info = Communication {
         host_cad: Some("KiCad".to_string()),
-        host_version: None,
-        constants: Vec::new(),
-        write_resolution: None,
-        dsn_file_generated_by_host: false,
+        ..Communication::default()
     };
     let out = render(|f| write_parser_scope(f, &info, &identifier(), true));
     assert_eq!(out, "\n(parser\n  (host_cad KiCad)\n)");
