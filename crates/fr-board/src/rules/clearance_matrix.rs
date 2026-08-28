@@ -23,8 +23,12 @@ pub const CLEARANCE_SAFETY_MARGIN: i32 = 16;
 /// `row[classJ].column[classI].layer[layer]` (ClearanceMatrix.java:163, and identically in
 /// `setValue` at :101-102): the *second* class argument selects the row and the *first* selects
 /// the column. `setValue` writes exactly one entry, so the matrix is only symmetric if a caller
-/// writes both orders — which is why the DSN reader always does
-/// (`io/specctra/parser/Structure.java:847-848` walks `i`, then `j >= i`, setting both).
+/// writes both orders. The Specctra readers always do — `io/specctra/parser/Structure.java:768-769`
+/// and `:785-787`, and `io/specctra/parser/Network.java:644-645`, `:646-647`, `:668-673`,
+/// `:749-750` and `:777-781` each follow every `setValue(a, b, ...)` with `setValue(b, a, ...)`.
+/// The KiCad reader does not: `io/kicad/KiCadJsonReader.java:153` writes only
+/// `setValue(1, clNo, ...)` and `:161` only `setValue(idxA, idxB, ...)`, so on a KiCad-sourced
+/// board the asymmetry is observable and the J-then-I order matters.
 ///
 /// not ported: `ClearanceMatrix.getRow` (ClearanceMatrix.java:254-260) returns the private
 /// `Row` inner class, which exists only to be handed to `ItemInfoPrinter`; its three call sites
@@ -101,8 +105,32 @@ impl ClearanceMatrix {
     }
 
     /// Flattened index of `row[class_j].column[class_i].layer[layer]`.
+    ///
+    /// All three arguments are checked. Java's three chained array accesses each throw
+    /// `ArrayIndexOutOfBoundsException` (ClearanceMatrix.java:101-102,115,163,227), and a
+    /// flattened `Vec` would not: an out-of-range `class_i` stays inside `values` and silently
+    /// aliases a neighbouring cell — `set_value(2, 0, 0, 42)` on a 2-class matrix would write
+    /// `row[1].column[0]`. `assert!` rather than `debug_assert!`, because Java throws in
+    /// production too.
     fn index(&self, class_i: usize, class_j: usize, layer: usize) -> usize {
-        (class_j * self.get_class_count() + class_i) * self.layer_count + layer
+        let class_count = self.get_class_count();
+        assert!(
+            class_i < class_count,
+            "clearance class {class_i} out of range (class count {class_count}): \
+             Java throws ArrayIndexOutOfBoundsException here (ClearanceMatrix.java:102)"
+        );
+        assert!(
+            class_j < class_count,
+            "clearance class {class_j} out of range (class count {class_count}): \
+             Java throws ArrayIndexOutOfBoundsException here (ClearanceMatrix.java:101)"
+        );
+        assert!(
+            layer < self.layer_count,
+            "layer {layer} out of range (layer count {}): \
+             Java throws ArrayIndexOutOfBoundsException here (ClearanceMatrix.java:115)",
+            self.layer_count
+        );
+        (class_j * class_count + class_i) * self.layer_count + layer
     }
 
     /// Port of `ClearanceMatrix.getNo` (ClearanceMatrix.java:58-65): the index of the clearance
@@ -157,7 +185,10 @@ impl ClearanceMatrix {
     /// running maxima that this method only ever raises — lowering an entry never lowers them
     /// (pinned by `set_value_matches_java_test`).
     ///
-    /// Writes `row[class_j].column[class_i]`: see the J-then-I note on the type.
+    /// Writes `row[class_j].column[class_i]`: see the J-then-I note on the type. Unlike
+    /// [`Self::get_value`], which bounds-checks and returns 0, this panics for an out-of-range
+    /// class or layer — Java's `setValue` has no guard of its own and throws
+    /// `ArrayIndexOutOfBoundsException` (ClearanceMatrix.java:101-102,115).
     pub fn set_value(&mut self, class_i: usize, class_j: usize, layer: usize, value: i32) {
         let mut value = value.max(0);
         if value % 2 != 0 {
@@ -231,8 +262,9 @@ impl ClearanceMatrix {
     /// Port of `ClearanceMatrix.isLayerDependent` (ClearanceMatrix.java:226-234): true if the
     /// entry `(class_i, class_j)` differs across layers.
     ///
-    /// Java indexes `row[classJ].column[classI]` unchecked, so an out-of-range class throws;
-    /// the port panics on the same slice index.
+    /// Java indexes `row[classJ].column[classI]` without a bounds check of its own, so an
+    /// out-of-range class throws `ArrayIndexOutOfBoundsException`; the port panics in its
+    /// private `index` helper with the same meaning.
     pub fn is_layer_dependent(&self, class_i: usize, class_j: usize) -> bool {
         let compare_value = self.values[self.index(class_i, class_j, 0)];
         (1..self.layer_count).any(|l| self.values[self.index(class_i, class_j, l)] != compare_value)
@@ -647,6 +679,67 @@ mod tests {
             vec![vec![vec![0, 0], vec![0, 0]], vec![vec![0, 0], vec![22, 22]]]
         );
         assert_eq!(layer_maxima(&m), vec![22, 22]);
+    }
+
+    #[test]
+    #[should_panic(expected = "clearance class 2 out of range")]
+    fn set_value_panics_on_an_out_of_range_class_i_like_java() {
+        // Java: `setValue(2, 0, 0, 42)` on a 2-class matrix throws
+        // ArrayIndexOutOfBoundsException (ClearanceMatrix.java:102, verified under JDK 23).
+        // A flattened Vec would happily write `row[1].column[0]` instead, so `index` asserts.
+        let mut m = ClearanceMatrix::get_default_instance(&ls2(), 20);
+        m.set_value(2, 0, 0, 42);
+    }
+
+    #[test]
+    #[should_panic(expected = "clearance class 2 out of range")]
+    fn set_value_panics_on_an_out_of_range_class_j_like_java() {
+        // Java: ArrayIndexOutOfBoundsException at ClearanceMatrix.java:101.
+        let mut m = ClearanceMatrix::get_default_instance(&ls2(), 20);
+        m.set_value(0, 2, 0, 42);
+    }
+
+    #[test]
+    #[should_panic(expected = "layer 2 out of range")]
+    fn set_value_panics_on_an_out_of_range_layer_like_java() {
+        // Java: ArrayIndexOutOfBoundsException at ClearanceMatrix.java:115.
+        let mut m = ClearanceMatrix::get_default_instance(&ls2(), 20);
+        m.set_value(0, 0, 2, 42);
+    }
+
+    #[test]
+    #[should_panic(expected = "clearance class 2 out of range")]
+    fn is_layer_dependent_panics_on_an_out_of_range_class_like_java() {
+        // Java: ArrayIndexOutOfBoundsException at ClearanceMatrix.java:227.
+        let m = ClearanceMatrix::get_default_instance(&ls2(), 20);
+        let _ = m.is_layer_dependent(2, 0);
+    }
+
+    #[test]
+    fn the_neighbours_of_an_out_of_range_write_are_untouched() {
+        // The failure mode the assert exists to prevent: without it, `set_value(2, 0, 0, 42)`
+        // aliases `row[1].column[0]`. Java leaves the whole matrix alone (verified under
+        // JDK 23: every cell keeps its value after the throw), and so must the port.
+        let mut m = ClearanceMatrix::get_default_instance(&ls2(), 20);
+        let before = dump(&m);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            m.set_value(2, 0, 0, 42);
+        }));
+        assert!(result.is_err());
+        assert_eq!(dump(&m), before);
+        assert_eq!(
+            dump(&m),
+            vec![vec![vec![0, 0], vec![0, 0]], vec![vec![0, 0], vec![20, 20]]]
+        );
+    }
+
+    #[test]
+    fn out_of_range_is_inner_layer_dependent_returns_false_before_indexing() {
+        // Java's `layers.length <= 2` guard (ClearanceMatrix.java:241-243) runs before the
+        // array access, so `isInnerLayerDependent(2, 0)` on a 2-layer board answers false
+        // rather than throwing (verified under JDK 23).
+        let m = ClearanceMatrix::get_default_instance(&ls2(), 20);
+        assert!(!m.is_inner_layer_dependent(2, 0));
     }
 
     #[test]

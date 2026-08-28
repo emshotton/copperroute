@@ -178,9 +178,11 @@ impl ViaInfos {
     /// **Renumbering hazard.** Java's `ViaRule`s hold `ViaInfo` *object references*
     /// (ViaRule.java:21), so a removal here leaves them pointing at the removed object. This
     /// port's `ViaRule`s hold indices, so a removal shifts every later [`ViaInfoId`] and silently
-    /// re-points them at the wrong via. The only live caller is
+    /// re-points them at the wrong via. The only non-GUI caller is
     /// `io/specctra/RulesReader.java:340-350`, which removes a via only to add a replacement
     /// with the same name; whoever ports that file (Plan 3) must renumber, or replace in place.
+    /// (`gui/windows/routing/WindowEditVias.java:197` also calls it, but the GUI is out of scope
+    /// for this port.)
     /// See the `docs/java-quirks.md` obligation-register row "`ViaInfoId` renumbering across
     /// `ViaInfos.remove`".
     pub fn remove(&mut self, index: ViaInfoId) -> bool {
