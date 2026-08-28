@@ -992,7 +992,10 @@ mod tests {
 
     #[test]
     fn tree_entry_orders_by_object_then_shape_index() {
-        // Java `Leaf.compareTo` (ShapeTree.java:216-223).
+        // Java `Leaf.compareTo` (ShapeTree.java:216-223): `object.compareTo(other.object)`
+        // first, then `shapeIndexInObject - other.shapeIndexInObject`. The object half is
+        // `Item.compareTo` (Item.java:93-103), whose subtraction is reversed, so objects sort by
+        // *descending* id while the shape index sorts ascending — see `TreeObject`'s `Ord`.
         let a = TreeEntry {
             object: obj(1),
             shape_index: 7,
@@ -1005,9 +1008,9 @@ mod tests {
             object: obj(1),
             shape_index: 8,
         };
-        assert!(a < b);
+        assert!(b < a);
         assert!(a < c);
-        assert!(c < b);
+        assert!(b < c);
     }
 
     #[test]
@@ -1066,9 +1069,10 @@ mod tests {
         }
         assert_eq!(tree.leaf_count(), 3);
         let found = tree.overlaps(&shapes[0]);
+        // Descending object id: `Item.compareTo` (Item.java:98) subtracts the wrong way round.
         assert_eq!(
             found.iter().map(|e| e.object).collect::<Vec<_>>(),
-            vec![obj(1), obj(3)]
+            vec![obj(3), obj(1)]
         );
     }
 

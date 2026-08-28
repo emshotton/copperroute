@@ -4,7 +4,14 @@
 # For every Java class file under
 # `$FREEROUTING_JAVA_DIR/src/main/java/app/freerouting/<java-subpath>/`, lists its public
 # methods and checks that the Rust crate at `<rust-src-dir>` has a matching `fn` (snake_case),
-# or a `not ported: <Method>` / `renamed: <Method>` marker comment somewhere in that crate.
+# or one of these marker comments naming the method somewhere in that crate:
+#   `not ported: <Method>`          — deliberately dropped (GUI, serialization, logging, ...)
+#   `renamed: <Method>`             — ported under a different name
+#   `added in Task N: <Method>`     — deferred to a named later task of the current plan
+#   `added in Plan N: <Method>`     — deferred to a named later plan
+# The last two are as specific as the first two (the task/plan number is required), so they
+# record an obligation rather than waive the check: `grep -rn "added in Task"` lists everything
+# still owed.
 #
 # Usage: audit-port.sh <java-subpath-under-app/freerouting> <rust-src-dir> [file-glob]
 #   <java-subpath>  e.g. `geometry/planar` or `board/model/structure`
@@ -60,7 +67,8 @@ for pattern in $FILE_GLOB; do
       snake="$(echo "$m" | sed -E 's/([a-zA-Z])([0-9])/\1_\2/g; s/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z])([A-Z][a-z])/\1_\2/g' | tr 'A-Z' 'a-z')"
       if ! grep -rqE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "$RS" \
           && ! grep -rqE "not ported: .*\b${m}\b" "$RS" \
-          && ! grep -rqE "renamed: .*\b${m}\b" "$RS"; then
+          && ! grep -rqE "renamed: .*\b${m}\b" "$RS" \
+          && ! grep -rqE "added in (Task|Plan) [0-9]+:.*\b${m}\b" "$RS"; then
         echo "MISSING $cls.$m  (expected fn ${snake}*)"
         missing=1
       fi

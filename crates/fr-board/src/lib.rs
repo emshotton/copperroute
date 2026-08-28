@@ -10,6 +10,7 @@
 pub mod datastructures;
 pub mod error;
 pub mod ids;
+pub mod items;
 pub mod library;
 pub mod rules;
 pub mod structure;
@@ -20,6 +21,11 @@ pub use ids::{
     ItemId, ItemIdGenerator, NetClassId, PadstackId, RoomId, TreeId, TreeObject, ViaInfoId,
     ViaRuleId,
 };
+pub use items::{
+    AutorouteInfo, BoardOutline, ComponentObstacleArea, ComponentOutline, ConductionArea,
+    Connectable, ConnectableRef, Item, ItemHeader, ItemKind, ObstacleArea, Pin, PolylineTrace,
+    TreeEntries, Via, ViaObstacleArea,
+};
 pub use library::{
     BoardLibrary, DrillItemPadstackLookup, Keepout, LogicalPart, LogicalParts, Package, PackagePin,
     Packages, Padstack, Padstacks, PartPin,
@@ -28,17 +34,21 @@ pub use rules::{
     BoardRules, ClearanceClassIndexed, ClearanceMatrix, DefaultItemClearanceClasses, ItemClass,
     Net, NetClass, NetClasses, Nets, PadstackLookup, ViaInfo, ViaInfos, ViaRule,
 };
-pub use structure::{AngleRestriction, FixedState, Layer, LayerStructure, Unit};
+pub use structure::{
+    AngleRestriction, Component, Components, FixedState, Layer, LayerStructure, Unit,
+};
 
 /// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        AngleRestriction, BoardError, BoardLibrary, BoardRules, ClearanceClassIndexed,
-        ClearanceMatrix, DefaultItemClearanceClasses, DrillItemPadstackLookup, FixedState,
-        ItemClass, ItemId, ItemIdGenerator, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
-        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, Package,
-        PackagePin, Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, RoomId,
-        ShapeTree, StopCheck, TimeLimit, TreeEntry, TreeId, TreeObject, Unit, ViaInfo, ViaInfoId,
-        ViaInfos, ViaRule, ViaRuleId,
+        AngleRestriction, AutorouteInfo, BoardError, BoardLibrary, BoardOutline, BoardRules,
+        ClearanceClassIndexed, ClearanceMatrix, Component, ComponentObstacleArea, ComponentOutline,
+        Components, ConductionArea, Connectable, ConnectableRef, DefaultItemClearanceClasses,
+        DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemHeader, ItemId, ItemIdGenerator,
+        ItemKind, Keepout, Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, Net, NetClass,
+        NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea, Package, PackagePin, Packages,
+        Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin, PolylineTrace, RoomId,
+        ShapeTree, StopCheck, TimeLimit, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via,
+        ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
     };
 }

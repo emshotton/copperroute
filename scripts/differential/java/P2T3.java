@@ -41,10 +41,14 @@ public class P2T3 {
     @Override
     public void setSearchTreeEntries(ShapeTree.Leaf[] entries, ShapeTree tree) {}
 
-    /** Java `Item.compareTo` reduced to its id comparison — what `Leaf.compareTo` delegates to. */
+    /**
+     * Verbatim `Item.compareTo` (`board/model/items/Item.java:93-103`) — what `Leaf.compareTo`
+     * delegates to. Note the subtraction is `other.id - this.id`, so objects sort by
+     * *descending* id; that reversal is Java's, not a transcription slip.
+     */
     @Override
     public int compareTo(Object other) {
-      return this.id - ((Obj) other).id;
+      return ((Obj) other).id - this.id;
     }
 
     @Override

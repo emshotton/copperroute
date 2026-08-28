@@ -58,8 +58,12 @@ public class P2T3R {
       this.entries = entries;
     }
 
+    /**
+     * Verbatim `Item.compareTo` (`board/model/items/Item.java:93-103`): `other.id - this.id`, so
+     * objects sort by *descending* id. The reversal is Java's own.
+     */
     public int compareTo(Object other) {
-      return Integer.compare(this.id, ((Obj) other).id);
+      return Integer.compare(((Obj) other).id, this.id);
     }
 
     public String toString() {

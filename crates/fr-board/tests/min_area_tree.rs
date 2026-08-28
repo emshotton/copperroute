@@ -16,7 +16,9 @@ use fr_geometry::int_box::IntBox;
 use fr_geometry::regular_tile_shape::RegularTileShape;
 use std::collections::BTreeSet;
 
-/// `TreeObject::Item(ItemId(n))` — the driver's `Obj(n)`, whose `compareTo` is `id - other.id`.
+/// `TreeObject::Item(ItemId(n))` — the driver's `Obj(n)`, whose `compareTo` is verbatim
+/// `Item.compareTo` (Item.java:93-103), i.e. `other.id - this.id`: objects sort by *descending*
+/// id.
 fn obj(n: u32) -> TreeObject {
     TreeObject::Item(ItemId(n))
 }
@@ -270,13 +272,15 @@ fn overlaps_matches_java() {
     let (tree, _) = eight_box_tree();
     let query = |c: [i32; 4]| entries_str(&tree.overlaps(&boxed(c[0], c[1], c[2], c[3])));
 
-    assert_eq!(query([0, 0, 10, 10]), "#1/0 #7/0");
-    assert_eq!(query([15, 15, 45, 45]), "#4/0 #6/0 #7/0");
+    // Descending object id throughout: `Leaf.compareTo` (ShapeTree.java:216-223) delegates to
+    // `Item.compareTo` (Item.java:98), whose subtraction is reversed.
+    assert_eq!(query([0, 0, 10, 10]), "#7/0 #1/0");
+    assert_eq!(query([15, 15, 45, 45]), "#7/0 #6/0 #4/0");
     assert_eq!(query([55, 55, 65, 65]), "#8/0");
     assert_eq!(query([200, 200, 210, 210]), "");
     assert_eq!(
         query([-5, -5, 100, 100]),
-        "#1/0 #2/0 #3/0 #4/0 #5/0 #6/0 #7/0 #8/0"
+        "#8/0 #7/0 #6/0 #5/0 #4/0 #3/0 #2/0 #1/0"
     );
 }
 
@@ -332,7 +336,7 @@ fn remove_relinks_the_sibling_and_shrinks_ancestors() {
     assert_eq!(entries_str(&tree.overlaps(&boxed(0, 0, 10, 10))), "#1/0");
     assert_eq!(
         entries_str(&tree.overlaps(&boxed(-5, -5, 100, 100))),
-        "#1/0 #2/0 #3/0 #4/0 #5/0 #6/0 #8/0"
+        "#8/0 #6/0 #5/0 #4/0 #3/0 #2/0 #1/0"
     );
 
     // Removing #8 shrinks three ancestors in a row, all the way to the root.
@@ -429,14 +433,16 @@ fn inserting_an_object_with_no_shapes_does_nothing() {
 #[test]
 fn entries_order_by_object_then_shape_index() {
     // Java `Leaf.compareTo` (ShapeTree.java:216-223): object first, then shapeIndexInObject.
-    // Object #2 owns two shapes, object #1 one; the TreeSet yields `#1/0 #2/0 #2/1`.
+    // Object #2 owns two shapes, object #1 one. Objects sort by *descending* id
+    // (`Item.compareTo`, Item.java:98) and shape indices ascending, so the TreeSet yields
+    // `#2/0 #2/1 #1/0` — verbatim from `P2T3.java`'s `Q6 multi-shape` line.
     let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
     let two = tree.insert(obj(2), &[boxed(0, 0, 10, 10), boxed(100, 100, 110, 110)]);
     assert_eq!(two.len(), 2);
     tree.insert(obj(1), &[boxed(5, 5, 15, 15)]);
     assert_eq!(
         entries_str(&tree.overlaps(&boxed(-5, -5, 200, 200))),
-        "#1/0 #2/0 #2/1"
+        "#2/0 #2/1 #1/0"
     );
 }
 
@@ -562,7 +568,8 @@ fn set_leaf_entry_rewrites_the_key_and_nothing_else() {
     );
     assert_eq!(tree.leaf_count(), 8);
 
-    // The new key is what the tree now reports, in its new sort position: #99 sorts last.
+    // The new key is what the tree now reports, in its new sort position: ids sort descending
+    // (`Item.compareTo`, Item.java:98), so #99 sorts *first*.
     assert_eq!(
         tree.leaf_entry(leaves[3]),
         TreeEntry {
@@ -572,7 +579,7 @@ fn set_leaf_entry_rewrites_the_key_and_nothing_else() {
     );
     assert_eq!(
         entries_str(&tree.overlaps(&boxed(-5, -5, 100, 100))),
-        "#1/0 #2/0 #3/0 #5/0 #6/0 #7/0 #8/0 #99/7"
+        "#99/7 #8/0 #7/0 #6/0 #5/0 #3/0 #2/0 #1/0"
     );
     // The leaf is still found by a query that only touches its own box.
     assert_eq!(entries_str(&tree.overlaps(&boxed(21, 21, 22, 22))), "#99/7");

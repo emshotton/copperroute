@@ -35,13 +35,50 @@ pub struct TreeId(pub u32);
 /// autoroute expansion rooms — Java's `board.searchtree.SearchTreeObject` interface is
 /// implemented by both `board.Item` and `autoroute.ExpansionRoom` (plan-rulings.md #2).
 ///
-/// `Ord`: items order by id, rooms order by id, and every `Item` is less than every `Room`.
-/// Deriving `Ord` gives exactly this: Rust orders enum variants first by declaration order
-/// (`Item` before `Room`), then by the wrapped field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// # Ordering
+///
+/// This is the comparator every search-tree result set is sorted by: `ShapeTree.Leaf.compareTo`
+/// (ShapeTree.java:216-223) compares `object.compareTo(other.object)` first and the shape index
+/// second, and Java's `TreeSet<Leaf>` (MinAreaTree.java:26) is what `overlaps` returns. So this
+/// `Ord` must reproduce the two `compareTo` implementations exactly:
+///
+/// * `Item.compareTo(Object)` (Item.java:93-103): `item.id - id`, i.e. **`other.id - this.id`** —
+///   the subtraction is the wrong way round, so items sort by *descending* id. Against a
+///   non-`Item` it returns `1`, i.e. every item is greater than every room.
+/// * `CompleteFreeSpaceExpansionRoom.compareTo(Object)`
+///   (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:45-53): `other.id - this.id`
+///   against another room — descending id again — and `-1` against anything else, i.e. every
+///   room is less than every item. The two agree, so the order is total.
+///
+/// The result: `Room` before `Item`, and **descending** id within each. `Ord` is therefore
+/// hand-written; the derived one would give ascending ids and put items first.
+//
+// Java bug: the descending order is Item.java:98's reversed subtraction, reproduced here
+// because it decides the order the router visits overlapping items in. See
+// `crate::items::Item::compare_to` and docs/java-quirks.md.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TreeObject {
     Item(ItemId),
     Room(RoomId),
+}
+
+impl Ord for TreeObject {
+    fn cmp(&self, other: &TreeObject) -> std::cmp::Ordering {
+        match (self, other) {
+            // Item.java:98 / CompleteFreeSpaceExpansionRoom.java:48: `other.id - this.id`.
+            (TreeObject::Item(a), TreeObject::Item(b)) => b.cmp(a),
+            (TreeObject::Room(a), TreeObject::Room(b)) => b.cmp(a),
+            // Item.java:100 returns 1 and CompleteFreeSpaceExpansionRoom.java:50 returns -1.
+            (TreeObject::Item(_), TreeObject::Room(_)) => std::cmp::Ordering::Greater,
+            (TreeObject::Room(_), TreeObject::Item(_)) => std::cmp::Ordering::Less,
+        }
+    }
+}
+
+impl PartialOrd for TreeObject {
+    fn partial_cmp(&self, other: &TreeObject) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 /// Index of a [`crate::rules::NetClass`] in [`crate::rules::NetClasses`].
@@ -163,11 +200,38 @@ mod tests {
     }
 
     #[test]
-    fn tree_object_ordering() {
-        // plan-rulings.md #2: Item < Room; within a variant, order by id.
-        assert!(TreeObject::Item(ItemId(5)) < TreeObject::Item(ItemId(7)));
-        assert!(TreeObject::Item(ItemId(7)) < TreeObject::Room(RoomId(1)));
-        assert!(TreeObject::Room(RoomId(1)) < TreeObject::Room(RoomId(2)));
+    fn tree_object_ordering_reproduces_the_two_java_compare_tos() {
+        // Item.compareTo (Item.java:93-103) is `other.id - this.id`, so items sort by
+        // *descending* id, and `compareTo(non-Item)` returns 1 — every item is greater than
+        // every room. CompleteFreeSpaceExpansionRoom.compareTo
+        // (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:45-53) agrees: descending id
+        // between rooms, and -1 against an item.
+        assert!(TreeObject::Item(ItemId(7)) < TreeObject::Item(ItemId(5)));
+        assert!(TreeObject::Room(RoomId(1)) < TreeObject::Item(ItemId(7)));
+        assert!(TreeObject::Room(RoomId(2)) < TreeObject::Room(RoomId(1)));
+    }
+
+    #[test]
+    fn tree_object_sets_iterate_rooms_first_then_items_by_descending_id() {
+        // This is the order `ShapeTree::overlaps` hands results back in, via `Leaf.compareTo`
+        // (ShapeTree.java:216-223).
+        let sorted: Vec<TreeObject> = std::collections::BTreeSet::from([
+            TreeObject::Item(ItemId(1)),
+            TreeObject::Item(ItemId(3)),
+            TreeObject::Room(RoomId(1)),
+            TreeObject::Room(RoomId(2)),
+        ])
+        .into_iter()
+        .collect();
+        assert_eq!(
+            sorted,
+            vec![
+                TreeObject::Room(RoomId(2)),
+                TreeObject::Room(RoomId(1)),
+                TreeObject::Item(ItemId(3)),
+                TreeObject::Item(ItemId(1)),
+            ]
+        );
     }
 
     #[test]
