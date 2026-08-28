@@ -240,9 +240,16 @@ impl Packages {
     ///
     /// Java performs **no bounds check** here (unlike `Padstacks.get(int)`): `Vector.elementAt`
     /// throws `ArrayIndexOutOfBoundsException` out of range, and the port panics identically via
-    /// slice indexing. See `docs/java-quirks.md`.
+    /// slice indexing. See `docs/java-quirks.md`. Java's inconsistent-id check
+    /// (Packages.java:57-59, `FRLogger.warn` only) becomes a `debug_assert_eq!`, per the global
+    /// constraints' "invariant-guard logs become `debug_assert!`" rule.
     pub fn get(&self, no: usize) -> &Package {
-        &self.list[no - 1]
+        let result = &self.list[no - 1];
+        debug_assert_eq!(
+            result.no, no,
+            "Packages.get: inconsistent package ID (Packages.java:57-59)"
+        );
+        result
     }
 
     /// Port of `Packages.count` (Packages.java:63-66).

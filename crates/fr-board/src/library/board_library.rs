@@ -92,8 +92,19 @@ impl BoardLibrary {
     /// Port of `BoardLibrary.addViaPadstack` (BoardLibrary.java:90-101): appends `padstack` to
     /// the via-padstack list, lazily creating the list if this is the first addition. Returns
     /// `false` (unchanged) if a via padstack with the same name is already present.
+    ///
+    /// Java reads `padstack.name` directly off an object reference (BoardLibrary.java:91), so a
+    /// `padstack` that does not resolve cannot occur there. This port's `padstack` is only an
+    /// id, which *can* fail to resolve (an artifact of the index-based redesign, not a case
+    /// Java has); a `debug_assert!` flags that as a caller bug rather than silently skipping the
+    /// duplicate-name check the way an unresolved id otherwise would.
     pub fn add_via_padstack(&mut self, padstack: PadstackId) -> bool {
-        if let Some(name) = self.padstacks.get(padstack).map(|p| p.name.clone())
+        let resolved = self.padstacks.get(padstack);
+        debug_assert!(
+            resolved.is_some(),
+            "BoardLibrary.add_via_padstack: PadstackId must resolve in self.padstacks (BoardLibrary.java:91 assumes a live Padstack reference)"
+        );
+        if let Some(name) = resolved.map(|p| p.name.clone())
             && self.get_via_padstack_by_name(&name).is_some()
         {
             return false;
@@ -375,5 +386,17 @@ mod tests {
         let (library, ids) = library_with_padstacks(2, 1);
         assert!(library.get_padstack(ids[0]).is_some());
         assert!(library.get_padstack(PadstackId(99)).is_none());
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic]
+    fn add_via_padstack_debug_asserts_the_id_resolves() {
+        // Java cannot hit this: `padstack.name` (BoardLibrary.java:91) is a direct field read
+        // off a live object reference, so a "does not resolve" `Padstack` cannot exist there.
+        // This port's id-based redesign can be handed a stale/invalid `PadstackId`, which the
+        // `debug_assert!` in `add_via_padstack` flags as a caller bug.
+        let (mut library, _ids) = library_with_padstacks(2, 0);
+        library.add_via_padstack(PadstackId(99));
     }
 }

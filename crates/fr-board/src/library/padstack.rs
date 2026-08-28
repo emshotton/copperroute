@@ -268,13 +268,20 @@ impl Padstacks {
     }
 
     /// Port of `Padstacks.get(int)` (Padstacks.java:34-46): the padstack with this id (ids start
-    /// at 1), or `None` when out of range. Java's out-of-range branch and its
-    /// inconsistent-id check are both `FRLogger.warn` only (dropped).
+    /// at 1), or `None` when out of range. Java's out-of-range branch logs a warning (dropped);
+    /// its inconsistent-id check (Padstacks.java:41-43, also `FRLogger.warn` only) becomes a
+    /// `debug_assert_eq!`, per the global constraints' "invariant-guard logs become
+    /// `debug_assert!`" rule (see `rules::net::Nets::get` for the established pattern).
     pub fn get(&self, id: PadstackId) -> Option<&Padstack> {
         if id.0 == 0 || id.0 > self.list.len() {
             return None;
         }
-        Some(&self.list[id.0 - 1])
+        let result = &self.list[id.0 - 1];
+        debug_assert_eq!(
+            result.no, id.0,
+            "Padstacks.get: inconsistent padstack ID (Padstacks.java:41-43)"
+        );
+        Some(result)
     }
 
     /// Port of `Padstacks.count` (Padstacks.java:48-51).
