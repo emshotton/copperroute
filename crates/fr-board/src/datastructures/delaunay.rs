@@ -41,11 +41,14 @@
 //!
 //! * The bounding triangle is finite (`Limits.CRIT_INT == 2^25`, lines 65-69), and the in-circle
 //!   predicate is `FloatPoint.insideCircle`, which answers `false` — "legal, do not flip" —
-//!   whenever `FloatPoint.circleCenter`'s slope formula degenerates. It degenerates when two of
-//!   the three circle points share an x or a y coordinate. Since two of the three bounding
-//!   corners sit on the axes, plain axis-aligned input loses edges: the four corners of a square
-//!   come back as **4** edges, not the 5 a triangulation of a quadrilateral has. See
-//!   `docs/java-quirks.md` and the `square_pins_javas_four_edges` test.
+//!   whenever `FloatPoint.circleCenter`'s slope formula degenerates. For
+//!   `p1.circleCenter(p2, p3)` exactly **three of the six** possible coincidences do that —
+//!   `p1.x == p2.x`, `p1.y == p2.y` and `p2.x == p3.x`; the other three
+//!   (`p1.x == p3.x`, `p1.y == p3.y`, `p2.y == p3.y`) give a finite centre. JVM-verified.
+//!   Since two of the three bounding corners sit on the axes, plain axis-aligned input still
+//!   loses edges: the four corners of a square come back as **4** edges, not the 5 a
+//!   triangulation of a quadrilateral has. See `docs/java-quirks.md` quirk #82 and the
+//!   `square_pins_javas_four_edges` test.
 //! * `validate()` is vacuous on any non-trivial triangulation — `Triangle.validate` throws away
 //!   its children's results (line 957). Reproduced; see [`PlanarDelaunayTriangulation::validate`].
 //!
@@ -340,9 +343,16 @@ impl PlanarDelaunayTriangulation {
                 }
                 // totalized: Java passes the `null` `positionLocate` returned straight into
                 // `split`, which dereferences `triangle.edgeLines` and throws a
-                // `NullPointerException` out of the constructor (line 93-94). Unreachable while
-                // the graph is consistent — every corner is inside the bounding triangle — so the
-                // port skips the corner instead of aborting the whole triangulation.
+                // `NullPointerException` out of the constructor (line 93-94). This is *not* a
+                // search-graph invariant: the bounding triangle's hypotenuse is `x + y == 2^25`,
+                // so a corner such as `(2e7, 2e7)` — well inside `CRIT_INT` on each axis
+                // separately — lies outside it, and Java really does throw. What keeps it
+                // unreachable is upstream: `io/specctra/parser/Structure.java:1200` shrinks the
+                // DSN scale factor with `while (5 * maxCoor >= Limits.CRIT_INT) scaleFactor /= 10`,
+                // bounding every imported coordinate to about `CRIT_INT / 5` per axis, so the sum
+                // of two of them cannot reach `2^25`. A `Board` built programmatically has no such
+                // guard: there a release build silently drops the corner where Java throws, while
+                // a debug build trips the `debug_assert!` below.
                 None => debug_assert!(false, "no triangle contains the corner being inserted"),
             }
         }
@@ -1343,11 +1353,11 @@ mod tests {
         list.iter().map(|c| c.0).collect()
     }
 
-    /// A deterministic LCG for the 50-point set, mirrored exactly by the `p2t13` differential
-    /// driver so both languages see the same points.
-    struct Lcg(u64);
+    /// A deterministic xorshift64 generator for the 50-point set, mirrored exactly by the
+    /// `p2t13` differential driver so both languages see the same points.
+    struct XorShift64(u64);
 
-    impl Lcg {
+    impl XorShift64 {
         fn next(&mut self) -> u64 {
             self.0 ^= self.0 << 13;
             self.0 ^= self.0 >> 7;
@@ -1361,12 +1371,12 @@ mod tests {
     }
 
     fn random_points(count: usize, seed: u64) -> Vec<(i32, i32)> {
-        let mut lcg = Lcg(seed);
+        let mut rng = XorShift64(seed);
         (0..count)
             .map(|_| {
                 (
-                    lcg.bounded(200_000) - 100_000,
-                    lcg.bounded(200_000) - 100_000,
+                    rng.bounded(200_000) - 100_000,
+                    rng.bounded(200_000) - 100_000,
                 )
             })
             .collect()
