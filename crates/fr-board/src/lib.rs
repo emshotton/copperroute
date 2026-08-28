@@ -23,8 +23,8 @@ pub use ids::{
 };
 pub use items::{
     AutorouteInfo, BoardOutline, ComponentObstacleArea, ComponentOutline, ConductionArea,
-    Connectable, ConnectableRef, Item, ItemHeader, ItemKind, ObstacleArea, Pin, PolylineTrace,
-    TreeEntries, Via, ViaObstacleArea,
+    Connectable, ConnectableRef, DrillItemData, Item, ItemCtx, ItemHeader, ItemKind, ObstacleArea,
+    Pin, PolylineTrace, TraceExitRestriction, TreeEntries, Via, ViaObstacleArea,
 };
 pub use library::{
     BoardLibrary, DrillItemPadstackLookup, Keepout, LogicalPart, LogicalParts, Package, PackagePin,
@@ -44,11 +44,12 @@ pub mod prelude {
         AngleRestriction, AutorouteInfo, BoardError, BoardLibrary, BoardOutline, BoardRules,
         ClearanceClassIndexed, ClearanceMatrix, Component, ComponentObstacleArea, ComponentOutline,
         Components, ConductionArea, Connectable, ConnectableRef, DefaultItemClearanceClasses,
-        DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemHeader, ItemId, ItemIdGenerator,
-        ItemKind, Keepout, Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, Net, NetClass,
-        NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea, Package, PackagePin, Packages,
-        Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin, PolylineTrace, RoomId,
-        ShapeTree, StopCheck, TimeLimit, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via,
-        ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
+        DrillItemData, DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader,
+        ItemId, ItemIdGenerator, ItemKind, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
+        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea,
+        Package, PackagePin, Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin,
+        Pin, PolylineTrace, RoomId, ShapeTree, StopCheck, TimeLimit, TraceExitRestriction,
+        TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos,
+        ViaObstacleArea, ViaRule, ViaRuleId,
     };
 }

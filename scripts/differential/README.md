@@ -35,7 +35,18 @@ methods with dozens of branches.
     stack that has nothing to do with geometry). Reproduces the handful of
     `warn`/`debug`/`trace`/`error` overloads the planar package calls.
   - `historical/` — earlier, superseded exploration scripts kept for
-    provenance only. `T17.java` and `T17b.java` are fixed print-statement
+    provenance only. `T6.java` and `T6b.java` (Plan 2 Task 6) inline the bodies
+    of `Pin.getShape`, `Pin.relativeLocation`, `Pin.getTraceExitRestrictions`,
+    `Pin.nearestTraceExitCorner` and `Pin.calcNearestExitRestrictionDirection`
+    over the *real* `geometry/planar` classes — `Pin` itself cannot be compiled
+    standalone, since it drags in `BasicBoard` and the whole board stack — and
+    print the values that `crates/fr-board/tests/drill_items.rs` asserts. Run
+    them from *this* directory with
+    `JD=../../../freerouting/src/main/java; javac -d out -sourcepath $JD \
+      $JD/app/freerouting/geometry/planar/*.java java/support/FRLogger.java \
+      java/historical/T6.java java/historical/T6b.java && \
+      java -cp out app.freerouting.geometry.planar.T6`.
+    The older ones: `T17.java` and `T17b.java` are fixed print-statement
     dumps written before `D17.java` existed (no seeded/diffable format, no
     Rust twin). `RD.java`, `RD2.java` were `D17.java`'s drafts. `RV17.java`
     and `R.java` pin `java.util.Random(99).nextInt(bound)` sequences used

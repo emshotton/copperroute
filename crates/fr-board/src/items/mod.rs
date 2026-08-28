@@ -71,6 +71,7 @@
 //! not ported: `Item.write(ObjectOutputStream)` (Item.java:277-278) and its overrides — Java
 //! serialization, which `global-constraints.md` excludes.
 
+pub mod drill;
 pub mod header;
 
 use std::cmp::Ordering;
@@ -82,6 +83,7 @@ use crate::ids::{ItemId, TreeId};
 use crate::rules::{BoardRules, Nets};
 use crate::structure::FixedState;
 
+pub use drill::{DrillItemData, ItemCtx, Pin, TraceExitRestriction, Via};
 pub use header::{AutorouteInfo, ItemHeader, TreeEntries};
 
 /// Port of `BoardItemType` (`board/model/items/BoardItemType.java`): the neutral semantic
@@ -120,7 +122,7 @@ pub enum ItemKind {
 /// Java's abstract `Trace` (`board/model/items/Trace.java`) has no separate representation here:
 /// its fields (`layer`, `halfWidth`) and its `Item` overrides belong to this struct, and
 /// `instanceof Trace` is [`Item::is_trace`].
-// added in Task 6: `lines: Polyline`, `layer: usize`, `half_width: i32` (PolylineTrace.java:41,
+// added in Task 8: `lines: Polyline`, `layer: usize`, `half_width: i32` (PolylineTrace.java:41,
 // Trace.java:29-30), and the bodies of every stub in the `impl` block below.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PolylineTrace {
@@ -128,29 +130,8 @@ pub struct PolylineTrace {
     pub hdr: ItemHeader,
 }
 
-/// Port of `Via` (`board/model/items/Via.java`), a `DrillItem`.
-// added in Task 7: `padstack: PadstackId`, `center: Point` (Via.java:49, DrillItem.java:29),
-// `is_escape_via`, `escape_via_smd_layer` (Via.java:40,47).
-#[derive(Debug, Clone, PartialEq)]
-pub struct Via {
-    /// The `Item` base-class state (Item.java:41-67).
-    pub hdr: ItemHeader,
-    /// Java `public final boolean attachAllowed` (Via.java:32): copper sharing with SMD pins of
-    /// the same net. Read by `Via.isObstacle` (Via.java:165), which is why it is here already.
-    pub attach_allowed: bool,
-}
-
-/// Port of `Pin` (`board/model/items/Pin.java`), a `DrillItem`.
-// added in Task 7: `pin_index: i32` (Pin.java:43) and the padstack/centre lookup that goes
-// through the component's package.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Pin {
-    /// The `Item` base-class state (Item.java:41-67).
-    pub hdr: ItemHeader,
-}
-
 /// Port of `ObstacleArea` (`board/model/items/ObstacleArea.java`): a keepout area.
-// added in Task 8: `name: Option<String>`, `relative_area: Area`, `layer: usize`,
+// added in Task 7: `name: Option<String>`, `relative_area: Area`, `layer: usize`,
 // `translation: Vector`, `rotation_in_degree: f64`, `side_changed: bool`
 // (ObstacleArea.java:31-41).
 #[derive(Debug, Clone, PartialEq)]
@@ -161,7 +142,7 @@ pub struct ObstacleArea {
 
 /// Port of `ConductionArea` (`board/model/items/ConductionArea.java`): a copper pour, which
 /// extends `ObstacleArea` **and** implements `Connectable`.
-// added in Task 8: the `ObstacleArea` fields it inherits (see [`ObstacleArea`]).
+// added in Task 7: the `ObstacleArea` fields it inherits (see [`ObstacleArea`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConductionArea {
     /// The `Item` base-class state (Item.java:41-67).
@@ -182,7 +163,7 @@ pub struct ConductionArea {
 
 /// Port of `ViaObstacleArea` (`board/model/items/ViaObstacleArea.java`): a keepout for vias
 /// only, extending `ObstacleArea`.
-// added in Task 8: the `ObstacleArea` fields it inherits.
+// added in Task 7: the `ObstacleArea` fields it inherits.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ViaObstacleArea {
     /// The `Item` base-class state (Item.java:41-67).
@@ -191,7 +172,7 @@ pub struct ViaObstacleArea {
 
 /// Port of `ComponentObstacleArea` (`board/model/items/ComponentObstacleArea.java`): a placement
 /// keepout belonging to a component, extending `ObstacleArea`.
-// added in Task 8: the `ObstacleArea` fields it inherits.
+// added in Task 7: the `ObstacleArea` fields it inherits.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentObstacleArea {
     /// The `Item` base-class state (Item.java:41-67).
@@ -200,7 +181,7 @@ pub struct ComponentObstacleArea {
 
 /// Port of `ComponentOutline` (`board/model/items/ComponentOutline.java`): a component's
 /// courtyard or fabrication outline.
-// added in Task 8: `relative_area: Area`, `translation: Vector`, `rotation_in_degree: f64`,
+// added in Task 7: `relative_area: Area`, `translation: Vector`, `rotation_in_degree: f64`,
 // `is_front`, `is_courtyard`, `is_fabrication`, `is_closed` (ComponentOutline.java:24-31).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentOutline {
@@ -210,7 +191,7 @@ pub struct ComponentOutline {
 
 /// Port of `BoardOutline` (`board/model/structure/BoardOutline.java`): the board's own outline,
 /// which is an `Item` so it can live in the search tree.
-// added in Task 8: `shapes: Vec<PolylineShapeRef>`, `keepout_area`, `keepout_lines`,
+// added in Task 7: `shapes: Vec<PolylineShapeRef>`, `keepout_area`, `keepout_lines`,
 // `keepout_outside_outline` (BoardOutline.java:30-43), and the board layer count that
 // `lastLayer` needs (Java reads it through the forbidden `board` back-pointer).
 #[derive(Debug, Clone, PartialEq)]
@@ -564,7 +545,7 @@ impl Item {
     /// `rules.ignoreConduction`. So the rules flag is a *cache of the last board-wide setting*,
     /// and the per-item field is what `isObstacle` actually reads. Java wins over the brief;
     /// `Board::change_conduction_is_obstacle` (Task 11) owns the flag.
-    pub fn is_obstacle(&self, other: &Item) -> bool {
+    pub fn is_obstacle(&self, other: &Item, ctx: &ItemCtx<'_>) -> bool {
         match self {
             Item::Trace(_) => {
                 // Trace.java:93-96.
@@ -606,7 +587,7 @@ impl Item {
                 }
                 // Via.java:165.
                 match other {
-                    Item::Pin(pin) => !via.attach_allowed || !pin.drill_allowed(),
+                    Item::Pin(pin) => !via.attach_allowed || !pin.drill_allowed(ctx),
                     _ => true,
                 }
             }
@@ -624,7 +605,7 @@ impl Item {
                     return false;
                 }
                 // Pin.java:365: same-net vias must be allowed to contact SMD pins during fanout.
-                !pin.drill_allowed() || !matches!(other, Item::Via(_))
+                !pin.drill_allowed(ctx) || !matches!(other, Item::Via(_))
             }
             Item::ObstacleArea(_) => obstacle_area_is_obstacle(self, other),
             Item::ConductionArea(area) => {
@@ -701,11 +682,11 @@ impl Item {
     // -- layers (Item.java:268-275, 313-344, 809-814) ------------------------------------------
 
     /// Port of the abstract `Item.firstLayer` (Item.java:271-272) and its overrides.
-    pub fn first_layer(&self) -> usize {
+    pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.first_layer(),
-            Item::Via(i) => i.first_layer(),
-            Item::Pin(i) => i.first_layer(),
+            Item::Via(i) => i.first_layer(ctx),
+            Item::Pin(i) => i.first_layer(ctx),
             Item::ObstacleArea(i) => i.get_layer(),
             Item::ConductionArea(i) => i.get_layer(),
             Item::ViaObstacleArea(i) => i.get_layer(),
@@ -717,11 +698,11 @@ impl Item {
     }
 
     /// Port of the abstract `Item.lastLayer` (Item.java:274-275) and its overrides.
-    pub fn last_layer(&self) -> usize {
+    pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.last_layer(),
-            Item::Via(i) => i.last_layer(),
-            Item::Pin(i) => i.last_layer(),
+            Item::Via(i) => i.last_layer(ctx),
+            Item::Pin(i) => i.last_layer(ctx),
             Item::ObstacleArea(i) => i.get_layer(),
             Item::ConductionArea(i) => i.get_layer(),
             Item::ViaObstacleArea(i) => i.get_layer(),
@@ -732,15 +713,15 @@ impl Item {
     }
 
     /// Port of the abstract `Item.isOnLayer` (Item.java:268-269) and its overrides.
-    pub fn is_on_layer(&self, layer: usize) -> bool {
+    pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
         match self {
             // PolylineTrace.java:81-84, ObstacleArea.java:150-153, ComponentOutline.java:114-117
             // are all `getLayer() == layer`; DrillItem.java:156-159 is a range test.
-            Item::Via(i) => i.is_on_layer(layer),
-            Item::Pin(i) => i.is_on_layer(layer),
+            Item::Via(i) => i.is_on_layer(layer, ctx),
+            Item::Pin(i) => i.is_on_layer(layer, ctx),
             // BoardOutline.java:107-110 is unconditionally true.
             Item::BoardOutline(_) => true,
-            _ => self.first_layer() == layer,
+            _ => self.first_layer(ctx) == layer,
         }
     }
 
@@ -748,43 +729,44 @@ impl Item {
     /// `Trace` (Trace.java:332-335), `DrillItem` (DrillItem.java:147-154), `ObstacleArea`
     /// (ObstacleArea.java:265-268), `ComponentOutline` (ComponentOutline.java:124-127) and
     /// `BoardOutline` (BoardOutline.java:68-81).
-    pub fn shape_layer(&self, index: usize) -> usize {
+    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         match self {
-            Item::Via(i) => i.shape_layer(index),
-            Item::Pin(i) => i.shape_layer(index),
+            Item::Via(i) => i.shape_layer(index, ctx),
+            Item::Pin(i) => i.shape_layer(index, ctx),
             Item::BoardOutline(i) => i.shape_layer(index),
             // Every other override ignores `index` and answers the item's single layer.
-            _ => self.first_layer(),
+            _ => self.first_layer(ctx),
         }
     }
 
     /// Port of `Item.sharesLayer` (Item.java:313-318).
-    pub fn shares_layer(&self, other: &Item) -> bool {
-        self.first_layer().max(other.first_layer()) <= self.last_layer().min(other.last_layer())
+    pub fn shares_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> bool {
+        self.first_layer(ctx).max(other.first_layer(ctx))
+            <= self.last_layer(ctx).min(other.last_layer(ctx))
     }
 
     /// Port of `Item.firstCommonLayer` (Item.java:320-331). Java's `-1` is `None`.
-    pub fn first_common_layer(&self, other: &Item) -> Option<usize> {
-        let max_first = self.first_layer().max(other.first_layer());
-        let min_last = self.last_layer().min(other.last_layer());
+    pub fn first_common_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> Option<usize> {
+        let max_first = self.first_layer(ctx).max(other.first_layer(ctx));
+        let min_last = self.last_layer(ctx).min(other.last_layer(ctx));
         (max_first <= min_last).then_some(max_first)
     }
 
     /// Port of `Item.lastCommonLayer` (Item.java:333-344). Java's `-1` is `None`.
-    pub fn last_common_layer(&self, other: &Item) -> Option<usize> {
-        let max_first = self.first_layer().max(other.first_layer());
-        let min_last = self.last_layer().min(other.last_layer());
+    pub fn last_common_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> Option<usize> {
+        let max_first = self.first_layer(ctx).max(other.first_layer(ctx));
+        let min_last = self.last_layer(ctx).min(other.last_layer(ctx));
         (max_first <= min_last).then_some(min_last)
     }
 
     // -- geometry (Item.java:191-241, 277-298) --------------------------------------------------
 
     /// Port of the abstract `Item.boundingBox` (Item.java:297-298) and its overrides.
-    pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
         match self {
             Item::Trace(i) => i.bounding_box(),
-            Item::Via(i) => i.bounding_box(),
-            Item::Pin(i) => i.bounding_box(),
+            Item::Via(i) => i.bounding_box(ctx),
+            Item::Pin(i) => i.bounding_box(ctx),
             Item::ObstacleArea(i) => i.bounding_box(),
             Item::ConductionArea(i) => i.bounding_box(),
             Item::ViaObstacleArea(i) => i.bounding_box(),
@@ -795,11 +777,11 @@ impl Item {
     }
 
     /// Port of the abstract `Item.tileShapeCount` (Item.java:191-192) and its overrides.
-    pub fn tile_shape_count(&self) -> usize {
+    pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.tile_shape_count(),
-            Item::Via(i) => i.tile_shape_count(),
-            Item::Pin(i) => i.tile_shape_count(),
+            Item::Via(i) => i.tile_shape_count(ctx),
+            Item::Pin(i) => i.tile_shape_count(ctx),
             Item::ObstacleArea(i) => i.tile_shape_count(),
             Item::ConductionArea(i) => i.tile_shape_count(),
             Item::ViaObstacleArea(i) => i.tile_shape_count(),
@@ -889,9 +871,12 @@ impl Item {
     /// Port of `Item.clearAutorouteInfo` (Item.java:1051-1054) and its one override,
     /// `Via.clearAutorouteInfo` (Via.java:226-230), which also drops the via's cached
     /// `autorouteDrillInfo`.
-    // added in Task 7: `Via`'s extra `autorouteDrillInfo = null` (Via.java:229).
     pub fn clear_autoroute_info(&mut self) {
-        self.header_mut().clear_autoroute_info();
+        match self {
+            // Via.java:226-230 also drops `autorouteDrillInfo`.
+            Item::Via(i) => i.clear_autoroute_info(),
+            _ => self.header_mut().clear_autoroute_info(),
+        }
     }
 
     /// Port of `Item.clearDerivedData` (Item.java:1056-1065) and the six overrides that each
@@ -899,12 +884,17 @@ impl Item {
     /// (Pin.java:385-390), `DrillItem` (DrillItem.java:390-395), `ObstacleArea`
     /// (ObstacleArea.java:328-332), `ConductionArea` (ConductionArea.java:76-82) and
     /// `ComponentOutline` (ComponentOutline.java:218-221).
-    // added in Task 7: `Via`/`Pin`/`DrillItem`'s cached shapes and centre.
-    // added in Task 8: `ObstacleArea`'s `precalculatedAbsoluteArea`, `ConductionArea`'s fill
+    // added in Task 7: `ObstacleArea`'s `precalculatedAbsoluteArea`, `ConductionArea`'s fill
     // cache (plan-rulings.md #3: the `java.awt.geom.Area` cache itself is renderer-only and is
     // not ported), `ComponentOutline`'s `precalculatedAbsoluteArea`.
     pub fn clear_derived_data(&mut self) {
-        self.header_mut().clear_derived_data();
+        match self {
+            // Via.java:219-224 and Pin.java:385-389 each drop a shape cache and the two
+            // `DrillItem` layer memos before calling `super`.
+            Item::Via(i) => i.clear_derived_data(),
+            Item::Pin(i) => i.clear_derived_data(),
+            _ => self.header_mut().clear_derived_data(),
+        }
     }
 
     // -- transforms (Item.java:277-295) ---------------------------------------------------------
@@ -955,10 +945,10 @@ impl Item {
     }
 
     /// Port of the abstract `Item.changePlacementSide` (Item.java:291-295) and its overrides.
-    pub fn change_placement_side(&mut self, pole: &IntPoint) {
+    pub fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
         match self {
             Item::Trace(i) => i.change_placement_side(pole),
-            Item::Via(i) => i.change_placement_side(pole),
+            Item::Via(i) => i.change_placement_side(pole, ctx),
             Item::Pin(i) => i.change_placement_side(pole),
             Item::ObstacleArea(i) => i.change_placement_side(pole),
             Item::ConductionArea(i) => i.change_placement_side(pole),
@@ -1049,6 +1039,12 @@ impl std::fmt::Display for Item {
             Item::BoardOutline(_) => "boardoutline",
         };
         f.write_str(simple_name)?;
+        // Pin.toString (Pin.java:675-692) inserts the pin index before the component clause.
+        if let Item::Pin(pin) = self
+            && pin.get_pin_index() > 0
+        {
+            write!(f, " #{}", pin.get_pin_index())?;
+        }
         if self.component_id() > 0 {
             write!(f, " of component #{}", self.component_id())?;
         }
@@ -1089,7 +1085,12 @@ pub trait Connectable {
 
     /// `Connectable.getTraceConnectionShape(ShapeSearchTree, int)` (Connectable.java:43): the
     /// subshape of tree shape `index` that a trace may connect to.
-    fn get_trace_connection_shape(&self, tree: TreeId, index: usize) -> Option<TileShape>;
+    fn get_trace_connection_shape(
+        &self,
+        tree: TreeId,
+        index: usize,
+        ctx: &ItemCtx<'_>,
+    ) -> Option<TileShape>;
 }
 
 /// A borrowed view of an [`Item`] that implements [`Connectable`] — the result of
@@ -1130,7 +1131,7 @@ impl ConnectableRef<'_> {
 
 /// The `hdr`-only half of a variant's `copy`: a fresh header with `new_id`, carrying exactly the
 /// fields the Java constructor forwards.
-fn copied_header(hdr: &ItemHeader, new_id: ItemId) -> ItemHeader {
+pub(crate) fn copied_header(hdr: &ItemHeader, new_id: ItemId) -> ItemHeader {
     ItemHeader::new(
         new_id,
         hdr.net_nos.clone(),
@@ -1142,14 +1143,14 @@ fn copied_header(hdr: &ItemHeader, new_id: ItemId) -> ItemHeader {
 
 impl PolylineTrace {
     /// A trace with nothing but its base-class state.
-    // added in Task 6: the geometry parameters of `PolylineTrace(Polyline, int, int, int[], int,
+    // added in Task 8: the geometry parameters of `PolylineTrace(Polyline, int, int, int[], int,
     // int, int, FixedState, BasicBoard)` (PolylineTrace.java:45-59).
     pub fn new(hdr: ItemHeader) -> PolylineTrace {
         PolylineTrace { hdr }
     }
 
     /// Port of `PolylineTrace.copy` (PolylineTrace.java:62-79).
-    // added in Task 6: the `lines`, `getLayer()` and `getHalfWidth()` arguments.
+    // added in Task 8: the `lines`, `getLayer()` and `getHalfWidth()` arguments.
     pub fn copy(&self, new_id: ItemId) -> PolylineTrace {
         PolylineTrace {
             hdr: copied_header(&self.hdr, new_id),
@@ -1158,10 +1159,10 @@ impl PolylineTrace {
 
     /// Port of `Trace.getLayer` (Trace.java:66-69): the trace's single layer, which
     /// `Trace.firstLayer` and `Trace.lastLayer` (Trace.java:57-65) both return.
-    // added in Task 6: the `layer` field (Trace.java:29).
+    // added in Task 8: the `layer` field (Trace.java:29).
     pub fn get_layer(&self) -> usize {
         unimplemented!(
-            "PolylineTrace::get_layer needs the `layer` field, added in Task 6 (Trace.java:66-69)"
+            "PolylineTrace::get_layer needs the `layer` field, added in Task 8 (Trace.java:66-69)"
         )
     }
 
@@ -1176,55 +1177,55 @@ impl PolylineTrace {
     }
 
     /// Port of `PolylineTrace.boundingBox` (PolylineTrace.java:117-121).
-    // added in Task 6: `lines.boundingBox(0, lines.lineCount() - 1)`.
+    // added in Task 8: `lines.boundingBox(0, lines.lineCount() - 1)`.
     pub fn bounding_box(&self) -> IntBox {
         unimplemented!(
-            "PolylineTrace::bounding_box needs the `lines` field, added in Task 6 \
+            "PolylineTrace::bounding_box needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:117-121)"
         )
     }
 
     /// Port of `PolylineTrace.tileShapeCount` (PolylineTrace.java:138-141).
-    // added in Task 6: `lines.lineCount() - 2`.
+    // added in Task 8: `lines.lineCount() - 2`.
     pub fn tile_shape_count(&self) -> usize {
         unimplemented!(
-            "PolylineTrace::tile_shape_count needs the `lines` field, added in Task 6 \
+            "PolylineTrace::tile_shape_count needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:138-141)"
         )
     }
 
     /// Port of `PolylineTrace.translateBy` (PolylineTrace.java:143-147).
-    // added in Task 6.
+    // added in Task 8.
     pub fn translate_by(&mut self, _vector: &Vector) {
         unimplemented!(
-            "PolylineTrace::translate_by needs the `lines` field, added in Task 6 \
+            "PolylineTrace::translate_by needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:143-147)"
         )
     }
 
     /// Port of `PolylineTrace.turn90Degree` (PolylineTrace.java:149-153).
-    // added in Task 6.
+    // added in Task 8.
     pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
         unimplemented!(
-            "PolylineTrace::turn_90_degree needs the `lines` field, added in Task 6 \
+            "PolylineTrace::turn_90_degree needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:149-153)"
         )
     }
 
     /// Port of `PolylineTrace.rotateApprox` (PolylineTrace.java:155-159).
-    // added in Task 6.
+    // added in Task 8.
     pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
         unimplemented!(
-            "PolylineTrace::rotate_approx needs the `lines` field, added in Task 6 \
+            "PolylineTrace::rotate_approx needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:155-159)"
         )
     }
 
     /// Port of `PolylineTrace.changePlacementSide` (PolylineTrace.java:160-165).
-    // added in Task 6.
+    // added in Task 8.
     pub fn change_placement_side(&mut self, _pole: &IntPoint) {
         unimplemented!(
-            "PolylineTrace::change_placement_side needs the `lines` field, added in Task 6 \
+            "PolylineTrace::change_placement_side needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:160-165)"
         )
     }
@@ -1236,257 +1237,16 @@ impl Connectable for PolylineTrace {
     }
 
     /// Port of `PolylineTrace.getTraceConnectionShape` (PolylineTrace.java:917-924).
-    // added in Task 6.
-    fn get_trace_connection_shape(&self, _tree: TreeId, _index: usize) -> Option<TileShape> {
+    // added in Task 8.
+    fn get_trace_connection_shape(
+        &self,
+        _tree: TreeId,
+        _index: usize,
+        _ctx: &ItemCtx<'_>,
+    ) -> Option<TileShape> {
         unimplemented!(
-            "PolylineTrace::get_trace_connection_shape needs the `lines` field, added in Task 6 \
+            "PolylineTrace::get_trace_connection_shape needs the `lines` field, added in Task 7 \
              (PolylineTrace.java:917-924)"
-        )
-    }
-}
-
-impl Via {
-    /// A via with nothing but its base-class state and `attach_allowed`.
-    // added in Task 7: the `padstack` and `center` parameters of `Via(Padstack, Point, int[],
-    // int, int, int, FixedState, boolean, BasicBoard)` (Via.java:55-68).
-    pub fn new(hdr: ItemHeader, attach_allowed: bool) -> Via {
-        Via {
-            hdr,
-            attach_allowed,
-        }
-    }
-
-    /// Port of `Via.copy` (Via.java:70-86), including the two escape-via fields it carries over
-    /// after construction (Via.java:83-84).
-    // added in Task 7: the `padstack`, `getCenter()`, `isEscapeVia` and `escapeViaSmdLayer`
-    // arguments.
-    pub fn copy(&self, new_id: ItemId) -> Via {
-        Via {
-            hdr: copied_header(&self.hdr, new_id),
-            attach_allowed: self.attach_allowed,
-        }
-    }
-
-    /// Port of `DrillItem.firstLayer` (DrillItem.java:161-172): the padstack's first layer.
-    // added in Task 7: the `padstack` field.
-    pub fn first_layer(&self) -> usize {
-        unimplemented!(
-            "Via::first_layer needs the `padstack` field, added in Task 7 \
-             (DrillItem.java:161-172)"
-        )
-    }
-
-    /// Port of `DrillItem.lastLayer` (DrillItem.java:174-186).
-    // added in Task 7.
-    pub fn last_layer(&self) -> usize {
-        unimplemented!(
-            "Via::last_layer needs the `padstack` field, added in Task 7 (DrillItem.java:174-186)"
-        )
-    }
-
-    /// Port of `DrillItem.isOnLayer` (DrillItem.java:156-159).
-    pub fn is_on_layer(&self, layer: usize) -> bool {
-        layer >= self.first_layer() && layer <= self.last_layer()
-    }
-
-    /// Port of `DrillItem.shapeLayer` (DrillItem.java:147-154): `firstLayer() + index`, with
-    /// `index` clamped into `0 ..= lastLayer() - firstLayer()`. Java's `Math.max(index, 0)` is
-    /// free here (`usize`); its `Math.min` is the `min` below.
-    pub fn shape_layer(&self, index: usize) -> usize {
-        let from_layer = self.first_layer();
-        let to_layer = self.last_layer();
-        from_layer + index.min(to_layer - from_layer)
-    }
-
-    /// Port of `DrillItem.boundingBox` (DrillItem.java:190-200).
-    // added in Task 7.
-    pub fn bounding_box(&self) -> IntBox {
-        unimplemented!(
-            "Via::bounding_box needs the `padstack`/`center` fields, added in Task 7 \
-             (DrillItem.java:190-200)"
-        )
-    }
-
-    /// Port of `DrillItem.tileShapeCount` (DrillItem.java:202-208).
-    // added in Task 7.
-    pub fn tile_shape_count(&self) -> usize {
-        unimplemented!(
-            "Via::tile_shape_count needs the `padstack` field, added in Task 7 \
-             (DrillItem.java:202-208)"
-        )
-    }
-
-    /// Port of `DrillItem.translateBy` (DrillItem.java:62-68).
-    // added in Task 7.
-    pub fn translate_by(&mut self, _vector: &Vector) {
-        unimplemented!(
-            "Via::translate_by needs the `center` field, added in Task 7 (DrillItem.java:62-68)"
-        )
-    }
-
-    /// Port of `DrillItem.turn90Degree` (DrillItem.java:70-76).
-    // added in Task 7.
-    pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
-        unimplemented!(
-            "Via::turn_90_degree needs the `center` field, added in Task 7 \
-             (DrillItem.java:70-76)"
-        )
-    }
-
-    /// Port of `DrillItem.rotateApprox` (DrillItem.java:78-85).
-    // added in Task 7.
-    pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
-        unimplemented!(
-            "Via::rotate_approx needs the `center` field, added in Task 7 \
-             (DrillItem.java:78-85)"
-        )
-    }
-
-    /// Port of `Via.changePlacementSide` (Via.java:189-201), which swaps in the mirrored via
-    /// padstack before calling `DrillItem.changePlacementSide` (DrillItem.java:87-93).
-    // added in Task 7.
-    pub fn change_placement_side(&mut self, _pole: &IntPoint) {
-        unimplemented!(
-            "Via::change_placement_side needs the `padstack`/`center` fields, added in Task 7 \
-             (Via.java:189-201)"
-        )
-    }
-}
-
-impl Connectable for Via {
-    fn header(&self) -> &ItemHeader {
-        &self.hdr
-    }
-
-    /// Port of `DrillItem.getTraceConnectionShape` (DrillItem.java:358-362).
-    // added in Task 7.
-    fn get_trace_connection_shape(&self, _tree: TreeId, _index: usize) -> Option<TileShape> {
-        unimplemented!(
-            "Via::get_trace_connection_shape needs the padstack shapes, added in Task 7 \
-             (DrillItem.java:358-362)"
-        )
-    }
-}
-
-impl Pin {
-    /// A pin with nothing but its base-class state.
-    // added in Task 7: the `componentId`/`pinIndex` parameters of `Pin(int, int, int[], int, int,
-    // FixedState, BasicBoard)` (Pin.java:51-63).
-    pub fn new(hdr: ItemHeader) -> Pin {
-        Pin { hdr }
-    }
-
-    /// Port of `Pin.copy` (Pin.java:133-148).
-    // added in Task 7: the `pinIndex` argument.
-    pub fn copy(&self, new_id: ItemId) -> Pin {
-        Pin {
-            hdr: copied_header(&self.hdr, new_id),
-        }
-    }
-
-    /// Port of `DrillItem.firstLayer` (DrillItem.java:161-172).
-    // added in Task 7: the padstack lookup through the component's package.
-    pub fn first_layer(&self) -> usize {
-        unimplemented!(
-            "Pin::first_layer needs the padstack lookup, added in Task 7 \
-             (DrillItem.java:161-172, Pin.java:122-131)"
-        )
-    }
-
-    /// Port of `DrillItem.lastLayer` (DrillItem.java:174-186).
-    // added in Task 7.
-    pub fn last_layer(&self) -> usize {
-        unimplemented!(
-            "Pin::last_layer needs the padstack lookup, added in Task 7 \
-             (DrillItem.java:174-186, Pin.java:122-131)"
-        )
-    }
-
-    /// Port of `DrillItem.isOnLayer` (DrillItem.java:156-159).
-    pub fn is_on_layer(&self, layer: usize) -> bool {
-        layer >= self.first_layer() && layer <= self.last_layer()
-    }
-
-    /// Port of `DrillItem.shapeLayer` (DrillItem.java:147-154): `firstLayer() + index`, with
-    /// `index` clamped into `0 ..= lastLayer() - firstLayer()`. Java's `Math.max(index, 0)` is
-    /// free here (`usize`); its `Math.min` is the `min` below.
-    pub fn shape_layer(&self, index: usize) -> usize {
-        let from_layer = self.first_layer();
-        let to_layer = self.last_layer();
-        from_layer + index.min(to_layer - from_layer)
-    }
-
-    /// Port of `Pin.drillAllowed` (Pin.java:346-351): drills are allowed only to SMD pins, i.e.
-    /// pins whose padstack lives on a single layer.
-    ///
-    /// Read by both `Pin.isObstacle` (Pin.java:365) and `Via.isObstacle` (Via.java:165).
-    pub fn drill_allowed(&self) -> bool {
-        self.first_layer() == self.last_layer()
-    }
-
-    /// Port of `DrillItem.boundingBox` (DrillItem.java:190-200).
-    // added in Task 7.
-    pub fn bounding_box(&self) -> IntBox {
-        unimplemented!(
-            "Pin::bounding_box needs the padstack lookup, added in Task 7 \
-             (DrillItem.java:190-200)"
-        )
-    }
-
-    /// Port of `DrillItem.tileShapeCount` (DrillItem.java:202-208).
-    // added in Task 7.
-    pub fn tile_shape_count(&self) -> usize {
-        unimplemented!(
-            "Pin::tile_shape_count needs the padstack lookup, added in Task 7 \
-             (DrillItem.java:202-208)"
-        )
-    }
-
-    /// Port of `DrillItem.translateBy` (DrillItem.java:62-68).
-    // added in Task 7.
-    pub fn translate_by(&mut self, _vector: &Vector) {
-        unimplemented!(
-            "Pin::translate_by needs the `center` field, added in Task 7 (DrillItem.java:62-68)"
-        )
-    }
-
-    /// Port of `Pin.turn90Degree` (Pin.java:367-371).
-    // added in Task 7.
-    pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
-        unimplemented!(
-            "Pin::turn_90_degree needs the `center` field, added in Task 7 (Pin.java:367-371)"
-        )
-    }
-
-    /// Port of `Pin.rotateApprox` (Pin.java:373-378).
-    // added in Task 7.
-    pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
-        unimplemented!(
-            "Pin::rotate_approx needs the `center` field, added in Task 7 (Pin.java:373-378)"
-        )
-    }
-
-    /// Port of `Pin.changePlacementSide` (Pin.java:379-384).
-    // added in Task 7.
-    pub fn change_placement_side(&mut self, _pole: &IntPoint) {
-        unimplemented!(
-            "Pin::change_placement_side needs the `center` field, added in Task 7 \
-             (Pin.java:379-384)"
-        )
-    }
-}
-
-impl Connectable for Pin {
-    fn header(&self) -> &ItemHeader {
-        &self.hdr
-    }
-
-    /// Port of `DrillItem.getTraceConnectionShape` (DrillItem.java:358-362).
-    // added in Task 7.
-    fn get_trace_connection_shape(&self, _tree: TreeId, _index: usize) -> Option<TileShape> {
-        unimplemented!(
-            "Pin::get_trace_connection_shape needs the padstack shapes, added in Task 7 \
-             (DrillItem.java:358-362)"
         )
     }
 }
@@ -1497,31 +1257,31 @@ macro_rules! obstacle_area_impl {
     ($ty:ident) => {
         impl $ty {
             /// Port of `ObstacleArea.getLayer` (ObstacleArea.java:165-167).
-            // added in Task 8: the `layer` field (ObstacleArea.java:36).
+            // added in Task 7: the `layer` field (ObstacleArea.java:36).
             pub fn get_layer(&self) -> usize {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::get_layer needs the `layer` field, added in Task 8 \
+                    "::get_layer needs the `layer` field, added in Task 7 \
                      (ObstacleArea.java:165-167)"
                 ))
             }
 
             /// Port of `ObstacleArea.boundingBox` (ObstacleArea.java:169-172).
-            // added in Task 8.
+            // added in Task 7.
             pub fn bounding_box(&self) -> IntBox {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::bounding_box needs the `relativeArea` field, added in Task 8 \
+                    "::bounding_box needs the `relativeArea` field, added in Task 7 \
                      (ObstacleArea.java:169-172)"
                 ))
             }
 
             /// Port of `ObstacleArea.tileShapeCount` (ObstacleArea.java:187-195).
-            // added in Task 8.
+            // added in Task 7.
             pub fn tile_shape_count(&self) -> usize {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::tile_shape_count needs `splitToConvex`, added in Task 8 \
+                    "::tile_shape_count needs `splitToConvex`, added in Task 7 \
                      (ObstacleArea.java:187-195)"
                 ))
             }
@@ -1529,61 +1289,61 @@ macro_rules! obstacle_area_impl {
             /// Port of `ObstacleArea.getTileShape(int)` (ObstacleArea.java:197-205), the override
             /// that bypasses the search tree and splits the area directly. Java's out-of-range
             /// warning path returns `null`.
-            // added in Task 8.
+            // added in Task 7.
             pub fn get_tile_shape(&self, _index: usize) -> Option<TileShape> {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::get_tile_shape needs `splitToConvex`, added in Task 8 \
+                    "::get_tile_shape needs `splitToConvex`, added in Task 7 \
                      (ObstacleArea.java:197-205)"
                 ))
             }
 
             /// Port of `ObstacleArea.translateBy` (ObstacleArea.java:207-211).
-            // added in Task 8.
+            // added in Task 7.
             pub fn translate_by(&mut self, _vector: &Vector) {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::translate_by needs the `translation` field, added in Task 8 \
+                    "::translate_by needs the `translation` field, added in Task 7 \
                      (ObstacleArea.java:207-211)"
                 ))
             }
 
             /// Port of `ObstacleArea.turn90Degree` (ObstacleArea.java:213-225).
-            // added in Task 8.
+            // added in Task 7.
             pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
                 unimplemented!(concat!(
                     stringify!($ty),
                     "::turn_90_degree needs the `translation`/`rotationInDegree` fields, added \
-                     in Task 8 (ObstacleArea.java:213-225)"
+                     in Task 7 (ObstacleArea.java:213-225)"
                 ))
             }
 
             /// Port of `ObstacleArea.rotateApprox` (ObstacleArea.java:227-244).
-            // added in Task 8.
+            // added in Task 7.
             pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
                 unimplemented!(concat!(
                     stringify!($ty),
                     "::rotate_approx needs the `translation`/`rotationInDegree` fields, added in \
-                     Task 8 (ObstacleArea.java:227-244)"
+                     Task 7 (ObstacleArea.java:227-244)"
                 ))
             }
 
             /// Port of `ObstacleArea.changePlacementSide` (ObstacleArea.java:246-255).
-            // added in Task 8.
+            // added in Task 7.
             pub fn change_placement_side(&mut self, _pole: &IntPoint) {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::change_placement_side needs the `sideChanged` field, added in Task 8 \
+                    "::change_placement_side needs the `sideChanged` field, added in Task 7 \
                      (ObstacleArea.java:246-255)"
                 ))
             }
 
             /// Port of `ObstacleArea.splitToConvex` (ObstacleArea.java:320-326).
-            // added in Task 8.
+            // added in Task 7.
             pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
                 unimplemented!(concat!(
                     stringify!($ty),
-                    "::split_to_convex needs the `relativeArea` field, added in Task 8 \
+                    "::split_to_convex needs the `relativeArea` field, added in Task 7 \
                      (ObstacleArea.java:320-326)"
                 ))
             }
@@ -1593,14 +1353,14 @@ macro_rules! obstacle_area_impl {
 
 impl ObstacleArea {
     /// An obstacle area with nothing but its base-class state.
-    // added in Task 8: the geometry parameters of `ObstacleArea(Area, int, Vector, double,
+    // added in Task 7: the geometry parameters of `ObstacleArea(Area, int, Vector, double,
     // boolean, int[], int, int, int, String, FixedState, BasicBoard)` (ObstacleArea.java:47-71).
     pub fn new(hdr: ItemHeader) -> ObstacleArea {
         ObstacleArea { hdr }
     }
 
     /// Port of `ObstacleArea.copy` (ObstacleArea.java:100-118).
-    // added in Task 8: the relativeArea/layer/translation/rotationInDegree/sideChanged/name
+    // added in Task 7: the relativeArea/layer/translation/rotationInDegree/sideChanged/name
     // arguments.
     pub fn copy(&self, new_id: ItemId) -> ObstacleArea {
         ObstacleArea {
@@ -1614,7 +1374,7 @@ impl ConductionArea {
     /// A conduction area with its base-class state and the `isObstacle` flag its four overrides
     /// read. `isFilled` starts `true`, as Java's field initialiser does
     /// (ConductionArea.java:30).
-    // added in Task 8: the geometry parameters of `ConductionArea(Area, int, Vector, double,
+    // added in Task 7: the geometry parameters of `ConductionArea(Area, int, Vector, double,
     // boolean, int[], int, int, int, String, boolean, FixedState, BasicBoard)`
     // (ConductionArea.java:46-74).
     pub fn new(hdr: ItemHeader, is_obstacle: bool) -> ConductionArea {
@@ -1654,7 +1414,7 @@ impl ConductionArea {
     //  (ConductionArea.java:310-313), which includes an area with **zero** nets despite the
     //  message. Reproduced as `None`; see docs/java-quirks.md.
     /// Returns `None` unless the area is on exactly one net.
-    // added in Task 8: the area/layer/translation/rotation/sideChanged/name arguments.
+    // added in Task 7: the area/layer/translation/rotation/sideChanged/name arguments.
     pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
         if self.hdr.net_count() != 1 {
             return None;
@@ -1687,10 +1447,15 @@ impl Connectable for ConductionArea {
     }
 
     /// Port of `ConductionArea.getTraceConnectionShape` (ConductionArea.java:358-365).
-    // added in Task 8.
-    fn get_trace_connection_shape(&self, _tree: TreeId, _index: usize) -> Option<TileShape> {
+    // added in Task 7.
+    fn get_trace_connection_shape(
+        &self,
+        _tree: TreeId,
+        _index: usize,
+        _ctx: &ItemCtx<'_>,
+    ) -> Option<TileShape> {
         unimplemented!(
-            "ConductionArea::get_trace_connection_shape needs the area geometry, added in Task 8 \
+            "ConductionArea::get_trace_connection_shape needs the area geometry, added in Task 7 \
              (ConductionArea.java:358-365)"
         )
     }
@@ -1698,13 +1463,13 @@ impl Connectable for ConductionArea {
 
 impl ViaObstacleArea {
     /// A via keepout with nothing but its base-class state.
-    // added in Task 8: the geometry parameters (ViaObstacleArea.java:16-43).
+    // added in Task 7: the geometry parameters (ViaObstacleArea.java:16-43).
     pub fn new(hdr: ItemHeader) -> ViaObstacleArea {
         ViaObstacleArea { hdr }
     }
 
     /// Port of `ViaObstacleArea.copy` (ViaObstacleArea.java:71-89).
-    // added in Task 8: the geometry arguments.
+    // added in Task 7: the geometry arguments.
     pub fn copy(&self, new_id: ItemId) -> ViaObstacleArea {
         ViaObstacleArea {
             hdr: copied_header(&self.hdr, new_id),
@@ -1715,7 +1480,7 @@ obstacle_area_impl!(ViaObstacleArea);
 
 impl ComponentObstacleArea {
     /// A component keepout with nothing but its base-class state.
-    // added in Task 8: the geometry parameters (ComponentObstacleArea.java:20-44).
+    // added in Task 7: the geometry parameters (ComponentObstacleArea.java:20-44).
     pub fn new(hdr: ItemHeader) -> ComponentObstacleArea {
         ComponentObstacleArea { hdr }
     }
@@ -1724,7 +1489,7 @@ impl ComponentObstacleArea {
     ///
     /// Java's constructor passes `new int[0]` for the net numbers
     /// (ComponentObstacleArea.java:38), so a component keepout is never on a net.
-    // added in Task 8: the geometry arguments.
+    // added in Task 7: the geometry arguments.
     pub fn copy(&self, new_id: ItemId) -> ComponentObstacleArea {
         ComponentObstacleArea {
             hdr: ItemHeader::new(
@@ -1761,13 +1526,13 @@ impl ComponentOutline {
     ///
     /// Note that Java's constructor hard-codes `new int[0], 0` for the net numbers and the
     /// clearance class (ComponentOutline.java:46), so a component outline is never on a net.
-    // added in Task 8: the geometry parameters (ComponentOutline.java:34-54).
+    // added in Task 7: the geometry parameters (ComponentOutline.java:34-54).
     pub fn new(hdr: ItemHeader) -> ComponentOutline {
         ComponentOutline { hdr }
     }
 
     /// Port of `ComponentOutline.copy` (ComponentOutline.java:56-70).
-    // added in Task 8: the area/isFront/translation/rotation/courtyard/fabrication/closed
+    // added in Task 7: the area/isFront/translation/rotation/courtyard/fabrication/closed
     // arguments.
     pub fn copy(&self, new_id: ItemId) -> ComponentOutline {
         ComponentOutline {
@@ -1784,11 +1549,11 @@ impl ComponentOutline {
     }
 
     /// Port of `ComponentOutline.getLayer` (ComponentOutline.java:94-102).
-    // added in Task 8: the `isFront` field and the board layer count it needs for the back side.
+    // added in Task 7: the `isFront` field and the board layer count it needs for the back side.
     pub fn get_layer(&self) -> usize {
         unimplemented!(
             "ComponentOutline::get_layer needs the `isFront` field and the board layer count, \
-             added in Task 8 (ComponentOutline.java:94-102)"
+             added in Task 7 (ComponentOutline.java:94-102)"
         )
     }
 
@@ -1801,82 +1566,82 @@ impl ComponentOutline {
     }
 
     /// Port of `ComponentOutline.boundingBox` (ComponentOutline.java:139-142).
-    // added in Task 8.
+    // added in Task 7.
     pub fn bounding_box(&self) -> IntBox {
         unimplemented!(
-            "ComponentOutline::bounding_box needs the area geometry, added in Task 8 \
+            "ComponentOutline::bounding_box needs the area geometry, added in Task 7 \
              (ComponentOutline.java:139-142)"
         )
     }
 
     /// Port of `ComponentOutline.translateBy` (ComponentOutline.java:144-148).
-    // added in Task 8.
+    // added in Task 7.
     pub fn translate_by(&mut self, _vector: &Vector) {
         unimplemented!(
-            "ComponentOutline::translate_by needs the `translation` field, added in Task 8 \
+            "ComponentOutline::translate_by needs the `translation` field, added in Task 7 \
              (ComponentOutline.java:144-148)"
         )
     }
 
     /// Port of `ComponentOutline.turn90Degree` (ComponentOutline.java:177-189).
-    // added in Task 8.
+    // added in Task 7.
     pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
         unimplemented!(
             "ComponentOutline::turn_90_degree needs the `translation`/`rotationInDegree` fields, \
-             added in Task 8 (ComponentOutline.java:177-189)"
+             added in Task 7 (ComponentOutline.java:177-189)"
         )
     }
 
     /// Port of `ComponentOutline.rotateApprox` (ComponentOutline.java:158-175).
-    // added in Task 8.
+    // added in Task 7.
     pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
         unimplemented!(
             "ComponentOutline::rotate_approx needs the `translation`/`rotationInDegree` fields, \
-             added in Task 8 (ComponentOutline.java:158-175)"
+             added in Task 7 (ComponentOutline.java:158-175)"
         )
     }
 
     /// Port of `ComponentOutline.changePlacementSide` (ComponentOutline.java:150-156).
-    // added in Task 8.
+    // added in Task 7.
     pub fn change_placement_side(&mut self, _pole: &IntPoint) {
         unimplemented!(
-            "ComponentOutline::change_placement_side needs the `isFront` field, added in Task 8 \
+            "ComponentOutline::change_placement_side needs the `isFront` field, added in Task 7 \
              (ComponentOutline.java:150-156)"
         )
     }
 
     /// Port of `ComponentOutline.isFront` (ComponentOutline.java:72-74).
-    // added in Task 8.
+    // added in Task 7.
     pub fn is_front(&self) -> bool {
         unimplemented!(
-            "ComponentOutline::is_front needs the `isFront` field, added in Task 8 \
+            "ComponentOutline::is_front needs the `isFront` field, added in Task 7 \
              (ComponentOutline.java:72-74)"
         )
     }
 
     /// Port of `ComponentOutline.isCourtyard` (ComponentOutline.java:76-78).
-    // added in Task 8.
+    // added in Task 7.
     pub fn is_courtyard(&self) -> bool {
         unimplemented!(
-            "ComponentOutline::is_courtyard needs the `isCourtyard` field, added in Task 8 \
+            "ComponentOutline::is_courtyard needs the `isCourtyard` field, added in Task 7 \
              (ComponentOutline.java:76-78)"
         )
     }
 
     /// Port of `ComponentOutline.isFabrication` (ComponentOutline.java:80-82).
-    // added in Task 8.
+    // added in Task 7.
     pub fn is_fabrication(&self) -> bool {
         unimplemented!(
-            "ComponentOutline::is_fabrication needs the `isFabrication` field, added in Task 8 \
+            "ComponentOutline::is_fabrication needs the `isFabrication` field, added in Task 7 \
              (ComponentOutline.java:80-82)"
         )
     }
 
     /// Port of `ComponentOutline.isClosed` (ComponentOutline.java:84-86).
-    // added in Task 8.
+    // added in Task 7.
     pub fn is_closed(&self) -> bool {
         unimplemented!(
-            "ComponentOutline::is_closed needs the `isClosed` field, added in Task 8 \
+            "ComponentOutline::is_closed needs the `isClosed` field, added in Task 7 \
              (ComponentOutline.java:84-86)"
         )
     }
@@ -1887,13 +1652,13 @@ impl BoardOutline {
     ///
     /// Java's constructor hard-codes `new int[0]`, component id `0` and
     /// `FixedState.SYSTEM_FIXED` (BoardOutline.java:46-49).
-    // added in Task 8: the `shapes` parameter.
+    // added in Task 7: the `shapes` parameter.
     pub fn new(hdr: ItemHeader) -> BoardOutline {
         BoardOutline { hdr }
     }
 
     /// Port of `BoardOutline.copy` (BoardOutline.java:198-201).
-    // added in Task 8: the `shapes` argument.
+    // added in Task 7: the `shapes` argument.
     pub fn copy(&self, new_id: ItemId) -> BoardOutline {
         BoardOutline {
             // BoardOutline.java:47: the constructor passes `new int[0]`, component id 0 and
@@ -1915,92 +1680,92 @@ impl BoardOutline {
 
     /// Port of `BoardOutline.lastLayer` (BoardOutline.java:102-105):
     /// `board.layerStructure.layers.length - 1`.
-    // added in Task 8: `BoardOutline` must be given the board's layer count at construction —
+    // added in Task 7: `BoardOutline` must be given the board's layer count at construction —
     // Java reads it through the `board` back-pointer, which `global-constraints.md` forbids.
     pub fn last_layer(&self) -> usize {
         unimplemented!(
-            "BoardOutline::last_layer needs the board layer count, added in Task 8 \
+            "BoardOutline::last_layer needs the board layer count, added in Task 7 \
              (BoardOutline.java:102-105)"
         )
     }
 
     /// Port of `BoardOutline.shapeLayer(int)` (BoardOutline.java:68-81).
-    // added in Task 8.
+    // added in Task 7.
     pub fn shape_layer(&self, _index: usize) -> usize {
         unimplemented!(
             "BoardOutline::shape_layer needs the `keepoutOutsideOutline` field and the board \
-             layer count, added in Task 8 (BoardOutline.java:68-81)"
+             layer count, added in Task 7 (BoardOutline.java:68-81)"
         )
     }
 
     /// Port of `BoardOutline.tileShapeCount` (BoardOutline.java:51-66).
-    // added in Task 8.
+    // added in Task 7.
     pub fn tile_shape_count(&self) -> usize {
         unimplemented!(
-            "BoardOutline::tile_shape_count needs the `shapes` field, added in Task 8 \
+            "BoardOutline::tile_shape_count needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:51-66)"
         )
     }
 
     /// Port of `BoardOutline.boundingBox` (BoardOutline.java:88-95).
-    // added in Task 8.
+    // added in Task 7.
     pub fn bounding_box(&self) -> IntBox {
         unimplemented!(
-            "BoardOutline::bounding_box needs the `shapes` field, added in Task 8 \
+            "BoardOutline::bounding_box needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:88-95)"
         )
     }
 
     /// Port of `BoardOutline.translateBy` (BoardOutline.java:112-121).
-    // added in Task 8.
+    // added in Task 7.
     pub fn translate_by(&mut self, _vector: &Vector) {
         unimplemented!(
-            "BoardOutline::translate_by needs the `shapes` field, added in Task 8 \
+            "BoardOutline::translate_by needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:112-121)"
         )
     }
 
     /// Port of `BoardOutline.turn90Degree` (BoardOutline.java:123-132).
-    // added in Task 8.
+    // added in Task 7.
     pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
         unimplemented!(
-            "BoardOutline::turn_90_degree needs the `shapes` field, added in Task 8 \
+            "BoardOutline::turn_90_degree needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:123-132)"
         )
     }
 
     /// Port of `BoardOutline.rotateApprox` (BoardOutline.java:134-144).
-    // added in Task 8.
+    // added in Task 7.
     pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
         unimplemented!(
-            "BoardOutline::rotate_approx needs the `shapes` field, added in Task 8 \
+            "BoardOutline::rotate_approx needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:134-144)"
         )
     }
 
     /// Port of `BoardOutline.changePlacementSide` (BoardOutline.java:146-156).
-    // added in Task 8.
+    // added in Task 7.
     pub fn change_placement_side(&mut self, _pole: &IntPoint) {
         unimplemented!(
-            "BoardOutline::change_placement_side needs the `shapes` field, added in Task 8 \
+            "BoardOutline::change_placement_side needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:146-156)"
         )
     }
 
     /// Port of `BoardOutline.shapeCount` (BoardOutline.java:158-161).
-    // added in Task 8.
+    // added in Task 7.
     pub fn shape_count(&self) -> usize {
         unimplemented!(
-            "BoardOutline::shape_count needs the `shapes` field, added in Task 8 \
+            "BoardOutline::shape_count needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:158-161)"
         )
     }
 
     /// Port of `BoardOutline.getShape(int)` (BoardOutline.java:163-169).
-    // added in Task 8.
+    // added in Task 7.
     pub fn get_shape(&self, _index: usize) -> Option<TileShape> {
         unimplemented!(
-            "BoardOutline::get_shape needs the `shapes` field, added in Task 8 \
+            "BoardOutline::get_shape needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:163-169)"
         )
     }
@@ -2009,39 +1774,39 @@ impl BoardOutline {
     /// *outside* the outline curves, memoised in `keepoutArea`. Java builds
     /// `new PolylineArea(board.boundingBox, shapes.clone())`, so the outline curves become the
     /// holes of the returned area.
-    // added in Task 8: the `shapes` field and the memo. Java also reads `board.boundingBox`
-    // (BoardOutline.java:186) through the forbidden back-pointer, so Task 8 must give
+    // added in Task 7: the `shapes` field and the memo. Java also reads `board.boundingBox`
+    // (BoardOutline.java:186) through the forbidden back-pointer, so Task 7 must give
     // `BoardOutline` that box the same way it gives it the layer count.
     pub fn get_keepout_area(&self) -> Area {
         unimplemented!(
             "BoardOutline::get_keepout_area needs the `shapes` field and the board bounding box, \
-             added in Task 8 (BoardOutline.java:183-189)"
+             added in Task 7 (BoardOutline.java:183-189)"
         )
     }
 
     /// Port of `BoardOutline.keepoutOutsideOutlineGenerated` (BoardOutline.java:225-227).
-    // added in Task 8.
+    // added in Task 7.
     pub fn keepout_outside_outline_generated(&self) -> bool {
         unimplemented!(
             "BoardOutline::keepout_outside_outline_generated needs the \
-             `keepoutOutsideOutline` field, added in Task 8 (BoardOutline.java:225-227)"
+             `keepoutOutsideOutline` field, added in Task 7 (BoardOutline.java:225-227)"
         )
     }
 
     /// Port of `BoardOutline.generateKeepoutOutside(boolean)` (BoardOutline.java:233-244).
-    // added in Task 8.
+    // added in Task 7.
     pub fn generate_keepout_outside(&mut self, _value: bool) {
         unimplemented!(
             "BoardOutline::generate_keepout_outside needs the `keepoutOutsideOutline` field, \
-             added in Task 8 (BoardOutline.java:233-244)"
+             added in Task 7 (BoardOutline.java:233-244)"
         )
     }
 
     /// Port of `BoardOutline.lineCount` (BoardOutline.java:246-253).
-    // added in Task 8.
+    // added in Task 7.
     pub fn line_count(&self) -> usize {
         unimplemented!(
-            "BoardOutline::line_count needs the `shapes` field, added in Task 8 \
+            "BoardOutline::line_count needs the `shapes` field, added in Task 7 \
              (BoardOutline.java:246-253)"
         )
     }
@@ -2050,9 +1815,84 @@ impl BoardOutline {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::TreeObject;
+    use fr_geometry::{Point, Shape, TileShape};
+
+    use crate::ids::{PadstackId, TreeObject};
+    use crate::library::{BoardLibrary, PackagePin, Packages, Padstacks};
     use crate::rules::ClearanceMatrix;
-    use crate::structure::{Layer, LayerStructure};
+    use crate::structure::{Components, Layer, LayerStructure};
+
+    /// The board state the drill-item bodies read through [`ItemCtx`] — Java reaches it through
+    /// `Item.board`. Two padstacks (an SMD pad on layer 0 only and a through-hole pad on both
+    /// layers), one package per padstack, and one component per package.
+    struct Fixture {
+        library: BoardLibrary,
+        components: Components,
+        rules: BoardRules,
+    }
+
+    /// The SMD component's id, whose single pin is on a one-layer padstack (`drillAllowed`).
+    const SMD_COMPONENT: i32 = 1;
+    /// The through-hole component's id, whose single pin spans both layers.
+    const THT_COMPONENT: i32 = 2;
+    const VIA_PADSTACK: PadstackId = PadstackId(1);
+
+    impl Fixture {
+        fn new() -> Fixture {
+            let mut padstacks = Padstacks::new(layer_structure());
+            let smd = padstacks.add(
+                "SMD",
+                vec![
+                    Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                        -10, -10, 10, 10,
+                    )))),
+                    None,
+                ],
+                true,
+                false,
+            );
+            let tht = padstacks.add(
+                "THT",
+                vec![
+                    Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                        -10, -10, 10, 10,
+                    )))),
+                    Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                        -10, -10, 10, 10,
+                    )))),
+                ],
+                true,
+                false,
+            );
+            let mut packages = Packages::new();
+            let smd_package =
+                packages.add_pins(vec![PackagePin::new("1", smd, Vector::new(0, 0), 0.0)]);
+            let tht_package =
+                packages.add_pins(vec![PackagePin::new("1", tht, Vector::new(0, 0), 0.0)]);
+            let mut components = Components::new();
+            components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, smd_package);
+            components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, tht_package);
+            Fixture {
+                library: BoardLibrary::new(padstacks, packages),
+                components,
+                rules: rules(),
+            }
+        }
+
+        fn ctx(&self) -> ItemCtx<'_> {
+            ItemCtx {
+                library: &self.library,
+                components: &self.components,
+                rules: &self.rules,
+            }
+        }
+    }
+
+    fn rules() -> BoardRules {
+        let ls = layer_structure();
+        let cm = ClearanceMatrix::get_default_instance(&ls, 100);
+        BoardRules::new(ls, cm)
+    }
 
     fn hdr(id: u32, net_nos: Vec<i32>) -> ItemHeader {
         ItemHeader::new(ItemId(id), net_nos, 1, 0, FixedState::Unfixed)
@@ -2067,11 +1907,28 @@ mod tests {
     }
 
     fn via(id: u32, net_nos: Vec<i32>, attach_allowed: bool) -> Item {
-        Item::Via(Via::new(hdr(id, net_nos), attach_allowed))
+        Item::Via(Via::new(
+            hdr(id, net_nos),
+            VIA_PADSTACK,
+            Point::new(0, 0),
+            attach_allowed,
+        ))
     }
 
+    /// An SMD pin — one layer, so `Pin.drillAllowed` (Pin.java:344-350) is true.
     fn pin(id: u32, net_nos: Vec<i32>) -> Item {
-        Item::Pin(Pin::new(hdr(id, net_nos)))
+        Item::Pin(Pin::new(
+            ItemHeader::new(ItemId(id), net_nos, 1, SMD_COMPONENT, FixedState::Unfixed),
+            0,
+        ))
+    }
+
+    /// A through-hole pin — two layers, so `Pin.drillAllowed` is false.
+    fn tht_pin(id: u32, net_nos: Vec<i32>) -> Item {
+        Item::Pin(Pin::new(
+            ItemHeader::new(ItemId(id), net_nos, 1, THT_COMPONENT, FixedState::Unfixed),
+            0,
+        ))
     }
 
     fn obstacle_area(id: u32, net_nos: Vec<i32>) -> Item {
@@ -2199,141 +2056,144 @@ mod tests {
 
     #[test]
     fn trace_is_obstacle_matches_trace_java() {
+        let f = Fixture::new();
         // Trace.java:91-102.
         let t = trace(1, vec![5]);
         // Trace.java:93-96: itself, via keepouts and component keepouts are never obstacles.
-        assert!(!t.is_obstacle(&trace(1, vec![9])));
-        assert!(!t.is_obstacle(&via_keepout(2, vec![9])));
-        assert!(!t.is_obstacle(&component_keepout(3, 1)));
+        assert!(!t.is_obstacle(&trace(1, vec![9]), &f.ctx()));
+        assert!(!t.is_obstacle(&via_keepout(2, vec![9]), &f.ctx()));
+        assert!(!t.is_obstacle(&component_keepout(3, 1), &f.ctx()));
         // Trace.java:98-100: a non-obstacle conduction area is not an obstacle either.
-        assert!(!t.is_obstacle(&conduction_area(4, vec![9], false)));
-        assert!(t.is_obstacle(&conduction_area(5, vec![9], true)));
+        assert!(!t.is_obstacle(&conduction_area(4, vec![9], false), &f.ctx()));
+        assert!(t.is_obstacle(&conduction_area(5, vec![9], true), &f.ctx()));
         // Trace.java:101: everything else, unless the nets are shared.
-        assert!(t.is_obstacle(&trace(6, vec![9])));
-        assert!(!t.is_obstacle(&trace(7, vec![5])));
-        assert!(t.is_obstacle(&obstacle_area(8, vec![9])));
+        assert!(t.is_obstacle(&trace(6, vec![9]), &f.ctx()));
+        assert!(!t.is_obstacle(&trace(7, vec![5]), &f.ctx()));
+        assert!(t.is_obstacle(&obstacle_area(8, vec![9]), &f.ctx()));
     }
 
     #[test]
     fn via_is_obstacle_matches_via_java() {
+        let f = Fixture::new();
         // Via.java:151-166.
         let v = via(1, vec![5], true);
         // Via.java:153-155. Note a *via* keepout is not excused here, unlike for a trace.
-        assert!(!v.is_obstacle(&via(1, vec![9], true)));
-        assert!(!v.is_obstacle(&component_keepout(2, 1)));
-        assert!(v.is_obstacle(&via_keepout(3, vec![9])));
+        assert!(!v.is_obstacle(&via(1, vec![9], true), &f.ctx()));
+        assert!(!v.is_obstacle(&component_keepout(2, 1), &f.ctx()));
+        assert!(v.is_obstacle(&via_keepout(3, vec![9]), &f.ctx()));
         // Via.java:156-158.
-        assert!(!v.is_obstacle(&conduction_area(4, vec![9], false)));
+        assert!(!v.is_obstacle(&conduction_area(4, vec![9], false), &f.ctx()));
         // Via.java:159-161.
-        assert!(v.is_obstacle(&trace(5, vec![9])));
+        assert!(v.is_obstacle(&trace(5, vec![9]), &f.ctx()));
         // Via.java:162-164: a same-net trace is not an obstacle.
-        assert!(!v.is_obstacle(&trace(6, vec![5])));
+        assert!(!v.is_obstacle(&trace(6, vec![5]), &f.ctx()));
         // Via.java:165: a same-net non-pin item is.
-        assert!(v.is_obstacle(&via(7, vec![5], true)));
+        assert!(v.is_obstacle(&via(7, vec![5], true), &f.ctx()));
     }
 
     #[test]
     fn via_is_obstacle_to_a_same_net_pin_only_when_attach_is_not_allowed() {
         // Via.java:165: `!attachAllowed || !(other instanceof Pin) || !((Pin) other).drillAllowed()`.
-        // With attachAllowed false the expression short-circuits before `drillAllowed`, so this
-        // case does not need Task 7's padstack.
-        let v = via(1, vec![5], false);
-        assert!(v.is_obstacle(&pin(2, vec![5])));
-    }
-
-    #[test]
-    #[should_panic(expected = "added in Task 7")]
-    fn via_is_obstacle_to_an_attachable_same_net_pin_needs_the_padstack() {
-        // Via.java:165 reaches `((Pin) other).drillAllowed()` (Pin.java:346-351), which compares
-        // firstLayer() to lastLayer() and so needs the padstack Task 7 adds.
-        via(1, vec![5], true).is_obstacle(&pin(2, vec![5]));
+        let f = Fixture::new();
+        assert!(via(1, vec![5], false).is_obstacle(&pin(2, vec![5]), &f.ctx()));
+        assert!(!via(1, vec![5], true).is_obstacle(&pin(2, vec![5]), &f.ctx()));
+        // A through-hole pin is not drillable, so an attachable via is an obstacle to it.
+        assert!(via(1, vec![5], true).is_obstacle(&tht_pin(2, vec![5]), &f.ctx()));
     }
 
     #[test]
     fn pin_is_obstacle_matches_pin_java() {
+        let f = Fixture::new();
         // Pin.java:352-366.
         let p = pin(1, vec![5]);
         // Pin.java:354-356: itself and *every* ObstacleArea subclass.
-        assert!(!p.is_obstacle(&pin(1, vec![9])));
+        assert!(!p.is_obstacle(&pin(1, vec![9]), &f.ctx()));
         for area in [
             obstacle_area(2, vec![9]),
             conduction_area(3, vec![9], true),
             via_keepout(4, vec![9]),
             component_keepout(5, 1),
         ] {
-            assert!(!p.is_obstacle(&area), "{area}");
+            assert!(!p.is_obstacle(&area, &f.ctx()), "{area}");
         }
         // Pin.java:357-359.
-        assert!(p.is_obstacle(&via(6, vec![9], true)));
+        assert!(p.is_obstacle(&via(6, vec![9], true), &f.ctx()));
         // Pin.java:360-362.
-        assert!(!p.is_obstacle(&trace(7, vec![5])));
+        assert!(!p.is_obstacle(&trace(7, vec![5]), &f.ctx()));
     }
 
     #[test]
-    #[should_panic(expected = "added in Task 7")]
-    fn pin_is_obstacle_to_a_same_net_via_needs_the_padstack() {
-        // Pin.java:365: `!this.drillAllowed() || !(other instanceof Via)`.
-        pin(1, vec![5]).is_obstacle(&via(2, vec![5], true));
+    fn pin_is_obstacle_to_a_same_net_via_only_when_it_is_not_an_smd_pad() {
+        // Pin.java:364: `!this.drillAllowed() || !(other instanceof Via)`.
+        let f = Fixture::new();
+        assert!(!pin(1, vec![5]).is_obstacle(&via(2, vec![5], true), &f.ctx()));
+        assert!(tht_pin(1, vec![5]).is_obstacle(&via(2, vec![5], true), &f.ctx()));
     }
 
     #[test]
     fn obstacle_area_is_obstacle_only_to_foreign_net_traces_and_vias() {
+        let f = Fixture::new();
         // ObstacleArea.java:174-180.
         let a = obstacle_area(1, vec![5]);
-        assert!(a.is_obstacle(&trace(2, vec![9])));
-        assert!(a.is_obstacle(&via(3, vec![9], true)));
-        assert!(!a.is_obstacle(&trace(4, vec![5])));
-        assert!(!a.is_obstacle(&pin(5, vec![9])));
-        assert!(!a.is_obstacle(&obstacle_area(6, vec![9])));
+        assert!(a.is_obstacle(&trace(2, vec![9]), &f.ctx()));
+        assert!(a.is_obstacle(&via(3, vec![9], true), &f.ctx()));
+        assert!(!a.is_obstacle(&trace(4, vec![5]), &f.ctx()));
+        assert!(!a.is_obstacle(&pin(5, vec![9]), &f.ctx()));
+        assert!(!a.is_obstacle(&obstacle_area(6, vec![9]), &f.ctx()));
     }
 
     #[test]
     fn conduction_area_is_obstacle_delegates_to_super_only_when_the_flag_is_set() {
+        let f = Fixture::new();
         // ConductionArea.java:379-386.
         let on = conduction_area(1, vec![5], true);
-        assert!(on.is_obstacle(&trace(2, vec![9])));
-        assert!(!on.is_obstacle(&trace(3, vec![5])));
+        assert!(on.is_obstacle(&trace(2, vec![9]), &f.ctx()));
+        assert!(!on.is_obstacle(&trace(3, vec![5]), &f.ctx()));
         let off = conduction_area(4, vec![5], false);
-        assert!(!off.is_obstacle(&trace(5, vec![9])));
-        assert!(!off.is_obstacle(&via(6, vec![9], true)));
+        assert!(!off.is_obstacle(&trace(5, vec![9]), &f.ctx()));
+        assert!(!off.is_obstacle(&via(6, vec![9], true), &f.ctx()));
     }
 
     #[test]
     fn via_keepout_is_obstacle_only_to_foreign_net_vias() {
+        let f = Fixture::new();
         // ViaObstacleArea.java:91-97.
         let k = via_keepout(1, vec![5]);
-        assert!(k.is_obstacle(&via(2, vec![9], true)));
-        assert!(!k.is_obstacle(&via(3, vec![5], true)));
-        assert!(!k.is_obstacle(&trace(4, vec![9])));
+        assert!(k.is_obstacle(&via(2, vec![9], true), &f.ctx()));
+        assert!(!k.is_obstacle(&via(3, vec![5], true), &f.ctx()));
+        assert!(!k.is_obstacle(&trace(4, vec![9]), &f.ctx()));
     }
 
     #[test]
     fn component_keepout_is_obstacle_only_to_other_components_keepouts() {
+        let f = Fixture::new();
         // ComponentObstacleArea.java:63-68.
         let k = component_keepout(1, 7);
-        assert!(k.is_obstacle(&component_keepout(2, 8)));
-        assert!(!k.is_obstacle(&component_keepout(3, 7)));
-        assert!(!k.is_obstacle(&component_keepout(1, 8))); // `other == this`
-        assert!(!k.is_obstacle(&trace(4, vec![9])));
+        assert!(k.is_obstacle(&component_keepout(2, 8), &f.ctx()));
+        assert!(!k.is_obstacle(&component_keepout(3, 7), &f.ctx()));
+        assert!(!k.is_obstacle(&component_keepout(1, 8), &f.ctx())); // `other == this`
+        assert!(!k.is_obstacle(&trace(4, vec![9]), &f.ctx()));
     }
 
     #[test]
     fn component_outline_is_never_an_obstacle() {
+        let f = Fixture::new();
         // ComponentOutline.java:119-122.
         let o = component_outline(1);
         for other in one_of_each() {
-            assert!(!o.is_obstacle(&other), "{other}");
+            assert!(!o.is_obstacle(&other, &f.ctx()), "{other}");
         }
     }
 
     #[test]
     fn board_outline_is_an_obstacle_to_everything_but_outlines_and_areas() {
+        let f = Fixture::new();
         // BoardOutline.java:83-86: `!(other instanceof BoardOutline || other instanceof
         // ObstacleArea)` — and `instanceof ObstacleArea` covers all four area variants.
         let b = board_outline(1);
         let expected = [true, true, true, false, false, false, false, true, false];
         for (other, is_obstacle) in one_of_each().iter().zip(expected) {
-            assert_eq!(b.is_obstacle(other), is_obstacle, "{other}");
+            assert_eq!(b.is_obstacle(other, &f.ctx()), is_obstacle, "{other}");
         }
     }
 
@@ -2482,7 +2342,7 @@ mod tests {
     #[test]
     fn is_deletion_forbidden_takes_the_short_circuit_before_the_conduction_area_branch() {
         // Item.java:824-826 returns before reaching `area.getLayer()` (Item.java:828-830), which
-        // is why a component-owned conduction area answers without Task 8's layer field.
+        // is why a component-owned conduction area answers without Task 7's layer field.
         let rules = rules_with_a_shove_fixed_net();
         let mut area = conduction_area(1, vec![1], true);
         area.assign_component_id(2);
@@ -2490,10 +2350,10 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "added in Task 8")]
+    #[should_panic(expected = "added in Task 7")]
     fn is_deletion_forbidden_on_a_free_conduction_area_needs_the_layer() {
         // Item.java:828-830: `!board.layerStructure.layers[area.getLayer()].isSignal` — the
-        // power-plane branch, whose `getLayer()` is ObstacleArea's field (Task 8).
+        // power-plane branch, whose `getLayer()` is ObstacleArea's field (Task 7).
         conduction_area(1, vec![1], true).is_deletion_forbidden(&rules_with_a_shove_fixed_net());
     }
 
@@ -2589,7 +2449,8 @@ mod tests {
         // ComponentOutline.tileShapeCount (ComponentOutline.java:129-132) is literally
         // `return 0;`, matching its `calculateTreeShapes` returning `new TileShape[0]`
         // (ComponentOutline.java:134-137).
-        assert_eq!(component_outline(1).tile_shape_count(), 0);
+        let f = Fixture::new();
+        assert_eq!(component_outline(1).tile_shape_count(&f.ctx()), 0);
     }
 
     #[test]
@@ -2657,12 +2518,21 @@ mod tests {
     }
 
     #[test]
-    fn via_copy_carries_attach_allowed() {
-        // Via.java:70-86 passes `attachAllowed` to the new via.
-        let original = Via::new(hdr(1, vec![5]), false);
+    fn via_copy_carries_attach_allowed_the_padstack_and_the_escape_via_fields() {
+        // Via.java:70-86 passes `attachAllowed` to the new via and then copies the two
+        // escape-via fields onto it (Via.java:83-84).
+        let original = Via::new(hdr(1, vec![5]), VIA_PADSTACK, Point::new(3, 4), false);
         assert!(!original.copy(ItemId(2)).attach_allowed);
-        let original = Via::new(hdr(1, vec![5]), true);
-        assert!(original.copy(ItemId(2)).attach_allowed);
+        let mut original = Via::new(hdr(1, vec![5]), VIA_PADSTACK, Point::new(3, 4), true);
+        original.is_escape_via = true;
+        original.escape_via_smd_layer = 1;
+        let copy = original.copy(ItemId(2));
+        assert!(copy.attach_allowed);
+        assert_eq!(copy.get_padstack_id(), VIA_PADSTACK);
+        assert_eq!(copy.get_center(), Point::new(3, 4));
+        assert!(copy.is_escape_via);
+        assert_eq!(copy.escape_via_smd_layer, 1);
+        assert_eq!(copy.hdr.id(), ItemId(2));
     }
 
     // ---- header delegation and the tree-entry surface --------------------------------------------
