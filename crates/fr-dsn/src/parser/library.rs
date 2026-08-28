@@ -22,6 +22,7 @@ use crate::parser::dsn_file::read_on_off_scope;
 use crate::parser::geometry::{
     self as shape, DsnLayer, DsnLayerStructure, DsnPolygonPath, DsnShape, ReadAreaScopeResult,
 };
+use crate::parser::placement::write_component_scope;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 
 // ------------------------------------------------------------------------ Package.java
@@ -385,8 +386,51 @@ fn write_package_keepout(keepout: &Keepout, p: &mut WriteScopeParameter<'_>, is_
     p.file.end_scope();
 }
 
-// added in Task 11: Package.writePlacementScope — the `(component <image> (place …))` writer,
-// which belongs with `Placement.writeScope`/`Component.writeScope` in the DSN writer half.
+/// `Package.writePlacementScope` (Package.java:355-387): the `(component <image> (place …)*)`
+/// scope for one library package — written only if at least one component uses that package
+/// *and* survives the "not all items of the component are deleted" test.
+///
+/// The scope header is emitted lazily, on the first component that passes, so a package with no
+/// live components produces nothing at all (Java's `componentFound` flag).
+///
+/// Java takes the `Package` object; this port takes its `Package.no`, because
+/// `currentComponent.getPackage() == boardPackage` is an *identity* comparison in Java and
+/// `Component::get_package` returns exactly that number here (the Plan 2 "no object references
+/// between model objects" rule).
+// renamed: Package.writePlacementScope -> write_component_placement_scope (it writes a
+// `component` scope, not a `package`/`image` one, and the name has to survive next to
+// `write_package_scope` above).
+pub fn write_component_placement_scope(p: &mut WriteScopeParameter<'_>, package_no: usize) {
+    let board = p.board;
+    let mut component_found = false;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+    for i in 1..=board.components.count() as i32 {
+        let current_component = board.components.get(i);
+        if current_component.get_package() != package_no {
+            continue;
+        }
+        // check, if not all items of the component are deleted
+        let undeleted_item_found = board
+            .get_items()
+            .any(|item| item.component_id() == current_component.id);
+        // Java: `if (undeletedItemFound || !currentComponent.isPlaced())` (Package.java:372).
+        if !undeleted_item_found && current_component.is_placed() {
+            continue;
+        }
+        if !component_found {
+            // write the scope header
+            let package_name = board.library.packages.get(package_no).name.clone();
+            p.file.start_scope_nl();
+            p.file.write("component ");
+            p.identifier_type.write(&package_name, &mut p.file);
+            component_found = true;
+        }
+        write_component_scope(p, current_component);
+    }
+    if component_found {
+        p.file.end_scope();
+    }
+}
 
 // ------------------------------------------------------------------------ Library.java
 

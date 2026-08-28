@@ -10,10 +10,10 @@
 //! header scopes with no dedicated file of their own in the plan's file structure) and
 //! [`geometry`] (`Shape.java` with its five subclasses, plus `Layer.java`/`LayerStructure.java`).
 //!
-//! Every scope-reader function below except the ones `autoroute_settings.rs` and this task's
-//! `dsn_file.rs`/`scope_parameter.rs` already implement is a **stub** that just calls
-//! [`scope_parameter::skip_scope`] — later tasks replace the body, not the signature, so
-//! [`scope_parameter::read_scope`]'s dispatch `match` does not change shape again.
+//! The remaining **stubs** — scope readers that still just call [`scope_parameter::skip_scope`]
+//! — are `network::read_network_scope` (Task 9) and `wiring::read_wiring_scope`. Later tasks
+//! replace the body, not the signature, so [`scope_parameter::read_scope`]'s dispatch `match`
+//! does not change shape again.
 
 // added in Plan 3: ScopeKeyword.readScope dispatch table (this module's scope-reader stubs) —
 // fix round 1 moved this marker out of the `//!` sentence above, which it was breaking in two.

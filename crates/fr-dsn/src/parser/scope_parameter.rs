@@ -1,7 +1,6 @@
 //! `io/specctra/parser/{ReadScopeParameter,WriteScopeParameter,ScopeKeyword}.java` — the state
 //! threaded through every scope reader/writer, and the generic scope dispatch loop.
 
-use std::collections::BTreeMap;
 use std::io::Write;
 
 use fr_board::{AngleRestriction, Board, Unit};
@@ -12,7 +11,7 @@ use crate::format::{DSN_RESERVED, IdentifierType, IndentFileWriter};
 use crate::keyword::ScopeKeyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::DsnRouterSettings;
-use crate::parser::network::{DsnNet, NetId};
+use crate::parser::network::NetList;
 use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping};
 use crate::parser::placement::ComponentPlacement;
 use crate::parser::structure::{DsnLayerStructure, DsnPlane};
@@ -45,8 +44,8 @@ pub struct DsnReadOptions {}
 /// `logicalPartMappings`/`logicalParts` until Task 7 landed the `part_library` scope).
 ///
 /// Every Java `Collection` field here (`LinkedList`, insertion order) is a `Vec`; `netlist` is
-/// Java's `TreeMap<Net.Id, Net>` (deterministic order), so it is a `BTreeMap<NetId, DsnNet>`
-/// with [`NetId`]'s `Ord` matching `Net.Id.compareTo` exactly.
+/// Java's [`NetList`], a `TreeMap<Net.Id, Net>` wrapper, so it is a `BTreeMap<NetId, DsnNet>`
+/// with `NetId`'s `Ord` matching `Net.Id.compareTo` exactly.
 #[derive(Debug)]
 pub struct ReadScopeParameter<'a> {
     /// `ReadScopeParameter.scanner`.
@@ -60,8 +59,8 @@ pub struct ReadScopeParameter<'a> {
     /// `ReadScopeParameter.boardHandling.getRoutingBoard()`, held directly rather than behind
     /// Java's `BoardParserCallback`.
     pub board: Option<Board>,
-    /// `ReadScopeParameter.netlist` (`NetList`, itself a `TreeMap<Net.Id, Net>` wrapper).
-    pub netlist: BTreeMap<NetId, DsnNet>,
+    /// `ReadScopeParameter.netlist` (ReadScopeParameter.java:28).
+    pub netlist: NetList,
     /// `ReadScopeParameter.planeList`.
     pub plane_list: Vec<DsnPlane>,
     /// `ReadScopeParameter.placementList`.
@@ -132,7 +131,7 @@ impl<'a> ReadScopeParameter<'a> {
         ReadScopeParameter {
             scanner,
             board: None,
-            netlist: BTreeMap::new(),
+            netlist: NetList::new(),
             plane_list: Vec::new(),
             placement_list: Vec::new(),
             logical_part_mappings: Vec::new(),

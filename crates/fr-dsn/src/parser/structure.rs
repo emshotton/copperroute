@@ -35,7 +35,7 @@ use crate::parser::autoroute_settings::read_autoroute_settings_scope;
 use crate::parser::dsn_file::read_string_scope;
 use crate::parser::geometry::{self as shape, DsnPolygonPath, DsnShape, ReadAreaScopeResult};
 use crate::parser::header::read_flip_style_rotate_first;
-use crate::parser::network::{DsnClearanceRule, DsnNet, DsnRule, NetId, read_rule_scope};
+use crate::parser::network::{DsnClearanceRule, DsnRule, NetId, read_rule_scope};
 use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
 
 // `LayerStructure.java` and `Layer.java` live in `parser/geometry.rs` (Plan 3 Task 5, whose file
@@ -492,7 +492,9 @@ fn read_layer_scope(
 
 /// `Structure.readViaPadstacks` (Structure.java:405-441): the `(via <name>* (spare <name>*))`
 /// scope. `None` is Java's `null`.
-fn read_via_padstacks(scanner: &mut DsnScanner) -> Result<Option<Vec<String>>, DsnError> {
+pub(crate) fn read_via_padstacks(
+    scanner: &mut DsnScanner,
+) -> Result<Option<Vec<String>>, DsnError> {
     let mut normal_vias: Vec<String> = Vec::new();
     let mut spare_vias: Vec<String> = Vec::new();
     loop {
@@ -705,9 +707,8 @@ fn insert_planes_inner(
             name: plane_info.net_name.clone(),
             subnet_no: 1,
         };
-        if !p.netlist.contains_key(&net_id) {
-            p.netlist
-                .insert(net_id.clone(), DsnNet::new(net_id.clone()));
+        if !p.netlist.contains(&net_id) {
+            p.netlist.add_net(net_id.clone());
             let Some(board) = p.board.as_mut() else {
                 return Ok(false);
             };
@@ -811,9 +812,8 @@ fn insert_missing_power_planes(layer_info: &[DsnLayer], p: &mut ReadScopeParamet
             name: current_net_name.clone(),
             subnet_no: 1,
         };
-        if !p.netlist.contains_key(&current_net_id) {
-            p.netlist
-                .insert(current_net_id.clone(), DsnNet::new(current_net_id.clone()));
+        if !p.netlist.contains(&current_net_id) {
+            p.netlist.add_net(current_net_id.clone());
             let Some(board) = p.board.as_mut() else {
                 return;
             };

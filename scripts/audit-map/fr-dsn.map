@@ -37,3 +37,11 @@ Library                  parser/library.rs
 Package                  parser/library.rs
 PartLibrary              parser/part_library.rs
 Rule                     parser/network.rs
+Placement                parser/placement.rs
+Component                parser/placement.rs
+ComponentPlacement       parser/placement.rs
+Package                  parser/placement.rs
+Circuit                  parser/network.rs
+NetClass                 parser/network.rs
+Net                      parser/network.rs
+NetList                  parser/network.rs
