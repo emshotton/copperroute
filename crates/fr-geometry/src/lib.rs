@@ -68,9 +68,10 @@ pub use vector::Vector;
 pub mod prelude {
     pub use crate::{
         Area, BigIntDirection, CRIT_INT, Circle, Direction, Ellipse, FloatLine, FloatPoint,
-        FortyfiveDegreeDirection, IntBox, IntDirection, IntOctagon, IntPoint, IntVector, Line,
-        LineSegment, Point, Polygon, PolygonShape, Polyline, PolylineArea, PolylineShapeOps,
-        RationalPoint, RationalVector, RegularTileShape, Shape, ShapeBoundingDirections, ShapeOps,
-        Side, Signum, Simplex, TileShape, Vector, java_round,
+        FortyfiveDegreeDirection, IntBox, IntDirection, IntOctagon, IntPoint, IntVector,
+        JAVA_DOUBLE_MIN_VALUE, Line, LineSegment, Point, Polygon, PolygonShape, Polyline,
+        PolylineArea, PolylineError, PolylineShapeOps, PolylineShapeRef, RationalPoint,
+        RationalVector, RegularTileShape, Shape, ShapeBoundingDirections, ShapeOps, Side, Signum,
+        Simplex, TileShape, Vector, java_max, java_min, java_round,
     };
 }

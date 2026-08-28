@@ -520,7 +520,14 @@ impl Line {
     /// (`a == b`, zero direction) compared with itself, where Java's shortcut returns `true` and
     /// the geometric test below returns `false` (`Signum::Zero`, not `Positive`).
     ///
-    /// The only Java caller is `Simplex.borderLineIndex` (Simplex.java:666-673).
+    /// **Every** Java caller of `Line.equals` (there are exactly four, and Plan 7 must use this
+    /// method for all of them — never the derived `==`):
+    /// - `Simplex.borderLineIndex` (`Simplex.java:668`);
+    /// - `TraceTightener.repositionLine` (`TraceTightener.java:281`);
+    /// - `TraceTightenerAnyAngle.repositionLine` (`TraceTightenerAnyAngle.java:568` and
+    ///   `:576`), which tests a *translated* line against its original to detect a
+    ///   sub-unit translation that did not move the line — precisely the case where the
+    ///   geometric test and the structural one disagree.
     pub fn equals_geometric(&self, other: &Line) -> bool {
         if self.side_of_int_point(&other.a) != Side::Collinear {
             return false;

@@ -8,6 +8,33 @@ its `snake_case` name; deliberate Java bugs and edge-case crashes are
 reproduced rather than fixed (see `docs/java-quirks.md`). Use
 `fr_geometry::prelude::*` to bring in every public type.
 
+**Naming.** Java resolves overloads by argument type, Rust does not, so a
+Java method with several overloads becomes several Rust methods distinguished
+by a suffix naming the argument:
+
+- `_box` / `_octagon` / `_simplex` for the `TileShape` subclasses —
+  `IntBox.intersection(IntBox|IntOctagon|Simplex)` becomes
+  `intersection`, `intersection_octagon`, `intersection_simplex`; likewise
+  `union_*`, `intersects_*`, `is_contained_in_octagon`, `compare_octagon`,
+  `cutout_from_*`. The overload taking the receiver's own type keeps the bare
+  name.
+- `_int` / `_rational` for the `Point`/`Vector`/`Direction` subclasses —
+  `side_of_int`/`side_of_rational`, `difference_by_int`/`difference_by_rational`,
+  `scalar_product_int`/`scalar_product_rational`, `translate_by_int`/
+  `translate_by_rational`, `projection_int`/`projection_rational`,
+  `compare_y_rational`.
+- `_any` where Java takes the *abstract* base class and dispatches at run time:
+  `Line::from_direction_any`, `Line::translate_by_any`.
+- `_geometric` for `Line::equals_geometric`, Java's `Line.equals(Object)`. The
+  derived `PartialEq` on `Line` is the structural end-point comparison, so the
+  two tests are kept apart (see the type-level note in `line.rs`).
+
+Two members are renamed outright rather than suffixed, each marked
+`// renamed:` at the definition:
+`Direction.getInstanceApprox` → `Direction::from_angle_approx`
+(`direction.rs`) and `FortyfiveDegreeDirection.getDirection` →
+`FortyfiveDegreeDirection::to_int_direction` (`bounding_directions.rs`).
+
 | Java | Rust |
 |---|---|
 | `Point` (abstract) | `enum Point { Int(IntPoint), Rational(RationalPoint) }` |

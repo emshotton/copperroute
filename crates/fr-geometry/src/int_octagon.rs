@@ -1779,16 +1779,21 @@ mod tests {
     #[test]
     fn get_id_wraps_like_java() {
         // Java `int` hash arithmetic wraps silently; `IntOctagon::EMPTY` overflows i32 several
-        // times over, so plain `*`/`+` would panic in a debug build.
-        let id = IntOctagon::EMPTY.get_id();
-        // Recomputed with the same wrapping steps as IntOctagon.java:165-174.
-        let mut expected = CRIT_INT;
-        for v in [
-            -CRIT_INT, CRIT_INT, -CRIT_INT, CRIT_INT, -CRIT_INT, CRIT_INT, -CRIT_INT,
-        ] {
-            expected = 31i32.wrapping_mul(expected).wrapping_add(v);
-        }
-        assert_eq!(id, expected);
+        // times over, so plain `*`/`+` would panic in a debug build. Hard-coded rather than
+        // recomputed with the same formula, so the test cannot agree with a wrong
+        // implementation. Hand-derived from IntOctagon.java:165-174, which folds the eight
+        // fields in the order leftX, rightX, bottomY, topY, lowerLeftDiagonalX,
+        // upperRightDiagonalX, upperLeftDiagonalX, lowerRightDiagonalX; for `EMPTY` those are
+        // C, -C, C, -C, C, -C, C, -C with C = CRIT_INT = 2^25 = 33_554_432:
+        //   r0 =                 C          =        33_554_432
+        //   r1 = 31 * r0 + (-C)             =     1_006_632_960
+        //   r2 = 31 * r1 +   C   (wraps)    =     1_174_405_120
+        //   r3 = 31 * r2 + (-C)  (wraps)    =     2_013_265_920
+        //   r4 = 31 * r3 +   C   (wraps)    =    -1_979_711_488
+        //   r5 = 31 * r4 + (-C)  (wraps)    =    -1_275_068_416
+        //   r6 = 31 * r5 +   C   (wraps)    =      -838_860_800
+        //   r7 = 31 * r6 + (-C)  (wraps)    =      -268_435_456
+        assert_eq!(IntOctagon::EMPTY.get_id(), -268_435_456);
     }
 
     #[test]
