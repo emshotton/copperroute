@@ -7,6 +7,7 @@
 //! `FRLogger` calls from the Java source are dropped during porting, and invariant-guard logs
 //! become `debug_assert!`.
 
+pub mod board;
 pub mod datastructures;
 pub mod error;
 pub mod ids;
@@ -16,6 +17,7 @@ pub mod rules;
 pub mod searchtree;
 pub mod structure;
 
+pub use board::{Board, ChangedArea, Communication, ShapeTraceEntries, StopConnectionOption};
 pub use datastructures::{LeafId, Node, NodeId, ShapeTree, StopCheck, TimeLimit, TreeEntry};
 pub use error::BoardError;
 pub use ids::{
@@ -38,22 +40,25 @@ pub use rules::{
 };
 pub use searchtree::{ItemLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
-    AngleRestriction, BoardOutline, Component, Components, FixedState, Layer, LayerStructure, Unit,
+    AngleRestriction, BoardOutline, Component, Components, FixedState, Layer, LayerStructure,
+    ShapeAndEntrySide, ShapeEntrySide, Unit,
 };
 
 /// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        AngleRestriction, AutorouteInfo, BOARD_OUTLINE_HALF_WIDTH, BoardError, BoardLibrary,
-        BoardOutline, BoardRules, ClearanceClassIndexed, ClearanceMatrix, Component,
-        ComponentObstacleArea, ComponentOutline, Components, ConductionArea, Connectable,
-        ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DefaultItemClearanceClasses, DrillItemData,
-        DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId,
-        ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
-        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea,
-        ObstacleAreaData, Package, PackagePin, Packages, Padstack, PadstackId, PadstackLookup,
-        Padstacks, PartPin, Pin, PolylineTrace, RoomId, SearchTreeManager, ShapeSearchTree,
-        ShapeTree, StopCheck, TimeLimit, TraceExitRestriction, TreeEntries, TreeEntry, TreeId,
-        TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
+        AngleRestriction, AutorouteInfo, BOARD_OUTLINE_HALF_WIDTH, Board, BoardError, BoardLibrary,
+        BoardOutline, BoardRules, ChangedArea, ClearanceClassIndexed, ClearanceMatrix,
+        Communication, Component, ComponentObstacleArea, ComponentOutline, Components,
+        ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        DefaultItemClearanceClasses, DrillItemData, DrillItemPadstackLookup, FixedState, Item,
+        ItemClass, ItemCtx, ItemHeader, ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout,
+        Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, Net, NetClass, NetClassId,
+        NetClasses, Nets, Node, NodeId, ObstacleArea, ObstacleAreaData, Package, PackagePin,
+        Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin, PolylineTrace,
+        RoomId, SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree,
+        ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
+        TraceExitRestriction, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo,
+        ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
     };
 }

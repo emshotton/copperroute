@@ -497,10 +497,13 @@ impl ShapeSearchTree {
                         let current = ops.border_line(i);
                         let next = ops.border_line((i + 1) % border_line_count);
                         let shape = match (previous, current, next) {
+                            // ShapeSearchTree.java:982 calls `tmpPolyline.offsetShape(...)`, the
+                            // **non-virtual** `Polyline.offsetShape` — not `this.offsetShape`, so
+                            // the 90-degree tree's `offsetBox` override does *not* apply here.
                             (Some(a), Some(b), Some(c)) => Polyline::from_lines(vec![a, b, c])
                                 .ok()
                                 .and_then(|polyline| {
-                                    self.offset_shape(&polyline, half_width + cmp_value, 0)
+                                    polyline.offset_shape(half_width + cmp_value, 0)
                                 }),
                             // Java constructs `new Polyline(currentLineArr)` unconditionally and
                             // would throw on a `null` element; a `PolylineError` is Plan 1's

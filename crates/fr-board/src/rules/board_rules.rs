@@ -21,8 +21,8 @@ use super::{
 /// (`board/facade/BasicBoard.java:1110-1115`) is *not* a `BoardRules` method, despite the Task 2
 /// brief listing it here. It is a board-level wrapper around
 /// `rules.clearanceMatrix.getValue(class1, class2, layer, true)`.
-// added in Task 11: `Board::clearance_value`, which is that wrapper (including the
-// `rules == null` guard's `return 0`, which cannot arise in this port).
+/// It is ported as [`crate::Board::clearance_value`] (whose `rules == null` guard's `return 0`
+/// cannot arise in this port).
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoardRules {
     /// `BoardRules.clearanceMatrix` (BoardRules.java:20); public and final in Java too.

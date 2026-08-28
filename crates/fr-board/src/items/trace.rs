@@ -69,17 +69,20 @@
 // traces in `IntBox`es. `ShapeSearchTree45Degree` has no override. So
 // [`PolylineTrace::offset_shapes`] is the *base-class* answer only; Task 10 must dispatch per
 // tree angle, not reuse it unconditionally.
-// added in Task 11: `PolylineTraceSearchTreeAdapter.hasDefaultEntries` (:22-26),
-// `replaceGeometry` (:34-40), `mergeEntriesInFront` (:42-50), `mergeEntriesAtEnd` (:52-60) and
-// `changeEntries` (:62-66) -> `SearchTreeManager` methods; all five take the trace's board.
-// added in Task 11: `Trace.getStartContacts` (Trace.java:108-110), `Trace.getEndContacts`
-// (:116-118) and `Trace.getNormalContacts(Point, boolean)` (:173-203) ->
-// `Board::trace_start_contacts`, `Board::trace_end_contacts`,
-// `Board::trace_normal_contacts_at`; all three go through `board.overlappingObjects`.
-// added in Task 11: `Trace.isCycle` (Trace.java:272-330) -> `Board::is_trace_cycle`; it walks
+// renamed: `PolylineTraceSearchTreeAdapter.hasDefaultEntries` (:22-26) and `replaceGeometry`
+// (:34-40) -> `Board::trace_has_default_entries` / `Board::replace_trace_geometry`, and its
+// `mergeEntriesInFront` (:42-50), `mergeEntriesAtEnd` (:52-60) and `changeEntries` (:62-66) ->
+// `Board::merge_trace_entries_in_front`, `Board::merge_trace_entries_at_end` and
+// `Board::change_trace_entries`, which forward to `SearchTreeManager`; all five read the trace's
+// board.
+// renamed: `Trace.getStartContacts` (Trace.java:108-110), `Trace.getEndContacts` (:116-118) and
+// `Trace.getNormalContacts(Point, boolean)` (:173-203) -> `Board::trace_start_contacts`,
+// `Board::trace_end_contacts` and `Board::trace_normal_contacts_at`; all three go through
+// `board.overlappingObjects`.
+// renamed: `Trace.isCycle` (Trace.java:272-330) -> `Board::is_trace_cycle`; it walks
 // `Item.isCycleRecu` over the start contacts. Its one non-GUI caller is
 // `BasicBoard.removeIfCycle` (BasicBoard.java:1339).
-// added in Task 11: `Trace.touchingPinsAtEndCorners` (Trace.java:390-410) ->
+// renamed: `Trace.touchingPinsAtEndCorners` (Trace.java:390-410) ->
 // `Board::touching_pins_at_end_corners`; it calls `board.overlappingItemsWithClearance` on the
 // enlarged surrounding octagon of each end corner (`BasicBoard.java:1066` is the non-router
 // caller).

@@ -98,8 +98,8 @@ pub struct ItemCtx<'a> {
     /// named a host CAD system. `fr-board` has no `Communication` type (it is `io`/session
     /// state, Plan 3), so the resolved number travels with the rest of the board context, the
     /// way `bounding_box` does.
-    // added in Task 11: `Board` computes this from its `Communication` and fills it in; until
-    // then every caller passes `DEFAULT_MAX_TREE_SHAPE_WIDTH`.
+    // `Board::new` computes this from its `Communication` and fills it in; a caller that has no
+    // board passes `DEFAULT_MAX_TREE_SHAPE_WIDTH`.
     pub max_tree_shape_width: f64,
 }
 
@@ -1444,12 +1444,11 @@ impl Pin {
         true
     }
 
-    // added in Task 11: `getSwappablePins` (Pin.java:391-427) -> `Board::swappable_pins(ItemId)`.
+    // renamed: `getSwappablePins` (Pin.java:391-427) -> `Board::swappable_pins(ItemId)`.
     // Its body walks the component's `LogicalPart` for part pins with the same `gateName` and
     // `gatePinSwapCode`, then resolves each one through `board.getPin(componentId, pinIndex)`
     // (Pin.java:418) — a lookup over the board's whole item list, which is what makes it a
-    // `Board` method rather than a `Pin` one. Note also that its result is a `TreeSet<Pin>`, so
-    // Task 11 must give it `Item.compareTo`'s descending-id order (quirk #44).
+    // `Board` method rather than a `Pin` one.
 
     /// Port of `Pin.getChangedTo` (Pin.java:463-468): the pin this one was swapped with, or this
     /// pin's own id if it was never swapped.

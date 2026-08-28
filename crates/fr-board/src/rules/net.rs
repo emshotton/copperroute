@@ -22,11 +22,12 @@ use super::{compare_to_ignore_case, equals_ignore_case};
 /// not ported: `Net.getItems` (Net.java:113-127)
 /// not ported: `Net.getTraceLength` (Net.java:130-140)
 /// not ported: `Net.getViaCount` (Net.java:143-152)
-// added in Task 11: `Board::net_terminal_items`, `Board::net_pins`, `Board::net_items`,
-// `Board::net_trace_length` and `Board::net_via_count` (the board owns the item list, so these
-// become board queries taking a net number). Their live callers are
-// `drc/NetIncompletes.java:265` (`getTraceLength`) and `board/state/BoardComparator.java:270`
-// (`getPins`); the other three are reached only from `Net.printInfo`.
+/// They are ported instead as [`crate::Board::net_terminal_items`], [`crate::Board::net_pins`],
+/// [`crate::Board::net_items`], [`crate::Board::net_trace_length`] and
+/// [`crate::Board::net_via_count`] — the board owns the item list, so each becomes a board query
+/// taking a net number. Their live callers are `drc/NetIncompletes.java:265` (`getTraceLength`)
+/// and `board/state/BoardComparator.java:270` (`getPins`); the other three are reached only from
+/// `Net.printInfo`.
 ///
 /// not ported: `Net.printInfo` (Net.java:169-192) — `ItemInfoPrinter.Printable`, GUI only.
 #[derive(Debug, Clone, PartialEq, Eq)]

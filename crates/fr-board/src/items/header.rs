@@ -135,9 +135,8 @@ impl ItemHeader {
     /// `id` is already resolved: Java's `if (id <= 0) this.id = board.communication.idGenerator
     /// .newId()` (Item.java:86-90) needs the board, and [`crate::ids::ItemIdGenerator`] is the
     /// port's generator.
-    // added in Task 11: `Board::insert_*` must run Java's `id <= 0` branch (Item.java:86-90) —
-    // allocate from the board's `ItemIdGenerator` when the caller passes no id — before calling
-    // this constructor.
+    // `Board`'s typed inserters run Java's `id <= 0` branch (Item.java:86-90) by calling
+    // `Board::new_item_id` — the board's `ItemIdGenerator` — before building the header.
     pub fn new(
         id: ItemId,
         net_nos: Vec<i32>,
@@ -233,9 +232,9 @@ impl ItemHeader {
     // ("unexpected netCount > 1", Item.java:975-977) and then *overwrites only element 0*
     // (Item.java:978), leaving the other net numbers in place — so the item ends up on
     // `net_number` **plus** whatever it was on before. Reproduced; see docs/java-quirks.md.
-    // added in Task 11: `Board` must call its `saveForUndo` for this item (Item.java:969)
-    // *before* calling this method — the undo snapshot has to be taken while the old net
-    // numbers are still in place.
+    // added in Task 12: `board.itemList.saveForUndo(this)` (Item.java:969) — Plan 2 replaces
+    // Java's `UndoableObjects` snapshot stack with `Board::clone` in Task 12, so there is no
+    // per-item undo record to take here yet.
     pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
         if !Nets::is_normal_net_number(net_number) {
             return;

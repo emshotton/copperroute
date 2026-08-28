@@ -678,22 +678,13 @@ impl ComponentObstacleArea {
         }
     }
 
-    /// Port of `ComponentObstacleArea.isFront` (ComponentObstacleArea.java:83-87):
-    /// `Component component = board.components.get(getComponentId()); return component == null ||
-    /// component.placedOnFront();` — it reads the **board's component list**, not any field of
-    /// its own.
-    // added in Task 11: `isFront` becomes `Board::component_obstacle_area_is_front(ItemId)`,
-    // because it needs `board.components`. Note the two halves Task 11 must model: Java returns
-    // `true` when `components.get(componentId)` is `null`, but this port's
-    // `Components::get` *panics* on an id outside `1..=count` (quirk #49, Components.java:89) —
-    // so `Board` has to bounds-check the component id itself and answer `true` for a missing
-    // one rather than calling `Components::get` blind.
-    pub fn is_front(&self) -> bool {
-        unimplemented!(
-            "ComponentObstacleArea::is_front needs the board's Components, added in Task 11 \
-             (ComponentObstacleArea.java:83-87)"
-        )
-    }
+    // renamed: `ComponentObstacleArea.isFront` (ComponentObstacleArea.java:83-87) ->
+    // `Board::component_obstacle_area_is_front(ItemId)`, because its body is
+    // `Component component = board.components.get(getComponentId()); return component == null ||
+    // component.placedOnFront();` — the **board's** component list, not a field of its own.
+    // Note the `component == null` half: this port's `Components::get` *panics* on an id outside
+    // `1..=count` (quirk #49, Components.java:89), so `Board` bounds-checks the component id
+    // itself and answers Java's `true` for a missing one.
 }
 obstacle_area_impl!(ComponentObstacleArea);
 

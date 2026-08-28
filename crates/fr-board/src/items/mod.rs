@@ -40,27 +40,29 @@
 //! | field accessors, net ops, fixed state, tree bookkeeping | [`ItemHeader`] (`header.rs`) |
 //! | per-subclass dispatch with a body that needs no board | [`Item`], this file |
 //! | per-subclass dispatch whose body needs geometry | dispatches to a variant-struct method; the header-only structs carry `// added in Task N:` stubs that Tasks 6-8 replace |
-//! | anything that queries the search tree, the item list or the components | `Board`, Task 11 — marked `// added in Task 11:` here |
+//! | anything that queries the search tree, the item list or the components | [`crate::Board`] — see the table below |
 //! | `printInfo`, `getHoverInfo`, `isSelectedByFilter`, `write` | not ported (GUI / serialization) |
 //!
-//! # The board-dependent methods, deferred to Task 11
+//! # The board-dependent methods, which live on `Board`
 //!
-//! Each of these reads `Item.board` in Java, so it becomes a `Board` method taking an
+//! Each of these reads `Item.board` in Java, so it is a [`crate::Board`] method taking an
 //! [`ItemId`]: `getTileShape` goes through `board.searchTreeManager.getDefaultTree()`, the
 //! contact family through `board.overlappingObjects`, the net family through
-//! `board.rules.nets`, and `validate` through `board.searchTreeManager.validateEntries`. Each
-//! marker below names the Java method, its lines, and the `Board` method that will replace it.
+//! `board.rules.nets`, and `validate` through `board.searchTreeManager.validateEntries`.
 //!
-//! added in Task 11: `clearanceViolations` (Item.java:363-469, plus `Via`'s override at Via.java:88-112 and the private `calculateClearanceBetweenTwoShapes` at Item.java:471-493) and `clearanceViolationCount` (Item.java:357-361) -> `Board::clearance_violations` / `Board::clearance_violation_count`.
-//! added in Task 11: `componentName` (Item.java:346-355) -> `Board::item_component_name`; it reads `board.components.get(componentId).name`.
-//! added in Task 11: `getAllContacts` (both overloads, Item.java:495-548), `isConnected` (Item.java:550-557) and `isConnectedOnLayer` (Item.java:559-566) -> `Board::all_contacts`, `Board::all_contacts_on_layer`, `Board::is_connected`, `Board::is_connected_on_layer`.
-//! added in Task 11: `getNormalContacts` (Item.java:568-571 plus the `Trace`, `DrillItem` and `ConductionArea` overrides) and `normalContactPoint` (Item.java:573-589 plus its overrides) -> `Board::normal_contacts`, `Board::normal_contact_point`.
-//! added in Task 11: `getConnectedSet` (Item.java:591-614, with the private `getConnectedSetRecu` at Item.java:616-635), `getUnconnectedSet` (Item.java:671-690) and `getConnectionItems` (both overloads, Item.java:692-781) -> `Board::connected_set`, `Board::unconnected_set`, `Board::connection_items`.
-//! added in Task 11: `isTail` (Item.java:783-786 plus `Trace`/`Via`'s overrides), `isOverlap` (Item.java:637-640 plus `Trace`'s override), the package-private `isCycleRecu` (Item.java:642-669) and `isFanoutVia` (Item.java:1202-1239) -> `Board::is_tail`, `Board::is_overlap`, `Board::is_cycle_recu`, `Board::is_fanout_via`.
-//! added in Task 11: `getRatsnestCorners` (Item.java:788-794 plus the `Trace`, `DrillItem` and `ConductionArea` overrides — the last is ConductionArea.java:367-377, `getArea().cornerApproxArr()` rounded) -> `Board::ratsnest_corners`.
-//! added in Task 11: `hasIgnoredNets` (Item.java:1241-1255), `getAllNets` (Item.java:1271-1281) and `getAllNetNames` (Item.java:1283-1288) -> `Board::has_ignored_nets`, `Board::all_nets`, `Board::all_net_names`; all three resolve net numbers through `board.rules.nets`.
-//! added in Task 11: `moveBy` (Item.java:300-311 plus `DrillItem`'s override at DrillItem.java:95-145) -> `Board::move_item_by`; it saves for undo and re-inserts the item into the search trees.
-//! added in Task 11: `validate` (Item.java:796-807 plus `Trace`'s override at Trace.java:447-461) -> `Board::validate_item`; both halves need the board.
+//! | Java | `Board` |
+//! |---|---|
+//! | `componentName` (Item.java:346-355) | [`crate::Board::item_component_name`] |
+//! | `getAllContacts` (both overloads, Item.java:495-548), `isConnected` (:550-557), `isConnectedOnLayer` (:559-566) | [`crate::Board::all_contacts`], [`crate::Board::all_contacts_on_layer`], [`crate::Board::is_connected`], [`crate::Board::is_connected_on_layer`] |
+//! | `getNormalContacts` (Item.java:568-571 plus the `Trace`, `DrillItem` and `ConductionArea` overrides), `normalContactPoint` (:573-589 plus its overloads) | [`crate::Board::normal_contacts`], [`crate::Board::normal_contact_point`] |
+//! | `getConnectedSet` (Item.java:591-614 + the private `getConnectedSetRecu` at :616-635), `getUnconnectedSet` (:671-690), `getConnectionItems` (both overloads, :692-781) | [`crate::Board::connected_set`], [`crate::Board::unconnected_set`], [`crate::Board::connection_items`] |
+//! | `isTail` (Item.java:783-786 + `Trace`/`Via`'s overrides), `isOverlap` (:637-640 + `Trace`'s), the package-private `isCycleRecu` (:642-669), `isFanoutVia` (:1202-1239) | [`crate::Board::is_tail`], [`crate::Board::is_overlap`], [`crate::Board::is_cycle_recu`], [`crate::Board::is_fanout_via`] |
+//! | `getRatsnestCorners` (Item.java:788-794 plus the `Trace`, `DrillItem` and `ConductionArea` overrides — the last is ConductionArea.java:367-377, `getArea().cornerApproxArr()` rounded) | [`crate::Board::ratsnest_corners`] |
+//! | `hasIgnoredNets` (Item.java:1241-1255), `getAllNets` (:1271-1281), `getAllNetNames` (:1283-1288) | [`crate::Board::has_ignored_nets`], [`crate::Board::all_nets`], [`crate::Board::all_net_names`] |
+//! | `moveBy` (Item.java:300-311 plus `DrillItem`'s override at DrillItem.java:95-145) | [`crate::Board::move_item_by`] |
+//! | `validate` (Item.java:796-807 plus `Trace`'s override at Trace.java:447-456) | [`crate::Board::validate_item`] |
+//!
+//! added in Plan 5: `clearanceViolations` (Item.java:363-469, plus `Via`'s override at Via.java:88-112 and the private `calculateClearanceBetweenTwoShapes` at Item.java:471-493) and `clearanceViolationCount` (Item.java:357-361) -> `Board::clearance_violations` / `Board::clearance_violation_count`; both build `drc.ClearanceViolation` objects, which is Plan 5's DRC layer.
 //!
 //! # Not ported
 //!
@@ -418,9 +420,9 @@ impl Item {
     ///
     /// Java's sibling `changeClearanceClassIndex` (Item.java:937-950) does the same thing and
     /// then re-inserts the item into the search tree.
-    // added in Task 11: `Board::change_clearance_class_index(ItemId, usize)` — the search-tree
-    // half of `Item.changeClearanceClassIndex` (Item.java:944-949: `clearDerivedData`, then
-    // `searchTreeManager.remove`/`insert` when clearance compensation is on).
+    /// The search-tree half of `Item.changeClearanceClassIndex` (Item.java:944-949:
+    /// `clearDerivedData`, then `searchTreeManager.remove`/`insert` when clearance compensation
+    /// is on) is [`crate::Board::change_clearance_class_index`].
     pub fn set_clearance_class(&mut self, index: usize, rules: &BoardRules) {
         self.header_mut().set_clearance_class(index, rules);
     }
@@ -1029,8 +1031,8 @@ impl std::fmt::Display for Item {
 /// The interface's other four methods — `getAllContacts()`, `getAllContacts(int)`,
 /// `getNormalContacts()` and `getConnectedSet(int)` (Connectable.java:17-37) — all walk the
 /// board's search tree, so they are not on this trait.
-// added in Task 11: `Board::all_contacts`, `Board::all_contacts_on_layer`,
-// `Board::normal_contacts` and `Board::connected_set`, which are those four.
+/// They are [`crate::Board::all_contacts`], [`crate::Board::all_contacts_on_layer`],
+/// [`crate::Board::normal_contacts`] and [`crate::Board::connected_set`].
 pub trait Connectable {
     /// The item's shared state, so the two net methods below need no per-implementor body.
     fn header(&self) -> &ItemHeader;

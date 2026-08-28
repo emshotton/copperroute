@@ -34,9 +34,9 @@ use super::ShapeSearchTree;
 /// built tree, and `MinAreaTree`'s insertion heuristic makes the tree a function of it. Feeding
 /// `getAutorouteTree` ascending ids builds a differently shaped tree with the same contents.
 ///
-// added in Task 11: `Board` stores items in a `BTreeMap<ItemId, Item>` (plan-rulings.md #1),
-// which iterates *ascending*, so every call into this type that stands in for a `board.itemList`
-// walk must pass `items.values_mut().rev()`.
+/// [`crate::Board`] stores items in a `BTreeMap<ItemId, Item>` (plan-rulings.md #1), which
+/// iterates *ascending*, so every call into this type that stands in for a `board.itemList` walk
+/// passes `items.values_mut().rev()`; see `Board::items_in_board_order`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchTreeManager {
     /// Java `SearchTreeManager.defaultTree` (SearchTreeManager.java:26), the tree interactive

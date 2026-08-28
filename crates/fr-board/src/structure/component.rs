@@ -250,8 +250,8 @@ impl std::fmt::Display for Component {
 ///
 /// not ported: `Components.undoList` (Components.java:16), a `UndoableObjects` — the board's undo
 /// stack is not part of this task.
-// added in Task 11: `generateSnapshot` (Components.java:105-108), `undo` (Components.java:110-119), `redo` (Components.java:121-128) and the private `restoreComponentArrFromUndoList` (Components.java:130-146) — all four are the undo stack, which arrives with `Board`.
-// added in Task 11: the `undoList.saveForUndo(currentComponent)` call that opens each of `move`,
+// added in Task 12: `generateSnapshot` (Components.java:105-108), `undo` (Components.java:110-119), `redo` (Components.java:121-128) and the private `restoreComponentArrFromUndoList` (Components.java:130-146) — all four are the `UndoableObjects` stack, which Plan 2's Task 12 replaces with `Board::clone` (there is no `undoList` in the port, so the four have no state to act on until that task decides the shape of a snapshot).
+// added in Task 12: the `undoList.saveForUndo(currentComponent)` call that opens each of `move`,
 // `turn90Degree`, `rotate` and `changeSide` (Components.java:154,164,174,184) — the four
 // mutators below do the geometry but not the snapshot.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -301,7 +301,7 @@ impl Components {
             position_fixed,
             part_number,
         );
-        // added in Task 11: `undoList.insert(newComponent)` (Components.java:52), which
+        // added in Task 12: `undoList.insert(newComponent)` (Components.java:52), which
         // registers the new component with the undo stack right after this push.
         self.components.push(new_component);
         self.components.last().expect("just pushed")

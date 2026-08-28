@@ -282,8 +282,8 @@ impl BoardOutline {
     /// Port of `BoardOutline.generateKeepoutOutside(boolean)` (BoardOutline.java:229-243): makes
     /// the area outside this outline a keepout, and re-inserts the outline into the search trees
     /// if the value changed.
-    // added in Task 11: the search-tree half (BoardOutline.java:238-242,
-    // `board.searchTreeManager.remove(this)` + `insert(this)`) becomes
+    // renamed: the search-tree half (BoardOutline.java:238-242,
+    // `board.searchTreeManager.remove(this)` + `insert(this)`) is
     // `Board::generate_keepout_outside(ItemId, bool)` — it needs the `SearchTreeManager`, which
     // only `Board` owns. Java's `board == null || searchTreeManager == null` guard
     // (BoardOutline.java:238-240) is exactly the "flag set, trees untouched" behaviour this
