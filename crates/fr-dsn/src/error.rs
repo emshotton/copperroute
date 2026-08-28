@@ -48,6 +48,25 @@ pub enum DsnError {
     /// A `fr-board` operation invoked while building or reading the board failed.
     #[error(transparent)]
     Board(#[from] BoardError),
+
+    /// A scalar scope helper (`DsnFile.readIntegerScope`/`readFloatScope`, `parser/dsn_file.rs`)
+    /// read a token of the wrong kind.
+    ///
+    /// Java totalizes this into a warning plus a `0`/`0.0` return (`DsnFile.java`); the port
+    /// surfaces it instead, because — unlike `read_on_off_scope`'s ON/OFF-or-neither, which has
+    /// an obviously sensible default — "not a number at all" has no default a caller should
+    /// silently accept. `readIntegerScope` rejecting a `Float` token where `readFloatScope`
+    /// accepts (widens) an `Int` token is deliberate (plan Task 4 brief): this variant is what
+    /// `read_integer_scope` returns for `(x 5.0)`.
+    #[error("{context}: expected {expected}, found {found}")]
+    UnexpectedScalar {
+        /// Which helper raised this (e.g. `"DsnFile::read_integer_scope"`).
+        context: &'static str,
+        /// What token kind was required.
+        expected: &'static str,
+        /// A debug rendering of what was actually read.
+        found: String,
+    },
 }
 
 /// Supported board and routing file formats (`io/FileFormat.java`, verbatim).

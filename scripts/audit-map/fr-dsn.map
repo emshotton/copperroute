@@ -2,8 +2,17 @@
 # per-class matching (Plan 3 Task 1 obligation). Blank lines and lines starting with `#` are
 # ignored. Append one line per class as later Plan 3 tasks port it; do not remove a class's line
 # once a task starts porting it, or the audit falls back to a crate-wide (weaker) check for it.
+# A class whose Rust home spans more than one file gets one map line per file — not one line
+# with several space-separated globs, which the reader (`read -r cls path`) would only keep the
+# first token of.
 IdentifierType      format/identifier.rs
 IndentFileWriter    format/indent_writer.rs
 SpecctraDsnStreamReader  lexer/*.rs
 IJFlexScanner            lexer/*.rs
 Keyword                  keyword.rs
+ScopeKeyword             keyword.rs
+ScopeKeyword             parser/scope_parameter.rs
+DsnFile                  parser/dsn_file.rs
+ReadScopeParameter       parser/scope_parameter.rs
+WriteScopeParameter      parser/scope_parameter.rs
+BoardParserCallback      parser/scope_parameter.rs
