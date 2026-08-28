@@ -1,7 +1,7 @@
 //! The DSN/SES I/O error type, plus the small `io/*.java` result and metadata types that ride
 //! alongside it: `BoardReadResult`, `BoardMetadata`, `FileFormat`.
 
-use fr_board::{AngleRestriction, Board, BoardError, Unit};
+use fr_board::{AngleRestriction, Board, BoardError, ItemId, Unit};
 
 /// Errors `fr-dsn`'s reading and writing operations can produce.
 ///
@@ -49,23 +49,18 @@ pub enum DsnError {
     #[error(transparent)]
     Board(#[from] BoardError),
 
-    /// A scalar scope helper (`DsnFile.readIntegerScope`/`readFloatScope`, `parser/dsn_file.rs`)
-    /// read a token of the wrong kind.
-    ///
-    /// Java totalizes this into a warning plus a `0`/`0.0` return (`DsnFile.java`); the port
-    /// surfaces it instead, because — unlike `read_on_off_scope`'s ON/OFF-or-neither, which has
-    /// an obviously sensible default — "not a number at all" has no default a caller should
-    /// silently accept. `readIntegerScope` rejecting a `Float` token where `readFloatScope`
-    /// accepts (widens) an `Int` token is deliberate (plan Task 4 brief): this variant is what
-    /// `read_integer_scope` returns for `(x 5.0)`.
-    #[error("{context}: expected {expected}, found {found}")]
-    UnexpectedScalar {
-        /// Which helper raised this (e.g. `"DsnFile::read_integer_scope"`).
-        context: &'static str,
-        /// What token kind was required.
-        expected: &'static str,
-        /// A debug rendering of what was actually read.
-        found: String,
+    /// `DsnFile.adjustPlaneAutorouteSettings` (DsnFile.java:86-90) calls
+    /// `currentConductionArea.getArea().splitToConvex()` with no null check — unlike the
+    /// sibling loop over the board outline eleven lines above it (`:67-68`), which does check.
+    /// Reachable: a `(plane ...)`/copper-pour polygon degenerate enough that
+    /// `Area::split_to_convex` gives up NPEs here in Java, and nothing between
+    /// `DsnFile.adjustPlaneAutorouteSettings` and `DsnReader.readBoard`'s unguarded call to it
+    /// catches that — the crash aborts the whole read. Fix round 1 (a reachable crash must
+    /// become `Err`, not a silently skipped area).
+    #[error("conduction area {item:?}'s shape could not be split into convex pieces")]
+    UnsplittableConductionArea {
+        /// The conduction area whose `Area::split_to_convex` returned `None`.
+        item: ItemId,
     },
 }
 

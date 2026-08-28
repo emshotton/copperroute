@@ -9,7 +9,7 @@
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, LexicalState, Token};
 use fr_dsn::parser::dsn_file::{read_float_scope, read_integer_scope, read_on_off_scope};
-use fr_dsn::parser::scope_parameter::skip_scope;
+use fr_dsn::parser::scope_parameter::{DsnReadOptions, ReadScopeParameter, read_scope, skip_scope};
 
 #[test]
 fn keyword_name_matches_2_3_0_for_every_ruling_1_keyword() {
@@ -83,7 +83,7 @@ fn skip_scope_consumes_exactly_the_matching_bracket() {
         scanner.next_token().unwrap(),
         Some(Token::Str("foo".to_string()))
     );
-    skip_scope(&mut scanner).expect("balanced input");
+    assert!(skip_scope(&mut scanner).expect("no scan error"));
     assert_eq!(
         scanner.next_token().unwrap(),
         Some(Token::Str("tail".to_string()))
@@ -116,7 +116,10 @@ fn skip_scope_handles_glued_digit_letter_tokens_throughout() {
         scanner.next_token().unwrap(),
         Some(Token::Str("foo".to_string()))
     );
-    skip_scope(&mut scanner).expect("balanced input, however NAME-mode tokens split");
+    assert!(
+        skip_scope(&mut scanner).expect("no scan error"),
+        "balanced input, however NAME-mode tokens split"
+    );
     assert_eq!(
         scanner.next_token().unwrap(),
         Some(Token::Str("tail".to_string()))
@@ -155,16 +158,49 @@ fn read_on_off_scope_reads_on_and_off() {
 }
 
 #[test]
-fn read_integer_scope_accepts_an_integer_and_rejects_a_float() {
+fn read_integer_scope_accepts_an_integer_and_totalizes_a_float_to_zero() {
+    // Java-wins ruling (fix round 1): `DsnFile.readIntegerScope` (DsnFile.java:134-160) warns
+    // and returns `0` for a non-integer token — it does not throw, and
+    // `AutorouteSettings.java:53,55,57` feeds that `0` straight into `RouterSettings`, which is
+    // written back out and carried on `BoardMetadata`, so this must not become an `Err`.
     let mut int_scanner = DsnScanner::new("5)").expect("fits");
     assert_eq!(read_integer_scope(&mut int_scanner).expect("integer"), 5);
 
     let mut float_scanner = DsnScanner::new("5.0)").expect("fits");
-    assert!(read_integer_scope(&mut float_scanner).is_err());
+    assert_eq!(
+        read_integer_scope(&mut float_scanner).expect("no scan error"),
+        0
+    );
 }
 
 #[test]
 fn read_float_scope_widens_an_integer_token() {
     let mut scanner = DsnScanner::new("5)").expect("fits");
     assert_eq!(read_float_scope(&mut scanner).expect("number"), 5.0_f64);
+}
+
+/// `ScopeKeyword.readScope`'s own end-of-file check (ScopeKeyword.java:55-58) fires even when
+/// the file was truncated *inside* a nested, unrecognised scope that `skip_scope` could not
+/// close: `skip_scope` answers `Ok(false)` at end of file (mirroring Java's `false`, fix round
+/// 1), the caller discards that, and the very next `next_token()` call — now genuinely at end of
+/// file — is what makes the generic loop return `Ok(true)`. `ScopeKeyword::Pcb` dispatches
+/// straight to that generic loop (`Keyword.PCB_SCOPE` has no Java subclass), so it stands in for
+/// it here. See `docs/java-quirks.md` row 91: this is why a DSN file truncated mid-file reads as
+/// `Success` with a partial board, not a parse error.
+#[test]
+fn read_scope_generic_returns_ok_true_when_truncated_inside_an_unknown_scope() {
+    // `(foo 1 2` — an unrecognised nested scope keyword ("foo" is not a DSN keyword) whose body
+    // is never closed before the input simply ends.
+    let scanner = DsnScanner::new("(foo 1 2").expect("fits the buffer");
+    let options = DsnReadOptions::default();
+    let mut p = ReadScopeParameter::new(scanner, &options);
+    assert!(matches!(read_scope(ScopeKeyword::Pcb, &mut p), Ok(true)));
+}
+
+/// Direct pin of `skip_scope`'s own end-of-file answer (fix round 1: `Ok(false)`, not `Err`,
+/// mirroring `ScopeKeyword.skipScope`'s `false` — ScopeKeyword.java:32-33).
+#[test]
+fn skip_scope_returns_ok_false_at_end_of_file() {
+    let mut scanner = DsnScanner::new("no closing bracket here").expect("fits the buffer");
+    assert!(matches!(skip_scope(&mut scanner), Ok(false)));
 }

@@ -42,7 +42,7 @@
 ///
 /// Variant names are the CamelCase spelling of the Java constant names; the *name strings*
 /// (which plan ruling 1 pins to the 2.3.0 snake_case Specctra tokens, not the clone HEAD's
-/// camelCased regression) arrive with `Keyword::name()` in Task 4.
+/// camelCased regression) are returned by [`Keyword::name`], below.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Keyword {
     /// Java `Keyword.ABSOLUTE`.
@@ -257,6 +257,11 @@ pub enum Keyword {
 impl Keyword {
     // renamed: getName (also `get_name` in the 2.3.0 jar) -> `name`, dropping the Java `get`
     // prefix per Rust accessor convention.
+    // Java bug: Keyword.getName (Keyword.java:18,30,40,41,50,78,86,96,101,102,105,107,112,114,119)
+    // camelCases fifteen token strings at HEAD (e.g. `AUTOROUTE_SETTINGS = new
+    // Keyword("autorouteSettings")`) that 2.3.0 spells snake_case; the same rename leaks into
+    // writer literals too (e.g. `Parser.java:102` writes `"(stringQuote "`), so HEAD cannot read
+    // back its own DSN output. See plan ruling 1 and the `docs/java-quirks.md` row it cites.
     /// `getName()` (Keyword.java:126-128 at HEAD; `get_name()` in the 2.3.0 jar). Returns the
     /// **2.3.0** Specctra token string (plan ruling 1), reflected off
     /// `tools/freerouting-2.3.0.jar` — not HEAD's camelCased regression (`Keyword.AUTOROUTE_SETTINGS
@@ -384,10 +389,16 @@ impl Keyword {
 /// `nextToken instanceof ScopeKeyword` (`ScopeKeyword.java:59`); the port makes that a
 /// dedicated enum plus [`ScopeKeyword::from_keyword`] instead.
 ///
-/// `Pcb` is the odd one out: `Keyword.PCB_SCOPE = new ScopeKeyword("pcb")` (`Keyword.java:66`)
-/// constructs a plain `ScopeKeyword`, not a subclass — there is no `Pcb.java`. Every other
-/// variant here has a same-named Java scope class (`Component.java`, `Library.java`, …) that
-/// overrides `readScope`.
+/// Two variants use the plain inherited `ScopeKeyword.readScope` (the generic loop) rather than
+/// an override: `Pcb` — `Keyword.PCB_SCOPE = new ScopeKeyword("pcb")` (`Keyword.java:66`)
+/// constructs a bare `ScopeKeyword`, not a subclass, so there is no `Pcb.java` to override
+/// anything — and `Placement`, whose `Placement.java` class exists but contains only a
+/// constructor and `writeScope` (fix round 1 — verified by reading the file: no `readScope`
+/// override at all). The inherited generic loop already recurses correctly into a nested
+/// `(component ...)` scope regardless, because `Component.readScope(ReadScopeParameter)`
+/// (`Component.java:367-379`) *is* a real override — it is the per-scope-keyword dispatch inside
+/// the generic loop that finds it, not anything `Placement` itself does. Every other variant has
+/// a same-named Java scope class that overrides `readScope` directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ScopeKeyword {
     /// Java `Keyword.COMPONENT_SCOPE` / `Component.java`.
@@ -417,25 +428,35 @@ pub enum ScopeKeyword {
 }
 
 impl ScopeKeyword {
+    /// The `Keyword` variant this scope keyword is (`Keyword::ComponentScope`, etc.) — the
+    /// inverse of [`ScopeKeyword::from_keyword`], and (fix round 1) what [`ScopeKeyword::name`]
+    /// now delegates to rather than duplicating the twelve name strings a second time.
+    #[must_use]
+    pub fn to_keyword(self) -> Keyword {
+        match self {
+            ScopeKeyword::Component => Keyword::ComponentScope,
+            ScopeKeyword::Library => Keyword::LibraryScope,
+            ScopeKeyword::Network => Keyword::NetworkScope,
+            ScopeKeyword::Parser => Keyword::ParserScope,
+            ScopeKeyword::PartLibrary => Keyword::PartLibraryScope,
+            ScopeKeyword::Pcb => Keyword::PcbScope,
+            ScopeKeyword::PlaceControl => Keyword::PlaceControl,
+            ScopeKeyword::Placement => Keyword::PlacementScope,
+            ScopeKeyword::Plane => Keyword::PlaneScope,
+            ScopeKeyword::Resolution => Keyword::ResolutionScope,
+            ScopeKeyword::Structure => Keyword::StructureScope,
+            ScopeKeyword::Wiring => Keyword::WiringScope,
+        }
+    }
+
     /// `getName()`/`get_name()` for the twelve scope keywords, reflected off
     /// `tools/freerouting-2.3.0.jar` (identical to HEAD for every one of these twelve — the
     /// ruling-1 rename only ever touched plain `Keyword` constants, never a `ScopeKeyword`).
+    /// Delegates to [`Keyword::name`] via [`ScopeKeyword::to_keyword`] rather than repeating the
+    /// twelve strings.
     #[must_use]
     pub fn name(self) -> &'static str {
-        match self {
-            ScopeKeyword::Component => "component",
-            ScopeKeyword::Library => "library",
-            ScopeKeyword::Network => "network",
-            ScopeKeyword::Parser => "parser",
-            ScopeKeyword::PartLibrary => "part_library",
-            ScopeKeyword::Pcb => "pcb",
-            ScopeKeyword::PlaceControl => "place_control",
-            ScopeKeyword::Placement => "placement",
-            ScopeKeyword::Plane => "plane",
-            ScopeKeyword::Resolution => "resolution",
-            ScopeKeyword::Structure => "structure",
-            ScopeKeyword::Wiring => "wiring",
-        }
+        self.to_keyword().name()
     }
 
     /// `nextToken instanceof ScopeKeyword` (`ScopeKeyword.java:59`), as a lookup instead of a

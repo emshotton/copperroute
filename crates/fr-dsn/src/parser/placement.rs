@@ -9,7 +9,7 @@ use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
 ///
 /// Placeholder — body (`locations: Vec<ComponentLocation>` and its fields: name, coordinates,
 /// front/back side, rotation, fixed flag, per-pin clearance-class overrides, part number) arrives
-/// with `Placement.readScope`/`Component.readScope`.
+/// with `Component.readScope`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentPlacement {
     /// `ComponentPlacement.libName` (ComponentPlacement.java:11): the name of the corresponding
@@ -25,21 +25,20 @@ impl ComponentPlacement {
     }
 }
 
-// added in Plan 3: Placement.readScope
-/// Stub for `Placement.readScope` (Placement.java) — replaced with the real reader by a later
-/// task; for now this just discards the scope's body.
-pub fn read_placement_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
-    skip_scope(&mut p.scanner)?;
-    Ok(true)
-}
+// Fix round 1: there is no `read_placement_scope` here, and none is dispatched to — verified by
+// reading `Placement.java` in full: it has only a constructor and `writeScope`, no `readScope`
+// override at all, so `ScopeKeyword::Placement` dispatches straight to the generic
+// `read_scope_generic` loop (`parser/scope_parameter.rs`), the same as `ScopeKeyword::Pcb`.
 
 // added in Plan 3: Component.readScope
-/// Stub for `Component.readScope` (Component.java) — note this is *not* actually a
-/// `ScopeKeyword.readScope` override in Java (`Component.readScope(IJFlexScanner)` is a `static`
-/// method with a different signature, returning `ComponentPlacement` rather than `boolean`,
-/// called directly by `Placement.readScope` rather than through the generic dispatch); this stub
-/// keeps the uniform `fn read_xxx_scope(p) -> Result<bool, DsnError>` shape the dispatch table
-/// wants for now, and whichever later task ports `Component` should revisit that shape too.
+/// Stub for `Component.readScope(ReadScopeParameter)` — this **is** a real `@Override` of
+/// `ScopeKeyword.readScope` (`Component.java:367-379`; fix round 1 corrects an earlier, wrong
+/// claim here that it wasn't). Its Java body delegates to the *other*
+/// `Component.readScope(IJFlexScanner)` overload (`Component.java:29`, called at `:370`) to do
+/// the actual parsing, then appends the resulting `ComponentPlacement` to
+/// `scopeParameter.placementList`. This stub keeps the uniform `fn read_xxx_scope(p) ->
+/// Result<bool, DsnError>` shape the dispatch table wants for now; the real body (once ported)
+/// keeps that same shape too, since it is a genuine `ReadScopeParameter`-taking override.
 pub fn read_component_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     skip_scope(&mut p.scanner)?;
     Ok(true)
