@@ -74,15 +74,44 @@ methods with dozens of branches.
     `overlappingObjects` for 50 random query boxes on each of the two layers;
     `overlappingTreeEntriesWithClearance` as `(id, shapeIndex)` lists for 50
     random shapes/layers/clearance classes/ignore-net arrays; `deepCopy`, then
-    the same 150 queries replayed against the copy; and a `hashEqual` boolean
-    (`getHash().equals(...)` vs. `structural_hash() == structural_hash()` —
-    compared as booleans, not values, because the two hash algorithms are not
-    byte-comparable, `docs/java-quirks.md`). Deliberately never prints
-    `toArray()`/tree internals (unlike `P2T10`/`P2T11`, which reach into
-    `ShapeTree`'s protected fields for exactly that reason) — every query goes
-    through public API, so quirk #77's tree-layout divergence never appears
-    and the driver is zero-diff. `run.sh p2t15 <seed> <n>` diffs it against
-    `p2t15.rs`.
+    a full re-dump of the copy's items plus the same 150 queries replayed
+    against it; and a `hashEqual` boolean (`getHash().equals(...)` vs.
+    `structural_hash() == structural_hash()` — compared as booleans, not
+    values, because the two hash algorithms are not byte-comparable,
+    `docs/java-quirks.md`). `normalizeAllTraces` **increases** the trace
+    count on this driver's random input, it does not fold traces together:
+    with a small, shared pool of four nets and a modest coordinate range,
+    unplanned random segments on the same net frequently cross in the
+    middle rather than meeting end-to-end, and each such crossing is a
+    junction normalisation splits both traces at — verified directly (a
+    temporary instrumented run, not a guess): 101 traces before
+    `normalizeAllTraces` become 300 after at seed 11, n=300; 172 become 554
+    at seed 5, n=500. Deliberately never prints `toArray()`/tree internals
+    (unlike `P2T10`/`P2T11`, which reach into `ShapeTree`'s protected fields
+    for exactly that reason) — every query goes through public API, so
+    quirk #77's tree-layout divergence never appears and the driver is
+    zero-diff. `run.sh p2t15 <seed> <n>` diffs it against `p2t15.rs`.
+
+    Two notes on what this driver does and does not prove: the
+    `overlappingTreeEntriesWithClearance` tie-break counter
+    (`ShapeSearchTree.lastGeneratedEntryId`/`SearchTreeManager`'s per-instance
+    counter, quirk noted under Task 10) is snapshotted and restored around
+    each query rather than left running across all 50 — this is provably
+    output-neutral, not a shortcut: the counter is used only as a monotonic
+    tie-break *within* one query's own sort (Task 10/11's `query()` helpers do
+    the same, resetting to 0 every call), so its absolute starting value
+    never changes which entry wins a tie, only the numbers involved. And
+    three coverage holes a reviewer might otherwise look for and not find
+    here: the per-item tile dump prints each tile's *bounding box*, not the
+    tile shape itself (so it cannot by itself distinguish an octagon from a
+    box with the same axis-aligned extent — see `consistency.rs`'s
+    `forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones`
+    for why that distinction needs `TileShape::contains_tile`, not
+    `bounding_box`); the overlap/clearance probes are box shapes only, never
+    octagons (already covered by `P2T10`/`P2T11`'s fixed scripts); and every
+    padstack and area shape this driver builds is axis-aligned, so the
+    `DrillItem`/`ObstacleArea` 45-vs-90-degree tile-shape branch that a
+    rotated or diagonal footprint would exercise is a no-op here.
   - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
     Twin: `p2t3r`. Drives `insert(Storable)` (so the *tree* applies its bounding
     directions), `remove(Leaf[])` on arrays with deliberate `null` holes,
@@ -250,15 +279,18 @@ the driver expects, or none at all.
   15). `n` random pins/vias/traces plus three fixed obstacle areas and three
   fixed conduction areas, `normalizeAllTraces`, then every item, 100
   `overlappingObjects` queries (50 per layer), 50
-  `overlappingTreeEntriesWithClearance` queries, the same 150 queries
-  replayed against a `deepCopy`, and a `hashEqual` boolean. No mode argument:
-  every run exercises the same mix. **Verified** at 10 seeds
+  `overlappingTreeEntriesWithClearance` queries, `deepCopy` followed by a
+  full re-dump of the copy's items plus the same 150 queries replayed
+  against it, and a `hashEqual` boolean. No mode argument: every run
+  exercises the same mix. **Verified** at 10 seeds
   (1/2/3/7/42/555/77/12345/999983/20260828) × `n` in `{30, 120}` — all 20
-  runs **match exactly**, 402-708 lines each depending on how normalisation
-  folds the random traces together. Also re-verified that this sweep does
-  not regress `p2t10` (all 9 modes), `p2t11` (all 11 modes reached by the
-  differential driver — mode 11's one documented divergence unchanged) or
-  `p2t13` (mode 0).
+  runs **match exactly**, 499-1111 lines each depending on how many
+  crossings `normalizeAllTraces` finds and splits among the random traces
+  (see the driver description above — normalisation *increases* the trace
+  count here, it does not fold traces together). Also re-verified that this
+  sweep does not regress `p2t10` (all 9 modes), `p2t11` (all 11 modes
+  reached by the differential driver — mode 11's one documented divergence
+  unchanged) or `p2t13` (mode 0).
 
 ## Known, expected diffs
 
@@ -298,8 +330,8 @@ Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
 | `p2t11` (mode 11) | 20 | 2 | `treeArrayCopy`/`treeArraysEqual` only — the documented tree-rebuild-vs-clone divergence (Task 12, see below); every `transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces` line matches |
 | `p2t13` (mode 0, 50 points) | 141 | 0 | exact match |
 | `p2t13` (modes 1-7, `30 7 <mode>`) | 7-172 | 0 | exact match (square, collinear triple, duplicates, two-corner objects, grid, tiny range, circle) |
-| `p2t15` (seed 42, n=30, default) | 413 | 0 | exact match |
-| `p2t15` (10 seeds × n∈{30,120}) | 402-708 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
+| `p2t15` (seed 42, n=30, default) | 521 | 0 | exact match |
+| `p2t15` (10 seeds × n∈{30,120}) | 499-1111 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -471,46 +503,77 @@ plus three fixed obstacle areas and three fixed conduction areas through the
 real `RoutingBoard`/`Board`, `normalizeAllTraces`/`normalize_all_traces`,
 every item's fields (id, kind, layer range, nets, clearance class, bounding
 box, tile shapes), 100 `overlappingObjects` queries, 50
-`overlappingTreeEntriesWithClearance` queries, the same 150 queries replayed
-against a `deepCopy`/`deep_copy`, and a `hashEqual` boolean. Swept at 10 seeds
-× `n` ∈ {30, 120} — every one of the 20 runs matches exactly, zero diff lines:
+`overlappingTreeEntriesWithClearance` queries, `deepCopy`/`deep_copy`
+followed by a full re-dump of the copy's items plus the same 150 queries
+replayed against it, and a `hashEqual` boolean. Swept at 10 seeds × `n` ∈
+{30, 120} — every one of the 20 runs matches exactly, zero diff lines:
 
 | seed | n | lines | diff |
 |---|---|---|---|
-| 1 | 30 | 405 | 0 |
-| 1 | 120 | 695 | 0 |
-| 2 | 30 | 408 | 0 |
-| 2 | 120 | 695 | 0 |
-| 3 | 30 | 406 | 0 |
-| 3 | 120 | 707 | 0 |
-| 7 | 30 | 404 | 0 |
-| 7 | 120 | 664 | 0 |
-| 42 | 30 | 413 | 0 |
-| 42 | 120 | 672 | 0 |
-| 555 | 30 | 402 | 0 |
-| 555 | 120 | 695 | 0 |
-| 77 | 30 | 407 | 0 |
-| 77 | 120 | 674 | 0 |
-| 12345 | 30 | 407 | 0 |
-| 12345 | 120 | 677 | 0 |
-| 999983 | 30 | 405 | 0 |
-| 999983 | 120 | 708 | 0 |
-| 20260828 | 30 | 407 | 0 |
-| 20260828 | 120 | 689 | 0 |
+| 1 | 30 | 505 | 0 |
+| 1 | 120 | 1085 | 0 |
+| 2 | 30 | 511 | 0 |
+| 2 | 120 | 1085 | 0 |
+| 3 | 30 | 507 | 0 |
+| 3 | 120 | 1109 | 0 |
+| 7 | 30 | 503 | 0 |
+| 7 | 120 | 1023 | 0 |
+| 42 | 30 | 521 | 0 |
+| 42 | 120 | 1039 | 0 |
+| 555 | 30 | 499 | 0 |
+| 555 | 120 | 1085 | 0 |
+| 77 | 30 | 509 | 0 |
+| 77 | 120 | 1043 | 0 |
+| 12345 | 30 | 509 | 0 |
+| 12345 | 120 | 1049 | 0 |
+| 999983 | 30 | 505 | 0 |
+| 999983 | 120 | 1111 | 0 |
+| 20260828 | 30 | 509 | 0 |
+| 20260828 | 120 | 1073 | 0 |
 
-The line count varies with the seed because `normalizeAllTraces` folds
-however many of the random traces happen to touch end-to-end into fewer,
-longer traces before the driver dumps the item list — fewer surviving items
-means fewer `item …`/`tile[…]` lines. No line in any of the 20 runs differs
-from its Rust counterpart, so there is nothing in this driver's output to add
-to `docs/java-quirks.md`: it reaches no code path Tasks 10-13 hadn't already
-exercised, just through a randomised, board-scale lens instead of the fixed
-scripts those tasks wrote by hand. The re-run of `p2t10` (all 9 modes),
-`p2t11` (all 11 modes the differential driver reaches) and `p2t13` (mode 0)
-alongside this sweep confirms Task 15 did not regress any earlier driver;
-`p2t11` mode 11's one pre-existing, documented `treeArraysEqual` divergence
-(the tree-rebuild-vs-clone question, see the `p2t11` section above) is
+The line count varies with the seed because `normalizeAllTraces`
+**increases** the trace count — it does not fold traces together. With only
+four nets shared across `n` random segments in a modest coordinate range,
+unplanned same-net traces frequently cross each other in the middle rather
+than meeting end-to-end; each such crossing is a junction normalisation
+splits both traces at, so the item list normally *grows* between insertion
+and the dump (verified directly with a temporary instrumented run, not
+inferred: 101 traces before `normalizeAllTraces` become 300 after at seed
+11, n=300; 172 become 554 at seed 5, n=500) — more surviving trace items
+means more `item …`/`tile[…]` lines, and how many crossings a given seed's
+random layout happens to produce is what the line count actually tracks.
+No line in any of the 20 runs differs from its Rust counterpart, so there
+is nothing in this driver's output to add to `docs/java-quirks.md`: it
+reaches no code path Tasks 10-13 hadn't already exercised, just through a
+randomised, board-scale lens instead of the fixed scripts those tasks wrote
+by hand. The re-run of `p2t10` (all 9 modes), `p2t11` (all 11 modes the
+differential driver reaches) and `p2t13` (mode 0) alongside this sweep
+confirms Task 15 did not regress any earlier driver; `p2t11` mode 11's one
+pre-existing, documented `treeArraysEqual` divergence (the
+tree-rebuild-vs-clone question, see the `p2t11` section above) is
 unchanged.
+
+Coverage this driver deliberately does not claim (a reviewer's finding,
+recorded here so it is not mistaken for a gap that slipped through): the
+per-item tile dump prints each tile's *bounding box*, not the tile shape
+itself, so on its own it cannot tell an octagon apart from a box with the
+same axis-aligned extent — `RegularTileShape::bounding_box()` reads
+`leftX/rightX/bottomY/topY` straight off regardless of which bounding
+directions cut the shape, so a 45-degree and a 90-degree tile can (and, on
+`crates/fr-board/tests/consistency.rs`'s fixture, do) share a bounding box
+while being genuinely different shapes; the overlap/clearance probes are
+box shapes only, never octagons (already covered by `P2T10`/`P2T11`'s
+fixed scripts, which exercise both); and every padstack and area shape this
+driver builds is axis-aligned, so the 45-vs-90-degree tile-shape branch a
+rotated pad or a diagonal-edged area would exercise is a no-op here. The
+`overlappingTreeEntriesWithClearance` tie-break counter is snapshotted
+before each query and restored after (matching `Board`'s own private
+wrapper), rather than left running across all 50 calls; this is provably
+output-neutral rather than a shortcut, since the counter is used only as a
+monotonic tie-break *within* one query's own sort — its absolute starting
+value never changes which entry wins a tie, only the numbers assigned to
+each, and `P2T10`'s `query()` helper already resets the same counter to 0
+on every call for the identical reason.
 
 ## Harness maintenance note (Task 18)
 

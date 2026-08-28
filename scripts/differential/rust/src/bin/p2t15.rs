@@ -110,6 +110,7 @@ fn main() {
 
     println!("--- deepCopy");
     let mut copy = board.deep_copy();
+    dump_items(&mut copy);
     dump_overlap_queries("copyOverlap", &copy, &overlap_queries);
     dump_clearance_queries(&mut copy, "copyClearance", &clearance_queries);
     println!(

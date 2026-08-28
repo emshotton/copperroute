@@ -26,7 +26,8 @@ import java.util.*;
  *       layers;
  *   <li>`overlappingTreeEntriesWithClearance` as `(id, shapeIndex)` lists for 50 random
  *       shapes/layers/clearance classes/ignore-net arrays;
- *   <li>`deepCopy`, then the same 150 queries replayed against the copy;
+ *   <li>`deepCopy`, then a full re-dump of the copy's items plus the same 150 queries
+ *       replayed against it;
  *   <li>a `hashEqual` boolean (`getHash().equals(...)`, not the hash values themselves — Java's
  *       hash and the port's `structural_hash` are not byte-comparable, `docs/java-quirks.md`).
  * </ul>
@@ -129,6 +130,7 @@ public class P2T15 {
 
     System.out.println("--- deepCopy");
     RoutingBoard copy = board.deepCopy();
+    dumpItems(copy);
     dumpOverlapQueries("copyOverlap", copy, overlapQueries);
     dumpClearanceQueries("copyClearance", copy, clearanceQueries);
     System.out.println("hashEqual=" + board.getHash().equals(copy.getHash()));

@@ -10,7 +10,9 @@ mod board_builder;
 
 use board_builder::{WIDE_CLEARANCE_CLASS, p2t11_board};
 use fr_board::prelude::*;
-use fr_geometry::{Area, IntBox, Shape, TileShape};
+use fr_geometry::{
+    Area, IntBox, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
+};
 
 /// A minimal xorshift64* stream — the same shape as every differential driver's `Rng`
 /// (`scripts/differential/rust/src/bin/p2t3r.rs` and `p2t15.rs`), kept local here because these
@@ -163,15 +165,81 @@ fn deep_copy_is_hash_equal_and_query_equal() {
 // normalize_traces idempotence
 // ---------------------------------------------------------------------------------------------
 
+/// The bare board `tests/trace_normalize.rs::trace_board` builds, with two collinear,
+/// touching/overlapping traces on net 1 — the shape
+/// `normalize_traces_converges_and_then_reports_false` drives. `p2t11_board()` (used by every
+/// other test in this file) has nothing left to normalise by the time it is built
+/// (`insert_trace_without_cleaning` never normalises), so `normalize_traces(1)` on it returns
+/// `false` on the very first call and cannot demonstrate idempotence is doing real work — the
+/// first assertion below would already be checking a no-op against a no-op.
+fn normalize_fixture_board() -> Board {
+    let ls = LayerStructure::new(vec![Layer::new("l0", true)]);
+    let cm = ClearanceMatrix::get_default_instance(&ls, 10);
+    let mut rules = BoardRules::new(ls.clone(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+
+    let padstacks = Padstacks::new(ls);
+    let library = BoardLibrary::new(padstacks, Packages::new());
+    let outline = vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+        Point::new(-1_000_000, -1_000_000),
+        Point::new(1_000_000, -1_000_000),
+        Point::new(1_000_000, 1_000_000),
+        Point::new(-1_000_000, 1_000_000),
+    ]))];
+    let mut board = Board::new(
+        outline,
+        0,
+        IntBox::from_coords(-2_000_000, -2_000_000, 2_000_000, 2_000_000),
+        rules,
+        library,
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+    board.rules.nets.add("N2", 1, false, default_class);
+
+    // Mode 9 scenario N4 (`P2T11.java`): a four-corner trace 0->30000 and a second trace sitting
+    // on top of its middle third — `normalizeTraces(1)` must combine them into one.
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[
+                Point::new(0, 0),
+                Point::new(10_000, 0),
+                Point::new(20_000, 0),
+                Point::new(30_000, 0),
+            ]),
+            0,
+            1000,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(10_000, 0), Point::new(20_000, 0)]),
+            0,
+            1000,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insertTraceWithoutCleaning");
+    board
+}
+
 #[test]
 fn normalize_traces_is_idempotent() {
-    let mut board = p2t11_board();
-    // Net 1 carries the two traces the via joins (`board_builder::p2t11_board`'s doc table);
-    // the first call is expected to actually do something (BasicBoard.java's own contract), the
-    // second must be a no-op.
-    board
+    let mut board = normalize_fixture_board();
+
+    let changed_first = board
         .normalize_traces(1)
         .expect("normalize_traces must not fail on a well-formed board");
+    assert!(
+        changed_first,
+        "the first call must actually combine the two overlapping traces"
+    );
     let hash_after_first = board.structural_hash();
 
     let changed_second = board
@@ -195,8 +263,17 @@ fn normalize_traces_is_idempotent() {
 /// The 45-degree tree's per-item tile shapes are cut against four supporting direction families
 /// (horizontal, vertical, both diagonals); the 90-degree tree's are cut against only two
 /// (horizontal, vertical). More supporting directions means a tighter (or equal) fit, so — for
-/// the very same items, inserted through the very same board otherwise — every 90-degree
-/// bounding box must contain its 45-degree counterpart.
+/// the very same items, inserted through the very same board otherwise — every 90-degree tile
+/// shape must contain its 45-degree counterpart.
+///
+/// This has to compare the *shapes themselves* (`TileShape::contains_tile`), not their
+/// axis-aligned bounding boxes: `RegularTileShape::bounding_box()` reads `leftX/rightX/bottomY/
+/// topY` straight off, and both bounding-direction families compute those four the same way —
+/// an octagon and a box with identical axis-aligned bounds have identical `bounding_box()`s
+/// regardless of what the diagonal cuts removed. A bounding-box comparison holds on *every* tile
+/// shape in this fixture in *both* directions (verified: 18/18 either way) and so cannot
+/// discriminate the two trees at all — `TileShape::contains_tile` can and does (18/18 one way,
+/// false for 11/18 the other).
 #[test]
 fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     let mut board_45 = p2t11_board();
@@ -218,6 +295,7 @@ fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     assert_eq!(ids, board_90.items_in_board_order());
 
     let mut compared_at_least_one_multi_shape_item = false;
+    let mut discriminating_shape_pairs = 0usize;
     for id in ids {
         let count_45 = board_45.item_tree_shape_count(id, tree_45);
         let count_90 = board_90.item_tree_shape_count(id, tree_90);
@@ -235,18 +313,24 @@ fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
             let shape_90 = board_90
                 .item_tree_shape(id, tree_90, i)
                 .expect("a 90-degree tile shape");
-            let box_45 = shape_45.bounding_box();
-            let box_90 = shape_90.bounding_box();
             assert!(
-                box_90.contains(&box_45),
-                "item {id} shape {i}: the 90-degree bounding box {box_90:?} must contain the \
-                 45-degree one {box_45:?}"
+                shape_90.contains_tile(&shape_45),
+                "item {id} shape {i}: the 90-degree tile shape {shape_90:?} must contain the \
+                 45-degree one {shape_45:?}"
             );
+            if !shape_45.contains_tile(&shape_90) {
+                discriminating_shape_pairs += 1;
+            }
         }
     }
     assert!(
         compared_at_least_one_multi_shape_item,
         "the fixture must exercise at least one item with more than one tile shape"
+    );
+    assert!(
+        discriminating_shape_pairs > 0,
+        "the fixture must exercise at least one shape pair where the reverse containment does \
+         not hold, otherwise this comparison would not actually discriminate the two trees"
     );
 }
 

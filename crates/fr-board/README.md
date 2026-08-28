@@ -161,7 +161,7 @@ outputs can be diffed byte-for-byte. The board-model-relevant drivers
 | `P2T10.java` / `p2t10` | `ShapeSearchTree`/`SearchTreeManager` — every public method except `completeShape`/`divideLargeRoom` (Plan 6), across 9 modes (angle restrictions, clearance matrix, areas/outline branches, entry-surgery, tie-pin reduction, skewed outlines) | `p2t10` |
 | `P2T11.java` / `p2t11` | the real `RoutingBoard` — insert/remove protocol, connectivity, `checkTraceSegment`, changed area, conduction latch, `ShapeTraceEntries`, cycles/overlaps, `PolylineTrace.combine`/`split`/`normalize`, and the tree-rebuild-vs-clone divergence around `deepCopy`, across 12 modes | `p2t11` |
 | `P2T13.java` / `p2t13` | `PlanarDelaunayTriangulation` — random points, square, collinear triple, degenerate edges, two-corner objects, grid, tiny range, circle, across 8 modes | `p2t13` |
-| `P2T15.java` / `p2t15` | the ONE randomised board-level driver (Task 15) — `n` random pins/vias/traces plus fixed obstacle/conduction areas through the real `RoutingBoard`/`Board`, `normalizeAllTraces`, every item's fields, 150 overlap/clearance queries, the same queries replayed against `deepCopy`, and a `hashEqual` boolean | `p2t15` |
+| `P2T15.java` / `p2t15` | the ONE randomised board-level driver (Task 15) — `n` random pins/vias/traces plus fixed obstacle/conduction areas through the real `RoutingBoard`/`Board`, `normalizeAllTraces` (which *increases* the trace count here by splitting at same-net crossings, not folding), every item's fields, 150 overlap/clearance queries, `deepCopy` then a full re-dump plus the same queries replayed against it, and a `hashEqual` boolean | `p2t15` |
 
 Requirements: JDK ≥ 23 (`JAVA_HOME`) for most drivers; `p2t10`, `p2t11`,
 `p2t13` and `p2t15` additionally need a **JDK 25** (`JAVA25_HOME`), and
@@ -186,9 +186,11 @@ that mode matches, including `hashEqual` and `diffTraces`. `p2t15` is
 zero-diff at every one of 10 seeds × `n` ∈ {30, 120} (`scripts/differential/README.md`
 has the full sweep table), and `crates/fr-board/tests/consistency.rs` covers
 the same properties (insert/remove round trips, `deep_copy`, 45- vs.
-90-degree tree bounds, `normalize_traces` idempotence, descending item
-iteration, `Board: Send + Sync + Clone`) as fast, seeded unit tests rather
-than a JVM-diffing driver.
+90-degree tile shapes — compared with `TileShape::contains_tile`, not
+bounding boxes, since both angle families compute the same axis-aligned
+`bounding_box()` — `normalize_traces` idempotence on a fixture that actually
+needs normalising, descending item iteration, `Board: Send + Sync + Clone`)
+as fast, seeded unit tests rather than a JVM-diffing driver.
 
 ## Package-private classes
 
