@@ -13,6 +13,7 @@ use crate::keyword::ScopeKeyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::DsnRouterSettings;
 use crate::parser::network::{DsnNet, NetId};
+use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping};
 use crate::parser::placement::ComponentPlacement;
 use crate::parser::structure::{DsnLayerStructure, DsnPlane};
 use crate::parser::{header, library, network, part_library, placement, structure, wiring};
@@ -38,10 +39,10 @@ pub struct DsnReadOptions {}
 ///
 /// Java's `boardHandling` is a `BoardParserCallback` (`not ported:` — GUI-adjacent indirection;
 /// this port constructs the board directly instead, so `board` is a plain `Option<Board>`, not a
-/// callback). Java's `observers`/`idGenerator`/`logicalPartMappings`/`logicalParts` fields are
-/// not carried here; a later task adds them if and when the scope that needs them lands
-/// (`viaAtSmdAllowed` was one of those until Plan 3 Task 6 landed the `control` scope that
-/// fills it).
+/// callback). Java's `observers`/`idGenerator` fields are not carried here; a later task adds
+/// them if and when the scope that needs them lands (`viaAtSmdAllowed` was one of those until
+/// Plan 3 Task 6 landed the `control` scope that fills it, and
+/// `logicalPartMappings`/`logicalParts` until Task 7 landed the `part_library` scope).
 ///
 /// Every Java `Collection` field here (`LinkedList`, insertion order) is a `Vec`; `netlist` is
 /// Java's `TreeMap<Net.Id, Net>` (deterministic order), so it is a `BTreeMap<NetId, DsnNet>`
@@ -65,6 +66,12 @@ pub struct ReadScopeParameter<'a> {
     pub plane_list: Vec<DsnPlane>,
     /// `ReadScopeParameter.placementList`.
     pub placement_list: Vec<ComponentPlacement>,
+    /// `ReadScopeParameter.logicalPartMappings` (ReadScopeParameter.java:62) — filled by
+    /// `PartLibrary.readScope` and drained by `Network.insertLogicalParts` (Task 9). Added in
+    /// Plan 3 Task 7, the task that ports the `part_library` scope.
+    pub logical_part_mappings: Vec<DsnLogicalPartMapping>,
+    /// `ReadScopeParameter.logicalParts` (ReadScopeParameter.java:64) — same pair of tasks.
+    pub logical_parts: Vec<DsnLogicalPart>,
     /// `ReadScopeParameter.constants` (`Collection<String[]>`).
     pub constants: Vec<Vec<String>>,
     /// `ReadScopeParameter.viaPadstackNames` (ReadScopeParameter.java:56). Java has **no field
@@ -128,6 +135,8 @@ impl<'a> ReadScopeParameter<'a> {
             netlist: BTreeMap::new(),
             plane_list: Vec::new(),
             placement_list: Vec::new(),
+            logical_part_mappings: Vec::new(),
+            logical_parts: Vec::new(),
             constants: Vec::new(),
             via_padstack_names: Vec::new(),
             string_quote: "\"".to_string(),

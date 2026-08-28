@@ -33,3 +33,6 @@ Structure                parser/structure.rs
 Plane                    parser/structure.rs
 AutorouteSettings        parser/autoroute_settings.rs
 PlaceControl             parser/header.rs
+Library                  parser/library.rs
+Package                  parser/library.rs
+PartLibrary              parser/part_library.rs
