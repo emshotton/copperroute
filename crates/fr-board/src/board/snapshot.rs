@@ -142,7 +142,7 @@ impl Board {
     /// `shove_failing_layer` are reset explicitly below (module doc, "The transient fields") —
     /// plus the two things `RoutingBoardUndoFacade.deepCopy` adds on top of the plain
     /// `BasicBoard.clone()` round trip: `clearAllItemTemporaryAutorouteData()`
-    /// ([`Self::clear_autoroute_scratch`]) and `finishAutoroute()` ([`Self::finish_autoroute`]).
+    /// (`Self::clear_autoroute_scratch`) and `finishAutoroute()` (`Self::finish_autoroute`).
     pub fn deep_copy(&self) -> Board {
         let mut copy = self.clone();
 

@@ -7,8 +7,8 @@
 //! references, compared with `==` (reference identity) throughout, and the search structure is a
 //! DAG of `Triangle` nodes whose leaves are the current triangulation. Nothing is ever removed —
 //! superseded triangles stay in the graph as inner nodes — so the port keeps three append-only
-//! arenas ([`PlanarDelaunayTriangulation::corners`], `edges`, `triangles`) and replaces every
-//! reference with an index ([`CornerId`], [`EdgeId`], [`TriangleId`]). Reference identity becomes
+//! arenas (`PlanarDelaunayTriangulation::corners`, `edges`, `triangles`) and replaces every
+//! reference with an index (`CornerId`, `EdgeId`, `TriangleId`). Reference identity becomes
 //! index equality, which is exact here precisely because slots are never reused.
 //!
 //! Java's `Storable` interface (an object that can hand out `Point[] getTriangulationCorners()`)
@@ -35,7 +35,7 @@
 //!
 //! That makes the *relative* allocation order of edges observable. The dead `newEdges` array at
 //! PlanarDelaunayTriangulation.java:740-743 is reproduced anyway, though it turns out not to
-//! disturb that relative order — see [`PlanarDelaunayTriangulation::split_at_inner_point`].
+//! disturb that relative order — see `PlanarDelaunayTriangulation::split_at_inner_point`.
 //!
 //! # Two Java behaviours that surprise, and are reproduced
 //!
@@ -56,7 +56,7 @@
 //!
 //! The constructor shuffles the corner list with a fixed seed (lines 29-31, 60-61) so results are
 //! reproducible. The permutation is therefore part of the observable behaviour and
-//! [`JavaRandom`] + [`shuffle`] reproduce `java.util.Random` and `java.util.Collections.shuffle`
+//! `JavaRandom` + `shuffle` reproduce `java.util.Random` and `java.util.Collections.shuffle`
 //! bit for bit.
 
 use std::collections::BTreeSet;

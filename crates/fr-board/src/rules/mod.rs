@@ -29,7 +29,7 @@ pub mod net_class;
 pub mod via;
 
 pub use board_rules::BoardRules;
-pub use clearance_matrix::ClearanceMatrix;
+pub use clearance_matrix::{CLEARANCE_SAFETY_MARGIN, ClearanceMatrix};
 pub use net::{Net, Nets};
 pub use net_class::{DefaultItemClearanceClasses, ItemClass, NetClass, NetClasses};
 pub use via::{ViaInfo, ViaInfos, ViaRule};

@@ -23,7 +23,7 @@
 //!
 //! `ComponentOutline.getArea` (ComponentOutline.java:191-216) is the same body with `!isFront`
 //! everywhere `ObstacleArea` writes `sideChanged`, which is why the two share
-//! [`absolute_area_of`].
+//! `absolute_area_of`.
 //!
 //! # What replaces Java's `board` back-pointer
 //!
@@ -199,7 +199,7 @@ impl ObstacleAreaData {
     /// Port of `ObstacleArea.splitToConvex` (ObstacleArea.java:320-326). `None` is Java's
     /// `null`, which `Area.splitToConvex` answers when the division fails.
     ///
-    /// Memoised in [`Self::convex_pieces`], mirroring Java's `precalculatedConvexPieces`; the
+    /// Memoised in `Self::convex_pieces`, mirroring Java's `precalculatedConvexPieces`; the
     /// borrow is what makes the memo worth having, so this returns a slice where Java returns
     /// the array it cached.
     pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {

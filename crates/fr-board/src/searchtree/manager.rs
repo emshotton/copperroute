@@ -11,8 +11,8 @@ use super::ShapeSearchTree;
 /// Port of `SearchTreeManager` (`board/searchtree/SearchTreeManager.java`).
 ///
 /// Java keeps one `Collection<ShapeSearchTree> compensatedSearchTrees` whose first element is
-/// also held in `defaultTree`. The port splits that into [`Self::default_tree`] plus
-/// [`Self::compensated`] — the autoroute trees only — because Rust cannot alias one tree from
+/// also held in `defaultTree`. The port splits that into `Self::default_tree` plus
+/// `Self::compensated` — the autoroute trees only — because Rust cannot alias one tree from
 /// two owners; every Java loop over `compensatedSearchTrees` becomes a loop over
 /// [`Self::trees_mut`], which yields the default tree first, exactly as Java's `LinkedList`
 /// does (SearchTreeManager.java:34 adds it first, and every later tree is appended at :161).
@@ -100,7 +100,7 @@ impl SearchTreeManager {
     }
 
     /// The counter behind [`ShapeSearchTree::overlapping_tree_entries_with_clearance`]'s
-    /// tie-break; see [`Self::next_entry_id`].
+    /// tie-break; see `Self::next_entry_id`.
     pub fn entry_counter_mut(&mut self) -> &mut u64 {
         &mut self.next_entry_id
     }

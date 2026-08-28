@@ -11,8 +11,8 @@
 //! (BoardOutline.java:43, flipped by `generateKeepoutOutside`):
 //!
 //! * **off** (the default): only the outline *curves* are obstacles, as
-//!   [`BOARD_OUTLINE_HALF_WIDTH`](crate::items::BOARD_OUTLINE_HALF_WIDTH)-wide bands around each
-//!   border line, so `tileShapeCount` is `lineCount() * layerCount`.
+//!   `BOARD_OUTLINE_HALF_WIDTH`-wide bands around each border line, so `tileShapeCount` is
+//!   `lineCount() * layerCount`.
 //! * **on**: the whole board area *outside* the outline is a keepout. Java builds it as
 //!   `new PolylineArea(board.boundingBox, shapes)` — the outline polygons become the **holes**
 //!   of the board box (BoardOutline.java:183-189) — and `tileShapeCount` is that area's convex

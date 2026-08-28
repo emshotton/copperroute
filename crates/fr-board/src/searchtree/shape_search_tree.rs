@@ -750,7 +750,7 @@ impl ShapeSearchTree {
 
     /// The tree shape of an object already in this tree, recomputing it if the item's cache was
     /// dropped since insertion — see [`Self::get_tree_shape`], which this is
-    /// `currentObject.getTreeShape(this, index)` (e.g. ShapeSearchTree.java:424,499).
+    /// `currentObject.getTreeShape(this, index)` (e.g. ShapeSearchTree.java:499).
     fn tree_shape_of<'a>(
         &self,
         entry: TreeEntry<TreeObject>,
@@ -1507,7 +1507,7 @@ impl ShapeSearchTree {
     /// stored shape of `item` and re-insert only that leaf.
     ///
     /// The remove-then-insert pair at ShapeSearchTree.java:856/867 is the reason
-    /// [`LeafId`](crate::datastructures::LeafId) carries a generation counter: a LIFO free list
+    /// [`LeafId`] carries a generation counter: a LIFO free list
     /// hands the new leaf the slot the old one just released.
     pub fn change_item_shape(&mut self, item: &mut Item, shape_index: usize, new_shape: TileShape) {
         let id = item.id();

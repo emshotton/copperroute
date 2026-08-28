@@ -18,7 +18,7 @@ use crate::structure::LayerStructure;
 /// Java's `shapes` field is typed `ConvexShape[]` (`IntBox`/`IntOctagon`/`Simplex`/`Circle`
 /// only); this port widens it to `Vec<Option<Shape>>` per the task brief, which also admits
 /// [`Shape::Polygon`]. A `PolygonShape` can never actually appear here — nothing in this crate
-/// constructs one — so [`shape_max_width`] panics on that variant rather than modelling a case
+/// constructs one — so `shape_max_width` panics on that variant rather than modelling a case
 /// Java's type system rules out entirely.
 ///
 /// not ported: `Padstack.padstackList` (Padstack.java:33) — a back-pointer to the owning

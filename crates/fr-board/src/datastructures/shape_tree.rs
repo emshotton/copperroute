@@ -38,7 +38,7 @@
 //! The tree must be a pure function of the insertion order, because the router's results depend
 //! on the order `overlaps` reports objects in. Two things guarantee that:
 //!
-//! * The insertion heuristic ([`ShapeTree::position_locate`]) is deterministic, ties included:
+//! * The insertion heuristic (`ShapeTree::position_locate`) is deterministic, ties included:
 //!   `firstAreaIncrease <= secondAreaIncrease` (MinAreaTree.java:109) always picks the *first*
 //!   child on an exact tie. It reads nothing but the shapes already in the tree.
 //! * `overlaps` returns a [`BTreeSet`] of [`TreeEntry`], whose derived [`Ord`] is

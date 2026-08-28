@@ -88,7 +88,7 @@
 // enlarged surrounding octagon of each end corner (`BasicBoard.java:1066` is the non-router
 // caller).
 //
-// The five Plan 7 markers below deliberately keep each deferred Java name on the *same physical
+// The six Plan 7 markers below deliberately keep each deferred Java name on the *same physical
 // line* as its `added in Plan 7:` prefix: `scripts/audit-port.sh`'s marker check is a per-line
 // `grep -E "added in (Task|Plan) [0-9]+:.*\bName\b"`, so a name that wraps onto a continuation
 // line does not count as covered.

@@ -18,9 +18,9 @@
 //!
 //! | Java class | `angle` | bounding directions | drill / area / outline shapes | trace shapes |
 //! |---|---|---|---|---|
-//! | `ShapeSearchTree` | [`AngleRestriction::None`] | `FortyfiveDegree` | `boundingTile`/`boundingBox`/`boundingOctagon` per `rules.traceAngleRestriction`, then `enlarge` | `Polyline.offsetShape` |
-//! | `ShapeSearchTree45Degree` | [`AngleRestriction::FortyFiveDegree`] | `FortyfiveDegree` | forced to `IntOctagon`, `offset` not `enlarge` | `Polyline.offsetShape` |
-//! | `ShapeSearchTree90Degree` | [`AngleRestriction::NinetyDegree`] | `Orthogonal` | forced to `IntBox` | `Polyline.offsetBox` |
+//! | `ShapeSearchTree` | `AngleRestriction::None` | `FortyfiveDegree` | `boundingTile`/`boundingBox`/`boundingOctagon` per `rules.traceAngleRestriction`, then `enlarge` | `Polyline.offsetShape` |
+//! | `ShapeSearchTree45Degree` | `AngleRestriction::FortyFiveDegree` | `FortyfiveDegree` | forced to `IntOctagon`, `offset` not `enlarge` | `Polyline.offsetShape` |
+//! | `ShapeSearchTree90Degree` | `AngleRestriction::NinetyDegree` | `Orthogonal` | forced to `IntBox` | `Polyline.offsetBox` |
 //!
 //! Note the two angles in play. A tree's own `angle` is fixed when
 //! [`SearchTreeManager::get_autoroute_tree`] builds it from `rules.trace_angle_restriction`

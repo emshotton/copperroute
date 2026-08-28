@@ -132,8 +132,9 @@ pub enum ItemKind {
 // change when they do.
 // ---------------------------------------------------------------------------------------------
 
-/// Java's `HALF_WIDTH` for board outlines (BoardOutline.java:27).
-pub const BOARD_OUTLINE_HALF_WIDTH: i32 = 100;
+/// Java's `HALF_WIDTH` for board outlines (BoardOutline.java:27), `private` there — this port
+/// keeps it `pub(crate)` rather than widening it, since only `structure::board_outline` reads it.
+pub(crate) const BOARD_OUTLINE_HALF_WIDTH: i32 = 100;
 
 /// Port of `Item` (`board/model/items/Item.java`): anything that can sit on a board.
 ///

@@ -1507,7 +1507,7 @@ impl Board {
         self.item_tree_shape_ref(id, self.default_tree_id(), index)
     }
 
-    /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:308-315) for the `&self`
+    /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:252-260) for the `&self`
     /// callers — see [`Self::item_tree_shape_ref`].
     pub fn drill_item_tile_shape_on_layer_ref(
         &self,
@@ -1526,7 +1526,7 @@ impl Board {
         self.item_tile_shape_ref(id, layer - from_layer)
     }
 
-    /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:308-315), **with** the lazy
+    /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:252-260), **with** the lazy
     /// fill its `getTileShape(layer - firstLayer())` inherits — `Via::get_tile_shape_on_layer`
     /// and `Pin::get_tile_shape_on_layer` read the cache only.
     ///

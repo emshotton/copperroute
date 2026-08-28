@@ -202,7 +202,7 @@ impl Board {
             {
                 continue;
             }
-            // Item.java:505-506,536-537: `getTileShape(i)`, which recomputes on a cold cache.
+            // Item.java:505-506,534-535: `getTileShape(i)`, which recomputes on a cold cache.
             let Some(shape) = self.item_tile_shape_ref(id, i) else {
                 continue;
             };
@@ -402,7 +402,7 @@ impl Board {
         let ctx = self.ctx();
         let layer = area.get_layer();
         for i in 0..item.tile_shape_count(&ctx) {
-            // ConductionArea.java:334: `getTileShape(i)`. It lands on `ObstacleArea`'s override
+            // ConductionArea.java:335: `getTileShape(i)`. It lands on `ObstacleArea`'s override
             // (ObstacleArea.java:197-205), which splits the area itself and never reads a tree
             // cache — but going through `item_tile_shape_ref` keeps every shape read in this file
             // on the one path that recomputes when it has to.

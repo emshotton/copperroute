@@ -17,7 +17,10 @@ pub mod rules;
 pub mod searchtree;
 pub mod structure;
 
-pub use board::{Board, ChangedArea, Communication, ShapeTraceEntries, StopConnectionOption};
+pub use board::{
+    Board, ChangedArea, Communication, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS,
+    ShapeTraceEntries, StopConnectionOption,
+};
 pub use datastructures::{
     DelaunayCorner, DelaunayEdge, LeafId, Node, NodeId, PlanarDelaunayTriangulation, ShapeTree,
     StopCheck, TimeLimit, TreeEntry,
@@ -28,18 +31,19 @@ pub use ids::{
     ViaRuleId,
 };
 pub use items::{
-    AutorouteInfo, BOARD_OUTLINE_HALF_WIDTH, ComponentObstacleArea, ComponentOutline,
-    ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, Item,
-    ItemCtx, ItemHeader, ItemKind, ObstacleArea, ObstacleAreaData, Pin, PolylineTrace,
-    TraceExitRestriction, TreeEntries, Via, ViaObstacleArea,
+    AutorouteInfo, ComponentObstacleArea, ComponentOutline, ConductionArea, Connectable,
+    ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, Item, ItemCtx, ItemHeader,
+    ItemKind, ObstacleArea, ObstacleAreaData, Pin, PolylineTrace, TraceExitRestriction,
+    TreeEntries, Via, ViaObstacleArea,
 };
 pub use library::{
     BoardLibrary, DrillItemPadstackLookup, Keepout, LogicalPart, LogicalParts, Package, PackagePin,
     Packages, Padstack, Padstacks, PartPin,
 };
 pub use rules::{
-    BoardRules, ClearanceClassIndexed, ClearanceMatrix, DefaultItemClearanceClasses, ItemClass,
-    Net, NetClass, NetClasses, Nets, PadstackLookup, ViaInfo, ViaInfos, ViaRule,
+    BoardRules, CLEARANCE_SAFETY_MARGIN, ClearanceClassIndexed, ClearanceMatrix,
+    DefaultItemClearanceClasses, ItemClass, Net, NetClass, NetClasses, Nets, PadstackLookup,
+    ViaInfo, ViaInfos, ViaRule,
 };
 pub use searchtree::{ItemLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
@@ -50,19 +54,19 @@ pub use structure::{
 /// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        AngleRestriction, AutorouteInfo, BOARD_OUTLINE_HALF_WIDTH, Board, BoardError, BoardLibrary,
-        BoardOutline, BoardRules, ChangedArea, ClearanceClassIndexed, ClearanceMatrix,
+        AngleRestriction, AutorouteInfo, Board, BoardError, BoardLibrary, BoardOutline, BoardRules,
+        CLEARANCE_SAFETY_MARGIN, ChangedArea, ClearanceClassIndexed, ClearanceMatrix,
         Communication, Component, ComponentObstacleArea, ComponentOutline, Components,
         ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH,
         DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge, DrillItemData,
         DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId,
         ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
-        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea,
-        ObstacleAreaData, Package, PackagePin, Packages, Padstack, PadstackId, PadstackLookup,
-        Padstacks, PartPin, Pin, PlanarDelaunayTriangulation, PolylineTrace, RoomId,
-        SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries,
-        ShapeTree, StopCheck, StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries,
-        TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea,
-        ViaRule, ViaRuleId,
+        LogicalParts, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS, Net, NetClass, NetClassId,
+        NetClasses, Nets, Node, NodeId, ObstacleArea, ObstacleAreaData, Package, PackagePin,
+        Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin,
+        PlanarDelaunayTriangulation, PolylineTrace, RoomId, SearchTreeManager, ShapeAndEntrySide,
+        ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries, ShapeTree, StopCheck,
+        StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries, TreeEntry, TreeId,
+        TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
     };
 }
