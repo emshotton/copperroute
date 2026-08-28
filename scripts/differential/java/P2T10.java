@@ -10,6 +10,7 @@ import app.freerouting.board.trace.PolylineTrace;
 import app.freerouting.core.library.Package;
 import app.freerouting.core.library.Padstack;
 import app.freerouting.geometry.planar.*;
+import app.freerouting.board.model.items.ObstacleArea;
 import app.freerouting.rules.*;
 import java.util.*;
 
@@ -20,6 +21,11 @@ public class P2T10 {
 
   public static void main(String[] args) {
     int mode = args.length > 0 ? Integer.parseInt(args[0]) : 0;
+    if (mode == 4) {
+      buildAreas();
+      dumpAreas();
+      return;
+    }
     build(mode);
     if (mode == 3) {
       mutate();
@@ -90,6 +96,87 @@ public class P2T10 {
         new Polyline(
             new Point[] {new IntPoint(-800, 300), new IntPoint(-800, 900), new IntPoint(300, 900)});
     board.insertTraceWithoutCleaning(other, 0, 40, new int[] {2}, 2, FixedState.UNFIXED);
+  }
+
+  /**
+   * Mode 4: a three-layer board with a real outline polygon, an obstacle area, a conduction
+   * area and a through via whose middle layer has no pad — the four `calculateTreeShapes`
+   * overloads modes 0-2 leave untouched, plus the drill-hole obstacle path.
+   */
+  static void buildAreas() {
+    Layer[] layers = {
+      new Layer("front", true), new Layer("inner", true), new Layer("back", true)
+    };
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
+    BoardRules rules = new BoardRules(ls, cm);
+    rules.setHoleClearance(300);
+    Communication comm = new Communication();
+    IntBox bbox = new IntBox(-5000, -5000, 5000, 5000);
+    // A real outline polygon, so `BoardOutline.lineCount()` is non-zero and the line branch of
+    // calculateTreeShapes(BoardOutline) has something to build.
+    PolylineShape[] outline = {
+      new PolygonShape(
+          new Point[] {
+            new IntPoint(-3000, -2000),
+            new IntPoint(3000, -2000),
+            new IntPoint(3000, 2000),
+            new IntPoint(-3000, 2000)
+          })
+    };
+    board = new BasicBoard(bbox, ls, outline, 1, rules, comm);
+    board.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    board.library.packages = new app.freerouting.core.library.Packages(board.library.padstacks);
+
+    // A through padstack with **no** pad on the inner layer: `getShape(1)` is null, so
+    // calculateTreeShapes falls back to drillHoleObstacle for that index.
+    ConvexShape[] viaShapes = {
+      new IntBox(-80, -80, 80, 80), null, new IntBox(-80, -80, 80, 80)
+    };
+    Padstack viaPad = board.library.padstacks.add("via", viaShapes, true, false);
+    board.insertVia(viaPad, new IntPoint(1000, 0), new int[] {1}, 1, FixedState.UNFIXED, true);
+
+    // An L-shaped obstacle area on layer 0, and a conduction area on layer 2.
+    Area l =
+        new PolygonShape(
+            new Point[] {
+              new IntPoint(0, 0),
+              new IntPoint(2000, 0),
+              new IntPoint(2000, 1000),
+              new IntPoint(1000, 1000),
+              new IntPoint(1000, 2000),
+              new IntPoint(0, 2000)
+            });
+    board.insertObstacle(l, 0, 1, FixedState.UNFIXED);
+    Area square = new IntBox(-2000, -1500, -1000, -500);
+    board.insertConductionArea(square, 2, new int[] {2}, 1, true, FixedState.UNFIXED);
+  }
+
+  static void dumpAreas() {
+    System.out.println("mode=4 holeClearance=" + board.rules.getHoleClearance());
+    for (Item it : board.getItems()) {
+      System.out.println(
+          "item id="
+              + it.getId()
+              + " class="
+              + it.getClass().getSimpleName()
+              + " layers="
+              + it.firstLayer()
+              + ".."
+              + it.lastLayer()
+              + " tileShapeCount="
+              + it.tileShapeCount());
+    }
+    ShapeSearchTree def = board.searchTreeManager.getDefaultTree();
+    dumpTree("default", def);
+    dumpTree("autoroute_cc1", board.searchTreeManager.getAutorouteTree(1));
+
+    System.out.println("--- generateKeepoutOutside(true)");
+    board.getOutline().generateKeepoutOutside(true);
+    dumpTree("default_keepout", board.searchTreeManager.getDefaultTree());
+
+    TileShape probe = new IntBox(500, -500, 1500, 1500);
+    query("default_keepout", board.searchTreeManager.getDefaultTree(), probe, 0, new int[0], 1);
   }
 
   static void dump(int mode) {

@@ -982,3 +982,154 @@ fn reinsert_tree_shapes_recomputes_after_a_rule_change() {
     assert_eq!(f.tree(id).size(), 8);
     assert!(f.items.values().all(Item::is_on_the_board));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Areas, outlines and drill holes (`P2T10.java` mode 4)
+// ---------------------------------------------------------------------------------------------
+
+fn area_shapes(f: &board_builder::AreaFixture, tree: TreeId, id: u32) -> Vec<Option<TileShape>> {
+    let item = &f.items[&ItemId(id)];
+    (0..item.tree_shape_count(tree))
+        .map(|i| item.get_tree_shape(tree, i).cloned())
+        .collect()
+}
+
+#[test]
+fn obstacle_and_conduction_areas_are_split_enlarged_and_regularised() {
+    // P2T10 mode 4. The base tree stores the convex pieces verbatim (`enlarge(0)`); the
+    // 45-degree tree enlarges each by the compensation (100) and then takes the bounding
+    // octagon (ShapeSearchTree.java:922-931 + ShapeSearchTree45Degree.java:522-529). The L
+    // splits into two boxes, in `PolygonShape.splitToConvex` order.
+    let mut f = board_builder::AreaFixture::new();
+    let default_id = f.manager.get_default_tree().id();
+    assert_eq!(
+        area_shapes(&f, default_id, 3),
+        vec![Some(bx(0, 1000, 1000, 2000)), Some(bx(0, 0, 2000, 1000))]
+    );
+    assert_eq!(
+        area_shapes(&f, default_id, 4),
+        vec![Some(bx(-2000, -1500, -1000, -500))]
+    );
+
+    let auto = f.build_autoroute_tree(1);
+    assert_eq!(
+        area_shapes(&f, auto, 3),
+        vec![
+            Some(oct(-100, 900, 1100, 2100, -2141, 141, 859, 3141)),
+            Some(oct(-100, -100, 2100, 1100, -1141, 2141, -141, 3141)),
+        ]
+    );
+    assert_eq!(
+        area_shapes(&f, auto, 4),
+        vec![Some(oct(
+            -2100, -1600, -900, -400, -1641, 641, -3641, -1359
+        ))]
+    );
+}
+
+#[test]
+fn a_board_outline_contributes_line_bands_per_layer_and_keepout_pieces_when_asked() {
+    // P2T10 mode 4. Without the keepout the outline is `lineCount() * layerCount` = 4 * 3 = 12
+    // bands, layer-major, each `Polyline.offsetShape(halfWidth + cmp, 0)` over a border-line
+    // triple (ShapeSearchTree.java:966-987). With it, the convex pieces of the *outside* area,
+    // again once per layer (:945-964).
+    let mut f = board_builder::AreaFixture::new();
+    let default_id = f.manager.get_default_tree().id();
+    let bands = area_shapes(&f, default_id, 1);
+    assert_eq!(bands.len(), 12);
+    // Layer-major: index i and i + 4 and i + 8 are the same band on three layers.
+    for i in 0..4 {
+        assert_eq!(bands[i], bands[i + 4]);
+        assert_eq!(bands[i], bands[i + 8]);
+    }
+    assert_eq!(
+        bands[0],
+        Some(oct(-3100, -2100, 3100, -1900, -1141, 5141, -5141, 1141))
+    );
+    assert_eq!(
+        bands[3],
+        Some(oct(-3100, -2100, -2900, 2100, -5141, -859, -5141, -859))
+    );
+    assert_eq!(f.tree(default_id).size(), 18);
+
+    f.generate_keepout_outside();
+    let keepout = area_shapes(&f, default_id, 1);
+    assert_eq!(keepout.len(), 12);
+    assert_eq!(
+        keepout[0],
+        Some(oct(-5000, -5000, 5000, -2000, -3000, 10000, -10000, 3000))
+    );
+    assert_eq!(
+        keepout[2],
+        Some(oct(3000, -2000, 5000, 2000, 1000, 7000, 1000, 7000))
+    );
+    assert_eq!(f.tree(default_id).size(), 18);
+}
+
+#[test]
+fn a_drill_layer_without_a_pad_falls_back_to_the_synthesised_hole_obstacle() {
+    // P2T10 mode 4. The via's padstack has a pad on layers 0 and 2 and `null` on layer 1, so
+    // `calculateTreeShapes(DrillItem)` takes `drillHoleObstacle` for index 1
+    // (ShapeSearchTree.java:877-880) — a circle of the drill radius around the centre — and
+    // inflates every index by `drillHoleClearanceDelta` (:896). The two pad layers come out
+    // 146 wide either side of x=1000, the hole layer 146 as well but with different diagonals,
+    // because one is a box's octagon and the other a circle's.
+    let f = board_builder::AreaFixture::new();
+    let default_id = f.manager.get_default_tree().id();
+    assert_eq!(
+        area_shapes(&f, default_id, 2),
+        vec![
+            Some(oct(854, -146, 1146, 146, 747, 1253, 747, 1253)),
+            Some(oct(854, -146, 1146, 146, 794, 1207, 794, 1207)),
+            Some(oct(854, -146, 1146, 146, 747, 1253, 747, 1253)),
+        ]
+    );
+    // Nothing is `None`: with `holeClearance > 0` and a drill radius, every layer gets a shape.
+    assert_eq!(f.items[&ItemId(2)].tree_shape_count(default_id), 3);
+}
+
+#[test]
+fn a_drill_layer_without_a_pad_has_no_leaf_when_hole_clearance_is_off() {
+    // The other half of ShapeSearchTree.java:877-882: with `holeClearance == 0`,
+    // `drillHoleObstacle` returns null (:1015) and the tree shape for that index is `null`, so
+    // `ShapeTree.insert` leaves the index leafless (ShapeTree.java:46-49) while keeping its slot
+    // — `DrillItem.shapeLayer(index)` is `firstLayer() + index` (DrillItem.java:147-154), so
+    // dropping it would renumber the layers.
+    let mut f = board_builder::AreaFixture::new();
+    f.rules.set_hole_clearance(0);
+    let mut items = std::mem::take(&mut f.items);
+    let ctx = ItemCtx {
+        library: &f.library,
+        components: &f.components,
+        rules: &f.rules,
+        bounding_box: &f.bounding_box,
+        max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+    };
+    let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+    f.manager.reinsert_tree_shapes(&mut refs, &ctx);
+    drop(refs);
+    f.items = items;
+
+    let default_id = f.manager.get_default_tree().id();
+    let shapes = area_shapes(&f, default_id, 2);
+    assert_eq!(shapes.len(), 3, "the empty layer keeps its slot");
+    assert!(
+        shapes[1].is_none(),
+        "layer 1 has neither pad nor hole shape"
+    );
+    assert_eq!(
+        f.items[&ItemId(2)]
+            .get_search_tree_entries(default_id)
+            .expect("entries")
+            .iter()
+            .filter(|leaf| leaf.is_some())
+            .count(),
+        2,
+        "only the two pad layers get a leaf"
+    );
+    // The via's own shapes are `enlarge(0)`d, i.e. the pad's plain octagon.
+    assert_eq!(
+        shapes[0],
+        Some(oct(920, -80, 1080, 80, 840, 1160, 840, 1160))
+    );
+}

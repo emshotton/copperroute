@@ -18,7 +18,10 @@
 use std::collections::BTreeMap;
 
 use fr_board::prelude::*;
-use fr_geometry::{IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
+use fr_geometry::{
+    IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape, TileShape,
+    Vector,
+};
 
 /// The board bounding box the Java driver passes to `new BasicBoard(...)`.
 pub const BOUNDING_BOX: IntBox = IntBox {
@@ -325,4 +328,184 @@ fn the_fixture_matches_the_java_driver_board() {
     );
     // The outline has no polygons, so `lineCount() * layerCount` is 0.
     assert_eq!(f.items[&ItemId(1)].tile_shape_count(&ctx), 0);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The area/outline/via board (`P2T10.java` mode 4)
+// ---------------------------------------------------------------------------------------------
+
+/// A three-layer board with a real outline polygon, an L-shaped obstacle area, a conduction
+/// area and a through via whose **middle layer has no pad** — the four `calculateTreeShapes`
+/// overloads [`BoardFixture`] leaves untouched, plus the hole-clearance path.
+///
+/// `P2T10.java` mode 4 builds the same board through `BasicBoard`; the ids match
+/// (outline 1, via 2, obstacle area 3, conduction area 4).
+pub struct AreaFixture {
+    pub library: BoardLibrary,
+    pub components: Components,
+    pub rules: BoardRules,
+    pub bounding_box: IntBox,
+    pub items: BTreeMap<ItemId, Item>,
+    pub manager: SearchTreeManager,
+}
+
+impl AreaFixture {
+    pub fn new() -> AreaFixture {
+        let layers = || {
+            LayerStructure::new(vec![
+                Layer::new("front", true),
+                Layer::new("inner", true),
+                Layer::new("back", true),
+            ])
+        };
+        let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+        let mut rules = BoardRules::new(layers(), clearance_matrix);
+        // Non-zero, so `drillHoleObstacle` (ShapeSearchTree.java:1012-1028) and
+        // `drillHoleClearanceDelta` (:1035-1074) both do something.
+        rules.set_hole_clearance(300);
+
+        let mut padstacks = Padstacks::new(layers());
+        let pad = Shape::Tile(TileShape::Box(IntBox::from_coords(-80, -80, 80, 80)));
+        let via_pad = padstacks.add("via", vec![Some(pad.clone()), None, Some(pad)], true, false);
+        let library = BoardLibrary::new(padstacks, Packages::new());
+
+        let mut items = BTreeMap::new();
+        items.insert(
+            ItemId(1),
+            Item::BoardOutline(BoardOutline::new(
+                ItemHeader::new(ItemId(1), Vec::new(), 1, 0, FixedState::SystemFixed),
+                vec![PolylineShapeRef::Polygon(
+                    fr_geometry::PolygonShape::from_points(&[
+                        Point::new(-3000, -2000),
+                        Point::new(3000, -2000),
+                        Point::new(3000, 2000),
+                        Point::new(-3000, 2000),
+                    ]),
+                )],
+            )),
+        );
+        items.insert(
+            ItemId(2),
+            Item::Via(Via::new(
+                ItemHeader::new(ItemId(2), vec![1], 1, 0, FixedState::Unfixed),
+                via_pad,
+                Point::new(1000, 0),
+                true,
+            )),
+        );
+        let l_shape =
+            fr_geometry::Area::Shape(Shape::Polygon(fr_geometry::PolygonShape::from_points(&[
+                Point::new(0, 0),
+                Point::new(2000, 0),
+                Point::new(2000, 1000),
+                Point::new(1000, 1000),
+                Point::new(1000, 2000),
+                Point::new(0, 2000),
+            ])));
+        items.insert(
+            ItemId(3),
+            Item::ObstacleArea(ObstacleArea::new(
+                ItemHeader::new(ItemId(3), Vec::new(), 1, 0, FixedState::Unfixed),
+                ObstacleAreaData::new(l_shape, 0, Vector::ZERO, 0.0, false, None),
+            )),
+        );
+        let square = fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -2000, -1500, -1000, -500,
+        ))));
+        items.insert(
+            ItemId(4),
+            Item::ConductionArea(ConductionArea::new(
+                ItemHeader::new(ItemId(4), vec![2], 1, 0, FixedState::Unfixed),
+                ObstacleAreaData::new(square, 2, Vector::ZERO, 0.0, false, None),
+                true,
+            )),
+        );
+
+        let mut fixture = AreaFixture {
+            library,
+            components: Components::new(),
+            rules,
+            bounding_box: IntBox::from_coords(-5000, -5000, 5000, 5000),
+            items,
+            manager: SearchTreeManager::new(),
+        };
+        fixture.insert_all();
+        fixture
+    }
+
+    pub fn ctx(&self) -> ItemCtx<'_> {
+        ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        }
+    }
+
+    fn insert_all(&mut self) {
+        let mut items = std::mem::take(&mut self.items);
+        let ctx = ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        for item in items.values_mut() {
+            self.manager.insert(item, &ctx);
+        }
+        self.items = items;
+    }
+
+    pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
+        let mut items = std::mem::take(&mut self.items);
+        let ctx = ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+        let id = self
+            .manager
+            .get_autoroute_tree(clearance_class_index, &mut refs, &ctx)
+            .id();
+        drop(refs);
+        self.items = items;
+        id
+    }
+
+    /// `BoardOutline.generateKeepoutOutside(true)` (BoardOutline.java:229-243), whose search-tree
+    /// half is Task 11's `Board::generate_keepout_outside`.
+    pub fn generate_keepout_outside(&mut self) {
+        let mut outline = self.items.remove(&ItemId(1)).expect("the outline");
+        self.manager.remove(&mut outline);
+        if let Item::BoardOutline(o) = &mut outline {
+            o.generate_keepout_outside(true);
+        }
+        let ctx = ItemCtx {
+            library: &self.library,
+            components: &self.components,
+            rules: &self.rules,
+            bounding_box: &self.bounding_box,
+            max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        };
+        self.manager.insert(&mut outline, &ctx);
+        self.items.insert(ItemId(1), outline);
+    }
+
+    pub fn tree(&self, id: TreeId) -> &ShapeSearchTree {
+        self.manager
+            .trees()
+            .find(|tree| tree.id() == id)
+            .expect("the fixture only asks for trees it built")
+    }
+}
+
+impl Default for AreaFixture {
+    fn default() -> Self {
+        Self::new()
+    }
 }

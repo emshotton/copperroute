@@ -11,7 +11,8 @@ use std::collections::BTreeMap;
 
 use fr_board::prelude::*;
 use fr_geometry::{
-    IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, Simplex, TileShape,
+    Area, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef,
+    Shape, Simplex, TileShape, Vector,
 };
 
 const BOUNDING_BOX: IntBox = IntBox {
@@ -208,6 +209,145 @@ fn build(mode: i32) -> Board {
     };
     board.insert_all();
     board
+}
+
+/// Mode 4: a three-layer board with a real outline polygon, an obstacle area, a conduction area
+/// and a through via whose middle layer has no pad.
+fn build_areas() -> Board {
+    let layers = || {
+        LayerStructure::new(vec![
+            Layer::new("front", true),
+            Layer::new("inner", true),
+            Layer::new("back", true),
+        ])
+    };
+    let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+    let mut rules = BoardRules::new(layers(), clearance_matrix);
+    rules.set_hole_clearance(300);
+    let bounding_box = IntBox::from_coords(-5000, -5000, 5000, 5000);
+
+    let mut padstacks = Padstacks::new(layers());
+    let pad = Shape::Tile(TileShape::Box(IntBox::from_coords(-80, -80, 80, 80)));
+    let via_pad = padstacks.add(
+        "via",
+        vec![Some(pad.clone()), None, Some(pad)],
+        true,
+        false,
+    );
+    let library = BoardLibrary::new(padstacks, Packages::new());
+
+    let mut items = BTreeMap::new();
+    items.insert(
+        ItemId(1),
+        Item::BoardOutline(BoardOutline::new(
+            ItemHeader::new(ItemId(1), Vec::new(), 1, 0, FixedState::SystemFixed),
+            vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+                Point::new(-3000, -2000),
+                Point::new(3000, -2000),
+                Point::new(3000, 2000),
+                Point::new(-3000, 2000),
+            ]))],
+        )),
+    );
+    items.insert(
+        ItemId(2),
+        Item::Via(Via::new(
+            ItemHeader::new(ItemId(2), vec![1], 1, 0, FixedState::Unfixed),
+            via_pad,
+            Point::new(1000, 0),
+            true,
+        )),
+    );
+    let l_shape = Area::Shape(Shape::Polygon(PolygonShape::from_points(&[
+        Point::new(0, 0),
+        Point::new(2000, 0),
+        Point::new(2000, 1000),
+        Point::new(1000, 1000),
+        Point::new(1000, 2000),
+        Point::new(0, 2000),
+    ])));
+    items.insert(
+        ItemId(3),
+        Item::ObstacleArea(ObstacleArea::new(
+            ItemHeader::new(ItemId(3), Vec::new(), 1, 0, FixedState::Unfixed),
+            ObstacleAreaData::new(l_shape, 0, Vector::ZERO, 0.0, false, None),
+        )),
+    );
+    let square = Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+        -2000, -1500, -1000, -500,
+    ))));
+    items.insert(
+        ItemId(4),
+        Item::ConductionArea(ConductionArea::new(
+            ItemHeader::new(ItemId(4), vec![2], 1, 0, FixedState::Unfixed),
+            ObstacleAreaData::new(square, 2, Vector::ZERO, 0.0, false, None),
+            true,
+        )),
+    );
+
+    let mut board = Board {
+        library,
+        components: Components::new(),
+        rules,
+        bounding_box,
+        items,
+        manager: SearchTreeManager::new(),
+    };
+    board.insert_all();
+    board
+}
+
+fn dump_areas(board: &mut Board) {
+    println!("mode=4 holeClearance={}", board.rules.get_hole_clearance());
+    {
+        let ctx = board.ctx();
+        for id in board.board_order() {
+            let item = &board.items[&id];
+            println!(
+                "item id={} class={} layers={}..{} tileShapeCount={}",
+                id.0,
+                class_name(item),
+                item.first_layer(&ctx),
+                item.last_layer(&ctx),
+                item.tile_shape_count(&ctx)
+            );
+        }
+    }
+    let default_id = board.manager.get_default_tree().id();
+    dump_tree(board, "default", default_id);
+    let auto1 = board.autoroute_tree(1);
+    dump_tree(board, "autoroute_cc1", auto1);
+
+    println!("--- generateKeepoutOutside(true)");
+    // BoardOutline.generateKeepoutOutside (BoardOutline.java:229-243) flips the flag and then
+    // re-inserts itself into every search tree; the port's `Item` half only flips the flag (the
+    // tree half is Task 11's `Board::generate_keepout_outside`), so the driver does both.
+    let mut outline = board.items.remove(&ItemId(1)).expect("the outline");
+    board.manager.remove(&mut outline);
+    if let Item::BoardOutline(o) = &mut outline {
+        o.generate_keepout_outside(true);
+    }
+    let ctx = ItemCtx {
+        library: &board.library,
+        components: &board.components,
+        rules: &board.rules,
+        bounding_box: &board.bounding_box,
+        max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+    };
+    board.manager.insert(&mut outline, &ctx);
+    board.items.insert(ItemId(1), outline);
+    dump_tree(board, "default_keepout", default_id);
+
+    let probe = TileShape::Box(IntBox::from_coords(500, -500, 1500, 1500));
+    query(
+        board,
+        "default_keepout",
+        default_id,
+        &probe,
+        Some(0),
+        &[],
+        1,
+    );
 }
 
 fn angle_name(angle: AngleRestriction) -> &'static str {
@@ -564,6 +704,11 @@ fn main() {
     let mode: i32 = std::env::args()
         .nth(1)
         .map_or(0, |a| a.parse().expect("mode is an integer"));
+    if mode == 4 {
+        let mut board = build_areas();
+        dump_areas(&mut board);
+        return;
+    }
     let mut board = build(mode);
     if mode == 3 {
         mutate(&mut board);
