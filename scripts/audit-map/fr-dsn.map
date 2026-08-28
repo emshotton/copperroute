@@ -36,3 +36,4 @@ PlaceControl             parser/header.rs
 Library                  parser/library.rs
 Package                  parser/library.rs
 PartLibrary              parser/part_library.rs
+Rule                     parser/network.rs

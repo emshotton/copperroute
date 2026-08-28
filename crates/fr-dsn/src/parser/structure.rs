@@ -18,17 +18,6 @@
 //!    `FixedState::SystemFixed`;
 //! 4. `planeList` → one conduction area per plane (:1069-1121), creating a missing net first;
 //! 5. `insertMissingPowerPlanes` (:1123).
-//!
-//! # `Rule.java`'s read half lives here for now
-//!
-//! `Structure.readScope` and `Structure.readLayerScope` both call `Rule.readScope`, and
-//! `Structure.updateBoardRules`/`setClearanceRule` consume its `WidthRule`/`ClearanceRule`
-//! results, so the rule reader has to exist before the structure scope can do anything with a
-//! `(rule …)`. Plan Task 8 owns `Rule.java` (its writers, its `layer_rule` scope and the
-//! `NetClass`-side callers); this file carries only the three readers `Structure` needs, and
-//! Task 8 should re-export or relocate [`DsnRule`] rather than define a second one.
-// added in Task 8: Rule.readLayerRuleScope — the `(layer_rule …)` sub-scope, which no `structure` scope reaches (only `NetClass.readScope` does).
-// added in Task 11: Rule.writeScope, Rule.writeDefaultRule, Rule.writeLayerRule, Rule.writeItemClearanceClass — the rule writers, which belong to the DSN writer half.
 // added in Task 11: Structure.writeScope, Structure.writeSnapAngle, Structure.writeLayers, Structure.writeDefaultRules, Plane.writeScope — the `structure`/`plane` writers. `writeSnapAngle` must emit the 2.3.0 literal `"snap_angle "`, never HEAD's `"snapAngle "` (plan ruling 1).
 
 use fr_board::{
@@ -43,10 +32,10 @@ use crate::format::java_round_to_int;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::autoroute_settings::read_autoroute_settings_scope;
-use crate::parser::dsn_file::{CLASS_CLEARANCE_SEPARATOR, read_string_scope};
+use crate::parser::dsn_file::read_string_scope;
 use crate::parser::geometry::{self as shape, DsnPolygonPath, DsnShape, ReadAreaScopeResult};
 use crate::parser::header::read_flip_style_rotate_first;
-use crate::parser::network::{DsnNet, NetId};
+use crate::parser::network::{DsnClearanceRule, DsnNet, DsnRule, NetId, read_rule_scope};
 use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
 
 // `LayerStructure.java` and `Layer.java` live in `parser/geometry.rs` (Plan 3 Task 5, whose file
@@ -56,116 +45,6 @@ pub use crate::parser::geometry::{DsnLayer, DsnLayerStructure};
 
 /// `Limits.CRIT_INT` as a `f64`, for the scale-factor overflow loop (Structure.java:1211).
 const CRIT_INT: f64 = fr_geometry::CRIT_INT as f64;
-
-// ------------------------------------------------------------------------------ Rule.java
-
-/// `io/specctra/parser/Rule.java`'s two concrete rule classes, as one enum (Rule is an abstract
-/// class whose subclasses carry no shared state, and every consumer is an `instanceof` chain —
-/// Structure.java:614,627,653,678).
-#[derive(Debug, Clone, PartialEq)]
-pub enum DsnRule {
-    /// `Rule.WidthRule` (Rule.java:284-291): a trace width, in DSN units.
-    Width(f64),
-    /// `Rule.ClearanceRule` (Rule.java:293-302).
-    Clearance(DsnClearanceRule),
-}
-
-/// `Rule.ClearanceRule` (Rule.java:293-302).
-#[derive(Debug, Clone, PartialEq)]
-pub struct DsnClearanceRule {
-    /// `ClearanceRule.value`, in DSN units.
-    pub value: f64,
-    /// `ClearanceRule.clearanceClassPairs`, the `(type …)` list. Empty means "the default
-    /// clearance", which [`set_clearance_rule`] handles separately.
-    pub clearance_class_pairs: Vec<String>,
-}
-
-/// `Rule.readScope` (Rule.java:24-63): the `(rule …)` scope's body, a list of `width`/`clearance`
-/// rules. `None` is Java's `null` (end of file).
-// renamed: Rule.readScope -> read_rule_scope (see this module's docs on why it lives here).
-pub fn read_rule_scope(scanner: &mut DsnScanner) -> Result<Option<Vec<DsnRule>>, DsnError> {
-    let mut result = Vec::new();
-    let mut prev_was_open = false;
-    loop {
-        let Some(current_token) = scanner.next_token()? else {
-            // "unexpected end of file" (Rule.java:35-39).
-            return Ok(None);
-        };
-        if current_token == Token::Close {
-            // end of scope
-            break;
-        }
-        let is_open = current_token == Token::Open;
-        if prev_was_open {
-            // every rule starts with a "("
-            let current_rule = match current_token {
-                Token::Kw(Keyword::Width) => read_width_rule(scanner)?,
-                Token::Kw(Keyword::Clearance) => read_clearance_rule(scanner)?,
-                _ => {
-                    let _ = skip_scope(scanner)?;
-                    None
-                }
-            };
-            if let Some(rule) = current_rule {
-                result.push(rule);
-            }
-        }
-        prev_was_open = is_open;
-    }
-    Ok(Some(result))
-}
-
-/// `Rule.readWidthRule` (Rule.java:106-113).
-///
-// totalized: Rule.readWidthRule — Java's `double value = scanner.nextDouble()` unboxes a
-// `Double` that `nextDouble` returns as `null` for a non-numeric token (IJFlexScanner.java:32),
-// so `(width abc)` throws a `NullPointerException` that nothing between here and
-// `DsnReader.readBoard` catches. The port answers `None`, which is the value Java's *other*
-// failure branch on the very next line (a missing closing bracket) already returns and every
-// caller already handles by dropping the rule (Rule.java:57).
-pub fn read_width_rule(scanner: &mut DsnScanner) -> Result<Option<DsnRule>, DsnError> {
-    let value = scanner.next_double();
-    if !scanner.next_closing_bracket()? {
-        return Ok(None);
-    }
-    Ok(value.map(DsnRule::Width))
-}
-
-/// `Rule.readClearanceRule` (Rule.java:244-282).
-///
-// totalized: Rule.readClearanceRule — same `nextDouble` unboxing NPE as `readWidthRule`, and the
-// same totalization to the `null` its callers already handle.
-pub fn read_clearance_rule(scanner: &mut DsnScanner) -> Result<Option<DsnRule>, DsnError> {
-    let Some(value) = scanner.next_double() else {
-        return Ok(None);
-    };
-    let mut class_pairs: Vec<String> = Vec::new();
-    let next_token = scanner.next_token()?;
-    if next_token != Some(Token::Close) {
-        // look for "(type"
-        if next_token != Some(Token::Open) {
-            // "( expected" (Rule.java:251-255).
-            return Ok(None);
-        }
-        if scanner.next_token()? != Some(Token::Kw(Keyword::Type)) {
-            // "type expected" (Rule.java:257-261).
-            return Ok(None);
-        }
-        class_pairs.extend(scanner.next_string_list_sep(CLASS_CLEARANCE_SEPARATOR));
-        // check the closing ")" of "(type"
-        if !scanner.next_closing_bracket()? {
-            return Ok(None);
-        }
-        // check the closing ")" of "(clear"
-        if !scanner.next_closing_bracket()? {
-            return Ok(None);
-        }
-    }
-    Ok(Some(DsnRule::Clearance(DsnClearanceRule {
-        value,
-        clearance_class_pairs: class_pairs,
-    })))
-}
 
 // ----------------------------------------------------------------------------- Plane.java
 
@@ -1563,21 +1442,6 @@ mod tests {
             .expect("scan")
             .expect("not null");
         assert_eq!(vias, vec!["Via_1", "Via_2", "Spare_1"]);
-    }
-
-    #[test]
-    fn read_rule_scope_reads_width_and_clearance() {
-        let mut scanner = scan("(width 152.4) (clearance 200 (type via_smd)))");
-        let rules = read_rule_scope(&mut scanner)
-            .expect("scan")
-            .expect("not null");
-        assert_eq!(rules.len(), 2);
-        assert_eq!(rules[0], DsnRule::Width(152.4));
-        let DsnRule::Clearance(clearance) = &rules[1] else {
-            panic!("expected a clearance rule");
-        };
-        assert!((clearance.value - 200.0).abs() < f64::EPSILON);
-        assert_eq!(clearance.clearance_class_pairs, vec!["via_smd".to_string()]);
     }
 
     #[test]
