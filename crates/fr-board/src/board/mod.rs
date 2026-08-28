@@ -208,6 +208,12 @@ pub struct Board {
     /// (BasicBoard.java:1392), i.e. a board that comes back through
     /// `BoardSnapshotManager.deserialize` — which is what Java's `clone`/`deepCopy` is — starts
     /// with an empty set. That is what its own log message means by "on this board candidate".
+    ///
+    /// **`pub` where Java's field is `private`**, and deliberately so: Java's only reset is
+    /// inside a `readObject` this port does not have, so [`Board::deep_copy`] (Task 12) has to
+    /// clear it explicitly, and a test has no other way to drive
+    /// [`Board::normalize_traces`]' suppressed-net branch (BasicBoard.java:713-727) — the
+    /// oscillation cap that fills the set is unreachable on any board the suite can build.
     // added in Task 12: `Board::deep_copy` must clear this set, exactly as it clears
     // `autoroute_info` (BasicBoard.java:1392 is the Java reset, inside `readObject`).
     pub normalize_suppressed_net_nos: std::collections::BTreeSet<i32>,

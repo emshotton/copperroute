@@ -1420,3 +1420,55 @@ fn combine_stack_overflow_fixture() {
     assert_eq!(trace.polyline().lines().len(), 31);
     assert_eq!(trace.get_half_width(), 76);
 }
+
+// ---------------------------------------------------------------------------------------------
+// The non-terminating ladder (quirk #76) — reproduced, not fixed
+// ---------------------------------------------------------------------------------------------
+
+/// **This test does not terminate**, in Java and in the port alike, which is why it is
+/// `#[ignore]`d: it is a reproduction of quirk #76, kept executable so that whoever fixes the
+/// underlying Java defect has a one-command check.
+///
+/// Two rails joined by **four or more** rungs on one net make a single
+/// `PolylineTrace.normalize(null)` on the last rung loop forever. The loop is inside `split`:
+/// each split of a found trace re-reads the overlapping tree entries by *appending* them to the
+/// list it is already walking and resets the iterator to its head (quirk #71,
+/// PolylineTrace.java:584-588), and with four rungs the board keeps producing fresh
+/// intersections faster than the walk retires them. Neither cap helps —
+/// `MAX_NORMALIZATION_DEPTH` counts `normalize` recursions and
+/// `MAX_NORMALIZE_ITERATIONS` counts `normalizeTraces` passes, and this never leaves the first
+/// of either.
+///
+/// Verified on the JVM against `app.freerouting.board.facade.RoutingBoard` at the same
+/// geometry: three rungs answer `normalize=true` with two traces left, on both engines; four
+/// rungs return from neither. `RUNGS=3` here is the terminating control.
+#[test]
+#[ignore = "reproduces quirk #76: this call does not terminate, in Java or in the port"]
+fn a_four_rung_ladder_never_finishes_normalizing() {
+    let rungs: i32 = std::env::var("RUNGS").map_or(4, |v| v.parse().expect("RUNGS"));
+    let (mut board, _) = trace_board(1);
+    // The two rails.
+    tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
+    tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 10000, 30000, 10000],
+    );
+    // The rungs, at x = 0, 10000, 20000, 30000.
+    for i in 0..rungs {
+        tr(
+            &mut board,
+            1000,
+            1,
+            FixedState::Unfixed,
+            &[i * 10000, 0, i * 10000, 10000],
+        );
+    }
+    // The last rung is the highest id: 1 outline + 2 rails + `rungs`.
+    let last_rung = ItemId(3 + rungs as u32);
+    assert!(board.normalize_trace(last_rung, None).expect("no failure"));
+    // Only reached for `RUNGS <= 3`.
+    assert!(trace_ids(&board).len() <= 2);
+}

@@ -364,6 +364,19 @@ impl Board {
     ///   `entry_items` below; nothing `split` reads off them (lines, layer, nets, fixed state)
     ///   can change between the read and the use, and `isOnTheBoard` is taken from the live
     ///   board.
+    ///
+    /// # This method can fail to terminate (quirk #76)
+    ///
+    /// Two rails joined by four or more rungs on one net make the re-read above loop forever, in
+    /// Java and here alike, and neither `MAX_NORMALIZATION_DEPTH` nor `MAX_NORMALIZE_ITERATIONS`
+    /// reaches it — both count outer passes this never leaves.
+    /// `crates/fr-board/tests/trace_normalize.rs`'s
+    /// `a_four_rung_ladder_never_finishes_normalizing` is the (`#[ignore]`d) reproduction.
+    //
+    // obligation: Plan 3 (docs/java-quirks.md, "Ladder hang in DSN import"). `Wiring.java:347`
+    // ends every DSN read with `normalizeAllTraces()`, so an imported design containing that
+    // pattern hangs the reader. Plan 3 must either bound this walk or run the import
+    // normalisation under a `TimeLimit`/`StopCheck` before it wires the DSN reader.
     pub fn split_trace(
         &mut self,
         id: ItemId,
@@ -399,14 +412,14 @@ impl Board {
 
         let mut own_trace_split = false;
         for i in 0..lines.lines().len().saturating_sub(2) {
-            // PolylineTrace.java:475-480.
-            if let Some(clip) = clip {
-                let segment = fr_geometry::LineSegment::from_polyline(&lines, i + 1);
-                let intersects =
-                    segment.is_some_and(|segment| clip.intersects_box(&segment.bounding_box()));
-                if !intersects {
-                    continue;
-                }
+            // PolylineTrace.java:475-480, through the filter Task 8 extracted for this caller.
+            // It is read off the snapshot rather than the live item, because the `DrillItem`
+            // branch below can remove the trace part-way through this loop while Java keeps
+            // reading its (unchanged) polyline.
+            if let (Some(clip), Item::Trace(snapshot_trace)) = (clip, &snapshot)
+                && !snapshot_trace.clip_intersects_segment(i, clip)
+            {
+                continue;
             }
             // PolylineTrace.java:481-482.
             let Some(current_shape) = self.split_current_shape(id, &snapshot, i) else {
@@ -893,19 +906,33 @@ impl Board {
     /// so this returns `()` as well — the second and last place a
     /// [`crate::BoardError`] stops (the other is [`Board::insert_trace`]).
     ///
-    /// # The one divergence in this file
+    /// # The one divergence in this file — and it is board-observable
     ///
     /// Java compares the two line arrays with `!=` — **reference** identity
-    /// (PolylineTrace.java:960,972) — and `Line` does not override `equals`, so there is no
-    /// value comparison available to it at all. The port's [`Line`] is a `Copy` value type, so
-    /// the comparison here is structural. Structural equality agrees with Java's wherever the new
-    /// polyline was built by copying the old array's elements (which is how `Polyline`'s
-    /// operations and the `TraceShover` build one), and differs only when a *freshly constructed*
-    /// `Line` happens to have the same value as the old one — where it keeps more tree entries
-    /// than Java would (the kept entries' shapes are identical, so the geometry is the same; the
-    /// leaves are reused instead of re-inserted), and where a wholly value-equal new polyline
-    /// takes the "no change necessary" early return that Java does not. Recorded in
-    /// docs/java-quirks.md; `change` has no caller before Plan 7's `TraceShover`.
+    /// (PolylineTrace.java:960,972) — and `Line` does not override `equals`, so no value
+    /// comparison is available to it at all. The port's `Line` is a `Copy` value type, so the
+    /// comparison here is structural, and **the port therefore takes an early return that Java
+    /// cannot**: for any *freshly built* polyline Java's `!=` fires at once, so it always falls
+    /// through to `changeEntries` **and to the `normalize(clipShape)` tail** (:1001). The port,
+    /// handed a value-equal polyline, returns at :963/:975 and runs neither.
+    ///
+    /// That is a difference in the board, not just in how many tree leaves are reused. Probed on
+    /// the JVM: on `p2t11` mode 8's S5 geometry (a four-corner trace plus a trace lying on its
+    /// middle segment), `change` to a value-equal polyline leaves Java with **one** trace
+    /// `[(0,0) (30000,0)]` — the normalisation split and recombined it — and leaves this port
+    /// with **two**.
+    ///
+    /// Where the new polyline reuses the old array's elements — which is how `Polyline`'s own
+    /// operations and Plan 7's `TraceShover` build one — the two agree, and the only residue is
+    /// that a fresh `Line` carrying an old `Line`'s value makes the port keep more (identical)
+    /// tree entries than Java.
+    ///
+    /// `change_trace` has **no production caller yet**: Java's are
+    /// `PolylineTrace.correctConnectionToPin` (:1229) and `TraceShover` (:385,:540), all Plan 7.
+    /// **Plan 7 must decide before wiring either of them**, and the recommendation is to *drop
+    /// the early return*: Java reaches it only for an array that is identity-identical to the
+    /// one already stored, which for a `Copy` value type is not a case that can arise. Recorded
+    /// in docs/java-quirks.md.
     // added in Plan 6: `board.additionalUpdateAfterChange(this)` (PolylineTrace.java:942).
     // not ported: `board.itemList.saveForUndo(this)` (:948) — no undo stack (Task 12) — the
     // observer notification (:987-990) and the `FRLogger.error` in the catch (:1003).
