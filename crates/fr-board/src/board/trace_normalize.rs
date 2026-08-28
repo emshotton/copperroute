@@ -985,7 +985,11 @@ impl Board {
         if let Some(Item::Trace(trace)) = self.items.get_mut(&id) {
             trace.set_polyline(new_polyline);
         }
-        // PolylineTrace.java:992-1004.
+        // PolylineTrace.java:992-1004. The second of the two places a normalisation failure is
+        // swallowed rather than propagated (the other is `Board::insert_trace`,
+        // BasicBoard.java:230-241): Java wraps this call in its own `catch (Exception)`
+        // (PolylineTrace.java:1000-1004) and only logs, so the port drops the `BoardError` here
+        // too. Every other caller of `normalize_trace` threads it out.
         let clip_shape = self.changed_area.as_ref().map(|area| area.get_area(layer));
         let _ = self.normalize_trace(id, clip_shape.as_ref());
     }

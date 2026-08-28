@@ -15,7 +15,7 @@
 //! | `Item.getConnectionItems` (Item.java:692-781) | [`Board::connection_items`] |
 //! | `Item.isTail` + `Trace`/`Via` overrides | [`Board::is_tail`] |
 //! | `Item.isOverlap` + `Trace`'s override | [`Board::is_overlap`] |
-//! | `Item.isCycleRecu` (Item.java:642-665), `Trace.isCycle` (Trace.java:272-330) | [`Board::is_cycle_recu`], [`Board::is_trace_cycle`] |
+//! | `Item.isCycleRecu` (Item.java:642-669), `Trace.isCycle` (Trace.java:272-330) | [`Board::is_cycle_recu`], [`Board::is_trace_cycle`] |
 //! | `Item.isFanoutVia` (Item.java:1202-1239) | [`Board::is_fanout_via`] |
 //! | `Item.getRatsnestCorners` + three overrides | [`Board::ratsnest_corners`] |
 //! | `Pin.getSwappablePins` (Pin.java:391-427) | [`Board::swappable_pins`] |
@@ -37,10 +37,29 @@
 //!
 //! Every one of these returns a `TreeSet<Item>` in Java, which iterates by `Item.compareTo` —
 //! **descending** id (quirk #44). The port returns a `BTreeSet<ItemId>`, which iterates
-//! *ascending*. The membership is identical and no ported body's *result* depends on the order
-//! (the two that look like they might, `Via.isTail` and `getConnectionItems`, are argued in their
-//! doc comments); where a Java caller does observe the order — `BasicBoard.getConnectedSets`'
-//! outer sequence — the port re-derives it with `.rev()`.
+//! *ascending*, so any body whose behaviour reads the order has to re-derive Java's with
+//! `.rev()`. Three bodies here raise that question; two of them really are order-sensitive:
+//!
+//! - `Via.isTail` (Via.java:170-187) only *looks* order-sensitive. It compares every later
+//!   contact's layer span against the first one's, and "all contacts span the same layers" does
+//!   not depend on which contact is first, so the ascending walk is safe. Argued at
+//!   [`Board::is_tail`].
+//! - [`Board::connection_items`] (`Item.getConnectionItems`) genuinely is: under
+//!   [`StopConnectionOption::FanoutVia`] the outer loop's `isFanoutVia(result)` reads the
+//!   partially built result, so which chain is walked first changes the answer. It walks
+//!   **descending**.
+//! - [`Board::is_cycle_recu`] (`Item.isCycleRecu`) genuinely is too: the DFS shares one
+//!   `visitedItems` set across the whole walk and excludes `comeFromItem`, so the order the
+//!   contacts of a via with three or more contacts are entered decides which nodes end up
+//!   visited (and, through the early `return true`, how much of the graph is walked at all).
+//!   Both it and its caller [`Board::is_trace_cycle`] walk **descending**. For the
+//!   `is_trace_cycle` entry point the *boolean* provably does not depend on the order (see
+//!   [`Board::is_cycle_recu`]'s doc comment); the port matches Java's order anyway rather than
+//!   rest on that argument, since `is_cycle_recu` is `pub` and its `visited_items` is an
+//!   out-parameter.
+//!
+//! Where a Java caller observes the order directly — `BasicBoard.getConnectedSets`' outer
+//! sequence — the port re-derives it with `.rev()` as well.
 
 use std::collections::BTreeSet;
 
@@ -777,8 +796,28 @@ impl Board {
         }
     }
 
-    /// Port of the package-private `Item.isCycleRecu` (Item.java:643-665): depth-first search
+    /// Port of the package-private `Item.isCycleRecu` (Item.java:646-669): depth-first search
     /// from this item for `search_item`, not going back through `come_from_item`.
+    ///
+    /// The walk is **order-sensitive**: `visited_items` is shared across the whole search and
+    /// `come_from_item` is skipped, so on a via with three or more contacts the order the
+    /// contacts are entered decides which nodes are visited, and the early `return true` stops
+    /// the walk before the later branches are entered at all. Java iterates
+    /// `getNormalContacts()`, a `TreeSet<Item>`, i.e. **descending** id (quirk #44), so the port
+    /// walks `.rev()` over its ascending `BTreeSet<ItemId>`.
+    ///
+    /// The *boolean* this returns, for the way [`Board::is_trace_cycle`] calls it, does not in
+    /// fact depend on the order — but nothing here relies on that. The argument: at depth 0 the
+    /// come-from is the searched trace itself, which is skipped rather than reported; at every
+    /// deeper level the come-from was inserted into `visited_items` immediately before the
+    /// recursive call (or was seeded there as a start contact), so `contact_id ==
+    /// come_from_item` would have been rejected by `visited_items.insert` anyway and the skip is
+    /// a no-op. What is left is a plain multi-source DFS with one shared visited set, whose
+    /// visited/expanded node set is order-independent, and which answers "true" exactly when
+    /// some expanded non-root node has the searched trace as a contact. `visited_items` itself
+    /// is an out-parameter of this `pub` method, and *that* does differ with the order, because
+    /// the first branch that succeeds ends the walk —
+    /// `tests/board.rs::is_cycle_recu_walks_a_vias_contacts_in_descending_id_order` pins it.
     pub fn is_cycle_recu(
         &self,
         id: ItemId,
@@ -787,19 +826,21 @@ impl Board {
         come_from_item: ItemId,
         ignore_areas: bool,
     ) -> bool {
-        // Item.java:645-647.
+        // Item.java:648-650.
         if ignore_areas && matches!(self.items.get(&id), Some(Item::ConductionArea(_))) {
             return false;
         }
-        for contact_id in self.normal_contacts(id) {
-            // Item.java:653-655.
+        // Item.java:651-655: `getNormalContacts()` is a `TreeSet<Item>` — descending id.
+        for contact_id in self.normal_contacts(id).into_iter().rev() {
+            // Item.java:656-658.
             if contact_id == come_from_item {
                 continue;
             }
-            // Item.java:656-658.
+            // Item.java:659-661.
             if contact_id == search_item {
                 return true;
             }
+            // Item.java:662-666.
             if visited_items.insert(contact_id)
                 && self.is_cycle_recu(contact_id, visited_items, search_item, id, ignore_areas)
             {
@@ -836,7 +877,9 @@ impl Board {
                 .get(net.get_net_class())
                 .get_ignore_cycles_with_areas();
         }
-        for contact_id in start_contacts {
+        // Trace.java:309-328: `startContacts` is a `TreeSet<Item>` too, so the roots are entered
+        // in descending id order — which decides how far the walk gets before the first success.
+        for contact_id in start_contacts.into_iter().rev() {
             if self.is_cycle_recu(contact_id, &mut visited_items, id, id, ignore_areas) {
                 return true;
             }

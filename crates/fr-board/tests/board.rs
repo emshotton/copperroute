@@ -16,7 +16,7 @@ mod board_builder;
 
 use std::collections::BTreeSet;
 
-use board_builder::{descending, nums, p2t11_board};
+use board_builder::{cycle_order_board, descending, fanout_order_board, nums, p2t11_board};
 use fr_board::prelude::*;
 use fr_geometry::{
     Area, IntBox, IntOctagon, IntVector, Point, Polyline, PolylineShapeRef, Shape, TileShape,
@@ -762,6 +762,79 @@ fn tails_overlaps_and_cycles_are_all_absent_on_a_well_formed_chain() {
     assert_eq!(descending(board.trace_end_contacts(ItemId(4))), vec![6]);
     assert_eq!(descending(board.trace_start_contacts(ItemId(5))), vec![6]);
     assert_eq!(descending(board.trace_end_contacts(ItemId(5))), vec![3]);
+}
+
+#[test]
+fn is_cycle_recu_walks_a_vias_contacts_in_descending_id_order() {
+    // Item.java:651-655 iterates `getNormalContacts()`, a `TreeSet<Item>` — descending id
+    // (quirk #44) — and shares one `visitedItems` set across the whole depth-first search, so
+    // the order the contacts of a via are entered decides how much of the board is walked.
+    //
+    // `cycle_order_board`'s via 2 has three contacts, one per layer: trace 4 (the trace under
+    // test), the dead-end stub 5, and the return path 6. Descending enters 6 first, reaches via
+    // 3, sees trace 4 among its contacts and returns before 5 is ever touched; ascending would
+    // enter the stub 5 first and leave it behind in `visited_items`.
+    //
+    // The *answer* is `true` under either order — [`Board::is_cycle_recu`]'s doc comment proves
+    // the boolean cannot depend on it — so the guard is the out-parameter, which is where the
+    // early `return true` makes the order observable.
+    let board = cycle_order_board();
+    assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![6, 5, 4]);
+
+    // Trace.java:301: `is_trace_cycle` seeds `visitedItems` with the start contacts, which here
+    // is via 2 alone; Trace.java:310 then calls in with `searchItem == comeFromItem == 4`.
+    let mut visited = BTreeSet::from([ItemId(2)]);
+    assert!(board.is_cycle_recu(ItemId(2), &mut visited, ItemId(4), ItemId(4), false));
+    assert_eq!(
+        descending(visited),
+        vec![6, 3, 2],
+        "the descending walk finds the cycle through trace 6 without visiting the stub 5"
+    );
+
+    assert!(board.is_trace_cycle(ItemId(4)));
+    assert_eq!(descending(board.trace_start_contacts(ItemId(4))), vec![2]);
+    assert_eq!(descending(board.trace_end_contacts(ItemId(4))), vec![3]);
+    // The stub is the only tail; nothing overlaps.
+    assert!(board.is_tail(ItemId(5)));
+    assert!(!board.is_overlap(ItemId(4)));
+}
+
+#[test]
+fn connection_items_walks_the_contacts_of_a_fork_in_descending_id_order() {
+    // Item.java:702-708 iterates `getNormalContacts()` descending (quirk #44), and under
+    // `StopConnectionOption.FANOUT_VIA` the order is load-bearing: `isFanoutVia(result)`
+    // (Item.java:735) reads the partially built result as its `ignoreItems`, so a chain walked
+    // earlier can remove the very evidence that would otherwise stop the walk at a via.
+    //
+    // `fanout_order_board`: via 2 is the start, via 3 is a fanout via *only* through the short
+    // trace 5, whose own contacts include the shove-fixed two-corner trace 4
+    // (Item.java:1227-1234). Via 2's contacts are {7, 8}.
+    let board = fanout_order_board();
+    assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![8, 7]);
+    assert_eq!(descending(board.normal_contacts(ItemId(3))), vec![7, 6, 5]);
+    assert!(board.is_fanout_via(ItemId(3), None));
+    // Item.java:1214-1216: with trace 5 ignored there is no evidence left — traces 6 and 7 are
+    // short too, but neither touches an SMD pin or a shove-fixed two-corner trace.
+    assert!(!board.is_fanout_via(ItemId(3), Some(&BTreeSet::from([ItemId(5)]))));
+
+    // Descending: branch 8 runs first (8, 4, then 5, where the walk forks because via 3 and
+    // trace 6 are both new contacts at (0,0)), so when branch 7 reaches via 3 the evidence
+    // trace 5 is already in `result` and the walk passes *through* the via and adds it.
+    assert_eq!(
+        descending(board.connection_items(ItemId(2), StopConnectionOption::FanoutVia)),
+        vec![8, 7, 5, 4, 3, 2],
+        "walking 7 before 8 would stop at via 3 and drop it from the result"
+    );
+    // The other two stop options never read `result`, so they are order-insensitive: `Via`
+    // stops at via 3 unconditionally, `None` walks through it either way.
+    assert_eq!(
+        descending(board.connection_items(ItemId(2), StopConnectionOption::Via)),
+        vec![8, 7, 5, 4, 2]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(2), StopConnectionOption::None)),
+        vec![8, 7, 5, 4, 3, 2]
+    );
 }
 
 #[test]

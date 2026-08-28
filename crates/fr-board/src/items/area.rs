@@ -552,10 +552,10 @@ impl ConductionArea {
 
     /// Port of `ConductionArea.copy` (ConductionArea.java:309-330).
     ///
-    //  Java bug: an area on anything other than exactly one net is not copied at all — Java warns
-    //  ("not yet implemented for areas with more than 1 net") and returns `null`
-    //  (ConductionArea.java:310-313), which includes an area with **zero** nets despite the
-    //  message. Reproduced as `None`; see docs/java-quirks.md.
+    // Java bug: an area on anything other than exactly one net is not copied at all — Java warns
+    // ("not yet implemented for areas with more than 1 net") and returns `null`
+    // (ConductionArea.java:310-313), which includes an area with **zero** nets despite the
+    // message. Reproduced as `None`; see docs/java-quirks.md.
     /// Returns `None` unless the area is on exactly one net.
     pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
         if self.hdr.net_count() != 1 {

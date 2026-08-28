@@ -165,8 +165,11 @@ fn map_unit(u: u16, f: fn(char) -> char) -> u16 {
 /// Rust's `char::to_uppercase` is the **full** mapping, which expands where Java's cannot: 'ß'
 /// upper-cases to "SS" in Rust and stays 'ß' in Java, so a multi-character expansion normally
 /// means "Java leaves this alone". The exception is
-/// [`java_simple_uppercase_exception`] — see there.
-fn java_to_upper(c: char) -> char {
+/// `java_simple_uppercase_exception` (private, in this module) — see there.
+///
+/// `pub`, and re-exported from the crate root and the prelude, because Plan 3's `fr-dsn`
+/// reader needs the same Java-exact fold (hand-off ruling #7) rather than a second copy of it.
+pub fn java_to_upper(c: char) -> char {
     if let Some(u) = java_simple_uppercase_exception(c) {
         return u;
     }
@@ -183,7 +186,9 @@ fn java_to_upper(c: char) -> char {
 /// lowercase expands ("i" + U+0307 COMBINING DOT ABOVE) while Java's simple lowercase is a
 /// single character, `'i'`. Without this arm `"İ".equalsIgnoreCase("ı")` would answer false
 /// where Java answers true.
-fn java_to_lower(c: char) -> char {
+///
+/// `pub` for the same reason as [`java_to_upper`].
+pub fn java_to_lower(c: char) -> char {
     if c == '\u{130}' {
         return 'i';
     }

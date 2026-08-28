@@ -39,7 +39,7 @@
 //! |---|---|
 //! | field accessors, net ops, fixed state, tree bookkeeping | [`ItemHeader`] (`header.rs`) |
 //! | per-subclass dispatch with a body that needs no board | [`Item`], this file |
-//! | per-subclass dispatch whose body needs geometry | dispatches to a variant-struct method; the header-only structs carry `// added in Task N:` stubs that Tasks 6-8 replace |
+//! | per-subclass dispatch whose body needs geometry | dispatches to a variant-struct method |
 //! | anything that queries the search tree, the item list or the components | [`crate::Board`] — see the table below |
 //! | `printInfo`, `getHoverInfo`, `isSelectedByFilter`, `write` | not ported (GUI / serialization) |
 //!
@@ -125,11 +125,8 @@ pub enum ItemKind {
 // ---------------------------------------------------------------------------------------------
 // The nine variant structs.
 //
-// Task 5 creates all nine at once, each holding only the state its `Item`-level dispatch needs
-// right now: the shared `hdr`, plus the two flags that `isObstacle` reads
-// (`ConductionArea.isObstacle`, `Via.attachAllowed`). Tasks 6-8 add the geometry fields and
-// replace the `// added in Task N:` method stubs below; the enum's dispatch surface does not
-// change when they do.
+// Each holds the shared `hdr` plus its own geometry and the flags `isObstacle` reads
+// (`ConductionArea.isObstacle`, `Via.attachAllowed`).
 // ---------------------------------------------------------------------------------------------
 
 /// Java's `HALF_WIDTH` for board outlines (BoardOutline.java:27), `private` there — this port
@@ -1089,12 +1086,6 @@ impl ConnectableRef<'_> {
 
 // ---------------------------------------------------------------------------------------------
 // Per-variant methods.
-//
-// Everything below is either a body that is already complete (it needs nothing but the header)
-// or a `// added in Task N:` stub whose Java body needs a field that task adds. The stubs panic
-// with the Java line they will be ported from rather than returning a plausible-looking value,
-// so a caller that reaches one before its task lands fails loudly instead of routing on a
-// fabricated layer or bounding box.
 // ---------------------------------------------------------------------------------------------
 
 /// The `hdr`-only half of a variant's `copy`: a fresh header with `new_id`, carrying exactly the

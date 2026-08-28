@@ -780,6 +780,39 @@ fn change_entries_rebuilds_only_the_middle_of_a_trace() {
     assert!(f.manager.validate_entries(&f.items[&ItemId(4)]));
 }
 
+#[test]
+#[should_panic(expected = "keepAtEndCount (4) exceeds oldShapeCount (3)")]
+fn change_entries_skips_the_removal_loop_when_more_tail_is_kept_than_exists() {
+    // ShapeSearchTree.java:142 (`for (int i = keepAtStartCount; i < oldShapeCount -
+    // keepAtEndCount; i++)`) is a *signed* bound: with `keepAtEndCount > oldShapeCount` it is
+    // negative, the test fails immediately and Java removes no leaf at all. A `usize`
+    // subtraction underflows there instead, so the port uses `saturating_sub`.
+    //
+    // Java does not get away clean, though: the very next loop (:145-152) computes
+    // `oldShapeCount - keepAtEndCount + i`, which starts negative, and `oldEntries[oldIndex]`
+    // throws `ArrayIndexOutOfBoundsException`. The port raises there and only there — which is
+    // what this test pins: the panic message names the *second* loop, proving the first was
+    // skipped rather than underflowing.
+    let mut f = BoardFixture::new();
+    f.insert_all();
+
+    // Trace 4 has three tree shapes; keep four of them at the end.
+    let shifted = Polyline::from_points(&[
+        Point::new(-500, 0),
+        Point::new(0, 0),
+        Point::new(0, 600),
+        Point::new(500, 600),
+    ]);
+    let mut item = f.items.remove(&ItemId(4)).expect("item 4");
+    let Item::Trace(trace) = &mut item else {
+        panic!("item 4 is the signal trace")
+    };
+    let rules = &f.rules;
+    f.manager
+        .get_default_tree_mut()
+        .change_entries(trace, &shifted, 0, 4, rules);
+}
+
 // ---------------------------------------------------------------------------------------------
 // SearchTreeManager
 // ---------------------------------------------------------------------------------------------

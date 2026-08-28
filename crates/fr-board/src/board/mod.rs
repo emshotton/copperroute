@@ -526,12 +526,15 @@ impl Board {
     /// Port of `BasicBoard.insertTrace(Polyline, …)` (BasicBoard.java:209-242): insert, then
     /// normalise inside the changed area.
     ///
-    /// This is the one place a normalisation failure does **not** propagate: Java wraps
+    /// This is one of the two places a normalisation failure does **not** propagate: Java wraps
     /// `newTrace.normalize(clipShape)` in its own `catch (Exception)` (:230-241) — "the segment
     /// is skipped and the connection may remain unrouted" — and quirk #22's
     /// `ArrayIndexOutOfBoundsException` is exactly such an exception. The port swallows the
-    /// [`BoardError`](crate::BoardError) at the same line, and only there; every other caller of
-    /// [`Board::normalize_trace`] threads it out.
+    /// [`BoardError`](crate::BoardError) at the same line. The other is
+    /// [`Board::change_trace`](crate::Board::change_trace)
+    /// (`crates/fr-board/src/board/trace_normalize.rs`), where Java catches the same way
+    /// (`PolylineTrace.changeTrace`, PolylineTrace.java:1000-1004); every *other* caller of
+    /// [`Board::normalize_trace`] threads the error out.
     // not ported: the `FRLogger.warn`/`FRLogger.debug` pair in that catch block
     // (BasicBoard.java:233-240).
     pub fn insert_trace(

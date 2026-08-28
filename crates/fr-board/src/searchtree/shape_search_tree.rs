@@ -1205,18 +1205,34 @@ impl ShapeSearchTree {
             new_leaves[i] = old_entries[i];
             new_shapes[i].clone_from(&old_shapes[i]);
         }
-        // ShapeSearchTree.java:142-144.
+        // ShapeSearchTree.java:142-144. `saturating_sub`, not `-`: Java's bound is a signed
+        // `int`, so `keepAtEndCount > oldShapeCount` makes `i < oldShapeCount - keepAtEndCount`
+        // false on the first test and simply skips the loop. A `usize` subtraction would
+        // underflow instead.
         for old_entry in old_entries
             .iter()
-            .take(old_shape_count - keep_at_end_count)
+            .take(old_shape_count.saturating_sub(keep_at_end_count))
             .skip(keep_at_start_count)
         {
             self.tree.remove_leaf_opt(*old_entry);
         }
-        // ShapeSearchTree.java:145-152.
+        // ShapeSearchTree.java:145-152. `newShapeCount - keepAtEndCount` cannot go negative
+        // (`newShapeCount` is defined as `changedShapes.length + keepAtStartCount +
+        // keepAtEndCount`), but `oldShapeCount - keepAtEndCount + i` can: Java then indexes
+        // `oldEntries` with a negative subscript and throws `ArrayIndexOutOfBoundsException`.
+        // The subtraction is done in `i64` so the port raises on the same step in release
+        // builds as in debug ones, instead of wrapping a `usize`.
+        let old_tail_base = old_shape_count as i64 - keep_at_end_count as i64;
         for i in 0..keep_at_end_count {
             let new_index = new_shape_count - keep_at_end_count + i;
-            let old_index = old_shape_count - keep_at_end_count + i;
+            let old_index_signed = old_tail_base + i as i64;
+            assert!(
+                old_index_signed >= 0,
+                "ShapeSearchTree.changeEntries: keepAtEndCount ({keep_at_end_count}) exceeds \
+                 oldShapeCount ({old_shape_count}); Java throws ArrayIndexOutOfBoundsException \
+                 on oldEntries[{old_index_signed}] (ShapeSearchTree.java:148)"
+            );
+            let old_index = old_index_signed as usize;
             new_leaves[new_index] = old_entries[old_index];
             self.rekey(new_leaves[new_index], id, new_index);
             new_shapes[new_index].clone_from(&old_shapes[old_index]);
@@ -1229,11 +1245,12 @@ impl ShapeSearchTree {
             .hdr
             .set_precalculated_tree_shapes(self.id, new_shapes.clone());
 
-        // ShapeSearchTree.java:160-162.
+        // ShapeSearchTree.java:160-162. `saturating_sub` for the same reason as :142 above,
+        // though here the bound provably cannot go negative.
         for (i, leaf) in new_leaves
             .iter_mut()
             .enumerate()
-            .take(new_shape_count - keep_at_end_count)
+            .take(new_shape_count.saturating_sub(keep_at_end_count))
             .skip(keep_at_start_count)
         {
             *leaf = self.insert_index(id, &new_shapes, i);

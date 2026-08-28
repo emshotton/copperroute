@@ -1052,6 +1052,197 @@ pub fn cycle_board() -> (Board, PadstackId) {
     (board, thru_pad)
 }
 
+/// A board built for one purpose: to make `Item.isCycleRecu`'s contact walk visibly
+/// order-sensitive. Nothing in `P2T11.java` reaches this shape, so the numbers below are the
+/// fixture's own, not a transcription.
+///
+/// **Three** signal layers (so that three traces can meet at one via without contacting each
+/// other), no outline, no components, everything on net 1:
+///
+/// | id | item |
+/// |---|---|
+/// | 1 | via `V` at `(0, 0)`, all three layers |
+/// | 2 | via `W` at `(3000, 0)`, all three layers |
+/// | 3 | trace `T` on layer 0, `(0,0) -> (0,-1000) -> (3000,-1000) -> (3000,0)` |
+/// | 4 | trace `B` on layer 2, `(0,0) -> (0,2000)` — a dead-end stub off `V` |
+/// | 5 | trace `A` on layer 1, `(0,0) -> (3000,0)` — the short way from `V` to `W` |
+///
+/// `T` is a cycle (`T`'s start contact `V`, then `A`, then `W`, which contacts `T` again), and
+/// `V` is the via with three contacts: `{3, 4, 5}`. Walking them **descending** (Java's
+/// `TreeSet<Item>` order, quirk #44) enters `A` first and returns before `B` is ever visited;
+/// walking them ascending enters the dead end `B` first. Either way the answer is `true` — see
+/// [`fr_board::Board::is_cycle_recu`]'s doc comment for why the boolean cannot differ — but the
+/// set of visited items does, which is what `tests/board.rs` pins.
+pub fn cycle_order_board() -> Board {
+    let three_layers = LayerStructure::new(vec![
+        Layer::new("front", true),
+        Layer::new("inner", true),
+        Layer::new("back", true),
+    ]);
+    let cm = ClearanceMatrix::get_default_instance(&three_layers, 200);
+    let mut rules = BoardRules::new(three_layers.clone(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut padstacks = Padstacks::new(three_layers.clone());
+    let thru_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-70, -70, 70, 70)));
+    let thru_pad = padstacks.add(
+        "thru",
+        vec![
+            Some(thru_shape.clone()),
+            Some(thru_shape.clone()),
+            Some(thru_shape),
+        ],
+        true,
+        false,
+    );
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(padstacks, Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+
+    // 1: via V, 2: via W.
+    for x in [0, 3000] {
+        board
+            .insert_via(
+                thru_pad,
+                Point::new(x, 0),
+                vec![1],
+                1,
+                FixedState::Unfixed,
+                true,
+            )
+            .expect("no normalisation failure");
+    }
+    // 3: the trace under test, layer 0, both ends on a via.
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[
+            Point::new(0, 0),
+            Point::new(0, -1000),
+            Point::new(3000, -1000),
+            Point::new(3000, 0),
+        ]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    // 4: the dead-end stub on layer 2 — reachable only from V.
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(0, 0), Point::new(0, 2000)]),
+        2,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    // 5: the return path on layer 1, from V to W.
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(0, 0), Point::new(3000, 0)]),
+        1,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board
+}
+
+/// A board built for one purpose: to make `Item.getConnectionItems`' outer contact walk visibly
+/// order-sensitive under [`fr_board::StopConnectionOption::FanoutVia`], which Plan 2 Task 11
+/// deferred for want of a fixture. Its numbers are the fixture's own, not a `P2T11.java`
+/// transcription.
+///
+/// Two signal layers, no outline, no components, everything on net 1:
+///
+/// | id | item |
+/// |---|---|
+/// | 1 | via `S` at `(5000, 5000)`, both layers — the item the connection is asked for |
+/// | 2 | via `F` at `(0, 0)`, both layers — the candidate fanout via |
+/// | 3 | trace `Z` on layer 0, `(1000,1000) -> (1000,0)`, **shove-fixed**, two corners |
+/// | 4 | trace `Y` on layer 0, `(1000,0) -> (0,0)` — short, and the only fanout evidence |
+/// | 5 | trace `E` on layer 0, `(0,0) -> (0,-1000)` — a third arm at `F`, so the walk forks |
+/// | 6 | trace `B` on layer 1, `(5000,5000) -> (0,0)` — `S` straight to `F` |
+/// | 7 | trace `A` on layer 0, `(5000,5000) -> (1000,1000)` — `S` the long way round |
+///
+/// `isFanoutVia(F, result)` (Item.java:1206-1239) is true only through `Y`: `Y` is a short
+/// contact trace of `F` whose own contacts include the shove-fixed two-corner trace `Z`
+/// (Item.java:1227-1234). `E` and `B` are short too but their contacts hold no evidence. So `F`
+/// stops the walk *unless* `Y` is already in `result`, which `Item.java:735` passes as
+/// `ignoreItems`.
+///
+/// `S`'s contacts are `{6, 7}`. Descending (Java's order) walks branch `A` first — `7, 3, 4`,
+/// forking at `Y` because `F` and `E` are both new contacts at `(0,0)` — and only then branch
+/// `B`, which reaches `F` with `Y` already ignored and so **passes through** it. Ascending walks
+/// `B` first, stops dead at `F`, and `F` never enters the result.
+pub fn fanout_order_board() -> Board {
+    let ls = layers();
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(layers(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut padstacks = Padstacks::new(layers());
+    let thru_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-70, -70, 70, 70)));
+    let thru_pad = padstacks.add(
+        "thru",
+        vec![Some(thru_shape.clone()), Some(thru_shape)],
+        true,
+        false,
+    );
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(padstacks, Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+
+    // 1: S, 2: F.
+    for (x, y) in [(5000, 5000), (0, 0)] {
+        board
+            .insert_via(
+                thru_pad,
+                Point::new(x, y),
+                vec![1],
+                1,
+                FixedState::Unfixed,
+                true,
+            )
+            .expect("no normalisation failure");
+    }
+    for (corners, layer, fixed) in [
+        // 3: Z, the shove-fixed two-corner trace that is the fanout evidence.
+        ([(1000, 1000), (1000, 0)], 0usize, FixedState::ShoveFixed),
+        // 4: Y, the short contact trace of F that carries the evidence.
+        ([(1000, 0), (0, 0)], 0, FixedState::Unfixed),
+        // 5: E, the third arm at F — it makes the A branch fork at Y.
+        ([(0, 0), (0, -1000)], 0, FixedState::Unfixed),
+        // 6: B, S straight to F on layer 1.
+        ([(5000, 5000), (0, 0)], 1, FixedState::Unfixed),
+        // 7: A, S the long way round on layer 0.
+        ([(5000, 5000), (1000, 1000)], 0, FixedState::Unfixed),
+    ] {
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&corners.map(|(x, y)| Point::new(x, y))),
+            layer,
+            30,
+            vec![1],
+            1,
+            fixed,
+        );
+    }
+    board
+}
+
 /// A set of item ids in Java's `TreeSet<Item>` order — **descending** id (quirk #44) — as the
 /// bare numbers, so a test can transcribe `P2T11.java`'s output verbatim.
 pub fn descending(set: std::collections::BTreeSet<ItemId>) -> Vec<u32> {
