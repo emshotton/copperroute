@@ -17,6 +17,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-dsn"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-geometry",
+ "thiserror",
+]
+
+[[package]]
 name = "fr-geometry"
 version = "0.1.0"
 dependencies = [
@@ -30,6 +39,7 @@ name = "fr-geometry-differential"
 version = "0.1.0"
 dependencies = [
  "fr-board",
+ "fr-dsn",
  "fr-geometry",
 ]
 

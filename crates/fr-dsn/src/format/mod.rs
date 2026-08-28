@@ -1,10 +1,13 @@
 //! Specctra text-format primitives shared by every DSN/SES writer: indentation tracking
-//! (`IndentFileWriter`) and legal-identifier quoting (`IdentifierType`).
-//!
-// added in Plan 3 Task 2: `double.rs` — `java_double_to_string`, `java_float_to_string`,
-// `format_placement_rotation`.
+//! (`IndentFileWriter`), legal-identifier quoting (`IdentifierType`) and Java-identical number
+//! rendering (`double`).
+pub mod double;
 pub mod identifier;
 pub mod indent_writer;
 
+pub use double::{
+    format_placement_rotation, java_double_to_string, java_float_to_string, java_rint, java_round,
+    java_round_to_int,
+};
 pub use identifier::{DSN_RESERVED, IdentifierType, SES_RESERVED};
 pub use indent_writer::IndentFileWriter;

@@ -142,11 +142,24 @@ methods with dozens of branches.
     `P2T13.java`/`p2t13` diff the shuffle permutation those depend on
     directly, as the `perm=` line of their output.) None of these are wired
     into `run.sh`.
+  - `P3T2.java` — Java number formatting (Plan 3 Task 2). Twin: `p3t2`.
+    Declares `package app.freerouting.io.specctra;` so it can reach the
+    package-private `SesWriter.formatPlacementRotation`, and is therefore
+    compiled and run against the clone's own
+    `../freerouting/build/libs/freerouting-current-executable.jar` on a
+    **JDK 25** (`JAVA25_HOME`), like `P2T10.java`/`P2T11.java`/`P2T15.java`.
+    Walks a seeded `java.util.Random` stream of doubles through
+    `Double.toString`, `Float.toString` of the `float` cast and (in every mode
+    but 0) `formatPlacementRotation`, one line per value, prefixed by the raw
+    bits in hex. This is the driver behind `fr-dsn`'s
+    `format::double` — the module every DSN/SES writer's byte-parity rests on.
+
 - `rust/` — a standalone Cargo package, `fr-geometry-differential`, **not** a
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
-  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`.
+  `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`.
+  Since Plan 3 it also depends on `fr-dsn` by path (for `p3t2`).
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -163,7 +176,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 
@@ -275,6 +288,22 @@ the driver expects, or none at all.
   reached by the differential driver — mode 11's one documented divergence
   unchanged) or `p2t13` (mode 0).
 
+- `p3t2 <count> <seed> <mode>` — Java number formatting (Plan 3 Task 2), the
+  randomised counterpart of `crates/fr-dsn/tests/number_format.rs`. One line
+  per value: the raw bits in hex, `Double.toString`, `Float.toString` of the
+  `float` cast, and — in every mode but 0 — `formatPlacementRotation`. Modes:
+  `0` uniformly random 64-bit patterns (NaN and the infinities skipped: they
+  are pinned by the unit tests, and 2^52 of the patterns are NaN; rotation
+  formatting is omitted here because `%.0f` of a 1e300-scale double is a
+  300-digit line), `1` `(nextInt(2000001) - 1000000) / 10^nextInt(7)` — the
+  shape real DSN coordinates take, and the only mode that hands the rotation
+  formatter negative values, `2` random integers in ±10^7, `3` random
+  rotations in [0, 360) quantised to three decimals. **Verified** at
+  `10000000 42 0` plus `1000000 42 <1|2|3>`, and again at seed `7` with the
+  same counts: **26 M values, all four modes, zero diff lines.** The first
+  smoke run at 100k found two real porting bugs (Java's even-last-digit tie
+  rule — see "`p3t2`" below), so the volume is doing work.
+
 ## Known, expected diffs
 
 Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
@@ -315,6 +344,11 @@ Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
 | `p2t13` (modes 1-7, `30 7 <mode>`) | 7-172 | 0 | exact match (square, collinear triple, duplicates, two-corner objects, grid, tiny range, circle) |
 | `p2t15` (seed 42, n=30, default) | 521 | 0 | exact match |
 | `p2t15` (10 seeds × n∈{30,120}) | 499-1111 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
+| `p3t2` (mode 0, seed 42) | 10000000 | 0 | exact match (`Double.toString`/`Float.toString` over random bit patterns) |
+| `p3t2` (mode 1, seed 42) | 1000000 | 0 | exact match (DSN-coordinate-shaped values; adds `formatPlacementRotation`) |
+| `p3t2` (mode 2, seed 42) | 1000000 | 0 | exact match (integers in ±10^7) |
+| `p3t2` (mode 3, seed 42) | 1000000 | 0 | exact match (rotations in [0, 360), three decimals) |
+| `p3t2` (all four modes, seed 7) | 13000000 | 0 | exact match (same counts, second seed) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -477,6 +511,31 @@ name; and `Item.getTileShape` really does lazily recompute the tree-shape cache
 `validate()`, after `changeClearanceClassIndex` has cleared the derived data.
 Mode 3 pins it with no `validate` in between, so nothing else warms the cache
 first.
+
+## `p3t2` (Plan 3 Task 2)
+
+Two things Rust's own float formatting gets differently from Java, both found
+by this driver rather than by reading the JDK spec, and both now pinned by
+`crates/fr-dsn/tests/number_format.rs`:
+
+* **`Double.toString`/`Float.toString` break an exact tie to an even last
+  digit; Rust's shortest formatter does not.** When the value sits exactly
+  halfway between the two nearest decimals of the shortest length, both
+  round-trip, so the JDK 19+ spec's "the one whose least significant digit is
+  even" decides. `1055987014896502.25` is `1.0559870148965022E15` in Java and
+  `1.0559870148965023e15` from Rust's `{:e}`; `169903.625f` is `169903.62`
+  in Java and `169903.63` from Rust. Both showed up inside the first 15k
+  values of the mode-0 smoke run.
+* **`String.format(Locale.ENGLISH, "%.Nf", d)` does not round the double's
+  exact binary value.** `java.util.Formatter` takes the *shortest round-trip
+  digits* — the same digits `Double.toString` prints — zero-pads them when
+  more precision is asked for than they carry, and rounds them `HALF_UP` when
+  less is. So `%.2f` of `8.475` is `8.48` (the digits are `8475`), even though
+  the double is `8.47499999999999964…`, which rounds to `8.47`; and `%.3f` of
+  `0.1235` is `0.124` where the exact expansion gives `0.123`. Rust's `{:.N}`
+  is exact-and-half-to-even and disagrees on both counts. Confirmed on JDK 25
+  over two million random doubles that the Formatter's digit string always
+  equals `Double.toString`'s, so `fr-dsn` derives both from one routine.
 
 ## `p2t15` sweep (Plan 2 Task 15)
 

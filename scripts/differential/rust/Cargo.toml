@@ -20,6 +20,8 @@ fr-geometry = { path = "../../../crates/fr-geometry" }
 # Added for the Plan 2 Task 3 drivers (`p2t3`, `p2t3r`), which exercise
 # `fr-board`'s ShapeTree against Java's ShapeTree/MinAreaTree.
 fr-board = { path = "../../../crates/fr-board" }
+# Added for the Plan 3 Task 2 driver (`p3t2`): Java number formatting.
+fr-dsn = { path = "../../../crates/fr-dsn" }
 
 [[bin]]
 name = "t14"
@@ -68,3 +70,8 @@ path = "src/bin/p2t13.rs"
 [[bin]]
 name = "p2t15"
 path = "src/bin/p2t15.rs"
+
+# Plan 3 Task 2: Double.toString / Float.toString / formatPlacementRotation.
+[[bin]]
+name = "p3t2"
+path = "src/bin/p3t2.rs"

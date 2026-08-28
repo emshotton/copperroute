@@ -12,11 +12,14 @@ JAVA_HOME="${JAVA_HOME:-/opt/homebrew/Cellar/openjdk/23.0.2/libexec/openjdk.jdk/
 JAVAC="$JAVA_HOME/bin/javac"
 JAVABIN="$JAVA_HOME/bin/java"
 
-# `p2t10` is the one driver that cannot be compiled from `geometry/planar` sources: it needs the
-# whole board stack (BasicBoard, BoardRules, the search trees). It is compiled and run against
-# the clone's own build output instead, which is class-file version 69 and therefore needs a
-# JDK 25. Override either of these if your checkout differs.
-JAVA25_HOME="${JAVA25_HOME:-/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home}"
+# `p2t10`, `p2t11`, `p2t15` and `p3t2` cannot be compiled from `geometry/planar` sources: the
+# first three need the whole board stack (BasicBoard, BoardRules, the search trees) and `p3t2`
+# needs `io/specctra`'s package-private `SesWriter.formatPlacementRotation`. They are compiled
+# and run against the clone's own build output instead, which is class-file version 69 and
+# therefore needs a JDK 25. `JAVA25_HOME` points at Homebrew's version-independent `opt` symlink
+# rather than a pinned `Cellar` directory, so a `brew upgrade` does not break the harness;
+# override either of these if your checkout differs.
+JAVA25_HOME="${JAVA25_HOME:-/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home}"
 FREEROUTING_JAR="${FREEROUTING_JAR:-$FREEROUTING_JAVA_DIR/build/libs/freerouting-current-executable.jar}"
 
 BUILD="$DIFF_ROOT/build"
@@ -24,7 +27,7 @@ OUT="$BUILD/classes"
 
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
-  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15" >&2
+  echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -94,6 +97,14 @@ case "$driver" in
     default_args=(42 30)
     needs_jar=1
     ;;
+  p3t2)
+    # Declares `package app.freerouting.io.specctra` so it can call the package-private
+    # `SesWriter.formatPlacementRotation`, so it compiles against the jar like `p2t10`.
+    javaclass=P3T2
+    javapkg="io.specctra"
+    default_args=(100000 42 0)
+    needs_jar=1
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -132,7 +143,7 @@ if [[ "$needs_jar" -eq 1 ]]; then
   (cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
 
   echo "== running ($driver ${args[*]:-}) =="
-  "$JAVABIN" -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
+  "$JAVABIN" -Djava.awt.headless=true -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
   "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"} >"$r_out"
 
   echo "== diffing =="
@@ -189,7 +200,7 @@ RUST_BIN="$DIFF_ROOT/rust/target/release/$driver"
 
 echo "== running ($driver ${args[*]:-}) =="
 # `e15` and `p2t3` take no arguments, so the array can legitimately be empty.
-"$JAVABIN" -cp "$OUT" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
+"$JAVABIN" -Djava.awt.headless=true -cp "$OUT" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
 "$RUST_BIN" ${args+"${args[@]}"} >"$r_out"
 
 echo "== diffing =="
