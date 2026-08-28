@@ -17,6 +17,9 @@ publish = false
 
 [dependencies]
 fr-geometry = { path = "../../../crates/fr-geometry" }
+# Added for the Plan 2 Task 3 drivers (`p2t3`, `p2t3r`), which exercise
+# `fr-board`'s ShapeTree against Java's ShapeTree/MinAreaTree.
+fr-board = { path = "../../../crates/fr-board" }
 
 [[bin]]
 name = "t14"
@@ -37,3 +40,11 @@ path = "src/bin/e15.rs"
 [[bin]]
 name = "d17"
 path = "src/bin/d17.rs"
+
+[[bin]]
+name = "p2t3"
+path = "src/bin/p2t3.rs"
+
+[[bin]]
+name = "p2t3r"
+path = "src/bin/p2t3r.rs"

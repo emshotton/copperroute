@@ -487,6 +487,126 @@ fn removal_frees_arena_slots_for_reuse() {
     assert_eq!(tree.leaf_count(), 8);
 }
 
+/// Renders only the *structure* of the tree — bounds and shape, no leaf keys — so a test can
+/// prove a key rewrite left the layout alone.
+fn structure(tree: &ShapeTree<TreeObject>) -> String {
+    fn walk(
+        tree: &ShapeTree<TreeObject>,
+        id: fr_board::datastructures::NodeId,
+        prefix: &str,
+        out: &mut String,
+    ) {
+        let (tag, bounds) = match tree.node(id) {
+            Node::Leaf { bounds, .. } => ("Leaf", bounds),
+            Node::Inner { bounds, .. } => ("Inner", bounds),
+            Node::Free { .. } => unreachable!("a reachable node is never a free slot"),
+        };
+        let b = bounds.bounding_box();
+        out.push_str(&format!(
+            "{prefix}{tag} ({},{},{},{})\n",
+            b.ll.x, b.ll.y, b.ur.x, b.ur.y
+        ));
+        if let Node::Inner {
+            first_child,
+            second_child,
+            ..
+        } = tree.node(id)
+        {
+            let deeper = format!("{prefix}  ");
+            walk(tree, *first_child, &deeper, out);
+            walk(tree, *second_child, &deeper, out);
+        }
+    }
+    let mut out = String::new();
+    if let Some(root) = tree.root() {
+        walk(tree, root, "", &mut out);
+    }
+    out
+}
+
+/// `ShapeSearchTree` re-keys leaves that stay in the tree — `changeEntries`
+/// (`ShapeSearchTree.java:150`), `mergeEntriesInFront` (`:214-215`, `:221`),
+/// `mergeEntriesAtEnd` (`:294-295`) and `reuseEntriesAfterCutout` (`:325-326`, `:342-343`) all
+/// assign `leaf.object` and/or `leaf.shapeIndexInObject` in place. The tree must not move.
+#[test]
+fn set_leaf_entry_rewrites_the_key_and_nothing_else() {
+    let (mut tree, leaves) = eight_box_tree();
+    let structure_before = structure(&tree);
+    let order_before = tree.to_array();
+    let depths_before: Vec<usize> = order_before
+        .iter()
+        .map(|l| tree.distance_to_root(*l))
+        .collect();
+    let bounds_before: Vec<_> = leaves.iter().map(|l| tree.leaf_bounds(*l)).collect();
+
+    // Hand leaf #4's shape to object #99 at shape index 7, the way a merged trace takes over
+    // another trace's tree entries.
+    tree.set_leaf_entry(leaves[3], obj(99), 7);
+
+    assert_eq!(structure(&tree), structure_before, "layout must not move");
+    assert_eq!(tree.to_array(), order_before, "leaf order must not move");
+    assert_eq!(
+        order_before
+            .iter()
+            .map(|l| tree.distance_to_root(*l))
+            .collect::<Vec<_>>(),
+        depths_before
+    );
+    assert_eq!(
+        leaves
+            .iter()
+            .map(|l| tree.leaf_bounds(*l))
+            .collect::<Vec<_>>(),
+        bounds_before,
+        "bounding shapes must not move"
+    );
+    assert_eq!(tree.leaf_count(), 8);
+
+    // The new key is what the tree now reports, in its new sort position: #99 sorts last.
+    assert_eq!(
+        tree.leaf_entry(leaves[3]),
+        TreeEntry {
+            object: obj(99),
+            shape_index: 7,
+        }
+    );
+    assert_eq!(
+        entries_str(&tree.overlaps(&boxed(-5, -5, 100, 100))),
+        "#1/0 #2/0 #3/0 #5/0 #6/0 #7/0 #8/0 #99/7"
+    );
+    // The leaf is still found by a query that only touches its own box.
+    assert_eq!(entries_str(&tree.overlaps(&boxed(21, 21, 22, 22))), "#99/7");
+    assert_bounds_are_the_union_of_children(&tree);
+}
+
+/// A merge-style re-key of a whole run of leaves: every entry of one object is handed to
+/// another and renumbered, and the tree still has the shape the original inserts produced.
+#[test]
+fn set_leaf_entry_can_rehome_a_whole_object() {
+    let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
+    let from = tree.insert(
+        obj(2),
+        &[
+            boxed(0, 0, 10, 10),
+            boxed(20, 0, 30, 10),
+            boxed(40, 0, 50, 10),
+        ],
+    );
+    tree.insert(obj(1), &[boxed(0, 20, 10, 30)]);
+    let structure_before = structure(&tree);
+
+    // `mergeEntriesInFront` renumbers from index 0 upward onto the destination trace.
+    for (new_index, leaf) in from.iter().enumerate() {
+        tree.set_leaf_entry(*leaf, obj(1), new_index + 1);
+    }
+
+    assert_eq!(structure(&tree), structure_before);
+    assert_eq!(
+        entries_str(&tree.overlaps(&boxed(-5, -5, 100, 100))),
+        "#1/0 #1/1 #1/2 #1/3"
+    );
+}
+
 /// Every inner node's bounds must equal the union of its two children's bounds.
 ///
 /// This is what makes `MinAreaTree.removeLeaf`'s upward loop stop early: it breaks as soon as

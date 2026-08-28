@@ -19,13 +19,17 @@ methods with dozens of branches.
   - `T16R.java` — `Polyline` (Task 16). Twin: `t16r`.
   - `D17.java` — `PolygonShape` / `PolylineArea` / `Circle` (Task 17). Twin: `d17`.
   - `E15.java` — `LineSegment.stairApproximation` edge cases (Task 15). Twin: `e15`.
-  - `P2T3.java` — `ShapeTree`/`MinAreaTree` (Plan 2 Task 3). **No Rust twin**: the
-    Rust side is the `crates/fr-board/tests/min_area_tree.rs` integration
-    test, which was written from this driver's output. `run.sh p2t3` therefore
-    diffs the Java run against the checked-in golden
-    `P2T3.expected.out` instead of against a Rust binary. It declares
-    `package app.freerouting.datastructures;` and is compiled alongside the real
+  - `P2T3.java` — `ShapeTree`/`MinAreaTree`, fixed 8-box script (Plan 2 Task 3).
+    Twin: `p2t3`. `crates/fr-board/tests/min_area_tree.rs` was written from this
+    driver's output. Declares `package app.freerouting.datastructures;` and is
+    compiled alongside the real
     `datastructures/{ShapeTree,MinAreaTree,ArrayStack}.java`.
+  - `P2T3R.java` — `ShapeTree`/`MinAreaTree`, randomised (Plan 2 Task 3).
+    Twin: `p2t3r`. Drives `insert(Storable)` (so the *tree* applies its bounding
+    directions), `remove(Leaf[])` on arrays with deliberate `null` holes,
+    in-place re-keying of live leaves the way `ShapeSearchTree` does, plus
+    `overlaps`, `toArray` and `distanceToRoot`. Same `datastructures` sources as
+    `P2T3.java`.
   - `support/FRLogger.java` — a minimal stand-in for
     `app.freerouting.logger.FRLogger` (the real class pulls in the Log4j/board
     stack that has nothing to do with geometry). Reproduces the handful of
@@ -40,8 +44,9 @@ methods with dozens of branches.
     are wired into `run.sh`.
 - `rust/` — a standalone Cargo package, `fr-geometry-differential`, **not** a
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
-  package's own `[workspace]` table). It depends on `fr-geometry` by path and
-  builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`, `e15`, `d17`.
+  package's own `[workspace]` table). It depends on `fr-geometry` and
+  `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
+  `e15`, `d17`, `p2t3`, `p2t3r`.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -71,7 +76,7 @@ the driver expects, or none at all.
 `run.sh`:
 1. Compiles the driver together with the real `geometry/planar/*.java`, the
    three `datastructures/{Signum,BigIntAux,Stoppable}.java` files it needs,
-   any driver-specific extra sources (`p2t3` adds
+   any driver-specific extra sources (`p2t3`/`p2t3r` add
    `datastructures/{ShapeTree,MinAreaTree,ArrayStack}.java`), and the local
    `FRLogger` stand-in, into `build/classes/`.
 2. Builds the matching Rust binary (`cargo build --release --bin <driver>`
@@ -100,8 +105,14 @@ the driver expects, or none at all.
 - `e15` — `LineSegment.stairApproximation` edge cases. No arguments; it's a
   fixed sequence of edge-case calls, not seeded generation.
 - `p2t3` — `ShapeTree`/`MinAreaTree`. No arguments; a fixed 8-box insert/query/
-  remove script plus tie-break and edge cases. Compared against
-  `P2T3.expected.out`, not a Rust twin.
+  remove script plus tie-break and edge cases.
+- `p2t3r <ops> <seed> <mode> [dumpEvery] [insertPct]` — `ShapeTree`/`MinAreaTree`,
+  randomised. `mode` is `0` for orthogonal (`IntBox`) bounds and `1` for
+  45-degree (`IntOctagon`) bounds — run **both**, since only mode `1` proves the
+  tree applies its own bounding directions rather than storing the box it was
+  handed. `dumpEvery` (default 1) prints the whole tree every N ops; `insertPct`
+  (default 62) is the share of insert ops, the rest split between re-keying and
+  removal.
 - `d17 <cases> <mode>` — `PolygonShape`/`PolylineArea`/`Circle`. Java's
   `D17.java` only branches explicitly on mode `0` (polygon) and `1`
   (polyline area); every other mode value, including `2`, falls through to
@@ -127,7 +138,9 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `t15` (seed 42) | 11747 | 44 | 42 cosmetic (`EXC:ArithmeticException` vs `EXC:panic`, see below) + 2 sign-of-zero in `LineSegment.startPointApprox`/`endPointApprox` (quirk #14) |
 | `t16r` (mode 0, seed 42) | 9200 | 72 | all `lineSegment`/`offsetBox` fields: `LineSegment(Polyline, no)` with `no` out of its valid range (Java constructs a degenerate object with null internal lines that later NPEs; Rust's `LineSegment::from_polyline`/`Polyline::offset_box` return `None` up front — the `offsetBox` case is the `Polyline.offsetBox(halfWidth, no)` row in the `totalized` table) |
 | `t14` | 17997 | 145 | `Simplex.EMPTY` / degenerate-shape edge cases already in the `totalized` table |
-| `p2t3` | 132 | 0 | exact match against the checked-in golden |
+| `p2t3` | 132 | 0 | exact match |
+| `p2t3r` (400 42 0) | 109940 | 0 | exact match |
+| `p2t3r` (2000 42 1) | 2898938 | 0 | exact match (45-degree/`IntOctagon` bounds) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic

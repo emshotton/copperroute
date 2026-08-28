@@ -12,9 +12,26 @@
 //!
 //! Java's nodes are heap objects reclaimed by the garbage collector and compared by reference
 //! identity. Here they live in an arena, `nodes: Vec<Node<O>>`, addressed by [`NodeId`]; a
-//! removed node's slot goes on a free list and is reused. Reference identity becomes index
-//! equality, which behaves the same for every operation the tree performs — with one caveat
-//! spelled out on [`ShapeTree::remove_leaf`].
+//! removed node's slot goes on a free list and is reused. Reference identity becomes
+//! index-plus-generation equality: every handle carries the generation its slot had when the
+//! handle was minted, so a handle to a removed node stays distinguishable from a handle to
+//! whatever now occupies that slot (see [`NodeId`], and [`ShapeTree::remove_leaf`] for the one
+//! place the port deliberately parts company with Java).
+//!
+//! # What `ShapeSearchTree` (Task 10) needs from this type
+//!
+//! Java's search tree does three things to a live tree that are not "insert" or "remove", and
+//! each has a method here:
+//!
+//! * it **re-keys** leaves in place, assigning `leaf.object` / `leaf.shapeIndexInObject` while
+//!   the leaf stays exactly where it is — [`ShapeTree::set_leaf_entry`];
+//! * it lets the **tree** turn an object's tree shapes into bounding shapes, and tolerates a
+//!   shape that has no bound — [`ShapeTree::insert_tiles`], returning Java's nullable `Leaf[]`
+//!   as `Vec<Option<LeafId>>`;
+//! * it removes **holed** entry arrays, where some elements were moved elsewhere and nulled —
+//!   [`ShapeTree::remove_opt`].
+//!
+//! Each carries an `obligation:` marker naming what Task 10 must do with it.
 //!
 //! # Determinism
 //!
@@ -42,33 +59,79 @@ use fr_geometry::bounding_directions::ShapeBoundingDirections;
 use fr_geometry::regular_tile_shape::RegularTileShape;
 use fr_geometry::tile_shape::TileShape;
 
-/// Index of a node in a [`ShapeTree`]'s arena — the port's replacement for Java's `TreeNode`
+/// A handle to a node in a [`ShapeTree`]'s arena — the port's replacement for Java's `TreeNode`
 /// reference.
+///
+/// # Why there is a generation counter
+///
+/// Java's node handles are object references: once a node is removed nothing else can ever be
+/// that object, and using a stale reference throws a `NullPointerException` on the first field
+/// access. An arena index alone does not have that property — a freed slot is handed straight
+/// back out by the next allocation, so a stale index would silently *alias a live node*.
+///
+/// That is not hypothetical. `ShapeSearchTree.changeItemShape`
+/// (`board/searchtree/ShapeSearchTree.java:856,867`) calls `removeLeaf(oldEntries[shapeIndex])`
+/// and then `insert(item, shapeIndex)` — a free immediately followed by an allocation, which a
+/// LIFO free list satisfies from the very slot just released. Any handle still pointing at the
+/// old leaf would now resolve to the new one, with no error anywhere.
+///
+/// So every handle carries the generation its slot had when the handle was minted, the slot's
+/// generation is bumped when it is freed, and every access asserts the two match. The port is
+/// then *louder* than Java (a panic naming the stale handle rather than an NPE at some later
+/// field access) and never silently wrong.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NodeId(usize);
+pub struct NodeId {
+    index: u32,
+    generation: u32,
+}
 
 impl NodeId {
     /// The raw arena index.
     pub fn index(self) -> usize {
-        self.0
+        self.index as usize
+    }
+
+    /// The arena generation this handle was minted for. No Java counterpart.
+    pub fn generation(self) -> u32 {
+        self.generation
     }
 }
 
-/// Index of a *leaf* node in a [`ShapeTree`]'s arena — the port's replacement for Java's
+/// A handle to a *leaf* node in a [`ShapeTree`]'s arena — the port's replacement for Java's
 /// `ShapeTree.Leaf` reference, which board items hold in `setSearchTreeEntries`
 /// (ShapeTree.java:150-154) so they can delete their own tree entries later.
+///
+/// Carries a generation counter for the reason spelled out on [`NodeId`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LeafId(usize);
+pub struct LeafId {
+    index: u32,
+    generation: u32,
+}
 
 impl LeafId {
     /// The raw arena index.
     pub fn index(self) -> usize {
-        self.0
+        self.index as usize
     }
 
-    /// Widens this leaf index to a plain node index.
+    /// The arena generation this handle was minted for. No Java counterpart.
+    pub fn generation(self) -> u32 {
+        self.generation
+    }
+
+    /// Widens this leaf handle to a plain node handle.
     pub fn node(self) -> NodeId {
-        NodeId(self.0)
+        NodeId {
+            index: self.index,
+            generation: self.generation,
+        }
+    }
+
+    fn from_node(id: NodeId) -> Self {
+        Self {
+            index: id.index,
+            generation: id.generation,
+        }
     }
 }
 
@@ -94,6 +157,8 @@ pub enum Node<O> {
         first_child: NodeId,
         /// Java `InnerNode.secondChild` (ShapeTree.java:185).
         second_child: NodeId,
+        /// The slot's generation. No Java counterpart — see [`NodeId`].
+        generation: u32,
     },
     /// Java `ShapeTree.Leaf` (ShapeTree.java:198-235): where the geometry is stored.
     Leaf {
@@ -101,16 +166,33 @@ pub enum Node<O> {
         bounds: RegularTileShape,
         /// Java `TreeNode.parent` (ShapeTree.java:176). `None` when the leaf is the root.
         parent: Option<NodeId>,
-        /// Java `Leaf.object` (ShapeTree.java:199).
+        /// Java `Leaf.object` (ShapeTree.java:199). Rewritten in place by
+        /// [`ShapeTree::set_leaf_entry`], exactly as `ShapeSearchTree` does.
         object: O,
-        /// Java `Leaf.shapeIndexInObject` (ShapeTree.java:202).
+        /// Java `Leaf.shapeIndexInObject` (ShapeTree.java:202). Rewritten in place by
+        /// [`ShapeTree::set_leaf_entry`].
         shape_index: usize,
+        /// The slot's generation. No Java counterpart — see [`NodeId`].
+        generation: u32,
     },
     /// A free arena slot. No Java counterpart — see the type docs.
     Free {
         /// The next free slot, forming a LIFO free list.
         next_free: Option<NodeId>,
+        /// The slot's generation, already bumped past the handles that used to name it.
+        generation: u32,
     },
+}
+
+impl<O> Node<O> {
+    /// The generation stamped on this slot, whichever variant it is.
+    fn generation(&self) -> u32 {
+        match self {
+            Node::Inner { generation, .. }
+            | Node::Leaf { generation, .. }
+            | Node::Free { generation, .. } => *generation,
+        }
+    }
 }
 
 /// Information about a single object stored in a tree: Java `ShapeTree.TreeEntry`
@@ -143,8 +225,10 @@ pub struct TreeEntry<O> {
 ///
 /// not ported: `ShapeTree.Storable` (ShapeTree.java:138-155) with its `treeShapeCount`,
 /// `getTreeShape` and `setSearchTreeEntries` — the port inverts that call direction: the caller
-/// hands its shapes to [`ShapeTree::insert`] and keeps the returned [`LeafId`]s itself, instead
-/// of the tree calling back into the object.
+/// hands its shapes to [`ShapeTree::insert_tiles`] and keeps the returned entry vector itself,
+/// instead of the tree calling back into the object. The tree still owns the
+/// `boundingShape(boundingDirections)` step (ShapeTree.java:51) and still produces Java's
+/// nullable `Leaf[]`, as `Vec<Option<LeafId>>`.
 ///
 /// not ported: `ArrayStack` (ArrayStack.java) with its `push`, `pop` and `reset` — replaced by
 /// a `Vec` local to [`ShapeTree::overlaps`]. Java constructs it as `new ArrayStack<>(10000)`
@@ -203,19 +287,59 @@ impl<O> ShapeTree<O> {
         self.root
     }
 
-    /// Borrows an arena node. Panics if `id` names a freed slot or is out of range — both are
-    /// programming errors, equivalent to dereferencing a stale Java `TreeNode` reference.
+    /// Borrows an arena node, checking the handle first.
+    ///
+    /// Panics if `id` is out of range or names a slot whose generation has moved on — i.e. a
+    /// handle to a node that has since been removed, whether or not its slot has been reused.
+    /// This is the port's stand-in for Java throwing a `NullPointerException` off a stale
+    /// `TreeNode` reference, and it is deliberately an `assert!`, not a `debug_assert!`: a
+    /// stale handle must fail the same way in release builds, because in release it would
+    /// otherwise read a *live but different* node (see [`NodeId`]).
     pub fn node(&self, id: NodeId) -> &Node<O> {
+        self.resolve(id)
+    }
+
+    fn resolve(&self, id: NodeId) -> &Node<O> {
         let node = self
             .nodes
-            .get(id.0)
-            .unwrap_or_else(|| panic!("ShapeTree: node index {} is out of range", id.0));
-        debug_assert!(
-            !matches!(node, Node::Free { .. }),
-            "ShapeTree: node index {} names a freed slot",
-            id.0
+            .get(id.index())
+            .unwrap_or_else(|| panic!("ShapeTree: node index {} is out of range", id.index()));
+        assert!(
+            node.generation() == id.generation && !matches!(node, Node::Free { .. }),
+            "ShapeTree: stale handle to node {} (handle generation {}, slot generation {}) — \
+             the node was removed",
+            id.index(),
+            id.generation,
+            node.generation()
         );
         node
+    }
+
+    fn resolve_mut(&mut self, id: NodeId) -> &mut Node<O> {
+        let len = self.nodes.len();
+        let node = self.nodes.get_mut(id.index()).unwrap_or_else(|| {
+            panic!(
+                "ShapeTree: node index {} is out of range (arena has {len} slots)",
+                id.index()
+            )
+        });
+        assert!(
+            node.generation() == id.generation && !matches!(node, Node::Free { .. }),
+            "ShapeTree: stale handle to node {} (handle generation {}, slot generation {}) — \
+             the node was removed",
+            id.index(),
+            id.generation,
+            node.generation()
+        );
+        node
+    }
+
+    /// True when `id` still names the live node it was minted for. No Java counterpart; Java
+    /// cannot ask this question of a `Leaf` reference at all.
+    pub fn is_live(&self, id: NodeId) -> bool {
+        self.nodes.get(id.index()).is_some_and(|node| {
+            node.generation() == id.generation && !matches!(node, Node::Free { .. })
+        })
     }
 
     /// Total arena slots, free ones included. No Java counterpart; exposed so tests can show
@@ -230,8 +354,8 @@ impl<O> ShapeTree<O> {
         let mut next = self.first_free;
         while let Some(id) = next {
             count += 1;
-            next = match &self.nodes[id.0] {
-                Node::Free { next_free } => *next_free,
+            next = match &self.nodes[id.index()] {
+                Node::Free { next_free, .. } => *next_free,
                 _ => unreachable!("the free list only links Node::Free slots"),
             };
         }
@@ -250,42 +374,42 @@ impl<O> ShapeTree<O> {
     }
 
     fn bounds_of(&self, id: NodeId) -> RegularTileShape {
-        match self.node(id) {
+        match self.resolve(id) {
             Node::Inner { bounds, .. } | Node::Leaf { bounds, .. } => *bounds,
-            Node::Free { .. } => panic!("ShapeTree: node {} is a freed slot", id.0),
+            Node::Free { .. } => unreachable!("resolve rejects freed slots"),
         }
     }
 
     fn set_bounds(&mut self, id: NodeId, new_bounds: RegularTileShape) {
-        match &mut self.nodes[id.0] {
+        match self.resolve_mut(id) {
             Node::Inner { bounds, .. } | Node::Leaf { bounds, .. } => *bounds = new_bounds,
-            Node::Free { .. } => panic!("ShapeTree: node {} is a freed slot", id.0),
+            Node::Free { .. } => unreachable!("resolve_mut rejects freed slots"),
         }
     }
 
     fn parent_of(&self, id: NodeId) -> Option<NodeId> {
-        match self.node(id) {
+        match self.resolve(id) {
             Node::Inner { parent, .. } | Node::Leaf { parent, .. } => *parent,
-            Node::Free { .. } => panic!("ShapeTree: node {} is a freed slot", id.0),
+            Node::Free { .. } => unreachable!("resolve rejects freed slots"),
         }
     }
 
     fn set_parent(&mut self, id: NodeId, new_parent: Option<NodeId>) {
-        match &mut self.nodes[id.0] {
+        match self.resolve_mut(id) {
             Node::Inner { parent, .. } | Node::Leaf { parent, .. } => *parent = new_parent,
-            Node::Free { .. } => panic!("ShapeTree: node {} is a freed slot", id.0),
+            Node::Free { .. } => unreachable!("resolve_mut rejects freed slots"),
         }
     }
 
     /// The two children of an inner node; panics if `id` is not an inner node.
     fn children_of(&self, id: NodeId) -> (NodeId, NodeId) {
-        match self.node(id) {
+        match self.resolve(id) {
             Node::Inner {
                 first_child,
                 second_child,
                 ..
             } => (*first_child, *second_child),
-            _ => panic!("ShapeTree: node {} is not an inner node", id.0),
+            _ => panic!("ShapeTree: node {} is not an inner node", id.index()),
         }
     }
 
@@ -294,7 +418,7 @@ impl<O> ShapeTree<O> {
     /// Returns false when neither child matches, which is Java's "parent inconsistent" /
     /// "grandParent inconsistent" branch (MinAreaTree.java:141-143, 156-158).
     fn replace_child(&mut self, id: NodeId, old: NodeId, new: NodeId) -> bool {
-        match &mut self.nodes[id.0] {
+        match self.resolve_mut(id) {
             Node::Inner {
                 first_child,
                 second_child,
@@ -313,35 +437,55 @@ impl<O> ShapeTree<O> {
                     false
                 }
             }
-            _ => panic!("ShapeTree: node {} is not an inner node", id.0),
+            _ => panic!("ShapeTree: node {} is not an inner node", id.index()),
         }
     }
 
-    /// Allocates an arena slot, reusing the head of the free list when there is one.
-    fn alloc(&mut self, node: Node<O>) -> NodeId {
+    /// Allocates an arena slot, reusing the head of the free list when there is one, and
+    /// returns a handle stamped with the slot's current generation.
+    ///
+    /// `build` receives that generation so the node it produces carries the same stamp.
+    fn alloc(&mut self, build: impl FnOnce(u32) -> Node<O>) -> NodeId {
         match self.first_free {
             Some(id) => {
-                self.first_free = match &self.nodes[id.0] {
-                    Node::Free { next_free } => *next_free,
+                let slot = &self.nodes[id.index()];
+                let generation = slot.generation();
+                self.first_free = match slot {
+                    Node::Free { next_free, .. } => *next_free,
                     _ => unreachable!("the free list only links Node::Free slots"),
                 };
-                self.nodes[id.0] = node;
+                debug_assert_eq!(
+                    generation, id.generation,
+                    "the free list handle must carry the slot's post-free generation"
+                );
+                self.nodes[id.index()] = build(generation);
                 id
             }
             None => {
-                self.nodes.push(node);
-                NodeId(self.nodes.len() - 1)
+                let index = u32::try_from(self.nodes.len())
+                    .expect("ShapeTree: more than u32::MAX arena slots");
+                self.nodes.push(build(0));
+                NodeId {
+                    index,
+                    generation: 0,
+                }
             }
         }
     }
 
-    /// Returns an arena slot to the free list. Stands in for Java dropping the last reference
+    /// Returns an arena slot to the free list, **bumping its generation** so that every handle
+    /// minted for the old occupant is now stale. Stands in for Java dropping the last reference
     /// to a node and letting the garbage collector take it.
     fn free(&mut self, id: NodeId) {
-        self.nodes[id.0] = Node::Free {
+        let generation = self.nodes[id.index()].generation().wrapping_add(1);
+        self.nodes[id.index()] = Node::Free {
             next_free: self.first_free,
+            generation,
         };
-        self.first_free = Some(id);
+        self.first_free = Some(NodeId {
+            index: id.index,
+            generation,
+        });
     }
 }
 
@@ -356,17 +500,64 @@ impl<O: Copy + Ord> ShapeTree<O> {
     /// so `shapes.len()` is Java's `treeShapeCount` and an empty slice is Java's
     /// `shapeCount <= 0` early return (ShapeTree.java:33-35).
     ///
-    /// The shapes passed in are the *bounding* shapes Java computes at ShapeTree.java:51; use
-    /// [`ShapeTree::bounding_shape`] to derive them from an object's raw
-    /// [`TileShape`]s. Because they are already `RegularTileShape`s, Java's two `null` returns
-    /// (a missing tree shape, ShapeTree.java:47-49, and an unboundable shape,
-    /// ShapeTree.java:52-55) are resolved before the call, and the returned vector always has
-    /// exactly `shapes.len()` entries — Java's `leafArr` can contain nulls.
+    /// This is the **low-level** variant: the shapes passed in are taken as the leaves'
+    /// bounding shapes verbatim, so Java's two `null` returns (a missing tree shape,
+    /// ShapeTree.java:47-49, and an unboundable shape, ShapeTree.java:52-55) are already
+    /// resolved by the caller and the returned vector always has exactly `shapes.len()`
+    /// entries. Prefer [`ShapeTree::insert_tiles`], which applies this tree's bounding
+    /// directions itself and reproduces Java's nullable `Leaf[]` — see the obligations
+    /// recorded there.
+    ///
+    /// Note also that Java's `insert(Storable)` early-returns at ShapeTree.java:33-35 for a
+    /// zero-shape object *without* calling `setSearchTreeEntries`, so the object keeps its
+    /// previous entry array; this method returns an empty `Vec` and the caller decides. See
+    /// `docs/java-quirks.md`.
     pub fn insert(&mut self, object: O, shapes: &[RegularTileShape]) -> Vec<LeafId> {
         shapes
             .iter()
             .enumerate()
             .map(|(index, shape)| self.insert_leaf(object, index, *shape))
+            .collect()
+    }
+
+    /// The faithful port of `ShapeTree.insert(Storable)` (ShapeTree.java:32-42): the **tree**
+    /// applies its own bounding directions to each of the object's tree shapes, and the result
+    /// has one slot per shape index, holding `None` wherever Java would have left a `null` in
+    /// `leafArr`.
+    ///
+    /// Java's `insert(Storable, int)` (ShapeTree.java:45-60) returns `null` in two cases:
+    ///
+    /// * `object.getTreeShape(this, index) == null` (ShapeTree.java:46-49) — a shape the object
+    ///   declines to supply. A `TileShape` is never null in Rust, so a caller that has to model
+    ///   this must skip the index itself; see the `// obligation:` note below.
+    /// * `objectShape.boundingShape(boundingDirections) == null` (ShapeTree.java:51-55) — the
+    ///   shape has no bound in this tree's directions. That is exactly
+    ///   [`ShapeTree::bounding_shape`] returning `None`, reachable for an unbounded `Simplex`
+    ///   under 45-degree directions, and it is the case reproduced here: the slot stays `None`,
+    ///   nothing is inserted, and the remaining shapes are still processed. Java also logs a
+    ///   warning there, which `fr-board` drops (no `tracing`).
+    ///
+    /// obligation: Task 10 (`ShapeSearchTree`) must insert through **this** method, not through
+    /// [`ShapeTree::insert`]. `insert` takes shapes that are already `RegularTileShape`s and
+    /// stores them as given; a 45-degree tree handed `RegularTileShape::Box` bounds would
+    /// silently store box bounds instead of octagons, because only `insert_tiles` performs
+    /// Java's `boundingShape(boundingDirections)` step (ShapeTree.java:51). The object's stored
+    /// entry array must be `Vec<Option<LeafId>>`, matching Java's nullable `Leaf[]`, and must be
+    /// given back to [`ShapeTree::remove_opt`].
+    ///
+    /// obligation: Task 10 must **not** overwrite an object's stored entries when `shapes` is
+    /// empty. Java returns at ShapeTree.java:33-35 *before* `setSearchTreeEntries`
+    /// (ShapeTree.java:41), so a zero-shape insert leaves the object's previous entry array
+    /// untouched; this method returns an empty `Vec`, and storing it would drop entries Java
+    /// keeps. See the `docs/java-quirks.md` note on `insert`.
+    pub fn insert_tiles(&mut self, object: O, shapes: &[TileShape]) -> Vec<Option<LeafId>> {
+        shapes
+            .iter()
+            .enumerate()
+            .map(|(index, shape)| {
+                let bounds = self.bounding_shape(shape)?;
+                Some(self.insert_leaf(object, index, bounds))
+            })
             .collect()
     }
 
@@ -382,11 +573,12 @@ impl<O: Copy + Ord> ShapeTree<O> {
     ) -> LeafId {
         // Java `new Leaf(object, index, null, boundingShape)` (ShapeTree.java:57), allocated
         // before `MinAreaTree.insert(Leaf)` runs.
-        let leaf = self.alloc(Node::Leaf {
+        let leaf = self.alloc(|generation| Node::Leaf {
             bounds,
             parent: None,
             object,
             shape_index,
+            generation,
         });
 
         // MinAreaTree.java:52.
@@ -395,7 +587,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         // Tree is empty - just insert the new leaf (MinAreaTree.java:54-58).
         let Some(root) = self.root else {
             self.root = Some(leaf);
-            return LeafId(leaf.0);
+            return LeafId::from_node(leaf);
         };
 
         // Non-empty tree - do a recursive location for leaf replacement (MinAreaTree.java:61).
@@ -405,7 +597,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         // (MinAreaTree.java:63-67).
         let new_bounds = bounds.union(&self.bounds_of(to_replace));
         let current_parent = self.parent_of(to_replace);
-        let new_node = self.alloc(Node::Inner {
+        let new_node = self.alloc(|generation| Node::Inner {
             bounds: new_bounds,
             parent: current_parent,
             // Insert the children in any order (MinAreaTree.java:80-82): Java assigns
@@ -413,6 +605,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
             // `positionLocate` breaks ties toward the first child — so the port keeps it.
             first_child: to_replace,
             second_child: leaf,
+            generation,
         });
 
         // Replace the pointer from the parent to the leaf with our new node
@@ -428,7 +621,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         if root == to_replace {
             self.root = Some(new_node);
         }
-        LeafId(leaf.0)
+        LeafId::from_node(leaf)
     }
 
     /// Port of `MinAreaTree.positionLocate` (MinAreaTree.java:89-116).
@@ -447,14 +640,14 @@ impl<O: Copy + Ord> ShapeTree<O> {
     fn position_locate(&mut self, start: NodeId, leaf_bounds: RegularTileShape) -> NodeId {
         let mut node = start;
         loop {
-            let (first_child, second_child) = match self.node(node) {
+            let (first_child, second_child) = match self.resolve(node) {
                 Node::Leaf { .. } => return node,
                 Node::Inner {
                     first_child,
                     second_child,
                     ..
                 } => (*first_child, *second_child),
-                Node::Free { .. } => panic!("ShapeTree: node {} is a freed slot", node.0),
+                Node::Free { .. } => unreachable!("resolve rejects freed slots"),
             };
 
             // MinAreaTree.java:94-95.
@@ -486,6 +679,36 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
+    /// The faithful port of `ShapeTree.remove(Leaf[])` (ShapeTree.java:96-104) for the
+    /// **holed** entry arrays Java actually passes it.
+    ///
+    /// `MinAreaTree.removeLeaf`'s `if (leaf == null) return;` (MinAreaTree.java:121-123) is
+    /// load-bearing, not defensive: `ShapeSearchTree.reuseEntriesAfterCutout` writes `null`
+    /// into the middle of a trace's entry array (`ShapeSearchTree.java:327,344`) after moving
+    /// those leaves to the two new pieces, and `SearchTreeManager.remove`
+    /// (`SearchTreeManager.java:53-57`) later hands that same holed array straight to
+    /// `remove(Leaf[])`. Each `None` is skipped exactly as Java skips a `null`.
+    ///
+    /// obligation: Task 10 stores an object's tree entries as `Vec<Option<LeafId>>` and removes
+    /// them through this method; [`ShapeTree::remove`] is only the convenience form for arrays
+    /// that are known to be hole-free.
+    pub fn remove_opt(&mut self, entries: &[Option<LeafId>]) {
+        for entry in entries {
+            self.remove_leaf_opt(*entry);
+        }
+    }
+
+    /// `MinAreaTree.removeLeaf(Leaf)` including its `leaf == null` guard
+    /// (MinAreaTree.java:121-123): `None` is a no-op.
+    ///
+    /// Java calls this with a possibly-`null` element directly, e.g.
+    /// `ShapeSearchTree.changeEntries` at `ShapeSearchTree.java:143`.
+    pub fn remove_leaf_opt(&mut self, leaf: Option<LeafId>) {
+        if let Some(leaf) = leaf {
+            self.remove_leaf(leaf);
+        }
+    }
+
     /// Removes one entry from this tree (MinAreaTree.java:120-179).
     ///
     /// The sibling of the removed leaf is relinked to the grandparent and the parent inner node
@@ -505,10 +728,12 @@ impl<O: Copy + Ord> ShapeTree<O> {
     /// See `docs/java-quirks.md`.
     pub fn remove_leaf(&mut self, leaf: LeafId) {
         let leaf = leaf.node();
+        // `resolve` rejects an out-of-range index, a freed slot and a stale generation; this
+        // additionally rejects a handle that names a live *inner* node.
         assert!(
-            matches!(self.nodes.get(leaf.0), Some(Node::Leaf { .. })),
-            "ShapeTree.remove_leaf: node {} is not a live leaf (already removed?)",
-            leaf.0
+            matches!(self.resolve(leaf), Node::Leaf { .. }),
+            "ShapeTree.remove_leaf: node {} is not a leaf",
+            leaf.index()
         );
 
         // MinAreaTree.java:125-129: read the parent, then clear the leaf. The port frees the
@@ -592,7 +817,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         let mut node_stack: Vec<NodeId> = Vec::new();
         node_stack.push(root);
         while let Some(current_node) = node_stack.pop() {
-            match self.node(current_node) {
+            match self.resolve(current_node) {
                 Node::Leaf {
                     bounds,
                     object,
@@ -617,9 +842,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
                         node_stack.push(*second_child);
                     }
                 }
-                Node::Free { .. } => {
-                    panic!("ShapeTree: node {} is a freed slot", current_node.0)
-                }
+                Node::Free { .. } => unreachable!("resolve rejects freed slots"),
             }
         }
         found_overlaps
@@ -627,16 +850,16 @@ impl<O: Copy + Ord> ShapeTree<O> {
 
     /// The bounding shape stored for `leaf` (Java `Leaf.boundingShape`, ShapeTree.java:175).
     pub fn leaf_bounds(&self, leaf: LeafId) -> RegularTileShape {
-        match self.node(leaf.node()) {
+        match self.resolve(leaf.node()) {
             Node::Leaf { bounds, .. } => *bounds,
-            _ => panic!("ShapeTree: node {} is not a leaf", leaf.0),
+            _ => panic!("ShapeTree: node {} is not a leaf", leaf.index()),
         }
     }
 
     /// The `(object, shape_index)` pair stored for `leaf` (Java `Leaf.object` /
     /// `Leaf.shapeIndexInObject`, ShapeTree.java:202-205).
     pub fn leaf_entry(&self, leaf: LeafId) -> TreeEntry<O> {
-        match self.node(leaf.node()) {
+        match self.resolve(leaf.node()) {
             Node::Leaf {
                 object,
                 shape_index,
@@ -645,7 +868,39 @@ impl<O: Copy + Ord> ShapeTree<O> {
                 object: *object,
                 shape_index: *shape_index,
             },
-            _ => panic!("ShapeTree: node {} is not a leaf", leaf.0),
+            _ => panic!("ShapeTree: node {} is not a leaf", leaf.index()),
+        }
+    }
+
+    /// Rewrites a live leaf's `(object, shape_index)` key in place, leaving its bounding shape,
+    /// its parent link and the whole tree layout untouched.
+    ///
+    /// This is not a convenience: `ShapeSearchTree` mutates `leaf.object` and
+    /// `leaf.shapeIndexInObject` of leaves that stay in the tree, at
+    /// `ShapeSearchTree.java:150` (`changeEntries`), `:214-215` and `:221`
+    /// (`mergeEntriesInFront`), `:294-295` (`mergeEntriesAtEnd`), and `:325-326` and `:342-343`
+    /// (`reuseEntriesAfterCutout`). Every one of those re-keys an existing leaf — a trace piece
+    /// is handed to a different `Item`, or renumbered within the same one — without re-inserting
+    /// it, so the tree keeps the exact shape the original insertion order produced. Emulating it
+    /// with remove + insert would re-run `positionLocate` and change the tree.
+    ///
+    /// The bounding shape is deliberately *not* a parameter: none of those Java sites touches
+    /// it. Use [`ShapeTree::remove_leaf`] + [`ShapeTree::insert_leaf`] when the geometry
+    /// changes, which is what `ShapeSearchTree.changeItemShape`
+    /// (`ShapeSearchTree.java:856,867`) does.
+    ///
+    /// obligation: Task 10 uses this for the five re-keying sites listed above.
+    pub fn set_leaf_entry(&mut self, leaf: LeafId, object: O, shape_index: usize) {
+        match self.resolve_mut(leaf.node()) {
+            Node::Leaf {
+                object: stored_object,
+                shape_index: stored_index,
+                ..
+            } => {
+                *stored_object = object;
+                *stored_index = shape_index;
+            }
+            _ => panic!("ShapeTree: node {} is not a leaf", leaf.index()),
         }
     }
 
@@ -659,10 +914,10 @@ impl<O: Copy + Ord> ShapeTree<O> {
         let mut current_node = root;
         loop {
             // Go down from currentNode to the left most leaf (ShapeTree.java:75-78).
-            while let Node::Inner { first_child, .. } = self.node(current_node) {
+            while let Node::Inner { first_child, .. } = self.resolve(current_node) {
                 current_node = *first_child;
             }
-            result.push(LeafId(current_node.0));
+            result.push(LeafId::from_node(current_node));
 
             // Go up until parent.secondChild != currentNode, which means we came from
             // firstChild (ShapeTree.java:82-87).
@@ -818,7 +1073,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "not a live leaf")]
+    #[should_panic(expected = "the node was removed")]
     fn removing_a_leaf_twice_panics() {
         // Java silently empties the whole tree instead; see `remove_leaf`'s doc comment.
         let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
@@ -826,6 +1081,132 @@ mod tests {
         tree.insert_leaf(obj(2), 0, boxed(20, 0, 30, 10));
         tree.remove_leaf(a);
         tree.remove_leaf(a);
+    }
+
+    #[test]
+    fn insert_tiles_applies_the_trees_bounding_directions() {
+        // The hazard `insert_tiles` exists to remove: a 45-degree tree must store OCTAGON
+        // bounds even when the object's tree shape is a box (ShapeTree.java:51).
+        let mut diagonal = ShapeTree::new(ShapeBoundingDirections::FortyfiveDegree);
+        let tile = TileShape::Box(IntBox::from_coords(0, 0, 10, 10));
+        let entries = diagonal.insert_tiles(obj(1), std::slice::from_ref(&tile));
+        assert_eq!(entries.len(), 1);
+        let leaf = entries[0].expect("a box is always boundable");
+        assert!(matches!(
+            diagonal.leaf_bounds(leaf),
+            RegularTileShape::Octagon(_)
+        ));
+
+        let mut orthogonal = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
+        let leaf =
+            orthogonal.insert_tiles(obj(1), std::slice::from_ref(&tile))[0].expect("boundable");
+        assert!(matches!(
+            orthogonal.leaf_bounds(leaf),
+            RegularTileShape::Box(_)
+        ));
+    }
+
+    #[test]
+    fn insert_tiles_leaves_a_hole_where_java_leaves_null() {
+        // ShapeTree.java:51-55: `boundingShape == null` -> the leaf array slot stays null and
+        // the remaining shapes are still inserted.
+        let mut tree = ShapeTree::new(ShapeBoundingDirections::FortyfiveDegree);
+        let half_plane = TileShape::Simplex(Simplex::from_points(&[
+            IntPoint::new(0, 0),
+            IntPoint::new(10, 0),
+        ]));
+        assert_eq!(tree.bounding_shape(&half_plane), None);
+        let entries = tree.insert_tiles(
+            obj(1),
+            &[
+                TileShape::Box(IntBox::from_coords(0, 0, 10, 10)),
+                half_plane,
+                TileShape::Box(IntBox::from_coords(20, 20, 30, 30)),
+            ],
+        );
+        assert_eq!(entries.len(), 3);
+        assert!(entries[0].is_some());
+        assert_eq!(entries[1], None);
+        assert!(entries[2].is_some());
+        assert_eq!(tree.leaf_count(), 2);
+        // The shape indices of the leaves that were inserted keep their original positions.
+        assert_eq!(tree.leaf_entry(entries[0].unwrap()).shape_index, 0);
+        assert_eq!(tree.leaf_entry(entries[2].unwrap()).shape_index, 2);
+    }
+
+    #[test]
+    fn insert_tiles_on_no_shapes_returns_no_entries() {
+        // ShapeTree.java:33-35 — Java returns before `setSearchTreeEntries`; see the
+        // `obligation:` note on `insert_tiles`.
+        let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
+        assert!(tree.insert_tiles(obj(1), &[]).is_empty());
+        assert_eq!(tree.leaf_count(), 0);
+    }
+
+    #[test]
+    fn remove_opt_skips_holes_like_java() {
+        // MinAreaTree.java:121-123 — `reuseEntriesAfterCutout` nulls entries it moved
+        // (ShapeSearchTree.java:327,344) and `SearchTreeManager.remove` passes the holed array
+        // straight to `remove(Leaf[])`.
+        let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
+        let a = tree.insert_leaf(obj(1), 0, boxed(0, 0, 10, 10));
+        let b = tree.insert_leaf(obj(1), 1, boxed(20, 0, 30, 10));
+        let c = tree.insert_leaf(obj(1), 2, boxed(40, 0, 50, 10));
+        tree.remove_opt(&[Some(a), None, Some(c)]);
+        assert_eq!(tree.leaf_count(), 1);
+        assert_eq!(tree.leaf_entry(b).shape_index, 1);
+        // The all-`None` array is Java's fully emptied entry array: a complete no-op.
+        tree.remove_opt(&[None, None]);
+        assert_eq!(tree.leaf_count(), 1);
+        tree.remove_leaf_opt(None);
+        assert_eq!(tree.leaf_count(), 1);
+        tree.remove_leaf_opt(Some(b));
+        assert_eq!(tree.leaf_count(), 0);
+    }
+
+    #[test]
+    fn a_stale_handle_is_reported_by_is_live() {
+        let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
+        let a = tree.insert_leaf(obj(1), 0, boxed(0, 0, 10, 10));
+        let b = tree.insert_leaf(obj(2), 0, boxed(20, 0, 30, 10));
+        assert!(tree.is_live(a.node()));
+        tree.remove_leaf(a);
+        assert!(!tree.is_live(a.node()));
+        assert!(tree.is_live(b.node()));
+    }
+
+    #[test]
+    #[should_panic(expected = "stale handle")]
+    fn a_stale_leaf_id_panics_after_its_slot_is_reused() {
+        // `ShapeSearchTree.changeItemShape` (ShapeSearchTree.java:856,867) removes a leaf and
+        // immediately re-inserts at the same shape index; the LIFO free list hands back the
+        // very slot just released, so without the generation counter the stale handle would
+        // silently name the NEW leaf. Java NPEs on the nulled fields instead.
+        let mut tree = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
+        let a = tree.insert_leaf(obj(1), 0, boxed(0, 0, 10, 10));
+        tree.insert_leaf(obj(2), 0, boxed(20, 0, 30, 10));
+        let slots = tree.node_count();
+
+        // Removing `a` frees two slots (the leaf and its parent inner node); the next insert
+        // allocates two and takes both back, so `a`'s slot is occupied again and the arena has
+        // not grown. Which node lands in `a`'s exact slot depends on the LIFO order, and that
+        // is precisely the point: an index-only handle could name either.
+        tree.remove_leaf(a);
+        assert_eq!(tree.free_slot_count(), 2);
+        assert!(!tree.is_live(a.node()));
+        tree.insert_leaf(obj(3), 0, boxed(0, 0, 10, 10));
+        assert_eq!(tree.free_slot_count(), 0);
+        assert_eq!(
+            tree.node_count(),
+            slots,
+            "a's slot was reused, not abandoned"
+        );
+        assert!(
+            !tree.is_live(a.node()),
+            "and the stale handle still does not resolve"
+        );
+
+        let _ = tree.leaf_entry(a);
     }
 
     #[test]
