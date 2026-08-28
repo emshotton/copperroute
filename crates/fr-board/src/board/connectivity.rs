@@ -400,10 +400,13 @@ impl Board {
             return result;
         };
         let ctx = self.ctx();
-        let default_tree = self.default_tree_id();
         let layer = area.get_layer();
         for i in 0..item.tile_shape_count(&ctx) {
-            let Some(current_shape) = item.get_tile_shape(default_tree, i, &ctx) else {
+            // ConductionArea.java:334: `getTileShape(i)`. It lands on `ObstacleArea`'s override
+            // (ObstacleArea.java:197-205), which splits the area itself and never reads a tree
+            // cache — but going through `item_tile_shape_ref` keeps every shape read in this file
+            // on the one path that recomputes when it has to.
+            let Some(current_shape) = self.item_tile_shape_ref(id, i) else {
                 continue;
             };
             for object in self.overlapping_objects(&current_shape, Some(layer)) {
