@@ -25,9 +25,20 @@
 //!
 //! The port keeps all four (they are not pure memoisation — see the `min_width` note below) and
 //! keeps the getters `&self`, because the callers that matter hold two items at once
-//! (`a.is_obstacle(&b)`, `a.shares_layer(&b)`) and could not both be `&mut`. That means
-//! [`Cell`]/[`RefCell`]: the cache fields are the only interior mutability in this crate, and
-//! they are invalidated at exactly Java's invalidation points and nowhere else.
+//! (`a.is_obstacle(&b)`, `a.shares_layer(&b)`) and could not both be `&mut`. The fields are
+//! therefore [`OnceLock`]s, **not** `Cell`/`RefCell`: spec §6 forbids interior mutability that
+//! costs the board `Sync`, and Plan 7's `rayon` shape captures a shared `&Board`.
+//! `OnceLock<T>` is `Send + Sync` for a `Send + Sync` payload, and its `get_or_init` takes
+//! `&self`, which is exactly the "fill on read" that Java's getters do.
+//!
+//! Invalidation is the other half. `OnceLock` can only be emptied through `&mut self`
+//! (`take`/`get_mut`), and every one of Java's five invalidation points is already a mutator:
+//! `clearDerivedData`, `translateBy`, `turn90Degree`, `rotateApprox`/`changePlacementSide` and
+//! `Pin.swap`. Nothing outside those five clears a cache, in Java or here. One consequence is
+//! structural rather than merely reproduced: `precalculatedMinWidth` has **no** clearing site at
+//! all (quirk #51), so its `OnceLock` is written once per item and never emptied.
+//!
+//! `Item: Send + Sync` is pinned by the `item_is_send_and_sync` test below.
 //!
 //! not ported: the private `DrillItem.isWithinTolerance(Point, Point, int)`
 //! (DrillItem.java:307-324) — dead code. Nothing in the Java tree calls it: `getNormalContacts`
@@ -39,11 +50,11 @@
 //! it is a real Java field (`DrillItem.center`, DrillItem.java:28) that `translateBy` mutates,
 //! and for a `Pin` its `null`/non-`null` state is observable through `translateBy`.
 
-use std::cell::{Cell, RefCell};
+use std::sync::OnceLock;
 
 use fr_geometry::{
     Direction, FloatPoint, IntBox, IntPoint, Line, Point, Polyline, Shape, ShapeOps, TileShape,
-    Vector, java_min,
+    Vector, java_max, java_min,
 };
 
 use crate::ids::{ItemId, PadstackId, TreeId};
@@ -96,48 +107,38 @@ impl<'a> ItemCtx<'a> {
 /// point plus three memo fields.
 ///
 /// Embedded in [`Via`] and [`Pin`] as `drill`, the way [`ItemHeader`] is embedded as `hdr`.
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct DrillItemData {
-    /// Java `private Point center` (DrillItem.java:28). `None` is Java's `null`, which is what a
-    /// [`Pin`] starts with (Pin.java:59 passes `null` to `super`) until
+    /// Java `private Point center` (DrillItem.java:28). An empty lock is Java's `null`, which is
+    /// what a [`Pin`] starts with (Pin.java:59 passes `null` to `super`) until
     /// [`Pin::get_center`] fills it in.
-    center: RefCell<Option<Point>>,
-    /// Java `private double precalculatedMinWidth = -1` (DrillItem.java:34). `None` is Java's
-    /// "< 0, not yet calculated" sentinel.
-    min_width: Cell<Option<f64>>,
+    center: OnceLock<Point>,
+    /// Java `private double precalculatedMinWidth = -1` (DrillItem.java:34). An empty lock is
+    /// Java's "< 0, not yet calculated" sentinel.
+    min_width: OnceLock<f64>,
     /// Java `private int precalculatedFirstLayer = -1` (DrillItem.java:40).
-    first_layer: Cell<Option<usize>>,
+    first_layer: OnceLock<usize>,
     /// Java `private int precalculatedLastLayer = -1` (DrillItem.java:46).
-    last_layer: Cell<Option<usize>>,
-}
-
-impl Clone for DrillItemData {
-    fn clone(&self) -> DrillItemData {
-        DrillItemData {
-            center: RefCell::new(self.center.borrow().clone()),
-            min_width: self.min_width.clone(),
-            first_layer: self.first_layer.clone(),
-            last_layer: self.last_layer.clone(),
-        }
-    }
+    last_layer: OnceLock<usize>,
 }
 
 /// Compares only `center` — the three memo fields are derived state (see the module doc).
 impl PartialEq for DrillItemData {
     fn eq(&self, other: &DrillItemData) -> bool {
-        *self.center.borrow() == *other.center.borrow()
+        self.center.get() == other.center.get()
     }
 }
 
 impl DrillItemData {
     /// A drill item centred on `center`.
     pub fn new(center: Option<Point>) -> DrillItemData {
-        DrillItemData {
-            center: RefCell::new(center),
-            min_width: Cell::new(None),
-            first_layer: Cell::new(None),
-            last_layer: Cell::new(None),
+        let data = DrillItemData::default();
+        if let Some(center) = center {
+            data.center
+                .set(center)
+                .expect("a fresh OnceLock is always empty");
         }
+        data
     }
 
     /// Port of `DrillItem.getCenter` (DrillItem.java:228-231): the raw field, which is `None`
@@ -145,13 +146,29 @@ impl DrillItemData {
     // renamed: `DrillItem.getCenter` -> `DrillItemData::raw_center`, because `Pin` overrides
     // `getCenter` with a lazy calculation and both are needed (Java reaches this one through
     // `super.getCenter()`, Pin.java:93).
-    pub fn raw_center(&self) -> Option<Point> {
-        self.center.borrow().clone()
+    pub fn raw_center(&self) -> Option<&Point> {
+        self.center.get()
     }
 
-    /// Port of the protected `DrillItem.setCenter` (DrillItem.java:233-235).
-    pub fn set_center(&self, center: Option<Point>) {
-        *self.center.borrow_mut() = center;
+    /// The half of the protected `DrillItem.setCenter` (DrillItem.java:233-235) that *fills* the
+    /// field: `Pin.getCenter`'s lazy calculation (Pin.java:117).
+    fn init_center(&self, calculate: impl FnOnce() -> Point) -> &Point {
+        self.center.get_or_init(calculate)
+    }
+
+    /// The half of `DrillItem.setCenter` that *empties* it: `setCenter(null)`, which only
+    /// `Pin.turn90Degree`/`rotateApprox`/`changePlacementSide` do (Pin.java:369, 375, 381).
+    fn clear_center(&mut self) {
+        self.center.take();
+    }
+
+    /// The `if (center != null) center = f(center)` shape shared by `DrillItem.translateBy`,
+    /// `turn90Degree`, `rotateApprox` and `changePlacementSide` (DrillItem.java:62-93).
+    fn map_center(&mut self, transform: impl FnOnce(&Point) -> Point) {
+        if let Some(center) = self.center.get_mut() {
+            let moved = transform(center);
+            *center = moved;
+        }
     }
 
     /// Port of `DrillItem.clearDerivedData` (DrillItem.java:390-395): drop the two layer memos.
@@ -159,10 +176,11 @@ impl DrillItemData {
     // Java bug: `precalculatedMinWidth` is **not** reset here, although it is derived from the
     // same padstack the layer memos are. `Via.changePlacementSide` (Via.java:189-201) swaps in
     // a differently shaped padstack and then calls this, so a via keeps the minimum width of
-    // its old padstack for the rest of its life. Reproduced; see docs/java-quirks.md.
-    fn clear_derived_data(&self) {
-        self.first_layer.set(None);
-        self.last_layer.set(None);
+    // its old padstack for the rest of its life. Reproduced — and structurally so: `min_width`
+    // has no clearing site anywhere. See docs/java-quirks.md.
+    fn clear_derived_data(&mut self) {
+        self.first_layer.take();
+        self.last_layer.take();
     }
 }
 
@@ -209,38 +227,32 @@ fn layer_index(value: i32, what: &str) -> usize {
 
 /// Port of `DrillItem.firstLayer` (DrillItem.java:161-172).
 fn first_layer_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
-    if let Some(cached) = item.drill().first_layer.get() {
-        return cached;
-    }
-    let padstack = item
-        .padstack_of(ctx)
-        .expect("DrillItem.firstLayer: Java NPEs on a null padstack (DrillItem.java:164-166)");
-    let value = if item.placed_on_front(ctx) || padstack.placed_absolute {
-        padstack.from_layer()
-    } else {
-        padstack.board_layer_count() as i32 - padstack.to_layer() - 1
-    };
-    let value = layer_index(value, "DrillItem.firstLayer");
-    item.drill().first_layer.set(Some(value));
-    value
+    *item.drill().first_layer.get_or_init(|| {
+        let padstack = item
+            .padstack_of(ctx)
+            .expect("DrillItem.firstLayer: Java NPEs on a null padstack (DrillItem.java:164-166)");
+        let value = if item.placed_on_front(ctx) || padstack.placed_absolute {
+            padstack.from_layer()
+        } else {
+            padstack.board_layer_count() as i32 - padstack.to_layer() - 1
+        };
+        layer_index(value, "DrillItem.firstLayer")
+    })
 }
 
 /// Port of `DrillItem.lastLayer` (DrillItem.java:174-186).
 fn last_layer_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
-    if let Some(cached) = item.drill().last_layer.get() {
-        return cached;
-    }
-    let padstack = item
-        .padstack_of(ctx)
-        .expect("DrillItem.lastLayer: Java NPEs on a null padstack (DrillItem.java:177-179)");
-    let value = if item.placed_on_front(ctx) || padstack.placed_absolute {
-        padstack.to_layer()
-    } else {
-        padstack.board_layer_count() as i32 - padstack.from_layer() - 1
-    };
-    let value = layer_index(value, "DrillItem.lastLayer");
-    item.drill().last_layer.set(Some(value));
-    value
+    *item.drill().last_layer.get_or_init(|| {
+        let padstack = item
+            .padstack_of(ctx)
+            .expect("DrillItem.lastLayer: Java NPEs on a null padstack (DrillItem.java:177-179)");
+        let value = if item.placed_on_front(ctx) || padstack.placed_absolute {
+            padstack.to_layer()
+        } else {
+            padstack.board_layer_count() as i32 - padstack.from_layer() - 1
+        };
+        layer_index(value, "DrillItem.lastLayer")
+    })
 }
 
 /// Port of `DrillItem.tileShapeCount` (DrillItem.java:202-208): the padstack's own layer span,
@@ -287,24 +299,22 @@ fn smallest_radius_of<D: DrillItemBase>(item: &D, center: &Point, ctx: &ItemCtx<
 /// true for an item that is on a board, which is the only way this method is reached, so the
 /// port always applies the test.
 fn min_width_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> f64 {
-    if let Some(cached) = item.drill().min_width.get() {
-        return cached;
-    }
-    let mut min_width = f64::from(i32::MAX);
-    let begin_layer = first_layer_of(item, ctx);
-    let end_layer = last_layer_of(item, ctx);
-    for current_layer in begin_layer..=end_layer {
-        if !ctx.rules.layer_structure().layers[current_layer].is_signal {
-            continue;
+    *item.drill().min_width.get_or_init(|| {
+        let mut min_width = f64::from(i32::MAX);
+        let begin_layer = first_layer_of(item, ctx);
+        let end_layer = last_layer_of(item, ctx);
+        for current_layer in begin_layer..=end_layer {
+            if !ctx.rules.layer_structure().layers[current_layer].is_signal {
+                continue;
+            }
+            if let Some(shape) = shape_on_layer_of(item, current_layer, ctx) {
+                let bounding_box = shape.bounding_box();
+                min_width = java_min(min_width, f64::from(bounding_box.width()));
+                min_width = java_min(min_width, f64::from(bounding_box.height()));
+            }
         }
-        if let Some(shape) = shape_on_layer_of(item, current_layer, ctx) {
-            let bounding_box = shape.bounding_box();
-            min_width = java_min(min_width, f64::from(bounding_box.width()));
-            min_width = java_min(min_width, f64::from(bounding_box.height()));
-        }
-    }
-    item.drill().min_width.set(Some(min_width));
-    min_width
+        min_width
+    })
 }
 
 /// Port of `DrillItem.getShapeOnLayer` (DrillItem.java:262-271). Java's out-of-range branch
@@ -360,7 +370,7 @@ pub struct Via {
     /// Java `public int escapeViaSmdLayer = -1` (Via.java:46).
     pub escape_via_smd_layer: i32,
     /// Java `private transient Shape[] precalculatedShapes` (Via.java:49).
-    shapes: RefCell<Option<Vec<Option<Shape>>>>,
+    shapes: OnceLock<Vec<Option<Shape>>>,
 }
 
 /// Skips `shapes`, which is pure memoisation (see the module doc).
@@ -407,7 +417,7 @@ impl Via {
             // Via.java:40,46: the two escape-via fields default to `false` / `-1`.
             is_escape_via: false,
             escape_via_smd_layer: -1,
-            shapes: RefCell::new(None),
+            shapes: OnceLock::new(),
         }
     }
 
@@ -431,6 +441,7 @@ impl Via {
         self.drill
             .raw_center()
             .expect("a Via is always constructed with a centre (Via.java:65)")
+            .clone()
     }
 
     /// The via's padstack id — the port's stand-in for Java's `Padstack` reference.
@@ -466,32 +477,25 @@ impl Via {
     // `getShapeOnLayer`/`getTraceExitRestrictions` range-check the layer first. See
     // docs/java-quirks.md.
     pub fn get_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
+        // Via.java:116-119: a null padstack warns and returns `null` without touching the
+        // cache, so the lookup stays ahead of `get_or_init`.
         let padstack = self.get_padstack(ctx)?;
-        if self.shapes.borrow().is_none() {
+        let shapes = self.shapes.get_or_init(|| {
             let count = layer_index(
                 padstack.to_layer() - padstack.from_layer() + 1,
                 "Via.getShape",
             );
             let translate_vector = self.get_center().difference_by(&Point::ZERO);
             let first_layer = first_layer_of(self, ctx) as i32;
-            let mut shapes = Vec::with_capacity(count);
-            for i in 0..count {
-                let padstack_layer = i as i32 + first_layer;
-                shapes.push(
+            (0..count)
+                .map(|i| {
                     padstack
-                        .get_shape(padstack_layer)
-                        .map(|shape| shape.translate_by(&translate_vector)),
-                );
-            }
-            *self.shapes.borrow_mut() = Some(shapes);
-        }
-        self.shapes
-            .borrow()
-            .as_ref()
-            .expect("just filled")
-            .get(index)
-            .cloned()
-            .flatten()
+                        .get_shape(i as i32 + first_layer)
+                        .map(|shape| shape.translate_by(&translate_vector))
+                })
+                .collect()
+        });
+        shapes.get(index).cloned().flatten()
     }
 
     /// Port of `DrillItem.getShapeOnLayer` (DrillItem.java:262-271).
@@ -503,6 +507,10 @@ impl Via {
     ///
     /// `tree` replaces Java's implicit `board.searchTreeManager.getDefaultTree()`: Java's
     /// `getTileShape(int)` (Item.java:194-201) resolves it from the board.
+    // added in Task 10: the cold-cache half of `getTileShapeOnLayer` — Java reaches
+    // `Item.getTileShape(int)` -> `Item.getTreeShape(tree, index)` (Item.java:212-226), which on
+    // a miss calls `clearDerivedData()` and recomputes through `calculateTreeShapes(searchTree)`
+    // before giving up. This reads the cache only, exactly as `Item::get_tree_shape` does.
     pub fn get_tile_shape_on_layer(
         &self,
         tree: TreeId,
@@ -512,7 +520,12 @@ impl Via {
         self.get_tree_shape_on_layer(tree, layer, ctx)
     }
 
-    /// Port of `DrillItem.getTreeShapeOnLayer` (DrillItem.java:240-249).
+    /// Port of `DrillItem.getTreeShapeOnLayer` (DrillItem.java:240-249). Java's out-of-range
+    /// branch warns and returns `null`.
+    // added in Task 10: `getTreeShapeOnLayer`'s cold-cache half — `Item.getTreeShape`
+    // (Item.java:212-226) calls `clearDerivedData()` and recomputes through
+    // `calculateTreeShapes(searchTree)` when nothing is cached for `tree`; this reads the cache
+    // only, like `Item::get_tree_shape`.
     pub fn get_tree_shape_on_layer(
         &self,
         tree: TreeId,
@@ -575,37 +588,26 @@ impl Via {
 
     /// Port of `DrillItem.translateBy` (DrillItem.java:61-68).
     pub fn translate_by(&mut self, vector: &Vector) {
-        let translated = self.drill.raw_center().map(|c| c.translate_by(vector));
-        if translated.is_some() {
-            self.drill.set_center(translated);
-        }
+        self.drill.map_center(|c| c.translate_by(vector));
         self.clear_derived_data();
     }
 
     /// Port of `DrillItem.turn90Degree` (DrillItem.java:70-76).
     pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
-        let turned = self
-            .drill
-            .raw_center()
-            .map(|c| c.turn_90_degree(factor, &Point::Int(*pole)));
-        if turned.is_some() {
-            self.drill.set_center(turned);
-        }
+        self.drill
+            .map_center(|c| c.turn_90_degree(factor, &Point::Int(*pole)));
         self.clear_derived_data();
     }
 
     /// Port of `DrillItem.rotateApprox` (DrillItem.java:78-85).
     pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
-        let rotated = self.drill.raw_center().map(|c| {
+        self.drill.map_center(|c| {
             Point::Int(
                 c.to_float()
                     .rotate(angle_in_degree.to_radians(), pole)
                     .round(),
             )
         });
-        if rotated.is_some() {
-            self.drill.set_center(rotated);
-        }
         self.clear_derived_data();
     }
 
@@ -621,13 +623,8 @@ impl Via {
         };
         self.padstack = new_padstack;
         // DrillItem.changePlacementSide (DrillItem.java:87-93).
-        let mirrored = self
-            .drill
-            .raw_center()
-            .map(|c| c.mirror_vertical(&Point::Int(*pole)));
-        if mirrored.is_some() {
-            self.drill.set_center(mirrored);
-        }
+        self.drill
+            .map_center(|c| c.mirror_vertical(&Point::Int(*pole)));
         self.clear_derived_data();
         // Via.java:200 calls `clearDerivedData()` a second time; harmless and reproduced by the
         // single call above.
@@ -641,7 +638,7 @@ impl Via {
     pub fn clear_derived_data(&mut self) {
         self.hdr.clear_derived_data();
         self.drill.clear_derived_data();
-        *self.shapes.borrow_mut() = None;
+        self.shapes.take();
         self.clear_autoroute_drill_info();
     }
 
@@ -703,7 +700,7 @@ pub struct Pin {
     /// [`Pin::swap`] would have to keep normalising. [`Pin::get_changed_to`] resolves it.
     changed_to: Option<ItemId>,
     /// Java `private transient Shape[] precalculatedShapes` (Pin.java:45).
-    shapes: RefCell<Option<Vec<Option<Shape>>>>,
+    shapes: OnceLock<Vec<Option<Shape>>>,
 }
 
 /// Skips `shapes`, which is pure memoisation (see the module doc).
@@ -744,7 +741,7 @@ impl Pin {
             drill: DrillItemData::new(None),
             pin_index,
             changed_to: None,
-            shapes: RefCell::new(None),
+            shapes: OnceLock::new(),
         }
     }
 
@@ -841,36 +838,36 @@ impl Pin {
     /// [`Pin::relative_location`], corrected to the centre of gravity of the first non-`null`
     /// pad shape when that point is not strictly inside it. Memoised into `DrillItem.center`.
     pub fn get_center(&self, ctx: &ItemCtx<'_>) -> Point {
-        if let Some(center) = self.drill.raw_center() {
-            return center;
-        }
-        let component = self
-            .component(ctx)
-            .expect("Pin.getCenter: Java NPEs on a missing component (Pin.java:97-98)");
-        let location = component
-            .get_location()
-            .expect("Pin.getCenter: Java NPEs on an unplaced component (Pin.java:98)");
-        let mut pin_center = location.translate_by(&self.relative_location(ctx));
+        self.drill
+            .init_center(|| {
+                let component = self
+                    .component(ctx)
+                    .expect("Pin.getCenter: Java NPEs on a missing component (Pin.java:97-98)");
+                let location = component
+                    .get_location()
+                    .expect("Pin.getCenter: Java NPEs on an unplaced component (Pin.java:98)");
+                let mut pin_center = location.translate_by(&self.relative_location(ctx));
 
-        // Pin.java:100-116: check that the pin centre is inside the pin shape, correct it if not.
-        let padstack = self
-            .get_padstack(ctx)
-            .expect("Pin.getCenter: Java NPEs on a null padstack (Pin.java:102-104)");
-        let count = layer_index(
-            padstack.to_layer() - padstack.from_layer() + 1,
-            "Pin.getCenter",
-        );
-        let current_shape = (0..count).find_map(|i| self.get_shape(i, ctx));
-        match current_shape {
-            // Pin.java:112-113 only warns; the centre stays as calculated.
-            None => {}
-            Some(shape) if !shape.contains_inside(&pin_center) => {
-                pin_center = Point::Int(shape.centre_of_gravity().round());
-            }
-            Some(_) => {}
-        }
-        self.drill.set_center(Some(pin_center.clone()));
-        pin_center
+                // Pin.java:100-116: check that the pin centre is inside the pin shape, and
+                // correct it if not.
+                let padstack = self
+                    .get_padstack(ctx)
+                    .expect("Pin.getCenter: Java NPEs on a null padstack (Pin.java:102-104)");
+                let count = layer_index(
+                    padstack.to_layer() - padstack.from_layer() + 1,
+                    "Pin.getCenter",
+                );
+                match (0..count).find_map(|i| self.get_shape(i, ctx)) {
+                    // Pin.java:112-113 only warns; the centre stays as calculated.
+                    None => {}
+                    Some(shape) if !shape.contains_inside(&pin_center) => {
+                        pin_center = Point::Int(shape.centre_of_gravity().round());
+                    }
+                    Some(_) => {}
+                }
+                pin_center
+            })
+            .clone()
     }
 
     /// Port of the package-private `Pin.getPadstackLayer` (Pin.java:247-258): the padstack layer
@@ -917,7 +914,24 @@ impl Pin {
     // cache implies the walk already succeeded — a pin's padstack is fixed by its package, and
     // every mutator that could invalidate it drops the cache too.
     pub fn get_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
-        if self.shapes.borrow().is_none() {
+        if self.shapes.get().is_none() {
+            let shapes = self.calculate_shapes(ctx)?;
+            // A concurrent reader may have won the race; either array is the same value.
+            let _ = self.shapes.set(shapes);
+        }
+        self.shapes
+            .get()
+            .expect("just set")
+            .get(index)
+            .cloned()
+            .flatten()
+    }
+
+    /// The body of `Pin.getShape`'s cache fill (Pin.java:167-243), split out so that its three
+    /// `return null` branches can be `?` — `OnceLock::get_or_init` has no way to bail out, and
+    /// bailing out *without* installing the cache is the point (quirk #53).
+    fn calculate_shapes(&self, ctx: &ItemCtx<'_>) -> Option<Vec<Option<Shape>>> {
+        {
             let padstack = self
                 .get_padstack(ctx)
                 .expect("Pin.getShape: Java NPEs on a null padstack (Pin.java:166,170)");
@@ -986,15 +1000,8 @@ impl Pin {
                 // Pin.java:240-241.
                 shapes.push(Some(translated_shape.translate_by(&component_translation)));
             }
-            *self.shapes.borrow_mut() = Some(shapes);
+            Some(shapes)
         }
-        self.shapes
-            .borrow()
-            .as_ref()
-            .expect("just filled")
-            .get(index)
-            .cloned()
-            .flatten()
     }
 
     /// Port of `DrillItem.getShapeOnLayer` (DrillItem.java:262-271).
@@ -1004,6 +1011,8 @@ impl Pin {
 
     /// Port of `DrillItem.getTileShapeOnLayer` (DrillItem.java:251-260); see
     /// [`Via::get_tile_shape_on_layer`] for what `tree` replaces.
+    // added in Task 10: the same cold-cache recompute as `Via::get_tile_shape_on_layer`
+    // (Item.java:212-226).
     pub fn get_tile_shape_on_layer(
         &self,
         tree: TreeId,
@@ -1013,7 +1022,12 @@ impl Pin {
         self.get_tree_shape_on_layer(tree, layer, ctx)
     }
 
-    /// Port of `DrillItem.getTreeShapeOnLayer` (DrillItem.java:240-249).
+    /// Port of `DrillItem.getTreeShapeOnLayer` (DrillItem.java:240-249). Java's out-of-range
+    /// branch warns and returns `null`.
+    // added in Task 10: `getTreeShapeOnLayer`'s cold-cache half — `Item.getTreeShape`
+    // (Item.java:212-226) calls `clearDerivedData()` and recomputes through
+    // `calculateTreeShapes(searchTree)` when nothing is cached for `tree`; this reads the cache
+    // only, like `Item::get_tree_shape`.
     pub fn get_tree_shape_on_layer(
         &self,
         tree: TreeId,
@@ -1098,7 +1112,8 @@ impl Pin {
     /// Port of `Pin.getTraceNeckdownHalfwidth` (Pin.java:507-514): `max(0.5 * minWidth - 1, 1)`,
     /// truncated towards zero by Java's `(int)` cast.
     pub fn get_trace_neckdown_halfwidth(&self, layer: usize, ctx: &ItemCtx<'_>) -> i32 {
-        let result = (0.5 * self.get_min_width(layer, ctx) - 1.0).max(1.0);
+        // `Math.max` on doubles, not `f64::max`: they disagree on NaN (plan-1 ruling #10).
+        let result = java_max(0.5 * self.get_min_width(layer, ctx) - 1.0, 1.0);
         result as i32
     }
 
@@ -1419,19 +1434,19 @@ impl Pin {
     /// Port of `Pin.turn90Degree` (Pin.java:367-371), which — unlike `DrillItem`'s — throws the
     /// centre away instead of turning it, because it is recomputed from the component.
     pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
-        self.drill.set_center(None);
+        self.drill.clear_center();
         self.clear_derived_data();
     }
 
     /// Port of `Pin.rotateApprox` (Pin.java:373-377).
     pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
-        self.drill.set_center(None);
+        self.drill.clear_center();
         self.clear_derived_data();
     }
 
     /// Port of `Pin.changePlacementSide` (Pin.java:379-383).
     pub fn change_placement_side(&mut self, _pole: &IntPoint) {
-        self.drill.set_center(None);
+        self.drill.clear_center();
         self.clear_derived_data();
     }
 
@@ -1439,10 +1454,7 @@ impl Pin {
     /// a pin whose centre has already been calculated has it translated, and a pin whose centre
     /// is still `null` keeps it `null` and recomputes it from the (also translated) component.
     pub fn translate_by(&mut self, vector: &Vector) {
-        let translated = self.drill.raw_center().map(|c| c.translate_by(vector));
-        if translated.is_some() {
-            self.drill.set_center(translated);
-        }
+        self.drill.map_center(|c| c.translate_by(vector));
         self.clear_derived_data();
     }
 
@@ -1451,7 +1463,7 @@ impl Pin {
     pub fn clear_derived_data(&mut self) {
         self.hdr.clear_derived_data();
         self.drill.clear_derived_data();
-        *self.shapes.borrow_mut() = None;
+        self.shapes.take();
     }
 }
 
@@ -1493,4 +1505,22 @@ pub struct TraceExitRestriction {
     pub direction: Direction,
     /// Java `public final double minLength` (Pin.java:698).
     pub min_length: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::items::Item;
+
+    /// The reason the four memo fields are [`OnceLock`]s and not `Cell`/`RefCell`: spec §6
+    /// forbids interior mutability that costs the board `Sync`, and Plan 7's `rayon` shape
+    /// captures a shared `&Board`. A `Cell`/`RefCell` here would silently break both.
+    #[test]
+    fn item_is_send_and_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<DrillItemData>();
+        assert_send_sync::<Via>();
+        assert_send_sync::<Pin>();
+        assert_send_sync::<Item>();
+    }
 }

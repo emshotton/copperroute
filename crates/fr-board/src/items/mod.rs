@@ -1245,7 +1245,7 @@ impl Connectable for PolylineTrace {
         _ctx: &ItemCtx<'_>,
     ) -> Option<TileShape> {
         unimplemented!(
-            "PolylineTrace::get_trace_connection_shape needs the `lines` field, added in Task 7 \
+            "PolylineTrace::get_trace_connection_shape needs the `lines` field, added in Task 8 \
              (PolylineTrace.java:917-924)"
         )
     }
