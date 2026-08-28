@@ -23,7 +23,7 @@ use crate::parser::{header, library, network, part_library, placement, structure
 /// Plan ruling 4 (Task 10) adds `normalize_time_limit`, the `StopCheck`-backed limit on
 /// `Board::normalize_all_traces_checked` that `Wiring.readScope`'s final
 /// `board.normalizeAllTraces()` call (Wiring.java:346) runs under.
-// added in Plan 3 Task 10: normalize_time_limit (plan ruling 4)
+// added in Plan 3: normalize_time_limit (Task 10, plan ruling 4)
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DsnReadOptions {}
 
@@ -66,7 +66,14 @@ pub struct ReadScopeParameter<'a> {
     pub placement_list: Vec<ComponentPlacement>,
     /// `ReadScopeParameter.constants` (`Collection<String[]>`).
     pub constants: Vec<Vec<String>>,
-    /// `ReadScopeParameter.viaPadstackNames`.
+    /// `ReadScopeParameter.viaPadstackNames` (ReadScopeParameter.java:56). Java has **no field
+    /// initialiser** here — this is `null` until `Structure.readScope` assigns it
+    /// (`Structure.java:980`), not merely empty. `Vec::new()` is the default here (see `new`
+    /// below) rather than `Option<Vec<String>>`, on the assumption that no reachable caller
+    /// distinguishes "never read" from "read as empty"; whichever task ports `Structure`'s
+    /// via-padstack reading (and any `Library`/`Wiring` code that consults this field before
+    /// `Structure` runs) should double-check that assumption against Java's `null` checks, if
+    /// any, before relying on it.
     pub via_padstack_names: Vec<String>,
     /// `ReadScopeParameter.stringQuote`.
     pub string_quote: String,
@@ -76,6 +83,10 @@ pub struct ReadScopeParameter<'a> {
     pub host_version: Option<String>,
     /// `ReadScopeParameter.dsnFileGeneratedByHost`.
     pub dsn_file_generated_by_host: bool,
+    /// `ReadScopeParameter.writeResolution` (ReadScopeParameter.java:77,
+    /// `Communication.SpecctraParserInfo.WriteResolution`) — filled by `Parser.readScope`
+    /// (Parser.java:213). Added in Plan 3 Task 5, which is the task that ports its only writer.
+    pub write_resolution: Option<header::WriteResolution>,
     /// `ReadScopeParameter.boardOutlineOk`.
     pub board_outline_ok: bool,
     /// `ReadScopeParameter.coordinateTransform`.
@@ -116,6 +127,7 @@ impl<'a> ReadScopeParameter<'a> {
             host_cad: None,
             host_version: None,
             dsn_file_generated_by_host: true,
+            write_resolution: None,
             board_outline_ok: true,
             coordinate_transform: None,
             layer_structure: None,
@@ -173,7 +185,7 @@ impl<'a> WriteScopeParameter<'a> {
     }
 }
 
-/// `ScopeKeyword.skipScope` (ScopeKeyword.java:20-38): consumes tokens until the bracket that
+/// `ScopeKeyword.skipScope` (ScopeKeyword.java:21-42): consumes tokens until the bracket that
 /// matches the scope's own opening bracket (the caller has already consumed `(` and the scope
 /// keyword; `open_bracket_count` therefore starts at 1, exactly as Java's does).
 ///
@@ -181,21 +193,27 @@ impl<'a> WriteScopeParameter<'a> {
 /// first — this is load-bearing (see the lexer docs on `NAME`: a bare number like `123abc` only
 /// lexes as one `Str` token in that state) and easy to lose in a refactor.
 ///
-/// Java returns `false` (after a dropped `FRLogger.error`/`.warn`) on end-of-file or a scan
-/// error, and every one of its callers (`ScopeKeyword.readScope`, `DsnFile.readOnOffScope`, …)
-/// discards that boolean. The port instead surfaces premature end-of-file as
-/// [`DsnError::UnexpectedEof`] — a deliberate, documented divergence from Java's silent
-/// swallow-and-continue, on the view that a caller should see this rather than have it silently
-/// absorbed into an apparently-successful read of a truncated file.
-pub fn skip_scope(scanner: &mut DsnScanner) -> Result<(), DsnError> {
+/// **Java-wins ruling (fix round 1):** Java returns `false` — not an exception — on end-of-file
+/// (ScopeKeyword.java:32-33: `if (currentToken == null) { return false; }`), and every caller
+/// (`ScopeKeyword.readScope`, `DsnFile.readOnOffScope`, …) discards that boolean and keeps going;
+/// the *next* level up hits the same end-of-file on its own next read and returns `true`
+/// (success) from there instead (ScopeKeyword.java:55-58). The net effect: a DSN file truncated
+/// inside an unrecognised/skipped scope is read as a **successful** parse of whatever came
+/// before the truncation, not a failure — see `docs/java-quirks.md` ("a DSN file truncated
+/// inside an unknown scope reads as `Success` with a partial board"). This port mirrors that
+/// exactly: `Ok(false)` on end-of-file, matching Java's `false`. Only a genuine scanner error
+/// (`DsnScanner::next_token`'s `Err`) propagates as `Err` — Java's `catch (Exception e)`
+/// (ScopeKeyword.java:28-31) swallows that case too and returns `false`, which this port does
+/// *not* reproduce (the earlier revision of this function also turned end-of-file into an
+/// `Err`; that was wrong per this ruling and has been reverted).
+pub fn skip_scope(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
     let mut open_bracket_count: i32 = 1;
     while open_bracket_count > 0 {
         scanner.yybegin(LexicalState::Name);
         let token = scanner.next_token()?;
         let Some(token) = token else {
-            return Err(DsnError::UnexpectedEof {
-                scope: scanner.scope_identifier().to_string(),
-            });
+            // ScopeKeyword.java:32-33 — end of file.
+            return Ok(false);
         };
         match token {
             Token::Open => open_bracket_count += 1,
@@ -203,7 +221,7 @@ pub fn skip_scope(scanner: &mut DsnScanner) -> Result<(), DsnError> {
             _ => {}
         }
     }
-    Ok(())
+    Ok(true)
 }
 
 /// The generic `ScopeKeyword.readScope` loop (ScopeKeyword.java:46-73) — used directly for
@@ -234,9 +252,16 @@ fn read_scope_generic(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> 
                             return Ok(false);
                         }
                     }
-                    None => skip_scope(&mut p.scanner)?,
+                    // Java discards `skipScope`'s return value (ScopeKeyword.java:75); so
+                    // does this port, per `skip_scope`'s docs — only a genuine scanner error
+                    // propagates.
+                    None => {
+                        skip_scope(&mut p.scanner)?;
+                    }
                 },
-                _ => skip_scope(&mut p.scanner)?,
+                _ => {
+                    skip_scope(&mut p.scanner)?;
+                }
             }
         }
         prev_was_open = is_open;
@@ -248,20 +273,25 @@ fn read_scope_generic(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> 
 /// (ScopeKeyword.java:46, overridden per subclass by later Plan 3 tasks). `scope` names which
 /// scope's body comes next.
 ///
-/// Every variant except [`ScopeKeyword::Pcb`] has a same-named Java scope class with its own
-/// `readScope` override; those are one stub function per module for now (`// added in Plan 3:`
-/// markers on each), replaced with real bodies as later tasks land. `Pcb` has no Java subclass,
-/// so it is [`read_scope_generic`] itself.
+/// Every variant except [`ScopeKeyword::Pcb`] and [`ScopeKeyword::Placement`] has a same-named
+/// Java scope class with its own `readScope` override; those are one stub function per module
+/// for now (`// added in Plan 3:` markers on each), replaced with real bodies as later tasks
+/// land. `Pcb` has no Java subclass at all (`Keyword.java:66`); `Placement` has a class
+/// (`Placement.java`) but it contains only a constructor and `writeScope` — no `readScope`
+/// override (fix round 1 — confirmed by reading the file). Both therefore use the inherited
+/// generic loop, [`read_scope_generic`], directly: the nested `(component ...)` scopes inside a
+/// `placement` scope are still read correctly, because it is `Component`'s own override
+/// (`Component.java:367-379`) that the generic loop's per-token dispatch finds, not anything
+/// `Placement`-specific.
 pub fn read_scope(scope: ScopeKeyword, p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     match scope {
-        ScopeKeyword::Pcb => read_scope_generic(p),
+        ScopeKeyword::Pcb | ScopeKeyword::Placement => read_scope_generic(p),
         ScopeKeyword::Structure => structure::read_structure_scope(p),
         ScopeKeyword::Plane => structure::read_plane_scope(p),
         ScopeKeyword::Network => network::read_network_scope(p),
         ScopeKeyword::Wiring => wiring::read_wiring_scope(p),
         ScopeKeyword::Library => library::read_library_scope(p),
         ScopeKeyword::PartLibrary => part_library::read_part_library_scope(p),
-        ScopeKeyword::Placement => placement::read_placement_scope(p),
         ScopeKeyword::Component => placement::read_component_scope(p),
         ScopeKeyword::Parser => header::read_parser_scope(p),
         ScopeKeyword::Resolution => header::read_resolution_scope(p),

@@ -4,13 +4,10 @@
 use crate::error::DsnError;
 use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
 
-/// `io/specctra/parser/LayerStructure.java` (the DSN-parser's own layer structure, distinct from
-/// `fr_board::LayerStructure`): the ordered list of `Layer`s read from a `structure` scope,
-/// before it is turned into a board layer structure.
-///
-/// Placeholder — body (`layers: Vec<Layer>`, `getNo`) arrives with `Structure.readScope`.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct DsnLayerStructure;
+// `LayerStructure.java` and `Layer.java` live in `parser/geometry.rs` (Plan 3 Task 5, whose file
+// list puts them there next to the shapes that carry a `Layer`); re-exported here because this
+// is the scope that reads them and the name is part of the `structure` scope's vocabulary.
+pub use crate::parser::geometry::{DsnLayer, DsnLayerStructure};
 
 /// `io/specctra/parser/ReadScopeParameter.java`'s nested `PlaneInfo` (2.3.0) / `ReadScopeParameter.PlaneInfo`
 /// (HEAD): a plane read from a `plane` scope, held until the library scope has been read fully

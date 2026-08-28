@@ -22,6 +22,11 @@ pub use format::{
 };
 pub use keyword::{Keyword, ScopeKeyword};
 pub use lexer::{DsnScanner, LexicalState, Token};
+pub use parser::geometry::{
+    DsnCircle, DsnLayer, DsnLayerStructure, DsnPolygon, DsnPolygonPath, DsnPolylinePath,
+    DsnRectangle, DsnShape, ReadAreaScopeResult,
+};
+pub use parser::header::{SpecctraParserInfo, WriteResolution};
 pub use parser::scope_parameter::{
     DsnReadOptions, ReadScopeParameter, WriteScopeParameter, read_scope, skip_scope,
 };
@@ -29,10 +34,12 @@ pub use parser::scope_parameter::{
 /// Re-exports every public type of the crate, for `use fr_dsn::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        BoardMetadata, BoardReadResult, CoordinateTransform, DSN_RESERVED, DsnError,
-        DsnReadOptions, DsnScanner, FileFormat, IdentifierType, IndentFileWriter, Keyword,
-        LexicalState, ReadScopeParameter, SES_RESERVED, ScopeKeyword, Token, WriteScopeParameter,
-        format_placement_rotation, java_double_to_string, java_float_to_string, java_rint,
-        java_round, java_round_to_int, read_scope, skip_scope,
+        BoardMetadata, BoardReadResult, CoordinateTransform, DSN_RESERVED, DsnCircle, DsnError,
+        DsnLayer, DsnLayerStructure, DsnPolygon, DsnPolygonPath, DsnPolylinePath, DsnReadOptions,
+        DsnRectangle, DsnScanner, DsnShape, FileFormat, IdentifierType, IndentFileWriter, Keyword,
+        LexicalState, ReadAreaScopeResult, ReadScopeParameter, SES_RESERVED, ScopeKeyword,
+        SpecctraParserInfo, Token, WriteResolution, WriteScopeParameter, format_placement_rotation,
+        java_double_to_string, java_float_to_string, java_rint, java_round, java_round_to_int,
+        read_scope, skip_scope,
     };
 }

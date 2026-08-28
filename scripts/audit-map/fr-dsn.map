@@ -16,3 +16,16 @@ DsnFile                  parser/dsn_file.rs
 ReadScopeParameter       parser/scope_parameter.rs
 WriteScopeParameter      parser/scope_parameter.rs
 BoardParserCallback      parser/scope_parameter.rs
+Shape                    parser/geometry.rs
+Rectangle                parser/geometry.rs
+Circle                   parser/geometry.rs
+Polygon                  parser/geometry.rs
+Path                     parser/geometry.rs
+PolygonPath              parser/geometry.rs
+PolylinePath             parser/geometry.rs
+Layer                    parser/geometry.rs
+LayerStructure           parser/geometry.rs
+Parser                   parser/header.rs
+Resolution               parser/header.rs
+Unit                     parser/header.rs
+CoordinateTransform      coordinate_transform.rs
