@@ -128,6 +128,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-dsn"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-geometry",
+ "parity",
+ "thiserror",
+]
+
+[[package]]
 name = "fr-geometry"
 version = "0.1.0"
 dependencies = [

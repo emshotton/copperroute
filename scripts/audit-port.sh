@@ -13,18 +13,41 @@
 # record an obligation rather than waive the check: `grep -rn "added in Task"` lists everything
 # still owed.
 #
-# Usage: audit-port.sh <java-subpath-under-app/freerouting> <rust-src-dir> [file-glob]
+# Usage: audit-port.sh <java-subpath-under-app/freerouting> <rust-src-dir> [file-glob] [class-map]
 #   <java-subpath>  e.g. `geometry/planar` or `board/model/structure`
 #   <rust-src-dir>  path to the crate's `src/` dir, relative to the repo root (or absolute)
 #   [file-glob]     optional space-separated list of filenames (globs allowed) to restrict the
 #                   audit to, e.g. 'Layer.java LayerStructure.java'; defaults to `*.java`
 #                   (every file in the Java subpath, non-recursive, matching Plan 1's script).
+#   [class-map]     optional path to a class→file map (see below). Without it, every check below
+#                   is crate-wide, exactly as when this argument does not exist — this keeps the
+#                   3-argument invocation byte-compatible with Plan 1/2's scripted audits.
+#
+# Per-class matching (Plan 3 Task 1 obligation, `docs/java-quirks.md`). The crate-wide search
+# above accepts any `fn read_scope` anywhere in the crate as satisfying *every* Java class with a
+# `readScope` method — worthless once a crate has many classes sharing a method name (e.g.
+# `io/specctra/parser`'s ~12 `readScope`/`writeScope` classes). The optional 4th argument names a
+# map file of `<JavaClass> <rust-path-glob-relative-to-src>` lines (blank lines and `#` comments
+# ignored), e.g.:
+#   Structure                parser/structure.rs
+#   Network                  parser/network.rs
+#   SpecctraDsnStreamReader  lexer/*.rs
+#   IdentifierType           format/identifier.rs
+# When a map is supplied, a class listed in it has its methods and markers searched *only* under
+# its mapped path(s) (relative to `<rust-src-dir>`, globs allowed); a class the map does not
+# mention falls back to the crate-wide search and additionally prints `UNMAPPED <Class>` (once
+# per class) so the map cannot silently rot as new classes come into scope.
+#
+# Self-test (both invocation forms; not executed by this script):
+#   3-arg, unchanged:  ./scripts/audit-port.sh datastructures crates/fr-board/src
+#   4-arg, per-class:  ./scripts/audit-port.sh datastructures crates/fr-dsn/src \
+#                         'IdentifierType.java IndentFileWriter.java' scripts/audit-map/fr-dsn.map
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FREEROUTING_JAVA_DIR="${FREEROUTING_JAVA_DIR:-$ROOT/../freerouting}"
 
 if [[ $# -lt 2 ]]; then
-  echo "usage: $0 <java-subpath-under-app/freerouting> <rust-src-dir> [file-glob]" >&2
+  echo "usage: $0 <java-subpath-under-app/freerouting> <rust-src-dir> [file-glob] [class-map]" >&2
   exit 1
 fi
 
@@ -32,6 +55,15 @@ JAVA_SUBPATH="$1"
 RS="$2"
 [[ "$RS" = /* ]] || RS="$ROOT/$RS"
 FILE_GLOB="${3:-*.java}"
+MAP_FILE="${4:-}"
+
+if [[ -n "$MAP_FILE" ]]; then
+  [[ "$MAP_FILE" = /* ]] || MAP_FILE="$ROOT/$MAP_FILE"
+  if [[ ! -f "$MAP_FILE" ]]; then
+    echo "error: class map file not found at $MAP_FILE" >&2
+    exit 1
+  fi
+fi
 
 JAVA="$FREEROUTING_JAVA_DIR/src/main/java/app/freerouting/$JAVA_SUBPATH"
 
@@ -51,6 +83,31 @@ if [[ ! -d "$RS" ]]; then
   exit 1
 fi
 
+# Looks up `cls` in $MAP_FILE (if any) and fills the global SCOPE_FILES array with every mapped
+# file that actually exists, expanding globs relative to $RS. Sets CLASS_MAPPED=1 iff the map
+# has at least one line for `cls`. No-op (SCOPE_FILES empty, CLASS_MAPPED=0) when MAP_FILE="".
+SCOPE_FILES=()
+CLASS_MAPPED=0
+resolve_scope_files() {
+  local cls="$1"
+  SCOPE_FILES=()
+  CLASS_MAPPED=0
+  [[ -n "$MAP_FILE" ]] || return 0
+  local map_cls map_path
+  while read -r map_cls map_path; do
+    [[ -z "$map_cls" || "$map_cls" == \#* ]] && continue
+    [[ "$map_cls" == "$cls" ]] || continue
+    CLASS_MAPPED=1
+    for p in "$RS"/$map_path; do
+      [[ -e "$p" ]] && SCOPE_FILES+=("$p")
+    done
+  done < "$MAP_FILE"
+}
+
+# Classes we've already printed an UNMAPPED line for, so it prints once per class, not once per
+# method.
+UNMAPPED_SEEN=""
+
 missing=0
 seen_any=0
 for pattern in $FILE_GLOB; do
@@ -58,6 +115,18 @@ for pattern in $FILE_GLOB; do
     [[ -f "$f" ]] || continue
     seen_any=1
     cls="$(basename "$f" .java)"
+
+    resolve_scope_files "$cls"
+    if [[ -n "$MAP_FILE" && "$CLASS_MAPPED" -eq 0 ]]; then
+      case " $UNMAPPED_SEEN " in
+        *" $cls "*) ;;
+        *)
+          echo "UNMAPPED $cls"
+          UNMAPPED_SEEN="$UNMAPPED_SEEN $cls"
+          ;;
+      esac
+    fi
+
     # NOTE: this loop reads from a process substitution, not a pipe, so that
     # `missing=1` below is visible to the `exit $missing` after the loop — a
     # `| while read` here would run the body in a subshell and silently lose
@@ -65,12 +134,32 @@ for pattern in $FILE_GLOB; do
     while read -r m; do
       [[ "$m" == "$cls" ]] && continue   # constructors
       snake="$(echo "$m" | sed -E 's/([a-zA-Z])([0-9])/\1_\2/g; s/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z])([A-Z][a-z])/\1_\2/g' | tr 'A-Z' 'a-z')"
-      if ! grep -rqE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "$RS" \
-          && ! grep -rqE "not ported: .*\b${m}\b" "$RS" \
-          && ! grep -rqE "renamed: .*\b${m}\b" "$RS" \
-          && ! grep -rqE "added in (Task|Plan) [0-9]+:.*\b${m}\b" "$RS"; then
-        echo "MISSING $cls.$m  (expected fn ${snake}*)"
-        missing=1
+      if [[ -n "$MAP_FILE" && "$CLASS_MAPPED" -eq 1 ]]; then
+        # Per-class: search only under this class's mapped file(s). An empty SCOPE_FILES (the
+        # mapped path glob matched nothing yet) means every method is reported MISSING, which is
+        # the intended stricter behaviour, not a fallback.
+        found=1
+        if [[ "${#SCOPE_FILES[@]}" -eq 0 ]] \
+            || ! ( grep -qE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "${SCOPE_FILES[@]}" \
+                || grep -qE "not ported: .*\b${m}\b" "${SCOPE_FILES[@]}" \
+                || grep -qE "renamed: .*\b${m}\b" "${SCOPE_FILES[@]}" \
+                || grep -qE "added in (Task|Plan) [0-9]+:.*\b${m}\b" "${SCOPE_FILES[@]}" ); then
+          found=0
+        fi
+        if [[ "$found" -eq 0 ]]; then
+          echo "MISSING $cls.$m  (expected fn ${snake}*)"
+          missing=1
+        fi
+      else
+        # Crate-wide (no map supplied, or class not in the map): identical to the original
+        # 3-argument behaviour.
+        if ! grep -rqE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "$RS" \
+            && ! grep -rqE "not ported: .*\b${m}\b" "$RS" \
+            && ! grep -rqE "renamed: .*\b${m}\b" "$RS" \
+            && ! grep -rqE "added in (Task|Plan) [0-9]+:.*\b${m}\b" "$RS"; then
+          echo "MISSING $cls.$m  (expected fn ${snake}*)"
+          missing=1
+        fi
       fi
     done < <(grep -hoE '^\s*public [^=(]*\b([a-zA-Z0-9_]+)\s*\(' "$f" | sed -E 's/.*[^a-zA-Z0-9_]([a-zA-Z0-9_]+)[[:space:]]*\($/\1/' | sort -u)
   done

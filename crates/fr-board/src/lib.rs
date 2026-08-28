@@ -43,7 +43,8 @@ pub use library::{
 pub use rules::{
     BoardRules, CLEARANCE_SAFETY_MARGIN, ClearanceClassIndexed, ClearanceMatrix,
     DefaultItemClearanceClasses, ItemClass, Net, NetClass, NetClasses, Nets, PadstackLookup,
-    ViaInfo, ViaInfos, ViaRule, java_to_lower, java_to_upper,
+    ViaInfo, ViaInfos, ViaRule, compare_to_ignore_case, equals_ignore_case, java_to_lower,
+    java_to_upper,
 };
 pub use searchtree::{ItemLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
@@ -68,6 +69,6 @@ pub mod prelude {
         ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries, ShapeTree, StopCheck,
         StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries, TreeEntry, TreeId,
         TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
-        java_to_lower, java_to_upper,
+        compare_to_ignore_case, equals_ignore_case, java_to_lower, java_to_upper,
     };
 }

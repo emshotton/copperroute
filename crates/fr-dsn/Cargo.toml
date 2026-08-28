@@ -1,0 +1,13 @@
+[package]
+name = "fr-dsn"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fr-board = { path = "../fr-board" }
+fr-geometry = { path = "../fr-geometry" }
+thiserror.workspace = true
+
+[dev-dependencies]
+parity = { path = "../../tests/parity" }

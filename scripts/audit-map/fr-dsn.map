@@ -1,0 +1,6 @@
+# Class -> Rust path glob (relative to crates/fr-dsn/src) map for scripts/audit-port.sh's
+# per-class matching (Plan 3 Task 1 obligation). Blank lines and lines starting with `#` are
+# ignored. Append one line per class as later Plan 3 tasks port it; do not remove a class's line
+# once a task starts porting it, or the audit falls back to a crate-wide (weaker) check for it.
+IdentifierType      format/identifier.rs
+IndentFileWriter    format/indent_writer.rs

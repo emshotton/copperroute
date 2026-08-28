@@ -84,7 +84,7 @@ pub trait ClearanceClassIndexed {
 /// `encode_utf16()` — the same domain Java works in, which makes the port exact for
 /// supplementary-plane input too (Java case-folds each surrogate half, i.e. not at all, and so
 /// does [`java_to_upper_unit`]).
-pub(crate) fn equals_ignore_case(a: &str, b: &str) -> bool {
+pub fn equals_ignore_case(a: &str, b: &str) -> bool {
     let mut ca = a.encode_utf16();
     let mut cb = b.encode_utf16();
     loop {
@@ -107,7 +107,7 @@ pub(crate) fn equals_ignore_case(a: &str, b: &str) -> bool {
 /// units upper-cased and then with both of those lower-cased, and returns `c1 - c2` of the
 /// lower-cased pair (an unsigned 16-bit difference). If one string is a prefix of the other it
 /// returns the code-unit length difference. Only the sign is observable through `Ordering`.
-pub(crate) fn compare_to_ignore_case(a: &str, b: &str) -> std::cmp::Ordering {
+pub fn compare_to_ignore_case(a: &str, b: &str) -> std::cmp::Ordering {
     let mut ca = a.encode_utf16();
     let mut cb = b.encode_utf16();
     loop {
