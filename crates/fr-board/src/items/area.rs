@@ -51,7 +51,7 @@
 //! `ItemInfoPrinter` helper the four `printInfo` overrides share; GUI output, like the rest of
 //! that family (see [`crate::items`]'s not-ported list).
 //!
-//! added in Task 10: the protected `ObstacleArea.calculateTreeShapes` (ObstacleArea.java:182-185)
+//! renamed: the protected `ObstacleArea.calculateTreeShapes` (ObstacleArea.java:182-185)
 //! and `ComponentOutline.calculateTreeShapes` (ComponentOutline.java:134-137) — the first
 //! delegates to `ShapeSearchTree.calculateTreeShapes(ObstacleArea)` (which enlarges each convex
 //! piece by the clearance compensation), the second is `return new TileShape[0]`.
@@ -592,7 +592,8 @@ impl Connectable for ConductionArea {
     ///
     /// Java's out-of-range warning path returns `null`; so does a cold cache, because
     /// `treeShapeCount` is then 0 and every index is out of range.
-    // added in Task 10: the lazy fill behind `treeShapeCount`/`getTreeShape`
+    // renamed: the lazy fill behind `treeShapeCount`/`getTreeShape` is
+    // `Board::item_tree_shape_count`/`Board::item_tree_shape`;
     // (Item.java:203-226), which needs the `ShapeSearchTree` itself.
     fn get_trace_connection_shape(
         &self,

@@ -749,7 +749,7 @@ impl Item {
     ///
     /// Java's `board == null` early return of 0 (Item.java:205-207) is the same answer this
     /// gives for an item with nothing cached for `tree`.
-    // added in Task 10: the lazy fill (Item.java:208 -> Item.java:228-238 ->
+    // renamed: the lazy fill is `Board::item_tree_shape_count` (Item.java:208 -> :228-238 ->
     // `calculateTreeShapes(searchTree)`), which needs the `ShapeSearchTree` itself.
     pub fn tree_shape_count(&self, tree: TreeId) -> usize {
         self.header()
@@ -760,7 +760,8 @@ impl Item {
     /// Port of `Item.getTreeShape(ShapeTree, int)` (Item.java:212-226), reading the cache only.
     ///
     /// Java's two `null` returns (no board, index out of range after a recompute) are `None`.
-    // added in Task 10: the `clearDerivedData()` + recompute retry at Item.java:218-224.
+    // renamed: the `clearDerivedData()` + recompute retry at Item.java:218-224 is
+    // `Board::item_tree_shape`.
     pub fn get_tree_shape(&self, tree: TreeId, index: usize) -> Option<&TileShape> {
         self.header()
             .get_precalculated_tree_shapes(tree)

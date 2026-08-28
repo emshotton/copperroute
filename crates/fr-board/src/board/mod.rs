@@ -43,6 +43,19 @@
 //! (or `self.items.values().rev()`). This is load-bearing: it decides the structure of every
 //! tree `SearchTreeManager::get_autoroute_tree` builds.
 
+// The rest of Java's `board/state` package, whose two ported members are `ChangedArea` and
+// `Communication`:
+//
+// not ported: `BoardObserverAdaptor.activate` (BoardObserverAdaptor.java) — `global-constraints.md` forbids board observers.
+// not ported: `BoardObserverAdaptor.deactivate` — board observers.
+// not ported: `BoardObserverAdaptor.isActive` — board observers.
+// not ported: `BoardObserverAdaptor.notifyNew` — board observers.
+// not ported: `BoardObserverAdaptor.notifyDeleted` — board observers.
+// not ported: `BoardObserverAdaptor.notifyChanged` — board observers.
+// not ported: `BoardObserverAdaptor.notifyMoved` — board observers.
+// added in Plan 3: `board/state/CoordinateTransform.java`'s `boardToUser` and `userToBoard` — the board-to-user unit transform the DSN reader and the SES writer need.
+// added in Plan 5: `board/state/BoardComparator.java` in full, including its nested `ComparisonResult` — it diffs two boards for the DRC/report layer.
+
 pub mod changed_area;
 pub mod communication;
 pub mod connectivity;
@@ -1386,6 +1399,29 @@ impl Board {
         }
         let default_tree = self.default_tree_id();
         self.item_tree_shape(id, default_tree, index)
+    }
+
+    /// Port of `DrillItem.getTileShapeOnLayer(int)` (DrillItem.java:308-315), **with** the lazy
+    /// fill its `getTileShape(layer - firstLayer())` inherits — `Via::get_tile_shape_on_layer`
+    /// and `Pin::get_tile_shape_on_layer` read the cache only.
+    ///
+    /// `None` for Java's out-of-range warning path and for an item that is not a drill item.
+    pub fn drill_item_tile_shape_on_layer(
+        &mut self,
+        id: ItemId,
+        layer: usize,
+    ) -> Option<TileShape> {
+        let ctx = self.ctx();
+        let item = self.items.get(&id)?;
+        if !item.is_drill_item() {
+            return None;
+        }
+        let from_layer = item.first_layer(&ctx);
+        let to_layer = item.last_layer(&ctx);
+        if layer < from_layer || layer > to_layer {
+            return None;
+        }
+        self.item_tile_shape(id, layer - from_layer)
     }
 
     /// Port of `Item.validate` (Item.java:796-807) and its one override, `Trace.validate`

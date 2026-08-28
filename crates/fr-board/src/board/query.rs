@@ -198,8 +198,6 @@ impl Board {
         } else {
             self.overlapping_tree_entries_with_clearance(shape, Some(layer), &[], clearance_class)
         };
-        let ctx = self.ctx();
-        let default_tree = self.default_tree_id();
         for entry in tree_entries {
             let TreeObject::Item(other_id) = entry.object else {
                 continue;
@@ -220,36 +218,40 @@ impl Board {
             let mut is_obstacle = net_nos
                 .iter()
                 .all(|net_no| other.is_trace_obstacle(*net_no));
+            let other_is_trace = other.is_trace();
             // BasicBoard.java:1022-1041: a foreign-net trace inside a tie pin's shape is not an
-            // obstacle.
+            // obstacle. The qualifying pins are collected first so the shape lookups below can
+            // take `&mut self` (they fill the tree-shape cache, Item.java:227-238).
             if is_obstacle
-                && other.is_trace()
+                && other_is_trace
                 && let Some(contact_pins) = contact_pins
             {
+                // BasicBoard.java:1027-1029.
+                let tie_pins: Vec<ItemId> = contact_pins
+                    .iter()
+                    .copied()
+                    .filter(|pin_id| match self.items.get(pin_id) {
+                        Some(pin @ Item::Pin(_)) => {
+                            pin.net_count() > 1 && pin.shares_net(&self.items[&other_id])
+                        }
+                        _ => false,
+                    })
+                    .collect();
                 let mut intersection: Option<TileShape> = None;
-                for pin_id in contact_pins {
-                    let Some(pin_item @ Item::Pin(pin)) = self.items.get(pin_id) else {
-                        continue;
-                    };
-                    if pin_item.net_count() <= 1 || !pin_item.shares_net(other) {
-                        continue;
-                    }
+                for pin_id in tie_pins {
                     if intersection.is_none() {
+                        // BasicBoard.java:1030-1034.
                         let Some(obstacle_trace_shape) =
-                            other.get_tile_shape(default_tree, entry.shape_index, &ctx)
+                            self.item_tile_shape(other_id, entry.shape_index)
                         else {
                             continue;
                         };
                         intersection = Some(shape.intersection(&obstacle_trace_shape));
                     }
-                    let Some(intersection) = &intersection else {
+                    let Some(pin_shape) = self.drill_item_tile_shape_on_layer(pin_id, layer) else {
                         continue;
                     };
-                    let Some(pin_shape) = pin.get_tile_shape_on_layer(default_tree, layer, &ctx)
-                    else {
-                        continue;
-                    };
-                    if pin_shape.contains_approx(intersection) {
+                    if pin_shape.contains_approx(intersection.as_ref().expect("just set")) {
                         is_obstacle = false;
                         break;
                     }

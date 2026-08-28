@@ -531,7 +531,8 @@ impl Via {
     ///
     /// `tree` replaces Java's implicit `board.searchTreeManager.getDefaultTree()`: Java's
     /// `getTileShape(int)` (Item.java:194-201) resolves it from the board.
-    // added in Task 10: the cold-cache half of `getTileShapeOnLayer` — Java reaches
+    // renamed: the cold-cache half of `getTileShapeOnLayer` is
+    // `Board::drill_item_tile_shape_on_layer` — Java reaches
     // `Item.getTileShape(int)` -> `Item.getTreeShape(tree, index)` (Item.java:212-226), which on
     // a miss calls `clearDerivedData()` and recomputes through `calculateTreeShapes(searchTree)`
     // before giving up. This reads the cache only, exactly as `Item::get_tree_shape` does.
@@ -546,7 +547,7 @@ impl Via {
 
     /// Port of `DrillItem.getTreeShapeOnLayer` (DrillItem.java:240-249). Java's out-of-range
     /// branch warns and returns `null`.
-    // added in Task 10: `getTreeShapeOnLayer`'s cold-cache half — `Item.getTreeShape`
+    // renamed: `getTreeShapeOnLayer`'s cold-cache half is `Board::item_tree_shape` — `Item.getTreeShape`
     // (Item.java:212-226) calls `clearDerivedData()` and recomputes through
     // `calculateTreeShapes(searchTree)` when nothing is cached for `tree`; this reads the cache
     // only, like `Item::get_tree_shape`.
@@ -1036,7 +1037,7 @@ impl Pin {
 
     /// Port of `DrillItem.getTileShapeOnLayer` (DrillItem.java:251-260); see
     /// [`Via::get_tile_shape_on_layer`] for what `tree` replaces.
-    // added in Task 10: the same cold-cache recompute as `Via::get_tile_shape_on_layer`
+    // renamed: the same cold-cache recompute as `Via::get_tile_shape_on_layer`
     // (Item.java:212-226).
     pub fn get_tile_shape_on_layer(
         &self,
@@ -1049,7 +1050,7 @@ impl Pin {
 
     /// Port of `DrillItem.getTreeShapeOnLayer` (DrillItem.java:240-249). Java's out-of-range
     /// branch warns and returns `null`.
-    // added in Task 10: `getTreeShapeOnLayer`'s cold-cache half — `Item.getTreeShape`
+    // renamed: `getTreeShapeOnLayer`'s cold-cache half is `Board::item_tree_shape` — `Item.getTreeShape`
     // (Item.java:212-226) calls `clearDerivedData()` and recomputes through
     // `calculateTreeShapes(searchTree)` when nothing is cached for `tree`; this reads the cache
     // only, like `Item::get_tree_shape`.

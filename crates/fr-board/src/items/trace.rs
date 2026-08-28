@@ -56,10 +56,10 @@
 // [`PolylineTrace::split_polyline_at_line`].
 // added in Task 9: `PolylineTrace.change` (PolylineTrace.java:936-1005) -> `Board::change_trace`:
 // the "reuse the search-tree entries" diff plus `normalize`.
-// added in Task 10: `Trace.getCompensatedHalfWidth` (Trace.java:86-89) ->
+// renamed: `Trace.getCompensatedHalfWidth` (Trace.java:86-89) ->
 // `ShapeSearchTree::compensated_half_width`; it is `halfWidth +
 // searchTree.clearanceCompensationValue(clearanceClassIndex(), layer)`.
-// added in Task 10: the protected `PolylineTrace.calculateTreeShapes`
+// renamed: the protected `PolylineTrace.calculateTreeShapes`
 // (PolylineTrace.java:132-135) and `PolylineTraceSearchTreeAdapter.calculateTreeShapes` (:18-20)
 // -> `ShapeSearchTree::calculate_tree_shapes`. Note that Java's body
 // (ShapeSearchTree.java:992-1004) does **not** call `Polyline.offsetShapes`: it loops
@@ -291,7 +291,7 @@ impl PolylineTrace {
     /// Not a `PolylineTrace` method in Java — the search tree calls `offsetShapes` on the
     /// polyline directly. It is exposed here so Task 10 has one place to add the compensation
     /// to, and so the geometry is testable without a tree.
-    // added in Task 10: the compensated caller, `ShapeSearchTree::calculate_tree_shapes`.
+    // The compensated caller is `ShapeSearchTree::calculate_tree_shapes`.
     pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
         self.lines.offset_shapes(half_width)
     }

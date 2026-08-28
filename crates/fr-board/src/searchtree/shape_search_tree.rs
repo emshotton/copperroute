@@ -210,7 +210,8 @@ impl ShapeSearchTree {
     /// `halfWidth + searchTree.clearanceCompensationValue(clearanceClassIndex(), layer)`.
     // renamed: Trace.getCompensatedHalfWidth -> ShapeSearchTree::compensated_half_width; the
     // whole body is a call on the tree, and putting it here keeps `PolylineTrace` free of the
-    // search tree (see the `added in Task 10:` marker in `items/trace.rs`).
+    // search tree (see the `renamed:` note on `Trace.getCompensatedHalfWidth` in
+    // `items/trace.rs`).
     pub fn compensated_half_width(&self, trace: &PolylineTrace, rules: &BoardRules) -> i32 {
         trace.get_half_width()
             + self.clearance_compensation_value(

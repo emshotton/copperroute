@@ -21,7 +21,7 @@
 //! `board.boundingBox` and `board.layerStructure` are reached through [`ItemCtx`], not a
 //! back-pointer; `ItemCtx::bounding_box` exists for this class alone.
 //!
-//! added in Task 10: the protected `BoardOutline.calculateTreeShapes` (BoardOutline.java:259-262)
+//! renamed: the protected `BoardOutline.calculateTreeShapes` (BoardOutline.java:259-262)
 //! and the `ShapeSearchTree.calculateTreeShapes(BoardOutline)` body it delegates to
 //! (ShapeSearchTree.java:940-988) — the same two-mode split as `tileShapeCount`, with the
 //! clearance-compensation enlargement in the keepout branch and `Polyline.offsetShape(halfWidth

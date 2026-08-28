@@ -361,9 +361,10 @@ impl ItemHeader {
     /// This is the *cache read only*. Java's private wrapper fills the cache on a miss by
     /// calling the item's `calculateTreeShapes(searchTree)` (Item.java:234), which is a
     /// `ShapeSearchTree` operation.
-    // added in Task 10: `ShapeSearchTree::calculate_tree_shapes(&Item)` and the lazy fill at
-    // Item.java:233-236 (`Item.getPrecalculatedTreeShapes`) that calls it and stores the result
-    // through `set_precalculated_tree_shapes` below.
+    /// The lazy fill at Item.java:233-236 (`Item.getPrecalculatedTreeShapes`) — which calls
+    /// `ShapeSearchTree.calculateTreeShapes` and stores the result through
+    /// [`Self::set_precalculated_tree_shapes`] below — is [`crate::Board::item_tree_shape`],
+    /// because it needs the tree and the board context at once.
     pub fn get_precalculated_tree_shapes(&self, tree: TreeId) -> Option<&[Option<TileShape>]> {
         self.tree_entries
             .get(&tree)
