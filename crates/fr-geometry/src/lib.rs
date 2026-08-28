@@ -16,6 +16,8 @@ pub mod limits;
 pub mod line;
 pub mod line_segment;
 pub mod point;
+pub mod polygon;
+pub mod polyline;
 pub mod rational_point;
 pub mod rational_vector;
 pub mod regular_tile_shape;
@@ -39,6 +41,8 @@ pub use limits::{CRIT_INT, JAVA_DOUBLE_MIN_VALUE, java_max, java_min, java_round
 pub use line::Line;
 pub use line_segment::LineSegment;
 pub use point::Point;
+pub use polygon::Polygon;
+pub use polyline::Polyline;
 pub use rational_point::RationalPoint;
 pub use rational_vector::RationalVector;
 pub use regular_tile_shape::RegularTileShape;

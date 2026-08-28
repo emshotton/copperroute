@@ -26,6 +26,7 @@ use crate::int_vector::IntVector;
 use crate::limits::{java_max, java_min, java_round};
 use crate::line::Line;
 use crate::point::Point;
+use crate::polyline::Polyline;
 use crate::side::Side;
 use crate::signum::Signum;
 use crate::simplex::Simplex;
@@ -52,8 +53,28 @@ impl LineSegment {
         }
     }
 
-    // added in Task 16: LineSegment(Polyline, int) (LineSegment.java:30-42) — `from_polyline`,
-    // and toPolyline() (LineSegment.java:125-132) — `to_polyline`. Both need `Polyline`.
+    /// Creates the `no`-th line segment of `polyline`, for `no` between 1 and
+    /// `polyline.lines().len() - 2` (LineSegment.java:30-42).
+    ///
+    /// Java stores three `null` lines when `no` is out of range (and warns), so every later call
+    /// on the result throws; this port returns `None` instead.
+    pub fn from_polyline(polyline: &Polyline, no: usize) -> Option<LineSegment> {
+        let lines = polyline.lines();
+        if no == 0 || no + 1 >= lines.len() {
+            // Java: FRLogger.warn("LineSegment from Polyline: no out of range")
+            return None;
+        }
+        Some(LineSegment {
+            start: lines[no - 1],
+            middle: lines[no],
+            end: lines[no + 1],
+        })
+    }
+
+    /// Transforms this `LineSegment` into a polyline of length 3 (LineSegment.java:125-132).
+    pub fn to_polyline(&self) -> Polyline {
+        Polyline::from_lines(vec![self.start, self.middle, self.end])
+    }
 
     /// Creates the `no`-th line segment of `shape`, for `no` between 0 and
     /// `shape.border_line_count() - 1` (LineSegment.java:44-65).
@@ -885,5 +906,32 @@ mod tests {
         let sx = s.to_simplex();
         assert_eq!(sx.dimension(), 1);
         assert_eq!(sx.bounding_box(), IntBox::from_coords(0, 0, 10, 0));
+    }
+
+    #[test]
+    fn from_polyline_and_to_polyline() {
+        // LineSegment.java:30-42 and 125-132, values taken from the Java original.
+        let polyline = Polyline::from_points(&[
+            Point::Int(IntPoint::new(0, 0)),
+            Point::Int(IntPoint::new(10, 0)),
+            Point::Int(IntPoint::new(10, 10)),
+        ]);
+        let seg = LineSegment::from_polyline(&polyline, 1).unwrap();
+        assert_eq!(seg.get_start_closing_line(), Line::from_coords(0, 0, 0, 1));
+        assert_eq!(seg.get_line(), Line::from_coords(0, 0, 10, 0));
+        assert_eq!(seg.get_end_closing_line(), Line::from_coords(10, 0, 10, 10));
+        assert_eq!(seg.start_point(), Point::Int(IntPoint::new(0, 0)));
+        assert_eq!(seg.end_point(), Point::Int(IntPoint::new(10, 0)));
+        assert_eq!(seg.to_polyline().lines(), &polyline.lines()[0..3]);
+        assert_eq!(
+            LineSegment::from_polyline(&polyline, 2)
+                .unwrap()
+                .to_polyline()
+                .lines(),
+            &polyline.lines()[1..4]
+        );
+        // Java's range is 1 ..= lineCount - 2; outside it the segment gets three null lines.
+        assert_eq!(LineSegment::from_polyline(&polyline, 0), None);
+        assert_eq!(LineSegment::from_polyline(&polyline, 3), None);
     }
 }

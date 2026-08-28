@@ -40,6 +40,10 @@ Rules:
 | 19 | `FloatLine.segmentProjection` | Second `CRIT_INT` guard sits outside the `if/else` so it also applies to the untouched `b` endpoint. | `float_line.rs` (kept) | Probably intended; document. |
 | 21 | `LineSegment.stairApproximation` / `45` | `new IntPoint[2*stairCount+1]` throws `NegativeArraySizeException` for `width <= 0` or non-finite; zero callers in the Java tree. | `line_segment.rs` `.max(0)` (deferred minor: prefer assert) | Reject non-positive width up front. |
 | 20 | `IntPoint.fortyfiveDegreeProjection` | Tie-breaks via a chain of `==` on doubles in a fixed order. | `int_point.rs` | Fine; note ordering dependence. |
+| 22 | `Polyline(Line[])` → `removeOverlaps` (Polyline.java:147-155) | Once the loop has decremented `newLength` to 0, `tmpArr[newLength - 1]` reads index -1 → `ArrayIndexOutOfBoundsException`. Reached by ~11% of random line arrays drawn from a small pool of equal/opposite lines (200k-case sweep); the six lines `h, v, h, v, h, v` over the same two axes are a minimal case. | `polyline.rs` `remove_overlaps` returns `None`, `from_lines` turns it into an empty polyline; pinning test | Guard the loop with `newLength >= 1`, as the trailing access at line 160 already is. |
+| 23 | `Polyline(Point, Point)` (Polyline.java:69) | Recomputes the *end* closing direction as `fromCorner → toCorner`, a verbatim repeat of line 66, where `Polyline(Polygon)` (line 50) uses `last → second-last`. The two constructors therefore hand back opposite (geometrically identical) closing lines for the same pair of points. | `polyline.rs` `from_two_points`, test `the_closing_lines_are_perpendicular_to_the_end_segments` | `Direction.getInstance(toCorner, fromCorner)`; check nothing depends on the current orientation first. |
+| 24 | `TileShape.rotateApprox` (TileShape.java:692-695) | The two-corner branch builds `new LineSegment(currentPolyline, 0)`, but that constructor's valid range starts at 1, so it stores three `null` lines and `toSimplex()` throws a `NullPointerException`. ~2% of random degenerate 2..4-line shapes reach it. | `tile_shape.rs` `rotate_approx` (returns `Simplex::EMPTY`) | Pass 1 instead of 0. |
+| 25 | `Polyline.cornerCount()` (Polyline.java:178-181) | Returns -1 for an empty polyline, which then flows into `new IntPoint[cornerCount()]` in `rotateApprox` (`NegativeArraySizeException`) and into `boundingBox(0, -2)`. | `polyline.rs` `corner_count` saturates at 0 | Return 0, or make the empty polyline unrepresentable. |
 
 ## Rust-side totalizations (`totalized`) — Java crashes, Rust returns a value
 
@@ -54,6 +58,16 @@ Rules:
 | `FloatPoint.toString` on NaN/∞ | prints `NaN`/`∞` like Java (fixed after review) | `float_point.rs` |
 | `Line.translateBy(RationalVector)` → ClassCastException | `None` (`translate_by_any`) | `line.rs` |
 | `IntBox.translateBy(RationalVector)` / `IntOctagon` same → ClassCastException | `panic!` (documented) | `int_box.rs`, `int_octagon.rs` |
+| `Polyline(Line[])` on lines whose overlap removal empties the buffer → AIOOBE index -1 | empty `Polyline` | `polyline.rs` `remove_overlaps` |
+| `Polyline.cornerCount()` on an empty polyline → -1 | `0` | `polyline.rs` |
+| `Polyline.cornerApprox(i)` on an empty polyline → NegativeArraySizeException | `None` | `polyline.rs` |
+| `Polyline.rotateApprox` on an empty polyline → NegativeArraySizeException | empty `Polyline` | `polyline.rs` |
+| `Polyline.distance` on a corner-less polyline → NPE | `f64::MAX` | `polyline.rs` |
+| `Polyline.offsetBox(halfWidth, no)` out of range → NPE via a null-lined `LineSegment` | `None` | `polyline.rs` |
+| `Polyline.translateBy(RationalVector)` → ClassCastException | `panic!` (documented), as `IntBox`/`Simplex` | `polyline.rs` |
+| `Polyline(Polygon)` / `Polyline(Point[])` with rational corners → warning, then ClassCastException in every later call | `panic!` in the constructor | `polyline.rs` `int_point_of` |
+| `TileShape.rotateApprox` two-corner branch → NPE (quirk #24) | `Simplex::EMPTY` | `tile_shape.rs` |
+| `TileShape.cutout(Polyline)` with an empty polyline on a shape that has border lines → NPE | `[]` (the border-line-free shape case answers `[polyline]`, as Java does) | `tile_shape.rs` `cutout_polyline` |
 
 ## Improvement candidates (`candidate`) — not Java bugs
 
@@ -65,7 +79,7 @@ Rules:
 | Rename `RationalVector::determinant` → `numerator_determinant` | Ignores denominators; sign-correct only. | `rational_vector.rs` |
 | Add `Hash` to `Vector`/`Direction` when a map key is needed | Java has no `hashCode` there; add only on demand. | `vector.rs`, `direction.rs` |
 | `Display` for `FloatPoint` uses exact binary expansion, Java uses shortest-round-trip digits | Diverges above 2^53 and at 4th-digit ties; diagnostic only. | `float_point.rs` |
-| Drop `precalculated*` memo fields (already done) | Keeps geometry types `Copy`/`Eq`/`Hash`; recompute is cheap. | `simplex.rs` |
+| Drop `precalculated*` memo fields (already done) | Keeps geometry types `Copy`/`Eq`/`Hash`; recompute is cheap. In `Polyline` the memo is also *observably* equivalent: the `Polyline(Line[])` constructor fills it before flipping a line, and `intersectionApprox` negates numerator and denominator together, which is exact. | `simplex.rs`, `line_segment.rs`, `polyline.rs` |
 
 ## Process notes
 
