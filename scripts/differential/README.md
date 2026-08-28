@@ -54,6 +54,13 @@ methods with dozens of branches.
     `BoardOutline` also drag in `BasicBoard`, so their bodies are inlined too).
     Same command, with `java/historical/T7.java java/historical/T7b.java` and
     `app.freerouting.geometry.planar.T7`.
+    `T8.java` (Plan 2 Task 8) does the same for the whole of
+    `board/trace/PolylineTraceGeometry.java`, `Trace.nearestEndPoint` and the
+    geometry core of `PolylineTrace.split(Point)`, and prints the corners,
+    lengths, bounding boxes, tile/offset/connection shapes and split pieces that
+    `crates/fr-board/tests/polyline_trace.rs` asserts (`PolylineTrace` also drags
+    in `BasicBoard`, so its bodies are inlined too). Same command, with
+    `java/historical/T8.java` and `app.freerouting.geometry.planar.T8`.
     The older ones: `T17.java` and `T17b.java` are fixed print-statement
     dumps written before `D17.java` existed (no seeded/diffable format, no
     Rust twin). `RD.java`, `RD2.java` were `D17.java`'s drafts. `RV17.java`

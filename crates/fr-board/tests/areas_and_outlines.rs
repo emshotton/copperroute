@@ -81,6 +81,12 @@ fn hdr_with_nets(id: u32, net_nos: Vec<i32>) -> ItemHeader {
     ItemHeader::new(ItemId(id), net_nos, 1, 0, FixedState::Unfixed)
 }
 
+/// A one-segment trace polyline, for the two tests that need a `Item::Trace` to dispatch on
+/// (Task 8 gave `PolylineTrace` its geometry; `tests/polyline_trace.rs` pins that geometry).
+fn unit_polyline() -> fr_geometry::Polyline {
+    fr_geometry::Polyline::from_two_points(&Point::new(0, 0), &Point::new(100, 0))
+}
+
 /// The L-shaped relative area used by most of the tests: corners `(0,0) (20,0) (20,10) (10,10)
 /// (10,20) (0,20)`, which `PolygonShape.splitToConvex` cuts into exactly two boxes.
 fn l_shape() -> Area {
@@ -374,7 +380,13 @@ fn conduction_area_is_obstacle_toggles_with_its_own_flag() {
     // `isDrillable` (:402-405) read the same flag. Java bug/quirk #50 records why this flag,
     // and not `BoardRules.ignoreConduction`, is what `isObstacle` reads.
     let f = Fixture::new();
-    let trace = Item::Trace(PolylineTrace::new(hdr_with_nets(9, vec![7])));
+    let trace = Item::Trace(PolylineTrace::new(
+        hdr_with_nets(9, vec![7]),
+        unit_polyline(),
+        0,
+        50,
+        None,
+    ));
 
     let mut area = ConductionArea::new(hdr_with_nets(1, vec![5]), area_data(0.0, false), true);
     let mut item = Item::ConductionArea(area.clone());
@@ -721,7 +733,13 @@ fn board_outline_is_an_obstacle_to_everything_but_outlines_and_areas() {
     // variants.
     let f = Fixture::new();
     let outline = Item::BoardOutline(BoardOutline::new(hdr(1), vec![outline_square()]));
-    let trace = Item::Trace(PolylineTrace::new(hdr_with_nets(2, vec![1])));
+    let trace = Item::Trace(PolylineTrace::new(
+        hdr_with_nets(2, vec![1]),
+        unit_polyline(),
+        0,
+        50,
+        None,
+    ));
     let keepout = Item::ObstacleArea(obstacle_area(3, 0.0, false));
     let conduction = Item::ConductionArea(ConductionArea::new(hdr(4), area_data(0.0, false), true));
     let other_outline = Item::BoardOutline(BoardOutline::new(hdr(5), Vec::new()));
@@ -788,10 +806,12 @@ fn item_dispatch_reaches_every_area_body() {
 
     // The whole enum stays transform-dispatchable.
     for mut item in items {
-        item.translate_by(&Vector::new(1, 1));
-        item.turn_90_degree(1, &IntPoint::new(0, 0));
+        // The three `Result`s are `PolylineTrace`'s (Task 8): every area override is infallible.
+        item.translate_by(&Vector::new(1, 1)).unwrap();
+        item.turn_90_degree(1, &IntPoint::new(0, 0)).unwrap();
         item.rotate_approx(10.0, &FloatPoint::new(0.0, 0.0), &f.ctx());
-        item.change_placement_side(&IntPoint::new(0, 0), &f.ctx());
+        item.change_placement_side(&IntPoint::new(0, 0), &f.ctx())
+            .unwrap();
         item.clear_derived_data();
     }
 }

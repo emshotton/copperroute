@@ -76,10 +76,11 @@
 pub mod area;
 pub mod drill;
 pub mod header;
+pub mod trace;
 
 use std::cmp::Ordering;
 
-use fr_geometry::{FloatPoint, IntBox, IntPoint, TileShape, Vector};
+use fr_geometry::{FloatPoint, IntBox, IntPoint, PolylineError, TileShape, Vector};
 
 use crate::datastructures::LeafId;
 use crate::ids::{ItemId, TreeId};
@@ -92,6 +93,7 @@ pub use area::{
 };
 pub use drill::{DrillItemData, ItemCtx, Pin, TraceExitRestriction, Via};
 pub use header::{AutorouteInfo, ItemHeader, TreeEntries};
+pub use trace::PolylineTrace;
 
 pub use crate::structure::board_outline::BoardOutline;
 
@@ -125,19 +127,6 @@ pub enum ItemKind {
 // replace the `// added in Task N:` method stubs below; the enum's dispatch surface does not
 // change when they do.
 // ---------------------------------------------------------------------------------------------
-
-/// Port of `PolylineTrace` (`board/trace/PolylineTrace.java`), the only concrete `Trace`.
-///
-/// Java's abstract `Trace` (`board/model/items/Trace.java`) has no separate representation here:
-/// its fields (`layer`, `halfWidth`) and its `Item` overrides belong to this struct, and
-/// `instanceof Trace` is [`Item::is_trace`].
-// added in Task 8: `lines: Polyline`, `layer: usize`, `half_width: i32` (PolylineTrace.java:41,
-// Trace.java:29-30), and the bodies of every stub in the `impl` block below.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PolylineTrace {
-    /// The `Item` base-class state (Item.java:41-67).
-    pub hdr: ItemHeader,
-}
 
 /// Java's `HALF_WIDTH` for board outlines (BoardOutline.java:27).
 pub const BOARD_OUTLINE_HALF_WIDTH: i32 = 100;
@@ -850,9 +839,14 @@ impl Item {
     // -- transforms (Item.java:277-295) ---------------------------------------------------------
 
     /// Port of the abstract `Item.translateBy` (Item.java:280-281) and its overrides.
-    pub fn translate_by(&mut self, vector: &Vector) {
+    ///
+    /// `Result` because one override can fail: `PolylineTrace.translateBy`
+    /// (PolylineTrace.java:143-147) re-runs the normalising `Polyline(Line[])` constructor,
+    /// whose one crash Plan 1 ruling 12 turned into [`PolylineError`]. The other eight
+    /// overrides always succeed.
+    pub fn translate_by(&mut self, vector: &Vector) -> Result<(), PolylineError> {
         match self {
-            Item::Trace(i) => i.translate_by(vector),
+            Item::Trace(i) => return i.translate_by(vector),
             Item::Via(i) => i.translate_by(vector),
             Item::Pin(i) => i.translate_by(vector),
             Item::ObstacleArea(i) => i.translate_by(vector),
@@ -862,12 +856,15 @@ impl Item {
             Item::ComponentOutline(i) => i.translate_by(vector),
             Item::BoardOutline(i) => i.translate_by(vector),
         }
+        Ok(())
     }
 
     /// Port of the abstract `Item.turn90Degree` (Item.java:283-286) and its overrides.
-    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+    ///
+    /// `Result` for the reason [`Item::translate_by`] is.
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) -> Result<(), PolylineError> {
         match self {
-            Item::Trace(i) => i.turn_90_degree(factor, pole),
+            Item::Trace(i) => return i.turn_90_degree(factor, pole),
             Item::Via(i) => i.turn_90_degree(factor, pole),
             Item::Pin(i) => i.turn_90_degree(factor, pole),
             Item::ObstacleArea(i) => i.turn_90_degree(factor, pole),
@@ -877,6 +874,7 @@ impl Item {
             Item::ComponentOutline(i) => i.turn_90_degree(factor, pole),
             Item::BoardOutline(i) => i.turn_90_degree(factor, pole),
         }
+        Ok(())
     }
 
     /// Port of the abstract `Item.rotateApprox` (Item.java:288-289) and its overrides.
@@ -899,9 +897,17 @@ impl Item {
     }
 
     /// Port of the abstract `Item.changePlacementSide` (Item.java:291-295) and its overrides.
-    pub fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
+    ///
+    /// `Result` for the reason [`Item::translate_by`] is —
+    /// `PolylineTrace.changePlacementSide` (PolylineTrace.java:160-168) mirrors through the same
+    /// constructor.
+    pub fn change_placement_side(
+        &mut self,
+        pole: &IntPoint,
+        ctx: &ItemCtx<'_>,
+    ) -> Result<(), PolylineError> {
         match self {
-            Item::Trace(i) => i.change_placement_side(pole),
+            Item::Trace(i) => return i.change_placement_side(pole, ctx),
             Item::Via(i) => i.change_placement_side(pole, ctx),
             Item::Pin(i) => i.change_placement_side(pole),
             Item::ObstacleArea(i) => i.change_placement_side(pole, ctx),
@@ -911,6 +917,7 @@ impl Item {
             Item::ComponentOutline(i) => i.change_placement_side(pole),
             Item::BoardOutline(i) => i.change_placement_side(pole),
         }
+        Ok(())
     }
 
     // -- copying (Item.java:252-266) -------------------------------------------------------------
@@ -1095,116 +1102,6 @@ pub(crate) fn copied_header(hdr: &ItemHeader, new_id: ItemId) -> ItemHeader {
     )
 }
 
-impl PolylineTrace {
-    /// A trace with nothing but its base-class state.
-    // added in Task 8: the geometry parameters of `PolylineTrace(Polyline, int, int, int[], int,
-    // int, int, FixedState, BasicBoard)` (PolylineTrace.java:45-59).
-    pub fn new(hdr: ItemHeader) -> PolylineTrace {
-        PolylineTrace { hdr }
-    }
-
-    /// Port of `PolylineTrace.copy` (PolylineTrace.java:62-79).
-    // added in Task 8: the `lines`, `getLayer()` and `getHalfWidth()` arguments.
-    pub fn copy(&self, new_id: ItemId) -> PolylineTrace {
-        PolylineTrace {
-            hdr: copied_header(&self.hdr, new_id),
-        }
-    }
-
-    /// Port of `Trace.getLayer` (Trace.java:66-69): the trace's single layer, which
-    /// `Trace.firstLayer` and `Trace.lastLayer` (Trace.java:57-65) both return.
-    // added in Task 8: the `layer` field (Trace.java:29).
-    pub fn get_layer(&self) -> usize {
-        unimplemented!(
-            "PolylineTrace::get_layer needs the `layer` field, added in Task 8 (Trace.java:66-69)"
-        )
-    }
-
-    /// Port of `Trace.firstLayer` (Trace.java:57-60).
-    pub fn first_layer(&self) -> usize {
-        self.get_layer()
-    }
-
-    /// Port of `Trace.lastLayer` (Trace.java:62-65).
-    pub fn last_layer(&self) -> usize {
-        self.get_layer()
-    }
-
-    /// Port of `PolylineTrace.boundingBox` (PolylineTrace.java:117-121).
-    // added in Task 8: `lines.boundingBox(0, lines.lineCount() - 1)`.
-    pub fn bounding_box(&self) -> IntBox {
-        unimplemented!(
-            "PolylineTrace::bounding_box needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:117-121)"
-        )
-    }
-
-    /// Port of `PolylineTrace.tileShapeCount` (PolylineTrace.java:138-141).
-    // added in Task 8: `lines.lineCount() - 2`.
-    pub fn tile_shape_count(&self) -> usize {
-        unimplemented!(
-            "PolylineTrace::tile_shape_count needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:138-141)"
-        )
-    }
-
-    /// Port of `PolylineTrace.translateBy` (PolylineTrace.java:143-147).
-    // added in Task 8.
-    pub fn translate_by(&mut self, _vector: &Vector) {
-        unimplemented!(
-            "PolylineTrace::translate_by needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:143-147)"
-        )
-    }
-
-    /// Port of `PolylineTrace.turn90Degree` (PolylineTrace.java:149-153).
-    // added in Task 8.
-    pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
-        unimplemented!(
-            "PolylineTrace::turn_90_degree needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:149-153)"
-        )
-    }
-
-    /// Port of `PolylineTrace.rotateApprox` (PolylineTrace.java:155-159).
-    // added in Task 8.
-    pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
-        unimplemented!(
-            "PolylineTrace::rotate_approx needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:155-159)"
-        )
-    }
-
-    /// Port of `PolylineTrace.changePlacementSide` (PolylineTrace.java:160-165).
-    // added in Task 8.
-    pub fn change_placement_side(&mut self, _pole: &IntPoint) {
-        unimplemented!(
-            "PolylineTrace::change_placement_side needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:160-165)"
-        )
-    }
-}
-
-impl Connectable for PolylineTrace {
-    fn header(&self) -> &ItemHeader {
-        &self.hdr
-    }
-
-    /// Port of `PolylineTrace.getTraceConnectionShape` (PolylineTrace.java:917-924).
-    // added in Task 8.
-    fn get_trace_connection_shape(
-        &self,
-        _tree: TreeId,
-        _index: usize,
-        _ctx: &ItemCtx<'_>,
-    ) -> Option<TileShape> {
-        unimplemented!(
-            "PolylineTrace::get_trace_connection_shape needs the `lines` field, added in Task 8 \
-             (PolylineTrace.java:917-924)"
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1299,7 +1196,15 @@ mod tests {
     }
 
     fn trace(id: u32, net_nos: Vec<i32>) -> Item {
-        Item::Trace(PolylineTrace::new(hdr(id, net_nos)))
+        // A degenerate one-segment polyline: these tests only exercise the `Item` dispatch,
+        // never the geometry; `tests/polyline_trace.rs` is where the geometry is pinned.
+        Item::Trace(PolylineTrace::new(
+            hdr(id, net_nos),
+            fr_geometry::Polyline::from_two_points(&Point::new(0, 0), &Point::new(100, 0)),
+            0,
+            50,
+            None,
+        ))
     }
 
     fn via(id: u32, net_nos: Vec<i32>, attach_allowed: bool) -> Item {
