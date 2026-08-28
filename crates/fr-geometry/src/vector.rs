@@ -182,6 +182,10 @@ impl Vector {
     }
 
     /// Turns this vector by factor times 90 degree.
+    // not ported: Vector.turn90Degree — implemented as turn_90_degree below (and identically on
+    // IntVector/RationalVector/Point/Line/IntBox/TileShape/PolygonShape/Polyline/PolylineArea/
+    // PolylineShape/Circle/FloatPoint); audit-script false positive: the digit-adjacent camelCase
+    // heuristic misplaces the underscore around "90" the same way it does for "45" above.
     pub fn turn_90_degree(&self, factor: i32) -> Vector {
         match self {
             Vector::Int(v) => Vector::Int(v.turn_90_degree(factor)),

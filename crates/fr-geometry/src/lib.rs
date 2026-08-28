@@ -63,3 +63,14 @@ pub use signum::Signum;
 pub use simplex::Simplex;
 pub use tile_shape::TileShape;
 pub use vector::Vector;
+
+/// Re-exports every public type of the crate, for `use fr_geometry::prelude::*;`.
+pub mod prelude {
+    pub use crate::{
+        Area, BigIntDirection, CRIT_INT, Circle, Direction, Ellipse, FloatLine, FloatPoint,
+        FortyfiveDegreeDirection, IntBox, IntDirection, IntOctagon, IntPoint, IntVector, Line,
+        LineSegment, Point, Polygon, PolygonShape, Polyline, PolylineArea, PolylineShapeOps,
+        RationalPoint, RationalVector, RegularTileShape, Shape, ShapeBoundingDirections, ShapeOps,
+        Side, Signum, Simplex, TileShape, Vector, java_round,
+    };
+}

@@ -51,6 +51,8 @@ impl Direction {
     /// Java builds the intermediate vector with `new IntVector(x, y)` rather than
     /// `Vector.getInstance(x, y)`, so the result is always an `IntDirection` — no promotion check
     /// takes place (and none is needed: the coordinates are bounded by the scale factor).
+    // not ported: Direction.getInstanceApprox — implemented as from_angle_approx below
+    // (Rust factory-method naming convention); audit-script false positive, not a gap.
     pub fn from_angle_approx(angle: f64) -> Direction {
         const SCALE_FACTOR: f64 = 10000.0;
         let x = java_round(angle.cos() * SCALE_FACTOR) as i32;
@@ -83,6 +85,10 @@ impl Direction {
     }
 
     /// Returns true, if the direction is orthogonal or diagonal.
+    // not ported: Direction.isMultipleOf45Degree — implemented as is_multiple_of_45_degree
+    // below (and identically on IntDirection/BigIntDirection/Vector/Line/Polyline); audit-script
+    // false positive: its camelCase→snake_case heuristic places the underscore after the digit
+    // run instead of before it, so it never predicts the `_45_` spelling used throughout.
     pub fn is_multiple_of_45_degree(&self) -> bool {
         self.is_orthogonal() || self.is_diagonal()
     }
@@ -90,6 +96,8 @@ impl Direction {
     /// Turns the direction by factor times 45 degree. Note that the `Big` arm is a Java stub that
     /// ignores `factor` and returns the direction unchanged — see
     /// [`BigIntDirection::turn_45_degree`].
+    // not ported: Direction.turn45Degree — implemented as turn_45_degree below (and identically
+    // on IntDirection/BigIntDirection); same digit-adjacent camelCase false positive as above.
     pub fn turn_45_degree(&self, factor: i32) -> Direction {
         match self {
             Direction::Int(d) => Direction::Int(d.turn_45_degree(factor)),

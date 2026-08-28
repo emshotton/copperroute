@@ -41,9 +41,8 @@ impl PolylineArea {
     ///
     /// Java's `dividePiece.cutout(holePiece)` returns `null` when `holePiece` is a `Simplex` of
     /// dimension < 2 (Simplex.java:706-710), and the loop that follows raises a
-    /// `NullPointerException`; this port drops such a hole piece instead of the crash only when
-    /// `cutout` answers `None`, which is exactly that case, so the divide piece survives
-    /// unchanged. See the `// totalized:` note below.
+    /// `NullPointerException`; this port keeps that crash observable instead of inventing a
+    /// value, panicking when `cutout` answers `None`. See the `// totalized:` note below.
     fn cutout_hole_piece(
         divide_piece: &TileShape,
         hole_piece: &TileShape,

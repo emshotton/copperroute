@@ -65,6 +65,8 @@ impl FortyfiveDegreeDirection {
     ];
 
     /// Java `getDirection()` (FortyfiveDegreeDirection.java:8-45).
+    // not ported: FortyfiveDegreeDirection.getDirection — implemented as to_int_direction below
+    // (Rust naming convention for a conversion method); audit-script false positive, not a gap.
     pub fn to_int_direction(self) -> IntDirection {
         match self {
             FortyfiveDegreeDirection::Right => IntDirection::RIGHT,

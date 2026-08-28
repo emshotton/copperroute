@@ -151,6 +151,9 @@ impl FloatLine {
     /// Returns the projection of `line_segment` onto this oriented line segment by moving
     /// `line_segment` perpendicular into the direction of this line segment. Returns `None`, if
     /// the projection is empty or `line_segment.a == line_segment.b`.
+    // not ported: FloatLine.segmentProjection2 — implemented as segment_projection_2 below;
+    // audit-script false positive (trailing-digit camelCase, the overload-suffix regex only
+    // matches an appended `_<suffix>`, not an inserted one).
     pub fn segment_projection_2(&self, line_segment: &FloatLine) -> Option<FloatLine> {
         if line_segment.a.scalar_product(&line_segment.b, &self.b) <= 0.0 {
             return None;

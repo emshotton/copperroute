@@ -93,6 +93,8 @@ different observable outcomes, so the three methods now panic
 | Add `Hash` to `Vector`/`Direction` when a map key is needed | Java has no `hashCode` there; add only on demand. | `vector.rs`, `direction.rs` |
 | `Display` for `FloatPoint` uses exact binary expansion, Java uses shortest-round-trip digits | Diverges above 2^53 and at 4th-digit ties; diagnostic only. | `float_point.rs` |
 | Drop `precalculated*` memo fields (already done) | Keeps geometry types `Copy`/`Eq`/`Hash`; recompute is cheap. In `Polyline` the memo is also *observably* equivalent: the `Polyline(Line[])` constructor fills it before flipping a line, and `intersectionApprox` negates numerator and denominator together, which is exact. | `simplex.rs`, `line_segment.rs`, `polyline.rs` |
+| Memo cache for `PolygonShape` convex pieces / `PolylineArea` split — Java memoizes in `precalculatedConvexPieces`; port recomputes per call; `DrillPage`/`ConductionArea` overlap checks become O(n²) — Plan 2 adds a cache | Correctness parity is unaffected (recompute gives the same pieces), but the missing memo turns an amortized-cheap Java path into a quadratic one once real boards call it repeatedly. | `polygon_shape.rs`, `polyline_area.rs` |
+| Pass-level recovery boundary — Java `AutoroutePassRunner.java:144` catches `Exception` per pass and `BatchAutorouterThread.java:584` catches `Throwable`; the port's panics (Java NPE/StackOverflow equivalents) need `catch_unwind` or `Result` at those boundaries or a panic aborts the whole run where Java aborts one pass — Plans 6/7 obligation | Several rows above (`PolygonShape.intersects`, `Polyline` normalisation, `TileShape.rotateApprox`) reproduce a Java exception as a Rust panic; Java's pass-level `catch` recovers and continues routing, so a bare panic in the port is strictly worse unless the autorouter loop wraps these calls. | `autoroute/` (Plan 6/7) |
 
 ## Process notes
 
@@ -103,3 +105,4 @@ different observable outcomes, so the three methods now panic
 - Every deliberate divergence must be greppable: `// not ported:` for skipped
   members, `// totalized:` for crash-to-value changes, `// Java bug:` for
   reproduced defects.
+- The differential harness lives in `scripts/differential/`.
