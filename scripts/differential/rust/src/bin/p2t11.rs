@@ -8,7 +8,8 @@
 //! queries including `checkTraceSegment`, `3` the changed area and the board-level bookkeeping,
 //! `4` the compensated 90-degree board, `5` `ShapeTraceEntries`, `6` cycles and the last
 //! inserters, `7` `PolylineTrace.combine`, `8` `PolylineTrace.split`/`normalize`, `9`
-//! `BasicBoard`'s four normalisation loops, `10` the `CombineStackOverflowTest` fixture.
+//! `BasicBoard`'s four normalisation loops, `10` the `CombineStackOverflowTest` fixture, `11`
+//! `Board::deep_copy`/`structural_hash`/`diff_traces` (Task 12).
 
 use std::collections::BTreeSet;
 
@@ -40,6 +41,7 @@ fn main() {
                 .nth(2)
                 .map_or(4000, |a| a.parse().expect("segment count")),
         ),
+        11 => dump_deep_copy(&mut board),
         _ => panic!("mode {mode}"),
     }
 }
@@ -2253,6 +2255,86 @@ fn dump_combine_stack_overflow(segment_count: u32) {
     );
     println!("traces={}", board.get_traces().len());
     println!("after: {}", traces(&board));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mode 11: `Board::deep_copy`/`structural_hash`/`diff_traces` (Task 12)
+// ---------------------------------------------------------------------------------------------
+
+/// Task 12's tree-rebuild-vs-clone question, worked out against `P2T11.dumpDeepCopy`.
+///
+/// `treeArrayBefore`/`treeArrayOriginalAfterCopy`/the `overlappingObjects`, `hashEqual` and
+/// `diffTraces` lines all match the Java driver line for line. **`treeArrayCopy` and
+/// `treeArraysEqual` do not**, and are expected not to: Java's `deepCopy` round-trips through
+/// `readObject` (BasicBoard.java:1388-1400), which rebuilds the search tree by reinserting every
+/// item in descending-id order and so changes its physical shape (Java's own `treeArraysEqual`
+/// prints `false`); [`Board::deep_copy`] clones the arena instead, which keeps the original
+/// shape exactly, so the port's `treeArraysEqual` prints `true`. `board/snapshot.rs`'s module doc
+/// has the full argument for why that divergence is faithful rather than a bug — nothing but the
+/// unported `ShapeTree.statistics` ever reads raw tree order, and every real query the two lines
+/// around it print agrees regardless of tree shape.
+fn dump_deep_copy(board: &mut Board) {
+    println!("mode=11");
+    println!("items={}", ids(board.items_in_board_order()));
+    println!("treeArrayBefore={}", tree_array(board));
+
+    let copy = board.deep_copy();
+
+    println!("treeArrayOriginalAfterCopy={}", tree_array(board));
+    println!("treeArrayCopy={}", tree_array(&copy));
+    println!("treeArraysEqual={}", tree_array(board) == tree_array(&copy));
+
+    let probe = TileShape::Box(IntBox::from_coords(-100, -100, 100, 100));
+    println!(
+        "overlappingObjects(board,probe,0)={}",
+        objects(&board.overlapping_objects(&probe, Some(0)))
+    );
+    println!(
+        "overlappingObjects(copy,probe,0)={}",
+        objects(&copy.overlapping_objects(&probe, Some(0)))
+    );
+    println!(
+        "hashEqual={}",
+        board.structural_hash() == copy.structural_hash()
+    );
+    println!("diffTraces={}", board.diff_traces(&copy));
+
+    println!("--- mutate the original after copying");
+    board.remove_item(ItemId(7));
+    board.remove_item(ItemId(4));
+    println!("items(board)={}", ids(board.items_in_board_order()));
+    println!("items(copy)={}", ids(copy.items_in_board_order()));
+    println!(
+        "overlappingObjects(board,probe,0)={}",
+        objects(&board.overlapping_objects(&probe, Some(0)))
+    );
+    println!(
+        "overlappingObjects(copy,probe,0)={}",
+        objects(&copy.overlapping_objects(&probe, Some(0)))
+    );
+    println!("diffTracesAfterMutation={}", board.diff_traces(&copy));
+    println!(
+        "hashEqualAfterMutation={}",
+        board.structural_hash() == copy.structural_hash()
+    );
+}
+
+/// Every leaf of the default tree's `to_array()`, as `"id:shape_index"` pairs, left to right —
+/// the Rust twin of `P2T11.treeArray`.
+fn tree_array(board: &Board) -> String {
+    let tree = board.trees.get_default_tree().tree();
+    let entries: Vec<String> = tree
+        .to_array()
+        .into_iter()
+        .map(|leaf| {
+            let entry = tree.leaf_entry(leaf);
+            match entry.object {
+                TreeObject::Item(id) => format!("{}:{}", id.0, entry.shape_index),
+                TreeObject::Room(_) => unreachable!("no expansion rooms in Plan 2"),
+            }
+        })
+        .collect();
+    format!("[{}]", entries.join(" "))
 }
 
 fn oct(o: &fr_geometry::IntOctagon) -> String {

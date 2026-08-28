@@ -1865,13 +1865,15 @@ fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
 // ---------------------------------------------------------------------------------------------
 
 /// Port of `BoardServiceCharacterizationTest.itemQueriesAndSerializationRemainStable`
-/// (`src/test/java/app/freerouting/board/BoardServiceCharacterizationTest.java:34-51`), minus
-/// its serialization half.
+/// (`src/test/java/app/freerouting/board/BoardServiceCharacterizationTest.java:34-51`).
 ///
 /// Java builds a one-layer board with a `TileShape` outline and inserts one trace, then checks
 /// `getOutline`, `getItem`, `getItems` and `getTraces`. The observer count (`observer.newItems`)
-/// is not ported — `global-constraints.md` drops board observers — and the `serialize` /
-/// `deserialize` / `getHash` half is Task 12's.
+/// is not ported — `global-constraints.md` drops board observers. Java's `serialize(false)` +
+/// `BasicBoard.deserialize` round trip (:45-46) is exactly what `BasicBoard.clone` is
+/// (`board/snapshot.rs`'s module doc), so the port takes `board.clone()`; `getHash()` ->
+/// [`Board::structural_hash`]. Java's `assertNotNull(restored.searchTreeManager)` (:50) has no
+/// port — the port's search trees are never `null`.
 #[test]
 fn item_queries_remain_stable() {
     let mut board = characterization_board();
@@ -1880,8 +1882,10 @@ fn item_queries_remain_stable() {
     assert!(board.get_item(trace).is_some());
     assert!(board.get_items().any(|item| item.id() == trace));
     assert_eq!(board.get_traces().len(), 1);
-    // added in Task 12: `board.serialize(false)` / `BasicBoard.deserialize` / `getHash`
-    // (BoardServiceCharacterizationTest.java:45-50).
+
+    let restored = board.clone();
+    assert_eq!(board.structural_hash(), restored.structural_hash());
+    assert_eq!(board.get_traces().len(), restored.get_traces().len());
 }
 
 /// Port of `BoardServiceCharacterizationTest.changedAreaFacadeRetainsLifecycleAndGraphicsTracking`
@@ -1911,15 +1915,11 @@ fn changed_area_lifecycle_matches_the_characterization_test() {
     // (BoardServiceCharacterizationTest.java:78), which clears `changedArea` afterwards.
 }
 
-/// `BoardServiceCharacterizationTest.snapshotUndoRedoPreservesItemsAndObserverNotifications`
-/// (:53-69) is **not** ported here: `generateSnapshot`/`undo`/`redo` are the `UndoableObjects`
-/// stack, which Plan 2 replaces with `Board::clone` in Task 12, and its remaining assertions are
-/// observer counts.
-// added in Task 12: `snapshotUndoRedoPreservesItemsAndObserverNotifications`.
-#[test]
-fn the_snapshot_characterization_test_is_task_twelves() {
-    // Nothing to assert yet; the marker above records the obligation.
-}
+// not ported: `BoardServiceCharacterizationTest.snapshotUndoRedoPreservesItemsAndObserverNotifications`
+// (:53-69) — `generateSnapshot`/`undo`/`redo` are the `UndoableObjects` stack (Task 12 replaces
+// it with `Board::clone`/`Board::deep_copy`, `board/snapshot.rs`), and the assertions this test
+// makes once undo/redo run are all observer counts (`global-constraints.md` drops board
+// observers), so nothing here survives the port.
 
 /// `BoardServiceCharacterizationTest.createBoard` (:94-112).
 fn characterization_board() -> Board {
@@ -2253,7 +2253,8 @@ fn host_is_old_kicad_panics_on_a_version_that_overflows_an_int() {
 #[test]
 fn board_is_send_and_sync_and_clones_independently() {
     // `global-constraints.md`: `Board: Clone` must compile, and Plan 6 runs board copies in
-    // parallel. Task 12 turns the clone into `deep_copy`.
+    // parallel. `board/snapshot.rs`'s `deep_copy_is_independent` covers the same independence
+    // for `Board::deep_copy`.
     fn assert_send_sync<T: Send + Sync + Clone>() {}
     assert_send_sync::<Board>();
 

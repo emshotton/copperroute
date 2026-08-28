@@ -30,7 +30,8 @@ import java.util.*;
  * the conduction/net bookkeeping, 4 the compensated 90-degree board, 5 `ShapeTraceEntries`, 6
  * cycles and the last inserters, 7 `PolylineTrace.combine` (Task 9), 8 `PolylineTrace.split` and
  * `normalize` (Task 9), 9 `BasicBoard`'s four normalisation loops and the five Task-11 methods
- * whose bodies end in normalisation (Task 9).
+ * whose bodies end in normalisation (Task 9), 11 `RoutingBoard.deepCopy`, `getHash` and
+ * `diffTraces` (Task 12).
  */
 public class P2T11 {
 
@@ -56,6 +57,7 @@ public class P2T11 {
       case 8 -> dumpSplitAndNormalize();
       case 9 -> dumpBoardNormalizationLoops();
       case 10 -> dumpCombineStackOverflow(args.length > 1 ? Integer.parseInt(args[1]) : 4000);
+      case 11 -> dumpDeepCopy();
       default -> throw new IllegalArgumentException("mode " + mode);
     }
   }
@@ -1600,6 +1602,69 @@ public class P2T11 {
     System.out.println("normalizeAllTraces=" + changed);
     System.out.println("traces=" + board.getTraces().size());
     System.out.println("after: " + traces());
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 11: `RoutingBoard.deepCopy`, `getHash` and `diffTraces` (Task 12)
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * Task 12's tree-rebuild-vs-clone question: Java's `readObject` (BasicBoard.java:1388-1400,
+   * the hook `clone`/`deepCopy` runs through) rebuilds `searchTreeManager` from scratch and
+   * reinserts every item in `getItems()` order (descending id, quirk #63) rather than restoring
+   * the serialized tree — so `ShapeTree.toArray()` before and after a round trip need not match,
+   * even within Java itself. This mode prints both arrays so the Rust twin's differential check
+   * can confirm that fact, then shows every query this crate actually runs (`overlappingObjects`,
+   * `getHash`, `diffTraces`) gives the same answer regardless.
+   */
+  static void dumpDeepCopy() {
+    build();
+    System.out.println("mode=11");
+    System.out.println("items=" + ids(board.getItems()));
+    System.out.println("treeArrayBefore=" + treeArray(board));
+
+    RoutingBoard copy = board.deepCopy();
+
+    System.out.println("treeArrayOriginalAfterCopy=" + treeArray(board));
+    System.out.println("treeArrayCopy=" + treeArray(copy));
+    System.out.println(
+        "treeArraysEqual=" + treeArray(board).equals(treeArray(copy)));
+
+    TileShape probe = new IntBox(-100, -100, 100, 100);
+    System.out.println(
+        "overlappingObjects(board,probe,0)=" + objectIds(board.overlappingObjects(probe, 0)));
+    System.out.println(
+        "overlappingObjects(copy,probe,0)=" + objectIds(copy.overlappingObjects(probe, 0)));
+    System.out.println("hashEqual=" + board.getHash().equals(copy.getHash()));
+    System.out.println("diffTraces=" + board.diffTraces(copy));
+
+    System.out.println("--- mutate the original after copying");
+    board.removeItem(board.getItem(7));
+    Trace removedTrace = (Trace) board.getItem(4);
+    board.removeItem(removedTrace);
+    System.out.println("items(board)=" + ids(board.getItems()));
+    System.out.println("items(copy)=" + ids(copy.getItems()));
+    System.out.println(
+        "overlappingObjects(board,probe,0)=" + objectIds(board.overlappingObjects(probe, 0)));
+    System.out.println(
+        "overlappingObjects(copy,probe,0)=" + objectIds(copy.overlappingObjects(probe, 0)));
+    System.out.println("diffTracesAfterMutation=" + board.diffTraces(copy));
+    System.out.println("hashEqualAfterMutation=" + board.getHash().equals(copy.getHash()));
+  }
+
+  /** Every leaf of the default tree's `toArray()`, as `"id:shapeIndex"` pairs, left to right. */
+  static String treeArray(RoutingBoard b) {
+    ShapeSearchTree tree = b.searchTreeManager.getDefaultTree();
+    ShapeTree.Leaf[] arr = tree.toArray();
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < arr.length; i++) {
+      if (i > 0) {
+        sb.append(" ");
+      }
+      Item item = (Item) arr[i].object;
+      sb.append(item.getId()).append(":").append(arr[i].shapeIndexInObject);
+    }
+    return sb.append("]").toString();
   }
 
   // -------------------------------------------------------------------------------------------

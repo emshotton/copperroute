@@ -62,6 +62,7 @@ pub mod connectivity;
 pub mod normalize;
 pub mod query;
 pub mod shape_trace_entries;
+pub mod snapshot;
 pub mod trace_normalize;
 
 use std::borrow::Cow;
@@ -110,8 +111,9 @@ pub(crate) use item_ctx;
 /// trees that index them and the rules they must satisfy.
 ///
 /// not ported: `BasicBoard.itemList`'s `UndoableObjects` undo stack (BasicBoard.java:70) — the
-/// port stores a plain `BTreeMap` (plan-rulings.md #1) and Plan 2's Task 12 replaces Java's
-/// snapshot/undo/redo with `Board::clone`. See the `added in Task 12:` markers below.
+/// port stores a plain `BTreeMap` (plan-rulings.md #1) and Task 12 replaces Java's
+/// snapshot/undo/redo with [`Board::clone`]/[`Board::deep_copy`] (`board/snapshot.rs`). See the
+/// markers below.
 ///
 /// `BasicBoard.updateBox` (BasicBoard.java:103) is the rectangle a Swing renderer has to
 /// repaint; `fr-board` is headless, so its three accessors go:
@@ -146,22 +148,28 @@ pub(crate) use item_ctx;
 /// callers filter by item kind.
 ///
 // Task 12 replaces Java's `UndoableObjects` snapshot stack (the whole of
-// `board/facade/BoardSnapshotManager.java` and `RoutingBoardUndoFacade.java`) with `Board::clone`:
-// added in Task 12: `BasicBoard.clone` (BasicBoard.java:158-161) — the deep copy.
-// added in Task 12: `BasicBoard.getHash` (BasicBoard.java:164-166) — the board hash.
-// added in Task 12: `BasicBoard.diffTraces` (BasicBoard.java:169-171) — the trace-id diff.
-// added in Task 12: `BasicBoard.generateSnapshot` (BasicBoard.java:1290-1292) — the undo stack.
-// added in Task 12: `BasicBoard.popSnapshot` (BasicBoard.java:1298-1300) — the undo stack.
-// added in Task 12: `BasicBoard.undo` (BasicBoard.java:1233-1240) and its `RoutingBoard` override.
-// added in Task 12: `BasicBoard.redo` (BasicBoard.java:1246-1253) and its `RoutingBoard` override.
-// added in Task 12: the private `BasicBoard.applyUndoRedoSideEffects` (BasicBoard.java:1255-1287).
-// added in Task 12: `RoutingBoard.deepCopy` (RoutingBoard.java:1418-1420).
+// `board/facade/BoardSnapshotManager.java` and `RoutingBoardUndoFacade.java`) with
+// `Board::clone`/`Board::deep_copy` (`board/snapshot.rs` has the full account, including why the
+// search trees clone rather than rebuild):
+// renamed: `BasicBoard.clone` (BasicBoard.java:158-161) -> the derived `impl Clone for Board`.
+// renamed: `BasicBoard.getHash` (BasicBoard.java:163-166) -> `Board::structural_hash`.
+// ported: `BasicBoard.diffTraces` (BasicBoard.java:168-171) -> `Board::diff_traces`.
+// ported: `RoutingBoard.deepCopy` (RoutingBoard.java:1414-1420) -> `Board::deep_copy`.
+// not ported: `BasicBoard.generateSnapshot`/`popSnapshot` (:1289-1300) — the `UndoableObjects`
+// undo stack; a Plan-7 caller that wants to try-and-revert a board mutation takes
+// `let snap = board.clone();` before and `board = snap;` (or keeps `snap` and discards `board`)
+// instead of generating/popping a snapshot.
+// not ported: `BasicBoard.undo`/`redo` (:1233-1253) and `RoutingBoard`'s overrides — interactive
+// undo/redo, which `global-constraints.md` excludes along with the rest of the GUI.
+// not ported: the private `BasicBoard.applyUndoRedoSideEffects` (:1255-1287) — `undo`/`redo`'s
+// own helper.
 //
 // The autoroute engine is Plan 6:
 // added in Plan 6: `BasicBoard.additionalUpdateAfterChange` (BasicBoard.java:1227) and its `RoutingBoard` override (RoutingBoard.java:96-118).
 // added in Plan 6: `BasicBoard.areThereItemsOnInactiveLayer` (BasicBoard.java:1443-1462) — takes an `AutorouteControl`.
 // added in Plan 6: `RoutingBoard.initAutoroute` (RoutingBoard.java:882-897).
-// added in Plan 6: `RoutingBoard.finishAutoroute` (RoutingBoard.java:900-905).
+// ported: `RoutingBoard.finishAutoroute` (RoutingBoard.java:899-905) -> `Board::finish_autoroute`
+// (`board/snapshot.rs`), empty until Plan 6 gives `Board` the `autoroute_engine` field it clears.
 // added in Plan 6: `RoutingBoard.autoroute` (RoutingBoard.java:911-971).
 // added in Plan 6: `RoutingBoard.fanout` (RoutingBoard.java:978-1110).
 // added in Plan 7: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) — its body is `RoutingBoardOperations.optChangedArea` (:52-79), which runs the `TraceTightener`.
@@ -210,12 +218,10 @@ pub struct Board {
     /// with an empty set. That is what its own log message means by "on this board candidate".
     ///
     /// **`pub` where Java's field is `private`**, and deliberately so: Java's only reset is
-    /// inside a `readObject` this port does not have, so [`Board::deep_copy`] (Task 12) has to
-    /// clear it explicitly, and a test has no other way to drive
+    /// inside a `readObject` this port does not have, so [`Board::deep_copy`] (`board/snapshot.rs`)
+    /// has to clear it explicitly, and a test has no other way to drive
     /// [`Board::normalize_traces`]' suppressed-net branch (BasicBoard.java:713-727) — the
     /// oscillation cap that fills the set is unreachable on any board the suite can build.
-    // added in Task 12: `Board::deep_copy` must clear this set, exactly as it clears
-    // `autoroute_info` (BasicBoard.java:1392 is the Java reset, inside `readObject`).
     pub normalize_suppressed_net_nos: std::collections::BTreeSet<i32>,
 
     /// Java `BasicBoard.revision` (BasicBoard.java:97). `u64` rather than `int`: the counter only

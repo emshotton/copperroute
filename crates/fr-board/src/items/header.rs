@@ -232,9 +232,10 @@ impl ItemHeader {
     // ("unexpected netCount > 1", Item.java:975-977) and then *overwrites only element 0*
     // (Item.java:978), leaving the other net numbers in place — so the item ends up on
     // `net_number` **plus** whatever it was on before. Reproduced; see docs/java-quirks.md.
-    // added in Task 12: `board.itemList.saveForUndo(this)` (Item.java:969) — Plan 2 replaces
-    // Java's `UndoableObjects` snapshot stack with `Board::clone` in Task 12, so there is no
-    // per-item undo record to take here yet.
+    // not ported: `board.itemList.saveForUndo(this)` (Item.java:969) — Task 12 replaces Java's
+    // `UndoableObjects` snapshot stack with `Board::clone`/`Board::deep_copy`
+    // (`board/snapshot.rs`), which take a whole-board copy rather than a per-item undo record, so
+    // there is nothing for this call site to do here.
     pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
         if !Nets::is_normal_net_number(net_number) {
             return;

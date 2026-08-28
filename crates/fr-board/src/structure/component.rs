@@ -248,12 +248,18 @@ impl std::fmt::Display for Component {
 /// Port of `Components` (`board/model/structure/Components.java`): the list of components on the
 /// board.
 ///
-/// not ported: `Components.undoList` (Components.java:16), a `UndoableObjects` — the board's undo
-/// stack is not part of this task.
-// added in Task 12: `generateSnapshot` (Components.java:105-108), `undo` (Components.java:110-119), `redo` (Components.java:121-128) and the private `restoreComponentArrFromUndoList` (Components.java:130-146) — all four are the `UndoableObjects` stack, which Plan 2's Task 12 replaces with `Board::clone` (there is no `undoList` in the port, so the four have no state to act on until that task decides the shape of a snapshot).
-// added in Task 12: the `undoList.saveForUndo(currentComponent)` call that opens each of `move`,
+/// not ported: `Components.undoList` (Components.java:16), a `UndoableObjects` — Task 12 gives
+/// the board `Board::clone`/`Board::deep_copy` (`board/snapshot.rs`) instead of a per-field undo
+/// stack, so there is no `undoList` here for these to act on:
+///
+/// not ported: `Components.generateSnapshot` (:105-108) — the undo stack; a Plan-7 caller takes
+/// `board.clone()` instead of generating a snapshot.
+/// not ported: `Components.undo`/`redo` (:110-128) and the private
+/// `restoreComponentArrFromUndoList` (:130-146) — interactive undo/redo.
+// not ported: the `undoList.saveForUndo(currentComponent)` call that opens each of `move`,
 // `turn90Degree`, `rotate` and `changeSide` (Components.java:154,164,174,184) — the four
-// mutators below do the geometry but not the snapshot.
+// mutators below do the geometry but take no undo record; whole-board `deep_copy` is this port's
+// snapshot instead.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Components {
     /// Java `private final Vector<Component> componentArr` (Components.java:17). The component
@@ -301,8 +307,9 @@ impl Components {
             position_fixed,
             part_number,
         );
-        // added in Task 12: `undoList.insert(newComponent)` (Components.java:52), which
-        // registers the new component with the undo stack right after this push.
+        // not ported: `undoList.insert(newComponent)` (Components.java:52), which would register
+        // the new component with the undo stack right after this push — no undo stack in this
+        // port (see the `not ported:` note on `Components.undoList` above).
         self.components.push(new_component);
         self.components.last().expect("just pushed")
     }
