@@ -42,7 +42,7 @@ pub use line::Line;
 pub use line_segment::LineSegment;
 pub use point::Point;
 pub use polygon::Polygon;
-pub use polyline::Polyline;
+pub use polyline::{Polyline, PolylineError};
 pub use rational_point::RationalPoint;
 pub use rational_vector::RationalVector;
 pub use regular_tile_shape::RegularTileShape;

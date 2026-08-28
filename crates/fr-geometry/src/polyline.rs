@@ -42,6 +42,36 @@ use crate::vector::Vector;
 /// Java `Polyline.USE_BOUNDING_OCTAGON_FOR_OFFSET_SHAPES` (Polyline.java:19).
 const USE_BOUNDING_OCTAGON_FOR_OFFSET_SHAPES: bool = true;
 
+/// The one failure the `Polyline(Line[])` normalisation can produce.
+///
+/// Java signals it by *crashing* — `removeOverlaps` reads `tmpArr[-1]` and throws
+/// `ArrayIndexOutOfBoundsException` (Polyline.java:147-155). That crash is observable by a real
+/// caller: `PolylineTrace.combine_at_end` (PolylineTrace.java:303-311) builds
+/// `joinedPolyline = new Polyline(newLines)` and then compares `joinedPolyline.lines.length`
+/// against `newLineCount`, so swallowing the crash into an *empty* polyline would silently
+/// replace a trace's geometry with nothing, where Java aborts the whole autorouting pass through
+/// its pass-level `catch (Exception)`. Surfacing it as an error keeps that choice with the
+/// caller.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PolylineError {
+    /// `Polyline(Line[])`'s overlap removal consumed its whole output buffer and Java would read
+    /// index -1 (Polyline.java:148).
+    NormalizationIndexUnderflow,
+}
+
+impl std::fmt::Display for PolylineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PolylineError::NormalizationIndexUnderflow => f.write_str(
+                "Polyline normalisation: removeOverlaps ran out of lines \
+                 (Java throws ArrayIndexOutOfBoundsException: Index -1, Polyline.java:148)",
+            ),
+        }
+    }
+}
+
+impl std::error::Error for PolylineError {}
+
 /// A sequence of lines, where no 2 consecutive lines may be parallel.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Polyline {
@@ -122,15 +152,15 @@ impl Polyline {
     /// before the next line (Polyline.java:73-102).
     ///
     /// This is the normalising constructor that every trace transformation funnels through.
-    pub fn from_lines(input_lines: Vec<Line>) -> Polyline {
+    ///
+    /// Returns [`PolylineError::NormalizationIndexUnderflow`] on the one input class where Java
+    /// throws; every path Java completes normally — including its two "fewer than 3 lines"
+    /// exits, which yield an empty polyline — is an `Ok`.
+    pub fn from_lines(input_lines: Vec<Line>) -> Result<Polyline, PolylineError> {
         let filtered_lines = remove_consecutive_parallel_lines(input_lines);
-        let mut filtered_lines = match remove_overlaps(filtered_lines) {
-            Some(l) => l,
-            // totalized: Java throws ArrayIndexOutOfBoundsException here; see remove_overlaps.
-            None => return Polyline { lines: Vec::new() },
-        };
+        let mut filtered_lines = remove_overlaps(filtered_lines)?;
         if filtered_lines.len() < 3 {
-            return Polyline { lines: Vec::new() };
+            return Ok(Polyline { lines: Vec::new() });
         }
 
         // turn evtl the direction of the lines that they point always
@@ -147,9 +177,9 @@ impl Polyline {
                 }
             }
         }
-        Polyline {
+        Ok(Polyline {
             lines: filtered_lines,
-        }
+        })
     }
 }
 
@@ -200,14 +230,15 @@ fn remove_consecutive_parallel_lines(lines: Vec<Line>) -> Vec<Line> {
 /// Checks if previous and next lines are equal or opposite and removes the resulting overlap
 /// (Polyline.java:133-176).
 ///
-/// Returns `None` where Java throws `ArrayIndexOutOfBoundsException`: when the loop has already
+/// Returns `Err` where Java throws `ArrayIndexOutOfBoundsException`: when the loop has already
 /// decremented `newLength` to 0, `tmpArr[newLength - 1]` reads index -1. Reachable — e.g. the six
-/// lines `h, v, h, v, h, v` over the same two axes — and the caller turns it into an empty
-/// polyline, which is what the two "< 3 lines" exits of this function produce as well.
-// totalized: Java's index -1 crash becomes an empty polyline.
-fn remove_overlaps(lines: Vec<Line>) -> Option<Vec<Line>> {
+/// lines `h, v, h, v, h, v` over the same two axes, and ~11% of random line arrays drawn from a
+/// small pool of equal/opposite lines.
+// Java bug: Polyline.java:148 reads tmpArr[-1]; surfaced as Err rather than swallowed, because
+// PolylineTrace.combine_at_end can tell an empty polyline from a thrown exception.
+fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     if lines.len() < 4 {
-        return Some(lines);
+        return Ok(lines);
     }
     let mut new_length: usize = 0;
     let mut tmp_arr: Vec<Line> = vec![Line::new(IntPoint::ZERO, IntPoint::ZERO); lines.len()];
@@ -221,7 +252,7 @@ fn remove_overlaps(lines: Vec<Line>) -> Option<Vec<Line>> {
     for i in 2..lines.len() - 2 {
         if new_length == 0 {
             // Java reads tmpArr[-1] here and throws.
-            return None;
+            return Err(PolylineError::NormalizationIndexUnderflow);
         }
         if tmp_arr[new_length - 1].is_equal_or_opposite(&lines[i + 1]) {
             // skip 2 lines
@@ -242,14 +273,14 @@ fn remove_overlaps(lines: Vec<Line>) -> Option<Vec<Line>> {
     // else skip the last line
     if new_length == lines.len() {
         // nothing skipped
-        return Some(lines);
+        return Ok(lines);
     }
     // at least 1 line is skipped, adjust the array
     if new_length < 3 {
-        return Some(Vec::new());
+        return Ok(Vec::new());
     }
     tmp_arr.truncate(new_length);
-    Some(tmp_arr)
+    Ok(tmp_arr)
 }
 
 // -------------------------------------------------------------------------------------------
@@ -392,7 +423,9 @@ impl Polyline {
 
 impl Polyline {
     /// Returns the polyline with the reversed order of lines (Polyline.java:320-327).
-    pub fn reverse(&self) -> Polyline {
+    ///
+    /// Routes through [`Polyline::from_lines`], so it inherits its error.
+    pub fn reverse(&self) -> Result<Polyline, PolylineError> {
         let reversed: Vec<Line> = self.lines.iter().rev().map(Line::opposite).collect();
         Polyline::from_lines(reversed)
     }
@@ -644,9 +677,10 @@ impl Polyline {
     ///
     /// # Panics
     /// For a [`Vector::Rational`] — see [`crate::simplex::Simplex::translate_by`].
-    pub fn translate_by(&self, vector: &Vector) -> Polyline {
+    // totalized: a Vector::Rational panics here; Java's ClassCastException would come later.
+    pub fn translate_by(&self, vector: &Vector) -> Result<Polyline, PolylineError> {
         if *vector == Vector::ZERO {
-            return self.clone();
+            return Ok(self.clone());
         }
         let v: IntVector = match vector {
             Vector::Int(v) => *v,
@@ -659,7 +693,7 @@ impl Polyline {
 
     /// Returns the polyline turned by `factor` times 90 degrees around `pole`
     /// (Polyline.java:548-555).
-    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Polyline {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(
             self.lines
                 .iter()
@@ -680,12 +714,12 @@ impl Polyline {
     }
 
     /// Mirrors this polyline at the vertical line through `pole` (Polyline.java:570-577).
-    pub fn mirror_vertical(&self, pole: &IntPoint) -> Polyline {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(self.lines.iter().map(|l| l.mirror_vertical(pole)).collect())
     }
 
     /// Mirrors this polyline at the horizontal line through `pole` (Polyline.java:579-586).
-    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Polyline {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(
             self.lines
                 .iter()
@@ -835,9 +869,9 @@ impl Polyline {
     ///
     /// Java's "no common endpoint" answer is the receiver itself, not `null`, so this returns a
     /// `Polyline` rather than an `Option`.
-    pub fn combine(&self, other: &Polyline) -> Polyline {
+    pub fn combine(&self, other: &Polyline) -> Result<Polyline, PolylineError> {
         if self.lines.len() < 3 || other.lines.len() < 3 {
-            return self.clone();
+            return Ok(self.clone());
         }
         let (combine_at_start, combine_other_at_start) =
             if self.first_corner() == other.first_corner() {
@@ -849,7 +883,7 @@ impl Polyline {
             } else if self.last_corner() == other.last_corner() {
                 (false, false)
             } else {
-                return self.clone(); // no common endpoint
+                return Ok(self.clone()); // no common endpoint
             };
         let mut new_lines: Vec<Line> = Vec::with_capacity(self.lines.len() + other.lines.len() - 2);
         if combine_at_start {
@@ -887,13 +921,17 @@ impl Polyline {
     /// the lines in the two result pieces is preserved. `line_index` must be bigger than 0 and
     /// less than `lines.length - 1`. Returns `None` if nothing was split
     /// (Polyline.java:751-835).
-    pub fn split(&self, line_index: usize, end_line: &Line) -> Option<[Polyline; 2]> {
+    pub fn split(
+        &self,
+        line_index: usize,
+        end_line: &Line,
+    ) -> Result<Option<[Polyline; 2]>, PolylineError> {
         if line_index < 1 || line_index + 2 > self.lines.len() {
             // Java: FRLogger.warn("Polyline.split: lineIndex out of range")
-            return None;
+            return Ok(None);
         }
         if self.lines[line_index].is_parallel(end_line) {
-            return None;
+            return Ok(None);
         }
         let new_end_corner = self.lines[line_index].intersection(end_line);
         // Java's two FRLogger.trace calls here are diagnostics only and are not ported.
@@ -903,7 +941,7 @@ impl Polyline {
         {
             // No split, if endLine does not intersect, but touches
             // only this Polyline at an end point.
-            return None;
+            return Ok(None);
         }
         let mut first_piece: Vec<Line>;
         if self.corner_at(line_index - 1) == new_end_corner {
@@ -924,26 +962,26 @@ impl Polyline {
             second_piece.extend_from_slice(&self.lines[line_index..]);
         }
         let result = [
-            Polyline::from_lines(std::mem::take(&mut first_piece)),
-            Polyline::from_lines(std::mem::take(&mut second_piece)),
+            Polyline::from_lines(std::mem::take(&mut first_piece))?,
+            Polyline::from_lines(std::mem::take(&mut second_piece))?,
         ];
         if result[0].is_point() || result[1].is_point() {
-            return None;
+            return Ok(None);
         }
-        Some(result)
+        Ok(Some(result))
     }
 
     /// Creates a new polyline by skipping lines from `from_no` to `to_no`
     /// (Polyline.java:837-846).
-    pub fn skip_lines(&self, from_no: usize, to_no: usize) -> Polyline {
+    pub fn skip_lines(&self, from_no: usize, to_no: usize) -> Result<Polyline, PolylineError> {
         self.skip_lines_i64(from_no as i64, to_no as i64)
     }
 
     /// [`Polyline::skip_lines`] for indices that Java computes as possibly negative `int`s
     /// (`shorten` passes `newLineCount - 1`, Polyline.java:922).
-    fn skip_lines_i64(&self, from_no: i64, to_no: i64) -> Polyline {
+    fn skip_lines_i64(&self, from_no: i64, to_no: i64) -> Result<Polyline, PolylineError> {
         if from_no < 0 || to_no > self.lines.len() as i64 - 1 || from_no > to_no {
-            return self.clone();
+            return Ok(self.clone());
         }
         let (from_no, to_no) = (from_no as usize, to_no as usize);
         let mut new_lines: Vec<Line> = Vec::with_capacity(self.lines.len() - (to_no - from_no + 1));
@@ -980,7 +1018,8 @@ impl Polyline {
     ///
     /// # Panics
     /// For a [`Point::Rational`] argument — see [`Polyline::from_polygon`]; Java's
-    /// `new Line(point, dir)` would only warn there.
+    /// `new Line(point, dir)` would only warn there and carry on with a broken line.
+    // totalized: a rational query point panics mid-loop instead of producing a broken Line.
     pub fn projection_line(&self, point: &Point) -> Option<LineSegment> {
         let from_point = point.to_float();
         let mut min_distance = f64::MAX;
@@ -1026,7 +1065,11 @@ impl Polyline {
     /// Shortens this polyline to `new_line_count` lines. Additionally, the last line segment is
     /// approximately shortened to `last_segment_length`. The last corner of the new polyline is
     /// an `IntPoint` (Polyline.java:912-936).
-    pub fn shorten(&self, new_line_count: usize, last_segment_length: f64) -> Polyline {
+    pub fn shorten(
+        &self,
+        new_line_count: usize,
+        last_segment_length: f64,
+    ) -> Result<Polyline, PolylineError> {
         let last_corner = self.corner_approx_at_i64(new_line_count as i64 - 2);
         let prev_last_corner = self.corner_approx_at_i64(new_line_count as i64 - 3);
         let new_last_corner = prev_last_corner
@@ -1097,7 +1140,7 @@ mod tests {
         assert!(p.is_multiple_of_45_degree());
         assert!(!p.is_point());
         assert_eq!(
-            p.reverse().first_corner().unwrap(),
+            p.reverse().unwrap().first_corner().unwrap(),
             Point::Int(IntPoint::new(10, 10))
         );
         assert_eq!(p.bounding_box(), IntBox::from_coords(0, 0, 10, 10));
@@ -1194,22 +1237,23 @@ mod tests {
     fn combine_and_split() {
         let a = Polyline::from_points(&pts(&[(0, 0), (10, 0)]));
         let b = Polyline::from_points(&pts(&[(10, 0), (10, 10)]));
-        let c = a.combine(&b);
+        let c = a.combine(&b).unwrap();
         assert_eq!(c.corners(), pts(&[(0, 0), (10, 0), (10, 10)]));
         // no common end corner: Java returns the receiver (Polyline.java:718-720)
         let d = Polyline::from_points(&pts(&[(50, 50), (60, 50)]));
-        assert_eq!(a.combine(&d), a);
+        assert_eq!(a.combine(&d), Ok(a));
         // split the L at its horizontal segment (line index 1) by the vertical line x = 5
         let parts = l_shape()
             .split(1, &Line::from_coords(5, 0, 5, 1))
+            .unwrap()
             .expect("splits");
         assert_eq!(parts[0].corners(), pts(&[(0, 0), (5, 0)]));
         assert_eq!(parts[1].corners(), pts(&[(5, 0), (10, 0), (10, 10)]));
         // a line parallel to the split line does not split (Polyline.java:763-765)
-        assert_eq!(l_shape().split(1, &Line::from_coords(5, 0, 6, 0)), None);
+        assert_eq!(l_shape().split(1, &Line::from_coords(5, 0, 6, 0)), Ok(None));
         // touching the polyline at its first corner does not split (Polyline.java:800-805)
-        assert_eq!(l_shape().split(1, &Line::from_coords(0, 0, 0, 1)), None);
-        assert_eq!(l_shape().split(0, &Line::from_coords(5, 0, 5, 1)), None);
+        assert_eq!(l_shape().split(1, &Line::from_coords(0, 0, 0, 1)), Ok(None));
+        assert_eq!(l_shape().split(0, &Line::from_coords(5, 0, 5, 1)), Ok(None));
     }
 
     #[test]
@@ -1236,29 +1280,36 @@ mod tests {
         let p = l_shape();
         assert_eq!(
             p.translate_by(&crate::vector::Vector::new(1, 1))
+                .unwrap()
                 .bounding_box(),
             IntBox::from_coords(1, 1, 11, 11)
         );
         assert_eq!(
-            p.turn_90_degree(1, &IntPoint::new(0, 0)).bounding_box(),
+            p.turn_90_degree(1, &IntPoint::new(0, 0))
+                .unwrap()
+                .bounding_box(),
             IntBox::from_coords(-10, 0, 0, 10)
         );
         assert_eq!(
-            p.mirror_vertical(&IntPoint::new(0, 0)).bounding_box(),
+            p.mirror_vertical(&IntPoint::new(0, 0))
+                .unwrap()
+                .bounding_box(),
             IntBox::from_coords(-10, 0, 0, 10)
         );
         assert_eq!(
-            p.mirror_horizontal(&IntPoint::new(0, 0)).bounding_box(),
+            p.mirror_horizontal(&IntPoint::new(0, 0))
+                .unwrap()
+                .bounding_box(),
             IntBox::from_coords(0, -10, 10, 0)
         );
         // skipLines(0, 0) drops one line, so 4 lines become 3 and 3 corners become 2
         // (Polyline.java:837-846).
-        assert_eq!(p.skip_lines(0, 0).corner_count(), 2);
+        assert_eq!(p.skip_lines(0, 0).unwrap().corner_count(), 2);
         // out-of-range arguments return the receiver
-        assert_eq!(p.skip_lines(0, 4), p);
-        assert_eq!(p.skip_lines(2, 1), p);
+        assert_eq!(p.skip_lines(0, 4), Ok(p.clone()));
+        assert_eq!(p.skip_lines(2, 1), Ok(p.clone()));
         // translateBy(ZERO) returns the receiver (Polyline.java:538-540)
-        assert_eq!(p.translate_by(&Vector::ZERO), p);
+        assert_eq!(p.translate_by(&Vector::ZERO), Ok(p.clone()));
         // rotateApprox(0) returns the receiver (Polyline.java:559-561)
         assert_eq!(p.rotate_approx(0.0, &FloatPoint::new(0.0, 0.0)), p);
     }
@@ -1275,7 +1326,7 @@ mod tests {
     #[test]
     fn shorten_reduces_lines() {
         let p = Polyline::from_points(&pts(&[(0, 0), (10, 0), (10, 10), (20, 10)]));
-        let s = p.shorten(3, 5.0);
+        let s = p.shorten(3, 5.0).unwrap();
         assert_eq!(s.lines().len(), 3);
         assert!(s.length_approx() < p.length_approx());
         assert_eq!(s.corners(), pts(&[(0, 0), (5, 0)]));
@@ -1291,7 +1342,8 @@ mod tests {
             Line::from_coords(3, 0, 13, 0), // parallel to the previous line: skipped
             Line::from_coords(10, 0, 10, 10),
             Line::from_coords(10, 10, 11, 10),
-        ]);
+        ])
+        .unwrap();
         assert_eq!(p.lines().len(), 4);
         assert_eq!(p.corners(), pts(&[(0, 0), (10, 0), (10, 10)]));
         // fewer than 3 lines after filtering: empty polyline
@@ -1301,11 +1353,13 @@ mod tests {
                 Line::from_coords(2, 0, 3, 0),
                 Line::from_coords(4, 0, 5, 0),
             ])
+            .unwrap()
             .is_empty()
         );
-        // totalized: Java throws ArrayIndexOutOfBoundsException: Index -1 for this input
-        // (Polyline.java:148); this port answers an empty polyline.
-        assert!(
+        // Java bug: Polyline.java:148 throws ArrayIndexOutOfBoundsException: Index -1 for this
+        // input; the port surfaces it as an error instead of swallowing it into an empty
+        // polyline, which a caller could not tell apart from a legitimate result.
+        assert_eq!(
             Polyline::from_lines(vec![
                 Line::from_coords(0, 0, 1, 0),
                 Line::from_coords(0, 0, 0, 1),
@@ -1313,8 +1367,8 @@ mod tests {
                 Line::from_coords(0, 0, 0, 1),
                 Line::from_coords(0, 0, 1, 0),
                 Line::from_coords(0, 0, 0, 1),
-            ])
-            .is_empty()
+            ]),
+            Err(PolylineError::NormalizationIndexUnderflow)
         );
     }
 }

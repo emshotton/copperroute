@@ -29,7 +29,7 @@ use crate::line::Line;
 use crate::line_segment::LineSegment;
 use crate::point::Point;
 use crate::polygon::Polygon;
-use crate::polyline::Polyline;
+use crate::polyline::{Polyline, PolylineError};
 use crate::side::Side;
 use crate::simplex::Simplex;
 use crate::vector::Vector;
@@ -1372,25 +1372,28 @@ impl TileShape {
     /// Java calls `containsInside(polyline.firstCorner())` before checking anything else, so an
     /// empty polyline (no corners, hence a `null` first corner) throws — unless this shape has no
     /// border lines, where `containsInside` returns `false` before dereferencing the point
-    /// (TileShape.java:197-201) and Java answers `[polyline]`. This port reproduces the second
-    /// case and answers an empty list for the first.
-    // totalized: an empty polyline on a bounded shape answers `[]`, not a NullPointerException.
-    pub fn cutout_polyline(&self, polyline: &Polyline) -> Vec<Polyline> {
+    /// (TileShape.java:197-201) and Java answers `[polyline]`. This port answers `[polyline]` for
+    /// both: an empty polyline never intersects anything, so "nothing was cut out" is the same
+    /// answer the border-line-free case reaches through Java's own code path.
+    // totalized: an empty polyline on a shape with border lines answers `[polyline]`, where Java
+    // throws a NullPointerException.
+    pub fn cutout_polyline(&self, polyline: &Polyline) -> Result<Vec<Polyline>, PolylineError> {
         let intersection_no = self.entrance_points(polyline);
         let first_corner = polyline.first_corner();
         let first_corner_is_inside = match &first_corner {
             Some(corner) => self.contains_inside(corner),
-            None if self.border_line_count() == 0 => false,
-            None => return Vec::new(),
+            // `containsInside` answers false for a border-line-free shape without ever touching
+            // the point (TileShape.java:197-201); an empty polyline takes the same answer here.
+            None => false,
         };
         if intersection_no.is_empty() {
             // no intersections
             if first_corner_is_inside {
                 // polyline is contained completely in this shape
-                return Vec::new();
+                return Ok(Vec::new());
             }
             // polyline is completely outside
-            return vec![polyline.clone()];
+            return Ok(vec![polyline.clone()]);
         }
         let mut pieces: Vec<Polyline> = Vec::new();
         let mut current_intersection_no = 0usize;
@@ -1406,7 +1409,7 @@ impl TileShape {
                     polyline.lines()[..current_polyline_intersection_no + 1].to_vec();
                 // close the polyline piece with the intersected edge line.
                 current_lines.push(self.border_line_at(current_intersection_tuple[1]));
-                let current_piece = Polyline::from_lines(current_lines);
+                let current_piece = Polyline::from_lines(current_lines)?;
                 if !current_piece.is_empty() {
                     pieces.push(current_piece);
                 }
@@ -1446,7 +1449,7 @@ impl TileShape {
                         [current_intersection_no_of_polyline..=next_intersection_no_of_polyline],
                 );
                 current_lines.push(self.border_line_at(next_intersection_tuple[1]));
-                let current_piece = Polyline::from_lines(current_lines);
+                let current_piece = Polyline::from_lines(current_lines)?;
                 if !current_piece.is_empty() {
                     pieces.push(current_piece);
                 }
@@ -1461,12 +1464,12 @@ impl TileShape {
                 Vec::with_capacity(polyline.lines().len() - current_polyline_intersection_no + 1);
             current_lines.push(self.border_line_at(current_intersection_tuple[1]));
             current_lines.extend_from_slice(&polyline.lines()[current_polyline_intersection_no..]);
-            let current_piece = Polyline::from_lines(current_lines);
+            let current_piece = Polyline::from_lines(current_lines)?;
             if !current_piece.is_empty() {
                 pieces.push(current_piece);
             }
         }
-        pieces
+        Ok(pieces)
     }
 
     /// Returns a list of pairs. Its length is the number of points where `polyline` enters or
@@ -2075,7 +2078,7 @@ mod tests {
             &Point::Int(IntPoint::new(15, 5)),
         );
         assert_eq!(shape.entrance_points(&cross), vec![[1, 3], [1, 1]]);
-        let pieces = shape.cutout_polyline(&cross);
+        let pieces = shape.cutout_polyline(&cross).unwrap();
         assert_eq!(pieces.len(), 2);
         assert_eq!(
             pieces[0].corners(),
@@ -2096,12 +2099,22 @@ mod tests {
             &Point::Int(IntPoint::new(2, 2)),
             &Point::Int(IntPoint::new(8, 8)),
         );
-        assert_eq!(shape.cutout_polyline(&inside).len(), 0);
+        assert_eq!(shape.cutout_polyline(&inside).unwrap().len(), 0);
         // completely outside: the polyline comes back unchanged
         let outside = Polyline::from_two_points(
             &Point::Int(IntPoint::new(20, 20)),
             &Point::Int(IntPoint::new(30, 30)),
         );
-        assert_eq!(shape.cutout_polyline(&outside), vec![outside]);
+        assert_eq!(shape.cutout_polyline(&outside), Ok(vec![outside]));
+        // An empty polyline never intersects anything, so it comes back whole — the same answer
+        // Java reaches through `containsInside`'s border-line-free early return
+        // (TileShape.java:197-201). Java throws for the bounded receiver; see docs/java-quirks.md.
+        let empty = Polyline::from_points(&[Point::Int(IntPoint::new(4, 4))]);
+        assert!(empty.is_empty());
+        assert_eq!(shape.cutout_polyline(&empty), Ok(vec![empty.clone()]));
+        assert_eq!(
+            TileShape::Simplex(Simplex::EMPTY).cutout_polyline(&empty),
+            Ok(vec![empty])
+        );
     }
 }

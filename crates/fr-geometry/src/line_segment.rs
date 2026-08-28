@@ -26,7 +26,7 @@ use crate::int_vector::IntVector;
 use crate::limits::{java_max, java_min, java_round};
 use crate::line::Line;
 use crate::point::Point;
-use crate::polyline::Polyline;
+use crate::polyline::{Polyline, PolylineError};
 use crate::side::Side;
 use crate::signum::Signum;
 use crate::simplex::Simplex;
@@ -72,7 +72,9 @@ impl LineSegment {
     }
 
     /// Transforms this `LineSegment` into a polyline of length 3 (LineSegment.java:125-132).
-    pub fn to_polyline(&self) -> Polyline {
+    ///
+    /// Routes through [`Polyline::from_lines`], so it inherits its error.
+    pub fn to_polyline(&self) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(vec![self.start, self.middle, self.end])
     }
 
@@ -922,11 +924,12 @@ mod tests {
         assert_eq!(seg.get_end_closing_line(), Line::from_coords(10, 0, 10, 10));
         assert_eq!(seg.start_point(), Point::Int(IntPoint::new(0, 0)));
         assert_eq!(seg.end_point(), Point::Int(IntPoint::new(10, 0)));
-        assert_eq!(seg.to_polyline().lines(), &polyline.lines()[0..3]);
+        assert_eq!(seg.to_polyline().unwrap().lines(), &polyline.lines()[0..3]);
         assert_eq!(
             LineSegment::from_polyline(&polyline, 2)
                 .unwrap()
                 .to_polyline()
+                .unwrap()
                 .lines(),
             &polyline.lines()[1..4]
         );
