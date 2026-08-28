@@ -59,8 +59,10 @@
 pub mod changed_area;
 pub mod communication;
 pub mod connectivity;
+pub mod normalize;
 pub mod query;
 pub mod shape_trace_entries;
+pub mod trace_normalize;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -70,7 +72,9 @@ use fr_geometry::{Area, IntBox, Point, Polyline, PolylineShapeRef, TileShape, Ve
 pub use changed_area::ChangedArea;
 pub use communication::Communication;
 pub use connectivity::StopConnectionOption;
+pub use normalize::MAX_NORMALIZE_ITERATIONS;
 pub use shape_trace_entries::ShapeTraceEntries;
+pub use trace_normalize::MAX_NORMALIZATION_DEPTH;
 
 use crate::ids::{ItemId, TreeId};
 use crate::items::{
@@ -153,12 +157,6 @@ pub(crate) use item_ctx;
 // added in Task 12: the private `BasicBoard.applyUndoRedoSideEffects` (BasicBoard.java:1255-1287).
 // added in Task 12: `RoutingBoard.deepCopy` (RoutingBoard.java:1418-1420).
 //
-// Trace normalisation is Task 9, which Plan 2 dispatches after this task:
-// added in Task 9: `BasicBoard.combineTraces` (BasicBoard.java:683-706).
-// added in Task 9: `BasicBoard.normalizeTraces` (BasicBoard.java:709-795).
-// added in Task 9: `BasicBoard.normalizeAllTraces` (BasicBoard.java:798-885).
-// added in Task 9: `BasicBoard.splitTraces` (BasicBoard.java:891-907).
-//
 // The autoroute engine is Plan 6:
 // added in Plan 6: `BasicBoard.additionalUpdateAfterChange` (BasicBoard.java:1227) and its `RoutingBoard` override (RoutingBoard.java:96-118).
 // added in Plan 6: `BasicBoard.areThereItemsOnInactiveLayer` (BasicBoard.java:1443-1462) — takes an `AutorouteControl`.
@@ -201,6 +199,18 @@ pub struct Board {
     pub shove_failing_obstacle: Option<ItemId>,
     /// Java `RoutingBoard.shoveFailingLayer` (RoutingBoard.java:73), initialised to `-1`.
     pub shove_failing_layer: i32,
+
+    /// Java `BasicBoard.normalizeSuppressedNetNos` (BasicBoard.java:96): the nets whose
+    /// normalisation hit [`MAX_NORMALIZE_ITERATIONS`] on this board, and which
+    /// [`Board::normalize_traces`] refuses to touch again.
+    ///
+    /// Java's field is `transient` and its only reset is in `readObject`
+    /// (BasicBoard.java:1392), i.e. a board that comes back through
+    /// `BoardSnapshotManager.deserialize` — which is what Java's `clone`/`deepCopy` is — starts
+    /// with an empty set. That is what its own log message means by "on this board candidate".
+    // added in Task 12: `Board::deep_copy` must clear this set, exactly as it clears
+    // `autoroute_info` (BasicBoard.java:1392 is the Java reset, inside `readObject`).
+    pub normalize_suppressed_net_nos: std::collections::BTreeSet<i32>,
 
     /// Java `BasicBoard.revision` (BasicBoard.java:97). `u64` rather than `int`: the counter only
     /// ever increases and nothing compares it against a negative value.
@@ -272,6 +282,7 @@ impl Board {
             failure_log: Vec::new(),
             shove_failing_obstacle: None,
             shove_failing_layer: -1,
+            normalize_suppressed_net_nos: std::collections::BTreeSet::new(),
             revision: 0,
             max_trace_half_width: 1000,
             min_trace_half_width: 10000,
@@ -495,6 +506,15 @@ impl Board {
 
     /// Port of `BasicBoard.insertTrace(Polyline, …)` (BasicBoard.java:209-242): insert, then
     /// normalise inside the changed area.
+    ///
+    /// This is the one place a normalisation failure does **not** propagate: Java wraps
+    /// `newTrace.normalize(clipShape)` in its own `catch (Exception)` (:230-241) — "the segment
+    /// is skipped and the connection may remain unrouted" — and quirk #22's
+    /// `ArrayIndexOutOfBoundsException` is exactly such an exception. The port swallows the
+    /// [`BoardError`](crate::BoardError) at the same line, and only there; every other caller of
+    /// [`Board::normalize_trace`] threads it out.
+    // not ported: the `FRLogger.warn`/`FRLogger.debug` pair in that catch block
+    // (BasicBoard.java:233-240).
     pub fn insert_trace(
         &mut self,
         polyline: Polyline,
@@ -512,10 +532,10 @@ impl Board {
             clearance_class,
             fixed_state,
         )?;
-        // added in Task 9: `newTrace.normalize(clipShape)` (BasicBoard.java:222-241), where
-        // `clipShape` is `changedArea.getArea(layer)` when a changed area is being marked. Java
-        // swallows a normalisation failure with a warning; Plan 2 ruling 10 makes it a
-        // `BoardError::Normalization` instead.
+        // BasicBoard.java:222-229: the clip shape is the changed area of this layer, when one is
+        // being marked.
+        let clip_shape = self.changed_area.as_ref().map(|area| area.get_area(layer));
+        let _ = self.normalize_trace(id, clip_shape.as_ref());
         Some(id)
     }
 
@@ -553,17 +573,24 @@ impl Board {
         clearance_class: usize,
         fixed_state: FixedState,
         attach_allowed: bool,
-    ) -> ItemId {
+    ) -> Result<ItemId, crate::BoardError> {
         let id = self.new_item_id();
         let via = Via::new(
-            ItemHeader::new(id, net_nos, clearance_class, 0, fixed_state),
+            ItemHeader::new(id, net_nos.clone(), clearance_class, 0, fixed_state),
             padstack,
-            center,
+            center.clone(),
             attach_allowed,
         );
-        self.insert_item(Item::Via(via))
-        // added in Task 9: the `splitTraces(center, layer, netNumber)` loop over the padstack's
-        // layer range (BasicBoard.java:287-293), which needs `Trace.split`.
+        self.insert_item(Item::Via(via));
+        // BasicBoard.java:287-293. Note the exclusive upper bound, one layer narrower than
+        // `insertEscapeVia`'s.
+        let (from_layer, to_layer) = self.padstack_layer_range(padstack);
+        for layer in from_layer..to_layer {
+            for net_number in &net_nos {
+                self.split_traces(&center, layer as usize, *net_number)?;
+            }
+        }
+        Ok(id)
     }
 
     /// Port of `BasicBoard.insertEscapeVia` (BasicBoard.java:310-330): a via sitting on an SMD
@@ -579,19 +606,40 @@ impl Board {
         clearance_class: usize,
         fixed_state: FixedState,
         smd_layer: usize,
-    ) -> ItemId {
+    ) -> Result<ItemId, crate::BoardError> {
         let id = self.new_item_id();
         let mut via = Via::new(
-            ItemHeader::new(id, net_nos, clearance_class, 0, fixed_state),
+            ItemHeader::new(id, net_nos.clone(), clearance_class, 0, fixed_state),
             padstack,
-            center,
+            center.clone(),
             true,
         );
         // BasicBoard.java:319-320.
         via.is_escape_via = true;
         via.escape_via_smd_layer = smd_layer as i32;
-        self.insert_item(Item::Via(via))
-        // added in Task 9: the `splitTraces` loop at BasicBoard.java:322-328.
+        self.insert_item(Item::Via(via));
+        // BasicBoard.java:322-328 — `fromLayer..=toLayer`, one layer wider than `insertVia`'s.
+        let (from_layer, to_layer) = self.padstack_layer_range(padstack);
+        for layer in from_layer..=to_layer {
+            for net_number in &net_nos {
+                self.split_traces(&center, layer as usize, *net_number)?;
+            }
+        }
+        Ok(id)
+    }
+
+    /// `padstack.fromLayer()` / `padstack.toLayer()` (BasicBoard.java:288-289), resolved through
+    /// the board's library.
+    ///
+    /// Not a Java method: Java's two inserters hold the `Padstack` itself, while this port keys
+    /// it by [`PadstackId`](crate::ids::PadstackId).
+    fn padstack_layer_range(&self, padstack: crate::ids::PadstackId) -> (i32, i32) {
+        let padstack = self
+            .library
+            .padstacks
+            .get(padstack)
+            .expect("Board::insertVia: the padstack of an inserted via is in the library");
+        (padstack.from_layer(), padstack.to_layer())
     }
 
     /// Port of `BasicBoard.insertPin` (BasicBoard.java:336-346).

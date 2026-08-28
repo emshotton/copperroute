@@ -37,24 +37,25 @@
 //! or its item list. Each marker names the Java method, its lines, and the method that will
 //! replace it.
 
-// added in Task 9: `Trace.combine` (Trace.java:463) and `PolylineTrace.combine`
+// renamed: `Trace.combine` (Trace.java:463) and `PolylineTrace.combine`
 // (PolylineTrace.java:174-192), with the two private halves `combineAtStart`
 // (PolylineTrace.java:201-332) and `combineAtEnd` (:341-456) -> `Board::combine_trace`,
-// `Board::combine_trace_at_start`, `Board::combine_trace_at_end`.
-// added in Task 9: `PolylineTrace.normalize` (PolylineTrace.java:801-803) and the whole of
+// `Board::combine_trace_at_start`, `Board::combine_trace_at_end` (`board/trace_normalize.rs`).
+// renamed: `PolylineTrace.normalize` (PolylineTrace.java:801-803) and the whole of
 // `board/trace/PolylineTraceNormalization.java` -> `Board::normalize_trace` (recursion capped at
 // `MAX_NORMALIZATION_DEPTH = 16`).
-// added in Task 9: `Trace.split(IntOctagon)` (Trace.java:471) and `PolylineTrace.split`
+// renamed: `Trace.split(IntOctagon)` (Trace.java:471) and `PolylineTrace.split`
 // (PolylineTrace.java:464-691) -> `Board::split_trace`. Only its `clipShape` filter
 // (PolylineTrace.java:475-479) is pure — [`PolylineTrace::clip_intersects_segment`]; every
 // intersection candidate comes from `defaultTree.overlappingTreeEntries`, and each split ends in
 // `board.removeItem` + `board.insertTraceWithoutCleaning`.
-// added in Task 9: `Trace.split(Point)` (Trace.java:477) and `PolylineTrace.split(Point)`
+// renamed: `Trace.split(Point)` (Trace.java:477) and `PolylineTrace.split(Point)`
 // (PolylineTrace.java:698-712), plus the private `PolylineTrace.split(int, Line)` (:719-760) and
-// `splitInsideDrillPadProhibited` (:768-792) -> `Board::split_trace_at_point`. The geometry cores
+// `splitInsideDrillPadProhibited` (:768-792) -> `Board::split_trace_at_point`,
+// `Board::split_trace_at_line` and `Board::split_inside_drill_pad_prohibited`. The geometry cores
 // are [`PolylineTrace::split_polyline_at_point`] and
 // [`PolylineTrace::split_polyline_at_line`].
-// added in Task 9: `PolylineTrace.change` (PolylineTrace.java:936-1005) -> `Board::change_trace`:
+// renamed: `PolylineTrace.change` (PolylineTrace.java:936-1005) -> `Board::change_trace`:
 // the "reuse the search-tree entries" diff plus `normalize`.
 // renamed: `Trace.getCompensatedHalfWidth` (Trace.java:86-89) ->
 // `ShapeSearchTree::compensated_half_width`; it is `halfWidth +
@@ -382,7 +383,7 @@ impl PolylineTrace {
     /// Everything else in that method is board work — the `isOnTheBoard` and
     /// `isDeletionForbidden` guards (:720-729), `splitInsideDrillPadProhibited` (:738-740) and
     /// the `removeItem`/`insertTraceWithoutCleaning` pair (:741-758).
-    // added in Task 9: `Board::split_trace_at_line`, the board wrapper of this — the two guards,
+    // The board wrapper is `Board::split_trace_at_line`, which adds the two guards,
     // `splitInsideDrillPadProhibited` (PolylineTrace.java:768-792) and the remove/insert pair.
     pub fn split_polyline_at_line(
         &self,
@@ -436,8 +437,8 @@ impl PolylineTrace {
     /// own guards inside, using [`PolylineTrace::perpendicular_split_line`] and
     /// [`PolylineTrace::split_polyline_at_line`] as its two pure steps. This method is the
     /// board-free shape of that loop, and is what the geometry tests pin.
-    // added in Task 9: `Board::split_trace_at_point` — the per-candidate loop described above,
-    // which replaces the two returned polylines with two inserted traces.
+    // The board wrapper is `Board::split_trace_at_point` — the per-candidate loop described
+    // above, which replaces the two returned polylines with two inserted traces.
     pub fn split_polyline_at_point(
         &self,
         point: &Point,
@@ -458,8 +459,8 @@ impl PolylineTrace {
     ///
     /// Extracted because it is the only part of that method that needs no search tree; the loop
     /// it guards is Task 9's.
-    // added in Task 9: `Board::split_trace`, the board half of `PolylineTrace.split(IntOctagon)`
-    // (PolylineTrace.java:464-691) — every intersection candidate comes from
+    // The board half of `PolylineTrace.split(IntOctagon)` (PolylineTrace.java:464-691) is
+    // `Board::split_trace` — every intersection candidate comes from
     // `defaultTree.overlappingTreeEntries`, so nothing else of it is pure.
     pub fn clip_intersects_segment(&self, index: usize, clip: &IntOctagon) -> bool {
         match LineSegment::from_polyline(&self.lines, index + 1) {

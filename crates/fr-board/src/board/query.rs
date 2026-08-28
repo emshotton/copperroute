@@ -887,7 +887,7 @@ impl Board {
         &mut self,
         net_number: i32,
         stop_connection_option: StopConnectionOption,
-    ) -> bool {
+    ) -> Result<bool, crate::BoardError> {
         let mut stub_set: BTreeSet<ItemId> = BTreeSet::new();
         // RoutingBoard.java:1195-1219, over the item list in board order.
         for id in self.items_in_board_order() {
@@ -926,11 +926,12 @@ impl Board {
             }
         }
         if stub_connections.is_empty() {
-            return false;
+            return Ok(false);
         }
         self.remove_items(stub_connections);
-        // added in Task 9: `this.combineTraces(netNumber)` (RoutingBoard.java:1236).
-        true
+        // RoutingBoard.java:1236.
+        self.combine_traces(net_number)?;
+        Ok(true)
     }
 
     /// Port of `RoutingBoard.connectToTrace` (RoutingBoard.java:1116-1170): insert a stub from
