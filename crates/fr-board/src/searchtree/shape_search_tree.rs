@@ -1573,3 +1573,12 @@ impl ShapeSearchTree {
 // added in Plan 6: `ShapeSearchTree.divideLargeRoom` (ShapeSearchTree.java:1095-1118) and its
 // override `ShapeSearchTree45Degree.divideLargeRoom` (ShapeSearchTree45Degree.java:288-298) —
 // called only from `completeShape`, same reason.
+//
+// not ported: the private diagnostic helpers of both subclasses — `describeBounds`,
+// `isCompleteShapeDebugAnchor`, `traceCompleteShapeFilter`, `traceCompleteShapeCandidate`,
+// `traceCompleteShapeDecision`, `obstacleId` and `obstacleNets`
+// (ShapeSearchTree45Degree.java:543-647, ShapeSearchTree90Degree.java:324-432). Every one is an
+// `FRLogger.trace` payload for a single hard-coded room the Java author was debugging
+// (`isCompleteShapeDebugAnchor` tests net 77 / net 84 at literal coordinates), and `fr-board`
+// must not depend on `tracing` (global-constraints.md). They belong to `completeShape`, so Plan 6
+// inherits nothing but their absence.
