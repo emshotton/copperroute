@@ -1061,14 +1061,14 @@ pub fn cycle_board() -> (Board, PadstackId) {
 ///
 /// | id | item |
 /// |---|---|
-/// | 1 | via `V` at `(0, 0)`, all three layers |
-/// | 2 | via `W` at `(3000, 0)`, all three layers |
-/// | 3 | trace `T` on layer 0, `(0,0) -> (0,-1000) -> (3000,-1000) -> (3000,0)` |
-/// | 4 | trace `B` on layer 2, `(0,0) -> (0,2000)` — a dead-end stub off `V` |
-/// | 5 | trace `A` on layer 1, `(0,0) -> (3000,0)` — the short way from `V` to `W` |
+/// | 2 | via `V` at `(0, 0)`, all three layers |
+/// | 3 | via `W` at `(3000, 0)`, all three layers |
+/// | 4 | trace `T` on layer 0, `(0,0) -> (0,-1000) -> (3000,-1000) -> (3000,0)` |
+/// | 5 | trace `B` on layer 2, `(0,0) -> (0,2000)` — a dead-end stub off `V` |
+/// | 6 | trace `A` on layer 1, `(0,0) -> (3000,0)` — the short way from `V` to `W` |
 ///
 /// `T` is a cycle (`T`'s start contact `V`, then `A`, then `W`, which contacts `T` again), and
-/// `V` is the via with three contacts: `{3, 4, 5}`. Walking them **descending** (Java's
+/// `V` is the via with three contacts: `{4, 5, 6}`. Walking them **descending** (Java's
 /// `TreeSet<Item>` order, quirk #44) enters `A` first and returns before `B` is ever visited;
 /// walking them ascending enters the dead end `B` first. Either way the answer is `true` — see
 /// [`fr_board::Board::is_cycle_recu`]'s doc comment for why the boolean cannot differ — but the
@@ -1106,7 +1106,7 @@ pub fn cycle_order_board() -> Board {
     );
     board.rules.nets.add("N1", 1, false, default_class);
 
-    // 1: via V, 2: via W.
+    // 2: via V, 3: via W.
     for x in [0, 3000] {
         board
             .insert_via(
@@ -1119,7 +1119,7 @@ pub fn cycle_order_board() -> Board {
             )
             .expect("no normalisation failure");
     }
-    // 3: the trace under test, layer 0, both ends on a via.
+    // 4: the trace under test, layer 0, both ends on a via.
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, 0),
@@ -1133,7 +1133,7 @@ pub fn cycle_order_board() -> Board {
         1,
         FixedState::Unfixed,
     );
-    // 4: the dead-end stub on layer 2 — reachable only from V.
+    // 5: the dead-end stub on layer 2 — reachable only from V.
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(0, 0), Point::new(0, 2000)]),
         2,
@@ -1142,7 +1142,7 @@ pub fn cycle_order_board() -> Board {
         1,
         FixedState::Unfixed,
     );
-    // 5: the return path on layer 1, from V to W.
+    // 6: the return path on layer 1, from V to W.
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(0, 0), Point::new(3000, 0)]),
         1,
@@ -1163,13 +1163,13 @@ pub fn cycle_order_board() -> Board {
 ///
 /// | id | item |
 /// |---|---|
-/// | 1 | via `S` at `(5000, 5000)`, both layers — the item the connection is asked for |
-/// | 2 | via `F` at `(0, 0)`, both layers — the candidate fanout via |
-/// | 3 | trace `Z` on layer 0, `(1000,1000) -> (1000,0)`, **shove-fixed**, two corners |
-/// | 4 | trace `Y` on layer 0, `(1000,0) -> (0,0)` — short, and the only fanout evidence |
-/// | 5 | trace `E` on layer 0, `(0,0) -> (0,-1000)` — a third arm at `F`, so the walk forks |
-/// | 6 | trace `B` on layer 1, `(5000,5000) -> (0,0)` — `S` straight to `F` |
-/// | 7 | trace `A` on layer 0, `(5000,5000) -> (1000,1000)` — `S` the long way round |
+/// | 2 | via `S` at `(5000, 5000)`, both layers — the item the connection is asked for |
+/// | 3 | via `F` at `(0, 0)`, both layers — the candidate fanout via |
+/// | 4 | trace `Z` on layer 0, `(1000,1000) -> (1000,0)`, **shove-fixed**, two corners |
+/// | 5 | trace `Y` on layer 0, `(1000,0) -> (0,0)` — short, and the only fanout evidence |
+/// | 6 | trace `E` on layer 0, `(0,0) -> (0,-1000)` — a third arm at `F`, so the walk forks |
+/// | 7 | trace `B` on layer 1, `(5000,5000) -> (0,0)` — `S` straight to `F` |
+/// | 8 | trace `A` on layer 0, `(5000,5000) -> (1000,1000)` — `S` the long way round |
 ///
 /// `isFanoutVia(F, result)` (Item.java:1206-1239) is true only through `Y`: `Y` is a short
 /// contact trace of `F` whose own contacts include the shove-fixed two-corner trace `Z`
@@ -1177,7 +1177,7 @@ pub fn cycle_order_board() -> Board {
 /// stops the walk *unless* `Y` is already in `result`, which `Item.java:735` passes as
 /// `ignoreItems`.
 ///
-/// `S`'s contacts are `{6, 7}`. Descending (Java's order) walks branch `A` first — `7, 3, 4`,
+/// `S`'s contacts are `{7, 8}`. Descending (Java's order) walks branch `A` first — `8, 4, 5`,
 /// forking at `Y` because `F` and `E` are both new contacts at `(0,0)` — and only then branch
 /// `B`, which reaches `F` with `Y` already ignored and so **passes through** it. Ascending walks
 /// `B` first, stops dead at `F`, and `F` never enters the result.
@@ -1206,7 +1206,7 @@ pub fn fanout_order_board() -> Board {
     );
     board.rules.nets.add("N1", 1, false, default_class);
 
-    // 1: S, 2: F.
+    // 2: S, 3: F.
     for (x, y) in [(5000, 5000), (0, 0)] {
         board
             .insert_via(
@@ -1220,15 +1220,15 @@ pub fn fanout_order_board() -> Board {
             .expect("no normalisation failure");
     }
     for (corners, layer, fixed) in [
-        // 3: Z, the shove-fixed two-corner trace that is the fanout evidence.
+        // 4: Z, the shove-fixed two-corner trace that is the fanout evidence.
         ([(1000, 1000), (1000, 0)], 0usize, FixedState::ShoveFixed),
-        // 4: Y, the short contact trace of F that carries the evidence.
+        // 5: Y, the short contact trace of F that carries the evidence.
         ([(1000, 0), (0, 0)], 0, FixedState::Unfixed),
-        // 5: E, the third arm at F — it makes the A branch fork at Y.
+        // 6: E, the third arm at F — it makes the A branch fork at Y.
         ([(0, 0), (0, -1000)], 0, FixedState::Unfixed),
-        // 6: B, S straight to F on layer 1.
+        // 7: B, S straight to F on layer 1.
         ([(5000, 5000), (0, 0)], 1, FixedState::Unfixed),
-        // 7: A, S the long way round on layer 0.
+        // 8: A, S the long way round on layer 0.
         ([(5000, 5000), (1000, 1000)], 0, FixedState::Unfixed),
     ] {
         board.insert_trace_without_cleaning(

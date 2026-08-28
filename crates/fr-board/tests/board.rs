@@ -6,7 +6,7 @@
 //! Every expectation below is a line of `scripts/differential/java/P2T11.java`'s output. That
 //! driver builds the *same* board through the real `app.freerouting.board.facade.RoutingBoard`
 //! on JDK 25 and prints it; `./scripts/differential/run.sh p2t11 {0,1,2,3}` diffs the two and all
-//! four modes are byte-identical. The mode each test transcribes is named in its first comment.
+//! twelve modes are byte-identical (mode 11 differs only by the two quirk-#77 lines). The mode each test transcribes is named in its first comment.
 //!
 //! The handful of tests with no `P2T11` line behind them cite the Java source instead; those are
 //! the paths the driver cannot reach (a refused removal that Java's driver would have to
