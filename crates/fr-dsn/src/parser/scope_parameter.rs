@@ -38,9 +38,10 @@ pub struct DsnReadOptions {}
 ///
 /// Java's `boardHandling` is a `BoardParserCallback` (`not ported:` — GUI-adjacent indirection;
 /// this port constructs the board directly instead, so `board` is a plain `Option<Board>`, not a
-/// callback). Java's `observers`/`idGenerator`/`viaAtSmdAllowed`/`logicalPartMappings`/
-/// `logicalParts` fields are not carried here; a later task adds them if and when the scope that
-/// needs them lands.
+/// callback). Java's `observers`/`idGenerator`/`logicalPartMappings`/`logicalParts` fields are
+/// not carried here; a later task adds them if and when the scope that needs them lands
+/// (`viaAtSmdAllowed` was one of those until Plan 3 Task 6 landed the `control` scope that
+/// fills it).
 ///
 /// Every Java `Collection` field here (`LinkedList`, insertion order) is a `Vec`; `netlist` is
 /// Java's `TreeMap<Net.Id, Net>` (deterministic order), so it is a `BTreeMap<NetId, DsnNet>`
@@ -88,6 +89,11 @@ pub struct ReadScopeParameter<'a> {
     /// too (`Communication.SpecctraParserInfo.WriteResolution`); Task 10's `read_board` is what
     /// assembles this and the four sibling fields below into the board's `Communication`.
     pub write_resolution: Option<fr_board::WriteResolution>,
+    /// `ReadScopeParameter.viaAtSmdAllowed` (ReadScopeParameter.java:74) — filled by
+    /// `Structure.readControlScope` (Structure.java:468) from the `(control (via_at_smd on|off))`
+    /// scope, and read by `Network`'s via-info construction. Added in Plan 3 Task 6, the task
+    /// that ports the `control` scope; the field's Java initialiser is `false`.
+    pub via_at_smd_allowed: bool,
     /// `ReadScopeParameter.boardOutlineOk`.
     pub board_outline_ok: bool,
     /// `ReadScopeParameter.coordinateTransform`.
@@ -129,6 +135,7 @@ impl<'a> ReadScopeParameter<'a> {
             host_version: None,
             dsn_file_generated_by_host: true,
             write_resolution: None,
+            via_at_smd_allowed: false,
             board_outline_ok: true,
             coordinate_transform: None,
             layer_structure: None,

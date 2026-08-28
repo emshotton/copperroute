@@ -29,3 +29,7 @@ Parser                   parser/header.rs
 Resolution               parser/header.rs
 Unit                     parser/header.rs
 CoordinateTransform      coordinate_transform.rs
+Structure                parser/structure.rs
+Plane                    parser/structure.rs
+AutorouteSettings        parser/autoroute_settings.rs
+PlaceControl             parser/header.rs

@@ -269,10 +269,58 @@ pub fn read_unit_scope(_p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError
     Ok(false)
 }
 
-// added in Plan 3: PlaceControl.readScope
-/// Stub for `PlaceControl.readScope` (PlaceControl.java) — replaced with the real reader by a
-/// later task; for now this just discards the scope's body.
+/// `PlaceControl.readFlipStyleRotateFirst` (PlaceControl.java:16-35): "returns true, if
+/// rotate_first is read, else false."
+///
+/// Called from two places: `PlaceControl.readScope` below, and `Structure.readScope`
+/// (Structure.java:1014) — "the correct location is the scope PlaceControl, but Electra writes it
+/// here."
+///
+/// Java's two `false` returns (an unexpected first token, and a missing closing bracket) are both
+/// plain `false`, not errors; only a genuine scanner error propagates as `Err` here.
+// renamed: PlaceControl.readFlipStyleRotateFirst -> read_flip_style_rotate_first.
+pub fn read_flip_style_rotate_first(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
+    let result = scanner.next_token()? == Some(Token::Kw(Keyword::RotateFirst));
+    if scanner.next_token()? != Some(Token::Close) {
+        // "closing bracket expected" (PlaceControl.java:26-32), an `FRLogger.warn` this port
+        // drops. Note Java returns `false` here even when `rotate_first` *was* read.
+        return Ok(false);
+    }
+    Ok(result)
+}
+
+/// `PlaceControl.readScope` (PlaceControl.java:37-72): "reads the flip_style."
+///
+/// Java sets `components.setFlipStyleRotateFirst(true)` only when the flag came out `true`
+/// (PlaceControl.java:66-68) — it never clears it — and dereferences
+/// `boardHandling.getRoutingBoard()` unchecked at that point.
+///
+// totalized: PlaceControl.readScope — the `getRoutingBoard()` at PlaceControl.java:67 is `null`
+// until `Structure.readScope` has built the board, and a `(place_control (flip_style
+// rotate_first))` scope placed *before* the `structure` scope therefore NPEs in Java. The port
+// keeps the successful `true` return and simply has no board to write to, which is the same
+// observable result for every file whose `place_control` follows its `structure` scope (every
+// file any exporter writes, since Specctra fixes the scope order).
 pub fn read_place_control_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
-    let _ = skip_scope(&mut p.scanner)?;
+    let mut flip_style_rotate_first = false;
+    let mut prev_was_open = false;
+    loop {
+        let Some(next_token) = p.scanner.next_token()? else {
+            // "unexpected end of file" (PlaceControl.java:52-58).
+            return Ok(false);
+        };
+        if next_token == Token::Close {
+            // end of scope
+            break;
+        }
+        let is_open = next_token == Token::Open;
+        if prev_was_open && next_token == Token::Kw(Keyword::FlipStyle) {
+            flip_style_rotate_first = read_flip_style_rotate_first(&mut p.scanner)?;
+        }
+        prev_was_open = is_open;
+    }
+    if flip_style_rotate_first && let Some(board) = p.board.as_mut() {
+        board.components.set_flip_style_rotate_first(true);
+    }
     Ok(true)
 }
