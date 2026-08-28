@@ -10,6 +10,7 @@
 pub mod datastructures;
 pub mod error;
 pub mod ids;
+pub mod library;
 pub mod rules;
 pub mod structure;
 
@@ -18,6 +19,10 @@ pub use error::BoardError;
 pub use ids::{
     ItemId, ItemIdGenerator, NetClassId, PadstackId, RoomId, TreeId, TreeObject, ViaInfoId,
     ViaRuleId,
+};
+pub use library::{
+    BoardLibrary, DrillItemPadstackLookup, Keepout, LogicalPart, LogicalParts, Package, PackagePin,
+    Packages, Padstack, Padstacks, PartPin,
 };
 pub use rules::{
     BoardRules, ClearanceClassIndexed, ClearanceMatrix, DefaultItemClearanceClasses, ItemClass,
@@ -28,10 +33,12 @@ pub use structure::{AngleRestriction, FixedState, Layer, LayerStructure, Unit};
 /// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        AngleRestriction, BoardError, BoardRules, ClearanceClassIndexed, ClearanceMatrix,
-        DefaultItemClearanceClasses, FixedState, ItemClass, ItemId, ItemIdGenerator, Layer,
-        LayerStructure, LeafId, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId,
-        PadstackId, PadstackLookup, RoomId, ShapeTree, StopCheck, TimeLimit, TreeEntry, TreeId,
-        TreeObject, Unit, ViaInfo, ViaInfoId, ViaInfos, ViaRule, ViaRuleId,
+        AngleRestriction, BoardError, BoardLibrary, BoardRules, ClearanceClassIndexed,
+        ClearanceMatrix, DefaultItemClearanceClasses, DrillItemPadstackLookup, FixedState,
+        ItemClass, ItemId, ItemIdGenerator, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
+        LogicalParts, Net, NetClass, NetClassId, NetClasses, Nets, Node, NodeId, Package,
+        PackagePin, Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, RoomId,
+        ShapeTree, StopCheck, TimeLimit, TreeEntry, TreeId, TreeObject, Unit, ViaInfo, ViaInfoId,
+        ViaInfos, ViaRule, ViaRuleId,
     };
 }
