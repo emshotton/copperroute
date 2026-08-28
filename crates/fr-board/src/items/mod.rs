@@ -75,7 +75,7 @@ pub mod header;
 
 use std::cmp::Ordering;
 
-use fr_geometry::{FloatPoint, IntBox, IntPoint, TileShape, Vector};
+use fr_geometry::{Area, FloatPoint, IntBox, IntPoint, TileShape, Vector};
 
 use crate::datastructures::LeafId;
 use crate::ids::{ItemId, TreeId};
@@ -170,8 +170,11 @@ pub struct ConductionArea {
     /// obstacle to traces and vias of foreign nets. Read by four `isObstacle`/`isTraceObstacle`
     /// /`isDrillable` overrides, which is why it is here already.
     ///
-    /// `Board::change_conduction_is_obstacle` (Task 11, `RoutingBoard.java:1252-1276`) keeps it
-    /// in step with `BoardRules::get_ignore_conduction` — see [`Item::is_obstacle`].
+    /// `Board::change_conduction_is_obstacle` (Task 11, `RoutingBoard.java:1252-1276`) is what
+    /// couples it to `BoardRules::get_ignore_conduction` — see [`Item::is_obstacle`], and
+    /// **quirk #50 in `docs/java-quirks.md`**, which records that that method's guard
+    /// (`if (rules.getIgnoreConduction() != value) return;`, :1254) and its closing
+    /// `setIgnoreConduction(!value)` (:1273) must be ported verbatim rather than "fixed".
     is_obstacle: bool,
     /// Java `private boolean isFilled = true` (ConductionArea.java:30).
     is_filled: bool,
@@ -1153,7 +1156,8 @@ impl PolylineTrace {
         }
     }
 
-    /// Port of `Trace.firstLayer`/`Trace.lastLayer` (Trace.java:57-65): the trace's single layer.
+    /// Port of `Trace.getLayer` (Trace.java:66-69): the trace's single layer, which
+    /// `Trace.firstLayer` and `Trace.lastLayer` (Trace.java:57-65) both return.
     // added in Task 6: the `layer` field (Trace.java:29).
     pub fn get_layer(&self) -> usize {
         unimplemented!(
@@ -1658,7 +1662,11 @@ impl ConductionArea {
         Some(ConductionArea {
             hdr: copied_header(&self.hdr, new_id),
             is_obstacle: self.is_obstacle,
-            is_filled: self.is_filled,
+            // `isFilled` is **not** carried over: `ConductionArea.copy` goes through the
+            // constructor (ConductionArea.java:314-329 -> :46-73), whose parameter list has no
+            // `isFilled`, so the new object gets the field initialiser `private boolean
+            // isFilled = true` (ConductionArea.java:30). An unfilled area copies to a filled one.
+            is_filled: true,
         })
     }
 
@@ -1729,12 +1737,20 @@ impl ComponentObstacleArea {
         }
     }
 
-    /// Port of `ComponentObstacleArea.isFront` (ComponentObstacleArea.java:84-87).
-    // added in Task 8: the `sideChanged` field it reads.
+    /// Port of `ComponentObstacleArea.isFront` (ComponentObstacleArea.java:82-86):
+    /// `Component component = board.components.get(getComponentId()); return component == null ||
+    /// component.placedOnFront();` — it reads the **board's component list**, not any field of
+    /// its own.
+    // added in Task 11: `isFront` becomes `Board::component_obstacle_area_is_front(ItemId)`,
+    // because it needs `board.components`. Note the two halves Task 11 must model: Java returns
+    // `true` when `components.get(componentId)` is `null`, but this port's
+    // `Components::get` *panics* on an id outside `1..=count` (quirk #49, Components.java:89) —
+    // so `Board` has to bounds-check the component id itself and answer `true` for a missing
+    // one rather than calling `Components::get` blind.
     pub fn is_front(&self) -> bool {
         unimplemented!(
-            "ComponentObstacleArea::is_front needs the `sideChanged` field, added in Task 8 \
-             (ComponentObstacleArea.java:84-87)"
+            "ComponentObstacleArea::is_front needs the board's Components, added in Task 11 \
+             (ComponentObstacleArea.java:82-86)"
         )
     }
 }
@@ -1776,13 +1792,12 @@ impl ComponentOutline {
         )
     }
 
-    /// Port of `ComponentOutline.tileShapeCount` (ComponentOutline.java:129-132).
-    // added in Task 8.
+    /// Port of `ComponentOutline.tileShapeCount` (ComponentOutline.java:129-132), whose whole
+    /// body is `return 0;` — a component outline is drawn but never inserted into a search tree
+    /// as tiles (its `calculateTreeShapes` returns `new TileShape[0]`,
+    /// ComponentOutline.java:134-137).
     pub fn tile_shape_count(&self) -> usize {
-        unimplemented!(
-            "ComponentOutline::tile_shape_count needs the area geometry, added in Task 8 \
-             (ComponentOutline.java:129-132)"
-        )
+        0
     }
 
     /// Port of `ComponentOutline.boundingBox` (ComponentOutline.java:139-142).
@@ -1990,12 +2005,17 @@ impl BoardOutline {
         )
     }
 
-    /// Port of `BoardOutline.getKeepoutArea` (BoardOutline.java:183-189).
-    // added in Task 8.
-    pub fn get_keepout_area(&self) {
+    /// Port of `BoardOutline.getKeepoutArea` (BoardOutline.java:183-189): the board area
+    /// *outside* the outline curves, memoised in `keepoutArea`. Java builds
+    /// `new PolylineArea(board.boundingBox, shapes.clone())`, so the outline curves become the
+    /// holes of the returned area.
+    // added in Task 8: the `shapes` field and the memo. Java also reads `board.boundingBox`
+    // (BoardOutline.java:186) through the forbidden back-pointer, so Task 8 must give
+    // `BoardOutline` that box the same way it gives it the layer count.
+    pub fn get_keepout_area(&self) -> Area {
         unimplemented!(
-            "BoardOutline::get_keepout_area needs the `shapes` field, added in Task 8 \
-             (BoardOutline.java:183-189)"
+            "BoardOutline::get_keepout_area needs the `shapes` field and the board bounding box, \
+             added in Task 8 (BoardOutline.java:183-189)"
         )
     }
 
@@ -2031,6 +2051,8 @@ impl BoardOutline {
 mod tests {
     use super::*;
     use crate::ids::TreeObject;
+    use crate::rules::ClearanceMatrix;
+    use crate::structure::{Layer, LayerStructure};
 
     fn hdr(id: u32, net_nos: Vec<i32>) -> ItemHeader {
         ItemHeader::new(ItemId(id), net_nos, 1, 0, FixedState::Unfixed)
@@ -2367,6 +2389,114 @@ mod tests {
         assert!(shoved.is_routable());
     }
 
+    // ---- isShoveFixed / isDeletionForbidden (the two that take BoardRules) ---------------------
+
+    fn layer_structure() -> LayerStructure {
+        LayerStructure::new(vec![Layer::new("F.Cu", true), Layer::new("B.Cu", true)])
+    }
+
+    /// Rules with net 1 on an ordinary class and net 2 on a shove-fixed one
+    /// (`NetClass.isShoveFixed`, which Trace.isShoveFixed reads at Trace.java:246-248).
+    fn rules_with_a_shove_fixed_net() -> BoardRules {
+        let layers = layer_structure();
+        let matrix = ClearanceMatrix::new(2, &layers, &["default", "c1"]);
+        let mut rules = BoardRules::new(layers.clone(), matrix);
+        let plain = rules.net_classes.append("plain", &layers, false);
+        let shove_fixed = rules.net_classes.append("shove_fixed", &layers, false);
+        rules.net_classes.get_mut(shove_fixed).set_shove_fixed(true);
+        rules.nets.add("n1", 1, false, plain);
+        rules.nets.add("n2", 1, false, shove_fixed);
+        rules
+    }
+
+    #[test]
+    fn is_shove_fixed_applies_traces_net_class_override() {
+        // Trace.isShoveFixed (Trace.java:236-254): `super.isShoveFixed()` first, then true if
+        // any normal net of the trace belongs to a shove-fixed net class.
+        let rules = rules_with_a_shove_fixed_net();
+        assert!(!trace(1, vec![1]).is_shove_fixed(&rules));
+        assert!(trace(2, vec![2]).is_shove_fixed(&rules));
+        assert!(trace(3, vec![1, 2]).is_shove_fixed(&rules));
+    }
+
+    #[test]
+    fn is_shove_fixed_override_is_traces_only() {
+        // Only Trace overrides it; a via on the same shove-fixed net answers with the base body
+        // (Item.java:834-839).
+        let rules = rules_with_a_shove_fixed_net();
+        assert!(!via(1, vec![2], true).is_shove_fixed(&rules));
+        assert!(!conduction_area(2, vec![2], true).is_shove_fixed(&rules));
+    }
+
+    #[test]
+    fn is_shove_fixed_base_body_still_wins_for_a_fixed_trace() {
+        // Trace.java:238-240 returns before the net-class scan.
+        let rules = rules_with_a_shove_fixed_net();
+        let mut t = trace(1, vec![1]);
+        t.set_fixed_state(FixedState::ShoveFixed);
+        assert!(t.is_shove_fixed(&rules));
+    }
+
+    #[test]
+    fn is_shove_fixed_skips_non_normal_net_numbers() {
+        // Trace.java:245: the scan only looks at `Nets.isNormalNetNumber` entries, which is what
+        // keeps `nets.get(...)` from returning null there.
+        let rules = rules_with_a_shove_fixed_net();
+        assert!(!trace(1, vec![0]).is_shove_fixed(&rules));
+        assert!(!trace(2, vec![]).is_shove_fixed(&rules));
+    }
+
+    #[test]
+    #[should_panic(expected = "NullPointerException")]
+    fn is_shove_fixed_panics_on_a_net_number_past_the_net_list_like_java() {
+        // Trace.java:246: `nets.get(currentNetNumber).getNetClass()` with a normal-but-unknown
+        // net number dereferences null.
+        trace(1, vec![9]).is_shove_fixed(&rules_with_a_shove_fixed_net());
+    }
+
+    #[test]
+    fn is_deletion_forbidden_for_component_items_and_user_fixed_items() {
+        // Item.java:821-832, the two branches that need no layer lookup.
+        let rules = rules_with_a_shove_fixed_net();
+        assert!(!trace(1, vec![1]).is_deletion_forbidden(&rules));
+
+        let mut of_component = trace(2, vec![1]);
+        of_component.assign_component_id(4);
+        assert!(of_component.is_deletion_forbidden(&rules));
+
+        let mut user_fixed = trace(3, vec![1]);
+        user_fixed.set_fixed_state(FixedState::UserFixed);
+        assert!(user_fixed.is_deletion_forbidden(&rules));
+
+        // SYSTEM_FIXED is above USER_FIXED in the ordinal order (Item.java:817-818).
+        let mut system_fixed = trace(4, vec![1]);
+        system_fixed.set_fixed_state(FixedState::SystemFixed);
+        assert!(system_fixed.is_deletion_forbidden(&rules));
+
+        // SHOVE_FIXED is below it, so it does not forbid deletion on its own.
+        let mut shove_fixed = trace(5, vec![1]);
+        shove_fixed.set_fixed_state(FixedState::ShoveFixed);
+        assert!(!shove_fixed.is_deletion_forbidden(&rules));
+    }
+
+    #[test]
+    fn is_deletion_forbidden_takes_the_short_circuit_before_the_conduction_area_branch() {
+        // Item.java:824-826 returns before reaching `area.getLayer()` (Item.java:828-830), which
+        // is why a component-owned conduction area answers without Task 8's layer field.
+        let rules = rules_with_a_shove_fixed_net();
+        let mut area = conduction_area(1, vec![1], true);
+        area.assign_component_id(2);
+        assert!(area.is_deletion_forbidden(&rules));
+    }
+
+    #[test]
+    #[should_panic(expected = "added in Task 8")]
+    fn is_deletion_forbidden_on_a_free_conduction_area_needs_the_layer() {
+        // Item.java:828-830: `!board.layerStructure.layers[area.getLayer()].isSignal` — the
+        // power-plane branch, whose `getLayer()` is ObstacleArea's field (Task 8).
+        conduction_area(1, vec![1], true).is_deletion_forbidden(&rules_with_a_shove_fixed_net());
+    }
+
     // ---- ordering, identity, display ------------------------------------------------------------
 
     #[test]
@@ -2437,6 +2567,29 @@ mod tests {
         let dup = original.java_clone().expect("a trace clone never fails");
         assert_eq!(dup.id(), ItemId(1));
         assert!(dup.is_on_the_board());
+    }
+
+    #[test]
+    fn conduction_area_copy_resets_is_filled_to_true() {
+        // ConductionArea.copy (ConductionArea.java:314-329) calls the constructor
+        // (ConductionArea.java:46-73), whose parameter list has no `isFilled`, so the copy picks
+        // up the field initialiser `private boolean isFilled = true` (ConductionArea.java:30)
+        // however the original was set.
+        let mut area = ConductionArea::new(hdr(1, vec![5]), true);
+        area.set_is_filled(false);
+        assert!(!area.get_is_filled());
+        let copy = area.copy(ItemId(2)).expect("one net, so the copy succeeds");
+        assert!(copy.get_is_filled());
+        // `isObstacle` *is* a constructor parameter (ConductionArea.java:57), so it is carried.
+        assert!(copy.get_is_obstacle());
+    }
+
+    #[test]
+    fn component_outline_has_no_tile_shapes() {
+        // ComponentOutline.tileShapeCount (ComponentOutline.java:129-132) is literally
+        // `return 0;`, matching its `calculateTreeShapes` returning `new TileShape[0]`
+        // (ComponentOutline.java:134-137).
+        assert_eq!(component_outline(1).tile_shape_count(), 0);
     }
 
     #[test]

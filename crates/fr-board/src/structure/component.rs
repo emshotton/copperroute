@@ -301,6 +301,8 @@ impl Components {
             position_fixed,
             part_number,
         );
+        // added in Task 11: `undoList.insert(newComponent)` (Components.java:52), which
+        // registers the new component with the undo stack right after this push.
         self.components.push(new_component);
         self.components.last().expect("just pushed")
     }
