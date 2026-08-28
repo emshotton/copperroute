@@ -24,37 +24,27 @@ if [[ ! -f "$JAR" ]]; then
   curl -fL --retry 3 -o "$JAR" "$JAR_URL"
 fi
 
-run_java() { # args...
-  "$JAVA_BIN" -jar "$JAR" -da -dl "$@"
-}
+# --- Reference driver: read DSN with the real reader, write DSN + SES without routing ---
+# The -de/-do job path cannot write DSN output headlessly and writes nothing when all
+# routing stages are disabled, so we link a tiny driver against the jar instead.
+DRIVER_SRC="$ROOT/scripts/gen-reference/RefWriter.java"
+DRIVER_OUT="$ROOT/scripts/gen-reference/build"   # gitignored
+JAVAC_BIN="${JAVAC:-$(dirname "$JAVA_BIN")/javac}"
+mkdir -p "$DRIVER_OUT"
+"$JAVAC_BIN" -cp "$JAR" -d "$DRIVER_OUT" "$DRIVER_SRC"
 
-# Routing is disabled with the generic settings override `--router.enabled=false`
-# (GlobalSettings.java:538-559 routes `--section.field=value` through `setValue`;
-# CliSettings.java:51,79-82 honours it and suppresses the implicit
-# "-de plus -do means route" force-on).
-#
-# NOT `-mp 0`: in Java `maxPasses == 0` means *unlimited*, not "no passes"
-# (GlobalSettings.java:675-686 explicitly allows 0; RouterSettings.java:933-941
-# turns it into Integer.MAX_VALUE with the comment "0 means no limit").
-NO_ROUTING="--router.enabled=false"
-
-while IFS='|' read -r stem src; do
+while IFS='|' read -r stem src || [[ -n "$stem" ]]; do
   [[ -z "$stem" || "$stem" == \#* ]] && continue
   in="$JAVA_DIR/$src"
   out="$REF/$stem"
   mkdir -p "$out"
   echo "== $stem"
-  # DSN round-trip (no routing) and unrouted SES.
-  run_java -de "$in" -do "$out/roundtrip.dsn" "$NO_ROUTING" > "$out/java.log" 2>&1 || {
-    echo "   java failed for roundtrip.dsn; see $out/java.log" >&2; }
-  run_java -de "$in" -do "$out/unrouted.ses" "$NO_ROUTING" >> "$out/java.log" 2>&1 || {
-    echo "   java failed for unrouted.ses; see $out/java.log" >&2; }
+  if "$JAVA_BIN" -Djava.awt.headless=true -cp "$JAR:$DRIVER_OUT" RefWriter \
+       "$in" "$out/roundtrip.dsn" "$out/unrouted.ses" > "$out/java.log" 2>&1; then
+    echo "   roundtrip.dsn $(wc -c < "$out/roundtrip.dsn") bytes, unrouted.ses $(wc -c < "$out/unrouted.ses") bytes, wires in ses: $(grep -c '(wire' "$out/unrouted.ses" || true)"
+  else
+    echo "   driver failed for $stem; see $out/java.log" >&2
+  fi
 done < "$REF/fixtures.txt"
-
-echo
-echo "IMPORTANT (first run on JDK 25): verify that routing really was suppressed —"
-echo "  each <stem>/unrouted.ses '(routes ...)' section must contain only the wiring"
-echo "  already present in the input DSN, and no newly routed traces. If it does not,"
-echo "  \$NO_ROUTING is not taking effect and the references are not a valid baseline."
 
 echo "done. References in $REF"

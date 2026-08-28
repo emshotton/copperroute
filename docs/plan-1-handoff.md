@@ -36,7 +36,7 @@ whole-branch review: **merge with fixes**; fix wave applied and re-reviewed clea
 ## Parked residuals (final review, no second fix wave)
 - Legacy shim: bare `-drc` (no path) errors; Java accepts it and enters DRC-only mode. Plan 8.
 - Legacy shim matches flags exactly; Java uses `startsWith` (`-mpx 5` ≡ `-mp 5`). Stricter; documented here only. Plan 8 decides.
-- `gen-reference.sh` has never been executed: first run on JDK 25 must inspect the `(routes …)` section of each `unrouted.ses` (README says how).
+- ~~`gen-reference.sh` never executed~~ — RESOLVED after JDK 25 install: `-de/-do` cannot produce unrouted references (see `tests/reference/README.md`); replaced by a jar-linked driver (`scripts/gen-reference/RefWriter.java`). All four fixtures generated; every `unrouted.ses` has 0 wires.
 - `docs/cli-legacy-flags.md:73-75`: `-mt` consumer list incomplete (`BatchOptimizerMultiThreaded.java:41`, `GlobalSettings.java:853`); headless path `BatchOptimizer.createForHeadless` never reads `optimizer.maxThreads`.
 - `docs/java-quirks.md` process note over-claims `grep "obligation:"` coverage (only the two MCP notes carry the token).
 
@@ -48,5 +48,4 @@ whole-branch review: **merge with fixes**; fix wave applied and re-reviewed clea
 - Before `fr-dsn` formats floats: `FloatPoint::Display` differs from Java `NumberFormat` above 2^53 and at 4th-digit ties.
 
 ## Open items for the user
-- Install JDK 25 (`brew install openjdk@25`), run `scripts/gen-reference.sh`, inspect outputs.
 - Post-parity improvement candidates are listed in `docs/java-quirks.md` (`i128` fast path in `Line::intersection` is the big one) and `docs/geometry-library-survey.md` (`i_overlay` for copper pours).

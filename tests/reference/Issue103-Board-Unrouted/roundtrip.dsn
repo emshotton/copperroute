@@ -1,0 +1,5669 @@
+(pcb "Issue103-Board-Unrouted"
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "KiCad's Pcbnew")
+    (host_version "5.99.0+really5.1.12+dfsg1-1~bpo11+1")
+    (generated_by_freerouting)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu
+      (type signal)
+    )
+    (layer B.Cu
+      (type signal)
+    )
+    (boundary
+      (rect pcb 12600.0 -179170.0 199490.0 -13950.0)
+    )
+    (boundary
+      (polygon signal 0
+        12700.0 -179070.0
+        199390.0 -179070.0
+        199390.0 -24130.0
+        184150.0 -24130.0
+        179067.0 -24079.2
+        178918.0 -24079.2
+        54540.0 -24050.0
+        54215.0 -24050.0
+        54215.0 -14050.0
+        14365.0 -14050.0
+        14365.0 -24050.0
+        12700.0 -24050.0
+      )
+    )
+    (via "Via[0-1]_800:400_um" "Via[0-1]_800:400_um")
+    (rule
+      (width 250.0)
+      (clearance 200.2)
+      (clearance 125.0 (type smd_to_turn_gap))
+      (clearance 50.0 (type smd))
+    )
+    (snap_angle 
+      fortyfive_degree
+    )
+    (control
+      (via_at_smd off)
+    )
+  )
+  (placement
+    (component "Connector_JST:JST_PH_B16B-PH-K_1x16_P2.00mm_Vertical"
+      (place 
+        J1 20165.0 -158750.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+    )
+    (component "Package_DIP:DIP-20_W7.62mm"
+      (place 
+        U3 62103.0 -66890.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U6 47701.2 -99618.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U7 33401.0 -99669.6 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U31 19050.0 -66890.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U33 19050.0 -99669.6 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U34 62049.0 -99568.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U39 33401.0 -66890.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U40 103861.0 -66954.4 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U50 47752.0 -66890.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U51 90652.6 -66878.2 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U53 76327.0 -66890.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U52 62103.0 -34080.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U48 143165.0 -34080.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U47 154381.0 -34086.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U44 129921.0 -34086.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U43 76327.0 -34086.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U35 116840.0 -34086.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U32 103759.0 -34086.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U30 90678.0 -34086.8 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U4 19050.0 -34080.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U2 33401.0 -34080.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U1 47752.0 -34080.0 front 0
+        (pin "20" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "19" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "18" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "17" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "16" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+    )
+    (component "Package_DIP:DIP-16_W7.62mm"
+      (place 
+        U11 76276.2 -99568.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U22 129955.0 -67026.4 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U23 103810.0 -99568.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U12 96570.8 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U13 90576.4 -99568.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U14 108585.0 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U16 128685.0 -99595.6 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U17 83032.6 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U18 120430.0 -132520.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U19 31064.2 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U24 56464.2 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U25 71069.2 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U26 116840.0 -67005.2 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U27 115824.0 -99568.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U28 19050.0 -132561.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U29 44399.2 -132537.0 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U37 153717.0 -66962.4 front 0
+        (pin "16" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "15" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "14" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+    )
+    (component "Package_DIP:DIP-14_W7.62mm"
+      (place 
+        U9 142519.0 -67005.2 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U5 141199.0 -99568.0 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U8 133629.0 -132486.0 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U10 145415.0 -132486.0 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U15 164869.0 -66997.2 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U21 176225.0 -67032.0 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U20 187681.0 -67005.2 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U45 186411.0 -99568.0 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U36 174920.0 -99563.6 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U38 152463.0 -99563.6 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U42 163666.0 -99598.4 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U49 188468.0 -34036.0 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U46 165504.0 -34059.2 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+      (place 
+        U41 176860.0 -34043.2 front 0
+        (pin "14" (clearance_class default))
+        (pin "7" (clearance_class default))
+        (pin "13" (clearance_class default))
+        (pin "6" (clearance_class default))
+        (pin "12" (clearance_class default))
+        (pin "5" (clearance_class default))
+        (pin "11" (clearance_class default))
+        (pin "4" (clearance_class default))
+        (pin "10" (clearance_class default))
+        (pin "3" (clearance_class default))
+        (pin "9" (clearance_class default))
+        (pin "2" (clearance_class default))
+        (pin "8" (clearance_class default))
+        (pin "1" (clearance_class default))
+      )
+    )
+    (component "Connector_PCBEdge:Samtec_MECF-30-0_-NP-L-DV_2x30_P1.27mm_Edge"
+      (place 
+        J2 34290.0 -19050.0 front 180
+        (pin "60" (clearance_class smd))
+        (pin "59" (clearance_class smd))
+        (pin "58" (clearance_class smd))
+        (pin "57" (clearance_class smd))
+        (pin "56" (clearance_class smd))
+        (pin "55" (clearance_class smd))
+        (pin "54" (clearance_class smd))
+        (pin "53" (clearance_class smd))
+        (pin "52" (clearance_class smd))
+        (pin "51" (clearance_class smd))
+        (pin "50" (clearance_class smd))
+        (pin "49" (clearance_class smd))
+        (pin "48" (clearance_class smd))
+        (pin "47" (clearance_class smd))
+        (pin "46" (clearance_class smd))
+        (pin "45" (clearance_class smd))
+        (pin "44" (clearance_class smd))
+        (pin "43" (clearance_class smd))
+        (pin "42" (clearance_class smd))
+        (pin "41" (clearance_class smd))
+        (pin "40" (clearance_class smd))
+        (pin "39" (clearance_class smd))
+        (pin "38" (clearance_class smd))
+        (pin "37" (clearance_class smd))
+        (pin "36" (clearance_class smd))
+        (pin "35" (clearance_class smd))
+        (pin "34" (clearance_class smd))
+        (pin "33" (clearance_class smd))
+        (pin "32" (clearance_class smd))
+        (pin "31" (clearance_class smd))
+        (pin "30" (clearance_class smd))
+        (pin "29" (clearance_class smd))
+        (pin "28" (clearance_class smd))
+        (pin "27" (clearance_class smd))
+        (pin "26" (clearance_class smd))
+        (pin "25" (clearance_class smd))
+        (pin "24" (clearance_class smd))
+        (pin "23" (clearance_class smd))
+        (pin "22" (clearance_class smd))
+        (pin "21" (clearance_class smd))
+        (pin "20" (clearance_class smd))
+        (pin "19" (clearance_class smd))
+        (pin "18" (clearance_class smd))
+        (pin "17" (clearance_class smd))
+        (pin "16" (clearance_class smd))
+        (pin "15" (clearance_class smd))
+        (pin "14" (clearance_class smd))
+        (pin "13" (clearance_class smd))
+        (pin "12" (clearance_class smd))
+        (pin "11" (clearance_class smd))
+        (pin "10" (clearance_class smd))
+        (pin "9" (clearance_class smd))
+        (pin "8" (clearance_class smd))
+        (pin "7" (clearance_class smd))
+        (pin "6" (clearance_class smd))
+        (pin "5" (clearance_class smd))
+        (pin "4" (clearance_class smd))
+        (pin "3" (clearance_class smd))
+        (pin "2" (clearance_class smd))
+        (pin "1" (clearance_class smd))
+      )
+    )
+  )
+  (library
+    (image "Connector_JST:JST_PH_B16B-PH-K_1x16_P2.00mm_Vertical"
+      (side front)
+      (pin "Oval[A]Pad_1200x1750_um" "16" 30000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "15" 28000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "14" 26000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "13" 24000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "12" 22000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "11" 20000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "10" 18000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "9" 16000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "8" 14000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "7" 12000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "6" 10000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "5" 8000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "4" 6000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "3" 4000.0 0.0)
+      (pin "Oval[A]Pad_1200x1750_um" "2" 2000.0 0.0)
+      (pin "RoundRect[A]Pad_1200x1750_250_um" "1" 0.0 0.0)
+      (outline
+        (polygon signal 0
+          -2084.9 -2970.0
+          -2035.1 -2970.0
+          -2000.0 -2934.9
+          -2000.0 1834.9
+          -2035.1 1870.0
+          -2084.9 1870.0
+          -2120.0 1834.9
+          -2120.0 -2934.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2084.9 -2970.0
+          32084.9 -2970.0
+          32120.0 -2934.9
+          32120.0 -2885.1
+          32084.9 -2850.0
+          -2084.9 -2850.0
+          -2120.0 -2885.1
+          -2120.0 -2934.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          32035.1 -2970.0
+          32084.9 -2970.0
+          32120.0 -2934.9
+          32120.0 1834.9
+          32084.9 1870.0
+          32035.1 1870.0
+          32000.0 1834.9
+          32000.0 -2934.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2084.9 1750.0
+          32084.9 1750.0
+          32120.0 1785.1
+          32120.0 1834.9
+          32084.9 1870.0
+          -2084.9 1870.0
+          -2120.0 1834.9
+          -2120.0 1785.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -324.9 1750.0
+          -275.1 1750.0
+          -240.0 1785.1
+          -240.0 2034.9
+          -275.1 2070.0
+          -324.9 2070.0
+          -360.0 2034.9
+          -360.0 1785.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -624.9 1950.0
+          -275.1 1950.0
+          -240.0 1985.1
+          -240.0 2034.9
+          -275.1 2070.0
+          -624.9 2070.0
+          -660.0 2034.9
+          -660.0 1985.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -624.9 1750.0
+          -575.1 1750.0
+          -540.0 1785.1
+          -540.0 2034.9
+          -575.1 2070.0
+          -624.9 2070.0
+          -660.0 2034.9
+          -660.0 1785.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -624.9 1850.0
+          -275.1 1850.0
+          -240.0 1885.1
+          -240.0 1934.9
+          -275.1 1970.0
+          -624.9 1970.0
+          -660.0 1934.9
+          -660.0 1885.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          475.1 1140.0
+          524.9 1140.0
+          560.0 1175.1
+          560.0 1834.9
+          524.9 1870.0
+          475.1 1870.0
+          440.0 1834.9
+          440.0 1175.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1474.9 1140.0
+          524.9 1140.0
+          560.0 1175.1
+          560.0 1224.9
+          524.9 1260.0
+          -1474.9 1260.0
+          -1510.0 1224.9
+          -1510.0 1175.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1474.9 -2360.0
+          -1425.1 -2360.0
+          -1390.0 -2324.9
+          -1390.0 1224.9
+          -1425.1 1260.0
+          -1474.9 1260.0
+          -1510.0 1224.9
+          -1510.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1474.9 -2360.0
+          31474.9 -2360.0
+          31510.0 -2324.9
+          31510.0 -2275.1
+          31474.9 -2240.0
+          -1474.9 -2240.0
+          -1510.0 -2275.1
+          -1510.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          31425.1 -2360.0
+          31474.9 -2360.0
+          31510.0 -2324.9
+          31510.0 1224.9
+          31474.9 1260.0
+          31425.1 1260.0
+          31390.0 1224.9
+          31390.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          29475.1 1140.0
+          31474.9 1140.0
+          31510.0 1175.1
+          31510.0 1224.9
+          31474.9 1260.0
+          29475.1 1260.0
+          29440.0 1224.9
+          29440.0 1175.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          29475.1 1140.0
+          29524.9 1140.0
+          29560.0 1175.1
+          29560.0 1834.9
+          29524.9 1870.0
+          29475.1 1870.0
+          29440.0 1834.9
+          29440.0 1175.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2084.9 440.0
+          -1425.1 440.0
+          -1390.0 475.1
+          -1390.0 524.9
+          -1425.1 560.0
+          -2084.9 560.0
+          -2120.0 524.9
+          -2120.0 475.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2084.9 -860.0
+          -1425.1 -860.0
+          -1390.0 -824.9
+          -1390.0 -775.1
+          -1425.1 -740.0
+          -2084.9 -740.0
+          -2120.0 -775.1
+          -2120.0 -824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          31425.1 440.0
+          32084.9 440.0
+          32120.0 475.1
+          32120.0 524.9
+          32084.9 560.0
+          31425.1 560.0
+          31390.0 524.9
+          31390.0 475.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          31425.1 -860.0
+          32084.9 -860.0
+          32120.0 -824.9
+          32120.0 -775.1
+          32084.9 -740.0
+          31425.1 -740.0
+          31390.0 -775.1
+          31390.0 -824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          875.1 -2360.0
+          924.9 -2360.0
+          960.0 -2324.9
+          960.0 -1775.1
+          924.9 -1740.0
+          875.1 -1740.0
+          840.0 -1775.1
+          840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          875.1 -1860.0
+          1124.9 -1860.0
+          1160.0 -1824.9
+          1160.0 -1775.1
+          1124.9 -1740.0
+          875.1 -1740.0
+          840.0 -1775.1
+          840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          1075.1 -2360.0
+          1124.9 -2360.0
+          1160.0 -2324.9
+          1160.0 -1775.1
+          1124.9 -1740.0
+          1075.1 -1740.0
+          1040.0 -1775.1
+          1040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          975.1 -2360.0
+          1024.9 -2360.0
+          1060.0 -2324.9
+          1060.0 -1775.1
+          1024.9 -1740.0
+          975.1 -1740.0
+          940.0 -1775.1
+          940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          2875.1 -2360.0
+          2924.9 -2360.0
+          2960.0 -2324.9
+          2960.0 -1775.1
+          2924.9 -1740.0
+          2875.1 -1740.0
+          2840.0 -1775.1
+          2840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          2875.1 -1860.0
+          3124.9 -1860.0
+          3160.0 -1824.9
+          3160.0 -1775.1
+          3124.9 -1740.0
+          2875.1 -1740.0
+          2840.0 -1775.1
+          2840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          3075.1 -2360.0
+          3124.9 -2360.0
+          3160.0 -2324.9
+          3160.0 -1775.1
+          3124.9 -1740.0
+          3075.1 -1740.0
+          3040.0 -1775.1
+          3040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          2975.1 -2360.0
+          3024.9 -2360.0
+          3060.0 -2324.9
+          3060.0 -1775.1
+          3024.9 -1740.0
+          2975.1 -1740.0
+          2940.0 -1775.1
+          2940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          4875.1 -2360.0
+          4924.9 -2360.0
+          4960.0 -2324.9
+          4960.0 -1775.1
+          4924.9 -1740.0
+          4875.1 -1740.0
+          4840.0 -1775.1
+          4840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          4875.1 -1860.0
+          5124.9 -1860.0
+          5160.0 -1824.9
+          5160.0 -1775.1
+          5124.9 -1740.0
+          4875.1 -1740.0
+          4840.0 -1775.1
+          4840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          5075.1 -2360.0
+          5124.9 -2360.0
+          5160.0 -2324.9
+          5160.0 -1775.1
+          5124.9 -1740.0
+          5075.1 -1740.0
+          5040.0 -1775.1
+          5040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          4975.1 -2360.0
+          5024.9 -2360.0
+          5060.0 -2324.9
+          5060.0 -1775.1
+          5024.9 -1740.0
+          4975.1 -1740.0
+          4940.0 -1775.1
+          4940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          6875.1 -2360.0
+          6924.9 -2360.0
+          6960.0 -2324.9
+          6960.0 -1775.1
+          6924.9 -1740.0
+          6875.1 -1740.0
+          6840.0 -1775.1
+          6840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          6875.1 -1860.0
+          7124.9 -1860.0
+          7160.0 -1824.9
+          7160.0 -1775.1
+          7124.9 -1740.0
+          6875.1 -1740.0
+          6840.0 -1775.1
+          6840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          7075.1 -2360.0
+          7124.9 -2360.0
+          7160.0 -2324.9
+          7160.0 -1775.1
+          7124.9 -1740.0
+          7075.1 -1740.0
+          7040.0 -1775.1
+          7040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          6975.1 -2360.0
+          7024.9 -2360.0
+          7060.0 -2324.9
+          7060.0 -1775.1
+          7024.9 -1740.0
+          6975.1 -1740.0
+          6940.0 -1775.1
+          6940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          8875.1 -2360.0
+          8924.9 -2360.0
+          8960.0 -2324.9
+          8960.0 -1775.1
+          8924.9 -1740.0
+          8875.1 -1740.0
+          8840.0 -1775.1
+          8840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          8875.1 -1860.0
+          9124.9 -1860.0
+          9160.0 -1824.9
+          9160.0 -1775.1
+          9124.9 -1740.0
+          8875.1 -1740.0
+          8840.0 -1775.1
+          8840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          9075.1 -2360.0
+          9124.9 -2360.0
+          9160.0 -2324.9
+          9160.0 -1775.1
+          9124.9 -1740.0
+          9075.1 -1740.0
+          9040.0 -1775.1
+          9040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          8975.1 -2360.0
+          9024.9 -2360.0
+          9060.0 -2324.9
+          9060.0 -1775.1
+          9024.9 -1740.0
+          8975.1 -1740.0
+          8940.0 -1775.1
+          8940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          10875.1 -2360.0
+          10924.9 -2360.0
+          10960.0 -2324.9
+          10960.0 -1775.1
+          10924.9 -1740.0
+          10875.1 -1740.0
+          10840.0 -1775.1
+          10840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          10875.1 -1860.0
+          11124.9 -1860.0
+          11160.0 -1824.9
+          11160.0 -1775.1
+          11124.9 -1740.0
+          10875.1 -1740.0
+          10840.0 -1775.1
+          10840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          11075.1 -2360.0
+          11124.9 -2360.0
+          11160.0 -2324.9
+          11160.0 -1775.1
+          11124.9 -1740.0
+          11075.1 -1740.0
+          11040.0 -1775.1
+          11040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          10975.1 -2360.0
+          11024.9 -2360.0
+          11060.0 -2324.9
+          11060.0 -1775.1
+          11024.9 -1740.0
+          10975.1 -1740.0
+          10940.0 -1775.1
+          10940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          12875.1 -2360.0
+          12924.9 -2360.0
+          12960.0 -2324.9
+          12960.0 -1775.1
+          12924.9 -1740.0
+          12875.1 -1740.0
+          12840.0 -1775.1
+          12840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          12875.1 -1860.0
+          13124.9 -1860.0
+          13160.0 -1824.9
+          13160.0 -1775.1
+          13124.9 -1740.0
+          12875.1 -1740.0
+          12840.0 -1775.1
+          12840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          13075.1 -2360.0
+          13124.9 -2360.0
+          13160.0 -2324.9
+          13160.0 -1775.1
+          13124.9 -1740.0
+          13075.1 -1740.0
+          13040.0 -1775.1
+          13040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          12975.1 -2360.0
+          13024.9 -2360.0
+          13060.0 -2324.9
+          13060.0 -1775.1
+          13024.9 -1740.0
+          12975.1 -1740.0
+          12940.0 -1775.1
+          12940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          14875.1 -2360.0
+          14924.9 -2360.0
+          14960.0 -2324.9
+          14960.0 -1775.1
+          14924.9 -1740.0
+          14875.1 -1740.0
+          14840.0 -1775.1
+          14840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          14875.1 -1860.0
+          15124.9 -1860.0
+          15160.0 -1824.9
+          15160.0 -1775.1
+          15124.9 -1740.0
+          14875.1 -1740.0
+          14840.0 -1775.1
+          14840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          15075.1 -2360.0
+          15124.9 -2360.0
+          15160.0 -2324.9
+          15160.0 -1775.1
+          15124.9 -1740.0
+          15075.1 -1740.0
+          15040.0 -1775.1
+          15040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          14975.1 -2360.0
+          15024.9 -2360.0
+          15060.0 -2324.9
+          15060.0 -1775.1
+          15024.9 -1740.0
+          14975.1 -1740.0
+          14940.0 -1775.1
+          14940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          16875.1 -2360.0
+          16924.9 -2360.0
+          16960.0 -2324.9
+          16960.0 -1775.1
+          16924.9 -1740.0
+          16875.1 -1740.0
+          16840.0 -1775.1
+          16840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          16875.1 -1860.0
+          17124.9 -1860.0
+          17160.0 -1824.9
+          17160.0 -1775.1
+          17124.9 -1740.0
+          16875.1 -1740.0
+          16840.0 -1775.1
+          16840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          17075.1 -2360.0
+          17124.9 -2360.0
+          17160.0 -2324.9
+          17160.0 -1775.1
+          17124.9 -1740.0
+          17075.1 -1740.0
+          17040.0 -1775.1
+          17040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          16975.1 -2360.0
+          17024.9 -2360.0
+          17060.0 -2324.9
+          17060.0 -1775.1
+          17024.9 -1740.0
+          16975.1 -1740.0
+          16940.0 -1775.1
+          16940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          18875.1 -2360.0
+          18924.9 -2360.0
+          18960.0 -2324.9
+          18960.0 -1775.1
+          18924.9 -1740.0
+          18875.1 -1740.0
+          18840.0 -1775.1
+          18840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          18875.1 -1860.0
+          19124.9 -1860.0
+          19160.0 -1824.9
+          19160.0 -1775.1
+          19124.9 -1740.0
+          18875.1 -1740.0
+          18840.0 -1775.1
+          18840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          19075.1 -2360.0
+          19124.9 -2360.0
+          19160.0 -2324.9
+          19160.0 -1775.1
+          19124.9 -1740.0
+          19075.1 -1740.0
+          19040.0 -1775.1
+          19040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          18975.1 -2360.0
+          19024.9 -2360.0
+          19060.0 -2324.9
+          19060.0 -1775.1
+          19024.9 -1740.0
+          18975.1 -1740.0
+          18940.0 -1775.1
+          18940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          20875.1 -2360.0
+          20924.9 -2360.0
+          20960.0 -2324.9
+          20960.0 -1775.1
+          20924.9 -1740.0
+          20875.1 -1740.0
+          20840.0 -1775.1
+          20840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          20875.1 -1860.0
+          21124.9 -1860.0
+          21160.0 -1824.9
+          21160.0 -1775.1
+          21124.9 -1740.0
+          20875.1 -1740.0
+          20840.0 -1775.1
+          20840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          21075.1 -2360.0
+          21124.9 -2360.0
+          21160.0 -2324.9
+          21160.0 -1775.1
+          21124.9 -1740.0
+          21075.1 -1740.0
+          21040.0 -1775.1
+          21040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          20975.1 -2360.0
+          21024.9 -2360.0
+          21060.0 -2324.9
+          21060.0 -1775.1
+          21024.9 -1740.0
+          20975.1 -1740.0
+          20940.0 -1775.1
+          20940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          22875.1 -2360.0
+          22924.9 -2360.0
+          22960.0 -2324.9
+          22960.0 -1775.1
+          22924.9 -1740.0
+          22875.1 -1740.0
+          22840.0 -1775.1
+          22840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          22875.1 -1860.0
+          23124.9 -1860.0
+          23160.0 -1824.9
+          23160.0 -1775.1
+          23124.9 -1740.0
+          22875.1 -1740.0
+          22840.0 -1775.1
+          22840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          23075.1 -2360.0
+          23124.9 -2360.0
+          23160.0 -2324.9
+          23160.0 -1775.1
+          23124.9 -1740.0
+          23075.1 -1740.0
+          23040.0 -1775.1
+          23040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          22975.1 -2360.0
+          23024.9 -2360.0
+          23060.0 -2324.9
+          23060.0 -1775.1
+          23024.9 -1740.0
+          22975.1 -1740.0
+          22940.0 -1775.1
+          22940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          24875.1 -2360.0
+          24924.9 -2360.0
+          24960.0 -2324.9
+          24960.0 -1775.1
+          24924.9 -1740.0
+          24875.1 -1740.0
+          24840.0 -1775.1
+          24840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          24875.1 -1860.0
+          25124.9 -1860.0
+          25160.0 -1824.9
+          25160.0 -1775.1
+          25124.9 -1740.0
+          24875.1 -1740.0
+          24840.0 -1775.1
+          24840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          25075.1 -2360.0
+          25124.9 -2360.0
+          25160.0 -2324.9
+          25160.0 -1775.1
+          25124.9 -1740.0
+          25075.1 -1740.0
+          25040.0 -1775.1
+          25040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          24975.1 -2360.0
+          25024.9 -2360.0
+          25060.0 -2324.9
+          25060.0 -1775.1
+          25024.9 -1740.0
+          24975.1 -1740.0
+          24940.0 -1775.1
+          24940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          26875.1 -2360.0
+          26924.9 -2360.0
+          26960.0 -2324.9
+          26960.0 -1775.1
+          26924.9 -1740.0
+          26875.1 -1740.0
+          26840.0 -1775.1
+          26840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          26875.1 -1860.0
+          27124.9 -1860.0
+          27160.0 -1824.9
+          27160.0 -1775.1
+          27124.9 -1740.0
+          26875.1 -1740.0
+          26840.0 -1775.1
+          26840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          27075.1 -2360.0
+          27124.9 -2360.0
+          27160.0 -2324.9
+          27160.0 -1775.1
+          27124.9 -1740.0
+          27075.1 -1740.0
+          27040.0 -1775.1
+          27040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          26975.1 -2360.0
+          27024.9 -2360.0
+          27060.0 -2324.9
+          27060.0 -1775.1
+          27024.9 -1740.0
+          26975.1 -1740.0
+          26940.0 -1775.1
+          26940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          28875.1 -2360.0
+          28924.9 -2360.0
+          28960.0 -2324.9
+          28960.0 -1775.1
+          28924.9 -1740.0
+          28875.1 -1740.0
+          28840.0 -1775.1
+          28840.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          28875.1 -1860.0
+          29124.9 -1860.0
+          29160.0 -1824.9
+          29160.0 -1775.1
+          29124.9 -1740.0
+          28875.1 -1740.0
+          28840.0 -1775.1
+          28840.0 -1824.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          29075.1 -2360.0
+          29124.9 -2360.0
+          29160.0 -2324.9
+          29160.0 -1775.1
+          29124.9 -1740.0
+          29075.1 -1740.0
+          29040.0 -1775.1
+          29040.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          28975.1 -2360.0
+          29024.9 -2360.0
+          29060.0 -2324.9
+          29060.0 -1775.1
+          29024.9 -1740.0
+          28975.1 -1740.0
+          28940.0 -1775.1
+          28940.0 -2324.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2384.9 2050.0
+          -1085.1 2050.0
+          -1050.0 2085.1
+          -1050.0 2134.9
+          -1085.1 2170.0
+          -2384.9 2170.0
+          -2420.0 2134.9
+          -2420.0 2085.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2384.9 800.0
+          -2335.1 800.0
+          -2300.0 835.1
+          -2300.0 2134.9
+          -2335.1 2170.0
+          -2384.9 2170.0
+          -2420.0 2134.9
+          -2420.0 835.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2380.7 2060.0
+          -1089.3 2060.0
+          -1060.0 2089.3
+          -1060.0 2130.7
+          -1089.3 2160.0
+          -2380.7 2160.0
+          -2410.0 2130.7
+          -2410.0 2089.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2380.7 810.0
+          -2339.3 810.0
+          -2310.0 839.3
+          -2310.0 2130.7
+          -2339.3 2160.0
+          -2380.7 2160.0
+          -2410.0 2130.7
+          -2410.0 839.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1970.7 -2850.0
+          -1929.3 -2850.0
+          -1900.0 -2820.7
+          -1900.0 1720.7
+          -1929.3 1750.0
+          -1970.7 1750.0
+          -2000.0 1720.7
+          -2000.0 -2820.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1970.7 -2850.0
+          31970.7 -2850.0
+          32000.0 -2820.7
+          32000.0 -2779.3
+          31970.7 -2750.0
+          -1970.7 -2750.0
+          -2000.0 -2779.3
+          -2000.0 -2820.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          31929.3 -2850.0
+          31970.7 -2850.0
+          32000.0 -2820.7
+          32000.0 1720.7
+          31970.7 1750.0
+          31929.3 1750.0
+          31900.0 1720.7
+          31900.0 -2820.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1970.7 1650.0
+          31970.7 1650.0
+          32000.0 1679.3
+          32000.0 1720.7
+          31970.7 1750.0
+          -1970.7 1750.0
+          -2000.0 1720.7
+          -2000.0 1679.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2460.4 -3325.0
+          -2439.6 -3325.0
+          -2425.0 -3310.4
+          -2425.0 2210.4
+          -2439.6 2225.0
+          -2460.4 2225.0
+          -2475.0 2210.4
+          -2475.0 -3310.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2460.4 -3325.0
+          32460.4 -3325.0
+          32475.0 -3310.4
+          32475.0 -3289.6
+          32460.4 -3275.0
+          -2460.4 -3275.0
+          -2475.0 -3289.6
+          -2475.0 -3310.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          32439.6 -3325.0
+          32460.4 -3325.0
+          32475.0 -3310.4
+          32475.0 2210.4
+          32460.4 2225.0
+          32439.6 2225.0
+          32425.0 2210.4
+          32425.0 -3310.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -2460.4 2175.0
+          32460.4 2175.0
+          32475.0 2189.6
+          32475.0 2210.4
+          32460.4 2225.0
+          -2460.4 2225.0
+          -2475.0 2210.4
+          -2475.0 2189.6
+        )
+      )
+    )
+    (image "Package_DIP:DIP-20_W7.62mm"
+      (side front)
+      (pin "Oval[A]Pad_1600x1600_um" "20" 7620.0 0.0)
+      (pin "Oval[A]Pad_1600x1600_um" "10" 0.0 -22860.0)
+      (pin "Oval[A]Pad_1600x1600_um" "19" 7620.0 -2540.0)
+      (pin "Oval[A]Pad_1600x1600_um" "9" 0.0 -20320.0)
+      (pin "Oval[A]Pad_1600x1600_um" "18" 7620.0 -5080.0)
+      (pin "Oval[A]Pad_1600x1600_um" "8" 0.0 -17780.0)
+      (pin "Oval[A]Pad_1600x1600_um" "17" 7620.0 -7620.0)
+      (pin "Oval[A]Pad_1600x1600_um" "7" 0.0 -15240.0)
+      (pin "Oval[A]Pad_1600x1600_um" "16" 7620.0 -10160.0)
+      (pin "Oval[A]Pad_1600x1600_um" "6" 0.0 -12700.0)
+      (pin "Oval[A]Pad_1600x1600_um" "15" 7620.0 -12700.0)
+      (pin "Oval[A]Pad_1600x1600_um" "5" 0.0 -10160.0)
+      (pin "Oval[A]Pad_1600x1600_um" "14" 7620.0 -15240.0)
+      (pin "Oval[A]Pad_1600x1600_um" "4" 0.0 -7620.0)
+      (pin "Oval[A]Pad_1600x1600_um" "13" 7620.0 -17780.0)
+      (pin "Oval[A]Pad_1600x1600_um" "3" 0.0 -5080.0)
+      (pin "Oval[A]Pad_1600x1600_um" "12" 7620.0 -20320.0)
+      (pin "Oval[A]Pad_1600x1600_um" "2" 0.0 -2540.0)
+      (pin "Oval[A]Pad_1600x1600_um" "11" 7620.0 -22860.0)
+      (pin "Rect[A]Pad_1600x1600_um" "1" 0.0 0.0)
+      (outline
+        (polygon signal 0
+          1614.3 1220.0
+          7005.7 1220.0
+          7035.0 1249.3
+          7035.0 1290.7
+          7005.7 1320.0
+          1614.3 1320.0
+          1585.0 1290.7
+          1585.0 1249.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          6964.3 -24180.0
+          7005.7 -24180.0
+          7035.0 -24150.7
+          7035.0 1290.7
+          7005.7 1320.0
+          6964.3 1320.0
+          6935.0 1290.7
+          6935.0 -24150.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 -24180.0
+          7005.7 -24180.0
+          7035.0 -24150.7
+          7035.0 -24109.3
+          7005.7 -24080.0
+          614.3 -24080.0
+          585.0 -24109.3
+          585.0 -24150.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 -24180.0
+          655.7 -24180.0
+          685.0 -24150.7
+          685.0 290.7
+          655.7 320.0
+          614.3 320.0
+          585.0 290.7
+          585.0 -24150.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 220.0
+          655.7 220.0
+          1685.0 1249.3
+          1685.0 1290.7
+          1655.7 1320.0
+          1614.3 1320.0
+          585.0 290.7
+          585.0 249.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 1270.0
+          2834.9 1270.0
+          2870.0 1305.1
+          2870.0 1354.9
+          2834.9 1390.0
+          1135.1 1390.0
+          1100.0 1354.9
+          1100.0 1305.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 -24250.0
+          1184.9 -24250.0
+          1220.0 -24214.9
+          1220.0 1354.9
+          1184.9 1390.0
+          1135.1 1390.0
+          1100.0 1354.9
+          1100.0 -24214.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 -24250.0
+          6484.9 -24250.0
+          6520.0 -24214.9
+          6520.0 -24165.1
+          6484.9 -24130.0
+          1135.1 -24130.0
+          1100.0 -24165.1
+          1100.0 -24214.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          6435.1 -24250.0
+          6484.9 -24250.0
+          6520.0 -24214.9
+          6520.0 1354.9
+          6484.9 1390.0
+          6435.1 1390.0
+          6400.0 1354.9
+          6400.0 -24214.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          4785.1 1270.0
+          6484.9 1270.0
+          6520.0 1305.1
+          6520.0 1354.9
+          6484.9 1390.0
+          4785.1 1390.0
+          4750.0 1354.9
+          4750.0 1305.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 -24425.0
+          -1089.6 -24425.0
+          -1075.0 -24410.4
+          -1075.0 1560.4
+          -1089.6 1575.0
+          -1110.4 1575.0
+          -1125.0 1560.4
+          -1125.0 -24410.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 -24425.0
+          8710.4 -24425.0
+          8725.0 -24410.4
+          8725.0 -24389.6
+          8710.4 -24375.0
+          -1110.4 -24375.0
+          -1125.0 -24389.6
+          -1125.0 -24410.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          8689.6 -24425.0
+          8710.4 -24425.0
+          8725.0 -24410.4
+          8725.0 1560.4
+          8710.4 1575.0
+          8689.6 1575.0
+          8675.0 1560.4
+          8675.0 -24410.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 1525.0
+          8710.4 1525.0
+          8725.0 1539.6
+          8725.0 1560.4
+          8710.4 1575.0
+          -1110.4 1575.0
+          -1125.0 1560.4
+          -1125.0 1539.6
+        )
+      )
+    )
+    (image "Package_DIP:DIP-16_W7.62mm"
+      (side front)
+      (pin "Oval[A]Pad_1600x1600_um" "16" 7620.0 0.0)
+      (pin "Oval[A]Pad_1600x1600_um" "8" 0.0 -17780.0)
+      (pin "Oval[A]Pad_1600x1600_um" "15" 7620.0 -2540.0)
+      (pin "Oval[A]Pad_1600x1600_um" "7" 0.0 -15240.0)
+      (pin "Oval[A]Pad_1600x1600_um" "14" 7620.0 -5080.0)
+      (pin "Oval[A]Pad_1600x1600_um" "6" 0.0 -12700.0)
+      (pin "Oval[A]Pad_1600x1600_um" "13" 7620.0 -7620.0)
+      (pin "Oval[A]Pad_1600x1600_um" "5" 0.0 -10160.0)
+      (pin "Oval[A]Pad_1600x1600_um" "12" 7620.0 -10160.0)
+      (pin "Oval[A]Pad_1600x1600_um" "4" 0.0 -7620.0)
+      (pin "Oval[A]Pad_1600x1600_um" "11" 7620.0 -12700.0)
+      (pin "Oval[A]Pad_1600x1600_um" "3" 0.0 -5080.0)
+      (pin "Oval[A]Pad_1600x1600_um" "10" 7620.0 -15240.0)
+      (pin "Oval[A]Pad_1600x1600_um" "2" 0.0 -2540.0)
+      (pin "Oval[A]Pad_1600x1600_um" "9" 7620.0 -17780.0)
+      (pin "Rect[A]Pad_1600x1600_um" "1" 0.0 0.0)
+      (outline
+        (polygon signal 0
+          1614.3 1220.0
+          7005.7 1220.0
+          7035.0 1249.3
+          7035.0 1290.7
+          7005.7 1320.0
+          1614.3 1320.0
+          1585.0 1290.7
+          1585.0 1249.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          6964.3 -19100.0
+          7005.7 -19100.0
+          7035.0 -19070.7
+          7035.0 1290.7
+          7005.7 1320.0
+          6964.3 1320.0
+          6935.0 1290.7
+          6935.0 -19070.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 -19100.0
+          7005.7 -19100.0
+          7035.0 -19070.7
+          7035.0 -19029.3
+          7005.7 -19000.0
+          614.3 -19000.0
+          585.0 -19029.3
+          585.0 -19070.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 -19100.0
+          655.7 -19100.0
+          685.0 -19070.7
+          685.0 290.7
+          655.7 320.0
+          614.3 320.0
+          585.0 290.7
+          585.0 -19070.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 220.0
+          655.7 220.0
+          1685.0 1249.3
+          1685.0 1290.7
+          1655.7 1320.0
+          1614.3 1320.0
+          585.0 290.7
+          585.0 249.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 1270.0
+          2834.9 1270.0
+          2870.0 1305.1
+          2870.0 1354.9
+          2834.9 1390.0
+          1135.1 1390.0
+          1100.0 1354.9
+          1100.0 1305.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 -19170.0
+          1184.9 -19170.0
+          1220.0 -19134.9
+          1220.0 1354.9
+          1184.9 1390.0
+          1135.1 1390.0
+          1100.0 1354.9
+          1100.0 -19134.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 -19170.0
+          6484.9 -19170.0
+          6520.0 -19134.9
+          6520.0 -19085.1
+          6484.9 -19050.0
+          1135.1 -19050.0
+          1100.0 -19085.1
+          1100.0 -19134.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          6435.1 -19170.0
+          6484.9 -19170.0
+          6520.0 -19134.9
+          6520.0 1354.9
+          6484.9 1390.0
+          6435.1 1390.0
+          6400.0 1354.9
+          6400.0 -19134.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          4785.1 1270.0
+          6484.9 1270.0
+          6520.0 1305.1
+          6520.0 1354.9
+          6484.9 1390.0
+          4785.1 1390.0
+          4750.0 1354.9
+          4750.0 1305.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 -19325.0
+          -1089.6 -19325.0
+          -1075.0 -19310.4
+          -1075.0 1560.4
+          -1089.6 1575.0
+          -1110.4 1575.0
+          -1125.0 1560.4
+          -1125.0 -19310.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 -19325.0
+          8710.4 -19325.0
+          8725.0 -19310.4
+          8725.0 -19289.6
+          8710.4 -19275.0
+          -1110.4 -19275.0
+          -1125.0 -19289.6
+          -1125.0 -19310.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          8689.6 -19325.0
+          8710.4 -19325.0
+          8725.0 -19310.4
+          8725.0 1560.4
+          8710.4 1575.0
+          8689.6 1575.0
+          8675.0 1560.4
+          8675.0 -19310.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 1525.0
+          8710.4 1525.0
+          8725.0 1539.6
+          8725.0 1560.4
+          8710.4 1575.0
+          -1110.4 1575.0
+          -1125.0 1560.4
+          -1125.0 1539.6
+        )
+      )
+    )
+    (image "Package_DIP:DIP-14_W7.62mm"
+      (side front)
+      (pin "Oval[A]Pad_1600x1600_um" "14" 7620.0 0.0)
+      (pin "Oval[A]Pad_1600x1600_um" "7" 0.0 -15240.0)
+      (pin "Oval[A]Pad_1600x1600_um" "13" 7620.0 -2540.0)
+      (pin "Oval[A]Pad_1600x1600_um" "6" 0.0 -12700.0)
+      (pin "Oval[A]Pad_1600x1600_um" "12" 7620.0 -5080.0)
+      (pin "Oval[A]Pad_1600x1600_um" "5" 0.0 -10160.0)
+      (pin "Oval[A]Pad_1600x1600_um" "11" 7620.0 -7620.0)
+      (pin "Oval[A]Pad_1600x1600_um" "4" 0.0 -7620.0)
+      (pin "Oval[A]Pad_1600x1600_um" "10" 7620.0 -10160.0)
+      (pin "Oval[A]Pad_1600x1600_um" "3" 0.0 -5080.0)
+      (pin "Oval[A]Pad_1600x1600_um" "9" 7620.0 -12700.0)
+      (pin "Oval[A]Pad_1600x1600_um" "2" 0.0 -2540.0)
+      (pin "Oval[A]Pad_1600x1600_um" "8" 7620.0 -15240.0)
+      (pin "Rect[A]Pad_1600x1600_um" "1" 0.0 0.0)
+      (outline
+        (polygon signal 0
+          1614.3 1220.0
+          7005.7 1220.0
+          7035.0 1249.3
+          7035.0 1290.7
+          7005.7 1320.0
+          1614.3 1320.0
+          1585.0 1290.7
+          1585.0 1249.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          6964.3 -16560.0
+          7005.7 -16560.0
+          7035.0 -16530.7
+          7035.0 1290.7
+          7005.7 1320.0
+          6964.3 1320.0
+          6935.0 1290.7
+          6935.0 -16530.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 -16560.0
+          7005.7 -16560.0
+          7035.0 -16530.7
+          7035.0 -16489.3
+          7005.7 -16460.0
+          614.3 -16460.0
+          585.0 -16489.3
+          585.0 -16530.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 -16560.0
+          655.7 -16560.0
+          685.0 -16530.7
+          685.0 290.7
+          655.7 320.0
+          614.3 320.0
+          585.0 290.7
+          585.0 -16530.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          614.3 220.0
+          655.7 220.0
+          1685.0 1249.3
+          1685.0 1290.7
+          1655.7 1320.0
+          1614.3 1320.0
+          585.0 290.7
+          585.0 249.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 1270.0
+          2834.9 1270.0
+          2870.0 1305.1
+          2870.0 1354.9
+          2834.9 1390.0
+          1135.1 1390.0
+          1100.0 1354.9
+          1100.0 1305.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 -16630.0
+          1184.9 -16630.0
+          1220.0 -16594.9
+          1220.0 1354.9
+          1184.9 1390.0
+          1135.1 1390.0
+          1100.0 1354.9
+          1100.0 -16594.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          1135.1 -16630.0
+          6484.9 -16630.0
+          6520.0 -16594.9
+          6520.0 -16545.1
+          6484.9 -16510.0
+          1135.1 -16510.0
+          1100.0 -16545.1
+          1100.0 -16594.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          6435.1 -16630.0
+          6484.9 -16630.0
+          6520.0 -16594.9
+          6520.0 1354.9
+          6484.9 1390.0
+          6435.1 1390.0
+          6400.0 1354.9
+          6400.0 -16594.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          4785.1 1270.0
+          6484.9 1270.0
+          6520.0 1305.1
+          6520.0 1354.9
+          6484.9 1390.0
+          4785.1 1390.0
+          4750.0 1354.9
+          4750.0 1305.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 -16825.0
+          -1089.6 -16825.0
+          -1075.0 -16810.4
+          -1075.0 1560.4
+          -1089.6 1575.0
+          -1110.4 1575.0
+          -1125.0 1560.4
+          -1125.0 -16810.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 -16825.0
+          8710.4 -16825.0
+          8725.0 -16810.4
+          8725.0 -16789.6
+          8710.4 -16775.0
+          -1110.4 -16775.0
+          -1125.0 -16789.6
+          -1125.0 -16810.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          8689.6 -16825.0
+          8710.4 -16825.0
+          8725.0 -16810.4
+          8725.0 1560.4
+          8710.4 1575.0
+          8689.6 1575.0
+          8675.0 1560.4
+          8675.0 -16810.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -1110.4 1525.0
+          8710.4 1525.0
+          8725.0 1539.6
+          8725.0 1560.4
+          8710.4 1575.0
+          -1110.4 1575.0
+          -1125.0 1560.4
+          -1125.0 1539.6
+        )
+      )
+    )
+    (image "Connector_PCBEdge:Samtec_MECF-30-0_-NP-L-DV_2x30_P1.27mm_Edge"
+      (side front)
+      (pin "Rect[B]Pad_560x4000_um" "60" 18425.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "59" 18425.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "58" 17155.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "57" 17155.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "56" 15885.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "55" 15885.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "54" 14615.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "53" 14615.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "52" 13345.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "51" 13345.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "50" 12075.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "49" 12075.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "48" 10805.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "47" 10805.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "46" 9535.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "45" 9535.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "44" 8265.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "43" 8265.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "42" 6995.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "41" 6995.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "40" 5725.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "39" 5725.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "38" 4455.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "37" 4455.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "36" 3185.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "35" 3185.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "34" 1915.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "33" 1915.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "32" 645.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "31" 645.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "30" -625.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "29" -625.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "28" -1895.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "27" -1895.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "26" -3165.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "25" -3165.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "24" -4435.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "23" -4435.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "22" -5705.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "21" -5705.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "20" -6975.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "19" -6975.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "18" -8245.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "17" -8245.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "16" -9515.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "15" -9515.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "14" -10785.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "13" -10785.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "12" -12055.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "11" -12055.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "10" -13325.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "9" -13325.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "8" -14595.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "7" -14595.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "6" -15865.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "5" -15865.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "4" -17135.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "3" -17135.0 -2500.0)
+      (pin "Rect[B]Pad_560x4000_um" "2" -18405.0 -2500.0)
+      (pin "Rect[T]Pad_560x4000_um" "1" -18405.0 -2500.0)
+      (outline
+        (polygon signal 0
+          -18675.7 -5050.0
+          19945.7 -5050.0
+          19975.0 -5020.7
+          19975.0 -4979.3
+          19945.7 -4950.0
+          -18675.7 -4950.0
+          -18705.0 -4979.3
+          -18705.0 -5020.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19945.7 4950.0
+          19945.7 4950.0
+          19975.0 4979.3
+          19975.0 5020.7
+          19945.7 5050.0
+          -19945.7 5050.0
+          -19975.0 5020.7
+          -19975.0 4979.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19945.7 -3780.0
+          -19904.3 -3780.0
+          -19875.0 -3750.7
+          -19875.0 5020.7
+          -19904.3 5050.0
+          -19945.7 5050.0
+          -19975.0 5020.7
+          -19975.0 -3750.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          19904.3 -5050.0
+          19945.7 -5050.0
+          19975.0 -5020.7
+          19975.0 5020.7
+          19945.7 5050.0
+          19904.3 5050.0
+          19875.0 5020.7
+          19875.0 -5020.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -18675.7 -5050.0
+          -18634.3 -5050.0
+          -18605.0 -5020.7
+          -18605.0 -4979.3
+          -19904.3 -3680.0
+          -19945.7 -3680.0
+          -19975.0 -3709.3
+          -19975.0 -3750.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19945.7 -5050.0
+          19945.7 -5050.0
+          19975.0 -5020.7
+          19975.0 -4979.3
+          19945.7 -4950.0
+          -19945.7 -4950.0
+          -19975.0 -4979.3
+          -19975.0 -5020.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19945.7 4950.0
+          19945.7 4950.0
+          19975.0 4979.3
+          19975.0 5020.7
+          19945.7 5050.0
+          -19945.7 5050.0
+          -19975.0 5020.7
+          -19975.0 4979.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19945.7 -5050.0
+          -19904.3 -5050.0
+          -19875.0 -5020.7
+          -19875.0 5020.7
+          -19904.3 5050.0
+          -19945.7 5050.0
+          -19975.0 5020.7
+          -19975.0 -5020.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          19904.3 -5050.0
+          19945.7 -5050.0
+          19975.0 -5020.7
+          19975.0 5020.7
+          19945.7 5050.0
+          19904.3 5050.0
+          19875.0 5020.7
+          19875.0 -5020.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -18794.9 -5060.0
+          20064.9 -5060.0
+          20100.0 -5024.9
+          20100.0 -4975.1
+          20064.9 -4940.0
+          -18794.9 -4940.0
+          -18830.0 -4975.1
+          -18830.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20064.9 5050.0
+          20064.9 5050.0
+          20100.0 5085.1
+          20100.0 5134.9
+          20064.9 5170.0
+          -20064.9 5170.0
+          -20100.0 5134.9
+          -20100.0 5085.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20064.9 -3790.0
+          -20015.1 -3790.0
+          -19980.0 -3754.9
+          -19980.0 5134.9
+          -20015.1 5170.0
+          -20064.9 5170.0
+          -20100.0 5134.9
+          -20100.0 -3754.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          20015.1 -5060.0
+          20064.9 -5060.0
+          20100.0 -5024.9
+          20100.0 5134.9
+          20064.9 5170.0
+          20015.1 5170.0
+          19980.0 5134.9
+          19980.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -18794.9 -5060.0
+          -18745.1 -5060.0
+          -18710.0 -5024.9
+          -18710.0 -4975.1
+          -20015.1 -3670.0
+          -20064.9 -3670.0
+          -20100.0 -3705.1
+          -20100.0 -3754.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20064.9 -5060.0
+          20064.9 -5060.0
+          20100.0 -5024.9
+          20100.0 -4975.1
+          20064.9 -4940.0
+          -20064.9 -4940.0
+          -20100.0 -4975.1
+          -20100.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20064.9 5050.0
+          20064.9 5050.0
+          20100.0 5085.1
+          20100.0 5134.9
+          20064.9 5170.0
+          -20064.9 5170.0
+          -20100.0 5134.9
+          -20100.0 5085.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20064.9 -5060.0
+          -20015.1 -5060.0
+          -19980.0 -5024.9
+          -19980.0 5134.9
+          -20015.1 5170.0
+          -20064.9 5170.0
+          -20100.0 5134.9
+          -20100.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          20015.1 -5060.0
+          20064.9 -5060.0
+          20100.0 -5024.9
+          20100.0 5134.9
+          20064.9 5170.0
+          20015.1 5170.0
+          19980.0 5134.9
+          19980.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20190.4 -5025.0
+          -20169.6 -5025.0
+          -20155.0 -5010.4
+          -20155.0 5260.4
+          -20169.6 5275.0
+          -20190.4 5275.0
+          -20205.0 5260.4
+          -20205.0 -5010.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20190.4 -5025.0
+          20190.4 -5025.0
+          20205.0 -5010.4
+          20205.0 -4989.6
+          20190.4 -4975.0
+          -20190.4 -4975.0
+          -20205.0 -4989.6
+          -20205.0 -5010.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          20169.6 -5025.0
+          20190.4 -5025.0
+          20205.0 -5010.4
+          20205.0 5260.4
+          20190.4 5275.0
+          20169.6 5275.0
+          20155.0 5260.4
+          20155.0 -5010.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20190.4 5225.0
+          20190.4 5225.0
+          20205.0 5239.6
+          20205.0 5260.4
+          20190.4 5275.0
+          -20190.4 5275.0
+          -20205.0 5260.4
+          -20205.0 5239.6
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20190.4 -5025.0
+          -20169.6 -5025.0
+          -20155.0 -5010.4
+          -20155.0 5260.4
+          -20169.6 5275.0
+          -20190.4 5275.0
+          -20205.0 5260.4
+          -20205.0 -5010.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20190.4 -5025.0
+          20190.4 -5025.0
+          20205.0 -5010.4
+          20205.0 -4989.6
+          20190.4 -4975.0
+          -20190.4 -4975.0
+          -20205.0 -4989.6
+          -20205.0 -5010.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          20169.6 -5025.0
+          20190.4 -5025.0
+          20205.0 -5010.4
+          20205.0 5260.4
+          20190.4 5275.0
+          20169.6 5275.0
+          20155.0 5260.4
+          20155.0 -5010.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20190.4 5225.0
+          20190.4 5225.0
+          20205.0 5239.6
+          20205.0 5260.4
+          20190.4 5275.0
+          -20190.4 5275.0
+          -20205.0 5260.4
+          -20205.0 5239.6
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19949.9 -5060.0
+          -19900.1 -5060.0
+          -19865.0 -5024.9
+          -19865.0 5024.9
+          -19900.1 5060.0
+          -19949.9 5060.0
+          -19985.0 5024.9
+          -19985.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          19900.1 -5060.0
+          19949.9 -5060.0
+          19985.0 -5024.9
+          19985.0 5024.9
+          19949.9 5060.0
+          19900.1 5060.0
+          19865.0 5024.9
+          19865.0 -5024.9
+        )
+      )
+      (outline
+        (polygon signal 0
+          -20274.9 4940.0
+          -19900.1 4940.0
+          -19865.0 4975.1
+          -19865.0 5024.9
+          -19900.1 5060.0
+          -20274.9 5060.0
+          -20310.0 5024.9
+          -20310.0 4975.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          19900.1 4940.0
+          20274.9 4940.0
+          20310.0 4975.1
+          20310.0 5024.9
+          20274.9 5060.0
+          19900.1 5060.0
+          19865.0 5024.9
+          19865.0 4975.1
+        )
+      )
+      (outline
+        (polygon signal 0
+          -19949.9 -5060.0
+          19949.9 -5060.0
+          19985.0 -5024.9
+          19985.0 -4975.1
+          19949.9 -4940.0
+          -19949.9 -4940.0
+          -19985.0 -4975.1
+          -19985.0 -5024.9
+        )
+      )
+    )
+    (padstack "Oval[A]Pad_1200x1750_um"
+      (shape
+        (polygon F.Cu 0
+          -248.5 -875.0
+          248.5 -875.0
+          600.0 -523.5
+          600.0 523.5
+          248.5 875.0
+          -248.5 875.0
+          -600.0 523.5
+          -600.0 -523.5
+        )
+      )
+      (shape
+        (polygon B.Cu 0
+          -248.5 -875.0
+          248.5 -875.0
+          600.0 -523.5
+          600.0 523.5
+          248.5 875.0
+          -248.5 875.0
+          -600.0 523.5
+          -600.0 -523.5
+        )
+      )
+      (attach off)
+    )
+    (padstack "Oval[A]Pad_1600x1600_um"
+      (shape
+        (polygon F.Cu 0
+          -331.4 -800.0
+          331.4 -800.0
+          800.0 -331.4
+          800.0 331.4
+          331.4 800.0
+          -331.4 800.0
+          -800.0 331.4
+          -800.0 -331.4
+        )
+      )
+      (shape
+        (polygon B.Cu 0
+          -331.4 -800.0
+          331.4 -800.0
+          800.0 -331.4
+          800.0 331.4
+          331.4 800.0
+          -331.4 800.0
+          -800.0 331.4
+          -800.0 -331.4
+        )
+      )
+      (attach off)
+    )
+    (padstack "RoundRect[A]Pad_1200x1750_250_um"
+      (shape
+        (polygon F.Cu 0
+          -350.0 -876.0
+          350.0 -876.0
+          393.6 -872.1
+          435.8 -860.8
+          475.5 -842.3
+          511.3 -817.2
+          542.2 -786.3
+          567.3 -750.5
+          585.8 -710.8
+          597.1 -668.6
+          601.0 -625.0
+          601.0 625.0
+          597.1 668.6
+          585.8 710.8
+          567.3 750.5
+          542.2 786.3
+          511.3 817.2
+          475.5 842.3
+          435.8 860.8
+          393.6 872.1
+          350.0 876.0
+          -350.0 876.0
+          -393.6 872.1
+          -435.8 860.8
+          -475.5 842.3
+          -511.3 817.2
+          -542.2 786.3
+          -567.3 750.5
+          -585.8 710.8
+          -597.1 668.6
+          -601.0 625.0
+          -601.0 -625.0
+          -597.1 -668.6
+          -585.8 -710.8
+          -567.3 -750.5
+          -542.2 -786.3
+          -511.3 -817.2
+          -475.5 -842.3
+          -435.8 -860.8
+          -393.6 -872.1
+        )
+      )
+      (shape
+        (polygon B.Cu 0
+          -350.0 -876.0
+          350.0 -876.0
+          393.6 -872.1
+          435.8 -860.8
+          475.5 -842.3
+          511.3 -817.2
+          542.2 -786.3
+          567.3 -750.5
+          585.8 -710.8
+          597.1 -668.6
+          601.0 -625.0
+          601.0 625.0
+          597.1 668.6
+          585.8 710.8
+          567.3 750.5
+          542.2 786.3
+          511.3 817.2
+          475.5 842.3
+          435.8 860.8
+          393.6 872.1
+          350.0 876.0
+          -350.0 876.0
+          -393.6 872.1
+          -435.8 860.8
+          -475.5 842.3
+          -511.3 817.2
+          -542.2 786.3
+          -567.3 750.5
+          -585.8 710.8
+          -597.1 668.6
+          -601.0 625.0
+          -601.0 -625.0
+          -597.1 -668.6
+          -585.8 -710.8
+          -567.3 -750.5
+          -542.2 -786.3
+          -511.3 -817.2
+          -475.5 -842.3
+          -435.8 -860.8
+          -393.6 -872.1
+        )
+      )
+      (attach off)
+    )
+    (padstack "Rect[B]Pad_560x4000_um"
+      (shape
+        (rect B.Cu -280.0 -2000.0 280.0 2000.0)
+      )
+      (attach off)
+    )
+    (padstack "Rect[T]Pad_560x4000_um"
+      (shape
+        (rect F.Cu -280.0 -2000.0 280.0 2000.0)
+      )
+      (attach off)
+    )
+    (padstack "Rect[A]Pad_1600x1600_um"
+      (shape
+        (rect F.Cu -800.0 -800.0 800.0 800.0)
+      )
+      (shape
+        (rect B.Cu -800.0 -800.0 800.0 800.0)
+      )
+      (attach off)
+    )
+    (padstack "Via[0-1]_800:400_um"
+      (shape
+        (circle F.Cu 800.0 0.0 0.0)
+      )
+      (shape
+        (circle B.Cu 800.0 0.0 0.0)
+      )
+      (attach off)
+    )
+  )
+  (network
+    (net /pcIU16 1
+      (pins
+        U10-"9"
+        U29-"11"
+        J1-"16"
+      )
+    )
+    (net /pcIU15 1
+      (pins
+        U10-"5"
+        U29-"15"
+        J1-"15"
+      )
+    )
+    (net /pcIU14 1
+      (pins
+        U10-"3"
+        U29-"2"
+        J1-"14"
+      )
+    )
+    (net /pcIU13 1
+      (pins
+        U10-"1"
+        U29-"6"
+        J1-"13"
+      )
+    )
+    (net /pcIU12 1
+      (pins
+        U8-"13"
+        U28-"11"
+        J1-"12"
+      )
+    )
+    (net /pcIU11 1
+      (pins
+        U8-"11"
+        U28-"15"
+        J1-"11"
+      )
+    )
+    (net /pcIU10 1
+      (pins
+        U8-"9"
+        U28-"2"
+        J1-"10"
+      )
+    )
+    (net /pcIU9 1
+      (pins
+        U8-"5"
+        U28-"6"
+        J1-"9"
+      )
+    )
+    (net /pcIU8 1
+      (pins
+        U8-"3"
+        U27-"11"
+        J1-"8"
+      )
+    )
+    (net /pcIU7 1
+      (pins
+        U8-"1"
+        U27-"15"
+        J1-"7"
+      )
+    )
+    (net /pcIU6 1
+      (pins
+        U5-"13"
+        U27-"2"
+        J1-"6"
+      )
+    )
+    (net /pcIU5 1
+      (pins
+        U5-"11"
+        U27-"6"
+        J1-"5"
+      )
+    )
+    (net /pcIU4 1
+      (pins
+        U5-"9"
+        U26-"11"
+        J1-"4"
+      )
+    )
+    (net /pcIU3 1
+      (pins
+        U5-"5"
+        U26-"15"
+        J1-"3"
+      )
+    )
+    (net /pcIU2 1
+      (pins
+        U5-"3"
+        U26-"2"
+        J1-"2"
+      )
+    )
+    (net /pcIU1 1
+      (pins
+        U5-"1"
+        U26-"6"
+        J1-"1"
+      )
+    )
+    (net +5V 1
+      (pins
+        J2-"41"
+        J2-"43"
+        J2-"45"
+        J2-"47"
+        J2-"49"
+        J2-"51"
+        J2-"53"
+        J2-"55"
+        J2-"57"
+        J2-"59"
+        U41-"10"
+        U41-"4"
+        U41-"14"
+        U46-"14"
+        U49-"14"
+        U42-"14"
+        U38-"9"
+        U38-"14"
+        U36-"14"
+        U45-"14"
+        U20-"14"
+        U21-"14"
+        U15-"14"
+        U10-"14"
+        U8-"14"
+        U5-"14"
+        U9-"14"
+        U37-"9"
+        U37-"10"
+        U37-"7"
+        U37-"16"
+        U29-"16"
+        U28-"16"
+        U27-"16"
+        U26-"16"
+        U25-"10"
+        U25-"7"
+        U25-"16"
+        U24-"7"
+        U24-"16"
+        U19-"7"
+        U19-"16"
+        U18-"16"
+        U17-"16"
+        U16-"16"
+        U14-"10"
+        U14-"7"
+        U14-"16"
+        U13-"7"
+        U13-"16"
+        U12-"7"
+        U12-"16"
+        U23-"7"
+        U23-"16"
+        U22-"7"
+        U22-"16"
+        U11-"7"
+        U11-"16"
+        U1-"1"
+        U1-"20"
+        U2-"1"
+        U2-"20"
+        U4-"1"
+        U4-"20"
+        U30-"1"
+        U30-"20"
+        U32-"1"
+        U32-"20"
+        U35-"20"
+        U43-"20"
+        U44-"20"
+        U47-"1"
+        U47-"20"
+        U48-"1"
+        U48-"20"
+        U52-"1"
+        U52-"20"
+        U53-"1"
+        U53-"20"
+        U51-"20"
+        U50-"20"
+        U40-"1"
+        U40-"20"
+        U39-"1"
+        U39-"20"
+        U34-"20"
+        U33-"1"
+        U33-"20"
+        U31-"1"
+        U31-"20"
+        U7-"12"
+        U7-"3"
+        U7-"14"
+        U7-"5"
+        U7-"16"
+        U7-"7"
+        U7-"18"
+        U7-"9"
+        U7-"20"
+        U6-"12"
+        U6-"3"
+        U6-"14"
+        U6-"5"
+        U6-"16"
+        U6-"7"
+        U6-"18"
+        U6-"9"
+        U6-"20"
+        U3-"1"
+        U3-"20"
+      )
+    )
+    (net GND 1
+      (pins
+        J2-"40"
+        J2-"42"
+        J2-"44"
+        J2-"46"
+        J2-"48"
+        J2-"50"
+        J2-"52"
+        J2-"54"
+        J2-"56"
+        J2-"58"
+        J2-"60"
+        U41-"7"
+        U46-"7"
+        U49-"7"
+        U42-"7"
+        U38-"7"
+        U36-"7"
+        U45-"7"
+        U20-"7"
+        U21-"7"
+        U15-"7"
+        U10-"13"
+        U10-"7"
+        U8-"7"
+        U5-"7"
+        U9-"7"
+        U37-"3"
+        U37-"4"
+        U37-"5"
+        U37-"6"
+        U37-"8"
+        U29-"7"
+        U29-"8"
+        U28-"8"
+        U27-"8"
+        U26-"8"
+        U25-"8"
+        U24-"8"
+        U19-"8"
+        U18-"8"
+        U17-"8"
+        U16-"8"
+        U14-"8"
+        U13-"8"
+        U12-"8"
+        U23-"8"
+        U22-"8"
+        U11-"8"
+        U1-"19"
+        U1-"10"
+        U2-"19"
+        U2-"10"
+        U4-"10"
+        U30-"10"
+        U32-"10"
+        U35-"1"
+        U35-"10"
+        U43-"10"
+        U44-"10"
+        U47-"5"
+        U47-"6"
+        U47-"7"
+        U47-"8"
+        U47-"9"
+        U47-"10"
+        U48-"8"
+        U48-"9"
+        U48-"19"
+        U48-"10"
+        U52-"10"
+        U53-"10"
+        U51-"10"
+        U50-"10"
+        U40-"10"
+        U39-"10"
+        U34-"1"
+        U34-"10"
+        U33-"10"
+        U31-"10"
+        U7-"1"
+        U7-"10"
+        U6-"1"
+        U6-"10"
+        U3-"10"
+      )
+    )
+    (net /dmaEx 1
+      (pins
+        J2-"39"
+        U48-"5"
+      )
+    )
+    (net /inIntEx 1
+      (pins
+        J2-"38"
+        U47-"16"
+      )
+    )
+    (net /intEx 1
+      (pins
+        J2-"37"
+        U48-"4"
+      )
+    )
+    (net /strEx 1
+      (pins
+        J2-"36"
+        U47-"17"
+        U48-"7"
+      )
+    )
+    (net /rstEx 1
+      (pins
+        J2-"35"
+        U48-"3"
+      )
+    )
+    (net /rwEx 1
+      (pins
+        J2-"34"
+        U47-"18"
+        U48-"6"
+      )
+    )
+    (net /clkEx 1
+      (pins
+        J2-"33"
+        U48-"2"
+      )
+    )
+    (net /datEx16 1
+      (pins
+        J2-"32"
+        U2-"9"
+        U4-"11"
+        U44-"11"
+      )
+    )
+    (net /adrEx16 1
+      (pins
+        J2-"31"
+        U40-"11"
+        U7-"17"
+      )
+    )
+    (net /datEx15 1
+      (pins
+        J2-"30"
+        U2-"8"
+        U4-"12"
+        U44-"12"
+      )
+    )
+    (net /adrEx15 1
+      (pins
+        J2-"29"
+        U40-"12"
+        U7-"15"
+      )
+    )
+    (net /datEx14 1
+      (pins
+        J2-"28"
+        U2-"7"
+        U4-"13"
+        U44-"13"
+      )
+    )
+    (net /adrEx14 1
+      (pins
+        J2-"27"
+        U40-"13"
+        U7-"13"
+      )
+    )
+    (net /datEx13 1
+      (pins
+        J2-"26"
+        U2-"6"
+        U4-"14"
+        U44-"14"
+      )
+    )
+    (net /adrEx13 1
+      (pins
+        J2-"25"
+        U40-"14"
+        U7-"11"
+      )
+    )
+    (net /datEx12 1
+      (pins
+        J2-"24"
+        U2-"5"
+        U4-"15"
+        U44-"15"
+      )
+    )
+    (net /adrEx12 1
+      (pins
+        J2-"23"
+        U40-"15"
+        U7-"8"
+      )
+    )
+    (net /datEx11 1
+      (pins
+        J2-"22"
+        U2-"4"
+        U4-"16"
+        U44-"16"
+      )
+    )
+    (net /adrEx11 1
+      (pins
+        J2-"21"
+        U40-"16"
+        U7-"6"
+      )
+    )
+    (net /datEx10 1
+      (pins
+        J2-"20"
+        U2-"3"
+        U4-"17"
+        U44-"17"
+      )
+    )
+    (net /adrEx10 1
+      (pins
+        J2-"19"
+        U40-"17"
+        U7-"4"
+      )
+    )
+    (net /datEx9 1
+      (pins
+        J2-"18"
+        U2-"2"
+        U4-"18"
+        U44-"18"
+      )
+    )
+    (net /adrEx9 1
+      (pins
+        J2-"17"
+        U40-"18"
+        U7-"2"
+      )
+    )
+    (net /datEx8 1
+      (pins
+        J2-"16"
+        U1-"9"
+        U43-"11"
+        U3-"11"
+      )
+    )
+    (net /adrEx8 1
+      (pins
+        J2-"15"
+        U39-"11"
+        U6-"17"
+      )
+    )
+    (net /datEx7 1
+      (pins
+        J2-"14"
+        U1-"8"
+        U43-"12"
+        U3-"12"
+      )
+    )
+    (net /adrEx7 1
+      (pins
+        J2-"13"
+        U39-"12"
+        U6-"15"
+      )
+    )
+    (net /datEx6 1
+      (pins
+        J2-"12"
+        U1-"7"
+        U43-"13"
+        U3-"13"
+      )
+    )
+    (net /adrEx6 1
+      (pins
+        J2-"11"
+        U39-"13"
+        U6-"13"
+      )
+    )
+    (net /datEx5 1
+      (pins
+        J2-"10"
+        U1-"6"
+        U43-"14"
+        U3-"14"
+      )
+    )
+    (net /adrEx5 1
+      (pins
+        J2-"9"
+        U39-"14"
+        U6-"11"
+      )
+    )
+    (net /datEx4 1
+      (pins
+        J2-"8"
+        U1-"5"
+        U43-"15"
+        U3-"15"
+      )
+    )
+    (net /adrEx4 1
+      (pins
+        J2-"7"
+        U39-"15"
+        U6-"8"
+      )
+    )
+    (net /datEx3 1
+      (pins
+        J2-"6"
+        U1-"4"
+        U43-"16"
+        U3-"16"
+      )
+    )
+    (net /adrEx3 1
+      (pins
+        J2-"5"
+        U39-"16"
+        U6-"6"
+      )
+    )
+    (net /datEx2 1
+      (pins
+        J2-"4"
+        U1-"3"
+        U43-"17"
+        U3-"17"
+      )
+    )
+    (net /adrEx2 1
+      (pins
+        J2-"3"
+        U39-"17"
+        U6-"4"
+      )
+    )
+    (net /datEx1 1
+      (pins
+        J2-"2"
+        U1-"2"
+        U43-"18"
+        U3-"18"
+      )
+    )
+    (net /adrEx1 1
+      (pins
+        J2-"1"
+        U39-"18"
+        U6-"2"
+      )
+    )
+    (net /pcD1 1
+      (pins
+        U16-"5"
+        U11-"3"
+        U1-"18"
+      )
+    )
+    (net /pcD2 1
+      (pins
+        U16-"3"
+        U11-"4"
+        U1-"17"
+      )
+    )
+    (net /pcD3 1
+      (pins
+        U16-"14"
+        U11-"5"
+        U1-"16"
+      )
+    )
+    (net /pcD4 1
+      (pins
+        U16-"12"
+        U11-"6"
+        U1-"15"
+      )
+    )
+    (net /pcD5 1
+      (pins
+        U17-"5"
+        U12-"3"
+        U1-"14"
+      )
+    )
+    (net /pcD6 1
+      (pins
+        U17-"3"
+        U12-"4"
+        U1-"13"
+      )
+    )
+    (net /pcD7 1
+      (pins
+        U17-"14"
+        U12-"5"
+        U1-"12"
+      )
+    )
+    (net /pcD8 1
+      (pins
+        U17-"12"
+        U12-"6"
+        U1-"11"
+      )
+    )
+    (net /pcD9 1
+      (pins
+        U18-"5"
+        U13-"3"
+        U2-"18"
+      )
+    )
+    (net /pcD10 1
+      (pins
+        U18-"3"
+        U13-"4"
+        U2-"17"
+      )
+    )
+    (net /pcD11 1
+      (pins
+        U18-"14"
+        U13-"5"
+        U2-"16"
+      )
+    )
+    (net /pcD12 1
+      (pins
+        U18-"12"
+        U13-"6"
+        U2-"15"
+      )
+    )
+    (net /pcD13 1
+      (pins
+        U19-"5"
+        U14-"3"
+        U2-"14"
+      )
+    )
+    (net /pcD14 1
+      (pins
+        U19-"3"
+        U14-"4"
+        U2-"13"
+      )
+    )
+    (net /pcD15 1
+      (pins
+        U19-"14"
+        U14-"5"
+        U2-"12"
+      )
+    )
+    (net /pcD16 1
+      (pins
+        U19-"12"
+        U14-"6"
+        U2-"11"
+      )
+    )
+    (net /pcOut 1
+      (pins
+        U9-"11"
+        U4-"19"
+        U3-"19"
+      )
+    )
+    (net /pcO8 1
+      (pins
+        U30-"11"
+        U32-"11"
+        U52-"9"
+        U3-"9"
+      )
+    )
+    (net /pcO7 1
+      (pins
+        U30-"12"
+        U32-"12"
+        U52-"8"
+        U3-"8"
+      )
+    )
+    (net /pcO6 1
+      (pins
+        U30-"13"
+        U32-"13"
+        U52-"7"
+        U3-"7"
+      )
+    )
+    (net /pcO5 1
+      (pins
+        U30-"14"
+        U32-"14"
+        U52-"6"
+        U3-"6"
+      )
+    )
+    (net /pcO4 1
+      (pins
+        U30-"15"
+        U32-"15"
+        U52-"5"
+        U3-"5"
+      )
+    )
+    (net /pcO3 1
+      (pins
+        U30-"16"
+        U32-"16"
+        U52-"4"
+        U3-"4"
+      )
+    )
+    (net /pcO2 1
+      (pins
+        U30-"17"
+        U32-"17"
+        U52-"3"
+        U3-"3"
+      )
+    )
+    (net /pcO1 1
+      (pins
+        U30-"18"
+        U32-"18"
+        U52-"2"
+        U3-"2"
+      )
+    )
+    (net /pcO16 1
+      (pins
+        U4-"9"
+        U53-"9"
+        U33-"11"
+        U31-"11"
+      )
+    )
+    (net /pcO15 1
+      (pins
+        U4-"8"
+        U53-"8"
+        U33-"12"
+        U31-"12"
+      )
+    )
+    (net /pcO14 1
+      (pins
+        U4-"7"
+        U53-"7"
+        U33-"13"
+        U31-"13"
+      )
+    )
+    (net /pcO13 1
+      (pins
+        U4-"6"
+        U53-"6"
+        U33-"14"
+        U31-"14"
+      )
+    )
+    (net /pcO12 1
+      (pins
+        U4-"5"
+        U53-"5"
+        U33-"15"
+        U31-"15"
+      )
+    )
+    (net /pcO11 1
+      (pins
+        U4-"4"
+        U53-"4"
+        U33-"16"
+        U31-"16"
+      )
+    )
+    (net /pcO10 1
+      (pins
+        U4-"3"
+        U53-"3"
+        U33-"17"
+        U31-"17"
+      )
+    )
+    (net /pcO9 1
+      (pins
+        U4-"2"
+        U53-"2"
+        U33-"18"
+        U31-"18"
+      )
+    )
+    (net /pcIS3 1
+      (pins
+        U5-"6"
+        U16-"15"
+      )
+    )
+    (net /pcIS6 1
+      (pins
+        U5-"12"
+        U17-"2"
+      )
+    )
+    (net /pcIS2 1
+      (pins
+        U5-"4"
+        U16-"2"
+      )
+    )
+    (net /pcIS5 1
+      (pins
+        U5-"10"
+        U17-"6"
+      )
+    )
+    (net /pcIS1 1
+      (pins
+        U5-"2"
+        U16-"6"
+      )
+    )
+    (net /pcIS4 1
+      (pins
+        U5-"8"
+        U16-"11"
+      )
+    )
+    (net "Net-(U6-Pad19)" 1
+      (pins
+        U9-"4"
+        U6-"19"
+      )
+    )
+    (net "Net-(U7-Pad19)" 1
+      (pins
+        U9-"5"
+        U7-"19"
+      )
+    )
+    (net /pcIS9 1
+      (pins
+        U8-"6"
+        U18-"6"
+      )
+    )
+    (net /pcIS12 1
+      (pins
+        U8-"12"
+        U18-"11"
+      )
+    )
+    (net /pcIS8 1
+      (pins
+        U8-"4"
+        U17-"11"
+      )
+    )
+    (net /pcIS11 1
+      (pins
+        U8-"10"
+        U18-"15"
+      )
+    )
+    (net /pcIS7 1
+      (pins
+        U8-"2"
+        U17-"15"
+      )
+    )
+    (net /pcIS10 1
+      (pins
+        U8-"8"
+        U18-"2"
+      )
+    )
+    (net /pcAdrSel 1
+      (pins
+        U9-"9"
+        U9-"6"
+        U9-"13"
+      )
+    )
+    (net "Net-(U10-Pad10)" 1
+      (pins
+        U10-"10"
+        U9-"12"
+      )
+    )
+    (net /pcRw 1
+      (pins
+        U10-"11"
+        U9-"10"
+        U48-"14"
+      )
+    )
+    (net "Net-(U20-Pad5)" 1
+      (pins
+        U20-"5"
+        U9-"3"
+      )
+    )
+    (net /pcStr 1
+      (pins
+        U9-"2"
+        U48-"13"
+      )
+    )
+    (net /LPC 1
+      (pins
+        U9-"1"
+        U9-"8"
+        U25-"9"
+        U24-"9"
+        U14-"9"
+        U13-"9"
+        U12-"9"
+        U23-"9"
+        U22-"9"
+        U11-"9"
+      )
+    )
+    (net /pcIS15 1
+      (pins
+        U10-"6"
+        U19-"15"
+      )
+    )
+    (net "Net-(U10-Pad12)" 1
+      (pins
+        U10-"12"
+      )
+    )
+    (net /pcIS14 1
+      (pins
+        U10-"4"
+        U19-"2"
+      )
+    )
+    (net /pcIS13 1
+      (pins
+        U10-"2"
+        U19-"6"
+      )
+    )
+    (net /pcIS16 1
+      (pins
+        U10-"8"
+        U19-"11"
+      )
+    )
+    (net "Net-(U11-Pad15)" 1
+      (pins
+        U11-"15"
+      )
+    )
+    (net /pcN1 1
+      (pins
+        U11-"14"
+        U30-"2"
+      )
+    )
+    (net /pcN2 1
+      (pins
+        U11-"13"
+        U30-"3"
+      )
+    )
+    (net /pcN3 1
+      (pins
+        U11-"12"
+        U30-"4"
+      )
+    )
+    (net /pcN4 1
+      (pins
+        U11-"11"
+        U30-"5"
+      )
+    )
+    (net "Net-(U11-Pad10)" 1
+      (pins
+        U12-"15"
+        U11-"10"
+      )
+    )
+    (net /MPcClk 1
+      (pins
+        U21-"8"
+        U14-"2"
+        U13-"2"
+        U12-"2"
+        U11-"2"
+      )
+    )
+    (net /rst 1
+      (pins
+        U41-"1"
+        U41-"13"
+        U36-"13"
+        U20-"10"
+        U14-"1"
+        U13-"1"
+        U12-"1"
+        U11-"1"
+        U48-"17"
+      )
+    )
+    (net /pcN5 1
+      (pins
+        U12-"14"
+        U30-"6"
+      )
+    )
+    (net /pcN6 1
+      (pins
+        U12-"13"
+        U30-"7"
+      )
+    )
+    (net /pcN7 1
+      (pins
+        U12-"12"
+        U30-"8"
+      )
+    )
+    (net /pcN8 1
+      (pins
+        U12-"11"
+        U30-"9"
+      )
+    )
+    (net "Net-(U12-Pad10)" 1
+      (pins
+        U13-"15"
+        U12-"10"
+      )
+    )
+    (net /pcN9 1
+      (pins
+        U13-"14"
+        U31-"2"
+      )
+    )
+    (net /pcN10 1
+      (pins
+        U13-"13"
+        U31-"3"
+      )
+    )
+    (net /pcN11 1
+      (pins
+        U13-"12"
+        U31-"4"
+      )
+    )
+    (net /pcN12 1
+      (pins
+        U13-"11"
+        U31-"5"
+      )
+    )
+    (net "Net-(U13-Pad10)" 1
+      (pins
+        U14-"15"
+        U13-"10"
+      )
+    )
+    (net /pcN13 1
+      (pins
+        U14-"14"
+        U31-"6"
+      )
+    )
+    (net /pcN14 1
+      (pins
+        U14-"13"
+        U31-"7"
+      )
+    )
+    (net /pcN15 1
+      (pins
+        U14-"12"
+        U31-"8"
+      )
+    )
+    (net /pcN16 1
+      (pins
+        U14-"11"
+        U31-"9"
+      )
+    )
+    (net /dma 1
+      (pins
+        U15-"13"
+        U47-"19"
+        U48-"15"
+        U40-"19"
+        U39-"19"
+      )
+    )
+    (net "Net-(U15-Pad6)" 1
+      (pins
+        U46-"11"
+        U46-"5"
+        U42-"13"
+        U38-"5"
+        U15-"6"
+      )
+    )
+    (net /!dma 1
+      (pins
+        U49-"4"
+        U20-"13"
+        U15-"12"
+      )
+    )
+    (net "Net-(U15-Pad5)" 1
+      (pins
+        U46-"13"
+        U42-"11"
+        U42-"5"
+        U38-"13"
+        U15-"5"
+        U37-"12"
+      )
+    )
+    (net /inInt 1
+      (pins
+        U41-"5"
+        U21-"4"
+        U15-"11"
+        U30-"19"
+        U47-"4"
+        U31-"19"
+      )
+    )
+    (net "Net-(U15-Pad4)" 1
+      (pins
+        U46-"2"
+        U46-"10"
+        U42-"10"
+        U38-"4"
+        U15-"4"
+      )
+    )
+    (net /!inInt 1
+      (pins
+        U20-"9"
+        U21-"9"
+        U15-"10"
+        U32-"19"
+        U33-"19"
+      )
+    )
+    (net "Net-(U15-Pad3)" 1
+      (pins
+        U46-"4"
+        U42-"2"
+        U42-"4"
+        U38-"2"
+        U15-"3"
+        U37-"13"
+      )
+    )
+    (net /clk 1
+      (pins
+        U41-"9"
+        U49-"1"
+        U49-"10"
+        U49-"13"
+        U38-"10"
+        U20-"12"
+        U21-"12"
+        U15-"9"
+      )
+    )
+    (net "Net-(U15-Pad2)" 1
+      (pins
+        U42-"1"
+        U42-"9"
+        U42-"3"
+        U38-"3"
+        U15-"2"
+      )
+    )
+    (net "Net-(U15-Pad8)" 1
+      (pins
+        U15-"8"
+        U37-"2"
+      )
+    )
+    (net "Net-(U15-Pad1)" 1
+      (pins
+        U46-"1"
+        U46-"9"
+        U46-"3"
+        U38-"1"
+        U15-"1"
+        U37-"14"
+      )
+    )
+    (net "Net-(U16-Pad7)" 1
+      (pins
+        U17-"9"
+        U16-"7"
+      )
+    )
+    (net "Net-(U16-Pad13)" 1
+      (pins
+        U16-"13"
+        U22-"5"
+      )
+    )
+    (net "Net-(U16-Pad4)" 1
+      (pins
+        U16-"4"
+        U22-"3"
+      )
+    )
+    (net "Net-(U16-Pad10)" 1
+      (pins
+        U16-"10"
+        U22-"6"
+      )
+    )
+    (net "Net-(U16-Pad9)" 1
+      (pins
+        U16-"9"
+      )
+    )
+    (net "Net-(U16-Pad1)" 1
+      (pins
+        U16-"1"
+        U22-"4"
+      )
+    )
+    (net "Net-(U17-Pad7)" 1
+      (pins
+        U18-"9"
+        U17-"7"
+      )
+    )
+    (net "Net-(U17-Pad13)" 1
+      (pins
+        U17-"13"
+        U23-"5"
+      )
+    )
+    (net "Net-(U17-Pad4)" 1
+      (pins
+        U17-"4"
+        U23-"3"
+      )
+    )
+    (net "Net-(U17-Pad10)" 1
+      (pins
+        U17-"10"
+        U23-"6"
+      )
+    )
+    (net "Net-(U17-Pad1)" 1
+      (pins
+        U17-"1"
+        U23-"4"
+      )
+    )
+    (net "Net-(U18-Pad7)" 1
+      (pins
+        U19-"9"
+        U18-"7"
+      )
+    )
+    (net "Net-(U18-Pad13)" 1
+      (pins
+        U24-"5"
+        U18-"13"
+      )
+    )
+    (net "Net-(U18-Pad4)" 1
+      (pins
+        U24-"3"
+        U18-"4"
+      )
+    )
+    (net "Net-(U18-Pad10)" 1
+      (pins
+        U24-"6"
+        U18-"10"
+      )
+    )
+    (net "Net-(U18-Pad1)" 1
+      (pins
+        U24-"4"
+        U18-"1"
+      )
+    )
+    (net "Net-(U19-Pad13)" 1
+      (pins
+        U25-"5"
+        U19-"13"
+      )
+    )
+    (net "Net-(U19-Pad4)" 1
+      (pins
+        U25-"3"
+        U19-"4"
+      )
+    )
+    (net "Net-(U19-Pad10)" 1
+      (pins
+        U25-"6"
+        U19-"10"
+      )
+    )
+    (net "Net-(U19-Pad1)" 1
+      (pins
+        U25-"4"
+        U19-"1"
+      )
+    )
+    (net "Net-(U20-Pad6)" 1
+      (pins
+        U20-"6"
+        U21-"10"
+        U21-"5"
+      )
+    )
+    (net "Net-(U20-Pad11)" 1
+      (pins
+        U20-"11"
+        U21-"1"
+      )
+    )
+    (net /IncPC 1
+      (pins
+        U49-"11"
+        U20-"4"
+      )
+    )
+    (net "Net-(U20-Pad3)" 1
+      (pins
+        U45-"12"
+        U20-"3"
+      )
+    )
+    (net "Net-(U20-Pad2)" 1
+      (pins
+        U42-"8"
+        U36-"9"
+        U45-"9"
+        U20-"2"
+      )
+    )
+    (net /rstIPC 1
+      (pins
+        U20-"8"
+        U25-"1"
+        U24-"1"
+        U23-"1"
+        U22-"1"
+      )
+    )
+    (net "Net-(U20-Pad1)" 1
+      (pins
+        U38-"6"
+        U36-"4"
+        U20-"1"
+      )
+    )
+    (net "Net-(U21-Pad13)" 1
+      (pins
+        U36-"3"
+        U21-"13"
+      )
+    )
+    (net /IPcClk 1
+      (pins
+        U21-"6"
+        U25-"2"
+        U24-"2"
+        U23-"2"
+        U22-"2"
+      )
+    )
+    (net /ValRegCP 1
+      (pins
+        U21-"11"
+        U51-"11"
+        U50-"11"
+      )
+    )
+    (net "Net-(U21-Pad3)" 1
+      (pins
+        U41-"11"
+        U21-"3"
+      )
+    )
+    (net /clkRaw 1
+      (pins
+        U21-"2"
+        U48-"18"
+      )
+    )
+    (net "Net-(U22-Pad15)" 1
+      (pins
+        U22-"15"
+      )
+    )
+    (net "Net-(U22-Pad14)" 1
+      (pins
+        U26-"5"
+        U22-"14"
+      )
+    )
+    (net "Net-(U22-Pad13)" 1
+      (pins
+        U26-"3"
+        U22-"13"
+      )
+    )
+    (net "Net-(U22-Pad12)" 1
+      (pins
+        U26-"14"
+        U22-"12"
+      )
+    )
+    (net "Net-(U22-Pad11)" 1
+      (pins
+        U26-"12"
+        U22-"11"
+      )
+    )
+    (net "Net-(U22-Pad10)" 1
+      (pins
+        U23-"15"
+        U22-"10"
+      )
+    )
+    (net "Net-(U23-Pad14)" 1
+      (pins
+        U27-"5"
+        U23-"14"
+      )
+    )
+    (net "Net-(U23-Pad13)" 1
+      (pins
+        U27-"3"
+        U23-"13"
+      )
+    )
+    (net "Net-(U23-Pad12)" 1
+      (pins
+        U27-"14"
+        U23-"12"
+      )
+    )
+    (net "Net-(U23-Pad11)" 1
+      (pins
+        U27-"12"
+        U23-"11"
+      )
+    )
+    (net "Net-(U23-Pad10)" 1
+      (pins
+        U24-"15"
+        U23-"10"
+      )
+    )
+    (net "Net-(U24-Pad14)" 1
+      (pins
+        U28-"5"
+        U24-"14"
+      )
+    )
+    (net "Net-(U24-Pad13)" 1
+      (pins
+        U28-"3"
+        U24-"13"
+      )
+    )
+    (net "Net-(U24-Pad12)" 1
+      (pins
+        U28-"14"
+        U24-"12"
+      )
+    )
+    (net "Net-(U24-Pad11)" 1
+      (pins
+        U28-"12"
+        U24-"11"
+      )
+    )
+    (net "Net-(U24-Pad10)" 1
+      (pins
+        U25-"15"
+        U24-"10"
+      )
+    )
+    (net "Net-(U25-Pad14)" 1
+      (pins
+        U29-"5"
+        U25-"14"
+      )
+    )
+    (net "Net-(U25-Pad13)" 1
+      (pins
+        U29-"3"
+        U25-"13"
+      )
+    )
+    (net "Net-(U25-Pad12)" 1
+      (pins
+        U29-"14"
+        U25-"12"
+      )
+    )
+    (net "Net-(U25-Pad11)" 1
+      (pins
+        U29-"12"
+        U25-"11"
+      )
+    )
+    (net "Net-(U26-Pad7)" 1
+      (pins
+        U27-"9"
+        U26-"7"
+      )
+    )
+    (net /pcI3 1
+      (pins
+        U26-"13"
+        U32-"4"
+      )
+    )
+    (net /pcI1 1
+      (pins
+        U26-"4"
+        U32-"2"
+      )
+    )
+    (net /pcI4 1
+      (pins
+        U26-"10"
+        U32-"5"
+      )
+    )
+    (net "Net-(U26-Pad9)" 1
+      (pins
+        U26-"9"
+      )
+    )
+    (net /pcI2 1
+      (pins
+        U26-"1"
+        U32-"3"
+      )
+    )
+    (net "Net-(U27-Pad7)" 1
+      (pins
+        U28-"9"
+        U27-"7"
+      )
+    )
+    (net /pcI7 1
+      (pins
+        U27-"13"
+        U32-"8"
+      )
+    )
+    (net /pcI5 1
+      (pins
+        U27-"4"
+        U32-"6"
+      )
+    )
+    (net /pcI8 1
+      (pins
+        U27-"10"
+        U32-"9"
+      )
+    )
+    (net /pcI6 1
+      (pins
+        U27-"1"
+        U32-"7"
+      )
+    )
+    (net "Net-(U28-Pad7)" 1
+      (pins
+        U29-"9"
+        U28-"7"
+      )
+    )
+    (net /pcI11 1
+      (pins
+        U28-"13"
+        U33-"4"
+      )
+    )
+    (net /pcI9 1
+      (pins
+        U28-"4"
+        U33-"2"
+      )
+    )
+    (net /pcI12 1
+      (pins
+        U28-"10"
+        U33-"5"
+      )
+    )
+    (net /pcI10 1
+      (pins
+        U28-"1"
+        U33-"3"
+      )
+    )
+    (net /pcI15 1
+      (pins
+        U29-"13"
+        U33-"8"
+      )
+    )
+    (net /pcI13 1
+      (pins
+        U29-"4"
+        U33-"6"
+      )
+    )
+    (net /pcI16 1
+      (pins
+        U29-"10"
+        U33-"9"
+      )
+    )
+    (net /pcI14 1
+      (pins
+        U29-"1"
+        U33-"7"
+      )
+    )
+    (net "Net-(U34-Pad19)" 1
+      (pins
+        U39-"9"
+        U34-"19"
+      )
+    )
+    (net "Net-(U34-Pad9)" 1
+      (pins
+        U39-"5"
+        U34-"9"
+      )
+    )
+    (net /iBus8 1
+      (pins
+        U43-"9"
+        U52-"11"
+        U50-"18"
+        U50-"19"
+        U34-"18"
+      )
+    )
+    (net /iBus4 1
+      (pins
+        U43-"5"
+        U52-"15"
+        U50-"8"
+        U50-"9"
+        U34-"8"
+      )
+    )
+    (net /iBus7 1
+      (pins
+        U43-"8"
+        U52-"12"
+        U50-"16"
+        U50-"17"
+        U34-"17"
+      )
+    )
+    (net /iBus3 1
+      (pins
+        U43-"4"
+        U52-"16"
+        U50-"6"
+        U50-"7"
+        U34-"7"
+      )
+    )
+    (net "Net-(U34-Pad16)" 1
+      (pins
+        U39-"8"
+        U34-"16"
+      )
+    )
+    (net "Net-(U34-Pad6)" 1
+      (pins
+        U39-"4"
+        U34-"6"
+      )
+    )
+    (net "Net-(U34-Pad15)" 1
+      (pins
+        U39-"7"
+        U34-"15"
+      )
+    )
+    (net "Net-(U34-Pad5)" 1
+      (pins
+        U39-"3"
+        U34-"5"
+      )
+    )
+    (net /iBus6 1
+      (pins
+        U43-"7"
+        U52-"13"
+        U50-"14"
+        U50-"15"
+        U34-"14"
+      )
+    )
+    (net /iBus2 1
+      (pins
+        U43-"3"
+        U52-"17"
+        U50-"4"
+        U50-"5"
+        U34-"4"
+      )
+    )
+    (net /iBus5 1
+      (pins
+        U43-"6"
+        U52-"14"
+        U50-"12"
+        U50-"13"
+        U34-"13"
+      )
+    )
+    (net /iBus1 1
+      (pins
+        U43-"2"
+        U52-"18"
+        U50-"2"
+        U50-"3"
+        U34-"3"
+      )
+    )
+    (net "Net-(U34-Pad12)" 1
+      (pins
+        U39-"6"
+        U34-"12"
+      )
+    )
+    (net "Net-(U34-Pad2)" 1
+      (pins
+        U39-"2"
+        U34-"2"
+      )
+    )
+    (net /adrRL 1
+      (pins
+        U49-"8"
+        U35-"11"
+        U34-"11"
+      )
+    )
+    (net "Net-(U35-Pad19)" 1
+      (pins
+        U35-"19"
+        U40-"9"
+      )
+    )
+    (net "Net-(U35-Pad9)" 1
+      (pins
+        U35-"9"
+        U40-"5"
+      )
+    )
+    (net /iBus16 1
+      (pins
+        U35-"18"
+        U44-"9"
+        U53-"11"
+        U51-"18"
+        U51-"19"
+      )
+    )
+    (net /iBus12 1
+      (pins
+        U35-"8"
+        U44-"5"
+        U53-"15"
+        U51-"8"
+        U51-"9"
+      )
+    )
+    (net /iBus15 1
+      (pins
+        U35-"17"
+        U44-"8"
+        U53-"12"
+        U51-"16"
+        U51-"17"
+      )
+    )
+    (net /iBus11 1
+      (pins
+        U35-"7"
+        U44-"4"
+        U53-"16"
+        U51-"6"
+        U51-"7"
+      )
+    )
+    (net "Net-(U35-Pad16)" 1
+      (pins
+        U35-"16"
+        U40-"8"
+      )
+    )
+    (net "Net-(U35-Pad6)" 1
+      (pins
+        U35-"6"
+        U40-"4"
+      )
+    )
+    (net "Net-(U35-Pad15)" 1
+      (pins
+        U35-"15"
+        U40-"7"
+      )
+    )
+    (net "Net-(U35-Pad5)" 1
+      (pins
+        U35-"5"
+        U40-"3"
+      )
+    )
+    (net /iBus14 1
+      (pins
+        U35-"14"
+        U44-"7"
+        U53-"13"
+        U51-"14"
+        U51-"15"
+      )
+    )
+    (net /iBus10 1
+      (pins
+        U35-"4"
+        U44-"3"
+        U53-"17"
+        U51-"4"
+        U51-"5"
+      )
+    )
+    (net /iBus13 1
+      (pins
+        U35-"13"
+        U44-"6"
+        U53-"14"
+        U51-"12"
+        U51-"13"
+      )
+    )
+    (net /iBus9 1
+      (pins
+        U35-"3"
+        U44-"2"
+        U53-"18"
+        U51-"2"
+        U51-"3"
+      )
+    )
+    (net "Net-(U35-Pad12)" 1
+      (pins
+        U35-"12"
+        U40-"6"
+      )
+    )
+    (net "Net-(U35-Pad2)" 1
+      (pins
+        U35-"2"
+        U40-"2"
+      )
+    )
+    (net /ReadPC 1
+      (pins
+        U36-"6"
+        U52-"19"
+        U53-"19"
+      )
+    )
+    (net "Net-(U36-Pad12)" 1
+      (pins
+        U38-"12"
+        U36-"12"
+      )
+    )
+    (net "Net-(U36-Pad5)" 1
+      (pins
+        U42-"6"
+        U36-"5"
+        U45-"13"
+      )
+    )
+    (net "Net-(U36-Pad11)" 1
+      (pins
+        U36-"11"
+        U37-"1"
+      )
+    )
+    (net "Net-(U36-Pad10)" 1
+      (pins
+        U49-"9"
+        U42-"12"
+        U36-"10"
+      )
+    )
+    (net "Net-(U36-Pad2)" 1
+      (pins
+        U46-"8"
+        U36-"2"
+        U45-"10"
+        U45-"5"
+      )
+    )
+    (net "Net-(U36-Pad8)" 1
+      (pins
+        U36-"8"
+        U45-"4"
+      )
+    )
+    (net "Net-(U36-Pad1)" 1
+      (pins
+        U36-"1"
+        U45-"11"
+      )
+    )
+    (net "Net-(U37-Pad15)" 1
+      (pins
+        U37-"15"
+      )
+    )
+    (net "Net-(U37-Pad11)" 1
+      (pins
+        U37-"11"
+      )
+    )
+    (net /checkInt 1
+      (pins
+        U46-"6"
+        U38-"11"
+      )
+    )
+    (net "Net-(U38-Pad8)" 1
+      (pins
+        U41-"3"
+        U38-"8"
+      )
+    )
+    (net "Net-(U41-Pad6)" 1
+      (pins
+        U41-"6"
+      )
+    )
+    (net "Net-(U41-Pad12)" 1
+      (pins
+        U41-"8"
+        U41-"12"
+      )
+    )
+    (net /int 1
+      (pins
+        U41-"2"
+        U48-"16"
+      )
+    )
+    (net /busInterfaceE 1
+      (pins
+        U45-"3"
+        U43-"19"
+        U44-"19"
+      )
+    )
+    (net /WriteBack 1
+      (pins
+        U46-"12"
+        U49-"2"
+        U49-"5"
+        U43-"1"
+        U44-"1"
+        U47-"2"
+        U51-"1"
+        U50-"1"
+      )
+    )
+    (net "Net-(U45-Pad1)" 1
+      (pins
+        U45-"1"
+        U45-"6"
+      )
+    )
+    (net "Net-(U45-Pad2)" 1
+      (pins
+        U49-"6"
+        U45-"2"
+      )
+    )
+    (net "Net-(U45-Pad8)" 1
+      (pins
+        U49-"12"
+        U45-"8"
+      )
+    )
+    (net "Net-(U47-Pad15)" 1
+      (pins
+        U47-"15"
+      )
+    )
+    (net "Net-(U47-Pad14)" 1
+      (pins
+        U47-"14"
+      )
+    )
+    (net "Net-(U47-Pad13)" 1
+      (pins
+        U47-"13"
+      )
+    )
+    (net /str 1
+      (pins
+        U49-"3"
+        U47-"3"
+      )
+    )
+    (net "Net-(U47-Pad12)" 1
+      (pins
+        U47-"12"
+      )
+    )
+    (net "Net-(U47-Pad11)" 1
+      (pins
+        U47-"11"
+      )
+    )
+    (net "Net-(U48-Pad12)" 1
+      (pins
+        U48-"12"
+      )
+    )
+    (net "Net-(U48-Pad11)" 1
+      (pins
+        U48-"11"
+      )
+    )
+    (via 
+      "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
+    )
+    (via_rule
+      default "Via[0-1]_800:400_um"
+    )
+    (via_rule
+      default "Via[0-1]_800:400_um"
+    )
+    (class default
+      /pcIU16 /pcIU15 /pcIU14 /pcIU13 /pcIU12 /pcIU11 /pcIU10 /pcIU9
+      /pcIU8 /pcIU7 /pcIU6 /pcIU5 /pcIU4 /pcIU3 /pcIU2 /pcIU1
+      +5V GND /dmaEx /inIntEx /intEx /strEx /rstEx /rwEx
+      /clkEx /datEx16 /adrEx16 /datEx15 /adrEx15 /datEx14 /adrEx14 /datEx13
+      /adrEx13 /datEx12 /adrEx12 /datEx11 /adrEx11 /datEx10 /adrEx10 /datEx9
+      /adrEx9 /datEx8 /adrEx8 /datEx7 /adrEx7 /datEx6 /adrEx6 /datEx5
+      /adrEx5 /datEx4 /adrEx4 /datEx3 /adrEx3 /datEx2 /adrEx2 /datEx1
+      /adrEx1 /pcD1 /pcD2 /pcD3 /pcD4 /pcD5 /pcD6 /pcD7
+      /pcD8 /pcD9 /pcD10 /pcD11 /pcD12 /pcD13 /pcD14 /pcD15
+      /pcD16 /pcOut /pcO8 /pcO7 /pcO6 /pcO5 /pcO4 /pcO3
+      /pcO2 /pcO1 /pcO16 /pcO15 /pcO14 /pcO13 /pcO12 /pcO11
+      /pcO10 /pcO9 /pcIS3 /pcIS6 /pcIS2 /pcIS5 /pcIS1 /pcIS4
+      "Net-(U6-Pad19)" "Net-(U7-Pad19)" /pcIS9 /pcIS12 /pcIS8 /pcIS11 /pcIS7 /pcIS10
+      /pcAdrSel "Net-(U10-Pad10)" /pcRw "Net-(U20-Pad5)" /pcStr /LPC /pcIS15 "Net-(U10-Pad12)"
+      /pcIS14 /pcIS13 /pcIS16 "Net-(U11-Pad15)" /pcN1 /pcN2 /pcN3 /pcN4
+      "Net-(U11-Pad10)" /MPcClk /rst /pcN5 /pcN6 /pcN7 /pcN8 "Net-(U12-Pad10)"
+      /pcN9 /pcN10 /pcN11 /pcN12 "Net-(U13-Pad10)" /pcN13 /pcN14 /pcN15
+      /pcN16 /dma "Net-(U15-Pad6)" /!dma "Net-(U15-Pad5)" /inInt "Net-(U15-Pad4)" /!inInt
+      "Net-(U15-Pad3)" /clk "Net-(U15-Pad2)" "Net-(U15-Pad8)" "Net-(U15-Pad1)" "Net-(U16-Pad7)" "Net-(U16-Pad13)" "Net-(U16-Pad4)"
+      "Net-(U16-Pad10)" "Net-(U16-Pad9)" "Net-(U16-Pad1)" "Net-(U17-Pad7)" "Net-(U17-Pad13)" "Net-(U17-Pad4)" "Net-(U17-Pad10)" "Net-(U17-Pad1)"
+      "Net-(U18-Pad7)" "Net-(U18-Pad13)" "Net-(U18-Pad4)" "Net-(U18-Pad10)" "Net-(U18-Pad1)" "Net-(U19-Pad13)" "Net-(U19-Pad4)" "Net-(U19-Pad10)"
+      "Net-(U19-Pad1)" "Net-(U20-Pad6)" "Net-(U20-Pad11)" /IncPC "Net-(U20-Pad3)" "Net-(U20-Pad2)" /rstIPC "Net-(U20-Pad1)"
+      "Net-(U21-Pad13)" /IPcClk /ValRegCP "Net-(U21-Pad3)" /clkRaw "Net-(U22-Pad15)" "Net-(U22-Pad14)" "Net-(U22-Pad13)"
+      "Net-(U22-Pad12)" "Net-(U22-Pad11)" "Net-(U22-Pad10)" "Net-(U23-Pad14)" "Net-(U23-Pad13)" "Net-(U23-Pad12)" "Net-(U23-Pad11)" "Net-(U23-Pad10)"
+      "Net-(U24-Pad14)" "Net-(U24-Pad13)" "Net-(U24-Pad12)" "Net-(U24-Pad11)" "Net-(U24-Pad10)" "Net-(U25-Pad14)" "Net-(U25-Pad13)" "Net-(U25-Pad12)"
+      "Net-(U25-Pad11)" "Net-(U26-Pad7)" /pcI3 /pcI1 /pcI4 "Net-(U26-Pad9)" /pcI2 "Net-(U27-Pad7)"
+      /pcI7 /pcI5 /pcI8 /pcI6 "Net-(U28-Pad7)" /pcI11 /pcI9 /pcI12
+      /pcI10 /pcI15 /pcI13 /pcI16 /pcI14 "Net-(U34-Pad19)" "Net-(U34-Pad9)" /iBus8
+      /iBus4 /iBus7 /iBus3 "Net-(U34-Pad16)" "Net-(U34-Pad6)" "Net-(U34-Pad15)" "Net-(U34-Pad5)" /iBus6
+      /iBus2 /iBus5 /iBus1 "Net-(U34-Pad12)" "Net-(U34-Pad2)" /adrRL "Net-(U35-Pad19)" "Net-(U35-Pad9)"
+      /iBus16 /iBus12 /iBus15 /iBus11 "Net-(U35-Pad16)" "Net-(U35-Pad6)" "Net-(U35-Pad15)" "Net-(U35-Pad5)"
+      /iBus14 /iBus10 /iBus13 /iBus9 "Net-(U35-Pad12)" "Net-(U35-Pad2)" /ReadPC "Net-(U36-Pad12)"
+      "Net-(U36-Pad5)" "Net-(U36-Pad11)" "Net-(U36-Pad10)" "Net-(U36-Pad2)" "Net-(U36-Pad8)" "Net-(U36-Pad1)" "Net-(U37-Pad15)" "Net-(U37-Pad11)"
+      /checkInt "Net-(U38-Pad8)" "Net-(U41-Pad6)" "Net-(U41-Pad12)" /int /busInterfaceE /WriteBack "Net-(U45-Pad1)"
+      "Net-(U45-Pad2)" "Net-(U45-Pad8)" "Net-(U47-Pad15)" "Net-(U47-Pad14)" "Net-(U47-Pad13)" /str "Net-(U47-Pad12)" "Net-(U47-Pad11)"
+      "Net-(U48-Pad12)" "Net-(U48-Pad11)"
+      (clearance_class default)
+      (via_rule default)
+      (rule
+        (width 250.0)
+      )
+      (circuit 
+        (use_layer F.Cu B.Cu)
+      )
+    )
+  )
+  (wiring
+  )
+)
