@@ -33,9 +33,9 @@
 //! into `self.edges` in exactly the order `new Edge(...)` runs in Java, so `EdgeId(i)` corresponds
 //! to Java's `id == i + 1` and a `BTreeSet<EdgeId>` iterates in Java's `TreeSet<Edge>` order.
 //!
-//! That makes the *allocation order of edges* observable, which is why the dead `newEdges` array
-//! at PlanarDelaunayTriangulation.java:740-743 has to be reproduced — see
-//! [`PlanarDelaunayTriangulation::split_at_inner_point`].
+//! That makes the *relative* allocation order of edges observable. The dead `newEdges` array at
+//! PlanarDelaunayTriangulation.java:740-743 is reproduced anyway, though it turns out not to
+//! disturb that relative order — see [`PlanarDelaunayTriangulation::split_at_inner_point`].
 //!
 //! # Two Java behaviours that surprise, and are reproduced
 //!
@@ -982,10 +982,15 @@ impl PlanarDelaunayTriangulation {
         corner: CornerId,
     ) -> Option<[TriangleId; 3]> {
         // Java bug: PlanarDelaunayTriangulation.java:740-743 fills a local `Edge[] newEdges` that
-        // is never read again — three fully constructed `Edge` objects that belong to no triangle.
-        // They are not harmless: each one draws an id from `newEdgeId()`, and edge ids are the
-        // sort key of the `TreeSet` `getEdgeLines` returns, so dropping this loop would reorder
-        // the result. Reproduced deliberately. See docs/java-quirks.md.
+        // is never read again — three fully constructed `Edge` objects that belong to no triangle
+        // and are immediately garbage. Each one still draws an id from `newEdgeId()`, and edge ids
+        // are the sort key of the `TreeSet` `getEdgeLines` returns; but the three dead ids are
+        // always allocated *contiguously and immediately before* the same split's live edges, so
+        // removing them would shift every later id by a constant and leave the relative order of
+        // the live edges — the only ones the result ever contains — untouched. Verified by
+        // mutation: deleting this loop leaves all eight `p2t13` differential modes byte-identical
+        // to the JVM. Reproduced anyway, because "unobservable" is a property of today's
+        // `getEdgeLines` and not of the class. See docs/java-quirks.md quirk #80.
         for i in 0..3 {
             let dead_corner = self.get_corner(triangle, i)?;
             self.new_edge(dead_corner, corner);
