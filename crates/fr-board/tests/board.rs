@@ -1891,6 +1891,269 @@ fn a_same_net_via_is_not_an_obstacle_for_an_smd_pin() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The paths `P2T11.java` cannot reach — each cites the Java source instead
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn has_ignored_nets_reads_the_net_class_flag() {
+    // Item.java:1241-1255. The driver's board has no ignored net class, so this is Rust-only.
+    let mut board = p2t11_board();
+    let layers = board.rules.layer_structure().clone();
+    let ignored = board.rules.net_classes.append("ignored", &layers, false);
+    board
+        .rules
+        .net_classes
+        .get_mut(ignored)
+        .is_ignored_by_autorouter = true;
+    assert!(!board.has_ignored_nets(ItemId(4)));
+    let net_1 = board.rules.nets.get_mut(1).expect("net 1");
+    net_1.set_class(ignored);
+    assert!(board.has_ignored_nets(ItemId(4)));
+    // An item on no net has nothing to ignore.
+    assert!(!board.has_ignored_nets(ItemId(7)));
+}
+
+#[test]
+#[should_panic(expected = "NullPointerException")]
+fn has_ignored_nets_panics_on_a_net_the_net_list_does_not_know() {
+    // Item.java:1244: `nets.get(netNumber).getNetClass()` with no null check.
+    let mut board = p2t11_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![99];
+    board.has_ignored_nets(ItemId(4));
+}
+
+#[test]
+fn all_nets_skips_a_net_the_net_list_does_not_know() {
+    // Item.java:1276: unlike `hasIgnoredNets`, `getAllNets` *does* null-check.
+    let mut board = p2t11_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 99];
+    assert_eq!(board.all_nets(ItemId(4)), vec![1]);
+    assert_eq!(board.all_net_names(ItemId(4)), "Net #1 (N1)");
+}
+
+#[test]
+fn get_trace_tail_finds_an_uncontacted_end_of_exactly_these_nets() {
+    // BasicBoard.java:1306-1329. The driver's board has no tails, so this adds one.
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 0), Point::new(-1000, 900)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert_eq!(
+        board.get_trace_tail(&Point::new(-1000, 900), Some(0), &[1]),
+        Some(stray)
+    );
+    // BasicBoard.java:1311-1313: `netsEqual`, not `sharesNet`.
+    assert_eq!(
+        board.get_trace_tail(&Point::new(-1000, 900), Some(0), &[2]),
+        None
+    );
+    // The contacted end is not a tail end.
+    assert_eq!(
+        board.get_trace_tail(&Point::new(-1000, 0), Some(0), &[1]),
+        None
+    );
+    // RoutingBoard.java:1176-1187.
+    assert!(board.contains_trace_tails([stray], &[]));
+    assert!(!board.contains_trace_tails([stray], &[1]));
+}
+
+#[test]
+fn remove_trace_tails_removes_a_stub() {
+    // RoutingBoard.java:1193-1238. Java's tail calls `combineTraces` after the removal
+    // (:1236), which is Task 9's; on this board there is nothing left to combine, so the item
+    // list is the whole observable result.
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 0), Point::new(-1000, 900)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert!(board.is_tail(stray));
+    assert!(board.remove_trace_tails(1, StopConnectionOption::None));
+    assert_eq!(board.get_item(stray), None);
+    // Everything else survives: the chain has no other stub.
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![8, 7, 6, 5, 4, 3, 2, 1]
+    );
+}
+
+#[test]
+fn check_move_item_consults_the_ignore_set() {
+    // RoutingBoardSearchFacade.java:123-141: the item under test is added to `ignoreItems`, and
+    // anything else in it stops being an obstacle.
+    let mut board = p2t11_board();
+    let mut ignore = Some(BTreeSet::new());
+    assert!(board.check_move_item(
+        ItemId(7),
+        &Vector::from(IntVector::new(10, 10)),
+        &mut ignore
+    ));
+    assert!(ignore.expect("the set").contains(&ItemId(7)));
+}
+
+#[test]
+fn item_tree_shape_answers_none_past_the_end_after_one_retry() {
+    // Item.java:218-224: an out-of-range index triggers `clearDerivedData()` and one recompute,
+    // and then gives up.
+    let mut board = p2t11_board();
+    let tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
+    assert!(board.item_tree_shape(ItemId(4), tree, 0).is_some());
+    assert!(board.item_tree_shape(ItemId(4), tree, 1).is_none());
+    // The retry left the cache intact.
+    assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
+    assert!(board.item_tree_shape(ItemId(99), tree, 0).is_none());
+}
+
+#[test]
+fn the_shove_failure_fields_round_trip() {
+    // RoutingBoard.java:72-73,1359-1378.
+    let mut board = p2t11_board();
+    assert_eq!(board.get_shove_failing_obstacle(), None);
+    assert_eq!(board.get_shove_failing_layer(), -1);
+    board.set_shove_failing_obstacle(Some(ItemId(7)));
+    board.set_shove_failing_layer(1);
+    assert_eq!(board.get_shove_failing_obstacle(), Some(ItemId(7)));
+    assert_eq!(board.get_shove_failing_layer(), 1);
+    board.clear_shove_failing_obstacle();
+    assert_eq!(board.get_shove_failing_obstacle(), None);
+    assert_eq!(board.get_shove_failing_layer(), -1);
+    // RoutingBoard.java:64: the failure log is a plain hook until Plan 6 types it.
+    assert!(board.failure_log.is_empty());
+}
+
+#[test]
+fn clear_all_item_temporary_autoroute_data_drops_every_scratch_record() {
+    // RoutingBoard.java:1241-1250.
+    let mut board = p2t11_board();
+    for id in board.items_in_board_order() {
+        board
+            .get_item_mut(id)
+            .expect("an item")
+            .get_autoroute_info();
+    }
+    assert!(
+        board
+            .get_item(ItemId(4))
+            .expect("a trace")
+            .get_autoroute_info_pur()
+            .is_some()
+    );
+    board.clear_all_item_temporary_autoroute_data();
+    for id in board.items_in_board_order() {
+        assert!(
+            board
+                .get_item(id)
+                .expect("an item")
+                .get_autoroute_info_pur()
+                .is_none(),
+            "item {id}"
+        );
+    }
+}
+
+#[test]
+fn store_items_refuses_a_shove_fixed_obstacle_of_a_foreign_net() {
+    // ShapeTraceEntries.java:188-191.
+    let mut board = board_builder::shove_board();
+    board
+        .get_item_mut(ItemId(3))
+        .expect("the crossing trace")
+        .set_fixed_state(FixedState::ShoveFixed);
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(!entries.store_items(&board, &overlaps, false, false));
+    assert_eq!(entries.get_found_obstacle(), Some(ItemId(3)));
+}
+
+#[test]
+fn store_items_refuses_a_non_shovable_item_of_a_foreign_net() {
+    // ShapeTraceEntries.java:211-214: anything that is not a via, a trace or an excused area is
+    // an obstacle outright when it is not on the own net.
+    let mut board = board_builder::shove_board();
+    let area = board.insert_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -400, -400, 400, 400,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    assert!(overlaps.contains(&area));
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(!entries.store_items(&board, &overlaps, false, false));
+    assert_eq!(entries.get_found_obstacle(), Some(area));
+}
+
+#[test]
+fn a_component_keepout_is_skipped_by_store_items_whatever_the_pad_check_says() {
+    // quirk #65: `!isPadCheck && a || b` means a `ComponentObstacleArea` is skipped
+    // unconditionally, while a `ViaObstacleArea` is skipped only when this is not a pad check.
+    let mut board = board_builder::shove_board();
+    let via_keepout = board.insert_via_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -400, -400, 400, 400,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    assert!(overlaps.contains(&via_keepout));
+    // Not a pad check: the via keepout is skipped and the traces still sort.
+    let mut entries = ShapeTraceEntries::new(shape.clone(), 0, vec![1], 1, None);
+    assert!(entries.store_items(&board, &overlaps, false, false));
+    // A pad check: the same via keepout now falls through to the `else` and blocks.
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(!entries.store_items(&board, &overlaps, true, false));
+    assert_eq!(entries.get_found_obstacle(), Some(via_keepout));
+}
+
+#[test]
+fn a_changed_area_knows_how_many_layers_it_was_made_for() {
+    // ChangedArea.java:11,63.
+    let area = ChangedArea::new(4);
+    assert_eq!(area.layer_count(), 4);
+}
+
+#[test]
+#[should_panic(expected = "NumberFormatException")]
+fn host_is_old_kicad_panics_on_a_version_that_overflows_an_int() {
+    // quirk #67: Communication.java:79's `Integer.parseInt` is unguarded.
+    let communication = Communication {
+        host_cad: Some("kicad".to_string()),
+        host_version: Some("99999999999".to_string()),
+        ..Communication::default()
+    };
+    communication.host_is_old_kicad();
+}
+
+// ---------------------------------------------------------------------------------------------
 // Structural
 // ---------------------------------------------------------------------------------------------
 
