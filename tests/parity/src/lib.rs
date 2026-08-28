@@ -34,11 +34,20 @@ pub fn reference(stem: &str, file: &str) -> PathBuf {
         .join(file)
 }
 
+/// Canonicalises a text output for parity comparison: CRLF → LF, trailing **spaces and tabs**
+/// stripped from every line, runs of blank lines collapsed to one, and exactly one trailing
+/// newline.
+///
+/// Deliberately *not* `trim_end()`: that strips every Unicode whitespace character, including
+/// U+00A0, U+2028 and the vertical tab. Those can legitimately appear inside a Specctra DSN
+/// string literal (component names, comments), so treating them as insignificant trailing
+/// noise could hide a real parity difference. Only the two characters an editor or a
+/// line-ending conversion actually introduces are removed.
 pub fn normalize_whitespace(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut blank_run = 0usize;
     for line in s.replace("\r\n", "\n").split('\n') {
-        let t = line.trim_end();
+        let t = line.trim_end_matches([' ', '\t']);
         if t.is_empty() {
             blank_run += 1;
             if blank_run > 1 {

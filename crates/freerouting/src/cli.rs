@@ -42,6 +42,9 @@ pub struct RouteArgs {
     /// Previous session to load before routing (incremental)
     #[arg(long)]
     pub ses: Option<PathBuf>,
+    /// KiCad JSON board file (legacy `-de …*.json`); not read yet — Plan 5/8 owns the loader
+    #[arg(long)]
+    pub kicad_json: Option<PathBuf>,
     #[arg(long)]
     pub max_passes: Option<u32>,
     /// Routing timeout in seconds
@@ -73,6 +76,9 @@ pub struct DrcArgs {
     pub ses: Option<PathBuf>,
     #[arg(long)]
     pub rules: Option<PathBuf>,
+    /// KiCad JSON board file (legacy `-de …*.json`); not read yet — Plan 5/8 owns the loader
+    #[arg(long)]
+    pub kicad_json: Option<PathBuf>,
     /// Report path; stdout when omitted
     #[arg(short, long)]
     pub output: Option<PathBuf>,
@@ -109,6 +115,30 @@ mod tests {
             _ => panic!("expected route"),
         }
     }
+    #[test]
+    fn parses_kicad_json_on_route_and_drc() {
+        let cli = Cli::try_parse_from([
+            "freerouting",
+            "route",
+            "a.dsn",
+            "-o",
+            "b.ses",
+            "--kicad-json",
+            "k.json",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Route(r) => assert_eq!(r.kicad_json, Some(PathBuf::from("k.json"))),
+            _ => panic!("expected route"),
+        }
+        let cli =
+            Cli::try_parse_from(["freerouting", "drc", "a.dsn", "--kicad-json", "k.json"]).unwrap();
+        match cli.command {
+            Command::Drc(d) => assert_eq!(d.kicad_json, Some(PathBuf::from("k.json"))),
+            _ => panic!("expected drc"),
+        }
+    }
+
     #[test]
     fn parses_mcp() {
         let cli = Cli::try_parse_from(["freerouting", "mcp"]).unwrap();

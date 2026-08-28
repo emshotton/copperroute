@@ -4,6 +4,32 @@ use std::collections::BTreeMap;
 
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
 
+/// A registered tool's implementation.
+///
+/// **Plan 8 obligation: this signature cannot carry the concurrency the MCP spec section
+/// requires, and must change before the real routing tools land.**
+///
+/// Spec §13 lists `notifications/progress` (outbound while routing) and
+/// `notifications/cancelled` (inbound → `CancelToken`) among the supported methods. Neither is
+/// expressible here: the handler takes only `Value`, returns exactly one `Result`, and has no
+/// reference to the connection, so it can neither emit an interim message nor observe one.
+///
+/// What Plan 8 must change:
+/// - The handler must receive `&mut State` (tools such as `list_settings` and any future
+///   board-caching tool need shared server state) **and a progress sink** — e.g.
+///   `Box<dyn FnMut(&mut State, Value, &ProgressSink, &CancelToken) -> Result<Value, RpcError> + Send>`,
+///   where `ProgressSink` carries the request's `progressToken` and writes
+///   `notifications/progress` through the shared writer.
+/// - [`handle`] must be able to emit *multiple* messages for one request rather than returning
+///   `Option<Response>`; give it the writer (or a `&mut Vec<Message>` outbox) instead.
+/// - [`super::stdio::run_with`] must stop being a strictly sequential read-handle-write loop:
+///   a reader thread parsing stdin into a channel, plus a `Mutex`-guarded writer, so a
+///   `notifications/cancelled` arriving *while* a tool is running can flip that tool's
+///   `CancelToken`. Under the current loop the cancellation is not even read until the routing
+///   call has already returned, which makes it useless.
+///
+/// Deliberately **not** done in Plan 1: the redesign is only testable once a tool exists that
+/// runs long enough to report progress. Recorded in `docs/java-quirks.md`.
 pub type ToolHandler = Box<dyn Fn(Value) -> Result<Value, RpcError> + Send>;
 
 #[derive(Debug, Clone)]

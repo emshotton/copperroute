@@ -13,6 +13,19 @@ pub fn run() -> i32 {
     )
 }
 
+/// Reads one request per line, handles it, writes at most one response, repeat.
+///
+/// **Plan 8 obligation: this loop is strictly sequential and must be restructured.** Because
+/// the next line is only read after the previous request has been fully handled, an inbound
+/// `notifications/cancelled` (spec §13) cannot be seen while a tool is running, and a running
+/// tool has no way to write an interim `notifications/progress` — the writer is owned by this
+/// loop and [`handle`] can only return a single [`Response`].
+///
+/// The shape Plan 8 needs: a reader thread that parses stdin into a channel, a `Mutex`-guarded
+/// writer shared between that loop and the tool threads, and a per-request `CancelToken` that
+/// `notifications/cancelled` can flip mid-tool. See the obligation note on
+/// [`super::server::ToolHandler`] for the matching handler-signature change, and
+/// `docs/java-quirks.md`.
 pub fn run_with<R: BufRead, W: Write>(state: &mut State, reader: R, mut writer: W) -> i32 {
     for line in reader.lines() {
         let line = match line {

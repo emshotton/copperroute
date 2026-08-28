@@ -1,5 +1,18 @@
 //! Rewrites Java-freerouting command lines (`-de in.dsn -do out.ses -mp 100 …`)
 //! into the subcommand form (`route in.dsn -o out.ses --max-passes 100`).
+//!
+//! **This shim forwards raw values.** It only re-spells flags; it never clamps,
+//! divides, lower-cases, or otherwise normalises a value. Java applies a
+//! per-flag normalisation inside `GlobalSettings.applyCommandLineArguments`
+//! (`GlobalSettings.java:677-731`) and again in `RouterSettings.validate()` /
+//! `normalizeMaxThreads` — for example `-oit` is divided by 100 and floored at
+//! 0, `-mp 0` means *unlimited*, and `-us`/`-is` fall back to fixed defaults for
+//! unrecognised words. Every one of those rules is tabulated in
+//! `docs/cli-legacy-flags.md`; applying them is Plan 5's `fr-settings` job, not
+//! this module's. Do not add normalisation here — it would then be applied
+//! twice (or only on the legacy path and not on the native one).
+
+use std::path::Path;
 
 use thiserror::Error;
 
@@ -31,6 +44,7 @@ pub fn rewrite(argv: &[String]) -> Result<Vec<String>, LegacyError> {
     let mut dsn: Option<String> = None;
     let mut ses: Option<String> = None;
     let mut rules: Option<String> = None;
+    let mut kicad_json: Option<String> = None;
     let mut output: Option<String> = None;
     let mut drc_output: Option<String> = None;
     let mut extra: Vec<String> = Vec::new();
@@ -46,18 +60,60 @@ pub fn rewrite(argv: &[String]) -> Result<Vec<String>, LegacyError> {
         let a = argv[i].as_str();
         match a {
             "-de" => {
-                let v = take_value(&mut i, a)?;
-                for part in v.split('+') {
-                    let lower = part.to_ascii_lowercase();
-                    if lower.ends_with(".dsn") {
-                        dsn = Some(part.to_string());
-                    } else if lower.ends_with(".ses") {
-                        ses = Some(part.to_string());
-                    } else if lower.ends_with(".rules") {
-                        rules = Some(part.to_string());
+                // GlobalSettings.java:564-648: `-de` collects *every* following argument that
+                // does not start with `-`, then classifies each by extension. An argument that
+                // is not an existing path and contains `+` is split on `+` (legacy
+                // concatenation); an existing path is taken verbatim, so a real file whose name
+                // contains `+` survives (GlobalSettings.java:570-580).
+                let mut files: Vec<String> = Vec::new();
+                while let Some(raw) = argv.get(i + 1).filter(|x| !x.starts_with('-')) {
+                    let raw = raw.trim();
+                    if Path::new(raw).exists() || !raw.contains('+') {
+                        files.push(raw.to_string());
                     } else {
-                        dsn = Some(part.to_string());
+                        files.extend(
+                            raw.split('+')
+                                .map(str::trim)
+                                .filter(|p| !p.is_empty())
+                                .map(str::to_string),
+                        );
                     }
+                    i += 1;
+                }
+                for f in files {
+                    if f.is_empty() {
+                        continue;
+                    }
+                    let lower = f.to_ascii_lowercase();
+                    // Slot assignment mirrors GlobalSettings.java:601-644, including "last one
+                    // wins" with a warning when a slot is filled twice (`:602`, `:615`, `:623`,
+                    // `:631`).
+                    let (target, kind) = if lower.ends_with(".dsn") {
+                        (&mut dsn, "DSN")
+                    } else if lower.ends_with(".ses") {
+                        (&mut ses, "SES")
+                    } else if lower.ends_with(".rules") {
+                        (&mut rules, "RULES")
+                    } else if lower.ends_with(".json") {
+                        // Divergence, recorded in docs/cli-legacy-flags.md: Java has no
+                        // dedicated KiCad-JSON slot, so `.json` lands in the *design input*
+                        // slot when no `.dsn` was seen yet and in the *session* slot otherwise
+                        // (GlobalSettings.java:609-621). The port keeps it in its own
+                        // `--kicad-json` slot so a KiCad board never silently poses as a SES
+                        // session; Plan 5/8 owns the loader.
+                        (&mut kicad_json, "JSON")
+                    } else {
+                        // GlobalSettings.java:638-644: warn and ignore. Notably it does *not*
+                        // fall back to the DSN slot.
+                        eprintln!("warning: ignoring input file with unknown extension: {f}");
+                        continue;
+                    };
+                    if target.is_some() {
+                        eprintln!(
+                            "warning: multiple {kind} files given to -de; only the last is used"
+                        );
+                    }
+                    *target = Some(f);
                 }
             }
             "-do" => output = Some(take_value(&mut i, a)?),
@@ -100,6 +156,9 @@ pub fn rewrite(argv: &[String]) -> Result<Vec<String>, LegacyError> {
         if let Some(r) = rules {
             push_pair(&mut out, "--rules", r);
         }
+        if let Some(j) = kicad_json {
+            push_pair(&mut out, "--kicad-json", j);
+        }
         push_pair(&mut out, "-o", report);
     } else {
         let output = output.ok_or(LegacyError::MissingOutput)?;
@@ -110,6 +169,9 @@ pub fn rewrite(argv: &[String]) -> Result<Vec<String>, LegacyError> {
         }
         if let Some(r) = rules {
             push_pair(&mut out, "--rules", r);
+        }
+        if let Some(j) = kicad_json {
+            push_pair(&mut out, "--kicad-json", j);
         }
         push_pair(&mut out, "-o", output);
     }
@@ -157,6 +219,82 @@ mod tests {
             rewrite(&argv).unwrap(),
             s(&[
                 "route", "a.dsn", "--ses", "a.ses", "--rules", "a.rules", "-o", "b.ses"
+            ])
+        );
+    }
+
+    #[test]
+    fn de_consumes_all_consecutive_non_dash_args() {
+        // GlobalSettings.java:568 keeps consuming while `!args[j].startsWith("-")`.
+        let argv = s(&["-de", "a.dsn", "a.rules", "-do", "b.ses"]);
+        assert_eq!(
+            rewrite(&argv).unwrap(),
+            s(&["route", "a.dsn", "--rules", "a.rules", "-o", "b.ses"])
+        );
+    }
+
+    #[test]
+    fn de_maps_json_to_kicad_json_slot() {
+        let argv = s(&["-de", "a.dsn+notes.json", "-do", "b.ses"]);
+        assert_eq!(
+            rewrite(&argv).unwrap(),
+            s(&[
+                "route",
+                "a.dsn",
+                "--kicad-json",
+                "notes.json",
+                "-o",
+                "b.ses"
+            ])
+        );
+    }
+
+    #[test]
+    fn de_warns_and_ignores_unknown_extensions() {
+        // GlobalSettings.java:638-644 warns and drops the file; crucially it must not land in
+        // the DSN slot.
+        let argv = s(&["-de", "a.dsn", "weird.txt", "-do", "b.ses"]);
+        assert_eq!(
+            rewrite(&argv).unwrap(),
+            s(&["route", "a.dsn", "-o", "b.ses"])
+        );
+    }
+
+    #[test]
+    fn de_last_dsn_wins() {
+        // GlobalSettings.java:602-605: "Multiple DSN files provided in -de argument. Only the
+        // last one will be used."
+        let argv = s(&["-de", "first.dsn", "second.dsn", "-do", "b.ses"]);
+        assert_eq!(
+            rewrite(&argv).unwrap(),
+            s(&["route", "second.dsn", "-o", "b.ses"])
+        );
+    }
+
+    #[test]
+    fn de_mixed_slots_across_several_args() {
+        let argv = s(&[
+            "-de",
+            "a.dsn",
+            "prev.ses+a.rules",
+            "kicad.json",
+            "junk.bin",
+            "-do",
+            "b.ses",
+        ]);
+        assert_eq!(
+            rewrite(&argv).unwrap(),
+            s(&[
+                "route",
+                "a.dsn",
+                "--ses",
+                "prev.ses",
+                "--rules",
+                "a.rules",
+                "--kicad-json",
+                "kicad.json",
+                "-o",
+                "b.ses"
             ])
         );
     }

@@ -4,6 +4,20 @@ use parity::*;
 fn normalize_collapses_crlf_trailing_spaces_and_blank_runs() {
     let s = "a  \r\n\r\n\r\nb\n\n\n";
     assert_eq!(normalize_whitespace(s), "a\n\nb\n");
+    // Tabs count too.
+    assert_eq!(normalize_whitespace("a\t \t\n"), "a\n");
+}
+
+#[test]
+fn normalize_keeps_non_ascii_trailing_whitespace() {
+    // Only ' ' and '\t' are stripped: a NBSP, a line separator or a vertical tab can sit
+    // inside a DSN string literal, and dropping them would mask a real parity difference.
+    assert_eq!(
+        normalize_whitespace("a\u{a0}\nb\u{2028}\nc\u{b}\n"),
+        "a\u{a0}\nb\u{2028}\nc\u{b}\n"
+    );
+    // …and a line made only of a NBSP is not a blank line.
+    assert_eq!(normalize_whitespace("a\n\u{a0}\nb\n"), "a\n\u{a0}\nb\n");
 }
 
 #[test]

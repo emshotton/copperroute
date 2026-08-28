@@ -28,17 +28,33 @@ run_java() { # args...
   "$JAVA_BIN" -jar "$JAR" -da -dl "$@"
 }
 
+# Routing is disabled with the generic settings override `--router.enabled=false`
+# (GlobalSettings.java:538-559 routes `--section.field=value` through `setValue`;
+# CliSettings.java:51,79-82 honours it and suppresses the implicit
+# "-de plus -do means route" force-on).
+#
+# NOT `-mp 0`: in Java `maxPasses == 0` means *unlimited*, not "no passes"
+# (GlobalSettings.java:675-686 explicitly allows 0; RouterSettings.java:933-941
+# turns it into Integer.MAX_VALUE with the comment "0 means no limit").
+NO_ROUTING="--router.enabled=false"
+
 while IFS='|' read -r stem src; do
   [[ -z "$stem" || "$stem" == \#* ]] && continue
   in="$JAVA_DIR/$src"
   out="$REF/$stem"
   mkdir -p "$out"
   echo "== $stem"
-  # DSN round-trip (no routing passes) and unrouted SES.
-  run_java -de "$in" -do "$out/roundtrip.dsn" -mp 0 > "$out/java.log" 2>&1 || {
+  # DSN round-trip (no routing) and unrouted SES.
+  run_java -de "$in" -do "$out/roundtrip.dsn" "$NO_ROUTING" > "$out/java.log" 2>&1 || {
     echo "   java failed for roundtrip.dsn; see $out/java.log" >&2; }
-  run_java -de "$in" -do "$out/unrouted.ses" -mp 0 >> "$out/java.log" 2>&1 || {
+  run_java -de "$in" -do "$out/unrouted.ses" "$NO_ROUTING" >> "$out/java.log" 2>&1 || {
     echo "   java failed for unrouted.ses; see $out/java.log" >&2; }
 done < "$REF/fixtures.txt"
+
+echo
+echo "IMPORTANT (first run on JDK 25): verify that routing really was suppressed —"
+echo "  each <stem>/unrouted.ses '(routes ...)' section must contain only the wiring"
+echo "  already present in the input DSN, and no newly routed traces. If it does not,"
+echo "  \$NO_ROUTING is not taking effect and the references are not a valid baseline."
 
 echo "done. References in $REF"

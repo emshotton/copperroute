@@ -1,0 +1,123 @@
+# Legacy CLI flags: Java's per-flag value normalisation
+
+`crates/freerouting/src/legacy.rs` rewrites Java-freerouting command lines into
+the port's subcommand form. **It forwards raw values.** Java, by contrast,
+normalises most flag values *while parsing* — clamping, dividing, lower-casing,
+or falling back to a default for an unrecognised word. Reproducing those rules
+is Plan 5's `fr-settings` job; this file records them once, from the Java, so
+Plans 5 and 8 do not re-derive them (and get them wrong).
+
+Baseline: freerouting **v2.3.0**. Primary source
+`app/freerouting/settings/GlobalSettings.java`, method
+`applyCommandLineArguments` (the flag table runs :521-838; the numeric/strategy
+flags cited below are :675-731). Secondary sources
+`app/freerouting/settings/RouterSettings.java` and
+`app/freerouting/settings/sources/CliSettings.java`.
+
+A blanket rule applies to every flag below: a value is only consumed when the
+next argument exists **and does not start with `-`** (`args.length > i + 1 &&
+!args[i + 1].startsWith("-")`). Otherwise the flag is silently a no-op and the
+field keeps its previous value — Java never errors on a missing value. The
+whole loop body is additionally wrapped in `try { … } catch (Exception e)`
+(`GlobalSettings.java:835-837`), so a malformed number logs an error and the
+flag is skipped rather than aborting the run.
+
+## Router / optimizer flags
+
+| Flag | Java field | Java normalisation | Java location | Where the port must apply it |
+|---|---|---|---|---|
+| `-mp` | `routerSettings.maxPasses` | `Integer.decode(v)`; then `< 0 → 1`, `> 9999 → 9999`. **`0` is deliberately allowed and means *unlimited*.** A second, *different* clamp runs later in `RouterSettings.validate()`: there `< 0 \|\| > 9999 → 9999` and `== 0 → Integer.MAX_VALUE`. | `GlobalSettings.java:675-686`; `RouterSettings.java:932-941` | `fr-settings` (Plan 5), at both the parse step and a `validate()` equivalent. Plan 6/7's pass loop must treat `max_passes == 0` as "no limit", never "no passes". |
+| `-mt` | `routerSettings.optimizer.maxThreads` | `Integer.decode(v)`; then `< 0 → 0`, `> 1024 → 1024`. **No further normalisation on this path** — see the quirk below. | `GlobalSettings.java:688-698` | `fr-settings` (Plan 5); Plan 6's optimizer thread pool. |
+| `-oit` | `routerSettings.optimizer.optimizationImprovementThreshold` | `Float.parseFloat(v) / 100`; then `<= 0 → 0.0f`. Note the value is a **percentage** on the command line and a fraction in the settings, and the division happens before the clamp, so `-oit -5` becomes `0.0f`. Parsed as `float`, not `double`. | `GlobalSettings.java:700-708` | `fr-settings` (Plan 5). Keep the `f32` rounding — a `f64` division by 100 gives a different bit pattern. |
+| `-us` | `routerSettings.optimizer.boardUpdateStrategy` | `v.toLowerCase().trim()`; then `"global" → GLOBAL_OPTIMAL`, `"hybrid" → HYBRID`, **anything else → `GREEDY`**. There is no error for an unrecognised word. | `GlobalSettings.java:710-719` | `fr-settings` (Plan 5). Must be a total function with a `GREEDY` fallback, not a `FromStr` that fails. |
+| `-is` | `routerSettings.optimizer.itemSelectionStrategy` | `v.toLowerCase().trim()`; then **prefix** match `indexOf("seq") == 0 → SEQUENTIAL`, `indexOf("rand") == 0 → RANDOM`, **anything else → `PRIORITIZED`**. Prefix, not equality: `sequential`, `seq`, `sequestered` all give `SEQUENTIAL`. | `GlobalSettings.java:721-731` | `fr-settings` (Plan 5). Prefix match with a `PRIORITIZED` fallback. |
+| `-hr` | `routerSettings.optimizer.hybridRatio` | `v.trim()` only — stored as a raw `String` and parsed later. | `GlobalSettings.java:732-736` | `fr-settings` (Plan 5): keep it a string here, parse where Java parses it. |
+| `-inc` | `routerSettings.ignoreNetClasses` | `v.split(",")` — **the individual entries are not trimmed and not lower-cased**, unlike `debug.filter_by_net` (`GlobalSettings.java:552-557`), which does both. `-inc "GND, VCC"` yields `["GND", " VCC"]` and the second never matches a net class. | `GlobalSettings.java:810-815` | `fr-settings` (Plan 5). Reproduce the missing trim; do not "fix" it before parity. |
+
+## Non-router flags the port currently drops
+
+The shim discards these, but the normalisation is recorded so a later plan that
+adopts one gets it right.
+
+| Flag | Java field | Java normalisation | Java location |
+|---|---|---|---|
+| `-l` | `currentLocale` | `v.toLowerCase().replace("-", "_")`, then a **prefix** chain (`zh_tw` before `zh`, `pt_br` before `pt`, …). An unmatched string leaves the previous locale untouched. | `GlobalSettings.java:737-798` |
+| `-ll` | `logging.console.level` | `v.toUpperCase()`, unvalidated. | `GlobalSettings.java:825-830` |
+| `-host` | `runtimeEnvironment.host` | `v.trim()`. | `GlobalSettings.java:803-807` |
+| `-dct` | `guiSettings.dialogConfirmationTimeout` | `Integer.parseInt(v)`; then `<= 0 → 0`. | `GlobalSettings.java:816-824` |
+| `-dl` | `logging.file.enabled` | Switch: sets `false`. No value consumed. | `GlobalSettings.java:799-800` |
+| `-da` | `usageAndDiagnosticData.disableAnalytics` | Switch: sets `true`. No value consumed. | `GlobalSettings.java:801-802` |
+| `-drc` | `routerSettings.enabled`, `drcSettings.enabled` | Switch plus optional report path: sets `routerSettings.enabled = false` and `drcSettings.enabled = true` **before** looking for a value, so a bare `-drc` still switches to DRC-only mode. Matched before `-dr` on purpose. | `GlobalSettings.java:660-669` |
+
+## Quirks worth pinning
+
+1. **`-mp 0` means unlimited, not "no passes".** `GlobalSettings.java:684`
+   carries the comment "Note: 0 is allowed and means no limit", and
+   `RouterSettings.validate()` (`RouterSettings.java:937-940`) turns it into
+   `Integer.MAX_VALUE`. `scripts/gen-reference.sh` originally used `-mp 0` to
+   generate *unrouted* references and would in fact have generated fully routed
+   ones; it now uses `--router.enabled=false`.
+
+2. **`-mt 0` does *not* mean "all cores" on the CLI path.** There are two
+   different max-thread normalisations in `RouterSettings.java` and the CLI
+   reaches neither:
+   - `normalizeMaxThreads` (`RouterSettings.java:137-149`) maps `null →
+     max(1, cores - 1)`, `< 0 → max(1, cores - 1)`, **`0 → cores`**, else
+     `min(v, cores)`. It is reached only through `setMaxThreads`
+     (`RouterSettings.java:175-186`), i.e. the config/API path.
+   - `validate()` (`RouterSettings.java:943-955`) normalises
+     `RouterSettings.maxThreads` and leaves `0` as `0` (0 is neither `< 0` nor
+     `> cores`) — already inconsistent with `normalizeMaxThreads`.
+   - `-mt` writes `routerSettings.optimizer.maxThreads` **directly**
+     (`GlobalSettings.java:690`), a different field from
+     `RouterSettings.maxThreads`, so neither routine touches it. Its only
+     consumer is `BatchOptimizer.java:58` (`… .optimizer.maxThreads > 1`), so
+     `-mt 0` selects the **single-threaded** optimizer.
+
+   Plan 5 must therefore keep `optimizer.max_threads` and `router.max_threads`
+   as distinct fields with distinct normalisations, and must not "helpfully"
+   map `-mt 0` to the core count.
+
+3. **`-oit` divides before it clamps**, and parses as `float`. Any negative or
+   zero percentage collapses to exactly `0.0f`.
+
+4. **`-us` / `-is` never reject a value.** Both are total functions onto an
+   enum with a fixed default (`GREEDY`, `PRIORITIZED`). A typo silently
+   changes the routing strategy.
+
+5. **`-inc` does not trim its comma-separated entries**, unlike the otherwise
+   parallel `debug.filter_by_net` handling three hundred lines above it.
+
+## `-de` file classification
+
+`-de` is the one flag whose *shape* the shim reproduces rather than forwards
+(`GlobalSettings.java:564-648`):
+
+- It consumes **every** following argument that does not start with `-`, not
+  just one.
+- Each argument is `trim()`ed. If it names an **existing** path it is taken
+  verbatim; otherwise, if it contains `+`, it is split on `+` (legacy
+  concatenation) with empty parts dropped. So a real file whose name contains
+  `+` survives (`GlobalSettings.java:570-580`).
+- Each resulting file is classified by lower-cased extension: `.dsn` → design
+  input, `.ses` → session, `.rules` → rules, `.json` → session *or* design
+  input (below). Filling a slot twice logs "Only the last one will be used" and
+  keeps the last (`:601-608`, `:609-621`, `:622-629`, `:630-637`).
+- **Any other extension is warned about and dropped** (`:638-644`) — it does
+  *not* fall back to the design-input slot.
+
+**One deliberate divergence.** Java has no dedicated KiCad-JSON slot: `.json`
+goes to `initialInputFile` (the design input) when no `.dsn` has been seen yet,
+and to `designSessionFilename` (the session) otherwise
+(`GlobalSettings.java:609-621`). The port gives it its own `--kicad-json`
+option on `route`/`drc` so a KiCad board file never silently poses as a SES
+session. Two consequences for Plan 5/8, which owns the loader:
+
+- `-de board.json -do out.ses` routes in Java but currently fails in the port
+  with `-de input must include a .dsn file`, because `--kicad-json` does not
+  yet feed the design-input slot.
+- `-de a.dsn prev.json` yields `--kicad-json prev.json` where Java would treat
+  `prev.json` as the previous session.
+
+Both are unimplemented-loader gaps, not silent misroutes; resolve them when the
+KiCad JSON reader lands.
