@@ -1059,8 +1059,8 @@ impl Simplex {
     // circumference(), contains(...), borderDistance(...), nearestPoint(...),
     // divideIntoSections(), ...), all as methods of the `TileShape` enum;
     // `bounding_directions.rs` has `boundingShape(dirs)`.
-    // added in Task 17 (Circle / Shape): intersects(Circle) and the `Shape`-typed
-    // `intersects(Shape)`.
+    // ported in Task 17, on the `TileShape` enum: intersects(Circle) (`intersects_circle`) and
+    // the `Shape`-typed `intersects(Shape)` (the `ShapeOps` impl in `shape.rs`).
 }
 
 /// Java `innerCorner.perpendicularDirection(outerLine)` (Point.java:101-113) narrowed back to the

@@ -657,25 +657,33 @@ impl TileShape {
     /// contained in this shape (TileShape.java:276-284). `IntBox` overrides it with a closed form
     /// (IntBox.java:213-216).
     ///
-    /// Java dereferences a possibly-`null` nearest point here; on the empty shape, where that
-    /// throws in Java, this port returns `f64::MAX`.
+    /// # Panics
+    /// On a shape without border lines, where Java dereferences the `null` that
+    /// `nearestPointApprox` returns (a NullPointerException). Not totalized to a value: Task 17's
+    /// differential sweep reaches this from `Circle.intersects(Simplex)` by way of
+    /// `PolygonShape.intersects(Circle)` on a self-intersecting polygon, and there a plausible
+    /// distance and a thrown exception are different observable outcomes.
     pub fn distance(&self, point: &FloatPoint) -> f64 {
         match self {
             TileShape::Box(b) => b.distance(point),
-            _ => match self.nearest_point_approx(point) {
-                Some(nearest_point) => nearest_point.distance(point),
-                None => f64::MAX,
-            },
+            _ => self
+                .nearest_point_approx(point)
+                .expect("TileShape.distance: no nearest point on a shape without border lines")
+                .distance(point),
         }
     }
 
     /// Returns the distance between `point` and its nearest point on the edge of the shape
-    /// (TileShape.java:286-291). See [`TileShape::distance`] for the empty-shape totalization.
+    /// (TileShape.java:286-291).
+    ///
+    /// # Panics
+    /// On a shape without border lines; see [`TileShape::distance`].
     pub fn border_distance(&self, point: &FloatPoint) -> f64 {
-        match self.nearest_border_point_approx(point) {
-            Some(nearest_point) => nearest_point.distance(point),
-            None => f64::MAX,
-        }
+        self.nearest_border_point_approx(point)
+            .expect(
+                "TileShape.borderDistance: no nearest border point on a shape without border lines",
+            )
+            .distance(point)
     }
 
     /// The smallest distance from the centre of gravity to the border of the shape
@@ -1496,13 +1504,20 @@ impl TileShape {
         }
         result
     }
-    // added in Task 17 (Circle / Shape / PolygonShape): intersects(Circle), the `Shape`-typed
-    // intersects(Shape), boundingShape's `ConvexShape` overload, and the `ShapeOps` /
-    // `PolylineShapeOps` traits. The latter also picks up the `PolylineShape` members that no
-    // `TileShape.java` algorithm needs: boundedCorners(), equalsCorner(Point),
-    // isContainedIn(IntBox), indexOfLeftMostCorner(FloatPoint),
+    /// Checks if this shape and `other` have a nonempty intersection (IntBox.java:357-360,
+    /// IntOctagon.java:676-679, Simplex.java:659-662 — all three delegate to
+    /// `other.intersects(this)`).
+    pub fn intersects_circle(&self, other: &crate::circle::Circle) -> bool {
+        other.intersects_tile(self)
+    }
+
+    // The `Shape`-typed `intersects(Shape)`, `boundingShape(ShapeBoundingDirections)` and the
+    // `PolylineShape` members that no `TileShape.java` algorithm needs — boundedCorners(),
+    // equalsCorner(Point), isContainedIn(IntBox), indexOfLeftMostCorner(FloatPoint),
     // indexOfRightMostCorner(FloatPoint), polarLineSegment(FloatPoint), prevNo(int), nextNo(int),
-    // getBorder(), getHoles(), intersects(Line), leftMostCorner(Point), rightMostCorner(Point).
+    // getBorder(), getHoles(), intersects(Line), leftMostCorner(Point), rightMostCorner(Point) —
+    // live in the `PolylineShapeOps` (polyline_shape.rs) and `ShapeOps` (shape.rs) impls for
+    // `TileShape`.
 }
 
 /// The insertion step shared by `nearestBorderPointsApprox` and
@@ -2032,10 +2047,26 @@ mod tests {
         // then runs zero times and 0 is returned. It does not throw.
         assert_eq!(e.circumference(), 0.0);
         assert_eq!(e.divide_into_sections(4.0), vec![e.clone()]);
-        // Java dereferences a null nearest point here; this port totalizes to f64::MAX.
-        assert_eq!(e.distance(&FloatPoint::ZERO), f64::MAX);
-        assert_eq!(e.border_distance(&FloatPoint::ZERO), f64::MAX);
-        assert_eq!(e.smallest_radius(), f64::MAX);
+        // `distance`, `border_distance` and `smallest_radius` throw here in Java; see the three
+        // `#[should_panic]` tests below.
+    }
+
+    #[test]
+    #[should_panic(expected = "no nearest point on a shape without border lines")]
+    fn distance_on_a_border_line_free_shape_throws_like_java() {
+        TileShape::Simplex(Simplex::EMPTY).distance(&FloatPoint::ZERO);
+    }
+
+    #[test]
+    #[should_panic(expected = "no nearest border point on a shape without border lines")]
+    fn border_distance_on_a_border_line_free_shape_throws_like_java() {
+        TileShape::Simplex(Simplex::EMPTY).border_distance(&FloatPoint::ZERO);
+    }
+
+    #[test]
+    #[should_panic(expected = "no nearest border point on a shape without border lines")]
+    fn smallest_radius_on_a_border_line_free_shape_throws_like_java() {
+        TileShape::Simplex(Simplex::EMPTY).smallest_radius();
     }
 
     #[test]

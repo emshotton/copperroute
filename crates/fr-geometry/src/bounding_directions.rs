@@ -12,12 +12,15 @@
 //! users of `FortyfiveDegreeDirection` in `geometry/planar` and could not be ported before this
 //! enum existed.
 
+use crate::circle::Circle;
 use crate::int_box::IntBox;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::point::Point;
+use crate::polygon_shape::PolygonShape;
 use crate::regular_tile_shape::RegularTileShape;
+use crate::shape::Shape;
 use crate::simplex::Simplex;
 use crate::tile_shape::TileShape;
 
@@ -140,8 +143,43 @@ impl ShapeBoundingDirections {
         }
     }
 
-    // added in Task 17 (Circle / PolygonShape / Shape): bounds(Circle), bounds(PolygonShape) and
-    // the `ConvexShape`-typed `bounds(Shape)` that dispatches over all of them.
+    /// Java `bounds(Circle circle)`: `circle.boundingBox()` resp. `circle.boundingOctagon()`
+    /// (OrthogonalBoundingDirections.java:40-43, FortyfiveDegreeBoundingDirections.java:41-44).
+    pub fn bounds_circle(self, circle: &Circle) -> RegularTileShape {
+        match self {
+            ShapeBoundingDirections::Orthogonal => RegularTileShape::Box(circle.bounding_box()),
+            ShapeBoundingDirections::FortyfiveDegree => {
+                RegularTileShape::Octagon(circle.bounding_octagon())
+            }
+        }
+    }
+
+    /// Java `bounds(PolygonShape polygon)`: `polygon.boundingBox()` resp.
+    /// `polygon.boundingOctagon()` (OrthogonalBoundingDirections.java:45-48,
+    /// FortyfiveDegreeBoundingDirections.java:46-49).
+    pub fn bounds_polygon(self, polygon: &PolygonShape) -> RegularTileShape {
+        match self {
+            ShapeBoundingDirections::Orthogonal => RegularTileShape::Box(polygon.bounding_box()),
+            ShapeBoundingDirections::FortyfiveDegree => {
+                RegularTileShape::Octagon(polygon.bounding_octagon())
+            }
+        }
+    }
+
+    /// Java `bounds(ConvexShape shape)`, widened to every [`Shape`] variant:
+    /// `shape.boundingShape(this)` (OrthogonalBoundingDirections.java:20-23,
+    /// FortyfiveDegreeBoundingDirections.java:21-24).
+    ///
+    /// `PolygonShape` is not a Java `ConvexShape`, but `ShapeBoundingDirections` declares a
+    /// `bounds(PolygonShape)` overload for it, so the enum covers all three variants here.
+    /// `None` only for the unbounded simplex, where `boundingOctagon()` returns `null`.
+    pub fn bounds_shape(self, shape: &Shape) -> Option<RegularTileShape> {
+        match shape {
+            Shape::Tile(t) => self.bounds_tile(t),
+            Shape::Polygon(p) => Some(self.bounds_polygon(p)),
+            Shape::Circle(c) => Some(self.bounds_circle(c)),
+        }
+    }
 }
 
 impl IntBox {

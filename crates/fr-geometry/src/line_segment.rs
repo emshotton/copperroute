@@ -27,6 +27,7 @@ use crate::limits::{java_max, java_min, java_round};
 use crate::line::Line;
 use crate::point::Point;
 use crate::polyline::{Polyline, PolylineError};
+use crate::polyline_shape::PolylineShapeOps;
 use crate::side::Side;
 use crate::signum::Signum;
 use crate::simplex::Simplex;
@@ -84,9 +85,18 @@ impl LineSegment {
     /// Java takes the abstract `PolylineShape` and returns an object with three `null` lines when
     /// `no` is out of range; this port takes the concrete [`TileShape`] and returns `None`. The
     /// `no < 0` half of Java's range check is unrepresentable with a `usize` index.
-    // added in Task 17: generalise this over `&dyn PolylineShapeOps`, so that `PolygonShape` (the
-    // other Java `PolylineShape`) can be passed too.
     pub fn from_tile_shape(shape: &TileShape, no: usize) -> Option<LineSegment> {
+        LineSegment::from_polyline_shape(shape, no)
+    }
+
+    /// Creates the `no`-th line segment of `shape`, for `no` between 0 and
+    /// `shape.border_line_count() - 1` (LineSegment.java:44-65).
+    ///
+    /// Java's parameter is the abstract `PolylineShape`, so both [`TileShape`] and
+    /// [`crate::polygon_shape::PolygonShape`] can be passed. Java returns an object with three
+    /// `null` lines when `no` is out of range; this port returns `None`. The `no < 0` half of
+    /// Java's range check is unrepresentable with a `usize` index.
+    pub fn from_polyline_shape(shape: &dyn PolylineShapeOps, no: usize) -> Option<LineSegment> {
         let line_count = shape.border_line_count();
         if no >= line_count {
             return None;

@@ -1598,8 +1598,8 @@ impl IntOctagon {
     // double dispatch collapses into one `match`); `bounding_directions.rs` has
     // `boundingShape(dirs)`, `borderPoint(IntPoint, FortyfiveDegreeDirection)` and
     // `nearestBorderProjections(IntPoint, int)`.
-    // added in Task 17 (Circle / Shape): intersects(Circle) and the `Shape`-typed
-    // `intersects(Shape)`.
+    // ported in Task 17, on the `TileShape` enum: intersects(Circle) (`intersects_circle`) and
+    // the `Shape`-typed `intersects(Shape)` (the `ShapeOps` impl in `shape.rs`).
 }
 
 impl fmt::Display for IntOctagon {

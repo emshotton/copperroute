@@ -44,6 +44,13 @@ Rules:
 | 23 | `Polyline(Point, Point)` (Polyline.java:69) | Recomputes the *end* closing direction as `fromCorner → toCorner`, a verbatim repeat of line 66, where `Polyline(Polygon)` (line 50) uses `last → second-last`. The two constructors therefore hand back opposite (geometrically identical) closing lines for the same pair of points. | `polyline.rs` `from_two_points`, test `the_closing_lines_are_perpendicular_to_the_end_segments` | `Direction.getInstance(toCorner, fromCorner)`; check nothing depends on the current orientation first. |
 | 24 | `TileShape.rotateApprox` (TileShape.java:692-695) | The two-corner branch builds `new LineSegment(currentPolyline, 0)`, but that constructor's valid range starts at 1, so it stores three `null` lines and `toSimplex()` throws a `NullPointerException`. ~2% of random degenerate 2..4-line shapes reach it. | `tile_shape.rs` `rotate_approx` (returns `Simplex::EMPTY`) | Pass 1 instead of 0. |
 | 25 | `Polyline.cornerCount()` (Polyline.java:178-181) | Returns -1 for an empty polyline, which then flows into `new IntPoint[cornerCount()]` in `rotateApprox` (`NegativeArraySizeException`) and into `boundingBox(0, -2)`. | `polyline.rs` `corner_count` saturates at 0 | Return 0, or make the empty polyline unrepresentable. |
+| 26 | `PolygonShape.area()` (PolygonShape.java:411) | Guards with `if (dimension() <= 2) return 0;`, but `PolygonShape.dimension()` never exceeds 2 (PolygonShape.java:430-442), so **`area()` always returns 0** and the shoelace sum below it is dead code. Reachable from `DsnFile.java:70,89` through `Shape.area()`. | `polygon_shape.rs` `area` (`// Java bug:` comment, shoelace body kept); test `convexity_area_and_split` pins `square().area() == 0.0` | Change `<= 2` to `< 2`; then also guard the `corners[len - 2]` read for a 1-corner polygon. |
+| 27 | `PolygonShape.intersects(Shape)` (PolygonShape.java:118-121) | `Shape.java` declares no `intersects(PolygonShape)` overload, so `shape.intersects(this)` binds to `intersects(Shape)`. Polygon-vs-tile and polygon-vs-circle bounce back and terminate, but **polygon-vs-polygon recurses until `StackOverflowError`** (verified in a JDK 23 harness). | `shape.rs` `Shape::intersects_polygon` panics with the reason instead of recursing; test `polygon_against_polygon_reproduces_the_java_stack_overflow` | Add an `intersects(PolygonShape)` to `Shape` (split-to-convex on both sides), or make `PolygonShape.intersects(Shape)` type-test its argument. |
+| 28 | `PolygonShape.containsOnBorder` (PolygonShape.java:228-232) | Stub: the warning is commented out and the body is `return false`, so `containsInside(point) == contains(point)` for every polygon. | `polygon_shape.rs` `contains_on_border` / `contains_inside`; test `stubs_match_the_java_stubs` | Implement (test the point against each `borderLine`); check callers that rely on the current permissive answer. |
+| 29 | `PolygonShape.cutout/enlarge/borderDistance/distance`, `Circle.nearestPointApprox/cutout` | Unimplemented stubs that warn and return `null` / `0`. `smallestRadius()` therefore always answers 0 for a polygon. | `polygon_shape.rs`, `circle.rs` (`Option` / `0.0`); test `stubs_match_the_java_stubs` | Implement; `smallestRadius` in particular is used for clearance heuristics. |
+| 30 | `PolygonShape.splitToConvex` (PolygonShape.java:17-18, 530-548) | The `Random` that picks the concavity-scan start is a **`static` field shared by every instance**, reseeded to 99 at each cold call. Single-threaded that is deterministic, but the autorouter splits shapes from several threads, so concurrent calls interleave draws and the division becomes non-reproducible. | `polygon_shape.rs` builds a per-call `JavaRandom`, which is deterministic under concurrency too — the only intended divergence, and a strict improvement | Make the `Random` a local, as this port does. |
+| 31 | `PolygonShape.DivisionPoint` (PolygonShape.java:674, 769) | Seeds `minProjectionDist` with `Integer.MAX_VALUE` (an `int` sentinel in a `double`) and detects "projection not found" by comparing back against it, so a legitimate projection at distance exactly 2^31-1 would be discarded. Unreachable while coordinates stay below `CRIT_INT` = 2^25. | `polygon_shape.rs` `DivisionPoint::new` (kept verbatim) | Use `Double.MAX_VALUE` and a `null` check. |
+| 32 | `Circle.translateBy(Vector)` (Circle.java:249-252) | For a `RationalVector` it warns and returns **`this` unchanged** — a silently wrong shape rather than an exception, unlike `Line`/`IntBox`/`Polyline`, which throw. | `circle.rs` `translate_by` (ported as-is) | Round the rational vector, or throw like the siblings. |
 
 ## Rust-side totalizations (`totalized`) — Java crashes, Rust returns a value
 
@@ -52,7 +59,6 @@ Rules:
 | `Simplex.EMPTY.cornerIsBounded(0)` throws AIOOBE | `false` | `simplex.rs` |
 | `TileShape.getInstance(new Point[0])` throws | `Simplex::EMPTY` | `simplex.rs` `from_points` |
 | `Simplex.EMPTY.offset(-1)` throws | `EMPTY` | `simplex.rs` |
-| `distance`/`borderDistance`/`smallestRadius` on a shape with no border lines → NPE | `f64::MAX` | `tile_shape.rs` |
 | `IntBox(5,5,0,0).divideIntoSections(3)` → array containing `null` | `[]` | `int_box.rs` |
 | `IntBox.divideIntoSections` on empty box → negative array size | `[]` | `int_box.rs` |
 | `FloatPoint.toString` on NaN/∞ | prints `NaN`/`∞` like Java (fixed after review) | `float_point.rs` |
@@ -68,6 +74,13 @@ Rules:
 | `Polyline.projectionLine(RationalPoint)` → warning from `new Line(point, dir)`, then a broken line every later call rejects | `panic!` mid-loop | `polyline.rs` `projection_line` |
 | `TileShape.rotateApprox` two-corner branch → NPE (quirk #24) | `Simplex::EMPTY` | `tile_shape.rs` |
 | `TileShape.cutout(Polyline)` with an empty polyline on a shape that has border lines → NPE | `[polyline]` — the same answer Java itself gives for a border-line-free shape, whose `containsInside` returns before dereferencing the null corner (TileShape.java:197-201) | `tile_shape.rs` `cutout_polyline` |
+
+**Withdrawn in Task 17.** `TileShape.distance` / `borderDistance` / `smallestRadius` on a shape
+with no border lines was totalized to `f64::MAX` in Task 14. Task 17's differential sweep reaches
+it from `Circle.intersects(Simplex)` by way of `PolygonShape.intersects(Circle)` on a
+self-intersecting polygon, where Java's NullPointerException and a plausible distance are
+different observable outcomes, so the three methods now panic
+(`tile_shape.rs`, three `#[should_panic]` tests).
 
 ## Improvement candidates (`candidate`) — not Java bugs
 
