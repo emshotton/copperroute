@@ -155,7 +155,7 @@ fn an_l_shaped_obstacle_area_splits_into_two_tiles_and_carries_the_translation()
         .split_to_convex(&f.ctx())
         .expect("a polygon splits without error");
     assert_eq!(
-        boxes(&tiles),
+        boxes(tiles),
         vec![bx(100, 210, 110, 220), bx(100, 200, 120, 210)]
     );
     assert_eq!(
@@ -184,7 +184,7 @@ fn a_rotation_that_is_a_multiple_of_90_degrees_uses_turn_90_degree() {
     let area = obstacle_area(1, 90.0, false);
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
     assert_eq!(
-        boxes(&tiles),
+        boxes(tiles),
         vec![bx(80, 200, 90, 210), bx(90, 200, 100, 220)]
     );
     assert_eq!(area.bounding_box(&f.ctx()), bx(80, 200, 100, 220));
@@ -199,7 +199,7 @@ fn a_rotation_that_is_not_a_multiple_of_90_degrees_uses_rotate_approx() {
     let area = obstacle_area(1, 45.0, false);
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
     assert_eq!(
-        boxes(&tiles),
+        boxes(tiles),
         vec![
             bx(86, 214, 100, 221),
             bx(86, 200, 100, 214),
@@ -221,7 +221,7 @@ fn flip_style_rotate_first_decides_whether_the_mirror_runs_before_or_after_the_r
 
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
     assert_eq!(
-        boxes(&tiles),
+        boxes(tiles),
         vec![bx(90, 180, 100, 190), bx(80, 190, 100, 200)]
     );
 
@@ -231,7 +231,7 @@ fn flip_style_rotate_first_decides_whether_the_mirror_runs_before_or_after_the_r
     let area = obstacle_area(1, 90.0, true);
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
     assert_eq!(
-        boxes(&tiles),
+        boxes(tiles),
         vec![bx(100, 210, 110, 220), bx(100, 200, 120, 210)]
     );
 }
@@ -247,7 +247,7 @@ fn the_mirror_is_a_vertical_mirror_through_the_origin() {
         ObstacleAreaData::new(f_shape(), 0, Vector::ZERO, 0.0, true, None),
     );
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
-    assert_eq!(boxes(&tiles), vec![bx(-30, 0, -10, 10), bx(-10, 0, 0, 20)]);
+    assert_eq!(boxes(tiles), vec![bx(-30, 0, -10, 10), bx(-10, 0, 0, 20)]);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -814,4 +814,126 @@ fn item_dispatch_reaches_every_area_body() {
             .unwrap();
         item.clear_derived_data();
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The convex-pieces memo (Task 10; Plan-1 obligation "memo cache for convex pieces")
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn split_to_convex_is_memoised_and_hands_back_the_same_slice() {
+    // Java memoises one level down, in `PolylineArea.precalculatedConvexPieces`
+    // (PolylineArea.java:31) / `PolygonShape.precalculatedConvexPieces` (PolygonShape.java:17),
+    // so `ObstacleArea.splitToConvex` (ObstacleArea.java:320-326) divides once per `Area`
+    // object. `fr-geometry` does not memoise there (quirk #30), so `ObstacleAreaData` does.
+    let f = Fixture::new();
+    let area = obstacle_area(1, 0.0, false);
+    let first = area.split_to_convex(&f.ctx()).expect("splits").as_ptr();
+    let second = area.split_to_convex(&f.ctx()).expect("splits").as_ptr();
+    assert_eq!(first, second, "the second call must not re-divide the area");
+}
+
+#[test]
+fn every_obstacle_area_invalidation_point_drops_the_convex_pieces_memo() {
+    // The memo must be emptied wherever `precalculatedAbsoluteArea` is: `translateBy`
+    // (ObstacleArea.java:207-211), `turn90Degree` (:213-225), `rotateApprox` (:227-244),
+    // `changePlacementSide` (:246-255) and `clearDerivedData` (:328-332). A stale memo would
+    // outlive the area it was cut from, which is a correctness bug, not a performance one.
+    let f = Fixture::new();
+
+    let mut area = obstacle_area(1, 0.0, false);
+    assert_eq!(
+        boxes(area.split_to_convex(&f.ctx()).expect("splits")),
+        vec![bx(100, 210, 110, 220), bx(100, 200, 120, 210)]
+    );
+    area.translate_by(&Vector::new(5, 7));
+    assert_eq!(
+        boxes(area.split_to_convex(&f.ctx()).expect("splits")),
+        vec![bx(105, 217, 115, 227), bx(105, 207, 125, 217)]
+    );
+
+    let mut area = obstacle_area(2, 0.0, false);
+    area.split_to_convex(&f.ctx()).expect("splits");
+    area.turn_90_degree(1, &IntPoint::new(0, 0));
+    assert_eq!(
+        union_box(area.split_to_convex(&f.ctx()).expect("splits")),
+        bx(-220, 100, -200, 120)
+    );
+
+    let mut area = obstacle_area(3, 0.0, false);
+    area.split_to_convex(&f.ctx()).expect("splits");
+    area.rotate_approx(90.0, &FloatPoint::new(0.0, 0.0), &f.ctx());
+    assert_eq!(
+        union_box(area.split_to_convex(&f.ctx()).expect("splits")),
+        bx(-220, 100, -200, 120)
+    );
+
+    let mut area = obstacle_area(4, 0.0, false);
+    area.split_to_convex(&f.ctx()).expect("splits");
+    area.change_placement_side(&IntPoint::new(0, 0), &f.ctx());
+    assert_eq!(
+        union_box(area.split_to_convex(&f.ctx()).expect("splits")),
+        bx(-120, 200, -100, 220)
+    );
+
+    // `clearDerivedData` alone must empty it too, even though nothing about the area changed:
+    // that is the path `SearchTreeManager.reinsertTreeItems` (SearchTreeManager.java:186-200)
+    // takes before re-inserting every item. Observed through `translate_by`, whose own memo
+    // reset is the one under test above: here the *header* clear must not leave the area's
+    // pieces behind either.
+    let mut area = obstacle_area(5, 0.0, false);
+    area.split_to_convex(&f.ctx()).expect("splits");
+    area.clear_derived_data();
+    assert_eq!(
+        union_box(area.split_to_convex(&f.ctx()).expect("splits")),
+        bx(100, 200, 120, 220)
+    );
+}
+
+#[test]
+fn the_board_outline_keepout_pieces_are_memoised_and_dropped_by_every_transform() {
+    // `BoardOutline.tileShapeCount` (BoardOutline.java:51-66) and
+    // `ShapeSearchTree.calculateTreeShapes(BoardOutline)` (ShapeSearchTree.java:946) both split
+    // the keepout area, the latter once per layer, so the division must not repeat. The four
+    // transforms rewrite `keepoutArea` in place (BoardOutline.java:112-155), so the pieces cut
+    // from it have to go.
+    let f = Fixture::new();
+    let mut outline = BoardOutline::new(
+        ItemHeader::new(ItemId(1), Vec::new(), 1, 0, FixedState::SystemFixed),
+        vec![PolylineShapeRef::Tile(TileShape::Box(bx(
+            100, 100, 300, 300,
+        )))],
+    );
+    let first = outline.keepout_convex_pieces(&f.ctx()).expect("splits");
+    let piece_count = first.len();
+    let first_ptr = first.as_ptr();
+    assert_eq!(
+        outline
+            .keepout_convex_pieces(&f.ctx())
+            .expect("splits")
+            .as_ptr(),
+        first_ptr,
+        "the second call must not re-divide the keepout area"
+    );
+
+    let before = union_box(first);
+    outline.translate_by(&Vector::new(1000, 0));
+    let moved = outline.keepout_convex_pieces(&f.ctx()).expect("splits");
+    assert_eq!(moved.len(), piece_count);
+    assert_eq!(
+        union_box(moved),
+        bx(
+            before.ll.x + 1000,
+            before.ll.y,
+            before.ur.x + 1000,
+            before.ur.y
+        ),
+        "translate_by must drop the keepout-pieces memo"
+    );
+}
+
+fn union_box(tiles: &[TileShape]) -> IntBox {
+    tiles
+        .iter()
+        .fold(IntBox::EMPTY, |acc, t| acc.union(&t.bounding_box()))
 }

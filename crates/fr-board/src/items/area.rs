@@ -92,6 +92,22 @@ pub struct ObstacleAreaData {
     side_changed: bool,
     /// Java `private transient Area precalculatedAbsoluteArea` (ObstacleArea.java:38).
     absolute_area: OnceLock<Area>,
+    /// The convex division of [`Self::get_area`], memoised.
+    ///
+    /// Java memoises it one level down, in `PolylineArea.precalculatedConvexPieces`
+    /// (PolylineArea.java:31) / `PolygonShape.precalculatedConvexPieces`
+    /// (PolygonShape.java:17), so `splitToConvex` costs a division once per `Area` object and
+    /// every later call is a field read. `fr-geometry` deliberately does *not* memoise there
+    /// (the division draws from a `java.util.Random`, and Plan 1 made that generator per-call
+    /// so the result is reproducible under concurrency — quirk #30), which left
+    /// `tileShapeCount`/`getTileShape` loops re-dividing the area on every index. This lock
+    /// restores Java's amortised cost at the item level; it is filled from the same
+    /// [`Self::get_area`] the Java memo is derived from, so it holds exactly what Java's does.
+    ///
+    /// `Option` inside the lock is Java's `null` return from a failed division.
+    // Plan-1 obligation: "memo cache for convex pieces" (docs/plan-1-handoff.md, Plan 2 list;
+    // docs/java-quirks.md obligation register), discharged here per the Task 7 ruling.
+    convex_pieces: OnceLock<Option<Vec<TileShape>>>,
 }
 
 /// Compares the six real fields; the absolute-area memo is derived state (see the module doc).
@@ -126,6 +142,7 @@ impl ObstacleAreaData {
             rotation_in_degree,
             side_changed,
             absolute_area: OnceLock::new(),
+            convex_pieces: OnceLock::new(),
         }
     }
 
@@ -181,21 +198,27 @@ impl ObstacleAreaData {
 
     /// Port of `ObstacleArea.splitToConvex` (ObstacleArea.java:320-326). `None` is Java's
     /// `null`, which `Area.splitToConvex` answers when the division fails.
-    pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<Vec<TileShape>> {
-        self.get_area(ctx).split_to_convex()
+    ///
+    /// Memoised in [`Self::convex_pieces`], mirroring Java's `precalculatedConvexPieces`; the
+    /// borrow is what makes the memo worth having, so this returns a slice where Java returns
+    /// the array it cached.
+    pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
+        self.convex_pieces
+            .get_or_init(|| self.get_area(ctx).split_to_convex())
+            .as_deref()
     }
 
     /// Port of `ObstacleArea.tileShapeCount` (ObstacleArea.java:187-195): 0 when the division
     /// fails.
     pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
-        self.split_to_convex(ctx).map_or(0, |tiles| tiles.len())
+        self.split_to_convex(ctx).map_or(0, <[TileShape]>::len)
     }
 
     /// Port of `ObstacleArea.getTileShape(int)` (ObstacleArea.java:197-205), the override that
     /// bypasses the search tree and splits the area directly. Java's out-of-range warning path
     /// returns `null`.
     pub fn get_tile_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<TileShape> {
-        self.split_to_convex(ctx)?.into_iter().nth(index)
+        self.split_to_convex(ctx)?.get(index).cloned()
     }
 
     /// Port of `ObstacleArea.translateBy` (ObstacleArea.java:207-211), without the trailing
@@ -204,6 +227,7 @@ impl ObstacleAreaData {
     fn translate_by(&mut self, vector: &Vector) {
         self.translation = self.translation.add(vector);
         self.absolute_area.take();
+        self.convex_pieces.take();
     }
 
     /// Port of `ObstacleArea.turn90Degree` (ObstacleArea.java:213-225).
@@ -215,6 +239,7 @@ impl ObstacleAreaData {
             .turn_90_degree(factor, &Point::Int(*pole))
             .difference_by(&Point::ZERO);
         self.absolute_area.take();
+        self.convex_pieces.take();
     }
 
     /// Port of `ObstacleArea.rotateApprox` (ObstacleArea.java:227-244).
@@ -235,6 +260,7 @@ impl ObstacleAreaData {
             .rotate(angle_in_degree.to_radians(), pole);
         self.translation = Point::Int(new_translation.round()).difference_by(&Point::ZERO);
         self.absolute_area.take();
+        self.convex_pieces.take();
     }
 
     /// Port of `ObstacleArea.changePlacementSide` (ObstacleArea.java:246-255).
@@ -253,12 +279,14 @@ impl ObstacleAreaData {
             .mirror_vertical(&Point::Int(*pole))
             .difference_by(&Point::ZERO);
         self.absolute_area.take();
+        self.convex_pieces.take();
     }
 
     /// The `ObstacleArea` half of `ObstacleArea.clearDerivedData` (ObstacleArea.java:328-332):
     /// drop `precalculatedAbsoluteArea`. The `super.clearDerivedData()` half is the header's.
     fn clear_derived_data(&mut self) {
         self.absolute_area.take();
+        self.convex_pieces.take();
     }
 
     /// The geometry half of `ObstacleArea.copy` (ObstacleArea.java:100-118): a fresh placement
@@ -383,7 +411,7 @@ macro_rules! obstacle_area_impl {
             }
 
             /// Port of `ObstacleArea.splitToConvex` (ObstacleArea.java:320-326).
-            pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<Vec<TileShape>> {
+            pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
                 self.area.split_to_convex(ctx)
             }
 
@@ -894,6 +922,12 @@ impl ComponentOutline {
         self.absolute_area.take();
     }
 }
+
+// not ported: a convex-pieces memo on [`ComponentOutline`] — the Task 7 ruling names this class
+// alongside `ObstacleAreaData`, but nothing splits a component outline: `tileShapeCount` is
+// literally `return 0` (ComponentOutline.java:129-132) and `calculateTreeShapes` is
+// `return new TileShape[0]` (ComponentOutline.java:134-137), so a cache here would have no
+// reader in either language.
 
 #[cfg(test)]
 mod tests {

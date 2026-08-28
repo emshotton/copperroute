@@ -63,6 +63,18 @@ pub struct BoardOutline {
     /// the four transforms, which reset it to `null`. Kept so those five assignments have
     /// something to write.
     keepout_lines: Option<Vec<TileShape>>,
+    /// The convex division of [`Self::get_keepout_area`], memoised.
+    ///
+    /// No Java field: Java memoises one level down, in `PolylineArea.precalculatedConvexPieces`
+    /// (PolylineArea.java:31), and `keepoutArea` is a single long-lived `PolylineArea`, so
+    /// `getKeepoutArea().splitToConvex()` divides once per outline. `fr-geometry` does not
+    /// memoise there (quirk #30 made the divider's `Random` per-call), so this lock restores
+    /// Java's amortised cost — `tileShapeCount`, `shapeLayer` and `calculateTreeShapes` all
+    /// call it, the last once per layer. `Option` inside the lock is the failed division Java
+    /// returns as `null`.
+    // Plan-1 obligation: "memo cache for convex pieces" (docs/plan-1-handoff.md), discharged
+    // here per the Task 7 ruling.
+    keepout_convex_pieces: OnceLock<Option<Vec<TileShape>>>,
     /// Java `private boolean keepoutOutsideOutline` (BoardOutline.java:43); `false` until
     /// `generateKeepoutOutside(true)`.
     keepout_outside_outline: bool,
@@ -95,6 +107,7 @@ impl BoardOutline {
             shapes,
             keepout_area: OnceLock::new(),
             keepout_lines: None,
+            keepout_convex_pieces: OnceLock::new(),
             keepout_outside_outline: false,
         }
     }
@@ -138,8 +151,7 @@ impl BoardOutline {
         let layer_count = ctx.rules.layer_structure().count();
         if self.keepout_outside_outline {
             // BoardOutline.java:54-61: a failed division answers 0, not `tiles * layers`.
-            self.get_keepout_area(ctx)
-                .split_to_convex()
+            self.keepout_convex_pieces(ctx)
                 .map_or(0, |tiles| tiles.len() * layer_count)
         } else {
             self.line_count() * layer_count
@@ -180,6 +192,7 @@ impl BoardOutline {
             *keepout_area = keepout_area.translate_by(vector);
         }
         self.keepout_lines = None;
+        self.keepout_convex_pieces.take();
     }
 
     /// Port of `BoardOutline.turn90Degree` (BoardOutline.java:123-132). See
@@ -189,6 +202,7 @@ impl BoardOutline {
             *keepout_area = keepout_area.turn_90_degree(factor, pole);
         }
         self.keepout_lines = None;
+        self.keepout_convex_pieces.take();
     }
 
     /// Port of `BoardOutline.rotateApprox` (BoardOutline.java:134-144). See
@@ -200,6 +214,7 @@ impl BoardOutline {
             *keepout_area = keepout_area.rotate_approx(angle, pole);
         }
         self.keepout_lines = None;
+        self.keepout_convex_pieces.take();
     }
 
     /// Port of `BoardOutline.changePlacementSide` (BoardOutline.java:146-155). See
@@ -209,6 +224,7 @@ impl BoardOutline {
             *keepout_area = keepout_area.mirror_vertical(pole);
         }
         self.keepout_lines = None;
+        self.keepout_convex_pieces.take();
     }
 
     /// Port of `BoardOutline.shapeCount` (BoardOutline.java:157-160).
@@ -228,6 +244,16 @@ impl BoardOutline {
     /// holes of the returned area.
     ///
     /// `ctx.bounding_box` replaces Java's `board.boundingBox` (BoardOutline.java:186).
+    /// The convex division of [`Self::get_keepout_area`], memoised (see
+    /// [`Self::keepout_convex_pieces`]). Java writes
+    /// `getKeepoutArea().splitToConvex()` at each of its three call sites
+    /// (BoardOutline.java:54, ShapeSearchTree.java:946) and relies on `PolylineArea`'s own memo.
+    pub fn keepout_convex_pieces(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
+        self.keepout_convex_pieces
+            .get_or_init(|| self.get_keepout_area(ctx).split_to_convex())
+            .as_deref()
+    }
+
     pub fn get_keepout_area(&self, ctx: &ItemCtx<'_>) -> &Area {
         self.keepout_area.get_or_init(|| {
             Area::Polyline(PolylineArea::new(
