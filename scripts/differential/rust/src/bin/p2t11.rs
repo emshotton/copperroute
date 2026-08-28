@@ -27,6 +27,7 @@ fn main() {
         2 => dump_checks(&mut board),
         3 => dump_changed_area(&mut board),
         4 => dump_compensated(&mut board),
+        5 => dump_shape_trace_entries(),
         _ => panic!("mode {mode}"),
     }
 }
@@ -658,6 +659,192 @@ fn dump_checks(board: &mut Board) {
         "containsTraceTails([4,5], [])={}",
         board.contains_trace_tails([ItemId(4), ItemId(5)], &[])
     );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mode 5: ShapeTraceEntries, ShapeEntrySide and ShapeAndEntrySide
+// ---------------------------------------------------------------------------------------------
+
+/// A two-layer board with three traces crossing a square at the origin: one of the own net (1)
+/// and two of a foreign net (2).
+fn build_shove_board() -> Board {
+    let ls = layers();
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(layers(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        IntBox::from_coords(-10_000, -10_000, 10_000, 10_000),
+        rules,
+        BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+    board.rules.nets.add("N2", 1, false, default_class);
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(-3000, 0), Point::new(3000, 0)]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(0, -3000), Point::new(0, 3000)]),
+        0,
+        30,
+        vec![2],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(-3000, 200), Point::new(3000, 200)]),
+        0,
+        30,
+        vec![2],
+        1,
+        FixedState::Unfixed,
+    );
+    board
+}
+
+fn dump_shape_trace_entries() {
+    let mut board = build_shove_board();
+    println!("mode=5");
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let own_net_nos = vec![1];
+    println!("items={}", ids(board.items_in_board_order()));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &own_net_nos, 1);
+    println!("overlaps={}", ids(overlaps.clone()));
+
+    println!("--- ShapeEntrySide");
+    let crossing_polyline = match board.get_item(ItemId(3)).expect("the crossing trace") {
+        Item::Trace(t) => t.polyline().clone(),
+        _ => unreachable!(),
+    };
+    let from_polyline = ShapeEntrySide::from_polyline(&crossing_polyline, 1, &shape);
+    println!(
+        "fromPolyline no={} is={}",
+        from_polyline.no,
+        fp(from_polyline.border_intersection.as_ref())
+    );
+    let from_point = ShapeEntrySide::from_point(&Point::new(-2000, 0), &shape);
+    println!(
+        "fromPoint no={} is={}",
+        from_point.no,
+        fp(from_point.border_intersection.as_ref())
+    );
+    let seg = fr_geometry::LineSegment::from_polyline(&crossing_polyline, 1).expect("a segment");
+    for (label, to_the_left) in [("left", true), ("right", false)] {
+        let side = ShapeEntrySide::from_line_segment(&seg, &shape, to_the_left);
+        println!(
+            "fromSegment({label}) no={} is={}",
+            side.no,
+            fp(side.border_intersection.as_ref())
+        );
+    }
+    println!(
+        "NOT_CALCULATED no={} is={}",
+        ShapeEntrySide::NOT_CALCULATED.no,
+        fp(ShapeEntrySide::NOT_CALCULATED.border_intersection.as_ref())
+    );
+
+    println!("--- ShapeAndEntrySide");
+    for orthogonal in [false, true] {
+        for in_shove_check in [false, true] {
+            let sae = ShapeAndEntrySide::new(&board, ItemId(3), 0, orthogonal, in_shove_check)
+                .expect("the crossing trace has a tree shape at index 0");
+            println!(
+                "orthogonal={orthogonal} inShoveCheck={in_shove_check} shape={} bbox={} fromSide={}",
+                shape_class(&sae.shape),
+                boxs(&sae.shape.bounding_box()),
+                match sae.from_side {
+                    None => "null".to_string(),
+                    Some(side) =>
+                        format!("{}@{}", side.no, fp(side.border_intersection.as_ref())),
+                }
+            );
+        }
+    }
+
+    println!("--- storeItems");
+    let mut entries = ShapeTraceEntries::new(shape.clone(), 0, own_net_nos.clone(), 1, None);
+    let stored = entries.store_items(&board, &overlaps, false, false);
+    println!(
+        "stored={stored} stackDepth={} substituteTraceCount={} traceTailsInShape={} foundObstacle={} shoveVias={}",
+        entries.stack_depth(),
+        entries.substitute_trace_count(),
+        entries.trace_tails_in_shape(),
+        opt_id(entries.get_found_obstacle()),
+        entries.shove_via_list.len()
+    );
+    while let Some(piece) = entries.next_substitute_trace_piece(&mut board) {
+        let corners: Vec<String> = (0..piece.corner_count())
+            .map(|i| fp(piece.polyline().corner_approx(i).as_ref()))
+            .collect();
+        println!(
+            "piece net={} halfWidth={} corners= {}",
+            net_array(&piece.hdr.net_nos),
+            piece.get_half_width(),
+            corners.join(" ")
+        );
+    }
+    println!(
+        "after: substituteTraceCount={}",
+        entries.substitute_trace_count()
+    );
+
+    println!("--- cutoutTrace");
+    let mut board = build_shove_board();
+    ShapeTraceEntries::cutout_trace(&mut board, ItemId(3), &shape, 1);
+    println!("items={}", ids(board.items_in_board_order()));
+    for id in board.items_in_board_order() {
+        if let Some(item @ Item::Trace(t)) = board.get_item(id) {
+            println!(
+                "trace {} corners={} onBoard={}",
+                id,
+                corner_list(t),
+                item.is_on_the_board()
+            );
+        }
+    }
+
+    println!("--- cutoutTraces");
+    let mut board = build_shove_board();
+    let entries2 = ShapeTraceEntries::new(shape.clone(), 0, own_net_nos, 1, None);
+    let all = board.items_in_board_order();
+    entries2.cutout_traces(&mut board, &all);
+    println!("items={}", ids(board.items_in_board_order()));
+    for id in board.items_in_board_order() {
+        if let Some(Item::Trace(t)) = board.get_item(id) {
+            println!("trace {} corners={}", id, corner_list(t));
+        }
+    }
+}
+
+fn corner_list(t: &PolylineTrace) -> String {
+    (0..t.corner_count())
+        .map(|i| fp(t.polyline().corner_approx(i).as_ref()))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn shape_class(shape: &TileShape) -> &'static str {
+    match shape {
+        TileShape::Box(_) => "IntBox",
+        TileShape::Octagon(_) => "IntOctagon",
+        TileShape::Simplex(_) => "Simplex",
+    }
+}
+
+fn fp(p: Option<&fr_geometry::FloatPoint>) -> String {
+    match p {
+        None => "null".to_string(),
+        Some(p) => format!("({:.4},{:.4})", p.x, p.y),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

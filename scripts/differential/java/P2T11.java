@@ -10,6 +10,9 @@ import app.freerouting.board.model.items.Via;
 import app.freerouting.board.model.structure.*;
 import app.freerouting.board.searchtree.SearchTreeObject;
 import app.freerouting.board.searchtree.ShapeSearchTree;
+import app.freerouting.board.searchtree.ShapeTraceEntries;
+import app.freerouting.board.model.structure.ShapeAndEntrySide;
+import app.freerouting.board.model.structure.ShapeEntrySide;
 import app.freerouting.board.state.Communication;
 import app.freerouting.board.trace.PolylineTrace;
 import app.freerouting.core.library.Package;
@@ -44,6 +47,7 @@ public class P2T11 {
       case 2 -> dumpChecks();
       case 3 -> dumpChangedArea();
       case 4 -> dumpCompensated();
+      case 5 -> dumpShapeTraceEntries();
       default -> throw new IllegalArgumentException("mode " + mode);
     }
   }
@@ -477,6 +481,162 @@ public class P2T11 {
     System.out.println(
         "containsTraceTails([4,5], [])="
             + board.containsTraceTails(List.of(board.getItem(4), board.getItem(5)), new int[0]));
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Mode 5: ShapeTraceEntries, ShapeEntrySide and ShapeAndEntrySide
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * A two-layer board with three traces crossing a square at the origin: one of the own net
+   * (1) and two of a foreign net (2), so `storeItems` has something to sort and
+   * `nextSubstituteTracePiece` something to build.
+   */
+  static void buildShoveBoard() {
+    Layer[] layers = {new Layer("front", true), new Layer("back", true)};
+    LayerStructure ls = new LayerStructure(layers);
+    ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
+    BoardRules rules = new BoardRules(ls, cm);
+    rules.createDefaultNetClass();
+    Communication comm = new Communication();
+    board =
+        new RoutingBoard(
+            new IntBox(-10000, -10000, 10000, 10000),
+            ls,
+            new PolylineShape[0],
+            0,
+            rules,
+            comm);
+    board.library.padstacks = new app.freerouting.core.library.Padstacks(ls);
+    board.library.packages = new app.freerouting.core.library.Packages(board.library.padstacks);
+    rules.nets.add("N1", 1, false);
+    rules.nets.add("N2", 1, false);
+    // 2: the own-net trace, straight through the square.
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Point[] {new IntPoint(-3000, 0), new IntPoint(3000, 0)}),
+        0,
+        30,
+        new int[] {1},
+        1,
+        FixedState.UNFIXED);
+    // 3, 4: two foreign-net traces crossing it.
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Point[] {new IntPoint(0, -3000), new IntPoint(0, 3000)}),
+        0,
+        30,
+        new int[] {2},
+        1,
+        FixedState.UNFIXED);
+    board.insertTraceWithoutCleaning(
+        new Polyline(new Point[] {new IntPoint(-3000, 200), new IntPoint(3000, 200)}),
+        0,
+        30,
+        new int[] {2},
+        1,
+        FixedState.UNFIXED);
+  }
+
+  static void dumpShapeTraceEntries() {
+    buildShoveBoard();
+    System.out.println("mode=5");
+    TileShape shape = new IntBox(-500, -500, 500, 500);
+    int[] ownNetNos = {1};
+    System.out.println("items=" + ids(board.getItems()));
+    Set<Item> overlaps = board.overlappingItemsWithClearance(shape, 0, ownNetNos, 1);
+    System.out.println("overlaps=" + ids(overlaps));
+
+    System.out.println("--- ShapeEntrySide");
+    PolylineTrace crossing = (PolylineTrace) board.getItem(3);
+    ShapeEntrySide fromPolyline = new ShapeEntrySide(crossing.polyline(), 1, shape);
+    System.out.println("fromPolyline no=" + fromPolyline.no + " is=" + fp(fromPolyline.borderIntersection));
+    ShapeEntrySide fromPoint = new ShapeEntrySide(new IntPoint(-2000, 0), shape);
+    System.out.println("fromPoint no=" + fromPoint.no + " is=" + fp(fromPoint.borderIntersection));
+    LineSegment seg = new LineSegment(crossing.polyline(), 1);
+    ShapeEntrySide left = new ShapeEntrySide(seg, shape, true);
+    System.out.println("fromSegment(left) no=" + left.no + " is=" + fp(left.borderIntersection));
+    ShapeEntrySide right = new ShapeEntrySide(seg, shape, false);
+    System.out.println("fromSegment(right) no=" + right.no + " is=" + fp(right.borderIntersection));
+    System.out.println(
+        "NOT_CALCULATED no=" + ShapeEntrySide.NOT_CALCULATED.no
+            + " is=" + fp(ShapeEntrySide.NOT_CALCULATED.borderIntersection));
+
+    System.out.println("--- ShapeAndEntrySide");
+    for (boolean orthogonal : new boolean[] {false, true}) {
+      for (boolean inShoveCheck : new boolean[] {false, true}) {
+        ShapeAndEntrySide sae = new ShapeAndEntrySide(crossing, 0, orthogonal, inShoveCheck);
+        System.out.println(
+            "orthogonal=" + orthogonal
+                + " inShoveCheck=" + inShoveCheck
+                + " shape=" + sae.shape.getClass().getSimpleName()
+                + " bbox=" + box(sae.shape.boundingBox())
+                + " fromSide=" + (sae.fromSide == null
+                    ? "null"
+                    : sae.fromSide.no + "@" + fp(sae.fromSide.borderIntersection)));
+      }
+    }
+
+    System.out.println("--- storeItems");
+    ShapeTraceEntries entries =
+        new ShapeTraceEntries(shape, 0, ownNetNos, 1, null, board);
+    boolean stored = entries.storeItems(overlaps, false, false);
+    System.out.println(
+        "stored=" + stored
+            + " stackDepth=" + entries.stackDepth()
+            + " substituteTraceCount=" + entries.substituteTraceCount()
+            + " traceTailsInShape=" + entries.traceTailsInShape()
+            + " foundObstacle=" + itemId(entries.getFoundObstacle())
+            + " shoveVias=" + entries.shoveViaList.size());
+    for (; ; ) {
+      PolylineTrace piece = entries.nextSubstituteTracePiece();
+      if (piece == null) {
+        break;
+      }
+      StringBuilder sb = new StringBuilder("piece net=" + Arrays.toString(piece.netNumbers)
+          + " halfWidth=" + piece.getHalfWidth() + " corners=");
+      for (int i = 0; i < piece.cornerCount(); i++) {
+        sb.append(' ').append(fp(piece.polyline().cornerApprox(i)));
+      }
+      System.out.println(sb);
+    }
+    System.out.println("after: substituteTraceCount=" + entries.substituteTraceCount());
+
+    System.out.println("--- cutoutTrace");
+    buildShoveBoard();
+    ShapeTraceEntries.cutoutTrace((PolylineTrace) board.getItem(3), shape, 1);
+    System.out.println("items=" + ids(board.getItems()));
+    for (Item it : board.getItems()) {
+      if (it instanceof PolylineTrace t) {
+        System.out.println(
+            "trace " + it.getId() + " corners=" + cornerList(t) + " onBoard=" + it.isOnTheBoard());
+      }
+    }
+
+    System.out.println("--- cutoutTraces");
+    buildShoveBoard();
+    ShapeTraceEntries entries2 =
+        new ShapeTraceEntries(shape, 0, ownNetNos, 1, null, board);
+    entries2.cutoutTraces(new java.util.ArrayList<>(board.getItems()));
+    System.out.println("items=" + ids(board.getItems()));
+    for (Item it : board.getItems()) {
+      if (it instanceof PolylineTrace t) {
+        System.out.println("trace " + it.getId() + " corners=" + cornerList(t));
+      }
+    }
+  }
+
+  static String cornerList(PolylineTrace t) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < t.cornerCount(); i++) {
+      sb.append(' ').append(fp(t.polyline().cornerApprox(i)));
+    }
+    return sb.toString().trim();
+  }
+
+  static String fp(FloatPoint p) {
+    if (p == null) {
+      return "null";
+    }
+    return String.format(Locale.ROOT, "(%.4f,%.4f)", p.x, p.y);
   }
 
   static void seg(

@@ -1284,6 +1284,215 @@ fn check_polyline_trace_uses_the_compensated_tree_shapes() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// ShapeTraceEntries, ShapeEntrySide and ShapeAndEntrySide (`P2T11.java` mode 5)
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn shape_entry_side_finds_the_border_a_polyline_enters_through() {
+    // `P2T11.java` mode 5's `--- ShapeEntrySide` block. The square is
+    // (-500,-500)..(500,500) and the crossing trace runs (0,-3000) -> (0,3000).
+    let board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let polyline = match board.get_item(ItemId(3)).expect("the crossing trace") {
+        Item::Trace(t) => t.polyline().clone(),
+        other => panic!("not a trace: {other}"),
+    };
+    // It enters through side 0, the bottom edge, at (0, -500).
+    let from_polyline = ShapeEntrySide::from_polyline(&polyline, 1, &shape);
+    assert_eq!(from_polyline.no, 0);
+    assert_eq!(
+        from_polyline.border_intersection,
+        Some(fr_geometry::FloatPoint::new(0.0, -500.0))
+    );
+    // ShapeEntrySide.java:68-75: the nearest border side to a point outside the shape.
+    let from_point = ShapeEntrySide::from_point(&Point::new(-2000, 0), &shape);
+    assert_eq!(from_point.no, 3);
+    assert_eq!(
+        from_point.border_intersection,
+        Some(fr_geometry::FloatPoint::new(-500.0, 0.0))
+    );
+    // ShapeEntrySide.java:81-154: `frontSideNo` is 0 (the bottom edge is nearer the segment's
+    // start), and both shove directions land on side 2 for a four-sided shape — `(0 + 2) % 4`
+    // and `(0 + 4 - 2) % 4` are the same.
+    let segment = fr_geometry::LineSegment::from_polyline(&polyline, 1).expect("a segment");
+    for to_the_left in [true, false] {
+        let side = ShapeEntrySide::from_line_segment(&segment, &shape, to_the_left);
+        assert_eq!(side.no, 2);
+        assert_eq!(
+            side.border_intersection,
+            Some(fr_geometry::FloatPoint::new(0.0, 500.0))
+        );
+    }
+    // ShapeEntrySide.java:16.
+    assert_eq!(ShapeEntrySide::NOT_CALCULATED.no, -1);
+    assert_eq!(ShapeEntrySide::NOT_CALCULATED.border_intersection, None);
+}
+
+#[test]
+fn shape_and_entry_side_takes_the_bounding_box_in_orthogonal_mode() {
+    // `P2T11.java` mode 5's `--- ShapeAndEntrySide` block, all four flag combinations.
+    let board = board_builder::shove_board();
+    let sae = |orthogonal, in_shove_check| {
+        ShapeAndEntrySide::new(&board, ItemId(3), 0, orthogonal, in_shove_check)
+            .expect("the crossing trace has a tree shape at index 0")
+    };
+    // ShapeAndEntrySide.java:35-36: the non-orthogonal branch converts to a `Simplex` and tries
+    // to cut the dog ears off. The cut lines *are* found, but `borderLineIndex` on a box or an
+    // octagon is a Java stub that returns -1 (quirk #7), so `fromSide` stays null there and the
+    // `!inShoveCheck` fallback (:71-75) computes it from the polyline instead.
+    for in_shove_check in [false, true] {
+        let s = sae(false, in_shove_check);
+        assert!(matches!(s.shape, TileShape::Simplex(_)));
+        assert_eq!(
+            s.shape.bounding_box(),
+            IntBox::from_coords(-30, -3000, 30, 3000)
+        );
+        // The polyline's own line 0 is parallel to the shape's side, so `intersectionApprox`
+        // answers Java's parallel sentinel — reproduced by `fr-geometry`.
+        let side = s.from_side.expect("the fallback always produces one");
+        assert_eq!(side.no, 0);
+        assert_eq!(
+            side.border_intersection,
+            Some(fr_geometry::FloatPoint::new(
+                f64::from(i32::MAX),
+                f64::from(i32::MAX)
+            ))
+        );
+    }
+    // ShapeAndEntrySide.java:32-33: orthogonal mode takes the bounding box and skips the cutting
+    // entirely, so `fromSide` comes only from the `!inShoveCheck` fallback.
+    let s = sae(true, false);
+    assert!(matches!(s.shape, TileShape::Box(_)));
+    assert_eq!(
+        s.shape.bounding_box(),
+        IntBox::from_coords(-30, -3030, 30, 3030)
+    );
+    let side = s.from_side.expect("the fallback ran");
+    assert_eq!(side.no, 0);
+    assert_eq!(
+        side.border_intersection,
+        Some(fr_geometry::FloatPoint::new(0.0, -3030.0))
+    );
+    // ShapeAndEntrySide.java:71-72: in a shove *check* the fallback is deliberately skipped.
+    assert_eq!(sae(true, true).from_side, None);
+}
+
+#[test]
+fn store_items_sorts_the_crossing_traces_and_builds_a_substitute_piece() {
+    // `P2T11.java` mode 5's `--- storeItems` block.
+    let mut board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    assert_eq!(nums(overlaps.clone()), vec![4, 3]);
+
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(entries.store_items(&board, &overlaps, false, false));
+    assert_eq!(entries.stack_depth(), 1);
+    assert_eq!(entries.substitute_trace_count(), 1);
+    assert!(!entries.trace_tails_in_shape());
+    // ShapeTraceEntries.java:440: the last trace stored becomes the "found obstacle" even on
+    // success.
+    assert_eq!(entries.get_found_obstacle(), Some(ItemId(3)));
+    assert!(entries.shove_via_list.is_empty());
+
+    let piece = entries
+        .next_substitute_trace_piece(&mut board)
+        .expect("one piece");
+    assert_eq!(piece.hdr.net_nos, vec![2]);
+    assert_eq!(piece.get_half_width(), 30);
+    let corners: Vec<fr_geometry::FloatPoint> = (0..piece.corner_count())
+        .map(|i| piece.polyline().corner_approx(i).expect("a corner"))
+        .collect();
+    assert_eq!(
+        corners,
+        vec![
+            fr_geometry::FloatPoint::new(0.0, -747.0),
+            fr_geometry::FloatPoint::new(747.0, -747.0),
+            fr_geometry::FloatPoint::new(747.0, 747.0),
+            fr_geometry::FloatPoint::new(-747.0, 747.0),
+            fr_geometry::FloatPoint::new(-747.0, 200.0),
+        ]
+    );
+    assert!(entries.next_substitute_trace_piece(&mut board).is_none());
+    assert_eq!(entries.substitute_trace_count(), 0);
+}
+
+#[test]
+fn cutout_trace_replaces_the_trace_with_the_two_pieces_outside_the_shape() {
+    // `P2T11.java` mode 5's `--- cutoutTrace` block: the fast path
+    // (ShapeTraceEntries.java:91-94) hands the old leaves to the two new pieces.
+    let mut board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    ShapeTraceEntries::cutout_trace(&mut board, ItemId(3), &shape, 1);
+    assert_eq!(nums(board.items_in_board_order()), vec![6, 5, 4, 2, 1]);
+    let corners = |id: u32| match board.get_item(ItemId(id)).expect("a trace") {
+        Item::Trace(t) => (t.first_corner(), t.last_corner()),
+        other => panic!("not a trace: {other}"),
+    };
+    assert_eq!(
+        corners(5),
+        (Some(Point::new(0, -3000)), Some(Point::new(0, -747)))
+    );
+    assert_eq!(
+        corners(6),
+        (Some(Point::new(0, 747)), Some(Point::new(0, 3000)))
+    );
+    for id in [5u32, 6] {
+        assert!(
+            board
+                .get_item(ItemId(id))
+                .expect("a piece")
+                .is_on_the_board()
+        );
+    }
+    // The two pieces are indexed: a probe on either one finds it.
+    assert_eq!(
+        descending(board.pick_items(&Point::new(0, 2000), Some(0))),
+        vec![6]
+    );
+}
+
+#[test]
+fn cutout_traces_skips_the_own_net_and_cuts_the_rest_in_board_order() {
+    // `P2T11.java` mode 5's `--- cutoutTraces` block: trace 2 is on the own net and survives
+    // untouched (ShapeTraceEntries.java:308), traces 4 then 3 are cut, in `board.itemList`
+    // order.
+    let mut board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    let all = board.items_in_board_order();
+    entries.cutout_traces(&mut board, &all);
+    assert_eq!(nums(board.items_in_board_order()), vec![8, 7, 6, 5, 2, 1]);
+    let corners = |id: u32| match board.get_item(ItemId(id)).expect("a trace") {
+        Item::Trace(t) => (t.first_corner(), t.last_corner()),
+        other => panic!("not a trace: {other}"),
+    };
+    // 5 and 6 came from trace 4 (the horizontal foreign-net trace at y = 200).
+    assert_eq!(
+        corners(5),
+        (Some(Point::new(-3000, 200)), Some(Point::new(-747, 200)))
+    );
+    assert_eq!(
+        corners(6),
+        (Some(Point::new(747, 200)), Some(Point::new(3000, 200)))
+    );
+    // 7 and 8 came from trace 3 (the vertical one).
+    assert_eq!(
+        corners(7),
+        (Some(Point::new(0, -3000)), Some(Point::new(0, -747)))
+    );
+    assert_eq!(
+        corners(8),
+        (Some(Point::new(0, 747)), Some(Point::new(0, 3000)))
+    );
+    // The own-net trace is untouched.
+    assert_eq!(
+        corners(2),
+        (Some(Point::new(-3000, 0)), Some(Point::new(3000, 0)))
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
 // The ported Java tests
 // ---------------------------------------------------------------------------------------------
 

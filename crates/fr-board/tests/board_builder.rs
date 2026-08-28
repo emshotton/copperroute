@@ -912,6 +912,43 @@ fn p2t11_board_with_host_cad(host_cad: bool) -> Board {
     board
 }
 
+/// The board `P2T11.java` mode 5 builds for `ShapeTraceEntries`: two layers, no components, and
+/// three traces crossing a square at the origin — item 2 on the own net (1), items 3 and 4 on a
+/// foreign net (2).
+pub fn shove_board() -> Board {
+    let ls = layers();
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(layers(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+    board.rules.nets.add("N2", 1, false, default_class);
+    for (corners, net) in [
+        ([(-3000, 0), (3000, 0)], 1),
+        ([(0, -3000), (0, 3000)], 2),
+        ([(-3000, 200), (3000, 200)], 2),
+    ] {
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&corners.map(|(x, y)| Point::new(x, y))),
+            0,
+            30,
+            vec![net],
+            1,
+            FixedState::Unfixed,
+        );
+    }
+    board
+}
+
 /// A set of item ids in Java's `TreeSet<Item>` order — **descending** id (quirk #44) — as the
 /// bare numbers, so a test can transcribe `P2T11.java`'s output verbatim.
 pub fn descending(set: std::collections::BTreeSet<ItemId>) -> Vec<u32> {

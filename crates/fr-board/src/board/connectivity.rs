@@ -640,11 +640,13 @@ impl Board {
             let Some(mut prev_contact_point) = self.normal_contact_point(id, start_contact) else {
                 continue;
             };
-            let Some(mut prev_contact_layer) = self.first_common_layer(id, start_contact) else {
-                // Java stores `-1` here and compares it below; a `-1` never equals a real layer,
-                // so the first `tmpContactLayer >= 0` candidate always looks "new".
-                continue;
-            };
+            // Item.java:710. Java stores `-1` when there is no common layer and compares that
+            // below, where it never equals a real layer — so the port keeps the signed value
+            // rather than skipping the contact. (Unreachable in practice: every non-null
+            // `normalContactPoint` above already required a shared layer.)
+            let mut prev_contact_layer: i32 = self
+                .first_common_layer(id, start_contact)
+                .map_or(-1, |layer| layer as i32);
             // Item.java:711-719: for a trace, only continue if the start contact is the *only*
             // contact at that point.
             if item.is_trace() {
@@ -676,13 +678,15 @@ impl Board {
                 }
                 result.insert(current_id);
                 // Item.java:738-770.
-                let mut next_contact: Option<(ItemId, Point, usize)> = None;
+                let mut next_contact: Option<(ItemId, Point, i32)> = None;
                 let mut fork_found = false;
                 for tmp_contact in self.normal_contacts(current_id) {
+                    // Item.java:744-746: `tmpContactLayer >= 0` is the guard, i.e. `Some`.
                     let Some(tmp_contact_layer) = self.first_common_layer(current_id, tmp_contact)
                     else {
                         continue;
                     };
+                    let tmp_contact_layer = tmp_contact_layer as i32;
                     let Some(tmp_contact_point) =
                         self.normal_contact_point(current_id, tmp_contact)
                     else {

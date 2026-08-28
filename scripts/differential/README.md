@@ -219,6 +219,7 @@ Verified at HEAD, default smoke-run arguments, JDK 23:
 | `p2t11` (mode 2) | 27 | 0 | exact match (`checkTraceSegment` and the check queries) |
 | `p2t11` (mode 3) | 39 | 0 | exact match (changed area, conduction latch, `moveBy`, net queries) |
 | `p2t11` (mode 4) | 20 | 0 | exact match (host-CAD section width, clearance compensation, 90-degree checks) |
+| `p2t11` (mode 5) | 31 | 0 | exact match (`ShapeTraceEntries`, `ShapeEntrySide`, `ShapeAndEntrySide`) |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -283,6 +284,15 @@ The four modes cover:
 * **3** — the `ChangedArea` lifecycle, `changeConductionIsObstacle`'s latch
   (quirk #50), `unfillConductionAreas`, `moveBy`, `changeClearanceClassIndex`,
   `makeConductive`, `generateKeepoutOutside` and the five `Net` board queries.
+
+* **5** — the shove-support classes Plan 7 needs ready-made: all four
+  `ShapeEntrySide` constructors, `ShapeAndEntrySide` in every combination of
+  `orthogonal`/`inShoveCheck` (which is where quirk #7's `borderLineIndex`
+  stub is visible — the cut lines are found, the index is not, so `fromSide`
+  falls through to the polyline branch and picks up `intersectionApprox`'s
+  parallel sentinel), and `ShapeTraceEntries.storeItems` /
+  `nextSubstituteTracePiece` / `cutoutTrace` / `cutoutTraces` over three traces
+  crossing one square.
 
 Two Java findings came out of it, both now in `docs/java-quirks.md`:
 `Item.getAllNetNames` joins `Net::toString` (`"Net #1 (N1)"`), not the bare
