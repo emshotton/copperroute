@@ -29,12 +29,20 @@ use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 //
 // The remaining members of the Java class, each with the task that owns it:
 //
-// added in Task 7: DesignRulesChecker.generateReport (DesignRulesChecker.java:210-540) — the KiCad DRC report DTO.
+// The report layer — `generateReport` and its five private helpers — lives in [`crate::report`]
+// rather than here, because it is 40 % `io/kicad` DTO construction and Java's own split puts the
+// DTOs in another package. `impl DesignRulesChecker` in `report/build.rs` is what makes it a
+// method of this type all the same.
+//
 // added in Task 8: DesignRulesChecker.generateReportJson (DesignRulesChecker.java:817-820) — `generateReport` through the Gson-compatible writer.
 #[derive(Debug)]
 pub struct DesignRulesChecker<'a> {
     /// Java `board` (DesignRulesChecker.java:31).
-    board: &'a mut Board,
+    ///
+    /// `pub(crate)` rather than private: [`crate::report::build`] holds this type's
+    /// `generate_report` (see the note above the struct) and needs the same field access Java's
+    /// `generateReport` has, which in Java is free because the method sits in the class.
+    pub(crate) board: &'a mut Board,
     /// Java `maxConnections` (DesignRulesChecker.java:33): the number of connections a fully
     /// routed board would have, i.e. the denominator of the quality score
     /// (`BoardStatistics.java:270`, `connections.maximumCount`).

@@ -1,0 +1,7 @@
+schema https://schemas.kicad.org/drc.v1.json
+coordinateUnits mm
+kicadVersion N/A
+freeroutingVersion Freerouting 2.3.1-SNAPSHOT
+source empty_board.dsn
+qualityScore null
+counts violations=0 unconnectedItems=0 schematicParity=0

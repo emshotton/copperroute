@@ -35,13 +35,15 @@
 //! [`DesignRulesChecker::get_all_unconnected_items`]. Task 5 adds `AirLine`, `NetIncompletes`
 //! and the ratsnest; Task 6 adds [`DesignRulesChecker::calculate_all_incompletes`], the counters
 //! it feeds and [`BoardStatisticsClearanceViolations`];
-//! Tasks 7-8 add the KiCad DTOs, `generate_report` and `report_to_json`; Task 11 adds this
+//! Task 7 adds the four [`report`] DTOs and [`DesignRulesChecker::generate_report`]; Task 8 adds
+//! `report_to_json` and ruling 2's two key flavors; Task 11 adds this
 //! crate's `README.md` and the `// not ported:` roster at the foot of this file.
 
 pub mod airline;
 pub mod checker;
 pub mod error;
 pub mod net_incompletes;
+pub mod report;
 pub mod statistics;
 pub mod unconnected;
 
@@ -49,6 +51,10 @@ pub use airline::AirLine;
 pub use checker::DesignRulesChecker;
 pub use error::DrcError;
 pub use net_incompletes::NetIncompletes;
+pub use report::{
+    DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
+    KiCadDrcViolationItem,
+};
 pub use statistics::BoardStatisticsClearanceViolations;
 pub use unconnected::{UnconnectedItems, UnconnectedKind};
 
@@ -62,7 +68,29 @@ pub mod prelude {
     pub use crate::checker::DesignRulesChecker;
     pub use crate::error::DrcError;
     pub use crate::net_incompletes::NetIncompletes;
+    pub use crate::report::{
+        DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
+        KiCadDrcViolationItem,
+    };
     pub use crate::statistics::BoardStatisticsClearanceViolations;
     pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};
     pub use fr_board::ClearanceViolation;
 }
+
+// ---------------------------------------------------------------------------------------------
+// `io/kicad`: what this plan ports, and what it does not
+//
+// Plan 5 ports the four DRC report DTOs (`report/mod.rs`) and nothing else of the package. The
+// three remaining classes are the **KiCad board/session JSON** codec — the `.json` branch of
+// `Freerouting.initializeDrc` (`Freerouting.java:296-329`) and the board writer beside it — which
+// plan-5 ruling 13 puts in Plan 8 along with the rest of the `-drc` plumbing. They are listed by
+// method here so `scripts/audit-port.sh io/kicad crates/fr-drc/src '*.java'
+// scripts/audit-map/fr-drc.map` records the obligation instead of waiving it; Task 11 folds this
+// block into the crate's `not ported:` roster.
+//
+// added in Plan 8: KiCadJsonReader.readBoard (io/kicad/KiCadJsonReader.java) — the KiCad board JSON reader (1011 loc).
+// added in Plan 8: KiCadJsonReader.importSession (io/kicad/KiCadJsonReader.java) — the `.json` session branch of `Freerouting.initializeDrc` (Freerouting.java:296-329).
+// added in Plan 8: KiCadJsonReader.addPoint (io/kicad/KiCadJsonReader.java) — a helper of the above.
+// added in Plan 8: KiCadJsonReader.boundingBox (io/kicad/KiCadJsonReader.java) — a helper of the above.
+// added in Plan 8: KiCadJsonWriter.write (io/kicad/KiCadJsonWriter.java) — the KiCad board JSON writer (227 loc).
+// added in Plan 8: KiCadBoardJson.Point2D (io/kicad/KiCadBoardJson.java) — the DTO tree those two exchange.

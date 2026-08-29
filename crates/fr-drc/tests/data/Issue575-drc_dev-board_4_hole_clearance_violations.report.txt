@@ -1,0 +1,124 @@
+schema https://schemas.kicad.org/drc.v1.json
+coordinateUnits mm
+kicadVersion N/A
+freeroutingVersion Freerouting 2.3.1-SNAPSHOT
+source Issue575-drc_dev-board_4_hole_clearance_violations.dsn
+qualityScore null
+counts violations=10 unconnectedItems=4 schematicParity=0
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [GND] and Pin [GND] (expected: 0.0500 mm, actual: 0.0000 mm)
+I uuid=277 x=125.5 y=-49.31 desc=Pin [GND]
+I uuid=278 x=125.5 y=-49.31 desc=Pin [GND]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [GND] and Pin [GND] (expected: 0.0500 mm, actual: 0.0000 mm)
+I uuid=275 x=124.1 y=-52.11 desc=Pin [GND]
+I uuid=276 x=124.1 y=-52.11 desc=Pin [GND]
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=769 x=124.8 y=-52.0583 desc=Track [GND] on F.Cu, length 1.4000 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=768 x=124.614 y=-55.454550000000005 desc=Track [GND] on F.Cu, length 6.7925 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=767 x=126.5395 y=-67.3378 desc=Track [GND] on F.Cu, length 2.1710 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=759 x=131.525 y=-86.941 desc=Track [GND] on F.Cu, length 0.2180 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=739 x=127.088 y=-49.497949999999996 desc=Track [GND] on F.Cu, length 0.5317 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=404 x=132.99 y=-67.8 desc=Track [GPIO21] on F.Cu, length 0.7040 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=386 x=130.0815 y=-69.5 desc=Track [Net-(D2-A)] on F.Cu, length 1.7870 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=385 x=130.094 y=-67.8 desc=Track [Net-(D3-A)] on F.Cu, length 1.7880 mm
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [GND] and Pin [GND] (73 total items in net)
+I uuid=3 x=133.4 y=-86.325 desc=Pin [GND]
+I uuid=15 x=120.7 y=-86.225 desc=Pin [GND]
+I uuid=26 x=135.2 y=-92.18 desc=Pin [GND]
+I uuid=34 x=118.9 y=-92.18 desc=Pin [GND]
+I uuid=42 x=127.625 y=-67.8 desc=Pin [GND]
+I uuid=70 x=127.6 y=-71.2 desc=Pin [GND]
+I uuid=85 x=120.5 y=-69.7 desc=Pin [GND]
+I uuid=97 x=122.1 y=-69.7 desc=Pin [GND]
+I uuid=109 x=123.8 y=-69.7 desc=Pin [GND]
+I uuid=120 x=124.0 y=-87.05 desc=Pin [GND]
+I uuid=132 x=122.875 y=-87.63 desc=Pin [GND]
+I uuid=133 x=131.525 y=-87.63 desc=Pin [GND]
+I uuid=134 x=122.875 y=-91.8 desc=Pin [GND]
+I uuid=135 x=131.525 y=-91.8 desc=Pin [GND]
+I uuid=156 x=124.5 y=-80.45 desc=Pin [GND]
+I uuid=174 x=127.625 y=-66.2 desc=Pin [GND]
+I uuid=304 x=131.6 y=-78.825 desc=Pin [GND]
+I uuid=715 x=122.875 y=-86.92914999999999 desc=Trace [GND]
+I uuid=716 x=118.9 y=-91.72165 desc=Trace [GND]
+I uuid=717 x=122.875 y=-88.33085000000001 desc=Trace [GND]
+I uuid=718 x=122.875 y=-90.41585 desc=Trace [GND]
+I uuid=719 x=121.7875 y=-89.0317 desc=Trace [GND]
+I uuid=720 x=120.7 y=-89.2475 desc=Trace [GND]
+I uuid=721 x=119.8 y=-90.36330000000001 desc=Trace [GND]
+I uuid=722 x=120.7 y=-87.62835000000001 desc=Trace [GND]
+I uuid=723 x=121.3 y=-69.7 desc=Trace [GND]
+I uuid=725 x=135.2 y=-91.72165 desc=Trace [GND]
+I uuid=726 x=124.0 y=-86.61415 desc=Trace [GND]
+I uuid=728 x=133.4 y=-87.89415 desc=Trace [GND]
+I uuid=729 x=134.3 y=-90.36330000000001 desc=Trace [GND]
+I uuid=730 x=132.414 y=-86.2283 desc=Trace [GND]
+I uuid=731 x=133.3515 y=-86.27664999999999 desc=Trace [GND]
+I uuid=732 x=131.525 y=-89.715 desc=Trace [GND]
+I uuid=734 x=131.525 y=-86.92914999999999 desc=Trace [GND]
+I uuid=735 x=122.95 y=-69.7 desc=Trace [GND]
+I uuid=736 x=127.6185 y=-69.49375 desc=Trace [GND]
+I uuid=737 x=127.625 y=-68.64375 desc=Trace [GND]
+I uuid=746 x=124.15 y=-80.1 desc=Trace [GND]
+I uuid=747 x=123.8 y=-74.725 desc=Trace [GND]
+I uuid=748 x=123.4625 y=-86.17830000000001 desc=Trace [GND]
+I uuid=749 x=122.9 y=-86.2033 desc=Trace [GND]
+I uuid=756 x=127.2 y=-90.5483 desc=Trace [GND]
+I uuid=757 x=131.525 y=-91.17415 desc=Trace [GND]
+I uuid=758 x=122.875 y=-91.17415 desc=Trace [GND]
+I uuid=762 x=127.625 y=-67.0 desc=Trace [GND]
+I uuid=763 x=120.111 y=-69.3112 desc=Trace [GND]
+I uuid=764 x=119.722 y=-68.31445 desc=Trace [GND]
+I uuid=765 x=119.9065 y=-67.52215 desc=Trace [GND]
+I uuid=766 x=122.7725 y=-67.3378 desc=Trace [GND]
+I uuid=767 x=126.5395 y=-67.3378 desc=Trace [GND]
+I uuid=768 x=124.614 y=-55.454550000000005 desc=Trace [GND]
+I uuid=770 x=131.6 y=-75.98125 desc=Trace [GND]
+I uuid=771 x=131.4375 y=-72.975 desc=Trace [GND]
+I uuid=772 x=127.6 y=-70.35625 desc=Trace [GND]
+I uuid=773 x=127.606 y=-69.50625 desc=Trace [GND]
+I uuid=774 x=127.6 y=-71.6948 desc=Trace [GND]
+I uuid=775 x=129.749 y=-72.8125 desc=Trace [GND]
+I uuid=776 x=127.9115 y=-72.50105 desc=Trace [GND]
+I uuid=777 x=120.5 y=-75.10375 desc=Trace [GND]
+I uuid=778 x=120.19 y=-80.81739999999999 desc=Trace [GND]
+I uuid=779 x=119.88 y=-83.26625 desc=Trace [GND]
+I uuid=780 x=120.29 y=-85.8151 desc=Trace [GND]
+I uuid=781 x=125.454 y=-65.21585 desc=Trace [GND]
+I uuid=782 x=125.034 y=-62.67375 desc=Trace [GND]
+I uuid=783 x=124.614 y=-60.5522 desc=Trace [GND]
+I uuid=784 x=131.4375 y=-72.975 desc=Trace [GND]
+I uuid=785 x=131.4375 y=-72.975 desc=Trace [GND]
+I uuid=786 x=131.4375 y=-72.975 desc=Trace [GND]
+I uuid=787 x=131.4375 y=-72.975 desc=Trace [GND]
+I uuid=812 x=124.614 y=-58.8508 desc=Via [GND]
+I uuid=813 x=125.454 y=-63.093900000000005 desc=Via [GND]
+I uuid=814 x=127.6 y=-72.18960000000001 desc=Via [GND]
+I uuid=815 x=131.275 y=-72.8125 desc=Via [GND]
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [GPIO21] and Pin [GPIO21] (12 total items in net)
+I uuid=197 x=132.6375 y=-67.8 desc=Pin [GPIO21]
+I uuid=255 x=130.175 y=-60.75 desc=Pin [GPIO21]
+I uuid=332 x=139.7 y=-86.36 desc=Pin [GPIO21]
+I uuid=403 x=130.175 y=-61.27585 desc=Trace [GPIO21]
+I uuid=404 x=132.99 y=-67.8 desc=Trace [GPIO21]
+I uuid=405 x=133.921 y=-68.37925 desc=Trace [GPIO21]
+I uuid=406 x=134.5 y=-69.3818 desc=Trace [GPIO21]
+I uuid=407 x=134.63 y=-69.93495 desc=Trace [GPIO21]
+I uuid=408 x=134.76 y=-75.74225 desc=Trace [GPIO21]
+I uuid=409 x=137.23 y=-83.88985000000001 desc=Trace [GPIO21]
+I uuid=410 x=131.7585 y=-63.384949999999996 desc=Trace [GPIO21]
+I uuid=411 x=133.342 y=-66.3841 desc=Trace [GPIO21]
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [Net-(D2-A)] and Pin [Net-(D2-A)] (3 total items in net)
+I uuid=57 x=129.1875 y=-69.5 desc=Pin [Net-(D2-A)]
+I uuid=186 x=130.975 y=-69.5 desc=Pin [Net-(D2-A)]
+I uuid=386 x=130.0815 y=-69.5 desc=Trace [Net-(D2-A)]
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [Net-(D3-A)] and Pin [Net-(D3-A)] (3 total items in net)
+I uuid=43 x=129.2 y=-67.8 desc=Pin [Net-(D3-A)]
+I uuid=198 x=130.9875 y=-67.8 desc=Pin [Net-(D3-A)]
+I uuid=385 x=130.094 y=-67.8 desc=Trace [Net-(D3-A)]

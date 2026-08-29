@@ -9,6 +9,7 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `UnconnectedProbe.java` | `DesignRulesChecker.getAllUnconnectedItems()` (DesignRulesChecker.java:91-178) — the **hash-independent projection** of the list (see below). Writes the transcript to the file named by its second argument, not to stdout, because `FRLogger` prints a warning line to stdout on one of the fixtures. | yes |
 | `NetIncompletesProbe.java` | `drc.NetIncompletes`, per net number, through `DesignRulesChecker.getNetIncompletes` (DesignRulesChecker.java:800-815), which lazily runs `calculateAllIncompletes`. Writes **two** files: `<stem>.netincompletes.txt`, the hash-independent projection (`count`, `getConnectedGroupCount`, `getLengthViolation`, `getMarkerRadius` per net, plus the two totals), and `<stem>.airlines.txt`, the endpoint list, which is hash-**dependent** and is committed for one run as documentation only (plan-5 ruling 4). | yes |
 | `IncompletesProbe.java` | `DesignRulesChecker.calculateAllIncompletes` (DesignRulesChecker.java:542-623) and the eight accessors that hang off it: `maxConnections`, `getIncompleteCount()`, `getAllAirlines().length`, `getLengthViolationCount()`, `recalculateLengthViolations()` and the per-net `getIncompleteCount(int)`/`getLengthViolation(int)` — plus `BoardStatistics`' clearance block (`BoardStatistics.java:200-202`, `:338-367`) computed from `getAllClearanceViolations()` the way that block does, because `BoardStatistics` itself is Plan 8's (plan-5 ruling 5). Writes `<stem>.incompletes.txt`. All of it is hash-independent, unlike `NetIncompletesProbe`'s second output. | yes |
+| `ReportProbe.java` | `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-289) and the four `io/kicad/KiCadDrc*.java` DTOs it fills, as **normalised text** rather than as Gson JSON — Task 7 ports the DTOs and the builder, not the serialiser (that is Task 8's, with plan-5 ruling 2's two key flavors). Writes `<stem>.report.txt`. | yes |
 
 | Transcript | Fixture | Rows |
 |---|---|---|
@@ -26,6 +27,10 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.incompletes.txt` | BBD Mars-64 | 106 / 3 / 3 / 76 |
 | `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.incompletes.txt` | Natural Tone Preamp | 218 / 145 / 145 / 0 |
 | `empty_board.incompletes.txt` | the empty board | 0 / 0 / 0 / 0 |
+| `Issue575-drc_dev-board_4_hole_clearance_violations.report.txt` | the dev board | 10 violations / 4 unconnected |
+| `Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.report.txt` | BBD Mars-64 | 96 / 3 |
+| `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.report.txt` | Natural Tone Preamp | 115 / 44, the **maximal** run — see below |
+| `empty_board.report.txt` | the empty board | 0 / 0 |
 
 (`maxConnections` / `incompleteCount` / `getAllAirlines().length` / `clearanceViolations.totalCount`.)
 
@@ -271,3 +276,77 @@ done
 ```
 
 The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`.
+
+
+## What `*.report.txt` holds, and the one fixture that is not a byte golden
+
+`ReportProbe.java` prints the report with plan-5 ruling 3's normalisation applied:
+
+- **`date` is dropped entirely.** Java fills it from `ZonedDateTime.now()` (KiCadDrcReport.java:70)
+  and the port takes it as an injected string (ruling 5), so there is nothing to compare.
+- **Each entry's `items` array is sorted by numeric uuid**, because on the Java side it comes out
+  of a `HashSet<Item>` (quirk #144). The one place that sort would hide something real — a
+  clearance violation's `[firstItem, secondItem]` pair, which is *not* hash-ordered — is asserted
+  unsorted instead, by `first_violation_is_verbatim`.
+- **Entry order is kept.** `violations` is hash-independent (ruling 3's probe) and the
+  `unconnectedItems` entries come out in ascending net number on both sides.
+
+`qualityScore` is `null` in every transcript: the CLI fills it from `BoardStatistics`
+(Freerouting.java:343-352), which is Plan 8's (ruling 5). `freeroutingVersion` is
+`Freerouting 2.3.1-SNAPSHOT`, i.e. `Constants.FREEROUTING_VERSION` of the jar below; the Rust
+side injects the same literal, so a rebuilt jar with a new version needs `JAR_VERSION` in
+`tests/report.rs` updated alongside the transcripts.
+
+`three_fixtures_match_the_jvm_byte_for_byte` (`tests/report.rs`) compares the dev board, BBD
+Mars-64 and the empty board byte for byte. **Natural Tone Preamp cannot be one of them**: its
+`violations` count is hash-dependent, for the reason recorded under `*.unconnected.txt` above —
+`generateReport` folds the `track_dangling` entries into `violations` (`:268-276`), and quirk
+#146's dedup drops whichever dangling trace a net entry's hash-ordered `firstItem` happens to be.
+Measured on this jar, four of six runs drop **none**:
+
+| run | `counts` line |
+|---|---|
+| `-XX:hashCode=0`, `=1`, `=2`, `=4` | `violations=115 unconnectedItems=44` (byte-identical files) |
+| `-XX:hashCode=3` | `violations=114` |
+| default | `violations=114` |
+
+(The dev board, BBD Mars-64 and the empty board give **one** digest each across all six runs.)
+
+The committed `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.report.txt` is therefore the
+**maximal** run — 115 violations, every one of the 111 dangling-trace candidates plus the four
+dangling vias — and
+`natural_tone_preamp_is_the_jvms_maximal_run_minus_three_dangling_tracks` requires the port's
+report to be that file with exactly three `track_dangling` entries removed **in place** (uuids
+1909, 1696 and 1242, each the `firstItem` of a net entry whose group holds no `Pin`). Both sides
+walk the board's items descending, so nothing else moves; the whole 44-entry `unconnectedItems`
+block is byte-identical, and it is byte-identical across all six JVM runs too.
+
+That is the same divergence Task 4 recorded — the port emits 108 of 111 `track_dangling` where
+the JVM emits 109-111 — arriving at the report layer. Plan-5 ruling 11's table row for this
+fixture (`114` report violations) is a single-run measurement of a hash-dependent quantity;
+**112 is the port's number and must not be hand-tuned to match it.**
+
+## Recorded command for `ReportProbe`
+
+Same jar as above (`freerouting-current-executable.jar`, 63 288 650 bytes, mtime 2026-08-27
+20:03), same JDK 25.
+
+```sh
+JAR=/Users/em/Development/freerouting/freerouting/build/libs/freerouting-current-executable.jar
+F=/Users/em/Development/freerouting/freerouting/fixtures
+J=/opt/homebrew/opt/openjdk@25/bin
+
+$J/javac -cp "$JAR" -d . ReportProbe.java
+for b in Issue575-drc_dev-board_4_hole_clearance_violations \
+         Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations \
+         Issue575-drc_Natural_Tone_Preamp_7_unconnected_items \
+         empty_board; do
+  $J/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+      -cp "$JAR:." ReportProbe "$F/$b.dsn" "$b.dsn" mm "$b"
+done
+```
+
+The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`. The Natural
+Tone Preamp transcript above was taken from the `-XX:hashCode=1` run, which is one of the four
+identical maximal ones; the other three fixtures' were taken from the default run, which agrees
+with every mode.

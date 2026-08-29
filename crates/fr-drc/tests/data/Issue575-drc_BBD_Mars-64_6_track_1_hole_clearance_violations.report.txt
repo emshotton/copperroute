@@ -1,0 +1,332 @@
+schema https://schemas.kicad.org/drc.v1.json
+coordinateUnits mm
+kicadVersion N/A
+freeroutingVersion Freerouting 2.3.1-SNAPSHOT
+source Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn
+qualityScore null
+counts violations=96 unconnectedItems=3 schematicParity=0
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(J101-Pad2)] and ObstacleArea (expected: 0.2000 mm, actual: 0.0683 mm)
+I uuid=951 x=97.79 y=-127.0 desc=ObstacleArea
+I uuid=1174 x=96.78165 y=-106.68 desc=Trace [Net-(J101-Pad2)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP222-Pad1)] and Trace [Net-(TP221-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1150 x=70.30375 y=-126.105 desc=Trace [Net-(TP221-Pad1)]
+I uuid=1151 x=73.0689 y=-125.855 desc=Trace [Net-(TP222-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP221-Pad1)] and Trace [Net-(TP220-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1148 x=67.5386 y=-126.355 desc=Trace [Net-(TP220-Pad1)]
+I uuid=1150 x=70.30375 y=-126.105 desc=Trace [Net-(TP221-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP220-Pad1)] and Trace [Net-(TP219-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1146 x=64.77345 y=-126.605 desc=Trace [Net-(TP219-Pad1)]
+I uuid=1148 x=67.5386 y=-126.355 desc=Trace [Net-(TP220-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP219-Pad1)] and Trace [Net-(TP218-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1145 x=64.9133 y=-126.855 desc=Trace [Net-(TP218-Pad1)]
+I uuid=1146 x=64.77345 y=-126.605 desc=Trace [Net-(TP219-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP218-Pad1)] and Trace [Net-(TP217-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1143 x=64.2005 y=-127.105 desc=Trace [Net-(TP217-Pad1)]
+I uuid=1145 x=64.9133 y=-126.855 desc=Trace [Net-(TP218-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP217-Pad1)] and ObstacleArea (expected: 0.2000 mm, actual: 0.0759 mm)
+I uuid=959 x=59.69 y=-127.0 desc=ObstacleArea
+I uuid=1143 x=64.2005 y=-127.105 desc=Trace [Net-(TP217-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP214-Pad1)] and Trace [Net-(TP213-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1136 x=86.02705 y=-119.935 desc=Trace [Net-(TP213-Pad1)]
+I uuid=1138 x=85.55185 y=-120.1605 desc=Trace [Net-(TP214-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP207-Pad1)] and Trace [Net-(TP206-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1121 x=90.0917 y=-120.186 desc=Trace [Net-(TP206-Pad1)]
+I uuid=1123 x=89.36845 y=-120.1615 desc=Trace [Net-(TP207-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [Net-(TP129-Pad1)] and Trace [Net-(TP128-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)
+I uuid=1097 x=69.14760000000001 y=-83.052 desc=Trace [Net-(TP128-Pad1)]
+I uuid=1099 x=70.7555 y=-82.478 desc=Trace [Net-(TP129-Pad1)]
+V type=clearance severity=error desc=Clearance violation between Trace [/VCC3V3] and Trace [/SPI_CLK] (expected: 0.2000 mm, actual: 0.1998 mm)
+I uuid=978 x=87.80555 y=-96.555 desc=Trace [/SPI_CLK]
+I uuid=1003 x=89.9535 y=-95.96275 desc=Trace [/VCC3V3]
+V type=clearance severity=error desc=Clearance violation between Trace [/~{SPI_CE}] and ObstacleArea (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=950 x=97.79 y=-127.0 desc=ObstacleArea
+I uuid=963 x=87.8977 y=-100.04265 desc=Trace [/~{SPI_CE}]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP232-Pad1)] and Via [Net-(TP232-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=717 x=96.52 y=-119.38 desc=Pin [Net-(TP232-Pad1)]
+I uuid=1289 x=96.52 y=-119.38 desc=Via [Net-(TP232-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP231-Pad1)] and Via [Net-(TP231-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=708 x=91.44 y=-119.38 desc=Pin [Net-(TP231-Pad1)]
+I uuid=1287 x=91.44 y=-119.38 desc=Via [Net-(TP231-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP229-Pad1)] and Via [Net-(TP229-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=699 x=81.28 y=-119.38 desc=Pin [Net-(TP229-Pad1)]
+I uuid=1284 x=81.28 y=-119.38 desc=Via [Net-(TP229-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP227-Pad1)] and Via [Net-(TP227-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=690 x=71.12 y=-119.38 desc=Pin [Net-(TP227-Pad1)]
+I uuid=1282 x=71.12 y=-119.38 desc=Via [Net-(TP227-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP225-Pad1)] and Via [Net-(TP225-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=681 x=60.96 y=-119.38 desc=Pin [Net-(TP225-Pad1)]
+I uuid=1280 x=60.96 y=-119.38 desc=Via [Net-(TP225-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP223-Pad1)] and Via [Net-(TP223-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=672 x=91.44 y=-114.3 desc=Pin [Net-(TP223-Pad1)]
+I uuid=1278 x=91.44 y=-114.3 desc=Via [Net-(TP223-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP221-Pad1)] and Via [Net-(TP221-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=663 x=81.28 y=-114.3 desc=Pin [Net-(TP221-Pad1)]
+I uuid=1276 x=81.28 y=-114.3 desc=Via [Net-(TP221-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP219-Pad1)] and Via [Net-(TP219-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=654 x=71.12 y=-114.3 desc=Pin [Net-(TP219-Pad1)]
+I uuid=1274 x=71.12 y=-114.3 desc=Via [Net-(TP219-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP217-Pad1)] and Via [Net-(TP217-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=645 x=60.96 y=-114.3 desc=Pin [Net-(TP217-Pad1)]
+I uuid=1272 x=60.96 y=-114.3 desc=Via [Net-(TP217-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP214-Pad1)] and Via [Net-(TP214-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=636 x=86.36 y=-109.22 desc=Pin [Net-(TP214-Pad1)]
+I uuid=1269 x=86.36 y=-109.22 desc=Via [Net-(TP214-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP212-Pad1)] and Via [Net-(TP212-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=627 x=76.2 y=-109.22 desc=Pin [Net-(TP212-Pad1)]
+I uuid=1267 x=76.2 y=-109.22 desc=Via [Net-(TP212-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP210-Pad1)] and Via [Net-(TP210-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=618 x=66.04 y=-109.22 desc=Pin [Net-(TP210-Pad1)]
+I uuid=1264 x=66.04 y=-109.22 desc=Via [Net-(TP210-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP208-Pad1)] and Via [Net-(TP208-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=609 x=96.52 y=-104.14 desc=Pin [Net-(TP208-Pad1)]
+I uuid=1260 x=96.52 y=-104.14 desc=Via [Net-(TP208-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP207-Pad1)] and Via [Net-(TP207-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=600 x=91.44 y=-104.14 desc=Pin [Net-(TP207-Pad1)]
+I uuid=1259 x=91.44 y=-104.14 desc=Via [Net-(TP207-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP206-Pad1)] and Via [Net-(TP206-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=591 x=86.36 y=-104.14 desc=Pin [Net-(TP206-Pad1)]
+I uuid=1258 x=86.36 y=-104.14 desc=Via [Net-(TP206-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP204-Pad1)] and Via [Net-(TP204-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=582 x=76.2 y=-104.14 desc=Pin [Net-(TP204-Pad1)]
+I uuid=1255 x=76.2 y=-104.14 desc=Via [Net-(TP204-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP202-Pad1)] and Via [Net-(TP202-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=573 x=66.04 y=-104.14 desc=Pin [Net-(TP202-Pad1)]
+I uuid=1252 x=66.04 y=-104.14 desc=Via [Net-(TP202-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP132-Pad1)] and Via [Net-(TP132-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=564 x=96.52 y=-99.06 desc=Pin [Net-(TP132-Pad1)]
+I uuid=1249 x=96.52 y=-99.06 desc=Via [Net-(TP132-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP130-Pad1)] and Via [Net-(TP130-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=555 x=86.36 y=-99.06 desc=Pin [Net-(TP130-Pad1)]
+I uuid=1247 x=86.36 y=-99.06 desc=Via [Net-(TP130-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP128-Pad1)] and Via [Net-(TP128-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=546 x=76.2 y=-99.06 desc=Pin [Net-(TP128-Pad1)]
+I uuid=1245 x=76.2 y=-99.06 desc=Via [Net-(TP128-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP126-Pad1)] and Via [Net-(TP126-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=537 x=66.04 y=-99.06 desc=Pin [Net-(TP126-Pad1)]
+I uuid=1243 x=66.04 y=-99.06 desc=Via [Net-(TP126-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP124-Pad1)] and Via [Net-(TP124-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=528 x=96.52 y=-93.98 desc=Pin [Net-(TP124-Pad1)]
+I uuid=1240 x=96.52 y=-93.98 desc=Via [Net-(TP124-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP122-Pad1)] and Via [Net-(TP122-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=519 x=86.36 y=-93.98 desc=Pin [Net-(TP122-Pad1)]
+I uuid=1238 x=86.36 y=-93.98 desc=Via [Net-(TP122-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP120-Pad1)] and Via [Net-(TP120-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=510 x=76.2 y=-93.98 desc=Pin [Net-(TP120-Pad1)]
+I uuid=1236 x=76.2 y=-93.98 desc=Via [Net-(TP120-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP118-Pad1)] and Via [Net-(TP118-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=501 x=66.04 y=-93.98 desc=Pin [Net-(TP118-Pad1)]
+I uuid=1234 x=66.04 y=-93.98 desc=Via [Net-(TP118-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP116-Pad1)] and Via [Net-(TP116-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=492 x=96.52 y=-88.9 desc=Pin [Net-(TP116-Pad1)]
+I uuid=1231 x=96.52 y=-88.9 desc=Via [Net-(TP116-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP115-Pad1)] and Via [Net-(TP115-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=483 x=91.44 y=-88.9 desc=Pin [Net-(TP115-Pad1)]
+I uuid=1230 x=91.44 y=-88.9 desc=Via [Net-(TP115-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP114-Pad1)] and Via [Net-(TP114-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=474 x=86.36 y=-88.9 desc=Pin [Net-(TP114-Pad1)]
+I uuid=1229 x=86.36 y=-88.9 desc=Via [Net-(TP114-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP112-Pad1)] and Via [Net-(TP112-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=465 x=76.2 y=-88.9 desc=Pin [Net-(TP112-Pad1)]
+I uuid=1227 x=76.2 y=-88.9 desc=Via [Net-(TP112-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP110-Pad1)] and Via [Net-(TP110-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=456 x=66.04 y=-88.9 desc=Pin [Net-(TP110-Pad1)]
+I uuid=1224 x=66.04 y=-88.9 desc=Via [Net-(TP110-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP108-Pad1)] and Via [Net-(TP108-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=447 x=96.52 y=-83.82 desc=Pin [Net-(TP108-Pad1)]
+I uuid=1222 x=96.52 y=-83.82 desc=Via [Net-(TP108-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP104-Pad1)] and Via [Net-(TP104-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=438 x=76.2 y=-83.82 desc=Pin [Net-(TP104-Pad1)]
+I uuid=1216 x=76.2 y=-83.82 desc=Via [Net-(TP104-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP102-Pad1)] and Via [Net-(TP102-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=429 x=66.04 y=-83.82 desc=Pin [Net-(TP102-Pad1)]
+I uuid=1213 x=66.04 y=-83.82 desc=Via [Net-(TP102-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP230-Pad1)] and Via [Net-(TP230-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=420 x=86.36 y=-119.38 desc=Pin [Net-(TP230-Pad1)]
+I uuid=1285 x=86.36 y=-119.38 desc=Via [Net-(TP230-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP228-Pad1)] and Via [Net-(TP228-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=411 x=76.2 y=-119.38 desc=Pin [Net-(TP228-Pad1)]
+I uuid=1283 x=76.2 y=-119.38 desc=Via [Net-(TP228-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP226-Pad1)] and Via [Net-(TP226-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=402 x=66.04 y=-119.38 desc=Pin [Net-(TP226-Pad1)]
+I uuid=1281 x=66.04 y=-119.38 desc=Via [Net-(TP226-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP224-Pad1)] and Via [Net-(TP224-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=393 x=96.52 y=-114.3 desc=Pin [Net-(TP224-Pad1)]
+I uuid=1279 x=96.52 y=-114.3 desc=Via [Net-(TP224-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP222-Pad1)] and Via [Net-(TP222-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=384 x=86.36 y=-114.3 desc=Pin [Net-(TP222-Pad1)]
+I uuid=1277 x=86.36 y=-114.3 desc=Via [Net-(TP222-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP220-Pad1)] and Via [Net-(TP220-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=375 x=76.2 y=-114.3 desc=Pin [Net-(TP220-Pad1)]
+I uuid=1275 x=76.2 y=-114.3 desc=Via [Net-(TP220-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP218-Pad1)] and Via [Net-(TP218-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=366 x=66.04 y=-114.3 desc=Pin [Net-(TP218-Pad1)]
+I uuid=1273 x=66.04 y=-114.3 desc=Via [Net-(TP218-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP216-Pad1)] and Via [Net-(TP216-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=357 x=96.52 y=-109.22 desc=Pin [Net-(TP216-Pad1)]
+I uuid=1271 x=96.52 y=-109.22 desc=Via [Net-(TP216-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP215-Pad1)] and Via [Net-(TP215-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=348 x=91.44 y=-109.22 desc=Pin [Net-(TP215-Pad1)]
+I uuid=1270 x=91.44 y=-109.22 desc=Via [Net-(TP215-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP213-Pad1)] and Via [Net-(TP213-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=339 x=81.28 y=-109.22 desc=Pin [Net-(TP213-Pad1)]
+I uuid=1268 x=81.28 y=-109.22 desc=Via [Net-(TP213-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP211-Pad1)] and Via [Net-(TP211-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=330 x=71.12 y=-109.22 desc=Pin [Net-(TP211-Pad1)]
+I uuid=1266 x=71.12 y=-109.22 desc=Via [Net-(TP211-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP209-Pad1)] and Via [Net-(TP209-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=321 x=60.96 y=-109.22 desc=Pin [Net-(TP209-Pad1)]
+I uuid=1262 x=60.96 y=-109.22 desc=Via [Net-(TP209-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP205-Pad1)] and Via [Net-(TP205-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=312 x=81.28 y=-104.14 desc=Pin [Net-(TP205-Pad1)]
+I uuid=1257 x=81.28 y=-104.14 desc=Via [Net-(TP205-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP203-Pad1)] and Via [Net-(TP203-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=303 x=71.12 y=-104.14 desc=Pin [Net-(TP203-Pad1)]
+I uuid=1253 x=71.12 y=-104.14 desc=Via [Net-(TP203-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP201-Pad1)] and Via [Net-(TP201-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=294 x=60.96 y=-104.14 desc=Pin [Net-(TP201-Pad1)]
+I uuid=1250 x=60.96 y=-104.14 desc=Via [Net-(TP201-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP131-Pad1)] and Via [Net-(TP131-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=285 x=91.44 y=-99.06 desc=Pin [Net-(TP131-Pad1)]
+I uuid=1248 x=91.44 y=-99.06 desc=Via [Net-(TP131-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP129-Pad1)] and Via [Net-(TP129-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=276 x=81.28 y=-99.06 desc=Pin [Net-(TP129-Pad1)]
+I uuid=1246 x=81.28 y=-99.06 desc=Via [Net-(TP129-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP127-Pad1)] and Via [Net-(TP127-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=267 x=71.12 y=-99.06 desc=Pin [Net-(TP127-Pad1)]
+I uuid=1244 x=71.12 y=-99.06 desc=Via [Net-(TP127-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP125-Pad1)] and Via [Net-(TP125-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=258 x=60.96 y=-99.06 desc=Pin [Net-(TP125-Pad1)]
+I uuid=1242 x=60.96 y=-99.06 desc=Via [Net-(TP125-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP123-Pad1)] and Via [Net-(TP123-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=249 x=91.44 y=-93.98 desc=Pin [Net-(TP123-Pad1)]
+I uuid=1239 x=91.44 y=-93.98 desc=Via [Net-(TP123-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP121-Pad1)] and Via [Net-(TP121-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=240 x=81.28 y=-93.98 desc=Pin [Net-(TP121-Pad1)]
+I uuid=1237 x=81.28 y=-93.98 desc=Via [Net-(TP121-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP119-Pad1)] and Via [Net-(TP119-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=231 x=71.12 y=-93.98 desc=Pin [Net-(TP119-Pad1)]
+I uuid=1235 x=71.12 y=-93.98 desc=Via [Net-(TP119-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP117-Pad1)] and Via [Net-(TP117-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=222 x=60.96 y=-93.98 desc=Pin [Net-(TP117-Pad1)]
+I uuid=1233 x=60.96 y=-93.98 desc=Via [Net-(TP117-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP113-Pad1)] and Via [Net-(TP113-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=213 x=81.28 y=-88.9 desc=Pin [Net-(TP113-Pad1)]
+I uuid=1228 x=81.28 y=-88.9 desc=Via [Net-(TP113-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP111-Pad1)] and Via [Net-(TP111-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=204 x=71.12 y=-88.9 desc=Pin [Net-(TP111-Pad1)]
+I uuid=1226 x=71.12 y=-88.9 desc=Via [Net-(TP111-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP109-Pad1)] and Via [Net-(TP109-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=195 x=60.96 y=-88.9 desc=Pin [Net-(TP109-Pad1)]
+I uuid=1223 x=60.96 y=-88.9 desc=Via [Net-(TP109-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP107-Pad1)] and Via [Net-(TP107-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=186 x=91.44 y=-83.82 desc=Pin [Net-(TP107-Pad1)]
+I uuid=1220 x=91.44 y=-83.82 desc=Via [Net-(TP107-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP106-Pad1)] and Via [Net-(TP106-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=177 x=86.36 y=-83.82 desc=Pin [Net-(TP106-Pad1)]
+I uuid=1218 x=86.36 y=-83.82 desc=Via [Net-(TP106-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP105-Pad1)] and Via [Net-(TP105-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=168 x=81.28 y=-83.82 desc=Pin [Net-(TP105-Pad1)]
+I uuid=1217 x=81.28 y=-83.82 desc=Via [Net-(TP105-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP103-Pad1)] and Via [Net-(TP103-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=159 x=71.12 y=-83.82 desc=Pin [Net-(TP103-Pad1)]
+I uuid=1215 x=71.12 y=-83.82 desc=Via [Net-(TP103-Pad1)]
+V type=holeClearance severity=error desc=Hole clearance violation between Pin [Net-(TP101-Pad1)] and Via [Net-(TP101-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)
+I uuid=150 x=60.96 y=-83.82 desc=Pin [Net-(TP101-Pad1)]
+I uuid=1211 x=60.96 y=-83.82 desc=Via [Net-(TP101-Pad1)]
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=1031 x=90.18164999999999 y=-70.5688 desc=Track [/DA] on F.Cu, length 11.8388 mm
+V type=track_dangling severity=warning desc=Track has unconnected end
+I uuid=998 x=60.31 y=-136.5565 desc=Track [GND] on B.Cu, length 3.8730 mm
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1289 x=96.52 y=-119.38 desc=Via [Net-(TP232-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1287 x=91.44 y=-119.38 desc=Via [Net-(TP231-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1266 x=71.12 y=-109.22 desc=Via [Net-(TP211-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1264 x=66.04 y=-109.22 desc=Via [Net-(TP210-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1262 x=60.96 y=-109.22 desc=Via [Net-(TP209-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1257 x=81.28 y=-104.14 desc=Via [Net-(TP205-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1255 x=76.2 y=-104.14 desc=Via [Net-(TP204-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1252 x=66.04 y=-104.14 desc=Via [Net-(TP202-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1242 x=60.96 y=-99.06 desc=Via [Net-(TP125-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1233 x=60.96 y=-93.98 desc=Via [Net-(TP117-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1226 x=71.12 y=-88.9 desc=Via [Net-(TP111-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1222 x=96.52 y=-83.82 desc=Via [Net-(TP108-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1220 x=91.44 y=-83.82 desc=Via [Net-(TP107-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1215 x=71.12 y=-83.82 desc=Via [Net-(TP103-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1213 x=66.04 y=-83.82 desc=Via [Net-(TP102-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1211 x=60.96 y=-83.82 desc=Via [Net-(TP101-Pad1)]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1204 x=57.785 y=-80.645 desc=Via [/AGND]
+V type=via_dangling severity=warning desc=Via is not connected or connected on only one layer
+I uuid=1194 x=81.8308 y=-68.105 desc=Via [/~{SPI_CE}]
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [/~{SPI_CE}] and Pin [/~{SPI_CE}] (13 total items in net)
+I uuid=13 x=96.505 y=-59.69 desc=Pin [/~{SPI_CE}]
+I uuid=87 x=66.055 y=-59.69 desc=Pin [/~{SPI_CE}]
+I uuid=792 x=79.49 y=-72.93 desc=Pin [/~{SPI_CE}]
+I uuid=858 x=76.95 y=-141.51 desc=Pin [/~{SPI_CE}]
+I uuid=962 x=88.65310000000001 y=-60.102650000000004 desc=Trace [/~{SPI_CE}]
+I uuid=963 x=87.8977 y=-100.04265 desc=Trace [/~{SPI_CE}]
+I uuid=964 x=67.00515 y=-59.69 desc=Trace [/~{SPI_CE}]
+I uuid=965 x=74.37825 y=-60.102650000000004 desc=Trace [/~{SPI_CE}]
+I uuid=966 x=76.95 y=-140.6745 desc=Trace [/~{SPI_CE}]
+I uuid=967 x=80.6604 y=-70.5175 desc=Trace [/~{SPI_CE}]
+I uuid=1192 x=80.8012 y=-60.246300000000005 desc=Via [/~{SPI_CE}]
+I uuid=1193 x=76.95 y=-139.839 desc=Via [/~{SPI_CE}]
+I uuid=1194 x=81.8308 y=-68.105 desc=Via [/~{SPI_CE}]
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [GND] and Pin [GND] (29 total items in net)
+I uuid=4 x=91.455 y=-49.53 desc=Pin [GND]
+I uuid=5 x=96.505 y=-49.53 desc=Pin [GND]
+I uuid=78 x=71.105 y=-49.53 desc=Pin [GND]
+I uuid=79 x=66.055 y=-49.53 desc=Pin [GND]
+I uuid=766 x=62.2 y=-73.66 desc=Pin [GND]
+I uuid=798 x=76.49 y=-72.93 desc=Pin [GND]
+I uuid=864 x=73.95 y=-141.51 desc=Pin [GND]
+I uuid=909 x=60.31 y=-134.62 desc=Pin [GND]
+I uuid=922 x=63.2825 y=-64.77 desc=Pin [GND]
+I uuid=934 x=59.4725 y=-139.7 desc=Pin [GND]
+I uuid=986 x=74.93695 y=-57.2111 desc=Trace [GND]
+I uuid=987 x=76.5212 y=-69.52539999999999 desc=Trace [GND]
+I uuid=988 x=81.67575 y=-49.113550000000004 desc=Trace [GND]
+I uuid=989 x=73.40105 y=-49.113550000000004 desc=Trace [GND]
+I uuid=990 x=73.7968 y=-48.49925 desc=Trace [GND]
+I uuid=991 x=90.50485 y=-49.53 desc=Trace [GND]
+I uuid=992 x=72.05515 y=-49.53 desc=Trace [GND]
+I uuid=993 x=68.97575 y=-47.847300000000004 desc=Trace [GND]
+I uuid=994 x=63.69045 y=-57.15 desc=Trace [GND]
+I uuid=995 x=62.74125 y=-69.215 desc=Trace [GND]
+I uuid=996 x=65.10485 y=-49.53 desc=Trace [GND]
+I uuid=997 x=58.96185 y=-104.14 desc=Trace [GND]
+I uuid=998 x=60.31 y=-136.5565 desc=Trace [GND]
+I uuid=999 x=61.787349999999996 y=-73.66 desc=Trace [GND]
+I uuid=1000 x=66.71125 y=-140.489 desc=Trace [GND]
+I uuid=1001 x=73.95 y=-141.9975 desc=Trace [GND]
+I uuid=1002 x=93.98 y=-49.53 desc=Trace [GND]
+I uuid=1200 x=73.7968 y=-48.3014 desc=Via [GND]
+I uuid=1201 x=76.0771 y=-66.1208 desc=Via [GND]
+U type=unconnectedItems severity=warning desc=Unconnected items: Pin [/DA] and Pin [/DA] (12 total items in net)
+I uuid=8 x=91.455 y=-54.61 desc=Pin [/DA]
+I uuid=726 x=93.98 y=-76.2 desc=Pin [/DA]
+I uuid=818 x=78.99 y=-64.23 desc=Pin [/DA]
+I uuid=1030 x=90.50485 y=-54.61 desc=Trace [/DA]
+I uuid=1031 x=90.18164999999999 y=-70.5688 desc=Trace [/DA]
+I uuid=1032 x=84.98219999999999 y=-60.7109 desc=Trace [/DA]
+I uuid=1033 x=88.84575 y=-55.2677 desc=Trace [/DA]
+I uuid=1034 x=80.4088 y=-64.86319999999999 desc=Trace [/DA]
+I uuid=1035 x=93.10325 y=-75.92060000000001 desc=Trace [/DA]
+I uuid=1205 x=88.13680000000001 y=-55.9254 desc=Via [/DA]
+I uuid=1206 x=81.8276 y=-65.49640000000001 desc=Via [/DA]
+I uuid=1207 x=92.2265 y=-75.6412 desc=Via [/DA]
