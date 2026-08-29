@@ -147,6 +147,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-settings"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-dsn",
+ "fr-geometry",
+ "parity",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "freerouting"
 version = "0.1.0"
 dependencies = [

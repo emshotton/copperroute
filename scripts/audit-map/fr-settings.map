@@ -1,0 +1,29 @@
+# Class -> Rust path glob (relative to crates/fr-settings/src) map for scripts/audit-port.sh's
+# per-class matching (Plan 3 Task 1 obligation, reused here per plan Task 1). Blank lines and
+# lines starting with `#` are ignored. Append one line per class as later Plan 4 tasks port it; do
+# not remove a class's line once a task starts porting it, or the audit falls back to a crate-wide
+# (weaker) check for it. A class whose Rust home spans more than one file gets one map line per
+# file — not one line with several space-separated globs, which the reader (`read -r cls path`)
+# would only keep the first token of.
+RouterSettings              router_settings.rs
+RouterSettings              board_optimizations.rs
+LayerSettings               layer_settings.rs
+ScoringSettings             scoring_settings.rs
+OptimizerSettings           optimizer_settings.rs
+FanoutSettings              fanout_settings.rs
+DesignRulesCheckerSettings  drc_settings.rs
+DebugSettings               drc_settings.rs
+SettingsSource              merger.rs
+SettingsMerger              merger.rs
+ReflectionUtil              copy_fields.rs
+ReflectionUtil              field_path.rs
+DefaultSettings             sources/default_settings.rs
+DsnFileSettings             sources/dsn_file.rs
+RulesFileSettings           sources/rules_file.rs
+SesFileSettings             sources/ses_file.rs
+ApiSettings                 sources/api.rs
+EnvironmentVariablesSource  sources/env.rs
+CliSettings                 sources/cli.rs
+GlobalSettings              sources/cli.rs
+JsonFileSettings            lib.rs
+GuiSettingsSource           lib.rs
