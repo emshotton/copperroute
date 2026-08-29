@@ -33,12 +33,13 @@
 //! `Item::get_autoroute_info()` and creates, because that is what its callers do;
 //! [`reset_doors`] goes through `get_autoroute_info_pur` and does not.
 //!
-//! obligation: `AutorouteEngine.resetAllDoors` (Task 9) must **not** call
-//! [`set_precalculated_connection`] — it creates, and Java's :662-666 does not, so calling it in a
-//! loop over `board.getItems()` would allocate scratch on every item Java skips. Use
-//! `Item::get_autoroute_info_pur_mut` (added to `fr-board` in Task 1 for this call site: Java has
-//! no such twin only because `getAutorouteInfoPur` already hands back a mutable reference) and
-//! write `precalculated_connection = None` through it, under the same `is_some` guard.
+//! **Discharged in Task 6.** [`crate::autoroute::maze::AutorouteEngine::reset_all_doors`] does
+//! **not** call [`set_precalculated_connection`] — that accessor creates, and Java's `:662-666`
+//! does not, so calling it in a loop over `board.getItems()` would allocate scratch on every item
+//! Java skips. It writes `precalculated_connection = None` through
+//! `Item::get_autoroute_info_pur_mut` instead (added to `fr-board` in Task 1 for this one call
+//! site: Java has no such twin only because `getAutorouteInfoPur` already hands back a mutable
+//! reference), under the same non-creating `is_some` guard.
 //!
 //! not ported: `ItemAutorouteInfo.emitDiagnostics` (ItemAutorouteInfo.java:94-104) — it drives
 //! `AutorouteDiagnostic.Sink`, a GUI overlay (`global-constraints.md`: no GUI, no observers), and

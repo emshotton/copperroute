@@ -13,16 +13,20 @@
 //!
 //! # State
 //!
-//! **Task 3 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
+//! **Task 6 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
 //! newtypes, the per-connection outcome ([`AutorouteAttemptResult`]), the per-item scratch
 //! accessors ([`autoroute::item_info`]), and — from Task 2 — the expansion rooms, the doors and
 //! [`MazeSearchElement`] ([`autoroute::expansion`]), which is also where `fr-board`'s reserved
-//! `TreeObject::Room` becomes real. Task 3 adds the geometric heart of the expansion,
+//! `TreeObject::Room` becomes real. Task 3 added the geometric heart of the expansion,
 //! [`AutorouteSearchTreeExt`] ([`autoroute::tree_ext`]): `completeShape` and `divideLargeRoom`
 //! in all three angle regimes, which is where `fr-board`'s search tree stops being read-only for
-//! the router. The maze search itself, the drill pages and the path locators arrive in
-//! Tasks 4-17; the roster at the foot of this file names each deferred class and the task that
-//! owns it.
+//! the router. Tasks 4 and 5 added the three neighbour sorters that turn a completed room into
+//! its door list, and Task 6 adds [`AutorouteEngine`]
+//! ([`autoroute::maze::engine`]) — the room lifecycle: construction, `initConnection`, `clear`,
+//! `completeExpansionRoom`, `completeNeighbourRooms`, the door reset and removal, and ruling 7's
+//! first recovery boundary. The maze search itself, the drill pages and the path locators arrive
+//! in Tasks 7-17; the roster at the foot of this file names each deferred class and the task
+//! that owns it.
 //!
 //! # House rules
 //!
@@ -47,7 +51,7 @@ pub mod java_tree_set;
 
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 pub use autoroute::{
-    AutorouteAttemptResult, AutorouteAttemptState, AutorouteSearchTreeExt,
+    AutorouteAttemptResult, AutorouteAttemptState, AutorouteEngine, AutorouteSearchTreeExt,
     CompleteFreeSpaceExpansionRoom, ExpandableRef, ExpansionDoor, ExpansionRoomStore,
     FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeSearchElement,
     ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor,
@@ -66,9 +70,9 @@ pub use fr_settings::ExpansionCostFactor;
 /// Re-exports every public type of the crate, for `use fr_router::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteSearchTreeExt,
-        CompleteFreeSpaceExpansionRoom, DoorId, DrillId, ExpandableRef, ExpansionCostFactor,
-        ExpansionDoor, ExpansionRoomStore, FreeSpaceExpansionRoom,
+        Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteEngine,
+        AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DoorId, DrillId, ExpandableRef,
+        ExpansionCostFactor, ExpansionDoor, ExpansionRoomStore, FreeSpaceExpansionRoom,
         IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
         MazeSearchElement, ObstacleExpansionRoom, PageId, RoomRef, RouterError, TargetDoorId,
         TargetItemExpansionDoor,

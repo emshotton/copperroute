@@ -62,14 +62,23 @@ use crate::arena::{DoorId, IncompleteRoomId, TargetDoorId};
 /// Every expansion room and door of one routing run, plus the room-id counter.
 ///
 /// No single Java class corresponds: this is `AutorouteEngine`'s `incompleteExpansionRooms`
-/// (AutorouteEngine.java:71), `completeExpansionRooms` (`:74`) and
-/// `expansionRoomInstanceCount` (`:77`) together with the heap that holds the obstacle rooms and
-/// the doors. Task 6's `AutorouteEngine` **embeds** one of these; it must not declare the arenas
+/// (AutorouteEngine.java:71) and `expansionRoomInstanceCount` (`:77`) together with the heap that
+/// holds every complete room, obstacle room and door. It is **not**
+/// `completeExpansionRooms` (`:74`): that list is a strict subset of the complete-room arena and
+/// lives on `AutorouteEngine` — see [`ExpansionRoomStore::complete_rooms`]. Task 6's `AutorouteEngine` **embeds** one of these; it must not declare the arenas
 /// a second time.
 #[derive(Debug, Clone, Default)]
 pub struct ExpansionRoomStore {
-    /// `AutorouteEngine.completeExpansionRooms` (:74). The arena index is the [`RoomId`] the
-    /// shared search tree stores as a [`TreeObject::Room`].
+    /// Every `CompleteFreeSpaceExpansionRoom` ever constructed, which is Java's **heap** rather
+    /// than its `AutorouteEngine.completeExpansionRooms` list (:74): `SortedRoomNeighbours`
+    /// builds a room before it knows whether it will be kept, and both the `edgeRemoved` retry
+    /// (SortedRoomNeighbours.java:111-114) and `AutorouteEngine.addCompleteRoom`'s
+    /// dimension check (AutorouteEngine.java:528-530) discard one. Java's list is
+    /// `AutorouteEngine::complete_expansion_rooms`; every walk Java writes over
+    /// `completeExpansionRooms` must use that, not this arena.
+    ///
+    /// The arena index is the [`RoomId`] the shared search tree stores as a
+    /// [`TreeObject::Room`].
     pub complete_rooms: Arena<CompleteFreeSpaceExpansionRoom>,
     /// `AutorouteEngine.incompleteExpansionRooms` (:71).
     pub incomplete_rooms: Arena<IncompleteFreeSpaceExpansionRoom>,
@@ -312,8 +321,8 @@ impl ExpansionRoomStore {
     /// answers whether there was one to take.
     ///
     /// This is `CompleteFreeSpaceExpansionRoom.removeFromTree` (`:56-59`) plus
-    /// `completeExpansionRooms.remove(room)` (AutorouteEngine.java:406) — the two halves Java
-    /// performs in the same method, which is exactly why Java can never hand an
+    /// the arena half of `completeExpansionRooms.remove(room)` (AutorouteEngine.java:406) — the
+    /// two halves Java performs in the same method, which is exactly why Java can never hand an
     /// already-removed leaf to `MinAreaTree.removeLeaf` and trip quirk #39's silent tree
     /// corruption. `fr-board`'s `ShapeTree::remove_leaf` panics there instead (Plan 2 ruling 8),
     /// so making the two halves inseparable is what keeps that panic unreachable: a second call

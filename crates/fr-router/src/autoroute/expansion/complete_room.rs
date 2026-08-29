@@ -274,6 +274,92 @@ impl CompleteFreeSpaceExpansionRoom {
     pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
         self.base.door_exists(doors, other)
     }
+
+    /// Port of `validate(AutorouteEngine)` (CompleteFreeSpaceExpansionRoom.java:165-194): "check
+    /// if this `FreeSpaceExpansionRoom` is valid."
+    ///
+    /// A room is valid when nothing in the compensated tree overlaps it 2-dimensionally on its own
+    /// layer, other than itself and objects sharing the routed net. `:189`'s
+    /// `FRLogger.warn("ExpansionRoom overlap conflict")` is dropped; the `false` it accompanies is
+    /// the whole observable result.
+    ///
+    /// `room_id` is this room's own arena index — Java compares `currentEntry.object == this` by
+    /// reference (`:174`), and the tree stores the index in its place.
+    ///
+    /// The engine is the [`crate::autoroute::maze::AutorouteEngine`] Java's parameter is: it
+    /// supplies the net number
+    /// (`:170`), the search tree (`:171`) and — where Java would have followed a stored object
+    /// reference — the room arena that resolves a [`TreeObject::Room`] leaf.
+    pub fn validate(
+        &self,
+        engine: &crate::autoroute::maze::engine::AutorouteEngine,
+        board: &Board,
+        room_id: RoomId,
+    ) -> bool {
+        use crate::autoroute::expansion::sorted_neighbours::{
+            object_is_trace_obstacle, object_tree_shape,
+        };
+
+        // :167.
+        let mut result = true;
+        // :169-170.
+        let net_numbers = [engine.get_net_number()];
+        // :171-172. Java NPEs on a room with no shape; the port's `None` is that dead reference.
+        let Some(room_shape) = self.get_shape() else {
+            return result;
+        };
+        let layer = self.get_layer();
+        let tree = crate::autoroute::maze::engine::tree_of(board, engine.tree);
+        let ctx = board.ctx();
+        let overlapping_objects = tree.overlapping_tree_entries_with_rooms(
+            room_shape,
+            Some(layer),
+            &net_numbers,
+            &board.items,
+            &engine.rooms,
+            &ctx,
+        );
+        // :173-192.
+        for current_entry in overlapping_objects {
+            // :174-176.
+            if current_entry.object == TreeObject::Room(room_id) {
+                continue;
+            }
+            // :177-180.
+            if !object_is_trace_obstacle(
+                current_entry.object,
+                engine.get_net_number(),
+                &board.items,
+            ) {
+                continue;
+            }
+            // :181-183.
+            let object_layer = match current_entry.object {
+                TreeObject::Item(id) => board.item_shape_layer(id, current_entry.shape_index),
+                TreeObject::Room(id) => engine
+                    .rooms
+                    .complete_room(id)
+                    .map(|room| room.shape_layer(current_entry.shape_index)),
+            };
+            if object_layer != Some(layer) {
+                continue;
+            }
+            // :184-186.
+            let current_shape = object_tree_shape(
+                tree,
+                current_entry.object,
+                current_entry.shape_index,
+                &board.items,
+                &engine.rooms,
+                &ctx,
+            );
+            // :187-191.
+            if room_shape.intersection(&current_shape).dimension() > 1 {
+                result = false;
+            }
+        }
+        result
+    }
 }
 
 /// Port of `CompleteFreeSpaceExpansionRoom.calculateTargetDoors(ShapeTree.TreeEntry, int,
@@ -350,11 +436,6 @@ pub fn calculate_target_doors(
     }
 }
 
-// added in Task 6: `CompleteFreeSpaceExpansionRoom.validate`
-// (CompleteFreeSpaceExpansionRoom.java:165-194) — it takes an `AutorouteEngine` and queries the
-// compensated tree through it; the engine is Task 6's, and its only caller is
-// `AutorouteEngine.validate` (:637-648).
-//
 // not ported: `CompleteFreeSpaceExpansionRoom.emitDiagnostic`
 // (CompleteFreeSpaceExpansionRoom.java:152-163) — it drives `AutorouteDiagnostic.Sink`, a GUI
 // overlay (`global-constraints.md`: no GUI, no observers). No routing decision reads it.

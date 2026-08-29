@@ -17,11 +17,12 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 5 of 18
+## State: Task 6 of 18
 
-What exists is the data-model floor the other thirteen tasks build on, the
-search-tree extension that turns a seed shape into expansion rooms, and the
-three neighbour sorters that turn a completed room into its door list:
+What exists is the data-model floor the other twelve tasks build on, the
+search-tree extension that turns a seed shape into expansion rooms, the three
+neighbour sorters that turn a completed room into its door list, and — from
+Task 6 — the `AutorouteEngine` that owns all of it:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -42,6 +43,7 @@ three neighbour sorters that turn a completed room into its door list:
 | `Sorted45DegreeRoomNeighbours` | `src/autoroute/expansion/sorted_neighbours_45.rs` | `Sorted45DegreeRoomNeighbours.java:22-982` |
 | `SortedOrthogonalRoomNeighbours` | `src/autoroute/expansion/sorted_neighbours_orthogonal.rs` | `SortedOrthogonalRoomNeighbours.java:19-728` |
 | `JavaTreeSet` | `src/java_tree_set.rs` | `java.util.TreeMap`'s red-black `put` |
+| `AutorouteEngine` (the room lifecycle) | `src/autoroute/maze/engine.rs` | `AutorouteEngine.java:39-675`, minus `autorouteConnection` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
@@ -80,12 +82,77 @@ tree that holds rooms.
 `ExpansionDoor` is complete, `getSectionSegments` included: the door-section
 arithmetic (`ExpansionDoor.java:104-172`) is the one piece of real geometry in
 the class, and `AutorouteEngine.TRACE_WIDTH_TOLERANCE` — the `int = 2` it needs
-— lives on `src/autoroute/maze/mod.rs` for Task 6's engine to re-export.
+— lives on `src/autoroute/maze/mod.rs`, which is where the engine reads it from
+rather than declaring a second copy.
 
 `ExpansionRoomStore::clear` takes the tree, because `AutorouteEngine.clear`
 (`:306-317`) removes every complete room's leaf **before** it drops the lists;
 skipping that would leave `TreeObject::Room` keys in the shared tree naming
 arena slots that no longer exist.
+
+## `AutorouteEngine` (Task 6), and the two containers Java has
+
+`src/autoroute/maze/engine.rs` is the room half of `AutorouteEngine.java`:
+construction, `initConnection`, `clear`, the incomplete/complete add-and-remove
+pairs, `completeExpansionRoom`, `completeNeighbourRooms`, `removeAllDoors`,
+`resetAllDoors`, `getRoomsWithTargetItems`, `validate`, `generateRoomIdNo` and
+`isStopRequested`. `autorouteConnection` is Task 16's.
+
+Three shape changes, all forced and all documented at the type:
+
+* **`ExpansionRoomStore` is embedded**, not re-declared (Task 2's §3 note), so
+  there is exactly one room-id counter.
+* **The board is a parameter.** Java's `public final RoutingBoard board` is a
+  back-pointer into the object that owns the engine, a cycle the port cannot
+  express while keeping `Board: Send + Sync`.
+* **`stoppableThread` is a parameter too.** `StopCheck` is a borrowed
+  `&dyn Fn() -> bool`; storing one would put a lifetime on `AutorouteEngine`
+  and on every type that holds one. Ruling 6 fixes the six cancellation sites,
+  and each has the caller's stop flag in scope.
+
+**`completeExpansionRooms` is a separate `Vec<RoomId>`, not the complete-room
+arena** — quirk #165. `SortedRoomNeighbours.calculate` builds a room *before*
+it knows whether it survives, and both the `edgeRemoved` retry and
+`addCompleteRoom`'s dimension check abandon one with its doors still attached.
+The probe's one-obstacle board constructs nine rooms and lists six. Every walk
+Java writes over `completeExpansionRooms` — `clear`, `initConnection`,
+`getRoomsWithTargetItems`, `validate`, `resetAllDoors` — walks the list; the
+arena is Java's heap.
+
+**Quirk #164 is why `remove_complete_expansion_room` calls
+`other_complete_room`.** `ExpansionDoor` has two `otherRoom` overloads and the
+declared parameter type picks one at compile time: `removeCompleteExpansionRoom`
+takes a `CompleteFreeSpaceExpansionRoom`, so it binds the narrowing overload and
+skips every incomplete neighbour — which is also what keeps its unchecked
+`touchingSides[1]` from throwing. Every other site in the port keeps the wide
+overload, matching its Java counterpart's declared parameter type.
+
+**Ruling 7's first recovery boundary is `complete_expansion_room`.** Java's
+`catch (Exception)` at `:518-521` returns a **fresh empty** `ArrayList`, not the
+rooms completed so far — quirk #166, and the opposite of what the task brief
+said. The port's `Err` *is* that empty collection: `.unwrap_or_default()`
+reproduces `:520` exactly. The boundary is a `catch_unwind`, because the
+exceptions the catch exists for are `NullPointerException`s in ported geometry.
+
+**Quirk #162 is a hang, and the engine does not guard it.**
+`calculateNewIncompleteRooms` fails to terminate on ~0.4 % of completions, and
+`completeExpansionRoom` reaches it through `addCompleteRoom`. A guard would be a
+divergence; the wall-clock bound belongs to the caller (Tasks 9 and 17), which
+is also where Java's own `TimeLimit` is checked.
+
+Every literal in `tests/engine_rooms.rs` — room ids, room shapes, door counts,
+the room-instance counter, the surviving incomplete-room count, the tree's leaf
+count — is read off the HEAD jar through
+`scripts/differential/java/probes/P6T6Probe.java`, which is committed with its
+`javac`/`java` invocation and reflects into the three private lists no public
+method exposes.
+
+Two methods are deferred at the site rather than written here:
+`invalidate_drill_pages`'s body is Task 7's `DrillPageArray`, and
+`initConnection`'s `additionalUpdateAfterChange` loop (`:111-117`) is Task 9's
+`RoutingBoardExt` — its body is entirely engine work over a drill-page array
+that does not exist yet. Both carry `added in Task N:` markers naming the Java
+method.
 
 ## `AutorouteSearchTreeExt` (Task 3)
 
@@ -199,7 +266,7 @@ sound between connections, when no id from the old arena survives.
 ## Audit
 
 `scripts/audit-map/fr-router.map` maps every class of the five Java packages
-this crate ports (ruling 13). As of Task 3 the package-root invocation reaches
+this crate ports (ruling 13). As of Task 6 the package-root invocation reaches
 **zero MISSING and zero UNMAPPED**, over Task 1's three classes and over the
 whole package root:
 
@@ -222,7 +289,15 @@ from 28 to **27**, both at zero UNMAPPED; Task 3 left both untouched, because
 naming `AutorouteSearchTreeExt`, and `./scripts/audit-port.sh board/searchtree
 crates/fr-board/src` still exits 0. Task 4 took `autoroute/expansion` from 13
 MISSING to **6** — exactly the two 45-degree/90-degree siblings, three methods
-each, which are Task 5's.
+each — and Task 5 took it to **0**. Task 6 took `autoroute/maze` from 27 MISSING
+to **11**: every one of `AutorouteEngine`'s sixteen rows is closed, by a real
+`fn` except `autorouteConnection` (`added in Task 16:`), `emitDiagnostics` and
+`describeShapeBounds` (`not ported:`, a GUI sink and an `FRLogger` formatter).
+The eleven that remain are `AutorouteControl` (2, Task 8),
+`DestinationDistance` (3, Task 8), `MazeListElement.compareTo` (Task 8),
+`MazeSearchEngine` (4, Tasks 11-13) and `MazeTraceShover` (1, Task 12). All five
+`autoroute` invocations stay at zero UNMAPPED, and `autoroute/drill` (23,
+Task 7) and `autoroute/path` (7, Tasks 14-15) are untouched.
 
 ## Quirk-register numbering
 
@@ -237,7 +312,13 @@ and the 45-degree override keep); Task 4 wrote **#160** (the non-transitive
 unterminating `calculateNewIncompleteRooms`); Task 5 wrote **#163**
 (`Sorted45DegreeRoomNeighbours.calculateEdgeIncompleteRoomsOfObstacleExpansionRoom`
 never advances its `currentCorner`, so it always skips the last side of the
-walk), so the next free id is **#164**. Every later task must re-read the
+walk); and Task 6 wrote **#164** (`removeCompleteExpansionRoom` binds
+`ExpansionDoor`'s narrowing `otherRoom` overload and so skips every incomplete
+neighbour), **#165** (`completeExpansionRooms` is a strict subset of the
+complete rooms that exist, and the abandoned ones keep their doors) and
+**#166** (`completeExpansionRoom`'s `catch` returns a fresh empty collection
+for rooms it has already committed). The next free id is **#167**. Every later
+task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.
 

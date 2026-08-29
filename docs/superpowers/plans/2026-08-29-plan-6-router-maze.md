@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #164.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #167.** Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
@@ -1195,6 +1195,16 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > either: `Sorted45DegreeRoomNeighbours.calculateEdgeIncompleteRoomsOfObstacleExpansionRoom`
 > never advances its `currentCorner`, so the degenerate-side guard skips the walk's **last** side
 > instead of the degenerate ones — an eight-sided obstacle room gets seven incomplete rooms.
+> Task 6 landed **#164**, **#165** and **#166**, none of which the plan anticipated:
+> `AutorouteEngine.removeCompleteExpansionRoom` binds `ExpansionDoor`'s **narrowing**
+> `otherRoom(CompleteExpansionRoom)` overload and therefore skips every incomplete neighbour —
+> which is also what keeps `touchingSides[1]` from throwing on an empty array;
+> `completeExpansionRooms` is a **strict subset** of the complete rooms that exist, because
+> `SortedRoomNeighbours` builds a room before it commits and both the `edgeRemoved` retry and
+> `addCompleteRoom`'s dimension check abandon one with its doors still attached; and
+> `completeExpansionRoom`'s `catch` returns a **fresh empty** collection rather than the rooms
+> completed so far, which the task brief and the controller's ruling-7 note both had the other
+> way round.
 > Tasks 8 and 12 must take the next free id *at the time they write*, re-checking
 > `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
