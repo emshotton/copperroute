@@ -15,6 +15,7 @@ pub mod format;
 pub mod keyword;
 pub mod lexer;
 pub mod parser;
+pub mod ses_reader;
 pub mod ses_writer;
 
 pub use coordinate_transform::CoordinateTransform;
@@ -34,6 +35,7 @@ pub use parser::geometry::{
 pub use parser::scope_parameter::{
     DsnReadOptions, ReadScopeParameter, WriteScopeParameter, read_scope, skip_scope,
 };
+pub use ses_reader::SesImportSummary;
 
 /// Re-exports every public type of the crate, for `use fr_dsn::prelude::*;`.
 pub mod prelude {
@@ -41,9 +43,9 @@ pub mod prelude {
         BoardMetadata, BoardReadResult, CoordinateTransform, DSN_RESERVED, DsnCircle, DsnError,
         DsnLayer, DsnLayerStructure, DsnPolygon, DsnPolygonPath, DsnPolylinePath, DsnReadOptions,
         DsnRectangle, DsnScanner, DsnShape, FileFormat, IdentifierType, IndentFileWriter, Keyword,
-        LexicalState, ReadAreaScopeResult, ReadScopeParameter, SES_RESERVED, ScopeKeyword, Token,
-        WriteScopeParameter, format_placement_rotation, java_double_to_string,
-        java_float_to_string, java_rint, java_round, java_round_to_int, read_board, read_metadata,
-        read_scope, skip_scope, write,
+        LexicalState, ReadAreaScopeResult, ReadScopeParameter, SES_RESERVED, ScopeKeyword,
+        SesImportSummary, Token, WriteScopeParameter, format_placement_rotation,
+        java_double_to_string, java_float_to_string, java_rint, java_round, java_round_to_int,
+        read_board, read_metadata, read_scope, skip_scope, write,
     };
 }

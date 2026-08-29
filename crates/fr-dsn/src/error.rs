@@ -44,6 +44,21 @@ pub enum DsnError {
     #[error(transparent)]
     Board(#[from] BoardError),
 
+    /// The stream did not start with a `(session <name>` header — `SesReader.read`'s
+    /// `IOException` (SesReader.java:129-132), whose message this reproduces.
+    ///
+    /// Java raises it from `processSessionScope`'s three-token check and lets it out through
+    /// `read`'s `finally`; it is the *only* content problem `SesReader` refuses outright. Every
+    /// other one (an unknown net, a missing padstack, an unreadable path) bumps
+    /// [`crate::SesImportSummary::errors_encountered`] and the read carries on.
+    #[error(
+        "SesReader: not a Specctra session file — expected '(session <name>' header, got: {got}"
+    )]
+    NotASessionFile {
+        /// The offending token, as Java concatenates it into the message.
+        got: String,
+    },
+
     /// `DsnFile.adjustPlaneAutorouteSettings` (DsnFile.java:86-90) calls
     /// `currentConductionArea.getArea().splitToConvex()` with no null check — unlike the
     /// sibling loop over the board outline eleven lines above it (`:67-68`), which does check.

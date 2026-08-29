@@ -60,3 +60,5 @@ SesWriter                ses_writer.rs
 # `SesWriter.formatPlacementRotation` is the package's only `String.format`; it lives with the
 # other Java number-formatting emulations (Plan 3 Task 2), not with the writer that calls it.
 SesWriter                format/double.rs
+SesReader                ses_reader.rs
+SesImportSummary         ses_reader.rs
