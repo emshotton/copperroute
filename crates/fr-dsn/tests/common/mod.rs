@@ -283,3 +283,60 @@ pub fn assert_matches_golden(board: &Board, warnings: &[String], golden_name: &s
         "{golden_name}: line count differs"
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// `SesRoundTripTest.java`'s two SES-text helpers, shared by `tests/parity_ses.rs` (Task 12) and
+// `tests/ses_round_trip.rs` (Task 13) — Java has one copy of each and so does this port.
+// ---------------------------------------------------------------------------------------------
+
+/// `SesRoundTripTest.assertBalancedScopes` (SesRoundTripTest.java:280-284).
+///
+/// **Java wins over the brief**, which describes this helper as counting brackets "outside quoted
+/// strings": Java's counts every `(` and `)` character in the file, quoted ones included. Ported
+/// as Java has it — a stricter helper would be a different test.
+pub fn assert_balanced_scopes(content: &str) {
+    let opens = content.chars().filter(|&c| c == '(').count();
+    let closes = content.chars().filter(|&c| c == ')').count();
+    assert_eq!(opens, closes, "SES scopes must be balanced");
+}
+
+/// `SesRoundTripTest.assertUniqueLibraryPadstacks` (SesRoundTripTest.java:286-302), with the
+/// `\(padstack\s+([^\s()]+)` regex hand-rolled (`fr-dsn` has no `regex` dependency).
+pub fn assert_unique_library_padstacks(content: &str) {
+    let library_start = content
+        .find("(library_out")
+        .expect("SES must contain library_out scope");
+    let network_start = library_start
+        + content[library_start..]
+            .find("(network_out")
+            .expect("SES must contain network_out scope after library_out");
+    let library_section = &content[library_start..network_start];
+
+    let mut padstack_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut rest = library_section;
+    let mut found_any = false;
+    while let Some(at) = rest.find("(padstack") {
+        let after = &rest[at + "(padstack".len()..];
+        let name_start = after.len() - after.trim_start().len();
+        // `\s+` — at least one whitespace character, else the regex would not match here.
+        if name_start == 0 {
+            rest = after;
+            continue;
+        }
+        let name = &after[name_start..];
+        let name_end = name
+            .find([' ', '\t', '\n', '\r', '(', ')'])
+            .unwrap_or(name.len());
+        let name = &name[..name_end];
+        assert!(
+            padstack_names.insert(name),
+            "library_out must not contain duplicate padstack entries: {name}"
+        );
+        found_any = true;
+        rest = after;
+    }
+    assert!(
+        found_any,
+        "library_out must declare at least one via padstack"
+    );
+}

@@ -327,20 +327,19 @@ impl SesReader<'_> {
         let polyline = Polyline::from_points(&points);
         let half_width = java_round_to_int(wire_path.width / (2.0 * denominator));
 
-        // totalized: SesReader.processWireScope passes `wirePath.layer.no` (:301) straight to
-        // `insertTrace` with no range check. The two shared pseudo-layers `Layer.PCB` and
-        // `Layer.SIGNAL` carry `no == -1`, and `Shape.getLayer` hands either of them back for a
-        // path on layer `pcb`/`signal` — so Java indexes the search tree with -1 and its
-        // `catch (Exception)` two lines further down turns the resulting
-        // `ArrayIndexOutOfBoundsException` into the `false` this returns, after
-        // `BasicBoard.insertItem` has already put a trace on a layer that does not exist. The
-        // port refuses the insert instead, which reaches the same `false` with the board intact.
-        let Ok(layer_index) = usize::try_from(wire_path.layer.no) else {
-            return Ok(false);
-        };
-        if layer_index >= self.board.get_layer_count() {
-            return Ok(false);
-        }
+        // SesReader.processWireScope passes `wirePath.layer.no` (:301) straight to `insertTrace`
+        // with no range check, and it does not need one: `Trace`'s constructor clamps the layer
+        // on both sides — `Math.min(Math.max(p_layer, 0), board.getLayerCount() - 1)`
+        // (Trace.java:45-47). The two shared pseudo-layers `Layer.PCB` and `Layer.SIGNAL` carry
+        // `no == -1`, and `Shape.getLayer` hands either of them back for a path on layer
+        // `pcb`/`signal`, so such a wire lands on **layer 0** and counts as imported. JVM-verified
+        // against the 2.3.0 jar: relabelling one `(path B.Cu …)` of `Issue026-J2_reference.ses`
+        // to `(path pcb …)` still gives `wires=89 vias=10 errors=0`, with that one trace moved
+        // from layer 1 to layer 0 (`pcb_layer_path_lands_on_layer_0_and_counts_as_a_wire`).
+        //
+        // [`fr_board::PolylineTrace::new`] applies the *upper* half of that clamp; the lower half
+        // is this `unwrap_or(0)`, because a `usize` layer cannot be negative in the first place.
+        let layer_index = usize::try_from(wire_path.layer.no).unwrap_or(0);
 
         let clearance_class = self.default_clearance_class(ItemClass::Trace);
 
@@ -419,7 +418,10 @@ impl SesReader<'_> {
         // `catch (Exception)` would swallow it if it did; the port's answers a `Result` because
         // `split_traces` can surface a `Polyline` normalisation failure (quirk #109). Mapped to
         // the `false` Java's catch produces rather than propagated, so one bad via costs one
-        // `errorsEncountered` instead of the whole import.
+        // `errorsEncountered` instead of the whole import. The via is on the board either way —
+        // `Board::insert_via` calls `insert_item` before the `split_traces` loop that can fail,
+        // exactly as `BasicBoard.insertVia` does — so an `Err` here leaves an *uncounted* via,
+        // which is the state Java's caught exception leaves behind too.
         if self
             .board
             .insert_via(

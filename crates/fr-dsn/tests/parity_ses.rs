@@ -13,8 +13,9 @@
 //! formatting one — [`no_reference_contains_a_wire`] pins that invariant on the reference side so
 //! the claim cannot rot.
 
-use std::collections::HashSet;
 use std::path::Path;
+
+mod common;
 
 use fr_board::Board;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
@@ -234,66 +235,16 @@ fn placement_rotation_formatting_matches_kicad_style() {
     assert_eq!(format_placement_rotation(-45.25), "-45.25");
 }
 
-/// `SesRoundTripTest.assertBalancedScopes` (SesRoundTripTest.java:280-284).
-///
-/// **Java wins over the brief**, which describes this helper as counting brackets "outside quoted
-/// strings": Java's counts every `(` and `)` character in the file, quoted ones included. Ported
-/// as Java has it — a stricter helper would be a different test.
-fn assert_balanced_scopes(content: &str) {
-    let opens = content.chars().filter(|&c| c == '(').count();
-    let closes = content.chars().filter(|&c| c == ')').count();
-    assert_eq!(opens, closes, "SES scopes must be balanced");
-}
-
-/// `SesRoundTripTest.assertUniqueLibraryPadstacks` (SesRoundTripTest.java:286-302), with the
-/// `\(padstack\s+([^\s()]+)` regex hand-rolled (`fr-dsn` has no `regex` dependency).
-fn assert_unique_library_padstacks(content: &str) {
-    let library_start = content
-        .find("(library_out")
-        .expect("SES must contain library_out scope");
-    let network_start = library_start
-        + content[library_start..]
-            .find("(network_out")
-            .expect("SES must contain network_out scope after library_out");
-    let library_section = &content[library_start..network_start];
-
-    let mut padstack_names: HashSet<&str> = HashSet::new();
-    let mut rest = library_section;
-    let mut found_any = false;
-    while let Some(at) = rest.find("(padstack") {
-        let after = &rest[at + "(padstack".len()..];
-        let name_start = after.len() - after.trim_start().len();
-        // `\s+` — at least one whitespace character, else the regex would not match here.
-        if name_start == 0 {
-            rest = after;
-            continue;
-        }
-        let name = &after[name_start..];
-        let name_end = name
-            .find([' ', '\t', '\n', '\r', '(', ')'])
-            .unwrap_or(name.len());
-        let name = &name[..name_end];
-        assert!(
-            padstack_names.insert(name),
-            "library_out must not contain duplicate padstack entries: {name}"
-        );
-        found_any = true;
-        rest = after;
-    }
-    assert!(
-        found_any,
-        "library_out must declare at least one via padstack"
-    );
-}
-
 /// The three assertions of `SesRoundTripTest.issue742SesRoundTripsWithoutErrors`
 /// (SesRoundTripTest.java:234-269) that do not need `SesReader`: balanced scopes, unique
 /// `library_out` padstacks, and KiCad-style rotation formatting in the placement records.
 ///
 /// Java imports `Issue742-tastexx-pcb.ses` into the board before writing; the wire data that
 /// import adds changes nothing these three assertions look at (they read the `placement` and
-/// `library_out` scopes, and bracket balance), so the un-imported board is the right stand-in
-/// until Task 13 lands the reader.
+/// `library_out` scopes, and bracket balance), so this runs them on the un-imported board.
+/// `tests/ses_round_trip.rs::issue742_ses_round_trips_without_errors` (Task 13) runs the same
+/// three helpers on the *imported* board, i.e. on Java's own input — this one keeps them
+/// covering the writer alone.
 #[test]
 fn issue742_placement_and_library_out_are_well_formed() {
     let fixture = parity::java_dir().join("fixtures/Issue742-tastexx-pcb.dsn");
@@ -305,8 +256,8 @@ fn issue742_placement_and_library_out_are_well_formed() {
         "fixtures/Issue742-tastexx-pcb.dsn",
         "Issue742-tastexx-pcb.dsn",
     );
-    assert_balanced_scopes(&content);
-    assert_unique_library_padstacks(&content);
+    common::assert_balanced_scopes(&content);
+    common::assert_unique_library_padstacks(&content);
     assert!(
         !content.contains("0.000"),
         "whole-degree rotations must not use trailing decimals"
@@ -317,14 +268,15 @@ fn issue742_placement_and_library_out_are_well_formed() {
     );
 }
 
-/// Not a Java test: the two helpers above, run over all four parity fixtures. `assert_balanced_scopes`
-/// and `assert_unique_library_padstacks` are the brief's named test ports, and `Issue742-tastexx-pcb.dsn`
-/// lives outside `tests/reference`, so this keeps them covering the committed corpus too.
+/// Not a Java test: the two shared helpers, run over all four parity fixtures.
+/// `assert_balanced_scopes` and `assert_unique_library_padstacks` are the brief's named test
+/// ports, and `Issue742-tastexx-pcb.dsn` lives outside `tests/reference`, so this keeps them
+/// covering the committed corpus too.
 #[test]
 fn every_fixture_is_balanced_with_unique_library_padstacks() {
     for (stem, relative_fixture) in FIXTURES {
         let content = write_ses(relative_fixture, stem);
-        assert_balanced_scopes(&content);
-        assert_unique_library_padstacks(&content);
+        common::assert_balanced_scopes(&content);
+        common::assert_unique_library_padstacks(&content);
     }
 }

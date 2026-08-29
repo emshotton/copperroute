@@ -155,17 +155,24 @@ fn endpoint_snapping_is_stable_and_round_trips() {
             } else {
                 board.trace_end_contacts(trace_id)
             };
-            // Java's `DrillItem` is exactly `Via` + `Pin`.
-            let drill_centers: Vec<FloatPoint> = contacts
+            // `contacts.stream().anyMatch(DrillItem.class::isInstance)` (SesRoundTripTest.java:199)
+            // — Java's `DrillItem` is exactly `Via` + `Pin`.
+            let drill_contacts: Vec<_> = contacts
                 .iter()
                 .filter(|id| matches!(board.items.get(id), Some(Item::Via(_) | Item::Pin(_))))
-                .filter_map(|id| board.drill_center(*id))
-                .map(|center| center.to_float())
                 .collect();
-            if drill_centers.is_empty() {
+            if drill_contacts.is_empty() {
                 continue;
             }
             traces_with_drill_contacts += 1;
+            // `((DrillItem) c).getCenter().toFloat()` (:212). `Board::drill_center` answers `None`
+            // only for a *non*-drill item, which `drill_contacts` has already excluded, so this
+            // `filter_map` drops nothing — it is `Option` plumbing, not a second predicate.
+            let drill_centers: Vec<FloatPoint> = drill_contacts
+                .into_iter()
+                .filter_map(|id| board.drill_center(*id))
+                .map(|center| center.to_float())
+                .collect();
             let Some(Item::Trace(trace)) = board.items.get(&trace_id) else {
                 unreachable!("filtered above")
             };
@@ -207,8 +214,10 @@ fn endpoint_snapping_is_stable_and_round_trips() {
 
 /// `SesRoundTripTest.issue742SesRoundTripsWithoutErrors` (SesRoundTripTest.java:240-269), the
 /// reader half. The writer half of that test (balanced scopes, unique library padstacks, KiCad
-/// rotation formatting) is kept here too — it is cheap and it is the only place `Issue742`'s
-/// SES text is inspected at all.
+/// rotation formatting) is kept here too: this is the only place those three run against the
+/// board Java actually writes from, i.e. *after* the session import.
+/// `tests/parity_ses.rs::issue742_placement_and_library_out_are_well_formed` runs the same two
+/// shared helpers on the un-imported board.
 #[test]
 fn issue742_ses_round_trips_without_errors() {
     let (mut board, ct) = load_board("Issue742-tastexx-pcb.dsn");
@@ -224,36 +233,10 @@ fn issue742_ses_round_trips_without_errors() {
     ses_writer::write(&board, &ct, &mut out, "Issue742-tastexx-pcb.dsn").expect("write");
     let content = String::from_utf8(out.clone()).expect("SES output must be valid UTF-8");
 
-    // `assertBalancedScopes` (SesRoundTripTest.java:280-284).
-    assert_eq!(
-        content.chars().filter(|c| *c == '(').count(),
-        content.chars().filter(|c| *c == ')').count(),
-        "SES scopes must be balanced"
-    );
-    // `assertUniqueLibraryPadstacks` (:286-302), without a regex dependency.
-    let library_start = content
-        .find("(library_out")
-        .expect("SES must contain library_out scope");
-    let network_start = content[library_start..]
-        .find("(network_out")
-        .map(|i| library_start + i)
-        .expect("SES must contain network_out scope after library_out");
-    let library_section = &content[library_start..network_start];
-    let mut padstack_names = std::collections::HashSet::new();
-    for chunk in library_section.split("(padstack ").skip(1) {
-        let name: String = chunk
-            .chars()
-            .take_while(|c| !c.is_whitespace() && *c != '(' && *c != ')')
-            .collect();
-        assert!(
-            padstack_names.insert(name.clone()),
-            "library_out must not contain duplicate padstack entries: {name}"
-        );
-    }
-    assert!(
-        !padstack_names.is_empty(),
-        "library_out must declare at least one via padstack"
-    );
+    // `assertBalancedScopes` (:280-284) and `assertUniqueLibraryPadstacks` (:286-302), the two
+    // helpers `tests/parity_ses.rs` shares with this file — Java has one copy of each.
+    common::assert_balanced_scopes(&content);
+    common::assert_unique_library_padstacks(&content);
     assert!(
         !content.contains("0.000"),
         "whole-degree rotations must not use trailing decimals"
@@ -308,6 +291,66 @@ fn ses_import_summaries_match_the_jvm() {
             "{stem}: (wires, vias, errors)"
         );
     }
+}
+
+/// Fix round 1. A `(path pcb …)` / `(path signal …)` wire carries `Layer.no == -1`
+/// (`Shape.getLayer` hands back the shared `Layer.PCB`/`Layer.SIGNAL` constants), which
+/// `SesReader.processWireScope` passes to `insertTrace` unchecked — and `Trace`'s constructor
+/// clamps it with `Math.min(Math.max(p_layer, 0), layerCount - 1)` (Trace.java:45-47). So the
+/// wire lands on **layer 0** and counts as imported; it is not an error.
+///
+/// JVM-verified against the pinned 2.3.0 jar by relabelling `Issue026-J2_reference.ses`'s third
+/// `(path …)` line, which is the only `B.Cu` (layer 1) path among the first three:
+///
+/// ```text
+/// sed '56s/(path B.Cu 2500/(path pcb 2500/' ../freerouting/fixtures/Issue026-J2_reference.ses \
+///     > /tmp/Issue026-pcb-layer.ses
+/// java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/sprobe \
+///     SProbe ../freerouting/fixtures/Issue026-J2_reference.dsn /tmp/Issue026-pcb-layer.ses
+/// ```
+///
+/// gives `summary wires=89 vias=10 errors=0`, and the single line that moves against the
+/// unmodified run is `item 84 PolylineTrace layer=1 …` becoming `layer=0`.
+#[test]
+fn pcb_layer_path_lands_on_layer_0_and_counts_as_a_wire() {
+    let ses = String::from_utf8(fixture_bytes("Issue026-J2_reference.ses")).expect("UTF-8");
+    // The same edit as the `sed` above, expressed as a one-shot replace of the file's only
+    // `B.Cu` path among the leading three.
+    let mutated = ses.replacen("(path B.Cu 2500", "(path pcb 2500", 1);
+    assert_ne!(ses, mutated, "the fixture must still contain a B.Cu path");
+
+    let (mut board, ct) = load_board("Issue026-J2_reference.dsn");
+    let summary = ses_reader::read(mutated.as_bytes(), &mut board, &ct).expect("valid SES file");
+    assert_eq!(
+        (89, 10, 0),
+        (
+            summary.wires_imported,
+            summary.vias_imported,
+            summary.errors_encountered
+        ),
+        "a pcb-layer path is imported, not counted as an error"
+    );
+
+    // The relabelled trace is the one whose dump line moved from `layer=1` to `layer=0`.
+    let mut actual = vec![format!(
+        "summary wires={} vias={} errors={}",
+        summary.wires_imported, summary.vias_imported, summary.errors_encountered
+    )];
+    actual.extend(common::dump(&board, &[]));
+    let expected: Vec<String> = common::golden("Issue026-J2_reference-ses-items.txt")
+        .into_iter()
+        .map(|line| {
+            if line.starts_with("item 84 PolylineTrace layer=1 ") {
+                line.replacen("layer=1 ", "layer=0 ", 1)
+            } else {
+                line
+            }
+        })
+        .collect();
+    for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
+        assert_eq!(e, a, "line {} differs", i + 1);
+    }
+    assert_eq!(expected.len(), actual.len(), "line count differs");
 }
 
 /// The full board after the import — every item's id, kind, layer, net, clearance class and
