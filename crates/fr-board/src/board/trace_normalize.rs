@@ -38,6 +38,7 @@ use std::collections::BTreeMap;
 
 use fr_geometry::{IntOctagon, Line, Point, Polyline, TileShape};
 
+use crate::datastructures::StopCheck;
 use crate::error::BoardError;
 use crate::ids::{ItemId, TreeObject};
 use crate::items::Item;
@@ -372,15 +373,40 @@ impl Board {
     /// reaches it — both count outer passes this never leaves.
     /// `crates/fr-board/tests/trace_normalize.rs`'s
     /// `a_four_rung_ladder_never_finishes_normalizing` is the (`#[ignore]`d) reproduction.
+    ///
+    /// **Where the ladder actually hangs first** (Plan 3 Task 10): not here. The walk below
+    /// retires only ~60 entries a minute on a four-rung ladder because each one is stuck inside
+    /// `BasicBoard.removeIfCycle` -> [`Board::connection_items`], whose walk along the contacts
+    /// has no visited set and circles a closed connection for ever (quirk #106). Both loops are
+    /// escapable now — see [`Board::split_trace_checked`] and
+    /// [`Board::connection_items_checked`].
     //
-    // obligation: Plan 3 (docs/java-quirks.md, "Ladder hang in DSN import"). `Wiring.java:347`
-    // ends every DSN read with `normalizeAllTraces()`, so an imported design containing that
-    // pattern hangs the reader. Plan 3 must either bound this walk or run the import
-    // normalisation under a `TimeLimit`/`StopCheck` before it wires the DSN reader.
+    // obligation: Plan 3 (docs/java-quirks.md, "Ladder hang in DSN import") — **discharged in
+    // Plan 3 Task 10**, ruling 4's option (b): `Wiring.java:346` ends every DSN read with
+    // `normalizeAllTraces()`, and `fr-dsn` now runs that under a `TimeLimit`-backed `StopCheck`
+    // (`DsnReadOptions::normalize_time_limit`, default 60 s) rather than bounding this walk, so
+    // every design that terminates normalises identically.
     pub fn split_trace(
         &mut self,
         id: ItemId,
         clip: Option<&IntOctagon>,
+    ) -> Result<Vec<ItemId>, BoardError> {
+        self.split_trace_checked(id, clip, &|| false)
+    }
+
+    /// [`Board::split_trace`] under a [`StopCheck`], consulted at the head of the entry walk —
+    /// the loop quirk #76 never leaves (Plan 3 ruling 4). A trip answers
+    /// [`BoardError::Stopped`].
+    ///
+    /// The check sits *inside* the `while cursor < entries.len()` loop rather than around it
+    /// because that loop is the one that does not terminate: the per-segment `for` above it and
+    /// the recursion below both make progress.
+    // added in Plan 3: PolylineTrace.split (plan ruling 4)
+    pub fn split_trace_checked(
+        &mut self,
+        id: ItemId,
+        clip: Option<&IntOctagon>,
+        stop: StopCheck<'_>,
     ) -> Result<Vec<ItemId>, BoardError> {
         let mut result: Vec<ItemId> = Vec::new();
         // totalized: Java can be handed a trace that has already been removed — `normalize`
@@ -435,6 +461,9 @@ impl Board {
                 self.split_overlapping_entries(&current_shape, layer, &mut entry_items);
             let mut cursor = 0usize;
             while cursor < entries.len() {
+                if stop() {
+                    return Err(BoardError::Stopped);
+                }
                 // PolylineTrace.java:488-492.
                 if !self.items.get(&id).is_some_and(Item::is_on_the_board) {
                     return Ok(result);
@@ -520,7 +549,7 @@ impl Board {
                             let Some(pieces) = pieces else { continue };
                             own_trace_split = true;
                             for piece in pieces.into_iter().flatten() {
-                                result.extend(self.split_trace(piece, clip)?);
+                                result.extend(self.split_trace_checked(piece, clip, stop)?);
                             }
                             break;
                         }
@@ -529,10 +558,10 @@ impl Board {
                             // created — the found trace's pieces first, this trace's last, "to
                             // preserve them, if possible".
                             for piece in &split_pieces {
-                                self.remove_if_cycle(*piece);
+                                self.remove_if_cycle_checked(*piece, stop)?;
                             }
                             for piece in result.clone() {
-                                self.remove_if_cycle(piece);
+                                self.remove_if_cycle_checked(piece, stop)?;
                             }
                         }
                         // PolylineTrace.java:649-651.
@@ -826,6 +855,18 @@ impl Board {
         self.normalize_trace_at_depth(id, clip, 0)
     }
 
+    /// [`Board::normalize_trace`] under a [`StopCheck`], threaded through the recursion and into
+    /// [`Board::split_trace_checked`] (Plan 3 ruling 4). A trip answers [`BoardError::Stopped`].
+    // added in Plan 3: PolylineTrace.normalize (plan ruling 4)
+    pub fn normalize_trace_checked(
+        &mut self,
+        id: ItemId,
+        clip: Option<&IntOctagon>,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
+        self.normalize_trace_at_depth_checked(id, clip, 0, stop)
+    }
+
     /// Port of the private `PolylineTraceNormalization.normalize(PolylineTrace, IntOctagon, int)`
     /// (PolylineTraceNormalization.java:24-132), the recursion [`Board::normalize_trace`] enters
     /// at depth 0.
@@ -848,12 +889,29 @@ impl Board {
         clip: Option<&IntOctagon>,
         depth: u32,
     ) -> Result<bool, BoardError> {
+        self.normalize_trace_at_depth_checked(id, clip, depth, &|| false)
+    }
+
+    /// [`Board::normalize_trace_at_depth`] under a [`StopCheck`] (Plan 3 ruling 4). The check is
+    /// consulted once per recursion level and, through [`Board::split_trace_checked`], on every
+    /// step of the entry walk quirk #76 hangs in.
+    // added in Plan 3: PolylineTraceNormalization.normalize (plan ruling 4)
+    pub fn normalize_trace_at_depth_checked(
+        &mut self,
+        id: ItemId,
+        clip: Option<&IntOctagon>,
+        depth: u32,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
+        if stop() {
+            return Err(BoardError::Stopped);
+        }
         // PolylineTraceNormalization.java:26-41.
         if depth > MAX_NORMALIZATION_DEPTH {
             return Ok(false);
         }
         // PolylineTraceNormalization.java:58-59.
-        let split_pieces = self.split_trace(id, clip)?;
+        let split_pieces = self.split_trace_checked(id, clip, stop)?;
         let mut result = split_pieces.len() != 1;
         for piece in split_pieces {
             // PolylineTraceNormalization.java:86-87.
@@ -877,7 +935,7 @@ impl Board {
                 }
             } else if trace_combined {
                 // PolylineTraceNormalization.java:122-125: the recursive result is discarded.
-                self.normalize_trace_at_depth(piece, clip, depth + 1)?;
+                self.normalize_trace_at_depth_checked(piece, clip, depth + 1, stop)?;
                 result = true;
             }
         }

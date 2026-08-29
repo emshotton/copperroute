@@ -65,6 +65,8 @@ use std::collections::BTreeSet;
 
 use fr_geometry::{Point, TileShape};
 
+use crate::datastructures::StopCheck;
+use crate::error::BoardError;
 use crate::ids::{ItemId, TreeObject};
 use crate::items::Item;
 use crate::structure::FixedState;
@@ -650,9 +652,31 @@ impl Board {
         id: ItemId,
         stop_option: StopConnectionOption,
     ) -> BTreeSet<ItemId> {
+        self.connection_items_checked(id, stop_option, &|| false)
+            .expect("a `|| false` stop check never trips")
+    }
+
+    /// [`Board::connection_items`] under a [`StopCheck`], consulted at the head of the walk
+    /// along the contacts (Item.java:724) — **the loop that does not terminate on a cycle**.
+    ///
+    /// Java's walk has no visited set: `result.add(currentItem)` on a `Set` does not stop it, so
+    /// a closed connection with no fork and no non-routable item (a ladder rung ring, which is
+    /// exactly what `BasicBoard.removeIfCycle` calls this on, BasicBoard.java:1354) walks round
+    /// it for ever. The port reproduces that faithfully; this overload is how a caller escapes.
+    ///
+    /// Plan 3 Task 10 found this to be the mechanism the four-rung ladder (quirk #76) actually
+    /// hangs in — the port reaches it long before `PolylineTrace.split`'s entry re-walk becomes
+    /// a problem — so ruling 4's `StopCheck` has to reach this far to work at all.
+    // added in Plan 3: Item.getConnectionItems (plan ruling 4)
+    pub fn connection_items_checked(
+        &self,
+        id: ItemId,
+        stop_option: StopConnectionOption,
+        stop: StopCheck<'_>,
+    ) -> Result<BTreeSet<ItemId>, BoardError> {
         let mut result = BTreeSet::new();
         let Some(item) = self.items.get(&id) else {
-            return result;
+            return Ok(result);
         };
         let contacts = self.normal_contacts(id);
         // Item.java:701-703.
@@ -682,6 +706,9 @@ impl Board {
             // Item.java:721-777: walk along the contacts until the next fork or non-route item.
             let mut current_id = start_contact;
             loop {
+                if stop() {
+                    return Err(BoardError::Stopped);
+                }
                 let Some(current) = self.items.get(&current_id) else {
                     break;
                 };
@@ -741,7 +768,7 @@ impl Board {
                 prev_contact_layer = next_layer;
             }
         }
-        result
+        Ok(result)
     }
 
     // -- tails, overlaps and cycles ----------------------------------------------------------------

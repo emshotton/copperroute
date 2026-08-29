@@ -1472,3 +1472,141 @@ fn a_four_rung_ladder_never_finishes_normalizing() {
     // Only reached for `RUNGS <= 3`.
     assert!(trace_ids(&board).len() <= 2);
 }
+
+/// The terminating sibling of `a_four_rung_ladder_never_finishes_normalizing`, and the first
+/// reproduction of quirk #76 in this suite that actually returns: Plan 3 ruling 4 gives
+/// `split`'s entry walk a [`StopCheck`], so the same four-rung ladder that hangs
+/// `normalize_trace` answers [`BoardError::Stopped`] from `normalize_trace_checked`.
+///
+/// The stop check is a **counter**, not a clock, so the test is deterministic and cheap: it
+/// trips after 500 steps, eighteen times the 28 the three-rung control needs (asserted below,
+/// so a regression that makes the terminating case wander is caught too).
+///
+/// # Where the ladder actually hangs
+///
+/// Not where quirk #76's row says. The port reaches `Item.getConnectionItems`' walk along the
+/// contacts (Item.java:721-777) — which has **no visited set** and therefore circles a closed
+/// connection for ever — from `BasicBoard.removeIfCycle` (:1354) long before
+/// `PolylineTrace.split`'s entry re-walk becomes a problem: with the stop check only on the
+/// entry walk, sixty of its steps took over a minute, all of it inside one `removeIfCycle`.
+/// Hence `Board::connection_items_checked`. Java has the identical unguarded walk.
+#[test]
+fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
+    fn ladder(rungs: i32) -> (Board, ItemId) {
+        let (mut board, _) = trace_board(1);
+        // The two rails.
+        tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
+        tr(
+            &mut board,
+            1000,
+            1,
+            FixedState::Unfixed,
+            &[0, 10000, 30000, 10000],
+        );
+        // The rungs, at x = 0, 10000, 20000, 30000.
+        for i in 0..rungs {
+            tr(
+                &mut board,
+                1000,
+                1,
+                FixedState::Unfixed,
+                &[i * 10000, 0, i * 10000, 10000],
+            );
+        }
+        // The last rung is the highest id: 1 outline + 2 rails + `rungs`.
+        let last_rung = ItemId(3 + rungs as u32);
+        (board, last_rung)
+    }
+
+    const BUDGET: u64 = 500;
+
+    // Four rungs: the walk never retires its entries, so the budget is what ends it.
+    let (mut board, last_rung) = ladder(4);
+    let steps = std::cell::Cell::new(0u64);
+    let stop = || {
+        steps.set(steps.get() + 1);
+        steps.get() > BUDGET
+    };
+    assert_eq!(
+        board.normalize_trace_checked(last_rung, None, &stop),
+        Err(BoardError::Stopped),
+        "a four-rung ladder must be stopped, not normalised"
+    );
+    assert_eq!(
+        steps.get(),
+        BUDGET + 1,
+        "the walk ran until the budget ran out"
+    );
+
+    // Three rungs, the terminating control: the same budget is never touched, and the
+    // normalisation answers exactly what the unchecked call answers.
+    let (mut board, last_rung) = ladder(3);
+    let steps = std::cell::Cell::new(0u64);
+    let stop = || {
+        steps.set(steps.get() + 1);
+        steps.get() > BUDGET
+    };
+    assert_eq!(
+        board.normalize_trace_checked(last_rung, None, &stop),
+        Ok(true),
+        "a three-rung ladder normalises"
+    );
+    assert!(
+        steps.get() < BUDGET,
+        "the control must finish well inside the budget, used {}",
+        steps.get()
+    );
+    assert!(trace_ids(&board).len() <= 2);
+}
+
+/// The same trip through the entry point `fr-dsn` actually calls (Plan 3 ruling 4):
+/// `Board::normalize_all_traces_checked`, the port of `Wiring.java:346`'s
+/// `board.normalizeAllTraces()`.
+#[test]
+fn normalize_all_traces_checked_stops_on_the_ladder() {
+    let (mut board, _) = trace_board(1);
+    tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
+    tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 10000, 30000, 10000],
+    );
+    for i in 0..4 {
+        tr(
+            &mut board,
+            1000,
+            1,
+            FixedState::Unfixed,
+            &[i * 10000, 0, i * 10000, 10000],
+        );
+    }
+    let steps = std::cell::Cell::new(0u64);
+    let stop = || {
+        steps.set(steps.get() + 1);
+        steps.get() > 500
+    };
+    assert_eq!(
+        board.normalize_all_traces_checked(&stop),
+        Err(BoardError::Stopped)
+    );
+}
+
+/// `normalize_all_traces_checked(&|| false)` is what the no-argument
+/// [`Board::normalize_all_traces`] delegates to, so every Plan 2 expectation must survive the
+/// change: a board with nothing to normalise answers `false` either way.
+#[test]
+fn the_checked_and_unchecked_normalisation_entry_points_agree() {
+    let (mut a, _) = trace_board(1);
+    tr(&mut a, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
+    let mut b = a.clone();
+    assert_eq!(
+        a.normalize_all_traces(),
+        b.normalize_all_traces_checked(&|| false)
+    );
+    assert_eq!(
+        a.normalize_traces(1),
+        b.normalize_traces_checked(1, &|| false)
+    );
+}

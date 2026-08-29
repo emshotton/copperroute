@@ -15,6 +15,8 @@ use std::collections::BTreeSet;
 
 use fr_geometry::{Area, LineSegment, Point, Polyline, ShapeOps, TileShape, Vector};
 
+use crate::datastructures::StopCheck;
+use crate::error::BoardError;
 use crate::ids::{ItemId, TreeObject};
 use crate::items::Item;
 use crate::structure::FixedState;
@@ -824,12 +826,25 @@ impl Board {
     /// Port of `BasicBoard.removeIfCycle` (BasicBoard.java:1335-1365): if this trace is part of a
     /// cycle, remove its whole connection, then remove the tails that removal exposed.
     pub fn remove_if_cycle(&mut self, id: ItemId) -> bool {
+        self.remove_if_cycle_checked(id, &|| false)
+            .expect("a `|| false` stop check never trips")
+    }
+
+    /// [`Board::remove_if_cycle`] under a [`StopCheck`] (Plan 3 ruling 4), threaded into the two
+    /// [`Board::connection_items_checked`] calls below — the walk that does not terminate on the
+    /// cycle this method has just confirmed exists.
+    // added in Plan 3: BasicBoard.removeIfCycle (plan ruling 4)
+    pub fn remove_if_cycle_checked(
+        &mut self,
+        id: ItemId,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
         let Some(item @ Item::Trace(trace)) = self.items.get(&id) else {
-            return false;
+            return Ok(false);
         };
         // BasicBoard.java:1336-1341.
         if !item.is_on_the_board() || !self.is_trace_cycle(id) {
-            return false;
+            return Ok(false);
         }
         let current_layer = trace.get_layer();
         let net_nos = item.net_nos().to_vec();
@@ -845,7 +860,8 @@ impl Board {
             })
             .collect();
         // BasicBoard.java:1354-1355.
-        let connection_items = self.connection_items(id, StopConnectionOption::None);
+        let connection_items =
+            self.connection_items_checked(id, StopConnectionOption::None, stop)?;
         self.remove_items(connection_items);
         // BasicBoard.java:1356-1363.
         for (index, corner) in end_corners.iter().enumerate() {
@@ -854,11 +870,12 @@ impl Board {
             }
             let Some(corner) = corner else { continue };
             if let Some(tail) = self.get_trace_tail(corner, Some(current_layer), &net_nos) {
-                let tail_connection = self.connection_items(tail, StopConnectionOption::None);
+                let tail_connection =
+                    self.connection_items_checked(tail, StopConnectionOption::None, stop)?;
                 self.remove_items(tail_connection);
             }
         }
-        true
+        Ok(true)
     }
 
     /// Port of `RoutingBoard.containsTraceTails` (RoutingBoard.java:1176-1187).

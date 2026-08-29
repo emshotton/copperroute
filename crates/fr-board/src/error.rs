@@ -25,6 +25,20 @@ pub enum BoardError {
     /// An [`ItemId`] not present in `Board::items`.
     #[error("unknown item id {0}")]
     UnknownItem(ItemId),
+
+    /// The [`crate::datastructures::StopCheck`] handed to one of the `*_checked` normalisation
+    /// entry points answered `true`, so the walk was abandoned part-way.
+    ///
+    /// Not a Java value: Java has no cancellation here at all, which is exactly the problem —
+    /// `PolylineTrace.split`'s entry re-walk does not terminate on a four-rung ladder
+    /// (docs/java-quirks.md #76) and `Wiring.readScope` ends every DSN read with
+    /// `normalizeAllTraces()`. Plan 3 ruling 4 lands the divergence inside the
+    /// `catch (Exception e)` Java already wraps that call in (Wiring.java:345-351), so a design
+    /// that *does* terminate normalises identically and one that does not produces Java's own
+    /// warning string instead of a wedged process.
+    // added in Plan 3: BasicBoard.normalizeAllTraces (plan ruling 4)
+    #[error("normalisation was stopped by the caller's stop check")]
+    Stopped,
 }
 
 #[cfg(test)]

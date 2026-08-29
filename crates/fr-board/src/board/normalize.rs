@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 
 use fr_geometry::{Point, TileShape};
 
+use crate::datastructures::StopCheck;
 use crate::error::BoardError;
 use crate::ids::ItemId;
 use crate::items::Item;
@@ -64,6 +65,18 @@ impl Board {
     // not ported: the `FRLogger.debug`/`FRLogger.warn` messages at BasicBoard.java:718-726 and
     // :737-746 (and the `netName` lookups that only feed them).
     pub fn normalize_traces(&mut self, net_number: i32) -> Result<bool, BoardError> {
+        self.normalize_traces_checked(net_number, &|| false)
+    }
+
+    /// [`Board::normalize_traces`] under a [`StopCheck`], consulted once per pass of the outer
+    /// loop (Plan 3 ruling 4). A trip answers [`BoardError::Stopped`]; the board is left
+    /// part-normalised, exactly as Java's would be if its `normalizeAllTraces` threw.
+    // added in Plan 3: BasicBoard.normalizeTraces (plan ruling 4)
+    pub fn normalize_traces_checked(
+        &mut self,
+        net_number: i32,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
         // BasicBoard.java:713-727.
         if self.normalize_suppressed_net_nos.contains(&net_number) {
             return Ok(false);
@@ -72,6 +85,9 @@ impl Board {
         let mut something_changed = true;
         let mut iteration_count: u32 = 0;
         while something_changed {
+            if stop() {
+                return Err(BoardError::Stopped);
+            }
             iteration_count += 1;
             // BasicBoard.java:728-749.
             if iteration_count > MAX_NORMALIZE_ITERATIONS {
@@ -96,11 +112,11 @@ impl Board {
                 if !self.items.get(&id).is_some_and(Item::is_on_the_board) {
                     continue;
                 }
-                if self.normalize_trace(id, None)? {
+                if self.normalize_trace_checked(id, None, stop)? {
                     something_changed = true;
                     result = true;
                 } else if !self.items.get(&id).is_some_and(Item::is_user_fixed)
-                    && self.remove_if_cycle(id)
+                    && self.remove_if_cycle_checked(id, stop)?
                 {
                     something_changed = true;
                     result = true;
@@ -122,6 +138,19 @@ impl Board {
     /// Note this loop does **not** consult or update
     /// [`Board::normalize_suppressed_net_nos`] — only [`Board::normalize_traces`] does.
     pub fn normalize_all_traces(&mut self) -> Result<bool, BoardError> {
+        self.normalize_all_traces_checked(&|| false)
+    }
+
+    /// [`Board::normalize_all_traces`] under a [`StopCheck`], consulted once per pass of each
+    /// net's inner loop (Plan 3 ruling 4). This is the entry point `Wiring.readScope`'s
+    /// `board.normalizeAllTraces()` (Wiring.java:346) becomes in the port; a trip answers
+    /// [`BoardError::Stopped`], which `fr-dsn` turns into Java's own
+    /// `"Wiring: normalization of traces failed"` warning.
+    // added in Plan 3: BasicBoard.normalizeAllTraces (plan ruling 4)
+    pub fn normalize_all_traces_checked(
+        &mut self,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
         let mut result = false;
         // BasicBoard.java:801-826.
         let mut traces_by_net: BTreeMap<i32, Vec<ItemId>> = BTreeMap::new();
@@ -143,6 +172,9 @@ impl Board {
             let mut something_changed = true;
             let mut iteration_count: u32 = 0;
             while something_changed {
+                if stop() {
+                    return Err(BoardError::Stopped);
+                }
                 iteration_count += 1;
                 // BasicBoard.java:832-843.
                 if iteration_count > MAX_NORMALIZE_ITERATIONS {
@@ -156,11 +188,11 @@ impl Board {
                     if !self.items.get(&id).is_some_and(Item::is_on_the_board) {
                         continue;
                     }
-                    if self.normalize_trace(id, None)? {
+                    if self.normalize_trace_checked(id, None, stop)? {
                         something_changed = true;
                         result = true;
                     } else if !self.items.get(&id).is_some_and(Item::is_user_fixed)
-                        && self.remove_if_cycle(id)
+                        && self.remove_if_cycle_checked(id, stop)?
                     {
                         something_changed = true;
                         result = true;
