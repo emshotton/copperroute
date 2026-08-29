@@ -49,7 +49,7 @@ pub struct KiCadDrcReport {
     pub unconnected_items: Vec<KiCadDrcViolation>,
     /// Java `violations` (KiCadDrcReport.java:48-49): every clearance violation, followed by every
     /// `track_dangling`/`via_dangling` entry `generateReport` moves out of the unconnected list
-    /// (DesignRulesChecker.java:268-276).
+    /// (DesignRulesChecker.java:271-276).
     pub violations: Vec<KiCadDrcViolation>,
     /// Java `schematicParity` (KiCadDrcReport.java:52-53): declared, constructed empty (`:73`) and
     /// never added to anywhere in the Java tree. `serde_json::Value` rather than a unit type
@@ -105,8 +105,8 @@ pub struct KiCadDrcViolation {
     /// a dangling item, and the whole of `allItems` for an unconnected net.
     pub items: Vec<KiCadDrcViolationItem>,
     /// Java `severity` (KiCadDrcViolation.java:18-19): `"error"` for both clearance types
-    /// (DesignRulesChecker.java:355), `"warning"` for all three unconnected types (`:382`,
-    /// `:420`). Java's javadoc also names `"ignore"`, which nothing produces.
+    /// (DesignRulesChecker.java:356), `"warning"` for all three unconnected types (`:394`,
+    /// `:421`). Java's javadoc also names `"ignore"`, which nothing produces.
     pub severity: &'static str,
     // renamed: KiCadDrcViolation.type -> kind, because `type` is a Rust keyword. The
     // `@SerializedName("type")` (KiCadDrcViolation.java:33) is what Task 8's key table emits.
@@ -144,7 +144,7 @@ pub struct KiCadDrcViolationItem {
     /// Java `pos` (KiCadDrcViolationItem.java:13-14).
     pub pos: KiCadDrcPosition,
     /// Java `uuid` (KiCadDrcViolationItem.java:17-18): `String.valueOf(item.getId())`
-    /// (DesignRulesChecker.java:321-322) — the board-unique item id, not a UUID.
+    /// (DesignRulesChecker.java:320-321) — the board-unique item id, not a UUID.
     pub uuid: String,
 }
 

@@ -1,13 +1,13 @@
 //! `DesignRulesChecker.generateReport` and the five private helpers that fill the DTOs.
 //!
-//! Java: `drc/DesignRulesChecker.java:210-289` (`generateReport`), `:299-355` and `:359-421` (the
-//! two `convertToDrcViolation` overloads), `:424-430` (`isHole`), `:439-460`
-//! (`getItemDescription`), `:470-493` (`getDetailedTraceDescription`), `:504-530`
+//! Java: `drc/DesignRulesChecker.java:210-290` (`generateReport`), `:299-357` and `:359-422` (the
+//! two `convertToDrcViolation` overloads), `:424-431` (`isHole`), `:439-461`
+//! (`getItemDescription`), `:470-495` (`getDetailedTraceDescription`), `:504-533`
 //! (`convertCoordinate`).
 //!
-//! Every `FRLogger.trace` call in that range is dropped (four of them, `:216-227`, `:249-266`,
-//! `:271-277`, `:281-288`), per the plan's global constraints. One of them is the *only* place
-//! `ClearanceViolation.shape` is read in the whole report path (`:265`) — the positions the report
+//! Every `FRLogger.trace` call in that range is dropped (four of them, `:218-228`, `:235-255`,
+//! `:261-266`, `:279-287`), per the plan's global constraints. One of them is the *only* place
+//! `ClearanceViolation.shape` is read in the whole report path (`:255`) — the positions the report
 //! carries are the **items'** bounding-box centres, never the violation shape's centre.
 
 use fr_board::structure::Unit;
@@ -27,7 +27,7 @@ pub struct DrcReportOptions {
     /// `Freerouting.java:339`: `new File(globalSettings.initialInputFile).getName()`, i.e. the
     /// input file's base name.
     pub source: String,
-    /// `Freerouting.java:335`: the CLI hard-codes `"mm"` and offers no way to change it
+    /// `Freerouting.java:335-336`: the CLI hard-codes `"mm"` and offers no way to change it
     /// (quirk #151), so three of `convert_coordinate`'s four named branches and its fallback are
     /// unreachable from `-drc`. They are ported anyway — the API/MCP path could reach them.
     pub coordinate_unit: String,
@@ -60,10 +60,10 @@ pub struct DrcCoordinates {
 }
 
 impl DrcCoordinates {
-    /// Port of the private `convertCoordinate` (DesignRulesChecker.java:504-530): board units to
+    /// Port of the private `convertCoordinate` (DesignRulesChecker.java:504-533): board units to
     /// DSN units, then — only when the named unit differs from the board's — [`Unit::scale`].
     ///
-    /// The name→[`Unit`] chain (`:513-524`) is `"mm" | "mil" | "inch" | "um"`, anything else the
+    /// The name→[`Unit`] chain (`:512-525`) is `"mm" | "mil" | "inch" | "um"`, anything else the
     /// board's own unit. It is **not** `Unit::from_string` (Unit.java:23-33): that one
     /// upper-cases first, so Java's `convertCoordinate` rejects `"MM"` where `from_string` accepts
     /// it. Transcribed as Java wrote it.
@@ -71,10 +71,10 @@ impl DrcCoordinates {
     /// Quirk #151: the CLI passes `"mm"` and nothing else, so on the `-drc` path only the first
     /// branch runs.
     pub fn convert_coordinate(&self, board_coordinate: f64, coordinate_unit: &str) -> f64 {
-        // DesignRulesChecker.java:506-508.
+        // DesignRulesChecker.java:505-507.
         let dsn_coordinate = self.transform.board_to_dsn(board_coordinate);
 
-        // DesignRulesChecker.java:513-524.
+        // DesignRulesChecker.java:512-525.
         let target_unit = match coordinate_unit {
             "mm" => Unit::Mm,
             "mil" => Unit::Mil,
@@ -83,7 +83,7 @@ impl DrcCoordinates {
             _ => self.board_unit,
         };
 
-        // DesignRulesChecker.java:526-529.
+        // DesignRulesChecker.java:527-530.
         if target_unit != self.board_unit {
             return Unit::scale(dsn_coordinate, self.board_unit, target_unit);
         }
@@ -92,15 +92,15 @@ impl DrcCoordinates {
 }
 
 impl DesignRulesChecker<'_> {
-    /// Port of `generateReport(String, String)` (DesignRulesChecker.java:210-289): the whole DRC
+    /// Port of `generateReport(String, String)` (DesignRulesChecker.java:210-290): the whole DRC
     /// report, in Java's body order — which is why `violations` interleaves two sources.
     ///
-    /// 1. The header (`:212-214`).
+    /// 1. The header (`:211-213`).
     /// 2. `getAllClearanceViolations()` (`:216`), each converted and appended to `violations`
-    ///    (`:229-231`).
-    /// 3. **Then** `getAllUnconnectedItems()` (`:238`), each converted and routed: the two
+    ///    (`:231-233`).
+    /// 3. **Then** `getAllUnconnectedItems()` (`:259`), each converted and routed: the two
     ///    dangling kinds go to `violations` too, everything else to `unconnectedItems`
-    ///    (`:268-276`).
+    ///    (`:271-276`).
     ///
     /// So `violations` is *all* clearance entries followed by *all* dangling entries, each in its
     /// own list's order — on the dev-board fixture, two `holeClearance` then eight
@@ -113,7 +113,7 @@ impl DesignRulesChecker<'_> {
         coords: &DrcCoordinates,
         options: &DrcReportOptions,
     ) -> KiCadDrcReport {
-        // DesignRulesChecker.java:211-214. Java's `qualityScore` is assigned by the caller
+        // DesignRulesChecker.java:211-213. Java's `qualityScore` is assigned by the caller
         // afterwards (Freerouting.java:349); the port takes it with the rest (ruling 5).
         let mut report = KiCadDrcReport::new(
             &options.coordinate_unit,
@@ -126,7 +126,7 @@ impl DesignRulesChecker<'_> {
         // DesignRulesChecker.java:216.
         let violations = self.get_all_clearance_violations();
 
-        // DesignRulesChecker.java:229-231.
+        // DesignRulesChecker.java:231-233.
         for violation in &violations {
             report.add_violation(convert_clearance_violation(
                 self.board,
@@ -136,10 +136,10 @@ impl DesignRulesChecker<'_> {
             ));
         }
 
-        // DesignRulesChecker.java:238.
+        // DesignRulesChecker.java:259.
         let unconnected_items = self.get_all_unconnected_items();
 
-        // DesignRulesChecker.java:249-277.
+        // DesignRulesChecker.java:269-277.
         for unconnected_item in &unconnected_items {
             let entry = convert_unconnected_items(
                 self.board,
@@ -147,7 +147,7 @@ impl DesignRulesChecker<'_> {
                 coords,
                 &options.coordinate_unit,
             );
-            // DesignRulesChecker.java:268-276.
+            // DesignRulesChecker.java:271-276.
             match unconnected_item.kind {
                 UnconnectedKind::TrackDangling | UnconnectedKind::ViaDangling => {
                     report.add_violation(entry);
@@ -156,12 +156,12 @@ impl DesignRulesChecker<'_> {
             }
         }
 
-        // DesignRulesChecker.java:288.
+        // DesignRulesChecker.java:289.
         report
     }
 }
 
-/// Port of `convertToDrcViolation(ClearanceViolation, String)` (DesignRulesChecker.java:299-355).
+/// Port of `convertToDrcViolation(ClearanceViolation, String)` (DesignRulesChecker.java:299-357).
 fn convert_clearance_violation(
     board: &Board,
     violation: &ClearanceViolation,
@@ -172,13 +172,13 @@ fn convert_clearance_violation(
     let first_item_desc = item_description(board, violation.first_item);
     let second_item_desc = item_description(board, violation.second_item);
 
-    // DesignRulesChecker.java:308-319. Java's comment says "the center of gravity of the violation
+    // DesignRulesChecker.java:307-317. Java's comment says "the center of gravity of the violation
     // shape"; the code takes each **item's bounding box**' centre instead. The violation shape's
-    // own centre appears only in the dropped `FRLogger.trace` at `:265`.
+    // own centre appears only in the dropped `FRLogger.trace` at `:255`.
     let first_item_pos = item_position(board, violation.first_item, coords, coordinate_unit);
     let second_item_pos = item_position(board, violation.second_item, coords, coordinate_unit);
 
-    // DesignRulesChecker.java:321-326.
+    // DesignRulesChecker.java:319-324.
     let items = vec![
         KiCadDrcViolationItem::new(
             &first_item_desc,
@@ -192,14 +192,14 @@ fn convert_clearance_violation(
         ),
     ];
 
-    // DesignRulesChecker.java:329-336.
+    // DesignRulesChecker.java:326-330.
     let kind = if is_hole(board, violation.first_item) || is_hole(board, violation.second_item) {
         "holeClearance"
     } else {
         "clearance"
     };
 
-    // DesignRulesChecker.java:339-354. Both clearances go through `convertCoordinate`: they are
+    // DesignRulesChecker.java:332-354. Both clearances go through `convertCoordinate`: they are
     // board-unit *lengths*, and the report's unit is the one the coordinates are in. The two arms
     // differ only in the leading word.
     let expected = format_length(violation.expected_clearance, coords, coordinate_unit);
@@ -214,11 +214,11 @@ fn convert_clearance_violation(
          (expected: {expected} {coordinate_unit}, actual: {actual} {coordinate_unit})"
     );
 
-    // DesignRulesChecker.java:354.
+    // DesignRulesChecker.java:356.
     KiCadDrcViolation::new(kind, description, "error", items)
 }
 
-/// Port of `convertToDrcViolation(UnconnectedItems, String)` (DesignRulesChecker.java:359-421).
+/// Port of `convertToDrcViolation(UnconnectedItems, String)` (DesignRulesChecker.java:359-422).
 fn convert_unconnected_items(
     board: &Board,
     unconnected_items: &UnconnectedItems,
@@ -231,7 +231,7 @@ fn convert_unconnected_items(
         UnconnectedKind::TrackDangling | UnconnectedKind::ViaDangling
     ) {
         let item = unconnected_items.first_item;
-        // DesignRulesChecker.java:369-376.
+        // DesignRulesChecker.java:368-376.
         let item_desc = match unconnected_items.kind {
             UnconnectedKind::ViaDangling => item_description(board, item),
             // `getDetailedTraceDescription` is reached from here and nowhere else.
@@ -243,17 +243,17 @@ fn convert_unconnected_items(
             item.0.to_string(),
         )];
 
-        // DesignRulesChecker.java:386-391.
+        // DesignRulesChecker.java:387-392.
         //
         // not ported: the `switch`'s `default -> "Unconnected item: " + itemDesc` arm
-        // (DesignRulesChecker.java:390) — dead code. The `switch` runs only inside this branch,
+        // (DesignRulesChecker.java:391) — dead code. The `switch` runs only inside this branch,
         // whose guard already narrowed `type` to the two literals the arms above cover, so the
         // third arm cannot be reached. Recorded alongside quirk #146.
         let description = match unconnected_items.kind {
             UnconnectedKind::ViaDangling => "Via is not connected or connected on only one layer",
             _ => "Track has unconnected end",
         };
-        // DesignRulesChecker.java:393.
+        // DesignRulesChecker.java:394.
         return KiCadDrcViolation::new(
             head_kind_string(unconnected_items.kind),
             description,
@@ -262,7 +262,7 @@ fn convert_unconnected_items(
         );
     }
 
-    // DesignRulesChecker.java:398-406: every item of the two disconnected groups, in `allItems`
+    // DesignRulesChecker.java:397-408: every item of the two disconnected groups, in `allItems`
     // order — ascending id in the port (plan-5 ruling 3), hash-ordered in Java (quirk #144).
     let items: Vec<KiCadDrcViolationItem> = unconnected_items
         .all_items
@@ -287,7 +287,7 @@ fn convert_unconnected_items(
         None => format!("Unconnected item: {from_item_desc}"),
     };
 
-    // DesignRulesChecker.java:420.
+    // DesignRulesChecker.java:421.
     KiCadDrcViolation::new(
         head_kind_string(unconnected_items.kind),
         description,
@@ -311,10 +311,10 @@ fn head_kind_string(kind: UnconnectedKind) -> &'static str {
     }
 }
 
-/// Port of the private `isHole` (DesignRulesChecker.java:424-430): a [`ItemKind::Via`] **or** a
+/// Port of the private `isHole` (DesignRulesChecker.java:424-431): a [`ItemKind::Via`] **or** a
 /// [`ItemKind::Pin`].
 ///
-// Java bug: DesignRulesChecker.isHole (DesignRulesChecker.java:426-429) classifies **every** `Pin` as a hole, surface-mount pads included — its own comment admits it ("Pins are treated as holes for DRC classification to match expected output, although this might include SMT pins"). A pad with no drill has no hole clearance to violate, so KiCad would call the same violation `clearance`. Reproduced, because it decides the `type` string *and* the description's first word. Quirks row #152.
+// Java bug: DesignRulesChecker.isHole (DesignRulesChecker.java:425-430) classifies **every** `Pin` as a hole, surface-mount pads included — its own comment admits it ("Pins are treated as holes for DRC classification to match expected output, although this might include SMT pins"). A pad with no drill has no hole clearance to violate, so KiCad would call the same violation `clearance`. Reproduced, because it decides the `type` string *and* the description's first word. Quirks row #152.
 fn is_hole(board: &Board, id: ItemId) -> bool {
     matches!(
         board.get_item(id).map(Item::kind),
@@ -322,14 +322,14 @@ fn is_hole(board: &Board, id: ItemId) -> bool {
     )
 }
 
-/// Port of the private `getItemDescription` (DesignRulesChecker.java:439-460): the item's kind,
+/// Port of the private `getItemDescription` (DesignRulesChecker.java:439-461): the item's kind,
 /// then `" [<net name>]"` when it carries a net.
 ///
 /// **Public here although Java's is private**, so that `tests/report.rs` can pin the whole variant
 /// table: the `else` arm is Java's `getClass().getSimpleName()` over five `Item` subclasses that no
 /// fixture in the corpus puts into a violation, and an untested table rots.
 ///
-// totalized: getItemDescription's net lookup (DesignRulesChecker.java:457) — Java writes `board.rules.nets.get(item.getNetNumber(0)).name` with no null check, so a net number the `Nets` table does not know throws `NullPointerException`. The port omits the suffix instead. Unreachable from `fr-dsn`, whose reader registers every net it assigns.
+// totalized: getItemDescription's net lookup (DesignRulesChecker.java:456) — Java writes `board.rules.nets.get(item.getNetNumber(0)).name` with no null check, so a net number the `Nets` table does not know throws `NullPointerException`. The port omits the suffix instead. Unreachable from `fr-dsn`, whose reader registers every net it assigns.
 pub fn item_description(board: &Board, id: ItemId) -> String {
     let Some(item) = board.get_item(id) else {
         // Java dereferences the `Item` it was handed; an id this board does not know cannot reach
@@ -337,7 +337,7 @@ pub fn item_description(board: &Board, id: ItemId) -> String {
         return String::new();
     };
 
-    // DesignRulesChecker.java:442-453. The chain tests `Trace`, `Via`, `Pin`, `ConductionArea`,
+    // DesignRulesChecker.java:442-452. The chain tests `Trace`, `Via`, `Pin`, `ConductionArea`,
     // then falls back to the Java simple class name — which for the five remaining `Item`
     // subclasses is the variant name verbatim. `Trace` is abstract in Java and the concrete class
     // is `PolylineTrace`, but the `instanceof Trace` arm catches it first.
@@ -356,7 +356,7 @@ pub fn item_description(board: &Board, id: ItemId) -> String {
         ItemKind::Other => "Item".to_string(),
     };
 
-    // DesignRulesChecker.java:456-459.
+    // DesignRulesChecker.java:454-458.
     if item.net_count() > 0
         && let Some(net) = board.rules.nets.get(item.get_net_number(0))
     {
@@ -368,8 +368,8 @@ pub fn item_description(board: &Board, id: ItemId) -> String {
     desc
 }
 
-/// Port of the private `getDetailedTraceDescription` (DesignRulesChecker.java:470-493): `"Track"`,
-/// the net, the layer name and the length — used **only** for `track_dangling` (`:374`).
+/// Port of the private `getDetailedTraceDescription` (DesignRulesChecker.java:470-495): `"Track"`,
+/// the net, the layer name and the length — used **only** for `track_dangling` (`:375`).
 ///
 /// The leading word is `"Track"`, not `"Trace"`: this helper does not call
 /// [`item_description`] and spells the kind itself (`:471`).
@@ -385,7 +385,7 @@ fn detailed_trace_description(
         return desc;
     };
 
-    // DesignRulesChecker.java:474-478 — the same net suffix as `getItemDescription`, written out
+    // DesignRulesChecker.java:473-477 — the same net suffix as `getItemDescription`, written out
     // a second time in Java. See that method's `totalized:` marker for the null-net arm.
     if item.net_count() > 0
         && let Some(net) = board.rules.nets.get(item.get_net_number(0))
@@ -395,7 +395,7 @@ fn detailed_trace_description(
         desc.push(']');
     }
 
-    // DesignRulesChecker.java:481-491: `instanceof Trace`, so a non-trace stops at the net suffix.
+    // DesignRulesChecker.java:479-491: `instanceof Trace`, so a non-trace stops at the net suffix.
     // `getAllUnconnectedItems` only ever hands this method a trace (`:153`, `:161`).
     if let Item::Trace(trace) = item {
         let layer_name = board
@@ -407,7 +407,7 @@ fn detailed_trace_description(
         desc.push_str(" on ");
         desc.push_str(layer_name);
 
-        // DesignRulesChecker.java:486-490. `String.format("%.4f", …)` — locale-free here
+        // DesignRulesChecker.java:485-491. `String.format("%.4f", …)` — locale-free here
         // (plan-5 ruling 6).
         let length = format_length(trace.get_length(), coords, coordinate_unit);
         desc.push_str(", length ");
@@ -419,7 +419,7 @@ fn detailed_trace_description(
     desc
 }
 
-/// `item.boundingBox().centreOfGravity()` (DesignRulesChecker.java:305, `:310`, `:373`, `:392`)
+/// `item.boundingBox().centreOfGravity()` (DesignRulesChecker.java:308, `:313`, `:378`, `:401`)
 /// with [`DrcCoordinates::convert_coordinate`] applied to each half.
 ///
 /// `IntBox` inherits `centreOfGravity` from `PolylineShape` (PolylineShape.java:119-133) — the
@@ -441,7 +441,7 @@ fn item_position(
 }
 
 /// A board-unit length through `convertCoordinate` and then `%.4f`
-/// (DesignRulesChecker.java:341-352, `:487-488`).
+/// (DesignRulesChecker.java:340-352, `:487-489`).
 ///
 /// `java_format_fixed` reproduces `java.util.Formatter`'s HALF_UP rounding of the *shortest*
 /// round-trip digits, and writes `.` whatever the machine's locale is — Java's own output is

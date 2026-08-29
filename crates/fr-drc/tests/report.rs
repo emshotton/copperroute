@@ -1,5 +1,6 @@
 //! Plan 5 Task 7: the four `io/kicad/KiCadDrc*.java` DTOs and
-//! `DesignRulesChecker.generateReport` (`drc/DesignRulesChecker.java:210-530`).
+//! `DesignRulesChecker.generateReport` (`drc/DesignRulesChecker.java:210-290`, with its five
+//! private helpers through `:533`).
 //!
 //! # Provenance
 //!
@@ -113,7 +114,8 @@ fn dev_board_report_shape() {
     assert!(report.schematic_parity.is_empty());
 
     // `violations` is *all* clearance entries followed by *all* dangling entries
-    // (DesignRulesChecker.java:228-289): two `holeClearance`, then eight `track_dangling`.
+    // (DesignRulesChecker.java:231-233 then `:271-276`): two `holeClearance`, then eight
+    // `track_dangling`.
     assert_eq!(report.violations.len(), 10);
     assert_eq!(
         report
@@ -151,7 +153,7 @@ fn first_violation_is_verbatim() {
     );
     assert_eq!(first.severity, "error");
     assert_eq!(first.kind, "holeClearance");
-    // Java's items are `[firstItem, secondItem]` (DesignRulesChecker.java:325-326) and
+    // Java's items are `[firstItem, secondItem]` (DesignRulesChecker.java:323-324) and
     // `getAllClearanceViolations` keeps the **higher**-id item's report (Task 3), so 278 precedes
     // 277. This is the one place the golden's uuid sort would have hidden the order.
     let rendered: Vec<(&str, f64, f64, &str)> = first
@@ -170,7 +172,7 @@ fn first_violation_is_verbatim() {
 
 #[test]
 fn the_unconnected_entry_description_and_severity() {
-    // `:414-417` — the two representatives and `allItems.size()`; severity `"warning"` (`:420`).
+    // `:414-416` — the two representatives and `allItems.size()`; severity `"warning"` (`:421`).
     if !parity::require_java_dir() {
         return;
     }
@@ -191,7 +193,7 @@ fn the_unconnected_entry_description_and_severity() {
 
 #[test]
 fn a_dangling_track_carries_the_detailed_description() {
-    // `getDetailedTraceDescription` (`:470-493`), used **only** for `track_dangling` (`:371-374`).
+    // `getDetailedTraceDescription` (`:470-495`), used **only** for `track_dangling` (`:373-375`).
     if !parity::require_java_dir() {
         return;
     }
@@ -397,8 +399,8 @@ fn y_is_negative_on_a_kicad_sourced_board() {
 
 #[test]
 fn unknown_coordinate_unit_falls_back_to_the_board_unit() {
-    // `:513-524`'s `else` arm. Unreachable from the CLI, which hard-codes `"mm"`
-    // (Freerouting.java:335, quirk #151); the API path could reach it.
+    // `:512-525`'s `else` arm. Unreachable from the CLI, which hard-codes `"mm"`
+    // (Freerouting.java:336, quirk #151); the API path could reach it.
     if !parity::require_java_dir() {
         return;
     }
@@ -423,7 +425,7 @@ fn unknown_coordinate_unit_falls_back_to_the_board_unit() {
 
 #[test]
 fn mil_and_inch_scale() {
-    // The two other reachable-only-from-the-API branches (`:517-521`).
+    // The two other reachable-only-from-the-API branches (`:516-521`).
     if !parity::require_java_dir() {
         return;
     }
@@ -481,7 +483,7 @@ fn percent_four_f_uses_a_dot() {
 
 #[test]
 fn smd_pins_are_classified_as_holes() {
-    // Java's `isHole` is `instanceof Via || instanceof Pin`, with a comment admitting the second
+    // Java's `isHole` (`:424-431`) is `instanceof Via || instanceof Pin`, with a comment admitting the second
     // half "might include SMT pins". Two surface-mount pads on different nets, overlapping, come
     // out `holeClearance` rather than `clearance`.
     let mut board = smd_pad_board();
@@ -518,7 +520,7 @@ fn smd_pins_are_classified_as_holes() {
 
 #[test]
 fn item_description_maps_every_item_variant() {
-    // Four named kinds and Java's `getClass().getSimpleName()` for the rest. Nothing in the
+    // Four named kinds (`:442-452`) and Java's `getClass().getSimpleName()` for the rest. Nothing in the
     // fixture corpus puts one of the five fallback classes into a violation, so the table is
     // pinned here rather than by a golden.
     let (board, ids) = all_variants_board();

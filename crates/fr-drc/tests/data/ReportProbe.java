@@ -1,4 +1,4 @@
-// Plan 5 Task 7 JVM probe: `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-289)
+// Plan 5 Task 7 JVM probe: `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-290)
 // and the four `io/kicad/KiCadDrc*.java` DTOs it fills.
 //
 // Dumps the report as **normalised text** rather than as Gson JSON, because Task 7 ports the DTOs

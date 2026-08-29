@@ -9,7 +9,7 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `UnconnectedProbe.java` | `DesignRulesChecker.getAllUnconnectedItems()` (DesignRulesChecker.java:91-178) — the **hash-independent projection** of the list (see below). Writes the transcript to the file named by its second argument, not to stdout, because `FRLogger` prints a warning line to stdout on one of the fixtures. | yes |
 | `NetIncompletesProbe.java` | `drc.NetIncompletes`, per net number, through `DesignRulesChecker.getNetIncompletes` (DesignRulesChecker.java:800-815), which lazily runs `calculateAllIncompletes`. Writes **two** files: `<stem>.netincompletes.txt`, the hash-independent projection (`count`, `getConnectedGroupCount`, `getLengthViolation`, `getMarkerRadius` per net, plus the two totals), and `<stem>.airlines.txt`, the endpoint list, which is hash-**dependent** and is committed for one run as documentation only (plan-5 ruling 4). | yes |
 | `IncompletesProbe.java` | `DesignRulesChecker.calculateAllIncompletes` (DesignRulesChecker.java:542-623) and the eight accessors that hang off it: `maxConnections`, `getIncompleteCount()`, `getAllAirlines().length`, `getLengthViolationCount()`, `recalculateLengthViolations()` and the per-net `getIncompleteCount(int)`/`getLengthViolation(int)` — plus `BoardStatistics`' clearance block (`BoardStatistics.java:200-202`, `:338-367`) computed from `getAllClearanceViolations()` the way that block does, because `BoardStatistics` itself is Plan 8's (plan-5 ruling 5). Writes `<stem>.incompletes.txt`. All of it is hash-independent, unlike `NetIncompletesProbe`'s second output. | yes |
-| `ReportProbe.java` | `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-289) and the four `io/kicad/KiCadDrc*.java` DTOs it fills, as **normalised text** rather than as Gson JSON — Task 7 ports the DTOs and the builder, not the serialiser (that is Task 8's, with plan-5 ruling 2's two key flavors). Writes `<stem>.report.txt`. | yes |
+| `ReportProbe.java` | `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-290) and the four `io/kicad/KiCadDrc*.java` DTOs it fills, as **normalised text** rather than as Gson JSON — Task 7 ports the DTOs and the builder, not the serialiser (that is Task 8's, with plan-5 ruling 2's two key flavors). Writes `<stem>.report.txt`. | yes |
 
 | Transcript | Fixture | Rows |
 |---|---|---|
@@ -300,7 +300,7 @@ side injects the same literal, so a rebuilt jar with a new version needs `JAR_VE
 `three_fixtures_match_the_jvm_byte_for_byte` (`tests/report.rs`) compares the dev board, BBD
 Mars-64 and the empty board byte for byte. **Natural Tone Preamp cannot be one of them**: its
 `violations` count is hash-dependent, for the reason recorded under `*.unconnected.txt` above —
-`generateReport` folds the `track_dangling` entries into `violations` (`:268-276`), and quirk
+`generateReport` folds the `track_dangling` entries into `violations` (`:271-276`), and quirk
 #146's dedup drops whichever dangling trace a net entry's hash-ordered `firstItem` happens to be.
 Measured on this jar, four of six runs drop **none**:
 
