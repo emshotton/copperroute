@@ -147,7 +147,7 @@ fn read_board_outline_missing_when_boundary_absent() {
 
 /// The input that really does reach `BoardReadResult::OutlineMissing`: a `structure` scope whose
 /// boundary has zero extent, so `Structure.createBoard` sets `boardOutlineOk = false` and builds
-/// no board (Structure.java:1204-1209).
+/// no board (Structure.java:1195-1198).
 ///
 /// JVM-verified against tools/freerouting-2.3.0.jar:
 ///     readBoard -> OutlineMissing[board=null, metadata=null, warnings=[]]
@@ -442,9 +442,10 @@ fn loading_produces_warnings_for_degenerate_wires() {
 /// for a `normalizeAllTraces` that threw — `warnings.add("Wiring: normalization of traces
 /// failed")` (Wiring.java:346-352) — and the read still answers `Success`.
 ///
-/// A zero-millisecond limit is exceeded as soon as one millisecond has passed
-/// (TimeLimit.java:20 compares strictly greater), so this trips on any fixture with enough
-/// wiring to take that long.
+/// `Duration::ZERO` is the documented "give up before the first check" value
+/// (`DsnReadOptions::normalize_time_limit`), so the trip is deterministic: it does not depend
+/// on a millisecond having elapsed inside the walk, which is what `TimeLimit.isExceeded`'s
+/// strictly-greater comparison (TimeLimit.java:20) would otherwise require.
 #[test]
 fn a_normalisation_time_limit_trip_produces_javas_own_warning() {
     let options = DsnReadOptions {
@@ -706,6 +707,25 @@ fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
         .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
         .collect();
     paths.sort();
+
+    // The task brief names five fixtures explicitly so that a corpus reshuffle cannot quietly
+    // drop them: the non-ASCII identifiers, and the four minimal reproductions of the two hangs
+    // ruling 4 exists for. The golden pins the whole list, but only by content — this pins them
+    // by name.
+    for required in [
+        "Issue110-Паяльная станция.dsn",
+        "Issue756-minimal-hang.dsn",
+        "Issue756-minimal-ok.dsn",
+        "Issue757-minimal-soe.dsn",
+        "Issue757-minimal-soe-ok.dsn",
+    ] {
+        assert!(
+            paths
+                .iter()
+                .any(|p| p.file_name().is_some_and(|n| n == required)),
+            "{required} is missing from the corpus"
+        );
+    }
 
     // Well under the 60 s default, so a fixture that trips it is a bug in this test's budget,
     // not in the reader; none does.

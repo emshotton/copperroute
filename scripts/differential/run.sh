@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3" >&2
+  echo "           p3t3, p3t15" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -54,6 +54,9 @@ needs_jar=0
 needs_jdk25=0
 # Set by `p3t3`: use the pinned 2.3.0 jar rather than the clone's HEAD build (ruling 10).
 needs_jar_230=0
+# Set by `p3t15`: extra driver sources to compile alongside `$javaclass.java` in jar mode (it
+# delegates its mode 4 to `P3T3.main`).
+extra_jar_sources=()
 # The `datastructures` classes the Plan 2 Task 3 drivers exercise.
 shapetree_sources=(
   "$JAVA_DIR/datastructures/ShapeTree.java"
@@ -121,6 +124,17 @@ case "$driver" in
     needs_jar=1
     needs_jar_230=1
     ;;
+  p3t15)
+    # The DSN reader plus all three writers over one fixture. Like `p3t3` it runs against the
+    # pinned 2.3.0 jar (ruling 10) — it is the driver that must reproduce `tests/reference/`'s
+    # bytes. `P3T3.java` is compiled with it because mode 4 delegates to `P3T3.main`.
+    javaclass=P3T15
+    javapkg="io.specctra"
+    default_args=("$ROOT/tests/reference/Issue413-test/roundtrip.dsn" 1)
+    needs_jar=1
+    needs_jar_230=1
+    extra_jar_sources=("$DIFF_ROOT/java/P3T3.java")
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -154,7 +168,8 @@ if [[ "$needs_jar" -eq 1 ]]; then
   echo "== compiling Java ($javaclass) against $FREEROUTING_JAR =="
   rm -rf "$jar_out"
   mkdir -p "$jar_out"
-  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$DIFF_ROOT/java/$javaclass.java"
+  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$DIFF_ROOT/java/$javaclass.java" \
+    ${extra_jar_sources+"${extra_jar_sources[@]}"}
 
   j_out="$BUILD/$driver.j.out"
   r_out="$BUILD/$driver.r.out"

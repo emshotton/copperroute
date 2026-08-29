@@ -169,14 +169,50 @@ methods with dozens of branches.
     The driver also rebinds `System.out` before FRLogger can load, because
     action 2 of the scanner logs one `WARN` line per non-ANSI character and
     that would interleave with the token stream.
+  - `P3T15.java` — the DSN reader and all three writers over one fixture
+    (Plan 3 Task 15). Twin: `p3t15`. Takes `<file.dsn> <mode>`:
+    - `0` — one line per board item in **ascending id** order:
+      `item <id> <kind> layers=<first>..<last> nets=[…] cl=<class>
+      fixed=<state> cmp=<component> bbox=(llx,lly,urx,ury) tiles=<count>`,
+      preceded by `layers <n>` and followed by `itemcount <n>` and the
+      `BoardReadResult` warnings.
+    - `1` — `DsnWriter.write(board, out, stem, false)`, byte for byte.
+    - `2` — `SesWriter.write(board, out, stem)`, byte for byte.
+    - `3` — `RulesWriter.write(board, out, stem)`, byte for byte.
+    - `4` — delegates to `P3T3.main`, so one driver can sweep the corpus.
+
+    The read is exactly `scripts/gen-reference/RefWriter.java`'s —
+    `DsnReader.readBoard(in, null, null, designName)` with `designName` the
+    file name minus a trailing `.dsn` — which is also what
+    `crates/fr-dsn/tests/parity_dsn.rs` does, so a diff here and a bit-parity
+    failure there have the same cause. A `ParseError` prints
+    `RESULT ParseError <location> | <detail>` on both sides and stops.
+    Like `p3t3` it runs against **`tools/freerouting-2.3.0.jar`** (ruling 10);
+    `P3T3.java` is compiled alongside it for mode 4.
+
+    **`p3t15` is the only driver that covers the scanner's hand-rolled
+    bypass.** `nextString`, `nextStringList` and `nextDouble` walk `zzBuffer`
+    directly instead of running the DFA, so `p3t3`'s pure `next_token` loop
+    never reaches them. Modes 0-3 drive the whole parser, which calls all
+    three on nearly every scope, and any divergence surfaces as a wrong item,
+    a wrong name, or a wrong number in the output.
+- `sweep-p3t15.sh [mode ...]` — compiles both sides once through
+  `run.sh p3t15`, then runs every requested mode (default: all five) over
+  every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` plus
+  `examples/tutorial_board/tutorial_board.dsn`, and prints a per-fixture
+  MATCH/DIFF table. A `<fixture>:<mode>` pair listed in the script's
+  `EXPECTED_DIFFS` array prints `XDIFF` and does not fail the run; every other
+  diff does. `SWEEP_OUT=<dir>` keeps the raw outputs of the differing pairs.
 
 - `rust/` — a standalone Cargo package, `fr-geometry-differential`, **not** a
   member of the repo's workspace (see the root `Cargo.toml` `exclude` and this
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`. Since Plan 3 it also depends on `fr-dsn` by path (for `p3t2` and
-  `p3t3`).
+  `p3t3`, `p3t15`. Since Plan 3 it also depends on `fr-dsn` by path (for
+  `p3t2`, `p3t3` and `p3t15`). `p3t3` and `p3t15` share the token dump through
+  `src/token_dump.rs`, included by both with `#[path]` — the Java side of
+  mode 4 delegates to `P3T3.main`, so the two dumps must stay identical.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -196,7 +232,7 @@ Requirements:
 - For `p2t10`/`p2t11`/`p2t15`/`p3t2` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
-- For `p3t3` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
+- For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
   `tools/freerouting-2.3.0.jar` (`FREEROUTING_JAR_230`) — the pinned release
   jar, gitignored like the clone's build output, downloaded from the
   freerouting 2.3.0 release (it is also what `scripts/gen-reference.sh` uses).
@@ -332,8 +368,11 @@ the driver expects, or none at all.
   generated from the Java by `scripts/gen-lexer-tables.py`. The default
   argument is `tests/reference/tutorial_board/roundtrip.dsn`. **Verified** over
   the whole corpus — all 105 `.dsn`, 12 `.ses` and 7 `.rules` fixtures in
-  `../freerouting/fixtures/` plus the 8 files under `tests/reference/`, 132
-  files, **0 diff lines** (Task 15 re-runs this as the corpus gate). To repeat
+  `../freerouting/fixtures/` plus the 14 files under `tests/reference/`, 138
+  files, **0 diff lines**. Task 15 re-ran the non-`.dsn` half directly (33
+  files, 0 diffs) and the 105 `.dsn` half through `p3t15` mode 4, which
+  delegates to `P3T3.main` on the Java side and shares `token_dump.rs` on the
+  Rust side. To repeat
   the sweep without recompiling per file, run `run.sh p3t3` once and then loop
   the two binaries it left behind:
 
@@ -348,10 +387,26 @@ the driver expects, or none at all.
   done
   ```
 
+- `p3t15 <file.dsn> <mode>` — the DSN reader plus all three writers over one
+  fixture (Plan 3 Task 15), and the only driver that reaches the scanner's
+  hand-rolled `nextString`/`nextStringList`/`nextDouble` bypass (see the
+  driver's entry under "Layout"). The default arguments are
+  `tests/reference/Issue413-test/roundtrip.dsn 1`. **Verified** by
+  `sweep-p3t15.sh` over all five modes × all 106 fixtures — 530 pairs, 525
+  MATCH, 5 expected `XDIFF`s and **0 unexpected diffs** (table below):
+
+  ```sh
+  ./scripts/differential/sweep-p3t15.sh          # all five modes, all 106 fixtures
+  ./scripts/differential/sweep-p3t15.sh 1        # just DsnWriter
+  SWEEP_OUT=/tmp/sweep ./scripts/differential/sweep-p3t15.sh   # keep the differing outputs
+  ```
+
 ## Known, expected diffs
 
 Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
-`p2t11`, `p2t13` and `p2t15`, which need a JDK 25 (see Requirements above):
+`p2t11`, `p2t13`, `p2t15`, `p3t2`, `p3t3` and `p3t15`, which need a JDK 25
+(see Requirements above). `p3t3` and `p3t15` additionally run against the
+pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 
 | driver | lines | diff lines | classification |
 |---|---|---|---|
@@ -396,7 +451,12 @@ Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
 | `p3t3` (`tests/reference/tutorial_board/roundtrip.dsn`, the default) | 80308 | 0 | exact match |
 | `p3t3` (all 105 `fixtures/*.dsn`) | 105 files, 73-205603 lines each | 0 | exact match on every file |
 | `p3t3` (all 12 `fixtures/*.ses` + 7 `fixtures/*.rules`) | 19 files | 0 | exact match on every file |
-| `p3t3` (the 8 `tests/reference/*/{roundtrip.dsn,unrouted.ses}`) | 8 files | 0 | exact match on every file |
+| `p3t3` (the 14 `tests/reference/*/{roundtrip.dsn,unrouted.ses}`) | 14 files | 0 | exact match on every file (7 stems since Task 15's ruling-G additions) |
+| `p3t15` (`tutorial_board.dsn`, modes 0/1/2/3/4) | 441 / 38869 / 27 / 94 / 76602 | 0 | exact match — items+warnings, `DsnWriter`, `SesWriter`, `RulesWriter`, tokens |
+| `p3t15` (`Issue413-test.dsn`, modes 0/1/2/3/4) | 39 / 378 / 130 / 42 / 1097 | 0 | exact match — the fixture with traces, wiring vias, fixed states and SES `(wire` entries |
+| `p3t15` sweep (all 5 modes × all 106 fixtures = **530 pairs**) | see below | **0 unexpected** | 525 MATCH + 5 `XDIFF` (`Issue229` modes 0-3, `empty_board` mode 3), both explained in the next two rows |
+| `p3t15` (`Issue229-display-8-digit-hc595.dsn`, modes 0-3) | Java 3 / 59 / 18 / 0 vs Rust 502 / 3907 / 1922 / 55 | XDIFF | **Expected** (controller ruling E). The 2.3.0 jar's `DsnFile.readStringScope` has no resync loop where the clone's HEAD does, and the port follows HEAD (the plan's Java source authority), so the two readers legitimately build different boards from this file. The 2.3.0 reader gives up after one item where the port builds 501; mode 3 is Java 0 lines because the collapsed board also has no library, so `RulesWriter` NPEs on it as it does for `empty_board.dsn` below. Mode 4 — the raw token stream — still MATCHes on this file, which is the evidence that the divergence is in the parser and not in the scanner. Never "fixed" by changing the port. |
+| `p3t15` (`empty_board.dsn`, mode 3) | Java 0 / Rust 20 | XDIFF | **Expected** — Java throws. The file has no `(library …)` scope at all, so `BoardLibrary.padstacks` stays `null` and `RulesWriter.writeRules` NPEs on `padstacks.count()` (`NullPointerException: Cannot invoke "app.freerouting.core.Padstacks.count()" because "p_par.board.library.padstacks" is null`). The port's field is a value, not a reference, so it writes a complete 20-line `.rules` file. New in Task 15; recorded in `docs/java-quirks.md`'s totalization table. |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic

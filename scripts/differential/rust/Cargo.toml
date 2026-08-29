@@ -80,3 +80,8 @@ path = "src/bin/p3t2.rs"
 [[bin]]
 name = "p3t3"
 path = "src/bin/p3t3.rs"
+
+# Plan 3 Task 15: the DSN reader and all three writers over a whole fixture.
+[[bin]]
+name = "p3t15"
+path = "src/bin/p3t15.rs"
