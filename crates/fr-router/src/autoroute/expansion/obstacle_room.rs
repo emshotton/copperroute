@@ -79,7 +79,7 @@ impl ObstacleExpansionRoom {
     /// Port of `getId` (ObstacleExpansionRoom.java:48-51):
     /// `(this.item.getId() << 10) | this.indexInItem`.
     ///
-    /// A hash, not an identity, and it **aliases** two ways (quirk #160, hazard D):
+    /// A hash, not an identity, and it **aliases** two ways (quirk #156, hazard D):
     ///
     /// * `|` never carries, so any `indexInItem >= 1024` spills into the item's bits — an item
     ///   with 1024 or more tree shapes gives two of its own rooms the same id, and can collide
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn the_id_is_an_or_not_a_sum_so_a_wide_index_aliases() {
-        // quirk #160. `1 << 10 | 1024` is 1024, which is `1 << 10 | 0`.
+        // quirk #156. `1 << 10 | 1024` is 1024, which is `1 << 10 | 0`.
         assert_eq!(
             ObstacleExpansionRoom::id(ItemId(1), 1024),
             ObstacleExpansionRoom::id(ItemId(1), 0)

@@ -19,7 +19,7 @@
 //! | Object | Java | Formula |
 //! |---|---|---|
 //! | `CompleteFreeSpaceExpansionRoom` | `:99-102` | the engine counter — the only true id |
-//! | `ObstacleExpansionRoom` | `:48-51` | `(itemId << 10) \| indexInItem` — aliases (quirk #160) |
+//! | `ObstacleExpansionRoom` | `:48-51` | `(itemId << 10) \| indexInItem` — aliases (quirk #156) |
 //! | `IncompleteFreeSpaceExpansionRoom` | `:37-41` | `31 * shape.getId() + layer`, and the shape is mutable |
 //! | `ExpansionDoor` | `:184-190` | `min(id1,id2) * 31 + max(id1,id2)` |
 //! | `TargetItemExpansionDoor` | `:70-74` | `31 * item.getId() + room.getId()` |
@@ -46,7 +46,7 @@ pub use target_door::{TargetItemExpansionDoor, target_door_id};
 
 use fr_board::searchtree::ShapeSearchTree;
 use fr_board::{Board, ItemId, ObstacleRoomId, RoomId, TreeId, TreeObject};
-use fr_geometry::TileShape;
+use fr_geometry::{FloatLine, TileShape};
 
 use crate::Arena;
 use crate::arena::{DoorId, IncompleteRoomId, TargetDoorId};
@@ -106,15 +106,29 @@ impl ExpansionRoomStore {
         self.room_instance_count
     }
 
-    /// `AutorouteEngine.clear`'s arena half (AutorouteEngine.java:307-317): drop every room and
-    /// door and reset the counter.
+    /// `AutorouteEngine.clear` (AutorouteEngine.java:306-317) minus its last line: **take every
+    /// complete room out of the search tree first** (`:308-312`), then drop every room and door
+    /// and reset the counter (`:313-315`).
+    ///
+    /// The tree removal is not optional. Java's loop over `completeExpansionRooms` calling
+    /// `currentRoom.removeFromTree(this.autorouteSearchTree)` is what stops the shared tree from
+    /// keeping `TreeObject::Room` leaves after the rooms are gone; without it the next overlap
+    /// query would read a room key whose arena slot no longer exists — and, until Task 4 teaches
+    /// `ShapeSearchTree`'s `tree_shape_of`/`ignore_object` to resolve a room, that is a **panic**
+    /// rather than a stale read.
     ///
     /// **Every id handed out before this call becomes meaningless**, because [`Arena::clear`]
-    /// restarts the indices — including the [`ObstacleRoomId`]s stored on the board's items. The
-    /// caller must clear those in the same breath, which is what
-    /// `RoutingBoard.clearAllItemTemporaryAutorouteData` (`:1241`) does at
-    /// AutorouteEngine.java:317.
-    pub fn clear(&mut self) {
+    /// restarts the indices — including the [`ObstacleRoomId`]s stored on the board's items.
+    ///
+    /// obligation: Task 6's `AutorouteEngine::clear` must follow this with
+    /// `RoutingBoard.clearAllItemTemporaryAutorouteData` (`RoutingBoard.java:1241`), which is
+    /// AutorouteEngine.java:316 — otherwise the items keep `ObstacleRoomId`s into a restarted
+    /// arena.
+    pub fn clear(&mut self, tree: &mut ShapeSearchTree) {
+        // AutorouteEngine.java:308-312.
+        for (_, room) in self.complete_rooms.iter_mut() {
+            room.remove_from_tree(tree);
+        }
         self.complete_rooms.clear();
         self.incomplete_rooms.clear();
         self.obstacle_rooms.clear();
@@ -562,6 +576,28 @@ impl ExpansionRoomStore {
         Some(d.get_shape(first, second))
     }
 
+    /// `ExpansionDoor.getSectionSegments(double)` (ExpansionDoor.java:104-143), with both room
+    /// shapes resolved out of the arenas. **Mutates the door**: it allocates the section array
+    /// (`:141`).
+    ///
+    /// An empty vector for a stale door id or a room with no shape, where Java throws — the same
+    /// answer `:110` and `:126` already give for a door that cannot be sectioned.
+    pub fn door_section_segments(&mut self, door: DoorId, offset: f64) -> Vec<FloatLine> {
+        let Some(d) = self.doors.get(door.0) else {
+            return Vec::new();
+        };
+        let (Some(first), Some(second)) = (
+            self.room_shape(d.first_room).cloned(),
+            self.room_shape(d.second_room).cloned(),
+        ) else {
+            return Vec::new();
+        };
+        match self.doors.get_mut(door.0) {
+            Some(d) => d.get_section_segments(&first, &second, offset),
+            None => Vec::new(),
+        }
+    }
+
     /// `ExpansionDoor.getId()` (ExpansionDoor.java:184-190), with both room ids resolved through
     /// [`room_id_no`](Self::room_id_no).
     pub fn door_id_no(&self, door: DoorId) -> Option<i32> {
@@ -610,14 +646,34 @@ mod tests {
         assert_eq!(store.next_room_id_no(), 3);
     }
 
+    /// A bare compensated tree, for the `clear` tests — no board needed.
+    fn bare_tree() -> ShapeSearchTree {
+        ShapeSearchTree::new(
+            fr_board::TreeId(0),
+            fr_board::structure::AngleRestriction::NinetyDegree,
+            0,
+        )
+    }
+
     #[test]
-    fn clear_drops_every_arena_and_restarts_the_counter() {
-        // AutorouteEngine.java:307-316.
+    fn clear_removes_the_tree_leaves_before_it_drains_the_arenas() {
+        // AutorouteEngine.java:306-317: the loop at :308-312 runs *before* the lists are nulled.
+        let mut tree = bare_tree();
         let mut store = ExpansionRoomStore::new();
         let (a, b) = two_rooms(&mut store);
+        let (RoomRef::Complete(a_id), RoomRef::Complete(b_id)) = (a, b) else {
+            unreachable!()
+        };
+        store.insert_complete_room(&mut tree, a_id);
+        store.insert_complete_room(&mut tree, b_id);
+        assert_eq!(tree.tree().leaf_count(), 2);
+
         let door = store.new_door(a, b, 1);
         store.add_door(a, door);
-        store.clear();
+        store.clear(&mut tree);
+
+        assert_eq!(tree.tree().leaf_count(), 0, "the room leaves are gone");
+        assert!(tree.tree().is_empty());
         assert!(store.complete_rooms.is_empty());
         assert!(store.doors.is_empty());
         assert_eq!(store.next_room_id_no(), 1, "the counter went back to 0");
@@ -627,6 +683,19 @@ mod tests {
             store.new_complete_room(Some(boxed(0, 0, 1, 1)), 0, fresh),
             RoomId(0)
         );
+    }
+
+    #[test]
+    fn clear_is_safe_for_a_room_that_never_entered_the_tree() {
+        // A shapeless room is never inserted, so its `tree_leaf` is `None` and
+        // `ShapeTree::remove_leaf_opt` skips it (MinAreaTree.java:121-123).
+        let mut tree = bare_tree();
+        let mut store = ExpansionRoomStore::new();
+        let id = store.next_room_id_no();
+        store.new_complete_room(None, 0, id);
+        store.clear(&mut tree);
+        assert!(tree.tree().is_empty());
+        assert!(store.complete_rooms.is_empty());
     }
 
     #[test]

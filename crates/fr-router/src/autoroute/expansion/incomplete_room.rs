@@ -67,7 +67,7 @@ impl IncompleteFreeSpaceExpansionRoom {
     ///   `ExpansionDrill.calculateExpansionRooms` does at
     ///   `autoroute/drill/ExpansionDrill.java:77` — throws a `NullPointerException` here. That
     ///   is a crash in both languages, so the port panics rather than inventing a value
-    ///   (`docs/java-quirks.md` #162). It is unreachable today: nothing asks a drill's seed room
+    ///   (`docs/java-quirks.md` #158). It is unreachable today: nothing asks a drill's seed room
     ///   for its id before `completeExpansionRoom` replaces it.
     ///
     /// The arithmetic is Java `int`, so it wraps.
@@ -84,15 +84,13 @@ impl IncompleteFreeSpaceExpansionRoom {
                  too (IncompleteFreeSpaceExpansionRoom.java:40)"
             )
         });
+        // `getLayer()` is a Java `int`, so the port's `usize` truncates rather than saturating:
+        // `as i32` *is* Java's arithmetic. The two can only differ above `i32::MAX` layers, and
+        // a board has fewer than 32.
         shape
             .get_id()
             .wrapping_mul(31)
-            .wrapping_add(self.layer_i32())
-    }
-
-    /// `getLayer()` as the `int` Java's `getId` adds.
-    fn layer_i32(&self) -> i32 {
-        i32::try_from(self.base.get_layer()).unwrap_or(i32::MAX)
+            .wrapping_add(self.base.get_layer() as i32)
     }
 
     // --- the delegating `super` calls ----------------------------------------------------------

@@ -9,3 +9,15 @@
 pub mod search_element;
 
 pub use search_element::{MazeAdjustment, MazeSearchElement};
+
+/// `AutorouteEngine.TRACE_WIDTH_TOLERANCE` (`autoroute/maze/AutorouteEngine.java:41`):
+/// `public static final int TRACE_WIDTH_TOLERANCE = 2`.
+///
+/// A bare literal, not engine state, and it is added to the caller's offset by
+/// `ExpansionDoor.getSectionSegments` (`ExpansionDoor.java:106`) — which is why it has to exist
+/// before the engine does. It lives on the package module rather than in `engine.rs` so that
+/// Task 2 could port `getSectionSegments`.
+///
+/// obligation: Task 6's `AutorouteEngine` must `pub use` this constant rather than redeclare it,
+/// so there is one definition of the number.
+pub const TRACE_WIDTH_TOLERANCE: i32 = 2;

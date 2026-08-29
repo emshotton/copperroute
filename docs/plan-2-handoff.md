@@ -468,7 +468,7 @@ design:
   `a_room_and_an_item_with_the_same_numeric_id_do_not_collide` /
   `a_room_enters_the_boards_own_compensated_tree_before_its_items` in
   `crates/fr-router/tests/expansion_rooms.rs`. Two caveats were **recorded, not
-  fixed**: `compareTo`'s `instanceof`/cast mismatch (quirk #161) and the fact
+  fixed**: `compareTo`'s `instanceof`/cast mismatch (quirk #157) and the fact
   that room ids and item ids collide numerically, the order being total only
   because the type discriminator is the primary key. One obligation remains:
   `ShapeSearchTree`'s `tree_shape_of` and `ignore_object` still panic on a

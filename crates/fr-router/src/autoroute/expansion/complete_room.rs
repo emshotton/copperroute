@@ -95,7 +95,7 @@ impl CompleteFreeSpaceExpansionRoom {
     /// Port of `compareTo(Object)` (CompleteFreeSpaceExpansionRoom.java:45-53) against another
     /// room: `other.id - this.id`, i.e. **descending** id.
     ///
-    /// # Java bug (quirk #161), recorded rather than fixed
+    /// # Java bug (quirk #157), recorded rather than fixed
     ///
     /// Java's test is `other instanceof FreeSpaceExpansionRoom` but its cast is to
     /// `CompleteFreeSpaceExpansionRoom` (`:48-49`), so an **incomplete** free-space room on the

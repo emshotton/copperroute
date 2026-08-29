@@ -70,6 +70,16 @@ a `TreeObject::Room`, so Task 4 must teach the compensated queries to resolve a
 room's shape and layer before anything calls `overlapping_tree_entries` over a
 tree that holds rooms.
 
+`ExpansionDoor` is complete, `getSectionSegments` included: the door-section
+arithmetic (`ExpansionDoor.java:104-172`) is the one piece of real geometry in
+the class, and `AutorouteEngine.TRACE_WIDTH_TOLERANCE` — the `int = 2` it needs
+— lives on `src/autoroute/maze/mod.rs` for Task 6's engine to re-export.
+
+`ExpansionRoomStore::clear` takes the tree, because `AutorouteEngine.clear`
+(`:306-317`) removes every complete room's leaf **before** it drops the lists;
+skipping that would leave `TreeObject::Room` keys in the shared tree naming
+arena slots that no longer exist.
+
 Everything else — the maze search, the neighbour sorting, the drill pages, the
 path locators, `RoutingBoardExt` — arrives in Tasks 3-17. The deferral roster
 at the foot of `src/lib.rs` names each class and the task or plan that owns it;
@@ -86,8 +96,8 @@ element is expanded first — a wrong answer with no crash.
 | Object | Java | Formula |
 | --- | --- | --- |
 | `CompleteFreeSpaceExpansionRoom` | `:99-102` | the engine counter — the only true id |
-| `ObstacleExpansionRoom` | `:48-51` | `(itemId << 10) \| indexInItem` — aliases, quirk #160 |
-| `IncompleteFreeSpaceExpansionRoom` | `:37-41` | `31 * shape.getId() + layer`, shape mutable, quirk #162 |
+| `ObstacleExpansionRoom` | `:48-51` | `(itemId << 10) \| indexInItem` — aliases, quirk #156 |
+| `IncompleteFreeSpaceExpansionRoom` | `:37-41` | `31 * shape.getId() + layer`, shape mutable, quirk #158 |
 | `ExpansionDoor` | `:184-190` | `min(id1,id2) * 31 + max(id1,id2)` |
 | `TargetItemExpansionDoor` | `:70-74` | `31 * item.getId() + room.getId()` |
 
@@ -164,3 +174,12 @@ The map's header lists the six further invocations — one per subpackage, plus
 drive to zero. Task 2 moved `autoroute/expansion` from 79 MISSING to **13**
 (the three `Sorted*RoomNeighbours` classes, Tasks 4-5) and `autoroute/maze`
 from 28 to **27**, both at zero UNMAPPED.
+
+## Quirk-register numbering
+
+`docs/java-quirks.md` is allocated **contiguously, in the order rows are
+written**. Plan 6's plan text labels its rows `#155`–`#168`, but `#155` was
+already taken by Plan 5, so those labels are **not** row ids. Task 2 wrote the
+first three Plan 6 rows and they landed as **#156, #157, #158**; the next free
+id is **#159**. Every later task must re-read the register's last row rather
+than trust the plan's labels — the plan carries an amendment saying so.

@@ -319,20 +319,20 @@ pub struct MazeSearchElement { pub is_occupied: bool, pub backtrack_door: Option
 | Object | Java | Formula |
 |---|---|---|
 | `CompleteFreeSpaceExpansionRoom` | `:100` | the engine counter (`AutorouteEngine.generateRoomIdNo:672`, `++expansionRoomInstanceCount`) — the only true id |
-| `ObstacleExpansionRoom` | `:49` | `(itemId << 10) \| indexInItem` — **aliases** for `itemId ≥ 2²¹` or `indexInItem ≥ 1024` (hazard D, quirk #160) |
+| `ObstacleExpansionRoom` | `:49` | `(itemId << 10) \| indexInItem` — **aliases** for `itemId ≥ 2²¹` or `indexInItem ≥ 1024` (hazard D, quirk **#156** as landed) |
 | `IncompleteFreeSpaceExpansionRoom` | `:38-41` | `31 * shape.getId() + layer`, and `shape` is **mutable** (`FreeSpaceExpansionRoom.setShape:70`) — hazard C |
 | `ExpansionDoor` | `:185-190` | `min(id1,id2) * 31 + max(id1,id2)` over the two room ids |
 | `TargetItemExpansionDoor` | `:71-74` | `31 * item.getId() + room.getId()` |
 
 **`TreeObject::Room` (Plan 2's obligation — discharge it here).** `CompleteFreeSpaceExpansionRoom implements SearchTreeObject` (`:19-20`), so rooms and items share the tree and the same ordered result sets. `crates/fr-board/src/ids.rs:60-88`'s `Ord` already encodes both `compareTo`s (rooms before items, descending id within each); this task **populates** it and asserts the ordering against a real mixed tree. Two caveats to record rather than fix:
-1. `CompleteFreeSpaceExpansionRoom.compareTo:46-54` tests `instanceof FreeSpaceExpansionRoom` and casts to `CompleteFreeSpaceExpansionRoom` — an incomplete room in a sorted set would `ClassCastException`. Unreachable today (incomplete rooms never enter a tree); quirk #161, with a comment at the port's `RoomRef` ordering.
+1. `CompleteFreeSpaceExpansionRoom.compareTo:46-54` tests `instanceof FreeSpaceExpansionRoom` and casts to `CompleteFreeSpaceExpansionRoom` — an incomplete room in a sorted set would `ClassCastException`. Unreachable today (incomplete rooms never enter a tree); quirk **#157** as landed, with a comment at the port's `RoomRef` ordering.
 2. Room ids and item ids **collide numerically** (the room counter is per engine), and the order is correct only because the type discriminator is the primary key — which `TreeObject { Item, Room }` already is. A test asserts a room with `id == 7` and an item with `id == 7` sort as room-then-item.
 
 **The double-removal audit (Plan 2 ruling 8).** `ShapeTree::remove_leaf` panics on a second removal where Java corrupts silently (quirk #39). `AutorouteEngine.clear:307-317` iterates `completeExpansionRooms` calling `removeFromTree` on each, while `removeCompleteExpansionRoom:404-407` may already have removed one — but `:406`'s `completeExpansionRooms.remove(room)` runs in the same method, so the list can never hold a removed room. This task proves that by construction: `remove_complete_room` takes the room **out of the arena** and out of the tree in one operation, and `clear` drains the arena. A test removes a room twice through the public API and asserts the second call is a no-op returning `false`, not a panic.
 
 **Tests (`crates/fr-router/tests/expansion_rooms.rs`):**
 - `room_ids_are_the_engine_counter_and_items_are_not`: two rooms created back-to-back get consecutive ids from the engine, independent of the board's item ids.
-- `obstacle_room_id_aliases_above_1023_shapes` (quirk #160): `ObstacleExpansionRoom::id(ItemId(1), 1024) == ObstacleExpansionRoom::id(ItemId(2), 0)`.
+- `obstacle_room_id_aliases_above_1023_shapes` (quirk **#156** as landed): `ObstacleExpansionRoom::id(ItemId(1), 1024) == ObstacleExpansionRoom::id(ItemId(2), 0)`.
 - `door_id_is_symmetric_in_its_two_rooms` (`ExpansionDoor.java:185-190`).
 - `rooms_sort_before_items_and_descending_among_themselves`: insert two rooms and two items into one compensated tree, query an overlapping box, assert the `BTreeSet<TreeObject>` order is `Room(hi), Room(lo), Item(hi), Item(lo)`.
 - `a_room_and_an_item_with_the_same_numeric_id_do_not_collide`.
@@ -1172,6 +1172,23 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 **The `// not ported:` roster in `lib.rs`**, one line each with its reason (ruling 13): `BoardHistory` (202) + `BoardHistoryEntry` (33) — spec §2 puts the undo/history store out of scope; `autoroute/events/**` (6 files, 130 loc) — observers, replaced by Plan 8's `ProgressSink`; `PerformanceProfiler` (168) — profiling with `ConcurrentHashMap` statics; `AutorouteDiagnostic` (32) — a GUI overlay sink; `MazeFanoutDiagnostics` (44) — `FRLogger.trace` payloads. Plus the `// added in Plan 7:` lines for `pipeline/**`, `ItemRouteResult`, `RoutingFailureLog`, `BoardUpdateStrategy`, `ItemSelectionStrategy`, `board/optimize/{TraceTightener*,ViaOptimizer}`, `TraceShover.insert`, `ForcedPadRouter`'s routing half and `DrillItemMover`'s mutating half.
 
 **`docs/java-quirks.md` rows**, numbering continuing from **#154** (Plan 5's last row — re-check before writing; if Plan 5's final wave added more, renumber and say so in the commit message), so Plan 6's first row is **#155**:
+
+> **AMENDMENT (Task 2, controller ruling — binding on every later task).** The re-check this
+> paragraph asks for came back positive: Plan 5's final wave landed **#155**
+> (`DesignRulesChecker.drcSettings`), so every number in the table below is a **label, not a row
+> id**. The register is allocated **contiguously, in the order rows are written**, and Task 2 —
+> the first Plan 6 task to write any — took the first three free ids:
+>
+> | plan label | landed as | row |
+> |---|---|---|
+> | #160 | **#156** | `ObstacleExpansionRoom.getId` aliases and overflows |
+> | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
+> | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
+>
+> **The next free row id is #159.** Tasks 4, 5, 8 and 12 must take the next free id *at the time
+> they write*, re-checking `docs/java-quirks.md`'s last row first — **not** the labels below.
+> Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
+> row); do not write it again.
 
 | new # | what | Java site |
 |---|---|---|

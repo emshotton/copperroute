@@ -8,7 +8,7 @@ use fr_board::datastructures::ShapeTree;
 use fr_board::ids::{ItemId, RoomId, TreeObject};
 use fr_board::prelude::*;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
-use fr_geometry::{IntBox, ShapeBoundingDirections, TileShape};
+use fr_geometry::{FloatLine, IntBox, ShapeBoundingDirections, TileShape};
 use fr_router::autoroute::expansion::{
     ExpandableRef, ExpansionDoor, ExpansionRoomStore, ObstacleExpansionRoom, RoomRef,
 };
@@ -68,7 +68,7 @@ fn room_ids_are_the_engine_counter_and_items_are_not() {
 #[test]
 fn obstacle_room_id_aliases_above_1023_shapes() {
     // ObstacleExpansionRoom.java:49-51: `(item.getId() << 10) | indexInItem` — an **or**, not a
-    // sum, so an index of 1024 or more spills into the item's bits (quirk #160).
+    // sum, so an index of 1024 or more spills into the item's bits (quirk #156).
     assert_eq!(
         ObstacleExpansionRoom::id(ItemId(1), 1024),
         ObstacleExpansionRoom::id(ItemId(1), 0),
@@ -618,4 +618,233 @@ fn a_door_built_from_the_room_shapes_takes_the_intersections_dimension() {
     // Java throws.
     let plane = RoomRef::Incomplete(store.new_incomplete_room(None, 0, None));
     assert_eq!(store.new_door_from_shapes(a, plane), None);
+}
+
+// ---------------------------------------------------------------------------------------------
+// ExpansionDoor.getSectionSegments (ExpansionDoor.java:104-143)
+// ---------------------------------------------------------------------------------------------
+
+/// The total length of a section list, for the "the sections tile the shrunk segment" assertion.
+fn total_length(sections: &[FloatLine]) -> f64 {
+    sections.iter().map(|s| s.b.distance(&s.a)).sum()
+}
+
+#[test]
+fn a_dimension_one_door_divides_into_sections_and_allocates_them() {
+    // ExpansionDoor.java:115-117 then :138-142. The door is the shared edge of two rooms that
+    // touch along x = 1000, from y = 0 to y = 4000. With offset_param = 8 the offset is
+    // 8 + TRACE_WIDTH_TOLERANCE = 10, so maxDoorSectionWidth is 100 and the segment length is
+    // 4000: sectionCount = (int)(4000 / 100) + 1 = 41.
+    let mut store = ExpansionRoomStore::new();
+    let a_id = store.next_room_id_no();
+    let a = store.new_complete_room(Some(boxed(0, 0, 1000, 4000)), 0, a_id);
+    let b_id = store.next_room_id_no();
+    let b = store.new_complete_room(Some(boxed(1000, 0, 3000, 4000)), 0, b_id);
+    let door = store
+        .new_door_from_shapes(RoomRef::Complete(a), RoomRef::Complete(b))
+        .unwrap();
+    assert_eq!(store.door(door).unwrap().get_dimension(), 1);
+    assert_eq!(store.door(door).unwrap().maze_search_element_count(), None);
+
+    let sections = store.door_section_segments(door, 8.0);
+    assert_eq!(sections.len(), 41);
+    assert!(sections.len() >= 2, "the brief's >= 2 sections");
+
+    // :141 — `getSectionSegments` is `allocateSections`' only caller, so the array is now there
+    // and exactly as long as the returned list.
+    assert_eq!(
+        store.door(door).unwrap().maze_search_element_count(),
+        Some(41)
+    );
+
+    // The sections tile the *shrunk* segment (:117, :142): 4000 shortened by `offset` at each
+    // end, and consecutive sections meet end to end.
+    assert!((total_length(&sections) - (4000.0 - 2.0 * 10.0)).abs() < 1e-6);
+    for pair in sections.windows(2) {
+        assert_eq!(pair[0].b, pair[1].a);
+    }
+    assert_eq!(sections[0].a.x, 1000.0);
+    assert!(
+        (sections[0].a.y - 10.0).abs() < 1e-6,
+        "shrunk by the offset"
+    );
+    assert!((sections[40].b.y - 3990.0).abs() < 1e-6);
+}
+
+#[test]
+fn a_re_section_of_the_same_width_keeps_the_maze_state() {
+    // :141 -> :194-195. Calling `getSectionSegments` twice with the same offset must not throw
+    // the section array away, because the maze search writes into it between the two calls.
+    let mut store = ExpansionRoomStore::new();
+    let a_id = store.next_room_id_no();
+    let a = store.new_complete_room(Some(boxed(0, 0, 1000, 4000)), 0, a_id);
+    let b_id = store.next_room_id_no();
+    let b = store.new_complete_room(Some(boxed(1000, 0, 3000, 4000)), 0, b_id);
+    let door = store
+        .new_door_from_shapes(RoomRef::Complete(a), RoomRef::Complete(b))
+        .unwrap();
+
+    store.door_section_segments(door, 8.0);
+    store
+        .door_mut(door)
+        .unwrap()
+        .get_maze_search_element_mut(3)
+        .unwrap()
+        .is_occupied = true;
+    store.door_section_segments(door, 8.0);
+    assert!(
+        store
+            .door(door)
+            .unwrap()
+            .get_maze_search_element(3)
+            .unwrap()
+            .is_occupied
+    );
+    // A different offset gives a different count, and :197-200 replaces the whole array.
+    store.door_section_segments(door, 98.0);
+    assert_eq!(
+        store.door(door).unwrap().maze_search_element_count(),
+        Some(5),
+        "(int)(4000 / (10 * 100)) + 1"
+    );
+    assert!(
+        !store
+            .door(door)
+            .unwrap()
+            .get_maze_search_element(3)
+            .unwrap()
+            .is_occupied
+    );
+}
+
+#[test]
+fn a_two_dimensional_door_between_two_free_space_rooms_uses_the_restraint_line() {
+    // ExpansionDoor.java:118-132 with `calcDoorLineSegment` (:145-172). Two overlapping
+    // free-space rooms: the door shape is their 2-dimensional intersection, and the restraint
+    // line runs between the two corners of it that lie inside neither room.
+    let mut store = ExpansionRoomStore::new();
+    let a_id = store.next_room_id_no();
+    let a = store.new_complete_room(Some(boxed(0, 0, 2000, 2000)), 0, a_id);
+    let b_id = store.next_room_id_no();
+    let b = store.new_complete_room(Some(boxed(1000, 1000, 3000, 3000)), 0, b_id);
+    let door = store
+        .new_door_from_shapes(RoomRef::Complete(a), RoomRef::Complete(b))
+        .unwrap();
+    assert_eq!(store.door(door).unwrap().get_dimension(), 2);
+
+    let sections = store.door_section_segments(door, 8.0);
+    assert!(
+        !sections.is_empty(),
+        "the door is far larger than 2 * offset"
+    );
+    assert_eq!(
+        store.door(door).unwrap().maze_search_element_count(),
+        Some(sections.len())
+    );
+    // The restraint line is the diagonal of the 1000x1000 overlap: (2000,1000)-(1000,2000).
+    let full = (2000.0f64 - 1000.0).hypot(1000.0 - 2000.0);
+    assert!((total_length(&sections) - (full - 2.0 * 10.0)).abs() < 1e-6);
+
+    // :128-131 — a door shorter than 2 * offset is dropped, and no sections are allocated.
+    let mut store = ExpansionRoomStore::new();
+    let c_id = store.next_room_id_no();
+    let c = store.new_complete_room(Some(boxed(0, 0, 2000, 2000)), 0, c_id);
+    let d_id = store.next_room_id_no();
+    let d = store.new_complete_room(Some(boxed(1999, 1999, 3000, 3000)), 0, d_id);
+    let tiny = store
+        .new_door_from_shapes(RoomRef::Complete(c), RoomRef::Complete(d))
+        .unwrap();
+    assert!(store.door_section_segments(tiny, 8.0).is_empty());
+    assert_eq!(
+        store.door(tiny).unwrap().maze_search_element_count(),
+        None,
+        ":130 returns before :141, so the array is never allocated"
+    );
+}
+
+#[test]
+fn a_two_dimensional_door_touching_an_obstacle_room_falls_to_the_gravity_branch() {
+    // :118-120 tests `instanceof CompleteFreeSpaceExpansionRoom` on **both** rooms, so an
+    // `ObstacleExpansionRoom` — the other `CompleteExpansionRoom` — takes the :133-137 branch:
+    // a degenerate segment at the door's centre of gravity, i.e. exactly one zero-length
+    // section.
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = fixture_board(SPLITTER);
+    let tree = board.default_tree_id();
+    let (item, _) = first_item_with_shapes(&mut board);
+    let item_shape = board.item_tree_shape(item, tree, 0).unwrap();
+
+    let mut store = ExpansionRoomStore::new();
+    let obstacle = RoomRef::Obstacle(store.new_obstacle_room(&mut board, item, 0, tree));
+    let free_id = store.next_room_id_no();
+    let free = RoomRef::Complete(store.new_complete_room(Some(item_shape.clone()), 0, free_id));
+
+    let door = store.new_door_from_shapes(free, obstacle).unwrap();
+    assert_eq!(store.door(door).unwrap().get_dimension(), 2);
+    let sections = store.door_section_segments(door, 8.0);
+    assert_eq!(sections.len(), 1);
+    assert_eq!(sections[0].a, sections[0].b, "a zero-length section");
+    assert_eq!(sections[0].a, item_shape.centre_of_gravity());
+    assert_eq!(
+        store.door(door).unwrap().maze_search_element_count(),
+        Some(1)
+    );
+}
+
+#[test]
+fn an_empty_door_shape_yields_no_sections_at_all() {
+    // :108-112 — the guard before every branch.
+    let mut store = ExpansionRoomStore::new();
+    let a_id = store.next_room_id_no();
+    let a = store.new_complete_room(Some(boxed(0, 0, 1000, 1000)), 0, a_id);
+    let b_id = store.next_room_id_no();
+    let b = store.new_complete_room(Some(boxed(5000, 5000, 6000, 6000)), 0, b_id);
+    let door = store.new_door(RoomRef::Complete(a), RoomRef::Complete(b), 1);
+    assert!(store.door_section_segments(door, 8.0).is_empty());
+    assert_eq!(store.door(door).unwrap().maze_search_element_count(), None);
+}
+
+// ---------------------------------------------------------------------------------------------
+// AutorouteEngine.clear (AutorouteEngine.java:306-317)
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn clear_takes_the_rooms_out_of_the_boards_tree_before_draining_the_arenas() {
+    // AutorouteEngine.java:308-312 runs *before* :313-315. Without it the shared tree would keep
+    // `TreeObject::Room` leaves naming arena slots that no longer exist.
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = fixture_board(SPLITTER);
+    let shape = TileShape::Box(board.bounding_box);
+    let mut store = ExpansionRoomStore::new();
+    let a_id = store.next_room_id_no();
+    let a = store.new_complete_room(Some(shape.clone()), 0, a_id);
+    let b_id = store.next_room_id_no();
+    let b = store.new_complete_room(Some(shape.clone()), 0, b_id);
+
+    let tree = board.trees.get_default_tree_mut();
+    let before = tree.tree().leaf_count();
+    store.insert_complete_room(tree, a);
+    store.insert_complete_room(tree, b);
+    assert_eq!(tree.tree().leaf_count(), before + 2);
+
+    store.clear(tree);
+
+    assert_eq!(
+        tree.tree().leaf_count(),
+        before,
+        "both room leaves are gone"
+    );
+    let bounds = tree.tree().bounding_shape(&shape).unwrap();
+    assert!(
+        tree.tree()
+            .overlaps(&bounds)
+            .into_iter()
+            .all(|entry| matches!(entry.object, TreeObject::Item(_))),
+        "no TreeObject::Room survives the clear"
+    );
+    assert!(store.complete_rooms.is_empty());
 }

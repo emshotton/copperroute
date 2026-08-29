@@ -719,7 +719,8 @@ impl ShapeSearchTree {
     /// [`ShapeTree`]), which is the same inversion [`ShapeSearchTree::insert_item`] uses.
     ///
     /// obligation: the two `TreeObject::Room` arms of the private `tree_shape_of` and
-    /// `ignore_object` still panic, so a room inserted here must not be reached by
+    /// `ignore_object` still panic — both now carry an `added in Task 4:` marker saying so — so
+    /// a room inserted here must not be reached by
     /// [`Self::overlapping_tree_entries`] and friends until Plan 6 Task 4 gives those queries a
     /// way to resolve a room's shape and layer. The low-level
     /// [`ShapeTree::overlaps`](crate::datastructures::ShapeTree::overlaps) is unaffected —
@@ -813,11 +814,20 @@ impl ShapeSearchTree {
                         )
                     })
             }
-            // added in Plan 6: `CompleteFreeSpaceExpansionRoom.getTreeShape`
-            // (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java) — rooms are inserted
-            // into this same tree by the autorouter (plan-rulings.md #2), which Plan 6 adds.
+            // added in Task 4: `CompleteFreeSpaceExpansionRoom.getTreeShape`
+            // (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:66-69). Rooms **have
+            // arrived**: Plan 6 Task 2 populated `TreeObject::Room` through
+            // [`Self::insert_room`], so this arm is now reachable rather than hypothetical.
+            // What is still missing is the *resolution* — a room's shape lives in `fr-router`'s
+            // arena and `fr-board` has no way to look it up — so plan-6 Task 4 owes this
+            // method (and [`Self::ignore_object`]) a room lookup before `SortedRoomNeighbours`
+            // queries a tree that holds rooms.
             TreeObject::Room(id) => {
-                panic!("ShapeSearchTree: expansion room {id:?} — rooms arrive in Plan 6")
+                panic!(
+                    "ShapeSearchTree: expansion room {id:?} — room shape resolution is owed by \
+                     plan-6 Task 4; until then no room-bearing tree may be queried through \
+                     overlapping_tree_entries"
+                )
             }
         }
     }
@@ -927,10 +937,17 @@ impl ShapeSearchTree {
                     .iter()
                     .any(|net_no| !item.is_obstacle_for_net(*net_no))
             }
-            // added in Plan 6: `CompleteFreeSpaceExpansionRoom.shapeLayer` / `isObstacle(int)`
-            // — rooms enter this tree with the autorouter (plan-rulings.md #2).
+            // added in Task 4: `CompleteFreeSpaceExpansionRoom.shapeLayer` / `isObstacle(int)`
+            // (CompleteFreeSpaceExpansionRoom.java:71-84 — both are constants: the room's own
+            // layer, and `true` for every net). Rooms **have arrived** in this tree from Plan 6
+            // Task 2; the room lookup that would let this arm answer them is plan-6 Task 4's,
+            // the same obligation as in [`Self::tree_shape_of`].
             TreeObject::Room(id) => {
-                panic!("ShapeSearchTree: expansion room {id:?} — rooms arrive in Plan 6")
+                panic!(
+                    "ShapeSearchTree: expansion room {id:?} — room layer/obstacle resolution is \
+                     owed by plan-6 Task 4; until then no room-bearing tree may be queried \
+                     through overlapping_tree_entries"
+                )
             }
         }
     }

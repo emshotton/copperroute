@@ -33,7 +33,7 @@ use crate::arena::{DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 /// *is* the identity — indices are never reused (see [`crate::Arena`]). That is what
 /// `ExpansionDoor.otherRoom` (`:64-68`) and `FreeSpaceExpansionRoom.doorExists` (`:86`) do.
 ///
-/// # Ordering (quirk #161)
+/// # Ordering (quirk #157)
 ///
 /// The derived [`Ord`] is **not** a port of any Java comparator and no sorted container may be
 /// keyed on it. Java sorts rooms only through `CompleteFreeSpaceExpansionRoom.compareTo`
@@ -42,7 +42,7 @@ use crate::arena::{DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 /// `other instanceof FreeSpaceExpansionRoom` and then casts to `CompleteFreeSpaceExpansionRoom`,
 /// so an *incomplete* room in a sorted set would throw `ClassCastException`. It is unreachable
 /// today — incomplete rooms never enter a tree, and nothing else sorts rooms — and is recorded,
-/// not fixed (`docs/java-quirks.md` #161). The derive exists so `RoomRef` can sit in a
+/// not fixed (`docs/java-quirks.md` #157). The derive exists so `RoomRef` can sit in a
 /// `BTreeSet` for the port's own bookkeeping, which Java does not do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RoomRef {

@@ -1,10 +1,10 @@
 //! Port of `autoroute.expansion.ExpansionDoor` (ExpansionDoor.java:11-201) — "an ExpansionDoor
 //! is a common edge between two ExpansionRooms".
 
-use fr_geometry::TileShape;
+use fr_geometry::{FloatLine, Point, TileShape};
 
 use crate::autoroute::expansion::RoomRef;
-use crate::autoroute::maze::MazeSearchElement;
+use crate::autoroute::maze::{MazeSearchElement, TRACE_WIDTH_TOLERANCE};
 
 /// Port of `ExpansionDoor` (ExpansionDoor.java:11-201).
 ///
@@ -160,6 +160,150 @@ impl ExpansionDoor {
             .wrapping_add(first_id.max(second_id))
     }
 
+    /// Port of `getSectionSegments(double)` (ExpansionDoor.java:104-143): "calculates the line
+    /// segments of the sections of this door", and **allocates the section array** on the way
+    /// (`:141`) — it is `allocateSections`' only caller.
+    ///
+    /// The two room shapes are resolved by the caller, because a room is reached through the
+    /// arena here; [`super::ExpansionRoomStore::door_section_segments`] is the convenience form.
+    ///
+    /// The three branches, in Java's order:
+    ///
+    /// 1. **dimension 1** (`:115-117`) — the door is an edge, so the segment is the door shape's
+    ///    diagonal corner segment.
+    /// 2. **dimension 2 between two `CompleteFreeSpaceExpansionRoom`s** (`:118-132`) — the
+    ///    overlapping-corner case of 90- and 45-degree routing. The restraint line is computed by
+    ///    [`calc_door_line_segment`](Self::calc_door_line_segment), and the door is dropped
+    ///    entirely if there is none (`:124-127`, "CompleteFreeSpaceExpansionRoom inside other
+    ///    room") or if it is shorter than `2 * offset` (`:128-131`, "2 dimensional small doors
+    ///    are not yet expanded"). The `instanceof` is on
+    ///    `CompleteFreeSpaceExpansionRoom` specifically, so an `ObstacleExpansionRoom` — the
+    ///    other `CompleteExpansionRoom` — falls to branch 3.
+    /// 3. **everything else** (`:133-137`) — a degenerate segment at the door's centre of
+    ///    gravity, which divides into exactly one zero-length section.
+    ///
+    /// `offset_param` is the caller's trace half-width; `TRACE_WIDTH_TOLERANCE` is added to it
+    /// at `:106`.
+    ///
+    /// # Panics
+    /// If the computed section count is negative — `new MazeSearchElement[sectionCount]` throws
+    /// `NegativeArraySizeException` there (`:197`). It needs a non-positive `offset`, which no
+    /// caller produces: all four pass a trace half-width
+    /// (`MazeSearchEngine.java:715`, `MazeTraceShover.java:254,294`,
+    /// `FoundConnectionLocator45Degree.java:244`).
+    pub fn get_section_segments(
+        &mut self,
+        first_shape: &TileShape,
+        second_shape: &TileShape,
+        offset_param: f64,
+    ) -> Vec<FloatLine> {
+        // :106
+        let offset = offset_param + f64::from(TRACE_WIDTH_TOLERANCE);
+        // :107
+        let door_shape = self.get_shape(first_shape, second_shape);
+        // :108-112
+        if door_shape.is_empty() {
+            return Vec::new();
+        }
+
+        let door_line_segment: FloatLine;
+        let shrinked_line_segment: FloatLine;
+        if self.dimension == 1 {
+            // :115-117. `diagonalCornerSegment` returns null only for an empty shape
+            // (TileShape.java:469-471), which `:109` has already returned for — so Java's
+            // unguarded dereference at `:117` is unreachable, and so is this `expect`.
+            door_line_segment = door_shape.diagonal_corner_segment().expect(
+                "TileShape.diagonalCornerSegment is null only when isEmpty, tested at :109",
+            );
+            shrinked_line_segment = door_line_segment.shrink_segment(offset);
+        } else if self.dimension == 2
+            && matches!(self.first_room, RoomRef::Complete(_))
+            && matches!(self.second_room, RoomRef::Complete(_))
+        {
+            // :118-132
+            let Some(segment) = self.calc_door_line_segment(&door_shape, first_shape, second_shape)
+            else {
+                // :124-127 — CompleteFreeSpaceExpansionRoom inside the other room.
+                return Vec::new();
+            };
+            // :128-131 — the door is small; 2-dimensional small doors are not yet expanded.
+            if segment.b.distance_square(&segment.a) < 4.0 * offset * offset {
+                return Vec::new();
+            }
+            door_line_segment = segment;
+            shrinked_line_segment = door_line_segment.shrink_segment(offset); // :132
+        } else {
+            // :133-137
+            let gravity_point = door_shape.centre_of_gravity();
+            door_line_segment = FloatLine::new(gravity_point, gravity_point);
+            shrinked_line_segment = door_line_segment;
+        }
+
+        // :138-140. Java's `(int)` cast truncates toward zero and saturates on an infinity,
+        // which is exactly what Rust's `as i32` does; the `+ 1` is `wrapping_add` because Java's
+        // `int` addition wraps rather than panicking in a debug build.
+        let max_door_section_width = 10.0 * offset;
+        let section_count = ((door_line_segment.b.distance(&door_line_segment.a)
+            / max_door_section_width) as i32)
+            .wrapping_add(1);
+
+        // :141
+        self.allocate_sections(usize::try_from(section_count).unwrap_or_else(|_| {
+            panic!(
+                "ExpansionDoor.getSectionSegments: section count {section_count} is negative — \
+                 Java throws NegativeArraySizeException at ExpansionDoor.java:197"
+            )
+        }));
+        // :142
+        shrinked_line_segment.divide_segment_into_sections(section_count)
+    }
+
+    /// Port of the private `calcDoorLineSegment(TileShape)` (ExpansionDoor.java:145-172):
+    /// "calculates a diagonal line of the 2-dimensional doorShape which represents the restraint
+    /// line between the shapes of this.firstRoom and this.secondRoom."
+    ///
+    /// It walks the door shape's corners and keeps the first two **distinct** ones that lie on
+    /// the border of *both* rooms — i.e. inside neither (`:157-158`) — then stops (`:164`).
+    /// `None` is Java's `null` for fewer than two such corners (`:168-170`).
+    ///
+    /// Java's loop bound is named `cornerCount` but reads `borderLineCount()` (`:154`); for a
+    /// convex tile shape the two are equal, so the name is the only thing wrong with it.
+    fn calc_door_line_segment(
+        &self,
+        door_shape: &TileShape,
+        first_room_shape: &TileShape,
+        second_room_shape: &TileShape,
+    ) -> Option<FloatLine> {
+        let mut first_corner: Option<Point> = None;
+        let mut second_corner: Option<Point> = None;
+        let corner_count = door_shape.border_line_count(); // :154
+        for i in 0..corner_count {
+            let current_corner = door_shape.corner(i); // :156
+            // :157-159 — on the border of both room shapes.
+            if first_room_shape.contains_inside(&current_corner)
+                || second_room_shape.contains_inside(&current_corner)
+            {
+                continue;
+            }
+            match &first_corner {
+                // :160-161
+                None => first_corner = Some(current_corner),
+                // :162-165 — a *distinct* second corner ends the walk.
+                Some(first) if *first != current_corner => {
+                    second_corner = Some(current_corner);
+                    break;
+                }
+                // :162's `else if` is false: a repeat of the first corner is ignored.
+                Some(_) => {}
+            }
+        }
+        // :168-171
+        Some(FloatLine::new(
+            first_corner?.to_float(),
+            second_corner?.to_float(),
+        ))
+    }
+
     /// Port of `allocateSections(int)` (ExpansionDoor.java:192-201), which is package-private in
     /// Java and reached only from `getSectionSegments` (`:141`): "allocates and initialises
     /// sectionCount sections", and returns early when the array is already that length
@@ -180,12 +324,6 @@ impl ExpansionDoor {
         );
     }
 }
-
-// added in Task 12: `ExpansionDoor.getSectionSegments`
-// (ExpansionDoor.java:104-143, with its private helper `calcDoorLineSegment` at :145-172) — it
-// needs `AutorouteEngine.TRACE_WIDTH_TOLERANCE` (AutorouteEngine.java:40) and is reached only
-// from the room-door expansion of `MazeSearchEngine`, which is Task 12's. It is the sole caller
-// of `allocateSections` above, which is why that one is public here.
 
 #[cfg(test)]
 mod tests {
