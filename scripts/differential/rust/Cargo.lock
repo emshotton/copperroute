@@ -17,6 +17,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-drc"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-dsn",
+ "fr-geometry",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "fr-dsn"
 version = "0.1.0"
 dependencies = [
@@ -41,6 +53,7 @@ name = "fr-geometry-differential"
 version = "0.1.0"
 dependencies = [
  "fr-board",
+ "fr-drc",
  "fr-dsn",
  "fr-geometry",
  "fr-settings",

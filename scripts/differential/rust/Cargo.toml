@@ -24,6 +24,8 @@ fr-board = { path = "../../../crates/fr-board" }
 fr-dsn = { path = "../../../crates/fr-dsn" }
 # Added for the Plan 4 Task 9 driver (`p4t1`): the settings merge under test.
 fr-settings = { path = "../../../crates/fr-settings" }
+# Added for the Plan 5 Task 10 drivers (`p5t1`, `p5t2`): the design-rule checker under test.
+fr-drc = { path = "../../../crates/fr-drc" }
 
 [[bin]]
 name = "t14"
@@ -92,3 +94,13 @@ path = "src/bin/p3t15.rs"
 [[bin]]
 name = "p4t1"
 path = "src/bin/p4t1.rs"
+
+# Plan 5 Task 10: the DRC report, report level.
+[[bin]]
+name = "p5t1"
+path = "src/bin/p5t1.rs"
+
+# Plan 5 Task 10: the DRC algorithm-level lists (violations, unconnected, ratsnest).
+[[bin]]
+name = "p5t2"
+path = "src/bin/p5t2.rs"

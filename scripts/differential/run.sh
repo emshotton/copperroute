@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -63,6 +63,30 @@ extra_jar_sources=()
 # the Rust twin's `HostEnvironment::with_processors` reads the same number out of
 # `P4T1_PROCESSORS`, and both sides print it in their header line so a mismatch is a diff.
 java_flags=()
+# The two `p5t*` drivers need three JVM flags beyond the shared `-Djava.awt.headless=true`:
+#
+#   * `-Duser.language=en -Duser.country=US` is load-bearing, not hygiene. Every `%.4f` in a
+#     violation description goes through `String.formatted`, which uses the default FORMAT locale,
+#     so a German JVM writes `expected: 0,0500 mm` (plan-5 ruling 6). The port's formatter is
+#     locale-free, so without these two flags every `p5t1` run on a comma-decimal machine would
+#     diff. `scripts/gen-drc-reference.sh` pins the same pair.
+#   * `-XX:hashCode=2` pins `Object.hashCode` to the constant mode, the only source in the JVM that
+#     reproduces run to run *and* is not derived from an object address. `DesignRulesChecker`
+#     iterates `HashSet<Item>` over a class with no `hashCode` override in three places
+#     (`:118-123`, `:138-139`, NetIncompletes.java:295), so the Java side's answer moves between
+#     runs without it (plan-5 rulings 3 and 4). It is the mode `tests/reference/*/drc.json` was
+#     generated under, which is what makes the expected-diff tables in `sweep-p5t1.sh` and
+#     `sweep-p5t2.sh` reproducible. Override with `P5T_HASH_MODE=0..4` to sweep the modes — that
+#     is how a new diff is proven Java-side rather than a port bug.
+P5T_HASH_MODE="${P5T_HASH_MODE:-2}"
+P5T_JAVA_FLAGS=(
+  -Duser.language=en
+  -Duser.country=US
+  -XX:+UnlockExperimentalVMOptions
+  "-XX:hashCode=$P5T_HASH_MODE"
+)
+DRC_FIXTURES="$FREEROUTING_JAVA_DIR/fixtures"
+
 # The `datastructures` classes the Plan 2 Task 3 drivers exercise.
 shapetree_sources=(
   "$JAVA_DIR/datastructures/ShapeTree.java"
@@ -155,6 +179,28 @@ case "$driver" in
     export P4T1_PROCESSORS=4
     export P4T1_FIXTURES="$FREEROUTING_JAVA_DIR/fixtures"
     export P4T1_DATA="$ROOT/crates/fr-settings/tests/data"
+    ;;
+  p5t1)
+    # The DRC report: `DesignRulesChecker.generateReport` through `GsonProvider.GSON` against
+    # `report_to_json(FreeroutingHead)`. Declares `package app.freerouting.drc;` and runs against
+    # the clone's HEAD jar (plan-5 ruling 1 — the DRC port's sources and every file:line in the
+    # plan are HEAD's; the 2.3.0 jar spells nine of the JSON keys in snake_case).
+    javaclass=P5T1
+    javapkg="drc"
+    default_args=("$DRC_FIXTURES/Issue575-drc_dev-board_4_hole_clearance_violations.dsn")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p5t2)
+    # The algorithm-level lists behind that report (plan-5 ruling 14). `P5T1.java` is compiled
+    # alongside it: `P5T2` loads its board through `P5T1.loadBoard`, so the two drivers cannot
+    # drift apart on their input.
+    javaclass=P5T2
+    javapkg="drc"
+    default_args=("$DRC_FIXTURES/Issue575-drc_dev-board_4_hole_clearance_violations.dsn" - - 0)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P5T1.java")
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac

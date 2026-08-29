@@ -249,6 +249,70 @@ methods with dozens of branches.
     leaf of its `getSettings()` is null, which turns spec §2's "no persistent
     config file" from an assumption into a check (and keeps a real
     `freerouting.json` in the user-data folder from leaking into every case).
+  - `P5T1.java` — the DRC **report** (Plan 5 Task 10). Twin: `p5t1`. Declares
+    `package app.freerouting.drc;` and runs against the clone's HEAD jar
+    (plan 5 ruling 1 — the DRC port's sources and every file:line in that plan
+    are HEAD's, and the 2.3.0 jar spells nine of the JSON keys in snake_case).
+    Reads a `.dsn`, optionally applies a `.rules` file and a `.ses` session in
+    `Freerouting.initializeDrc`'s order, builds the real
+    `DesignRulesChecker(board, null)`, calls `generateReport(<base name>, "mm")`
+    and prints `GsonProvider.GSON`'s bytes for it. Five normalisation rules,
+    applied identically on both sides, take the three values the CLI *injects*
+    (plan 5 ruling 5) and the one hash-ordered list (ruling 3) out of the
+    comparison: `date` and `freeroutingVersion` are replaced by fixed literals
+    (both are `final` fields, so this is a two-line edit of the serialised
+    tree), `qualityScore` is pinned to `-1.0`, each `unconnectedItems` entry's
+    `items` list is sorted by numeric uuid, and nothing else is touched — in
+    particular `violations` is compared exactly, array *and* per-entry `items`.
+  - `P5T2.java` — the **algorithm-level** DRC lists behind that report (Plan 5
+    Task 10, ruling 14: a report match must not be able to mask a compensating
+    pair of errors). Twin: `p5t2`. Same package, same jar, same three-file board
+    load — it calls `P5T1.loadBoard`, and `run.sh` compiles `P5T1.java`
+    alongside it, so the two drivers cannot drift apart on their input. Takes
+    `<dsn> [rules|-] [ses|-] <mode>`, the mode last:
+    - `0` — `V <firstId> <secondId> <layer> <expected> <actual>` per entry of
+      `getAllClearanceViolations()`, in list order, floats through
+      `Double.toString`, then `VCOUNT <n>`. A bit-parity surface.
+    - `1` — `U <type> <firstKind> <secondKind|-> <ids>` per entry of
+      `getAllUnconnectedItems()`, in list order, then `UCOUNT` and one `UTYPE`
+      line per type. `ids` is `allItems` sorted ascending, with the trailing
+      `null` a dangling entry carries (`UnconnectedItems.java:41`) dropped,
+      because the port's `Vec<ItemId>` cannot hold one. The two representatives
+      print as their **kind class** (`Pin`/`Trace`/`other`), which is the part
+      of `findRepresentativeItem`'s answer that survives its `HashSet` order —
+      the same projection `crates/fr-drc/tests/data/UnconnectedProbe.java`
+      takes; nothing is lost on the dangling kinds, whose one item id is the
+      `ids` column.
+    - `2` — the ratsnest through the real accessors: `MAXCONN`, `INCOMPLETE`,
+      one `NET <no> <airlines> <groups> <lengthViolation>` line per net,
+      `ALCOUNT`, then one `AL <net> <lowId> <highId>` line per airline as the
+      **unordered** pair, sorted — the convention of the committed
+      `crates/fr-drc/tests/data/*.airlines-union.txt` files.
+    - `3` — the same output, but with `NetIncompletes`' constructor,
+      `calculateNetItems`, `joinConnectedSets`, `Edge` and `calcLengthViolation`
+      transcribed into the driver so that the algorithm's **one free choice** —
+      the seed of `calculateNetItems`' outer loop, a `HashSet<Item>` in Java
+      (`NetIncompletes.java:295,:299`) and the lowest item id in the port
+      (ruling 3) — can be pinned the port's way. This is the ratsnest's parity
+      surface.
+    - `4` — the transcription check: that same transcription with Java's own
+      `HashSet` seed, compared *inside the JVM* against the real
+      `getAllAirlines()`, printing `TRANSCRIPTION equal 0`. The Rust twin prints
+      that line unconditionally, the way `p4t1`'s twin prints
+      `JSON_SOURCE_EMPTY`: this side computes the fact, that side states it, and
+      the harness's diff is the assertion.
+- `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
+  compiles both sides once through `run.sh`, then loops the built artifacts over
+  **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader
+  result is `Success` according to `crates/fr-dsn/tests/data/corpus-read-results.txt`
+  (104 of the 105; `Issue006-LPC18XX_43XX_SCH.dsn` is an OLE compound document
+  and is SKIPped and counted), plus the eight `tests/reference/drc-fixtures.txt`
+  rows, which add the `.rules` path, the `.ses` path and the tutorial board.
+  Both pass `-XX:hashCode=$P5T_HASH_MODE` (default 2, the constant mode the DRC
+  references were generated under) and `-Duser.language=en -Duser.country=US`;
+  `P5T_HASH_MODE=0..4` is how a diff is proven Java-side. `SWEEP_OUT=<dir>`
+  keeps the raw outputs. The expected-diff tables are in the scripts' headers,
+  with their evidence.
 - `matrix/p4t1-cases.tsv` — the `p4t1` case table, 84 rows, tab-separated:
   `name`, `dsn`, `cli_rules`, `scheduler_rules`, `env` (`K=V;K=V`), `argv`
   (space-separated) and `board`. `-` is "absent"; a rules path is `D:<name>`
@@ -275,11 +339,15 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`. Since Plan 3 it also depends on `fr-dsn` by path
-  (for `p3t2`, `p3t3` and `p3t15`), and since Plan 4 on `fr-settings` (for
-  `p4t1`). `p3t3` and `p3t15` share the token dump through
-  `src/token_dump.rs`, included by both with `#[path]` — the Java side of
-  mode 4 delegates to `P3T3.main`, so the two dumps must stay identical.
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`. Since Plan 3 it also depends on
+  `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
+  `fr-settings` (for `p4t1`) and since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`).
+  `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
+  by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
+  the two dumps must stay identical; `p5t1` and `p5t2` share the argument
+  handling, the header line and the three-step board load through
+  `src/drc_common.rs` the same way, mirroring `P5T2`'s call to
+  `P5T1.loadBoard`.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
   the real sources, builds the matching Rust binary, runs both (passing
   `args` through unchanged to each side, or a per-driver default smoke run
@@ -311,6 +379,17 @@ Requirements:
   `P4T1_FIXTURES`, `P4T1_DATA` and `P4T1_PROCESSORS` for both sides and adds
   `-XX:ActiveProcessorCount=4` to the JVM; nothing else in the harness reads
   those.
+- For `p5t1`/`p5t2` only: a **JDK 25** (`JAVA25_HOME`), the clone's HEAD jar
+  (`FREEROUTING_JAR`, which `run.sh` exports for both sides) and the fixture
+  corpus at `$FREEROUTING_JAVA_DIR/fixtures`. `run.sh` adds
+  `-Duser.language=en -Duser.country=US` — load-bearing, not hygiene: every
+  `%.4f` in a violation description goes through `String.formatted`, which uses
+  the default FORMAT locale, so a German JVM writes `expected: 0,0500 mm`
+  (plan 5 ruling 6) while the port's formatter is locale-free — and
+  `-XX:+UnlockExperimentalVMOptions -XX:hashCode=${P5T_HASH_MODE:-2}`, because
+  `DesignRulesChecker` iterates `HashSet<Item>` over a class with no `hashCode`
+  override in three places and its answer otherwise moves between runs
+  (plan 5 rulings 3 and 4).
 
 ```sh
 ./scripts/differential/run.sh t15               # LineSegment, default smoke run (200 iters, seed 42)
@@ -541,6 +620,59 @@ the driver expects, or none at all.
   driver hands them over unparsed, so the two sides no longer share a parsing
   decision at all.
 
+- `p5t1 <dsn> [rules|-] [ses|-]` — the DRC report (Plan 5 Task 10). The default
+  argument is the dev board, `Issue575-drc_dev-board_4_hole_clearance_violations.dsn`:
+  937 lines, **0 diffs**. Measured on the reference machine (JDK 25,
+  `-XX:hashCode=2`): 0.7 s for the JVM side, 0.1 s for the Rust side.
+
+  ```sh
+  ./scripts/differential/run.sh p5t1                       # the dev board
+  ./scripts/differential/run.sh p5t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn \
+      ../freerouting/fixtures/Issue593-BBD_Mars-64.rules   # the .rules path
+  ./scripts/differential/run.sh p5t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn \
+      - ../freerouting/fixtures/Issue593-BBD_Mars-64.ses   # the session path
+  ./scripts/differential/sweep-p5t1.sh                     # all 112 rows
+  P5T_HASH_MODE=3 ./scripts/differential/sweep-p5t1.sh     # prove a diff Java-side
+  ```
+
+- `p5t2 <dsn> [rules|-] [ses|-] <mode 0-4>` — the algorithm-level lists (Plan 5
+  Task 10). The default is the dev board, mode 0. Modes 0, 1, 3 and 4 are
+  strict parity surfaces; mode 2 compares the port against the jar's own
+  hash-seeded ratsnest and is graded against a budget (see below).
+
+  ```sh
+  ./scripts/differential/run.sh p5t2                       # the dev board, the clearance list
+  ./scripts/differential/run.sh p5t2 ../freerouting/fixtures/Issue269-z10_module.dsn - - 3
+  ./scripts/differential/sweep-p5t2.sh                     # all 5 modes × 112 rows
+  ./scripts/differential/sweep-p5t2.sh 3                   # just the ratsnest parity surface
+  P5T2_UNION=1 ./scripts/differential/sweep-p5t2.sh 2      # + the six-hash-mode airline union
+  ```
+
+  **What mode 3 buys, and why it exists.** The ratsnest has exactly one free
+  choice in it: `NetIncompletes.calculateNetItems` seeds its outer loop from
+  `uniqueItems.iterator().next()` over a `HashSet<Item>`
+  (`NetIncompletes.java:295,:299`) whose element class has no `hashCode`
+  override, so there is no Java order to port and plan 5 ruling 3 fixed the
+  port's at the lowest item id. Comparing the port's airlines against *a*
+  JVM run therefore compares two different algorithms' inputs, which is why
+  ruling 4 declared the airline list informational. Mode 3 removes the variable
+  instead of tolerating it: `P5T2.java` transcribes the constructor and makes
+  the seed a parameter, so the port can be compared against Java-with-the-port's-
+  seed-order — and then the endpoints match, exactly, on all 112 rows.
+
+  **The transcription risk, and how it is checked.** Like `P4T1.java`, mode 3's
+  ground truth is transcribed rather than called, so a mis-transcription would
+  make both sides agree on the wrong answer. Mode 4 is the guard, and it is a
+  guard the harness runs rather than a claim in prose: the *same* transcription,
+  seeded Java's way, is compared inside the JVM against the real
+  `getAllAirlines()`, and prints `TRANSCRIPTION equal 0` only if every line
+  agrees. It does, on all 112 rows. Every statement additionally carries the
+  `NetIncompletes.java` line it stands for; the ranges are `:80-116` (the
+  filter), `:135-163` (grouping and the group count), `:166-205` (the
+  triangulation, the `TreeSet<Edge>` and Kruskal), `:225` → `:259-275`
+  (`calcLengthViolation`), `:293-322` (`calculateNetItems`), `:328-337`
+  (`joinConnectedSets`) and `:344-397` (`Edge` and `NetItem`).
+
 ## Deferred coverage and cleanups
 
 Recorded here rather than only in a task report, so they survive into the next
@@ -612,6 +744,14 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p4t1` (`matrix/p4t1-cases.tsv`, `all 0`) | 5728 | 0 | exact match — 84 cases (Task 8's 64-case matrix + 20 Task 9 rows) of the real two-merge headless composition against `fr_settings::resolve_headless` |
 | `p4t1` (`matrix/p4t1-cases.tsv`, `all 1`) | 4287 | 0 | exact match — the same 84 cases through `GsonProvider.GSON` vs `RouterSettings::to_json_string_pretty` (Plan 4 Task 10) |
 | `p4t1` (`matrix/p4t1-cases.tsv`, `8 2`) | 5728 | 0 | exact match — mode 2 ignores the case index and runs the whole table as mode 0, so this is the `all 0` run reached the other way |
+| `p5t1` (`Issue575-drc_dev-board…dsn`, the default) | 937 | 0 | exact match — the whole `-drc` JSON document through `GsonProvider.GSON` vs `KiCadDrcReport::to_json(FreeroutingHead)` |
+| `p5t1` sweep (all **112 rows**) | 13-37000 per row, 482253 over the 104 corpus rows | **0 unexpected** | 94 MATCH + 18 `XDIFF`, all one class (ruling S, next row); 1 SKIP (`Issue006-LPC18XX_43XX_SCH.dsn`, which neither reader accepts). 110 s. |
+| `p5t1` (17 fixtures, the ruling-S rows) | — | 1-39 `violations` entries | **Expected** — the hash-ordered `findRepresentativeItem` decides which dangling trace the dedup at `DesignRulesChecker.java:160` drops. Checked, not waived: `sweep-p5t1.sh` pins the differing item uuids per row and requires the rest of the document to be byte-identical. See "The `p5t*` sweeps" below for the `-XX:hashCode=0..4` evidence. |
+| `p5t2` (mode 0, all 112 rows) | 2-1374 | 0 | exact match on every row — `getAllClearanceViolations()`, in list order, with `Double.toString` floats |
+| `p5t2` (mode 1, all 112 rows) | 5-565 | 0 unexpected | 94 MATCH + 18 `XDIFF` — the same ruling-S class as `p5t1`, one layer lower |
+| `p5t2` (mode 2, all 112 rows) | 4-1540 | 0 unexpected | 50 MATCH + 62 `XDIFF` — the counters are strict everywhere but one listed row; the `AL` block is graded against `sweep-p5t2.sh`'s recorded budget, because the port's seed order and the jar's are two different inputs to the same triangulation (ruling 4) |
+| `p5t2` (mode 3, all 112 rows) | 4-1540 | **0** | exact match on every row — the ratsnest with the seed order pinned identically on both sides: `MAXCONN`, `INCOMPLETE`, every `NET` line, `ALCOUNT` **and every airline endpoint** |
+| `p5t2` (mode 4, all 112 rows) | 2 | 0 | exact match on every row — `TRANSCRIPTION equal 0`, i.e. mode 3's transcription reproduces the jar's own `getAllAirlines()` when seeded the jar's way |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
@@ -879,6 +1019,128 @@ monotonic tie-break *within* one query's own sort — its absolute starting
 value never changes which entry wins a tie, only the numbers assigned to
 each, and `P2T10`'s `query()` helper already resets the same counter to 0
 on every call for the identical reason.
+
+## The `p5t*` sweeps (Plan 5 Task 10)
+
+Two drivers over the same 112 rows: `p5t1` compares the whole `-drc` JSON
+document, `p5t2` the three raw lists behind it. Ruling 14 asks for both, so that
+a report match cannot mask a compensating pair of errors — and the pair earned
+that on the first run: `p5t2` mode 2 found a counter divergence
+(`Issue269-z10_module.dsn`) that `p5t1` cannot see, because that fixture's
+report has no airlines in it.
+
+### The rows
+
+104 corpus `.dsn` files plus the eight `tests/reference/drc-fixtures.txt` rows
+(four of which repeat a corpus file, and which add the `.rules` path, the `.ses`
+path and the tutorial board). Which corpus files are in is not the sweeps'
+judgement: it is read out of `crates/fr-dsn/tests/data/corpus-read-results.txt`,
+the golden of Plan 3's corpus read test, so a row is skipped only where the jar
+itself rejects the file. Today exactly one is —
+`Issue006-LPC18XX_43XX_SCH.dsn`, an OLE compound document, not a DSN.
+
+Both sweeps run the JVM with `-XX:hashCode=2` and `-Duser.language=en
+-Duser.country=US`. Wall clock on the reference machine (JDK 25, M-series):
+`sweep-p5t1.sh` **110 s** (112 rows); `sweep-p5t2.sh` **425 s** (112 rows x 5 modes = 560
+pairs).
+
+### Mismatch class 1 — which dangling trace the dedup drops (ruling S, quirk #146)
+
+`p5t1` on 17 fixtures; `p5t2` mode 1 on the same 17.
+
+`generateReport` folds `getAllUnconnectedItems`' `track_dangling` entries into
+`violations` (`DesignRulesChecker.java:271-276`). The *candidate* set — every
+trace with a contact-free end (`:152-158`) — is hash-independent. The *emitted*
+set is the candidates minus whichever of them the dedup at `:160` drops, namely
+those that are some net entry's `firstItem`; and `firstItem` is
+`findRepresentativeItem` over a `HashSet<Item>` (`:138`, `:186-200`), which
+returns *a* Pin, or *a* Trace when the group holds no Pin — not a particular
+one. Ruling 3 fixes the port's choice at the lowest item id. So on any board
+with a Pin-free connected group holding several dangling traces, the port drops
+a different trace than a given JVM run does.
+
+**Evidence.** Each of the 17 fixtures was run against the HEAD jar under
+`-XX:hashCode=0,1,2,3,4`, and on every one of them the Java side's own
+`track_dangling` set moves between modes — 2 to 5 distinct sets over the five
+runs — so no single JVM answer is "the" answer to port. Fifteen of the 17 also
+satisfy the containment test against those five modes alone: every uuid the port
+emits is one some JVM run emitted. The two that do not,
+`Issue214-freerouting.dsn` and `Issue690-kit-dev-coldfire-xilinx_5213.dsn`,
+satisfy it against a larger sample — 45 runs (modes 0, 1, 4 and the default, ten
+times each, all four being PRNG- or address-seeded and therefore fresh on every
+run) give 7 and 28 distinct sets and unions of 94 and 384 uuids, with the port's
+set inside both.
+
+The class is **checked, not waived**. `sweep-p5t1.sh` and `sweep-p5t2.sh` each
+carry the differing item uuids per row and require the two documents to be equal
+once exactly those entries are removed — same uuids, nothing else moved. On all
+17 rows the `unconnectedItems` array, its `items` lists, every description,
+every position and every non-`track_dangling` violation are byte-identical.
+
+### Mismatch class 2 — which airlines the triangulation produces (ruling 4)
+
+`p5t2` mode 2 on 61 of the 62 XDIFF rows (the 62nd is class 3); **not** mode 3, which matches
+everywhere.
+
+`NetIncompletes.calculateNetItems` seeds its outer loop off the same kind of
+`HashSet<Item>` (`NetIncompletes.java:295,:299`), and that seed order is the
+order the Delaunay corners are inserted in. With quirk #82 unfixed on both sides
+— `PlanarDelaunayTriangulation`'s in-circle degeneracy on axis-aligned input,
+which loses edges a real triangulation would have — a different insertion order
+changes the edge *set*, not merely which of several equal-length edges Kruskal
+accepts. Ruling 4 measured that and declared the endpoint list informational.
+
+Mode 3 is Task 10's answer to it: `P5T2.java` transcribes the constructor so the
+seed order becomes a parameter, and with it pinned the port's way **the whole
+ratsnest matches on all 112 rows, endpoints included**. Mode 4 is the check on
+that transcription — the same code seeded Java's way, compared inside the JVM
+against the real `getAllAirlines()` — and prints `TRANSCRIPTION equal 0`
+everywhere.
+
+Mode 2 is kept because it is the port against the jar's *own* answer through the
+real `DesignRulesChecker` accessors, which is what pins the counters. Its
+counters are strict; its `AL` block is graded against `AIRLINE_BUDGETS`, the
+recorded number of differing lines per row under `-XX:hashCode=2` (both sides
+deterministic there, so the number reproduces). The table is a ratchet: a row
+passes at or below its budget and fails above it.
+
+**Why containment is not the corpus-wide gate.** The obvious stronger test —
+every port airline must appear in the union of the JVM's six hash modes — does
+not converge fast enough to be one. Measured on
+`Issue022-AutoRouter_interrupted.dsn` (235 port airlines): the six-run union
+holds 268 triples and leaves **11** port airlines outside it; a 60-run union
+(modes 0-5, ten times each) holds 288 and still leaves **2**. That fixture's
+mode 3 matches exactly, so nothing is wrong with it — the port's ascending-id
+seed order is simply a point the JVM's identity-hash orders need not ever visit.
+Containment *is* applied, strictly, for the three fixtures that have a committed
+`crates/fr-drc/tests/data/*.airlines-union.txt` (ruling 4's own three, from Task
+5); `P5T2_UNION=1` computes the six-mode sample for every differing row and
+prints the number outside it, as information for a reviewer.
+
+### Mismatch class 3 — one net where the two seed orders find a different *number* of airlines
+
+`p5t2` mode 2, `Issue269-z10_module.dsn` only, listed in `COUNTER_XDIFFS`.
+
+Net 1 of that board has 4 connected groups; the jar finds 3 airlines for it and
+the port 2, so `INCOMPLETE` reads 117 against 116. The jar answers `NET 1 3 4`
+under all six hash modes, so this is not the jar being hash-dependent. It is
+class 2's cause reaching the count: a spanning "tree" that leaves two groups
+unjoined is a normal outcome of the degenerate triangulation on *both* sides —
+`count == groups - 1` fails on 13 of `Issue022-AutoRouter_interrupted.dsn`'s nets
+identically on both sides. **Mode 3 is the proof**: with the seed order pinned
+the port's way, Java answers `NET 1 2 4` too, and that fixture's mode 3 matches
+line for line.
+
+### The one class that must *not* appear here
+
+`Issue229-display-8-digit-hc595.dsn` has a documented 2.3.0-vs-HEAD reader
+divergence (`sweep-p3t15.sh`'s `EXPECTED_DIFFS`, controller ruling E of Plan 3):
+the 2.3.0 jar's `DsnFile.readStringScope` has no resync loop where the clone's
+HEAD does, so the two readers build different boards from that file. The `p5t*`
+drivers run against **HEAD**, so it must not appear here — and it does not:
+`p5t1` MATCHes on it, and `p5t2` MATCHes on modes 0, 1, 3 and 4, with only two
+differing `AL` lines in mode 2. If that fixture ever starts diffing in `p5t1` or
+in `p5t2` mode 0/1, the *reader* has regressed, not the DRC.
 
 ## Harness maintenance note (Task 18)
 
