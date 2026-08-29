@@ -8,12 +8,15 @@
 //!
 //! Gson writes a class's fields in `Class.getDeclaredFields()` order, which on every JVM this port
 //! targets is declaration order, so the structs below keep Java's declaration order field for
-//! field. Task 8's serialiser walks them in that order and supplies ruling 2's two key spellings;
-//! nothing here carries a `serde` attribute yet, deliberately — the flavor table is Task 8's.
+//! field. [`json`]'s serialiser walks them in that order and supplies ruling 2's two key
+//! spellings; nothing here carries a `serde` attribute, deliberately — the key set is
+//! flavor-dependent, which no `#[serde(rename)]` can express.
 
 pub mod build;
+pub mod json;
 
 pub use build::{DrcCoordinates, DrcReportOptions, item_description};
+pub use json::DrcJsonFlavor;
 
 /// Port of `io.kicad.KiCadDrcReport` (KiCadDrcReport.java:17-84).
 ///

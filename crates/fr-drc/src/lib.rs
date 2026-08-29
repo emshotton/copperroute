@@ -36,7 +36,8 @@
 //! and the ratsnest; Task 6 adds [`DesignRulesChecker::calculate_all_incompletes`], the counters
 //! it feeds and [`BoardStatisticsClearanceViolations`];
 //! Task 7 adds the four [`report`] DTOs and [`DesignRulesChecker::generate_report`]; Task 8 adds
-//! `report_to_json` and ruling 2's two key flavors; Task 11 adds this
+//! [`DesignRulesChecker::report_to_json`], [`KiCadDrcReport::to_json`] and ruling 2's two
+//! [`DrcJsonFlavor`]s; Task 11 adds this
 //! crate's `README.md` and the `// not ported:` roster at the foot of this file.
 
 pub mod airline;
@@ -52,8 +53,8 @@ pub use checker::DesignRulesChecker;
 pub use error::DrcError;
 pub use net_incompletes::NetIncompletes;
 pub use report::{
-    DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
-    KiCadDrcViolationItem,
+    DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
+    KiCadDrcViolation, KiCadDrcViolationItem,
 };
 pub use statistics::BoardStatisticsClearanceViolations;
 pub use unconnected::{UnconnectedItems, UnconnectedKind};
@@ -69,8 +70,8 @@ pub mod prelude {
     pub use crate::error::DrcError;
     pub use crate::net_incompletes::NetIncompletes;
     pub use crate::report::{
-        DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
-        KiCadDrcViolationItem,
+        DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
+        KiCadDrcViolation, KiCadDrcViolationItem,
     };
     pub use crate::statistics::BoardStatisticsClearanceViolations;
     pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};

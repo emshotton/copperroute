@@ -32,9 +32,9 @@ use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 // The report layer — `generateReport` and its five private helpers — lives in [`crate::report`]
 // rather than here, because it is 40 % `io/kicad` DTO construction and Java's own split puts the
 // DTOs in another package. `impl DesignRulesChecker` in `report/build.rs` is what makes it a
-// method of this type all the same.
+// method of this type all the same, and `report/json.rs` does the same for the serialiser.
 //
-// added in Task 8: DesignRulesChecker.generateReportJson (DesignRulesChecker.java:817-820) — `generateReport` through the Gson-compatible writer.
+// renamed: DesignRulesChecker.generateReportJson -> DesignRulesChecker::report_to_json (DesignRulesChecker.java:817-820), in `report/json.rs`. Java's two `String` parameters are the port's `&DrcCoordinates`/`&DrcReportOptions` (plan-5 ruling 5), and a third names the key flavor (ruling 2), so the Java name would have described the wrong signature.
 #[derive(Debug)]
 pub struct DesignRulesChecker<'a> {
     /// Java `board` (DesignRulesChecker.java:31).

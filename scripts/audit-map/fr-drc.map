@@ -39,6 +39,7 @@
 # --- drc/ ---------------------------------------------------------------------------------------
 DesignRulesChecker       checker.rs
 DesignRulesChecker       report/build.rs
+DesignRulesChecker       report/json.rs
 ClearanceViolation       items/clearance_violation.rs
 ClearanceViolation       board/clearance.rs
 ClearanceViolation       ../../fr-board/src/items/clearance_violation.rs

@@ -10,6 +10,7 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `NetIncompletesProbe.java` | `drc.NetIncompletes`, per net number, through `DesignRulesChecker.getNetIncompletes` (DesignRulesChecker.java:800-815), which lazily runs `calculateAllIncompletes`. Writes **two** files: `<stem>.netincompletes.txt`, the hash-independent projection (`count`, `getConnectedGroupCount`, `getLengthViolation`, `getMarkerRadius` per net, plus the two totals), and `<stem>.airlines.txt`, the endpoint list, which is hash-**dependent** and is committed for one run as documentation only (plan-5 ruling 4). | yes |
 | `IncompletesProbe.java` | `DesignRulesChecker.calculateAllIncompletes` (DesignRulesChecker.java:542-623) and the eight accessors that hang off it: `maxConnections`, `getIncompleteCount()`, `getAllAirlines().length`, `getLengthViolationCount()`, `recalculateLengthViolations()` and the per-net `getIncompleteCount(int)`/`getLengthViolation(int)` — plus `BoardStatistics`' clearance block (`BoardStatistics.java:200-202`, `:338-367`) computed from `getAllClearanceViolations()` the way that block does, because `BoardStatistics` itself is Plan 8's (plan-5 ruling 5). Writes `<stem>.incompletes.txt`. All of it is hash-independent, unlike `NetIncompletesProbe`'s second output. | yes |
 | `ReportProbe.java` | `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-290) and the four `io/kicad/KiCadDrc*.java` DTOs it fills, as **normalised text** rather than as Gson JSON — Task 7 ports the DTOs and the builder, not the serialiser (that is Task 8's, with plan-5 ruling 2's two key flavors). Writes `<stem>.report.txt`. | yes |
+| `JsonProbe.java` | `DesignRulesChecker.generateReportJson` (DesignRulesChecker.java:817-820), i.e. `GsonProvider.GSON.toJson(report)` — the **bytes Gson writes** for the same report, which is Task 8's parity target. Writes `<stem>.head.json`. Its `--escapes` mode writes `gson-escapes.txt`, the four one-line facts about `GsonProvider.GSON` no fixture exercises. | yes |
 
 | Transcript | Fixture | Rows |
 |---|---|---|
@@ -302,15 +303,20 @@ Mars-64 and the empty board byte for byte. **Natural Tone Preamp cannot be one o
 `violations` count is hash-dependent, for the reason recorded under `*.unconnected.txt` above —
 `generateReport` folds the `track_dangling` entries into `violations` (`:271-276`), and quirk
 #146's dedup drops whichever dangling trace a net entry's hash-ordered `firstItem` happens to be.
-Measured on this jar, four of six runs drop **none**:
+Measured on this jar over three separate sweeps (Task 7's, a reviewer's, and Task 8's), the count
+lands in **113-115**, and only modes 2 and 3 reproduce run to run:
 
-| run | `counts` line |
-|---|---|
-| `-XX:hashCode=0`, `=1`, `=2`, `=4` | `violations=115 unconnectedItems=44` (byte-identical files) |
-| `-XX:hashCode=3` | `violations=114` |
-| default | `violations=114` |
+| run | hash source | `violations` |
+|---|---|---|
+| `-XX:hashCode=2` | a constant, so **deterministic** | `115` (the maximal run) |
+| `-XX:hashCode=3` | a per-thread xorshift, deterministic in a single-threaded run | `114` |
+| `-XX:hashCode=0`, `=1`, `=4` | a PRNG (0) or the object address (1, 4) — **not run-reproducible** | `113`, `114` or `115`, varying between sweeps |
+| default (`=5`, thread-local xorshift) | seeded per run | `114` or `115` |
 
-(The dev board, BBD Mars-64 and the empty board give **one** digest each across all six runs.)
+`unconnectedItems` is `44` in every run. **Only `-XX:hashCode=2` reproduces the committed
+transcript**; regenerate that one fixture with it, and read any other mode's number as a sample
+rather than as a bound. (The dev board, BBD Mars-64 and the empty board give **one** digest each
+across every mode and every sweep.)
 
 The committed `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.report.txt` is therefore the
 **maximal** run — 115 violations, every one of the 111 dangling-trace candidates plus the four
@@ -325,6 +331,67 @@ That is the same divergence Task 4 recorded — the port emits 108 of 111 `track
 the JVM emits 109-111 — arriving at the report layer. Plan-5 ruling 11's table row for this
 fixture (`114` report violations) is a single-run measurement of a hash-dependent quantity;
 **112 is the port's number and must not be hand-tuned to match it.**
+
+## What `*.head.json` and `gson-escapes.txt` hold
+
+`<stem>.head.json` is `GsonProvider.GSON.toJson(report)` verbatim, for the report
+`ReportProbe.java`'s transcript describes — the HEAD jar's key spelling (plan-5 ruling 1: camelCase
+plus `holeClearance`/`unconnectedItems`), Gson's two-space pretty printing, `Number.toString()`
+numbers, and **no** `qualityScore` key, because `generateReportJson` never sets it (Gson's default
+`serializeNulls = false`). `tests/report_json.rs::head_flavor_is_the_jvms_gson_bytes` compares the
+port's `to_json(FreeroutingHead)` against these files byte for byte.
+
+The one normalisation is plan-5 ruling 3's, and the probe applies it to the DTO **before** Gson
+sees it, so both sides of the comparison are still whole Gson/serde documents: each
+`unconnectedItems` entry's `items` list is sorted by numeric uuid. Those lists are
+`connectedSets.get(0)` followed by `connectedSets.get(1)` (DesignRulesChecker.java:143-145), two
+`HashSet<Item>`s, so the JVM's order within each group is identity-hash order (quirk #144) and
+there is nothing to copy. **A `violations` entry is left alone**: a clearance entry's two items are
+`[firstItem, secondItem]` in `ClearanceViolation`'s own deterministic order (`:319-324`) — the dev
+board's first violation really is `first=278 second=277`, as `*.list.txt` records — and sorting
+them would hide a real ordering divergence. The Rust test normalises identically.
+
+`date` is the real `ZonedDateTime.now()` of the run (KiCadDrcReport.java:70); the port has no clock
+(ruling 5), so the test reads the string back out of the golden and injects it, which also makes
+the `ISO_OFFSET_DATE_TIME` shape a round-trip of a real value rather than an invented one.
+
+Three fixtures are committed. **Natural Tone Preamp is not**, for the reason the section above
+gives: the port emits 112 violations to the JVM's 113-115. It was checked once, at byte level,
+while writing Task 8 — the `-XX:hashCode=2` run's JSON, with exactly the three `track_dangling`
+entries whose item uuids are 1909, 1696 and 1242 deleted from the `violations` array, is
+byte-identical to the port's document (279 222 bytes). The 280 KB golden is not carried, because
+the serialiser it would exercise is content-independent and the three committed fixtures already
+cover all five `type` strings, both `items` shapes, positive and negative coordinates and the
+empty-array case — while `tests/report.rs` guards that fixture's *content* permanently.
+
+`gson-escapes.txt` is four `<name>\t<the line Gson wrote>` rows from `JsonProbe --escapes`, each a
+`GsonProvider.GSON` behaviour no fixture reaches: `qualityScore` `902.078369140625` and `1.0E7`
+(`Double.toString`, where Rust's `{}` would print `10000000`), a `source` of `<'&=>"` written raw
+(`disableHtmlEscaping()`, GsonProvider.java:15) and a `source` of `a\u2028b\u2029c` escaped anyway.
+
+## Recorded command for `JsonProbe`
+
+Same jar and JDK as `ReportProbe`.
+
+```sh
+JAR=/Users/em/Development/freerouting/freerouting/build/libs/freerouting-current-executable.jar
+F=/Users/em/Development/freerouting/freerouting/fixtures
+J=/opt/homebrew/opt/openjdk@25/bin
+
+$J/javac -cp "$JAR" -d . JsonProbe.java
+for b in Issue575-drc_dev-board_4_hole_clearance_violations \
+         Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations \
+         empty_board; do
+  $J/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+      -cp "$JAR:." JsonProbe "$F/$b.dsn" "$b.dsn" mm "$b"
+done
+$J/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+    -cp "$JAR:." JsonProbe --escapes gson-escapes.txt
+```
+
+Regenerating the goldens changes their `date`, which is fine — the test reads it back out. A
+rebuilt jar with a new `Constants.FREEROUTING_VERSION` also needs `JAR_VERSION` in
+`tests/report_json.rs` updated, exactly as `tests/report.rs` does.
 
 ## Recorded command for `ReportProbe`
 
@@ -346,7 +413,15 @@ for b in Issue575-drc_dev-board_4_hole_clearance_violations \
 done
 ```
 
-The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`. The Natural
-Tone Preamp transcript above was taken from the `-XX:hashCode=1` run, which is one of the four
-identical maximal ones; the other three fixtures' were taken from the default run, which agrees
-with every mode.
+The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`. The other
+three fixtures' transcripts were taken from the default run, which agrees with every mode.
+**Natural Tone Preamp must be regenerated with `-XX:hashCode=2`** — the only mode that both
+reproduces run to run and produces the committed maximal transcript (see the table above):
+
+```sh
+$J/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+    -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp "$JAR:." ReportProbe \
+    "$F/Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn" \
+    "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn" mm \
+    Issue575-drc_Natural_Tone_Preamp_7_unconnected_items
+```
