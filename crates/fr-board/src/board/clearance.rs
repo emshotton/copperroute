@@ -58,6 +58,13 @@ impl Board {
         // the trace and the board (the query behind them neither caches nor advances the entry
         // counter), so hoisting them out of the loop is observationally identical and keeps the
         // `&self` call away from the `&mut` borrow the tree query needs.
+        //
+        // The cost is two point queries per *trace*, where Java runs one or two per trace
+        // candidate: cheaper than Java whenever a trace has more than one trace candidate, and
+        // two wasted point queries when it has none (or when the item is a trace that never
+        // reaches the exemption). Both are `overlapping_objects` calls against an already-built
+        // tree, and the alternative — recomputing inside the loop — would need the whole board
+        // borrowed immutably while the tree query holds it mutably.
         let (first_corner, last_corner) = match item {
             Item::Trace(trace) => (trace.first_corner(), trace.last_corner()),
             _ => (None, None),

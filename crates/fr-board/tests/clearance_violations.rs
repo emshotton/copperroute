@@ -260,6 +260,63 @@ fn tie_pin_exemption_suppresses_a_trace_pair() {
     assert_eq!(rows(&violations), vec![(3, 0, 200.0, 0.0)]);
 }
 
+/// The mirror image of [`tie_pin_board`]: the candidate meets the queried trace at its **last**
+/// corner, `(1000, 0)`, and nothing at all sits at its first corner. Item 2 is the tie pin (both
+/// nets) when `with_pin`, then the queried trace and the candidate.
+fn tie_pin_board_at_last_corner(with_pin: bool) -> Board {
+    let (library, components) = smd_library(&[("tie", 60, IntVector::new(1000, 0))]);
+    let mut board = board_with(asymmetric_matrix(), library, components, 2);
+    if with_pin {
+        board.insert_pin(1, 0, vec![1, 2], 1, FixedState::Unfixed);
+    }
+    // The queried trace: its *last* corner is the meeting point.
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(0, 0), Point::new(1000, 0)]),
+        0,
+        30,
+        vec![1],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(1000, 0), Point::new(1000, 1000)]),
+        0,
+        30,
+        vec![2],
+        1,
+        FixedState::Unfixed,
+    );
+    board
+}
+
+#[test]
+fn tie_pin_exemption_also_fires_at_the_last_corner() {
+    // Item.java:391-397: when the first-corner contacts do not contain the candidate, Java
+    // re-runs the test at `lastCorner()` — and the pin scan at :399-408 then walks *that* set,
+    // because `currentContacts` was reassigned. This board reaches the exemption only through
+    // that second arm.
+    let mut board = tie_pin_board_at_last_corner(true);
+    let (pin, trace_a, trace_b) = (ItemId(2), ItemId(3), ItemId(4));
+    assert!(matches!(board.get_item(pin), Some(Item::Pin(_))));
+    // Nothing sits at the queried trace's first corner, so only the last-corner set can match.
+    assert!(
+        board
+            .trace_normal_contacts_at(trace_a, &Point::new(0, 0), true)
+            .is_empty()
+    );
+    let at_last = board.trace_normal_contacts_at(trace_a, &Point::new(1000, 0), true);
+    assert!(at_last.contains(&trace_b) && at_last.contains(&pin));
+
+    assert!(board.clearance_violations(trace_a).is_empty());
+    assert!(board.clearance_violations(trace_b).is_empty());
+    // Without the pin the same pair violates: ids 1 outline, 2 and 3 the traces.
+    let mut board = tie_pin_board_at_last_corner(false);
+    assert_eq!(
+        rows(&board.clearance_violations(ItemId(2))),
+        vec![(3, 0, 200.0, 0.0)]
+    );
+}
+
 // ---------------------------------------------------------------------------------------------
 // calculateClearanceBetweenTwoShapes (Item.java:471-493)
 // ---------------------------------------------------------------------------------------------
@@ -270,13 +327,15 @@ fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
 
 #[test]
 fn bisection_returns_low_after_sixteen_halvings() {
-    // `DrcProbe.java` block D, row `D1 gap=200 min=1000 comp=500/500 -> 200.98876953125`.
+    // `DrcProbe.java` block D, rows `D1 gap=200 min=1000 comp=500/500 -> 200.98876953125` and
+    // `D4 gap=2000 min=1000 comp=500/500 -> 999.9847412109375`.
     //
-    // The 16 halvings of `[0, 1000]` have a resolution of `1000 / 2^16 = 0.0152587890625`, and
-    // the answer is the last `low` — never `mid` (Item.java:492). It sits *above* the 200-unit
-    // gap because `IntBox.enlarge` truncates to integer coordinates, so the two shapes first
-    // overlap in dimension 2 at a total enlargement of 201, not 200: `low` converges to that
-    // integer threshold from below, and `200.98876953125 < 201`.
+    // The answer is the last `low`, never `mid` (Item.java:492). D1 sits *above* the 200-unit
+    // gap because `IntBox.enlarge` goes through `IntOctagon.offset`, whose width is
+    // `(int) Math.round(distance)` — half-up **rounding**, not truncation — so the two shapes
+    // first overlap in dimension 2 once `2 * round(mid / 2) > 200`, i.e. at `mid >= 201`
+    // (`round(100.5) == 101`). `low` converges to that integer threshold from below, and
+    // `200.98876953125 < 201`.
     let answer = Board::calculate_clearance_between_two_shapes(
         &bx(0, 0, 100, 100),
         &bx(300, 0, 400, 100),
@@ -289,12 +348,23 @@ fn bisection_returns_low_after_sixteen_halvings() {
         answer < 201.0,
         "the returned `low` never reaches the threshold"
     );
-    // The step below the answer is one bisection step wide, which pins "16 iterations": a 15-step
-    // or 17-step loop lands on a different multiple of the resolution.
-    assert_eq!(
-        f64::from((answer / (1000.0f64 / 65536.0)) as i32),
-        answer / (1000.0 / 65536.0)
+
+    // D1 alone does **not** pin the iteration count: 14, 15 and 16 halvings all land on
+    // `200.98876953125` (only the 17th moves it, to `200.99639892578125`). D4 does — the two
+    // shapes never meet inside `minimumClearance`, so every iteration sets `low = mid` and the
+    // answer is exactly `1000 * (1 - 2^-n)`: `999.969482421875` at 15, `999.9847412109375` at
+    // 16, `999.9923706054688` at 17. This row is what makes the test's name true.
+    let never_meets = Board::calculate_clearance_between_two_shapes(
+        &bx(0, 0, 100, 100),
+        &bx(2100, 0, 2200, 100),
+        1000.0,
+        500,
+        500,
     );
+    assert_eq!(never_meets, 999.9847412109375);
+    assert_eq!(never_meets, 1000.0 * (1.0 - f64::powi(2.0, -16)));
+    assert_ne!(never_meets, 1000.0 * (1.0 - f64::powi(2.0, -15)));
+    assert_ne!(never_meets, 1000.0 * (1.0 - f64::powi(2.0, -17)));
 }
 
 #[test]
