@@ -1,0 +1,19 @@
+# Class -> Rust path glob (relative to the audited crate's `src`) map for scripts/audit-port.sh's
+# per-class matching. Blank lines and lines starting with `#` are ignored. A class whose Rust home
+# spans more than one file gets one map line per file — not one line with several space-separated
+# globs, which the reader (`read -r cls path`) would only keep the first token of.
+#
+# This map is used against **two** crates, because Plan 5's port is split across them:
+#
+#   ./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' scripts/audit-map/fr-drc.map
+#   ./scripts/audit-port.sh drc crates/fr-drc/src   '*.java'                  scripts/audit-map/fr-drc.map
+#
+# The paths below are therefore relative to whichever `src` the invocation names; the
+# `ClearanceViolation` rows are the cross-crate ones (plan-5 ruling 9 puts that class in
+# `fr-board`, because `Item.clearanceViolations` returns it and `fr-board` cannot depend on
+# `fr-drc`). Of the two forms the plan offers for that row — one `ClearanceViolation` line per
+# Rust file, or a single line with a wider glob — this map uses **one line per file**, which is
+# what `crates/fr-dsn`'s map header prescribes and what keeps the audit scoped to the two files
+# that actually hold the port.
+ClearanceViolation       items/clearance_violation.rs
+ClearanceViolation       board/clearance.rs

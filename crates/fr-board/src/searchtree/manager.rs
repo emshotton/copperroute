@@ -105,6 +105,17 @@ impl SearchTreeManager {
         &mut self.next_entry_id
     }
 
+    /// The default tree and [`Self::entry_counter_mut`] at once, so a caller holding a
+    /// `&mut Board` can run a clearance query without borrowing the manager twice.
+    ///
+    /// No Java counterpart: Java reads `board.searchTreeManager.getDefaultTree()` and the
+    /// counter is a `private static` of `ShapeSearchTree` (`:55`), so the two never contend.
+    /// [`Board::clearance_violations`](crate::Board::clearance_violations) is the caller this
+    /// exists for.
+    pub fn default_tree_and_counter_mut(&mut self) -> (&ShapeSearchTree, &mut u64) {
+        (&self.default_tree, &mut self.next_entry_id)
+    }
+
     /// The number of entry ids handed out so far. No Java counterpart (the Java field is a
     /// private static); exposed so tests can pin that the counter only ever grows.
     pub fn entry_counter(&self) -> u64 {

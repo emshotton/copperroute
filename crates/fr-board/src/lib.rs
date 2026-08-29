@@ -31,9 +31,9 @@ pub use ids::{
     ViaRuleId,
 };
 pub use items::{
-    AutorouteInfo, ComponentObstacleArea, ComponentOutline, ConductionArea, Connectable,
-    ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, Item, ItemCtx, ItemHeader,
-    ItemKind, ObstacleArea, ObstacleAreaData, Pin, PolylineTrace, TraceExitRestriction,
+    AutorouteInfo, ClearanceViolation, ComponentObstacleArea, ComponentOutline, ConductionArea,
+    Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, Item, ItemCtx,
+    ItemHeader, ItemKind, ObstacleArea, ObstacleAreaData, Pin, PolylineTrace, TraceExitRestriction,
     TreeEntries, Via, ViaObstacleArea,
 };
 pub use library::{
@@ -57,8 +57,8 @@ pub mod prelude {
     pub use crate::{
         AngleRestriction, AutorouteInfo, Board, BoardError, BoardLibrary, BoardOutline, BoardRules,
         CLEARANCE_SAFETY_MARGIN, ChangedArea, ClearanceClassIndexed, ClearanceMatrix,
-        Communication, Component, ComponentObstacleArea, ComponentOutline, Components,
-        ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH,
+        ClearanceViolation, Communication, Component, ComponentObstacleArea, ComponentOutline,
+        Components, ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH,
         DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge, DrillItemData,
         DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId,
         ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId, LogicalPart,

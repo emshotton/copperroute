@@ -62,7 +62,7 @@
 //! | `moveBy` (Item.java:300-311 plus `DrillItem`'s override at DrillItem.java:95-145) | [`crate::Board::move_item_by`] |
 //! | `validate` (Item.java:796-807 plus `Trace`'s override at Trace.java:447-456) | [`crate::Board::validate_item`] |
 //!
-//! added in Plan 5: `clearanceViolations` (Item.java:363-469, plus `Via`'s override at Via.java:88-112 and the private `calculateClearanceBetweenTwoShapes` at Item.java:471-493) and `clearanceViolationCount` (Item.java:357-361) -> `Board::clearance_violations` / `Board::clearance_violation_count`; both build `drc.ClearanceViolation` objects, which is Plan 5's DRC layer.
+//! | `clearanceViolations` (Item.java:363-469) plus `Via`'s override (Via.java:88-112), the private `calculateClearanceBetweenTwoShapes` (Item.java:471-493) and `clearanceViolationCount` (Item.java:357-361) | [`crate::Board::clearance_violations`], [`crate::Board::clearance_violation_count`], [`crate::Board::calculate_clearance_between_two_shapes`] — they build [`ClearanceViolation`]s (`items/clearance_violation.rs`), the one `drc` type this crate declares (plan-5 ruling 9) |
 //!
 //! # Not ported
 //!
@@ -76,6 +76,7 @@
 //! not ported: the whole of `PrintableShape` (`board/model/items/PrintableShape.java`) and its three nested classes `PrintableShape.Circle` (:26-51), `PrintableShape.Rectangle` (:54-77) and `PrintableShape.Polygon` (:79-98) — each is a `Locale` plus a `toString()` that renders a shape into localized user-coordinate text through `TextManager`. Its only consumers are `board/state/CoordinateTransform.java` and the two `gui/windows/board` object-info windows; nothing in the model or the router reads one.
 
 pub mod area;
+pub mod clearance_violation;
 pub mod drill;
 pub mod header;
 pub mod trace;
@@ -93,6 +94,7 @@ pub use area::{
     ComponentObstacleArea, ComponentOutline, ConductionArea, ObstacleArea, ObstacleAreaData,
     ViaObstacleArea,
 };
+pub use clearance_violation::ClearanceViolation;
 pub use drill::{
     DEFAULT_MAX_TREE_SHAPE_WIDTH, DrillItemData, ItemCtx, Pin, TraceExitRestriction, Via,
 };

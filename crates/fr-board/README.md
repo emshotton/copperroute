@@ -57,6 +57,15 @@ for dir in board/model/items board/model/structure board/facade \
 done
 ```
 
+Plan 5 Task 2 added a tenth, **per-class** invocation: `drc.ClearanceViolation`
+lives here rather than in `fr-drc` (see the type mapping below), so its methods
+are audited against the two files that hold them.
+
+```sh
+./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' \
+    scripts/audit-map/fr-drc.map
+```
+
 **What that zero does and does not prove.** The script's *positive* match is
 crate-wide, not per class: for a Java `Foo.getBar`, it accepts any
 `fn get_bar…` anywhere under `crates/fr-board/src`, with no check that the
@@ -101,6 +110,7 @@ that stands in for each Java class is a **Plan 3 obligation**, recorded in
 | `ItemIdGenerator implements IdGenerator` | `ItemIdGenerator` |
 | `UndoableObjects` | not a type here — see "What is not here" |
 | `BigIntAux`, `Signum` | not here — `fr_geometry::bigint_aux`, `fr_geometry::Signum` |
+| `drc.ClearanceViolation` | `ClearanceViolation` (`items/clearance_violation.rs`) — the one `drc` type this crate declares, because `Item.clearanceViolations` returns it and `fr-board` cannot depend on `fr-drc` (plan-5 ruling 9); `fr-drc` re-exports it |
 
 ### The `Item` enum
 

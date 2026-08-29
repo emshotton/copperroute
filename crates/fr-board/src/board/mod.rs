@@ -57,6 +57,7 @@
 // added in Plan 5: `board/state/BoardComparator.java` in full, including its nested `ComparisonResult` — it diffs two boards for the DRC/report layer.
 
 pub mod changed_area;
+pub mod clearance;
 pub mod communication;
 pub mod connectivity;
 pub mod normalize;

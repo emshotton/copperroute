@@ -1057,12 +1057,9 @@ impl Board {
         result
     }
 
-    // added in Plan 5: `Item.clearanceViolations` (Item.java:363-469), `clearanceViolationCount`
-    // (:357-361), the private `calculateClearanceBetweenTwoShapes` (:471-493) and `Via`'s
-    // override (Via.java:88-112) -> `Board::clearance_violations` /
-    // `Board::clearance_violation_count`. They build `drc.ClearanceViolation` objects, which is
-    // the DRC layer Plan 5 owns; the search-tree query they need
-    // (`overlapping_tree_entries_with_clearance`) is already here.
+    // `Item.clearanceViolations` and the three members around it landed in Plan 5 Task 2, one
+    // module over in `board/clearance.rs` — they need `&mut self` (plan-5 ruling 8), which every
+    // method here does not.
 }
 
 /// Port of `Item.StopConnectionOption` (Item.java:1295-1299): where
