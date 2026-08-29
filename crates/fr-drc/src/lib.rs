@@ -31,17 +31,19 @@
 //! # Task scope
 //!
 //! Task 3 ships the crate skeleton, [`DesignRulesChecker`] and
-//! [`DesignRulesChecker::get_all_clearance_violations`]. Task 4 adds `UnconnectedItems` and
-//! `get_all_unconnected_items`; Task 5 adds `AirLine`, `NetIncompletes` and the ratsnest; Task 6
+//! [`DesignRulesChecker::get_all_clearance_violations`]; Task 4 adds [`UnconnectedItems`] and
+//! [`DesignRulesChecker::get_all_unconnected_items`]. Task 5 adds `AirLine`, `NetIncompletes` and the ratsnest; Task 6
 //! adds `calculate_all_incompletes`, the counters and `BoardStatisticsClearanceViolations`;
 //! Tasks 7-8 add the KiCad DTOs, `generate_report` and `report_to_json`; Task 11 adds this
 //! crate's `README.md` and the `// not ported:` roster at the foot of this file.
 
 pub mod checker;
 pub mod error;
+pub mod unconnected;
 
 pub use checker::DesignRulesChecker;
 pub use error::DrcError;
+pub use unconnected::{UnconnectedItems, UnconnectedKind};
 
 /// `drc.ClearanceViolation`, defined in `fr-board` (plan-5 ruling 9) and re-exported here so
 /// callers of this crate spell it `fr_drc::ClearanceViolation`, as Java's `drc` package does.
@@ -51,5 +53,6 @@ pub use fr_board::ClearanceViolation;
 pub mod prelude {
     pub use crate::checker::DesignRulesChecker;
     pub use crate::error::DrcError;
+    pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};
     pub use fr_board::ClearanceViolation;
 }

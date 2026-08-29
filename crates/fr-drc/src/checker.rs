@@ -4,9 +4,11 @@
 //! `getAllClearanceViolations`; the markers below name the task that owns each of the remaining
 //! members, so `scripts/audit-port.sh` records the obligation instead of waiving it.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use fr_board::{Board, ClearanceViolation};
+use fr_board::{Board, ClearanceViolation, ItemId, ItemKind};
+
+use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 
 /// Port of `drc.DesignRulesChecker` (DesignRulesChecker.java:29-821).
 ///
@@ -25,7 +27,6 @@ use fr_board::{Board, ClearanceViolation};
 //
 // The remaining members of the Java class, each with the task that owns it:
 //
-// added in Task 4: DesignRulesChecker.getAllUnconnectedItems (DesignRulesChecker.java:91-176) — the per-net connected-set grouping.
 // added in Task 6: DesignRulesChecker.calculateAllIncompletes (DesignRulesChecker.java:542-623) — builds `netIncompletes` and `maxConnections`.
 // added in Task 6: DesignRulesChecker.recalculateNetIncompletes (DesignRulesChecker.java:630-660) — both overloads.
 // added in Task 6: DesignRulesChecker.getIncompleteCount (DesignRulesChecker.java:663-706, :708-734) — both overloads.
@@ -117,5 +118,185 @@ impl<'a> DesignRulesChecker<'a> {
 
         // DesignRulesChecker.java:80.
         all_violations
+    }
+
+    /// Port of `getAllUnconnectedItems` (DesignRulesChecker.java:91-176): three phases, in
+    /// Java's order, which **is** the output order.
+    ///
+    /// 1. **Per net** (`:93-149`): group the connectable items by their first net number, drop
+    ///    the one-item nets, split each remaining net into connected groups, and emit **one**
+    ///    entry per net that has two or more — with representatives from groups 0 and 1 and
+    ///    `all_items` the two groups concatenated.
+    /// 2. **Dangling traces** (`:152-165`): every trace with a contact-free end, minus the ones
+    ///    the `first_item`-only dedup happens to catch (quirk #146).
+    /// 3. **Dangling vias** (`:168-174`): every via that `is_tail()`, with **no** dedup at all.
+    ///
+    /// Both dangling walks are `board.getItems()` order — descending id (BasicBoard.java:603-605,
+    /// quirk #63).
+    ///
+    /// Nothing here mutates the board; the receiver is `&mut self` because
+    /// [`DesignRulesChecker`] holds the board mutably (plan-5 ruling 8) and because
+    /// `generateReport`, which calls this, is `&mut self` for
+    /// [`Self::get_all_clearance_violations`]' sake.
+    ///
+    // Java bug: the trace phase's dedup compares only `firstItem`
+    // (`DesignRulesChecker.java:162`), so a dangling trace that is a net entry's `secondItem`, or
+    // merely a member of its `allItems`, is reported twice — once inside the net entry and once
+    // as its own `track_dangling` entry. The comparison is also `==`, over a list that grows as
+    // the walk goes, which makes the phase O(n^2). Both reproduced; quirks row #146.
+    //
+    // renamed: Java's `unconnectedItems` local (`:92`) keeps its name; `itemsByNet`'s `HashMap`
+    // (`:93`) becomes a `BTreeMap` and `connectedSets`' `HashSet`s (`:118`) become `Vec`s in the
+    // ascending order `Board::connected_set` already produces — plan-5 ruling 3, quirks row #144.
+    pub fn get_all_unconnected_items(&mut self) -> Vec<UnconnectedItems> {
+        // DesignRulesChecker.java:92.
+        let mut unconnected_items: Vec<UnconnectedItems> = Vec::new();
+
+        // DesignRulesChecker.java:94-100. Java's `item instanceof Connectable && netCount() > 0`
+        // is exactly `Item.isConnectable` (Item.java:868-871), which is what the port calls.
+        //
+        // The lists come out in `board.getItems()` order — descending id — and that order is
+        // observable: it decides which connected group is seeded first below, hence which one is
+        // group 0 and which representative is `firstItem`.
+        let mut items_by_net: BTreeMap<i32, Vec<ItemId>> = BTreeMap::new();
+        for item in self.board.get_items() {
+            if item.is_connectable() {
+                items_by_net
+                    .entry(item.get_net_number(0))
+                    .or_default()
+                    .push(item.id());
+            }
+        }
+
+        // DesignRulesChecker.java:103-149.
+        for (&net_number, net_items) in &items_by_net {
+            // DesignRulesChecker.java:105-107.
+            if net_items.len() <= 1 {
+                continue;
+            }
+
+            // DesignRulesChecker.java:110-111.
+            let mut connected_sets: Vec<Vec<ItemId>> = Vec::new();
+            let mut processed_items: BTreeSet<ItemId> = BTreeSet::new();
+            let net_item_set: BTreeSet<ItemId> = net_items.iter().copied().collect();
+
+            // DesignRulesChecker.java:113-130.
+            for &item in net_items {
+                if processed_items.contains(&item) {
+                    continue;
+                }
+                // DesignRulesChecker.java:121-124: the connected set, intersected with this
+                // net's items (Java's `retainAll`) — `getConnectedSet` already filters by net,
+                // but an item whose *first* net is a different one still reaches it.
+                let set_items: Vec<ItemId> = self
+                    .board
+                    .connected_set(item, net_number, false)
+                    .into_iter()
+                    .filter(|id| net_item_set.contains(id))
+                    .collect();
+
+                // DesignRulesChecker.java:126-129. The set always holds at least `item` itself,
+                // which is in `net_items`, so Java's emptiness guard never fires; it is kept
+                // because Java keeps it.
+                if !set_items.is_empty() {
+                    processed_items.extend(set_items.iter().copied());
+                    connected_sets.push(set_items);
+                }
+            }
+
+            // DesignRulesChecker.java:133-148: at most **one** entry per net, however many
+            // groups there are.
+            if connected_sets.len() >= 2 {
+                // DesignRulesChecker.java:135-136.
+                let item1 = self.find_representative_item(&connected_sets[0]);
+                let item2 = self.find_representative_item(&connected_sets[1]);
+
+                // DesignRulesChecker.java:138. Neither group is empty, so neither is `None`.
+                if let (Some(item1), Some(item2)) = (item1, item2) {
+                    // DesignRulesChecker.java:141-146.
+                    let mut group_items = connected_sets[0].clone();
+                    group_items.extend_from_slice(&connected_sets[1]);
+                    unconnected_items.push(UnconnectedItems::new_with_all_items(
+                        item1,
+                        item2,
+                        group_items,
+                    ));
+                }
+            }
+        }
+
+        // DesignRulesChecker.java:152-165: dangling traces.
+        for id in self.board.items_in_board_order() {
+            let Some(item) = self.board.get_item(id) else {
+                continue;
+            };
+            // DesignRulesChecker.java:153.
+            if !item.is_trace() {
+                continue;
+            }
+            // DesignRulesChecker.java:154-155, :158.
+            let start_is_empty = self.board.trace_start_contacts(id).is_empty();
+            let end_is_empty = self.board.trace_end_contacts(id).is_empty();
+            if !(start_is_empty || end_is_empty) {
+                continue;
+            }
+            // DesignRulesChecker.java:162 — the `firstItem`-only dedup; see the `Java bug:`
+            // marker above.
+            if unconnected_items.iter().any(|ui| ui.first_item == id) {
+                continue;
+            }
+            // DesignRulesChecker.java:163.
+            unconnected_items.push(UnconnectedItems::new_typed(
+                id,
+                None,
+                UnconnectedKind::TrackDangling,
+            ));
+        }
+
+        // DesignRulesChecker.java:168-175: dangling vias. No dedup here at all, so a via that is
+        // already a net entry's representative is reported twice.
+        for id in self.board.items_in_board_order() {
+            // DesignRulesChecker.java:169.
+            if self.board.get_item(id).map(|item| item.kind()) != Some(ItemKind::Via) {
+                continue;
+            }
+            // DesignRulesChecker.java:171-173: `Via.isTail` — no contacts, or contacts on at
+            // most one layer (Via.java:170-187).
+            if self.board.is_tail(id) {
+                unconnected_items.push(UnconnectedItems::new_typed(
+                    id,
+                    None,
+                    UnconnectedKind::ViaDangling,
+                ));
+            }
+        }
+
+        // DesignRulesChecker.java:177.
+        unconnected_items
+    }
+
+    /// Port of the private `findRepresentativeItem` (DesignRulesChecker.java:186-198): a `Pin` if
+    /// the group has one, else a `Trace`, else any item; `None` only for an empty group
+    /// (`:197`).
+    ///
+    // Java bug: DesignRulesChecker.findRepresentativeItem scans a `HashSet<Item>` over a class
+    // that overrides neither `hashCode` nor `equals`, so *which* Pin (or Trace, or item) it
+    // returns varies from JVM run to JVM run — and the choice is observable, because the
+    // representative's description is interpolated into the report's `description`
+    // (DesignRulesChecker.java:411-418) and because quirk #146's dedup keys on it. **Not
+    // reproduced**, deliberately: the port takes the **lowest-id** candidate of each class,
+    // which is what its ascending `connected_set` order yields for free. Plan-5 ruling 3,
+    // quirks row #144.
+    fn find_representative_item(&self, connected_set: &[ItemId]) -> Option<ItemId> {
+        let of_kind = |kind: ItemKind| {
+            connected_set
+                .iter()
+                .copied()
+                .find(|&id| self.board.get_item(id).map(|item| item.kind()) == Some(kind))
+        };
+        // DesignRulesChecker.java:188-192, :193-197, :197.
+        of_kind(ItemKind::Pin)
+            .or_else(|| of_kind(ItemKind::Trace))
+            .or_else(|| connected_set.first().copied())
     }
 }

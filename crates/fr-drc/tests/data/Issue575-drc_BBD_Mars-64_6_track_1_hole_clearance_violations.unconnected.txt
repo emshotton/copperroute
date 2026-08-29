@@ -1,0 +1,26 @@
+unconnectedItems 3
+net=1 first=Pin second=Pin items=13,87,792,858,962,963,964,965,966,967,1192,1193,1194
+net=4 first=Pin second=Pin items=4,5,78,79,766,798,864,909,922,934,986,987,988,989,990,991,992,993,994,995,996,997,998,999,1000,1001,1002,1200,1201
+net=7 first=Pin second=Pin items=8,726,818,1030,1031,1032,1033,1034,1035,1205,1206,1207
+track_dangling_candidates 2
+first=1031
+first=998
+via_dangling 18
+first=1289
+first=1287
+first=1266
+first=1264
+first=1262
+first=1257
+first=1255
+first=1252
+first=1242
+first=1233
+first=1226
+first=1222
+first=1220
+first=1215
+first=1213
+first=1211
+first=1204
+first=1194
