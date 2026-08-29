@@ -268,8 +268,6 @@ impl Point {
             Point::Rational(p) => p.surrounding_octagon(),
         }
     }
-
-    // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
 }
 
 impl From<IntPoint> for Point {

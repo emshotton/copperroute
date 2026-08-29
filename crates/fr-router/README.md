@@ -324,6 +324,14 @@ Four places the port's shape differs from Java's, each forced:
    `MazeSearchElement.backtrackDoor` — which is a `DrillId` here (ruling 16).
    The page keeps `Option<Vec<DrillId>>`, and the `Option` is Java's `null`: an
    empty list is a *memoised answer*, not "not calculated".
+1b. **A page frees its own drill ids** on `invalidate` and on the recompute path — the two
+   places Java replaces the list and lets the collector take it. `invalidateDrillPages` fires
+   once per changed item, so leaving the slots would grow the arena for the whole run;
+   `DrillPage::invalidate`'s docs carry the proof that no live holder is left dangling (the maze
+   search cannot invalidate a page, and after it the only holder,
+   `FoundConnectionLocator.backtrackArray`, is never read again). `ExpansionRoomStore::clear`
+   still leaves the arena alone, because `AutorouteEngine.clear` leaves `drillPageArray` alone.
+
 2. **A page is addressed by a flat `PageId`**, `j * columnCount + i`, where Java
    uses the object reference. The grid is built once and never resized, so the
    index is the identity.

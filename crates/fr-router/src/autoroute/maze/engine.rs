@@ -336,9 +336,13 @@ impl AutorouteEngine {
     /// A shape that misses the board's bounding box invalidates **nothing**:
     /// `DrillPageArray::overlapping_pages` intersects with the bounds before it walks the grid
     /// (DrillPageArray.java:79).
+    /// Each invalidated page hands its drill ids back to `rooms.drills` — see
+    /// [`DrillPage::invalidate`](crate::autoroute::drill::DrillPage::invalidate) for why that is
+    /// the reclamation Java's collector performs rather than a divergence.
     pub fn invalidate_drill_pages(&mut self, shape: &TileShape) {
-        // :599.
-        self.drill_page_array.invalidate(shape);
+        // :599. Two disjoint fields of `self`: the grid and the drill arena.
+        self.drill_page_array
+            .invalidate(shape, &mut self.rooms.drills);
     }
 
     /// `drillPageArray` (`:56`) for a read.
@@ -366,6 +370,12 @@ impl AutorouteEngine {
     /// `invalidateDrillPages` and `resetAllDoors`, whose callers are `initConnection`,
     /// `removeCompleteExpansionRoom`, `RoutingBoard.additionalUpdateAfterChange` and
     /// `autorouteConnection` — none of which `completeExpansionRoom` can reach.
+    ///
+    /// **This `catch_unwind` is not a sixth recovery boundary** (plan-6 ruling 7 fixes five). It
+    /// recovers nothing: it restores one field and calls `resume_unwind`, so the panic and every
+    /// observable effect are exactly what they would be without it — a `Drop` guard written as a
+    /// `finally`. Ruling 7's five boundaries are the sites that *degrade to a value*; Task 18's
+    /// audit should count those, not lexical occurrences.
     pub fn drill_page_drills(
         &mut self,
         board: &mut Board,

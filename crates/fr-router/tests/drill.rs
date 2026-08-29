@@ -590,7 +590,7 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
     // `reset` keeps the memo; `invalidate` drops it and keeps the mutated id.
     page.reset(&mut engine.rooms.drills);
     assert_eq!(page.drills().map(<[_]>::len), Some(30));
-    page.invalidate();
+    page.invalidate(&mut engine.rooms.drills);
     assert_eq!(page.drills(), None);
     assert_eq!(page.get_id(), -29_759_998);
 }
@@ -912,4 +912,88 @@ fn reset_all_doors_resets_the_pages_but_keeps_their_drills() {
         engine.drill_pages().page(page).drills().map(<[_]>::len),
         Some(9)
     );
+}
+
+/// Probe mode 10's drill counts (`page00 … drills=9`, `recomputed drills=10`), read as an
+/// **arena** statement rather than a list one.
+///
+/// Java's `DrillPage.invalidate` (`:170-172`) is one line — `this.drills = null` — and the
+/// `ExpansionDrill`s it drops are reclaimed by the collector. The port has no collector and
+/// `invalidateDrillPages` fires once per changed item, so the page hands the ids back instead;
+/// `DrillPage::invalidate`'s docs carry the reachability argument that makes that sound.
+///
+/// The live count therefore tracks the page's list exactly — 9, then 0, then 10 — where an
+/// arena that never released a slot would read 9, 9, 19 and keep climbing for the whole run.
+/// `slot_count` still climbs, because [`fr_router::Arena`] never reuses an index: a stale
+/// `DrillId` reads `None` rather than aliasing a live drill.
+#[test]
+fn invalidating_a_page_frees_its_drills_arena_slots() {
+    let mut board = probe_board(IntBox::from_coords(-1000, -1000, 1000, 1000));
+    let mut engine = engine_on(&mut board, 1);
+    let page = engine.drill_pages().page_id(0, 0);
+    let small = TileShape::Box(IntBox::from_coords(-900, -900, -800, -800));
+
+    assert_eq!(engine.rooms.drills.len(), 0);
+    assert_eq!(
+        engine
+            .drill_page_drills(&mut board, page, false, NEVER)
+            .len(),
+        9
+    );
+    assert_eq!(engine.rooms.drills.len(), 9);
+
+    engine.invalidate_drill_pages(&small);
+    assert_eq!(engine.drill_pages().page(page).drills(), None);
+    assert_eq!(engine.rooms.drills.len(), 0);
+
+    assert_eq!(
+        engine
+            .drill_page_drills(&mut board, page, false, NEVER)
+            .len(),
+        10
+    );
+    assert_eq!(engine.rooms.drills.len(), 10);
+
+    // A third round: the live count still tracks the page, and never accumulates.
+    engine.invalidate_drill_pages(&small);
+    assert_eq!(
+        engine
+            .drill_page_drills(&mut board, page, false, NEVER)
+            .len(),
+        10
+    );
+    assert_eq!(engine.rooms.drills.len(), 10);
+    assert_eq!(engine.rooms.drills.slot_count(), 29);
+
+    // The memo-hit path frees nothing: the same call twice answers the same ids.
+    let first = engine.drill_page_drills(&mut board, page, false, NEVER);
+    let second = engine.drill_page_drills(&mut board, page, false, NEVER);
+    assert_eq!(first, second);
+    assert_eq!(engine.rooms.drills.len(), 10);
+}
+
+/// The recompute path of `getDrills` frees the previous list too — `DrillPage.java:66` replaces
+/// `this.drills` wholesale, and probe mode 7's `afterNet1 drills=13` / `afterNet2 drills=30` is
+/// two lists, not one of 43.
+#[test]
+fn recomputing_for_a_new_net_frees_the_previous_nets_drills() {
+    let mut board = probe_board(BOUNDING_BOX);
+    let mut engine = AutorouteEngine::new(&mut board, 1, false);
+    seed_incomplete_list(&mut engine);
+    let mut page = component_page(&board);
+
+    engine.init_connection(&mut board, 1, None);
+    assert_eq!(
+        page.get_drills(&mut engine, &mut board, false, NEVER).len(),
+        13
+    );
+    assert_eq!(engine.rooms.drills.len(), 13);
+
+    engine.init_connection(&mut board, 2, None);
+    assert_eq!(
+        page.get_drills(&mut engine, &mut board, false, NEVER).len(),
+        30
+    );
+    assert_eq!(engine.rooms.drills.len(), 30);
+    assert_eq!(engine.rooms.drills.slot_count(), 43);
 }

@@ -108,9 +108,10 @@ impl DrillPage {
     /// (PolylineArea.java:189-191) and `:108` dereferences it with no check.
     ///
     /// # Panics
-    // Java bug: `DrillPage.getDrills` — `:108`'s `drillShapes.length` is an unguarded
-    // dereference of a value `:103` can legitimately answer `null` for, so a cancelled split
-    // throws a `NullPointerException` instead of returning. Worse, `:65-66` has already written
+    ///
+    /// Java bug: `DrillPage.getDrills` — `:108`'s `drillShapes.length` is an unguarded
+    /// dereference of a value `:103` can legitimately answer `null` for, so a cancelled split
+    /// throws a `NullPointerException` instead of returning. Worse, `:65-66` has already written
     /// the new net number and installed a fresh **empty** `drills` list, so the page is left
     /// memoised as "no drills on this net" and `:64` sends every later call straight past the
     /// recomputation. See `docs/java-quirks.md` #168 and
@@ -127,7 +128,14 @@ impl DrillPage {
             return self.drills.clone().unwrap_or_default();
         }
         // :65-66. Both writes happen *before* the work, which is what quirk #168 is about.
+        //
+        // `:66`'s `this.drills = new LinkedList<>()` drops the previous list, and Java's
+        // collector reclaims every `ExpansionDrill` on it. The port's arena has no collector, so
+        // the ids are handed back here — see [`Self::invalidate`] for why that is safe.
         self.net_number = engine.get_net_number();
+        for old_drill in self.drills.take().into_iter().flatten() {
+            engine.rooms.drills.remove(old_drill.0);
+        }
         self.drills = Some(Vec::new());
 
         // :67-96.
@@ -257,7 +265,9 @@ impl DrillPage {
             let TreeObject::Item(item) = current_entry.object else {
                 continue;
             };
-            // :77-79.
+            // :77-79. Java dereferences `currentItem` and NPEs for a missing item; a missing
+            // item cannot arise from an entry the tree itself produced, and `is_some_and`'s
+            // `false` keeps the entry in the loop rather than inventing a skip.
             let drillable = board
                 .get_item(item)
                 .is_some_and(|i| i.is_drillable(net_number));
@@ -271,7 +281,8 @@ impl DrillPage {
                 continue;
             }
             // :80-84. `Pin.drillAllowed()` (Pin.java:344-350) is true for an SMD pad, i.e. one
-            // whose padstack lives on a single layer.
+            // whose padstack lives on a single layer. The missing-item `false` is the one
+            // `:77-79` above explains: not a skip, and unreachable from a tree entry.
             let smd_skip = attach_smd && {
                 let ctx = board.ctx();
                 board.get_item(item).is_some_and(|i| match i {
@@ -379,8 +390,49 @@ impl DrillPage {
     ///
     /// `netNumber` is **not** restored, so an invalidated page keeps the id its last
     /// recomputation gave it.
-    pub fn invalidate(&mut self) {
-        self.drills = None;
+    ///
+    /// # Why the arena slots are freed here, and why that is not a divergence
+    ///
+    /// Java's whole body is `this.drills = null`; the `ExpansionDrill`s it dropped are reclaimed
+    /// by the collector *if nothing else holds them*. The port has no collector, and
+    /// `invalidateDrillPages` fires once per changed item (`AutorouteEngine.java:411`,
+    /// `RoutingBoard.java:107`), so leaving the slots would grow
+    /// [`ExpansionRoomStore::drills`](super::super::expansion::ExpansionRoomStore::drills)
+    /// without bound over a routing run. Freeing them is only sound if no live holder of one of
+    /// these ids can be **dereferenced** afterwards, and in Java's lifecycle none can:
+    ///
+    /// * **During the maze search**, `MazeListElement.door` and `MazeSearchElement.backtrackDoor`
+    ///   do hold page drills — but no page can be invalidated then. `invalidateDrillPages` has
+    ///   exactly two Java call sites: `AutorouteEngine.removeCompleteExpansionRoom:411`, whose
+    ///   own callers are `initConnection:108` and `additionalUpdateAfterChange:113`; and
+    ///   `RoutingBoard.additionalUpdateAfterChange:107`, whose callers are `initConnection:115`
+    ///   and five board-mutation sites (`BoardItemRepository.java:165,192`,
+    ///   `PolylineTrace.java:189,687,944`, `ShapeTraceEntries.java:112`). The search mutates no
+    ///   items: `MazeTraceShover` reaches `RoutingBoard.checkForcedTracePolyline:408-448`, which
+    ///   calls only `TraceShover.check` (`:231`), never `TraceShover.insert` (`:417`).
+    /// * **After the maze search**, `autorouteConnection:258-262` *does* mutate the board and so
+    ///   does invalidate pages — but by then the only live holder of a page drill is
+    ///   `FoundConnectionLocator.backtrackArray`, which is never read again. The whole backtrack
+    ///   walk runs in that class's constructor (`FoundConnectionLocator.java:73-180`);
+    ///   `FoundConnectionInserter` reads only `connection.connectionItems`
+    ///   (`FoundConnectionInserter.java:42,47`), a list of plain corner/layer records; and the
+    ///   one remaining reader, `FoundConnectionLocator.emitDiagnostics:502-511`, is
+    ///   `not ported:`.
+    /// * `Via.autorouteDrillInfo` (`Via.java:52`) is a drill `Via.getAutorouteDrillInfo:204-209`
+    ///   builds itself and no page ever owns, so no page can free it.
+    ///
+    /// [`Arena`] never reuses an index, so if that argument is ever broken by a later task the
+    /// symptom is a `None` at the dereference — a loud, locatable failure — not a silently
+    /// aliased drill.
+    ///
+    /// **This is not `ExpansionRoomStore::clear`'s job.** `AutorouteEngine.clear` (`:306-317`)
+    /// does *not* touch `drillPageArray`, so the store deliberately leaves the arena alone
+    /// there; the page is what owns its drill ids, and this is where Java drops them.
+    pub fn invalidate(&mut self, drills: &mut Arena<ExpansionDrill>) {
+        // :171, plus the collection Java gets for free.
+        for id in self.drills.take().into_iter().flatten() {
+            drills.remove(id.0);
+        }
     }
 
     /// Port of `otherRoom(CompleteExpansionRoom)` (DrillPage.java:184-187): the constant `null`.

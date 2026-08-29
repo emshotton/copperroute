@@ -110,10 +110,14 @@ impl DrillPageArray {
 
     /// Port of `invalidate(TileShape)` (DrillPageArray.java:64-73): "invalidates all drill pages
     /// intersecting with shape so they must be recalculated at the next call of `getDrills()`."
-    pub fn invalidate(&mut self, shape: &TileShape) {
+    ///
+    /// Takes the drill arena because [`DrillPage::invalidate`] hands the invalidated pages' drill
+    /// ids back to it — the reclamation Java's collector performs, and the reachability argument
+    /// that makes it sound, are documented on that method.
+    pub fn invalidate(&mut self, shape: &TileShape, drills: &mut Arena<ExpansionDrill>) {
         // :69-72.
         for page in self.overlapping_pages(shape) {
-            self.page_mut(page).invalidate();
+            self.page_mut(page).invalidate(drills);
         }
     }
 

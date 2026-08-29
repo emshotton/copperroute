@@ -277,8 +277,6 @@ impl RationalPoint {
         let urx = tmp.ceil() as i32;
         crate::int_octagon::IntOctagon::new(lx, ly, rx, uy, ulx, lrx, llx, urx)
     }
-
-    // not ported: getId — deterministic tie-breaking id, unused outside geometry/planar.
 }
 
 impl PartialEq for RationalPoint {

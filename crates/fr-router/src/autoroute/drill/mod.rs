@@ -41,6 +41,13 @@
 //! which no `&mut` can express; [`AutorouteEngine::drill_page_drills`] is the borrow bridge, and
 //! it is documented there.
 //!
+//! Because the arena has no collector, a page **frees its own drill ids** when it is invalidated
+//! or recomputed — the two places Java drops the list and lets the collector take it
+//! ([`DrillPage::invalidate`], `DrillPage.java:171`, and `:66`'s replacement). That method
+//! carries the reachability argument for why no live holder is left dangling; the store's `clear`
+//! deliberately does **not** free them, because `AutorouteEngine.clear` does not touch
+//! `drillPageArray` either.
+//!
 //! [`AutorouteEngine::drill_page_drills`]:
 //!     crate::autoroute::maze::AutorouteEngine::drill_page_drills
 

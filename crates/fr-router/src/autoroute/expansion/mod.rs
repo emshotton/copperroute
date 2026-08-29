@@ -110,6 +110,12 @@ pub struct ExpansionRoomStore {
     /// [`Self::clear`] deliberately leaves this arena alone: `AutorouteEngine.clear`
     /// (AutorouteEngine.java:306-317) does not touch `drillPageArray` either, so a page's
     /// memoised drills survive it in Java too. See that method's docs for what that costs.
+    ///
+    /// Slots **are** released, but by the page that owns them: `DrillPage::invalidate` and
+    /// `get_drills`' recompute path hand their ids back, which is where Java's collector
+    /// reclaims the objects. Without that the arena would grow once per changed item over a
+    /// whole routing run; with it, the live count tracks the pages' lists exactly
+    /// (`crates/fr-router/tests/drill.rs`'s `invalidating_a_page_frees_its_drills_arena_slots`).
     pub drills: Arena<ExpansionDrill>,
     /// `AutorouteEngine.expansionRoomInstanceCount` (:77).
     room_instance_count: i32,
@@ -754,9 +760,10 @@ impl ExpansionRoomStore {
     /// so that is reference identity, which is what removing the arena slot is.
     ///
     /// # Panics
-    // Java bug: `AutorouteEngine.removeIncompleteExpansionRoom` — `:370` dereferences
-    // `incompleteExpansionRooms` with no null guard, although every other reader of the field
-    // (`getFirstIncompleteExpansionRoom:357`, `initConnection:99`, `clear:307`) has one. The
+    ///
+    /// Java bug: `AutorouteEngine.removeIncompleteExpansionRoom` — `:370` dereferences
+    /// `incompleteExpansionRooms` with no null guard, although every other reader of the field
+    /// (`getFirstIncompleteExpansionRoom:357`, `initConnection:99`, `clear:307`) has one. The
     /// list is null until the first `addIncompleteExpansionRoom` (`:343-345`) and again after
     /// `clear` (`:314`), so this throws a `NullPointerException` on an engine that has never had
     /// an incomplete room added. It is reachable: `ExpansionDrill.calculateExpansionRooms:79`
