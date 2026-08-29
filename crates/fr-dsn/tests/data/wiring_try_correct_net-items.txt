@@ -1,0 +1,29 @@
+# Ground truth for `wiring_try_correct_net.dsn`, captured from the pinned 2.3.0 jar.
+#
+# A netless `(wire …)` whose two ends sit on pins of *different* nets. `Wiring.tryCorrectNet`
+# (Wiring.java:583-599) walks the merged contact set — a `TreeSet<Item>`, i.e. **descending** id
+# (quirk #44) — and takes the first single-net contact, so the trace gets the net of the
+# **higher-id** pin: `item 4 … nets=[2,]` (NHIGH), not `[1,]` (NLOW). An ascending walk gives the
+# other answer, which is what makes this file a regression test for the iteration direction.
+#
+# $ export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
+# $ javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/NProbe.java
+# $ java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/nprobe \
+#       NProbe crates/fr-dsn/tests/data/wiring_try_correct_net.dsn
+#
+# Lines beginning with '#' are this header; everything else is compared verbatim.
+layers 2
+item 1 BoardOutline cmp=0 cl=1 nets=[]
+item 2 Pin pin=1 cmp=1 cl=1 nets=[1,]
+item 3 Pin pin=1 cmp=2 cl=1 nets=[2,]
+item 4 PolylineTrace layer=0 hw=1000 corners=2 first=(1000000,1000000) last=(2000000,1000000) fixed=UNFIXED cmp=0 cl=1 nets=[2,]
+itemcount 4
+net 1 NLOW subnet=1 class=default plane=false
+net 2 NHIGH subnet=1 class=default plane=false
+viapadstacks[0] 
+netclass 0 default traceCl=1 viaRule=null hw=[1250,1250] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+clclasses[2] 0:null 1:default
+clrow 0 0 0
+clrow 1 0 2000
+component 1 PLOW pkg=pad_footprint placed=true front=true lp=null
+component 2 PHIGH pkg=pad_footprint placed=true front=true lp=null

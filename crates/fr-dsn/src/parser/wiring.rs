@@ -8,9 +8,9 @@
 //! and `BoardReadResult.warnings` consumers match on them. Every other `FRLogger` call in the
 //! file vanishes, per the plan's Global Constraints.
 //!
-//! The scope's tail (Wiring.java:344-351) is plan ruling 4: Java ends every DSN read with
-//! `board.normalizeAllTraces()` inside a `try`/`catch (Exception)`, and quirk #76 makes that
-//! call non-terminating on a four-rung ladder. The port runs it under a `TimeLimit`-backed
+//! The scope's tail (Wiring.java:345-352) is plan ruling 4: Java ends every DSN read with
+//! `board.normalizeAllTraces()` (:347) inside a `try`/`catch (Exception)`, and quirk #76 makes
+//! that call non-terminating on a four-rung ladder. The port runs it under a `TimeLimit`-backed
 //! [`fr_board::datastructures::StopCheck`] and lands a trip in the branch Java already has,
 //! with Java's own message.
 
@@ -33,21 +33,21 @@ use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, sk
 use crate::parser::{dsn_file, library};
 
 // renamed: Wiring.readScope -> read_wiring_scope.
-/// `Wiring.readScope` (Wiring.java:311-355).
+/// `Wiring.readScope` (Wiring.java:306-354).
 ///
 /// The loop is Java's exactly: only a token that directly follows `(` is dispatched, `wire`'s
-/// return value is discarded (:337) while `via`'s is not (:339), and anything else is skipped.
-/// End of file and a scanner error both answer `false` (:319-333); the `FRLogger.warn` texts
+/// return value is discarded (:334) while `via`'s is not (:336), and anything else is skipped.
+/// End of file and a scanner error both answer `false` (:313-326); the `FRLogger.warn` texts
 /// that accompany them are dropped.
 pub fn read_wiring_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let mut next_token: Option<Token> = None;
     loop {
         let prev_token = next_token;
-        // Wiring.java:317-333: Java answers `false` for an IO error and for end of file alike.
+        // Wiring.java:311-326: Java answers `false` for an IO error and for end of file alike.
         // Only a genuine scanner `Error` propagates here (see `skip_scope`'s docs).
         next_token = p.scanner.next_token()?;
         let Some(token) = next_token.clone() else {
-            // "Wiring.read_scope: unexpected end of file at '…'" (:327-331).
+            // "Wiring.read_scope: unexpected end of file at '…'" (:320-326).
             return Ok(false);
         };
         if token == Token::Close {
@@ -57,7 +57,7 @@ pub fn read_wiring_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErro
         let mut read_ok = true;
         if prev_token == Some(Token::Open) {
             match token {
-                // Wiring.java:337: the returned `Item` is discarded.
+                // Wiring.java:334: the returned `Item` is discarded.
                 Token::Kw(Keyword::Wire) => {
                     read_wire_scope(p)?;
                 }
@@ -72,12 +72,13 @@ pub fn read_wiring_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErro
         }
     }
 
-    // Wiring.java:344-351, plan ruling 4. Java: `try { board.normalizeAllTraces(); } catch
-    // (Exception e) { FRLogger.debug(msg); scopeParameter.warnings.add(msg); }`.
+    // Wiring.java:345-352, plan ruling 4. Java: `try { board.normalizeAllTraces(); } catch
+    // (Exception e) { FRLogger.debug(msg); scopeParameter.warnings.add(msg); }` — the call is
+    // :347, the message literal :349 and the `warnings.add` :351.
     let deadline = TimeLimit::new(p.options.normalize_time_limit_ms());
     let stop = move || deadline.is_exceeded();
     // totalized: Wiring.readScope dereferences `boardHandling.getRoutingBoard()` unguarded
-    // (Wiring.java:344), so a DSN whose `structure` scope produced no board — the
+    // (Wiring.java:345), so a DSN whose `structure` scope produced no board — the
     // `boardOutlineOk == false` case — NPEs straight out of `DsnReader.readBoard`, which has no
     // `catch`. The port answers `false` instead, which `read_board` turns into the
     // `OutlineMissing` variant it would have produced anyway had the file ended one scope
@@ -86,7 +87,7 @@ pub fn read_wiring_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErro
         return Ok(false);
     };
     if board.normalize_all_traces_checked(&stop).is_err() {
-        // Wiring.java:348 — Java's own message for the `catch (Exception)` around
+        // Wiring.java:349 — Java's own message for the `catch (Exception)` around
         // `normalizeAllTraces`. `BoardError::Stopped` (the ruling-4 time-limit trip) and a real
         // normalisation failure both land here, exactly as Java's `catch (Exception e)` catches
         // both.
@@ -96,11 +97,12 @@ pub fn read_wiring_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErro
     Ok(true)
 }
 
-/// `Wiring.readWireScope` (Wiring.java:357-582): one `(wire …)` entry — a trace when it carries
+/// `Wiring.readWireScope` (Wiring.java:356-577): one `(wire …)` entry — a trace when it carries
 /// a `path`/`polyline_path`, a conduction area when it carries a `rect`/`polygon`/`circle`.
 ///
 /// Java answers the inserted `Item` or `null`; the port answers its [`ItemId`]. The result is
-/// discarded by the only caller (:337) — it exists solely for the `tryCorrectNet` tail (:575).
+/// discarded by the only caller (:334) — it exists solely for the `tryCorrectNet` tail
+/// (:573-575).
 #[allow(clippy::too_many_lines)]
 fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, DsnError> {
     let mut net_id: Option<NetId> = None;
@@ -112,6 +114,11 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
     let mut border_shape: Option<DsnShape> = None;
     let mut hole_list: Vec<Option<DsnShape>> = Vec::new();
 
+    // `ReadScopeParameter.layerStructure` is set once, by `Structure.readScope`, and cannot
+    // change while a `wiring` scope is being read — so this is cloned once here rather than once
+    // per sub-scope token (fix round 1; the shape readers below need it while `p.scanner` is
+    // mutably borrowed, which is why it is a clone at all).
+    let layer_structure = p.layer_structure.clone();
     let mut next_token: Option<Token> = None;
     loop {
         let prev_token = next_token;
@@ -127,7 +134,6 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
         if prev_token != Some(Token::Open) {
             continue;
         }
-        let layer_structure = p.layer_structure.clone();
         match token {
             // Wiring.java:384-387.
             Token::Kw(Keyword::PolygonPath) => {
@@ -138,7 +144,7 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
                 path = shape::read_polyline_path_scope(&mut p.scanner, layer_structure.as_ref())?
                     .map(DsnShape::PolylinePath);
             }
-            // Wiring.java:388-400.
+            // Wiring.java:388-399.
             Token::Kw(Keyword::Rectangle) => {
                 border_shape =
                     shape::read_rectangle_scope(&mut p.scanner, layer_structure.as_ref())?
@@ -152,7 +158,7 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
                 border_shape = shape::read_circle_scope(&mut p.scanner, layer_structure.as_ref())?
                     .map(DsnShape::Circle);
             }
-            // Wiring.java:401-416: a hole. Java appends the shape even when it is `null`
+            // Wiring.java:400-416: a hole. Java appends the shape even when it is `null`
             // (`holeList.add(holeShape)`), which is what makes `transformAreaToBoard` NPE on a
             // hole it could not read — see `Shape::transform_area_to_board`'s totalization.
             Token::Kw(Keyword::Window) => {
@@ -161,7 +167,7 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
                 // overread the closing bracket
                 next_token = p.scanner.next_token()?;
                 if next_token != Some(Token::Close) {
-                    // "Wiring.read_wire_scope: closing bracket expected at '…'" (:411-415).
+                    // "Wiring.read_wire_scope: closing bracket expected at '…'" (:410-416).
                     return Ok(None);
                 }
             }
@@ -187,7 +193,7 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
         return Ok(None);
     }
 
-    // totalized: `Wiring.readWireScope` dereferences the board (:435) and the coordinate
+    // totalized: `Wiring.readWireScope` dereferences the board (:436) and the coordinate
     // transform (:454) unguarded; both are `null` when the `structure` scope produced no board.
     // See `read_wiring_scope`'s note — the port skips the wire and lets the tail answer `false`.
     let Some(coordinate_transform) = p.coordinate_transform else {
@@ -355,6 +361,14 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
                 .dsn_to_board_point(&[coordinate_arr[4 * i + 2], coordinate_arr[4 * i + 3]]);
             lines.push(Line::new(a.round(), b.round()));
         }
+        // totalized: Wiring.readWireScope — Java's `new Polyline(Line[])` (Wiring.java:562)
+        // cannot fail: `Polyline(Line[])` answers an empty `lines` array for anything it cannot
+        // normalise, and `insertTraceWithoutCleaning` then returns `null` for it
+        // (BasicBoard.java:185-187). The port's `Polyline::from_lines` answers
+        // `Err(PolylineError::NormalizationIndexUnderflow)` on the one input class where Java's
+        // constructor *throws* instead (Plan 1: `remove_overlaps`' index underflow), which no
+        // Java caller can observe as a value — so it propagates as `DsnError::Board` and fails
+        // the read rather than silently inserting nothing. See docs/java-quirks.md quirk #109.
         let trace_polyline = Polyline::from_lines(lines).map_err(BoardError::from)?;
         result = board.insert_trace_without_cleaning(
             trace_polyline,
@@ -365,13 +379,13 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
             fixed,
         );
     } else {
-        // "Wiring.read_wire_scope: unexpected Path subclass at '…'" (:571-576). Unreachable
+        // "Wiring.read_wire_scope: unexpected Path subclass at '…'" (:566-572). Unreachable
         // here: `path` is one of the two `Path` subclasses or `None`, and `None` with no
         // `borderShape` already returned above.
         return Ok(None);
     }
 
-    // Wiring.java:577-580.
+    // Wiring.java:573-575.
     if let Some(id) = result
         && board
             .items
@@ -383,23 +397,39 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
     Ok(result)
 }
 
-/// `Wiring.tryCorrectNet` (Wiring.java:586-604): "Maybe trace of type turret without net in
+/// `Wiring.tryCorrectNet` (Wiring.java:583-599): "Maybe trace of type turret without net in
 /// Mentor design. Try to assign the net by calculating the overlaps."
 ///
-/// Java calls `getNormalContacts(corner, true)` — `ignoreNet = true` — at both ends and takes
-/// the first contact that has exactly one net.
+/// Java calls `getNormalContacts(corner, true)` — `ignoreNet = true` — at both ends (:587-588),
+/// merges them into one set and takes the first contact with exactly one net (:590-595).
+///
+/// # Iteration order is load-bearing (fix round 1)
+///
+/// `Trace.getNormalContacts` answers a `TreeSet<Item>`, which iterates by `Item.compareTo` —
+/// **descending** id (quirk #44) — and `addAll` merges the second end into the same set, so
+/// Java's `break` takes the **highest-id** single-net contact of either end. The port's
+/// `BTreeSet<ItemId>` iterates ascending, so the walk is `.rev()`ed. A netless trace whose two
+/// ends touch pins of different nets is where the two directions disagree; the test
+/// `try_correct_net_takes_the_highest_id_contact` pins it.
+///
+/// A `null` first or last corner makes Java's `getNormalContacts(null, true)` answer the *empty*
+/// set for that end (Trace.java:174-176) while the other end is still gathered — hence two
+/// independent `Option` arms here rather than one early return.
 fn try_correct_net(board: &mut Board, id: ItemId) {
     let Some(fr_board::Item::Trace(trace)) = board.items.get(&id) else {
         return;
     };
-    let (Some(first_corner), Some(last_corner)) = (trace.first_corner(), trace.last_corner())
-    else {
-        return;
-    };
-    let mut contacts = board.trace_normal_contacts_at(id, &first_corner, true);
-    contacts.extend(board.trace_normal_contacts_at(id, &last_corner, true));
+    let (first_corner, last_corner) = (trace.first_corner(), trace.last_corner());
+    let mut contacts = std::collections::BTreeSet::new();
+    if let Some(corner) = first_corner {
+        contacts.extend(board.trace_normal_contacts_at(id, &corner, true));
+    }
+    if let Some(corner) = last_corner {
+        contacts.extend(board.trace_normal_contacts_at(id, &corner, true));
+    }
     let mut corrected_net_no = 0;
-    for contact in contacts {
+    // `.rev()`: descending id, matching Java's `TreeSet` walk (quirk #44).
+    for contact in contacts.into_iter().rev() {
         let Some(item) = board.items.get(&contact) else {
             continue;
         };
@@ -416,19 +446,19 @@ fn try_correct_net(board: &mut Board, id: ItemId) {
     }
 }
 
-/// `Wiring.readViaScope` (Wiring.java:606-714): one `(via <padstack> <x> <y> …)` entry.
+/// `Wiring.readViaScope` (Wiring.java:601-714): one `(via <padstack> <x> <y> …)` entry.
 #[allow(clippy::too_many_lines)]
 fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let mut fixed = FixedState::Unfixed;
-    // read the padstack name (Wiring.java:610-618)
+    // read the padstack name (Wiring.java:604-612)
     let mut next_token = p.scanner.next_token()?;
     let Some(Token::Str(padstack_name)) = next_token.clone() else {
-        // "Wiring.read_via_scope: padstack name expected at '…'" (:612-617).
+        // "Wiring.read_via_scope: padstack name expected at '…'" (:606-612).
         return Ok(false);
     };
     p.scanner.set_scope_identifier(&padstack_name);
 
-    // read the location (Wiring.java:620-633)
+    // read the location (Wiring.java:614-629)
     let mut location = [0.0f64; 2];
     for slot in &mut location {
         next_token = p.scanner.next_token()?;
@@ -436,7 +466,7 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
             Some(Token::Float(value)) => *slot = value,
             Some(Token::Int(value)) => *slot = value as f64,
             _ => {
-                // "Wiring.read_via_scope: number expected at '…'" (:627-632).
+                // "Wiring.read_via_scope: number expected at '…'" (:622-628).
                 return Ok(false);
             }
         }
@@ -448,7 +478,7 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
         let prev_token = next_token;
         next_token = p.scanner.next_token()?;
         let Some(token) = next_token.clone() else {
-            // "Wiring.read_via_scope: unexpected end of file at '…'" (:640-645).
+            // "Wiring.read_via_scope: unexpected end of file at '…'" (:635-641).
             return Ok(false);
         };
         if token == Token::Close {
@@ -471,7 +501,7 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     }
 
     // totalized: the board and the coordinate transform are dereferenced unguarded at
-    // Wiring.java:657 and :698 — see `read_wiring_scope`'s note.
+    // Wiring.java:659 and :698 — see `read_wiring_scope`'s note.
     let Some(coordinate_transform) = p.coordinate_transform else {
         return Ok(false);
     };
@@ -479,7 +509,7 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
         return Ok(false);
     };
 
-    // Wiring.java:658-671. The lookup strips every `.<digits>` run; the *warning* keeps the
+    // Wiring.java:659-671. The lookup strips every `.<digits>` run; the *warning* keeps the
     // original name.
     let cleaned_name = library::strip_dot_digits(&padstack_name);
     let Some(current_padstack) = board
@@ -557,6 +587,20 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
                 .get(current_padstack)
                 .is_some_and(|padstack| padstack.attach_allowed);
         let board = p.board.as_mut().expect("checked above");
+        // obligation: Plan 6/7 — BasicBoard.insertVia (Wiring.java:706) walks
+        // `fromLayer..toLayer` calling `splitTraces` -> `PolylineTrace.split`, i.e. the same
+        // machinery quirk #76 does not terminate in, and it is **outside** the
+        // `try`/`catch` Java wraps `normalizeAllTraces` in (:346-352). Plan ruling 4's
+        // `StopCheck` therefore does not reach it: a DSN whose vias sit on a four-rung ladder can
+        // still wedge the reader. Closing it means threading a `StopCheck` through
+        // `Board::insert_via`/`split_traces`, which Plans 6/7 also call — see
+        // docs/java-quirks.md's obligation register.
+        // totalized: Wiring.readViaScope — Java's `board.insertVia` (:706) cannot fail, and
+        // `readViaScope`'s `catch` only covers `IOException`; the port's returns
+        // `Result<ItemId, BoardError>` because `split_traces` can surface a `Polyline`
+        // normalisation failure (and, once the obligation above is closed, a stop). Propagated
+        // as `DsnError::Board`, which fails the read rather than inserting a corrupt via. See
+        // docs/java-quirks.md quirk #109.
         board.insert_via(
             current_padstack,
             Point::Int(board_location),
@@ -569,7 +613,7 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     Ok(true)
 }
 
-/// `Wiring.viaExists` (Wiring.java:230-249): is there already a via of exactly these nets, at
+/// `Wiring.viaExists` (Wiring.java:238-255): is there already a via of exactly these nets, at
 /// exactly this point, spanning exactly this padstack's layer range?
 fn via_exists(
     board: &Board,
@@ -590,7 +634,7 @@ fn via_exists(
     let point = Point::Int(*location);
     let ctx = board.ctx();
     for id in board.pick_items(&point, Some(pick_layer)) {
-        // Java's `ItemSelectionFilter(VIAS)` — the cast at :237 relies on it.
+        // Java's `ItemSelectionFilter(VIAS)` — the cast at :245 relies on it.
         let Some(fr_board::Item::Via(via)) = board.items.get(&id) else {
             continue;
         };
@@ -605,7 +649,7 @@ fn via_exists(
     false
 }
 
-/// `Wiring.getSubnets` (Wiring.java:216-228), flattened to the two things both callers read off
+/// `Wiring.getSubnets` (Wiring.java:223-236), flattened to the two things both callers read off
 /// each found net: its number and its net class.
 ///
 /// A `subnetNumber > 0` selects exactly one net; a `subnetNumber` of 0 (which is what
@@ -631,7 +675,7 @@ fn get_subnets(net_id: Option<&NetId>, board: &Board) -> Vec<(i32, NetClassId)> 
         .collect()
 }
 
-/// `Wiring.readNetId` (Wiring.java:280-305): "Reads a netId. The subnetNumber of the netId will
+/// `Wiring.readNetId` (Wiring.java:281-304): "Reads a netId. The subnetNumber of the netId will
 /// be 0, if no subnetNumber was found."
 ///
 /// Java answers `null` only on an `IOException`; the port's scanner has no IO to fail at (the
@@ -647,17 +691,17 @@ fn read_net_id(p: &mut ReadScopeParameter<'_>) -> Option<NetId> {
         subnet_number = value as i32;
         next_token = p.scanner.next_token().ok()?;
     }
-    // "Wiring.read_net_id: closing bracket expected at '…'" (:295-299) — a warning only; Java
+    // "Wiring.read_net_id: closing bracket expected at '…'" (:293-298) — a warning only; Java
     // returns the id regardless.
     let _ = next_token;
     Some(NetId::new(net_name, subnet_number))
 }
 
-/// `Wiring.calcFixed` (Wiring.java:252-277): the body of a `(type …)` scope.
+/// `Wiring.calcFixed` (Wiring.java:257-278): the body of a `(type …)` scope.
 ///
-/// Anything that is not `shove_fixed`, `fix` or `normal` counts as `USER_FIXED` (:259-265) —
+/// Anything that is not `shove_fixed`, `fix` or `normal` counts as `USER_FIXED` (:261-267) —
 /// including end of file, whose `None` token is not `NORMAL`. A missing closing bracket resets
-/// the answer to `UNFIXED` (:267-272).
+/// the answer to `UNFIXED` (:268-272).
 fn calc_fixed(p: &mut ReadScopeParameter<'_>) -> Result<FixedState, DsnError> {
     let mut result = FixedState::Unfixed;
     let next_token = p.scanner.next_token()?;
@@ -669,7 +713,7 @@ fn calc_fixed(p: &mut ReadScopeParameter<'_>) -> Result<FixedState, DsnError> {
     }
     let next_token = p.scanner.next_token()?;
     if next_token != Some(Token::Close) {
-        // "Wiring.is_fixed: ) expected at '…'" (:270).
+        // "Wiring.is_fixed: ) expected at '…'" (:269-272).
         return Ok(FixedState::Unfixed);
     }
     Ok(result)

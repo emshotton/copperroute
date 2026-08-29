@@ -29,7 +29,10 @@ const PCB: &str = "(pcb";
 ///
 /// * `id_generator` is Java's nullable `IdGenerator`; `None` is Java's `new ItemIdGenerator()`
 ///   default (:73-75). It becomes the board's `Communication.idGenerator`
-///   (Structure.java:1252).
+///   (Structure.java:1252). **Taken by value, and `ItemIdGenerator` is `Copy`**, so — unlike
+///   Java, which shares the caller's object by reference and leaves it advanced by however many
+///   ids the read consumed — the caller's generator is unchanged when this returns. Read the
+///   board's `communication.id_gen` to see where it got to.
 /// * `design_name` is Java's nullable filename hint. Java uses it for **one thing only** — the
 ///   `"DSN file '<name>' was loaded with N warning(s)."` log line (:139-145) — so in this port
 ///   it feeds nothing; see the `not ported:` note below.
@@ -181,6 +184,13 @@ pub fn read_metadata(input: impl Read) -> BoardReadResult {
         if prev_token != Some(Token::Open) {
             continue;
         }
+        // Java ignores every one of these three `readScope` return values (DsnReader.java:239,
+        // 242, 248 — ":247 Return value is ignored — we extract whatever was populated"), and so
+        // does this port: an `Ok(false)` falls through and the metadata is built from whatever
+        // the scope managed to fill in. Only a Rust `Err` — a scanner `Error`, which Java lets
+        // propagate uncaught, or a `BoardError` out of `createBoard`, which Java cannot produce —
+        // becomes a `ParseError` here. So the port reports a failure in exactly the cases where
+        // Java either crashes or has no equivalent, never where Java carries on.
         let result = match next_token {
             // Populates `hostCad`, `hostVersion`, `stringQuote` (:236-239).
             Some(Token::Kw(Keyword::ParserScope)) => header::read_parser_scope(&mut p),

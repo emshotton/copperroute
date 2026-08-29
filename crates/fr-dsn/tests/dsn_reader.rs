@@ -288,6 +288,82 @@ fn parse_error_and_io_error_carry_their_payloads() {
     assert_eq!(wrapped.to_string(), "disk full");
 }
 
+/// `DsnReadResultTest.successAndOutlineMissingHoldNullBoard` (:45-56): "Board is allowed to be
+/// null at the data-model level (parser wires it later)". This is the case that forced
+/// `Success.board` to be `Option` — Task 1 had it non-optional.
+#[test]
+fn success_and_outline_missing_hold_a_null_board() {
+    let success = BoardReadResult::Success {
+        board: None,
+        metadata: None,
+        warnings: Vec::new(),
+        coordinate_transform: None,
+    };
+    let BoardReadResult::Success {
+        board,
+        metadata,
+        warnings,
+        coordinate_transform,
+    } = &success
+    else {
+        unreachable!()
+    };
+    assert!(board.is_none());
+    assert!(metadata.is_none());
+    assert!(warnings.is_empty());
+    // The port's own field (controller ruling A); Java's record has none.
+    assert!(coordinate_transform.is_none());
+
+    let missing = BoardReadResult::OutlineMissing {
+        board: None,
+        metadata: None,
+        warnings: Vec::new(),
+        coordinate_transform: None,
+    };
+    let BoardReadResult::OutlineMissing {
+        board,
+        metadata,
+        warnings,
+        ..
+    } = &missing
+    else {
+        unreachable!()
+    };
+    assert!(board.is_none());
+    assert!(metadata.is_none());
+    assert!(warnings.is_empty());
+}
+
+/// `DsnReadResultTest.warningsAreExposed` (:58-66), with Java's own two strings.
+#[test]
+fn warnings_are_exposed() {
+    let warnings = vec![
+        "Wiring: degenerate wire skipped".to_string(),
+        "Wiring: duplicate via skipped at (100, 200)".to_string(),
+    ];
+    let success = BoardReadResult::Success {
+        board: None,
+        metadata: None,
+        warnings,
+        coordinate_transform: None,
+    };
+    let BoardReadResult::Success { warnings, .. } = &success else {
+        unreachable!()
+    };
+    assert_eq!(warnings.len(), 2);
+    assert!(warnings[0].contains("degenerate wire"));
+}
+
+// not ported: DsnReadResultTest.recordEquality (:68-74) and instanceOfChecks (:76-87).
+// `recordEquality` asserts that two `ParseError`s with the same fields are `equals` and share a
+// `hashCode` — a property of Java `record`s that Rust does not synthesise. `BoardReadResult`
+// deliberately does **not** derive `PartialEq`: it holds a `Box<Board>` (no `PartialEq`, and a
+// structural comparison of two boards is not something any caller should be doing) and a
+// `std::io::Error` (no `PartialEq` at all), so deriving it is not "trivial" — it would mean
+// hand-writing an impl whose only honest answer for those two variants is "compare the payload
+// you can". Nothing in the port compares two results. `instanceOfChecks` is `match`, covered by
+// `the_four_variant_match_is_exhaustive`.
+
 /// An unreadable stream is `BoardReadResult::IoError` (DsnReader.java:87-90). Java only reaches
 /// this from one of the first three token reads, because its reader is lazy; the port reads the
 /// stream up front, so it reaches it from the same call for any input.
@@ -364,7 +440,7 @@ fn loading_produces_warnings_for_degenerate_wires() {
 
 /// Plan ruling 4: a normalisation that runs out of time lands in the branch Java already has
 /// for a `normalizeAllTraces` that threw — `warnings.add("Wiring: normalization of traces
-/// failed")` (Wiring.java:345-351) — and the read still answers `Success`.
+/// failed")` (Wiring.java:346-352) — and the read still answers `Success`.
 ///
 /// A zero-millisecond limit is exceeded as soon as one millisecond has passed
 /// (TimeLimit.java:20 compares strictly greater), so this trips on any fixture with enough
@@ -499,6 +575,41 @@ fn read_metadata_never_reads_the_heavy_scopes() {
         15,
         "read_board reads all 11 wires and 4 vias"
     );
+}
+
+/// Fix round 1, review item 1: `Wiring.tryCorrectNet` (Wiring.java:583-599) walks a
+/// `TreeSet<Item>` — **descending** id (quirk #44) — and `break`s on the first contact with
+/// exactly one net, so a netless wire takes the net of the **highest-id** item it touches. The
+/// port's `BTreeSet` iterates ascending and must be `.rev()`ed.
+///
+/// `wiring_try_correct_net.dsn` is built so the two answers differ: a `(wire …)` with **no**
+/// `(net …)` runs between two single-pin components on different nets, `PLOW` (pin id 2, net 1)
+/// and `PHIGH` (pin id 3, net 2). JVM-verified against tools/freerouting-2.3.0.jar:
+///
+///     item 4 PolylineTrace layer=0 hw=1000 corners=2 … nets=[2,]
+///
+/// An ascending walk answers `nets=[1,]`, so this test fails on the wrong direction rather than
+/// merely being order-insensitive.
+#[test]
+fn try_correct_net_takes_the_highest_id_contact() {
+    let result = read(&common::test_data("wiring_try_correct_net.dsn"));
+    let (board, warnings) = success(&result);
+
+    // Spelled out as well as diffed, so a golden regeneration cannot quietly flip it.
+    let trace = board
+        .get_traces()
+        .into_iter()
+        .next()
+        .expect("the one netless wire was inserted");
+    let header = board.items[&trace].header();
+    assert_eq!(header.net_count(), 1, "tryCorrectNet assigned a net");
+    assert_eq!(
+        header.get_net_number(0),
+        2,
+        "the highest-id contact's net (NHIGH), not the lowest-id one's (NLOW)"
+    );
+
+    assert_matches_golden(board, warnings, "wiring_try_correct_net-items.txt");
 }
 
 // -------------------------------------------------- all eight warning sites, one by one

@@ -1560,7 +1560,7 @@ fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
 }
 
 /// The same trip through the entry point `fr-dsn` actually calls (Plan 3 ruling 4):
-/// `Board::normalize_all_traces_checked`, the port of `Wiring.java:346`'s
+/// `Board::normalize_all_traces_checked`, the port of `Wiring.java:347`'s
 /// `board.normalizeAllTraces()`.
 #[test]
 fn normalize_all_traces_checked_stops_on_the_ladder() {

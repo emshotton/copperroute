@@ -22,7 +22,7 @@ use crate::parser::{header, library, network, part_library, placement, structure
 ///
 /// Not a Java class: `DsnReader.readBoard` takes no options object at all. The single field is
 /// plan ruling 4's — the limit `Wiring.readScope`'s closing `board.normalizeAllTraces()` call
-/// (Wiring.java:346) runs under, so that quirk #76's non-terminating ladder produces Java's own
+/// (Wiring.java:347) runs under, so that quirk #76's non-terminating ladder produces Java's own
 /// `"Wiring: normalization of traces failed"` warning instead of a wedged process.
 // added in Plan 3: normalize_time_limit (Task 10, plan ruling 4)
 #[derive(Debug, Clone, PartialEq, Eq)]

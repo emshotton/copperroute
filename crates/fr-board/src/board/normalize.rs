@@ -143,7 +143,7 @@ impl Board {
 
     /// [`Board::normalize_all_traces`] under a [`StopCheck`], consulted once per pass of each
     /// net's inner loop (Plan 3 ruling 4). This is the entry point `Wiring.readScope`'s
-    /// `board.normalizeAllTraces()` (Wiring.java:346) becomes in the port; a trip answers
+    /// `board.normalizeAllTraces()` (Wiring.java:347) becomes in the port; a trip answers
     /// [`BoardError::Stopped`], which `fr-dsn` turns into Java's own
     /// `"Wiring: normalization of traces failed"` warning.
     // added in Plan 3: BasicBoard.normalizeAllTraces (plan ruling 4)

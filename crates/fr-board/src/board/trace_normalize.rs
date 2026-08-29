@@ -382,7 +382,7 @@ impl Board {
     /// [`Board::connection_items_checked`].
     //
     // obligation: Plan 3 (docs/java-quirks.md, "Ladder hang in DSN import") — **discharged in
-    // Plan 3 Task 10**, ruling 4's option (b): `Wiring.java:346` ends every DSN read with
+    // Plan 3 Task 10**, ruling 4's option (b): `Wiring.java:347` ends every DSN read with
     // `normalizeAllTraces()`, and `fr-dsn` now runs that under a `TimeLimit`-backed `StopCheck`
     // (`DsnReadOptions::normalize_time_limit`, default 60 s) rather than bounding this walk, so
     // every design that terminates normalises identically.

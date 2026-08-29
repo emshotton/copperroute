@@ -33,7 +33,7 @@ pub enum BoardError {
     /// `PolylineTrace.split`'s entry re-walk does not terminate on a four-rung ladder
     /// (docs/java-quirks.md #76) and `Wiring.readScope` ends every DSN read with
     /// `normalizeAllTraces()`. Plan 3 ruling 4 lands the divergence inside the
-    /// `catch (Exception e)` Java already wraps that call in (Wiring.java:345-351), so a design
+    /// `catch (Exception e)` Java already wraps that call in (Wiring.java:346-352), so a design
     /// that *does* terminate normalises identically and one that does not produces Java's own
     /// warning string instead of a wedged process.
     // added in Plan 3: BasicBoard.normalizeAllTraces (plan ruling 4)
