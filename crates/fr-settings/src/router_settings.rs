@@ -11,9 +11,31 @@
 //! `areBoardSpecificTraceCostsApplied` — in [`crate::board_optimizations`], not here, because
 //! they are the only `RouterSettings` methods that need `fr-board`.
 //!
-//! Still `MISSING` from this file's `scripts/audit-port.sh` run, with their owning task:
-//! `setAlgorithm`, `setOptimizerEnabled`, `getRunFanout`, `isFanoutEnabled` and
-//! `setFanoutEnabled` (Tasks 6-8, the settings sources that first need them).
+//! Five of this class's public methods are still unported, and Task 6 established that **no
+//! source in this plan reaches any of them**: `DefaultSettings` assigns `algorithm`,
+//! `optimizer.enabled` and `fanout.enabled` as fields, not through setters
+//! (`DefaultSettings.java:97,130,117`), and `CliSettings`/`EnvironmentVariablesSource` go through
+//! `ReflectionUtil.setFieldValue`, which writes fields directly too. Their real callers, read out
+//! of the Java at the clone's HEAD:
+//!
+//! | Method | Java site | Only callers |
+//! |---|---|---|
+//! | `setAlgorithm` | `:221-228` | none outside `RouterSettings` and the JUnit `TestingSettings` helper |
+//! | `setOptimizerEnabled` | `:230-238` | `gui/windows/routing/WindowAutorouteParameter.java:515` |
+//! | `setFanoutEnabled` | `:583-592` | `WindowAutorouteParameter.java:507` |
+//! | `getRunFanout` | `:573` | `WindowAutorouteParameter.java:590` |
+//! | `isFanoutEnabled` | `:578` | `autoroute/pipeline/{RoutingPipeline,BatchAutorouter,AutorouteBatchLoop}.java` — Plan 6 |
+//!
+//! So four of the five are GUI-only and are candidates for `// not ported:`, while
+//! `isFanoutEnabled` has a real headless caller that arrives with Plan 6's routing pipeline.
+//! Task 11 owns that decision (its brief is the audit-to-zero and `// not ported:` roster task);
+//! the markers below record the obligation so `grep -rn "added in Task"` lists it.
+//!
+// added in Task 11: setAlgorithm
+// added in Task 11: setOptimizerEnabled
+// added in Task 11: getRunFanout
+// added in Task 11: isFanoutEnabled
+// added in Task 11: setFanoutEnabled
 //!
 //! ## Transient-field serde treatment, JVM-verified
 //!

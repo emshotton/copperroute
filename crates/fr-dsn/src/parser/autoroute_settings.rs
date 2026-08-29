@@ -208,6 +208,26 @@ impl DsnRouterSettings {
         }
     }
 
+    /// The **raw**, un-defaulted `layers[layer].preferredDirectionHorizontal` — `None` where no
+    /// `(layer_rule … (preferred_direction …))` ever set one, and `None` for an out-of-range
+    /// layer.
+    ///
+    /// Java has no such accessor: `settings/RouterSettings.java` exposes the field directly
+    /// (`public LayerSettings[] layers`), so its callers read the nullability for free while
+    /// this type keeps its fields private behind the clamping setters. Added by the port so
+    /// Plan 4's `impl From<DsnRouterSettings> for fr_settings::RouterSettings` can carry the
+    /// `Option<bool>` across intact — plan 3 ruling 5 kept the nullability precisely for that,
+    /// and [`Self::get_preferred_direction_is_horizontal`] has already collapsed it into the
+    /// alternating `layer % 2 == 1` default.
+    // added in Plan 4: (no Java counterpart — a raw field read in Java)
+    #[must_use]
+    pub fn preferred_direction_is_horizontal_raw(&self, layer: usize) -> Option<bool> {
+        self.preferred_direction_is_horizontal
+            .get(layer)
+            .copied()
+            .flatten()
+    }
+
     /// `RouterSettings.setPreferredDirectionIsHorizontal` (RouterSettings.java:709-725).
     pub fn set_preferred_direction_is_horizontal(&mut self, layer: usize, value: bool) {
         if let Some(slot) = self.preferred_direction_is_horizontal.get_mut(layer) {

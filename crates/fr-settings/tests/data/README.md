@@ -14,6 +14,7 @@ rebuilt jar.
 | `VProbe.java` | Task 4's accessors, clamps, `setLayerCount`, `clone` and `validate` (blocks A-F); run with `-XX:ActiveProcessorCount=4` | yes |
 | `BProbe.java` | Task 5's `applyBoardSpecificOptimizations` over four synthetic stacks and any DSN fixtures named on the command line, plus the Q9 merge block | yes |
 | `RProbe.java` | Quirk 119's real consequence: `setLayerCount`'s effect on `--router.layers.*` values (L1-L4), and what Java's array branch leaves behind when the *next* path segment is bogus (A1-A3) | yes |
+| `SProbe.java` | Task 6's `SettingsMerger`, `SettingsSource` and the five in-scope `settings/sources/**` classes: the whole `DefaultSettings` table field by field (A), the ported `SettingsMergerTest` cases plus the only-null-sources NPE and the stable-sort tie (B), `addOrReplaceSources` (C), every source name and priority (D), both `.rules` goldens raw and through the accessors (E), `DsnFileSettings` over three fixtures with no `(autoroute_settings)` block — quirk 128's evidence (F), and that seeding merged under `DefaultSettings` (G); run with `-XX:ActiveProcessorCount=4` and the fixtures directory as `argv[0]` | yes |
 
 ## Recorded commands
 
@@ -35,9 +36,13 @@ done
 /opt/homebrew/opt/openjdk@25/bin/javac -d . DProbe.java
 /opt/homebrew/opt/openjdk@25/bin/java DProbe
 
-# VProbe pins availableProcessors so its transcript matches HostEnvironment::with_processors(4)
+# VProbe and SProbe pin availableProcessors so their transcripts match
+# HostEnvironment::with_processors(4)
+/opt/homebrew/opt/openjdk@25/bin/javac -cp "$JAR" -d . VProbe.java SProbe.java
 /opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
     -cp "$JAR:." VProbe
+/opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
+    -cp "$JAR:." SProbe /Users/em/Development/freerouting/freerouting/fixtures
 
 # BProbe takes DSN fixtures as arguments; Task 5's goldens used these three
 F=/Users/em/Development/freerouting/freerouting/fixtures
@@ -47,4 +52,4 @@ F=/Users/em/Development/freerouting/freerouting/fixtures
 ```
 
 The transcripts these produced are in
-`.superpowers/sdd/2026-08-28-plan-4-settings/task-{3,4,5}-report.md`.
+`.superpowers/sdd/2026-08-28-plan-4-settings/task-{3,4,5,6}-report.md`.

@@ -22,7 +22,10 @@
 //! `RouterSettings`'s null-coalescing accessors, their setter clamps, `java_clone` and
 //! `validate`. Task 5 adds [`board_optimizations`] — `applyBoardSpecificOptimizations` and its
 //! two companions, the only part of `RouterSettings` that reads a `fr_board::Board`.
-//! `SettingsMerger` and the settings sources themselves are Tasks 6 and onward.
+//! Task 6 adds [`merger`] — `SettingsSource`, the priority ladder and `SettingsMerger` — and
+//! [`sources`], the five in-scope `settings/sources/**` classes plus the
+//! `DsnRouterSettings` ⇄ `RouterSettings` conversion pair Plan 3 ruling 5 parked here. Task 7
+//! adds the environment-variable and CLI sources; Task 8 adds `resolve_headless`.
 
 pub mod board_optimizations;
 pub mod copy_fields;
@@ -32,9 +35,11 @@ pub mod fanout_settings;
 pub mod field_path;
 pub mod host;
 pub mod layer_settings;
+pub mod merger;
 pub mod optimizer_settings;
 pub mod router_settings;
 pub mod scoring_settings;
+pub mod sources;
 
 pub use copy_fields::{CopyFields, JavaEnum, MergeMode};
 pub use drc_settings::{DebugSettings, DesignRulesCheckerSettings};
@@ -43,16 +48,21 @@ pub use fanout_settings::FanoutSettings;
 pub use field_path::{FieldKind, FieldSpec, set_field_value};
 pub use host::HostEnvironment;
 pub use layer_settings::LayerSettings;
+pub use merger::{SettingsMerger, SettingsSource, SourceKind, priority};
 pub use optimizer_settings::{BoardUpdateStrategy, ItemSelectionStrategy, OptimizerSettings};
 pub use router_settings::{ExpansionCostFactor, RouterSettings};
 pub use scoring_settings::ScoringSettings;
 
 /// Re-exports every public type of the crate, for `use fr_settings::prelude::*;`.
 pub mod prelude {
+    pub use crate::sources::{
+        ApiSettings, DefaultSettings, DsnFileSettings, RulesFileSettings, SesFileSettings,
+    };
     pub use crate::{
         BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings,
         ExpansionCostFactor, FanoutSettings, FieldKind, FieldSpec, HostEnvironment,
         ItemSelectionStrategy, JavaEnum, LayerSettings, MergeError, MergeMode, MergeReport,
-        OptimizerSettings, RouterSettings, ScoringSettings, SettingsError, set_field_value,
+        OptimizerSettings, RouterSettings, ScoringSettings, SettingsError, SettingsMerger,
+        SettingsSource, SourceKind, priority, set_field_value,
     };
 }

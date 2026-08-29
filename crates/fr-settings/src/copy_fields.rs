@@ -218,6 +218,17 @@ pub fn enum_copy_by_name<T: JavaEnum>(
 ///
 /// Copies only when the target is `None`, or empty while the source is non-empty. Java's rule is
 /// already "fill only what is absent", so [`MergeMode`] does not apply here.
+///
+/// **This is the arm quirk #128 turns into a trap.** `scoring.preferredDirectionTraceCost` and
+/// `scoring.undesiredDirectionTraceCost` are `double[]`, so they reach this rule — and
+/// [`crate::sources::DsnFileSettings`] fills both with all-`1.0` arrays at priority 20 for
+/// essentially every board, as a side effect of seeding the layer count
+/// (`DsnFileSettings.java:46-48` → `RouterSettings.setLayerCount` `:466-472`). From that point
+/// on "first writer wins" means *nothing above priority 20 can set a per-layer trace cost*: the
+/// `.rules` tier at 40, the environment at 55 and `--router.*` at 60 all lose theirs here,
+/// silently. `ignoreNetClasses` is the third field on this rule and has the same property.
+/// `layers` does **not** — it is an object array and goes to [`object_array_merge`], which is
+/// why per-layer *directions* still get through.
 pub fn primitive_array_copy<T: Clone>(
     src: &Option<Vec<T>>,
     dst: &mut Option<Vec<T>>,
