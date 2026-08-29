@@ -28,12 +28,19 @@
 //! `drc-natural-tone-preamp` is the exception the sweep finds, and it is a known one (quirk #146,
 //! Task 4/7/8): `generateReport` folds `getAllUnconnectedItems`' `track_dangling` entries into
 //! `violations` (`DesignRulesChecker.java:271-276`), and that phase's dedup (`:160`) drops
-//! whichever dangling trace a net entry's hash-ordered `firstItem` happens to be. Measured on this
-//! jar the five modes give 113, 113, 114, 114 and **115** violations. The reference is the
-//! `-XX:hashCode=2` run — the constant-hash mode, the only one that reproduces run to run and is
-//! not derived from an object address — which is also the maximal run. The port's ascending-id
-//! representatives (ruling 3) make three of that fixture's four `Trace`-represented net entries
-//! dangling, so it emits 112, and
+//! whichever dangling trace a net entry's hash-ordered `firstItem` happens to be.
+//!
+//! Its violation count lands in the range **113-115**, and only `-XX:hashCode=2` pins it: mode 2
+//! is a constant, the one `Object.hashCode` source that reproduces run to run without being
+//! derived from an object address, and it gives **115** — the committed reference. Modes 0 and 5
+//! are PRNG-seeded and 1 and 4 are address-derived; mode 3 is a per-thread xorshift, deterministic
+//! only within a single-threaded run. Across the three sweeps taken of this jar, every one of
+//! those four produced a different count in at least one sweep while mode 2 held at 115. No
+//! per-mode count is quoted for them — the range and mode 2's value are the whole of what is
+//! stable.
+//!
+//! The port's ascending-id representatives (ruling 3) make three of that fixture's four
+//! `Trace`-represented net entries dangling, so it emits 112, and
 //! [`natural_tone_preamp_is_the_reference_minus_three_dangling_tracks`] requires the port's
 //! document to be the reference with exactly those three entries deleted **in place** — pinned by
 //! their item uuids, never by count alone. That is Task 8's prose claim (it checked this once, by
@@ -131,12 +138,22 @@ fn load_board(row: &Row) -> (Board, CoordinateTransform) {
         let path = parity::java_dir().join(rules);
         let file = std::fs::File::open(&path)
             .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+        // `designName` is `drcJob.name` (`Freerouting.java:283`), which `RoutingJob.setInput`
+        // fills from `input.getFilenameWithoutExtension()` (`RoutingJob.java:457`) — so it is the
+        // base name **without** `.dsn`. That matters for fidelity even though the port ignores the
+        // parameter: `RulesReader` compares it against the `(rules PCB <name>` header and warns on
+        // a mismatch (`RulesReader.java:100-110`), and `Issue593-BBD_Mars-64.rules` spells that
+        // header *with* the extension, so the reference run took the mismatch branch — as its
+        // `java.log` records. Passing the extension-ful name here would take the other one.
+        //
         // Java passes `drcJob.routerSettings` as the fourth argument (`Freerouting.java:284-285`).
         // The port's `target_settings` receives only the file's `(autoroute_settings …)`, which
         // reaches the router and never the board, so the DRC path can pass `None`.
-        let read =
-            fr_dsn::rules_reader::read(file, base_name(&row.dsn), &mut board, &transform, None)
-                .unwrap_or_else(|e| panic!("{} did not read: {e:?}", path.display()));
+        let design_name = base_name(&row.dsn)
+            .strip_suffix(".dsn")
+            .unwrap_or_else(|| base_name(&row.dsn));
+        let read = fr_dsn::rules_reader::read(file, design_name, &mut board, &transform, None)
+            .unwrap_or_else(|e| panic!("{} did not read: {e:?}", path.display()));
         assert!(read, "{} was rejected by the rules reader", path.display());
     }
 

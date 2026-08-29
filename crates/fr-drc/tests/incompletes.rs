@@ -19,6 +19,10 @@
 //! `connections.incompleteCount`/`clearanceViolations.totalCount` assertions (9/2, 3/76, 145/0)
 //! and `RatsnestClearanceHeadlessTest.java:52-75`'s "per-net counts must sum to total".
 
+//! Every test that reads a fixture opens with `parity::require_java_dir()`: the fixtures live in
+//! the sibling Java checkout, which is not vendored, and `tests/parity`'s contract is that such a
+//! suite skips loudly rather than panicking on a missing file.
+
 use fr_board::prelude::*;
 use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
@@ -63,8 +67,6 @@ fn counters(board: &mut Board) -> (i32, usize, usize, usize) {
 
 #[test]
 fn dev_board_counts() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }
@@ -76,8 +78,6 @@ fn dev_board_counts() {
 
 #[test]
 fn bbd_mars_64_counts() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }
@@ -89,8 +89,6 @@ fn bbd_mars_64_counts() {
 
 #[test]
 fn natural_tone_preamp_counts() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }
@@ -101,8 +99,6 @@ fn natural_tone_preamp_counts() {
 
 #[test]
 fn empty_board_has_no_incompletes() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }
@@ -293,8 +289,6 @@ fn an_empty_net_contributes_nothing() {
 
 #[test]
 fn lazy_initialisation_matches_java() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }
@@ -339,8 +333,6 @@ fn lazy_initialisation_matches_java() {
 
 #[test]
 fn out_of_range_net_numbers_answer_the_java_defaults() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }
@@ -407,8 +399,6 @@ fn recalculate_net_incompletes_initialises_and_returns() {
 
 #[test]
 fn statistics_block() {
-    // Every fixture below is read from the sibling Java checkout, which is not vendored;
-    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
     if !parity::require_java_dir() {
         return;
     }

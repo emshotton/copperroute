@@ -1,7 +1,7 @@
-jar          /Users/em/Development/freerouting/freerouting-rs/../freerouting/build/libs/freerouting-current-executable.jar
+jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
 jar size     63288650 bytes
 jar mtime    2026-08-27 20:03:08 -0700
 jar version  Freerouting 2.3.1-SNAPSHOT
 java         openjdk version "25.0.4.1" 2026-08-18
 hash mode    -XX:hashCode=2
-command      /opt/homebrew/opt/openjdk@25/bin/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de /Users/em/Development/freerouting/freerouting-rs/../freerouting/examples/tutorial_board/tutorial_board.dsn -drc /Users/em/Development/freerouting/freerouting-rs/tests/reference/drc-tutorial-board/drc.json
+command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de <FREEROUTING_JAVA_DIR>/examples/tutorial_board/tutorial_board.dsn -drc <workspace>/tests/reference/drc-tutorial-board/drc.json

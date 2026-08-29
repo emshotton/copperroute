@@ -5,7 +5,10 @@ This is the Python twin of `parity::normalize_drc_json` (tests/parity/src/lib.rs
 by `scripts/gen-drc-reference.sh --verify-hash-modes`, which regenerates every stem once per
 `-XX:hashCode=0..4` and requires the normalised documents to be byte-identical.
 
-It is deliberately **not** on the path of any committed byte: `tests/reference/<stem>/drc.json`
+**Change both or neither.** The rules below are duplicated in `parity::normalize_drc_json`
+(tests/parity/src/lib.rs); an edit here that is not mirrored there makes the sweep certify
+something the parity test does not check. Nothing enforces that mechanically, because the two are
+deliberately *not* byte-coupled: `tests/reference/<stem>/drc.json`
 is the jar's verbatim output, and the Rust normaliser is applied to both sides inside the parity
 test. So the two implementations never have to agree on number formatting — only on the three
 rules below, and only well enough for the sweep to compare five runs of the *same* JVM.

@@ -193,6 +193,13 @@ pub fn parse_drc_json(s: &str) -> Result<DrcReportDoc, serde_json::Error> {
 
 /// Applies the three rules above to an already-parsed report and renders it.
 ///
+/// The result is a **re-rendered** document, not the input's bytes: keys come out in
+/// [`DrcReportDoc`]'s field order and every number is re-emitted by `serde_json`. Two normalised
+/// documents being byte-equal therefore says the two reports carry the same values in the same
+/// order — it says nothing about how either side spelled a `double` or ordered its keys. Those are
+/// pinned separately and byte-exactly against Gson's own output by
+/// `crates/fr-drc/tests/report_json.rs::head_flavor_is_the_jvms_gson_bytes`.
+///
 /// # Errors
 ///
 /// Any `serde_json` serialisation failure.

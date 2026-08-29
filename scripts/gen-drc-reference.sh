@@ -16,8 +16,11 @@
 # Per stem in tests/reference/drc-fixtures.txt it writes, into tests/reference/<stem>/:
 #
 #   drc.json      the jar's report, **verbatim** — no post-processing at all
-#   java.log      the CLI's stdout+stderr
-#   drc.meta.txt  the jar path/size/mtime, `java -version`, the hash mode and the exact command
+#   java.log      the CLI's stdout+stderr (absolute paths and wall-clock timestamps, like
+#                 gen-reference.sh's; kept for debugging, read by nothing)
+#   drc.meta.txt  the jar's identity, `java -version`, the hash mode and the command line, with
+#                 every machine-specific prefix replaced by `<FREEROUTING_JAVA_DIR>` or
+#                 `<workspace>` so the file is the same on every machine
 #
 # The reference is deliberately the raw bytes rather than a normalised document: normalisation is
 # `parity::normalize_drc_json`'s job and the parity test applies it to **both** sides, so the
@@ -27,11 +30,16 @@
 #
 # Usage:
 #   scripts/gen-drc-reference.sh [stem ...]        regenerate all stems, or just the named ones
+#   scripts/gen-drc-reference.sh --meta-only [stem ...]
+#                                                  rewrite drc.meta.txt from the existing
+#                                                  drc.json without running the jar — for when
+#                                                  this script's meta format changes and the
+#                                                  references themselves must not move
 #   scripts/gen-drc-reference.sh --verify-hash-modes [stem ...]
 #                                                  regenerate each stem once per
 #                                                  -XX:hashCode=0..4 into a scratch dir and
-#                                                  require the five normalised documents to be
-#                                                  byte-identical; writes nothing under
+#                                                  report how many distinct normalised documents
+#                                                  come out; writes nothing under
 #                                                  tests/reference/
 #
 # Environment: FREEROUTING_JAVA_DIR (default ../freerouting), FREEROUTING_JAR, JAVA, DRC_HASH_MODE.
@@ -49,20 +57,19 @@ FIXTURES="$REF/drc-fixtures.txt"
 # seeded, 1 and 4 come from the address, 3 is a per-thread xorshift (deterministic only in a
 # single-threaded run). The references are generated under it so that the one fixture whose
 # report is genuinely hash-dependent — Natural Tone Preamp, see tests/reference/README.md — has a
-# reproducible reference at all. See crates/fr-drc/tests/data/README.md for the measured table.
+# reproducible reference at all.
 HASH_MODE="${DRC_HASH_MODE:-2}"
-HASH_FLAGS=(-XX:+UnlockExperimentalVMOptions "-XX:hashCode=$HASH_MODE")
 
 # `-Duser.language=en -Duser.country=US` is load-bearing, not hygiene: every `%.4f` in a violation
 # description goes through `String.formatted`, which uses the default FORMAT locale, so a German
 # JVM writes `expected: 0,0500 mm` (plan-5 ruling 6). The port's formatter is locale-free.
 LOCALE_FLAGS=(-Djava.awt.headless=true -Duser.language=en -Duser.country=US)
 
-VERIFY_HASH_MODES=0
-if [[ "${1:-}" == "--verify-hash-modes" ]]; then
-  VERIFY_HASH_MODES=1
-  shift
-fi
+MODE=generate
+case "${1:-}" in
+  --verify-hash-modes) MODE=sweep; shift ;;
+  --meta-only) MODE=meta; shift ;;
+esac
 WANTED=("$@")
 
 # --- preflight ---------------------------------------------------------------------------------
@@ -78,17 +85,20 @@ if [[ "${ver:-0}" -lt 25 ]]; then
   exit 1
 fi
 
-# Prints the argv the CLI is invoked with for one row, one argument per line.
+# Fills the global ARGS array with the CLI argv for one row.
+#
 # `-drc` is matched by `startsWith` *before* `-dr` in GlobalSettings' if-chain
 # (GlobalSettings.java:660-674), so the two cannot be confused whatever the order on the command
-# line; the SES has no flag of its own and rides in the `-de` slot list, joined to the DSN with
-# `+` (GlobalSettings.java:573-579 splits on it when the joined string is not itself a file).
+# line. The SES has no flag of its own: `-de` swallows every following argument that does not
+# start with `-` and sorts the list by extension (GlobalSettings.java:564-648), so the DSN and the
+# SES are simply two arguments in that slot. (`<dsn>+<ses>` in a single argument reaches the same
+# list through the `+`-split at `:573-579`; two arguments is the form that needs no split and
+# survives a path containing `+`.)
 ARGS=()
 drc_args() {
   local dsn="$1" rules="$2" ses="$3" out="$4"
-  local de="$JAVA_DIR/$dsn"
-  [[ -n "$ses" ]] && de="$de+$JAVA_DIR/$ses"
-  ARGS=(-de "$de")
+  ARGS=(-de "$JAVA_DIR/$dsn")
+  [[ -n "$ses" ]] && ARGS+=("$JAVA_DIR/$ses")
   [[ -n "$rules" ]] && ARGS+=(-dr "$JAVA_DIR/$rules")
   ARGS+=(-drc "$out")
 }
@@ -101,75 +111,51 @@ wanted() {
 }
 
 run_drc() {
-  local out="$1" log="$2" mode="$3"
-  shift 3
+  local log="$1" mode="$2"
+  shift 2
   "$JAVA_BIN" "${LOCALE_FLAGS[@]}" -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
       -jar "$JAR" "$@" > "$log" 2>&1
 }
 
-# --- the hash-mode sweep -----------------------------------------------------------------------
-if [[ "$VERIFY_HASH_MODES" -eq 1 ]]; then
-  scratch="$(mktemp -d)"
-  trap 'rm -rf "$scratch"' EXIT
-  status=0
-  while IFS='|' read -r stem dsn rules ses || [[ -n "$stem" ]]; do
-    [[ -z "$stem" || "$stem" == \#* ]] && continue
-    wanted "$stem" || continue
-    echo "== $stem"
-    digests=()
-    for mode in 0 1 2 3 4; do
-      raw="$scratch/$stem-h$mode.json"
-      drc_args "$dsn" "$rules" "$ses" "$raw"
-      run_drc "$raw" "$scratch/$stem-h$mode.log" "$mode" "${ARGS[@]}" \
-        || { echo "   hashCode=$mode FAILED, see $scratch/$stem-h$mode.log" >&2; status=1; continue; }
-      python3 "$ROOT/scripts/normalize-drc.py" "$raw" > "$scratch/$stem-h$mode.norm.json"
-      digests+=("$(shasum -a 256 < "$scratch/$stem-h$mode.norm.json" | cut -d' ' -f1)")
-    done
-    distinct="$(printf '%s\n' "${digests[@]}" | sort -u | wc -l | tr -d ' ')"
-    if [[ "$distinct" == "1" ]]; then
-      echo "   5 modes agree (${digests[0]:0:12})"
-    else
-      echo "   $distinct DISTINCT normalised documents over 5 modes:" >&2
-      for mode in 0 1 2 3 4; do
-        echo "     hashCode=$mode ${digests[$mode]:0:12} violations=$(python3 -c \
-          "import json,sys;print(len(json.load(open(sys.argv[1]))['violations']))" \
-          "$scratch/$stem-h$mode.json")" >&2
-      done
-      status=1
-    fi
-  done < "$FIXTURES"
-  if [[ "$status" -ne 0 ]]; then
-    echo "hash-mode sweep found a disagreement — record it in tests/reference/README.md" >&2
-  fi
-  exit "$status"
-fi
+# Machine-independent rendering of a path: the two prefixes that differ between checkouts become
+# tokens, so drc.meta.txt is byte-identical wherever it is regenerated.
+portable() {
+  local p="$1"
+  p="${p//$JAVA_DIR/<FREEROUTING_JAVA_DIR>}"
+  p="${p//$ROOT/<workspace>}"
+  printf '%s' "$p"
+}
 
-# --- generation ---------------------------------------------------------------------------------
-while IFS='|' read -r stem dsn rules ses || [[ -n "$stem" ]]; do
-  [[ -z "$stem" || "$stem" == \#* ]] && continue
-  wanted "$stem" || continue
-  out="$REF/$stem"
-  mkdir -p "$out"
-  echo "== $stem"
-  drc_args "$dsn" "$rules" "$ses" "$out/drc.json"
-  if ! run_drc "$out/drc.json" "$out/java.log" "$HASH_MODE" "${ARGS[@]}"; then
-    echo "   the jar failed for $stem; see $out/java.log" >&2
-    continue
-  fi
-
+write_meta() {
+  local out="$1"
+  shift
   {
-    echo "jar          $JAR"
+    echo "jar          $(portable "$JAR")"
     echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
     echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
     echo "jar version  $(grep -o 'Freerouting [0-9][^"]*' "$out/drc.json" | head -1)"
     echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
     echo "hash mode    -XX:hashCode=$HASH_MODE"
-    printf 'command      %s %s -jar <jar>' "$JAVA_BIN" "${LOCALE_FLAGS[*]} ${HASH_FLAGS[*]}"
-    printf ' %s' "${ARGS[@]}"
+    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar>' \
+        "${LOCALE_FLAGS[*]}" "$HASH_MODE"
+    local arg
+    for arg in "$@"; do printf ' %s' "$(portable "$arg")"; done
     printf '\n'
   } > "$out/drc.meta.txt"
+}
 
-  python3 - "$out/drc.json" <<'EOF'
+# Runs `body` for every selected row of the fixture table.
+each_row() {
+  local body="$1" stem dsn rules ses
+  while IFS='|' read -r stem dsn rules ses || [[ -n "$stem" ]]; do
+    [[ -z "$stem" || "$stem" == \#* ]] && continue
+    wanted "$stem" || continue
+    "$body" "$stem" "$dsn" "$rules" "$ses"
+  done < "$FIXTURES"
+}
+
+report_counts() {
+  python3 - "$1" <<'EOF'
 import collections, json, sys
 report = json.load(open(sys.argv[1], encoding="utf-8"))
 kinds = collections.Counter(v["type"] for v in report["violations"])
@@ -177,6 +163,86 @@ print("   violations %d %s, unconnectedItems %d, qualityScore %r"
       % (len(report["violations"]), dict(sorted(kinds.items())),
          len(report["unconnectedItems"]), report.get("qualityScore")))
 EOF
-done < "$FIXTURES"
+}
 
-echo "done. DRC references in $REF"
+# --- the three modes -----------------------------------------------------------------------------
+STATUS=0
+
+generate_one() {
+  local stem="$1" out="$REF/$1"
+  mkdir -p "$out"
+  echo "== $stem"
+  drc_args "$2" "$3" "$4" "$out/drc.json"
+  if ! run_drc "$out/java.log" "$HASH_MODE" "${ARGS[@]}"; then
+    echo "   the jar failed for $stem; see $out/java.log" >&2
+    STATUS=1
+    return 0
+  fi
+  write_meta "$out" "${ARGS[@]}"
+  report_counts "$out/drc.json"
+}
+
+meta_one() {
+  local stem="$1" out="$REF/$1"
+  echo "== $stem"
+  if [[ ! -f "$out/drc.json" ]]; then
+    echo "   no drc.json to describe; run without --meta-only first" >&2
+    STATUS=1
+    return 0
+  fi
+  drc_args "$2" "$3" "$4" "$out/drc.json"
+  write_meta "$out" "${ARGS[@]}"
+  echo "   drc.meta.txt rewritten (drc.json untouched)"
+}
+
+sweep_one() {
+  local stem="$1" mode raw digest
+  echo "== $stem"
+  local digests=() counts=()
+  for mode in 0 1 2 3 4; do
+    raw="$SCRATCH/$stem-h$mode.json"
+    drc_args "$2" "$3" "$4" "$raw"
+    if run_drc "$SCRATCH/$stem-h$mode.log" "$mode" "${ARGS[@]}"; then
+      python3 "$ROOT/scripts/normalize-drc.py" "$raw" > "$SCRATCH/$stem-h$mode.norm.json"
+      digest="$(shasum -a 256 < "$SCRATCH/$stem-h$mode.norm.json" | cut -d' ' -f1)"
+      digests+=("${digest:0:12}")
+      counts+=("$(python3 -c \
+          "import json,sys;print(len(json.load(open(sys.argv[1]))['violations']))" "$raw")")
+    else
+      # Never `continue`: the two arrays are indexed by mode below, so a gap would misalign them.
+      digests+=("FAILED------")
+      counts+=("?")
+      STATUS=1
+    fi
+  done
+  local distinct
+  distinct="$(printf '%s\n' "${digests[@]}" | sort -u | wc -l | tr -d ' ')"
+  if [[ "$distinct" == "1" && "${digests[0]}" != "FAILED------" ]]; then
+    echo "   5 modes agree (${digests[0]})"
+  else
+    echo "   $distinct distinct normalised documents over 5 modes:" >&2
+    for mode in 0 1 2 3 4; do
+      echo "     hashCode=$mode ${digests[$mode]} violations=${counts[$mode]}" >&2
+    done
+    STATUS=1
+  fi
+}
+
+case "$MODE" in
+  sweep)
+    SCRATCH="$(mktemp -d)"
+    trap 'rm -rf "$SCRATCH"' EXIT
+    each_row sweep_one
+    if [[ "$STATUS" -ne 0 ]]; then
+      echo "hash-mode sweep found a disagreement — record it in tests/reference/README.md" >&2
+    fi
+    ;;
+  meta)
+    each_row meta_one
+    ;;
+  generate)
+    each_row generate_one
+    echo "done. DRC references in $REF"
+    ;;
+esac
+exit "$STATUS"
