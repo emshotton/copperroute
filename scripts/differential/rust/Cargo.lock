@@ -56,7 +56,18 @@ dependencies = [
  "fr-drc",
  "fr-dsn",
  "fr-geometry",
+ "fr-router",
  "fr-settings",
+]
+
+[[package]]
+name = "fr-router"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-geometry",
+ "fr-settings",
+ "thiserror",
 ]
 
 [[package]]

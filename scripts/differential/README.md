@@ -301,6 +301,23 @@ methods with dozens of branches.
       that line unconditionally, the way `p4t1`'s twin prints
       `JSON_SOURCE_EMPTY`: this side computes the fact, that side states it, and
       the harness's diff is the assertion.
+  - `P6T2.java` — `ShapeSearchTree.completeShape` and `divideLargeRoom` in all
+    three angle regimes (Plan 6 Task 3). Twin: `p6t2`. **This closes the gap
+    `p2t10` documents**: `p2t10`'s eight modes reach "every public
+    `ShapeSearchTree` method except `completeShape`/`divideLargeRoom`", and
+    those two are the pair this driver covers. It declares `package
+    app.freerouting.board.searchtree;` so it can call the `protected`
+    `divideLargeRoom` directly rather than only through `completeShape`, and so
+    it is compiled and run against the clone's HEAD jar with a **JDK 25**, like
+    `p2t10`. It builds the `P2T10.java` board plus `n` random obstacle areas
+    from the shared xorshift stream, seeds the autoroute tree with three
+    `CompleteFreeSpaceExpansionRoom`s (so the `instanceof
+    CompleteFreeSpaceExpansionRoom` branch of all three `completeShape`s is
+    live), and prints, per returned room: the layer, the dimension, the shape
+    and contained shape, and both corner lists as `Double.toString` ordinates.
+    It calls `FRLogger.disableLogging()` first, because `completeShape` warns
+    on stdout for every seed room whose shape is of the wrong class for the
+    regime and the port drops every `FRLogger` payload.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader
@@ -339,9 +356,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t2`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
-  `fr-settings` (for `p4t1`) and since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`).
+  `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
+  since Plan 6 on `fr-router` (for `p6t2`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -364,7 +382,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t2` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -454,7 +472,8 @@ the driver expects, or none at all.
   outline whose edges run in none of the trees' directions (so the line bands
   are `Simplex`es the 45-degree override has to regularise). Run **all eight**:
   between them they reach every public `ShapeSearchTree` method except
-  `completeShape`/`divideLargeRoom` (Plan 6). Modes 0-2 differ only in which
+  `completeShape`/`divideLargeRoom`, which `p6t2` covers (Plan 6 Task 3 — the
+  gap this sentence has documented since Plan 2 is closed). Modes 0-2 differ only in which
   subclass `getAutorouteTree` builds, which is the whole point of the
   angle-parameterised port.
 - `p2t13 <n> <seed> <mode>` — `PlanarDelaunayTriangulation`. `mode` is `0` for
@@ -648,6 +667,26 @@ the driver expects, or none at all.
   P5T2_UNION=1 ./scripts/differential/sweep-p5t2.sh 2      # + the six-hash-mode airline union
   ```
 
+- `p6t2 <seed> <n> <rooms>` — `AutorouteSearchTreeExt::{complete_shape,
+  divide_large_room}` against `ShapeSearchTree.completeShape`/`divideLargeRoom`
+  (Plan 6 Task 3). Defaults `42 20 2000`: 20 random obstacle areas on the
+  `P2T10.java` board and 2 000 random seed rooms **per angle regime**, so one
+  run is 6 000 `completeShape` calls and 6 000 `divideLargeRoom` calls. Each
+  seed room draws its shape as a null (the whole plane), an `IntBox` or a
+  clipped `IntOctagon`, so every regime sees both the shapes it accepts and the
+  ones its `instanceof` guard rejects; the ignored object is drawn from
+  `{null, one of the three seed rooms, one of the three pins}` and the ignore
+  shape from `{null, a random box, one of the three seed rooms grown by a random
+  margin}` — the last of those is what makes `ignoreShape.contains(intersection)`,
+  the only branch of the three `completeShape`s that reads `ignoreShape` at all,
+  fire often rather than never.
+
+  ```sh
+  ./scripts/differential/run.sh p6t2            # 42 20 2000 — 26 979 lines, 0 diffs
+  ./scripts/differential/run.sh p6t2 7 40 2000  # a denser board
+  ./scripts/differential/run.sh p6t2 5 5 2000   # a sparser one
+  ```
+
   **What mode 3 buys, and why it exists.** The ratsnest has exactly one free
   choice in it: `NetIncompletes.calculateNetItems` seeds its outer loop from
   `uniqueItems.iterator().next()` over a `HashSet<Item>`
@@ -738,6 +777,9 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p2t13` (mode 0, 50 points) | 141 | 0 | exact match |
 | `p2t13` (modes 1-7, `30 7 <mode>`) | 7-172 | 0 | exact match (square, collinear triple, duplicates, two-corner objects, grid, tiny range, circle) |
 | `p2t15` (seed 42, n=30, default) | 521 | 0 | exact match |
+| `p6t2` (seed 42, n=20, 2000 rooms) | 26979 | 0 | exact match (6 000 `completeShape` + 6 000 `divideLargeRoom` calls, 2 000 per angle regime) |
+| `p6t2` (seeds 7/123/999/20260829, n=40) | 26433-26933 | 0 | exact match |
+| `p6t2` (seed 0 n=60, seed 42 n=120, seed 5 n=5) | 12809-29588 | 0 | exact match (denser and sparser boards) |
 | `p2t15` (10 seeds × n∈{30,120}) | 499-1111 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
 | `p3t2` (mode 0, seed 42) | 10000000 | 0 | exact match (`Double.toString`/`Float.toString` over random bit patterns) |
 | `p3t2` (mode 1, seed 42) | 1000000 | 0 | exact match (DSN-coordinate-shaped values; adds `formatPlacementRotation`) |

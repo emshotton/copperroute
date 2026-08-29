@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t2" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -190,6 +190,17 @@ case "$driver" in
     default_args=("$DRC_FIXTURES/Issue575-drc_dev-board_4_hole_clearance_violations.dsn")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p6t2)
+    # Plan 6 Task 3: `ShapeSearchTree.completeShape` / `divideLargeRoom` in all three angle
+    # regimes — the two methods `p2t10` skipped. Declares `package app.freerouting.board.searchtree`
+    # so it can call the protected `divideLargeRoom` directly, so it compiles against the clone's
+    # HEAD jar like `p2t10` (plan-6 global constraints: HEAD is the parity jar).
+    javaclass=P6T2
+    javapkg="board.searchtree"
+    default_args=(42 20 2000)
+    needs_jar=1
+    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     ;;
   p5t2)
     # The algorithm-level lists behind that report (plan-5 ruling 14). `P5T1.java` is compiled

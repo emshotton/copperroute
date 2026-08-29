@@ -1679,17 +1679,20 @@ impl ShapeSearchTree {
     }
 }
 
-// added in Plan 6: `ShapeSearchTree.completeShape` (ShapeSearchTree.java:580-693) with its
-// private `restrainShape` (:701-811), and the two overrides
-// `ShapeSearchTree45Degree.completeShape` (ShapeSearchTree45Degree.java:95-281) and
-// `ShapeSearchTree90Degree.completeShape` (ShapeSearchTree90Degree.java:38-191) with their own
+// The two methods `fr-board` cannot carry, because both take and return
+// `autoroute.expansion.IncompleteFreeSpaceExpansionRoom`: they landed in plan-6 Task 3 as an
+// **extension trait in `fr-router`** (`crates/fr-router/src/autoroute/tree_ext.rs`,
+// `AutorouteSearchTreeExt`), which keeps this crate free of expansion rooms — the `RoutingBoardExt`
+// precedent (plan-2 ruling 4). The three angle regimes are dispatched there on
+// [`ShapeSearchTree::angle`], exactly as `SearchTreeManager.getAutorouteTree`
+// (SearchTreeManager.java:147-161) dispatches on the subclass, and the private
 // `restrainShape`/`calcOutsideRestrainedShape`/`calcInsideRestrainedShape`/
-// `obstacleSegmentTouchesInside`/`signedLineDistance` helpers — every one of them takes and
-// returns `IncompleteFreeSpaceExpansionRoom`, which is `autoroute/expansion` and arrives with
-// the maze router in Plan 6.
-// added in Plan 6: `ShapeSearchTree.divideLargeRoom` (ShapeSearchTree.java:1095-1118) and its
-// override `ShapeSearchTree45Degree.divideLargeRoom` (ShapeSearchTree45Degree.java:288-298) —
-// called only from `completeShape`, same reason.
+// `obstacleSegmentTouchesInside`/`signedLineDistance` helpers went with them.
+// renamed: `ShapeSearchTree.completeShape` (ShapeSearchTree.java:580-693) -> `fr_router::autoroute::tree_ext::AutorouteSearchTreeExt::complete_shape`.
+// renamed: `ShapeSearchTree45Degree.completeShape` (ShapeSearchTree45Degree.java:95-281) -> the 45-degree arm of the same trait method.
+// renamed: `ShapeSearchTree90Degree.completeShape` (ShapeSearchTree90Degree.java:38-191) -> the 90-degree arm of the same trait method.
+// renamed: `ShapeSearchTree.divideLargeRoom` (ShapeSearchTree.java:1095-1118) -> `AutorouteSearchTreeExt::divide_large_room`.
+// renamed: `ShapeSearchTree45Degree.divideLargeRoom` (ShapeSearchTree45Degree.java:288-298) -> the 45-degree arm of the same trait method.
 //
 // not ported: the private diagnostic helpers of both subclasses — `describeBounds`,
 // `isCompleteShapeDebugAnchor`, `traceCompleteShapeFilter`, `traceCompleteShapeCandidate`,

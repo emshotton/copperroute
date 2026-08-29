@@ -17,9 +17,10 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 2 of 18
+## State: Task 3 of 18
 
-What exists is the data-model floor the other sixteen tasks build on:
+What exists is the data-model floor the other fifteen tasks build on, plus the
+search-tree extension that turns a seed shape into expansion rooms:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -36,6 +37,7 @@ What exists is the data-model floor the other sixteen tasks build on:
 | `TargetItemExpansionDoor` | `src/autoroute/expansion/target_door.rs` | `TargetItemExpansionDoor.java:11-74` |
 | `ExpansionRoomStore` | `src/autoroute/expansion/mod.rs` | `AutorouteEngine`'s room lists + the heap |
 | `MazeSearchElement` | `src/autoroute/maze/search_element.rs` | `MazeSearchElement.java:1-40` |
+| `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
 
@@ -80,8 +82,43 @@ the class, and `AutorouteEngine.TRACE_WIDTH_TOLERANCE` — the `int = 2` it need
 skipping that would leave `TreeObject::Room` keys in the shared tree naming
 arena slots that no longer exist.
 
+## `AutorouteSearchTreeExt` (Task 3)
+
+`ShapeSearchTree.completeShape` and `divideLargeRoom` are the two methods
+`fr-board` could not carry, because both take and return an
+`IncompleteFreeSpaceExpansionRoom`. They live here as an **extension trait**
+(`src/autoroute/tree_ext.rs`) — the `RoutingBoardExt` precedent, plan-2 ruling
+4 — so `fr-board` stays free of rooms apart from the `TreeObject::Room` key.
+The dispatch is on `ShapeSearchTree::angle()`, because
+`SearchTreeManager.getAutorouteTree` (`SearchTreeManager.java:147-161`) picks
+the Java subclass from exactly that value; there is no subclass hierarchy.
+
+The three regimes are **not** refinements of one another:
+
+| regime | restrains with | divides? | result shapes |
+| --- | --- | --- | --- |
+| `AngleRestriction::None` (base) | half planes off the obstacle's `Simplex` border lines, ranked by `TileShape.distanceToTheLeft` | yes | whatever `TileShape.intersection` produces |
+| `FortyFiveDegree` | one of eight `IntOctagon` ordinates, ranked by `signedLineDistance` (a raw coordinate difference, diagonals halved) | yes, then every shape is replaced by its bounding octagon | `IntOctagon` |
+| `NinetyDegree` | one of four `IntBox` edges | **no** — it returns its raw result | `IntBox` |
+
+Two arguments have no Java counterpart. Java reads `this.board` for the item
+list and the bounding box, and reaches a stored room through the
+`SearchTreeObject` interface; the port cannot, so `complete_shape` resolves
+both kinds of stored object itself, out of an `ItemLookup` and an
+`ExpansionRoomStore`. That is why it never calls `ShapeSearchTree`'s own
+`overlapping_*` family and never reaches the `TreeObject::Room` panics those
+still carry (see the obligation above).
+
+The parity evidence is `scripts/differential/run.sh p6t2` — 2 000 random seed
+rooms per regime against the HEAD jar, 0 diffs over eight seed/density
+configurations — and it closes the gap `scripts/differential/README.md` has
+documented since Plan 2: `p2t10` reached "every public `ShapeSearchTree` method
+except `completeShape`/`divideLargeRoom`". The three fixed scripts in
+`crates/fr-router/tests/tree_ext.rs` are transcribed from that driver's Java
+output.
+
 Everything else — the maze search, the neighbour sorting, the drill pages, the
-path locators, `RoutingBoardExt` — arrives in Tasks 3-17. The deferral roster
+path locators, `RoutingBoardExt` — arrives in Tasks 4-17. The deferral roster
 at the foot of `src/lib.rs` names each class and the task or plan that owns it;
 `grep -rn "added in Task" crates/fr-router/src` lists what is still owed.
 
@@ -157,7 +194,7 @@ sound between connections, when no id from the old arena survives.
 ## Audit
 
 `scripts/audit-map/fr-router.map` maps every class of the five Java packages
-this crate ports (ruling 13). As of Task 2 the package-root invocation reaches
+this crate ports (ruling 13). As of Task 3 the package-root invocation reaches
 **zero MISSING and zero UNMAPPED**, over Task 1's three classes and over the
 whole package root:
 
@@ -173,13 +210,20 @@ The map's header lists the six further invocations — one per subpackage, plus
 `board/actions` and `board/optimize` — that Tasks 3-17 fill in and Task 18 must
 drive to zero. Task 2 moved `autoroute/expansion` from 79 MISSING to **13**
 (the three `Sorted*RoomNeighbours` classes, Tasks 4-5) and `autoroute/maze`
-from 28 to **27**, both at zero UNMAPPED.
+from 28 to **27**, both at zero UNMAPPED; Task 3 left both untouched, because
+`completeShape`/`divideLargeRoom` are `board/searchtree` classes, audited from
+`fr-board`. There the two `// added in Plan 6:` markers on
+`crates/fr-board/src/searchtree/shape_search_tree.rs` became `renamed:` markers
+naming `AutorouteSearchTreeExt`, and `./scripts/audit-port.sh board/searchtree
+crates/fr-board/src` still exits 0.
 
 ## Quirk-register numbering
 
 `docs/java-quirks.md` is allocated **contiguously, in the order rows are
 written**. Plan 6's plan text labels its rows `#155`–`#168`, but `#155` was
 already taken by Plan 5, so those labels are **not** row ids. Task 2 wrote the
-first three Plan 6 rows and they landed as **#156, #157, #158**; the next free
-id is **#159**. Every later task must re-read the register's last row rather
-than trust the plan's labels — the plan carries an amendment saying so.
+first three Plan 6 rows and they landed as **#156, #157, #158**; Task 3 wrote
+**#159** (`ShapeSearchTree90Degree.completeShape` drops a room the base class
+and the 45-degree override keep), so the next free id is **#160**. Every later
+task must re-read the register's last row rather than trust the plan's labels —
+the plan carries an amendment saying so.
