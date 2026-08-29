@@ -717,21 +717,42 @@ board). Ruling L cost nothing.
 
 ## 10. Obligations for later plans
 
-### Plan 5 (`fr-drc`)
+### Plan 5 (`fr-drc`) — all three answered; see `docs/plan-5-handoff.md`
 
-- **`DesignRulesCheckerSettings` lives in this crate, and its `enabled` field is
-  a primitive `boolean`.** Rule 2 of `copyFields` suppresses primitive defaults
+- ~~**`DesignRulesCheckerSettings` lives in this crate, and its `enabled` field is
+  a primitive `boolean`.**~~ — **moot: Plan 5 does not consume it at all**
+  (plan-5 ruling 12, Task 3 `6a7b5d0`). Rule 2 of `copyFields` suppresses
+  primitive defaults
   (`ReflectionUtil.java:235-238`), so **`enabled = false` and
   `include_warnings = false` are unmergeable** — a source that wants to turn
-  either off cannot, in Java or here (quirk #115). Any Plan 5 code that reads
-  these settings must not assume a `false` it sees came from a source.
-- **The DRC report's own JSON schema is Plan 5's, not this crate's.**
-  `fr-settings`' `json.rs` reproduces `GsonProvider` for `RouterSettings` only.
-  (Plan 3 already ruled that the DRC report must not reuse `IndentFileWriter`
-  either.)
+  either off cannot, in Java or here (quirk #115). That would have mattered if
+  anything read the settings; **nothing does, in Java either**.
+  `DesignRulesChecker` stores the object in a `private final` field
+  (`DesignRulesChecker.java:32`, assigned at `:45`) and never mentions it again,
+  and `includeWarnings`/`includeErrors` are read nowhere in the tree — recorded
+  as **quirk #155**, with the re-count that 12 of the 14 constructions in
+  `src/main` pass `null`. So `DesignRulesChecker::new(&mut Board)` takes **no
+  settings parameter**, and `fr-drc` has **no `fr-settings` dependency**. If a
+  later upstream release starts reading the field, `fr-drc` gains one dependency
+  and one parameter, and quirk #115 becomes live again.
+- ~~**The DRC report's own JSON schema is Plan 5's, not this crate's.**~~ —
+  **done** (Tasks 7-8, `b127bd3`/`f73d5fb`).
+  `fr-settings`' `json.rs` reproduces `GsonProvider` for `RouterSettings` only;
+  the DRC report's four DTOs and its two key tables live in
+  `crates/fr-drc/src/report/`. (Plan 3 also ruled that the DRC report must not
+  reuse `IndentFileWriter`, and it does not.) What *is* shared is the number
+  formatter: plan-5 ruling 7 moved `JavaNumberFormatter` out of
+  `fr-settings::json` and down into `fr_dsn::format::json` (Task 1, `1a8f0a9`),
+  so both crates render Gson bytes from one copy. `fr-settings`' entry points
+  and its whole `tests/json.rs` were left untouched, which is the proof the move
+  was behaviour-preserving.
 - `-drc`'s `routerSettings.enabled = false` writes only the dead `LegacyBridge`
   (quirk #131). If Plan 5 wants `-drc` to actually disable the router it is
-  making the port more capable than Java — Plan 8's decision, below.
+  making the port more capable than Java — Plan 8's decision, below. —
+  **restated for Plan 8, unchanged.** Plan 5 never touched the `-drc` argument
+  path (plan-5 ruling 13 puts `Freerouting.initializeDrc` in Plan 8) and
+  `crates/freerouting` has no Plan 5 commit, so the decision arrives at Plan 8
+  exactly as Plan 4 left it.
 
 ### Plans 6/7 (`fr-router`)
 

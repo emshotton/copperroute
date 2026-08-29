@@ -139,7 +139,7 @@ pub mod prelude {
 // --- Consumers of this crate that belong to other plans --------------------------------------
 //
 // added in Plan 6: autoroute/pipeline/AutorouteUnroutedReport.build (autoroute/pipeline/AutorouteUnroutedReport.java:19-80) — the diagnostic report the autorouter emits when it stagnates. It is a *consumer* of this crate (`new DesignRulesChecker(board, null)`, `calculateAllIncompletes()`, `getAllAirlines()` at `:20-22`) and belongs to the router, not the DRC layer; it is package-private, so `audit-port.sh` would not see it either way.
-// added in Plan 8: board/state/BoardComparator.java (758 loc) — diffs two boards for the result-manifest/report layer (spec §10). Plan-5 ruling 13 established that nothing in `drc/**` or the `-drc` path references it, so it is **not** the DRC layer's. Its marker still reads `// added in Plan 5:` at `crates/fr-board/src/board/mod.rs:57`; re-pointing that line to Plan 8 is Task 12's, per the ruling, and this line records the decision at the crate the ruling was made in.
+// added in Plan 8: board/state/BoardComparator.java (758 loc) — diffs two boards for the result-manifest/report layer (spec §10). Plan-5 ruling 13 established that nothing in `drc/**` or the `-drc` path references it, so it is **not** the DRC layer's. Its marker at `crates/fr-board/src/board/mod.rs:57` was re-pointed to Plan 8 by Plan 5 Task 12, per the ruling; this line records the decision at the crate the ruling was made in.
 
 // --- Dropped parameters and helpers ----------------------------------------------------------
 //

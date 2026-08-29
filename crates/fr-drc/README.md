@@ -21,7 +21,7 @@ and **no clock** — `KiCadDrcReport`'s `ZonedDateTime.now()`
 
 Deliberate Java bugs are reproduced rather than fixed; each carries a
 `// Java bug:` or `// totalized:` marker at the site and a row in
-`docs/java-quirks.md`. Rows **144-154** are this crate's.
+`docs/java-quirks.md`. Rows **144-155** are this crate's.
 
 `ClearanceViolation` itself is defined in **`fr-board`**, in
 `items/clearance_violation.rs` (ruling 9): `Item.clearanceViolations` returns

@@ -26,7 +26,7 @@ use fr_board::ClearanceViolation;
 /// four on every path, including the empty one.
 ///
 /// The `@SerializedName`s are snake_case and match the schema; unlike the DRC report (plan-5
-/// ruling 1, quirks row #143) this class has no camelCase drift.
+/// ruling 1, quirks row #154) this class has no camelCase drift.
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct BoardStatisticsClearanceViolations {
     /// Java `totalCount` (BoardStatisticsClearanceViolations.java:9-10): the size of the

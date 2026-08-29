@@ -167,6 +167,10 @@ obligations first, per the brief).
     JVM-verified: square grids lose edges at every tested size, and a 7×7
     grid disconnects in ~1.4e-4 of random 20-point draws). Plan 5 inherits
     this as a hard constraint on `NetIncompletes`, not a free improvement.
+    **Honoured, and it stays unfixed:** Plan 5 Task 5 built `NetIncompletes`
+    on the unfixed triangulation, and that is what makes the port's ratsnest
+    reproduce the jar's edge set exactly once the seed order is pinned. Plans
+    6/7 inherit it unchanged.
 
 ## Corrections to the plan discovered during execution
 
@@ -406,22 +410,39 @@ resolved the items marked ✓ below — verified against the committed tree)
   Plan 2 directories under the tightened script before adding `fr-dsn`'s own.
   **Do not weaken the script to make this go away.**
 
-**Plan 5 (DRC/autorouter core):**
+**Plan 5 (DRC/autorouter core)** — the two DRC bullets are settled by Plan 5
+(`docs/plan-5-handoff.md`): the second is discharged, the first stays open by
+design:
 - **Quirk #82 (Delaunay in-circle degenerate on axis-aligned input) must
-  not be fixed while porting `NetIncompletes`.** It is a real, JVM-verified
+  not be fixed while porting `NetIncompletes`.** — **STILL OPEN, and now
+  binding on Plans 6/7 as well.** It is a real, JVM-verified
   Java bug (square grids lose edges at every size; a 7×7 grid can
   disconnect), reproduced byte-for-byte by this port. Fixing it changes
   which airlines the ratsnest emits and therefore what the autorouter
   routes — a post-parity change only, once DRC parity against the Java
   engine is proven, with the ratsnest expectations re-baselined in the same
-  commit.
-- **`Board::clearance_violations`/`clearance_violation_count` are markers,
-  not implementations.** `Item.clearanceViolations`
+  commit. **Plan 5 honoured it**: `NetIncompletes` (Task 5, `16e573c`) was
+  built on the unfixed triangulation, which is *why* the port's ratsnest
+  matches the jar's edge for edge once the seed order is pinned (`p5t2`
+  mode 3, 112/112 rows). The bug is now load-bearing in two crates rather
+  than one, so the re-baseline it eventually needs is larger, not smaller.
+- ~~**`Board::clearance_violations`/`clearance_violation_count` are markers,
+  not implementations.**~~ — **discharged in Plan 5 Task 2** (`0275ad7`,
+  with fix round `e527626`). `Item.clearanceViolations`
   (Item.java:363-469, `Via`'s override at Via.java:88-112,
   `calculateClearanceBetweenTwoShapes` at Item.java:471-493) and
-  `clearanceViolationCount` (Item.java:357-361) are explicitly deferred
+  `clearanceViolationCount` (Item.java:357-361) were explicitly deferred
   (`items/mod.rs`, `connectivity.rs:992`) because they build
-  `drc.ClearanceViolation` objects, which is Plan 5's DRC layer to define.
+  `drc.ClearanceViolation` objects, which was Plan 5's DRC layer to define.
+  They now live in `crates/fr-board/src/board/clearance.rs` with
+  `ClearanceViolation` itself in `crates/fr-board/src/items/clearance_violation.rs`
+  (plan-5 ruling 9 — `fr-board` cannot depend upward on `fr-drc`, so the type
+  is defined here and re-exported as `fr_drc::ClearanceViolation`). All four
+  take `&mut self` (plan-5 ruling 8): Java's method lowers `smallestClearance`
+  and advances the search tree's entry counter, and hiding either behind
+  interior mutability would make quirk #153 invisible. **Both
+  `// added in Plan 5:` markers are consumed**, and `grep -rn "added in Plan 5"
+  crates/` now returns nothing.
 - ~~Apply Java's flag normalisation (`-oit /100`, `-mp`/`-mt` clamps,
   `-us`/`-is` folding) in `fr-settings`~~ — **discharged in Plan 4 Task 7**
   (`crates/fr-settings/src/sources/cli.rs`; see `docs/plan-4-handoff.md` and the

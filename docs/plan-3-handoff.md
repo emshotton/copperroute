@@ -664,22 +664,38 @@ would still surface as a `DIFF` on a mode nobody excused.
   untouched, so the rewire is Plan 8's one-call change. Plan 8 must also decide
   whether to make the five dead flags live (see `docs/plan-4-handoff.md` §10).
 
-### Plan 5 (`fr-drc`)
+### Plan 5 (`fr-drc`) — all three answered; see `docs/plan-5-handoff.md`
 
 - **`BoardMetadata::router_settings` consumers.** `read_board` returns `Success`
   with `metadata: None`; **only `read_metadata` fills it** (`DsnReader.readBoard`
   does the same in Java). Any Plan 5 code that wants metadata from a board read
   must call `read_metadata` on a second pass over the same bytes, or accept
-  `None` — it is not a bug to be "fixed" in the reader.
-- **The DRC report should *not* reuse `IndentFileWriter`.** Decided here so it is
+  `None` — it is not a bug to be "fixed" in the reader. — **Plan 5 never needed
+  it, and the note stays open for Plans 6-8.** Nothing in `fr-drc`, in its test
+  suites or in the `p5t1`/`p5t2` drivers calls `read_metadata`: the DRC surface
+  takes `DrcCoordinates`/`DrcReportOptions` as *parameters* (plan-5 ruling 5),
+  so the only thing it wants from the read is the board and the
+  `coordinate_transform`, both of which `Success` already carries. `grep -rn
+  read_metadata crates/fr-drc scripts/differential` is empty. The obligation
+  therefore lands on whoever wires `-drc`'s router settings — Plan 8.
+- ~~**The DRC report should *not* reuse `IndentFileWriter`.**~~ — **honoured in
+  Plan 5 Task 8** (`f73d5fb`, `e6a788d`). Decided there so it is
   not re-litigated: `IndentFileWriter` is a faithful port of Java's
   S-expression indenter (`start_scope`/`start_scope_nl`/`new_line`, two-space
   indent, no escaping), and spec §3's DRC clause asks for JSON. Bending it into
   a JSON emitter would put a parity-critical type on a non-parity path where a
-  future edit could silently change `.dsn` output. Plan 5 should write JSON with
-  its own serialiser.
+  future edit could silently change `.dsn` output. Plan 5 wrote its own
+  serialiser: `crates/fr-drc/src/report/json.rs` renders through
+  `fr_dsn::format::json::to_gson_string_pretty` — Plan 4's Gson-compatible
+  formatter, which plan-5 ruling 7 moved *down* into `fr-dsn` (Task 1,
+  `1a8f0a9`) so `fr-settings` and `fr-drc` share one copy instead of two.
+  `IndentFileWriter` is untouched and no `.dsn`/`.ses` byte moved (`p3t15`
+  stays MATCH over the whole sweep).
 - **Quirk #82 (Delaunay in-circle degenerate on axis-aligned input) must not be
-  fixed while porting `NetIncompletes`** — carried unchanged from Plan 2.
+  fixed while porting `NetIncompletes`** — carried unchanged from Plan 2, and
+  **still open after Plan 5**: Task 5 ported `NetIncompletes` on top of the
+  unfixed triangulation, which is what makes `p5t2` mode 3 match the jar's
+  airline endpoints on all 112 rows. Plans 6/7 inherit it unchanged.
 
 ### Plans 6/7 (`fr-router`)
 

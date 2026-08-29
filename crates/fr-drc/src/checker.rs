@@ -19,13 +19,15 @@ use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 /// (`ShapeSearchTree.lastGeneratedEntryId`, ShapeSearchTree.java:55), exactly as Java's does.
 /// Java hides both behind a `final BasicBoard` field; the port says so in its type.
 ///
-// not ported: DesignRulesChecker.drcSettings (DesignRulesChecker.java:32, :44) — the field is
-// stored and never read; 10 of Java's 15 constructions pass `null`, including both
-// `BoardStatistics` call sites (`:268`, `:339`) and every `autoroute/pipeline/*`, and
+// not ported: DesignRulesChecker.drcSettings (DesignRulesChecker.java:32, :45) — the field is
+// stored and never read; 12 of the 14 constructions in `src/main` pass `null` (re-counted at the
+// clone's HEAD by Task 12; only `Freerouting.java:333` and `api/v1/JobOutputResource.java:645`
+// pass a real object), including both `BoardStatistics` call sites
+// (`BoardStatistics.java:268`, `:339`) and every `autoroute/pipeline/*`, and
 // `includeWarnings`/`includeErrors` filter nothing. Taking it would force `fr-drc -> fr-settings`
 // for a dead field (plan-5 ruling 12). Plan 4's quirk #115 — a primitive `boolean` `false` is
 // unmergeable, so those two flags cannot be turned off through the settings ladder anyway — is
-// the cross-reference.
+// the cross-reference. Quirks row #155.
 //
 // The remaining members of the Java class, each with the task that owns it:
 //
