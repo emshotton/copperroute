@@ -321,6 +321,20 @@ fn field_names_pin_javas_declaration_order() {
             "timeout_string",
         ]
     );
+    assert_eq!(
+        DesignRulesCheckerSettings::FIELD_NAMES,
+        &["enabled", "include_warnings", "include_errors"]
+    );
+    assert_eq!(
+        DebugSettings::FIELD_NAMES,
+        &[
+            "enable_detailed_logging",
+            "single_step_execution",
+            "trace_insertion_delay",
+            "filter_by_net",
+            "operation_filters",
+        ]
+    );
 }
 
 // --- HostEnvironment ----------------------------------------------------------------------------

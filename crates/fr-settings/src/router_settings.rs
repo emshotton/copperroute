@@ -211,7 +211,13 @@ impl RouterSettings {
 
 // `RouterSettings.clone()` (RouterSettings.java:486-522) is intentionally left MISSING for this
 // task: unlike the four nested structs' clone() methods, it is not a plain deep copy — it
-// recomputes the layer count via getLayerCount()/setLayerCount(), delegates to each nested
-// object's own clone(), and (Java bug candidate, not yet filed: needs re-verification once
-// applyNewValuesFrom/validate exist) never copies `resultJsonPath`. Reproducing it correctly is
-// the merge engine's job (Task 2/3), not this task's plain-data-model scope.
+// recomputes the layer count via getLayerCount()/setLayerCount(), and delegates to each nested
+// object's own clone(). Reproducing it correctly (Task 4's job, not this task's plain-data-model
+// scope) must also reproduce:
+//
+// Java bug: RouterSettings.clone (RouterSettings.java:487-524) never assigns
+// `result.resultJsonPath` — every other scalar field is explicitly re-copied in the method body,
+// but this one is silently missing from that list, so a cloned RouterSettings always loses its
+// result-manifest path. Confirmed by reading the method body end to end (not yet a Rust behaviour
+// to test against, since `clone()` doesn't exist here yet); see docs/java-quirks.md #114. Rust
+// location: ported in Task 4 (`clone`).
