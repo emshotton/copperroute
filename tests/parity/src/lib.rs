@@ -69,6 +69,26 @@ pub fn normalize_whitespace(s: &str) -> String {
     out
 }
 
+/// Returns false and prints a skip message when the sibling Java checkout is absent.
+///
+/// The committed `tests/reference/` outputs travel with this repository, but the *inputs* they
+/// were generated from live in `../freerouting/fixtures` (or `$FREEROUTING_JAVA_DIR`), which is
+/// not vendored. A suite that reads a fixture must call this first and return early, so
+/// `cargo test` on a bare checkout skips loudly instead of panicking on a missing file.
+pub fn require_java_dir() -> bool {
+    let dir = java_dir();
+    if dir.join("fixtures").is_dir() {
+        true
+    } else {
+        eprintln!(
+            "SKIP: Java fixture corpus not found at {} — check out the freerouting repo as a \
+             sibling directory, or set FREEROUTING_JAVA_DIR",
+            dir.display()
+        );
+        false
+    }
+}
+
 /// Returns false and prints a skip message when a reference file is absent.
 pub fn require_reference(path: &Path) -> bool {
     if path.exists() {

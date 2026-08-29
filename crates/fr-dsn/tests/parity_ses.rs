@@ -47,6 +47,10 @@ const FIXTURES: [(&str, &str); 4] = [
 /// fixed-state and `(plane …)` writers have a committed byte-exact gate. `Issue413-test` is the
 /// only reference in the tree whose SES carries `(wire` entries — 11 of them — so it is the one
 /// that pins `SesWriter.writeRoutesScope`'s trace path against Java.
+/// The one stem — of all seven — whose `unrouted.ses` carries `(wire` entries.
+/// [`no_reference_contains_a_wire`] excludes it; [`ruling_g_references_do_carry_wires`] pins it.
+const WIRE_BEARING_STEM: &str = "Issue413-test";
+
 const RULING_G_FIXTURES: [(&str, &str); 3] = [
     ("Issue413-test", "fixtures/Issue413-test.dsn"),
     ("Issue110-RelayModule", "fixtures/Issue110-RelayModule.dsn"),
@@ -101,6 +105,9 @@ fn write_ses(relative_fixture: &str, design: &str) -> String {
 }
 
 fn assert_ses_parity(stem: &str, relative_fixture: &str) {
+    if !parity::require_java_dir() {
+        return;
+    }
     let reference = parity::reference(stem, "unrouted.ses");
     if !parity::require_reference(&reference) {
         return;
@@ -140,6 +147,9 @@ fn issue143_rpi_splitter_ses_matches_java() {
 /// trailing space on `(routes `, `(library_out ` or `(network_out `) still fails.
 #[test]
 fn every_reference_is_byte_for_byte_identical_to_java() {
+    if !parity::require_java_dir() {
+        return;
+    }
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
         let reference_path = parity::reference(stem, "unrouted.ses");
         if !parity::require_reference(&reference_path) {
@@ -168,16 +178,23 @@ fn every_reference_is_byte_for_byte_identical_to_java() {
     }
 }
 
-/// `tests/reference/README.md`'s "0 `(wire` entries" claim, asserted against the four original
-/// references themselves — the premise of the brief's "a wire in the output means a
+/// `tests/reference/README.md`'s "0 `(wire` entries" claim, asserted against the references
+/// themselves — the premise of the brief's "a wire in the output means a
 /// `get_connectable_items`/fixed-state bug, not a formatting one".
 ///
-/// [`RULING_G_FIXTURES`] is deliberately excluded: those were added precisely because they *do*
-/// have routed wiring, and [`ruling_g_references_do_carry_wires`] pins the opposite property for
-/// them.
+/// Covers **all six wire-free stems**, the ruling-G ones included: only
+/// [`WIRE_BEARING_STEM`] has routed wiring, and [`ruling_g_references_do_carry_wires`] pins the
+/// opposite property for that one. Between them the two tests say "exactly one of the seven
+/// references exercises `SesWriter`'s trace path", which is what
+/// `tests/reference/README.md` claims.
 #[test]
 fn no_reference_contains_a_wire() {
-    for (stem, _) in FIXTURES {
+    for (stem, _) in FIXTURES
+        .iter()
+        .chain(RULING_G_FIXTURES.iter())
+        .copied()
+        .filter(|(stem, _)| *stem != WIRE_BEARING_STEM)
+    {
         let reference_path = parity::reference(stem, "unrouted.ses");
         if !parity::require_reference(&reference_path) {
             continue;
@@ -216,6 +233,9 @@ fn no_reference_contains_a_wire() {
 // renamed: sesWriterProducesValidHeader -> valid_header (the task brief's name).
 #[test]
 fn valid_header() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let content = write_ses(
         "fixtures/Issue026-J2_reference.dsn",
         "Issue026-J2_reference.dsn",
@@ -235,6 +255,9 @@ fn valid_header() {
 // renamed: sesWriterOutputIsNonEmpty -> output_is_non_empty (the task brief's name).
 #[test]
 fn output_is_non_empty() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let content = write_ses("fixtures/Issue143-rpi_splitter.dsn", "test.dsn");
     assert!(
         !content.is_empty(),
@@ -245,6 +268,9 @@ fn output_is_non_empty() {
 /// `SesRoundTripTest.placementRotationFormattingMatchesKicadStyle` (SesRoundTripTest.java:271-278).
 #[test]
 fn placement_rotation_formatting_matches_kicad_style() {
+    if !parity::require_java_dir() {
+        return;
+    }
     assert_eq!(format_placement_rotation(0.0), "0");
     assert_eq!(format_placement_rotation(339.0), "339");
     assert_eq!(format_placement_rotation(338.5), "338.5");
@@ -263,6 +289,9 @@ fn placement_rotation_formatting_matches_kicad_style() {
 /// covering the writer alone.
 #[test]
 fn issue742_placement_and_library_out_are_well_formed() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let fixture = parity::java_dir().join("fixtures/Issue742-tastexx-pcb.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());
@@ -290,7 +319,7 @@ fn issue742_placement_and_library_out_are_well_formed() {
 /// covering the committed corpus too.
 #[test]
 fn ruling_g_references_do_carry_wires() {
-    let reference_path = parity::reference("Issue413-test", "unrouted.ses");
+    let reference_path = parity::reference(WIRE_BEARING_STEM, "unrouted.ses");
     if !parity::require_reference(&reference_path) {
         return;
     }
@@ -305,6 +334,9 @@ fn ruling_g_references_do_carry_wires() {
 
 #[test]
 fn every_fixture_is_balanced_with_unique_library_padstacks() {
+    if !parity::require_java_dir() {
+        return;
+    }
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
         let content = write_ses(relative_fixture, stem);
         common::assert_balanced_scopes(&content);

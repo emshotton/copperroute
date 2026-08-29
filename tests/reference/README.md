@@ -40,8 +40,11 @@ controller ruling G added three more in Task 15 to close that:
 | `Issue753-CPU-85_r104` | 3 `(plane …)`, 65 `polyline_path` | 273,049 B | 0 |
 
 `Issue413-test` is the only reference whose `unrouted.ses` carries `(wire`
-entries, so it is the one that pins `SesWriter`'s trace path; the other six
-are wire-free, which `parity_ses.rs`'s `no_reference_contains_a_wire` asserts.
+entries, so it is the one that pins `SesWriter`'s trace path. The other six are
+wire-free. Both halves of that are asserted: `parity_ses.rs`'s
+`no_reference_contains_a_wire` runs over all six wire-free stems (the ruling-G
+ones included) and `ruling_g_references_do_carry_wires` pins `Issue413-test`'s
+11 entries.
 
 **Never edit a generated file by hand** — regenerate with the script. Adding a
 stem to `fixtures.txt` and re-running is the whole procedure; the script is

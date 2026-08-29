@@ -401,6 +401,18 @@ the driver expects, or none at all.
   SWEEP_OUT=/tmp/sweep ./scripts/differential/sweep-p3t15.sh   # keep the differing outputs
   ```
 
+## Deferred coverage and cleanups
+
+Recorded here rather than only in a task report, so they survive into the next
+plan. None blocks anything; each is a known gap in this harness or in what it
+covers.
+
+| Item | Why it is open | Raised by |
+|---|---|---|
+| `p3t2` mode 0 never formats a rotation above `1e7` | `formatPlacementRotation` is exercised in modes 1-3, whose generators keep values inside DSN coordinate ranges and `[0, 360)`. `Double.toString` switches to `E` notation at `1e7`, and no mode drives a *rotation* across that boundary — so the `String.format("%.3f", …)` path is unproven for a value that large. Java only ever passes it a placement angle, so nothing reachable produces one; it is coverage debt, not a suspected bug. | Plan 3 Task 2 review |
+| `crates/fr-dsn/src/format/double.rs` shadows `point` twice (`:148` `i32`, `:154` `usize`) | Deliberate — the first is signed so the "value below 1" branch can subtract, the second is the index the layout loop needs — but two bindings of one name in twelve lines is easy to misread. A rename (`point_signed` / `point`) is a safe, mechanical change nobody has had a reason to make yet. | Plan 3 Task 2 review |
+| `JavaRandom` is copied into four driver binaries | `t15`, `t16r`, `p2t13` and `p3t2` each carry their own transcription of `java.util.Random`'s LCG. They agree today (every driver that uses one is zero-diff), but four copies is four chances to drift. The package has had a shared module since Plan 3 Task 15 (`src/token_dump.rs`, included with `#[path]`); the same mechanism would collapse these four. | Plan 3 Task 2 review |
+
 ## Known, expected diffs
 
 Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,

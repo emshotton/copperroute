@@ -64,13 +64,19 @@ public final class P3T15 {
     }
 
     // `FRLogger` logs to `System.out`, and the reader warns freely; bind this driver's own
-    // output to the real stdout and silence `System.out`/`System.err` before FRLogger is loaded,
-    // exactly as `P3T3` and the `*Probe.java` golden generators do.
+    // output to the real stdout and silence `System.out` before FRLogger is loaded, exactly as
+    // `P3T3` and the `*Probe.java` golden generators do.
+    //
+    // `System.err` is deliberately left alone. Java can *throw* out of this driver — reading a
+    // board with no `(library …)` scope and then calling `RulesWriter.write` NPEs, see
+    // `docs/java-quirks.md` — and the uncaught-exception handler's stack trace on stderr, plus
+    // the non-zero exit status, are the only things that tell a caller "Java crashed" apart from
+    // "Java disagreed". `sweep-p3t15.sh` redirects stderr to a side file and records both exit
+    // codes for exactly that reason. Nothing on stderr can reach the diffed stream.
     PrintStream out =
         new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
     OutputStream raw = new FileOutputStream(FileDescriptor.out);
     System.setOut(new PrintStream(OutputStream.nullOutputStream()));
-    System.setErr(new PrintStream(OutputStream.nullOutputStream()));
 
     String designName = Path.of(path).getFileName().toString().replaceAll("\\.dsn$", "");
 

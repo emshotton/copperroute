@@ -158,15 +158,43 @@ suites.
   every `.dsn` in `../freerouting/fixtures` and compares the
   `BoardReadResult` variant and the complete warning list, message for
   message, against a golden captured from the same jar. 105 files: 104
-  `Success`, one `ParseError`. It is `#[ignore]`d in debug (~90 s) and run
-  with `cargo test -p fr-dsn --release -- --ignored`.
+  `Success`, one `ParseError`.
+
+  **It is `#[ignore]`d in a debug build** (~90 s) and runs unconditionally in
+  release — `cargo test -p fr-dsn --release`, or `--ignored` in debug. The
+  Plan 3 brief asked for a non-`#[ignore]`d corpus test; controller ruling I
+  kept the debug-only `ignore` because 90 s is unreasonable in the default
+  suite. **The consequence is real and worth stating: the full 105-file
+  corpus check runs only in a release build or under `--ignored`, i.e. in CI
+  or on request, not in a bare `cargo test`.** Its always-on sibling,
+  `the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant`,
+  costs milliseconds and covers what would otherwise rot unnoticed: that the
+  golden parses, that it still names all 105 files including the five the
+  brief calls out by name, and that each of those five reads to the variant
+  the golden records.
 - **The `p3t15` sweep** (`scripts/differential/sweep-p3t15.sh`) runs the DSN
   reader and all three writers, plus the raw token stream, against the 2.3.0
   jar over all 106 fixtures — see below.
 
-Every suite skips itself with a printed message when the sibling
-`../freerouting` checkout is absent (`parity::require_reference`), so the
-crate still builds and tests without it.
+### What needs the sibling checkout
+
+`tests/reference/` travels with this repository, but the fixtures those
+outputs were generated from do not. Two different behaviours when
+`../freerouting` (or `$FREEROUTING_JAVA_DIR`) is missing:
+
+- **`parity_dsn.rs`, `parity_ses.rs` and the two corpus tests in
+  `dsn_reader.rs` skip with a printed message** — they call
+  `parity::require_java_dir()` first and return.
+- **Every other fixture-reading suite fails**: `library_scope.rs`,
+  `network_scope.rs`, `placement_scope.rs`, `structure_scope.rs`,
+  `rules_round_trip.rs`, `ses_round_trip.rs` and the rest of `dsn_reader.rs`
+  read through `tests/common/mod.rs`'s `fixture()`, which resolves
+  `../../../freerouting/fixtures/` at compile time and panics on a missing
+  file. It also ignores `FREEROUTING_JAVA_DIR`. Extending the guard to those
+  suites means a call site per test, not a helper change.
+
+Everything that reads only `tests/data/` or `tests/reference/` — the lexer,
+the number formatters, `IdentifierType` — needs no checkout at all.
 
 ## Differential drivers
 
@@ -196,10 +224,20 @@ driver reaches them.
 ```
 
 `scripts/differential/README.md` has the baseline line counts and the
-known-diffs table, including the one expected diff: the 2.3.0 jar's
-`DsnFile.readStringScope` has no resync loop where HEAD's does, and the port
-follows HEAD, so `Issue229-display-8-digit-hc595.dsn` legitimately builds a
-different board under the two readers (controller ruling E).
+known-diffs table. The sweep is 530 pairs with **0 unexpected diffs** and two
+expected sites:
+
+- `Issue229-display-8-digit-hc595.dsn`, modes 0-3 (controller ruling E): the
+  2.3.0 jar's `DsnFile.readStringScope` has no resync loop where HEAD's does,
+  and the port follows HEAD, so the two readers legitimately build different
+  boards. Mode 4 — the raw token stream — still matches, which is what
+  localises the divergence to the parser rather than the scanner, so the
+  sweep script excuses only modes 0-3 by name.
+- `empty_board.dsn`, mode 3: the file has no `(library …)` scope, so Java's
+  `BoardLibrary.padstacks` stays `null` and `RulesWriter.writeRules` throws a
+  `NullPointerException` on `padstacks.count()`. The port's field is a value,
+  so it writes a complete `.rules` file. Modes 0-2 match, which localises it
+  to `RulesWriter`. See `docs/java-quirks.md`'s totalization table.
 
 ## Audit
 

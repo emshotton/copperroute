@@ -673,6 +673,128 @@ fn a_missing_via_padstack_fails_the_read_and_loses_its_warning() {
 
 // -------------------------------------------------------------------- the corpus smoke test
 
+/// The `.dsn` corpus the golden was captured from. Honours `FREEROUTING_JAVA_DIR` through
+/// `parity::java_dir`, unlike `common::fixture`'s compile-time path.
+fn corpus_dir() -> std::path::PathBuf {
+    parity::java_dir().join("fixtures")
+}
+
+/// The five fixtures the task brief names explicitly, so that a corpus reshuffle cannot quietly
+/// drop them: the non-ASCII identifiers, and the four minimal reproductions of the two hangs
+/// plan ruling 4 exists for. The golden pins the whole list, but only by content — these are
+/// pinned by name, by both tests below.
+const NAMED_CORPUS_FIXTURES: [&str; 5] = [
+    "Issue110-Паяльная станция.dsn",
+    "Issue756-minimal-hang.dsn",
+    "Issue756-minimal-ok.dsn",
+    "Issue757-minimal-soe.dsn",
+    "Issue757-minimal-soe-ok.dsn",
+];
+
+/// Parses `corpus-read-results.txt` into `(fixture name, variant)` pairs.
+///
+/// The golden's shape is one `FIXTURE <name> <variant> warnings=<n>` line per file, each
+/// optionally followed by `  W <message>` continuation lines. Anything else is a corrupt golden
+/// and fails the parse.
+///
+/// Positions in the messages below are **entry numbers**, not file line numbers:
+/// `common::golden` strips the `#` header before this sees the file.
+fn corpus_golden_variants() -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for (i, line) in common::golden("corpus-read-results.txt").iter().enumerate() {
+        if line.starts_with("  W ") {
+            assert!(
+                !out.is_empty(),
+                "corpus-read-results.txt entry {}: warning line before any FIXTURE line",
+                i + 1
+            );
+            continue;
+        }
+        let rest = line.strip_prefix("FIXTURE ").unwrap_or_else(|| {
+            panic!(
+                "corpus-read-results.txt line {}: expected `FIXTURE `, got {line:?}",
+                i + 1
+            )
+        });
+        let (name, tail) = rest.rsplit_once(' ').unwrap_or_else(|| {
+            panic!(
+                "corpus-read-results.txt line {}: no `warnings=` field in {line:?}",
+                i + 1
+            )
+        });
+        assert!(
+            tail.starts_with("warnings="),
+            "corpus-read-results.txt entry {}: expected `warnings=<n>`, got {tail:?}",
+            i + 1
+        );
+        let (name, variant) = name.rsplit_once(' ').unwrap_or_else(|| {
+            panic!(
+                "corpus-read-results.txt line {}: no variant in {line:?}",
+                i + 1
+            )
+        });
+        assert!(
+            matches!(
+                variant,
+                "Success" | "OutlineMissing" | "ParseError" | "IoError"
+            ),
+            "corpus-read-results.txt entry {}: unknown variant {variant:?}",
+            i + 1
+        );
+        out.push((name.to_string(), variant.to_string()));
+    }
+    out
+}
+
+/// The always-on half of the corpus check (controller ruling I).
+///
+/// [`every_fixture_in_the_corpus_matches_javas_result_and_warnings`] is `#[ignore]`d in debug
+/// because it takes ~90 s, so on a default `cargo test` nothing would notice a corrupted golden
+/// or a corpus that had lost one of the five fixtures the brief names. This one costs
+/// milliseconds and covers exactly that: the golden parses, it names all 105 files including the
+/// five, and each of those five still reads to the variant the golden records.
+///
+/// Skips with a printed message when the sibling Java checkout is absent, like every other
+/// fixture-reading suite in this crate.
+#[test]
+fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
+    let golden = corpus_golden_variants();
+    assert_eq!(
+        golden.len(),
+        105,
+        "corpus-read-results.txt should name all 105 fixtures"
+    );
+    for required in NAMED_CORPUS_FIXTURES {
+        assert!(
+            golden.iter().any(|(name, _)| name == required),
+            "{required} is missing from corpus-read-results.txt"
+        );
+    }
+
+    if !parity::require_java_dir() {
+        return;
+    }
+    let options = DsnReadOptions::default();
+    for required in NAMED_CORPUS_FIXTURES {
+        let expected = &golden
+            .iter()
+            .find(|(name, _)| name == required)
+            .expect("checked above")
+            .1;
+        let path = corpus_dir().join(required);
+        let bytes =
+            std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+        let result = read_board(&bytes[..], None, Some(required), &options);
+        let variant = match &result {
+            BoardReadResult::Success { .. } => "Success",
+            BoardReadResult::OutlineMissing { .. } => "OutlineMissing",
+            BoardReadResult::ParseError { .. } => "ParseError",
+            BoardReadResult::IoError(_) => "IoError",
+        };
+        assert_eq!(variant, expected, "{required} read to the wrong variant");
+    }
+}
+
 /// Every `.dsn` in the Java repo's fixture corpus reads without panicking, answers the same
 /// `BoardReadResult` variant the pinned 2.3.0 jar answers, and produces **exactly** the same
 /// warnings — message for message, in order.
@@ -688,37 +810,31 @@ fn a_missing_via_padstack_fails_the_read_and_loses_its_warning() {
 /// Plan ruling 4's safety net is the `"Wiring: normalization of traces failed"` assertion: **no**
 /// corpus fixture may trip the normalisation time limit.
 ///
-/// Runs ~90 s in a debug build, so it is `#[ignore]`d there; the release run is in the Task 10
-/// report.
+/// **Deviation from the task brief, controller ruling I.** The brief asked for a *non*-`#[ignore]`d
+/// corpus test. This one runs ~90 s in a debug build — unreasonable for the default `cargo test`
+/// — so it stays `#[ignore]`d there and runs unconditionally in release
+/// (`cargo test -p fr-dsn --release`). **Consequence: the full 105-file corpus check only runs in
+/// a release build or under `--ignored`, not in a bare debug `cargo test`.**
+/// [`the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant`] is the always-on
+/// sibling that keeps the golden and the five named fixtures from rotting unnoticed.
 #[test]
 #[cfg_attr(
     debug_assertions,
     ignore = "~90 s in debug; run with --release or --ignored"
 )]
 fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
-    let dir = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    );
-    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
-        .expect("fixture directory")
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(corpus_dir())
+        .expect("fixture directory (existence already checked by require_java_dir)")
         .filter_map(Result::ok)
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
         .collect();
     paths.sort();
 
-    // The task brief names five fixtures explicitly so that a corpus reshuffle cannot quietly
-    // drop them: the non-ASCII identifiers, and the four minimal reproductions of the two hangs
-    // ruling 4 exists for. The golden pins the whole list, but only by content — this pins them
-    // by name.
-    for required in [
-        "Issue110-Паяльная станция.dsn",
-        "Issue756-minimal-hang.dsn",
-        "Issue756-minimal-ok.dsn",
-        "Issue757-minimal-soe.dsn",
-        "Issue757-minimal-soe-ok.dsn",
-    ] {
+    for required in NAMED_CORPUS_FIXTURES {
         assert!(
             paths
                 .iter()

@@ -53,6 +53,9 @@ fn design_name(path: &Path) -> String {
 }
 
 fn assert_roundtrip_parity(stem: &str, relative_fixture: &str) {
+    if !parity::require_java_dir() {
+        return;
+    }
     let reference = parity::reference(stem, "roundtrip.dsn");
     if !parity::require_reference(&reference) {
         return;
@@ -142,6 +145,9 @@ fn issue753_cpu_85_r104_roundtrip_matches_java() {
 /// on `(snap_angle `, `(circuit `, or a `polyline_path` line) still fails.
 #[test]
 fn every_reference_is_byte_for_byte_identical_to_java() {
+    if !parity::require_java_dir() {
+        return;
+    }
     for (stem, relative_fixture) in [
         (
             "tutorial_board",
@@ -204,6 +210,9 @@ fn every_reference_is_byte_for_byte_identical_to_java() {
 /// `DsnWriterTest.writesValidDsnHeader` (DsnWriterTest.java:22-31).
 #[test]
 fn valid_header() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
@@ -223,6 +232,9 @@ fn valid_header() {
 /// output must be readable by the reader, with the same layer count.
 #[test]
 fn roundtrip_preserves_layer_count() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (original, ct) = read_fixture(&fixture);
     let original_layers = original.get_layer_count();
@@ -244,6 +256,9 @@ fn roundtrip_preserves_layer_count() {
 /// `DsnWriterTest.compatModeProducesOutput` (DsnWriterTest.java:43-50).
 #[test]
 fn compat_mode_produces_output() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
@@ -259,6 +274,9 @@ fn compat_mode_produces_output() {
 // renamed: outputStreamContainsDataAfterWrite -> output_is_non_empty (the task brief's name).
 #[test]
 fn output_is_non_empty() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
@@ -276,6 +294,9 @@ fn output_is_non_empty() {
 /// fixture that actually has traces.
 #[test]
 fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
+    if !parity::require_java_dir() {
+        return;
+    }
     let fixture = parity::java_dir().join("fixtures/Issue413-test.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());

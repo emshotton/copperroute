@@ -230,11 +230,15 @@ fn render(negative: bool, digits: &str, exp10: i32) -> String {
 /// to an even last digit) — which is precisely `{:.1e}`, two significant digits correctly rounded.
 /// Trailing zeros are stripped again afterwards so that `0.001` does not come back as `0.0010`.
 ///
-/// Unlike the tie-break below, this branch needs no round-trip re-check: the two-significant-digit
-/// grid is a refinement of the one-digit grid, so the nearest two-digit decimal is at most as far
-/// from `m` as the one-digit decimal Rust just produced — and that one round-trips by
-/// construction, being Rust's shortest round-tripping form. A decimal at least that close to `m`
-/// parses back to `m`.
+/// Unlike the tie-break below, this branch does no round-trip re-check. The argument for that is
+/// a heuristic, not a proof: the two-significant-digit grid refines the one-digit grid, so the
+/// nearest two-digit decimal is at most as far from `m` as the one-digit decimal Rust just
+/// produced, and that one round-trips by construction. Distance alone does not settle it at a
+/// binade boundary, where the rounding interval is lopsided — which is exactly why the tie-break
+/// below *does* re-check. What actually backs this branch is the `p3t2` differential:
+/// **26 M values across four modes and two seeds, zero diff lines**
+/// (`scripts/differential/README.md`), mode 0 of which walks random `f64` bit patterns and so
+/// reaches one-digit shortest forms at every exponent.
 fn shortest_digits_f64(m: f64) -> (String, i32) {
     let (digits, exp10) = split_exp_form(&format!("{m:e}"));
     if digits.len() == 1 {

@@ -829,10 +829,18 @@ pub fn read_library_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
                 continue;
             };
             outlines.push(board_shape);
-            // Java's `instanceof Path` (Library.java:349) matches **both** subclasses:
+            // Java's `instanceof Path` (Library.java:349) matches **both** subclasses —
             // `PolygonPath` and `PolylinePath` share `Path` as their base, and both carry
-            // `width`/`coordinateArr`. A `(polyline_path …)` package outline therefore takes
-            // this branch too.
+            // `width`/`coordinateArr` — so both arms below are the faithful transcription.
+            //
+            // The `PolylinePath` arm is nonetheless **unreachable from here**, in this port and
+            // in Java alike: `PolylinePath.transformToBoardRel` is an unconditional
+            // `return null` (PolylinePath.java:56-60), so the `continue` five lines above always
+            // fires first. In Java the same shape reaches `outlineWidths[i]` only because the
+            // `null` is *stored* rather than skipped, and `Package.writeScope` then NPEs on it
+            // (the `totalized:` note above). The arm is kept rather than replaced by `_ => None`
+            // so that the day `transformToBoardRel` is implemented, this branch is already right
+            // instead of silently classifying a polyline path as a closed non-path shape.
             let path = match current_shape {
                 DsnShape::Path(path) => Some((path.width, path.coordinate_arr.as_slice())),
                 DsnShape::PolylinePath(path) => Some((path.width, path.coordinate_arr.as_slice())),
