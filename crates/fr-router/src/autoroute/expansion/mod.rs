@@ -64,9 +64,16 @@ use crate::arena::{DoorId, IncompleteRoomId, TargetDoorId};
 /// No single Java class corresponds: this is `AutorouteEngine`'s `incompleteExpansionRooms`
 /// (AutorouteEngine.java:71) and `expansionRoomInstanceCount` (`:77`) together with the heap that
 /// holds every complete room, obstacle room and door. It is **not**
-/// `completeExpansionRooms` (`:74`): that list is a strict subset of the complete-room arena and
-/// lives on `AutorouteEngine` — see [`ExpansionRoomStore::complete_rooms`]. Task 6's `AutorouteEngine` **embeds** one of these; it must not declare the arenas
-/// a second time.
+/// `completeExpansionRooms` (`:74`): that list is a strict subset of the complete-room arena, it
+/// lives on `AutorouteEngine`, and it is the container every walk Java writes over
+/// `completeExpansionRooms` must use — see [`AutorouteEngine::complete_expansion_rooms`] and
+/// `docs/java-quirks.md` #165.
+///
+/// Task 6's `AutorouteEngine` **embeds** one of these; it must not declare the arenas a second
+/// time.
+///
+/// [`AutorouteEngine::complete_expansion_rooms`]:
+///     crate::autoroute::maze::AutorouteEngine::complete_expansion_rooms
 #[derive(Debug, Clone, Default)]
 pub struct ExpansionRoomStore {
     /// Every `CompleteFreeSpaceExpansionRoom` ever constructed, which is Java's **heap** rather
@@ -153,10 +160,19 @@ impl ExpansionRoomStore {
     /// **Every id handed out before this call becomes meaningless**, because [`Arena::clear`]
     /// restarts the indices — including the [`ObstacleRoomId`]s stored on the board's items.
     ///
-    /// obligation: Task 6's `AutorouteEngine::clear` must follow this with
+    /// obligation: `AutorouteEngine.clear` must follow this with
     /// `RoutingBoard.clearAllItemTemporaryAutorouteData` (`RoutingBoard.java:1241`), which is
     /// AutorouteEngine.java:316 — otherwise the items keep `ObstacleRoomId`s into a restarted
-    /// arena.
+    /// arena. **Discharged in Task 6**:
+    /// [`AutorouteEngine::clear`](crate::autoroute::maze::AutorouteEngine::clear) calls it as its
+    /// last statement, and `clear_empties_the_room_database_the_tree_and_the_items_scratch`
+    /// (`crates/fr-router/tests/engine_rooms.rs`) asserts the item scratch is gone afterwards.
+    ///
+    /// This method also walks the **arena**, not `AutorouteEngine`'s
+    /// `completeExpansionRooms` list, so it visits the abandoned rooms of quirk #165 as well.
+    /// That is equivalent, not sloppy: an abandoned room was never inserted into the tree
+    /// (`AutorouteEngine.addCompleteRoom:535` is the only insert), so its `removeFromTree` is the
+    /// no-op Java's `MinAreaTree.removeLeaf` performs for a null leaf.
     pub fn clear(&mut self, tree: &mut ShapeSearchTree) {
         // AutorouteEngine.java:308-312.
         for (_, room) in self.complete_rooms.iter_mut() {

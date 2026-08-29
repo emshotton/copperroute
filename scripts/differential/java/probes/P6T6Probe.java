@@ -223,6 +223,7 @@ public class P6T6Probe {
       try {
         engine.removeCompleteExpansionRoom(r);
         System.out.println("    removed ok");
+        dumpEngine(engine, "  afterRemoving" + r.getId());
       } catch (RuntimeException e) {
         System.out.println("    THREW " + e);
         for (StackTraceElement el : e.getStackTrace()) {

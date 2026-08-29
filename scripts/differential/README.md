@@ -413,6 +413,50 @@ methods with dozens of branches.
       **quirk #163** — `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom`
       never advances its `currentCorner`, so an eight-sided obstacle room with
       no touching neighbour gets seven incomplete rooms, not eight.
+- `java/probes/` — **ground-truth probes, not differential drivers.** A probe has
+  no Rust twin and `run.sh` does not know it: it is a Java program whose stdout a
+  Rust *test* pins as literals, so the test asserts against the HEAD jar rather
+  than against the port's own opinion. Use one where the parity surface is a
+  handful of deterministic, hand-built cases (so a randomised driver would add
+  noise, not evidence) or where the state to compare is private and has to be
+  reached by reflection. Each file's header carries the exact `javac`/`java`
+  invocation, which mirrors `run.sh`'s jar mode (JDK 25, the clone's HEAD jar,
+  `-Djava.awt.headless=true -Duser.language=en -Duser.country=US
+  -XX:+UnlockExperimentalVMOptions -XX:hashCode=2`).
+  - `P6T6Probe.java` — `AutorouteEngine`'s expansion-room lifecycle (Plan 6
+    Task 6). Consumed by `crates/fr-router/tests/engine_rooms.rs`, whose room
+    ids, room shapes, door counts, room-instance counter, surviving
+    incomplete-room count and search-tree leaf count are all this probe's
+    output. It declares `package app.freerouting.autoroute.maze;` so it can
+    reflect into `AutorouteEngine`'s `private` `completeExpansionRooms`,
+    `incompleteExpansionRooms` and `expansionRoomInstanceCount` — the state the
+    tests assert on, which no public method exposes. Six modes:
+
+    - `0` — an empty board. Pins that `completeExpansionRoom` yields **no**
+      rooms and never ticks the counter, because `completeShape` returns at
+      `ShapeSearchTree.java:589-591` when the tree has no root.
+    - `1` — one obstacle, one seed. The headline case: nine rooms constructed,
+      **six** listed (ids `1, 2, 6, 7, 8, 9`), doors `9, 3, 6, 9, 4, 2`,
+      `counter=9 incomplete=25 treeSize=7`. It is what pins **quirk #165** —
+      `completeExpansionRooms` is a strict subset of the complete rooms that
+      exist — and, with mode 4, the "only the first dimension-2 candidate is
+      added directly" rule of `AutorouteEngine.java:492-515`.
+    - `2` — `completeNeighbourRooms`' iterator restart (`:573-584`):
+      `complete 2→4, incomplete 4→5, counter 4→7, treeSize 4→6`.
+    - `3` — `initConnection` with `maintainDatabase = true`: the net-dependent
+      invalidation drops both rooms (`complete 2→0, incomplete 9→7,
+      treeSize 4→2`), which also exercises `removeCompleteExpansionRoom`'s
+      1-dimensional-neighbour regeneration.
+    - `4` — `completeShape`'s **raw** candidates for mode 1's seed: eight, all
+      of dimension 2, none of whose shapes survives into rooms 2 and 6.
+    - `5` — the door-by-door trace of `removeCompleteExpansionRoom`, printing
+      each neighbour's class, shape, intersection dimension and `touchingSides`
+      result, and the engine's state after each individual removal. This is what
+      found **quirk #164**: removing room 5
+      walks four doors to incomplete rooms, two of which log
+      `touching_side : dir2 not found` and answer an empty array, and the
+      removal still succeeds — because `:383` binds `ExpansionDoor`'s
+      *narrowing* `otherRoom(CompleteExpansionRoom)` overload and skips all four.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

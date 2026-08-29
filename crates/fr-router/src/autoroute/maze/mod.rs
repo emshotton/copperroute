@@ -23,6 +23,10 @@ pub use search_element::{MazeAdjustment, MazeSearchElement};
 /// before the engine does. It lives on the package module rather than in `engine.rs` so that
 /// Task 2 could port `getSectionSegments`.
 ///
-/// obligation: Task 6's `AutorouteEngine` must `pub use` this constant rather than redeclare it,
-/// so there is one definition of the number.
+/// obligation: `AutorouteEngine.TRACE_WIDTH_TOLERANCE` must have exactly one definition —
+/// **discharged in Task 6**. The letter of Task 2's wording was "Task 6's `AutorouteEngine` must
+/// `pub use` this constant"; a re-export would have no reader, because `engine.rs` never needs the
+/// number (its only consumer is `ExpansionDoor::get_section_segments`, which imports it from
+/// here). The intent — one definition — is met: `grep -rn "TRACE_WIDTH_TOLERANCE" crates/` finds
+/// this line and `door.rs`'s `use`, and nothing in `engine.rs`.
 pub const TRACE_WIDTH_TOLERANCE: i32 = 2;

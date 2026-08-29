@@ -404,6 +404,63 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
     );
 }
 
+/// Quirk #164, named. Probe mode 5, verbatim:
+///
+/// ```text
+/// removing id=1 doors=2
+///     door dim=1 other=CompleteFreeSpaceExpansionRoom   interDim=1 touchingSides=1/3
+///     door dim=1 other=CompleteFreeSpaceExpansionRoom   interDim=1 touchingSides=2/0
+///   afterRemoving1 counter=5 complete=1 incomplete=11 treeSize=3
+/// removing id=5 doors=4
+///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=EMPTY
+///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=EMPTY
+///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=1/0
+///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=0/0
+///   afterRemoving5 counter=5 complete=0 incomplete=7 treeSize=2
+/// ```
+///
+/// `removeCompleteExpansionRoom`'s parameter is declared `CompleteFreeSpaceExpansionRoom`, so
+/// `currentDoor.otherRoom(room)` at `:383` binds `ExpansionDoor`'s **narrowing**
+/// `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92) and `:385` skips every
+/// door whose far side is incomplete. Both removals have a 1-dimensional intersection across
+/// every door, and the outcomes differ entirely by neighbour kind:
+///
+/// * room 1's two neighbours are **complete** rooms, so both survive `:385` and both regenerate
+///   an incomplete room at `:396-400` — `incomplete` rises 9 → 11.
+/// * room 5's four neighbours are **incomplete**, so all four are skipped and **nothing** is
+///   regenerated; `removeAllDoors` at `:403` then drops all four — `incomplete` falls 11 → 7.
+///
+/// A port on the wide overload creates four rooms here instead of none, and in fact never gets
+/// that far: two of the four answer `touchingSides == new int[0]` (`TileShape.java:588-591`,
+/// which Java logs as `touching_side : dir2 not found`) and `:394`'s unchecked
+/// `touchingSides[1]` throws. That is how quirk #164 was found.
+#[test]
+fn remove_complete_expansion_room_skips_incomplete_neighbours() {
+    let (mut board, mut engine) = net_dependent_run(true);
+    let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
+    assert_eq!(
+        rooms
+            .iter()
+            .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
+            .collect::<Vec<_>>(),
+        vec![1, 5]
+    );
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 9);
+    assert_eq!(tree_size(&board, &engine), 4);
+
+    // Two complete neighbours: both regenerate.
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
+    assert_eq!(engine.complete_expansion_rooms().len(), 1);
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 11, "9 + 2 regenerated");
+    assert_eq!(tree_size(&board, &engine), 3);
+
+    // Four incomplete neighbours: none regenerates, and `removeAllDoors` drops all four.
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    assert_eq!(engine.complete_expansion_rooms().len(), 0);
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "11 - 4, none added");
+    assert_eq!(tree_size(&board, &engine), 2);
+}
+
 /// The same run with `maintainDatabase == false`: `:97` gates the whole invalidation, so the two
 /// net-dependent rooms survive the net change untouched.
 #[test]

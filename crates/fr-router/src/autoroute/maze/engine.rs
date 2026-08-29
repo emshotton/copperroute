@@ -346,9 +346,15 @@ impl AutorouteEngine {
     /// (AutorouteEngine.java:376-412): "removes a complete expansion room from the database and
     /// creates new incomplete expansion rooms for the neighbours."
     ///
-    /// Answers whether there was a room to remove — Java's method is `void` and its
-    /// `completeExpansionRooms == null` branch (`:407-410`) is an `FRLogger.warn`, which is
-    /// dropped; `false` is that warning's condition plus the stale-id case.
+    /// Answers whether there was a room **in the arena** to remove; Java's method is `void`.
+    ///
+    /// The `bool` is `ExpansionRoomStore::remove_complete_room`'s result, i.e. *arena* presence —
+    /// **not** membership of `completeExpansionRooms`. The list removal at `:406` is
+    /// unconditional here, so an abandoned room of `docs/java-quirks.md` #165 (in the arena,
+    /// never in the list) still answers `true`, and only a stale [`RoomId`] answers `false`.
+    /// Java's `completeExpansionRooms == null` branch (`:407-410`) is an `FRLogger.warn` and is
+    /// dropped; it has no counterpart in the return value, because the port's list is never
+    /// null.
     pub fn remove_complete_expansion_room(&mut self, board: &mut Board, room: RoomId) -> bool {
         let room_ref = RoomRef::Complete(room);
         // :379-381.
@@ -476,6 +482,12 @@ impl AutorouteEngine {
     /// than propagating. The boundary is a [`std::panic::catch_unwind`], because the exceptions
     /// this catch exists for are `NullPointerException`s inside ported geometry, which the port
     /// raises as panics (ruling 7).
+    //
+    // obligation: `AutorouteEngine.completeExpansionRoom` — Tasks 11-16 must consume this with
+    // `.unwrap_or_default()` (or a `match` answering an empty collection), **never** with `?`.
+    // `Err` is not a failure to propagate: it is Java's `return new ArrayList<>()` at
+    // AutorouteEngine.java:520, and propagating it would abort a connection Java completes.
+    // `docs/java-quirks.md` #166 carries the reasoning.
     pub fn complete_expansion_room(
         &mut self,
         board: &mut Board,
