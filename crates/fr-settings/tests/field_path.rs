@@ -3,8 +3,9 @@
 //!
 //! The first four tests are the four cases of `util/ReflectionUtilArrayTest.java` (75 lines),
 //! ported verbatim. The rest pin the quirks and the conversion tolerances; every expected value
-//! was read off a JVM probe (`FProbe`/`DProbe`, JDK 25, `freerouting-current-executable.jar`
-//! built 2026-08-27 — the transcript is in task-3-report.md), not inferred from the Java source.
+//! was read off a JVM probe — `FProbe`/`DProbe`/`TProbe`/`RProbe` in `tests/data/`, JDK 25,
+//! `freerouting-current-executable.jar` built 2026-08-27, commands in `tests/data/README.md` and
+//! transcripts in task-3-report.md — not inferred from the Java source.
 
 use fr_settings::field_path::{FieldKind, set_field_value};
 use fr_settings::{
@@ -633,8 +634,10 @@ fn java_static_constants_are_not_settable_fields() {
 
 /// Assigning a scalar string to a struct- or array-typed field falls through `convertValue` and
 /// blows up at `field.set` (`IllegalArgumentException`; JVM probes H5/H6). Navigating *through* a
-/// scalar field blows up trying to instantiate it (`NoSuchMethodException`; probe H7). All three
-/// become [`MergeError::TypeMismatch`].
+/// scalar field blows up trying to instantiate it (`NoSuchMethodException`; probe H7). Navigating
+/// one segment too far through a `String[]`/`double[]` field takes Java's **array** branch and
+/// dies at the next segment (`NoSuchFieldException`; RProbe A1/A2). All become
+/// [`MergeError::TypeMismatch`].
 #[test]
 fn type_mismatches_are_errors_not_panics() {
     let mut settings = RouterSettings::new();
@@ -645,6 +648,47 @@ fn type_mismatches_are_errors_not_panics() {
             "{path}: {err:?}"
         );
     }
+}
+
+/// totalized: Java's array branch (`ReflectionUtil.java:46-72`) allocates and partially fills the
+/// array *before* failing to resolve the next path segment — RProbe A1 leaves
+/// `ignoreNetClasses = ["", null]` and A2 leaves `preferredDirectionTraceCost = [0.0, 0.0]` behind
+/// its `NoSuchFieldException`. The port fails first and writes nothing. Both callers swallow the
+/// failure identically, so the only difference is the half-built array Java leaves on the object.
+#[test]
+fn a_bad_segment_after_an_array_field_writes_nothing() {
+    let mut settings = RouterSettings::new();
+
+    let err =
+        set_field_value(&mut settings, "ignore_net_classes.foo", "a,b").expect_err("String[]");
+    assert!(
+        matches!(err, MergeError::TypeMismatch { .. }),
+        "got {err:?}"
+    );
+    assert_eq!(
+        settings.ignore_net_classes, None,
+        "Java would leave [\"\", null] behind"
+    );
+
+    let err = set_field_value(
+        &mut settings,
+        "scoring.preferred_direction_trace_cost.foo",
+        "1,2",
+    )
+    .expect_err("double[]");
+    assert!(
+        matches!(err, MergeError::TypeMismatch { .. }),
+        "got {err:?}"
+    );
+    assert_eq!(
+        settings
+            .scoring
+            .as_ref()
+            .expect("nested")
+            .preferred_direction_trace_cost,
+        None,
+        "Java would leave [0.0, 0.0] behind"
+    );
 }
 
 /// `Double.parseDouble` accepts the hexadecimal floating-point grammar (`0x1p3` → `8.0`, DProbe).
@@ -708,6 +752,209 @@ fn field_tables_match_the_declaration_order_pins() {
         rust_names(FanoutSettings::FIELDS),
         FanoutSettings::FIELD_NAMES
     );
+}
+
+/// `FieldKind` is a second, independent transcription of each Java field's declared type — the
+/// thing that decides which `convertValue` arm (`ReflectionUtil.java:132-205`) a value goes
+/// through. Written out here so a wrong `kind` in the table has to be wrong twice to survive.
+#[test]
+fn field_kinds_match_the_java_field_types() {
+    use FieldKind::{Bool, Enum, F32, F64, F64Vec, I32, I64, Nested, ObjectArray, Str, StringVec};
+    const BUS: &[&str] = &["GREEDY", "GLOBAL_OPTIMAL", "HYBRID"];
+    const ISS: &[&str] = &["SEQUENTIAL", "RANDOM", "PRIORITIZED"];
+
+    fn check(
+        what: &str,
+        fields: &[fr_settings::field_path::FieldSpec],
+        want: &[(&str, FieldKind)],
+    ) {
+        let got: Vec<(&str, FieldKind)> = fields.iter().map(|f| (f.rust_name, f.kind)).collect();
+        assert_eq!(got, want.to_vec(), "{what}");
+    }
+
+    check(
+        "RouterSettings",
+        RouterSettings::FIELDS,
+        &[
+            ("enabled", Bool),                            // Boolean
+            ("algorithm", Str),                           // String
+            ("fanout", Nested),                           // FanoutSettings
+            ("copper_to_edge_clearance_um", F64),         // Double
+            ("hole_clearance_um", F64),                   // Double
+            ("neck_width_um", F64),                       // Double
+            ("strict_drc", Bool),                         // Boolean
+            ("job_timeout_string", Str),                  // String
+            ("max_passes", I32),                          // Integer
+            ("max_items", I32),                           // Integer
+            ("layers", ObjectArray),                      // LayerSettings[]
+            ("save_intermediate_stages", Bool),           // Boolean
+            ("ignore_net_classes", StringVec),            // String[]
+            ("trace_pull_tight_accuracy", I32),           // Integer
+            ("vias_allowed", Bool),                       // Boolean
+            ("automatic_neckdown", Bool),                 // Boolean
+            ("optimizer", Nested),                        // OptimizerSettings
+            ("scoring", Nested),                          // ScoringSettings
+            ("max_threads", I32),                         // Integer
+            ("result_json_path", Str),                    // String
+            ("board_specific_trace_costs_applied", Bool), // Boolean
+        ],
+    );
+    check(
+        "LayerSettings",
+        LayerSettings::FIELDS,
+        &[
+            ("routable", Bool),                       // Boolean
+            ("preferred_direction_horizontal", Bool), // Boolean
+            ("bend_cost", F64),                       // Double
+        ],
+    );
+    check(
+        "ScoringSettings",
+        ScoringSettings::FIELDS,
+        &[
+            ("preferred_direction_trace_cost", F64Vec), // double[]
+            ("undesired_direction_trace_cost", F64Vec), // double[]
+            ("default_preferred_direction_trace_cost", F64), // Double
+            ("default_undesired_direction_trace_cost", F64), // Double
+            ("via_costs", I32),                         // Integer
+            ("plane_via_costs", I32),                   // Integer
+            ("start_ripup_costs", I32),                 // Integer
+            ("unrouted_net_penalty", F32),              // Float
+            ("clearance_violation_penalty", F32),       // Float
+            ("bend_penalty", F32),                      // Float
+            ("default_bend_cost", F64),                 // Double
+        ],
+    );
+    check(
+        "OptimizerSettings",
+        OptimizerSettings::FIELDS,
+        &[
+            ("enabled", Bool),                              // Boolean
+            ("algorithm", Str),                             // String
+            ("max_passes", I32),                            // Integer
+            ("max_items", I32),                             // Integer
+            ("max_threads", I32),                           // Integer
+            ("optimization_improvement_threshold", F32),    // Float
+            ("max_consecutive_failures", I32),              // Integer
+            ("additional_ripup_cost_factor_at_start", I32), // Integer
+            ("trace_ripup_cost_factor", F32),               // Float
+            ("max_autoroute_passes", I32),                  // Integer
+            ("board_update_strategy", Enum(BUS)),           // BoardUpdateStrategy
+            ("hybrid_ratio", Str),                          // String
+            ("item_selection_strategy", Enum(ISS)),         // ItemSelectionStrategy
+            ("timeout_string", Str),                        // String
+        ],
+    );
+    check(
+        "FanoutSettings",
+        FanoutSettings::FIELDS,
+        &[
+            ("enabled", Bool),                 // Boolean
+            ("max_passes", I32),               // Integer
+            ("max_items", I32),                // Integer
+            ("max_milliseconds_per_pin", I64), // Long
+            ("ripup_allowed", Bool),           // Boolean
+            ("min_escape_length_mm", F64),     // Double
+            ("max_escape_length_mm", F64),     // Double
+            ("start_via_diameter_mm", F64),    // Double
+            ("end_via_diameter_mm", F64),      // Double
+            ("pin_sorting_order", Str),        // String
+            ("fallback_to_board_vias", Bool),  // Boolean
+            ("timeout_string", Str),           // String
+        ],
+    );
+}
+
+/// Ties each entry's `FieldKind` to the converter its assignment arm actually calls: every field
+/// of all five tables is driven through [`set_field_value`] with values whose accept/reject
+/// pattern (or, for the three never-failing kinds, whose *equality* pattern on the resulting
+/// struct) is unique to one kind. A `kind` that drifts from its arm fails here even though
+/// `field_kinds_match_the_java_field_types` would still pass.
+#[test]
+fn every_field_converts_according_to_its_kind() {
+    fn after(path: &str, value: &str) -> RouterSettings {
+        let mut settings = RouterSettings::new();
+        set_field_value(&mut settings, path, value)
+            .unwrap_or_else(|e| panic!("{path} = {value:?} should convert: {e}"));
+        settings
+    }
+    fn err(path: &str, value: &str) -> MergeError {
+        let mut settings = RouterSettings::new();
+        set_field_value(&mut settings, path, value)
+            .expect_err(&format!("{path} = {value:?} should not convert"))
+    }
+    fn is_number_format(path: &str, value: &str) {
+        let e = err(path, value);
+        assert!(
+            matches!(e, MergeError::NumberFormat { .. }),
+            "{path} = {value:?}: {e:?}"
+        );
+    }
+
+    let tables: [(&str, &[fr_settings::field_path::FieldSpec]); 5] = [
+        ("", RouterSettings::FIELDS),
+        ("layers.", LayerSettings::FIELDS),
+        ("scoring.", ScoringSettings::FIELDS),
+        ("optimizer.", OptimizerSettings::FIELDS),
+        ("fanout.", FanoutSettings::FIELDS),
+    ];
+
+    for (prefix, fields) in tables {
+        for field in fields {
+            let p = &format!("{prefix}{}", field.rust_name);
+            match field.kind {
+                // `Boolean.parseBoolean` never fails, and folds "1" onto "true".
+                FieldKind::Bool => {
+                    assert_eq!(after(p, "1"), after(p, "true"), "{p}: Bool");
+                    assert_ne!(after(p, "1"), after(p, "0"), "{p}: Bool");
+                }
+                // Stored verbatim: distinct inputs stay distinct, and no comma splitting.
+                FieldKind::Str => {
+                    assert_ne!(after(p, "1"), after(p, "true"), "{p}: Str");
+                    assert_ne!(after(p, " a , b ,"), after(p, "a,b"), "{p}: Str");
+                }
+                // Comma-split and per-token trimmed, so the two spellings collapse.
+                FieldKind::StringVec => {
+                    assert_ne!(after(p, "1"), after(p, "true"), "{p}: StringVec");
+                    assert_eq!(after(p, " a , b ,"), after(p, "a,b"), "{p}: StringVec");
+                }
+                // `Integer.parseInt`/`Long.parseLong`: no whitespace tolerance.
+                FieldKind::I32 | FieldKind::I64 => {
+                    after(p, "7");
+                    is_number_format(p, "zz");
+                    is_number_format(p, " 7 ");
+                }
+                // `Double.parseDouble`/`Float.parseFloat`: trims, and takes a `d`/`f` suffix.
+                FieldKind::F32 | FieldKind::F64 => {
+                    after(p, "7.5");
+                    after(p, " 7 ");
+                    after(p, "7d");
+                    is_number_format(p, "zz");
+                }
+                // Comma-split, then each token through the scalar number parser.
+                FieldKind::F64Vec | FieldKind::I32Vec => {
+                    assert_eq!(after(p, "1"), after(p, " 1 , "), "{p}: numeric vec");
+                    is_number_format(p, "zz");
+                }
+                // Case-insensitive on the Java constant name; no match is EnumName.
+                FieldKind::Enum(constants) => {
+                    let first = constants.first().expect("no constants");
+                    assert_eq!(
+                        after(p, first),
+                        after(p, &first.to_lowercase()),
+                        "{p}: Enum is case-insensitive"
+                    );
+                    let e = err(p, "zz");
+                    assert!(matches!(e, MergeError::EnumName { .. }), "{p}: {e:?}");
+                }
+                // Navigated through, never converted into.
+                FieldKind::Nested | FieldKind::ObjectArray => {
+                    let e = err(p, "zz");
+                    assert!(matches!(e, MergeError::TypeMismatch { .. }), "{p}: {e:?}");
+                }
+            }
+        }
+    }
 }
 
 /// The four fields that navigate rather than convert are exactly Java's three nested objects plus

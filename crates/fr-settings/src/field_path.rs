@@ -38,13 +38,14 @@
 //!
 //! `Double.parseDouble`'s **hexadecimal floating-point** grammar (`0x1p3` → `8.0`, verified
 //! against the JVM) is not implemented: [`java_parse_f64`] returns [`MergeError::NumberFormat`]
-//! for it. Rust's own `f64::from_str` has no hex-float form either, and no settings source can
-//! plausibly carry one. Recorded as a divergence in `docs/java-quirks.md` and pinned by
+//! for it. Rust's own `f64::from_str` has no hex-float form either, and no settings source would
+//! plausibly carry one; the divergence is number-vs-error, never a wrong number. Recorded as a
+//! divergence in `docs/java-quirks.md` and pinned by
 //! `hexadecimal_float_literals_are_a_recorded_divergence`. Both divergences are quirks row 122.
 //!
 //! `Integer.parseInt`/`Long.parseLong` accept **any Unicode decimal digit** (`Character.digit`,
 //! so `"٣"` parses as `3`); Rust's `i32::from_str` is ASCII-only. Same divergence class:
-//! an error here where Java produced a number, for input no settings source can produce.
+//! an error here where Java produced a number, for input no settings source would produce.
 
 use crate::{
     BoardUpdateStrategy, FanoutSettings, ItemSelectionStrategy, JavaEnum, LayerSettings,
@@ -788,8 +789,8 @@ pub fn java_parse_i32_vec(value: &str, path: &str) -> Result<Vec<i32>, MergeErro
 /// separator interchangeable with `.` and `:` — a `--router.trace-cost=…` argument silently
 /// becomes the two-segment path `router` / `trace` / `cost` rather than one field name with a
 /// hyphen in it. JVM-verified (`optimizer-max_passes` sets `optimizer.maxPasses`); see
-/// `docs/java-quirks.md` row 118. Only the *path* is split: the value is passed through untouched, so a
-/// value such as `1:1` or `freerouting-router` survives verbatim.
+/// `docs/java-quirks.md` row 118. Only the *path* is split: the value is passed through
+/// untouched, so a value such as `1:1` or `freerouting-router` survives verbatim.
 ///
 /// # Errors
 ///
@@ -874,10 +875,28 @@ fn set_router_property(
             value,
             path,
         ),
-        // Any other field is a scalar: Java takes the same `else` branch, finds the field null,
-        // and asks for its no-arg constructor — which `Boolean`, `Integer`, `Double` and `String`
-        // do not have, so `getDeclaredConstructor()` throws `NoSuchMethodException` (JVM probe
-        // H7). Same failure, named for what it is.
+        // Everything else. Java fails here too, but by two different routes depending on the
+        // field's type, and one of them writes before it fails:
+        //
+        // - A *scalar* field (`Boolean`, `Integer`, `Double`, `String`) takes the `else` branch
+        //   at `:73-81`, finds the field null, and asks for its no-arg constructor — which none
+        //   of those four has, so `getDeclaredConstructor()` throws `NoSuchMethodException`
+        //   without touching the object (JVM probe H7: `max_passes.foo` leaves `maxPasses` null).
+        // - A *primitive- or String-array* field — `ignore_net_classes` (`String[]`) is the only
+        //   one reachable from here, and `scoring.preferred_direction_trace_cost` /
+        //   `undesired_direction_trace_cost` (`double[]`) are the same case one level down — is
+        //   an array as far as `:46` is concerned, so Java takes the **array** branch: it splits
+        //   the value on `,`, allocates the array, instantiates each `null` element (`new
+        //   String()`, i.e. `""`), and only then recurses and fails to resolve the next segment.
+        //
+        // totalized: the array branch's partial write is not reproduced. JVM-verified (RProbe
+        // A1/A2, `crates/fr-settings/tests/data/RProbe.java`): `ignore_net_classes.foo=a,b`
+        // throws `NoSuchFieldException: foo` having already left `ignoreNetClasses = ["", null]`,
+        // and `scoring.preferred_direction_trace_cost.foo=1,2` leaves `[0.0, 0.0]`. The port
+        // answers `MergeError::TypeMismatch` and writes nothing. Both callers swallow the failure
+        // identically (`EnvironmentVariablesSource.java:81-89`, `CliSettings.java:97-99`), so the
+        // only observable difference is Java's half-built array left on the settings object — a
+        // strictly worse state that no caller asked for and none reads back deliberately.
         _ => Err(type_mismatch(path, value)),
     }
 }
