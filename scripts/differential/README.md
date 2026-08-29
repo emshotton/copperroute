@@ -391,7 +391,17 @@ methods with dozens of branches.
       `tryRemoveEdge` reads — printed after the list. The target doors are
       printed too, because these two build them **inside** the neighbour loop
       (`CompleteFreeSpaceExpansionRoom.calculateTargetDoors`) where the base
-      class defers them.
+      class defers them. Each ends with an `overlap` probe: a
+      `CompleteFreeSpaceExpansionRoom` inserted so that it overlaps a hand-built incomplete room
+      2-dimensionally, on an otherwise empty part of layer 1. That is the only way to reach the
+      `dimension > 1 && completedRoom instanceof ObstacleExpansionRoom` **`&&`** the two
+      subclasses have and the base class does not (`:132` / `:168`), and therefore the only way to
+      reach the **two-argument** `ExpansionDoor` constructor's computed `dimension == 2`
+      (`:164` / `:201`, `ExpansionDoor.java:35-39`) — which is the door `tryRemoveEdge` scans for
+      when it picks `completeShape`'s `ignoreObject`. The random loop cannot produce it, because
+      its seed rooms are `completeShape` output and so are restrained against everything already
+      in the tree. The probe draws no random numbers and runs last, so modes 0-5, 8 and 9 are
+      untouched.
     - `8`, `9` — mode 5 for the same two regimes: the whole of
       `SortedRoomNeighbours.complete` against a real `AutorouteEngine`, which
       dispatches on the tree subclass, so each subclass's `tryRemoveEdge`,
@@ -897,8 +907,8 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p6t3` mode 2 (30 000 same-side probes) | 262021 | 0 | exact match (8 374 drops) |
 | `p6t3` mode 3 (30 000 corner-touch probes, seeds 20260829/7) | 292682, 293041 | 0 | exact match — **with `JavaTreeSet`**; on a `BTreeSet` this mode diffs (quirk #160) |
 | `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the ~0.4 % of calls quirk #162 makes non-terminating |
-| `p6t3` mode 6 (45-degree `calculateNeighbours`, seeds 42/7/999/20260829) | 8809-21042 | 0 | exact match (`Sorted45DegreeRoomNeighbours`, its own inner class and `edgeInteriorTouchesObstacle`) |
-| `p6t3` mode 7 (orthogonal `calculateNeighbours`, seeds 42/7/999/20260829) | 9158-21493 | 0 | exact match (`SortedOrthogonalRoomNeighbours`, likewise) |
+| `p6t3` mode 6 (45-degree `calculateNeighbours`, seeds 42/7/999/20260829) | 8817-21050 | 0 | exact match (`Sorted45DegreeRoomNeighbours`, its own inner class, `edgeInteriorTouchesObstacle` and the `overlap` probe's computed `dim=2` door) |
+| `p6t3` mode 7 (orthogonal `calculateNeighbours`, seeds 42/7/999/20260829) | 9166-21501 | 0 | exact match (`SortedOrthogonalRoomNeighbours`, likewise) |
 | `p6t3` mode 8 (the whole of `complete` on a 45-degree tree, seeds 42/7/999/20260829) | 45661-53791 | 0 | exact match — and the mode that found quirk #163 |
 | `p6t3` mode 9 (the whole of `complete` on a 90-degree tree, seeds 42/7/999/20260829) | 31052-35750 | 0 | exact match |
 | `p2t15` (10 seeds × n∈{30,120}) | 499-1111 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |

@@ -294,6 +294,13 @@ What differs from the base class and reaches the geometry:
 * a 2-dimensional overlap is skipped **only for an obstacle room**
   (`Sorted45DegreeRoomNeighbours.java:132`,
   `SortedOrthogonalRoomNeighbours.java:168`); the base class skips every one;
+* the door built for a touching neighbour comes from the **two-argument** `ExpansionDoor`
+  constructor, which *computes* its dimension from the two rooms' shapes
+  (`:164` / `:201`, `ExpansionDoor.java:35-39`); only the base class hard-codes `1`
+  (`SortedRoomNeighbours.java:281`). The two differences compound: the computed
+  `dimension == 2` door is exactly what `tryRemoveEdge` scans for when it picks
+  `completeShape`'s `ignoreObject`, so hard-coding `1` would silently disable the
+  room-enlargement path with no differential diff to show for it;
 * target doors are built by `CompleteFreeSpaceExpansionRoom.calculateTargetDoors`
   **inside** the neighbour loop, one entry at a time and with an unconditional
   `setNetDependent()`, where the base class defers the own-net objects to a list
@@ -311,6 +318,10 @@ matching `AngleRestriction`, so `getAutorouteTree` answers the matching tree
 subclass and `selectCalculationMode` the matching sorter) and modes `8`/`9` are
 mode 5 for them — the whole of `complete` against a real Java `AutorouteEngine`.
 Quirk #162's skip applies to mode 5 only: neither subclass walks a `Simplex`.
+Modes `6`/`7` end with an `overlap` probe — a free-space room inserted so that it
+overlaps the room under test 2-dimensionally — because the random loop cannot
+reach the `&&` arm or the computed door dimension above: its seed rooms come from
+`completeShape`, which restrains them against everything already in the tree.
 
 ## The `fr-board` obligation Task 4 discharges
 

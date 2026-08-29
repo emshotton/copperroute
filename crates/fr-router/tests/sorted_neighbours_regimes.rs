@@ -799,6 +799,123 @@ fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side()
 }
 
 // =================================================================================================
+// The free-space 2-dimensional overlap arm — `p6t3 6/7 42 30 1000`, the `overlap` probe
+// =================================================================================================
+
+/// The `overlap` probe of `p6t3` modes 6 and 7: a `CompleteFreeSpaceExpansionRoom` that overlaps
+/// the room under test 2-dimensionally, on an otherwise empty part of layer 1.
+///
+/// The random part of the driver cannot produce this: its seed rooms are `completeShape` output,
+/// restrained against everything already in the tree. But it is **not** structurally unreachable
+/// in production — `tryRemoveEdgeLine`/`tryRemoveEdge` deliberately look for a `dimension == 2`
+/// door to a free-space room to use as `completeShape`'s `ignoreObject`
+/// (`Sorted45DegreeRoomNeighbours.java:373-394`, `SortedOrthogonalRoomNeighbours.java:459-526`),
+/// which is exactly a room the next pass may then overlap; and
+/// `CompleteFreeSpaceExpansionRoom.isTraceObstacle` is the constant `true`
+/// (`CompleteFreeSpaceExpansionRoom.java:81-84`), so nothing diverts such an overlap to
+/// `calculateTargetDoors`.
+fn overlap_probe_rooms(
+    board: &mut Board,
+    rooms: &mut ExpansionRoomStore,
+    tree_id: TreeId,
+) -> RoomRef {
+    let overlap_room = rooms.new_complete_room(
+        Some(TileShape::Box(IntBox::from_coords(
+            -2500, -8500, 500, -6500,
+        ))),
+        1,
+        1004,
+    );
+    let tree = board
+        .trees
+        .trees_mut()
+        .find(|tree| tree.id() == tree_id)
+        .expect("the autoroute tree");
+    rooms.insert_complete_room(tree, overlap_room);
+    let room_box = IntBox::from_coords(-4000, -9500, -1000, -7500);
+    RoomRef::Incomplete(rooms.new_incomplete_room(
+        Some(TileShape::Box(room_box)),
+        1,
+        Some(TileShape::Box(room_box)),
+    ))
+}
+
+#[test]
+fn a_two_dimensional_overlap_is_a_45_degree_neighbour_with_a_two_dimensional_door() {
+    // `run.sh p6t3 6 42 30 1000`, the `overlap regime=2` block, verbatim. Two things are pinned:
+    //
+    // * `Sorted45DegreeRoomNeighbours.java:132` is `dimension > 1 && completedRoom instanceof
+    //   ObstacleExpansionRoom`, so a 2-dimensional overlap with a **free-space** completed room
+    //   falls through to `addSortedNeighbour` — where the base class `continue`s for every
+    //   `dimension > 1` (`SortedRoomNeighbours.java:232`);
+    // * `:164` is the **two**-argument `new ExpansionDoor(completedRoom, neighbourRoom)`
+    //   (`ExpansionDoor.java:35-39`), which *computes* the dimension from the two rooms' shapes —
+    //   `dim=2` here. Only the base class hard-codes 1 at that spot
+    //   (`SortedRoomNeighbours.java:281`). This is the only site in the class that can build a
+    //   `dimension == 2` door, and `:381` scans for exactly one when it picks `completeShape`'s
+    //   `ignoreObject`.
+    let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &GRID_OBSTACLES);
+    let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
+    let room = overlap_probe_rooms(&mut board, &mut rooms, tree_id);
+
+    let result = Sorted45DegreeRoomNeighbours::calculate_neighbours(
+        room, 1, &mut board, &mut rooms, tree_id, 1005,
+    )
+    .expect("an incomplete room completes");
+    let mut actual = Vec::new();
+    dump_45(&result, &rooms, &mut actual);
+    assert_script(
+        &actual,
+        r#"
+  neighbours n=1
+    [0] fts=2 lts=4 obj=cfsr1004 nshape=Oct[-2500,-8500,500,-6500,4000,9000,-11000,-6000] nshapeCorners=(-2500.0,-8500.0;500.0,-8500.0;500.0,-8500.0;500.0,-6500.0;500.0,-6500.0;-2500.0,-6500.0;-2500.0,-6500.0;-2500.0,-8500.0) isect=Oct[-2500,-8500,-1000,-7500,5000,7500,-11000,-8500] isectCorners=(-2500.0,-8500.0;-1000.0,-8500.0;-1000.0,-8500.0;-1000.0,-7500.0;-1000.0,-7500.0;-2500.0,-7500.0;-2500.0,-7500.0;-2500.0,-8500.0)
+  edgeTouches=[false,false,true,true,true,false,false,false]
+  completedRoom=cfsr1005
+  doors n=1
+    [0] first=cfsr1005 second=cfsr1004 dim=2 shape=Box[-2500,-8500..-1000,-7500] corners=(-2500.0,-8500.0;-1000.0,-8500.0;-1000.0,-7500.0;-2500.0,-7500.0)
+  targetDoors n=0
+"#,
+    );
+    // Spelled out, because a hard-coded `1` here would still have matched every other fixture in
+    // this file and every configuration of `p6t3` modes 6-9.
+    let doors = rooms.room_doors(result.completed_room);
+    assert_eq!(doors.len(), 1);
+    assert_eq!(rooms.door(doors[0]).expect("a live door").dimension, 2);
+}
+
+#[test]
+fn a_two_dimensional_overlap_is_an_orthogonal_neighbour_with_a_two_dimensional_door() {
+    // `run.sh p6t3 7 42 30 1000`, the `overlap regime=1` block, verbatim — the same two facts for
+    // `SortedOrthogonalRoomNeighbours.java:168` and `:201`, whose `dimension == 2` scan is at
+    // `:468`.
+    let (mut board, tree_id) = p6t3_board(AngleRestriction::NinetyDegree, &GRID_OBSTACLES);
+    let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
+    let room = overlap_probe_rooms(&mut board, &mut rooms, tree_id);
+
+    let result = SortedOrthogonalRoomNeighbours::calculate_neighbours(
+        room, 1, &mut board, &mut rooms, tree_id, 1005,
+    )
+    .expect("an incomplete room completes");
+    let mut actual = Vec::new();
+    dump_orthogonal(&result, &rooms, &mut actual);
+    assert_script(
+        &actual,
+        r#"
+  neighbours n=1
+    [0] fts=1 lts=2 obj=cfsr1004 nshape=Box[-2500,-8500..500,-6500] nshapeCorners=(-2500.0,-8500.0;500.0,-8500.0;500.0,-6500.0;-2500.0,-6500.0) isect=Box[-2500,-8500..-1000,-7500] isectCorners=(-2500.0,-8500.0;-1000.0,-8500.0;-1000.0,-7500.0;-2500.0,-7500.0)
+  edgeTouches=[false,true,true,false]
+  completedRoom=cfsr1005
+  doors n=1
+    [0] first=cfsr1005 second=cfsr1004 dim=2 shape=Box[-2500,-8500..-1000,-7500] corners=(-2500.0,-8500.0;-1000.0,-8500.0;-1000.0,-7500.0;-2500.0,-7500.0)
+  targetDoors n=0
+"#,
+    );
+    let doors = rooms.room_doors(result.completed_room);
+    assert_eq!(doors.len(), 1);
+    assert_eq!(rooms.door(doors[0]).expect("a live door").dimension, 2);
+}
+
+// =================================================================================================
 // The dispatch reaches three different implementations
 // =================================================================================================
 

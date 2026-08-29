@@ -18,7 +18,16 @@
 //! * A **2-dimensional overlap is only skipped for an obstacle room** (`:132`). Where the base
 //!   class `continue`s for every `dimension > 1` (SortedRoomNeighbours.java:232-247), this class
 //!   falls through and records a 2-dimensional intersection as an ordinary sorted neighbour when
-//!   the completed room is a `CompleteFreeSpaceExpansionRoom`.
+//!   the completed room is a `CompleteFreeSpaceExpansionRoom` — and then builds a door for it
+//!   whose **computed** dimension is 2 (`:164`, see below). The arm is not exotic: `:373-394`
+//!   deliberately looks for a `dimension == 2` door to a free-space room to hand `completeShape`
+//!   as its `ignoreObject`, and `CompleteFreeSpaceExpansionRoom.isTraceObstacle` is the constant
+//!   `true`, so nothing diverts such an overlap to `calculateTargetDoors`. It is `p6t3` mode 6's
+//!   `overlap` probe and the test
+//!   `a_two_dimensional_overlap_is_a_45_degree_neighbour_with_a_two_dimensional_door`.
+//! * The door built at `:164` is the **two-argument** `ExpansionDoor` constructor
+//!   (ExpansionDoor.java:35-39), which computes its dimension from the two rooms' shapes. Only
+//!   the base class hard-codes `1` at the same spot (SortedRoomNeighbours.java:281).
 //! * `calculateTargetDoors` is `CompleteFreeSpaceExpansionRoom`'s per-entry method (`:124`,
 //!   [`super::complete_room::calculate_target_doors`]), called **inside** the neighbour loop, not
 //!   the base class's static one at the end of `calculate`. The two are not the same function:
@@ -35,11 +44,23 @@
 //! on the **same** condition for both operands (`cmpValue == 0`), so unlike
 //! `SortedRoomNeighbours.SortedRoomNeighbour.compareTo` (quirk #160) this one *is* transitive and
 //! antisymmetric: it is a lexicographic order on `(firstTouchingSide, corner ordinate, span, last
-//! corner ordinate, id)`. Two neighbours still compare `Equal` when all five keys agree, and the
-//! `TreeSet` then **drops** the second — the id tie-break crosses the item and room id spaces
-//! exactly as the base class's does (quirk #161). The container is [`JavaTreeSet`] anyway, both
-//! because the drop has to happen at the same moment Java's does and because a `BTreeSet` would
-//! order the survivors by a different walk if the analysis above were ever wrong.
+//! corner ordinate, id)`.
+//!
+//! **That conclusion rests on a lemma, and the lemma is this class's `addSortedNeighbour`.** The
+//! two corner `switch`es (`:936`, `:963`) dispatch on `firstTouchingSide` and `lastTouchingSide`,
+//! and a `-1` there would make the second one select *different* ordinates for the two operands —
+//! which is exactly how antisymmetry breaks. It cannot happen, because `addSortedNeighbour`
+//! (`:249`) filters on `if (newNeighbour.lastTouchingSide >= 0)` before inserting, and the
+//! constructor's two early returns (`:855-859`, `:886-889`) guarantee that a neighbour with
+//! `lastTouchingSide >= 0` also has `firstTouchingSide >= 0`. So every member of the set has both
+//! sides in `0..8`. (The orthogonal sibling has **no** such filter and needs a different lemma;
+//! its module doc gives it.)
+//!
+//! Two neighbours still compare `Equal` when all five keys agree, and the `TreeSet` then **drops**
+//! the second — the id tie-break crosses the item and room id spaces exactly as the base class's
+//! does (quirk #161). The container is [`JavaTreeSet`] anyway, both because the drop has to happen
+//! at the same moment Java's does and because a `BTreeSet` would order the survivors by a
+//! different walk if the analysis above were ever wrong.
 //!
 //! not ported: every `FRLogger` payload of this class — the `FRLogger.warn`s at `:94`, `:258`,
 //! `:288`, `:321` and `:789` and the five `ROOM_EDGE_REMOVE` `FRLogger.trace` blocks
@@ -357,7 +378,23 @@ impl Sorted45DegreeRoomNeighbours {
                         rooms,
                     )
                 {
-                    let new_door = rooms.new_door(completed_room, neighbour_room, 1);
+                    // :164 is the **two**-argument `new ExpansionDoor(completedRoom,
+                    // neighbourRoom)` (ExpansionDoor.java:35-39), which *computes* the door's
+                    // dimension from `firstRoom.getShape().intersection(secondRoom.getShape())`
+                    // — the rooms' **real** shapes, not the bounding octagons `intersection`
+                    // above was measured on. Only the base class hard-codes 1 here
+                    // (SortedRoomNeighbours.java:281). The difference is live: `:381` picks the
+                    // `ignoreObject` handed to `completeShape` by scanning for a door with
+                    // `dimension == 2`, and this is the only site that can build one.
+                    let new_door = rooms
+                        .new_door_from_shapes(completed_room, neighbour_room)
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Sorted45DegreeRoomNeighbours.calculateNeighbours: a door room \
+                                 has no shape (Sorted45DegreeRoomNeighbours.java:164) — Java \
+                                 NPEs in the ExpansionDoor constructor here too"
+                            )
+                        });
                     rooms.add_door(neighbour_room, new_door);
                     rooms.add_door(completed_room, new_door);
                 }

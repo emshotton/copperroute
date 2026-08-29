@@ -240,6 +240,85 @@ public class P6T3 {
         runOne(tree, i, mode);
       }
     }
+    if (mode == 6 || mode == 7) {
+      runOverlapProbe(tree, mode);
+    }
+  }
+
+  /**
+   * The free-space **2-dimensional overlap** arm of {@code Sorted45DegreeRoomNeighbours.java:132} /
+   * {@code SortedOrthogonalRoomNeighbours.java:168} — the {@code &&} the base class does not have
+   * ({@code SortedRoomNeighbours.java:232} skips every {@code dimension > 1}).
+   *
+   * <p>The random loop above cannot reach it: its seed rooms are {@code completeShape} output,
+   * which is restrained against everything already in the tree, so a *free-space* completed room
+   * never overlaps a tree object 2-dimensionally. This probe inserts a {@code
+   * CompleteFreeSpaceExpansionRoom} that deliberately overlaps a hand-built incomplete room on an
+   * otherwise empty part of layer 1 and drives {@code calculateNeighbours} on it. {@code
+   * CompleteFreeSpaceExpansionRoom.isTraceObstacle} is the constant {@code true} ({@code
+   * CompleteFreeSpaceExpansionRoom.java:81-84}), so the overlap is **not** diverted to {@code
+   * calculateTargetDoors}; it falls through to {@code addSortedNeighbour} and then to the
+   * **two-argument** {@code ExpansionDoor} constructor ({@code ExpansionDoor.java:35-39}), whose
+   * computed dimension is 2 — which is also the door {@code tryRemoveEdge}'s {@code
+   * currentDoor.dimension == 2} scan looks for when it picks {@code completeShape}'s {@code
+   * ignoreObject}. Nothing else in the driver builds one.
+   *
+   * <p>It runs after the random loop and draws no random numbers, so modes 0-5, 8 and 9 are
+   * untouched and the two probed lines are appended to modes 6 and 7.
+   */
+  @SuppressWarnings("unchecked")
+  static void runOverlapProbe(ShapeSearchTree tree, int mode) throws Exception {
+    IntBox overlapBox = new IntBox(-2500, -8500, 500, -6500);
+    int overlapId = ++roomIdCounter;
+    CompleteFreeSpaceExpansionRoom overlapRoom =
+        new CompleteFreeSpaceExpansionRoom(overlapBox, 1, overlapId);
+    tree.insert(overlapRoom);
+    IntBox roomBox = new IntBox(-4000, -9500, -1000, -7500);
+    int roomIdNo = ++roomIdCounter;
+    IncompleteFreeSpaceExpansionRoom room =
+        new IncompleteFreeSpaceExpansionRoom(roomBox, 1, roomBox);
+    System.out.println(
+        "overlap regime="
+            + regimeOf(mode)
+            + " overlapRoom="
+            + overlapId
+            + " overlapShape="
+            + shp(overlapBox)
+            + " room="
+            + shp(roomBox)
+            + " net=1 roomIdNo="
+            + roomIdNo);
+    Object result =
+        (mode == 6 ? calculateNeighbours45 : calculateNeighboursOrtho)
+            .invoke(null, room, 1, tree, roomIdNo);
+    if (result == null) {
+      System.out.println("  result=null");
+      return;
+    }
+    if (mode == 6) {
+      dumpRegimeNeighbours(
+          (SortedSet<Object>) f45SortedNeighbours.get(result),
+          f45FirstTouchingSide,
+          f45LastTouchingSide,
+          f45SearchTreeObject,
+          f45Shape,
+          f45Intersection);
+      System.out.println("  edgeTouches=" + flags((boolean[]) f45EdgeInterior.get(result)));
+    } else {
+      dumpRegimeNeighbours(
+          (SortedSet<Object>) fOrthoSortedNeighbours.get(result),
+          fOrthoFirstTouchingSide,
+          fOrthoLastTouchingSide,
+          fOrthoSearchTreeObject,
+          fOrthoShape,
+          fOrthoIntersection);
+      System.out.println("  edgeTouches=" + flags((boolean[]) fOrthoEdgeInterior.get(result)));
+    }
+    CompleteExpansionRoom completedRoom =
+        (CompleteExpansionRoom) (mode == 6 ? f45CompletedRoom : fOrthoCompletedRoom).get(result);
+    System.out.println("  completedRoom=" + desc(completedRoom));
+    dumpDoors(completedRoom.getDoors());
+    dumpTargetDoors(completedRoom);
   }
 
   /** 0 for the any-angle regime, 1 for 90 degrees, 2 for 45 degrees — `p6t2`'s numbering. */

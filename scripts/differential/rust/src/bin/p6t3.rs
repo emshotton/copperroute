@@ -19,6 +19,7 @@ use fr_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape,
     TileShape,
 };
+use fr_router::IncompleteRoomId;
 use fr_router::autoroute::expansion::sorted_neighbours::{
     SortedRoomNeighbour, SortedRoomNeighbours,
 };
@@ -29,7 +30,6 @@ use fr_router::autoroute::expansion::{
 };
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
-use fr_router::IncompleteRoomId;
 
 const RANGE: i32 = 9000;
 const BOUNDING_BOX: IntBox = IntBox {
@@ -329,6 +329,114 @@ fn main() {
             );
         }
     }
+    if mode == 6 || mode == 7 {
+        run_overlap_probe(&mut board, &mut rooms, tree_id, &mut room_id_counter, mode);
+    }
+}
+
+/// The free-space **2-dimensional overlap** arm of `Sorted45DegreeRoomNeighbours.java:132` /
+/// `SortedOrthogonalRoomNeighbours.java:168` — the `&&` the base class does not have. See
+/// `P6T3.java`'s `runOverlapProbe` for why the random loop cannot reach it and why this arm is
+/// the only place a `dimension == 2` door to a free-space room is ever built.
+fn run_overlap_probe(
+    board: &mut Board,
+    rooms: &mut ExpansionRoomStore,
+    tree_id: TreeId,
+    room_id_counter: &mut i32,
+    mode: i32,
+) {
+    let overlap_box = IntBox::from_coords(-2500, -8500, 500, -6500);
+    *room_id_counter += 1;
+    let overlap_id = *room_id_counter;
+    let overlap_room = rooms.new_complete_room(Some(TileShape::Box(overlap_box)), 1, overlap_id);
+    {
+        let tree = board
+            .trees
+            .trees_mut()
+            .find(|tree| tree.id() == tree_id)
+            .expect("the autoroute tree");
+        rooms.insert_complete_room(tree, overlap_room);
+    }
+    let room_box = IntBox::from_coords(-4000, -9500, -1000, -7500);
+    *room_id_counter += 1;
+    let room_id_no = *room_id_counter;
+    let room = RoomRef::Incomplete(rooms.new_incomplete_room(
+        Some(TileShape::Box(room_box)),
+        1,
+        Some(TileShape::Box(room_box)),
+    ));
+    println!(
+        "overlap regime={} overlapRoom={overlap_id} overlapShape={} room={} net=1 \
+         roomIdNo={room_id_no}",
+        regime_of(mode),
+        shp(&TileShape::Box(overlap_box)),
+        shp(&TileShape::Box(room_box))
+    );
+    if mode == 6 {
+        let Some(result) = Sorted45DegreeRoomNeighbours::calculate_neighbours(
+            room, 1, board, rooms, tree_id, room_id_no,
+        ) else {
+            println!("  result=null");
+            return;
+        };
+        dump_45_neighbours(&result, rooms);
+        println!("  completedRoom={}", desc(result.completed_room, rooms));
+        dump_doors(result.completed_room, rooms);
+        dump_target_doors(result.completed_room, rooms);
+    } else {
+        let Some(result) = SortedOrthogonalRoomNeighbours::calculate_neighbours(
+            room, 1, board, rooms, tree_id, room_id_no,
+        ) else {
+            println!("  result=null");
+            return;
+        };
+        dump_orthogonal_neighbours(&result, rooms);
+        println!("  completedRoom={}", desc(result.completed_room, rooms));
+        dump_doors(result.completed_room, rooms);
+        dump_target_doors(result.completed_room, rooms);
+    }
+}
+
+/// `P6T3.dumpRegimeNeighbours` for the 45-degree inner class, plus its `edgeTouches` line.
+fn dump_45_neighbours(result: &Sorted45DegreeRoomNeighbours, rooms: &ExpansionRoomStore) {
+    println!("  neighbours n={}", result.sorted_neighbours.len());
+    for (i, n) in result.sorted_neighbours.iter().enumerate() {
+        println!(
+            "    [{i}] fts={} lts={} obj={} nshape={} nshapeCorners={} isect={} isectCorners={}",
+            n.first_touching_side,
+            n.last_touching_side,
+            describe_object(n.search_tree_object, rooms),
+            shp(&TileShape::Octagon(n.shape)),
+            corners(Some(&TileShape::Octagon(n.shape))),
+            shp(&TileShape::Octagon(n.intersection)),
+            corners(Some(&TileShape::Octagon(n.intersection)))
+        );
+    }
+    println!(
+        "  edgeTouches={}",
+        flags(&result.edge_interior_touches_obstacle)
+    );
+}
+
+/// `P6T3.dumpRegimeNeighbours` for the orthogonal inner class, plus its `edgeTouches` line.
+fn dump_orthogonal_neighbours(result: &SortedOrthogonalRoomNeighbours, rooms: &ExpansionRoomStore) {
+    println!("  neighbours n={}", result.sorted_neighbours.len());
+    for (i, n) in result.sorted_neighbours.iter().enumerate() {
+        println!(
+            "    [{i}] fts={} lts={} obj={} nshape={} nshapeCorners={} isect={} isectCorners={}",
+            n.first_touching_side,
+            n.last_touching_side,
+            describe_object(n.search_tree_object, rooms),
+            shp(&TileShape::Box(n.shape)),
+            corners(Some(&TileShape::Box(n.shape))),
+            shp(&TileShape::Box(n.intersection)),
+            corners(Some(&TileShape::Box(n.intersection)))
+        );
+    }
+    println!(
+        "  edgeTouches={}",
+        flags(&result.edge_interior_touches_obstacle)
+    );
 }
 
 /// 0 for the any-angle regime, 1 for 90 degrees, 2 for 45 degrees — `p6t2`'s numbering.
@@ -589,24 +697,7 @@ fn run_one(
             println!("  result=null");
             return;
         };
-        println!("  neighbours n={}", result.sorted_neighbours.len());
-        for (i, n) in result.sorted_neighbours.iter().enumerate() {
-            println!(
-                "    [{i}] fts={} lts={} obj={} nshape={} nshapeCorners={} isect={} \
-                 isectCorners={}",
-                n.first_touching_side,
-                n.last_touching_side,
-                describe_object(n.search_tree_object, rooms),
-                shp(&TileShape::Octagon(n.shape)),
-                corners(Some(&TileShape::Octagon(n.shape))),
-                shp(&TileShape::Octagon(n.intersection)),
-                corners(Some(&TileShape::Octagon(n.intersection)))
-            );
-        }
-        println!(
-            "  edgeTouches={}",
-            flags(&result.edge_interior_touches_obstacle)
-        );
+        dump_45_neighbours(&result, rooms);
         println!("  completedRoom={}", desc(result.completed_room, rooms));
         dump_doors(result.completed_room, rooms);
         dump_target_doors(result.completed_room, rooms);
@@ -619,24 +710,7 @@ fn run_one(
             println!("  result=null");
             return;
         };
-        println!("  neighbours n={}", result.sorted_neighbours.len());
-        for (i, n) in result.sorted_neighbours.iter().enumerate() {
-            println!(
-                "    [{i}] fts={} lts={} obj={} nshape={} nshapeCorners={} isect={} \
-                 isectCorners={}",
-                n.first_touching_side,
-                n.last_touching_side,
-                describe_object(n.search_tree_object, rooms),
-                shp(&TileShape::Box(n.shape)),
-                corners(Some(&TileShape::Box(n.shape))),
-                shp(&TileShape::Box(n.intersection)),
-                corners(Some(&TileShape::Box(n.intersection)))
-            );
-        }
-        println!(
-            "  edgeTouches={}",
-            flags(&result.edge_interior_touches_obstacle)
-        );
+        dump_orthogonal_neighbours(&result, rooms);
         println!("  completedRoom={}", desc(result.completed_room, rooms));
         dump_doors(result.completed_room, rooms);
         dump_target_doors(result.completed_room, rooms);
