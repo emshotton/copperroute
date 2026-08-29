@@ -1442,6 +1442,19 @@ impl Board {
         self.fill_tree_shapes(id, tree).unwrap_or(0)
     }
 
+    /// Port of `Item.shapeLayer(int)` (Item.java:809-814) for callers outside this crate:
+    /// [`Item::shape_layer`] needs an [`ItemCtx`], which only a `Board`
+    /// can build.
+    ///
+    /// `None` is an id the board does not hold — Java would have NPE'd on the `Item` reference
+    /// its caller already has. Added for `autoroute.expansion.ObstacleExpansionRoom.getLayer`
+    /// (`autoroute/expansion/ObstacleExpansionRoom.java:38-41`), which recomputes the layer on
+    /// every call rather than caching it beside the shape.
+    pub fn item_shape_layer(&self, id: ItemId, index: usize) -> Option<usize> {
+        let ctx = item_ctx!(self);
+        Some(self.items.get(&id)?.shape_layer(index, &ctx))
+    }
+
     /// Port of `Item.getTreeShape(ShapeTree, int)` (Item.java:212-226), **with** the lazy fill
     /// and its one `clearDerivedData()` retry (Item.java:218-221) — `Item::get_tree_shape` reads
     /// the cache only.

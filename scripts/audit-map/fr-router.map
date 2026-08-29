@@ -10,8 +10,8 @@
 # reports every method MISSING, which is the point: the map records the obligation, and the
 # invocation's file glob records how much of it is due.
 #
-# Invocations, one per Java package, widening as the crate fills up. As of **Task 1** the first
-# one exits 0 over this task's three classes and over the whole `autoroute/*.java` package root
+# Invocations, one per Java package, widening as the crate fills up. As of **Task 2** the first
+# one exits 0 over Task 1's three classes and over the whole `autoroute/*.java` package root
 # (the out-of-scope and Plan 7 classes are carried by the roster at the foot of `src/lib.rs`):
 #
 #   ./scripts/audit-port.sh autoroute crates/fr-router/src \
@@ -50,6 +50,7 @@ RoutingFailureLog                 lib.rs
 ItemRouteResult                   lib.rs
 
 # --- autoroute/maze/ (Tasks 2, 9-14, 16) --------------------------------------------------------
+# `MazeSearchElement` landed in Task 2 (the expansion doors cannot be built without it).
 AutorouteEngine                   autoroute/maze/engine.rs
 AutorouteControl                  autoroute/maze/control.rs
 DestinationDistance               autoroute/maze/destination_distance.rs
@@ -64,7 +65,8 @@ MazeTraceShover                   autoroute/maze/trace_shover.rs
 # A `FRLogger` sink, 44 loc (ruling 13's not-ported roster).
 MazeFanoutDiagnostics             lib.rs
 
-# --- autoroute/expansion/ (Tasks 3-7) -----------------------------------------------------------
+# --- autoroute/expansion/ (Tasks 2-7) -----------------------------------------------------------
+# The first eight rows landed in Task 2; the three `Sorted*RoomNeighbours` rows are Tasks 4-5.
 ExpansionRoom                     autoroute/expansion/room.rs
 CompleteExpansionRoom             autoroute/expansion/room.rs
 ExpandableObject                  autoroute/expansion/room.rs

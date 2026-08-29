@@ -17,16 +17,25 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 1 of 18
+## State: Task 2 of 18
 
-What exists is the data-model floor the other seventeen tasks build on:
+What exists is the data-model floor the other sixteen tasks build on:
 
 | Item | Where | Java |
 | --- | --- | --- |
-| `Arena<T>` | `src/arena.rs` | — (ruling 16) |
+| `Arena<T>` and its index newtypes | `src/arena.rs` | — (ruling 16) |
 | `AutorouteAttemptState` | `src/autoroute/attempt.rs` | `AutorouteAttemptState.java:1-14` |
 | `AutorouteAttemptResult` | `src/autoroute/attempt.rs` | `AutorouteAttemptResult.java:1-25` |
 | `ItemAutorouteInfo`'s accessors | `src/autoroute/item_info.rs` | `ItemAutorouteInfo.java:10-105` |
+| `RoomRef` / `ExpandableRef` | `src/autoroute/expansion/room.rs` | `ExpansionRoom.java`, `CompleteExpansionRoom.java`, `ExpandableObject.java` |
+| `FreeSpaceExpansionRoom` | `src/autoroute/expansion/free_space_room.rs` | `FreeSpaceExpansionRoom.java:8-91` |
+| `IncompleteFreeSpaceExpansionRoom` | `src/autoroute/expansion/incomplete_room.rs` | `IncompleteFreeSpaceExpansionRoom.java:8-42` |
+| `CompleteFreeSpaceExpansionRoom` | `src/autoroute/expansion/complete_room.rs` | `CompleteFreeSpaceExpansionRoom.java:19-209` |
+| `ObstacleExpansionRoom` | `src/autoroute/expansion/obstacle_room.rs` | `ObstacleExpansionRoom.java:14-158` |
+| `ExpansionDoor` | `src/autoroute/expansion/door.rs` | `ExpansionDoor.java:11-201` |
+| `TargetItemExpansionDoor` | `src/autoroute/expansion/target_door.rs` | `TargetItemExpansionDoor.java:11-74` |
+| `ExpansionRoomStore` | `src/autoroute/expansion/mod.rs` | `AutorouteEngine`'s room lists + the heap |
+| `MazeSearchElement` | `src/autoroute/maze/search_element.rs` | `MazeSearchElement.java:1-40` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
 
@@ -47,10 +56,49 @@ Two cross-crate prerequisites landed with it:
   `ObstacleExpansionRoom`, and because keeping the scratch on the item is what
   makes `Board::deep_copy` and `Item::clear_derived_data` drop it wholesale.
 
-Everything else — the maze search, the expansion rooms, the drill pages, the
-path locators, `RoutingBoardExt` — arrives in Tasks 2-17. The deferral roster
+Task 2 also discharged **Plan 2's `TreeObject::Room` obligation**: rooms now go
+into the same compensated tree as items, through `fr-board`'s additive
+`ShapeSearchTree::insert_room` / `remove_room`
+(`AutorouteEngine.java:534`, `CompleteFreeSpaceExpansionRoom.java:56-59`), and
+the ordering that `TreeObject`'s `Ord` has encoded since Plan 2 — rooms before
+items, descending id within each — is asserted against a real mixed tree in
+`crates/fr-board/tests/expansion_room_tree.rs` and
+`crates/fr-router/tests/expansion_rooms.rs`. `Board::item_shape_layer` was
+added at the same time, for `ObstacleExpansionRoom.getLayer`. One obligation
+remains: `ShapeSearchTree`'s `tree_shape_of` and `ignore_object` still panic on
+a `TreeObject::Room`, so Task 4 must teach the compensated queries to resolve a
+room's shape and layer before anything calls `overlapping_tree_entries` over a
+tree that holds rooms.
+
+Everything else — the maze search, the neighbour sorting, the drill pages, the
+path locators, `RoutingBoardExt` — arrives in Tasks 3-17. The deferral roster
 at the foot of `src/lib.rs` names each class and the task or plan that owns it;
 `grep -rn "added in Task" crates/fr-router/src` lists what is still owed.
+
+## The five `getId()`s
+
+Four of the five `getId()` implementations in `autoroute/expansion` are
+**hashes, not identities**, and every one of the four overflows a Java `int`
+silently. They matter because `ExpansionDoor.getId` is the third sort key of
+`MazeListElement.compareTo` (ruling 4), so an id collision changes which maze
+element is expanded first — a wrong answer with no crash.
+
+| Object | Java | Formula |
+| --- | --- | --- |
+| `CompleteFreeSpaceExpansionRoom` | `:99-102` | the engine counter — the only true id |
+| `ObstacleExpansionRoom` | `:48-51` | `(itemId << 10) \| indexInItem` — aliases, quirk #160 |
+| `IncompleteFreeSpaceExpansionRoom` | `:37-41` | `31 * shape.getId() + layer`, shape mutable, quirk #162 |
+| `ExpansionDoor` | `:184-190` | `min(id1,id2) * 31 + max(id1,id2)` |
+| `TargetItemExpansionDoor` | `:70-74` | `31 * item.getId() + room.getId()` |
+
+Each is transcribed with its `wrapping_*` and pinned by a test. Note that
+`AutorouteEngine.generateRoomIdNo` ticks once per
+`SortedRoomNeighbours.calculate` **call** — including calls that build no
+complete room (`SortedRoomNeighbours.java:193`) and calls whose room the
+`edgeRemoved` retry discards (`:111-114`) — so complete-room ids **skip**, and
+`RoomId` (the arena index) is a different number. Both are minted in creation
+order, which is what makes the arena index order the search tree exactly as
+Java's id does.
 
 ## House rules
 
@@ -99,8 +147,8 @@ sound between connections, when no id from the old arena survives.
 ## Audit
 
 `scripts/audit-map/fr-router.map` maps every class of the five Java packages
-this crate ports (ruling 13). As of Task 1 the package-root invocation reaches
-**zero MISSING and zero UNMAPPED**, over this task's three classes and over the
+this crate ports (ruling 13). As of Task 2 the package-root invocation reaches
+**zero MISSING and zero UNMAPPED**, over Task 1's three classes and over the
 whole package root:
 
 ```sh
@@ -112,5 +160,7 @@ whole package root:
 ```
 
 The map's header lists the six further invocations — one per subpackage, plus
-`board/actions` and `board/optimize` — that Tasks 2-17 fill in and Task 18 must
-drive to zero.
+`board/actions` and `board/optimize` — that Tasks 3-17 fill in and Task 18 must
+drive to zero. Task 2 moved `autoroute/expansion` from 79 MISSING to **13**
+(the three `Sorted*RoomNeighbours` classes, Tasks 4-5) and `autoroute/maze`
+from 28 to **27**, both at zero UNMAPPED.

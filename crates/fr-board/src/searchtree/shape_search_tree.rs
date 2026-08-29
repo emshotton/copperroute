@@ -10,7 +10,7 @@ use fr_geometry::regular_tile_shape::RegularTileShape;
 use fr_geometry::{Circle, Point, Polyline, Shape, ShapeOps, TileShape};
 
 use crate::datastructures::{LeafId, ShapeTree, TreeEntry};
-use crate::ids::{ItemId, TreeId, TreeObject};
+use crate::ids::{ItemId, RoomId, TreeId, TreeObject};
 use crate::items::{Item, ItemCtx, PolylineTrace};
 use crate::library::Padstack;
 use crate::rules::{BoardRules, ClearanceMatrix};
@@ -698,6 +698,46 @@ impl ShapeSearchTree {
             let entries = entries.to_vec();
             self.tree.remove_opt(&entries);
         }
+    }
+
+    /// Port of `ShapeTree.insert(ShapeTree.Storable)` (ShapeTree.java:32-42) specialised to an
+    /// **expansion room** — `AutorouteEngine.addCompleteRoom`'s
+    /// `this.autorouteSearchTree.insert(completedRoom)`
+    /// (`autoroute/maze/AutorouteEngine.java:534`).
+    ///
+    /// `CompleteFreeSpaceExpansionRoom implements SearchTreeObject`
+    /// (`autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:19-20`), so rooms and board
+    /// items share this tree and one ordered result set (plan-rulings.md #2, discharged by
+    /// Plan 6 Task 2). A room answers `treeShapeCount(tree) == 1` (`:62-64`) and
+    /// `getTreeShape(tree, 0) == getShape()` (`:66-69`), so this inserts exactly one leaf at
+    /// shape index 0.
+    ///
+    /// `None` is Java's `null` `Leaf`: the room's shape has no bound in this tree's directions
+    /// (ShapeTree.java:51-55). The caller stores the answer and hands it back to
+    /// [`ShapeSearchTree::remove_room`] — the port keeps the entries on the object instead of
+    /// the tree calling `setSearchTreeEntries` back into it (the `not ported: Storable` note on
+    /// [`ShapeTree`]), which is the same inversion [`ShapeSearchTree::insert_item`] uses.
+    ///
+    /// obligation: the two `TreeObject::Room` arms of the private `tree_shape_of` and
+    /// `ignore_object` still panic, so a room inserted here must not be reached by
+    /// [`Self::overlapping_tree_entries`] and friends until Plan 6 Task 4 gives those queries a
+    /// way to resolve a room's shape and layer. The low-level
+    /// [`ShapeTree::overlaps`](crate::datastructures::ShapeTree::overlaps) is unaffected —
+    /// it never looks inside the object key.
+    pub fn insert_room(&mut self, room: RoomId, shape: &TileShape) -> Option<LeafId> {
+        let bounds = self.tree.bounding_shape(shape)?;
+        Some(self.tree.insert_leaf(TreeObject::Room(room), 0, bounds))
+    }
+
+    /// Removes an expansion room's entry from this tree —
+    /// `CompleteFreeSpaceExpansionRoom.removeFromTree`'s `shapeTree.remove(this.treeEntries)`
+    /// (`autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:56-59`), for the one-element
+    /// entry array a room has.
+    ///
+    /// `None` is Java's `null` element, skipped exactly as [`ShapeTree::remove_leaf_opt`] skips
+    /// it (MinAreaTree.java:121-123) — a room whose shape had no bound was never inserted.
+    pub fn remove_room(&mut self, leaf: Option<LeafId>) {
+        self.tree.remove_leaf_opt(leaf);
     }
 
     /// Java's private `Item.getPrecalculatedTreeShapes` (Item.java:228-238): fill this tree's

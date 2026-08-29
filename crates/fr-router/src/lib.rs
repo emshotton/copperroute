@@ -13,10 +13,12 @@
 //!
 //! # State
 //!
-//! **Task 1 of 18.** What exists so far is the data-model floor: [`Arena`], the per-connection
-//! outcome ([`AutorouteAttemptResult`]) and the per-item scratch accessors
-//! ([`autoroute::item_info`]). The maze search, the expansion rooms, the drill pages and the path
-//! locators arrive in Tasks 2-17; the roster at the foot of this file names each deferred class
+//! **Task 2 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
+//! newtypes, the per-connection outcome ([`AutorouteAttemptResult`]), the per-item scratch
+//! accessors ([`autoroute::item_info`]), and — from Task 2 — the expansion rooms, the doors and
+//! [`MazeSearchElement`] ([`autoroute::expansion`]), which is also where `fr-board`'s reserved
+//! `TreeObject::Room` becomes real. The maze search itself, the drill pages and the path
+//! locators arrive in Tasks 3-17; the roster at the foot of this file names each deferred class
 //! and the task that owns it.
 //!
 //! # House rules
@@ -39,8 +41,12 @@ pub mod arena;
 pub mod autoroute;
 pub mod error;
 
-pub use arena::Arena;
-pub use autoroute::{AutorouteAttemptResult, AutorouteAttemptState};
+pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
+pub use autoroute::{
+    AutorouteAttemptResult, AutorouteAttemptState, CompleteFreeSpaceExpansionRoom, ExpandableRef,
+    ExpansionDoor, ExpansionRoomStore, FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom,
+    MazeAdjustment, MazeSearchElement, ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor,
+};
 pub use error::RouterError;
 
 /// `AutorouteControl.ExpansionCostFactor` (`autoroute/maze/AutorouteControl.java:287`), the
@@ -54,7 +60,11 @@ pub use fr_settings::ExpansionCostFactor;
 /// Re-exports every public type of the crate, for `use fr_router::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        Arena, AutorouteAttemptResult, AutorouteAttemptState, ExpansionCostFactor, RouterError,
+        Arena, AutorouteAttemptResult, AutorouteAttemptState, CompleteFreeSpaceExpansionRoom,
+        DoorId, DrillId, ExpandableRef, ExpansionCostFactor, ExpansionDoor, ExpansionRoomStore,
+        FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, MazeAdjustment,
+        MazeSearchElement, ObstacleExpansionRoom, PageId, RoomRef, RouterError, TargetDoorId,
+        TargetItemExpansionDoor,
     };
 }
 

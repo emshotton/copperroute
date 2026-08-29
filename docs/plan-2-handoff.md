@@ -453,13 +453,28 @@ design:
   not Plan 5's.
 
 **Plan 6 (autoroute expansion rooms):**
-- **`RoomId`/`TreeObject` room ordering must be re-checked once rooms are
-  real.** `TreeObject::Ord` (`ids.rs`) already encodes Java's
-  `CompleteFreeSpaceExpansionRoom.compareTo` (rooms sort before items,
-  descending among themselves — quirk #44), verified only against the
-  *absence* of rooms so far (`RoomId` is reserved, unpopulated). Plan 6 must
-  confirm the ordering holds once `TreeObject::Room` values actually exist in
-  a tree.
+- ~~**`RoomId`/`TreeObject` room ordering must be re-checked once rooms are
+  real.**~~ — **discharged in Plan 6 Task 2.** `TreeObject::Ord` (`ids.rs`)
+  already encoded Java's `CompleteFreeSpaceExpansionRoom.compareTo` (rooms sort
+  before items, descending among themselves — quirk #44), verified only against
+  the *absence* of rooms. Plan 6 Task 2 populated it:
+  `ShapeSearchTree::insert_room`/`remove_room` put a
+  `TreeObject::Room` leaf into the shared tree
+  (`autoroute/maze/AutorouteEngine.java:534`,
+  `CompleteFreeSpaceExpansionRoom.java:56-59`), and the ordering is asserted
+  against a **real mixed tree** by
+  `crates/fr-board/tests/expansion_room_tree.rs::a_room_goes_into_the_default_tree_and_sorts_before_every_item`
+  and by `rooms_sort_before_items_and_descending_among_themselves` /
+  `a_room_and_an_item_with_the_same_numeric_id_do_not_collide` /
+  `a_room_enters_the_boards_own_compensated_tree_before_its_items` in
+  `crates/fr-router/tests/expansion_rooms.rs`. Two caveats were **recorded, not
+  fixed**: `compareTo`'s `instanceof`/cast mismatch (quirk #161) and the fact
+  that room ids and item ids collide numerically, the order being total only
+  because the type discriminator is the primary key. One obligation remains:
+  `ShapeSearchTree`'s `tree_shape_of` and `ignore_object` still panic on a
+  `TreeObject::Room`, so a room in the tree must not be reached by
+  `overlapping_tree_entries` until Plan 6 Task 4 teaches those queries to
+  resolve a room's shape and layer.
 - **`ShapeSearchTree::complete_shape`/`divide_large_room` are not written at
   all** — there is no stub function to fill in, only two `// added in Plan 6:`
   comment markers at the end of

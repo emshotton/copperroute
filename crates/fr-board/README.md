@@ -88,7 +88,7 @@ that stands in for each Java class is a **Plan 3 obligation**, recorded in
 | `BasicBoard` + the non-shove half of `RoutingBoard` | `Board` |
 | `Item` (abstract, 9 concrete subclasses) | `enum Item { Trace, Via, Pin, ObstacleArea, ConductionArea, ViaObstacleArea, ComponentObstacleArea, ComponentOutline, BoardOutline }` — see below |
 | `Trace` + `PolylineTrace` (Java splits geometry across two classes) | one struct, `PolylineTrace` |
-| `SearchTreeObject` | `enum TreeObject { Item(ItemId), Room(RoomId) }` — `RoomId` is reserved for Plan 6's autoroute expansion rooms |
+| `SearchTreeObject` | `enum TreeObject { Item(ItemId), Room(RoomId) }` — `RoomId` was reserved in Plan 2 and is **populated** from Plan 6 Task 2, through `ShapeSearchTree::insert_room`/`remove_room` |
 | `ItemAutorouteInfo` | `struct AutorouteInfo` (`items/header.rs`) — the fields, as ids; the accessors are `fr-router`'s (plan-6 ruling 15) |
 | `ShapeTree` (abstract) + `MinAreaTree` (its one concrete subclass) | one struct, `ShapeTree` |
 | `ShapeSearchTree` | `ShapeSearchTree` (wraps a `ShapeTree<TreeObject>`) |
