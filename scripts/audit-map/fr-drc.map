@@ -11,9 +11,9 @@
 # The second glob widens as the crate fills up: Task 4 added `UnconnectedItems.java` (which
 # declares no public methods, so it contributes no rows — the map line exists to name its Rust
 # home), Task 5 adds `NetIncompletes.java AirLine.java`, and Task 11 turns it into the plain
-# `'*.java'` the plan asks for, with the whole map resolving and no `MISSING` left. Until then a class whose mapped
-# file does not exist yet reports every method `MISSING` — which is the point: the map records
-# the obligation, the glob records how much of it is due.
+# `'*.java'` the plan asks for, with the whole map resolving and no `MISSING` left. Until then a
+# class whose mapped file does not exist yet reports every method `MISSING` — which is the point:
+# the map records the obligation, the glob records how much of it is due.
 #
 # The paths below are relative to whichever `src` the invocation names, so the `ClearanceViolation`
 # rows appear twice: once crate-relative (for the `fr-board` invocation) and once as `../../` (for

@@ -32,8 +32,9 @@
 //!
 //! Task 3 ships the crate skeleton, [`DesignRulesChecker`] and
 //! [`DesignRulesChecker::get_all_clearance_violations`]; Task 4 adds [`UnconnectedItems`] and
-//! [`DesignRulesChecker::get_all_unconnected_items`]. Task 5 adds `AirLine`, `NetIncompletes` and the ratsnest; Task 6
-//! adds `calculate_all_incompletes`, the counters and `BoardStatisticsClearanceViolations`;
+//! [`DesignRulesChecker::get_all_unconnected_items`]. Task 5 adds `AirLine`, `NetIncompletes`
+//! and the ratsnest; Task 6 adds `calculate_all_incompletes`, the counters and
+//! `BoardStatisticsClearanceViolations`;
 //! Tasks 7-8 add the KiCad DTOs, `generate_report` and `report_to_json`; Task 11 adds this
 //! crate's `README.md` and the `// not ported:` roster at the foot of this file.
 

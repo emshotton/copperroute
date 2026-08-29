@@ -139,11 +139,12 @@ impl<'a> DesignRulesChecker<'a> {
     /// `generateReport`, which calls this, is `&mut self` for
     /// [`Self::get_all_clearance_violations`]' sake.
     ///
-    // Java bug: the trace phase's dedup compares only `firstItem`
-    // (`DesignRulesChecker.java:160`), so a dangling trace that is a net entry's `secondItem`, or
-    // merely a member of its `allItems`, is reported twice — once inside the net entry and once
-    // as its own `track_dangling` entry. The comparison is also `==`, over a list that grows as
-    // the walk goes, which makes the phase O(n^2). Both reproduced; quirks row #146.
+    // Java bug: DesignRulesChecker.getAllUnconnectedItems (DesignRulesChecker.java:160) — the
+    // trace phase's dedup compares only `firstItem`, so a dangling trace that is a net entry's
+    // `secondItem`, or merely a member of its `allItems`, is reported twice: once inside the net
+    // entry and once as its own `track_dangling` entry. The comparison is also `==`, over a list
+    // that grows as the walk goes, which makes the phase O(n^2). Both reproduced; quirks row
+    // #146.
     //
     // renamed: Java's `unconnectedItems` local (`:92`) keeps its name; `itemsByNet`'s `HashMap`
     // (`:95`) becomes a `BTreeMap` and `connectedSets`' `HashSet`s (`:123`) become `Vec`s in the
@@ -253,8 +254,11 @@ impl<'a> DesignRulesChecker<'a> {
             ));
         }
 
-        // DesignRulesChecker.java:168-175: dangling vias. No dedup here at all, so a via that is
-        // already a net entry's representative is reported twice.
+        // DesignRulesChecker.java:168-175: dangling vias. No guard here at all, unlike the trace
+        // phase's `anyMatch` (`:160`). A via reaches this phase whether or not it already appears
+        // in a net entry, so one that *is* a net entry's `firstItem` — which needs its connected
+        // group to hold no Pin and no Trace, `:188-198` — is reported a second time whenever it
+        // is `isTail`. Pinned by `a_via_that_represents_its_net_is_still_reported_dangling`.
         for id in self.board.items_in_board_order() {
             // DesignRulesChecker.java:169.
             if self.board.get_item(id).map(|item| item.kind()) != Some(ItemKind::Via) {

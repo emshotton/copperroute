@@ -47,10 +47,11 @@ impl UnconnectedItems {
     // renamed: the four constructors -> new_pair / new_with_all_items / new_typed. Rust has no
     // overloading, and the two `type`-less ones differ only in whether `allItems` is given.
     //
-    // not ported: this constructor has no caller in the Java tree — `getAllUnconnectedItems`
-    // uses the three-argument `allItems` form (`DesignRulesChecker.java:146`) and the `type` form
-    // (`:161`, `:172`). It is kept because it is public API of the ported class and costs one
-    // line; if Task 11's audit prefers a smaller surface it can go.
+    // Note — not a marker: this constructor is ported, but nothing in the Java tree calls it.
+    // `getAllUnconnectedItems` uses the three-argument `allItems` form
+    // (`DesignRulesChecker.java:146`) and the `type` form (`:161`, `:172`). It is kept because it
+    // is public API of the ported class and costs one line; if Task 11's audit prefers a smaller
+    // surface it can go.
     pub fn new_pair(first_item: ItemId, second_item: ItemId) -> Self {
         UnconnectedItems {
             first_item,
@@ -85,6 +86,12 @@ impl UnconnectedItems {
     /// (DesignRulesChecker.java:365-394). A `Vec<ItemId>` cannot hold a null, so the port stores
     /// just the items there are — the pair when a second item is given, the singleton when it is
     /// not.
+    ///
+    /// **Hand-off, Task 10:** `p5t2`'s algorithm-level dump prints each entry as
+    /// `(type, firstId, secondId, itemIds)`. For the two dangling kinds the Java side's
+    /// `itemIds` is `[<id>, null]` and the port's is `[<id>]`, so the driver must render Java's
+    /// trailing `null` away (or render the port's list as `[<id>, null]`) rather than reporting
+    /// a length mismatch. No other consumer sees the difference.
     // not ported: `UnconnectedItems(Item, Item, List<Item>, String)`'s
     // `allItems != null ? new ArrayList<>(allItems) : Arrays.asList(firstItem, secondItem)`
     // fallback (UnconnectedItems.java:48-49) — the port's `Vec` is never null, so the second arm

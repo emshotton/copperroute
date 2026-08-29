@@ -353,12 +353,15 @@ fn a_first_item_trace_is_the_one_case_the_dedup_catches() {
 
 #[test]
 fn the_via_phase_has_no_dedup_at_all() {
-    // `:168-175` — no `anyMatch` guard, unlike the trace phase. A via that is already a net
-    // entry's representative is emitted again.
+    // `:168-175` — no `anyMatch` guard, unlike the trace phase (`:160`). On this fixture the
+    // guard's absence is not *observable* (all three net entries are Pin/Pin, so no via is a
+    // representative); what is observable here is the phase's shape — every `isTail` via, in
+    // `board.getItems()` order. `a_via_that_represents_its_net_is_still_reported_dangling` is
+    // the test that observes the missing guard.
     if !parity::require_java_dir() {
         return;
     }
-    let (_, entries) = fixture_entries(BBD_MARS_64);
+    let (board, entries) = fixture_entries(BBD_MARS_64);
     let vias: Vec<ItemId> = entries
         .iter()
         .filter(|e| e.kind == UnconnectedKind::ViaDangling)
@@ -367,6 +370,82 @@ fn the_via_phase_has_no_dedup_at_all() {
     assert_eq!(vias.len(), 18);
     // `board.getItems()` order: descending id.
     assert!(vias.windows(2).all(|w| w[0] > w[1]));
+    assert!(vias.iter().all(|&id| board.is_tail(id)));
+}
+
+#[test]
+fn a_via_that_represents_its_net_is_still_reported_dangling() {
+    // The via phase has **no** dedup (`:168-175`), so a via that is already a net entry's
+    // `firstItem` is emitted a second time. Reaching that state needs a connected group with no
+    // Pin and no Trace in it, since `findRepresentativeItem` prefers both (`:188-198`) — here
+    // each group is a single unconnected via, so the via is both the representative and
+    // `isTail`. Quirk #146's second half.
+    let mut board = vias_and_a_dangling_trace_board();
+    let entries = DesignRulesChecker::new(&mut board).get_all_unconnected_items();
+
+    // Groups, seeded from `netItems` in descending id: `[4]`, `[3]`, `[2]`. Groups 0 and 1 are
+    // the two vias, and neither holds a Pin or a Trace.
+    let net_entry = &entries[0];
+    assert_eq!(net_entry.kind, UnconnectedKind::UnconnectedItems);
+    assert_eq!(net_entry.first_item, ItemId(4));
+    assert_eq!(net_entry.second_item, Some(ItemId(3)));
+    assert_eq!(net_entry.all_items, [4, 3].map(ItemId));
+    assert_eq!(
+        board.get_item(ItemId(4)).map(Item::kind),
+        Some(ItemKind::Via)
+    );
+    assert!(board.is_tail(ItemId(4)));
+
+    // Via 4 is the net entry's `first_item` **and** its own `ViaDangling` entry; via 3 is the
+    // `second_item` and likewise. The trace phase's guard would have dropped the first of those;
+    // the via phase has no guard to drop it with.
+    let vias: Vec<ItemId> = entries
+        .iter()
+        .filter(|e| e.kind == UnconnectedKind::ViaDangling)
+        .map(|e| e.first_item)
+        .collect();
+    assert_eq!(vias, vec![ItemId(4), ItemId(3)]);
+}
+
+#[test]
+fn every_dangling_trace_precedes_every_dangling_via() {
+    // The three phases run in Java's order (`:95-149`, `:152-165`, `:168-175`) and the list is
+    // returned as built (`:177`), so the output order *is* the phase order: net entries, then
+    // `track_dangling`, then `via_dangling`. `generateReport` relies on it only for the split at
+    // `:365`, but Task 7's report emits `report.violations` in this order.
+    let mut board = vias_and_a_dangling_trace_board();
+    let entries = DesignRulesChecker::new(&mut board).get_all_unconnected_items();
+    assert_eq!(
+        entries.iter().map(|e| e.kind).collect::<Vec<_>>(),
+        vec![
+            UnconnectedKind::UnconnectedItems,
+            UnconnectedKind::TrackDangling,
+            UnconnectedKind::ViaDangling,
+            UnconnectedKind::ViaDangling,
+        ],
+    );
+
+    if !parity::require_java_dir() {
+        return;
+    }
+    // The same on a real board, which has 3 net entries, 2 dangling traces and 18 dangling vias.
+    let (_, entries) = fixture_entries(BBD_MARS_64);
+    let index_of = |kind| {
+        let idx: Vec<usize> = entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.kind == kind)
+            .map(|(i, _)| i)
+            .collect();
+        (idx[0], idx[idx.len() - 1])
+    };
+    let (first_net, last_net) = index_of(UnconnectedKind::UnconnectedItems);
+    let (first_track, last_track) = index_of(UnconnectedKind::TrackDangling);
+    let (first_via, last_via) = index_of(UnconnectedKind::ViaDangling);
+    assert_eq!(first_net, 0);
+    assert!(last_net < first_track, "phase 1 precedes phase 2");
+    assert!(last_track < first_via, "phase 2 precedes phase 3");
+    assert_eq!(last_via, entries.len() - 1);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -511,6 +590,50 @@ fn trace_representative_board() -> Board {
     insert_trace(&mut board, (2000, 2000), (3000, 2000));
     board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
     insert_trace(&mut board, (4000, 4000), (5000, 4000));
+    board
+}
+
+/// A **two-layer** board with a through padstack and no components at all: net 1 carries one
+/// free-floating trace (item 2) and two vias 5 000 apart (items 3 and 4), none of them touching
+/// anything. `netItems` (descending) is `[4, 3, 2]`, so the connected groups are `[4]`, `[3]`,
+/// `[2]` — groups 0 and 1 hold **only a via each**, which is what makes the via the
+/// representative (`findRepresentativeItem` prefers a Pin, then a Trace, `:188-198`) and what
+/// makes the missing dedup in the via phase observable. The trace is inserted first so that it
+/// is not group 0's representative, which would have let the *trace* phase's guard drop it.
+fn vias_and_a_dangling_trace_board() -> Board {
+    let ls = LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
+    let pad = Shape::Tile(TileShape::Box(IntBox::from_coords(-70, -70, 70, 70)));
+    let mut padstacks = Padstacks::new(ls.clone());
+    let thru = padstacks.add("thru", vec![Some(pad.clone()), Some(pad)], true, false);
+
+    let matrix = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(ls, matrix);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+    let mut board = Board::new(
+        Vec::new(),
+        1,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(padstacks, Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+
+    insert_trace(&mut board, (0, 3000), (1000, 3000));
+    for x in [0, 5000] {
+        board
+            .insert_via(
+                thru,
+                Point::new(x, 0),
+                vec![1],
+                1,
+                FixedState::Unfixed,
+                true,
+            )
+            .expect("the synthetic via inserts cleanly");
+    }
     board
 }
 
