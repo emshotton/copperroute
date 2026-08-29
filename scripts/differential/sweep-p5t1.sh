@@ -156,7 +156,9 @@ done < "$DRC_FIXTURES_TXT"
 #
 # Strict (the default, `-XX:hashCode=2`): delete from each side the `track_dangling` violations
 # whose single item carries a listed uuid, require the deleted sets to be *exactly* the listed
-# ones, and require the two documents to be equal afterwards.
+# ones, and require the two documents to be equal afterwards — equal as **re-serialised text**
+# (`json.dumps(..., indent=2, ensure_ascii=False)`, key order preserved, never sorted), not as
+# parsed dicts, so that a key-order difference is a failure rather than a silent pass.
 #
 # Non-strict (any other hash mode): the uuids were measured under mode 2 and do not apply, so the
 # check is by shape — the two documents must be equal once every `track_dangling` entry that is
@@ -173,6 +175,9 @@ strict = strict == "1"
 def load(path):
     with open(path, encoding="utf-8") as fh:
         fh.readline()  # the HEADER line
+        # `json.load` builds plain `dict`s, which preserve each object's key order as read. That
+        # order is load-bearing here (Gson emits `Class.getDeclaredFields()` order and the port
+        # reproduces it), so the comparison below is on re-serialised text, not on the dicts.
         return json.load(fh)
 
 def uuids(spec):
@@ -204,7 +209,16 @@ got_j, got_r = strip(java, drop_j), strip(rust, drop_r)
 if got_j != drop_j or got_r != drop_r:
     sys.exit("expected to remove java=%s rust=%s, removed java=%s rust=%s"
              % (sorted(drop_j), sorted(drop_r), sorted(got_j), sorted(got_r)))
-if java != rust:
+# Compare the two stripped documents as **text**, re-serialised identically from the parsed
+# objects (`indent=2`, no key sorting, no ASCII escaping). `dict.__eq__` would call
+# `{"a": 1, "b": 2}` and `{"b": 2, "a": 1}` equal and would ignore a nested list's own object
+# key order too — and key order is exactly one of the things this differential exists to check.
+# Re-serialising rather than diffing the raw file text is deliberate: the entries removed above
+# are removed from the parsed objects, so only re-serialisation can put the two sides back on a
+# common footing.
+text_j = json.dumps(java, indent=2, ensure_ascii=False)
+text_r = json.dumps(rust, indent=2, ensure_ascii=False)
+if text_j != text_r:
     sys.exit("the documents still differ outside the listed track_dangling entries")
 EOF
 }
@@ -275,7 +289,7 @@ echo
 echo "rows: $total   unexpected diffs: $fail   expected diffs (XDIFF): $expected   skipped: $skipped"
 echo "hash mode: -XX:hashCode=$P5T_HASH_MODE   wall clock: $((SECONDS - start)) s"
 if [[ "$skipped" -gt 0 ]]; then
-  echo "skipped (the reader does not report Success — see $CORPUS_RESULTS):"
+  echo "skipped (the reader reports neither Success nor OutlineMissing — see $CORPUS_RESULTS):"
   sed 's/^/  /' "$skipped_file"
 fi
 if [[ -f "$SWEEP_OUT/exit-codes.txt" ]]; then

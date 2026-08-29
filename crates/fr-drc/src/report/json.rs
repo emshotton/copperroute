@@ -54,8 +54,11 @@ pub enum DrcJsonFlavor {
     //
     // Java bug: the `@SerializedName`s of io/kicad/KiCadDrcReport.java:20-57 and KiCadDrcViolation.java:33 drifted away from the schema those very files name. `jsonSchema` is `https://schemas.kicad.org/drc.v1.json` (KiCadDrcReport.java:21) and KiCad 9.0.1 writes `coordinate_units`/`kicad_version`/`unconnected_items`/`schematic_parity` and the types `hole_clearance`/`unconnected_items` (`../freerouting/fixtures/*-kicad_drc.json`); freerouting 2.3.0 matched it (`javap -p app/freerouting/drc/DrcReport.class` on `tools/freerouting-2.3.0.jar`), and HEAD does not. Reproduced as the default because HEAD is what this port ports (ruling 1) and HEAD's own DesignRulesCheckerTest.java:88-96 asserts camelCase; [`DrcJsonFlavor::KiCad`] is the way out. Quirks row #154.
     //
-    // obligation: which flavor the `-drc` CLI defaults to is a product decision and is **Plan 8's**
-    // (ruling 2). This enum's `Default` is the *parity* choice, not a recommendation.
+    // obligation: **Plan 8** wires the `-drc` CLI's flavor default. The product decision ruling 2
+    // deferred is now made — **ruling W: the CLI defaults to `KiCad`** (the user's stated focus,
+    // and what the document's own `$schema` promises), with HEAD's spelling behind a flag. This
+    // enum's `Default` stays `FreeroutingHead`: it is the *parity* choice the crate's tests pin
+    // against the jar, not the CLI's.
     #[default]
     FreeroutingHead,
     /// KiCad's own spelling, which is also freerouting 2.3.0's.

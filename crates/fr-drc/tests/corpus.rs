@@ -9,7 +9,9 @@
 //!    would throw a `NullPointerException`, and returning `""` or `(0.0, 0.0)` would have put a
 //!    plausible-looking wrong value into a parity document instead. The claim "unreachable" is
 //!    only as good as the corpus that tests it, and this is that corpus.
-//! 2. `report_to_json(FreeroutingHead)` produces parseable JSON with the ten HEAD keys.
+//! 2. `report_to_json(FreeroutingHead)` produces parseable JSON with the nine HEAD keys
+//!    `generateReportJson` can emit — and **without** `qualityScore`, which is `None` here and
+//!    which Gson omits for a null (`serializeNulls = false`).
 //! 3. **`violations.len() == clearance + track_dangling + via_dangling`.** `generateReport` fills
 //!    `violations` from *two* sources — the clearance list (`DesignRulesChecker.java:231-233`)
 //!    and the two dangling kinds it routes out of `getAllUnconnectedItems` (`:271-276`) — while

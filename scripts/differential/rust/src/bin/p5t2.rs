@@ -54,8 +54,11 @@ fn main() {
         // plan-5 ruling 3's ascending item id. They differ on the Java side — mode 2 is the jar's
         // own hash-seeded `getAllAirlines()`, mode 3 is the same algorithm reseeded the port's way
         // — which is what makes mode 3 the ratsnest's parity surface and mode 2 the measurement of
-        // how far the two seed orders drift apart. See `P5T2.java`.
-        2 | 3 => ratsnest(&mut out, &mut board),
+        // how far the two seed orders drift apart. See `P5T2.java`. Only the printing differs:
+        // mode 3 additionally emits the `ALD` block, because with the seed pinned on both sides the
+        // airlines' direction and acceptance order are facts about the algorithm rather than hash
+        // noise, so mode 3 gates on them. Mode 2 keeps only the canonical `AL` block.
+        2 | 3 => ratsnest(&mut out, &mut board, mode == 3),
         _ => {
             eprintln!("mode must be 0, 1, 2, 3 or 4");
             std::process::exit(2);
@@ -112,8 +115,9 @@ fn unconnected_items<W: Write>(out: &mut W, board: &mut Board) {
     writeln!(out, "UTYPE via_dangling {via_dangling}").expect("write");
 }
 
-/// Mode 2.
-fn ratsnest<W: Write>(out: &mut W, board: &mut Board) {
+/// Modes 2 and 3. `directional` appends the `ALD` block (mode 3 only) — see `P5T2.java`'s
+/// `directionalAirlineLines`.
+fn ratsnest<W: Write>(out: &mut W, board: &mut Board, directional: bool) {
     let max_net_no = board.rules.nets.max_net_number();
     let mut drc = DesignRulesChecker::new(board);
     drc.calculate_all_incompletes();
@@ -148,6 +152,19 @@ fn ratsnest<W: Write>(out: &mut W, board: &mut Board) {
     triples.sort_unstable();
     for (net, low, high) in triples {
         writeln!(out, "AL {net} {low} {high}").expect("write");
+    }
+    if directional {
+        // `get_all_airlines` walks the per-net lists in net order and each net's `incompletes` in
+        // Kruskal's acceptance order (`checker.rs:556-562`), which is the order this block
+        // preserves — unsorted, and with the edge's own `from`/`to`.
+        for airline in &airlines {
+            writeln!(
+                out,
+                "ALD {} {} {}",
+                airline.net_number, airline.from_item.0, airline.to_item.0,
+            )
+            .expect("write");
+        }
     }
 }
 

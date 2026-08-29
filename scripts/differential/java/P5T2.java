@@ -97,9 +97,17 @@ import java.util.TreeSet;
  *   <dd>The ratsnest's <b>parity surface</b>: the algorithm's one free choice, the seed of {@code
  *       calculateNetItems}' outer loop, pinned to the port's ascending item id (ruling 3). See
  *       {@link #reseededRatsnest}. Endpoints included, this matches the port exactly.
+ *       <p>Mode 2's canonical {@code AL} block is printed unchanged, and a second block follows
+ *       it: {@code ALD <netNumber> <fromId> <toId>}, one line per airline <b>in Kruskal's
+ *       acceptance order</b> and with the edge's own direction. With the seed pinned on both
+ *       sides, "which end is from" and "which airline was accepted first" stop being hash noise
+ *       and become facts about the algorithm, so mode 3 compares them rather than normalising them
+ *       away. {@code AL} keeps saying what the airline set is; {@code ALD} says how it was built.
  *   <dt>{@code 4} — {@code TRANSCRIPTION equal 0}
  *   <dd>The check on mode 3's transcription: the same code seeded Java's own way, compared inside
- *       the JVM against the real {@code getAllAirlines()}. See {@link #transcriptionSelfCheck}.
+ *       the JVM against the real {@code getAllAirlines()}. Both sides of that comparison include
+ *       the {@code ALD} block, so the self-check covers the direction and the acceptance order
+ *       mode 3 now gates on. See {@link #transcriptionSelfCheck}.
  * </dl>
  */
 public final class P5T2 {
@@ -145,8 +153,8 @@ public final class P5T2 {
     switch (mode) {
       case 0 -> clearanceViolations(out, drc);
       case 1 -> unconnectedItems(out, drc);
-      case 2 -> print(out, ratsnest(board, drc));
-      case 3 -> print(out, reseededRatsnest(board, true));
+      case 2 -> print(out, ratsnest(board, drc, false));
+      case 3 -> print(out, reseededRatsnest(board, true, true));
       case 4 -> transcriptionSelfCheck(out, board, drc);
       default -> {
         System.err.println("mode must be 0, 1, 2, 3 or 4");
@@ -226,8 +234,16 @@ public final class P5T2 {
     return "other";
   }
 
-  /** Mode 2, through the real `DesignRulesChecker` accessors. */
-  private static List<String> ratsnest(BasicBoard board, DesignRulesChecker drc) {
+  /**
+   * Mode 2, through the real `DesignRulesChecker` accessors.
+   *
+   * <p>{@code directional} appends the {@code ALD} block — see {@link #directionalAirlineLines}.
+   * Mode 2 prints without it (its endpoints are hash-ordered and graded against a budget); the
+   * transcription self-check asks for it, so mode 4 compares the two seedings' airlines with their
+   * direction and their acceptance order intact.
+   */
+  private static List<String> ratsnest(
+      BasicBoard board, DesignRulesChecker drc, boolean directional) {
     drc.calculateAllIncompletes();
     List<String> lines = new ArrayList<>();
     lines.add("MAXCONN " + drc.maxConnections);
@@ -256,6 +272,34 @@ public final class P5T2 {
       unordered.add(new long[] {airline.net.netNumber, Math.min(from, to), Math.max(from, to)});
     }
     lines.addAll(airlineLines(unordered));
+    if (directional) {
+      // `getAllAirlines` walks `netIncompletes` in net order and each net's `incompletes` in
+      // Kruskal's acceptance order (DesignRulesChecker.java:787-793), which is the order this
+      // block preserves.
+      List<long[]> ordered = new ArrayList<>(airlines.length);
+      for (AirLine airline : airlines) {
+        ordered.add(
+            new long[] {airline.net.netNumber, airline.fromItem.getId(), airline.toItem.getId()});
+      }
+      lines.addAll(directionalAirlineLines(ordered));
+    }
+    return lines;
+  }
+
+  /**
+   * The `ALD` block: {@code ALD <net> <fromId> <toId>}, one line per airline, <b>in Kruskal's
+   * acceptance order</b> and with the edge's own direction — neither sorted nor normalised.
+   *
+   * <p>This is the strict complement of {@link #airlineLines}. `AL` deliberately drops two
+   * artifacts of the triangulation's insertion order (which end an edge calls "from", and where an
+   * airline sits in the accepted sequence) because on mode 2 they are hash noise. On modes 3 and 4
+   * the seed is pinned on both sides, so they are facts about the algorithm and are compared.
+   */
+  private static List<String> directionalAirlineLines(List<long[]> ordered) {
+    List<String> lines = new ArrayList<>(ordered.size());
+    for (long[] triple : ordered) {
+      lines.add("ALD " + triple[0] + " " + triple[1] + " " + triple[2]);
+    }
     return lines;
   }
 
@@ -287,8 +331,8 @@ public final class P5T2 {
    */
   private static void transcriptionSelfCheck(
       PrintStream out, BasicBoard board, DesignRulesChecker drc) {
-    List<String> real = ratsnest(board, drc);
-    List<String> transcribed = reseededRatsnest(board, false);
+    List<String> real = ratsnest(board, drc, true);
+    List<String> transcribed = reseededRatsnest(board, false, true);
     int differing = 0;
     for (int i = 0; i < Math.max(real.size(), transcribed.size()); i++) {
       String a = i < real.size() ? real.get(i) : null;
@@ -324,19 +368,22 @@ public final class P5T2 {
    *
    * <ul>
    *   <li><b>mode 4</b> (`ascendingSeed == false`) keeps Java's `HashSet` seed and must reproduce
-   *       {@code DesignRulesChecker.getAllAirlines()} — i.e. mode 2's own output — line for line.
-   *       That is the transcription check: it is what says this re-implementation is the same
-   *       algorithm as the jar's, and `sweep-p5t2.sh` runs it as a Java-against-Java diff with no
-   *       Rust side at all.
+   *       {@code DesignRulesChecker.getAllAirlines()} — i.e. {@link #ratsnest}'s own lines — line
+   *       for line, {@code ALD} block included. That is the transcription check: it is what says
+   *       this re-implementation is the same algorithm as the jar's, and `sweep-p5t2.sh` runs it as
+   *       a Java-against-Java diff with no Rust side at all.
    *   <li><b>mode 3</b> (`ascendingSeed == true`) seeds ascending by item id, which is exactly what
    *       the port does. It is the parity surface for the ratsnest: with the one free choice
-   *       pinned the same way on both sides, the airlines themselves — not merely their counts —
-   *       must match, and on the corpus they do.
+   *       pinned the same way on both sides, the airlines themselves — not merely their counts, and
+   *       with their direction and acceptance order via {@code ALD} — must match, and on the corpus
+   *       they do.
    * </ul>
    *
-   * <p>The output format is mode 2's, so the three can be diffed against each other directly.
+   * <p>The output format is mode 2's ({@code directional} adds the {@code ALD} block on top), so
+   * the three can be diffed against each other directly.
    */
-  private static List<String> reseededRatsnest(BasicBoard board, boolean ascendingSeed) {
+  private static List<String> reseededRatsnest(
+      BasicBoard board, boolean ascendingSeed, boolean directional) {
     int maxNetNo = board.rules.nets.maxNetNumber();
     List<Collection<Item>> netItemLists = new ArrayList<>(maxNetNo);
     for (int i = 0; i < maxNetNo; i++) {
@@ -396,6 +443,15 @@ public final class P5T2 {
     }
     lines.add("ALCOUNT " + unordered.size());
     lines.addAll(airlineLines(unordered));
+    if (directional) {
+      List<long[]> ordered = new ArrayList<>(unordered.size());
+      for (int netNumber = 1; netNumber <= maxNetNo; netNumber++) {
+        for (long[] airline : perNet.get(netNumber - 1).airlines) {
+          ordered.add(new long[] {netNumber, airline[0], airline[1]});
+        }
+      }
+      lines.addAll(directionalAirlineLines(ordered));
+    }
     return lines;
   }
 

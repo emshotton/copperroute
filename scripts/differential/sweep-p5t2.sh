@@ -276,7 +276,9 @@ EOF
 #   * **mode 3** is the transcription seeded the port's way, against the port. With the one free
 #     choice pinned identically on both sides the airlines themselves — not merely their counts —
 #     must match. **Strict, no table**: this is the ratsnest's parity surface, and on the corpus it
-#     is 0 diffs on every row.
+#     is 0 diffs on every row. Modes 3 and 4 print a second airline block for this,
+#     `ALD <net> <fromId> <toId>` in Kruskal's acceptance order with the edge's own direction, so
+#     the gate covers *how* the spanning tree was built and not only what it contains.
 #   * **mode 2** is the port against the jar's *own* hash-seeded answer, through the real
 #     `DesignRulesChecker` accessors. Its counters (`MAXCONN`, `INCOMPLETE`, every `NET` line,
 #     `ALCOUNT`) are strict — ruling 4 measured them hash-independent — with the single exception
@@ -287,7 +289,10 @@ EOF
 # Why mode 2 needs a budget where mode 3 does not: ruling 4 recorded that the port's spanning tree
 # can have a different total *weight* than a JVM run's, i.e. that a different insertion order
 # changes the edge set and not only the choice among ties. Mode 3 removes that variable; mode 2
-# measures it. Requiring `AL` equality in mode 2, or the controller's ruling-T containment in a
+# measures it. And a *count* of differing lines is a safe grade for mode 2 only because mode 3 is
+# strict: a count cannot tell a hash-order artifact from a wrong edge, so on its own it would let
+# the ratsnest degrade line for line while the total held. Mode 3's `AL`+`ALD` equality fails
+# first on any such change, leaving the budget to measure only the seed-order drift it is for. Requiring `AL` equality in mode 2, or the controller's ruling-T containment in a
 # six-run JVM union, would fail on boards where nothing is wrong: measured while writing Task 10,
 # `Issue022-AutoRouter_interrupted.dsn` (235 port airlines) leaves 11 port airlines outside the
 # six-run union and still 2 outside a 60-run one, while its mode 3 matches exactly.
@@ -439,7 +444,7 @@ echo
 echo "rows: $((total / ${#modes[@]}))   pairs: $total   unexpected diffs: $fail   expected diffs (XDIFF): $expected   skipped: $skipped"
 echo "hash mode: -XX:hashCode=$P5T_HASH_MODE   wall clock: $((SECONDS - start)) s"
 if [[ "$skipped" -gt 0 ]]; then
-  echo "skipped (the reader does not report Success — see $CORPUS_RESULTS):"
+  echo "skipped (the reader reports neither Success nor OutlineMissing — see $CORPUS_RESULTS):"
   sed 's/^/  /' "$skipped_file"
 fi
 if [[ -f "$SWEEP_OUT/exit-codes.txt" ]]; then

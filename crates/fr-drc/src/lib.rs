@@ -130,7 +130,7 @@ pub mod prelude {
 // `ClearanceViolation.printInfo` (ClearanceViolation.java:96-121) is the one GUI method inside a
 // ported class; its marker is at `crates/fr-board/src/items/clearance_violation.rs:22`, where the
 // rest of that class lives (ruling 9). `DesignRulesChecker`'s hard-coded `focusNets = {98, 99}`
-// debug block (DesignRulesChecker.java:594-615) is marked at `src/checker.rs:346`.
+// debug block (DesignRulesChecker.java:594-615) is marked at `src/checker.rs:348`.
 
 // --- The REST twin of `-drc` (spec §2: no REST API) ------------------------------------------
 //
@@ -144,14 +144,14 @@ pub mod prelude {
 // --- Dropped parameters and helpers ----------------------------------------------------------
 //
 // `DesignRulesChecker`'s `DesignRulesCheckerSettings` constructor parameter is dropped whole
-// (plan-5 ruling 12): Java stores the field and never reads it (DesignRulesChecker.java:32, :44),
-// 10 of its 15 constructions pass `null` — including both `BoardStatistics` call sites and every
-// `autoroute/pipeline/*` one — and `includeWarnings`/`includeErrors` filter nothing. Taking it
-// would force `fr-drc -> fr-settings` for a dead field, and Plan 4's quirk #115 (a primitive
-// `boolean` `false` is unmergeable) is why it would stay dead. The marker is at
-// `src/checker.rs:22`.
+// (plan-5 ruling 12): Java stores the field and never reads it (DesignRulesChecker.java:32, :45),
+// 12 of its 14 constructions in `src/main` pass `null` — including both `BoardStatistics` call
+// sites and every `autoroute/pipeline/*` one — and `includeWarnings`/`includeErrors` filter
+// nothing. Taking it would force `fr-drc -> fr-settings` for a dead field, and Plan 4's quirk
+// #115 (a primitive `boolean` `false` is unmergeable) is why it would stay dead. The marker is
+// at `src/checker.rs:22`.
 //
 // Every `FRLogger` call in the ported sources is dropped without a marker, per the plan's global
 // constraints — `DesignRulesChecker` is roughly 40 % of them. The ones whose *absence* is
 // observable (they build a string a reader might expect to find) carry a marker anyway:
-// `src/checker.rs:469`, `src/net_incompletes.rs:67`, `:337`.
+// `src/checker.rs:471`, `src/net_incompletes.rs:67`, `:337`.

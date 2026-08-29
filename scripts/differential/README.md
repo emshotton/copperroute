@@ -660,13 +660,25 @@ the driver expects, or none at all.
   the seed a parameter, so the port can be compared against Java-with-the-port's-
   seed-order — and then the endpoints match, exactly, on all 112 rows.
 
+  Modes 3 and 4 print a second airline block for that comparison:
+  `ALD <net> <fromId> <toId>`, one line per airline **in Kruskal's acceptance
+  order** and with the edge's own direction, neither sorted nor normalised. Mode
+  2's canonical `AL` block (the unordered pair, sorted by `(net, low, high)`)
+  stays exactly as it was, because on mode 2 the two dropped artifacts — which
+  end of an edge a run calls "from", and where an airline sits in the accepted
+  sequence — are hash noise. With the seed pinned on both sides they are facts
+  about the algorithm, so mode 3 gates on them: `AL` says what the airline set
+  is, `ALD` says how it was built. `sweep-p5t2.sh 3` is 112 MATCH with both
+  blocks in place.
+
   **The transcription risk, and how it is checked.** Like `P4T1.java`, mode 3's
   ground truth is transcribed rather than called, so a mis-transcription would
   make both sides agree on the wrong answer. Mode 4 is the guard, and it is a
   guard the harness runs rather than a claim in prose: the *same* transcription,
   seeded Java's way, is compared inside the JVM against the real
   `getAllAirlines()`, and prints `TRANSCRIPTION equal 0` only if every line
-  agrees. It does, on all 112 rows. Every statement additionally carries the
+  agrees — `ALD` lines included, so the self-check covers the direction and the
+  acceptance order mode 3 gates on. It does, on all 112 rows. Every statement additionally carries the
   `NetIncompletes.java` line it stands for; the ranges are `:80-116` (the
   filter), `:135-163` (grouping and the group count), `:166-205` (the
   triangulation, the `TreeSet<Edge>` and Kruskal), `:225` → `:259-275`

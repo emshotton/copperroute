@@ -169,15 +169,28 @@ EOF
 STATUS=0
 
 generate_one() {
-  local stem="$1" out="$REF/$1"
+  local stem="$1" out="$REF/$1" tmp
   mkdir -p "$out"
+  tmp="$out/drc.json.tmp"
   echo "== $stem"
-  drc_args "$2" "$3" "$4" "$out/drc.json"
-  if ! run_drc "$out/java.log" "$HASH_MODE" "${ARGS[@]}"; then
-    echo "   the jar failed for $stem; see $out/java.log" >&2
+  # `-drc <file>` opens and truncates its target before the check runs, so pointing it straight at
+  # `drc.json` would destroy the committed reference the moment the jar is started and leave a
+  # truncated or half-written document beside a `drc.meta.txt` that still describes the previous
+  # run — a stale pair every parity test would then believe. Write to a temporary and `mv` only
+  # after the jar exits 0 *and* left something behind; on any failure the existing reference and
+  # its meta are untouched, together.
+  rm -f "$tmp"
+  drc_args "$2" "$3" "$4" "$tmp"
+  if ! run_drc "$out/java.log" "$HASH_MODE" "${ARGS[@]}" || [[ ! -s "$tmp" ]]; then
+    echo "   the jar failed for $stem; see $out/java.log (drc.json left untouched)" >&2
+    rm -f "$tmp"
     STATUS=1
     return 0
   fi
+  mv "$tmp" "$out/drc.json"
+  # Re-derive `ARGS` against the final path: `drc.meta.txt`'s `command` line must be the command a
+  # reader can re-run, not the one with the temporary in it.
+  drc_args "$2" "$3" "$4" "$out/drc.json"
   write_meta "$out" "${ARGS[@]}"
   report_counts "$out/drc.json"
 }

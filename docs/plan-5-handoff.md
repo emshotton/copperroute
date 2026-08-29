@@ -81,9 +81,12 @@ bug with no crash, which is why it has its own test
    `Issue022-AutoRouter_interrupted.dsn` (235 port airlines) 6 runs leave 11
    outside, 60 runs still leave 2. So mode 3 re-seeds a transcribed
    `NetIncompletes` **inside the JVM** with the port's ascending-id order and
-   requires **exact** equality of every endpoint: **112/112 rows match**, with
-   mode 4 as the standing self-check that the transcription still reproduces
-   the jar's own `getAllAirlines()`. Ruling T's containment test is still
+   requires **exact** equality of both airline blocks — the canonical `AL` block
+   (the unordered pair, sorted) and the `ALD` block (`ALD <net> <fromId>
+   <toId>`, in Kruskal's acceptance order and with the edge's own direction):
+   **112/112 rows match**, with mode 4 as the standing self-check that the
+   transcription still reproduces the jar's own `getAllAirlines()`, `ALD`
+   included. Ruling T's containment test is still
    applied strictly where a committed `*.airlines-union.txt` exists (ruling 4's
    three fixtures — all pass, 0 outside).
 3. **The report is locale-free.** Every `%.4f` in a Java description goes
@@ -389,8 +392,9 @@ deterministic and sorting them would hide a real ordering regression.
     *Held, with one number changed by ruling S.* Every left-hand number was
     re-measured with `new BoardStatistics(board)` on the HEAD jar in Task 11:
     (2, 9), (76, 3), (0, 145). The report-side numbers held too, except Natural
-    Tone's `violations`, which is **114 on the jar and 112 in the port** —
-    ruling S, not a defect. `the_board_statistics_oracle` and
+    Tone's `violations`, which is **115 on the jar (`-XX:hashCode=2`, the
+    committed reference) and 112 in the port** — ruling S, not a defect.
+    `the_board_statistics_oracle` and
     `the_report_arrays_are_longer_than_the_statistics_counters` assert both
     halves of every row in the same binary.
 12. **`DesignRulesCheckerSettings` is not a parameter.** *Held*, and the
@@ -417,7 +421,7 @@ deterministic and sorting them would hide a real ordering regression.
     Pinned by `net_items_are_ordered_descending_within_a_component`; ruling 3's
     free choice covers the seed order only.
 
-### Controller rulings Q-V (made during execution)
+### Controller rulings Q-W (made during execution)
 
 - **Q — plan rulings 1-15 accepted as written**, including `&mut Board` (8),
   CLI-driven references (10) and no `DesignRulesCheckerSettings` parameter
@@ -460,11 +464,23 @@ deterministic and sorting them would hide a real ordering regression.
   airline gate.** `P5T2.java` transcribes `NetIncompletes`' constructor,
   `calculateNetItems`, `joinConnectedSets`, `Edge` and `calcLengthViolation`
   and makes the seed order a parameter. Seeded the port's way it matches
-  **112/112 rows exactly, endpoints included**; seeded Java's way (mode 4) it
+  **112/112 rows exactly, endpoints included** — and, since the final fix wave,
+  their **direction and Kruskal acceptance order** too, through the `ALD` block
+  both sides now print in modes 3 and 4; seeded Java's way (mode 4) it
   reproduces the jar's own `getAllAirlines()` on all 112 rows
   (`TRANSCRIPTION equal 0`). *Cost if wrong:* the transcription could drift
   from the jar — which is exactly what mode 4 exists to catch, and the sweep
   runs it on every row.
+- **W — the `-drc` CLI defaults to `DrcJsonFlavor::KiCad`.** Made at the final
+  whole-branch review, closing the product decision ruling 2 deferred. The
+  user's stated focus is KiCad, and the document's own `$schema`
+  (`https://schemas.kicad.org/drc.v1.json`) promises KiCad's snake_case
+  spelling; HEAD's camelCase — the drift quirk #154 records — stays reachable
+  **behind a flag**. *Outcome:* Plan 8 wires it (§10); nothing in `fr-drc`
+  re-baselines, because `DrcJsonFlavor::default()` stays `FreeroutingHead` —
+  the *parity* default `head_flavor_is_the_jvms_gson_bytes` pins against the
+  jar — and the CLI simply asks for the other row. *Cost if wrong:* one flag
+  default flips; both flavors are already tested byte for byte.
 
 ---
 
@@ -658,7 +674,7 @@ returns with a printed SKIP** — `FREEROUTING_JAVA_DIR=/nonexistent cargo test
 | `p5t2` mode 0 — the raw clearance list (`id1,id2,layer,expected,actual`) | 112 | **0** | 112 MATCH, exact on every row |
 | `p5t2` mode 1 — the unconnected list | 112 | **0** | 94 MATCH, 18 XDIFF (class 1) |
 | `p5t2` mode 2 — the ratsnest through the jar's real accessors | 112 | **0** | 50 MATCH, 62 XDIFF (classes 2 and 3) |
-| `p5t2` mode 3 — the ratsnest, seed pinned (ruling V) | 112 | **0** | **112 MATCH** — every counter *and every endpoint* |
+| `p5t2` mode 3 — the ratsnest, seed pinned (ruling V) | 112 | **0** | **112 MATCH** — every counter, every endpoint, and (`ALD`) every edge's direction and acceptance position |
 | `p5t2` mode 4 — transcription self-check | 112 | **0** | 112 MATCH (`TRANSCRIPTION equal 0`) |
 
 `p5t1` covers 482 253 compared lines over its 104 corpus rows. Runtimes on the
@@ -688,6 +704,15 @@ under `-XX:hashCode=2` where both sides are deterministic. **It is a ratchet:
 at or below the budget passes, above it fails.** After any deliberate ratsnest
 change, regenerate it with the two commands in `sweep-p5t2.sh`'s header and
 read every number that grew.
+
+**A count-only budget is safe here only because mode 3 is strict.** A number of
+differing lines cannot tell a hash-order artifact from a wrong edge — on its
+own it would let the ratsnest degrade line-for-line as long as the total held.
+What stops that is mode 3, one row over: with the seed pinned, `AL` **and**
+`ALD` must be equal, so any change to which edges are chosen, which way round
+they run, or the order Kruskal accepted them in fails there first. The budget
+then measures only the residue mode 3 has already excluded — the drift between
+two legitimate seed orders — which is exactly what ruling 4 says it measures.
 
 **Class 3 — one net where the two seed orders find a different *number* of
 airlines.** `Issue269-z10_module.dsn`, `p5t2` mode 2 only, and **the thing
@@ -719,7 +744,7 @@ HEAD jar (`FREEROUTING_JAR`).
 |---|---|
 | 2 | Clearance **compensation** is never exercised: `is_clearance_compensation_used()` is `false` on every headless path (`SearchTreeManager.java:35` — both setters are GUI), so the `true` arm of the compensation split (`Item.java:429-434`) is ported but unreached by any test or fixture. |
 | 2 | The `null` arm of `Via`'s `clearanceViolations` override is unreachable (`first_item` is always the queried item). Transcribed and commented rather than simplified. |
-| 2 | The entry-counter divergence (per-`SearchTreeManager`, quirk #61) is unchanged; result *order* within a query is unaffected, which the 105-fixture comparison confirms empirically. |
+| 2 | The entry-counter divergence (per-`SearchTreeManager`, quirk #61) is unchanged; result *order* within a query is unaffected, which the 112-row `p5t1`/`p5t2` sweep confirms empirically. |
 | 3 | `get_all_clearance_violations` is not idempotent at the `smallest_clearance` level — its return value is stable, every call lowers the field (quirk #153), exactly as Java's does. |
 | 4 | `UnconnectedItems::new_pair` has no caller — in Java either. Kept as the ported class's public API. |
 | 5 | The `.airlines.txt` goldens are a snapshot of one JVM run and will drift when the jar is rebuilt, though nothing asserts against them. The `.airlines-union.txt` files are the durable form. |
@@ -793,6 +818,19 @@ HEAD jar (`FREEROUTING_JAR`).
     supply a session file: `-de "<dsn>+<ses>"`. **There is no `-ds` flag** and a
     `-do` SES changes nothing in the report. The `.json`-vs-`.ses` branch is at
     `Freerouting.java:296-329`.
+  - **The load order is DSN → `.rules` → `.ses`, and it is load-bearing.**
+    `initializeDrc` reads them in exactly that sequence — the board
+    (`Freerouting.java:262-274`), then `RulesReader.read` onto the
+    already-built board (`:276-293`), then `SesReader.read` /
+    `KiCadJsonReader.importSession` (`:295-328`). The middle step **changes the
+    clearance matrix and the net rules**, and the session's wires and vias are
+    inserted *after* it, so they are created — and then checked — against the
+    clearances the `.rules` file installed rather than the ones the DSN
+    declared. Swapping the last two steps yields a different violation list from
+    the same three files, so Plan 8 must reproduce the order and not merely the
+    set of inputs. `tests/reference/drc-issue593-rules` and
+    `drc-issue593-ses` are the committed references that exercise the two
+    optional slots.
   - **`-dr`** supplies the rules file (`GlobalSettings.java:670-674`).
   - **`-drc [file]`** writes to the file or to stdout (`:357-370`).
   - `coordinateUnit` is hard-coded `"mm"` at `:335` (quirk #151) — the port
@@ -804,11 +842,15 @@ HEAD jar (`FREEROUTING_JAR`).
     (`KiCadDrcReport.java:70`) — **inject a clock**; `fr-drc` has none.
   - `freerouting_version` arrives **without** the `"Freerouting "` prefix, which
     the port adds.
-- **Decide `DrcJsonFlavor`'s CLI default** (ruling 2, obligation-register row,
-  `obligation:` marker at `crates/fr-drc/src/report/json.rs:57`). A **product
-  decision**: `FreeroutingHead` is bug-compatible with the jar, `KiCad` is what
-  the document's own `$schema` promises. Shipping `KiCad` re-baselines nothing
-  in `fr-drc`.
+- **Ship `DrcJsonFlavor::KiCad` as the `-drc` CLI default** (ruling **W**,
+  which closes the product decision ruling 2 deferred; obligation-register row,
+  `obligation:` marker at `crates/fr-drc/src/report/json.rs:57`). The user's
+  focus is KiCad and `KiCad` is what the document's own `$schema` promises;
+  HEAD's camelCase — bug-compatible with the jar, quirk #154 — stays reachable
+  **behind a flag**. This re-baselines nothing in `fr-drc`:
+  `DrcJsonFlavor::default()` stays `FreeroutingHead`, the *parity* default the
+  crate's tests pin against the jar, and the CLI passes the other row
+  explicitly.
 - **Supply `quality_score` from `BoardStatistics.getNormalizedScore`**
   (ruling 5, obligation-register row). It is a **`f32`**, widened to the
   report's `double` by `fr-drc`. `getNormalizedScore` (`BoardStatistics.java:600-624`)
@@ -888,10 +930,10 @@ HEAD jar (`FREEROUTING_JAR`).
 
 ## 13. Open items for the user
 
-1. **`DrcJsonFlavor`'s CLI default is a product decision and nobody has made
-   it.** HEAD's camelCase is bug-compatible; the schema's snake_case is correct
-   for any KiCad consumer. Plan 8 must choose, and the choice changes what every
-   downstream consumer of `-drc` parses. There is no technical cost either way.
+1. ~~**`DrcJsonFlavor`'s CLI default is a product decision and nobody has made
+   it.**~~ **Decided by ruling W**: the `-drc` CLI defaults to `KiCad`, with
+   HEAD's camelCase behind a flag. Plan 8 wires it (§10); `fr-drc`'s
+   `Default` stays `FreeroutingHead` for parity.
 2. **The port's DRC report is deterministic and the jar's is not.** On 17 of the
    112 corpus fixtures the port emits a different number of `track_dangling`
    entries than any given jar run — always a subset, always by the same rule.

@@ -130,10 +130,11 @@ key and a `type` value). `crates/fr-drc/tests/report_json.rs::flavors_differ_onl
 proves it mechanically: applying those seven substitutions to a HEAD document
 as *quoted tokens* yields the KiCad document byte for byte.
 
-**Which flavor the `-drc` CLI defaults to is a product decision and is Plan 8's**
-(ruling 2, recorded as an `obligation:` marker on the enum). `Default` here is
-the *parity* choice, not a recommendation. If Plan 8 ships `KiCad`, nothing in
-this crate re-baselines: `head_flavor_is_the_jvms_gson_bytes` keeps pinning
+**Which flavor the `-drc` CLI defaults to is Plan 8's to wire** (ruling 2,
+recorded as an `obligation:` marker on the enum), **and ruling W has decided
+which it is: `KiCad`, with HEAD's spelling behind a flag.** `Default` here is
+the *parity* choice, not a recommendation, and shipping `KiCad` re-baselines
+nothing in this crate: `head_flavor_is_the_jvms_gson_bytes` keeps pinning
 HEAD's spelling against the jar.
 
 Everything below the key is `fr_dsn::format::json`'s
@@ -186,9 +187,12 @@ Three consequences worth knowing before reading a diff:
 - **Ruling V: `p5t2` mode 3 is the airline gate.** Rather than grade endpoints
   against a union of JVM runs (which does not converge), the differential
   re-seeds the JVM's `NetIncompletes` in-process with the port's order and
-  requires **exact** equality of every endpoint — 112/112 rows — with mode 4 as
-  the self-check that the transcription still reproduces the jar's own
-  `getAllAirlines()`.
+  requires **exact** equality — 112/112 rows — of both airline blocks: the
+  canonical `AL` block (the unordered pair, sorted, which says *what the airline
+  set is*) and the `ALD` block (`ALD <net> <fromId> <toId>`, in Kruskal's
+  acceptance order with the edge's own direction, which says *how it was
+  built*). Mode 4 is the self-check that the transcription still reproduces the
+  jar's own `getAllAirlines()`, `ALD` block included.
 - **Ruling S: Natural Tone Preamp's report differs from any single Java run,
   on purpose.** `generateReport` folds `getAllUnconnectedItems`'
   `track_dangling` entries into `violations`, and that phase's dedup
@@ -217,7 +221,7 @@ Task 11:
 |---|---|---|---|---|---|
 | `…dev-board_4_hole_clearance_violations` | **2** | 10 | 2 `holeClearance` + 8 `track_dangling` | **9** | 4 |
 | `…BBD_Mars-64_6_track_1_hole…` | **76** | 96 | 64 `holeClearance` + 12 `clearance` + 18 `via_dangling` + 2 `track_dangling` | **3** | 3 |
-| `…Natural_Tone_Preamp_7_unconnected_items` | **0** | 114 JVM / **112** port | 110 JVM / 108 port `track_dangling` + 4 `via_dangling` | **145** | 44 |
+| `…Natural_Tone_Preamp_7_unconnected_items` | **0** | 115 JVM (`-XX:hashCode=2`, the committed reference) / **112** port | 111 JVM / 108 port `track_dangling` + 4 `via_dangling` | **145** | 44 |
 
 The reconciliation is exact and mechanical:
 
@@ -251,7 +255,7 @@ halves of every row, against the same board, in the same test binary.
 | `core/scoring/BoardStatisticsClearanceViolations` | `statistics.rs` (`from_violations`) |
 | `GsonProvider.GSON.toJson` | `report/json.rs`, over `fr_dsn::format::json::to_gson_string_pretty` |
 | `DesignRulesChecker`'s `drcSettings` field | **dropped whole** (ruling 12) — stored, never read; `src/checker.rs:22` |
-| the `focusNets = {98, 99}` debug block (`:594-615`) | **not ported** (quirk #149) — `src/checker.rs:346` |
+| the `focusNets = {98, 99}` debug block (`:594-615`) | **not ported** (quirk #149) — `src/checker.rs:348` |
 | `ClearanceViolation.printInfo` | **not ported** — GUI/`TextManager`; marker in `fr-board` |
 | `io/kicad/{KiCadJsonReader, KiCadJsonWriter, KiCadBoardJson}` | **Plan 8** — the KiCad board/session JSON codec; spec §2 drops session-JSON *output*, and the input path is `-drc`'s plumbing (ruling 13) |
 | `Freerouting.initializeDrc` (`Freerouting.java:246-372`) | **Plan 8** — the `-de`/`-dr` slots, the `.json`-vs-`.ses` branch, the quality-score merge, the write-or-stdout choice. This crate's public surface is exactly what it will call |
@@ -452,9 +456,22 @@ the `AIRLINE_BUDGETS` ratchet and how to regenerate it. Both need a JDK 25
   Plan 8. Until then the score is injected, and the eight committed references
   pin the values Plan 8's implementation has to produce.
 - **The airline endpoint list is not a parity surface** (ruling 4). The counts
-  are, and mode 3 makes the endpoints one *given the same seed order*; two
-  different seed orders into the same triangulation legitimately pick different
-  equal-length edges.
+  are, and mode 3 makes the endpoints one *given the same seed order* — with
+  their direction and acceptance order, via the `ALD` block; two different seed
+  orders into the same triangulation legitimately pick different equal-length
+  edges, which is why mode 2 grades `AL` against a budget instead.
+- **One board's incomplete *count* differs from any jar run** — `p5t2` mode 2's
+  single `COUNTER_XDIFFS` row. On `Issue269-z10_module.dsn` net 1 has 4
+  connected groups; the jar finds 3 airlines for it and the port 2, so
+  `INCOMPLETE` reads 117 against 116 and `BoardStatistics.connections.incompleteCount`
+  is off by one on that one board. The jar answers `NET 1 3 4` under
+  `-XX:hashCode=0,1,2,3,4` and the default, so it is not the jar disagreeing
+  with itself: it is quirk #82's degenerate triangulation meeting ruling 3's
+  seed order, and a spanning "tree" that leaves two groups unjoined is a normal
+  outcome on **both** sides (`count == groups - 1` fails on 13 of
+  `Issue022-AutoRouter_interrupted.dsn`'s nets identically in both). Mode 3 is
+  the proof: seeded the port's way, Java answers `NET 1 2 4` too and that
+  fixture matches line for line.
 - **Natural Tone Preamp's report is 112 where the jar says 113-115** (ruling S,
   quirk #146). Deliberate and documented in three places; not a number to tune.
 - **Clearance compensation is never exercised.**

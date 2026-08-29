@@ -348,7 +348,8 @@ pub fn item_description(board: &Board, id: ItemId) -> String {
     // `NullPointerException` there. Every id reaching here came out of this board's own violation
     // or unconnected list, so the arm is unreachable — and it panics rather than returning a
     // plausible-looking empty description, which would put a silently wrong string into a parity
-    // document. `tests/corpus.rs` runs the whole path over all 105 corpus fixtures.
+    // document. `tests/corpus.rs` runs the whole path over all 147 corpus fixtures the reader
+    // accepts (148 `.dsn` files, 1 skipped).
     let item = board
         .get_item(id)
         .unwrap_or_else(|| panic!("item_description: board has no item {}", id.0));
