@@ -405,6 +405,41 @@ impl AutorouteEngine {
         self.rooms.next_room_id_no()
     }
 
+    /// `ExpandableObject.getId()` (ExpandableObject.java:32-33) dispatched over the four
+    /// implementors, which is what `MazeListElement.compareTo` (MazeListElement.java:95-96)
+    /// performs as a virtual call.
+    ///
+    /// It lives on the engine because none of the four ids is a property of the reference alone:
+    /// `ExpansionDoor.getId` needs both rooms, `TargetItemExpansionDoor.getId` its item and its
+    /// room, `ExpansionDrill.getId` its own location and layers, and `DrillPage.getId` its shape
+    /// and its **mutable** `netNumber` (quirk #167) — the last two out of the drill arena and the
+    /// [`DrillPageArray`], which only the engine owns. `MazeQueue` closes a resolver over this.
+    ///
+    /// # Panics
+    ///
+    /// On a stale reference. Java holds a live object at every call site of `compareTo`, so a
+    /// `None` here is a port bug (an arena slot freed while a `MazeListElement` still names it),
+    /// not a Java behaviour to reproduce.
+    pub fn expandable_id_no(&self, object: ExpandableRef) -> i32 {
+        match object {
+            ExpandableRef::Door(door) => self
+                .rooms
+                .door_id_no(door)
+                .expect("ExpansionDoor.getId: a live door with two live rooms"),
+            ExpandableRef::TargetDoor(door) => self
+                .rooms
+                .target_door_id_no(door)
+                .expect("TargetItemExpansionDoor.getId: a live target door"),
+            ExpandableRef::Drill(drill) => self
+                .rooms
+                .drills
+                .get(drill.0)
+                .expect("ExpansionDrill.getId: a live drill")
+                .get_id(),
+            ExpandableRef::Page(page) => self.drill_page_array.page(page).get_id(),
+        }
+    }
+
     // ---------------------------------------------------------------------------------------
     // The room lifecycle
     // ---------------------------------------------------------------------------------------

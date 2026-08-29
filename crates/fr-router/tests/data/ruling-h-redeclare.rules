@@ -1,0 +1,3 @@
+(rules PCB Issue593-BBD_Mars-64
+  (via "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default attach)
+)

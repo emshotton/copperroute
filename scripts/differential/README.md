@@ -517,6 +517,44 @@ methods with dozens of branches.
       bounding box invalidates nothing, and that the recomputation answers
       **ten** drills where the first answered nine — the rooms the first pass
       created are in the tree by then.
+  - `P6T8Probe.java` — `AutorouteControl`, `DestinationDistance` and the
+    ruling-H via-info re-pointing mechanism (Plan 6 Task 8). It declares
+    `package app.freerouting.autoroute.maze;` so it can read
+    `DestinationDistance`'s nine package-private cost fields, which the
+    constructor derives and no public method exposes. Its stdout is committed
+    verbatim as `crates/fr-router/tests/data/p6t8-destination-distance.txt` and
+    `…/p6t8-autoroute-control.txt`, and both are **replayed row for row** by
+    `crates/fr-router/tests/{destination_distance,control}.rs` — so a
+    regenerated probe and a stale expectation cannot silently disagree. Three
+    modes:
+
+    - `dd` — `DestinationDistance` in seven configurations (four/three/two/one
+      active layers, nothing joined, only the component-side box joined, and a
+      two-layer board where the inner arm is unreachable) crossed with a fixed
+      point/box grid: 234 value rows plus the seven cost rows. Between them they
+      reach every early return of `calculate(IntBox, int)` — `activeLayerCount
+      <= 1`, `== 2`, `== 3` and the four-layer fall-through on layer 0; `<= 2`
+      and `== 3` on the solder side; the inner-layer arm; the `boxIsEmpty`
+      short circuit; and the three `…BoxIsEmpty` guards. Each box row also
+      prints `calculateCheapDistance` and then `calculate` **again**, which is
+      how hazard J (the mutate-and-restore of `minNormalViaCost`) is pinned.
+    - `ctrl <dsn> [netNo]` — loads a fixture through `HeadlessBoardManager`,
+      builds `new RouterSettings(board)` and the real `AutorouteControl`, and
+      prints every field. With no net number it scans for the first pure-SMD net
+      and the first mixed one and dumps both, plus net 0 and a net number the
+      board does not have. Run over `Issue593-BBD_Mars-64.dsn` and
+      `Issue508-DAC2020_bm01.dsn`; it is what pins **quirk #172** (net 1 of
+      Issue593 answers `attachSmdAllowed=true` from `viaInfos=[0..1
+      attach=false]` and `minNormalViaCost=400.0` against net 0's `4000.0`) and
+      **quirk #173** (`ctrl net=1094 threw java.lang.NullPointerException`).
+    - `viadiv <dsn> <rules>` — the ruling-H mechanism at HEAD: reads the `.dsn`,
+      applies the `.rules` file with `RulesReader.read`, and prints both the
+      `viaInfos` list and what each `ViaRule` actually reaches, with
+      `inList=` telling them apart. With
+      `crates/fr-router/tests/data/ruling-h-redeclare.rules` on
+      `Issue593-BBD_Mars-64.dsn` the list says `attach=true` and both rules say
+      `attach=false inList=false` — the detached original. Committed output:
+      `crates/fr-router/tests/data/p6t8-ruling-h-viadiv.txt`.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

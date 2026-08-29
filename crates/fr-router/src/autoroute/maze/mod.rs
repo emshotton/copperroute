@@ -7,14 +7,26 @@
 //! `ExpansionRoomStore`, the compensated tree handle and the net number, and it is what every
 //! later task in `maze/` is written against. Task 7 filled in its three drill hooks — the
 //! `DrillPageArray` the constructor builds, `invalidateDrillPages` and `resetAllDoors`' last
-//! line — plus the `drill_page_drills` borrow bridge. The control block, the queue and the
-//! search itself arrive in Tasks 8-13 and 16; the roster in
-//! `scripts/audit-map/fr-router.map` records where each lands.
+//! line — plus the `drill_page_drills` borrow bridge. Task 8 adds the four leaf types the search
+//! is written against: [`control`] ([`AutorouteControl`], the settings block every method reads),
+//! [`destination_distance`] ([`DestinationDistance`], the admissible cost bound),
+//! [`list_element`] ([`MazeListElement`], the queue's element and its non-total comparator) and
+//! [`queue`] ([`MazeQueue`], the guarded `TreeSet` `MazeSearchEngine` installs). The search
+//! itself arrives in Tasks 11-13 and 16; the roster in `scripts/audit-map/fr-router.map` records
+//! where each lands.
 
+pub mod control;
+pub mod destination_distance;
 pub mod engine;
+pub mod list_element;
+pub mod queue;
 pub mod search_element;
 
+pub use control::{AutorouteControl, ViaMask};
+pub use destination_distance::DestinationDistance;
 pub use engine::AutorouteEngine;
+pub use list_element::MazeListElement;
+pub use queue::MazeQueue;
 pub use search_element::{MazeAdjustment, MazeSearchElement};
 
 /// `AutorouteEngine.TRACE_WIDTH_TOLERANCE` (`autoroute/maze/AutorouteEngine.java:41`):

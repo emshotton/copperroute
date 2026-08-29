@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #170.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #174.** Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
@@ -1221,7 +1221,19 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > `incompleteExpansionRooms` with no null guard, which — through
 > `ExpansionDrill.calculateExpansionRooms` and `completeExpansionRoom`'s swallowing `catch` —
 > silently costs **every drill** on an engine that has never had an incomplete room added.
-> Tasks 8 and 12 must take the next free id *at the time they write*, re-checking
+> Task 8 landed **#170**, **#171**, **#172** and **#173**. The plan's labels #155 / #156 / #159
+> for this task are **not** row ids: #155 and #156 (`MazeListElement.compareTo`'s NaN
+> fall-through and its full-tie drop) became **#170** and **#171**, and #159 (the HEAD-only
+> pure-SMD relaxations of `AutorouteControl.rebuildViaInfo`) became **#172** — the plan's #159
+> label had already gone to Task 3. **#173** the plan did not anticipate:
+> `AutorouteControl.initNet`'s null-net arm (`:212-216`) is only *reachable* for
+> `netNumber <= 0`, because `:219` then dereferences the same `null` through
+> `BoardRules.getTraceHalfWidth`; a positive net number the board does not have throws a
+> `NullPointerException` out of the constructor. Task 8 also **pinned the Java half of ruling H**
+> (see the register's re-pointing row): the mechanism survives at HEAD and the routing probe on
+> `Issue593-BBD_Mars-64.dsn` differs 123 vias vs 45 with and without the `.rules` file, so the
+> row stays open for Task 17's `p6t1` to close with the port's own numbers.
+> Task 12 must take the next free id *at the time it writes*, re-checking
 > `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
 > row); do not write it again.

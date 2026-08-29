@@ -40,8 +40,10 @@
 //! * **No new workspace dependencies** (rulings 5, 16, 17): no `rand` — [`fr_geometry::JavaRandom`]
 //!   reproduces `java.util.Random` bit for bit — no `slotmap` — [`Arena`] is 60 lines and, unlike
 //!   a generational key, keeps Java's stale-reference semantics — and no `rayon`.
-//! * **Deterministic containers, transcribed rather than chosen** (ruling 4): `BTreeSet`, never
-//!   `BinaryHeap`; comparators transcribed as Java's `<`/`>` chains, never `total_cmp`.
+//! * **Deterministic containers, transcribed rather than chosen** (ruling 4, and ruling Y/Z for
+//!   the maze queue): a sorted set, never `BinaryHeap`, and [`JavaTreeSet`] rather than
+//!   `BTreeSet` wherever the comparator is not a total order — the two keep and order different
+//!   elements there. Comparators are transcribed as Java's `<`/`>` chains, never `total_cmp`.
 //! * **No GUI, no `FRLogger`, no observers**, and no static mutable state.
 //! * `ExpansionCostFactor` is **re-exported** from `fr-settings`, never redeclared (ruling 8 —
 //!   the plan-4 obligation).
@@ -53,10 +55,11 @@ pub mod java_tree_set;
 
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 pub use autoroute::{
-    AutorouteAttemptResult, AutorouteAttemptState, AutorouteEngine, AutorouteSearchTreeExt,
-    CompleteFreeSpaceExpansionRoom, DrillPage, DrillPageArray, ExpandableRef, ExpansionDoor,
-    ExpansionDrill, ExpansionRoomStore, FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom,
-    MazeAdjustment, MazeSearchElement, ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor,
+    AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
+    AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DestinationDistance, DrillPage,
+    DrillPageArray, ExpandableRef, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
+    FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeListElement,
+    MazeQueue, MazeSearchElement, ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor, ViaMask,
 };
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
@@ -72,12 +75,13 @@ pub use fr_settings::ExpansionCostFactor;
 /// Re-exports every public type of the crate, for `use fr_router::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteEngine,
-        AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DoorId, DrillId, DrillPage,
-        DrillPageArray, ExpandableRef, ExpansionCostFactor, ExpansionDoor, ExpansionDrill,
-        ExpansionRoomStore, FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom,
-        IncompleteRoomId, JavaTreeSet, MazeAdjustment, MazeSearchElement, ObstacleExpansionRoom,
-        PageId, RoomRef, RouterError, TargetDoorId, TargetItemExpansionDoor,
+        Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
+        AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DestinationDistance, DoorId,
+        DrillId, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor, ExpansionDoor,
+        ExpansionDrill, ExpansionRoomStore, FreeSpaceExpansionRoom,
+        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
+        MazeListElement, MazeQueue, MazeSearchElement, ObstacleExpansionRoom, PageId, RoomRef,
+        RouterError, TargetDoorId, TargetItemExpansionDoor, ViaMask,
     };
 }
 

@@ -26,5 +26,8 @@ pub use expansion::{
     FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, ObstacleExpansionRoom, RoomRef,
     TargetItemExpansionDoor,
 };
-pub use maze::{AutorouteEngine, MazeAdjustment, MazeSearchElement};
+pub use maze::{
+    AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeListElement,
+    MazeQueue, MazeSearchElement, ViaMask,
+};
 pub use tree_ext::AutorouteSearchTreeExt;

@@ -28,11 +28,23 @@
 //! so a comparison that answers `Equal` **keeps the element already in the tree** and answers
 //! `false` — the silent drop.
 //!
-//! Deletion, submaps, the descending views and everything else `TreeMap` has are not here: the
-//! only operations `SortedRoomNeighbours` performs are `add`, `isEmpty`, `size`, `getLast` and
-//! iteration.
+//! Submaps, the descending views and everything else `TreeMap` has are not here. The operations
+//! that exist are the ones its two callers perform: `SortedRoomNeighbours` does `add`, `isEmpty`,
+//! `size`, `getLast` and iteration, and Task 8's [`MazeQueue`] adds
+//! `iterator().next()` + `it.remove()` — `TreeMap.deleteEntry` / `fixAfterDeletion`, transcribed
+//! by [`JavaTreeSet::poll_first`].
 //!
 //! not ported: every other `java.util.TreeMap`/`TreeSet` member.
+//!
+//! # Why the comparator is a parameter (Task 8)
+//!
+//! [`JavaTreeSet::add_by`] takes the comparator rather than requiring `T: Ord`, because
+//! `MazeListElement.compareTo` calls `door.getId()` — a virtual call this port answers by
+//! looking the reference up in the engine's arenas, and one whose answer *moves* while the
+//! element is in the tree (`DrillPage.getId`, quirk #167). `add` stays for a `T` that carries
+//! its own order, which is what `SortedRoomNeighbour` does.
+//!
+//! [`MazeQueue`]: crate::autoroute::maze::MazeQueue
 
 use std::cmp::Ordering;
 
@@ -44,9 +56,13 @@ enum Color {
 }
 
 /// One `TreeMap.Entry`, in an arena rather than on the heap.
+///
+/// `key` is an `Option` only so that `TreeMap.deleteEntry`'s `p.key = s.key` (the two-children
+/// case) and `TreeSet.pollFirst`'s hand-back can *move* the key out; a node reachable from the
+/// tree always holds `Some`. [`JavaTreeSet::key`] is the checked accessor.
 #[derive(Debug, Clone)]
 struct Node<T> {
-    key: T,
+    key: Option<T>,
     left: Option<usize>,
     right: Option<usize>,
     parent: Option<usize>,
@@ -63,6 +79,11 @@ pub struct JavaTreeSet<T> {
     nodes: Vec<Node<T>>,
     root: Option<usize>,
     size: usize,
+    /// Slots freed by [`JavaTreeSet::delete_entry`], reused by the next insertion.
+    ///
+    /// Java's entries are garbage-collected; this is the equivalent. The index is internal, so
+    /// reuse is invisible — nothing outside this module ever sees one.
+    free: Vec<usize>,
 }
 
 impl<T> Default for JavaTreeSet<T> {
@@ -71,11 +92,20 @@ impl<T> Default for JavaTreeSet<T> {
             nodes: Vec::new(),
             root: None,
             size: 0,
+            free: Vec::new(),
         }
     }
 }
 
 impl<T: Ord> JavaTreeSet<T> {
+    /// `TreeSet.add(E)` for a `T` whose own `Ord` is the comparator, i.e. Java's
+    /// `new TreeSet<E extends Comparable<E>>()`.
+    pub fn add(&mut self, key: T) -> bool {
+        self.add_by(key, T::cmp)
+    }
+}
+
+impl<T> JavaTreeSet<T> {
     /// `new TreeSet<>()`.
     pub fn new() -> JavaTreeSet<T> {
         JavaTreeSet::default()
@@ -94,27 +124,32 @@ impl<T: Ord> JavaTreeSet<T> {
     /// `TreeSet.add(E)` = `map.put(e, PRESENT) == null` — `true` if the element was inserted,
     /// `false` if the walk found one that compares `Equal`, **which is kept in preference to the
     /// new one** (`TreeMap.put` assigns only the value, never the key).
-    pub fn add(&mut self, key: T) -> bool {
+    ///
+    /// The comparator is a parameter rather than `T: Ord` because `MazeListElement.compareTo`
+    /// (MazeListElement.java:95-96) calls `door.getId()`, a **virtual** call whose answer this
+    /// port has to look up in the engine's arenas — and, for a `DrillPage`, an answer that
+    /// *moves* while the element sits in the tree (quirk #167). Snapshotting the id into the
+    /// element would freeze a key Java re-reads on every comparison; passing the resolver in at
+    /// `add` time does not. `cmp` is `FnMut` so a caller may memoise inside it, exactly as a
+    /// Java comparator may.
+    pub fn add_by<F>(&mut self, key: T, mut cmp: F) -> bool
+    where
+        F: FnMut(&T, &T) -> Ordering,
+    {
         // `TreeMap.put`: an empty map takes the key as the root.
         let Some(mut t) = self.root else {
-            self.nodes.push(Node {
-                key,
-                left: None,
-                right: None,
-                parent: None,
-                color: Color::Black,
-            });
-            self.root = Some(0);
+            let e = self.alloc(key, None, Color::Black);
+            self.root = Some(e);
             self.size = 1;
             return true;
         };
         // The `do { parent = t; cmp = k.compareTo(t.key); ... } while (t != null)` walk.
         let mut parent;
-        let mut cmp;
+        let mut ord;
         loop {
             parent = t;
-            cmp = key.cmp(&self.nodes[t].key);
-            match cmp {
+            ord = cmp(&key, self.key(t));
+            match ord {
                 Ordering::Less => match self.nodes[t].left {
                     Some(next) => t = next,
                     None => break,
@@ -127,15 +162,8 @@ impl<T: Ord> JavaTreeSet<T> {
                 Ordering::Equal => return false,
             }
         }
-        let e = self.nodes.len();
-        self.nodes.push(Node {
-            key,
-            left: None,
-            right: None,
-            parent: Some(parent),
-            color: Color::Red,
-        });
-        if cmp == Ordering::Less {
+        let e = self.alloc(key, Some(parent), Color::Red);
+        if ord == Ordering::Less {
             self.nodes[parent].left = Some(e);
         } else {
             self.nodes[parent].right = Some(e);
@@ -144,9 +172,119 @@ impl<T: Ord> JavaTreeSet<T> {
         self.size += 1;
         true
     }
-}
 
-impl<T> JavaTreeSet<T> {
+    /// Takes a free slot (or grows the arena) and fills it with a fresh, unlinked entry.
+    fn alloc(&mut self, key: T, parent: Option<usize>, color: Color) -> usize {
+        let node = Node {
+            key: Some(key),
+            left: None,
+            right: None,
+            parent,
+            color,
+        };
+        match self.free.pop() {
+            Some(slot) => {
+                self.nodes[slot] = node;
+                slot
+            }
+            None => {
+                self.nodes.push(node);
+                self.nodes.len() - 1
+            }
+        }
+    }
+
+    /// The key of a node that is reachable from the tree.
+    fn key(&self, index: usize) -> &T {
+        self.nodes[index]
+            .key
+            .as_ref()
+            .expect("a node reachable from the tree always holds its key")
+    }
+
+    /// `TreeMap.pollFirstEntry()`, i.e. what `MazeSearchEngine.occupyNextElement`
+    /// (MazeSearchEngine.java:327-329) does with `iterator().next()` + `it.remove()`.
+    ///
+    /// The key is read out **before** `deleteEntry` runs, exactly as Java's `exportEntry` /
+    /// `Iterator.next` do — `deleteEntry` may overwrite `p.key` on its way (`TreeMap.deleteEntry`,
+    /// the two-children case), though not for the first entry, which has no left child.
+    pub fn poll_first(&mut self) -> Option<T> {
+        let p = self.first_entry()?;
+        let key = self.nodes[p]
+            .key
+            .take()
+            .expect("the first entry holds its key");
+        self.delete_entry(p);
+        Some(key)
+    }
+
+    /// `TreeMap.deleteEntry(Entry)`, transcribed.
+    ///
+    /// The caller has already taken the key out of `p`, which is what Java's callers do too
+    /// (they read it through `exportEntry` or `Iterator.next` first). The node that ends up
+    /// unlinked therefore always holds `None`, and its slot goes back on the free list.
+    fn delete_entry(&mut self, p: usize) {
+        let mut p = p;
+        self.size -= 1;
+
+        // If strictly internal, copy successor's element to p and then make p point to successor.
+        if self.nodes[p].left.is_some() && self.nodes[p].right.is_some() {
+            let s = self
+                .successor(p)
+                .expect("a node with a right child has a successor");
+            self.nodes[p].key = self.nodes[s].key.take();
+            p = s;
+        }
+
+        // Start fixup at replacement node, if it exists.
+        let replacement = self.nodes[p].left.or(self.nodes[p].right);
+        let p_parent = self.nodes[p].parent;
+
+        if let Some(replacement) = replacement {
+            // Link replacement to parent.
+            self.nodes[replacement].parent = p_parent;
+            match p_parent {
+                None => self.root = Some(replacement),
+                Some(parent) => {
+                    if self.nodes[parent].left == Some(p) {
+                        self.nodes[parent].left = Some(replacement);
+                    } else {
+                        self.nodes[parent].right = Some(replacement);
+                    }
+                }
+            }
+            // Null out links so they are OK to use by fixAfterDeletion.
+            self.nodes[p].left = None;
+            self.nodes[p].right = None;
+            self.nodes[p].parent = None;
+            // Fix replacement.
+            if self.nodes[p].color == Color::Black {
+                self.fix_after_deletion(replacement);
+            }
+        } else if p_parent.is_none() {
+            // Return if we are the only node.
+            self.root = None;
+        } else {
+            // No children. Use self as phantom replacement and unlink.
+            if self.nodes[p].color == Color::Black {
+                self.fix_after_deletion(p);
+            }
+            if let Some(parent) = self.nodes[p].parent {
+                if self.nodes[parent].left == Some(p) {
+                    self.nodes[parent].left = None;
+                } else if self.nodes[parent].right == Some(p) {
+                    self.nodes[parent].right = None;
+                }
+                self.nodes[p].parent = None;
+            }
+        }
+        debug_assert!(self.nodes[p].key.is_none(), "the freed node kept a key");
+        self.nodes[p].left = None;
+        self.nodes[p].right = None;
+        self.nodes[p].parent = None;
+        self.free.push(p);
+    }
+
     /// The in-order traversal `TreeSet.iterator()` performs (`TreeMap.getFirstEntry` then
     /// `TreeMap.successor` repeatedly).
     ///
@@ -166,7 +304,7 @@ impl<T> JavaTreeSet<T> {
         while let Some(right) = self.nodes[p].right {
             p = right;
         }
-        Some(&self.nodes[p].key)
+        Some(self.key(p))
     }
 
     /// `TreeMap.getFirstEntry`.
@@ -324,6 +462,74 @@ impl<T> JavaTreeSet<T> {
         let root = self.root;
         self.set_color(root, Color::Black);
     }
+
+    /// `TreeMap.fixAfterDeletion(Entry)`.
+    fn fix_after_deletion(&mut self, x: usize) {
+        let mut x = Some(x);
+        while x != self.root && self.color_of(x) == Color::Black {
+            if x == self.left_of(self.parent_of(x)) {
+                let mut sib = self.right_of(self.parent_of(x));
+                if self.color_of(sib) == Color::Red {
+                    self.set_color(sib, Color::Black);
+                    self.set_color(self.parent_of(x), Color::Red);
+                    let parent = self.parent_of(x);
+                    self.rotate_left(parent);
+                    sib = self.right_of(self.parent_of(x));
+                }
+                if self.color_of(self.left_of(sib)) == Color::Black
+                    && self.color_of(self.right_of(sib)) == Color::Black
+                {
+                    self.set_color(sib, Color::Red);
+                    x = self.parent_of(x);
+                } else {
+                    if self.color_of(self.right_of(sib)) == Color::Black {
+                        self.set_color(self.left_of(sib), Color::Black);
+                        self.set_color(sib, Color::Red);
+                        self.rotate_right(sib);
+                        sib = self.right_of(self.parent_of(x));
+                    }
+                    let parent_color = self.color_of(self.parent_of(x));
+                    self.set_color(sib, parent_color);
+                    self.set_color(self.parent_of(x), Color::Black);
+                    self.set_color(self.right_of(sib), Color::Black);
+                    let parent = self.parent_of(x);
+                    self.rotate_left(parent);
+                    x = self.root;
+                }
+            } else {
+                // Symmetric.
+                let mut sib = self.left_of(self.parent_of(x));
+                if self.color_of(sib) == Color::Red {
+                    self.set_color(sib, Color::Black);
+                    self.set_color(self.parent_of(x), Color::Red);
+                    let parent = self.parent_of(x);
+                    self.rotate_right(parent);
+                    sib = self.left_of(self.parent_of(x));
+                }
+                if self.color_of(self.right_of(sib)) == Color::Black
+                    && self.color_of(self.left_of(sib)) == Color::Black
+                {
+                    self.set_color(sib, Color::Red);
+                    x = self.parent_of(x);
+                } else {
+                    if self.color_of(self.left_of(sib)) == Color::Black {
+                        self.set_color(self.right_of(sib), Color::Black);
+                        self.set_color(sib, Color::Red);
+                        self.rotate_left(sib);
+                        sib = self.left_of(self.parent_of(x));
+                    }
+                    let parent_color = self.color_of(self.parent_of(x));
+                    self.set_color(sib, parent_color);
+                    self.set_color(self.parent_of(x), Color::Black);
+                    self.set_color(self.left_of(sib), Color::Black);
+                    let parent = self.parent_of(x);
+                    self.rotate_right(parent);
+                    x = self.root;
+                }
+            }
+        }
+        self.set_color(x, Color::Black);
+    }
 }
 
 /// The iterator [`JavaTreeSet::iter`] returns.
@@ -338,7 +544,7 @@ impl<'a, T> Iterator for JavaTreeSetIter<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         let current = self.next?;
         self.next = self.set.successor(current);
-        Some(&self.set.nodes[current].key)
+        Some(self.set.key(current))
     }
 }
 
@@ -390,6 +596,73 @@ mod tests {
             set.iter().copied().collect::<Vec<_>>(),
             vec![Tagged(1, 'a')]
         );
+    }
+
+    /// `TreeMap.deleteEntry` + `fixAfterDeletion` (Task 8). On a **consistent** comparator a
+    /// red-black tree and a `BTreeSet` must agree exactly, so this cross-checks the transcription
+    /// against the standard library over an interleaved add/remove workload — the shape
+    /// `MazeSearchEngine.occupyNextElement` produces, which pops one element and pushes several.
+    #[test]
+    fn poll_first_agrees_with_a_btreeset_over_interleaved_adds_and_removes() {
+        use std::collections::BTreeSet;
+
+        let mut set = JavaTreeSet::new();
+        let mut reference = BTreeSet::new();
+        // A deterministic spread that is not sorted and revisits values, so `add` also exercises
+        // the duplicate path.
+        let mut value: i64 = 1;
+        for round in 0..500 {
+            for _ in 0..3 {
+                value = (value * 48_271) % 2_147_483_647;
+                let key = (value % 977) as i32;
+                assert_eq!(set.add(key), reference.insert(key), "add({key})");
+            }
+            if round % 2 == 0 {
+                let mine = set.poll_first();
+                let theirs = reference.iter().next().copied();
+                if let Some(theirs) = theirs {
+                    reference.remove(&theirs);
+                }
+                assert_eq!(mine, theirs, "poll_first at round {round}");
+            }
+            assert_eq!(set.len(), reference.len(), "size at round {round}");
+            assert_eq!(
+                set.iter().copied().collect::<Vec<_>>(),
+                reference.iter().copied().collect::<Vec<_>>(),
+                "iteration order at round {round}"
+            );
+            assert_eq!(set.last(), reference.iter().next_back(), "last at {round}");
+        }
+
+        // And draining answers ascending order, then `None`.
+        let drained: Vec<i32> = std::iter::from_fn(|| set.poll_first()).collect();
+        assert_eq!(drained, reference.into_iter().collect::<Vec<_>>());
+        assert!(set.is_empty());
+        assert_eq!(set.poll_first(), None);
+    }
+
+    /// The two-children arm of `TreeMap.deleteEntry` is unreachable from `poll_first` (the first
+    /// entry has no left child by construction), but the freed slot has to go back on the free
+    /// list either way — otherwise a long maze search grows the arena without bound.
+    #[test]
+    fn a_drained_set_reuses_its_slots() {
+        let mut set = JavaTreeSet::new();
+        for value in 0..64 {
+            set.add(value);
+        }
+        let peak = set.nodes.len();
+        assert_eq!(peak, 64);
+        while set.poll_first().is_some() {}
+        for value in 0..64 {
+            set.add(value + 1000);
+        }
+        assert_eq!(
+            set.nodes.len(),
+            peak,
+            "the arena did not grow a second time"
+        );
+        assert_eq!(set.len(), 64);
+        assert_eq!(set.iter().next(), Some(&1000));
     }
 
     #[test]

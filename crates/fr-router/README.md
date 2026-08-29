@@ -17,13 +17,15 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 7 of 18
+## State: Task 8 of 18
 
-What exists is the data-model floor the other twelve tasks build on, the
+What exists is the data-model floor the other ten tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
 neighbour sorters that turn a completed room into its door list, the
-`AutorouteEngine` that owns all of it, and — from Task 7 — the drill pages that
-manufacture its layer changes:
+`AutorouteEngine` that owns all of it, the drill pages that manufacture its
+layer changes, and — from Task 8 — the four leaf types the maze search itself is
+written against: the control block, the cost bound, the queue element and the
+guarded queue:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -48,6 +50,10 @@ manufacture its layer changes:
 | `DrillPage` | `src/autoroute/drill/page.rs` | `DrillPage.java:21-193` |
 | `DrillPageArray` | `src/autoroute/drill/page_array.rs` | `DrillPageArray.java:15-120` |
 | `ExpansionDrill` | `src/autoroute/drill/expansion_drill.rs` | `ExpansionDrill.java:17-139` |
+| `AutorouteControl` + `ViaMask` | `src/autoroute/maze/control.rs` | `AutorouteControl.java:18-311` |
+| `DestinationDistance` | `src/autoroute/maze/destination_distance.rs` | `DestinationDistance.java:11-391` |
+| `MazeListElement` | `src/autoroute/maze/list_element.rs` | `MazeListElement.java:11-114` |
+| `MazeQueue` | `src/autoroute/maze/queue.rs` | `MazeSearchEngine.java:84-125` (the anonymous `TreeSet`) |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
@@ -302,7 +308,14 @@ The eleven that remain are `AutorouteControl` (2, Task 8),
 `MazeSearchEngine` (4, Tasks 11-13) and `MazeTraceShover` (1, Task 12). Task 7
 took `autoroute/drill` from 23 MISSING to **0**: every public method of the
 three classes is a real `fn` except the three `emitDiagnostic`/`emitDiagnostics`
-sinks, which carry `not ported:` markers naming a GUI overlay. All five
+sinks, which carry `not ported:` markers naming a GUI overlay. Task 8 took
+`autoroute/maze` from 11 MISSING to **4** — every one of its own seven rows is
+closed (`AutorouteControl.rebuildViaInfo` by a real `fn`,
+`AutorouteControl.ExpansionCostFactor` by a `renamed:` marker naming the
+`fr-settings` re-export, `DestinationDistance`'s three by real `fn`s,
+`MazeListElement.compareTo` by `compare_to`, and the anonymous `TreeSet`'s
+`MazeSearchEngine.add` by a `renamed:` marker on `MazeQueue::push`) — leaving
+`MazeSearchEngine` (3, Tasks 11-13) and `MazeTraceShover` (1, Task 12). All five
 `autoroute` invocations stay at zero UNMAPPED, and only `autoroute/path` (7,
 Tasks 14-15) is untouched.
 
@@ -363,6 +376,69 @@ unobservable: cutting the same hole out of a `PolylineArea` twice is
 idempotent, so dropping the carry changes no drill count on any board tried —
 only the per-entry trace shows it.
 
+## The maze's four leaf types (Task 8)
+
+`AutorouteControl` is the settings block every method of the package reads. It
+**copies** out of `RouterSettings` and holds no reference (plan-6 ruling 8):
+Java's `public final RouterSettings settings` has exactly two readers in the
+whole of `autoroute/{maze,expansion,drill,path}` — `MazeSearchEngine.java:96-97`
+and `:111-112`, the fanout escape-length window — so the port carries those two
+numbers as `fanout_max_escape_length` / `fanout_min_escape_length`. Both are
+**already multiplied by 1000.0**; Java's own fall-backs (`3000.0`, `500.0`) are
+in the scaled unit while the settings fields are millimetres, and the port
+reproduces the arithmetic rather than tidying it, which is why the field names
+drop the `_mm` the task brief used.
+
+`DestinationDistance` is pure: three bounding boxes, a cost model derived once,
+and 250 lines of one-to-four-layer path enumeration. `calculateCheapDistance`
+(hazard J) mutates `minNormalViaCost` and restores it in Java; the port threads
+the cost through as a parameter, so the method takes `&self`. It has **no caller
+anywhere in the Java tree** — it is ported because the audit demands every
+`public` member.
+
+`MazeListElement` is **not** an `impl Ord`, and that is deliberate.
+`compareTo`'s third key is `door.getId()`, a virtual call whose answer this port
+has to look up in the engine's arenas — and, for a `DrillPage`, an answer that
+*moves* while the element sits in the queue (quirk #167). So `compare_to` takes
+a resolver, `JavaTreeSet::add_by` takes the comparator, and `MazeQueue::push`
+closes one over `AutorouteEngine::expandable_id_no`. Snapshotting the id into
+the struct would freeze a key Java re-reads on every comparison. The comparator
+is not a total order anyway (quirk #170's NaN fall-through), so declaring `Ord`
+would be a lie the compiler cannot catch.
+
+`MazeQueue` is a `JavaTreeSet`, not a `BTreeSet` — plan-6 ruling Y/Z. Task 4
+measured that the two keep and order **different** elements on a non-total
+comparator, and quirk #171 (a four-key tie is silently dropped, payload
+included) is reachable with no NaN at all. `JavaTreeSet` therefore grew
+`TreeMap.deleteEntry` + `fixAfterDeletion` in this task, because the maze pops
+through `iterator().next()` + `it.remove()` (`MazeSearchEngine.java:327-329`)
+and red-black deletion changes the tree shape that later comparisons walk.
+
+### Ruling H: the Java half is pinned, Task 17 closes the row
+
+`AutorouteControl.rebuildViaInfo` is the consumer the register's re-pointing row
+had been waiting for since Plan 3: `:236`, `:243-244`, `:247` and `:260` reach
+the `ViaInfo` **through `viaRule.getVia(i)`**, and `ctrl.viaInfos[i].
+attachSmdAllowed` is a routing gate at `MazeExpansionEngine.java:339`. Two
+probes ran against the **HEAD** jar (2.3.0 is not used anywhere in Plan 6):
+
+* `P6T8Probe viadiv ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn
+  /tmp/redeclare.rules` — after `RulesReader.applyViaInfo` replaces the fixture's
+  only via info, `viaInfos.get(name)` says `attach=true` while **both** `default`
+  via rules still reach the detached original (`attach=false`, `inList=false`).
+  The mechanism survives at HEAD, so the port's index-based rule computes a
+  different control block.
+* the HEAD jar routing that fixture with `-mp 1 -mt 1 -oit 0` emits **123**
+  `(via …)` without the `.rules` file and **45** with it, and the two `.ses`
+  files differ by 2192 diff lines. The file is nowhere near unobservable.
+
+What is still missing is the port routing the same board with the same `.rules`,
+which is the comparison that actually decides the row. The `obligation:` marker
+on `AutorouteControl::rebuild_via_info` names it; Task 17's `p6t1` owns it. If
+the port and the jar differ there, `ViaRule` needs owned `ViaInfo` copies (or
+`ViaInfos` needs tombstones) and this fixture is the regression test.
+
+
 ## Quirk-register numbering
 
 `docs/java-quirks.md` is allocated **contiguously, in the order rows are
@@ -388,7 +464,15 @@ hazard B), **#168** (a cancelled `splitToConvex` makes `getDrills` throw *and*
 leaves the page memoised as having no drills) and **#169**
 (`removeIncompleteExpansionRoom` dereferences a lazily created list with no null
 guard, which silently costs every drill on an engine that has never had an
-incomplete room added). The next free id is **#170**. Every later
+incomplete room added); and Task 8 wrote **#170** (`MazeListElement.compareTo`
+compares `double`s with raw `<`/`>`, so a `NaN` falls through to the next sort
+key — plan label #155), **#171** (a four-key tie answers `0` and `TreeSet.add`
+then drops the new element whole, payload included — plan label #156), **#172**
+(the two HEAD-only pure-SMD relaxations in `AutorouteControl.rebuildViaInfo`,
+which force `attachSmdAllowed` on and scale the via cost by `0.1` — plan label
+#159, an id already spent by Task 3) and **#173** (`initNet`'s null-net arm is
+only reachable for `netNumber <= 0`; a positive unknown net throws two lines
+later). The next free id is **#174**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.
