@@ -18,25 +18,40 @@
 //!    `FixedState::SystemFixed`;
 //! 4. `planeList` → one conduction area per plane (:1069-1121), creating a missing net first;
 //! 5. `insertMissingPowerPlanes` (:1123).
-// added in Task 11: Structure.writeScope, Structure.writeSnapAngle, Structure.writeLayers, Structure.writeDefaultRules, Plane.writeScope — the `structure`/`plane` writers. `writeSnapAngle` must emit the 2.3.0 literal `"snap_angle "`, never HEAD's `"snapAngle "` (plan ruling 1).
+//!
+//! # The writers
+//!
+//! `Structure.writeScope` and its helpers live at the foot of this file, together with
+//! `Layer.writeScope` (Layer.java:48-66) and `Plane.writeScope` (Plane.java:18-51) — the two
+//! one-scope writers whose only caller is `Structure.writeScope`. `write_snap_angle` emits the
+//! 2.3.0 literal `"snap_angle "`, never HEAD's `"snapAngle "` (plan ruling 1).
 
 use fr_board::{
-    Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components, FixedState,
-    ItemClass, Layer, LayerStructure, Packages, Padstacks, equals_ignore_case,
+    AngleRestriction, Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components,
+    FixedState, Item, ItemClass, ItemCtx, ItemId, Layer, LayerStructure, Packages, Padstacks,
+    ViaInfoId, equals_ignore_case,
 };
 use fr_geometry::{Area, IntBox, PolylineShapeRef, Shape, TileShape};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::java_round_to_int;
+use crate::format::{IndentFileWriter, java_round_to_int};
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
-use crate::parser::autoroute_settings::read_autoroute_settings_scope;
+use crate::parser::DsnRouterSettings;
+use crate::parser::autoroute_settings::{
+    read_autoroute_settings_scope, write_autoroute_settings_scope,
+};
 use crate::parser::dsn_file::read_string_scope;
-use crate::parser::geometry::{self as shape, DsnPolygonPath, DsnShape, ReadAreaScopeResult};
+use crate::parser::geometry::{
+    self as shape, DsnPolygonPath, DsnRectangle, DsnShape, ReadAreaScopeResult,
+};
 use crate::parser::header::read_flip_style_rotate_first;
-use crate::parser::network::{DsnClearanceRule, DsnRule, NetId, read_rule_scope};
-use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
+use crate::parser::network::{
+    DsnClearanceRule, DsnRule, NetId, clearance_class_name, read_rule_scope, write_default_rule,
+    write_item_clearance_class,
+};
+use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 
 // `LayerStructure.java` and `Layer.java` live in `parser/geometry.rs` (Plan 3 Task 5, whose file
 // list puts them there next to the shapes that carry a `Layer`); re-exported here because this
@@ -1403,6 +1418,407 @@ fn to_polyline_shape(shape: Shape) -> Option<PolylineShapeRef> {
         Shape::Polygon(p) => Some(PolylineShapeRef::Polygon(p)),
         Shape::Circle(_) => None,
     }
+}
+
+// =================================================================== the `structure` writers
+//
+// `Structure.writeScope` and everything it calls, plus `Layer.writeScope` (Layer.java:48-66) and
+// `Plane.writeScope` (Plane.java:18-51) — the two one-scope writers whose only caller is this
+// file. Ported in Plan 3 Task 11; the module-head marker above named them.
+
+/// `Structure.writeScope` (Structure.java:52-91).
+///
+/// `autoroute_settings` is Java's `WriteScopeParameter.autorouteSettings`, which this port passes
+/// as an argument instead of storing on the parameter object (see [`WriteScopeParameter::new`]).
+/// `DsnWriter.writePcbScope` constructs the parameter with a literal `null` there
+/// (DsnWriter.java:63), so on the DSN write path this is always `None` and the
+/// `(autoroute_settings …)` scope is never emitted.
+// renamed: Structure.writeScope -> write_structure_scope.
+pub fn write_structure_scope(
+    p: &mut WriteScopeParameter<'_>,
+    autoroute_settings: Option<&DsnRouterSettings>,
+) {
+    p.file.start_scope_nl();
+    p.file.write("structure");
+
+    // write the layer structure
+    write_layers(p);
+
+    // write the boundaries
+    write_boundaries(p);
+
+    // write the routing vias
+    write_via_padstacks(p);
+
+    // write the rules
+    write_default_rules(p);
+
+    // write the snap angles
+    write_snap_angle(&mut p.file, p.board.rules.trace_angle_restriction);
+
+    // write the control scope
+    write_control_scope(p);
+
+    if let Some(settings) = autoroute_settings {
+        // write the auto-route settings
+        let layer_structure = p.board.layer_structure().clone();
+        write_autoroute_settings_scope(&mut p.file, settings, &layer_structure, &p.identifier_type);
+    }
+
+    // write the conduction areas
+    write_conduction_areas(p);
+
+    // write the keepouts
+    write_keepouts(p);
+
+    p.file.end_scope();
+}
+
+/// `Structure.writeConductionAreas` (Structure.java:93-111): the conduction areas on
+/// **non-signal** layers only — the signal-layer ones are `Wiring.writeScope`'s.
+fn write_conduction_areas(p: &mut WriteScopeParameter<'_>) {
+    let board = p.board;
+    for id in board.items_in_board_order() {
+        let Some(Item::ConductionArea(area)) = board.items.get(&id) else {
+            continue;
+        };
+        if board.layer_structure().layers[area.get_layer()].is_signal {
+            // These conduction areas are written in the wiring scope.
+            continue;
+        }
+        write_plane_scope(p, id);
+    }
+}
+
+/// `Structure.writeKeepouts` (Structure.java:113-135).
+fn write_keepouts(p: &mut WriteScopeParameter<'_>) {
+    let board = p.board;
+    for id in board.items_in_board_order() {
+        let Some(item) = board.items.get(&id) else {
+            continue;
+        };
+        if !item.is_obstacle_area() {
+            continue;
+        }
+        if item.component_id() != 0 {
+            // keepouts belonging to a component are not written individually.
+            continue;
+        }
+        if matches!(item, Item::ConductionArea(_)) {
+            // conduction area will be written later.
+            continue;
+        }
+        write_keepout_scope(p, id);
+    }
+}
+
+/// `Structure.writeBoundaries` (Structure.java:137-174): the board's bounding box as a `pcb`-layer
+/// rectangle, then one `(boundary …)` scope per outline shape.
+fn write_boundaries(p: &mut WriteScopeParameter<'_>) {
+    // write the bounding box
+    p.file.start_scope_nl();
+    p.file.write("boundary");
+    let bounds = p.board.get_bounding_box();
+    let rect_coor = p.coordinate_transform.board_to_dsn_box(&bounds);
+    let bounding_rectangle = DsnRectangle::new(DsnLayer::pcb(), rect_coor);
+    bounding_rectangle.write_scope(&mut p.file, &p.identifier_type);
+    p.file.end_scope();
+
+    // lookup the outline in the board
+    let board = p.board;
+    let Some(outline_id) = board.get_outline() else {
+        // "Structure.write_scope: board outline not found" — an `FRLogger.warn` this port drops.
+        return;
+    };
+    let Some(Item::BoardOutline(outline)) = board.items.get(&outline_id) else {
+        return;
+    };
+
+    // write the outline
+    for i in 0..outline.shape_count() {
+        let Some(shape) = outline.get_shape(i) else {
+            continue;
+        };
+        let shape = shape.to_shape();
+        let Some(outline_shape) = p
+            .coordinate_transform
+            .board_to_dsn_shape(&shape, DsnLayer::signal())
+        else {
+            continue;
+        };
+        p.file.start_scope_nl();
+        p.file.write("boundary");
+        outline_shape.write_scope(&mut p.file, &p.identifier_type);
+        p.file.end_scope();
+    }
+}
+
+/// `Structure.writeLayers` (Structure.java:176-184): one `(layer …)` scope per board layer, with a
+/// per-layer `(rule …)` only where that layer's trace width or clearance differs from layer 0's.
+pub fn write_layers(p: &mut WriteScopeParameter<'_>) {
+    for i in 0..p.board.layer_structure().count() {
+        let write_layer_rule = default_net_class_trace_half_width(&p.board.rules, i)
+            != default_net_class_trace_half_width(&p.board.rules, 0)
+            || !clearance_equals(&p.board.rules.clearance_matrix, i, 0);
+        write_layer_scope(p, i, write_layer_rule);
+    }
+}
+
+/// `Structure.writeDefaultRules` (Structure.java:186-189): "write the default rule using 0 as
+/// default layer."
+pub fn write_default_rules(p: &mut WriteScopeParameter<'_>) {
+    write_default_rule(p, 0);
+}
+
+/// `Structure.writeViaPadstacks` (Structure.java:191-206): the one-line `(via <name> …)` list of
+/// routing via padstacks. Not a scope — `newLine` + a literal `(via`, closed by hand.
+fn write_via_padstacks(p: &mut WriteScopeParameter<'_>) {
+    let board = p.board;
+    p.file.new_line();
+    p.file.write("(via");
+    for i in 0..board.library.via_padstack_count() {
+        // Java warns ("Structure.write_via_padstacks: padstack is null") and writes nothing for a
+        // null padstack; both `None`s here are that same case.
+        let Some(padstack) = board
+            .library
+            .get_via_padstack(i)
+            .and_then(|id| board.library.padstacks.get(id))
+        else {
+            continue;
+        };
+        let name = padstack.name.clone();
+        p.file.write(" ");
+        p.identifier_type.write(&name, &mut p.file);
+    }
+    p.file.write(")");
+}
+
+/// `Structure.writeControlScope` (Structure.java:208-227): `(control (via_at_smd on|off))`, where
+/// the flag is "any via info allows attaching to an SMD pin".
+fn write_control_scope(p: &mut WriteScopeParameter<'_>) {
+    let rules = &p.board.rules;
+    let mut via_at_smd_allowed = false;
+    for i in 0..rules.via_infos.count() {
+        if rules.via_infos.get(ViaInfoId(i)).attach_smd_allowed() {
+            via_at_smd_allowed = true;
+            break;
+        }
+    }
+    p.file.start_scope_nl();
+    p.file.write("control");
+    p.file.new_line();
+    p.file.write("(via_at_smd ");
+    if via_at_smd_allowed {
+        p.file.write("on)");
+    } else {
+        p.file.write("off)");
+    }
+    p.file.end_scope();
+}
+
+/// `Structure.writeKeepoutScope` (Structure.java:229-271): one `(keepout …)` or `(via_keepout …)`
+/// scope, with the area's holes as `(window …)` sub-scopes and a `(clearance_class …)` line when
+/// the keepout has a non-default one.
+fn write_keepout_scope(p: &mut WriteScopeParameter<'_>, keepout_id: ItemId) {
+    let board = p.board;
+    let ctx = board.ctx();
+    let Some(keepout) = board.items.get(&keepout_id) else {
+        return;
+    };
+    let Some((keepout_area, layer_index)) = obstacle_area_of(keepout, &ctx) else {
+        return;
+    };
+    let board_layer = &board.layer_structure().layers[layer_index];
+    let keepout_layer = DsnLayer::new(
+        board_layer.name.clone(),
+        i32::try_from(layer_index).unwrap_or(i32::MAX),
+        board_layer.is_signal,
+    );
+    let (boundary_shape, holes) = match keepout_area {
+        Area::Shape(s) => (s.clone(), Vec::new()),
+        area => (area.get_border(), area.get_holes()),
+    };
+    p.file.start_scope_nl();
+    if matches!(keepout, Item::ViaObstacleArea(_)) {
+        p.file.write("via_keepout");
+    } else {
+        p.file.write("keepout");
+    }
+    if let Some(dsn_shape) = p
+        .coordinate_transform
+        .board_to_dsn_shape(&boundary_shape, keepout_layer.clone())
+    {
+        dsn_shape.write_scope(&mut p.file, &p.identifier_type);
+    }
+    for hole in &holes {
+        // totalized: Structure.writeKeepoutScope dereferences `boardToDsn`'s result for a hole
+        // without the `null` check it applies to the border (Structure.java:359-360); the port
+        // skips a hole it cannot transform. `board_to_dsn_shape` never answers `None`, so no
+        // reachable caller sees the difference.
+        if let Some(dsn_hole) = p
+            .coordinate_transform
+            .board_to_dsn_shape(hole, keepout_layer.clone())
+        {
+            dsn_hole.write_hole_scope(&mut p.file, &p.identifier_type);
+        }
+    }
+    // write clearance class if it's defined for this keepout area.
+    if keepout.clearance_class() > 0 {
+        // skip it if it's the default clearance class.
+        let clearance_name = clearance_class_name(&board.rules, keepout.clearance_class());
+        if clearance_name != "default" {
+            let clearance_name = clearance_name.to_string();
+            write_item_clearance_class(&clearance_name, &mut p.file, &p.identifier_type);
+        }
+    }
+    p.file.end_scope();
+}
+
+/// `Structure.writeSnapAngle` (Structure.java:510-524).
+///
+/// The literal is 2.3.0's `"snap_angle "` (plan ruling 1); the clone's HEAD writes `"snapAngle "`,
+/// which its own lexer cannot read back.
+// renamed: Structure.writeSnapAngle -> write_snap_angle.
+pub fn write_snap_angle<W: std::io::Write>(
+    file: &mut IndentFileWriter<W>,
+    angle_restriction: AngleRestriction,
+) {
+    file.start_scope_nl();
+    file.write("snap_angle ");
+    file.new_line();
+    match angle_restriction {
+        AngleRestriction::NinetyDegree => file.write("ninety_degree"),
+        AngleRestriction::FortyFiveDegree => file.write("fortyfive_degree"),
+        AngleRestriction::None => file.write("none"),
+    }
+    file.end_scope();
+}
+
+/// `Structure.clearanceEquals` (Structure.java:843-856): do the two layers agree on every
+/// class-pair clearance? Note the `j` loop starts at `i`, so only the upper triangle is compared.
+fn clearance_equals(cl_matrix: &ClearanceMatrix, layer1: usize, layer2: usize) -> bool {
+    if layer1 == layer2 {
+        return true;
+    }
+    for i in 1..cl_matrix.get_class_count() {
+        for j in i..cl_matrix.get_class_count() {
+            if cl_matrix.get_value(i, j, layer1, false) != cl_matrix.get_value(i, j, layer2, false)
+            {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+/// `Layer.writeScope` (Layer.java:48-66) — `io/specctra/parser/Layer.java`'s writer, which lives
+/// here rather than in [`crate::parser::geometry`] because its only caller is [`write_layers`] and
+/// it needs `Rule.writeDefaultRule`.
+// renamed: Layer.writeScope -> write_layer_scope (the read half of `Layer.java` is in
+// `parser/geometry.rs`; this is the half the `structure` writer owns).
+pub fn write_layer_scope(p: &mut WriteScopeParameter<'_>, layer_index: usize, write_rule: bool) {
+    p.file.start_scope_nl();
+    p.file.write("layer ");
+    let board_layer = p.board.layer_structure().layers[layer_index].clone();
+    p.identifier_type.write(&board_layer.name, &mut p.file);
+    p.file.new_line();
+    p.file.write("(type ");
+    if board_layer.is_signal {
+        p.file.write("signal)");
+    } else {
+        p.file.write("power)");
+    }
+    if write_rule {
+        write_default_rule(p, layer_index);
+    }
+    p.file.end_scope();
+}
+
+/// `Plane.writeScope` (Plane.java:18-51): one `(plane <net> <shape> (window …)*)` scope for a
+/// conduction area on a non-signal layer.
+// renamed: Plane.writeScope -> write_plane_scope.
+pub fn write_plane_scope(p: &mut WriteScopeParameter<'_>, conduction_id: ItemId) {
+    let board = p.board;
+    let ctx = board.ctx();
+    let Some(conduction) = board.items.get(&conduction_id) else {
+        return;
+    };
+    if conduction.net_count() != 1 {
+        // "Plane.write_scope: unexpected net count" — an `FRLogger.warn` this port drops.
+        return;
+    }
+    // totalized: Java dereferences `rules.nets.get(...)` without a null check (Plane.java:24);
+    // an item carrying a net number the net list does not hold would NPE there. No reachable
+    // caller produces one — every conduction area is inserted with a net the reader created.
+    let Some(net) = board.rules.nets.get(conduction.get_net_number(0)) else {
+        return;
+    };
+    let net_name = net.name.clone();
+    let Some((current_area, layer_index)) = obstacle_area_of(conduction, &ctx) else {
+        return;
+    };
+    let board_layer = &board.layer_structure().layers[layer_index];
+    let plane_layer = DsnLayer::new(
+        board_layer.name.clone(),
+        i32::try_from(layer_index).unwrap_or(i32::MAX),
+        board_layer.is_signal,
+    );
+    let (boundary_shape, holes) = match current_area {
+        Area::Shape(s) => (s.clone(), Vec::new()),
+        area => (area.get_border(), area.get_holes()),
+    };
+    p.file.start_scope_nl();
+    p.file.write("plane ");
+    p.identifier_type.write(&net_name, &mut p.file);
+    if let Some(dsn_shape) = p
+        .coordinate_transform
+        .board_to_dsn_shape(&boundary_shape, plane_layer.clone())
+    {
+        dsn_shape.write_scope(&mut p.file, &p.identifier_type);
+    }
+    for hole in &holes {
+        if let Some(dsn_hole) = p
+            .coordinate_transform
+            .board_to_dsn_shape(hole, plane_layer.clone())
+        {
+            dsn_hole.write_hole_scope(&mut p.file, &p.identifier_type);
+        }
+    }
+    p.file.end_scope();
+}
+
+/// The area and layer of any of the four `ObstacleArea` variants (`ObstacleArea.getArea` /
+/// `.getLayer`, ObstacleArea.java:119-144,151), or `None` for an item that is not one.
+///
+/// Not a Java method: Java has a single `ObstacleArea` superclass to cast to, where this port has
+/// four sibling `Item` variants (see `fr_board::Item`'s docs on the flattening).
+fn obstacle_area_of<'b>(item: &'b Item, ctx: &ItemCtx<'_>) -> Option<(&'b Area, usize)> {
+    match item {
+        Item::ObstacleArea(a) => Some((a.get_area(ctx), a.get_layer())),
+        Item::ConductionArea(a) => Some((a.get_area(ctx), a.get_layer())),
+        Item::ViaObstacleArea(a) => Some((a.get_area(ctx), a.get_layer())),
+        Item::ComponentObstacleArea(a) => Some((a.get_area(ctx), a.get_layer())),
+        _ => None,
+    }
+}
+
+/// `board.rules.getDefaultNetClass().getTraceHalfWidth(layer)` (BoardRules.java:137-143) as a
+/// `&self` read.
+///
+/// **Documented deviation.** Java's getter *creates* the default net class when the list is empty
+/// (`createDefaultNetClass`, BoardRules.java:202-209) and so needs `&mut`; the two writers that
+/// call it have only a `&Board`. The class `createDefaultNetClass` would have made has a trace
+/// half width of 1500 on every layer (BoardRules.java:205-207), so returning that constant for an
+/// empty list produces byte-identical output without mutating. Unreachable on any board the DSN
+/// reader builds — `Structure.createBoard` always fills the net classes first.
+pub(crate) fn default_net_class_trace_half_width(rules: &BoardRules, layer: usize) -> i32 {
+    if rules.net_classes.count() == 0 {
+        return 1500;
+    }
+    rules
+        .net_classes
+        .get(fr_board::NetClassId(0))
+        .get_trace_half_width(layer)
 }
 
 #[cfg(test)]

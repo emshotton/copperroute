@@ -14,18 +14,22 @@
 //! [`fr_board::datastructures::StopCheck`] and lands a trip in the branch Java already has,
 //! with Java's own message.
 
+use std::io::Write;
+
 use fr_board::datastructures::TimeLimit;
 use fr_board::rules::ItemClass;
-use fr_board::{Board, BoardError, FixedState, ItemId, NetClassId, PadstackId};
-use fr_geometry::{Line, Point, Polygon, Polyline, TileShape};
+use fr_board::{Board, BoardError, FixedState, Item, ItemId, NetClassId, PadstackId};
+use fr_geometry::{Area, FloatPoint, Line, Point, Polygon, Polyline, TileShape};
 
 use crate::error::DsnError;
-use crate::format::java_round_to_int;
+use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string, java_round_to_int};
 use crate::keyword::Keyword;
 use crate::lexer::Token;
-use crate::parser::geometry::{self as shape, DsnShape};
-use crate::parser::network::NetId;
-use crate::parser::scope_parameter::{ReadScopeParameter, skip_scope};
+use crate::parser::geometry::{self as shape, DsnLayer, DsnPolygonPath, DsnPolylinePath, DsnShape};
+use crate::parser::network::{
+    NetId, clearance_class_name, write_item_clearance_class, write_net_id,
+};
+use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 use crate::parser::{dsn_file, library};
 
 // renamed: Wiring.readScope -> read_wiring_scope.
@@ -680,6 +684,229 @@ fn path_width(shape: &DsnShape) -> f64 {
     }
 }
 
-// not ported: Wiring.writeScope / writeWireScope / writeViaScope / writeConductionAreaScope /
-// writeNet / writeFixedState (Wiring.java:47-215) — the DSN write path, which Plan 3 Task 11
-// owns.
+// ======================================================================== the `wiring` writers
+//
+// `Wiring.writeScope` and the five helpers it calls (Wiring.java:47-215), ported in Plan 3
+// Task 11; they replace the `// not ported:` marker that stood here while the reader was the
+// only half of this file.
+
+/// `Wiring.writeScope` (Wiring.java:47-75): all traces, then all vias, then the conduction areas
+/// on **signal** layers (the non-signal ones belong to the `structure` scope).
+///
+/// The three walks are Java's three walks: `BasicBoard.getTraces` and `.getVias`, then
+/// `board.itemList` directly — all three in `UndoableObjects` order, which Plan 2 established is
+/// **descending item id** (quirk #63). `Board::get_traces`/`get_vias`/`items_in_board_order` all
+/// answer in that order already.
+// renamed: Wiring.writeScope -> write_wiring_scope.
+pub fn write_wiring_scope(p: &mut WriteScopeParameter<'_>) {
+    p.file.start_scope_nl();
+    p.file.write("wiring");
+    // write the wires
+    let board_wires = p.board.get_traces();
+    for current_board_wire in board_wires {
+        write_wire_scope(p, current_board_wire);
+    }
+    let board_vias = p.board.get_vias();
+    for current_via in board_vias {
+        write_via_scope(p, current_via);
+    }
+    // write the conduction areas
+    let board = p.board;
+    for id in board.items_in_board_order() {
+        let Some(Item::ConductionArea(area)) = board.items.get(&id) else {
+            continue;
+        };
+        if !board.layer_structure().layers[area.get_layer()].is_signal {
+            // This conduction area is written in the structure scope.
+            continue;
+        }
+        write_conduction_area_scope(p, id);
+    }
+    p.file.end_scope();
+}
+
+/// `Wiring.writeViaScope` (Wiring.java:77-107): one `(via <padstack> <x> <y> [(net …)]
+/// (clearance_class …) [(type …)])` scope.
+fn write_via_scope(p: &mut WriteScopeParameter<'_>, via_id: ItemId) {
+    let board = p.board;
+    let ctx = board.ctx();
+    let Some(item) = board.items.get(&via_id) else {
+        return;
+    };
+    let Item::Via(via) = item else {
+        return;
+    };
+    // totalized: Java writes `via.getPadstack().name` unconditionally (Wiring.java:79); a via
+    // whose padstack id is not in the library would NPE. Unreachable — every via is inserted
+    // with a padstack the library holds.
+    let Some(via_padstack) = via.get_padstack(&ctx) else {
+        return;
+    };
+    let via_padstack_name = via_padstack.name.clone();
+    let via_location = via.get_center().to_float();
+    let via_coor = p.coordinate_transform.board_to_dsn_point(&via_location);
+    let via_net = if item.net_count() > 0 {
+        board.rules.nets.get(item.get_net_number(0)).cloned()
+    } else {
+        None
+    };
+    p.file.start_scope_nl();
+    p.file.write("via ");
+    p.identifier_type.write(&via_padstack_name, &mut p.file);
+    for coor in via_coor {
+        p.file.write(" ");
+        p.file.write(&java_double_to_string(coor));
+    }
+    if let Some(via_net) = &via_net {
+        write_net(via_net, &mut p.file, &p.identifier_type);
+    }
+    let clearance_name = clearance_class_name(&board.rules, item.clearance_class()).to_string();
+    write_item_clearance_class(&clearance_name, &mut p.file, &p.identifier_type);
+    write_fixed_state(&mut p.file, item.get_fixed_state());
+    p.file.end_scope();
+}
+
+/// `Wiring.writeWireScope` (Wiring.java:109-152): one `(wire (polyline_path …) …)` scope — or a
+/// `(path …)` one in compat mode, which writes the trace's corners rather than its lines.
+fn write_wire_scope(p: &mut WriteScopeParameter<'_>, wire_id: ItemId) {
+    let board = p.board;
+    let Some(item) = board.items.get(&wire_id) else {
+        return;
+    };
+    // "Wiring.write_wire_scope: trace type not yet implemented" — Java's non-`PolylineTrace`
+    // branch, unreachable here because `Trace` has exactly one variant in this port.
+    let Item::Trace(current_wire) = item else {
+        return;
+    };
+    let layer_index = current_wire.get_layer();
+    let board_layer = &board.layer_structure().layers[layer_index];
+    let current_layer = DsnLayer::new(
+        board_layer.name.clone(),
+        i32::try_from(layer_index).unwrap_or(i32::MAX),
+        board_layer.is_signal,
+    );
+    let wire_width = p
+        .coordinate_transform
+        .board_to_dsn(f64::from(2 * current_wire.get_half_width()));
+    let wire_net = if item.net_count() > 0 {
+        board.rules.nets.get(item.get_net_number(0))
+    } else {
+        None
+    };
+    let Some(wire_net) = wire_net else {
+        // "Wiring.write_wire_scope: net not found" — an `FRLogger.warn` this port drops.
+        return;
+    };
+    p.file.start_scope_nl();
+    p.file.write("wire");
+
+    if p.compat_mode {
+        let corners = current_wire.polyline().corners();
+        let float_corner_arr: Vec<FloatPoint> = corners.iter().map(Point::to_float).collect();
+        let coors = p
+            .coordinate_transform
+            .board_to_dsn_points(&float_corner_arr);
+        let current_path = DsnPolygonPath::new(current_layer, wire_width, coors);
+        current_path.write_scope(&mut p.file, &p.identifier_type);
+    } else {
+        let coors = p
+            .coordinate_transform
+            .board_to_dsn_lines(current_wire.polyline().lines());
+        let current_path = DsnPolylinePath::new(current_layer, wire_width, coors);
+        current_path.write_scope(&mut p.file, &p.identifier_type);
+    }
+    write_net(wire_net, &mut p.file, &p.identifier_type);
+    let clearance_name = clearance_class_name(&board.rules, item.clearance_class()).to_string();
+    write_item_clearance_class(&clearance_name, &mut p.file, &p.identifier_type);
+    write_fixed_state(&mut p.file, item.get_fixed_state());
+    p.file.end_scope();
+}
+
+/// `Wiring.writeConductionAreaScope` (Wiring.java:154-192): a signal-layer conduction area as a
+/// `(wire <shape> (window …)* (net …) (clearance_class …))` scope.
+///
+/// Unlike [`crate::parser::structure::write_plane_scope`], which writes the non-signal-layer ones
+/// as `(plane …)`, this one carries the net and the clearance class but no fixed state.
+fn write_conduction_area_scope(p: &mut WriteScopeParameter<'_>, conduction_id: ItemId) {
+    let board = p.board;
+    let ctx = board.ctx();
+    let Some(item) = board.items.get(&conduction_id) else {
+        return;
+    };
+    let Item::ConductionArea(conduction_area) = item else {
+        return;
+    };
+    let net_count = item.net_count();
+    if net_count != 1 {
+        // "Plane.write_scope: unexpected net count" — Java's message, in `Wiring`
+        // (Wiring.java:158); an `FRLogger.warn` this port drops.
+        return;
+    }
+    // totalized: Java dereferences `rules.nets.get(...)` without a null check (Wiring.java:161).
+    let Some(current_net) = board.rules.nets.get(item.get_net_number(0)).cloned() else {
+        return;
+    };
+    let current_area = conduction_area.get_area(&ctx);
+    let layer_index = conduction_area.get_layer();
+    let board_layer = &board.layer_structure().layers[layer_index];
+    let conduction_layer = DsnLayer::new(
+        board_layer.name.clone(),
+        i32::try_from(layer_index).unwrap_or(i32::MAX),
+        board_layer.is_signal,
+    );
+    let (boundary_shape, holes) = match current_area {
+        Area::Shape(s) => (s.clone(), Vec::new()),
+        area => (area.get_border(), area.get_holes()),
+    };
+    p.file.start_scope_nl();
+    p.file.write("wire ");
+    if let Some(dsn_shape) = p
+        .coordinate_transform
+        .board_to_dsn_shape(&boundary_shape, conduction_layer.clone())
+    {
+        dsn_shape.write_scope(&mut p.file, &p.identifier_type);
+    }
+    for hole in &holes {
+        if let Some(dsn_hole) = p
+            .coordinate_transform
+            .board_to_dsn_shape(hole, conduction_layer.clone())
+        {
+            dsn_hole.write_hole_scope(&mut p.file, &p.identifier_type);
+        }
+    }
+    write_net(&current_net, &mut p.file, &p.identifier_type);
+    let clearance_name = clearance_class_name(&board.rules, item.clearance_class()).to_string();
+    write_item_clearance_class(&clearance_name, &mut p.file, &p.identifier_type);
+    p.file.end_scope();
+}
+
+/// `Wiring.writeNet(rules.Net, IndentFileWriter, IdentifierType)` (Wiring.java:194-200): the
+/// `(net <name> <subnet>)` line every wire, via and conduction area carries.
+fn write_net<W: Write>(
+    net: &fr_board::Net,
+    file: &mut IndentFileWriter<W>,
+    identifier_type: &IdentifierType,
+) {
+    file.new_line();
+    file.write("(");
+    write_net_id(net, file, identifier_type);
+    file.write(")");
+}
+
+/// `Wiring.writeFixedState(IndentFileWriter, FixedState)` (Wiring.java:202-215): nothing at all
+/// for an unfixed item, else `(type shove_fixed|fix|protect)`.
+///
+/// The `shove_fixed)` literal is 2.3.0's (plan ruling 1); the clone's HEAD writes `shoveFixed)`,
+/// which its own lexer cannot read back.
+fn write_fixed_state<W: Write>(file: &mut IndentFileWriter<W>, fixed_state: FixedState) {
+    if fixed_state == FixedState::Unfixed {
+        return;
+    }
+    file.new_line();
+    file.write("(type ");
+    match fixed_state {
+        FixedState::ShoveFixed => file.write("shove_fixed)"),
+        FixedState::SystemFixed => file.write("fix)"),
+        _ => file.write("protect)"),
+    }
+}

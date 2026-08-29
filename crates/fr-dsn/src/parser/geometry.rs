@@ -87,9 +87,10 @@ impl DsnLayer {
         DsnLayer::new("signal", -1, true)
     }
 
-    // added in Plan 3: Layer.writeScope (Layer.java:48-66) — the `(layer <name> (type
-    // signal|power) …)` writer belongs to the `structure` scope's writer and calls
-    // `Rule.writeDefaultRule`, which is not ported yet; it lands with `Structure.writeScope`.
+    // renamed: Layer.writeScope -> `parser::structure::write_layer_scope`. The `(layer <name>
+    // (type signal|power) …)` writer belongs to the `structure` scope's writer — it is called
+    // only from `Structure.writeLayers` and calls `Rule.writeDefaultRule` — so it lives next to
+    // that caller rather than here with `Layer`'s reader (Plan 3 Task 11).
 }
 
 // ---------------------------------------------------------------- LayerStructure.java

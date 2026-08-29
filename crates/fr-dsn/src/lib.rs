@@ -9,6 +9,7 @@
 
 pub mod coordinate_transform;
 pub mod dsn_reader;
+pub mod dsn_writer;
 pub mod error;
 pub mod format;
 pub mod keyword;
@@ -17,6 +18,7 @@ pub mod parser;
 
 pub use coordinate_transform::CoordinateTransform;
 pub use dsn_reader::{read_board, read_metadata};
+pub use dsn_writer::write;
 pub use error::{BoardMetadata, BoardReadResult, DsnError, FileFormat};
 pub use format::{
     DSN_RESERVED, IdentifierType, IndentFileWriter, SES_RESERVED, format_placement_rotation,
@@ -41,6 +43,6 @@ pub mod prelude {
         LexicalState, ReadAreaScopeResult, ReadScopeParameter, SES_RESERVED, ScopeKeyword, Token,
         WriteScopeParameter, format_placement_rotation, java_double_to_string,
         java_float_to_string, java_rint, java_round, java_round_to_int, read_board, read_metadata,
-        read_scope, skip_scope,
+        read_scope, skip_scope, write,
     };
 }

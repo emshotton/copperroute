@@ -24,6 +24,9 @@ Path                     parser/geometry.rs
 PolygonPath              parser/geometry.rs
 PolylinePath             parser/geometry.rs
 Layer                    parser/geometry.rs
+# `Layer.writeScope` (Layer.java:48-66) lives with the `structure` writer that is its only
+# caller — see `parser/structure.rs` (Plan 3 Task 11).
+Layer                    parser/structure.rs
 LayerStructure           parser/geometry.rs
 Parser                   parser/header.rs
 Resolution               parser/header.rs
@@ -49,6 +52,7 @@ Network                  parser/network.rs
 KiCadNetClassNames       parser/network.rs
 Wiring                   parser/wiring.rs
 DsnReader                dsn_reader.rs
+DsnWriter                dsn_writer.rs
 BoardReadResult          error.rs
 BoardMetadata            error.rs
 FileFormat               error.rs

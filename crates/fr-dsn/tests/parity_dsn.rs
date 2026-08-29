@@ -1,0 +1,276 @@
+//! Bit-parity of the DSN write path against the committed Java reference outputs
+//! (`tests/reference/<stem>/roundtrip.dsn`, produced by `scripts/gen-reference.sh` from the
+//! pinned freerouting 2.3.0 jar). Plan 3 ruling 9 puts these here rather than in `tests/parity`,
+//! which must not depend on `fr-dsn`.
+//!
+//! Each case is exactly `scripts/gen-reference/RefWriter.java`'s two steps —
+//! `DsnReader.readBoard` then `DsnWriter.write` — with `designName` the input file's stem with
+//! `.dsn` stripped, which is what puts `(pcb "tutorial_board"` on the reference's first line.
+
+use std::path::Path;
+
+use fr_board::Board;
+use fr_dsn::dsn_writer;
+use fr_dsn::parser::scope_parameter::DsnReadOptions;
+use fr_dsn::{BoardReadResult, CoordinateTransform};
+
+/// `RefWriter.main`'s read half: the board and the transform it was built with.
+fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
+    let file = std::fs::File::open(path)
+        .unwrap_or_else(|e| panic!("cannot open fixture {}: {e}", path.display()));
+    let options = DsnReadOptions::default();
+    let stem = design_name(path);
+    match fr_dsn::read_board(file, None, Some(&stem), &options) {
+        BoardReadResult::Success {
+            board,
+            coordinate_transform,
+            ..
+        }
+        | BoardReadResult::OutlineMissing {
+            board,
+            coordinate_transform,
+            ..
+        } => (
+            *board.unwrap_or_else(|| panic!("{} produced no board", path.display())),
+            coordinate_transform
+                .unwrap_or_else(|| panic!("{} produced no coordinate transform", path.display())),
+        ),
+        BoardReadResult::ParseError { location, detail } => {
+            panic!("parse error at {location}: {detail}")
+        }
+        BoardReadResult::IoError(e) => panic!("io error: {e}"),
+    }
+}
+
+/// `Path.of(args[0]).getFileName().toString().replaceAll("\\.dsn$", "")` (RefWriter.java:26).
+fn design_name(path: &Path) -> String {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default()
+        .strip_suffix(".dsn")
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn assert_roundtrip_parity(stem: &str, relative_fixture: &str) {
+    let reference = parity::reference(stem, "roundtrip.dsn");
+    if !parity::require_reference(&reference) {
+        return;
+    }
+    let fixture = parity::java_dir().join(relative_fixture);
+    let (board, coordinate_transform) = read_fixture(&fixture);
+    let mut actual: Vec<u8> = Vec::new();
+    dsn_writer::write(
+        &board,
+        &coordinate_transform,
+        &mut actual,
+        &design_name(&fixture),
+        false,
+    )
+    .expect("write must succeed into a Vec");
+    let actual = String::from_utf8(actual).expect("DSN output must be valid UTF-8");
+    parity::assert_text_parity(&actual, &reference);
+}
+
+#[test]
+fn tutorial_board_roundtrip_matches_java() {
+    assert_roundtrip_parity(
+        "tutorial_board",
+        "examples/tutorial_board/tutorial_board.dsn",
+    );
+}
+
+#[test]
+fn issue026_j2_reference_roundtrip_matches_java() {
+    assert_roundtrip_parity(
+        "Issue026-J2_reference",
+        "fixtures/Issue026-J2_reference.dsn",
+    );
+}
+
+#[test]
+fn issue103_board_unrouted_roundtrip_matches_java() {
+    assert_roundtrip_parity(
+        "Issue103-Board-Unrouted",
+        "fixtures/Issue103-Board-Unrouted.dsn",
+    );
+}
+
+#[test]
+fn issue143_rpi_splitter_roundtrip_matches_java() {
+    assert_roundtrip_parity(
+        "Issue143-rpi_splitter",
+        "fixtures/Issue143-rpi_splitter.dsn",
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Byte-exact parity
+// ---------------------------------------------------------------------------------------------
+
+/// The four cases above go through [`parity::assert_text_parity`], which normalises CRLF,
+/// trailing spaces/tabs and runs of blank lines before comparing (plan ruling 9). This one asserts
+/// the stronger property the plan actually promises — the output is byte-for-byte what the pinned
+/// 2.3.0 jar wrote — so a regression that hides inside that normalisation (a lost trailing space
+/// on `(snap_angle `, `(circuit `, or a `polyline_path` line) still fails.
+#[test]
+fn all_four_fixtures_are_byte_for_byte_identical_to_java() {
+    for (stem, relative_fixture) in [
+        (
+            "tutorial_board",
+            "examples/tutorial_board/tutorial_board.dsn",
+        ),
+        (
+            "Issue026-J2_reference",
+            "fixtures/Issue026-J2_reference.dsn",
+        ),
+        (
+            "Issue103-Board-Unrouted",
+            "fixtures/Issue103-Board-Unrouted.dsn",
+        ),
+        (
+            "Issue143-rpi_splitter",
+            "fixtures/Issue143-rpi_splitter.dsn",
+        ),
+    ] {
+        let reference_path = parity::reference(stem, "roundtrip.dsn");
+        if !parity::require_reference(&reference_path) {
+            continue;
+        }
+        let fixture = parity::java_dir().join(relative_fixture);
+        let (board, coordinate_transform) = read_fixture(&fixture);
+        let mut actual: Vec<u8> = Vec::new();
+        dsn_writer::write(&board, &coordinate_transform, &mut actual, stem, false)
+            .expect("write must succeed into a Vec");
+        let expected = std::fs::read(&reference_path).expect("reference must be readable");
+        if actual == expected {
+            continue;
+        }
+        let a = String::from_utf8_lossy(&actual);
+        let e = String::from_utf8_lossy(&expected);
+        let first_difference = a
+            .lines()
+            .zip(e.lines())
+            .enumerate()
+            .find(|(_, (la, le))| la != le)
+            .map_or_else(
+                || format!("no differing line; lengths {} vs {}", a.len(), e.len()),
+                |(i, (la, le))| format!("line {}:\n  actual   {la:?}\n  expected {le:?}", i + 1),
+            );
+        panic!(
+            "{stem}: not byte-identical to {}\n{first_difference}",
+            reference_path.display()
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Ports of `io/specctra/DsnWriterTest.java`
+// ---------------------------------------------------------------------------------------------
+//
+// Java's `DsnTestFixtures.loadBoard` is `read_fixture` above; `Freerouting.globalSettings = new
+// GlobalSettings()` in `@BeforeEach` has no counterpart here (no global state to reset).
+
+/// `DsnWriterTest.writesValidDsnHeader` (DsnWriterTest.java:22-31).
+#[test]
+fn valid_header() {
+    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let (board, ct) = read_fixture(&fixture);
+    let mut out: Vec<u8> = Vec::new();
+    dsn_writer::write(&board, &ct, &mut out, "test", false).expect("write");
+    let content = String::from_utf8(out).expect("UTF-8");
+    assert!(
+        content.starts_with("(pcb"),
+        "DSN output must start with (pcb"
+    );
+    assert!(
+        content.contains("(structure"),
+        "DSN output must contain (structure scope"
+    );
+}
+
+/// `DsnWriterTest.roundtripPreservesLayerCount` (DsnWriterTest.java:33-41): the writer's own
+/// output must be readable by the reader, with the same layer count.
+#[test]
+fn roundtrip_preserves_layer_count() {
+    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let (original, ct) = read_fixture(&fixture);
+    let original_layers = original.get_layer_count();
+    let mut out: Vec<u8> = Vec::new();
+    dsn_writer::write(&original, &ct, &mut out, "roundtrip", false).expect("write");
+    let options = DsnReadOptions::default();
+    let reloaded = match fr_dsn::read_board(out.as_slice(), None, Some("roundtrip"), &options) {
+        BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
+            *board.expect("re-read must produce a board")
+        }
+        BoardReadResult::ParseError { location, detail } => {
+            panic!("re-read failed at {location}: {detail}")
+        }
+        BoardReadResult::IoError(e) => panic!("re-read io error: {e}"),
+    };
+    assert_eq!(original_layers, reloaded.get_layer_count());
+}
+
+/// `DsnWriterTest.compatModeProducesOutput` (DsnWriterTest.java:43-50).
+#[test]
+fn compat_mode_produces_output() {
+    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let (board, ct) = read_fixture(&fixture);
+    let mut out: Vec<u8> = Vec::new();
+    dsn_writer::write(&board, &ct, &mut out, "compat-test", true).expect("write");
+    let content = String::from_utf8(out).expect("UTF-8");
+    assert!(
+        content.starts_with("(pcb"),
+        "Compat-mode DSN output must start with (pcb"
+    );
+}
+
+/// `DsnWriterTest.outputStreamContainsDataAfterWrite` (DsnWriterTest.java:52-59).
+// renamed: outputStreamContainsDataAfterWrite -> output_is_non_empty (the task brief's name).
+#[test]
+fn output_is_non_empty() {
+    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let (board, ct) = read_fixture(&fixture);
+    let mut out: Vec<u8> = Vec::new();
+    dsn_writer::write(&board, &ct, &mut out, "flush-test", false).expect("write");
+    assert!(
+        !out.is_empty(),
+        "output must contain data after write (flush must have occurred)"
+    );
+}
+
+/// Not a Java test. `Issue143-rpi_splitter.dsn` has an empty `(wiring …)` scope — so do all four
+/// parity fixtures — so none of the cases above ever reaches `Wiring::write_wire_scope`, the one
+/// place `compat_mode` changes the bytes (a `(path …)` built from the trace's corners instead of a
+/// `(polyline_path …)` built from its lines, Wiring.java:130-143). This drives both branches on a
+/// fixture that actually has traces.
+#[test]
+fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
+    let fixture = parity::java_dir().join("fixtures/Issue413-test.dsn");
+    if !fixture.exists() {
+        eprintln!("SKIP: {} missing", fixture.display());
+        return;
+    }
+    let (board, ct) = read_fixture(&fixture);
+    assert!(
+        !board.get_traces().is_empty(),
+        "fixture must have traces for this test to mean anything"
+    );
+
+    let mut default_mode: Vec<u8> = Vec::new();
+    dsn_writer::write(&board, &ct, &mut default_mode, "Issue413-test", false).expect("write");
+    let default_mode = String::from_utf8(default_mode).expect("UTF-8");
+
+    let mut compat: Vec<u8> = Vec::new();
+    dsn_writer::write(&board, &ct, &mut compat, "Issue413-test", true).expect("write");
+    let compat = String::from_utf8(compat).expect("UTF-8");
+
+    assert!(default_mode.contains("(polyline_path "));
+    assert!(!default_mode.contains("(path "));
+    assert!(compat.contains("(path "));
+    assert!(!compat.contains("(polyline_path "));
+    // `Parser.writeScope` is called with `reduced = false` even in compat mode
+    // (DsnWriter.java:76-80) — the header is unchanged.
+    assert!(compat.contains("(string_quote "));
+    assert!(compat.contains("(space_in_quoted_tokens on)"));
+}
