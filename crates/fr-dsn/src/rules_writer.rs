@@ -90,6 +90,19 @@ fn write_rules<'a>(
     write_default_rule(&mut p, 0);
 
     // write the via padstacks
+    //
+    // totalized: RulesWriter.writeRules — the loop bound itself is a second, *reachable* Java
+    // crash. Java reads `p_par.board.library.padstacks.count()` (RulesWriter.java:70 in the
+    // pinned 2.3.0 jar) with no null check, and `BoardLibrary.padstacks` (BoardLibrary.java) is
+    // **`null`** on any board read from a DSN that carries no `(library …)` scope at all, so
+    // `RulesWriter.write` throws `NullPointerException: Cannot invoke
+    // "app.freerouting.core.Padstacks.count()" because "p_par.board.library.padstacks" is null`.
+    // This port's `padstacks` is a value, not a reference, so the loop simply runs zero times and
+    // a complete, valid `.rules` file is written. Unlike the totalization directly below, a Java
+    // caller *does* observe the difference: `fixtures/empty_board.dsn` makes the jar throw where
+    // `p3t15` mode 3 writes 20 lines — the sole unexpected diff in Task 15's 530-pair corpus
+    // sweep, and the reason that pair is in `sweep-p3t15.sh`'s `EXPECTED_DIFFS`. See the
+    // `RulesWriter.writeRules` row in `docs/java-quirks.md`'s totalization table.
     for i in 1..=p.board.library.padstacks.count() {
         // totalized: RulesWriter.writeRules — Java reads `padstacks.get(i).name` with no null
         // check (RulesWriter.java:92-93), and `Padstacks.get(int)` warns and returns `null` for

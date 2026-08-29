@@ -314,15 +314,31 @@ resolved the items marked ✓ below — verified against the committed tree)
 ## Obligations for later plans
 
 **Plan 3 (DSN/KiCad import):**
-- **Ladder hang on import (quirk #76).** `PolylineTrace.split`'s entry
-  re-walk never terminates on a 4+-rung ladder on one net, in Java and in the
-  port alike, and `io/specctra/parser/Wiring.java:347` ends every DSN read
-  with `board.normalizeAllTraces()` — so an imported design containing that
-  pattern hangs the reader in both languages today. Plan 3 must decide before
-  wiring the DSN reader: bound the walk (a deliberate divergence from a Java
-  hang, which has no observable output to preserve parity with), or run
-  import normalisation under `TimeLimit`/`StopCheck` so the reader can
-  abandon it.
+- ~~**Ladder hang on import (quirk #76).**~~ **Partly discharged in Plan 3
+  Task 10** (`82a647f` `feat(board): stop-checked normalisation for the DSN
+  import path`, `d45676f` `feat(dsn): wiring scope, DsnReader
+  read_board/read_metadata, stop-checked import normalisation`); **a second
+  half is still OPEN for Plans 6/7.** Plan 3 took the second option, per its
+  ruling 4: `fr-board` gained `normalize_all_traces_checked` /
+  `normalize_traces_checked` / `normalize_trace_checked` /
+  `split_trace_checked` / `connection_items_checked`, and `fr-dsn` runs
+  `Wiring.java:347`'s `normalizeAllTraces()` under a `TimeLimit`-backed
+  `StopCheck` (`DsnReadOptions::normalize_time_limit`, default 60 s), pushing
+  Java's own `"Wiring: normalization of traces failed"` (Wiring.java:349) and
+  continuing when it trips. **Ruling 4's stop-check placement turned out to be
+  insufficient**: the real non-terminating site is not `split`'s entry re-walk
+  but `Item.getConnectionItems`' walk along the contacts, which has no visited
+  set — found in Task 10 and pinned as **quirk #106**. No fixture in the
+  105-file corpus trips the limit, asserted directly by
+  `every_fixture_in_the_corpus_matches_javas_result_and_warnings`.
+  **Still open (Plans 6/7, controller ruling F):** `Wiring.readViaScope`'s
+  `board.insertVia` (Wiring.java:706) reaches the same machinery by a second
+  route — `BasicBoard.insertVia` walks `fromLayer..toLayer` calling
+  `splitTraces` → `PolylineTrace.split` — and it sits *outside* the
+  `try`/`catch` Java wraps `normalizeAllTraces` in, so the `StopCheck` does
+  not reach it. Closing it means threading a `StopCheck` through
+  `Board::insert_via`/`Board::split_traces`, whose other callers are the
+  router. `// obligation:` marker at `crates/fr-dsn/src/parser/wiring.rs:596`.
 - ~~**`ViaInfoId` renumbering across `ViaInfos::remove`.**~~ **Discharged in
   Plan 3 Task 14.** Java's `ViaRule` holds `ViaInfo` object references, so
   removing one from the middle of the list disturbs no rule. This port
@@ -349,18 +365,35 @@ resolved the items marked ✓ below — verified against the committed tree)
   `get_clearance_class_index` and a via rule's via list are router inputs.
   Filed as the open `docs/java-quirks.md` obligation row "Via-info / via-rule
   re-pointing".
-- **`Board::new` requires via-padstack population before any via lookup.**
-  `BoardLibrary::remove_via_padstack`/`get_mirrored_via_padstack` panic on
-  Java's null `viaPadstacks` (quirks #42-43); `Board::new`'s own doc comment
-  states the obligation ("a caller that will use those two must populate the
-  library before handing it over") — the DSN/KiCad reader is that caller.
+- ~~**`Board::new` requires via-padstack population before any via lookup.**~~
+  **Discharged in Plan 3** — Task 6 (`Structure.createBoard`, commit `cf888f3`)
+  builds the board and Task 9 (`Network.readScope`/`readViaInfo`, commit
+  `88edbbb` + `658e3c9`) populates the via padstacks before any via lookup,
+  reproducing `Network.java:1286`'s `if (scopeParameter.viaPadstackNames !=
+  null)` guard exactly: when the `structure` scope named no via padstacks the
+  field stays `None` and `setViaPadstacks` is **skipped**, so the padstacks
+  `readViaInfo` appended through `addViaPadstack` survive. That branch is pinned
+  by `crates/fr-dsn/tests/data/network_via.dsn` and
+  `a_network_only_via_padstack_list_survives_because_set_via_padstacks_is_skipped`,
+  against a JVM golden. The KiCad reader (Plan 8) inherits the same obligation.
 - ~~**`java_to_lower`/`java_to_upper` visibility gap.**~~ **Discharged in the
   final-review fix wave**, not carried into Plan 3: both are `pub` in
   `crates/fr-board/src/rules/mod.rs` and re-exported from `lib.rs` and the
   prelude, so `fr-dsn` can `use fr_board::{java_to_lower, java_to_upper};`
   exactly as ruling #7 intended. Left listed here so the trail from the ruling
   to the fix is readable.
-- **Scope `audit-port.sh`'s `fn` match per Java class.** The script's positive
+- **Scope `audit-port.sh`'s `fn` match per Java class.** — **mechanism built and
+  used in Plan 3 (Task 1's map support, Task 15's zero run); the `fr-board` half
+  is still OPEN.** `audit-port.sh` now takes an optional 4th argument, a
+  `<JavaClass> <rust-path-glob>` map; a mapped class is searched only under its
+  mapped path(s), and an unmapped class falls back to the crate-wide search
+  **and prints `UNMAPPED <Class>`**. `scripts/audit-map/fr-dsn.map` maps all 52
+  classes Plan 3 ports and all four `fr-dsn` invocations exit 0 with no
+  `MISSING` and no `UNMAPPED`. **What Plan 3 did not do:** write a
+  `scripts/audit-map/fr-board.map` and re-run Plan 2's nine directories under it
+  — those are still audited with the 3-argument crate-wide form, so the caveat
+  below still applies verbatim to `fr-board`. It is mechanical now; Plans 6/7
+  should do it. The original text follows. The script's positive
   branch is `grep -rqE "fn <snake>…" <crate src>` over the *whole* crate, so
   for `Foo.getBar` any `fn get_bar…` anywhere satisfies the check — including
   one on an unrelated type. 357 of the 750 distinct `class`/`method` pairs in
@@ -391,7 +424,9 @@ resolved the items marked ✓ below — verified against the committed tree)
   `drc.ClearanceViolation` objects, which is Plan 5's DRC layer to define.
 - Apply Java's flag normalisation (`-oit /100`, `-mp`/`-mt` clamps,
   `-us`/`-is` folding) in `fr-settings` (carried forward from Plan 1's
-  hand-off, still open).
+  hand-off, **still open**). Note the plan numbering moved after Plan 2 was
+  written: `fr-settings` is **Plan 4** and `fr-drc` is Plan 5, so this bullet
+  and its `docs/java-quirks.md` register row are Plan 4's, not Plan 5's.
 
 **Plan 6 (autoroute expansion rooms):**
 - **`RoomId`/`TreeObject` room ordering must be re-checked once rooms are
