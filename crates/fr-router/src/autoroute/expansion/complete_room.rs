@@ -8,14 +8,16 @@
 
 use std::cmp::Ordering;
 
-use fr_board::datastructures::LeafId;
+use fr_board::datastructures::{LeafId, TreeEntry};
 use fr_board::searchtree::ShapeSearchTree;
-use fr_board::{RoomId, TreeObject};
+use fr_board::{Board, ItemLookup, RoomId, TreeId, TreeObject};
 use fr_geometry::TileShape;
 
 use crate::Arena;
 use crate::arena::{DoorId, TargetDoorId};
-use crate::autoroute::expansion::{ExpandableRef, ExpansionDoor, FreeSpaceExpansionRoom, RoomRef};
+use crate::autoroute::expansion::{
+    ExpandableRef, ExpansionDoor, ExpansionRoomStore, FreeSpaceExpansionRoom, RoomRef,
+};
 
 /// Port of `CompleteFreeSpaceExpansionRoom` (CompleteFreeSpaceExpansionRoom.java:19-209).
 #[derive(Debug, Clone, PartialEq)]
@@ -274,16 +276,80 @@ impl CompleteFreeSpaceExpansionRoom {
     }
 }
 
-// added in Task 5: `CompleteFreeSpaceExpansionRoom.calculateTargetDoors`
-// (CompleteFreeSpaceExpansionRoom.java:131-150). **Corrected in Task 4**: this method has no
-// caller in the any-angle class at all. `SortedRoomNeighbours.java:133` calls the *static*
-// `SortedRoomNeighbours.calculateTargetDoors(room, ownNetObjects, engine)` (`:158-185`), which
-// Task 4 ported into `sorted_neighbours.rs`; the only callers of the method on this class are
-// `Sorted45DegreeRoomNeighbours.java:124` and `SortedOrthogonalRoomNeighbours.java:155`, i.e.
-// Task 5. The two are **not** the same function: the static one calls `setNetDependent()` only
-// when the own-net list is non-empty (`:162-164`), this one calls it unconditionally per entry
-// (`:134`), so a subclass marks a room net-dependent where the base class would not.
-//
+/// Port of `CompleteFreeSpaceExpansionRoom.calculateTargetDoors(ShapeTree.TreeEntry, int,
+/// ShapeSearchTree)` (CompleteFreeSpaceExpansionRoom.java:131-150): "calculates the doors to the
+/// start and destination items of the autoroute algorithm."
+///
+/// **Not** the same function as the base sorter's static
+/// `SortedRoomNeighbours.calculateTargetDoors` (SortedRoomNeighbours.java:158-185), which Task 4
+/// ported into `sorted_neighbours.rs`: that one takes the whole deferred own-net list and calls
+/// `setNetDependent()` **once, only when the list is non-empty** (`:162-164`); this one takes one
+/// tree entry and calls it **unconditionally** (`:134`), so a room with an own-net overlap that
+/// yields no target door is still marked net-dependent here and is not there. Its only callers
+/// are `Sorted45DegreeRoomNeighbours.java:124` and `SortedOrthogonalRoomNeighbours.java:155`
+/// (Task 4's finding 4), i.e. the two angle-restricted sorters, which call it **inside** their
+/// neighbour loop rather than after it.
+///
+/// A free function rather than a method because three of its four steps need the board (the
+/// `Connectable` test and `getTraceConnectionShape`) and the store (the target door it allocates),
+/// neither of which a `&mut CompleteFreeSpaceExpansionRoom` can reach.
+pub fn calculate_target_doors(
+    room: RoomId,
+    own_net_object: &TreeEntry<TreeObject>,
+    net_number: i32,
+    board: &mut Board,
+    rooms: &mut ExpansionRoomStore,
+    tree_id: TreeId,
+) {
+    // :134. Unconditional, and before every other test.
+    if let Some(r) = rooms.complete_room_mut(room) {
+        r.set_net_dependent();
+    }
+    // :136: `ownNetObject.object instanceof Connectable` — a `TreeObject::Room` never is.
+    let TreeObject::Item(item_id) = own_net_object.object else {
+        return;
+    };
+    let connection_shape = {
+        let ctx = board.ctx();
+        let Some(item) = board.items.item(item_id) else {
+            return;
+        };
+        let Some(connectable) = item.as_connectable() else {
+            return;
+        };
+        // :137.
+        if !connectable.as_dyn().contains_net(net_number) {
+            return;
+        }
+        // :138-140.
+        connectable
+            .as_dyn()
+            .get_trace_connection_shape(tree_id, own_net_object.shape_index, &ctx)
+    };
+    // :141.
+    let Some(connection_shape) = connection_shape else {
+        return;
+    };
+    let intersects = rooms
+        .complete_room(room)
+        .and_then(|r| r.get_shape())
+        .is_some_and(|shape| shape.intersects(&connection_shape));
+    if !intersects {
+        return;
+    }
+    // :142-146.
+    let new_target_door = rooms.new_target_door(
+        board,
+        item_id,
+        own_net_object.shape_index,
+        Some(RoomRef::Complete(room)),
+        tree_id,
+    );
+    if let Some(r) = rooms.complete_room_mut(room) {
+        r.add_target_door(new_target_door);
+    }
+}
+
 // added in Task 6: `CompleteFreeSpaceExpansionRoom.validate`
 // (CompleteFreeSpaceExpansionRoom.java:165-194) — it takes an `AutorouteEngine` and queries the
 // compensated tree through it; the engine is Task 6's, and its only caller is

@@ -1185,14 +1185,18 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #163.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #164.** Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
 > plan did not anticipate: `SortedRoomNeighbours.calculateNewIncompleteRooms` **does not
 > terminate** when `fromRoom.getShape().toSimplex()` has fewer border lines than the shape the
-> side numbers were computed against. Tasks 5, 8 and 12 must take the next free id *at the time
-> they write*, re-checking `docs/java-quirks.md`'s last row first — **not** the labels below.
+> side numbers were computed against. Task 5 landed **#163**, which the plan did not anticipate
+> either: `Sorted45DegreeRoomNeighbours.calculateEdgeIncompleteRoomsOfObstacleExpansionRoom`
+> never advances its `currentCorner`, so the degenerate-side guard skips the walk's **last** side
+> instead of the degenerate ones — an eight-sided obstacle room gets seven incomplete rooms.
+> Tasks 8 and 12 must take the next free id *at the time they write*, re-checking
+> `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
 > row); do not write it again.
 >

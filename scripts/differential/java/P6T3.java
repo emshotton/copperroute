@@ -61,6 +61,20 @@ import java.util.TreeSet;
  * what survives — the comparator's non-transitivity and the {@code TreeSet}'s silent drop, with no
  * board in the way.
  *
+ * <p><b>modes 6 and 7</b> (Task 5) are mode 4 for the two angle-restricted sorters: the board is
+ * built in the 45-degree / 90-degree regime, so {@code getAutorouteTree} answers the matching
+ * search-tree subclass, and the driver reflects into {@code
+ * Sorted45DegreeRoomNeighbours.calculateNeighbours} / {@code
+ * SortedOrthogonalRoomNeighbours.calculateNeighbours} and their own private inner {@code
+ * SortedRoomNeighbour} classes — which are three different classes with three different field
+ * sets. It also dumps {@code edgeInteriorTouchesObstacle}, the array {@code tryRemoveEdge} reads.
+ *
+ * <p><b>modes 8 and 9</b> are mode 5 for the same two regimes: the whole of {@code
+ * SortedRoomNeighbours.complete} against a real {@code AutorouteEngine}, which dispatches on the
+ * tree subclass, so the two subclasses' {@code tryRemoveEdge}, {@code
+ * calculateNewIncompleteRooms}, {@code calculateEdgeIncompleteRoomsOfObstacleExpansionRoom} /
+ * {@code calculateIncompleteRoomsWithEmptyNeighbours} and {@code insertIncompleteRoom} all run.
+ *
  * <p>args: mode seed n rooms. {@code run.sh p6t3 <mode> <seed> <n> <rooms>}.
  */
 public class P6T3 {
@@ -90,6 +104,30 @@ public class P6T3 {
   static Field fIntersection;
   static Method mFirstCorner;
   static Method mLastCorner;
+
+  // The two angle-restricted siblings (Task 5). Each has its OWN private inner
+  // `SortedRoomNeighbour` with its own fields, so each needs its own reflection block.
+  static Method calculateNeighbours45;
+  static Field f45SortedNeighbours;
+  static Field f45CompletedRoom;
+  static Field f45EdgeInterior;
+  static Class<?> neighbour45Class;
+  static Field f45SearchTreeObject;
+  static Field f45Shape;
+  static Field f45Intersection;
+  static Field f45FirstTouchingSide;
+  static Field f45LastTouchingSide;
+
+  static Method calculateNeighboursOrtho;
+  static Field fOrthoSortedNeighbours;
+  static Field fOrthoCompletedRoom;
+  static Field fOrthoEdgeInterior;
+  static Class<?> neighbourOrthoClass;
+  static Field fOrthoSearchTreeObject;
+  static Field fOrthoShape;
+  static Field fOrthoIntersection;
+  static Field fOrthoFirstTouchingSide;
+  static Field fOrthoLastTouchingSide;
 
   static long next() {
     state ^= state << 13;
@@ -173,18 +211,21 @@ public class P6T3 {
       return;
     }
 
-    build();
+    build(mode);
     for (int i = 0; i < obstacleCount; i++) {
-      // mode 4 snaps every obstacle to a 500-unit grid. Without it a completed room's corner
-      // never lands exactly on an obstacle's, so `calculateNeighbours`' whole dimension-0 branch
-      // (`SortedRoomNeighbours.java:286-326` — `equalsCorner`, `containsOnBorderLineNo`, both
-      // corner flags) stays dead: mode 0 produces no corner touch at all on a random board.
-      insertRandomObstacle(mode == 4);
+      // modes 4, 6 and 7 snap every obstacle to a 500-unit grid. Without it a completed room's
+      // corner never lands exactly on an obstacle's, so `calculateNeighbours`' whole dimension-0
+      // branch (`SortedRoomNeighbours.java:286-326` — `equalsCorner`, `containsOnBorderLineNo`,
+      // both corner flags) stays dead: mode 0 produces no corner touch at all on a random board.
+      insertRandomObstacle(mode == 4 || mode == 6 || mode == 7);
     }
     ShapeSearchTree tree = board.searchTreeManager.getAutorouteTree(1);
-    AutorouteEngine engine = mode == 5 ? new AutorouteEngine(board, 1, false) : null;
+    AutorouteEngine engine =
+        (mode == 5 || mode == 8 || mode == 9) ? new AutorouteEngine(board, 1, false) : null;
     System.out.println(
-        "regime=0 angle="
+        "regime="
+            + regimeOf(mode)
+            + " angle="
             + board.rules.getTraceAngleRestriction()
             + " size="
             + tree.size()
@@ -193,12 +234,23 @@ public class P6T3 {
     dumpItems();
     insertSeedRooms(tree, engine);
     for (int i = 0; i < roomCount; i++) {
-      if (engine == null) {
-        runOne(tree, i);
+      if (engine != null) {
+        runOneComplete(tree, engine, i, mode);
       } else {
-        runOneComplete(tree, engine, i);
+        runOne(tree, i, mode);
       }
     }
+  }
+
+  /** 0 for the any-angle regime, 1 for 90 degrees, 2 for 45 degrees — `p6t2`'s numbering. */
+  static int regimeOf(int mode) {
+    if (mode == 6 || mode == 8) {
+      return 2;
+    }
+    if (mode == 7 || mode == 9) {
+      return 1;
+    }
+    return 0;
   }
 
   // -----------------------------------------------------------------------------------------
@@ -250,13 +302,72 @@ public class P6T3 {
     mFirstCorner.setAccessible(true);
     mLastCorner = neighbourClass.getDeclaredMethod("lastCorner");
     mLastCorner.setAccessible(true);
+
+    calculateNeighbours45 =
+        Sorted45DegreeRoomNeighbours.class.getDeclaredMethod(
+            "calculateNeighbours",
+            ExpansionRoom.class,
+            int.class,
+            ShapeSearchTree.class,
+            int.class);
+    calculateNeighbours45.setAccessible(true);
+    f45SortedNeighbours = Sorted45DegreeRoomNeighbours.class.getDeclaredField("sortedNeighbours");
+    f45SortedNeighbours.setAccessible(true);
+    f45CompletedRoom = Sorted45DegreeRoomNeighbours.class.getDeclaredField("completedRoom");
+    f45CompletedRoom.setAccessible(true);
+    f45EdgeInterior =
+        Sorted45DegreeRoomNeighbours.class.getDeclaredField("edgeInteriorTouchesObstacle");
+    f45EdgeInterior.setAccessible(true);
+    neighbour45Class =
+        Class.forName(
+            "app.freerouting.autoroute.expansion.Sorted45DegreeRoomNeighbours$SortedRoomNeighbour");
+    f45SearchTreeObject = neighbour45Class.getDeclaredField("searchTreeObject");
+    f45SearchTreeObject.setAccessible(true);
+    f45Shape = neighbour45Class.getDeclaredField("shape");
+    f45Shape.setAccessible(true);
+    f45Intersection = neighbour45Class.getDeclaredField("intersection");
+    f45Intersection.setAccessible(true);
+    f45FirstTouchingSide = neighbour45Class.getDeclaredField("firstTouchingSide");
+    f45FirstTouchingSide.setAccessible(true);
+    f45LastTouchingSide = neighbour45Class.getDeclaredField("lastTouchingSide");
+    f45LastTouchingSide.setAccessible(true);
+
+    calculateNeighboursOrtho =
+        SortedOrthogonalRoomNeighbours.class.getDeclaredMethod(
+            "calculateNeighbours",
+            ExpansionRoom.class,
+            int.class,
+            ShapeSearchTree.class,
+            int.class);
+    calculateNeighboursOrtho.setAccessible(true);
+    fOrthoSortedNeighbours =
+        SortedOrthogonalRoomNeighbours.class.getDeclaredField("sortedNeighbours");
+    fOrthoSortedNeighbours.setAccessible(true);
+    fOrthoCompletedRoom = SortedOrthogonalRoomNeighbours.class.getDeclaredField("completedRoom");
+    fOrthoCompletedRoom.setAccessible(true);
+    fOrthoEdgeInterior =
+        SortedOrthogonalRoomNeighbours.class.getDeclaredField("edgeInteriorTouchesObstacle");
+    fOrthoEdgeInterior.setAccessible(true);
+    neighbourOrthoClass =
+        Class.forName(
+            "app.freerouting.autoroute.expansion.SortedOrthogonalRoomNeighbours$SortedRoomNeighbour");
+    fOrthoSearchTreeObject = neighbourOrthoClass.getDeclaredField("searchTreeObject");
+    fOrthoSearchTreeObject.setAccessible(true);
+    fOrthoShape = neighbourOrthoClass.getDeclaredField("shape");
+    fOrthoShape.setAccessible(true);
+    fOrthoIntersection = neighbourOrthoClass.getDeclaredField("intersection");
+    fOrthoIntersection.setAccessible(true);
+    fOrthoFirstTouchingSide = neighbourOrthoClass.getDeclaredField("firstTouchingSide");
+    fOrthoFirstTouchingSide.setAccessible(true);
+    fOrthoLastTouchingSide = neighbourOrthoClass.getDeclaredField("lastTouchingSide");
+    fOrthoLastTouchingSide.setAccessible(true);
   }
 
   // -----------------------------------------------------------------------------------------
   // The board — `P2T10.build`, verbatim, in the any-angle regime
   // -----------------------------------------------------------------------------------------
 
-  static void build() {
+  static void build(int mode) {
     Layer[] layers = {new Layer("front", true), new Layer("back", true)};
     LayerStructure ls = new LayerStructure(layers);
     ClearanceMatrix cm = ClearanceMatrix.getDefaultInstance(ls, 200);
@@ -264,7 +375,16 @@ public class P6T3 {
     cm.setValue(2, 1, 600);
     cm.setValue(2, 2, 800);
     BoardRules rules = new BoardRules(ls, cm);
-    rules.setTraceAngleRestriction(AngleRestriction.NONE);
+    // Modes 6 and 8 drive the 45-degree tree, modes 7 and 9 the 90-degree one; every other mode
+    // is any-angle. `SearchTreeManager.getAutorouteTree` picks the subclass from this value, and
+    // `SortedRoomNeighbours.selectCalculationMode` then picks the sorter from the subclass.
+    if (mode == 6 || mode == 8) {
+      rules.setTraceAngleRestriction(AngleRestriction.FORTYFIVE_DEGREE);
+    } else if (mode == 7 || mode == 9) {
+      rules.setTraceAngleRestriction(AngleRestriction.NINETY_DEGREE);
+    } else {
+      rules.setTraceAngleRestriction(AngleRestriction.NONE);
+    }
     Communication comm = new Communication();
     // A `RoutingBoard`, not a `BasicBoard`: mode 5 needs a real `AutorouteEngine`, whose
     // constructor takes one. Every other mode is unaffected — `RoutingBoard`'s overrides all
@@ -347,7 +467,8 @@ public class P6T3 {
   // mode 0
   // -----------------------------------------------------------------------------------------
 
-  static void runOne(ShapeSearchTree tree, int index) throws Exception {
+  @SuppressWarnings("unchecked")
+  static void runOne(ShapeSearchTree tree, int index, int mode) throws Exception {
     int kind = rnd(4);
     int netNumber = 1 + rnd(3);
     int layer = rnd(2);
@@ -429,6 +550,46 @@ public class P6T3 {
             + " roomLayer="
             + room.getLayer());
 
+    if (mode == 6) {
+      Object result = calculateNeighbours45.invoke(null, room, netNumber, tree, roomIdNo);
+      if (result == null) {
+        System.out.println("  result=null");
+        return;
+      }
+      dumpRegimeNeighbours(
+          (SortedSet<Object>) f45SortedNeighbours.get(result),
+          f45FirstTouchingSide,
+          f45LastTouchingSide,
+          f45SearchTreeObject,
+          f45Shape,
+          f45Intersection);
+      System.out.println("  edgeTouches=" + flags((boolean[]) f45EdgeInterior.get(result)));
+      CompleteExpansionRoom completedRoom = (CompleteExpansionRoom) f45CompletedRoom.get(result);
+      System.out.println("  completedRoom=" + desc(completedRoom));
+      dumpDoors(completedRoom.getDoors());
+      dumpTargetDoors(completedRoom);
+      return;
+    }
+    if (mode == 7) {
+      Object result = calculateNeighboursOrtho.invoke(null, room, netNumber, tree, roomIdNo);
+      if (result == null) {
+        System.out.println("  result=null");
+        return;
+      }
+      dumpRegimeNeighbours(
+          (SortedSet<Object>) fOrthoSortedNeighbours.get(result),
+          fOrthoFirstTouchingSide,
+          fOrthoLastTouchingSide,
+          fOrthoSearchTreeObject,
+          fOrthoShape,
+          fOrthoIntersection);
+      System.out.println("  edgeTouches=" + flags((boolean[]) fOrthoEdgeInterior.get(result)));
+      CompleteExpansionRoom completedRoom = (CompleteExpansionRoom) fOrthoCompletedRoom.get(result);
+      System.out.println("  completedRoom=" + desc(completedRoom));
+      dumpDoors(completedRoom.getDoors());
+      dumpTargetDoors(completedRoom);
+      return;
+    }
     Object result = calculateNeighbours.invoke(null, room, netNumber, tree, roomIdNo);
     if (result == null) {
       System.out.println("  result=null");
@@ -442,6 +603,77 @@ public class P6T3 {
   }
 
   /**
+   * The sorted neighbour list of one of the two angle-restricted sorters. Their inner {@code
+   * SortedRoomNeighbour}s are different classes from the base one and from each other — no corner
+   * flags, no memoized corners, a first *and* a last touching side — so this dump is not {@code
+   * describeNeighbour}'s.
+   */
+  static void dumpRegimeNeighbours(
+      SortedSet<Object> neighbours,
+      Field first,
+      Field last,
+      Field object,
+      Field shape,
+      Field intersection)
+      throws Exception {
+    System.out.println("  neighbours n=" + neighbours.size());
+    int i = 0;
+    for (Object n : neighbours) {
+      TileShape neighbourShape = (TileShape) shape.get(n);
+      TileShape isect = (TileShape) intersection.get(n);
+      System.out.println(
+          "    ["
+              + i
+              + "] fts="
+              + first.getInt(n)
+              + " lts="
+              + last.getInt(n)
+              + " obj="
+              + describeObject((SearchTreeObject) object.get(n))
+              + " nshape="
+              + shp(neighbourShape)
+              + " nshapeCorners="
+              + corners(neighbourShape)
+              + " isect="
+              + shp(isect)
+              + " isectCorners="
+              + corners(isect));
+      ++i;
+    }
+  }
+
+  static String flags(boolean[] values) {
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < values.length; i++) {
+      if (i > 0) {
+        sb.append(',');
+      }
+      sb.append(values[i]);
+    }
+    return sb.append(']').toString();
+  }
+
+  static void dumpTargetDoors(CompleteExpansionRoom room) {
+    Collection<TargetItemExpansionDoor> targetDoors = room.getTargetDoors();
+    System.out.println("  targetDoors n=" + targetDoors.size());
+    int t = 0;
+    for (TargetItemExpansionDoor door : targetDoors) {
+      System.out.println(
+          "    ["
+              + t
+              + "] item="
+              + door.item.getId()
+              + " entry="
+              + door.treeEntryNo
+              + " dim="
+              + door.getDimension()
+              + " shape="
+              + shp(door.getShape()));
+      ++t;
+    }
+  }
+
+  /**
    * mode 5: the **whole** of {@code SortedRoomNeighbours.complete} against a real {@code
    * AutorouteEngine} — `tryRemoveEdge` and its `completeShape` retry, `calculateNewIncompleteRooms`
    * (150 lines of corner-cutting geometry), `calculateIncompleteRoomsWithEmptyNeighbours` and
@@ -451,7 +683,7 @@ public class P6T3 {
    * after `tryRemoveEdge` may have replaced it, and every incomplete expansion room the call left
    * on the engine's list.
    */
-  static void runOneComplete(ShapeSearchTree tree, AutorouteEngine engine, int index)
+  static void runOneComplete(ShapeSearchTree tree, AutorouteEngine engine, int index, int mode)
       throws Exception {
     int kind = rnd(4);
     int netNumber = 1 + rnd(3);
@@ -519,8 +751,11 @@ public class P6T3 {
     // it at `i=124`. The driver skips those calls on **both** sides rather than tolerating a
     // difference; the port reproduces the loop, and `crates/fr-router/tests/sorted_neighbours.rs`
     // pins it with a bounded assertion instead.
+    // Only the any-angle base class walks `toSimplex()` (`SortedRoomNeighbours.java:512`); the
+    // two angle-restricted sorters index their own octagon / box sides, so quirk #162 cannot
+    // arise in modes 8 and 9 and they are not skipped.
     TileShape fromShape = room.getShape();
-    if (fromShape.borderLineCount() != fromShape.toSimplex().borderLineCount()) {
+    if (mode == 5 && fromShape.borderLineCount() != fromShape.toSimplex().borderLineCount()) {
       System.out.println(
           "call i="
               + index
@@ -565,23 +800,7 @@ public class P6T3 {
     System.out.println(
         "  fromRoom=" + desc(room) + " shape=" + shp(room.getShape()));
     dumpDoors(result.getDoors());
-    Collection<TargetItemExpansionDoor> targetDoors = result.getTargetDoors();
-    System.out.println("  targetDoors n=" + targetDoors.size());
-    int t = 0;
-    for (TargetItemExpansionDoor door : targetDoors) {
-      System.out.println(
-          "    ["
-              + t
-              + "] item="
-              + door.item.getId()
-              + " entry="
-              + door.treeEntryNo
-              + " dim="
-              + door.getDimension()
-              + " shape="
-              + shp(door.getShape()));
-      ++t;
-    }
+    dumpTargetDoors(result);
     dumpIncompleteRooms(engine);
     // Reset the engine's incomplete-room list between calls. Nothing consumes it here — a real
     // run drains it through `AutorouteEngine.completeExpansionRoom` — so leaving it to grow makes

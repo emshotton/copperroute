@@ -17,10 +17,11 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 3 of 18
+## State: Task 5 of 18
 
-What exists is the data-model floor the other fifteen tasks build on, plus the
-search-tree extension that turns a seed shape into expansion rooms:
+What exists is the data-model floor the other thirteen tasks build on, the
+search-tree extension that turns a seed shape into expansion rooms, and the
+three neighbour sorters that turn a completed room into its door list:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -37,6 +38,10 @@ search-tree extension that turns a seed shape into expansion rooms:
 | `TargetItemExpansionDoor` | `src/autoroute/expansion/target_door.rs` | `TargetItemExpansionDoor.java:11-74` |
 | `ExpansionRoomStore` | `src/autoroute/expansion/mod.rs` | `AutorouteEngine`'s room lists + the heap |
 | `MazeSearchElement` | `src/autoroute/maze/search_element.rs` | `MazeSearchElement.java:1-40` |
+| `SortedRoomNeighbours` + `selectCalculationMode` | `src/autoroute/expansion/sorted_neighbours.rs` | `SortedRoomNeighbours.java:34-807` |
+| `Sorted45DegreeRoomNeighbours` | `src/autoroute/expansion/sorted_neighbours_45.rs` | `Sorted45DegreeRoomNeighbours.java:22-982` |
+| `SortedOrthogonalRoomNeighbours` | `src/autoroute/expansion/sorted_neighbours_orthogonal.rs` | `SortedOrthogonalRoomNeighbours.java:19-728` |
+| `JavaTreeSet` | `src/java_tree_set.rs` | `java.util.TreeMap`'s red-black `put` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
@@ -229,15 +234,19 @@ first three Plan 6 rows and they landed as **#156, #157, #158**; Task 3 wrote
 and the 45-degree override keep); Task 4 wrote **#160** (the non-transitive
 `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop) and **#161**
 (the id tie-break subtracting a room id from an item id) and **#162** (an
-unterminating `calculateNewIncompleteRooms`), so the next free id is **#163**. Every later task must re-read the register's last row rather than
-trust the plan's labels — the plan carries an amendment saying so.
+unterminating `calculateNewIncompleteRooms`); Task 5 wrote **#163**
+(`Sorted45DegreeRoomNeighbours.calculateEdgeIncompleteRoomsOfObstacleExpansionRoom`
+never advances its `currentCorner`, so it always skips the last side of the
+walk), so the next free id is **#164**. Every later task must re-read the
+register's last row rather than trust the plan's labels — the plan carries an
+amendment saying so.
 
 ## `SortedRoomNeighbours` (Task 4), and why the crate has a `JavaTreeSet`
 
 `crates/fr-router/src/autoroute/expansion/sorted_neighbours.rs` ports the
 any-angle base class and `selectCalculationMode`; the two angle-restricted
-siblings are Task 5's and `complete` falls through to the base algorithm until
-they land. Java's entry points take an `AutorouteEngine`; the port takes apart
+siblings landed in Task 5 as `sorted_neighbours_45.rs` and
+`sorted_neighbours_orthogonal.rs`, and `complete` now dispatches to all three. Java's entry points take an `AutorouteEngine`; the port takes apart
 the five services they read off it (net number, tree id,
 `generateRoomIdNo`, `removeAllDoors`, `addIncompleteExpansionRoom`), so Task 6's
 engine can call it without any signature here changing.
@@ -256,7 +265,7 @@ both the Java answer and the `BTreeSet` answer so the choice cannot be
 question** before reusing `BTreeSet`: ruling 4 also prescribes one there, and its
 comparator has a documented five-way `Equal` (quirk #156).
 
-`scripts/differential/run.sh p6t3` covers the class in six modes: `0`/`4` are
+`scripts/differential/run.sh p6t3` covers the class in ten modes: `0`/`4` are
 `calculateNeighbours` over a random board (`4` snaps the obstacles to a grid,
 which is the only way the **dimension-0** corner-touch branch is ever reached);
 `5` is the whole of `complete` against a real Java `AutorouteEngine`; `1`/`2`/`3`
@@ -265,7 +274,43 @@ are the comparator probes. Mode 5 also found **quirk #162**: an unterminating
 with side numbers computed against the *un-simplified* shape, and when
 `toSimplex()` dropped the line `firstTouchingSideNo` names, the `for (;;)` at
 `:562` allocates rooms for ever. It is reproduced, not guarded; the driver skips
-those calls on both sides.
+those calls on both sides. Modes `6`-`9` are Task 5's, below.
+
+## The two angle-restricted sorters (Task 5)
+
+`Sorted45DegreeRoomNeighbours` and `SortedOrthogonalRoomNeighbours` are **not**
+specialisations of the base class and share no code with it beyond the
+package-private static `insertDoorOk`. Each declares its own inner
+`SortedRoomNeighbour` with its own fields and its own `compareTo`, so the port
+has three separate transcriptions in three files
+(`sorted_neighbours{,_45,_orthogonal}.rs`) and three unrelated `Ord`s. Both
+subclass comparators *are* total orders — five Java `int` keys, every refinement
+entered on the same condition for both operands — unlike the base class's
+(quirk #160); they still drop a tie, because the id tie-break crosses two id
+spaces (quirk #161), so both sets are `JavaTreeSet`s too.
+
+What differs from the base class and reaches the geometry:
+
+* a 2-dimensional overlap is skipped **only for an obstacle room**
+  (`Sorted45DegreeRoomNeighbours.java:132`,
+  `SortedOrthogonalRoomNeighbours.java:168`); the base class skips every one;
+* target doors are built by `CompleteFreeSpaceExpansionRoom.calculateTargetDoors`
+  **inside** the neighbour loop, one entry at a time and with an unconditional
+  `setNetDependent()`, where the base class defers the own-net objects to a list
+  and calls its own static namesake once at the end;
+* the 45-degree `tryRemoveEdgeLine` removes **every** untouched border line at
+  once and passes `completeShape` the largest 2-dimensional door to a free-space
+  room as the object to ignore; the orthogonal one removes the first untouched
+  line; the base class removes one line and ignores nothing;
+* an obstacle room with no neighbours at all gets one incomplete room per side
+  of the board's bounding box (orthogonal, no guards at all) or one per side of
+  its own octagon minus one (45-degree — **quirk #163**).
+
+`p6t3` modes `6`/`7` are mode 4 for the two regimes (the board is built with the
+matching `AngleRestriction`, so `getAutorouteTree` answers the matching tree
+subclass and `selectCalculationMode` the matching sorter) and modes `8`/`9` are
+mode 5 for them — the whole of `complete` against a real Java `AutorouteEngine`.
+Quirk #162's skip applies to mode 5 only: neither subclass walks a `Simplex`.
 
 ## The `fr-board` obligation Task 4 discharges
 

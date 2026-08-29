@@ -19,13 +19,17 @@ use fr_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape,
     TileShape,
 };
-use fr_router::autoroute::expansion::sorted_neighbours::{SortedRoomNeighbour, SortedRoomNeighbours};
+use fr_router::autoroute::expansion::sorted_neighbours::{
+    SortedRoomNeighbour, SortedRoomNeighbours,
+};
+use fr_router::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
+use fr_router::autoroute::expansion::sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
 use fr_router::autoroute::expansion::{
     ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
 };
-use fr_router::IncompleteRoomId;
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
+use fr_router::IncompleteRoomId;
 
 const RANGE: i32 = 9000;
 const BOUNDING_BOX: IntBox = IntBox {
@@ -95,14 +99,19 @@ impl Rng {
 // The board — `P2T10.build`, verbatim, in the any-angle regime
 // -------------------------------------------------------------------------------------------
 
-fn build() -> Board {
+fn build(mode: i32) -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
     assert!(clearance_matrix.append_class("wide"));
     clearance_matrix.set_value_on_all_layers(2, 1, 600);
     clearance_matrix.set_value_on_all_layers(2, 2, 800);
     let mut rules = BoardRules::new(layers(), clearance_matrix);
-    rules.trace_angle_restriction = AngleRestriction::None;
+    // Modes 6 and 8 drive the 45-degree tree, modes 7 and 9 the 90-degree one — see `P6T3.java`.
+    rules.trace_angle_restriction = match mode {
+        6 | 8 => AngleRestriction::FortyFiveDegree,
+        7 | 9 => AngleRestriction::NinetyDegree,
+        _ => AngleRestriction::None,
+    };
 
     let mut padstacks = Padstacks::new(layers());
     let smd = padstacks.add(
@@ -194,9 +203,7 @@ fn main() {
     let obstacle_count: i32 = args.get(2).map_or(20, |s| s.parse().expect("n"));
     let room_count: i32 = args.get(3).map_or(1000, |s| s.parse().expect("rooms"));
 
-    println!(
-        "mode=p6t3 submode={mode} seed={seed} obstacles={obstacle_count} rooms={room_count}"
-    );
+    println!("mode=p6t3 submode={mode} seed={seed} obstacles={obstacle_count} rooms={room_count}");
 
     let mut rng = Rng::new(seed);
     if mode == 1 || mode == 2 {
@@ -208,11 +215,11 @@ fn main() {
         return;
     }
 
-    let mut board = build();
+    let mut board = build(mode);
     for _ in 0..obstacle_count {
-        // mode 4 snaps every obstacle to a 500-unit grid — see `P6T3.java` for why: without it
-        // `calculateNeighbours`' whole dimension-0 branch stays dead.
-        let shape = if mode == 4 {
+        // modes 4, 6 and 7 snap every obstacle to a 500-unit grid — see `P6T3.java` for why:
+        // without it `calculateNeighbours`' whole dimension-0 branch stays dead.
+        let shape = if mode == 4 || mode == 6 || mode == 7 {
             rng.grid_box()
         } else {
             rng.box_(RANGE, 100, 2500)
@@ -243,7 +250,8 @@ fn main() {
     {
         let tree = tree_of(&board, tree_id);
         println!(
-            "regime=0 angle={} size={} items={}",
+            "regime={} angle={} size={} items={}",
+            regime_of(mode),
             angle_name(board.rules.trace_angle_restriction),
             tree.size(),
             board.items.len()
@@ -276,7 +284,7 @@ fn main() {
         // In mode 5 the ids come from the store's own counter — the one
         // `SortedRoomNeighbours::calculate` then draws from — so that it stays in lockstep with
         // Java's `AutorouteEngine.expansionRoomInstanceCount`.
-        room_id_counter = if mode == 5 {
+        room_id_counter = if mode == 5 || mode == 8 || mode == 9 {
             rooms.next_room_id_no()
         } else {
             room_id_counter + 1
@@ -299,7 +307,7 @@ fn main() {
 
     let mut seed_incomplete: Vec<IncompleteRoomId> = Vec::new();
     for index in 0..room_count {
-        if mode == 5 {
+        if mode == 5 || mode == 8 || mode == 9 {
             run_one_complete(
                 &mut board,
                 &mut rooms,
@@ -307,6 +315,7 @@ fn main() {
                 &mut rng,
                 &mut seed_incomplete,
                 index,
+                mode,
             );
         } else {
             run_one(
@@ -316,14 +325,25 @@ fn main() {
                 &mut rng,
                 &mut room_id_counter,
                 index,
+                mode,
             );
         }
+    }
+}
+
+/// 0 for the any-angle regime, 1 for 90 degrees, 2 for 45 degrees — `p6t2`'s numbering.
+fn regime_of(mode: i32) -> i32 {
+    match mode {
+        6 | 8 => 2,
+        7 | 9 => 1,
+        _ => 0,
     }
 }
 
 /// mode 5: the **whole** of `SortedRoomNeighbours::complete` — `try_remove_edge`,
 /// `calculate_new_incomplete_rooms`, `calculate_incomplete_rooms_with_empty_neighbours` and
 /// `calculate_target_doors`, none of which mode 0 reaches. See `P6T3.java`'s `runOneComplete`.
+#[allow(clippy::too_many_arguments)]
 fn run_one_complete(
     board: &mut Board,
     rooms: &mut ExpansionRoomStore,
@@ -331,6 +351,7 @@ fn run_one_complete(
     rng: &mut Rng,
     seed_incomplete: &mut Vec<IncompleteRoomId>,
     index: i32,
+    mode: i32,
 ) {
     let kind = rng.rnd(4);
     let net_number = 1 + rng.rnd(3);
@@ -365,11 +386,8 @@ fn run_one_complete(
             format!("obstacle item={} indexInItem={index_in_item}", item_id.0),
         )
     } else {
-        let seed = IncompleteFreeSpaceExpansionRoom::new(
-            None,
-            layer,
-            Some(TileShape::Box(contained_box)),
-        );
+        let seed =
+            IncompleteFreeSpaceExpansionRoom::new(None, layer, Some(TileShape::Box(contained_box)));
         let completed = {
             let ctx = board.ctx();
             tree_of(board, tree_id).complete_shape(
@@ -408,13 +426,15 @@ fn run_one_complete(
         (RoomRef::Incomplete(id), description)
     };
 
-    // See `P6T3.java`: `calculateNewIncompleteRooms` does not terminate when the room's shape has
-    // more border lines than its `toSimplex()` does, so both drivers skip those calls.
+    // See `P6T3.java`: the any-angle `calculateNewIncompleteRooms` does not terminate when the
+    // room's shape has more border lines than its `toSimplex()` does (quirk #162), so both
+    // drivers skip those calls — in **mode 5 only**, because neither angle-restricted sorter
+    // walks a simplex.
     let from_shape = rooms
         .room_shape(room)
         .expect("a live room with a shape")
         .clone();
-    if from_shape.border_line_count() != from_shape.to_simplex().border_line_count() {
+    if mode == 5 && from_shape.border_line_count() != from_shape.to_simplex().border_line_count() {
         println!(
             "call i={index} kind={description} net={net_number} \
              skipped=simplexSideCountDiffers borderLines={} simplexLines={}",
@@ -445,32 +465,8 @@ fn run_one_complete(
         desc(room, rooms),
         opt_shp(rooms.room_shape(room))
     );
-    let doors = rooms.room_doors(result).to_vec();
-    println!("  doors n={}", doors.len());
-    for (i, door_id) in doors.iter().enumerate() {
-        let door = rooms.door(*door_id).expect("a live door");
-        let (first, second, dimension) = (door.first_room, door.second_room, door.dimension);
-        let shape = rooms.door_shape(*door_id);
-        println!(
-            "    [{i}] first={} second={} dim={dimension} shape={} corners={}",
-            desc(first, rooms),
-            desc(second, rooms),
-            opt_shp(shape.as_ref()),
-            corners(shape.as_ref())
-        );
-    }
-    let target_doors = rooms.room_target_doors(result).to_vec();
-    println!("  targetDoors n={}", target_doors.len());
-    for (i, door_id) in target_doors.iter().enumerate() {
-        let door = rooms.target_door(*door_id).expect("a live target door");
-        println!(
-            "    [{i}] item={} entry={} dim={} shape={}",
-            door.item.0,
-            door.tree_entry_no,
-            door.get_dimension(),
-            shp(door.get_shape())
-        );
-    }
+    dump_doors(result, rooms);
+    dump_target_doors(result, rooms);
     let engine_rooms: Vec<IncompleteRoomId> = rooms
         .incomplete_rooms
         .iter()
@@ -494,6 +490,7 @@ fn run_one_complete(
     seed_incomplete.clear();
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_one(
     board: &mut Board,
     rooms: &mut ExpansionRoomStore,
@@ -501,6 +498,7 @@ fn run_one(
     rng: &mut Rng,
     room_id_counter: &mut i32,
     index: i32,
+    mode: i32,
 ) {
     let kind = rng.rnd(4);
     let net_number = 1 + rng.rnd(3);
@@ -518,7 +516,10 @@ fn run_one(
         let item_id = ItemId(item_id as u32);
         let shape_count = board.item_tree_shape_count(item_id, tree_id);
         if shape_count == 0 {
-            println!("call i={index} kind=obstacle item={} skipped=noShapes", item_id.0);
+            println!(
+                "call i={index} kind=obstacle item={} skipped=noShapes",
+                item_id.0
+            );
             return;
         }
         let index_in_item = rng.rnd(shape_count as i32) as usize;
@@ -537,11 +538,8 @@ fn run_one(
         // The seed room the engine actually hands to `SortedRoomNeighbours`: the output of
         // `completeShape` over a whole-plane room around a small contained box
         // (`AutorouteEngine.java:449-450`).
-        let seed = IncompleteFreeSpaceExpansionRoom::new(
-            None,
-            layer,
-            Some(TileShape::Box(contained_box)),
-        );
+        let seed =
+            IncompleteFreeSpaceExpansionRoom::new(None, layer, Some(TileShape::Box(contained_box)));
         let completed = {
             let ctx = board.ctx();
             tree_of(board, tree_id).complete_shape(
@@ -584,9 +582,70 @@ fn run_one(
         rooms.room_layer(board, room).expect("a live room")
     );
 
-    let Some(result) =
-        SortedRoomNeighbours::calculate_neighbours(room, net_number, board, rooms, tree_id, room_id_no)
-    else {
+    if mode == 6 {
+        let Some(result) = Sorted45DegreeRoomNeighbours::calculate_neighbours(
+            room, net_number, board, rooms, tree_id, room_id_no,
+        ) else {
+            println!("  result=null");
+            return;
+        };
+        println!("  neighbours n={}", result.sorted_neighbours.len());
+        for (i, n) in result.sorted_neighbours.iter().enumerate() {
+            println!(
+                "    [{i}] fts={} lts={} obj={} nshape={} nshapeCorners={} isect={} \
+                 isectCorners={}",
+                n.first_touching_side,
+                n.last_touching_side,
+                describe_object(n.search_tree_object, rooms),
+                shp(&TileShape::Octagon(n.shape)),
+                corners(Some(&TileShape::Octagon(n.shape))),
+                shp(&TileShape::Octagon(n.intersection)),
+                corners(Some(&TileShape::Octagon(n.intersection)))
+            );
+        }
+        println!(
+            "  edgeTouches={}",
+            flags(&result.edge_interior_touches_obstacle)
+        );
+        println!("  completedRoom={}", desc(result.completed_room, rooms));
+        dump_doors(result.completed_room, rooms);
+        dump_target_doors(result.completed_room, rooms);
+        return;
+    }
+    if mode == 7 {
+        let Some(result) = SortedOrthogonalRoomNeighbours::calculate_neighbours(
+            room, net_number, board, rooms, tree_id, room_id_no,
+        ) else {
+            println!("  result=null");
+            return;
+        };
+        println!("  neighbours n={}", result.sorted_neighbours.len());
+        for (i, n) in result.sorted_neighbours.iter().enumerate() {
+            println!(
+                "    [{i}] fts={} lts={} obj={} nshape={} nshapeCorners={} isect={} \
+                 isectCorners={}",
+                n.first_touching_side,
+                n.last_touching_side,
+                describe_object(n.search_tree_object, rooms),
+                shp(&TileShape::Box(n.shape)),
+                corners(Some(&TileShape::Box(n.shape))),
+                shp(&TileShape::Box(n.intersection)),
+                corners(Some(&TileShape::Box(n.intersection)))
+            );
+        }
+        println!(
+            "  edgeTouches={}",
+            flags(&result.edge_interior_touches_obstacle)
+        );
+        println!("  completedRoom={}", desc(result.completed_room, rooms));
+        dump_doors(result.completed_room, rooms);
+        dump_target_doors(result.completed_room, rooms);
+        return;
+    }
+
+    let Some(result) = SortedRoomNeighbours::calculate_neighbours(
+        room, net_number, board, rooms, tree_id, room_id_no,
+    ) else {
         println!("  result=null");
         return;
     };
@@ -604,7 +663,12 @@ fn run_one(
         );
     }
     println!("  completedRoom={}", desc(result.completed_room, rooms));
-    let doors = rooms.room_doors(result.completed_room).to_vec();
+    dump_doors(result.completed_room, rooms);
+}
+
+/// `dumpDoors` — every door of one room, in insertion order.
+fn dump_doors(room: RoomRef, rooms: &ExpansionRoomStore) {
+    let doors = rooms.room_doors(room).to_vec();
     println!("  doors n={}", doors.len());
     for (i, door_id) in doors.iter().enumerate() {
         let door = rooms.door(*door_id).expect("a live door");
@@ -620,6 +684,36 @@ fn run_one(
     }
 }
 
+/// `dumpTargetDoors` — the target doors the two angle-restricted sorters build inside their
+/// neighbour loop, and the base class builds at the end of `calculate`.
+fn dump_target_doors(room: RoomRef, rooms: &ExpansionRoomStore) {
+    let target_doors = rooms.room_target_doors(room).to_vec();
+    println!("  targetDoors n={}", target_doors.len());
+    for (i, door_id) in target_doors.iter().enumerate() {
+        let door = rooms.target_door(*door_id).expect("a live target door");
+        println!(
+            "    [{i}] item={} entry={} dim={} shape={}",
+            door.item.0,
+            door.tree_entry_no,
+            door.get_dimension(),
+            shp(door.get_shape())
+        );
+    }
+}
+
+/// `flags` — Java's `boolean[]` rendered as `[true,false,...]`.
+fn flags(values: &[bool]) -> String {
+    let mut out = String::from("[");
+    for (i, value) in values.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str(if *value { "true" } else { "false" });
+    }
+    out.push(']');
+    out
+}
+
 // -------------------------------------------------------------------------------------------
 // mode 1 — the hazard-F comparator probe
 // -------------------------------------------------------------------------------------------
@@ -633,7 +727,10 @@ fn comparator_probe(rng: &mut Rng, case_count: i32, stress: bool) {
         // In stress mode every neighbour of a probe sits on the **same** side of the room — see
         // `P6T3.java` for why that is where the comparator stops being a total order.
         let fixed_side = rng.rnd(4);
-        println!("probe c={c} room={} n={count} stress={stress}", shp(&room_shape));
+        println!(
+            "probe c={c} room={} n={count} stress={stress}",
+            shp(&room_shape)
+        );
         let mut set = fr_router::JavaTreeSet::new();
         for i in 0..count {
             let side = if stress { fixed_side } else { rng.rnd(4) };
@@ -673,9 +770,21 @@ fn comparator_probe(rng: &mut Rng, case_count: i32, stress: bool) {
                 Some([a, b]) => (a as i32, b as i32),
                 None => (0, 0),
             };
-            let rtc = if stress { rng.rnd(2) == 0 } else { rng.rnd(4) == 0 };
-            let ntc = if stress { rng.rnd(2) == 0 } else { rng.rnd(3) == 0 };
-            let object_id = if stress { 1 + rng.rnd(4) } else { 1 + rng.rnd(6) };
+            let rtc = if stress {
+                rng.rnd(2) == 0
+            } else {
+                rng.rnd(4) == 0
+            };
+            let ntc = if stress {
+                rng.rnd(2) == 0
+            } else {
+                rng.rnd(3) == 0
+            };
+            let object_id = if stress {
+                1 + rng.rnd(4)
+            } else {
+                1 + rng.rnd(6)
+            };
             let neighbour = SortedRoomNeighbour::new(
                 TreeObject::Room(RoomId(object_id as u32)),
                 object_id,
@@ -731,7 +840,10 @@ fn corner_touch_probe(rng: &mut Rng, case_count: i32) {
             );
             let description = describe_neighbour(&neighbour, &rooms);
             let added = set.add(neighbour);
-            println!("    add[{i}] added={added} size={} {description}", set.len());
+            println!(
+                "    add[{i}] added={added} size={} {description}",
+                set.len()
+            );
         }
         println!("  survivors n={}", set.len());
         for (j, neighbour) in set.iter().enumerate() {
@@ -794,10 +906,7 @@ fn desc(room: RoomRef, rooms: &ExpansionRoomStore) -> String {
         }
         RoomRef::Incomplete(id) => format!(
             "inc{}",
-            rooms
-                .incomplete_room(id)
-                .expect("a live room")
-                .get_id()
+            rooms.incomplete_room(id).expect("a live room").get_id()
         ),
     }
 }

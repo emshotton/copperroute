@@ -35,6 +35,8 @@ pub mod incomplete_room;
 pub mod obstacle_room;
 pub mod room;
 pub mod sorted_neighbours;
+pub mod sorted_neighbours_45;
+pub mod sorted_neighbours_orthogonal;
 pub mod target_door;
 
 pub use complete_room::CompleteFreeSpaceExpansionRoom;
@@ -46,6 +48,8 @@ pub use room::{ExpandableRef, RoomRef};
 pub use sorted_neighbours::{
     CalculationMode, SortedRoomNeighbour, SortedRoomNeighbours, select_calculation_mode,
 };
+pub use sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
+pub use sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
 pub use target_door::{TargetItemExpansionDoor, target_door_id};
 
 use fr_board::searchtree::ShapeSearchTree;

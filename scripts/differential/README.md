@@ -318,19 +318,20 @@ methods with dozens of branches.
     It calls `FRLogger.disableLogging()` first, because `completeShape` warns
     on stdout for every seed room whose shape is of the wrong class for the
     regime and the port drops every `FRLogger` payload.
-  - `P6T3.java` — `SortedRoomNeighbours`, the any-angle neighbour sorter (Plan 6
-    Task 4). Twin: `p6t3`. It declares `package
-    app.freerouting.autoroute.expansion;` and reaches the class's `private`
-    members by reflection — `calculateNeighbours`, the `sortedNeighbours` /
-    `ownNetObjects` / `completedRoom` fields, and the whole `private class
-    SortedRoomNeighbour`. There is no other way to see the sorted list:
+  - `P6T3.java` — the three neighbour sorters (Plan 6 Tasks 4 and 5). Twin:
+    `p6t3`. It declares `package app.freerouting.autoroute.expansion;` and
+    reaches the classes' `private` members by reflection —
+    `calculateNeighbours`, the `sortedNeighbours` / `ownNetObjects` /
+    `completedRoom` / `edgeInteriorTouchesObstacle` fields, and all three
+    `private class SortedRoomNeighbour`s, which are three different classes with
+    three different field sets. There is no other way to see the sorted list:
     `calculate` consumes the instance and returns only the completed room, and
     every method above `calculateNeighbours` needs an `AutorouteEngine`, which
     the port does not have until Task 6. Compiled and run against the clone's
     HEAD jar with a **JDK 25**, like `p6t2`, with `FRLogger.disableLogging()`
     first.
 
-    Five modes, and each buys something different:
+    Ten modes, and each buys something different:
 
     - `0` — the brief's mode. The `P2T10.java` board plus `n` random obstacle
       areas, the autoroute tree seeded with three
@@ -377,6 +378,31 @@ methods with dozens of branches.
       `java.util.TreeMap` (quirk #160): with the port on a `BTreeSet` it diffed
       in both directions — an element Java keeps that a `BTreeSet` drops, and a
       different survivor order.
+    - `6`, `7` — mode 4 for the two **angle-restricted** sorters (Task 5). The
+      board is built with `AngleRestriction.FORTYFIVE_DEGREE` / `NINETY_DEGREE`,
+      so `searchTreeManager.getAutorouteTree(1)` answers the matching
+      `ShapeSearchTree` subclass and `selectCalculationMode` the matching
+      sorter; the driver then reflects into
+      `Sorted45DegreeRoomNeighbours.calculateNeighbours` /
+      `SortedOrthogonalRoomNeighbours.calculateNeighbours`. The dump is
+      different from mode 0's, because their inner `SortedRoomNeighbour` is: a
+      first *and* a last touching side rather than one side plus two corner
+      flags, no memoized corners, and `edgeInteriorTouchesObstacle` — the array
+      `tryRemoveEdge` reads — printed after the list. The target doors are
+      printed too, because these two build them **inside** the neighbour loop
+      (`CompleteFreeSpaceExpansionRoom.calculateTargetDoors`) where the base
+      class defers them.
+    - `8`, `9` — mode 5 for the same two regimes: the whole of
+      `SortedRoomNeighbours.complete` against a real `AutorouteEngine`, which
+      dispatches on the tree subclass, so each subclass's `tryRemoveEdge`,
+      `calculateNewIncompleteRooms`,
+      `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom` /
+      `calculateIncompleteRoomsWithEmptyNeighbours` and `insertIncompleteRoom`
+      all run. Quirk #162's skip is **mode 5's only**: neither subclass walks a
+      `Simplex`, so neither can reach that loop. Mode 8 is what found
+      **quirk #163** — `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom`
+      never advances its `currentCorner`, so an eight-sided obstacle room with
+      no touching neighbour gets seven incomplete rooms, not eight.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader
@@ -746,14 +772,18 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p6t2 5 5 2000   # a sparser one
   ```
 
-- `p6t3 <mode> <seed> <n> <rooms>` — `SortedRoomNeighbours::calculate_neighbours`
-  against `SortedRoomNeighbours.calculateNeighbours`, and the comparator behind
-  it (Plan 6 Task 4). Defaults `0 42 20 1000`. Per call it prints every sorted
-  neighbour (both touching side numbers, both corner flags, both corners, the
-  neighbour object's kind and id, its shape and the intersection with their
-  corner lists), the deferred own-net list, and the completed room's door list
-  (`first_room`, `second_room`, `dimension`, shape corners) — geometry and
-  order, never counts.
+- `p6t3 <mode> <seed> <n> <rooms>` — the three neighbour sorters against their
+  Java originals, and the comparators behind them (Plan 6 Tasks 4 and 5).
+  Defaults `0 42 20 1000`. Per call it prints every sorted neighbour (the
+  touching side numbers, the corner flags or the first/last side pair, the
+  corners, the neighbour object's kind and id, its shape and the intersection
+  with their corner lists), the deferred own-net list or the target doors, and
+  the completed room's door list (`first_room`, `second_room`, `dimension`,
+  shape corners) — geometry and order, never counts.
+
+  Modes `0`-`5` are the any-angle class, `6`/`8` the 45-degree one and `7`/`9`
+  the orthogonal one; `6`/`7` drive `calculateNeighbours` and `8`/`9` the whole
+  of `complete` against a real Java `AutorouteEngine`.
 
   ```sh
   ./scripts/differential/run.sh p6t3                  # 0 42 20 1000 — 7 597 lines, 0 diffs
@@ -761,6 +791,10 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p6t3 3 42 0 2000      # the hazard-F probe (quirk #160)
   ./scripts/differential/run.sh p6t3 0 5 5 2000       # a sparser board
   ./scripts/differential/run.sh p6t3 5 42 20 1000     # the whole of `complete`, with an engine
+  ./scripts/differential/run.sh p6t3 6 42 30 1000     # the 45-degree sorter
+  ./scripts/differential/run.sh p6t3 7 42 30 1000     # the orthogonal sorter
+  ./scripts/differential/run.sh p6t3 8 42 20 1000     # `complete` on a 45-degree tree
+  ./scripts/differential/run.sh p6t3 9 42 20 1000     # `complete` on a 90-degree tree
   ```
 
   **What mode 3 buys, and why it exists.** The ratsnest has exactly one free
@@ -863,6 +897,10 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p6t3` mode 2 (30 000 same-side probes) | 262021 | 0 | exact match (8 374 drops) |
 | `p6t3` mode 3 (30 000 corner-touch probes, seeds 20260829/7) | 292682, 293041 | 0 | exact match — **with `JavaTreeSet`**; on a `BTreeSet` this mode diffs (quirk #160) |
 | `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the ~0.4 % of calls quirk #162 makes non-terminating |
+| `p6t3` mode 6 (45-degree `calculateNeighbours`, seeds 42/7/999/20260829) | 8809-21042 | 0 | exact match (`Sorted45DegreeRoomNeighbours`, its own inner class and `edgeInteriorTouchesObstacle`) |
+| `p6t3` mode 7 (orthogonal `calculateNeighbours`, seeds 42/7/999/20260829) | 9158-21493 | 0 | exact match (`SortedOrthogonalRoomNeighbours`, likewise) |
+| `p6t3` mode 8 (the whole of `complete` on a 45-degree tree, seeds 42/7/999/20260829) | 45661-53791 | 0 | exact match — and the mode that found quirk #163 |
+| `p6t3` mode 9 (the whole of `complete` on a 90-degree tree, seeds 42/7/999/20260829) | 31052-35750 | 0 | exact match |
 | `p2t15` (10 seeds × n∈{30,120}) | 499-1111 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
 | `p3t2` (mode 0, seed 42) | 10000000 | 0 | exact match (`Double.toString`/`Float.toString` over random bit patterns) |
 | `p3t2` (mode 1, seed 42) | 1000000 | 0 | exact match (DSN-coordinate-shaped values; adds `formatPlacementRotation`) |

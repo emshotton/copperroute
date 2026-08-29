@@ -203,10 +203,12 @@ case "$driver" in
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     ;;
   p6t3)
-    # Plan 6 Task 4: `SortedRoomNeighbours` — the any-angle neighbour sorter, its comparator and
-    # the doors `calculateNeighbours` builds. Declares `package app.freerouting.autoroute.expansion`
-    # so it can reflect into the class's private members (the sorted set is unobservable from
-    # outside), and compiles against the clone's HEAD jar like `p6t2`.
+    # Plan 6 Tasks 4 and 5: the three neighbour sorters — the any-angle base class, its comparator
+    # and the doors `calculateNeighbours` builds (modes 0-5), plus `Sorted45DegreeRoomNeighbours`
+    # (modes 6 and 8) and `SortedOrthogonalRoomNeighbours` (modes 7 and 9). Declares `package
+    # app.freerouting.autoroute.expansion` so it can reflect into the classes' private members (the
+    # sorted sets are unobservable from outside), and compiles against the clone's HEAD jar like
+    # `p6t2`.
     javaclass=P6T3
     javapkg="autoroute.expansion"
     default_args=(0 42 20 1000)

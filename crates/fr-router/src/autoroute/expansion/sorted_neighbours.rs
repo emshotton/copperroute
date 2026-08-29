@@ -76,6 +76,8 @@ use fr_geometry::polyline_shape::PolylineShapeOps;
 use fr_geometry::{Line, Point, Side, Signum, Simplex, TileShape};
 
 use crate::JavaTreeSet;
+use crate::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
+use crate::autoroute::expansion::sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
 use crate::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef};
 use crate::autoroute::item_info;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
@@ -156,8 +158,10 @@ impl SortedRoomNeighbours {
     /// has no `ignoreNet` anywhere in the class. The port takes the room plus the five services
     /// the module docs tabulate.
     ///
-    /// The two angle-restricted arms are Task 5's; until they land this method answers the
-    /// any-angle algorithm for every tree and says so at the call site.
+    /// All three arms are live: the two angle-restricted ones are
+    /// [`Sorted45DegreeRoomNeighbours::calculate`] and
+    /// [`SortedOrthogonalRoomNeighbours::calculate`], which are separate transcriptions of
+    /// separate Java classes and not specialisations of this one.
     pub fn complete(
         room: RoomRef,
         net_number: i32,
@@ -166,12 +170,13 @@ impl SortedRoomNeighbours {
         tree_id: TreeId,
     ) -> Option<RoomRef> {
         match select_calculation_mode(tree_of(board, tree_id)) {
-            // added in Task 5: `SortedOrthogonalRoomNeighbours.calculate` (:68) and
-            // `Sorted45DegreeRoomNeighbours.calculate` (:69) — the two angle-restricted arms of
-            // this switch. Until Task 5 lands they fall through to the any-angle algorithm,
-            // which is what the base class does for every other tree.
-            CalculationMode::Orthogonal | CalculationMode::FortyFiveDegree => {
-                SortedRoomNeighbours::calculate(room, net_number, board, rooms, tree_id)
+            // :68.
+            CalculationMode::Orthogonal => {
+                SortedOrthogonalRoomNeighbours::calculate(room, net_number, board, rooms, tree_id)
+            }
+            // :69.
+            CalculationMode::FortyFiveDegree => {
+                Sorted45DegreeRoomNeighbours::calculate(room, net_number, board, rooms, tree_id)
             }
             // :70.
             CalculationMode::AnyAngle => {
@@ -1490,7 +1495,7 @@ impl Ord for SortedRoomNeighbour {
 /// from `board.searchTreeManager.getAutorouteTree(..)` (AutorouteEngine.java:88); the port
 /// carries the [`TreeId`] and looks the tree back up, so nothing borrows the board across a
 /// mutation.
-fn tree_of(board: &Board, tree_id: TreeId) -> &ShapeSearchTree {
+pub(crate) fn tree_of(board: &Board, tree_id: TreeId) -> &ShapeSearchTree {
     board
         .trees
         .trees()
@@ -1502,7 +1507,7 @@ fn tree_of(board: &Board, tree_id: TreeId) -> &ShapeSearchTree {
 ///
 /// `Item.getId()` for an item and `CompleteFreeSpaceExpansionRoom.getId()` for a room — the two
 /// id spaces hazard G is about.
-fn object_id(object: TreeObject, rooms: &ExpansionRoomStore) -> i32 {
+pub(crate) fn object_id(object: TreeObject, rooms: &ExpansionRoomStore) -> i32 {
     match object {
         TreeObject::Item(id) => id.0 as i32,
         TreeObject::Room(id) => rooms.complete_room(id).map_or(0, |room| room.get_id()),
@@ -1513,7 +1518,11 @@ fn object_id(object: TreeObject, rooms: &ExpansionRoomStore) -> i32 {
 ///
 /// `CompleteFreeSpaceExpansionRoom.isTraceObstacle` is the constant `true`
 /// (CompleteFreeSpaceExpansionRoom.java:81-84).
-fn object_is_trace_obstacle(object: TreeObject, net_number: i32, items: &impl ItemLookup) -> bool {
+pub(crate) fn object_is_trace_obstacle(
+    object: TreeObject,
+    net_number: i32,
+    items: &impl ItemLookup,
+) -> bool {
     match object {
         TreeObject::Item(id) => items
             .item(id)
@@ -1524,7 +1533,7 @@ fn object_is_trace_obstacle(object: TreeObject, net_number: i32, items: &impl It
 
 /// `currentObject.getTreeShape(autorouteSearchTree, currentEntry.shapeIndexInObject)`
 /// (SortedRoomNeighbours.java:228-229).
-fn object_tree_shape(
+pub(crate) fn object_tree_shape(
     tree: &ShapeSearchTree,
     object: TreeObject,
     shape_index: usize,
