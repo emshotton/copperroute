@@ -382,6 +382,8 @@ fn detailed_trace_description(
     // DesignRulesChecker.java:471.
     let mut desc = "Track".to_string();
     let Some(item) = board.get_item(id) else {
+        // As in `item_description`: an id the board does not know cannot reach here — Java is
+        // handed the `Item` itself and would dereference it.
         return desc;
     };
 
@@ -398,6 +400,7 @@ fn detailed_trace_description(
     // DesignRulesChecker.java:479-491: `instanceof Trace`, so a non-trace stops at the net suffix.
     // `getAllUnconnectedItems` only ever hands this method a trace (`:153`, `:161`).
     if let Item::Trace(trace) = item {
+        // totalized: getDetailedTraceDescription's layer lookup (DesignRulesChecker.java:482) — Java indexes `board.layerStructure.layers[layer]` unguarded, so a trace whose layer is outside the board's stack throws `ArrayIndexOutOfBoundsException`. The port writes an empty layer name instead. Near-unreachable: the `Trace` constructor clamps the layer to `layerCount - 1` (Trace.java:45-47), so only `Trace.setLayer` (Trace.java:71-73), which does not clamp, can push one out of range — and nothing in the DRC path calls it.
         let layer_name = board
             .layer_structure()
             .layers
@@ -431,6 +434,8 @@ fn item_position(
     coordinate_unit: &str,
 ) -> KiCadDrcPosition {
     let Some(item) = board.get_item(id) else {
+        // As in `item_description`: unreachable — every id here came out of the board's own
+        // violation or unconnected list. Java holds the `Item` and calls `boundingBox()` on it.
         return KiCadDrcPosition::new(0.0, 0.0);
     };
     let centre = TileShape::Box(item.bounding_box(&board.ctx())).centre_of_gravity();
