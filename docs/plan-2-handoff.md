@@ -323,13 +323,20 @@ resolved the items marked ✓ below — verified against the committed tree)
   hang, which has no observable output to preserve parity with), or run
   import normalisation under `TimeLimit`/`StopCheck` so the reader can
   abandon it.
-- **`ViaInfoId` renumbering across `ViaInfos::remove`.** Java's `ViaRule`
-  holds `ViaInfo` object references, so removing one from the middle of the
-  list disturbs no rule. This port addresses via infos by index, so the same
-  removal shifts every later index and can silently re-point a rule at the
-  wrong via. `io/specctra/RulesReader.java:340-350` is the one non-GUI Java
-  caller (remove-then-add-with-the-same-name); whoever ports that file must
-  renumber the rules, replace in place, or remove only from the tail.
+- ~~**`ViaInfoId` renumbering across `ViaInfos::remove`.**~~ **Discharged in
+  Plan 3 Task 14.** Java's `ViaRule` holds `ViaInfo` object references, so
+  removing one from the middle of the list disturbs no rule. This port
+  addresses via infos by index, so the same removal shifts every later index
+  and can silently re-point a rule at the wrong via.
+  `io/specctra/RulesReader.java:340-350` is the one non-GUI Java caller
+  (remove-then-add-with-the-same-name); it now goes through
+  `BoardRules::replace_via_info_renumbering_rules`, which removes, appends and
+  renumbers in one step. Porting `RulesReader` also surfaced the **same hazard
+  one level up** — `Network.addViaRule` removes a same-named `ViaRule` while
+  `NetClass::via_rule` is a `ViaRuleId` — fixed alongside it as
+  `BoardRules::replace_via_rule_renumbering_net_classes`. See the
+  `docs/java-quirks.md` obligation-register row for the mapping and the one
+  deliberate divergence both carry.
 - **`Board::new` requires via-padstack population before any via lookup.**
   `BoardLibrary::remove_via_padstack`/`get_mirrored_via_padstack` panic on
   Java's null `viaPadstacks` (quirks #42-43); `Board::new`'s own doc comment

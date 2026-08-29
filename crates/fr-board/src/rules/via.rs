@@ -5,7 +5,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 
-use crate::ids::{PadstackId, ViaInfoId};
+use crate::ids::{PadstackId, ViaInfoId, ViaRuleId};
 
 use super::PadstackLookup;
 
@@ -180,9 +180,14 @@ impl ViaInfos {
     /// port's `ViaRule`s hold indices, so a removal shifts every later [`ViaInfoId`] and silently
     /// re-points them at the wrong via. The only non-GUI caller is
     /// `io/specctra/RulesReader.java:340-350`, which removes a via only to add a replacement
-    /// with the same name; whoever ports that file (Plan 3) must renumber, or replace in place.
+    /// with the same name.
     /// (`gui/windows/routing/WindowEditVias.java:197` also calls it, but the GUI is out of scope
     /// for this port.)
+    ///
+    /// **Discharged in Plan 3 Task 14:** that caller now goes through
+    /// [`BoardRules::replace_via_info_renumbering_rules`](super::BoardRules::replace_via_info_renumbering_rules),
+    /// immediately below, which does the removal, the append and the renumbering as one step.
+    /// Call this bare method only when nothing holds a [`ViaInfoId`] into the list.
     /// See the `docs/java-quirks.md` obligation-register row "`ViaInfoId` renumbering across
     /// `ViaInfos.remove`".
     pub fn remove(&mut self, index: ViaInfoId) -> bool {
@@ -191,6 +196,121 @@ impl ViaInfos {
         }
         self.list.remove(index.0);
         true
+    }
+}
+
+impl super::BoardRules {
+    /// The renumbering fix for [`ViaInfos::remove`]'s hazard, living next to the hazard itself.
+    ///
+    /// Java's `io/specctra/RulesReader.java:340-350` (`applyViaInfo`) is
+    /// `ViaInfo existing = viaInfos.get(name); if (existing != null) viaInfos.remove(existing);
+    /// viaInfos.add(viaInfo);` — a remove-then-append that moves the entry to the **tail** of the
+    /// list. Java's `ViaRule`s hold `ViaInfo` object references (ViaRule.java:21), so no rule is
+    /// disturbed by the removal; but the list order *is* observable, because `Network.writeViaInfos`
+    /// (and therefore both the DSN and the rules writer) emits the via infos in list order.
+    ///
+    /// This port's `ViaRule`s hold [`ViaInfoId`] indices, so the same removal shifts every later
+    /// index and would silently re-point a rule at the wrong via. This method does the removal,
+    /// the append and the renumbering as one step:
+    ///
+    /// * an id `> old_id` decrements by one (the removal closed the gap below it),
+    /// * an id `== old_id` becomes the new tail id (the id `new_info` was just added at),
+    /// * an id `< old_id` is unchanged.
+    ///
+    /// Returns the new tail id.
+    ///
+    /// # Deviation from Java, deliberately
+    ///
+    /// A rule that referenced the *replaced* via ends up pointing at the **new** [`ViaInfo`],
+    /// where Java's rule keeps pointing at the old, now-detached object. The two differ only when
+    /// the replacement changes the via's padstack, clearance class or attach flag, and only for a
+    /// rule read *before* the `(via …)` scope that replaced it — which no writer this port or
+    /// Java has ever produced emits, since `RulesWriter` writes every via info before the first
+    /// via rule. Keeping the detached object is not expressible with indices; pointing at the
+    /// replacement is the reading that keeps every rule resolvable.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `old_id` is out of range for [`Self::via_infos`], or if `new_info`'s name is
+    /// still taken after the removal (i.e. `new_info` does not carry the name `old_id` held). The
+    /// only caller — the rules reader's `apply_via_info` — looks `old_id` up *by* `new_info`'s
+    /// name, so neither can happen there.
+    //
+    // obligation: RulesReader.applyViaInfo — discharges the Plan 2 hand-off's "`ViaInfoId`
+    // renumbering across `ViaInfos::remove`" obligation (docs/java-quirks.md, docs/plan-2-handoff.md).
+    // added in Plan 3: Task 14 (`ViaInfos::remove` has no Java-side renumbering to port; this is
+    // the index-model's replacement for Java's object references).
+    pub fn replace_via_info_renumbering_rules(
+        &mut self,
+        old_id: ViaInfoId,
+        new_info: ViaInfo,
+    ) -> ViaInfoId {
+        assert!(
+            self.via_infos.remove(old_id),
+            "replace_via_info_renumbering_rules: old_id {} out of range",
+            old_id.0
+        );
+        assert!(
+            self.via_infos.add(new_info),
+            "replace_via_info_renumbering_rules: the replacement's name is still taken"
+        );
+        let new_id = ViaInfoId(self.via_infos.count() - 1);
+        for rule in &mut self.via_rules {
+            rule.renumber_after_replacement(old_id, new_id);
+        }
+        new_id
+    }
+
+    /// The same fix one level up: [`Self::via_rules`] is a `Vec` and [`crate::NetClass`] holds a
+    /// [`ViaRuleId`] index into it, so removing a rule from the middle shifts every later index.
+    ///
+    /// Java's `Network.addViaRule` (Network.java:394-419) — reached from
+    /// `io/specctra/RulesReader.java:352-357` for every `(via_rule …)` in a `.rules` file —
+    /// "replaces an already existing via rule with the same name" by
+    /// `board.rules.viaRules.remove(existingRule); board.rules.viaRules.add(currentRule);`. Its
+    /// `Vector<ViaRule>` holds objects and `NetClass.viaRule` is an object reference
+    /// (NetClass.java:28), so no net class notices. This port's indices do, and the observable
+    /// symptom is a net class silently acquiring a *different* rule's vias — caught by
+    /// `rules_state_matches_java_issue107_bad`, where `1A_EXTERNAL_1oz`'s class would otherwise
+    /// end up on `Breiter`.
+    ///
+    /// The mapping is [`Self::replace_via_info_renumbering_rules`]', and so is the one deliberate
+    /// divergence: a net class that pointed at the *replaced* rule is re-pointed at the
+    /// replacement, where Java keeps the detached original. Both rules carry the same name (that
+    /// is what made them a replacement), so the writers cannot tell the two apart; only the vias
+    /// the router would then reach for differ.
+    ///
+    /// Returns the new tail id.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `old_id` is out of range for [`Self::via_rules`].
+    //
+    // obligation: Network.addViaRule — same index-model hazard as
+    // `replace_via_info_renumbering_rules`, discovered by Task 14's Issue107 golden.
+    // added in Plan 3: Task 14
+    pub fn replace_via_rule_renumbering_net_classes(
+        &mut self,
+        old_id: ViaRuleId,
+        new_rule: ViaRule,
+    ) -> ViaRuleId {
+        assert!(
+            old_id.0 < self.via_rules.len(),
+            "replace_via_rule_renumbering_net_classes: old_id {} out of range",
+            old_id.0
+        );
+        self.via_rules.remove(old_id.0);
+        self.via_rules.push(new_rule);
+        let new_id = ViaRuleId(self.via_rules.len() - 1);
+        for i in 0..self.net_classes.count() {
+            let net_class = self.net_classes.get_mut(crate::ids::NetClassId(i));
+            match net_class.get_via_rule() {
+                Some(id) if id == old_id => net_class.set_via_rule(Some(new_id)),
+                Some(id) if id.0 > old_id.0 => net_class.set_via_rule(Some(ViaRuleId(id.0 - 1))),
+                _ => {}
+            }
+        }
+        new_id
     }
 }
 
@@ -244,6 +364,23 @@ impl ViaRule {
                 true
             }
             None => false,
+        }
+    }
+
+    /// Rewrites this rule's via indices after
+    /// [`BoardRules::replace_via_info_renumbering_rules`](super::BoardRules::replace_via_info_renumbering_rules)
+    /// removed the via at `old_id` and appended its replacement at `new_id`.
+    ///
+    /// Not a Java method: Java's rules hold object references and need no rewriting. See the
+    /// caller's doc comment for the mapping and for the one deliberate divergence it carries.
+    // added in Plan 3: Task 14
+    fn renumber_after_replacement(&mut self, old_id: ViaInfoId, new_id: ViaInfoId) {
+        for via in &mut self.vias {
+            if *via == old_id {
+                *via = new_id;
+            } else if via.0 > old_id.0 {
+                via.0 -= 1;
+            }
         }
     }
 
@@ -366,6 +503,100 @@ mod tests {
         // The renumbering hazard: what was index 1 is now index 0.
         assert_eq!(infos.get(ViaInfoId(0)).get_name(), "via1");
         assert!(!infos.remove(ViaInfoId(7)));
+    }
+
+    /// `RulesReader.applyViaInfo` (RulesReader.java:340-350) as this port has to spell it:
+    /// remove-then-append moves the entry to the tail of the list, and every rule index has to
+    /// follow it. Java needs no equivalent — its rules hold object references.
+    #[test]
+    fn replace_via_info_renumbers_every_rule() {
+        let layer_structure = crate::structure::LayerStructure::new(vec![
+            crate::structure::Layer::new("F.Cu", true),
+            crate::structure::Layer::new("B.Cu", true),
+        ]);
+        let clearance_matrix =
+            crate::rules::ClearanceMatrix::new(2, &layer_structure, &["null", "default"]);
+        let mut rules = super::super::BoardRules::new(layer_structure, clearance_matrix);
+        rules
+            .via_infos
+            .add(ViaInfo::new("A", PadstackId(1), 1, false));
+        rules
+            .via_infos
+            .add(ViaInfo::new("B", PadstackId(2), 1, false));
+        rules
+            .via_infos
+            .add(ViaInfo::new("C", PadstackId(3), 1, false));
+        let mut rule = ViaRule::new("r");
+        rule.append_via(ViaInfoId(0)); // A
+        rule.append_via(ViaInfoId(2)); // C
+        rule.append_via(ViaInfoId(1)); // B
+        rules.via_rules.push(rule);
+
+        // Re-apply "A" with a different padstack, exactly as a `(via A …)` scope in a `.rules`
+        // file does on a board that already has an "A".
+        let old_id = rules.via_infos.get_no("A").expect("A is present");
+        let new_id = rules
+            .replace_via_info_renumbering_rules(old_id, ViaInfo::new("A", PadstackId(9), 2, true));
+
+        // The list order Java's remove-then-add produces: B, C, A.
+        assert_eq!(new_id, ViaInfoId(2));
+        let names: Vec<&str> = rules.via_infos.iter().map(ViaInfo::get_name).collect();
+        assert_eq!(names, ["B", "C", "A"]);
+        assert_eq!(rules.via_infos.get(new_id).get_padstack(), PadstackId(9));
+
+        // The rule still names the same three vias, in the same order.
+        let rule = &rules.via_rules[0];
+        assert_eq!(
+            rule.iter().copied().collect::<Vec<_>>(),
+            [ViaInfoId(2), ViaInfoId(1), ViaInfoId(0)]
+        );
+        let resolved: Vec<&str> = rule
+            .iter()
+            .map(|id| rules.via_infos.get(*id).get_name())
+            .collect();
+        assert_eq!(resolved, ["A", "C", "B"]);
+    }
+
+    /// `Network.addViaRule` (Network.java:394-419) reached a second time, from
+    /// `RulesReader.applyViaRule`: the replaced rule moves to the tail and every
+    /// `NetClass::via_rule` index has to follow.
+    #[test]
+    fn replace_via_rule_renumbers_every_net_class() {
+        let layer_structure = crate::structure::LayerStructure::new(vec![
+            crate::structure::Layer::new("F.Cu", true),
+            crate::structure::Layer::new("B.Cu", true),
+        ]);
+        let clearance_matrix =
+            crate::rules::ClearanceMatrix::new(2, &layer_structure, &["null", "default"]);
+        let mut rules = super::super::BoardRules::new(layer_structure.clone(), clearance_matrix);
+        rules.via_rules.push(ViaRule::new("default"));
+        rules.via_rules.push(ViaRule::new("wide"));
+        rules.via_rules.push(ViaRule::new("narrow"));
+
+        let a = rules.net_classes.append("a", &layer_structure, false);
+        let b = rules.net_classes.append("b", &layer_structure, false);
+        let c = rules.net_classes.append("c", &layer_structure, false);
+        rules
+            .net_classes
+            .get_mut(a)
+            .set_via_rule(Some(ViaRuleId(0)));
+        rules
+            .net_classes
+            .get_mut(b)
+            .set_via_rule(Some(ViaRuleId(2)));
+        rules.net_classes.get_mut(c).set_via_rule(None);
+
+        let new_id =
+            rules.replace_via_rule_renumbering_net_classes(ViaRuleId(0), ViaRule::new("default"));
+
+        assert_eq!(new_id, ViaRuleId(2));
+        let names: Vec<&str> = rules.via_rules.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(names, ["wide", "narrow", "default"]);
+        // `a` pointed at the replaced rule -> the replacement; `b` pointed past it -> shifted
+        // down by one, still `narrow`; `c` had none.
+        assert_eq!(rules.net_classes.get(a).get_via_rule(), Some(ViaRuleId(2)));
+        assert_eq!(rules.net_classes.get(b).get_via_rule(), Some(ViaRuleId(1)));
+        assert_eq!(rules.net_classes.get(c).get_via_rule(), None);
     }
 
     #[test]

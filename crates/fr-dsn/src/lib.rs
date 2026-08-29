@@ -15,6 +15,8 @@ pub mod format;
 pub mod keyword;
 pub mod lexer;
 pub mod parser;
+pub mod rules_reader;
+pub mod rules_writer;
 pub mod ses_reader;
 pub mod ses_writer;
 

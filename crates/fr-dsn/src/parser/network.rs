@@ -1140,7 +1140,10 @@ fn read_net_pins(scanner: &mut DsnScanner, pin_list: &mut Vec<PinRef>) -> Result
 /// Side effect worth naming: a padstack that is in `library.padstacks` but not yet in the via
 /// padstack list is **appended to it** here (:274), i.e. before the tail's
 /// `set_via_padstacks` overwrites the whole list. `None` is Java's `null`.
-fn read_via_info(scanner: &mut DsnScanner, board: &mut Board) -> Result<Option<ViaInfo>, DsnError> {
+pub(crate) fn read_via_info(
+    scanner: &mut DsnScanner,
+    board: &mut Board,
+) -> Result<Option<ViaInfo>, DsnError> {
     scanner.yybegin(LexicalState::Name);
     let Some(Token::Str(name)) = scanner.next_token()? else {
         // "string expected" (Network.java:254-259).
@@ -1199,7 +1202,7 @@ fn read_via_info(scanner: &mut DsnScanner, board: &mut Board) -> Result<Option<V
 /// `Network.readViaRule` (Network.java:323-345): `(via_rule <name> <via-name>*)`, as a plain
 /// list of names — the first is the rule's, the rest are via-info names. `None` is Java's
 /// `null`.
-fn read_via_rule(scanner: &mut DsnScanner) -> Result<Option<Vec<String>>, DsnError> {
+pub(crate) fn read_via_rule(scanner: &mut DsnScanner) -> Result<Option<Vec<String>>, DsnError> {
     let mut result: Vec<String> = Vec::new();
     loop {
         scanner.yybegin(LexicalState::Name);
@@ -1310,9 +1313,15 @@ fn insert_via_rules(via_rules: &[Vec<String>], board: &mut Board) {
 /// any of the named via infos is missing.
 ///
 /// Port hazard, not a Java one: removing the replaced rule shifts every later `ViaRuleId`, where
-/// Java's `Collection<ViaRule>` holds object references that survive the removal. It is safe
-/// here only because the sole caller runs before any net class has been given a via rule
-/// ([`insert_via_rules`] assigns them all afterwards); a second caller would have to renumber.
+/// Java's `Collection<ViaRule>` holds object references that survive the removal.
+///
+/// **Fixed in Plan 3 Task 14, which added the second caller the earlier note anticipated.**
+/// `io/specctra/RulesReader.java:352-357` calls this on a board whose net classes already hold
+/// via-rule indices, so the removal is routed through
+/// [`BoardRules::replace_via_rule_renumbering_net_classes`], which rewrites them — see that
+/// method for the mapping and for the one deliberate divergence the index model forces.
+/// (The original caller, [`insert_via_rules`], still runs before any net class has a via rule,
+/// so the renumbering is a no-op there.)
 pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
     let mut it = name_list.iter();
     let rule_name = it
@@ -1331,11 +1340,15 @@ pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
         }
     }
     if rule_ok {
-        if let Some(existing) = existing_rule {
-            // Replace already existing rule.
-            board.rules.via_rules.remove(existing.0);
+        match existing_rule {
+            // Replace already existing rule (Network.java:414-416).
+            Some(existing) => {
+                board
+                    .rules
+                    .replace_via_rule_renumbering_net_classes(existing, current_rule);
+            }
+            None => board.rules.via_rules.push(current_rule),
         }
-        board.rules.via_rules.push(current_rule);
     }
     rule_ok
 }

@@ -62,3 +62,5 @@ SesWriter                ses_writer.rs
 SesWriter                format/double.rs
 SesReader                ses_reader.rs
 SesImportSummary         ses_reader.rs
+RulesReader              rules_reader.rs
+RulesWriter              rules_writer.rs

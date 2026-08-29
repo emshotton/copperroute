@@ -100,7 +100,9 @@ pub struct NetClassId(pub usize);
 /// `List`, which shifts every later index. Java is immune because its `ViaRule`s hold object
 /// references; the port is not — see [`crate::rules::ViaInfos::remove`] and the
 /// `docs/java-quirks.md` obligation-register row "`ViaInfoId` renumbering across
-/// `ViaInfos.remove`".
+/// `ViaInfos.remove`". **Discharged in Plan 3 Task 14** by
+/// `BoardRules::replace_via_info_renumbering_rules`, which is the only removal path the DSN
+/// layer uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViaInfoId(pub usize);
 
@@ -108,7 +110,14 @@ pub struct ViaInfoId(pub usize);
 ///
 /// Java's `NetClass.viaRule` is a `ViaRule` object reference (NetClass.java:28) and
 /// `BoardRules.viaRules` is a `Vector<ViaRule>` (BoardRules.java:26); the port stores the
-/// vector index. `BoardRules` never removes a via rule, so the index is stable.
+/// vector index.
+///
+/// **Removal hazard**, the same shape as [`ViaInfoId`]'s: `Network.addViaRule`
+/// (Network.java:414-416) removes a same-named rule from the middle of the vector before
+/// appending its replacement, which shifts every later index while Java's object references
+/// survive untouched. Go through
+/// [`BoardRules::replace_via_rule_renumbering_net_classes`](crate::rules::BoardRules::replace_via_rule_renumbering_net_classes),
+/// which rewrites every `NetClass::via_rule` — the only place a `ViaRuleId` is stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViaRuleId(pub usize);
 

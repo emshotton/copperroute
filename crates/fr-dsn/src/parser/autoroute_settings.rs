@@ -238,6 +238,78 @@ impl DsnRouterSettings {
             *slot = value.max(0.1);
         }
     }
+
+    /// `RouterSettings.applyNewValuesFrom(RouterSettings)` (RouterSettings.java:907-929) —
+    /// `RulesReader.read`'s way of pushing a file's `(autoroute_settings …)` into the caller's
+    /// settings object (RulesReader.java:156).
+    ///
+    /// Java delegates the whole job to `ReflectionUtil.copyFields(source, target)`
+    /// (ReflectionUtil.java:215-340), a reflective walk of `RouterSettings`' **public** fields.
+    /// Restricted to the fields this type carries, that walk reduces to the four rules below —
+    /// all four are reproduced, not simplified away, because `read` is handed a target the caller
+    /// may already have filled in:
+    ///
+    /// | Java field | type | rule (ReflectionUtil.java) |
+    /// |---|---|---|
+    /// | `enabled`, `viasAllowed`, `optimizer.enabled` | `Boolean` | non-`null` copies (:235) |
+    /// | `scoring.{viaCosts,planeViaCosts,startRipupCosts}` | `Integer` | non-`null` copies (:235) |
+    /// | `scoring.{preferredDirectionTraceCost,undesiredDirectionTraceCost}` | `double[]` | copied **only** when the target's array is `null` or empty (:285) |
+    /// | `layers` | `LayerSettings[]` | merged element-wise when the target is at least as long, else replaced; each element's `Boolean routable`/`preferredDirectionHorizontal` copy when non-`null` (:291-326) |
+    ///
+    /// Every field of this type is always set (`read_autoroute_settings_scope` calls
+    /// [`Self::set_layer_count`] before it fills anything), so "non-null copies" is an
+    /// unconditional copy here; only the two array rules are conditional, and they are what makes
+    /// this more than `*self = other.clone()`.
+    ///
+    /// Java returns the number of fields it changed, which no caller of `applyNewValuesFrom`
+    /// reads (`RulesReader.java:156` discards it); this returns `()`.
+    ///
+    // obligation: settings/RouterSettings.java — Plan 4 owns the real `applyNewValuesFrom`,
+    // including the fields `DsnRouterSettings` does not carry and the `PropertyChangeSupport`
+    // events (:917-926) this port drops with the GUI.
+    // not ported: `pcs.firePropertyChange` (RouterSettings.java:917-926) — GUI notification.
+    // not ported: the `settings == null` guard (:908-911) — `&DsnRouterSettings` cannot be null.
+    // renamed: applyNewValuesFrom -> apply_new_values_from, returning `()` rather than Java's
+    // never-read change count.
+    pub fn apply_new_values_from(&mut self, other: &DsnRouterSettings) {
+        self.run_router = other.run_router;
+        self.run_optimizer = other.run_optimizer;
+        self.vias_allowed = other.vias_allowed;
+        self.via_costs = other.via_costs;
+        self.plane_via_costs = other.plane_via_costs;
+        self.start_ripup_costs = other.start_ripup_costs;
+
+        // `layers` (ReflectionUtil.java:291-326): merge into the target's own elements when it
+        // has at least as many, otherwise take the source's array wholesale.
+        if self.layer_active.len() >= other.layer_active.len() {
+            for (i, active) in other.layer_active.iter().enumerate() {
+                if let Some(slot) = self.layer_active.get_mut(i) {
+                    *slot = *active;
+                }
+            }
+            for (i, horizontal) in other.preferred_direction_is_horizontal.iter().enumerate() {
+                if horizontal.is_some()
+                    && let Some(slot) = self.preferred_direction_is_horizontal.get_mut(i)
+                {
+                    *slot = *horizontal;
+                }
+            }
+        } else {
+            self.layer_active = other.layer_active.clone();
+            self.preferred_direction_is_horizontal =
+                other.preferred_direction_is_horizontal.clone();
+        }
+
+        // The two `double[]`s (ReflectionUtil.java:267-290): a target array that already has
+        // entries is left alone.
+        if self.preferred_direction_trace_costs.is_empty() {
+            self.preferred_direction_trace_costs = other.preferred_direction_trace_costs.clone();
+        }
+        if self.against_preferred_direction_trace_costs.is_empty() {
+            self.against_preferred_direction_trace_costs =
+                other.against_preferred_direction_trace_costs.clone();
+        }
+    }
 }
 
 /// `AutorouteSettings.readScope` (AutorouteSettings.java:18-70): the `(autoroute_settings …)`
