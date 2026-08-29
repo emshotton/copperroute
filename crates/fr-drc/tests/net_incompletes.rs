@@ -23,7 +23,7 @@
 //! including quirk #147's dropped edge. `calculate_net_items`, `NetItem` and `Edge` are private
 //! in Java too, so there is nothing here to reach them through.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
 use fr_drc::{AirLine, DesignRulesChecker, NetIncompletes, UnconnectedKind};
@@ -61,6 +61,14 @@ const FIXTURES: [&str; 3] = [
 /// reproduced here so Task 5 can be compared to the JVM on its own. The **order** of each list is
 /// not observable: `NetIncompletes::new` filters it and hands the result to `calculate_net_items`,
 /// which drops it into a set (`:295`).
+///
+/// **Task 6 must not copy the `net_number <= max_net_no` guard below.** Java indexes
+/// `netItemLists.get(currentItem.getNetNumber(i) - 1)` with no bounds check
+/// (DesignRulesChecker.java:560), so an item carrying a net number above `nets.maxNetNumber()`
+/// throws an `ArrayIndexOutOfBoundsException` there — behaviour the real port owes a
+/// `// totalized:` decision, not a silent skip. The guard is here only so that a malformed
+/// fixture cannot turn a *test helper* into a panic that masks the comparison it exists to make;
+/// on all three fixtures it never fires.
 fn net_item_lists(board: &Board) -> Vec<Vec<ItemId>> {
     let max_net_no = board.rules.nets.max_net_number();
     let mut lists: Vec<Vec<ItemId>> = vec![Vec::new(); max_net_no.max(0) as usize];
@@ -278,6 +286,61 @@ impl Line {
     /// out — so an airline that appears reversed is the same airline.
     fn same_ends(&self, other: &Line) -> bool {
         self.ends == other.ends || self.ends == (other.ends.1, other.ends.0)
+    }
+}
+
+#[test]
+fn every_port_airline_is_one_some_jvm_run_picks() {
+    // The durable form of ruling 4's claim, and the one thing about the endpoints that *is*
+    // assertable. `<stem>.airlines-union.txt` is the union, over the six JVM runs
+    // (`-XX:hashCode=0..4` and the default), of the unordered `(net, item, item)` triples that
+    // jar produced; `tests/data/README.md` records the command that builds it. Every airline the
+    // port picks must be one *some* JVM run picked — the port's answer sits inside the space Java
+    // spans, rather than beside it.
+    //
+    // Measured when the file was cut: 9 of 9, 3 of 3 and 145 of 145.
+    //
+    // This is not a claim that the port's *list* is a JVM list — it is not, and ruling 4 says it
+    // cannot be. Nor is the union closed: a seventh JVM run may add triples. A failure here is
+    // therefore a signal to re-derive the union before it is a bug report.
+    if !parity::require_java_dir() {
+        return;
+    }
+    for stem in FIXTURES {
+        let board = fixture_board(&format!("{stem}.dsn"));
+        let union_text = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/data")
+                .join(format!("{stem}.airlines-union.txt")),
+        )
+        .expect("the union of the six JVM runs is committed next to the probe");
+
+        let mut union: BTreeSet<(i32, u32, u32)> = BTreeSet::new();
+        for text in union_text.lines().filter(|l| !l.is_empty()) {
+            let field = |key: &str| -> u32 {
+                text.split_whitespace()
+                    .find_map(|f| f.strip_prefix(key))
+                    .unwrap_or_else(|| panic!("no {key} in {text:?}"))
+                    .parse()
+                    .expect("an integer")
+            };
+            union.insert((field("net=") as i32, field("a="), field("b=")));
+        }
+
+        let mut checked = 0usize;
+        for net_incompletes in all_net_incompletes(&board) {
+            for airline in &net_incompletes.incompletes {
+                let (a, b) = (airline.from_item.0, airline.to_item.0);
+                let key = (airline.net_number, a.min(b), a.max(b));
+                assert!(
+                    union.contains(&key),
+                    "{stem}: airline {key:?} was picked by none of the six JVM runs",
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked > 0, "{stem}: no airlines to check");
+        println!("{stem}: all {checked} port airlines are in the six-run JVM union");
     }
 }
 

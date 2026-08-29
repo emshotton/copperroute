@@ -98,11 +98,19 @@ impl NetIncompletes {
                 if board.is_tail(id) {
                     return false;
                 }
+                // totalized: Java's loop variable *is* the `Item` (NetIncompletes.java:85), so
+                // there is no lookup to fail. The port carries ids, and an id that is not on the
+                // board has no kind and no contacts; dropping it is the only answer that keeps
+                // the filter total. Unreachable from any producer — `calculateAllIncompletes`
+                // collects the ids **from** the board.
+                let Some(item) = board.get_item(id) else {
+                    debug_assert!(false, "net item {id:?} is not on the board");
+                    return false;
+                };
                 // NetIncompletes.java:103-108. `DrillItem` is Java's `Pin`/`Via` superclass.
-                let kind = board.get_item(id).map(|item| item.kind());
                 let exempt = matches!(
-                    kind,
-                    Some(ItemKind::ConductionArea | ItemKind::Pin | ItemKind::Via)
+                    item.kind(),
+                    ItemKind::ConductionArea | ItemKind::Pin | ItemKind::Via
                 );
                 exempt || !board.normal_contacts(id).is_empty()
             })
@@ -146,7 +154,9 @@ impl NetIncompletes {
         let triangulation = PlanarDelaunayTriangulation::new(&corners);
 
         // NetIncompletes.java:172-184: the candidate edges, sorted by length. `TreeSet` keeps the
-        // first of any group its comparator calls equal and drops the rest — see [`Edge::cmp`].
+        // first of any group its comparator calls equal and drops the rest, and on the finite
+        // coordinates a real board produces `BTreeSet` drops exactly the same ones — see
+        // [`Edge::cmp`] for the one input where that equivalence stops holding.
         //
         // An item appears at most once in `grouped_net_items` (`calculate_net_items` seeds from a
         // set), so an item id identifies its `NetItem` index, which is what the Kruskal step
@@ -167,8 +177,17 @@ impl NetIncompletes {
             let (Some(start), Some(end)) = (line.start_object, line.end_object) else {
                 continue;
             };
+            // totalized: Java casts the `Storable` straight back to the `NetItem` it handed in
+            // (NetIncompletes.java:179, :181) — object identity, which cannot miss. The port's
+            // `DelaunayCorner` carries an `ItemId` instead, and every id the triangulation was
+            // given came from `grouped_net_items`, so this arm is unreachable; skipping keeps the
+            // constructor total where Java would throw a `ClassCastException`.
             let (Some(&from_item), Some(&to_item)) = (index_of.get(&start), index_of.get(&end))
             else {
+                debug_assert!(
+                    false,
+                    "a triangulation corner names an item the net does not have"
+                );
                 continue;
             };
             sorted_edges.insert(Edge {
@@ -309,7 +328,7 @@ struct NetItem {
 /// which is identity-hash ordered; plan-5 ruling 3 makes that **ascending item id** here.
 ///
 /// The order *within* one component is not free. `Item.getConnectedSet` returns a
-/// `TreeSet<Item>` (Item.java:606) keyed by `Item.compareTo`, whose subtraction is **reversed**
+/// `TreeSet<Item>` (Item.java:607) keyed by `Item.compareTo`, whose subtraction is **reversed**
 /// (Item.java:95-103, quirk #44), so the walk at `:304-308` sees **descending** item id and the
 /// `NetItem` array — hence the Delaunay corner insertion order — is descending inside every
 /// component. `Board::connected_set` returns an ascending `BTreeSet`, so this iterates `.rev()`.
@@ -344,7 +363,7 @@ fn calculate_net_items(
             .collect();
 
         // totalized: when `start_item` does not carry `net_number`, `Item.getConnectedSet`
-        // returns an **empty** set (Item.java:602-604), `itemsInComponent` is empty,
+        // returns an **empty** set (Item.java:607-609), `itemsInComponent` is empty,
         // `uniqueItems.removeAll` removes nothing and Java's `while` loop **never terminates** —
         // it re-seeds off the same item forever. The port drops the seed and carries on. Every
         // Java producer groups the items by a net they contain
@@ -396,7 +415,7 @@ fn join_connected_sets(net_items: &mut [NetItem], from_set: usize, to_set: usize
 ///
 /// `from_item`/`to_item` are **indices into the `NetItem` array**, not [`ItemId`]s: the Kruskal
 /// step compares connected-set identity, which lives on the `NetItem`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 struct Edge {
     from_item: usize,
     from_corner: FloatPoint,
@@ -407,6 +426,28 @@ struct Edge {
     length_square: f64,
 }
 
+/// `PartialEq` is **defined through [`Edge::cmp`]**, not derived.
+///
+/// The two are not the same relation: `cmp` calls two edges equal whenever all five of its keys
+/// tie, which happens between edges with different `from_item`/`to_item` (quirk #147), and a
+/// derived, structural `PartialEq` would call those pairs different. `Ord`'s contract is that
+/// `a.cmp(b) == Equal` exactly when `a == b`, and `BTreeSet` is entitled to rely on it, so the
+/// port makes the equality the comparator's rather than the fields'. Java has the same split and
+/// simply never exposes it: `Edge` inherits `Object.equals` (identity) and `TreeSet` uses
+/// `compareTo` alone, so the two disagree there too — harmlessly, because nothing calls `equals`.
+impl PartialEq for Edge {
+    fn eq(&self, other: &Edge) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// `Eq` is asserted, not proved: [`Edge::cmp`] is **not reflexive** on an edge whose coordinates
+/// make a subtraction NaN, because `Signum.asInt(NaN)` is 0 only by falling off the end of its
+/// ladder — that edge compares `Equal` to itself for the wrong reason, and `Equal` to everything
+/// else as well. The impl is here because `BTreeSet` requires `Ord: Eq` and the port needs the
+/// `TreeSet` behaviour; Java is in the identical position, its `Comparable` contract broken on
+/// the same input, and neither side has a caller that reaches it (a `FloatPoint` here always
+/// comes from an `IntPoint`). See the `Java bug:` marker on [`Edge::cmp`].
 impl Eq for Edge {}
 
 impl PartialOrd for Edge {
@@ -430,10 +471,20 @@ impl Ord for Edge {
     // corner, which coincident pads and a via stacked on a pad both do. A dropped edge is one
     // fewer airline candidate, so the spanning tree may join the two groups through a longer
     // edge, or — if the drop takes the only edge between them — leave them unjoined, understating
-    // `incompleteCount`. `Signum.asInt` also maps **NaN** to 0 (Signum.java:35-42, a
-    // `> 0 / < 0 / else` ladder), so an infinite coordinate makes an edge compare equal to
-    // *everything* and reduces the whole set to one element. Reproduced; quirks row #147, test
-    // `an_exact_five_way_tie_drops_the_second_edge`.
+    // `incompleteCount`. On finite input the comparator is a consistent total preorder, so
+    // `BTreeSet` and `TreeSet` agree exactly on *which* edge is dropped — the later one offered —
+    // and the port reproduces Java edge for edge.
+    //
+    // The NaN half is weaker, in two ways worth stating precisely. `Signum.asInt` is a
+    // `> 0 / < 0 / else` ladder (Signum.java:35-42), so it maps **NaN** to 0: an edge whose
+    // coordinates make a subtraction NaN compares `Equal` to every other edge. What that costs
+    // depends on **insertion order** — offered first, it swallows every later edge and the set
+    // ends up with one element; offered later, it is simply the edge that is dropped. And because
+    // the relation is then not transitive, Rust's B-tree and Java's red-black tree may
+    // legitimately drop *different* edges: the port reproduces Java's **comparator**, not Java's
+    // tree, and only the consistent case is a parity claim. Reproduced; quirks row #147, tests
+    // `an_exact_five_way_tie_drops_the_second_edge` and
+    // `a_nan_edge_swallows_or_is_swallowed_depending_on_insertion_order`.
     fn cmp(&self, other: &Edge) -> Ordering {
         // NetIncompletes.java:362.
         let mut result = self.length_square - other.length_square;
@@ -613,30 +664,62 @@ mod tests {
         let first = edge(0, (0.0, 0.0), 1, (10.0, 0.0));
         let second = edge(2, (0.0, 0.0), 3, (10.0, 0.0));
         assert_eq!(first.cmp(&second), Ordering::Equal);
-        assert_ne!(first, second);
+        // `PartialEq` is `cmp`-derived, as `Ord`'s contract demands, so the two *are* equal as
+        // far as the set is concerned even though they name different items.
+        assert_eq!(first, second);
+        assert_ne!(
+            (first.from_item, first.to_item),
+            (second.from_item, second.to_item),
+        );
 
         let mut set = BTreeSet::new();
         assert!(set.insert(first.clone()));
         assert!(!set.insert(second));
         assert_eq!(set.len(), 1);
-        assert_eq!(set.iter().next(), Some(&first));
+        // The survivor is the one offered first — checked on the fields, since `==` on `Edge`
+        // cannot tell them apart.
+        let kept = set.iter().next().expect("one element");
+        assert_eq!(
+            (kept.from_item, kept.to_item),
+            (first.from_item, first.to_item)
+        );
     }
 
     #[test]
-    fn a_nan_difference_compares_equal_to_everything() {
-        // The other half of quirk #147: `Signum.asInt` is a `> 0 / < 0 / else` ladder, so NaN
-        // falls through to 0. An infinite coordinate makes every subtraction NaN and the edge
-        // compares equal to every other edge, collapsing the set.
-        let finite = edge(0, (0.0, 0.0), 1, (10.0, 0.0));
-        let infinite = edge(2, (f64::INFINITY, 0.0), 3, (f64::INFINITY, 0.0));
-        assert!(infinite.length_square.is_nan());
-        assert_eq!(infinite.cmp(&finite), Ordering::Equal);
-        assert_eq!(finite.cmp(&infinite), Ordering::Equal);
+    fn a_nan_edge_swallows_or_is_swallowed_depending_on_insertion_order() {
+        // The other half of quirk #147, stated exactly. `Signum.asInt` is a `> 0 / < 0 / else`
+        // ladder, so NaN falls through to 0: an edge whose coordinates make a subtraction NaN
+        // compares `Equal` to every other edge, and the relation stops being transitive. What
+        // that costs the set depends entirely on **when** the edge is offered.
+        let short = edge(0, (0.0, 0.0), 1, (10.0, 0.0));
+        let long = edge(2, (0.0, 0.0), 3, (20.0, 0.0));
+        let nan = edge(4, (f64::INFINITY, 0.0), 5, (f64::INFINITY, 0.0));
+        assert!(nan.length_square.is_nan());
+        assert_eq!(nan.cmp(&short), Ordering::Equal);
+        assert_eq!(short.cmp(&nan), Ordering::Equal);
+        // ... while the two finite edges order perfectly well against each other, which is what
+        // makes the relation non-transitive.
+        assert_eq!(short.cmp(&long), Ordering::Less);
 
-        let mut set = BTreeSet::new();
-        set.insert(finite);
-        set.insert(infinite);
-        assert_eq!(set.len(), 1);
+        // Offered **first**, the NaN edge swallows both finite ones.
+        let mut nan_first = BTreeSet::new();
+        assert!(nan_first.insert(nan.clone()));
+        assert!(!nan_first.insert(short.clone()));
+        assert!(!nan_first.insert(long.clone()));
+        assert_eq!(nan_first.len(), 1);
+
+        // Offered **last**, it is the one that is dropped, and the set is otherwise intact.
+        let mut nan_last = BTreeSet::new();
+        assert!(nan_last.insert(short));
+        assert!(nan_last.insert(long));
+        assert!(!nan_last.insert(nan));
+        assert_eq!(nan_last.len(), 2);
+
+        // Note the port claims parity with Java's `TreeSet` only where the comparator is
+        // consistent. Here it is not, and a red-black tree may reach a different element to
+        // compare against than a B-tree does, so which edge survives a *mixed* sequence is not a
+        // parity surface. Unreachable on any real board: a `FloatPoint` in this code path always
+        // comes from an `IntPoint`.
     }
 
     #[test]

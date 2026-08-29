@@ -21,6 +21,7 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.netincompletes.txt` | BBD Mars-64 | 94 nets, 3 airlines |
 | `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.netincompletes.txt` | Natural Tone Preamp | 58 nets, 145 airlines |
 | `Issue575-drc_*.airlines.txt` | all three | 9 / 3 / 145 endpoint lines, **informational** |
+| `Issue575-drc_*.airlines-union.txt` | all three | 17 / 3 / 170 distinct `(net, item, item)` triples over six JVM runs |
 | `Issue575-drc_dev-board_4_hole_clearance_violations.incompletes.txt` | the dev board | 96 / 9 / 9 / 2 |
 | `Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.incompletes.txt` | BBD Mars-64 | 106 / 3 / 3 / 76 |
 | `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.incompletes.txt` | Natural Tone Preamp | 218 / 145 / 145 / 0 |
@@ -134,6 +135,16 @@ Verified by sweeping the HEAD jar over `-XX:+UnlockExperimentalVMOptions -XX:has
 | BBD Mars-64 | **1** | 2 |
 | Natural Tone Preamp | **1** | 5 |
 
+Those `.airlines.txt` counts are **file digests over five modes**, so they are sensitive to line
+order and to which end of an airline the probe printed as `from=`. The second table below counts
+something coarser — the per-net set of *unordered* `{from, to}` pairs, over **six** runs (the five
+modes plus the default) — which is why BBD Mars-64 reads `2` here and `1` there: its two distinct
+transcripts carry the same airlines, printed differently. Read either number as illustrative
+rather than as the cardinality of what the jar can produce: `-XX:hashCode=0` and the default
+(mode 5) are PRNG-seeded and modes 1 and 4 are derived from object addresses, so only modes 2 and
+3 are reproducible at all — Task 4 measured mode 0 giving two different answers on consecutive
+runs of this same jar.
+
 `the_three_fixtures_match_the_jvm` (`tests/net_incompletes.rs`) renders the port's per-net results
 in this exact format and compares them line by line.
 
@@ -159,6 +170,18 @@ two algorithms the same algorithm.
 
 `the_airline_endpoints_are_a_hash_dependent_choice` asserts the per-net **counts** and prints the
 rest; run it with `--nocapture`.
+
+The one endpoint claim that *is* asserted lives in `<stem>.airlines-union.txt`: the union, over
+the six runs, of the unordered `(net, item, item)` triples the jar produced — 17, 3 and 170
+triples against 9, 3 and 145 airlines per run. `every_port_airline_is_one_some_jvm_run_picks`
+requires every airline the port emits to be in that union, which is run-independent in a way the
+list itself is not. The union is not *closed* — a seventh JVM run may add a triple — so a failure
+there is a reason to re-derive the file before it is a bug report.
+
+**Re-running the recorded commands below reproduces `*.netincompletes.txt` exactly and will not
+reproduce `*.airlines.txt` or `*.airlines-union.txt`.** The first is hash-independent; the other
+two are snapshots of particular runs, kept as documentation and as the union's inputs. That is why
+nothing compares `*.airlines.txt` byte for byte.
 
 ## Recorded command for `NetIncompletesProbe`
 
