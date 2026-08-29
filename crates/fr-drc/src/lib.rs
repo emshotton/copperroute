@@ -33,8 +33,8 @@
 //! Task 3 ships the crate skeleton, [`DesignRulesChecker`] and
 //! [`DesignRulesChecker::get_all_clearance_violations`]; Task 4 adds [`UnconnectedItems`] and
 //! [`DesignRulesChecker::get_all_unconnected_items`]. Task 5 adds `AirLine`, `NetIncompletes`
-//! and the ratsnest; Task 6 adds `calculate_all_incompletes`, the counters and
-//! `BoardStatisticsClearanceViolations`;
+//! and the ratsnest; Task 6 adds [`DesignRulesChecker::calculate_all_incompletes`], the counters
+//! it feeds and [`BoardStatisticsClearanceViolations`];
 //! Tasks 7-8 add the KiCad DTOs, `generate_report` and `report_to_json`; Task 11 adds this
 //! crate's `README.md` and the `// not ported:` roster at the foot of this file.
 
@@ -42,12 +42,14 @@ pub mod airline;
 pub mod checker;
 pub mod error;
 pub mod net_incompletes;
+pub mod statistics;
 pub mod unconnected;
 
 pub use airline::AirLine;
 pub use checker::DesignRulesChecker;
 pub use error::DrcError;
 pub use net_incompletes::NetIncompletes;
+pub use statistics::BoardStatisticsClearanceViolations;
 pub use unconnected::{UnconnectedItems, UnconnectedKind};
 
 /// `drc.ClearanceViolation`, defined in `fr-board` (plan-5 ruling 9) and re-exported here so
@@ -60,6 +62,7 @@ pub mod prelude {
     pub use crate::checker::DesignRulesChecker;
     pub use crate::error::DrcError;
     pub use crate::net_incompletes::NetIncompletes;
+    pub use crate::statistics::BoardStatisticsClearanceViolations;
     pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};
     pub use fr_board::ClearanceViolation;
 }

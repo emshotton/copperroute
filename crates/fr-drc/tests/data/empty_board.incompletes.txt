@@ -1,0 +1,8 @@
+maxConnections 0
+incompleteCount 0
+airlines 0
+lengthViolationCount 0
+recalculateLengthViolations false
+perNetIncompleteSum 0
+boardUnitToUmFactor 0.1
+clearanceViolations totalCount=0 min=0.0 max=0.0 avg=0.0

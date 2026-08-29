@@ -6,8 +6,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use fr_board::{Board, ClearanceViolation, ItemId, ItemKind};
+use fr_board::{Board, ClearanceViolation, Item, ItemId, ItemKind};
 
+use crate::airline::AirLine;
 use crate::net_incompletes::NetIncompletes;
 use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 
@@ -28,24 +29,23 @@ use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 //
 // The remaining members of the Java class, each with the task that owns it:
 //
-// added in Task 6: DesignRulesChecker.calculateAllIncompletes (DesignRulesChecker.java:542-623) — builds `netIncompletes` and `maxConnections`.
-// added in Task 6: DesignRulesChecker.recalculateNetIncompletes (DesignRulesChecker.java:630-660) — both overloads.
-// added in Task 6: DesignRulesChecker.getIncompleteCount (DesignRulesChecker.java:663-706, :708-734) — both overloads.
-// added in Task 6: DesignRulesChecker.getLengthViolationCount (DesignRulesChecker.java:736-748).
-// added in Task 6: DesignRulesChecker.getLengthViolation (DesignRulesChecker.java:750-763).
-// added in Task 6: DesignRulesChecker.recalculateLengthViolations (DesignRulesChecker.java:765-778).
-// added in Task 6: DesignRulesChecker.getAllAirlines (DesignRulesChecker.java:780-798).
-// added in Task 6: DesignRulesChecker.getNetIncompletes (DesignRulesChecker.java:800-815).
 // added in Task 7: DesignRulesChecker.generateReport (DesignRulesChecker.java:210-540) — the KiCad DRC report DTO.
 // added in Task 8: DesignRulesChecker.generateReportJson (DesignRulesChecker.java:817-820) — `generateReport` through the Gson-compatible writer.
 #[derive(Debug)]
 pub struct DesignRulesChecker<'a> {
     /// Java `board` (DesignRulesChecker.java:31).
     board: &'a mut Board,
-    /// Java `maxConnections` (DesignRulesChecker.java:33) — a **public** field there, written by
-    /// `calculateAllIncompletes` (`:620`) and read by `BoardStatistics`, so it is a public field
-    /// here too rather than a getter Java does not have.
-    pub max_connections: i32,
+    /// Java `maxConnections` (DesignRulesChecker.java:33): the number of connections a fully
+    /// routed board would have, i.e. the denominator of the quality score
+    /// (`BoardStatistics.java:270`, `connections.maximumCount`).
+    ///
+    /// Java's field is `public` and is written by exactly one place,
+    /// [`Self::calculate_all_incompletes`] (`:567-577`); the port keeps it private behind
+    /// [`Self::max_connections`] so that "meaningless until the initialiser has run" — the
+    /// invariant Java's own readers honour by calling `calculateAllIncompletes()` on the line
+    /// before (`BoardStatistics.java:269-270`) — has somewhere to be written down. Unlike the
+    /// eight accessors below it is **not** lazy, exactly as Java's bare field read is not.
+    max_connections: i32,
     /// Java `netIncompletes` (DesignRulesChecker.java:35), one [`NetIncompletes`] per net number,
     /// indexed by `netNumber - 1` (`:617-621`).
     ///
@@ -54,14 +54,6 @@ pub struct DesignRulesChecker<'a> {
     /// calculateAllIncompletes();`. Java's array is never *partly* filled — `:618-621` writes
     /// every slot in one loop — so the nullability belongs to the whole `Vec`, not to its
     /// elements.
-    ///
-    // added in Task 6: DesignRulesChecker.netIncompletes — the writer. Task 5 lands the field and
-    // the type; `calculateAllIncompletes` and the eight readers that lazily call it are Task 6's,
-    // which is why nothing in this crate reads the field yet.
-    #[expect(
-        dead_code,
-        reason = "written by Task 6's calculate_all_incompletes, read by its eight accessors"
-    )]
     net_incompletes: Option<Vec<NetIncompletes>>,
 }
 
@@ -316,4 +308,272 @@ impl<'a> DesignRulesChecker<'a> {
             .or_else(|| of_kind(ItemKind::Trace))
             .or_else(|| connected_set.first().copied())
     }
+
+    // ------------------------------------------------------------------------------------------
+    // The ratsnest: `calculateAllIncompletes` and the eight accessors that lazily call it
+    // ------------------------------------------------------------------------------------------
+
+    /// Port of `calculateAllIncompletes` (DesignRulesChecker.java:542-623): builds one
+    /// [`NetIncompletes`] per net number and, on the way, [`Self::max_connections`].
+    ///
+    /// Three steps, in Java's order:
+    ///
+    /// 1. **The per-net item lists** (`:544-563`). One list per net number `1..=maxNetNumber`,
+    ///    filled by walking `board.itemList` — descending id (quirk #63) — and appending each
+    ///    connectable item to the list of **every** net it carries (`:556-561`), so a two-net pin
+    ///    lands in two lists. The order of a list is not observable: [`NetIncompletes::new`]
+    ///    filters it and drops the result into a set (NetIncompletes.java:295).
+    /// 2. **`maxConnections`** (`:567-577`): over the **non-empty** lists only, the number of
+    ///    `Pin`/`ConductionArea` items minus one, clamped at zero, summed. The comment at
+    ///    `:564-567` explains both halves — empty nets used to be counted in the denominator, and
+    ///    `Math.max` is what stops a net of nothing but traces from contributing `-1`.
+    /// 3. **The array** (`:617-622`), one entry per index, `netNumber = i + 1`.
+    ///
+    /// Java's `instanceof Connectable` (`:556`) is one test weaker than `Item.isConnectable`
+    /// (Item.java:868-871, which the port calls): it does not require `netCount() > 0`. The two
+    /// agree here, because the body is a loop over `0..netCount()`.
+    ///
+    // totalized: DesignRulesChecker.calculateAllIncompletes — Java indexes `netItemLists` with `getNetNumber(i) - 1` unguarded (`:558`), so an item carrying a net number outside `1..=maxNetNumber` throws `ArrayIndexOutOfBoundsException`. The port drops such an item instead. Unreachable from `fr-dsn`, whose reader registers every net it assigns.
+    //
+    // not ported: the `focusNets = {98, 99}` block (DesignRulesChecker.java:598-615) — hard-coded
+    // debug logging over two net numbers that mean nothing on any other board, wrapped around a
+    // `validateAndLogPolylineIntegrity()` call that is itself commented out (`:613`), so the loop
+    // computes nothing. Quirks row #149. The `totalItems` sum (`:579`) and the `FRLogger.trace`
+    // it feeds (`:580-590`) go with it — this crate has no logger.
+    pub fn calculate_all_incompletes(&mut self) {
+        let board = &*self.board;
+
+        // DesignRulesChecker.java:543-548.
+        let max_net_no = board.rules.nets.max_net_number();
+        let mut net_item_lists: Vec<Vec<ItemId>> = vec![Vec::new(); max_net_no.max(0) as usize];
+
+        // DesignRulesChecker.java:549-563.
+        for id in board.items_in_board_order() {
+            let Some(item) = board.get_item(id) else {
+                continue;
+            };
+            if !item.is_connectable() {
+                continue;
+            }
+            for i in 0..item.net_count() {
+                let index = item.get_net_number(i) - 1;
+                if let Some(list) = usize::try_from(index)
+                    .ok()
+                    .and_then(|index| net_item_lists.get_mut(index))
+                {
+                    list.push(id);
+                }
+            }
+        }
+
+        // DesignRulesChecker.java:567-577.
+        self.max_connections = net_item_lists
+            .iter()
+            .filter(|list| !list.is_empty())
+            .map(|list| {
+                let endpoint_count = list
+                    .iter()
+                    .filter(|&&id| {
+                        matches!(
+                            board.get_item(id).map(Item::kind),
+                            Some(ItemKind::Pin | ItemKind::ConductionArea),
+                        )
+                    })
+                    .count() as i64;
+                i32::try_from(endpoint_count - 1).unwrap_or(0).max(0)
+            })
+            .sum();
+
+        // DesignRulesChecker.java:617-622.
+        self.net_incompletes = Some(
+            net_item_lists
+                .iter()
+                .enumerate()
+                .map(|(i, items)| NetIncompletes::new(i as i32 + 1, items, board))
+                .collect(),
+        );
+    }
+
+    /// Port of `recalculateNetIncompletes(int)` (DesignRulesChecker.java:630-643): rebuilds one
+    /// net's [`NetIncompletes`] from the board's current items.
+    ///
+    /// Java **returns** after the lazy initialisation (`:633`) rather than falling through, so on
+    /// a fresh checker the named net keeps [`Self::calculate_all_incompletes`]' answer. The
+    /// two-argument overload has no such `return`; the asymmetry is transcribed, not smoothed.
+    pub fn recalculate_net_incompletes(&mut self, net_number: i32) {
+        // DesignRulesChecker.java:631-634.
+        if self.net_incompletes.is_none() {
+            self.calculate_all_incompletes();
+            return;
+        }
+        // DesignRulesChecker.java:635-638.
+        let board = &*self.board;
+        let list = self.net_incompletes.as_mut().expect("just initialised");
+        if let Some(index) = slot(net_number, list.len()) {
+            let item_list = board.get_connectable_items(net_number);
+            list[index] = NetIncompletes::new(net_number, &item_list, board);
+        }
+    }
+
+    /// Port of `recalculateNetIncompletes(int, Collection<Item>)` (DesignRulesChecker.java:647-660):
+    /// the same, from a caller-supplied item list.
+    ///
+    /// Java copies the collection first (`:656-657`) because "it will be changed inside the
+    /// constructor of `NetIncompletes`" — it is not, `NetIncompletes` builds its own filtered
+    /// list (NetIncompletes.java:80-116) — and the port takes a slice, so the copy has nothing
+    /// to protect and is dropped.
+    pub fn recalculate_net_incompletes_with(&mut self, net_number: i32, item_list: &[ItemId]) {
+        // DesignRulesChecker.java:648-652. No `return` here, unlike the overload above.
+        if self.net_incompletes.is_none() {
+            self.calculate_all_incompletes();
+        }
+        // DesignRulesChecker.java:654-659.
+        let board = &*self.board;
+        let list = self.net_incompletes.as_mut().expect("just initialised");
+        if let Some(index) = slot(net_number, list.len()) {
+            list[index] = NetIncompletes::new(net_number, item_list, board);
+        }
+    }
+
+    /// Java `maxConnections` (DesignRulesChecker.java:33), read.
+    ///
+    /// Zero until [`Self::calculate_all_incompletes`] has run — Java's `int` default, which is
+    /// why `BoardStatistics.java:269-270` calls the initialiser on the line before reading it.
+    /// None of the lazy accessors below leave it at zero, because each of them runs that
+    /// initialiser.
+    pub fn max_connections(&self) -> i32 {
+        self.max_connections
+    }
+
+    /// Port of `getIncompleteCount()` (DesignRulesChecker.java:663-706): the number of airlines
+    /// on the whole board, i.e. Σ over the nets of `groups - 1`.
+    ///
+    /// This is `BoardStatistics`' `connections.incompleteCount` (`BoardStatistics.java:271`) and
+    /// **not** the length of the report's `unconnectedItems` array, which is one entry per net
+    /// with two or more groups — plan-5 ruling 11 tabulates both families for the three fixtures.
+    ///
+    // not ported: `getIncompleteCount`'s `detailsBuilder` (DesignRulesChecker.java:670-690) — the
+    // per-net log line, which is `FRLogger`-only and which this crate drops with every other
+    // trace call. It carries a Java bug worth recording even so: `:686` appends
+    // `netIncompletes` — the whole **array** — where every other `append` in the chain adds a
+    // scalar, so the line reads `Net #7 (GND): [Lapp/freerouting/drc/NetIncompletes;@1b6d3586
+    // incomplete(s);` instead of the count sitting in `count`. Quirks row #150.
+    pub fn get_incomplete_count(&mut self) -> usize {
+        // DesignRulesChecker.java:664-666.
+        self.net_incompletes_mut()
+            .iter()
+            // DesignRulesChecker.java:672-676. The `count > 0` guard only gates the logging;
+            // adding a zero changes nothing.
+            .map(NetIncompletes::count)
+            .sum()
+    }
+
+    /// Port of `getIncompleteCount(int)` (DesignRulesChecker.java:708-734): one net's airline
+    /// count, `0` for a net number outside `1..=maxNetNumber` (`:712-714`).
+    ///
+    // renamed: DesignRulesChecker.getIncompleteCount(int) -> `get_incomplete_count_for_net`, because Rust has no overloading.
+    pub fn get_incomplete_count_for_net(&mut self, net_number: i32) -> usize {
+        // DesignRulesChecker.java:709-716.
+        let list = self.net_incompletes_mut();
+        match slot(net_number, list.len()) {
+            Some(index) => list[index].count(),
+            None => 0,
+        }
+    }
+
+    /// Port of `getLengthViolationCount` (DesignRulesChecker.java:736-748): how many nets have a
+    /// non-zero length violation — the **stored** one, not a recomputed one.
+    pub fn get_length_violation_count(&mut self) -> usize {
+        // DesignRulesChecker.java:737-745.
+        self.net_incompletes_mut()
+            .iter()
+            .filter(|net_incompletes| net_incompletes.get_length_violation() != 0.0)
+            .count()
+    }
+
+    /// Port of `getLengthViolation(int)` (DesignRulesChecker.java:750-763): one net's length
+    /// violation — positive too long, negative too short — and `0` out of range (`:754-756`).
+    pub fn get_length_violation(&mut self, net_number: i32) -> f64 {
+        // DesignRulesChecker.java:751-757.
+        let list = self.net_incompletes_mut();
+        match slot(net_number, list.len()) {
+            Some(index) => list[index].get_length_violation(),
+            None => 0.0,
+        }
+    }
+
+    /// Port of `recalculateLengthViolations` (DesignRulesChecker.java:765-778): recomputes every
+    /// net's length violation and answers whether any of them changed.
+    ///
+    /// On a fresh checker it answers `true` — Java's comment is "technically changed from nothing
+    /// to something" (`:768`) — without recomputing anything, because
+    /// [`Self::calculate_all_incompletes`] has just done it (NetIncompletes.java:225).
+    pub fn recalculate_length_violations(&mut self) -> bool {
+        // DesignRulesChecker.java:766-769.
+        if self.net_incompletes.is_none() {
+            self.calculate_all_incompletes();
+            return true;
+        }
+        // DesignRulesChecker.java:770-776. `fold` rather than `any`, because Java's loop has no
+        // early exit: every net is recalculated, whatever the ones before it answered.
+        let board = &*self.board;
+        self.net_incompletes
+            .as_mut()
+            .expect("just checked")
+            .iter_mut()
+            .fold(false, |result, net_incompletes| {
+                net_incompletes.calc_length_violation(board) || result
+            })
+    }
+
+    /// Port of `getAllAirlines` (DesignRulesChecker.java:780-798): every net's airlines,
+    /// flattened in **ascending net number** and, within a net, in the order Kruskal accepted
+    /// them.
+    ///
+    /// That flattening is deterministic even though the per-net edge choice is not (plan-5
+    /// ruling 4): `NetIncompletes.calculateNetItems` seeds off a `HashSet<Item>`, so *which*
+    /// airlines a net has varies from JVM run to JVM run while *how many* does not.
+    ///
+    /// Java sizes the result array from `getIncompleteCount()` (`:784-785`) and then fills it
+    /// from the same per-net lists that count summed, so the array is exactly filled; the port
+    /// collects instead and cannot disagree with itself.
+    pub fn get_all_airlines(&mut self) -> Vec<AirLine> {
+        // DesignRulesChecker.java:781-796.
+        self.net_incompletes_mut()
+            .iter()
+            .flat_map(|net_incompletes| net_incompletes.incompletes.iter().cloned())
+            .collect()
+    }
+
+    /// Port of `getNetIncompletes(int)` (DesignRulesChecker.java:800-815): one net's
+    /// [`NetIncompletes`], `None` for Java's `null` out of range (`:804-806`).
+    pub fn get_net_incompletes(&mut self, net_number: i32) -> Option<&NetIncompletes> {
+        // DesignRulesChecker.java:801-807.
+        let list = self.net_incompletes_mut();
+        let index = slot(net_number, list.len())?;
+        Some(&list[index])
+    }
+
+    /// `if (netIncompletes == null) calculateAllIncompletes();` — the two lines that open every
+    /// one of the eight accessors above (DesignRulesChecker.java:664-666, `:709-711`, `:737-739`,
+    /// `:751-753`, `:766-768`, `:781-783`, `:801-803`) — followed by the dereference Java then
+    /// does unguarded.
+    fn net_incompletes_mut(&mut self) -> &mut Vec<NetIncompletes> {
+        if self.net_incompletes.is_none() {
+            self.calculate_all_incompletes();
+        }
+        self.net_incompletes
+            .as_mut()
+            .expect("calculate_all_incompletes always assigns")
+    }
+}
+
+/// Java's `netNumber <= 0 || netNumber > netIncompletes.length` guard
+/// (DesignRulesChecker.java:712, `:754`, `:804`) and the `netNumber >= 1 && netNumber <= length`
+/// that says the same thing the other way round (`:635`, `:654`), as the array index they gate.
+fn slot(net_number: i32, len: usize) -> Option<usize> {
+    if net_number <= 0 || net_number as usize > len {
+        return None;
+    }
+    Some(net_number as usize - 1)
 }

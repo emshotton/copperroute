@@ -8,6 +8,7 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `DrcListProbe.java` | `DesignRulesChecker.getAllClearanceViolations()` (DesignRulesChecker.java:52-81) — the **deduplicated** list, in walk order, one line per violation with every field. The complement of Task 2's `crates/fr-board/tests/data/DrcProbe.java`, which dumps the *per item* lists before deduplication. Doubles are printed with `Double.toString`, so the port compares exact bits through `fr_dsn::format::double::java_double_to_string`. | yes |
 | `UnconnectedProbe.java` | `DesignRulesChecker.getAllUnconnectedItems()` (DesignRulesChecker.java:91-178) — the **hash-independent projection** of the list (see below). Writes the transcript to the file named by its second argument, not to stdout, because `FRLogger` prints a warning line to stdout on one of the fixtures. | yes |
 | `NetIncompletesProbe.java` | `drc.NetIncompletes`, per net number, through `DesignRulesChecker.getNetIncompletes` (DesignRulesChecker.java:800-815), which lazily runs `calculateAllIncompletes`. Writes **two** files: `<stem>.netincompletes.txt`, the hash-independent projection (`count`, `getConnectedGroupCount`, `getLengthViolation`, `getMarkerRadius` per net, plus the two totals), and `<stem>.airlines.txt`, the endpoint list, which is hash-**dependent** and is committed for one run as documentation only (plan-5 ruling 4). | yes |
+| `IncompletesProbe.java` | `DesignRulesChecker.calculateAllIncompletes` (DesignRulesChecker.java:542-623) and the eight accessors that hang off it: `maxConnections`, `getIncompleteCount()`, `getAllAirlines().length`, `getLengthViolationCount()`, `recalculateLengthViolations()` and the per-net `getIncompleteCount(int)`/`getLengthViolation(int)` — plus `BoardStatistics`' clearance block (`BoardStatistics.java:200-202`, `:338-367`) computed from `getAllClearanceViolations()` the way that block does, because `BoardStatistics` itself is Plan 8's (plan-5 ruling 5). Writes `<stem>.incompletes.txt`. All of it is hash-independent, unlike `NetIncompletesProbe`'s second output. | yes |
 
 | Transcript | Fixture | Rows |
 |---|---|---|
@@ -20,6 +21,12 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | `Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.netincompletes.txt` | BBD Mars-64 | 94 nets, 3 airlines |
 | `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.netincompletes.txt` | Natural Tone Preamp | 58 nets, 145 airlines |
 | `Issue575-drc_*.airlines.txt` | all three | 9 / 3 / 145 endpoint lines, **informational** |
+| `Issue575-drc_dev-board_4_hole_clearance_violations.incompletes.txt` | the dev board | 96 / 9 / 9 / 2 |
+| `Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.incompletes.txt` | BBD Mars-64 | 106 / 3 / 3 / 76 |
+| `Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.incompletes.txt` | Natural Tone Preamp | 218 / 145 / 145 / 0 |
+| `empty_board.incompletes.txt` | the empty board | 0 / 0 / 0 / 0 |
+
+(`maxConnections` / `incompleteCount` / `getAllAirlines().length` / `clearanceViolations.totalCount`.)
 
 `the_ordered_list_matches_the_jvm` (`tests/clearance_list.rs`) renders the port's list in this
 exact format and compares it byte for byte against both files. Neither fixture takes a `.rules`
@@ -173,3 +180,71 @@ done
 ```
 
 The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`.
+
+## What `*.incompletes.txt` holds
+
+Everything Task 6 ports is a **count** or a **length**, so — unlike `NetIncompletesProbe`'s
+second output — all of it is hash-independent and all of it is compared exactly by
+`the_four_fixtures_match_the_jvm` (`tests/incompletes.rs`). Verified by sweeping the HEAD jar over
+`-XX:+UnlockExperimentalVMOptions -XX:hashCode=0..4`: **one** distinct transcript per fixture
+across all five modes plus the default, on all four fixtures.
+
+The four `maxConnections` / `incompleteCount` values reproduce plan-5 ruling 4's table and
+`KiCadDrcViolationRoutingTest`'s three assertions (9/2, 3/76, 145/0) independently; the per-net
+`incompleteCount=` lines are the same quantity `RatsnestClearanceHeadlessTest.java:69-74` sums.
+
+`boardUnitToUmFactor` is `BoardStatistics.java:200-202`'s local, printed so the Rust side
+multiplies by the same number rather than by one it re-derived: all four fixtures are 0.1 um per
+board unit. `clearanceViolations` is the block at `BoardStatistics.java:338-367`, which the port
+ships as `BoardStatisticsClearanceViolations::from_violations` — `BoardStatistics` itself stays in
+Plan 8 (plan-5 ruling 5), so the probe transcribes the block rather than constructing the object.
+
+**The fixture list is the Java test's, and it takes no `.rules` file.**
+`KiCadDrcViolationRoutingTest.assertDrcOnLoadedBoard` calls `getRoutingJob(filename, null)` and
+reads the plain `.dsn` (`:18-28`); the only `BBD_Mars-64` fixture that has a `.rules` beside it is
+`Issue593-BBD_Mars-64`, a **different** board that no DRC test loads.
+
+## Recorded command for `IncompletesProbe`
+
+Same jar as above (`freerouting-current-executable.jar`, 63 288 650 bytes, mtime 2026-08-27
+20:03), same JDK 25.
+
+```sh
+JAR=/Users/em/Development/freerouting/freerouting/build/libs/freerouting-current-executable.jar
+F=/Users/em/Development/freerouting/freerouting/fixtures
+J=/opt/homebrew/opt/openjdk@25/bin
+
+$J/javac -cp "$JAR" -d . IncompletesProbe.java
+for b in Issue575-drc_dev-board_4_hole_clearance_violations \
+         Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations \
+         Issue575-drc_Natural_Tone_Preamp_7_unconnected_items \
+         empty_board; do
+  $J/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+      -cp "$JAR:." IncompletesProbe "$F/$b.dsn" "$b"
+done
+```
+
+The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`.
+
+The union file is built from the sweep's six `*.airlines.txt` (the five modes plus the default),
+in the same scratch directory:
+
+```sh
+python3 - <<'EOF'
+stems = ["Issue575-drc_dev-board_4_hole_clearance_violations",
+         "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations",
+         "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items"]
+for stem in stems:
+    union = set()
+    for path in [f"h{m}-{stem}.airlines.txt" for m in range(5)] + [f"{stem}.airlines.txt"]:
+        for line in open(path):
+            if not line.strip():
+                continue
+            f = dict(p.split("=", 1) for p in line.split())
+            a, b = sorted((int(f["from"]), int(f["to"])))
+            union.add((int(f["net"]), a, b))
+    with open(f"{stem}.airlines-union.txt", "w") as out:
+        for n, a, b in sorted(union):
+            out.write(f"net={n} a={a} b={b}\n")
+EOF
+```

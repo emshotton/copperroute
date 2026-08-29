@@ -1,0 +1,55 @@
+maxConnections 96
+incompleteCount 9
+airlines 9
+lengthViolationCount 0
+recalculateLengthViolations false
+perNetIncompleteSum 9
+net=1 incompleteCount=6 lengthViolation=0.0
+net=2 incompleteCount=0 lengthViolation=0.0
+net=3 incompleteCount=0 lengthViolation=0.0
+net=4 incompleteCount=0 lengthViolation=0.0
+net=5 incompleteCount=0 lengthViolation=0.0
+net=6 incompleteCount=0 lengthViolation=0.0
+net=7 incompleteCount=0 lengthViolation=0.0
+net=8 incompleteCount=0 lengthViolation=0.0
+net=9 incompleteCount=0 lengthViolation=0.0
+net=10 incompleteCount=0 lengthViolation=0.0
+net=11 incompleteCount=0 lengthViolation=0.0
+net=12 incompleteCount=0 lengthViolation=0.0
+net=13 incompleteCount=0 lengthViolation=0.0
+net=14 incompleteCount=0 lengthViolation=0.0
+net=15 incompleteCount=0 lengthViolation=0.0
+net=16 incompleteCount=0 lengthViolation=0.0
+net=17 incompleteCount=0 lengthViolation=0.0
+net=18 incompleteCount=0 lengthViolation=0.0
+net=19 incompleteCount=0 lengthViolation=0.0
+net=20 incompleteCount=0 lengthViolation=0.0
+net=21 incompleteCount=0 lengthViolation=0.0
+net=22 incompleteCount=0 lengthViolation=0.0
+net=23 incompleteCount=0 lengthViolation=0.0
+net=24 incompleteCount=0 lengthViolation=0.0
+net=25 incompleteCount=0 lengthViolation=0.0
+net=26 incompleteCount=0 lengthViolation=0.0
+net=27 incompleteCount=0 lengthViolation=0.0
+net=28 incompleteCount=0 lengthViolation=0.0
+net=29 incompleteCount=0 lengthViolation=0.0
+net=30 incompleteCount=0 lengthViolation=0.0
+net=31 incompleteCount=0 lengthViolation=0.0
+net=32 incompleteCount=0 lengthViolation=0.0
+net=33 incompleteCount=0 lengthViolation=0.0
+net=34 incompleteCount=0 lengthViolation=0.0
+net=35 incompleteCount=0 lengthViolation=0.0
+net=36 incompleteCount=0 lengthViolation=0.0
+net=37 incompleteCount=0 lengthViolation=0.0
+net=38 incompleteCount=0 lengthViolation=0.0
+net=39 incompleteCount=0 lengthViolation=0.0
+net=40 incompleteCount=0 lengthViolation=0.0
+net=41 incompleteCount=1 lengthViolation=0.0
+net=42 incompleteCount=0 lengthViolation=0.0
+net=43 incompleteCount=0 lengthViolation=0.0
+net=44 incompleteCount=0 lengthViolation=0.0
+net=45 incompleteCount=0 lengthViolation=0.0
+net=46 incompleteCount=1 lengthViolation=0.0
+net=47 incompleteCount=1 lengthViolation=0.0
+boardUnitToUmFactor 0.1
+clearanceViolations totalCount=2 min=50.0 max=50.0 avg=50.0

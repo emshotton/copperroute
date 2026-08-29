@@ -8,6 +8,12 @@
 #   ./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' scripts/audit-map/fr-drc.map
 #   ./scripts/audit-port.sh drc crates/fr-drc/src   'DesignRulesChecker.java UnconnectedItems.java NetIncompletes.java AirLine.java' scripts/audit-map/fr-drc.map
 #
+# Task 6 adds a third, over a different Java package — the one class of `core/scoring` this plan
+# ports (plan-5 ruling 5 leaves `BoardStatistics` itself to Plan 8, so it is deliberately absent
+# from the glob and would report `UNMAPPED` if it were added):
+#
+#   ./scripts/audit-port.sh core/scoring crates/fr-drc/src 'BoardStatisticsClearanceViolations.java' scripts/audit-map/fr-drc.map
+#
 # The second glob widens as the crate fills up: Task 4 added `UnconnectedItems.java` (which
 # declares no public methods, so it contributes no rows — the map line exists to name its Rust
 # home), Task 5 added `NetIncompletes.java AirLine.java`, and Task 11 turns it into the plain
@@ -35,11 +41,14 @@ NetIncompletes           net_incompletes.rs
 AirLine                  airline.rs
 UnconnectedItems         unconnected.rs
 
-# --- io/kicad/ and core/scoring/, for the invocations Tasks 6-8 add ------------------------------
+# --- io/kicad/ (Tasks 7-8) and core/scoring/ (Task 6, landed) ------------------------------------
 KiCadDrcReport           report/mod.rs
 KiCadDrcViolation        report/mod.rs
 KiCadDrcViolationItem    report/mod.rs
 KiCadDrcPosition         report/mod.rs
+# A DTO of four `@SerializedName` fields and no methods, so it contributes no method rows; the map
+# line names its Rust home and keeps `from_violations` (the port of `BoardStatistics`' clearance
+# block) inside the audited path.
 BoardStatisticsClearanceViolations  statistics.rs
 # The last three are matched only by the `// added in Plan 8:` markers Task 11 puts in `lib.rs`
 # (plan-5 ruling 13 keeps the KiCad board-JSON reader/writer out of this plan).
