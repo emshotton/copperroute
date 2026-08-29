@@ -44,8 +44,12 @@ the KiCad/Eagle paths that were deferred out of it.
   `connection_items_checked`), `BoardRules::replace_via_info_renumbering_rules`
   / `replace_via_rule_renumbering_net_classes`, and the `SpecctraParserInfo` /
   `WriteResolution` fields on `Communication`.
-- **256 tests in `fr-dsn`** (unit + fourteen integration suites; 2 `#[ignore]`d
-  in debug), **1118 across the workspace** (3 ignored in total).
+- **257 tests in `fr-dsn`** (unit + fourteen integration suites; 2 `#[ignore]`d
+  in debug), **1119 across the workspace** (3 ignored in total) — measured on
+  commit `9cdf4f7` and unchanged at `b85e674`, the branch tip (that commit is
+  documentation-only). (At `b0e8e38`, two commits earlier, the same counts were
+  256 and 1118; Task 15's review round added ruling I's non-ignored sibling
+  test. Re-measure rather than trusting either figure.)
 
 ## Public API surface (what Plan 8 wires up)
 
@@ -150,9 +154,9 @@ obligation.
    the known-diffs table below so nobody "updates" the references to HEAD's
    spelling. **Cost if wrong:** the port emits DSN no tool can read — loud and
    immediate, which is why the ruling is cheap in the safe direction.
-   *(A short restatement of this ruling is still owed in
-   `tests/reference/README.md` — that file was reassigned to a concurrent editor
-   while this hand-off was written. Until it lands, this section is the record.)*
+   *(`tests/reference/README.md` carries a restatement of this ruling next to
+   the references themselves, added in commit `b85e674` —
+   §"Why the 2.3.0 jar, not the clone's HEAD (Plan 3 ruling 1)".)*
 
    In full, so the reference set cannot be "corrected" by someone who only reads
    that directory: HEAD spells fifteen `Keyword` constants in camelCase
@@ -224,7 +228,7 @@ obligation.
     `{:e}` being a correct shortest-round-trip formatter, so **re-run `p3t2`
     after any toolchain bump that touches float formatting**.
 
-### Controller rulings A–H (made during execution)
+### Controller rulings A–I (made during execution)
 
 **A. `CoordinateTransform` is threaded explicitly.** Task 1 declares
 `BoardReadResult` without it (the type did not exist yet); Task 10 adds
@@ -238,8 +242,13 @@ in Plan 8.
 accepted, with a required quirks row.** *Reason:* `tests/reference/` is the spec
 §3 acceptance target and the snake_case tokens are what the Specctra format
 uses. *Cost if wrong:* every bit-parity test fails on fifteen token names —
-immediate. Discharged as **quirk #92** plus the `tests/reference/README.md`
-section added by this task.
+immediate. **Discharged, both halves.** The quirks row is **quirk #92** — the
+camelCase name list, the "HEAD cannot read back its own output" evidence and the
+fix ("revert the fifteen literals; the rename was an IDE refactor that leaked
+into string literals"). The second half — a restatement in
+`tests/reference/README.md`, so nobody who reads only that directory regenerates
+the references from HEAD — landed as commit `b85e674`
+(§"Why the 2.3.0 jar, not the clone's HEAD (Plan 3 ruling 1)").
 
 **C. `SpecctraParserInfo`/`WriteResolution` live on `fr-board`'s
 `Communication`, as in Java.** They had been placed in `fr-dsn` by Task 5, which
@@ -290,18 +299,6 @@ four fixtures have zero `polyline_path`, zero wiring vias, zero fixed states and
 zero `(plane …)` between them. *Cost if wrong:* ~450 KB of committed
 references. Discharged in Task 15.
 
-**I. The corpus test keeps its debug-only `#[ignore]`, and gains a skip-with-
-message plus a non-ignored sibling.** `every_fixture_in_the_corpus_matches_javas_
-result_and_warnings` takes ~90 s in debug and 11.7 s in release, so it stays
-`#[cfg_attr(debug_assertions, ignore)]`; it now skips with a printed message when
-`../freerouting` is absent, and a sibling test that is *not* ignored runs in every
-configuration. *Reason:* a 90 s test in the default `cargo test` loop gets
-disabled by whoever is in a hurry, and a silently-skipping suite is worse than a
-slow one. *Cost if wrong:* **the full corpus check does not run in a plain
-`cargo test`** — release/CI must run `cargo test -p fr-dsn --release --test
-dsn_reader`, and a green debug run is not evidence of corpus parity. Stated here
-and in the test inventory because it is the easiest gate in this plan to lose.
-
 **H. The via-info / via-rule *re-pointing* divergence is real and observable;
 keep the index model and re-file it as an OPEN Plan 6/7 obligation.** Task 14's
 renumbering fix keeps every index resolvable, but it changes *which object* a
@@ -318,6 +315,22 @@ writer emits names, so no `.dsn`/`.ses`/`.rules` byte differs);
 ruled in the same round: the three clone-HEAD-only APIs
 (`readRouterSettings`, `discoverLayerStructure`, `applyNewValuesFrom`) are not
 jar-pinned and must be **disclosed** rather than silently shipped. **OPEN.**
+
+**I. The corpus test keeps its debug-only `#[ignore]`, and gains a skip-with-
+message plus a non-ignored sibling.** `every_fixture_in_the_corpus_matches_javas_
+result_and_warnings` takes ~90 s in debug and 11.7 s in release, so it stays
+`#[cfg_attr(debug_assertions, ignore)]`; it now goes through
+`parity::require_java_dir()` / `parity::java_dir()`, so it skips with a printed
+message instead of panicking when the fixture directory is missing and honours
+`FREEROUTING_JAVA_DIR`, and the non-ignored sibling
+`the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant` runs in
+every configuration. Landed in `9cdf4f7`.
+*Reason:* a 90 s test in the default `cargo test` loop gets disabled by whoever
+is in a hurry, and a silently-skipping suite is worse than a
+slow one. *Cost if wrong:* **the full corpus check does not run in a plain
+`cargo test`** — release/CI must run `cargo test -p fr-dsn --release --test
+dsn_reader`, and a green debug run is not evidence of corpus parity. Stated here
+and in the test inventory because it is the easiest gate in this plan to lose.
 
 ## Corrections to the plan discovered during execution
 
@@ -690,12 +703,16 @@ would still surface as a `DIFF` on a mode nobody excused.
 
 Verified on the committed tree, not taken from a report:
 
+Test counts are from commit **`9cdf4f7`**, unchanged at **`b85e674`** (the
+branch tip, documentation-only); the working tree carried nothing but this
+document's own edits when they were taken:
+
 ```
 cargo fmt --all                                   clean
 cargo clippy --workspace --all-targets -D warnings clean
-cargo test --workspace                            1118 passed, 0 failed, 3 ignored
-cargo test -p fr-dsn                               256 passed, 0 failed, 2 ignored
-cargo test -p fr-dsn --release --test dsn_reader    30 passed (corpus test 11.7 s)
+cargo test --workspace                            1119 passed, 0 failed, 3 ignored
+cargo test -p fr-dsn                               257 passed, 0 failed, 2 ignored
+cargo test -p fr-dsn --release --test dsn_reader    31 passed (corpus test 12.0 s)
 
 ./scripts/audit-port.sh io/specctra        crates/fr-dsn/src '*.java' scripts/audit-map/fr-dsn.map   -> 0
 ./scripts/audit-port.sh io/specctra/parser crates/fr-dsn/src '*.java' scripts/audit-map/fr-dsn.map   -> 0
@@ -714,8 +731,9 @@ The three ignored tests are `fr-board`'s non-terminating ladder reproduction
 and a release-only lexer timing assertion).
 
 **Read the audit zero precisely.** For `fr-dsn` it *is* per-class evidence: the
-map pins each of the 52 ported Java classes to its Rust file(s) (73 map lines — a
-class whose Rust home spans two files gets one line per file), and an unmapped
+map pins each of the 52 ported Java classes to its Rust file(s) (56 mapping
+lines in a 74-line file — a class whose Rust home spans two files gets one line
+per file, the rest is comments), and an unmapped
 class prints `UNMAPPED`. For `fr-board` and `fr-geometry` the older crate-wide
 form still applies, with Plan 2's caveat.
 

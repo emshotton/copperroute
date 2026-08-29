@@ -388,7 +388,7 @@ resolved the items marked ✓ below — verified against the committed tree)
   `<JavaClass> <rust-path-glob>` map; a mapped class is searched only under its
   mapped path(s), and an unmapped class falls back to the crate-wide search
   **and prints `UNMAPPED <Class>`**. `scripts/audit-map/fr-dsn.map` maps all 52
-  classes Plan 3 ports and all four `fr-dsn` invocations exit 0 with no
+  classes Plan 3 ports (56 mapping lines) and all four `fr-dsn` invocations exit 0 with no
   `MISSING` and no `UNMAPPED`. **What Plan 3 did not do:** write a
   `scripts/audit-map/fr-board.map` and re-run Plan 2's nine directories under it
   — those are still audited with the 3-argument crate-wide form, so the caveat
