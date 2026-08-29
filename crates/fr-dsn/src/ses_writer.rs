@@ -126,8 +126,8 @@ fn write_placement<W: Write>(
 ///
 /// Note the guard differs from `Package.writePlacementScope`'s (Package.java:372), which the DSN
 /// path uses: this one is `undeletedItemFound` alone, with no `|| !currentComponent.isPlaced()`.
-/// A placed component whose every item has been deleted is therefore written by the DSN writer
-/// and skipped by this one.
+/// An unplaced component with no undeleted items is therefore written by the DSN writer and
+/// skipped by this one (a placed one with no undeleted items is skipped by both).
 fn write_components<W: Write>(
     board: &Board,
     identifier_type: &IdentifierType,
@@ -263,8 +263,8 @@ fn write_swapped_pin<W: Write>(
     }
     let component = board.components.get(component_id);
     let component_name = component.name.clone();
-    // totalized: SesWriter.writeWasIs dereferences `getPin(...).name` (SesWriter.java:198, :209) with no
-    // a pin index past the package's pin count would NPE. The port writes the component name and
+    // totalized: SesWriter.writeWasIs dereferences `getPin(...).name` (SesWriter.java:198, :209)
+    // with no null check, so a pin index past the package's pin count would NPE. The port writes the component name and
     // the separating `-` and then stops, which is the closest total behaviour. Unreachable: a
     // pin's index always comes from its own package.
     let package_pin_name = board
@@ -533,7 +533,9 @@ fn write_wire<W: Write>(
 /// `board`/`wire_id` replace Java's `PolylineTrace` receiver: the contact sets live on
 /// [`Board`] in this port, not on the trace.
 // renamed: SesWriter.snappedEndpoint -> snapped_endpoint (a free function taking the board).
-fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<FloatPoint> {
+// `pub` because Java's is package-visible and `SesRoundTripTest.endpointSnappingIsStableAndRoundTrips`
+// calls it directly; `crates/fr-dsn/tests/ses_round_trip.rs` is that test.
+pub fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<FloatPoint> {
     let ctx = board.ctx();
     let Some(Item::Trace(wire)) = board.get_item(wire_id) else {
         return None;
@@ -544,8 +546,7 @@ fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<
         wire.last_corner()
     };
     // totalized: SesWriter.snappedEndpoint's `corner.toFloat()` (SesWriter.java:428) NPEs on an
-    // empty polyline, which
-    // `Polyline`'s invariants make unreachable.
+    // empty polyline, which `Polyline`'s invariants make unreachable.
     let corner_float = corner?.to_float();
     let contacts = if start_side {
         board.trace_start_contacts(wire_id)
