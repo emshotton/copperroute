@@ -3,6 +3,8 @@
 
 use fr_board::{AngleRestriction, Board, BoardError, ItemId, Unit};
 
+use crate::coordinate_transform::CoordinateTransform;
+
 /// Errors `fr-dsn`'s reading and writing operations can produce.
 ///
 /// Per the plan's Global Constraints (`docs/superpowers/plans/2026-08-28-plan-3-dsn.md`):
@@ -15,13 +17,6 @@ pub enum DsnError {
     /// An I/O error on the underlying stream.
     #[error(transparent)]
     Io(#[from] std::io::Error),
-
-    /// The input ended before a scope that was opened could be closed.
-    #[error("unexpected end of file: expected {scope}")]
-    UnexpectedEof {
-        /// The name of the scope that was still open when input ran out.
-        scope: String,
-    },
 
     /// The input does not fit Java's fixed 16 MiB lexer buffer.
     ///
@@ -116,23 +111,32 @@ pub struct BoardMetadata {
 /// interface` + four `record` permits become the four variants below).
 ///
 /// `Success.metadata` is `Option` because `DsnReader.readBoard` returns `Success` with a
-/// **`null`** metadata — only `readMetadata` populates it. `OutlineMissing.board` is `Option`
-/// because Java's may be `null` or partial.
+/// **`null`** metadata — only `readMetadata` populates it. Both variants' `board` is `Option`
+/// because Java's may be `null` or partial: `DsnReadResultTest.successAndOutlineMissingHoldNullBoard`
+/// constructs `new Success(null, null, List.of())` explicitly, and `DsnReader.readBoard` reaches
+/// it for real on a `(pcb name)` whose body never produced a board (Task 10 correction — Task 1
+/// had `Success.board` non-optional).
 ///
-/// Note: unlike the Java record, this variant does not yet carry a `CoordinateTransform` field
-/// — that type does not exist until Plan 3 Task 5, and Task 10 is what adds it here.
+/// `coordinate_transform` is a field the **port adds** that Java's record lacks (Plan 3 Task 10,
+/// controller ruling A). Java's writers re-derive the transform from the board; this port's
+/// (Tasks 11-12) take a `&CoordinateTransform` explicitly, and the one `Structure.createBoard`
+/// produced is the only one that round-trips a file's coordinates unchanged. It is `None` when
+/// `createBoard` never ran.
 #[derive(Debug)]
 pub enum BoardReadResult {
     /// Full board + metadata are available. The board is fully constructed and routable.
     Success {
-        /// The constructed board.
-        board: Box<Board>,
+        /// The constructed board; `None` when the read succeeded without producing one.
+        board: Option<Box<Board>>,
         /// Header/structure metadata; `None` when the caller only wanted the board (Java's
         /// `null`).
         metadata: Option<BoardMetadata>,
         /// Non-fatal issues encountered during loading (e.g. degenerate wires, duplicate vias,
         /// missing nets). May be empty.
         warnings: Vec<String>,
+        /// The transform `Structure.createBoard` built between DSN and board coordinates; `None`
+        /// if it never ran. Added by the port — see the type's doc comment.
+        coordinate_transform: Option<CoordinateTransform>,
     },
     /// The board was constructed but the outline (boundary) scope was absent from the input
     /// file. The board reference is still valid and may be used with caution.
@@ -143,6 +147,9 @@ pub enum BoardReadResult {
         metadata: Option<BoardMetadata>,
         /// Non-fatal issues encountered during loading. May be empty.
         warnings: Vec<String>,
+        /// The transform `Structure.createBoard` built between DSN and board coordinates; `None`
+        /// if it never ran. Added by the port — see the type's doc comment.
+        coordinate_transform: Option<CoordinateTransform>,
     },
     /// The input did not conform to the expected grammar/format.
     ParseError {

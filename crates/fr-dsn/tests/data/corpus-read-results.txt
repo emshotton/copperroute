@@ -1,0 +1,328 @@
+# Ground truth for the whole `../freerouting/fixtures/*.dsn` corpus, captured from the pinned
+# 2.3.0 jar: one `FIXTURE <name> <variant> warnings=<n>` line per file in name order, followed
+# by one `  W <message>` line per warning.
+#
+# $ export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
+# $ javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/CProbe.java
+# $ java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/nprobe \
+#       CProbe ../freerouting/fixtures
+#
+# Lines beginning with '#' are this header; everything else is compared verbatim.
+FIXTURE Issue006-LPC18XX_43XX_SCH.dsn ParseError warnings=0
+FIXTURE Issue015-StackOverflow.dsn Success warnings=10
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue022-AutoRouter_interrupted.dsn Success warnings=16
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue026-J2_reference.dsn Success warnings=0
+FIXTURE Issue027-zMRETestFixture.dsn Success warnings=0
+FIXTURE Issue029-hw48na.dsn Success warnings=4
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue034-Green14SegLED.dsn Success warnings=0
+FIXTURE Issue035-ReadPlaceScope.dsn Success warnings=0
+FIXTURE Issue039-bug-design.dsn Success warnings=0
+FIXTURE Issue054-tairakb.dsn Success warnings=1
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue066-Project_GP8B.dsn Success warnings=0
+FIXTURE Issue070-Autorouter_FQ101_PCB_2022-05-13.dsn Success warnings=0
+FIXTURE Issue093-interf_u.dsn Success warnings=0
+FIXTURE Issue102-Mars-64-revE-rot00.dsn Success warnings=0
+FIXTURE Issue103-Board-Routed.dsn Success warnings=0
+FIXTURE Issue103-Board-Unrouted.dsn Success warnings=0
+FIXTURE Issue107-freq_teiler_200kHz_kicad.dsn Success warnings=0
+FIXTURE Issue107-freq_teiler_200kHz_kicad_bad.dsn Success warnings=0
+FIXTURE Issue110-Pajalnaja_stancija.dsn Success warnings=0
+FIXTURE Issue110-RelayModule.dsn Success warnings=0
+FIXTURE Issue110-testPCBSpecctraFile.dsn Success warnings=0
+FIXTURE Issue110-testProjectFromFreeroutingBugTest.dsn Success warnings=0
+FIXTURE Issue110-testProjectFromFreeroutingBugTest01.dsn Success warnings=0
+FIXTURE Issue110-Паяльная станция.dsn Success warnings=0
+FIXTURE Issue113-Protein.dsn Success warnings=0
+FIXTURE Issue143-rpi_splitter.dsn Success warnings=0
+FIXTURE Issue143-rpi_splitter_mod.dsn Success warnings=0
+FIXTURE Issue145-smoothieboard.dsn Success warnings=0
+FIXTURE Issue153-wavefolder.dsn Success warnings=0
+FIXTURE Issue155-CH376_MCP795_Module.dsn Success warnings=0
+FIXTURE Issue157-TeamAdapt-LinePCB.dsn Success warnings=0
+FIXTURE Issue159-setonix_2hp-pcb.dsn Success warnings=0
+FIXTURE Issue163-pic_programmer.dsn Success warnings=0
+FIXTURE Issue178-KeebMaker_Sofle_Choc.dsn Success warnings=0
+FIXTURE Issue179-Autorouter_PCB1_2023-3-24.dsn Success warnings=0
+FIXTURE Issue187-processor.Z80.dsn Success warnings=0
+FIXTURE Issue190-processor.Z80.dsn Success warnings=9
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue208-freerouting.dsn Success warnings=0
+FIXTURE Issue209-split05.dsn Success warnings=0
+FIXTURE Issue209-split10.dsn Success warnings=0
+FIXTURE Issue214-freerouting.dsn Success warnings=0
+FIXTURE Issue217-8088sbc.dsn Success warnings=0
+FIXTURE Issue219-LogicBoard_smt.dsn Success warnings=0
+FIXTURE Issue229-display-8-digit-hc595.dsn Success warnings=0
+FIXTURE Issue230-CNH_Functional_Tester_1.dsn Success warnings=0
+FIXTURE Issue269-caniot-tiny-arm.dsn Success warnings=0
+FIXTURE Issue269-z10_module.dsn Success warnings=3
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue270-non-ansi_bracket.dsn Success warnings=0
+FIXTURE Issue289-Autorouter_PCB_FHT-8086_2024-03-08.dsn Success warnings=0
+FIXTURE Issue289-Autorouter_PCB_FHT-VGA_2024-03-25.dsn Success warnings=0
+FIXTURE Issue297-myboard.dsn Success warnings=0
+FIXTURE Issue313-FastTest.dsn Success warnings=0
+FIXTURE Issue326-Mars-64-revE.dsn Success warnings=0
+FIXTURE Issue367-Charger.dsn Success warnings=0
+FIXTURE Issue368-CorneyIslandWireless_input_design.dsn Success warnings=0
+FIXTURE Issue413-test.dsn Success warnings=0
+FIXTURE Issue420-contribution-board.dsn Success warnings=0
+FIXTURE Issue433-my-board.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm01.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm02.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm04.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm05.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm06.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm07.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm08.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm09.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm10.dsn Success warnings=0
+FIXTURE Issue508-DAC2020_bm11.dsn Success warnings=0
+FIXTURE Issue508-SMD-routing-issue-demo.dsn Success warnings=0
+FIXTURE Issue555-BBD_Mars-64.dsn Success warnings=0
+FIXTURE Issue555-CNH_Functional_Tester_1.dsn Success warnings=0
+FIXTURE Issue558-dev-board.dsn Success warnings=0
+FIXTURE Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn Success warnings=0
+FIXTURE Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn Success warnings=152
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Bottom'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'Top'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue575-drc_dev-board_4_hole_clearance_violations.dsn Success warnings=0
+FIXTURE Issue593-BBD_Mars-64.dsn Success warnings=0
+FIXTURE Issue649-kicad_ecc83-pp_input_board_v1.dsn Success warnings=0
+FIXTURE Issue649-kicad_ecc83-pp_input_board_v2.dsn Success warnings=0
+FIXTURE Issue676-ch32v-tx118s.dsn Success warnings=0
+FIXTURE Issue684-Autorouter_PCB1_2026-5-8.dsn Success warnings=0
+FIXTURE Issue689-BBD_Mars-64.dsn Success warnings=0
+FIXTURE Issue690-ecc83.dsn Success warnings=0
+FIXTURE Issue690-kit-dev-coldfire-xilinx_5213.dsn Success warnings=0
+FIXTURE Issue690-sonde_xilinx.dsn Success warnings=0
+FIXTURE Issue721-Autorouter_CE2632_HarryMu_2026-6-15.dsn Success warnings=0
+FIXTURE Issue723-CombineStackOverflow.dsn Success warnings=0
+FIXTURE Issue730-DAC2020_bm11.dsn Success warnings=0
+FIXTURE Issue732-CM5_MINIMA_3.dsn Success warnings=0
+FIXTURE Issue732-DAC2020_bm10.dsn Success warnings=0
+FIXTURE Issue732-RoyalBlue54L-Feather.dsn Success warnings=0
+FIXTURE Issue733-kicad_complex_hierarchy_input_design.dsn Success warnings=0
+FIXTURE Issue733-kicad_interf_u_input_design.dsn Success warnings=0
+FIXTURE Issue742-tastexx-pcb.dsn Success warnings=0
+FIXTURE Issue753-CPU-85_r104.dsn Success warnings=0
+FIXTURE Issue754-avionics_hub.dsn Success warnings=8
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'B.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue756-minimal-hang.dsn Success warnings=0
+FIXTURE Issue756-minimal-ok.dsn Success warnings=0
+FIXTURE Issue756-tomu-fpga.dsn Success warnings=2
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue756-tomu-fpga11.dsn Success warnings=2
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue756-tomu-fpga7.dsn Success warnings=2
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue756-tomu-fpga8.dsn Success warnings=2
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue756-tomu-fpga9.dsn Success warnings=2
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+  W Wiring: degenerate wire trace skipped (all 1 corners are identical — zero-length trace) on layer 'F.Cu'. This is likely a DSN export issue in your EDA tool.
+FIXTURE Issue757-minimal-soe-ok.dsn Success warnings=0
+FIXTURE Issue757-minimal-soe.dsn Success warnings=0
+FIXTURE empty_board.dsn Success warnings=0

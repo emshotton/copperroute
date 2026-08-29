@@ -22,7 +22,7 @@
 
 use fr_board::{
     Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components, FixedState,
-    ItemClass, ItemIdGenerator, Layer, LayerStructure, Packages, Padstacks, equals_ignore_case,
+    ItemClass, Layer, LayerStructure, Packages, Padstacks, equals_ignore_case,
 };
 use fr_geometry::{Area, IntBox, PolylineShapeRef, Shape, TileShape};
 
@@ -1324,7 +1324,9 @@ fn create_board(
         ..Communication::new(
             p.unit,
             p.resolution,
-            ItemIdGenerator::new(),
+            // Structure.java:1252: `scopeParameter.idGenerator`, which `DsnReader.readBoard`
+            // defaults to a fresh `ItemIdGenerator` (DsnReader.java:73-75).
+            p.id_generator,
             p.host_cad.clone(),
             p.host_version.clone(),
         )

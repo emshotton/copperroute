@@ -1,0 +1,31 @@
+(pcb wiring_warnings.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary
+      (path pcb 0  0 0  100000 0  100000 100000  0 100000  0 0)
+    )
+    (via VIA1)
+  )
+  (library
+    (padstack VIA1 (shape (circle F.Cu 800)) (shape (circle B.Cu 800)) (attach off))
+  )
+  (network
+    (net N1)
+    (class kicad_default N1
+      (rule (width 250) (clearance 200))
+    )
+  )
+  (wiring
+    (wire (net N1))
+    (wire (path pcb 200  40000 50000  60000 50000) (net N1))
+    (wire (path F.Cu 200  9000000 9000000  9100000 9000000) (net N1))
+    (wire (path F.Cu 200  20000 20000  20000 20000) (net N1))
+  )
+)

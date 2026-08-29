@@ -2,8 +2,9 @@
 //! threaded through every scope reader/writer, and the generic scope dispatch loop.
 
 use std::io::Write;
+use std::time::Duration;
 
-use fr_board::{AngleRestriction, Board, Unit};
+use fr_board::{AngleRestriction, Board, ItemIdGenerator, Unit};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
@@ -19,13 +20,35 @@ use crate::parser::{header, library, network, part_library, placement, structure
 
 /// Per-read options threaded through [`ReadScopeParameter`] as `options`.
 ///
-/// Placeholder: not a Java class (Java's `DsnReader.readBoard` takes no options object at all).
-/// Plan ruling 4 (Task 10) adds `normalize_time_limit`, the `StopCheck`-backed limit on
-/// `Board::normalize_all_traces_checked` that `Wiring.readScope`'s final
-/// `board.normalizeAllTraces()` call (Wiring.java:346) runs under.
+/// Not a Java class: `DsnReader.readBoard` takes no options object at all. The single field is
+/// plan ruling 4's — the limit `Wiring.readScope`'s closing `board.normalizeAllTraces()` call
+/// (Wiring.java:346) runs under, so that quirk #76's non-terminating ladder produces Java's own
+/// `"Wiring: normalization of traces failed"` warning instead of a wedged process.
 // added in Plan 3: normalize_time_limit (Task 10, plan ruling 4)
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct DsnReadOptions {}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DsnReadOptions {
+    /// How long `Board::normalize_all_traces_checked` may run at the end of the `wiring` scope
+    /// before the read gives up on it. Default 60 s (plan ruling 4); Task 15 asserts that no
+    /// fixture in the corpus comes near it.
+    pub normalize_time_limit: Duration,
+}
+
+impl Default for DsnReadOptions {
+    fn default() -> DsnReadOptions {
+        DsnReadOptions {
+            normalize_time_limit: Duration::from_secs(60),
+        }
+    }
+}
+
+impl DsnReadOptions {
+    /// [`Self::normalize_time_limit`] as the milliseconds `TimeLimit::new` takes, saturating at
+    /// `i32::MAX` (~24.8 days) rather than wrapping.
+    #[must_use]
+    pub fn normalize_time_limit_ms(&self) -> i32 {
+        i32::try_from(self.normalize_time_limit.as_millis()).unwrap_or(i32::MAX)
+    }
+}
 
 /// `io/specctra/parser/ReadScopeParameter.java`: the state every scope reader shares while
 /// reading a DSN file.
@@ -123,6 +146,12 @@ pub struct ReadScopeParameter<'a> {
     // exposed directly).
     /// `ReadScopeParameter.warnings`.
     pub warnings: Vec<String>,
+    /// `ReadScopeParameter.idGenerator` (ReadScopeParameter.java:30) — Java's nullable
+    /// `IdGenerator`, defaulted to a fresh `ItemIdGenerator` by `DsnReader.readBoard`
+    /// (DsnReader.java:73-75) and read exactly once, by `Structure.createBoard`
+    /// (Structure.java:1252), which hands it to the board's `Communication`. Added in Plan 3
+    /// Task 10, the task that ports `DsnReader`.
+    pub id_generator: ItemIdGenerator,
     /// Not a Java field — see [`DsnReadOptions`].
     pub options: &'a DsnReadOptions,
 }
@@ -156,6 +185,7 @@ impl<'a> ReadScopeParameter<'a> {
             resolution: 100,
             snap_angle: AngleRestriction::FortyFiveDegree,
             warnings: Vec::new(),
+            id_generator: ItemIdGenerator::new(),
             options,
         }
     }

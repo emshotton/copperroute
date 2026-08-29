@@ -114,6 +114,21 @@ public final class NProbe {
       sb.append(" pin=").append(p.name());
     } else if (it instanceof ConductionArea ca) {
       sb.append(" layer=").append(ca.get_layer());
+    } else if (it instanceof PolylineTrace t) {
+      // added by Plan 3 Task 10 (the `wiring` scope). Every fixture whose goldens predate this
+      // task has an empty `(wiring)` scope, so their files are unchanged by these two arms.
+      sb.append(" layer=").append(t.get_layer())
+        .append(" hw=").append(t.get_half_width())
+        .append(" corners=").append(t.corner_count())
+        .append(" first=").append(t.first_corner())
+        .append(" last=").append(t.last_corner())
+        .append(" fixed=").append(t.get_fixed_state());
+    } else if (it instanceof Via v) {
+      sb.append(" padstack=").append(v.get_padstack().name)
+        .append(" at=").append(v.get_center())
+        .append(" layers=").append(v.first_layer()).append("..").append(v.last_layer())
+        .append(" attach=").append(v.attach_allowed)
+        .append(" fixed=").append(v.get_fixed_state());
     }
     sb.append(" cmp=").append(it.get_component_no());
     sb.append(" cl=").append(it.clearance_class_no());

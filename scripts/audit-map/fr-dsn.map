@@ -47,3 +47,8 @@ Net                      parser/network.rs
 NetList                  parser/network.rs
 Network                  parser/network.rs
 KiCadNetClassNames       parser/network.rs
+Wiring                   parser/wiring.rs
+DsnReader                dsn_reader.rs
+BoardReadResult          error.rs
+BoardMetadata            error.rs
+FileFormat               error.rs

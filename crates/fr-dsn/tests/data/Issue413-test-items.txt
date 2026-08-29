@@ -1,0 +1,71 @@
+# Ground truth for `Issue413-test.dsn`, captured from the pinned 2.3.0 jar.
+#
+# $ export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
+# $ javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/NProbe.java
+# $ java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/nprobe \
+#       NProbe ../freerouting/fixtures/Issue413-test.dsn
+#
+# Lines beginning with '#' are this header; everything else is compared verbatim.
+layers 2
+item 1 BoardOutline cmp=0 cl=1 nets=[]
+item 2 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 3 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 4 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 5 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 6 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 7 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 8 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 9 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 10 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 11 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 12 ObstacleArea layer=0 name=null cmp=0 cl=1 nets=[]
+item 13 Pin pin=1 cmp=1 cl=1 nets=[2,]
+item 14 Pin pin=1 cmp=2 cl=1 nets=[4,]
+item 15 Pin pin=1 cmp=3 cl=1 nets=[2,]
+item 16 Pin pin=1 cmp=4 cl=1 nets=[1,]
+item 17 Pin pin=1 cmp=5 cl=1 nets=[1,]
+item 18 Pin pin=1 cmp=6 cl=1 nets=[5,]
+item 19 Pin pin=1 cmp=7 cl=1 nets=[3,]
+item 20 Pin pin=1 cmp=8 cl=1 nets=[5,]
+item 21 Pin pin=1 cmp=9 cl=1 nets=[4,]
+item 22 Pin pin=1 cmp=10 cl=1 nets=[3,]
+item 23 PolylineTrace layer=0 hw=24500 corners=3 first=(225000,-225000) last=(222958,-282618) fixed=UNFIXED cmp=0 cl=1 nets=[3,]
+item 24 PolylineTrace layer=1 hw=24500 corners=3 first=(222958,-282618) last=(252819,-5149961) fixed=UNFIXED cmp=0 cl=1 nets=[3,]
+item 25 PolylineTrace layer=0 hw=24500 corners=3 first=(252819,-5149961) last=(1851000,-5325000) fixed=UNFIXED cmp=0 cl=1 nets=[3,]
+item 26 PolylineTrace layer=0 hw=24500 corners=2 first=(1925000,-5325000) last=(1851000,-5325000) fixed=SHOVE_FIXED cmp=0 cl=1 nets=[3,]
+item 27 PolylineTrace layer=0 hw=24500 corners=3 first=(4325000,-2925000) last=(3699000,-3025000) fixed=UNFIXED cmp=0 cl=1 nets=[5,]
+item 28 PolylineTrace layer=0 hw=24500 corners=2 first=(3625000,-3025000) last=(3699000,-3025000) fixed=SHOVE_FIXED cmp=0 cl=1 nets=[5,]
+item 29 PolylineTrace layer=0 hw=24500 corners=3 first=(5025000,-325000) last=(3119475,-372201) fixed=UNFIXED cmp=0 cl=1 nets=[1,]
+item 30 PolylineTrace layer=1 hw=24500 corners=3 first=(3119475,-372201) last=(3776417,-4403436) fixed=UNFIXED cmp=0 cl=1 nets=[1,]
+item 31 PolylineTrace layer=0 hw=24500 corners=3 first=(3776417,-4403436) last=(4751000,-4425000) fixed=UNFIXED cmp=0 cl=1 nets=[1,]
+item 32 PolylineTrace layer=0 hw=24500 corners=2 first=(4825000,-4425000) last=(4751000,-4425000) fixed=SHOVE_FIXED cmp=0 cl=1 nets=[1,]
+item 33 PolylineTrace layer=0 hw=24500 corners=4 first=(5625000,-3225000) last=(3625000,-1225000) fixed=UNFIXED cmp=0 cl=1 nets=[2,]
+item 34 Via padstack=Via[0-1]_600:300_um at=(222958,-282618) layers=0..1 attach=false fixed=UNFIXED cmp=0 cl=1 nets=[3,]
+item 35 Via padstack=Via[0-1]_600:300_um at=(252819,-5149961) layers=0..1 attach=false fixed=UNFIXED cmp=0 cl=1 nets=[3,]
+item 36 Via padstack=Via[0-1]_600:300_um at=(3119475,-372201) layers=0..1 attach=false fixed=UNFIXED cmp=0 cl=1 nets=[1,]
+item 37 Via padstack=Via[0-1]_600:300_um at=(3776417,-4403436) layers=0..1 attach=false fixed=UNFIXED cmp=0 cl=1 nets=[1,]
+itemcount 37
+net 1 N0 subnet=1 class=default plane=false
+net 2 N3 subnet=1 class=default plane=false
+net 3 N2 subnet=1 class=default plane=false
+net 4 N1 subnet=1 class=default plane=false
+net 5 N4 subnet=1 class=default plane=false
+viapadstacks[2] Via[0-1]_600:300_um Via[0-1]_600:300_um
+viainfo 0 Via[0-1]_600:300_um padstack=Via[0-1]_600:300_um cl=1 attach=false
+viainfo 1 Via[0-1]_600:300_um-kicad_default padstack=Via[0-1]_600:300_um cl=1 attach=false
+viarule 0 default [Via[0-1]_600:300_um]
+viarule 1 kicad_default [Via[0-1]_600:300_um-kicad_default]
+netclass 0 default traceCl=1 viaRule=kicad_default hw=[24500,24500] pullTight=true shoveFixed=false minLen=0.0 maxLen=0.0
+clclasses[2] 0:null 1:default
+clrow 0 0 0
+clrow 1 0 2000
+component 1 X8 pkg=endpoint_footprint placed=true front=true lp=null
+component 2 X3 pkg=endpoint_footprint placed=true front=true lp=null
+component 3 X7 pkg=endpoint_footprint placed=true front=true lp=null
+component 4 X2 pkg=endpoint_footprint placed=true front=true lp=null
+component 5 X1 pkg=endpoint_footprint placed=true front=true lp=null
+component 6 X9 pkg=endpoint_footprint placed=true front=true lp=null
+component 7 X5 pkg=endpoint_footprint placed=true front=true lp=null
+component 8 X10 pkg=endpoint_footprint placed=true front=true lp=null
+component 9 X4 pkg=endpoint_footprint placed=true front=true lp=null
+component 10 X6 pkg=endpoint_footprint placed=true front=true lp=null
