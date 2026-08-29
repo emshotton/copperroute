@@ -16,8 +16,9 @@ use crate::{RouterSettings, SettingsSource, SourceKind, merger::priority};
 /// `settings/sources/RulesFileSettings.java`: the explicit routing-rule overrides.
 ///
 /// This is the tier that carries per-layer directions and per-layer trace costs into the merge,
-/// and — because of quirk Q18 — the tier whose trace costs the DSN source at priority 20 has
-/// usually already blocked. Its per-layer `preferredDirectionHorizontal` still lands, because
+/// and — because of quirk Q18 (`docs/java-quirks.md` #128) — the tier whose trace costs the DSN
+/// source at priority 20 has usually already blocked. Its per-layer `preferredDirectionHorizontal`
+/// still lands, because
 /// `layers` is an *object* array and merges element-wise (plan ruling 1's Q1 channel).
 ///
 /// renamed: RulesFileSettings -> RulesFileSettings::new / RulesFileSettings::from_path.
@@ -115,7 +116,7 @@ impl SettingsSource for RulesFileSettings {
 /// | where | entry point | layer structure |
 /// |---|---|---|
 /// | priority 40, both merges | [`RulesFileSettings`] → `RulesReader.readRouterSettings` (`:180-236`) | **discovered from the file** — a `LinkedHashSet` of its own `(layer_rule …)` names (`:198`, `:238-274`) |
-/// | after merge #2 | `RulesReader.read(…, board, job.routerSettings)` (`RoutingJobScheduler.java:172-181`) | **the board's** (`RulesReader.java:112`) |
+/// | after merge #2 | `RulesReader.read(…, board, job.routerSettings)` (`RoutingJobScheduler.java:173-184`) | **the board's** (`RulesReader.java:112`) |
 ///
 /// For a file whose `layer_rule`s name every layer of the board in board order the two agree. For
 /// any other file they do not: a two-`layer_rule` file (`F.Cu`, `B.Cu`) read against a four-layer
@@ -143,7 +144,7 @@ impl SettingsSource for RulesFileSettings {
 ///
 /// Java's `boolean`: `true` when the `(rules …)` scope closed cleanly, `false` for a bad header,
 /// an unexpected end of file, or a scanner error (`:121-133`, `:164-166`). No caller in the
-/// headless path reads it — `RoutingJobScheduler.java:172-181` discards it inside a `try` — and
+/// headless path reads it — `RoutingJobScheduler.java:173-184` discards it inside a `try` — and
 /// nothing inside the scope can make it `false`.
 ///
 // renamed: RulesReader.read -> apply_rules_file_against_board, restricted to the

@@ -17,12 +17,12 @@ public class FProbe {
   }
 
   public static void main(String[] args) throws Exception {
-    // A. '-' is a path separator (Q14)
+    // A. '-' is a path separator (Q14 / docs/java-quirks.md #118)
     RouterSettings a = new RouterSettings();
     System.out.println("A. set optimizer-max_passes=7 -> " + tryset(a, "optimizer-max_passes", "7")
         + " ; optimizer.maxPasses=" + a.optimizer.maxPasses);
 
-    // B. boolean quirk (Q16)
+    // B. boolean quirk (Q16 / docs/java-quirks.md #120)
     RouterSettings b = new RouterSettings();
     System.out.println("B1. enabled=yes -> " + tryset(b, "enabled", "yes") + " ; enabled=" + b.enabled);
     System.out.println("B2. enabled=TRUE -> " + tryset(b, "enabled", "TRUE") + " ; enabled=" + b.enabled);
@@ -30,7 +30,7 @@ public class FProbe {
     System.out.println("B4. enabled=0 -> " + tryset(b, "enabled", "0") + " ; enabled=" + b.enabled);
     System.out.println("B5. enabled=' true ' -> " + tryset(b, "enabled", " true ") + " ; enabled=" + b.enabled);
 
-    // C. array navigation, extra tokens dropped / allocation size (Q15)
+    // C. array navigation, extra tokens dropped / allocation size (Q15 / docs/java-quirks.md #119)
     RouterSettings c1 = new RouterSettings();
     c1.setLayerCount(2);
     System.out.println("C1. layers.routable=a,b,c on len2 -> " + tryset(c1, "layers.routable", "a,b,c")

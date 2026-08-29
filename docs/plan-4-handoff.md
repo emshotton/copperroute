@@ -1,9 +1,9 @@
 # Plan 4 hand-off — router settings, the merge engine and the settings sources (`fr-settings`)
 
-Branch `plan-4-settings`, 20 implementation commits on top of `main` (`462d744`,
-Plan 3 merged 2026-08-28) plus the plan document itself (`fb15aac`), tip
-`50e5195` before this document's own commit. The whole-branch final review has
-not yet run; this document closes the plan's own documentation obligations first.
+Branch `plan-4-settings`, 22 implementation commits on top of `main` (`462d744`,
+Plan 3 merged 2026-08-28) plus the plan document itself (`fb15aac`) — see `git log`
+for the tip, which includes the whole-branch final-review fix wave this document
+is itself part of.
 
 **Read this before Plans 5–8.** Plan 5 owns `DesignRulesCheckerSettings`'
 consumer side, Plans 6/7 read every routing cost this crate computes, and Plan 8
@@ -71,8 +71,9 @@ the merger": it contributes precisely those fields.)
    `(autoroute_settings)` block can carry — `vias`, `via_costs`,
    `plane_via_costs`, `start_ripup_costs`, `autoroute`/`postroute` and the
    per-layer rules — the file wins over `FREEROUTING__ROUTER__…` and over
-   `--router.…`. The spec has it the other way round. Quirk #115 in the register's
-   numbering, `RulesReader.java:153-157`.
+   `--router.…`. The spec has it the other way round. The mechanism is quirk
+   #142's second `.rules` parse (`RulesReader.java:153-157`); #127 and #128
+   describe what a merge can and cannot overwrite once a value has landed.
 2. **The spec's SES tier has no behaviour.** `SesFileSettings.getSettings()`
    returns a bare `new RouterSettings()` unconditionally
    (`SesFileSettings.java:27-36`) and the class is never registered in the

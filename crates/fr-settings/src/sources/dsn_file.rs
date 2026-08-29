@@ -10,7 +10,7 @@ use crate::{RouterSettings, SettingsSource, SourceKind, merger::priority};
 /// `settings/sources/DsnFileSettings.java`: router settings extracted from a Specctra design
 /// file by a metadata-only parse.
 ///
-/// # Quirk Q18 — the single most consequential quirk in this plan
+/// # Quirk Q18 / `docs/java-quirks.md` #128 — the single most consequential quirk in this plan
 ///
 /// `DsnFileSettings.java:46-48` calls `setLayerCount` whenever the extracted settings carry no
 /// layers, which covers **both** "the file has no `(autoroute_settings)` block" and "it has one

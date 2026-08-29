@@ -199,12 +199,12 @@ pub mod prelude {
 // `RouterSettingsTypeAdapterFactory` are ported there; the factory's two methods and the three
 // unrelated adapters are not, for the reasons below.
 // not ported: RouterSettingsTypeAdapterFactory.create (util/gson/RouterSettingsTypeAdapterFactory
-//   .java:22-72) — Gson's `TypeAdapterFactory` dispatch: it answers `null` for every type but
+//   .java:21-69) — Gson's `TypeAdapterFactory` dispatch: it answers `null` for every type but
 //   `RouterSettings` (`:24-27`) and otherwise wraps the delegate reflective adapter. `serde` binds
 //   the (de)serialiser to the type at compile time, so there is no factory to port; what the
 //   returned adapter *does* is [`json`], and its `write` half is
 //   [`RouterSettings::to_json_string_pretty`]'s `JavaNumberFormatter`.
-// not ported: RouterSettingsTypeAdapterFactory.read (:49-70) — the two-pass read (lenient textual
+// not ported: RouterSettingsTypeAdapterFactory.read (:48-67) — the two-pass read (lenient textual
 //   pass, then a fresh `JsonTreeReader` at default strictness) is described and reproduced in
 //   [`json`]; the entry point is [`RouterSettings::from_json_str`], and the `layers` re-read at
 //   `:59-64` is Task 1's `#[serde(skip)]` split. Named separately from `create` because the audit

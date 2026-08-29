@@ -19,9 +19,9 @@ use crate::{
 /// `layers`, `scoring.preferredDirectionTraceCost` and `scoring.undesiredDirectionTraceCost`
 /// stay `None`, per the comment at `:88-93`: their sizes depend on the board, so they come from
 /// [`super::DsnFileSettings`] and are finalised by `apply_board_specific_optimizations`.
-/// `resultJsonPath` is never assigned at all. This is what makes quirk Q18 consequential — the
-/// DSN source at priority 20 is the *first* writer of both cost arrays, and
-/// `copy_fields` rule 5 then freezes them.
+/// `resultJsonPath` is never assigned at all. This is what makes quirk Q18 (`docs/java-quirks.md`
+/// #128) consequential — the DSN source at priority 20 is the *first* writer of both cost arrays,
+/// and `copy_fields` rule 5 then freezes them.
 ///
 /// # One deviation, and why it is unobservable
 ///

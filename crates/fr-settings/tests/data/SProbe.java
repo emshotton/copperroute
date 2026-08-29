@@ -298,7 +298,7 @@ public class SProbe {
     accessors("E.hw48na", hw.getSettings());
     dump("E.hw48naRaw", hw.getSettings());
 
-    // ---- F: DsnFileSettings, the Q18 seeding ------------------------------------------------
+    // ---- F: DsnFileSettings, the Q18 seeding (docs/java-quirks.md #128) --------------------
     System.out.println("## F DsnFileSettings");
     for (String name :
         new String[] {
@@ -370,7 +370,7 @@ public class SProbe {
     // never runs, so RulesFileSettings falls back to a blank `new RouterSettings()`.
     p("H.blank.layerCount", new RulesFileSettings("nope.rules").getSettings().getLayerCount());
 
-    // ---- G: a DSN source merged under DefaultSettings — quirk Q18's consequence -------------
+    // ---- G: a DSN source merged under DefaultSettings — quirk Q18's (#128) consequence -----
     System.out.println("## G Q18: the DSN source's seeded arrays block later sources");
     try (InputStream in = new FileInputStream(new File(fixtures, "Issue066-Project_GP8B.dsn"))) {
       SettingsMerger g =

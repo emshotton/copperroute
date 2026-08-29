@@ -95,7 +95,7 @@ public class VProbe {
     System.out.println("C.nullOptimizer -> maxThreads=" + v(nullOpt.maxThreads)
         + " optimizerStillNull=" + (nullOpt.optimizer == null));
 
-    // ---- D: setLayerCount re-wipe (Q11) --------------------------------------
+    // ---- D: setLayerCount re-wipe (Q11 / docs/java-quirks.md #126) ------------
     RouterSettings d = mk();
     d.setLayerCount(2);
     d.setPreferredDirectionTraceCosts(0, 2.5);

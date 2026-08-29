@@ -20,22 +20,21 @@
 //!
 //! | Method | Java site | Only callers |
 //! |---|---|---|
-//! | `setAlgorithm` | `:221-228` | none outside `RouterSettings` and the JUnit `TestingSettings` helper |
+//! | `setAlgorithm` | `:221-227` | none — no caller anywhere in the Java tree, test or otherwise |
 //! | `setOptimizerEnabled` | `:230-238` | `gui/windows/routing/WindowAutorouteParameter.java:515` |
 //! | `setFanoutEnabled` | `:583-592` | `WindowAutorouteParameter.java:507` |
-//! | `getRunFanout` | `:573` | `WindowAutorouteParameter.java:590` |
-//! | `isFanoutEnabled` | `:578` | `autoroute/pipeline/{RoutingPipeline,BatchAutorouter,AutorouteBatchLoop}.java` — **ported in Task 6 fix round 1** |
+//! | `getRunFanout` | `:573-575` | `WindowAutorouteParameter.java:590` |
+//! | `isFanoutEnabled` | `:578-580` | `autoroute/pipeline/{RoutingPipeline,BatchAutorouter,AutorouteBatchLoop}.java` — **ported in Task 6 fix round 1** |
 //!
 //! `isFanoutEnabled` had a real headless caller, so it is ported (see [`Self::is_fanout_enabled`],
 //! whose doc comment records the `getRunFanout` default asymmetry, quirk #139). The other four
-//! are GUI-only and are candidates for `// not ported:`; Task 11 owns that decision (its brief is
-//! the audit-to-zero and `// not ported:` roster task), and the markers below record the
-//! obligation so `grep -rn "added in Task"` lists it.
+//! are GUI-only with no headless caller, so none of them is ported; the `// not ported:` markers
+//! below record each one for `scripts/audit-port.sh`.
 //!
-// added in Task 11: setAlgorithm
-// added in Task 11: setOptimizerEnabled
-// added in Task 11: getRunFanout
-// added in Task 11: setFanoutEnabled
+// not ported: setAlgorithm (RouterSettings.java:221-227) — no non-test caller.
+// not ported: setOptimizerEnabled (RouterSettings.java:230-238) — GUI only: WindowAutorouteParameter.java:515.
+// not ported: getRunFanout (RouterSettings.java:573-575) — GUI only, opposite default from isFanoutEnabled (quirk #139).
+// not ported: setFanoutEnabled (RouterSettings.java:583-592) — GUI only: WindowAutorouteParameter.java:507.
 //!
 //! ## Transient-field serde treatment, JVM-verified
 //!
@@ -781,7 +780,9 @@ impl RouterSettings {
     ///    as `null` (`:518-520`), which `BendCostSettingsTest.nullScoringSafety:66-68` pins
     ///    directly. The derived `Clone` keeps them `None`.
     ///
-    /// Quirk Q12: `:490-492` calls `setLayerCount(getLayerCount())` on the fresh result before
+    /// Quirk Q12 (no `docs/java-quirks.md` row of its own — the same `clone()` call is the
+    /// counter-example named in passing by #119's text): `:490-492` calls
+    /// `setLayerCount(getLayerCount())` on the fresh result before
     /// copying anything, which reallocates its `layers` and both of its `scoring` cost arrays and
     /// resets every per-layer field. That is harmless only by accident of ordering — `layerCount
     /// > 0` implies `this.layers != null`, so `:493-501` replaces `layers` wholesale and `:519`
@@ -953,7 +954,8 @@ pub struct ExpansionCostFactor {
 mod tests {
     use super::*;
 
-    /// Quirk Q11's subtle half. `setLayerCount`'s reallocation branch (`:456-461`) is the *only*
+    /// Quirk Q11's (`docs/java-quirks.md` #126) subtle half. `setLayerCount`'s reallocation
+    /// branch (`:456-461`) is the *only*
     /// place `boardSpecificTraceCostsApplied` is cleared (`:457`), and it does not fire when the
     /// layer count is unchanged — while the per-layer and cost-array resets at `:466-477` run
     /// unconditionally. So a same-count `setLayerCount` wipes every cost the merge just parsed

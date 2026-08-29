@@ -27,10 +27,12 @@ records the rules once, from the Java, so the later plans do not re-derive them
 - **`classify_de_arguments(&[String]) -> DeSlots`** — the `-de` rule below (plan 4
   ruling 10 — the binary still reproduces the rule itself; Plan 8 rewires it).
 
-Baseline: freerouting **v2.3.0**. Primary source
-`app/freerouting/settings/GlobalSettings.java`, method
-`applyCommandLineArguments` (the flag table runs :521-838; the numeric/strategy
-flags cited below are :675-731). Secondary sources
+Baseline: freerouting **v2.3.0**. All line numbers in this file are re-derived
+against the Java clone's HEAD as of Plan 4 (plan ruling 7's convention), not
+against the v2.3.0 tag — re-check them against a later clone before reusing
+this table. Primary source `app/freerouting/settings/GlobalSettings.java`,
+method `applyCommandLineArguments` (the flag table runs :521-838; the
+numeric/strategy flags cited below are :675-731). Secondary sources
 `app/freerouting/settings/RouterSettings.java` and
 `app/freerouting/settings/sources/CliSettings.java`.
 

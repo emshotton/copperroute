@@ -295,7 +295,7 @@ fn legacy_bridge_is_dead() {
     assert_eq!(dead.hybrid_ratio.as_deref(), Some("2:3"));
     assert_eq!(
         dead.ignore_net_classes.as_deref(),
-        // `-inc` does **not** trim its entries (quirk: `docs/cli-legacy-flags.md` Q5).
+        // `-inc` does **not** trim its entries (`docs/cli-legacy-flags.md` quirk 5).
         Some(&["GND".to_string(), " VCC".to_string()][..])
     );
 
@@ -311,7 +311,8 @@ fn legacy_bridge_is_dead() {
     assert!(cli.get_parsed_arguments().is_empty());
 }
 
-/// One argv token, two fields, two clamps (plan ruling 8, `docs/cli-legacy-flags.md` Q2/Q6).
+/// One argv token, two fields, two clamps (plan ruling 8, `docs/cli-legacy-flags.md` quirk 2 /
+/// `docs/java-quirks.md` #132).
 /// `CProbe D11.mtClampHigh = 1024` (the dead bridge, `GlobalSettings.java:695-697`),
 /// `B6.mt2000.maxThreads = 2000` (`RouterSettings.maxThreads`, unclamped at parse time),
 /// `C5.mt2000.maxThreads(validated) = 4` (`validate()` caps at the processor count),

@@ -142,7 +142,7 @@ impl SettingsMerger {
     /// relation between two concrete types, and both classes involved are GUI-only and out of
     /// scope. It is a latent trap in Java rather than live behaviour — registering a base class
     /// after a subclass silently replaces the subclass, and the check is not symmetric — so it
-    /// is recorded as quirk Q13 and left unported.
+    /// is recorded as quirk Q13 (`docs/java-quirks.md` #129) and left unported.
     pub fn add_or_replace_sources(&mut self, new_sources: Vec<Box<dyn SettingsSource>>) {
         for new_source in new_sources {
             match self
@@ -169,7 +169,8 @@ impl SettingsMerger {
     ///
     /// 1. **No sources at all → `new RouterSettings()`, returned immediately without
     ///    `validate()`** (:134-137). That early return is the only reason
-    ///    `SettingsMergerTest.emptySourcesList` does not hit quirk Q5's `NullPointerException`.
+    ///    `SettingsMergerTest.emptySourcesList` does not hit quirk Q5's `NullPointerException`
+    ///    (`docs/java-quirks.md` #125).
     /// 2. Sort ascending by priority with a **stable** sort (:143 — Java's `List.sort` is
     ///    stable, and two sources may share a priority; JVM-verified, `SProbe
     ///    B.stableSortTie.maxPasses = 42`).

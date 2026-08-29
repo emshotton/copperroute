@@ -332,7 +332,8 @@ fn horizontal_vertical_and_trace_costs() {
     );
 }
 
-/// Quirk Q10: `getHorizontalTraceCosts` reads `scoring.preferredDirectionTraceCost[layer]` with
+/// Quirk Q10 (`docs/java-quirks.md` #123): `getHorizontalTraceCosts` reads
+/// `scoring.preferredDirectionTraceCost[layer]` with
 /// no null guard (`:825-827`), unlike `getPreferredDirectionTraceCosts` two methods above, so a
 /// `scoring` with null arrays and a non-empty `layers` throws. JVM-confirmed:
 /// `E.getHorizontalTraceCosts(0) -> java.lang.NullPointerException`.
@@ -431,7 +432,8 @@ fn trace_costs_are_sized_by_the_cost_array_not_by_the_layer_count() {
 
 // --- setLayerCount ----------------------------------------------------------------------------
 
-/// Quirk Q11's observable half: calling `setLayerCount` with the layer count it already has
+/// Quirk Q11's (`docs/java-quirks.md` #126) observable half: calling `setLayerCount` with
+/// the layer count it already has
 /// still wipes the cost arrays and the per-layer fields (`RouterSettings.java:466-477`). The
 /// `boardSpecificTraceCostsApplied` half is the unit test in `src/router_settings.rs`. JVM probe
 /// rows `D.before`/`D.after(same)`.
@@ -456,7 +458,8 @@ fn set_layer_count_rewipes_costs() {
 // --- clone ------------------------------------------------------------------------------------
 
 /// `RouterSettings.clone` (`:487-524`) replayed field for field, asserted against
-/// [`RouterSettings::java_clone`]. Quirk Q12: Java calls `setLayerCount(layerCount)` first
+/// [`RouterSettings::java_clone`]. Quirk Q12 (no `docs/java-quirks.md` row of its own — see
+/// #119's `clone()` aside): Java calls `setLayerCount(layerCount)` first
 /// (`:490-492`), which wipes the layers and both cost arrays of the *fresh* result — and is then
 /// entirely overwritten by `:493-501` and `:519`. It is correct only by accident of ordering.
 #[test]
@@ -673,7 +676,8 @@ fn set_max_threads_normalizes_and_mirrors() {
     assert!(s.optimizer.is_none());
 }
 
-/// Quirk Q4, stated as one test: `validate()` tests `maxThreads > availableProcessors`
+/// Quirk Q4 (`docs/java-quirks.md` #124), stated as one test: `validate()` tests
+/// `maxThreads > availableProcessors`
 /// (`:951` — a strict `>`), so a `0` survives it untouched, while `normalizeMaxThreads` maps `0`
 /// to the full processor count (`:144-146`). Two code paths in one class disagree about the same
 /// input. JVM rows `B.maxThreads 0 -> 0` and `C.setMaxThreads 0 -> 4`.
@@ -691,7 +695,8 @@ fn validate_and_normalize_disagree_about_zero_max_threads() {
     assert_ne!(validated.max_threads, normalized.max_threads);
 }
 
-/// Quirk Q5: `validate()` dereferences `this.maxPasses` unboxed (`:934`), so a settings object
+/// Quirk Q5 (`docs/java-quirks.md` #125): `validate()` dereferences `this.maxPasses` unboxed
+/// (`:934`), so a settings object
 /// that never went through `DefaultSettings` throws. JVM row
 /// `B.nullMaxPasses -> java.lang.NullPointerException`.
 #[test]

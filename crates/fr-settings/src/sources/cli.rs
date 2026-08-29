@@ -674,31 +674,31 @@ pub fn classify_de_arguments(args: &[String]) -> DeSlots {
 // No persistent configuration file and no user-data directory (spec §2). These five are also the
 // crate's `HostEnvironment` boundary: they are `static` mutable path state, which the plan's
 // Global Constraints forbid outright.
-// not ported: GlobalSettings.load (:267-381) — reads `freerouting.json` off disk through Gson.
+// not ported: GlobalSettings.load (:267-369) — reads `freerouting.json` off disk through Gson.
 //   Spec §2 has no persistent config file; the tier it feeds (`JsonFileSettings`, priority 10)
 //   is reserved and empty, and `p4t1` asserts that on the JVM rather than assuming it.
-// not ported: GlobalSettings.saveAsJson (:383-459) — writes that same file back.
-// not ported: GlobalSettings.getConfigurationFilePath (:178-205) — resolves `freerouting.json`
+// not ported: GlobalSettings.saveAsJson (:383-454) — writes that same file back.
+// not ported: GlobalSettings.getConfigurationFilePath (:178-180) — resolves `freerouting.json`
 //   under the user-data directory; nothing to resolve without the file.
-// not ported: GlobalSettings.getUserDataPath (:155-162) — `static` mutable path state.
-// not ported: GlobalSettings.setUserDataPath (:164-176) — the setter for it.
-// not ported: GlobalSettings.lockUserDataPath (:150-153) — the latch that freezes it.
+// not ported: GlobalSettings.getUserDataPath (:154-157) — `static` mutable path state.
+// not ported: GlobalSettings.setUserDataPath (:164-169) — the setter for it.
+// not ported: GlobalSettings.lockUserDataPath (:149-152) — the latch that freezes it.
 //
 // Version and locale, neither of which is a router setting.
-// not ported: GlobalSettings.getReleaseSafeVersion (:207-265) — the update check's version
+// not ported: GlobalSettings.getReleaseSafeVersion (:207-211) — the update check's version
 //   string (spec §2: no version check, no telemetry).
 // not ported: GlobalSettings.getCurrentLocale (:512-514) — returns `currentLocale`, a UI concern.
 //
 // The non-router half of the property-path machinery. The *path handling* is not dropped: it is
 // `ReflectionUtil.setFieldValue`, which Task 3 ports in full as [`crate::field_path`]; what is
 // dropped is only the `GlobalSettings`-rooted entry point and its `FRLogger` reporting.
-// not ported: GlobalSettings.setValue (:498-510) — `ReflectionUtil.setFieldValue(this, …)` plus
+// not ported: GlobalSettings.setValue (:498-509) — `ReflectionUtil.setFieldValue(this, …)` plus
 //   two `FRLogger` arms. The same code is `crate::field_path::set_field_value`, rooted at
 //   `RouterSettings` instead of `GlobalSettings`; the `Boolean` return becomes `Result`.
-// not ported: GlobalSettings.setDefaultValue (:461-472) — `load()` + `setValue` + `saveAsJson`,
+// not ported: GlobalSettings.setDefaultValue (:461-471) — `load()` + `setValue` + `saveAsJson`,
 //   i.e. the persistent-file path again.
-// not ported: GlobalSettings.applyNonRouterEnvironmentVariables (:474-496) — walks
-//   `FREEROUTING__*` and *skips* everything starting with `router.` (:485-487), so by
+// not ported: GlobalSettings.applyNonRouterEnvironmentVariables (:473-490) — walks
+//   `FREEROUTING__*` and *skips* everything starting with `router.` (:483-485), so by
 //   construction it sets nothing this crate models. The router half is
 //   `EnvironmentVariablesSource` ([`super::env`]).
 //

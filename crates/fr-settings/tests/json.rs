@@ -644,6 +644,13 @@ fn golden_path() -> PathBuf {
 /// text either way, because the two differ only in per-layer fields — `layers` and both `scoring`
 /// cost arrays — every one of which Gson drops. That remains true of the golden, and is no longer
 /// something this test has to rely on.
+///
+/// This test compares `parity::normalize_whitespace` of both sides, not raw bytes, so it does not
+/// by itself pin exact formatting (indentation, key order, `": "` spacing). That fidelity is
+/// covered elsewhere: the exact-bytes unit tests in this file (e.g.
+/// `fully_populated_output_is_byte_identical_to_gson`) and `scripts/differential/run.sh p4t1
+/// <matrix> all 1` itself, which this golden is committed from and which re-diffs byte for byte
+/// against a live jar.
 #[test]
 fn p4t1_mode_1_parity() {
     if !parity::require_java_dir() {

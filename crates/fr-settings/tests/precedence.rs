@@ -196,7 +196,7 @@ fn the_two_forms_agree_over_the_whole_matrix() {
 /// end, so the board-full comparison above cannot see a difference in what the *merge* produced.
 ///
 /// With no board, neither form runs the post-merge `.rules` re-apply either — Java guards it on
-/// `job.board != null` (`RoutingJobScheduler.java:172`) and its parse needs the board's layer
+/// `job.board != null` (`RoutingJobScheduler.java:173`) and its parse needs the board's layer
 /// structure (quirk #142) — so what this compares is the two merges and nothing else.
 #[test]
 fn the_merge_alone_agrees_without_a_board() {
@@ -233,7 +233,7 @@ const SPLIT_RULES_RACE: [&str; 4] = [
 /// forward and cannot un-write it.
 ///
 /// It is unreachable in Java: this only shows up with **no board**, and a job with no board never
-/// reaches `RoutingJobScheduler.java:172` or `:186` at all — with a board, `:186` re-initialises
+/// reaches `RoutingJobScheduler.java:173` or `:186` at all — with a board, `:186` re-initialises
 /// both arrays from the board and the difference disappears, which is what
 /// `the_two_forms_agree_over_the_whole_matrix` shows for these same four cases.
 #[test]
@@ -269,8 +269,9 @@ fn a_split_rules_pair_restarts_the_cost_array_race() {
     );
 }
 
-/// Q3: `SesFileSettings.getSettings` returns `new RouterSettings()` unconditionally
-/// (`SesFileSettings.java:27-36`), so registering it at priority 30 in either merge changes
+/// Q3 (`docs/java-quirks.md` #130): `SesFileSettings.getSettings` returns
+/// `new RouterSettings()` unconditionally (`SesFileSettings.java:27-36`), so registering it
+/// at priority 30 in either merge changes
 /// nothing — the spec's SES tier has no behaviour to port.
 #[test]
 fn ses_tier_is_a_no_op() {
@@ -318,8 +319,9 @@ fn matrix_rules(name: &str) -> Vec<u8> {
     std::fs::read(matrix::data_path(name)).expect("committed fixture")
 }
 
-/// Q2: `RulesReader.read` re-applies the `.rules` file's `(autoroute_settings)` block to the
-/// **already merged** settings (`RoutingJobScheduler.java:172-181` →
+/// Q2 (`docs/java-quirks.md` #142): `RulesReader.read` re-applies the `.rules` file's
+/// `(autoroute_settings)` block to the **already merged** settings
+/// (`RoutingJobScheduler.java:173-184` →
 /// `RulesReader.java:153-157`), so for every field that block carries the `.rules` file outranks
 /// the environment (55) and the command line (60) — the reverse of the priority ladder.
 ///
@@ -356,8 +358,9 @@ fn rules_outrank_env_and_cli_for_autoroute_fields() {
     );
 }
 
-/// Q9 + Q18, and the single most surprising behaviour in this plan: **a `.rules` file's explicit
-/// per-layer trace costs never reach the router in the headless path.** The whole chain, because
+/// Q9 (`docs/java-quirks.md` #127) + Q18 (#128), and the single most surprising behaviour in
+/// this plan: **a `.rules` file's explicit per-layer trace costs never reach the router in
+/// the headless path.** The whole chain, because
 /// anyone reading the assertion will assume a bug:
 ///
 /// 1. The DSN has no `(autoroute_settings)` block, so `DsnFileSettings.java:46-48` calls
@@ -398,8 +401,9 @@ fn rules_per_layer_trace_costs_are_discarded_in_the_headless_path() {
     assert_eq!(resolved, two_merge_form(&case, Some(&board), &host, false));
 }
 
-/// Q18 in isolation: the DSN's layer seeding blocks the later cost arrays with no board call
-/// anywhere in sight, so `1.0` is not an artefact of `applyBoardSpecificOptimizations` — it is
+/// Q18 (`docs/java-quirks.md` #128) in isolation: the DSN's layer seeding blocks the later
+/// cost arrays with no board call anywhere in sight, so `1.0` is not an artefact of
+/// `applyBoardSpecificOptimizations` — it is
 /// what the merge itself produces.
 #[test]
 fn dsn_layer_seeding_blocks_every_later_cost_array() {

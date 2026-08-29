@@ -123,7 +123,8 @@ fn default_settings_only() {
 ///
 /// The point of the test is the **early return** at `SettingsMerger.java:134-137`: it returns
 /// `new RouterSettings()` *without* calling `validate()`, which is the only reason this does not
-/// hit quirk Q5's `NullPointerException` on the null `maxPasses`. `SProbe B.emptySourcesList`
+/// hit quirk Q5's `NullPointerException` (`docs/java-quirks.md` #125) on the null
+/// `maxPasses`. `SProbe B.emptySourcesList`
 /// confirms the returned object is a real `new RouterSettings()` — null `maxPasses`, non-null
 /// `fanout`/`optimizer`/`scoring`.
 #[test]
@@ -571,7 +572,7 @@ fn rules_file_settings_parses_hw48na_rules() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// DsnFileSettingsTest.java — quirk Q18
+// DsnFileSettingsTest.java — quirk Q18 (`docs/java-quirks.md` #128)
 // ---------------------------------------------------------------------------------------------
 
 /// `DsnFileSettingsTest` (:36-98), all five of its assertions, plus the Q18 evidence the brief
@@ -638,7 +639,8 @@ fn dsn_file_settings_seeds_the_layer_count() {
     }
 }
 
-/// Quirk Q18's consequence, merged: with `DefaultSettings` at 0 and `DsnFileSettings` at 20, the
+/// Quirk Q18's (`docs/java-quirks.md` #128) consequence, merged: with `DefaultSettings` at 0
+/// and `DsnFileSettings` at 20, the
 /// merged settings already carry a full-length pair of all-`1.0` cost arrays, which
 /// `copy_fields` rule 5 (first writer wins) then makes untouchable by every later source.
 ///

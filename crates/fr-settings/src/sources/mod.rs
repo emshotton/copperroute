@@ -1,7 +1,7 @@
 //! `settings/sources/**`: the concrete [`crate::SettingsSource`] implementations, plus the
 //! `DsnRouterSettings` ⇄ [`RouterSettings`] conversion pair Plan 3 ruling 5 parked here.
 //!
-//! Five of Java's nine source classes are in scope for this crate:
+//! Seven of Java's nine source classes are in scope for this crate:
 //!
 //! | Java | Rust | priority |
 //! |---|---|---|
@@ -17,7 +17,7 @@
 //! that belong beside `CliSettings`: the dead [`cli::LegacyBridge`] (plan ruling 8) and the `-de`
 //! file classifier [`cli::classify_de_arguments`] (plan ruling 10).
 //!
-//! `JsonFileSettings` (10) and `GuiSettingsSource` (50) are out of scope — no persistent config
+//! `JsonFileSettings` (10) and `GuiSettingsSource` (65) are out of scope — no persistent config
 //! file (spec §2) and no GUI — and Task 11 writes their `// not ported:` roster.
 
 pub mod api;

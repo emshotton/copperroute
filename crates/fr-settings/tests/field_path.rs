@@ -113,7 +113,7 @@ fn pdh(settings: &RouterSettings) -> Vec<Option<bool>> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Q14 — `-` is a path separator
+// Q14 (docs/java-quirks.md #118) — `-` is a path separator
 // ---------------------------------------------------------------------------------------------
 
 /// `ReflectionUtil.java:23` splits on `[.:\-]`, so a `--router.x-y=` argument silently becomes a
@@ -147,12 +147,13 @@ fn separator_characters_in_the_value_survive() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Q15 — array navigation
+// Q15 (docs/java-quirks.md #119) — array navigation
 // ---------------------------------------------------------------------------------------------
 
 /// `ReflectionUtil.java:61-72` writes `min(arrayLength, tokenCount)` elements: extra tokens are
 /// dropped without a word. JVM probe C1: `layers.routable = "a,b,c"` on a 2-element array → `ok`,
-/// `len=2`, `routable=false,false` (the two written tokens both parse as `false` — Q16).
+/// `len=2`, `routable=false,false` (the two written tokens both parse as `false` — Q16,
+/// `docs/java-quirks.md` #120).
 #[test]
 fn extra_array_tokens_are_dropped() {
     let mut settings = RouterSettings::new();
@@ -200,7 +201,7 @@ fn a_trailing_comma_does_not_add_an_array_element() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Q16 — Boolean.parseBoolean
+// Q16 (docs/java-quirks.md #120) — Boolean.parseBoolean
 // ---------------------------------------------------------------------------------------------
 
 /// `ReflectionUtil.java:145-154`: `"0"` → `false`, `"1"` → `true`, otherwise

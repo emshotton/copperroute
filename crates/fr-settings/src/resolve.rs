@@ -14,7 +14,7 @@
 //! | 4 | `RoutingJobScheduler.java:93-96` → `HeadlessBoardManager.java:739-748` | on merge #1's result: `setLayerCount(board)` when it disagrees, then `applyBoardSpecificOptimizations(board)` |
 //! | 5 | `RoutingJobScheduler.java:103-166` | clone the prototype again, re-add the DSN, add the rules the scheduler chose, add `new ApiSettings(job.routerSettings)` at **70** — the whole result of steps 3-4 |
 //! | 6 | `RoutingJobScheduler.java:170` | **merge #2**, including its own `validate()` |
-//! | 7 | `:172-181` → `RulesReader.java:153-157` | re-parse the `.rules` bytes and `applyNewValuesFrom` them onto the **merged** object |
+//! | 7 | `:173-184` → `RulesReader.java:153-157` | re-parse the `.rules` bytes and `applyNewValuesFrom` them onto the **merged** object |
 //! | 8 | `:186` | `applyBoardSpecificOptimizations(board)` |
 //!
 //! Merge #1's result is *complete* — every field is non-null once `DefaultSettings` has run — so
@@ -91,7 +91,7 @@
 //! `DefaultSettings.clone()`, so it can pick a different winner for the two `scoring` cost arrays
 //! than merge #1 did; a single linear pass carries merge #1's answer and cannot un-write it.
 //! Java never sees it: the difference survives only while no board pass runs, and a job with no
-//! board never reaches `RoutingJobScheduler.java:172` or `:186` at all — `:186` re-derives both
+//! board never reaches `RoutingJobScheduler.java:173` or `:186` at all — `:186` re-derives both
 //! arrays from the board and the disagreement is gone. `tests/precedence.rs`'s
 //! `a_split_rules_pair_restarts_the_cost_array_race` pins both halves of that.
 
@@ -115,7 +115,7 @@ pub struct SettingsInputs<'a> {
     /// is the only way Java reaches this file.
     pub cli_rules: Option<&'a [u8]>,
     /// The **bytes** of the `.rules` the scheduler resolved (`job.rules ?? -dr ?? adjacent
-    /// <design>.rules`, `RoutingJobScheduler.java:118-152` — see
+    /// <design>.rules`, `RoutingJobScheduler.java:115-152` — see
     /// [`resolve_scheduler_rules_path`]).
     ///
     /// Bytes, not a parsed `RouterSettings`, because **Java parses this file twice with two
@@ -125,7 +125,7 @@ pub struct SettingsInputs<'a> {
     ///    `RulesReader.readRouterSettings`, whose layer structure is *discovered from the file*
     ///    (`RulesReader.java:198`, `:238-274`);
     /// 2. after merge #2, through `RulesReader.read(…, job.board, job.routerSettings)`
-    ///    (`RoutingJobScheduler.java:172-181`), whose layer structure is the **board's**
+    ///    (`RoutingJobScheduler.java:173-184`), whose layer structure is the **board's**
     ///    (`RulesReader.java:112`).
     ///
     /// A two-`layer_rule` file read against a four-layer board puts `B.Cu` at index 3 in the
@@ -189,7 +189,7 @@ impl Steps {
 /// `board` is `None` for "there is no board" — the merge alone. Java reaches that shape nowhere in
 /// the headless path, and each of its three board-facing sites answers it differently:
 /// `HeadlessBoardManager.java:740` guards on `board != null` and skips its pass;
-/// `RoutingJobScheduler.java:172` guards the post-merge `.rules` re-apply on
+/// `RoutingJobScheduler.java:173` guards the post-merge `.rules` re-apply on
 /// `rulesData != null && job.board != null`; `:186` guards nothing at all, so a null board there
 /// is an `NPE` at `RouterSettings.java:267`. This port follows the first two exactly — with no
 /// board there is no layer structure for the second parse of the `.rules` file to resolve against
@@ -203,7 +203,7 @@ impl Steps {
 // logs it and sets the job `TERMINATED`. This port returns the merged settings instead. No
 // reachable caller observes the difference — the scheduler only gets there once
 // `HeadlessBoardManager` has produced a board — and quirk row "totalized" records it. It is the
-// only one of the three sites this port does not follow literally; `:172`'s guard is reproduced.
+// only one of the three sites this port does not follow literally; `:173`'s guard is reproduced.
 ///
 /// # Panics
 ///
@@ -306,14 +306,15 @@ fn resolve_headless_steps(
         settings.validate(host); // `SettingsMerger.java:189`, again.
     }
 
-    // --- the post-merge re-apply (`:172-181` → `RulesReader.java:153-157`) --------------------
+    // --- the post-merge re-apply (`:173-184` → `RulesReader.java:153-157`) --------------------
     // `RulesReader.read(new ByteArrayInputStream(rulesData), designName, job.board,
     // job.routerSettings)`: the file parsed a *second* time, against the board's layer structure,
     // and `applyNewValuesFrom`'d onto the already-merged object — which is what puts
-    // `(autoroute_settings)` above the environment and the command line (quirk Q2), and what
+    // `(autoroute_settings)` above the environment and the command line (quirk Q2,
+    // `docs/java-quirks.md` #142), and what
     // makes the two parses observably different (quirk #142).
     //
-    // Java's guard is `rulesData != null && job.board != null` (`:172`), reproduced exactly: with
+    // Java's guard is `rulesData != null && job.board != null` (`:173`), reproduced exactly: with
     // no board there is no layer structure to parse against, so the step cannot run at all.
     if let (true, Some(bytes), Some(board)) = (
         steps.post_merge_rules_reapply,
@@ -345,17 +346,17 @@ fn parse_rules_file(bytes: Option<&[u8]>) -> Option<RouterSettings> {
 }
 
 /// How the scheduler picks the `.rules` file that feeds merge #2 and the post-merge re-apply
-/// (`RoutingJobScheduler.java:118-152`): the job's own rules, else `-dr`, else an adjacent
+/// (`RoutingJobScheduler.java:115-152`): the job's own rules, else `-dr`, else an adjacent
 /// `<design>.rules` beside the DSN.
 ///
 /// The `else if` chain matters: a `-dr` that names a **missing** file does not fall through to
-/// the adjacent probe (`:122-131` — the branch is taken on `initialRulesFile != null`, and the
+/// the adjacent probe (`:118-131` — the branch is taken on `initialRulesFile != null`, and the
 /// inner `rf.exists()` only decides whether the bytes are read), so a typo'd `-dr` silently
 /// disables the adjacent file a user would otherwise have got.
 ///
-/// `job_rules` is not probed for existence: Java tests `job.rules.getData() != null` (`:118`),
+/// `job_rules` is not probed for existence: Java tests `job.rules.getData() != null` (`:115`),
 /// i.e. bytes that are already in hand. The other two are `File.exists()` calls
-/// (`RoutingJobScheduler.java:124`, `:150`), reproduced here as `Path::exists`; the injectable
+/// (`RoutingJobScheduler.java:120`, `:140`), reproduced here as `Path::exists`; the injectable
 /// form is [`resolve_scheduler_rules_path_with`].
 #[must_use]
 pub fn resolve_scheduler_rules_path(
@@ -375,15 +376,15 @@ pub fn resolve_scheduler_rules_path_with(
     dsn_path: Option<&Path>,
     exists: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
-    // :118-121 — the job arrived with its own rules bytes.
+    // :115-117 — the job arrived with its own rules bytes.
     if let Some(job_rules) = job_rules {
         return Some(job_rules.to_path_buf());
     }
-    // :122-131 — `globalSettings.initialRulesFile`, read only when it exists.
+    // :118-131 — `globalSettings.initialRulesFile`, read only when it exists.
     if let Some(cli_rules) = cli_rules {
         return exists(cli_rules).then(|| cli_rules.to_path_buf());
     }
-    // :131-151 — `new File(job.input.getDirectoryPath(), baseName + ".rules")`, gated on
+    // :132-152 — `new File(job.input.getDirectoryPath(), baseName + ".rules")`, gated on
     // `isDsn && job.input.getDirectoryPath() != null`.
     let dsn_path = dsn_path?;
     let file_name = dsn_path.file_name()?.to_string_lossy().into_owned();
@@ -476,7 +477,7 @@ mod tests {
     /// merge #2 runs and the fill channel has nothing left to carry
     /// (`the_first_board_pass_closes_the_direction_channel`); without the board, the post-merge
     /// re-apply cannot run at all, because Java guards it on `job.board != null`
-    /// (`RoutingJobScheduler.java:172`) and the second parse needs the board's layer structure
+    /// (`RoutingJobScheduler.java:173`) and the second parse needs the board's layer structure
     /// (quirk #142). Both switches are `#[cfg(test)]`; Java runs every step.
     #[test]
     fn adjacent_rules_reach_only_the_fields_merge_one_left_null() {

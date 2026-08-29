@@ -48,7 +48,8 @@ public final class BProbe {
   }
 
   /**
-   * Quirk Q9: `ReflectionUtil.copyFields` skips non-public fields (ReflectionUtil.java:226-228),
+   * Quirk Q9 (docs/java-quirks.md #127): `ReflectionUtil.copyFields` skips non-public fields
+   * (ReflectionUtil.java:226-228),
    * and `boardSpecificTraceCostsApplied` is `private transient`, so a merged `RouterSettings`
    * carries the source's tuned cost arrays with the flag reset to `null` — and the next
    * `applyBoardSpecificOptimizations` overwrites them.
