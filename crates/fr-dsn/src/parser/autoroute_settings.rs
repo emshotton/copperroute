@@ -1,4 +1,15 @@
 //! `io/specctra/parser/AutorouteSettings.java` — the `autoroute_settings` scope.
+//!
+//! # `apply_new_values_from` is clone-HEAD-only, so it is not jar-pinned
+//!
+//! [`DsnRouterSettings::apply_new_values_from`] ports
+//! `settings/RouterSettings.applyNewValuesFrom` as it is reached from `RulesReader`'s
+//! four-argument `read`. `javap -p` on `tools/freerouting-2.3.0.jar` shows that overload does not
+//! exist there (the jar's `RulesReader` has a single three-argument `read`), so no JVM golden in
+//! this port exercises the copy: its tests are read from the Java source at the clone's HEAD and
+//! are **not** jar-verified. The rest of this module — `read_autoroute_settings_scope`,
+//! `read_layer_rule`, `write_autoroute_settings_scope` — *is* jar-pinned, the writer byte for
+//! byte (`rules_round_trip.rs::rules_writer_with_settings_matches_java`).
 
 use std::io::Write;
 

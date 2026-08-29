@@ -91,6 +91,12 @@ fn write_rules<'a>(
 
     // write the via padstacks
     for i in 1..=p.board.library.padstacks.count() {
+        // totalized: RulesWriter.writeRules — Java reads `padstacks.get(i).name` with no null
+        // check (RulesWriter.java:92-93), and `Padstacks.get(int)` warns and returns `null` for
+        // an index it considers out of range (Padstacks.java:34-46), so an inconsistent library
+        // NPEs the whole write. The port skips the entry, which is the same output for every
+        // library the reader builds: the loop is bounded by `count()` and `Padstacks::add`
+        // assigns ids densely from 1, so `get` never answers `None` here.
         let Some(current_padstack) = p.board.library.padstacks.get(PadstackId(i)) else {
             continue;
         };

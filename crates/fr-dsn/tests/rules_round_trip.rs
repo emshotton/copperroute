@@ -18,6 +18,19 @@
 //! ```
 //!
 //! The four `dump` outputs get a one-line `#` header prepended by hand (see [`common::golden`]).
+//! `RProbe`'s fifth mode, `divergence`, has no committed golden: it prints what each via *rule*
+//! reaches, and is how the jar's answer quoted in
+//! `re_declared_via_info_re_points_the_existing_via_rule_unlike_java` was obtained.
+//!
+//! # What is and is not jar-pinned
+//!
+//! `javap -p tools/freerouting-2.3.0.jar app.freerouting.io.specctra.RulesReader` lists a single
+//! public method, `read(InputStream, String, BasicBoard)`. The four-argument `read`,
+//! `readRouterSettings`, `discoverLayerStructure` and `RouterSettings.applyNewValuesFrom` are
+//! **clone-HEAD additions**, absent from the pinned jar — so `read_router_settings_*`,
+//! `discover_layer_structure_*` and `rules_round_trip_with_autoroute_settings`' target-settings
+//! assertions are read from the Java source at HEAD and are **not** jar-verified. Everything
+//! under "JVM goldens" and "Byte parity" below is.
 //!
 //! # Java-wins corrections to the Task 14 brief
 //!
@@ -468,7 +481,17 @@ fn assert_bytes_match(actual: &[u8], golden_name: &str) {
 
 /// `RulesReader.applyViaInfo` (RulesReader.java:340-350) through the real reader: a `(via …)`
 /// scope whose name the board already carries has to move that via to the **tail** of
-/// `ViaInfos` — Java's remove-then-add — while every `ViaRule` keeps naming the same vias.
+/// `ViaInfos` — Java's remove-then-add — while every `ViaRule` keeps *naming* the same vias.
+///
+/// The list order and the names are Java's, and are what every writer emits.
+///
+/// **The indices are the port's own behaviour, and they diverge from Java.** Java's `ViaRule`
+/// holds `ViaInfo` object references, so after the replacement its rule still points at the
+/// **removed original**; this port's rule holds an index and necessarily reaches the
+/// **replacement**. The assertion on `rule.iter()` below therefore pins *this port*, not Java.
+/// `re_declared_via_info_re_points_the_existing_via_rule_unlike_java` isolates that divergence
+/// with the jar's own answer next to it; see the open "Via-info / via-rule re-pointing" row in
+/// `docs/java-quirks.md`.
 ///
 /// `fr-board`'s `replace_via_info_renumbers_every_rule` pins the renumbering itself; this pins
 /// that the reader reaches it.
@@ -530,6 +553,110 @@ fn apply_via_info_renumbers_via_rules() {
         .map(|id| board.rules.via_infos.get(*id).get_name())
         .collect();
     assert_eq!(resolved, ["Via[0-1]_800:400_um", "B"]);
+}
+
+/// The re-pointing divergence, isolated — **this pins the port, and Java answers differently.**
+///
+/// `Issue593-BBD_Mars-64.dsn` already carries one via info (`Via[0-1]_800:400_um`, `attach=false`)
+/// and two `default` via rules that reach it. A one-line `.rules` file re-declaring that same via
+/// *with* `attach` makes `RulesReader.applyViaInfo` remove the original and append a replacement.
+///
+/// Java (verified with `tools/freerouting-2.3.0.jar` via `RProbe divergence`):
+///
+/// ```text
+/// viainfo 0 Via[0-1]_800:400_um padstack=Via[0-1]_800:400_um cl=1 attach=true
+/// rulevia default Via[0-1]_800:400_um attach=false cl=1 inList=false id=1992550266
+/// rulevia default Via[0-1]_800:400_um attach=false cl=1 inList=false id=1992550266
+/// ```
+///
+/// — the list holds the replacement (`attach=true`) while both rules still hold the **detached
+/// original** (`attach=false`, and `viaInfos.get(name) != thatObject`). This port cannot express a
+/// detached object, so its rules reach the replacement and answer `attach=true`. Nothing a Plan 3
+/// writer emits differs (both entries share a name); `attach_smd_allowed`, `get_padstack` and
+/// `get_clearance_class_index` are router inputs, so Plans 6/7 own the decision. See the open
+/// obligation row in `docs/java-quirks.md`.
+#[test]
+fn re_declared_via_info_re_points_the_existing_via_rule_unlike_java() {
+    let (mut board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
+    assert!(
+        !board
+            .rules
+            .via_infos
+            .get_by_name("Via[0-1]_800:400_um")
+            .expect("the fixture's via info")
+            .attach_smd_allowed(),
+        "the .dsn's via info starts with attach=false"
+    );
+
+    let rules =
+        b"(rules PCB x\n  (via \"Via[0-1]_800:400_um\" \"Via[0-1]_800:400_um\" default attach)\n)\n";
+    assert!(rules_reader::read(&rules[..], "x", &mut board, &ct, None).expect("no scanner error"));
+
+    // Java agrees about the list entry.
+    assert!(
+        board
+            .rules
+            .via_infos
+            .get_by_name("Via[0-1]_800:400_um")
+            .expect("the replacement")
+            .attach_smd_allowed()
+    );
+    // Java disagrees about what the rules reach: it answers `false` here, for every rule.
+    let reached: Vec<bool> = board
+        .rules
+        .via_rules
+        .iter()
+        .flat_map(|rule| rule.iter())
+        .map(|id| board.rules.via_infos.get(*id).attach_smd_allowed())
+        .collect();
+    assert!(
+        !reached.is_empty(),
+        "the fixture has via rules to reach through"
+    );
+    assert!(
+        reached.iter().all(|attach| *attach),
+        "the port re-points every rule at the replacement (Java: all false, the detached original)"
+    );
+}
+
+// ------------------------------------------------------------------------------------------
+// Java bug #112: an unknown layer name makes a layer rule apply to every layer
+// ------------------------------------------------------------------------------------------
+
+/// `RulesReader.applyLayerRules` + `applyRules`' layer-scoped arm (RulesReader.java:284-338) with
+/// a layer the board **does not have**: `layerIndex` stays `-1`, the warning is not followed by a
+/// `return`, and `-1` is exactly the "all layers" sentinel — so the rule overwrites the default
+/// trace width on the whole board instead of being dropped (quirk #112).
+///
+/// JVM-verified with `RProbe dump` against `tools/freerouting-2.3.0.jar`: `Issue029-hw48na.dsn`
+/// alone gives `defaulthw [1016,1016]`; with this rules file it gives `[2500,2500]`.
+#[test]
+fn a_layer_rule_naming_an_unknown_layer_applies_to_every_layer() {
+    let (mut board, ct) = load_board("Issue029-hw48na.dsn");
+    assert_eq!(default_half_widths(&mut board), [1016, 1016]);
+
+    let rules = b"(rules PCB x\n  (layer BOGUS\n    (rule (width 500.0))\n  )\n)\n";
+    assert!(rules_reader::read(&rules[..], "x", &mut board, &ct, None).expect("no scanner error"));
+    assert_eq!(default_half_widths(&mut board), [2500, 2500]);
+}
+
+/// The same scope with a layer the board *does* have, which is the branch quirk #112 is measured
+/// against: only `B.Cu` moves.
+///
+/// JVM-verified the same way: `defaulthw [1016,2500]`.
+#[test]
+fn a_layer_rule_naming_a_real_layer_applies_only_there() {
+    let (mut board, ct) = load_board("Issue029-hw48na.dsn");
+    let rules = b"(rules PCB x\n  (layer B.Cu\n    (rule (width 500.0))\n  )\n)\n";
+    assert!(rules_reader::read(&rules[..], "x", &mut board, &ct, None).expect("no scanner error"));
+    assert_eq!(default_half_widths(&mut board), [1016, 2500]);
+}
+
+/// `RProbe`'s `defaulthw` line, as a `Vec` (`BoardRules.get_default_trace_half_width` per layer).
+fn default_half_widths(board: &mut Board) -> Vec<i32> {
+    (0..board.get_layer_count())
+        .map(|layer| board.rules.get_default_trace_half_width(layer))
+        .collect()
 }
 
 // ------------------------------------------------------------------------------------------

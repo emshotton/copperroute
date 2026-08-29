@@ -89,6 +89,33 @@ public final class RProbe {
       return;
     }
 
+    if (mode.equals("divergence")) {
+      // The `ViaInfoId` re-pointing divergence (docs/java-quirks.md, the open Plan 6/7
+      // obligation row): after `RulesReader.applyViaInfo` replaces an existing via info, what do
+      // the board's *via rules* still reach? Java's rules hold object references, so they keep
+      // the removed original; this port's hold indices and reach the replacement. Printing the
+      // identity hash makes the "detached object" concrete.
+      for (ViaRule r : board.rules.via_rules) {
+        for (int i = 0; i < r.via_count(); i++) {
+          ViaInfo v = r.get_via(i);
+          out.println(
+              "rulevia "
+                  + r.name
+                  + " "
+                  + v.get_name()
+                  + " attach="
+                  + v.attach_smd_allowed()
+                  + " cl="
+                  + v.get_clearance_class()
+                  + " inList="
+                  + (board.rules.via_infos.get(v.get_name()) == v)
+                  + " id="
+                  + System.identityHashCode(v));
+        }
+      }
+      return;
+    }
+
     out.println("read " + ok);
     out.println("snapangle " + board.rules.get_trace_angle_restriction());
     out.println("defaulthw " + halfWidthsOfDefault(board));

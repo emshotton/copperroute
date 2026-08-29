@@ -18,6 +18,17 @@
 //! [`crate::BoardReadResult`] instead — so [`read`] takes it explicitly. Same deviation, same
 //! reason as [`crate::ses_reader::read`] and [`crate::dsn_writer::write`].
 //!
+//! # Three of these entry points are clone-HEAD-only, so their tests are not jar-pinned
+//!
+//! `javap -p` on `tools/freerouting-2.3.0.jar` shows exactly one public method on
+//! `io.specctra.RulesReader`: `read(InputStream, String, BasicBoard)`. The four-argument `read`
+//! (with `RouterSettings`), [`read_router_settings`] and `discoverLayerStructure` are **clone-HEAD
+//! additions** and do not exist in the pinned jar. So the JVM goldens in
+//! `tests/rules_round_trip.rs` pin the three-argument [`read`] only; the tests for the other
+//! three are read from `RulesReader.java` at HEAD and are *not* jar-verified. The same holds for
+//! [`DsnRouterSettings::apply_new_values_from`] — see
+//! [`crate::parser::autoroute_settings`]'s module docs.
+//!
 //! # `read` and `read_router_settings` are two different parsers
 //!
 //! [`read`] builds its layer structure from the **board** (`new LayerStructure(board.layerStructure)`,
@@ -52,6 +63,13 @@ use crate::parser::structure::{read_snap_angle, set_clearance_rule};
 /// `design_name` is the name the `(rules PCB <name>` header is expected to carry. A mismatch is
 /// **not** fatal — Java logs it and reads on (RulesReader.java:100-110) — so this port ignores it
 /// entirely, having no logger.
+///
+/// # Note
+///
+/// `design_name` is therefore an **inert parameter**: nothing in this function reads it, and no
+/// input can make the result depend on it. It is kept so the signature matches Java's and so a
+/// host that wants the mismatch message can compare the header itself; `let _ = design_name;` in
+/// the body is deliberate, not an oversight.
 ///
 /// `target_settings`, when given, receives the file's `(autoroute_settings …)` through
 /// [`DsnRouterSettings::apply_new_values_from`] (RulesReader.java:154-157). Java's three-argument
@@ -218,7 +236,12 @@ pub fn read_router_settings(input: impl Read) -> Result<Option<DsnRouterSettings
 /// since [`DsnScanner::next_token`]'s only failure is the scanner error Java does not catch
 /// either.
 // renamed: discoverLayerStructure -> discover_layer_structure, taking the decoded text rather
-// than Java's `byte[]` (the port decodes the stream once, in `read_to_string`).
+// than Java's `byte[]` (the port decodes the stream once, in `read_to_string`), and `pub` where
+// Java is `private static` (RulesReader.java:238). Widened deliberately: it is the only way to
+// test the pre-pass in isolation (its Java caller returns `null` for most of the inputs that
+// exercise it), and it is a useful standalone answer to "what layers does this rules file name?".
+// It exists only at the clone's HEAD, so nothing in the pinned 2.3.0 jar can contradict the
+// wider visibility.
 pub fn discover_layer_structure(text: &str) -> Result<DsnLayerStructure, DsnError> {
     let mut layer_names: Vec<String> = Vec::new();
     let mut scanner = DsnScanner::new(text)?;

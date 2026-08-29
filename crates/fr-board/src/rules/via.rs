@@ -184,12 +184,19 @@ impl ViaInfos {
     /// (`gui/windows/routing/WindowEditVias.java:197` also calls it, but the GUI is out of scope
     /// for this port.)
     ///
-    /// **Discharged in Plan 3 Task 14:** that caller now goes through
+    /// **The renumbering half is discharged in Plan 3 Task 14:** that caller now goes through
     /// [`BoardRules::replace_via_info_renumbering_rules`](super::BoardRules::replace_via_info_renumbering_rules),
     /// immediately below, which does the removal, the append and the renumbering as one step.
     /// Call this bare method only when nothing holds a [`ViaInfoId`] into the list.
-    /// See the `docs/java-quirks.md` obligation-register row "`ViaInfoId` renumbering across
-    /// `ViaInfos.remove`".
+    ///
+    /// **What that leaves open** (Plans 6/7): a rule that pointed at the removed via is
+    /// re-pointed at its replacement, where Java keeps the detached original — same name, so no
+    /// writer sees it, but `attach_smd_allowed`/`get_padstack`/`get_clearance_class_index` can
+    /// differ, and those are router inputs. Read
+    /// [`BoardRules::replace_via_info_renumbering_rules`](super::BoardRules::replace_via_info_renumbering_rules)'
+    /// "Deviation from Java" section before relying on either.
+    /// See the `docs/java-quirks.md` obligation-register rows "`ViaInfoId` renumbering across
+    /// `ViaInfos.remove`" (discharged) and "Via-info / via-rule re-pointing" (open).
     pub fn remove(&mut self, index: ViaInfoId) -> bool {
         if index.0 >= self.list.len() {
             return false;
@@ -219,15 +226,29 @@ impl super::BoardRules {
     ///
     /// Returns the new tail id.
     ///
-    /// # Deviation from Java, deliberately
+    /// # Deviation from Java — reachable, and an OPEN Plan 6/7 obligation
     ///
     /// A rule that referenced the *replaced* via ends up pointing at the **new** [`ViaInfo`],
-    /// where Java's rule keeps pointing at the old, now-detached object. The two differ only when
-    /// the replacement changes the via's padstack, clearance class or attach flag, and only for a
-    /// rule read *before* the `(via …)` scope that replaced it — which no writer this port or
-    /// Java has ever produced emits, since `RulesWriter` writes every via info before the first
-    /// via rule. Keeping the detached object is not expressible with indices; pointing at the
-    /// replacement is the reading that keeps every rule resolvable.
+    /// where Java's rule keeps pointing at the old, now-detached object — an object no longer in
+    /// [`Self::via_infos`] at all.
+    ///
+    /// **This is reachable, not theoretical.** `RulesReader` runs on a board that already carries
+    /// via infos *and* via rules from the `.dsn`, so any `.rules` file that re-declares an
+    /// existing `(via …)` hits it. JVM-verified on `Issue593-BBD_Mars-64.dsn` plus the one-line
+    /// rules file `(rules PCB x (via "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default attach))`
+    /// against `tools/freerouting-2.3.0.jar`: the jar's `via_infos` list holds the replacement
+    /// (`attach=true`) while **both** of the board's `default` via rules still reach the detached
+    /// original (`attach=false`, `viaInfos.get(name) != thatObject`). This port's rules reach the
+    /// replacement, `attach=true`.
+    ///
+    /// **Containment:** both entries carry the same name — that is what made the second a
+    /// replacement — so **no Plan 3 writer can distinguish them**: `Network.writeViaInfos`
+    /// (Network.java:58-76) and `Network.writeViaRules` (:78-91) both emit the *name*, so every
+    /// `.dsn` and `.rules` byte is identical either way. But the **router-visible fields can
+    /// differ**: `ViaInfo::attach_smd_allowed`, `get_padstack` and `get_clearance_class_index`
+    /// are exactly what a rule's via is consulted for, so Plans 6/7 can route differently here
+    /// from Java. Keeping the detached object is not expressible with indices, so the divergence
+    /// is accepted rather than fixed, and re-filed as an open obligation.
     ///
     /// # Panics
     ///
@@ -236,8 +257,12 @@ impl super::BoardRules {
     /// only caller — the rules reader's `apply_via_info` — looks `old_id` up *by* `new_info`'s
     /// name, so neither can happen there.
     //
-    // obligation: RulesReader.applyViaInfo — discharges the Plan 2 hand-off's "`ViaInfoId`
-    // renumbering across `ViaInfos::remove`" obligation (docs/java-quirks.md, docs/plan-2-handoff.md).
+    // obligation: ViaInfos.remove — the *renumbering* half of the Plan 2 hand-off obligation is
+    // discharged here (docs/java-quirks.md, docs/plan-2-handoff.md).
+    // obligation: RulesReader.applyViaInfo — the re-pointing divergence above is OPEN for
+    // Plans 6/7: a via rule reaches the replacement's `attach`/padstack/clearance where Java
+    // reaches the detached original's. See the "Via-info / via-rule re-pointing" row in
+    // docs/java-quirks.md's obligation register.
     // added in Plan 3: Task 14 (`ViaInfos::remove` has no Java-side renumbering to port; this is
     // the index-model's replacement for Java's object references).
     pub fn replace_via_info_renumbering_rules(
@@ -274,11 +299,16 @@ impl super::BoardRules {
     /// `rules_state_matches_java_issue107_bad`, where `1A_EXTERNAL_1oz`'s class would otherwise
     /// end up on `Breiter`.
     ///
-    /// The mapping is [`Self::replace_via_info_renumbering_rules`]', and so is the one deliberate
-    /// divergence: a net class that pointed at the *replaced* rule is re-pointed at the
-    /// replacement, where Java keeps the detached original. Both rules carry the same name (that
-    /// is what made them a replacement), so the writers cannot tell the two apart; only the vias
-    /// the router would then reach for differ.
+    /// The mapping is [`Self::replace_via_info_renumbering_rules`]', and so is the divergence it
+    /// carries: a net class that pointed at the *replaced* rule is re-pointed at the replacement,
+    /// where Java keeps the detached original. Both rules carry the same name (that is what made
+    /// them a replacement), so **no Plan 3 writer can distinguish them** — `Network.writeNetClass`
+    /// (Network.java:130) emits `viaRule.name`. But the **router-visible content differs**: the
+    /// two rules hold different via lists, which is precisely what Plans 6/7 read a net class's
+    /// via rule for. Reachable whenever a `.rules` file re-declares a `(via_rule …)` the `.dsn`
+    /// already defined; open, not contained. See
+    /// [`Self::replace_via_info_renumbering_rules`]' "Deviation from Java" section and the
+    /// obligation register row it names.
     ///
     /// Returns the new tail id.
     ///
@@ -286,8 +316,10 @@ impl super::BoardRules {
     ///
     /// Panics if `old_id` is out of range for [`Self::via_rules`].
     //
-    // obligation: Network.addViaRule — same index-model hazard as
-    // `replace_via_info_renumbering_rules`, discovered by Task 14's Issue107 golden.
+    // obligation: Network.addViaRule — the *renumbering* half is discharged here (same index-model
+    // hazard as `replace_via_info_renumbering_rules`, discovered by Task 14's Issue107 golden);
+    // the re-pointing divergence above is OPEN for Plans 6/7, see docs/java-quirks.md's
+    // obligation register row "Via-info / via-rule re-pointing".
     // added in Plan 3: Task 14
     pub fn replace_via_rule_renumbering_net_classes(
         &mut self,

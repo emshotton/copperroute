@@ -335,8 +335,20 @@ resolved the items marked ✓ below — verified against the committed tree)
   one level up** — `Network.addViaRule` removes a same-named `ViaRule` while
   `NetClass::via_rule` is a `ViaRuleId` — fixed alongside it as
   `BoardRules::replace_via_rule_renumbering_net_classes`. See the
-  `docs/java-quirks.md` obligation-register row for the mapping and the one
-  deliberate divergence both carry.
+  `docs/java-quirks.md` obligation-register row for the mapping.
+
+  **What it left open, for Plans 6/7:** keeping every index resolvable also
+  changes *which object* a rule reaches. Java's rule keeps the detached
+  original after a replacement; the port's index necessarily reaches the
+  replacement. This is reachable — `RulesReader` runs on a board that already
+  holds via infos *and* via rules from the `.dsn` — and JVM-verified: on
+  `Issue593-BBD_Mars-64.dsn` plus a one-line `.rules` re-declaring its `(via …)`
+  with `attach`, the jar's via rules still reach `attach=false` while the port's
+  reach `attach=true`. No Plan 3 writer can see it (both entries share a name,
+  and the writers emit names), but `attach_smd_allowed`/`get_padstack`/
+  `get_clearance_class_index` and a via rule's via list are router inputs.
+  Filed as the open `docs/java-quirks.md` obligation row "Via-info / via-rule
+  re-pointing".
 - **`Board::new` requires via-padstack population before any via lookup.**
   `BoardLibrary::remove_via_padstack`/`get_mirrored_via_padstack` panic on
   Java's null `viaPadstacks` (quirks #42-43); `Board::new`'s own doc comment
