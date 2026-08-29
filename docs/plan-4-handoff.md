@@ -151,7 +151,7 @@ that path out of `SettingsMerger` directly. Carried as an `obligation:` marker o
   built out of the ported `SettingsMerger`, and the linear `resolve_headless` —
   and asserts they agree field for field. Ruling 1's equivalence is therefore
   proved twice, once against the JVM and once in-process.
-- **`docs/java-quirks.md`**: 29 new pinned quirks (**#114–#142**), 2 new
+- **`docs/java-quirks.md`**: 30 new pinned quirks (**#114–#143**), 2 new
   totalization rows, **two** obligation-register rows struck through as
   discharged (`DsnRouterSettings → RouterSettings`; the three clone-HEAD-only
   APIs), one re-labelled (legacy-CLI normalisation: the `fr-settings` half
@@ -491,7 +491,7 @@ Everything public is re-exported from `fr_settings::prelude`.
 
 ---
 
-## 6. Quirks pinned in Plan 4 (`docs/java-quirks.md` #114–#142)
+## 6. Quirks pinned in Plan 4 (`docs/java-quirks.md` #114–#143)
 
 | # | One line |
 |---|---|
@@ -524,6 +524,7 @@ Everything public is re-exported from `fr_settings::prelude`.
 | 140 | `validate` is not idempotent, and the headless path calls it twice — `max_passes == 0` ends as 9999 |
 | 141 | `GsonProvider.GSON`'s `Strictness.LENIENT` governs only the *textual* pass, and non-finite floats are refused in **both** directions |
 | 142 | The scheduler's `.rules` file is parsed **twice**, against two different layer structures |
+| 143 | **Neither** thread-count field is read anywhere in the headless path — every reader of `optimizer.maxThreads` and of `maxThreads` is GUI-only or dead code, so `-mt` is arithmetic on a value nothing consumes |
 
 Plus **two totalization rows**: `ReflectionUtil.setFieldValue(obj, ".", v)` (or
 any path of nothing but separators) throws `ArrayIndexOutOfBoundsException` in
@@ -738,12 +739,36 @@ board). Ruling L cost nothing.
   what the headless path actually produces (quirk #140). The pass loop must treat
   the value as a limit, not a count.
 - **`optimizer.max_threads` and `max_threads` are two distinct fields with
-  distinct normalisations** (quirk #132). `optimizer.max_threads` is read by
-  `BatchOptimizer.java:58` — `> 1` selects the multi-threaded optimizer, so
-  `-mt 0` and `-mt 1` both select the **single-threaded** one — and by
-  `BatchOptimizerMultiThreaded.java:41`. `RouterSettings.max_threads` is read by
-  `AutoroutePassRunner.java:50,53,91` as the autorouter's thread count. Do not
-  collapse them.
+  distinct normalisations** (quirk #132) — **and neither drives anything in
+  Java's headless path** (quirk #143). Do not collapse them, and do **not** build
+  headless multi-threaded selection on `-mt`: it has no Java counterpart.
+  The complete consumer list, from a grep of every `maxThreads` occurrence in
+  `src/main/java` at the clone's HEAD:
+
+  | Field | Reader | Reachable headless? |
+  |---|---|---|
+  | `optimizer.maxThreads` | `BatchOptimizer.createForGui:58` — `featureFlags.multiThreading && … > 1` | **No** — `createForGui` is called only from `RoutingPipeline.createForGui:41`, itself only from `GuiRoutingJobWorker.java:212` |
+  | `optimizer.maxThreads` | `BatchOptimizerMultiThreaded.java:41` (the pool size) | **No** — constructed only inside that GUI branch |
+  | `optimizer.maxThreads` | `GlobalSettings.getNumThreads():851-854` | **No** — the method has no caller anywhere in the tree |
+  | `RouterSettings.maxThreads` | `AutoroutePassRunner.runMultiThread:50,53,91` | **No** — reached only from `BatchAutorouter.autoroutePassMultiThread:411-413`, which **has no caller anywhere in the tree** |
+  | `RouterSettings.maxThreads` | `GuiManager:147`, `GuiRoutingJobWorker:416,603`, `WorkspacePortAdapter:121`, `WindowAutorouteParameter:1084,1110` | **No** — all GUI |
+
+  The headless chain is `RoutingJobSchedulerActionThread.java:99` →
+  `RoutingPipeline.createForHeadless` (`:45-47`, whose doc says "headless
+  single-threaded optimizer policy") → `BatchOptimizer.createForHeadless`
+  (`:51-53`), which returns `new BatchOptimizer(job)` **unconditionally** and
+  never looks at the field. The live pass path is
+  `AutorouteBatchLoop.java:293` → `:598-600` → `BatchAutorouter.autoroutePass`
+  (`:419-421`) → `AutoroutePassRunner.runSingleThread`.
+
+  So in headless Java `-mt` is **parsed, clamped, mirrored into a second field,
+  and read by nothing** — dead in the same way the five legacy flags of §1 are
+  dead, and for the same reason: the only readers are GUI. Plans 6/7 must
+  therefore keep both fields (they are part of the settings object's observable
+  state, and `p4t1` compares them) but must **not** invent a headless
+  multi-threading policy from them. Doing so would make the port more capable
+  than Java — the same class of product decision as the dead legacy flags, and it
+  belongs in a recorded decision, not in a router task.
 - **`ExpansionCostFactor` is declared here, with an `obligation:` marker**
   (`router_settings.rs:934`), because `fr-settings` is its only producer and
   cannot depend on a router crate that does not exist. `AutorouteControl.java:287`
@@ -764,9 +789,11 @@ board). Ruling L cost nothing.
   "fix" it while porting the router.
 - **`apply_board_specific_optimizations` has exactly two headless call sites**
   (`HeadlessBoardManager.java:745` and `RoutingJobScheduler.java:186`), both
-  inside `resolve_headless`; the four GUI call sites are out of scope, and
-  `applyBoardSpecificOptimizationsIfNeeded` is reached only from
-  `BoardToolbar.java:209`. **If Plan 6/7 ever re-derives settings mid-run** — a
+  inside `resolve_headless`; the **three** GUI call sites (`BoardFrame.java:331`,
+  `:581`, `:783`) are out of scope, and the separate
+  `applyBoardSpecificOptimizationsIfNeeded` entry point has exactly one call
+  site, `BoardToolbar.java:209`, also GUI. **If Plan 6/7 ever re-derives settings
+  mid-run** — a
   board change, a re-load — it must decide which variant to call, and quirks #126
   and #127 govern the answer: the `_if_needed` guard consults a flag that
   `setLayerCount` clears only on reallocation.

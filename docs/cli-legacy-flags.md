@@ -47,7 +47,7 @@ flag is skipped rather than aborting the run.
 | Flag | Java field | Java normalisation | Java location | Where the port must apply it |
 |---|---|---|---|---|
 | `-mp` | `routerSettings.maxPasses` | `Integer.decode(v)`; then `< 0 → 1`, `> 9999 → 9999`. **`0` is deliberately allowed and means *unlimited*.** A second, *different* clamp runs later in `RouterSettings.validate()`: there `< 0 \|\| > 9999 → 9999` and `== 0 → Integer.MAX_VALUE`. | `GlobalSettings.java:675-686`; `RouterSettings.java:932-941` | `fr-settings` (Plan 4), at both the parse step and a `validate()` equivalent. Plan 6/7's pass loop must treat `max_passes == 0` as "no limit", never "no passes". |
-| `-mt` | `routerSettings.optimizer.maxThreads` | `Integer.decode(v)`; then `< 0 → 0`, `> 1024 → 1024`. **No further normalisation on this path** — see the quirk below. | `GlobalSettings.java:688-698` | `fr-settings` (Plan 4); Plan 6's optimizer thread pool. |
+| `-mt` | `routerSettings.optimizer.maxThreads` | `Integer.decode(v)`; then `< 0 → 0`, `> 1024 → 1024`. **No further normalisation on this path** — see the quirk below. | `GlobalSettings.java:688-698` | `fr-settings` (Plan 4). **Not** Plan 6's optimizer thread pool — headless Java reads this field nowhere (row 143, and the correction below). |
 | `-oit` | `routerSettings.optimizer.optimizationImprovementThreshold` | `Float.parseFloat(v) / 100`; then `<= 0 → 0.0f`. Note the value is a **percentage** on the command line and a fraction in the settings, and the division happens before the clamp. Parsed as `float`, not `double`. **Correction (Plan 4 Task 7, JVM-verified):** an earlier revision of this table said `-oit -5` becomes `0.0f`. It does not — `-5` starts with `-`, so the blanket rule above never consumes it and the field keeps its previous value. The `<= 0` clamp is reachable only from a literal zero. | `GlobalSettings.java:700-708` | `fr-settings` (Plan 4). Keep the `f32` rounding — a `f64` division by 100 gives a different bit pattern. |
 | `-us` | `routerSettings.optimizer.boardUpdateStrategy` | `v.toLowerCase().trim()`; then `"global" → GLOBAL_OPTIMAL`, `"hybrid" → HYBRID`, **anything else → `GREEDY`**. There is no error for an unrecognised word. | `GlobalSettings.java:710-719` | `fr-settings` (Plan 4). Must be a total function with a `GREEDY` fallback, not a `FromStr` that fails. |
 | `-is` | `routerSettings.optimizer.itemSelectionStrategy` | `v.toLowerCase().trim()`; then **prefix** match `indexOf("seq") == 0 → SEQUENTIAL`, `indexOf("rand") == 0 → RANDOM`, **anything else → `PRIORITIZED`**. Prefix, not equality: `sequential`, `seq`, `sequestered` all give `SEQUENTIAL`. | `GlobalSettings.java:721-731` | `fr-settings` (Plan 4). Prefix match with a `PRIORITIZED` fallback. |
@@ -90,13 +90,35 @@ adopts one gets it right.
      `> cores`) — already inconsistent with `normalizeMaxThreads`.
    - `-mt` writes `routerSettings.optimizer.maxThreads` **directly**
      (`GlobalSettings.java:690`), a different field from
-     `RouterSettings.maxThreads`, so neither routine touches it. Its only
-     consumer is `BatchOptimizer.java:58` (`… .optimizer.maxThreads > 1`), so
-     `-mt 0` selects the **single-threaded** optimizer.
+     `RouterSettings.maxThreads`, so neither routine touches it. A *third*
+     writer, `RouterSettings.setMaxThreads` (`:183-185`), mirrors
+     `RouterSettings.maxThreads` into it.
+   - **Correction (Plan 4 Task 12, re-derived from the HEAD source): the
+     headless path reads neither field.** An earlier revision of this table said
+     `optimizer.maxThreads`' only consumer is `BatchOptimizer.java:58` and that
+     `-mt 0` therefore "selects the single-threaded optimizer". That line
+     `:58` is inside **`createForGui`** (`:56-66`) and is additionally gated on
+     `globalSettings.featureFlags.multiThreading`. Headless goes
+     `RoutingJobSchedulerActionThread.java:99` →
+     `RoutingPipeline.createForHeadless` (`:45-47`, doc: "headless
+     single-threaded optimizer policy") → `BatchOptimizer.createForHeadless`
+     (`:51-53`), which returns `new BatchOptimizer(job)` **unconditionally** and
+     never reads the field. `GlobalSettings.getNumThreads()` (`:851-854`) returns
+     it and has no caller. The sibling `RouterSettings.maxThreads` is no
+     livelier: its only non-GUI reader, `AutoroutePassRunner.runMultiThread`
+     (`:50,53,91`), is reached only from
+     `BatchAutorouter.autoroutePassMultiThread` (`:411-413`), which has **no
+     caller anywhere in the tree** — the live pass path is
+     `AutorouteBatchLoop.java:293` → `:598-600` →
+     `BatchAutorouter.autoroutePass` (`:419-421`) → `runSingleThread`. So `-mt`
+     is normalised arithmetic on a value headless Java never consumes
+     (`docs/java-quirks.md` row 143).
 
    Plans 6/7 must therefore keep `optimizer.max_threads` and `router.max_threads`
-   as distinct fields with distinct normalisations, and must not "helpfully"
-   map `-mt 0` to the core count.
+   as distinct fields with distinct normalisations, must not "helpfully" map
+   `-mt 0` to the core count, and must **not** build a headless multi-threading
+   policy on `-mt` — it has no Java counterpart, and inventing one makes the port
+   more capable than Java (see `docs/plan-4-handoff.md` §10).
 
 3. **`-oit` divides before it clamps**, and parses as `float`. A zero
    percentage collapses to exactly `0.0f`. A *negative* one never gets that

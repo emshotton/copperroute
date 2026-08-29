@@ -21,7 +21,7 @@ mutable state.
 
 Deliberate Java bugs are reproduced rather than fixed; each carries a
 `// Java bug:` or `// totalized:` marker at the site and a row in
-`docs/java-quirks.md`. Rows **114-142** are this crate's.
+`docs/java-quirks.md`. Rows **114-143** are this crate's.
 
 ## Spec §11's precedence order is wrong. Java's is what this crate implements
 

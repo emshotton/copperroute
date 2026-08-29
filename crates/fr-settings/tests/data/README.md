@@ -2,9 +2,10 @@
 
 JUnit-free Java drivers whose output is the source of every expected value in
 `crates/fr-settings/tests/{field_path,router_settings,board_optimizations,sources,env_source,cli_source,json}.rs`
-and of quirks rows 114-142 in `docs/java-quirks.md` (the whole Plan 4 block: 114-117 Task 2,
+and of quirks rows 114-143 in `docs/java-quirks.md` (the whole Plan 4 block: 114-117 Task 2,
 118-122 Task 3, 123-126 Task 4, 127 Task 5, 128-130 Task 6, 131-137 Task 7, 138-139 Task 6's fix
-round, 140 Task 8, 141 Task 10, 142 Task 8's fix round 2). They are committed so Task 9's `p4t*` differential can reuse the
+round, 140 Task 8, 141 Task 10, 142 Task 8's fix round 2, 143 Task 12's fix round — the last from the
+HEAD source alone, no probe: it is a reachability fact about the router, not a value). They are committed so Task 9's `p4t*` differential can reuse the
 matrix instead of re-deriving it, and so any of these expectations can be re-checked against a
 rebuilt jar.
 
