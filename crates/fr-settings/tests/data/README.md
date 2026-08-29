@@ -1,15 +1,18 @@
-# `ReflectionUtil.setFieldValue` JVM probes (Plan 4, Task 3)
+# `fr-settings` JVM probes (Plan 4)
 
-Four JUnit-free Java drivers whose output is the source of every expected value in
-`crates/fr-settings/tests/field_path.rs` and of quirks rows 118-122 in `docs/java-quirks.md`.
-They are committed so Task 9's `p4t*` differential can reuse the matrix instead of re-deriving
-it, and so any of these expectations can be re-checked against a rebuilt jar.
+JUnit-free Java drivers whose output is the source of every expected value in
+`crates/fr-settings/tests/{field_path,router_settings,board_optimizations}.rs` and of quirks rows
+114-127 in `docs/java-quirks.md`. They are committed so Task 9's `p4t*` differential can reuse the
+matrix instead of re-deriving it, and so any of these expectations can be re-checked against a
+rebuilt jar.
 
 | Driver | What it probes | Needs the jar |
 |---|---|---|
 | `FProbe.java` | 44 `setFieldValue` cases through the real `RouterSettings`: the `-`/`:` separators (A, H12), `Boolean.parseBoolean` (B), array navigation (C), name resolution (D, H13-H20), the numeric arms (E), enums (F), `String[]`/`double[]` leaves (G), and every failure mode (H1-H21) | yes |
 | `DProbe.java` | `Double.parseDouble` / `Integer.parseInt` grammar edges — the `d`/`f` suffix, exact-case `Infinity`/`NaN`, `String.trim`'s `<= ' '` rule, the hexadecimal form, Unicode digits | no |
 | `TProbe.java` | The array-token vs scalar-leaf trim asymmetry (`ReflectionUtil.java:71`) | yes |
+| `VProbe.java` | Task 4's accessors, clamps, `setLayerCount`, `clone` and `validate` (blocks A-F); run with `-XX:ActiveProcessorCount=4` | yes |
+| `BProbe.java` | Task 5's `applyBoardSpecificOptimizations` over four synthetic stacks and any DSN fixtures named on the command line, plus the Q9 merge block | yes |
 | `RProbe.java` | Quirk 119's real consequence: `setLayerCount`'s effect on `--router.layers.*` values (L1-L4), and what Java's array branch leaves behind when the *next* path segment is bogus (A1-A3) | yes |
 
 ## Recorded commands
@@ -31,7 +34,17 @@ done
 # JDK-only driver
 /opt/homebrew/opt/openjdk@25/bin/javac -d . DProbe.java
 /opt/homebrew/opt/openjdk@25/bin/java DProbe
+
+# VProbe pins availableProcessors so its transcript matches HostEnvironment::with_processors(4)
+/opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
+    -cp "$JAR:." VProbe
+
+# BProbe takes DSN fixtures as arguments; Task 5's goldens used these three
+F=/Users/em/Development/freerouting/freerouting/fixtures
+/opt/homebrew/opt/openjdk@25/bin/javac -cp "$JAR" -d . BProbe.java
+/opt/homebrew/opt/openjdk@25/bin/java -Djava.awt.headless=true -cp "$JAR:." BProbe \
+    $F/Issue026-J2_reference.dsn $F/Issue143-rpi_splitter.dsn $F/Issue145-smoothieboard.dsn
 ```
 
 The transcripts these produced are in
-`.superpowers/sdd/2026-08-28-plan-4-settings/task-3-report.md`.
+`.superpowers/sdd/2026-08-28-plan-4-settings/task-{3,4,5}-report.md`.

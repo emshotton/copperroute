@@ -20,8 +20,11 @@
 //! inverse `fill_absent_from`). Task 3 adds [`field_path`] — `ReflectionUtil.setFieldValue`, the string-keyed half of the
 //! same Java class, which Task 7's environment-variable and CLI sources drive. Task 4 adds
 //! `RouterSettings`'s null-coalescing accessors, their setter clamps, `java_clone` and
-//! `validate`. `SettingsMerger` and the settings sources themselves are Tasks 5 and onward.
+//! `validate`. Task 5 adds [`board_optimizations`] — `applyBoardSpecificOptimizations` and its
+//! two companions, the only part of `RouterSettings` that reads a `fr_board::Board`.
+//! `SettingsMerger` and the settings sources themselves are Tasks 6 and onward.
 
+pub mod board_optimizations;
 pub mod copy_fields;
 pub mod drc_settings;
 pub mod error;

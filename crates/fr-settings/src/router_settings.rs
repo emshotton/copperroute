@@ -7,11 +7,13 @@
 //! [`crate::field_path`]). Task 4 added the null-coalescing accessors, their setter clamps,
 //! [`RouterSettings::java_clone`] and [`RouterSettings::validate`].
 //!
+//! Task 5 added `applyBoardSpecificOptimizations`, `applyBoardSpecificOptimizationsIfNeeded` and
+//! `areBoardSpecificTraceCostsApplied` — in [`crate::board_optimizations`], not here, because
+//! they are the only `RouterSettings` methods that need `fr-board`.
+//!
 //! Still `MISSING` from this file's `scripts/audit-port.sh` run, with their owning task:
-//! `applyBoardSpecificOptimizations`, `applyBoardSpecificOptimizationsIfNeeded` and
-//! `areBoardSpecificTraceCostsApplied` (Task 5, `board_optimizations.rs`); `setAlgorithm`,
-//! `setOptimizerEnabled`, `getRunFanout`, `isFanoutEnabled` and `setFanoutEnabled` (Tasks 6-8,
-//! the settings sources that first need them).
+//! `setAlgorithm`, `setOptimizerEnabled`, `getRunFanout`, `isFanoutEnabled` and
+//! `setFanoutEnabled` (Tasks 6-8, the settings sources that first need them).
 //!
 //! ## Transient-field serde treatment, JVM-verified
 //!
