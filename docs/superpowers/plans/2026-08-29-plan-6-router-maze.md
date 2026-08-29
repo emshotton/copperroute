@@ -1185,7 +1185,8 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #159.** Tasks 4, 5, 8 and 12 must take the next free id *at the time
+> **The next free row id is #160** (Task 3 landed #159: the 90° `completeShape` override drops a room it
+> ignores by shape). Tasks 4, 5, 8 and 12 must take the next free id *at the time
 > they write*, re-checking `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
 > row); do not write it again.
@@ -1196,7 +1197,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 | #156 | the same comparator returns `0` on a full four-key tie, and the `TreeSet` **silently drops** the element — one fewer expansion, with a comment in Java admitting it. | `maze/MazeListElement.java:104-112` |
 | #157 | `TestingSettings.setMaxPasses` is first-writer-wins, so `RoutingFixtureTest.getRoutingJob`'s own `setMaxPasses(100)` never overrides a test's `setMaxPasses(1)`; every fixture bound in the Java suite depends on that. | `src/test/…/settings/sources/TestingSettings.java:52-55`; `fixtures/RoutingFixtureTest.java:76` |
 | #158 | production routing code carries hard-coded debug net numbers (33/66/67 in the engine, 94/98 in the pass runner and the locator) gating `FRLogger.trace`. | `maze/AutorouteEngine.java:164-176`; `path/FoundConnectionLocator.java:78-100,238` |
-| #159 | HEAD-only pure-SMD relaxations with no upstream counterpart: `attachSmdAllowed` is forced true and the via cost factor is scaled by 0.1 when every item of the net is a single-layer pin. Routing-visible; ported from HEAD because HEAD is the parity jar. | `maze/AutorouteControl.java:263-269, 277-281` |
+| #159 (label — real id assigned at write time, ≥ #160) | HEAD-only pure-SMD relaxations with no upstream counterpart: `attachSmdAllowed` is forced true and the via cost factor is scaled by 0.1 when every item of the net is a single-layer pin. Routing-visible; ported from HEAD because HEAD is the parity jar. | `maze/AutorouteControl.java:263-269, 277-281` |
 | #160 | `ObstacleExpansionRoom.getId` packs `(itemId << 10) \| indexInItem`, which aliases silently for item ids ≥ 2²¹ or more than 1024 tree shapes — and the id is a sort key. | `expansion/ObstacleExpansionRoom.java:49` |
 | #161 | `CompleteFreeSpaceExpansionRoom.compareTo` tests `instanceof FreeSpaceExpansionRoom` and casts to `CompleteFreeSpaceExpansionRoom`; an incomplete room in a sorted set would `ClassCastException`. Unreachable today. | `expansion/CompleteFreeSpaceExpansionRoom.java:46-54` |
 | #162 | `SortedRoomNeighbour.compareTo` is **non-transitive** — a ±1 distance tolerance band plus an id tie-break — and the neighbours go into a `TreeSet`, so which neighbour is dropped depends on insertion order. Three separate copies, one per angle regime. | `expansion/SortedRoomNeighbours.java:720-762`; `Sorted45DegreeRoomNeighbours.java:803+`; `SortedOrthogonalRoomNeighbours.java:598+` |
