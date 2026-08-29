@@ -398,6 +398,12 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
             }
         } else if arg.starts_with("-oit") {
             // :700-709 — the division is `float`, and it happens *before* the clamp.
+            //
+            // The path string handed to `java_parse_f32` never surfaces: the `Err` it decorates
+            // is dropped by the `let Ok(…)` below, matching Java, where `Float.parseFloat`'s
+            // `NumberFormatException` is caught by the per-iteration `try` at `:523`/`:835-837`
+            // and only reaches `FRLogger`. It is spelled as the field the value would have
+            // reached so that a future caller that *does* read the error gets a usable message.
             if let Some(value) = value_of(i)
                 && let Ok(percent) =
                     java_parse_f32(value, "optimizer.optimization_improvement_threshold")
@@ -652,3 +658,63 @@ pub fn classify_de_arguments(args: &[String]) -> DeSlots {
 
     slots
 }
+
+// -------------------------------------------------------------------------------------------
+// The `GlobalSettings` roster (plan Task 11)
+// -------------------------------------------------------------------------------------------
+//
+// `settings/GlobalSettings.java` (870 lines) is the whole application's configuration object.
+// Exactly one of its nineteen public members is in scope for `fr-settings`:
+// `applyCommandLineArguments` (`:521-838`), ported above as `apply_command_line_arguments` with
+// a `// renamed:` marker. The other eighteen are listed here, one line each with its reason, so
+// the audit (`scripts/audit-port.sh settings crates/fr-settings/src '… GlobalSettings.java'
+// scripts/audit-map/fr-settings.map`) checks the deferral instead of skipping it, and so nobody
+// has to re-derive the reasons. Line numbers are the clone's HEAD (plan ruling 7).
+//
+// No persistent configuration file and no user-data directory (spec §2). These five are also the
+// crate's `HostEnvironment` boundary: they are `static` mutable path state, which the plan's
+// Global Constraints forbid outright.
+// not ported: GlobalSettings.load (:267-381) — reads `freerouting.json` off disk through Gson.
+//   Spec §2 has no persistent config file; the tier it feeds (`JsonFileSettings`, priority 10)
+//   is reserved and empty, and `p4t1` asserts that on the JVM rather than assuming it.
+// not ported: GlobalSettings.saveAsJson (:383-459) — writes that same file back.
+// not ported: GlobalSettings.getConfigurationFilePath (:178-205) — resolves `freerouting.json`
+//   under the user-data directory; nothing to resolve without the file.
+// not ported: GlobalSettings.getUserDataPath (:155-162) — `static` mutable path state.
+// not ported: GlobalSettings.setUserDataPath (:164-176) — the setter for it.
+// not ported: GlobalSettings.lockUserDataPath (:150-153) — the latch that freezes it.
+//
+// Version and locale, neither of which is a router setting.
+// not ported: GlobalSettings.getReleaseSafeVersion (:207-265) — the update check's version
+//   string (spec §2: no version check, no telemetry).
+// not ported: GlobalSettings.getCurrentLocale (:512-514) — returns `currentLocale`, a UI concern.
+//
+// The non-router half of the property-path machinery. The *path handling* is not dropped: it is
+// `ReflectionUtil.setFieldValue`, which Task 3 ports in full as [`crate::field_path`]; what is
+// dropped is only the `GlobalSettings`-rooted entry point and its `FRLogger` reporting.
+// not ported: GlobalSettings.setValue (:498-510) — `ReflectionUtil.setFieldValue(this, …)` plus
+//   two `FRLogger` arms. The same code is `crate::field_path::set_field_value`, rooted at
+//   `RouterSettings` instead of `GlobalSettings`; the `Boolean` return becomes `Result`.
+// not ported: GlobalSettings.setDefaultValue (:461-472) — `load()` + `setValue` + `saveAsJson`,
+//   i.e. the persistent-file path again.
+// not ported: GlobalSettings.applyNonRouterEnvironmentVariables (:474-496) — walks
+//   `FREEROUTING__*` and *skips* everything starting with `router.` (:485-487), so by
+//   construction it sets nothing this crate models. The router half is
+//   `EnvironmentVariablesSource` ([`super::env`]).
+//
+// The six readers of the dead legacy bridge (plan ruling 8). Each returns a field of the
+// `@Deprecated public final RouterSettings routerSettings` / `guiSettings` that no routing path
+// reads; [`LegacyBridge`] carries the writes, and nothing in `resolve_headless` reads it.
+// not ported: GlobalSettings.getDesignDir (:842-844) — `guiSettings.inputDirectory` (GUI).
+// not ported: GlobalSettings.getMaxPasses (:847-849) — `routerSettings.maxPasses` off the bridge.
+// not ported: GlobalSettings.getNumThreads (:852-854) — `routerSettings.optimizer.maxThreads`.
+// not ported: GlobalSettings.getHybridRatio (:857-859) — `routerSettings.optimizer.hybridRatio`.
+// not ported: GlobalSettings.getBoardUpdateStrategy (:862-864) — the bridge's update strategy.
+// not ported: GlobalSettings.getItemSelectionStrategy (:867-869) — the bridge's selection
+//   strategy.
+//
+// not ported: the GlobalSettings constructor (:139-147) — validates `currentLocale` against
+//   `supportedLanguages` (a UI concern) and builds `settingsMergerProtype` from a bare
+//   `DefaultSettings`. The prototype merger it builds is `Freerouting.java:1408-1413`'s, which
+//   [`crate::resolve::resolve_headless`] linearises; `audit-port.sh` skips constructors, so this
+//   line is documentation rather than a gate.

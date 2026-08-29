@@ -28,8 +28,14 @@ CliSettings                 sources/cli.rs
 GlobalSettings              sources/cli.rs
 JsonFileSettings            lib.rs
 GuiSettingsSource           lib.rs
-# Task 10: the Gson configuration `RouterSettings`'s JSON in/out reproduces. `util/gson` is not
-# one of this plan's three audit invocations; these rows are here so Task 11's roster can add it
-# without first having to find the port.
+# Task 10: the Gson configuration `RouterSettings`'s JSON in/out reproduces. Task 11 added
+# `util/gson` as a fourth audit invocation (see `crates/fr-settings/README.md`), so every class in
+# that package is mapped here. `RouterSettingsTypeAdapterFactory` spans two files: the behaviour is
+# in `json.rs`, and the `// not ported:` markers for its two methods are in `lib.rs`'s roster. The
+# three adapters below carry no `RouterSettings` type at all and are roster-only.
 GsonProvider                json.rs
 RouterSettingsTypeAdapterFactory json.rs
+RouterSettingsTypeAdapterFactory lib.rs
+InstantTypeAdapter          lib.rs
+PathTypeAdapter             lib.rs
+ByteArrayToBase64TypeAdapter lib.rs
