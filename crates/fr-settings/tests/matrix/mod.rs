@@ -20,11 +20,31 @@
 //! # Which combinations are reachable — the pruning rule
 //!
 //! The task brief expected the 4 × 4 × 2 × 2 = 64 cross product to prune to 40 "reachable"
-//! combinations. The table runs all 64 instead: 44 of them are reachable from the CLI-started
-//! headless path this matrix models, and the remaining 20 are kept deliberately as extra
-//! coverage of the merge algebra, labelled as such below rather than passed off as paths Java
-//! runs. The pruning rule is therefore written down as the reachability argument it was meant to
-//! be, rather than left implicit (Task 8 report, deviation D1 and fix round 1).
+//! combinations. The table runs all 64 instead, split three ways rather than two (Task 8 report,
+//! deviation D1 and fix round 1; the count corrected in Task 11):
+//!
+//! | rows | status |
+//! |---|---|
+//! | **36** = 3 DSN × {`none`, `cli`, `scheduler`} × 2 × 2 | reachable from the CLI-started headless path, literally |
+//! | **8** = `dsn-none` × {`none`, `cli`} × 2 × 2 | reachable only *up to an equivalence* — see below |
+//! | **20** = 16 `rules-split` + 4 `dsn-none`/`rules-scheduler` | extra coverage of the merge algebra, not a path Java runs |
+//!
+//! An earlier revision called the first two groups one group of 44. It is worth separating,
+//! because the `dsn-none` column does not model anything the CLI path literally does.
+//! `Freerouting.java:108-112` refuses to build a job at all when the input file cannot be read,
+//! and `:125-127` then registers a `DsnFileSettings` at priority 20 **unconditionally** — before
+//! any format check. So merge #1 always has a priority-20 source. Only *merge #2* can go without
+//! one, because the scheduler gates it on `isDsn` (`RoutingJobScheduler.java:105-109`), which is
+//! false for the one other input format the CLI accepts, `KICAD_DESIGN_JSON` (`:87-88`).
+//!
+//! For such an input merge #1's `DsnFileSettings` is a **no-op**, and that is the equivalence:
+//! `DsnReader.readMetadata` on KiCad bytes yields no `Success` with metadata, so
+//! `DsnFileSettings.java:41` falls back to `new RouterSettings()` and `:46-48` never fires
+//! (`layerCount == 0`). Every leaf of that object is null, and `copyFields` rule 2 skips a null
+//! source field (`ReflectionUtil.java:235`), so a source at priority 20 that carries only nulls
+//! changes nothing about a merge whose base is `DefaultSettings`. "No DSN source" and "a DSN
+//! source over KiCad bytes" therefore produce the same merged object — which is what makes the
+//! eight rows meaningful, and why they are not filed with the pure extra coverage.
 //!
 //! The rules axis is already the *pruned* one: the two rules slots are the CLI's
 //! `initialRulesFile`, which feeds **merge #1** (`Freerouting.java:129-136`), and the scheduler's
@@ -37,8 +57,9 @@
 //! - `cli` — `-dr R`: `Freerouting.java:130` also stores `R` as `job.rules`, so the scheduler's
 //!   `else if` chain picks the same file and both merges see `R`. **CLI-reachable.**
 //! - `scheduler` — an adjacent `<design>.rules` beside a DSN input (`:131-151`). The probe is
-//!   `isDsn`-gated, so this shape is **CLI-reachable only on the three DSN rows**; the
-//!   `dsn-none/rules-scheduler` cases are extra coverage (below).
+//!   `isDsn`-gated (`RoutingJobScheduler.java:132`), so this shape is **CLI-reachable only on the
+//!   three DSN rows**; the four `dsn-none/rules-scheduler` cases are extra coverage (below), and
+//!   not even the KiCad equivalence rescues them — `isDsn` is exactly what a KiCad input fails.
 //! - `cli ≠ scheduler` — merge #1 sees `R` and merge #2 sees a different file. Nothing in the
 //!   CLI path can produce it: `Freerouting.java:129` reads `globalSettings.initialRulesFile`,
 //!   `:130` gives `job.rules` that same file, and the scheduler prefers `job.rules` (`:118-121`).
@@ -106,7 +127,10 @@ pub struct DsnCase {
     /// Stable id, used in the case id and in the JVM driver's output.
     pub id: &'static str,
     /// The fixture under `../freerouting/fixtures`, or `None` for "no DSN source at all" — a
-    /// KiCad JSON input, where `RoutingJobScheduler.java:111-115` registers no `DsnFileSettings`.
+    /// KiCad JSON input, where `RoutingJobScheduler.java:105-109` registers no `DsnFileSettings`
+    /// in merge #2. Merge #1 still registers one (`Freerouting.java:125-127` is unconditional),
+    /// but over KiCad bytes it carries nothing; see the module docs' reachability table for why
+    /// the two are the same merged object.
     pub fixture: Option<&'static str>,
     /// The board's layer count; also the DSN's, where there is one.
     pub layer_count: usize,

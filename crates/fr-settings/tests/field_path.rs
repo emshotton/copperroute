@@ -41,7 +41,7 @@ fn set_nested_array_properties_when_null() {
     assert_eq!(layers[1].routable, Some(true));
 }
 
-/// `ReflectionUtilArrayTest.setNestedArrayPropertiesWhenInitialized` (:35-47).
+/// `ReflectionUtilArrayTest.setNestedArrayPropertiesWhenInitialized` (:35-48).
 #[test]
 fn set_nested_array_properties_when_initialized() {
     let mut settings = RouterSettings::new();
@@ -62,7 +62,7 @@ fn set_nested_array_properties_when_initialized() {
     assert_eq!(layers[1].preferred_direction_horizontal, Some(false));
 }
 
-/// `ReflectionUtilArrayTest.caseInsensitiveAndSerializedNameMatching` (:49-73).
+/// `ReflectionUtilArrayTest.caseInsensitiveAndSerializedNameMatching` (:50-74).
 #[test]
 fn case_insensitive_and_serialized_name_matching() {
     let mut settings = RouterSettings::new();

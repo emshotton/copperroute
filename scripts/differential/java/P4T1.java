@@ -58,9 +58,6 @@ import java.util.Map;
  *
  * <p>Every case is preceded by a {@code CASE <id>} line, so a diff names the row that moved.
  *
- * <ul>
- * </ul>
- *
  * <h2>What this transcribes, line by line</h2>
  *
  * <p>Every merge-relevant class below is the real one out of the jar; only the plumbing that wires
@@ -76,7 +73,7 @@ import java.util.Map;
  *   <li>{@code HeadlessBoardManager.java:739-748} — the between-merges board pass, reached from
  *       {@code RoutingJobScheduler.java:93-96} → {@code loadFromSpecctraDsn} → {@code :733}.
  *   <li>{@code RoutingJobScheduler.java:103-170} — merge #2.
- *   <li>{@code RoutingJobScheduler.java:172-186} — the post-merge {@code RulesReader.read} and the
+ *   <li>{@code RoutingJobScheduler.java:173-186} — the post-merge {@code RulesReader.read} and the
  *       final {@code applyBoardSpecificOptimizations}.
  * </ol>
  *
@@ -337,8 +334,10 @@ public final class P4T1 {
     merger2.addOrReplaceSources(new ApiSettings(settings)); //                 :163-166 (priority 70)
     settings = merger2.merge(); //                                             :170
 
-    // --- the post-merge re-apply (`:172-181` → `RulesReader.java:153-157`) --------------------
-    if (schedulerRulesBytes != null) { //                                      :172
+    // --- the post-merge re-apply (`:173-184` → `RulesReader.java:153-157`) --------------------
+    // `:173` is `rulesData != null && job.board != null`; this driver always has a board, so the
+    // second conjunct is constant here (`resolve_headless` guards on it — Task 8, ruling N).
+    if (schedulerRulesBytes != null) { //                                      :173
       String designName = "board"; //                                          :175 (job.name is null)
       RulesReader.read( //                                                     :176
           new ByteArrayInputStream(schedulerRulesBytes), designName, board, settings); //    :177-180

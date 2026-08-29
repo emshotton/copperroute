@@ -27,9 +27,11 @@
 //!    omission was harmless.
 //! 2. **`validate()` is not idempotent.** The brief says the second call is; it is not, for
 //!    `max_passes = 0` — see `the_second_validate_is_not_idempotent_for_max_passes_zero`.
-//! 3. **44 of the 64 cross-product cases are reachable from the CLI-started path and the other 20
-//!    are deliberate extra coverage**, so the matrix runs all 64 rather than the brief's 40 — the
-//!    reachability argument is in [`matrix`]'s module docs.
+//! 3. **36 of the 64 cross-product cases are reachable from the CLI-started path**, 8 more only
+//!    up to an equivalence (`dsn-none` models a KiCad input, whose merge-#1 `DsnFileSettings` is
+//!    a no-op rather than absent), and the other 20 are deliberate extra coverage — so the matrix
+//!    runs all 64 rather than the brief's 40. The argument, and the arithmetic, are in
+//!    [`matrix`]'s module docs.
 //! 4. **One `.rules` file, two parses.** Java reads the scheduler's `.rules` twice — once against
 //!    the layer structure discovered from the file (`RulesReader.java:198`, priority 40) and once
 //!    against the **board's** (`:112`, the post-merge re-apply). Both forms below therefore

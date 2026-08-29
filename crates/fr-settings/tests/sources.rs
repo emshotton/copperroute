@@ -72,7 +72,8 @@ impl SettingsSource for NullSource {
 }
 
 /// A source that hands back a caller-supplied `RouterSettings` at a caller-chosen priority — the
-/// shape `SettingsMergerTest.legacyBatchModeEnablesRouterWhenJsonDisablesIt` (:196-212) uses.
+/// shape of the anonymous `SettingsSource` at `:196-212` inside
+/// `SettingsMergerTest.legacyBatchModeEnablesRouterWhenJsonDisablesIt` (:191-224).
 struct FixedSource {
     settings: RouterSettings,
     priority: i32,
@@ -458,7 +459,7 @@ fn api_settings_wraps_or_blanks() {
 // RulesFileSettingsTest.java — this plan's golden inputs
 // ---------------------------------------------------------------------------------------------
 
-/// `RulesFileSettingsTest.priorityIs40` (:17-22), plus the "file does not exist" arm of
+/// `RulesFileSettingsTest.priorityIs40` (:16-21), plus the "file does not exist" arm of
 /// `RulesFileSettings(String)` (:57-69) that test drives. `SProbe D.rulesMissing`.
 #[test]
 fn rules_file_settings_priority_is_40() {
@@ -470,7 +471,7 @@ fn rules_file_settings_priority_is_40() {
     assert_eq!(s.get_layer_count(), 0);
 }
 
-/// `RulesFileSettingsTest.parsesAutorouteSettingsFromProcessorRules` (:24-54), plus the raw
+/// `RulesFileSettingsTest.parsesAutorouteSettingsFromProcessorRules` (:23-54), plus the raw
 /// field view `SProbe E.processorRaw` prints — which is what the merge engine actually sees.
 #[test]
 fn rules_file_settings_parses_processor_z80_rules() {
@@ -580,14 +581,15 @@ fn rules_file_settings_parses_hw48na_rules() {
 ///
 /// `SProbe F.Issue413-test.dsn`, `F.Issue066-Project_GP8B.dsn`, `F.Issue026-J2_reference.dsn`.
 ///
-/// **Fixture substitution:** Java's three single-assertion tests (`dsnFileSettingsReturnsNonNull`,
-/// `…PriorityIs20`, `…SourceNameContainsFilename`, `:76-98`) use `Issue143-rpi_splitter.dsn`,
-/// which reaches this port through `DsnTestFixtures.openResource` — a *test-resource* lookup, not
-/// the fixtures directory. `Issue026-J2_reference.dsn` stands in for it here: it is in
-/// `../freerouting/fixtures` (so `parity::fixture` finds it), it likewise has no
-/// `(autoroute_settings)` block, and it is already one of Plan 3's byte-parity references. The
-/// three assertions are about the priority, the name and non-nullness, none of which depends on
-/// which DSN is read; the JVM row for the substitute is `SProbe F.Issue026-J2_reference.dsn.*`.
+/// **No fixture substitution.** Java's three single-assertion tests
+/// (`dsnFileSettingsReturnsNonNullSettings`, `…PriorityIs20`, `…SourceNameContainsFilename`,
+/// `:76-98`) read `Issue143-rpi_splitter.dsn` through `DsnTestFixtures.openResource`, which is
+/// `new FileInputStream(TestFixtures.resolveFile(filename))` (`DsnTestFixtures.java:27-32`,
+/// `:59-61`) — the **`fixtures/` directory**, not a classpath resource. An earlier revision of
+/// this comment claimed otherwise and substituted a different fixture on that basis; the file is
+/// in `../freerouting/fixtures` like every other, so it is read here directly.
+/// `Issue066-Project_GP8B.dsn` (4 layers) and `Issue026-J2_reference.dsn` stay in the loop as
+/// extra layer counts. JVM rows: `SProbe F.<name>.*`.
 #[test]
 fn dsn_file_settings_seeds_the_layer_count() {
     if !parity::require_java_dir() {
@@ -597,6 +599,8 @@ fn dsn_file_settings_seeds_the_layer_count() {
         ("Issue413-test.dsn", 2),
         ("Issue066-Project_GP8B.dsn", 4),
         ("Issue026-J2_reference.dsn", 2),
+        // The fixture Java's own three single-assertion tests use (`:76-98`).
+        ("Issue143-rpi_splitter.dsn", 2),
     ] {
         let bytes = std::fs::read(parity::fixture(name)).expect("fixture");
         let source = DsnFileSettings::new(&bytes[..], name);

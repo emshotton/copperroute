@@ -157,6 +157,19 @@ fn main() {
     let data = PathBuf::from(require_env("P4T1_DATA"));
     let processors: usize = require_env("P4T1_PROCESSORS").parse().expect("a number");
 
+    // Provenance for *this* side, on **stderr**: `run.sh` captures and diffs stdout only, so a
+    // line here cannot become a spurious diff, and the header's jar/size/mtime says nothing about
+    // which Rust binary produced the other half of the comparison. `run.sh` rebuilds before every
+    // run, but a hand-invoked `target/release/p4t1` need not be current.
+    if let Ok(exe) = std::env::current_exe() {
+        let stamp = std::fs::metadata(&exe)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_millis());
+        eprintln!("rust-binary {} mtime={stamp}", exe.display());
+    }
+
     // The header: plan ruling 7's check that the driver runs against the jar the port is a port
     // of, and ruling 6's check that the machine-dependent defaults are pinned to one number.
     // Java derives the path from `RouterSettings.class`'s code source; this side takes it from
@@ -247,9 +260,12 @@ fn resolve_case(
 fn build_board(case: &Case, dsn_bytes: Option<&[u8]>) -> Board {
     if case.board == "dsn" {
         let bytes = dsn_bytes.expect("a `dsn` board needs a DSN fixture");
-        let design_name = base_name(&case.dsn)
+        // Java is `baseName(c.dsn()).replaceAll("\\.dsn$", "")` — a name that does *not* end in
+        // `.dsn` comes through unchanged, so the fallback is the name, not the empty string.
+        let file_name = base_name(&case.dsn);
+        let design_name = file_name
             .strip_suffix(".dsn")
-            .unwrap_or_default()
+            .unwrap_or(&file_name)
             .to_string();
         let options = DsnReadOptions::default();
         let result = fr_dsn::read_board(bytes, None, Some(&design_name), &options);
@@ -379,6 +395,17 @@ fn push_slice<T: JavaValue>(lines: &mut Vec<String>, path: &str, value: Option<&
     }
 }
 
+/// The `path=value` walk, spelled out field by field rather than reflectively.
+///
+/// **One representable difference from the Java side's `dump`.** Java walks
+/// `LayerSettings[]`, whose elements can be `null`, and a null element prints one
+/// `layers[i]=null` line. `Vec<LayerSettings>` has no null slot — plan ruling 4 makes the
+/// *fields* nullable, not the array cells — so this side would print three
+/// `layers[i].*=null` lines instead. No row of the matrix produces one: every `layers` array a
+/// `RouterSettings` owns is filled element by element by `setLayerCount`
+/// (`RouterSettings.java:456-477`) or by `applyBoardSpecificOptimizations` (`:306-323`, whose
+/// `else` arm exists precisely to replace a null element). A future case that did produce one
+/// would diff here for that reason and not for a port bug.
 fn dump_router(lines: &mut Vec<String>, s: &RouterSettings) {
     push(lines, "enabled", s.enabled.as_ref());
     push(lines, "algorithm", s.algorithm.as_ref());

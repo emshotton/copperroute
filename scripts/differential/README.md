@@ -240,7 +240,10 @@ methods with dozens of branches.
     from `$FREEROUTING_JAR`, and the processor count is pinned with
     `-XX:ActiveProcessorCount=4` against `HostEnvironment::with_processors(4)`
     (`$P4T1_PROCESSORS`), so running against the wrong build or an unpinned JVM
-    is a diff rather than a silent assumption. The second line is
+    is a diff rather than a silent assumption. The Rust side additionally
+    prints its own binary's path and mtime **to stderr**, which `run.sh`
+    neither captures nor diffs — the header proves which *jar* ran, and that
+    line proves which Rust binary did. The second stdout line is
     `JSON_SOURCE_EMPTY`: the Java side builds `JsonFileSettings` on an **empty
     temporary directory** and aborts with `JSON_SOURCE_NOT_EMPTY` unless every
     leaf of its `getSettings()` is null, which turns spec §2's "no persistent
@@ -517,25 +520,26 @@ the driver expects, or none at all.
   `RulesReader.read` is the literal `"board"` — a header mismatch there is
   non-fatal (`RulesReader.java:100-110`).
 
-  **One place `SettingsInputs` is lossier than Java, measured here.** Java
-  parses the scheduler's `.rules` file **twice** with two different layer
-  structures — at priority 40 through `RulesFileSettings` →
+  **One `.rules` file, two parses — this driver is what found it.** Java parses
+  the scheduler's `.rules` file **twice**, with two different layer structures:
+  at priority 40 through `RulesFileSettings` →
   `RulesReader.readRouterSettings`, whose structure is discovered from the file
   itself (`RulesReader.java:238-273`), and again after the merge through
   `RulesReader.read(…, board, settings)`, whose structure is the **board's**
-  (`:112`). `fr_settings::SettingsInputs` has one `scheduler_rules` field for
-  both, so `p4t1` feeds it the board-structured parse; that is exact whenever a
-  board is present, because by the time `fill_absent_from` runs the
-  between-merges board pass has filled every `layers[i]` field and both
-  `scoring` cost arrays, leaving only `resultJsonPath` and the two
-  `timeoutString`s absent — three fields no `(autoroute_settings)` block
-  carries. Feeding the *discovered* parse instead (which is what
-  `crates/fr-settings/tests/matrix/mod.rs::rules_source` builds) diverges from
-  the JVM on 13 of the 84 rows — every `dsn4-*` row with a `.rules` file — in
-  `layers[1]` versus `layers[3]`'s `routable` and
+  (`:112`). They disagree whenever the file names fewer layers than the board
+  has — a two-`layer_rule` file on a four-layer board puts `B.Cu` at index 3 in
+  the second parse and at index 1 in the first.
+
+  An earlier revision of `SettingsInputs` took one pre-parsed `RouterSettings`
+  for both slots, and `p4t1` fed it the board-structured parse; that diverged
+  from the JVM on **13 of these 84 rows** — every `dsn4-*` row with a `.rules`
+  file — in `layers[1]` versus `layers[3]`'s `routable` and
   `preferredDirectionHorizontal`, because the matrix's `.rules` files name only
-  `F.Cu` and `B.Cu`. Measured, not argued: swap the two constructors in
-  `p4t1.rs::resolve_case` and the run goes from 0 to 48 differing lines.
+  `F.Cu` and `B.Cu`. Controller ruling N fixed it at the root (Task 8 fix round
+  2, quirk #142): `SettingsInputs.cli_rules` and `.scheduler_rules` are now the
+  file's **bytes**, and `resolve_headless` performs both parses itself. This
+  driver hands them over unparsed, so the two sides no longer share a parsing
+  decision at all.
 
 ## Deferred coverage and cleanups
 
@@ -545,7 +549,6 @@ covers.
 
 | Item | Why it is open | Raised by |
 |---|---|---|
-| `p4t1` builds `scheduler_rules` from the board-structured parse | `fr_settings::SettingsInputs` has one field where Java has two differently-parsed objects (see the `p4t1` entry under "Per-driver arguments"). Exact for every case with a board, but a Plan 8 caller that wires the field from `RulesFileSettings` alone will be wrong on any board whose layer set is a strict superset of the `.rules` file's — 13 of these 84 rows. Either `SettingsInputs` grows a second field or the hand-off says which parse belongs there. | Plan 4 Task 9 |
 | `p3t2` mode 0 never formats a rotation above `1e7` | `formatPlacementRotation` is exercised in modes 1-3, whose generators keep values inside DSN coordinate ranges and `[0, 360)`. `Double.toString` switches to `E` notation at `1e7`, and no mode drives a *rotation* across that boundary — so the `String.format("%.3f", …)` path is unproven for a value that large. Java only ever passes it a placement angle, so nothing reachable produces one; it is coverage debt, not a suspected bug. | Plan 3 Task 2 review |
 | `crates/fr-dsn/src/format/double.rs` shadows `point` twice (`:148` `i32`, `:154` `usize`) | Deliberate — the first is signed so the "value below 1" branch can subtract, the second is the index the layout loop needs — but two bindings of one name in twelve lines is easy to misread. A rename (`point_signed` / `point`) is a safe, mechanical change nobody has had a reason to make yet. | Plan 3 Task 2 review |
 | `JavaRandom` is copied into four driver binaries | `t15`, `t16r`, `p2t13` and `p3t2` each carry their own transcription of `java.util.Random`'s LCG. They agree today (every driver that uses one is zero-diff), but four copies is four chances to drift. The package has had a shared module since Plan 3 Task 15 (`src/token_dump.rs`, included with `#[path]`); the same mechanism would collapse these four. | Plan 3 Task 2 review |
@@ -605,9 +608,10 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p3t15` (`Issue413-test.dsn`, modes 0/1/2/3/4) | 39 / 378 / 130 / 42 / 1097 | 0 | exact match — the fixture with traces, wiring vias, fixed states and SES `(wire` entries |
 | `p3t15` sweep (all 5 modes × all 106 fixtures = **530 pairs**) | see below | **0 unexpected** | 525 MATCH + 5 `XDIFF` (`Issue229` modes 0-3, `empty_board` mode 3), both explained in the next two rows |
 | `p3t15` (`Issue229-display-8-digit-hc595.dsn`, modes 0-3) | Java 3 / 59 / 18 / 0 vs Rust 502 / 3907 / 1922 / 55 | XDIFF | **Expected** (controller ruling E). The 2.3.0 jar's `DsnFile.readStringScope` has no resync loop where the clone's HEAD does, and the port follows HEAD (the plan's Java source authority), so the two readers legitimately build different boards from this file. The 2.3.0 reader gives up after one item where the port builds 501; mode 3 is Java 0 lines because the collapsed board also has no library, so `RulesWriter` NPEs on it as it does for `empty_board.dsn` below. Mode 4 — the raw token stream — still MATCHes on this file, which is the evidence that the divergence is in the parser and not in the scanner. Never "fixed" by changing the port. |
+| `p3t15` (`empty_board.dsn`, mode 3) | Java 0 / Rust 20 | XDIFF | **Expected** — Java throws. The file has no `(library …)` scope at all, so `BoardLibrary.padstacks` stays `null` and `RulesWriter.writeRules` NPEs on `padstacks.count()` (`NullPointerException: Cannot invoke "app.freerouting.core.Padstacks.count()" because "p_par.board.library.padstacks" is null`). The port's field is a value, not a reference, so it writes a complete 20-line `.rules` file. New in Task 15; recorded in `docs/java-quirks.md`'s totalization table. |
 | `p4t1` (`matrix/p4t1-cases.tsv`, `all 0`) | 5728 | 0 | exact match — 84 cases (Task 8's 64-case matrix + 20 Task 9 rows) of the real two-merge headless composition against `fr_settings::resolve_headless` |
 | `p4t1` (`matrix/p4t1-cases.tsv`, `all 1`) | 4287 | 0 | exact match — the same 84 cases through `GsonProvider.GSON` vs `RouterSettings::to_json_string_pretty` (Plan 4 Task 10) |
-| `p3t15` (`empty_board.dsn`, mode 3) | Java 0 / Rust 20 | XDIFF | **Expected** — Java throws. The file has no `(library …)` scope at all, so `BoardLibrary.padstacks` stays `null` and `RulesWriter.writeRules` NPEs on `padstacks.count()` (`NullPointerException: Cannot invoke "app.freerouting.core.Padstacks.count()" because "p_par.board.library.padstacks" is null`). The port's field is a value, not a reference, so it writes a complete 20-line `.rules` file. New in Task 15; recorded in `docs/java-quirks.md`'s totalization table. |
+| `p4t1` (`matrix/p4t1-cases.tsv`, `8 2`) | 5728 | 0 | exact match — mode 2 ignores the case index and runs the whole table as mode 0, so this is the `all 0` run reached the other way |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic

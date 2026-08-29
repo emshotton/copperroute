@@ -97,6 +97,12 @@ use crate::{FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, S
 /// `serde_json::to_string_pretty`**: the latter formats floats with Rust's shortest
 /// round-trip formatter, not `Double.toString`/`Float.toString`, and does not escape
 /// `U+2028`/`U+2029` — so it is not Gson-compatible. See [`crate::json`].
+///
+/// **The derived [`Clone`] is not `RouterSettings.clone()`.** Java's `clone()` is a hand-written
+/// method that drops `resultJsonPath` (quirk #114) and turns a null `optimizer`/`scoring`/
+/// `fanout` into a *fresh default object* — [`Self::java_clone`]. Use `java_clone` wherever the
+/// Java call site calls `clone()` (`SettingsMerger.merge`'s choice of merge base,
+/// `SettingsMerger.java:162`); the derive is a plain structural copy for everything else.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RouterSettings {
     /// `RouterSettings.java:20-21`.
@@ -980,7 +986,7 @@ mod tests {
     }
 
     /// A *different* layer count does take the reallocation branch and does clear the flag —
-    /// `Issue729TraceCostSettingsTest.setLayerCountResetsTraceCostAppliedFlag` (:110-118), minus
+    /// `Issue729TraceCostSettingsTest.setLayerCountResetsTraceCostAppliedFlag` (:106-114), minus
     /// its `applyBoardSpecificOptimizations` set-up (Task 5's). JVM probe row `D.after(diff)`.
     #[test]
     fn set_layer_count_resets_applied_flag() {

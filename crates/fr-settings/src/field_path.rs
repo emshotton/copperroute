@@ -220,7 +220,7 @@ impl RouterSettings {
             "result_json_path",
             FieldKind::Str,
         ),
-        // `private transient`, and with no `@SerializedName` (RouterSettings.java:110) — so its
+        // `private transient`, and with no `@SerializedName` (RouterSettings.java:111) — so its
         // `serialized` is the empty sentinel. Java's lookup does not filter by modifier, so this
         // one is reachable from a property path even though `copyFields` skips it.
         spec(

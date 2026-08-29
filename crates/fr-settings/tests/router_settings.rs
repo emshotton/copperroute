@@ -48,7 +48,7 @@ fn default_bend_cost() {
     assert_eq!(settings.get_bend_cost(1), 0.0);
 }
 
-/// `BendCostSettingsTest.setGetBendCost` (:20-42). Java's last row uses `15.0`; the brief uses
+/// `BendCostSettingsTest.setGetBendCost` (:20-43). Java's last row uses `15.0`; the brief uses
 /// `99.0`. Both clamp to `MAX_BEND_COST`, so both are asserted.
 #[test]
 fn set_get_bend_cost() {
@@ -99,8 +99,9 @@ fn bend_cost_falls_back_to_a_clamped_default_bend_cost() {
     assert_eq!(settings.get_layer_count(), 2);
 }
 
-/// `BendCostSettingsTest.nullScoringSafety` (:61-83), minus its
-/// `applyBoardSpecificOptimizations` tail (Task 5's).
+/// `BendCostSettingsTest.nullScoringSafety` (:61-114). Ported here up to `:83`; the
+/// `applyBoardSpecificOptimizations` tail (`:85-113`) is Task 5's, in
+/// `tests/board_optimizations.rs`.
 #[test]
 fn null_scoring_safety() {
     let mut settings = RouterSettings::new();
@@ -126,7 +127,7 @@ fn null_scoring_safety() {
 
 // --- NeckWidthSettingsTest.java ---------------------------------------------------------------
 
-/// `NeckWidthSettingsTest.defaultIsOff` (:18-21) and `cloneCarriesTheField` (:23-28), plus the
+/// `NeckWidthSettingsTest.defaultIsOff` (:17-20) and `cloneCarriesTheField` (:22-27), plus the
 /// negative row `getNeckWidthUm`'s `> 0` guard implies (`RouterSettings.java:527-529`).
 #[test]
 fn neck_width() {
@@ -366,6 +367,66 @@ fn horizontal_trace_costs_out_of_range_is_checked_first() {
     assert_eq!(settings.get_vertical_trace_costs(9), 0.0);
     // getTraceCosts' own guard fires before it can reach the unguarded read (`:878-880`).
     assert!(settings.get_trace_costs().is_empty());
+}
+
+/// `getTraceCosts` is sized by **`scoring.preferredDirectionTraceCost.length`**
+/// (`RouterSettings.java:881-882`), not by `getLayerCount()`, and the two can disagree — nothing
+/// keeps them in step outside `setLayerCount` and `applyBoardSpecificOptimizations`.
+///
+/// Longer array than `layers`: every index past `getLayerCount()` takes the out-of-range arm of
+/// `getHorizontalTraceCosts`/`getVerticalTraceCosts` (`:819-822`, `:862-866`), so the result has
+/// four entries, two of them `(0.0, 0.0)` — a silently zero-cost layer rather than a crash or a
+/// short array. Shorter array: `getTraceCosts` returns fewer factors than the board has layers,
+/// and the caller sees a short list with no warning.
+///
+/// `AutorouteControl` indexes the returned array by layer, so both shapes are live hazards; they
+/// are reproduced, not corrected.
+#[test]
+fn trace_costs_are_sized_by_the_cost_array_not_by_the_layer_count() {
+    let mut settings = RouterSettings::new();
+    settings.set_layer_count(2);
+    settings.set_preferred_direction_trace_costs(0, 2.0);
+    settings.set_against_preferred_direction_trace_costs(0, 3.0);
+    settings.set_preferred_direction_trace_costs(1, 4.0);
+    settings.set_against_preferred_direction_trace_costs(1, 5.0);
+
+    // Four costs, two layers.
+    let scoring = settings.scoring.as_mut().expect("allocated");
+    scoring.preferred_direction_trace_cost = Some(vec![2.0, 4.0, 6.0, 8.0]);
+    scoring.undesired_direction_trace_cost = Some(vec![3.0, 5.0, 7.0, 9.0]);
+    assert_eq!(settings.get_layer_count(), 2);
+
+    let costs = settings.get_trace_costs();
+    assert_eq!(costs.len(), 4, "sized by the array, not by `layers`");
+    assert_eq!(
+        costs[..2].to_vec(),
+        vec![
+            ExpansionCostFactor {
+                horizontal: 3.0,
+                vertical: 2.0
+            },
+            ExpansionCostFactor {
+                horizontal: 4.0,
+                vertical: 5.0
+            },
+        ]
+    );
+    assert_eq!(
+        costs[2..].to_vec(),
+        vec![
+            ExpansionCostFactor {
+                horizontal: 0.0,
+                vertical: 0.0
+            };
+            2
+        ],
+        "layers 2 and 3 do not exist, so both accessors take their out-of-range arm"
+    );
+
+    // One cost, two layers: the result is short.
+    let scoring = settings.scoring.as_mut().expect("allocated");
+    scoring.preferred_direction_trace_cost = Some(vec![2.0]);
+    assert_eq!(settings.get_trace_costs().len(), 1);
 }
 
 // --- setLayerCount ----------------------------------------------------------------------------

@@ -1,6 +1,15 @@
-//! `settings/sources/EnvironmentVariablesSource.java` — a port of all 15 cases of
+//! `settings/sources/EnvironmentVariablesSource.java` — a port of all **18** `@Test` cases of
 //! `settings/sources/EnvironmentVariablesSourceTest.java` (279), plus the
-//! `SettingsMergerTest.environmentVariablesPriority` case Task 6 deferred.
+//! `SettingsMergerTest.complexMerging` case Task 6 deferred.
+//!
+//! Eighteen cases, seventeen tests: `caseInsensitivePropertyNames` (:180-192) and
+//! `simpleRouterSetting` (:39-50) are the **same assertion**, character for character apart from
+//! the comment — both put `FREEROUTING__ROUTER__MAX_PASSES = "100"` into the map and read
+//! `maxPasses == 100` back. Its comment ("Environment variables are case-sensitive, but property
+//! names are converted to lowercase") describes the upper-casing at
+//! `EnvironmentVariablesSource.java:56`, which the key it uses cannot exercise; the test that
+//! does is `variable_names_are_case_insensitive`. Both Java cases are named on
+//! `a_simple_router_setting_is_parsed` rather than given a duplicate of their own.
 //!
 //! # JVM goldens — the command
 //!
@@ -66,7 +75,9 @@ fn empty_environment_yields_a_blank_but_present_settings_object() {
     assert!(settings.fanout.is_some());
 }
 
-/// `EnvironmentVariablesSourceTest.simpleRouterSetting` (:39-50), with the brief's `50`.
+/// `EnvironmentVariablesSourceTest.simpleRouterSetting` (:39-50) and
+/// `.caseInsensitivePropertyNames` (:180-192) — the same assertion twice (see the module docs);
+/// asserted here with the brief's `50` rather than Java's `100`.
 /// `CProbe A1.maxPasses = 50`, `A1.parsedCount = 1`.
 #[test]
 fn a_simple_router_setting_is_parsed() {
@@ -317,8 +328,10 @@ fn get_parsed_variables_returns_every_key_that_landed() {
     );
 }
 
-/// `SettingsMergerTest.environmentVariablesPriority` (:150-175) — the case Task 6 deferred:
-/// environment variables applied over `DefaultSettings`.
+/// `SettingsMergerTest.complexMerging` (:152-175) — the case Task 6 deferred: environment
+/// variables applied over `DefaultSettings`. Its neighbour `.environmentVariablesPriority`
+/// (:141-150) asserts only `getPriority() == 55`, which
+/// `priority_and_source_name` already covers.
 #[test]
 fn environment_variables_merge_over_the_defaults() {
     let merger = SettingsMerger::new(vec![

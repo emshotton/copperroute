@@ -61,7 +61,6 @@ fn ts(s: &TileShape) -> String {
         TileShape::Simplex(s) => simps(s),
     }
 }
-fn ots(s: &Option<TileShape>) -> String { match s { None => "null".into(), Some(x) => ts(x) } }
 fn ts_arr(a: &[TileShape]) -> String {
     let mut b = format!("[{}:", a.len());
     for s in a { b.push_str(&ts(s)); b.push(';'); }

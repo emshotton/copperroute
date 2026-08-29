@@ -42,8 +42,9 @@ use fr_settings::{LayerSettings, RouterSettings};
 // fixtures
 // ---------------------------------------------------------------------------------------------
 
-/// The board `Issue729TraceCostSettingsTest.setUp` (:28-45) and
-/// `RouterSettingsMergeTest.applyBoardSpecificOptimizationsPreservesSettings` (:49-72) build: a
+/// The board `Issue729TraceCostSettingsTest.setUp` (`@BeforeEach`, :28-47) and
+/// `RouterSettingsMergeTest.applyBoardSpecificOptimizationsPreservesSettings` (:40-83, at its
+/// :49-73) build: a
 /// stack of named layers, a default clearance matrix at half-width 10, a default net class and an
 /// `IntBox` outline that is also the bounding box.
 fn synthetic_board(width: i32, height: i32, is_signal: &[bool]) -> Board {
@@ -115,7 +116,7 @@ fn sized_settings(layer_count: usize) -> RouterSettings {
 // ---------------------------------------------------------------------------------------------
 
 /// `Issue729TraceCostSettingsTest.applyBoardSpecificOptimizationsInitializesTraceCostsOnce`
-/// (:48-63), tightened from the Java test's inequality to the exact JVM numbers.
+/// (:49-64), tightened from the Java test's inequality to the exact JVM numbers.
 ///
 /// `horizontal_add == 0.1 * java_round(10.0 * 2e6 / 1e6) == 2.0`,
 /// `vertical_add == 0.1 * java_round(10.0 * 1e6 / 2e6) == 0.5` (`:299-303`). The running flag
@@ -154,7 +155,7 @@ fn apply_board_specific_optimizations_initializes_trace_costs_once() {
 }
 
 /// `Issue729TraceCostSettingsTest.applyBoardSpecificOptimizationsPreservesUserTraceCostsOnSecondCall`
-/// (:65-79).
+/// (:66-79).
 #[test]
 fn apply_board_specific_optimizations_preserves_user_trace_costs_on_second_call() {
     let board = synthetic_board(2_000_000, 1_000_000, &[true, true]);
@@ -174,7 +175,7 @@ fn apply_board_specific_optimizations_preserves_user_trace_costs_on_second_call(
 }
 
 /// `Issue729TraceCostSettingsTest.applyBoardSpecificOptimizationsIfNeededSkipsWhenAlreadyBoardTuned`
-/// (:81-92).
+/// (:81-91).
 #[test]
 fn apply_board_specific_optimizations_if_needed_skips_when_already_board_tuned() {
     let board = synthetic_board(2_000_000, 1_000_000, &[true, true]);
@@ -190,7 +191,7 @@ fn apply_board_specific_optimizations_if_needed_skips_when_already_board_tuned()
 }
 
 /// `Issue729TraceCostSettingsTest.applyBoardSpecificOptimizationsIfNeededRunsWhenLayerCountMismatch`
-/// (:94-105).
+/// (:93-104).
 #[test]
 fn apply_board_specific_optimizations_if_needed_runs_when_layer_count_mismatch() {
     let board = synthetic_board(2_000_000, 1_000_000, &[true, true]);
@@ -212,10 +213,10 @@ fn apply_board_specific_optimizations_if_needed_runs_when_layer_count_mismatch()
 }
 
 // ---------------------------------------------------------------------------------------------
-// RouterSettingsMergeTest.java:40-84
+// RouterSettingsMergeTest.java:40-83
 // ---------------------------------------------------------------------------------------------
 
-/// `RouterSettingsMergeTest.applyBoardSpecificOptimizationsPreservesSettings` (:40-84), on a
+/// `RouterSettingsMergeTest.applyBoardSpecificOptimizationsPreservesSettings` (:40-83), on a
 /// **square** 2 000 000 × 2 000 000 board — the only fixture in this suite where both penalties
 /// are equal, `0.1 * java_round(10.0) == 1.0`.
 #[test]
@@ -444,4 +445,77 @@ fn a_merged_settings_object_loses_the_flag_and_is_retuned() {
         3.0,
         "the user's 4.5 is gone: the flag did not survive the merge"
     );
+}
+
+/// The **first** disjunct of `applyBoardSpecificOptimizationsIfNeeded` (`:252-253`) on its own:
+/// the flag says the costs *are* board-tuned, but the layer count disagrees with the board's, so
+/// the guard still fires. `Issue729TraceCostSettingsTest` covers the pair
+/// (`…SkipsWhenAlreadyBoardTuned` has both disjuncts false, `…RunsWhenLayerCountMismatch` has
+/// both true); neither isolates `getLayerCount() != boardLayerCount && applied`.
+///
+/// The re-tune is visible twice over: `layers` is reallocated to the board's length
+/// (`:306-318`), which itself clears the flag, and the user's `4.5` is replaced by the board's
+/// own number. On a **tall** 1 000 000 × 2 000 000 board the running flag starts
+/// `1e6 < 2e6 == true`, layer 0 toggles it to `false`, so layer 0's undesired direction is the
+/// horizontal one and its penalty is `vertical_add == 0.1 * java_round(10.0 * 2e6 / 1e6) == 2.0`
+/// (`:299-303`, `:365-373`) — `1.0 + 2.0 == 3.0`.
+#[test]
+fn if_needed_re_tunes_on_a_layer_count_mismatch_even_when_the_flag_is_set() {
+    let board = synthetic_board(1_000_000, 2_000_000, &[true, true]);
+    let mut settings = sized_settings(4);
+    settings.apply_board_specific_optimizations(&board);
+    assert!(settings.are_board_specific_trace_costs_applied());
+    // The first pass already re-sized to the board; put the mismatch back by hand, keeping the
+    // flag set, which is the state the second disjunct alone cannot produce.
+    settings.set_layer_count(4);
+    settings.set_against_preferred_direction_trace_costs(0, 4.5);
+    assert_eq!(settings.get_layer_count(), 4);
+    assert!(settings.are_board_specific_trace_costs_applied());
+
+    settings.apply_board_specific_optimizations_if_needed(&board);
+
+    assert_eq!(settings.get_layer_count(), 2, "re-sized to the board");
+    assert_eq!(
+        rows(&settings),
+        vec![(true, false, 0.0, 1.0, 3.0), (true, true, 0.0, 1.0, 1.5)],
+        "the user's 4.5 was replaced by the board's numbers"
+    );
+    assert!(settings.are_board_specific_trace_costs_applied());
+}
+
+/// `applyBoardSpecificOptimizations`' cost-array branch (`:325-334`) reached with the flag
+/// **already true** and `layers` already the right length: only the two `double[]`s are the
+/// wrong size, and reallocating either one writes `boardSpecificTraceCostsApplied = false`
+/// (`:328`, `:333`) — *before* `:346` reads it into `initializeTraceCosts`. So a settings object
+/// whose costs were "already applied" has them recomputed anyway, purely because the arrays did
+/// not match the layer count.
+///
+/// This is the one path where the flag is cleared by something other than the `layers`
+/// reallocation, and the port collapses Java's two identical writes into one after the pair
+/// (the borrow of `scoring` forces it); the assertion is that the collapse is invisible.
+#[test]
+fn a_wrong_length_cost_array_re_initializes_costs_even_when_the_flag_is_set() {
+    let board = synthetic_board(2_000_000, 1_000_000, &[true, true]);
+    let mut settings = sized_settings(2);
+    settings.apply_board_specific_optimizations(&board);
+    settings.set_against_preferred_direction_trace_costs(0, 4.5);
+    assert!(settings.are_board_specific_trace_costs_applied());
+    assert_eq!(settings.get_layer_count(), 2);
+
+    // Shorten one cost array only. `layers` stays at the board's length, so `:306-318` does not
+    // fire and the flag survives everything but `:325-334`.
+    let scoring = settings.scoring.as_mut().expect("allocated");
+    scoring.undesired_direction_trace_cost = Some(vec![4.5]);
+    assert_eq!(settings.get_layer_count(), 2);
+    assert!(settings.are_board_specific_trace_costs_applied());
+
+    settings.apply_board_specific_optimizations(&board);
+
+    // `2e6 x 1e6`: horizontal penalty `2.0`, vertical `0.5`; layer 0 is horizontal.
+    assert_eq!(
+        rows(&settings),
+        vec![(true, true, 0.0, 1.0, 3.0), (true, false, 0.0, 1.0, 1.5)],
+        "the arrays were re-initialised, not preserved"
+    );
+    assert!(settings.are_board_specific_trace_costs_applied());
 }

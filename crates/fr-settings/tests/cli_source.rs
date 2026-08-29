@@ -679,21 +679,33 @@ fn de_json_is_design_input_until_a_dsn_appears() {
 /// `CProbe E.realFileWithPlus (equalsPath=true)`, `E.missingFileWithPlus -> in=null`.
 #[test]
 fn de_takes_an_existing_path_verbatim_even_with_a_plus_in_it() {
-    let dir = std::env::temp_dir().join(format!("fr-settings-de-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("temp dir");
-    let path = dir.join("board+rev2.dsn");
+    // A `Drop` guard, not a pair of calls at the end: an assertion below panics on failure, and
+    // an early return would leave the directory behind in `$TMPDIR` for good.
+    struct TempDir(std::path::PathBuf);
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).ok();
+        }
+    }
+
+    let dir = TempDir(std::env::temp_dir().join(format!(
+        "fr-settings-de-{}-{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    )));
+    std::fs::create_dir_all(&dir.0).expect("temp dir");
+    let path = dir.0.join("board+rev2.dsn");
     std::fs::write(&path, b"").expect("temp file");
     let name = path.to_str().expect("utf-8 temp path").to_string();
 
     assert_eq!(de(&["-de", &name]), slots(Some(&name), None, None));
 
-    // The same string with no file behind it is split on `+`, and neither half ends in a known
-    // extension apart from the second, so only the `.dsn` half lands.
+    // The same string with nothing on disk behind it takes the `equalsPath` branch's `else`
+    // (`:574-644`) and is split on `+` into `<tmp>/board` and `rev2.dsn.ghost`. **Neither** half
+    // ends in `.dsn`, `.ses`, `.rules` or `.json`, so every slot stays empty — `:638-644` drops
+    // an unknown extension rather than guessing (quirk #137).
     let ghost = format!("{name}.ghost");
     assert_eq!(de(&["-de", &ghost]), slots(None, None, None));
-
-    std::fs::remove_file(&path).ok();
-    std::fs::remove_dir(&dir).ok();
 }
 
 /// The `-de` branch is reached only for arguments starting with a single `-` (`:538` takes `--`
