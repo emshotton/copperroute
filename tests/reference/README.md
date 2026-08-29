@@ -54,6 +54,20 @@ Note the 2.3.0 jar's package layout predates the clone's renames
 (`app.freerouting.board.BasicBoard`, not `board.facade`); the driver imports
 the jar's names.
 
+## Why the 2.3.0 jar, not the clone's HEAD (Plan 3 ruling 1)
+
+The clone's HEAD camelCased fifteen Specctra keyword names in `Keyword.java`
+*and* the writers' string literals (`(hostCad `, `(viaRule `, `(snapAngle `,
+`(stringQuote `, ...), while its lexer still only recognises the snake_case
+tokens -- so HEAD writes DSN it cannot read back (re-reading its own
+`tutorial_board` output drops `host_cad`, every via rule, every clearance rule
+and 26 wires). The 2.3.0 jar writes the correct Specctra tokens, and diffing
+HEAD's output against these references differs in exactly those fifteen tokens
+and nothing else on every fixture. The port therefore emits the 2.3.0 tokens,
+these references are the acceptance target, and `docs/java-quirks.md` #92 is
+the upstream bug report. Regenerating with a HEAD jar would silently move the
+target; do not.
+
 Reference files are committed. `_scratch/` holds the Rust side of a failing
 comparison and is gitignored, as is `scripts/gen-reference/build/`.
 
