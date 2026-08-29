@@ -22,6 +22,8 @@ use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::{BoardReadResult, CoordinateTransform, format_placement_rotation, ses_writer};
 
 /// The four stems the plan's bit-parity tests cover, with the fixture each was generated from.
+/// All four have an empty `(wiring …)` scope, which is what [`no_reference_contains_a_wire`]
+/// relies on; the three ruling-G stems below deliberately do not.
 const FIXTURES: [(&str, &str); 4] = [
     (
         "tutorial_board",
@@ -39,6 +41,16 @@ const FIXTURES: [(&str, &str); 4] = [
         "Issue143-rpi_splitter",
         "fixtures/Issue143-rpi_splitter.dsn",
     ),
+];
+
+/// Plan 3 controller ruling G: three further stems added in Task 15 so the trace, wiring-via,
+/// fixed-state and `(plane …)` writers have a committed byte-exact gate. `Issue413-test` is the
+/// only reference in the tree whose SES carries `(wire` entries — 11 of them — so it is the one
+/// that pins `SesWriter.writeRoutesScope`'s trace path against Java.
+const RULING_G_FIXTURES: [(&str, &str); 3] = [
+    ("Issue413-test", "fixtures/Issue413-test.dsn"),
+    ("Issue110-RelayModule", "fixtures/Issue110-RelayModule.dsn"),
+    ("Issue753-CPU-85_r104", "fixtures/Issue753-CPU-85_r104.dsn"),
 ];
 
 /// `RefWriter.main`'s read half: the board and the transform it was built with.
@@ -127,8 +139,8 @@ fn issue143_rpi_splitter_ses_matches_java() {
 /// the pinned 2.3.0 jar wrote — so a regression that hides inside that normalisation (the
 /// trailing space on `(routes `, `(library_out ` or `(network_out `) still fails.
 #[test]
-fn all_four_fixtures_are_byte_for_byte_identical_to_java() {
-    for (stem, relative_fixture) in FIXTURES {
+fn every_reference_is_byte_for_byte_identical_to_java() {
+    for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
         let reference_path = parity::reference(stem, "unrouted.ses");
         if !parity::require_reference(&reference_path) {
             continue;
@@ -156,9 +168,13 @@ fn all_four_fixtures_are_byte_for_byte_identical_to_java() {
     }
 }
 
-/// `tests/reference/README.md`'s "0 `(wire` entries" claim, asserted against the references
-/// themselves — the premise of the brief's "a wire in the output means a
+/// `tests/reference/README.md`'s "0 `(wire` entries" claim, asserted against the four original
+/// references themselves — the premise of the brief's "a wire in the output means a
 /// `get_connectable_items`/fixed-state bug, not a formatting one".
+///
+/// [`RULING_G_FIXTURES`] is deliberately excluded: those were added precisely because they *do*
+/// have routed wiring, and [`ruling_g_references_do_carry_wires`] pins the opposite property for
+/// them.
 #[test]
 fn no_reference_contains_a_wire() {
     for (stem, _) in FIXTURES {
@@ -273,8 +289,23 @@ fn issue742_placement_and_library_out_are_well_formed() {
 /// ports, and `Issue742-tastexx-pcb.dsn` lives outside `tests/reference`, so this keeps them
 /// covering the committed corpus too.
 #[test]
+fn ruling_g_references_do_carry_wires() {
+    let reference_path = parity::reference("Issue413-test", "unrouted.ses");
+    if !parity::require_reference(&reference_path) {
+        return;
+    }
+    let reference = std::fs::read_to_string(&reference_path).expect("reference readable");
+    assert_eq!(
+        reference.matches("(wire").count(),
+        11,
+        "Issue413-test's SES reference is the only committed one that exercises the trace path; \
+         if this count changes the reference was regenerated from a different fixture"
+    );
+}
+
+#[test]
 fn every_fixture_is_balanced_with_unique_library_padstacks() {
-    for (stem, relative_fixture) in FIXTURES {
+    for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
         let content = write_ses(relative_fixture, stem);
         common::assert_balanced_scopes(&content);
         common::assert_unique_library_padstacks(&content);

@@ -23,6 +23,30 @@ produce these references:
   --router.optimizer.enabled=false` the job completes with nothing to do and
   writes 0 bytes.
 
+## Which fixtures, and why
+
+`fixtures.txt` has seven stems. The first four (`tutorial_board`,
+`Issue026-J2_reference`, `Issue103-Board-Unrouted`, `Issue143-rpi_splitter`)
+are the plan's original bit-parity set. Between them they have **zero**
+`polyline_path`, zero wiring `(via `, zero `(type shove_fixed|fix|protect)`
+and zero `(plane ` — so they prove the `structure`/`placement`/`library`/
+`part_library`/`network` writers and nothing about six others. Plan 3
+controller ruling G added three more in Task 15 to close that:
+
+| stem | exercises | roundtrip.dsn | wires in .ses |
+|---|---|---|---|
+| `Issue413-test` | 11 `polyline_path`, 4 wiring vias, 3 fixed states | 8,492 B | 11 |
+| `Issue110-RelayModule` | 22 wiring vias, 22 fixed states | 171,349 B | 0 |
+| `Issue753-CPU-85_r104` | 3 `(plane …)`, 65 `polyline_path` | 273,049 B | 0 |
+
+`Issue413-test` is the only reference whose `unrouted.ses` carries `(wire`
+entries, so it is the one that pins `SesWriter`'s trace path; the other six
+are wire-free, which `parity_ses.rs`'s `no_reference_contains_a_wire` asserts.
+
+**Never edit a generated file by hand** — regenerate with the script. Adding a
+stem to `fixtures.txt` and re-running is the whole procedure; the script is
+idempotent for the stems already present (only `java.log`'s timestamp changes).
+
 Note the 2.3.0 jar's package layout predates the clone's renames
 (`app.freerouting.board.BasicBoard`, not `board.facade`); the driver imports
 the jar's names.
