@@ -22,6 +22,8 @@ fr-geometry = { path = "../../../crates/fr-geometry" }
 fr-board = { path = "../../../crates/fr-board" }
 # Added for the Plan 3 Task 2 driver (`p3t2`): Java number formatting.
 fr-dsn = { path = "../../../crates/fr-dsn" }
+# Added for the Plan 4 Task 9 driver (`p4t1`): the settings merge under test.
+fr-settings = { path = "../../../crates/fr-settings" }
 
 [[bin]]
 name = "t14"
@@ -85,3 +87,8 @@ path = "src/bin/p3t3.rs"
 [[bin]]
 name = "p3t15"
 path = "src/bin/p3t15.rs"
+
+# Plan 4 Task 9: the headless settings composition over the precedence matrix.
+[[bin]]
+name = "p4t1"
+path = "src/bin/p4t1.rs"

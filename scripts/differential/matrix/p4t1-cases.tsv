@@ -1,0 +1,91 @@
+# p4t1 settings-resolution matrix — see scripts/differential/README.md.
+# name	dsn	cli_rules	scheduler_rules	env	argv	board
+# `-` is "absent"; rules paths are `D:<name>` (crates/fr-settings/tests/data) or
+# `F:<name>` (../freerouting/fixtures); dsn names are fixtures. `board` is either a layer
+# count — the synthetic BProbe board, 2 000 000 x 1 000 000, all signal, named
+# F.Cu/In1.Cu/In2.Cu/B.Cu — or `dsn`, the fixture read back through the real DSN reader (needed
+# by the rows whose .rules file carries (padstack ...) scopes, which want a real library).
+dsn-none/rules-none/env-none/cli-none	-	-	-	-	-	2
+dsn-none/rules-none/env-none/cli-set	-	-	-	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-none/env-set/cli-none	-	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn-none/rules-none/env-set/cli-set	-	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-cli/env-none/cli-none	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	-	2
+dsn-none/rules-cli/env-none/cli-set	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-cli/env-set/cli-none	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn-none/rules-cli/env-set/cli-set	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-scheduler/env-none/cli-none	-	-	D:Plan4Matrix-adjacent.rules	-	-	2
+dsn-none/rules-scheduler/env-none/cli-set	-	-	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-scheduler/env-set/cli-none	-	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn-none/rules-scheduler/env-set/cli-set	-	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-split/env-none/cli-none	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	-	2
+dsn-none/rules-split/env-none/cli-set	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn-none/rules-split/env-set/cli-none	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn-none/rules-split/env-set/cli-set	-	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-none/env-none/cli-none	Issue413-test.dsn	-	-	-	-	2
+dsn2-bare/rules-none/env-none/cli-set	Issue413-test.dsn	-	-	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-none/env-set/cli-none	Issue413-test.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-bare/rules-none/env-set/cli-set	Issue413-test.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-cli/env-none/cli-none	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	-	2
+dsn2-bare/rules-cli/env-none/cli-set	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-cli/env-set/cli-none	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-bare/rules-cli/env-set/cli-set	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-scheduler/env-none/cli-none	Issue413-test.dsn	-	D:Plan4Matrix-adjacent.rules	-	-	2
+dsn2-bare/rules-scheduler/env-none/cli-set	Issue413-test.dsn	-	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-scheduler/env-set/cli-none	Issue413-test.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-bare/rules-scheduler/env-set/cli-set	Issue413-test.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-split/env-none/cli-none	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	-	2
+dsn2-bare/rules-split/env-none/cli-set	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-bare/rules-split/env-set/cli-none	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-bare/rules-split/env-set/cli-set	Issue413-test.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-none/env-none/cli-none	Issue187-processor.Z80.dsn	-	-	-	-	2
+dsn2-autoroute/rules-none/env-none/cli-set	Issue187-processor.Z80.dsn	-	-	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-none/env-set/cli-none	Issue187-processor.Z80.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-autoroute/rules-none/env-set/cli-set	Issue187-processor.Z80.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-cli/env-none/cli-none	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	-	2
+dsn2-autoroute/rules-cli/env-none/cli-set	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-cli/env-set/cli-none	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-autoroute/rules-cli/env-set/cli-set	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-scheduler/env-none/cli-none	Issue187-processor.Z80.dsn	-	D:Plan4Matrix-adjacent.rules	-	-	2
+dsn2-autoroute/rules-scheduler/env-none/cli-set	Issue187-processor.Z80.dsn	-	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-scheduler/env-set/cli-none	Issue187-processor.Z80.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-autoroute/rules-scheduler/env-set/cli-set	Issue187-processor.Z80.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-split/env-none/cli-none	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	-	2
+dsn2-autoroute/rules-split/env-none/cli-set	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn2-autoroute/rules-split/env-set/cli-none	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	2
+dsn2-autoroute/rules-split/env-set/cli-set	Issue187-processor.Z80.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	2
+dsn4-bare/rules-none/env-none/cli-none	Issue066-Project_GP8B.dsn	-	-	-	-	4
+dsn4-bare/rules-none/env-none/cli-set	Issue066-Project_GP8B.dsn	-	-	-	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-none/env-set/cli-none	Issue066-Project_GP8B.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	4
+dsn4-bare/rules-none/env-set/cli-set	Issue066-Project_GP8B.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-cli/env-none/cli-none	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	-	4
+dsn4-bare/rules-cli/env-none/cli-set	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-cli/env-set/cli-none	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	4
+dsn4-bare/rules-cli/env-set/cli-set	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-primary.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-scheduler/env-none/cli-none	Issue066-Project_GP8B.dsn	-	D:Plan4Matrix-adjacent.rules	-	-	4
+dsn4-bare/rules-scheduler/env-none/cli-set	Issue066-Project_GP8B.dsn	-	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-scheduler/env-set/cli-none	Issue066-Project_GP8B.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	4
+dsn4-bare/rules-scheduler/env-set/cli-set	Issue066-Project_GP8B.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-split/env-none/cli-none	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	-	4
+dsn4-bare/rules-split/env-none/cli-set	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=88 --router.optimizer.enabled=false	4
+dsn4-bare/rules-split/env-set/cli-none	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	-	4
+dsn4-bare/rules-split/env-set/cli-set	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__MAX_PASSES=77;FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true	--router.max_passes=88 --router.optimizer.enabled=false	4
+x-validate/cli-max-passes-0	Issue413-test.dsn	-	-	-	--router.max_passes=0	2
+x-validate/env-max-passes-0	Issue413-test.dsn	-	-	FREEROUTING__ROUTER__MAX_PASSES=0	-	2
+x-validate/cli-max-passes-0-split	Issue066-Project_GP8B.dsn	D:Plan4Matrix-primary.rules	D:Plan4Matrix-adjacent.rules	-	--router.max_passes=0	4
+x-validate/no-dsn-max-passes-0	-	-	-	-	--router.max_passes=0	2
+x-validate/max-passes-12345	Issue413-test.dsn	-	-	-	--router.max_passes=12345	2
+x-validate/max-passes-negative	Issue413-test.dsn	-	-	-	--router.max_passes=-1	2
+x-validate/max-threads-99	Issue413-test.dsn	-	-	-	--router.max_threads=99	2
+x-validate/max-threads-negative	Issue413-test.dsn	-	-	-	--router.max_threads=-3	2
+x-validate/max-threads-0	Issue413-test.dsn	-	-	-	--router.max_threads=0	2
+x-validate/tpta-0	Issue413-test.dsn	-	-	-	--router.trace_pull_tight_accuracy=0	2
+x-rules/hw48na-valid	Issue413-test.dsn	-	F:Issue029-hw48na_valid.rules	-	-	dsn
+x-rules/hw48na-reduced	Issue413-test.dsn	-	D:Issue029-hw48na_reduced.rules	-	-	dsn
+x-rules/bbd-mars	Issue593-BBD_Mars-64.dsn	-	F:Issue593-BBD_Mars-64.rules	-	-	dsn
+x-rules/processor-z80	Issue187-processor.Z80.dsn	-	F:Issue191-processor.Z80/processor.rules	-	-	dsn
+x-rules/hw48na-cli-and-scheduler	Issue413-test.dsn	F:Issue029-hw48na_valid.rules	D:Plan4Matrix-adjacent.rules	-	-	2
+x-env/per-layer-four-tokens	Issue066-Project_GP8B.dsn	-	-	FREEROUTING__ROUTER__LAYERS__PREFERRED_DIRECTION_HORIZONTAL=true,true,true,true	-	4
+x-env/scoring-via-costs	Issue413-test.dsn	-	D:Plan4Matrix-adjacent.rules	FREEROUTING__ROUTER__SCORING__VIA_COSTS=33	-	2
+x-cli/optimizer-and-fanout	Issue413-test.dsn	-	-	-	--router.optimizer.max_passes=7 --router.fanout.enabled=true	2
+x-cli/ignore-net-classes	Issue413-test.dsn	-	-	-	--router.ignore_net_classes=GND,VCC	2
+x-cli/result-json	Issue413-test.dsn	-	D:Plan4Matrix-adjacent.rules	-	--router.result_json=/tmp/out.json	2

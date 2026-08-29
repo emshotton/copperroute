@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15" >&2
+  echo "           p3t3, p3t15, p4t1" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -57,6 +57,12 @@ needs_jar_230=0
 # Set by `p3t15`: extra driver sources to compile alongside `$javaclass.java` in jar mode (it
 # delegates its mode 4 to `P3T3.main`).
 extra_jar_sources=()
+# Set by `p4t1`: extra `java` flags, and extra environment both sides read. `p4t1` pins
+# `Runtime.getRuntime().availableProcessors()` with `-XX:ActiveProcessorCount`, because
+# `DefaultSettings.java:106,134` and `RouterSettings.validate` all consult it (plan ruling 6) —
+# the Rust twin's `HostEnvironment::with_processors` reads the same number out of
+# `P4T1_PROCESSORS`, and both sides print it in their header line so a mismatch is a diff.
+java_flags=()
 # The `datastructures` classes the Plan 2 Task 3 drivers exercise.
 shapetree_sources=(
   "$JAVA_DIR/datastructures/ShapeTree.java"
@@ -135,6 +141,21 @@ case "$driver" in
     needs_jar_230=1
     extra_jar_sources=("$DIFF_ROOT/java/P3T3.java")
     ;;
+  p4t1)
+    # Java's real headless settings composition (two merges, the between-merges board pass and
+    # the post-merge `RulesReader.read`) over the Plan 4 precedence matrix, against
+    # `fr_settings::resolve_headless`. Declares `package app.freerouting.settings;` and runs
+    # against the clone's HEAD jar (plan ruling 7 — `SettingsMerger` and `settings/sources/**`
+    # are what is being compared, and the 2.3.0 jar's `RoutingBoard` lives in another package).
+    javaclass=P4T1
+    javapkg="settings"
+    default_args=("$DIFF_ROOT/matrix/p4t1-cases.tsv" all 0)
+    needs_jar=1
+    java_flags=(-XX:ActiveProcessorCount=4)
+    export P4T1_PROCESSORS=4
+    export P4T1_FIXTURES="$FREEROUTING_JAVA_DIR/fixtures"
+    export P4T1_DATA="$ROOT/crates/fr-settings/tests/data"
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -178,7 +199,8 @@ if [[ "$needs_jar" -eq 1 ]]; then
   (cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
 
   echo "== running ($driver ${args[*]:-}) =="
-  "$JAVABIN" -Djava.awt.headless=true -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
+  export FREEROUTING_JAR
+  "$JAVABIN" ${java_flags+"${java_flags[@]}"} -Djava.awt.headless=true -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
   "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"} >"$r_out"
 
   echo "== diffing =="

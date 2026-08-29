@@ -196,6 +196,66 @@ methods with dozens of branches.
     never reaches them. Modes 0-3 drive the whole parser, which calls all
     three on nearly every scope, and any divergence surfaces as a wrong item,
     a wrong name, or a wrong number in the output.
+  - `P4T1.java` — Java's **real** headless settings composition over the Plan 4
+    precedence matrix (Plan 4 Task 9). Twin: `p4t1`. Declares
+    `package app.freerouting.settings;` and runs against the clone's HEAD jar
+    (plan 4 ruling 7 — `SettingsMerger` and `settings/sources/**` are what is
+    being compared, and the 2.3.0 jar puts `RoutingBoard` in another package).
+    Every merge-relevant class it calls is the real one out of the jar
+    (`DefaultSettings`, `JsonFileSettings`, `CliSettings`,
+    `EnvironmentVariablesSource`, `DsnFileSettings`, `RulesFileSettings`,
+    `ApiSettings`, `SettingsMerger`, `RulesReader.read`,
+    `RouterSettings.applyBoardSpecificOptimizations`); only the ~50 lines of
+    plumbing that wire them are transcribed, because that plumbing lives inside
+    `Freerouting.main`'s process lifecycle, a `RoutingJobScheduler` worker
+    thread and a `HeadlessBoardManager` board load. See "the transcription
+    risk" below for how to re-check it.
+
+    Takes `<cases.tsv> <case-index|all> <mode>`:
+    - `0` — the canonical dump: one `path=value` line per field of the merged
+      `RouterSettings` (`ScoringSettings`/`OptimizerSettings`/`FanoutSettings`
+      and each `LayerSettings` inlined by path), **sorted by path**, with
+      `null` for null, `Double.toString`/`Float.toString` for the two float
+      types and the enum's `name()` for enums. Arrays contribute a
+      `<path>.length=N` line plus one line per element so that null and empty
+      stay distinguishable. Transients are included, and so is the private
+      `boardSpecificTraceCostsApplied` (through its accessor). The
+      `copyFields` change count is deliberately **not** printed (plan 4
+      ruling 2 — it is not reproducible and no caller reads it).
+    - `1` — the same object through `GsonProvider.GSON`. **Java-only** until
+      Plan 4 Task 10 (serde parity) gives the Rust side a Gson-shaped
+      serialiser; `p4t1` exits 3 on mode 1 rather than printing something that
+      could agree by accident, so `run.sh p4t1 … 1` is not a passing run yet.
+    - `2` — every case, whatever `<case-index>` says. `all 0` and
+      `<anything> 2` are the same run.
+
+    Both sides read the same case table, `matrix/p4t1-cases.tsv`, and both
+    print a `CASE <id>` line before each dump, so a diff names the row that
+    moved. The first line is a header carrying the jar's real path, size and
+    mtime and `Runtime.getRuntime().availableProcessors()`: the Java side
+    derives the jar from `RouterSettings.class`'s code source and the Rust side
+    from `$FREEROUTING_JAR`, and the processor count is pinned with
+    `-XX:ActiveProcessorCount=4` against `HostEnvironment::with_processors(4)`
+    (`$P4T1_PROCESSORS`), so running against the wrong build or an unpinned JVM
+    is a diff rather than a silent assumption. The second line is
+    `JSON_SOURCE_EMPTY`: the Java side builds `JsonFileSettings` on an **empty
+    temporary directory** and aborts with `JSON_SOURCE_NOT_EMPTY` unless every
+    leaf of its `getSettings()` is null, which turns spec §2's "no persistent
+    config file" from an assumption into a check (and keeps a real
+    `freerouting.json` in the user-data folder from leaking into every case).
+- `matrix/p4t1-cases.tsv` — the `p4t1` case table, 84 rows, tab-separated:
+  `name`, `dsn`, `cli_rules`, `scheduler_rules`, `env` (`K=V;K=V`), `argv`
+  (space-separated) and `board`. `-` is "absent"; a rules path is `D:<name>`
+  (`crates/fr-settings/tests/data`) or `F:<name>`
+  (`$FREEROUTING_JAVA_DIR/fixtures`); `board` is either a layer count — the
+  synthetic `BProbe` board, 2 000 000 × 1 000 000, all signal, layers named
+  `F.Cu`/`In1.Cu`/`In2.Cu`/`B.Cu` — or `dsn`, meaning the fixture read back
+  through the real DSN reader. The first 64 rows are exactly
+  `crates/fr-settings/tests/matrix/mod.rs`'s cross product, with the same ids,
+  so Task 8's Rust-side two-merge proof and this JVM proof cover the same
+  ground; the 20 `x-*` rows are Task 9 additions (the `validate()`
+  non-idempotence rows, four real corpus `.rules` files, and env/CLI shapes the
+  64 do not carry).
 - `sweep-p3t15.sh [mode ...]` — compiles both sides once through
   `run.sh p3t15`, then runs every requested mode (default: all five) over
   every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` plus
@@ -209,8 +269,9 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`. Since Plan 3 it also depends on `fr-dsn` by path (for
-  `p3t2`, `p3t3` and `p3t15`). `p3t3` and `p3t15` share the token dump through
+  `p3t3`, `p3t15`, `p4t1`. Since Plan 3 it also depends on `fr-dsn` by path
+  (for `p3t2`, `p3t3` and `p3t15`), and since Plan 4 on `fr-settings` (for
+  `p4t1`). `p3t3` and `p3t15` share the token dump through
   `src/token_dump.rs`, included by both with `#[path]` — the Java side of
   mode 4 delegates to `P3T3.main`, so the two dumps must stay identical.
 - `run.sh <driver> [args...]` — compiles the requested Java driver against
@@ -238,6 +299,12 @@ Requirements:
   freerouting 2.3.0 release (it is also what `scripts/gen-reference.sh` uses).
   Plan 3 ruling 10 makes 2.3.0, not the clone's HEAD, the parity baseline for
   every `p3t*` driver that reads or writes a design file.
+- For `p4t1` only: a **JDK 25** (`JAVA25_HOME`), the clone's HEAD jar
+  (`FREEROUTING_JAR`) and the fixture corpus at
+  `$FREEROUTING_JAVA_DIR/fixtures`. `run.sh` exports `FREEROUTING_JAR`,
+  `P4T1_FIXTURES`, `P4T1_DATA` and `P4T1_PROCESSORS` for both sides and adds
+  `-XX:ActiveProcessorCount=4` to the JVM; nothing else in the harness reads
+  those.
 
 ```sh
 ./scripts/differential/run.sh t15               # LineSegment, default smoke run (200 iters, seed 42)
@@ -401,6 +468,59 @@ the driver expects, or none at all.
   SWEEP_OUT=/tmp/sweep ./scripts/differential/sweep-p3t15.sh   # keep the differing outputs
   ```
 
+- `p4t1 <cases.tsv> <case-index|all> <mode>` — Java's real headless settings
+  composition against `fr_settings::resolve_headless` (Plan 4 Task 9). The
+  default arguments are `matrix/p4t1-cases.tsv all 0`, which is the full run —
+  84 cases, 5 728 lines, **0 diffs**. Measured on the reference machine
+  (JDK 25, `-XX:ActiveProcessorCount=4`): 2.3 s for the JVM side, 0.6 s for the
+  Rust side, ~15 s for the whole `run.sh` invocation once both sides are built
+  (most of that is `javac`). Mode 1 is Java-only (see "Layout").
+
+  ```sh
+  ./scripts/differential/run.sh p4t1                    # all 84 cases, mode 0
+  ./scripts/differential/run.sh p4t1 scripts/differential/matrix/p4t1-cases.tsv 8 0   # one case
+  ```
+
+  **The transcription risk, and how to re-check it.** `P4T1.java` is the only
+  driver whose ground truth is a *sequence* of Java calls rather than one
+  method, so a mis-transcribed step would make both sides agree on the wrong
+  answer. The mitigation is that every statement carries the Java line it
+  stands for, and the five ranges are short enough to read end to end:
+  `Freerouting.java:1408-1413` (the prototype merger),
+  `Freerouting.java:125-146` (merge #1),
+  `HeadlessBoardManager.java:739-748` (the between-merges `setLayerCount` +
+  `applyBoardSpecificOptimizations`, reached from
+  `RoutingJobScheduler.java:93-96`), `RoutingJobScheduler.java:103-170`
+  (merge #2, including `new ApiSettings(job.routerSettings)` at priority 70)
+  and `RoutingJobScheduler.java:172-186` (the post-merge `RulesReader.read`
+  and the final `applyBoardSpecificOptimizations`). Two substitutions are
+  deliberate and are marked at the site: the board is `BProbe.java`'s
+  synthetic recipe unless the row says `dsn` (`applyBoardSpecificOptimizations`
+  reads only the bounding box, the layer count and each layer's `isSignal`),
+  and `job.name` is null in the CLI path so the design name passed to
+  `RulesReader.read` is the literal `"board"` — a header mismatch there is
+  non-fatal (`RulesReader.java:100-110`).
+
+  **One place `SettingsInputs` is lossier than Java, measured here.** Java
+  parses the scheduler's `.rules` file **twice** with two different layer
+  structures — at priority 40 through `RulesFileSettings` →
+  `RulesReader.readRouterSettings`, whose structure is discovered from the file
+  itself (`RulesReader.java:238-273`), and again after the merge through
+  `RulesReader.read(…, board, settings)`, whose structure is the **board's**
+  (`:112`). `fr_settings::SettingsInputs` has one `scheduler_rules` field for
+  both, so `p4t1` feeds it the board-structured parse; that is exact whenever a
+  board is present, because by the time `fill_absent_from` runs the
+  between-merges board pass has filled every `layers[i]` field and both
+  `scoring` cost arrays, leaving only `resultJsonPath` and the two
+  `timeoutString`s absent — three fields no `(autoroute_settings)` block
+  carries. Feeding the *discovered* parse instead (which is what
+  `crates/fr-settings/tests/matrix/mod.rs::rules_source` builds) diverges from
+  the JVM on 13 of the 84 rows — every `dsn4-*` row with a `.rules` file — in
+  `layers[1]` versus `layers[3]`'s `routable` and
+  `preferredDirectionHorizontal`, because the matrix's `.rules` files name only
+  `F.Cu` and `B.Cu`. Measured, not argued: swap the two constructors in
+  `p4t1.rs::resolve_case` and the run goes from 0 to 48 differing lines.
+
 ## Deferred coverage and cleanups
 
 Recorded here rather than only in a task report, so they survive into the next
@@ -409,6 +529,8 @@ covers.
 
 | Item | Why it is open | Raised by |
 |---|---|---|
+| `p4t1` mode 1 (the Gson dump) has no Rust twin | Plan 4 Task 10 owns serde/Gson key parity; until it lands there is nothing on the Rust side shaped like `GsonProvider.GSON.toJson`, so `p4t1` exits 3 on mode 1 rather than emitting a near-miss that could agree by accident. The Java half is written and works, so Task 10's job is to add the twin, not the driver. | Plan 4 Task 9 |
+| `p4t1` builds `scheduler_rules` from the board-structured parse | `fr_settings::SettingsInputs` has one field where Java has two differently-parsed objects (see the `p4t1` entry under "Per-driver arguments"). Exact for every case with a board, but a Plan 8 caller that wires the field from `RulesFileSettings` alone will be wrong on any board whose layer set is a strict superset of the `.rules` file's — 13 of these 84 rows. Either `SettingsInputs` grows a second field or the hand-off says which parse belongs there. | Plan 4 Task 9 |
 | `p3t2` mode 0 never formats a rotation above `1e7` | `formatPlacementRotation` is exercised in modes 1-3, whose generators keep values inside DSN coordinate ranges and `[0, 360)`. `Double.toString` switches to `E` notation at `1e7`, and no mode drives a *rotation* across that boundary — so the `String.format("%.3f", …)` path is unproven for a value that large. Java only ever passes it a placement angle, so nothing reachable produces one; it is coverage debt, not a suspected bug. | Plan 3 Task 2 review |
 | `crates/fr-dsn/src/format/double.rs` shadows `point` twice (`:148` `i32`, `:154` `usize`) | Deliberate — the first is signed so the "value below 1" branch can subtract, the second is the index the layout loop needs — but two bindings of one name in twelve lines is easy to misread. A rename (`point_signed` / `point`) is a safe, mechanical change nobody has had a reason to make yet. | Plan 3 Task 2 review |
 | `JavaRandom` is copied into four driver binaries | `t15`, `t16r`, `p2t13` and `p3t2` each carry their own transcription of `java.util.Random`'s LCG. They agree today (every driver that uses one is zero-diff), but four copies is four chances to drift. The package has had a shared module since Plan 3 Task 15 (`src/token_dump.rs`, included with `#[path]`); the same mechanism would collapse these four. | Plan 3 Task 2 review |
@@ -468,6 +590,7 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p3t15` (`Issue413-test.dsn`, modes 0/1/2/3/4) | 39 / 378 / 130 / 42 / 1097 | 0 | exact match — the fixture with traces, wiring vias, fixed states and SES `(wire` entries |
 | `p3t15` sweep (all 5 modes × all 106 fixtures = **530 pairs**) | see below | **0 unexpected** | 525 MATCH + 5 `XDIFF` (`Issue229` modes 0-3, `empty_board` mode 3), both explained in the next two rows |
 | `p3t15` (`Issue229-display-8-digit-hc595.dsn`, modes 0-3) | Java 3 / 59 / 18 / 0 vs Rust 502 / 3907 / 1922 / 55 | XDIFF | **Expected** (controller ruling E). The 2.3.0 jar's `DsnFile.readStringScope` has no resync loop where the clone's HEAD does, and the port follows HEAD (the plan's Java source authority), so the two readers legitimately build different boards from this file. The 2.3.0 reader gives up after one item where the port builds 501; mode 3 is Java 0 lines because the collapsed board also has no library, so `RulesWriter` NPEs on it as it does for `empty_board.dsn` below. Mode 4 — the raw token stream — still MATCHes on this file, which is the evidence that the divergence is in the parser and not in the scanner. Never "fixed" by changing the port. |
+| `p4t1` (`matrix/p4t1-cases.tsv`, `all 0`) | 5728 | 0 | exact match — 84 cases (Task 8's 64-case matrix + 20 Task 9 rows) of the real two-merge headless composition against `fr_settings::resolve_headless` |
 | `p3t15` (`empty_board.dsn`, mode 3) | Java 0 / Rust 20 | XDIFF | **Expected** — Java throws. The file has no `(library …)` scope at all, so `BoardLibrary.padstacks` stays `null` and `RulesWriter.writeRules` NPEs on `padstacks.count()` (`NullPointerException: Cannot invoke "app.freerouting.core.Padstacks.count()" because "p_par.board.library.padstacks" is null`). The port's field is a value, not a reference, so it writes a complete 20-line `.rules` file. New in Task 15; recorded in `docs/java-quirks.md`'s totalization table. |
 
 Every diff line traces to an already-documented, deliberate divergence in
