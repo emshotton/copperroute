@@ -155,9 +155,14 @@ impl DrillPage {
             });
 
         // :105-107. "Use the center points of these drill shapes to try making a via."
+        //
+        // `getLayerCount() - 1` on a **zero**-layer board is Java's `-1`, which builds a drill
+        // with empty arrays whose `calculateExpansionRooms` loop runs zero times and answers
+        // true; the `usize` subtraction below would underflow instead. No such board exists —
+        // `LayerStructure` is built from a non-empty array and every constructor path goes
+        // through it — so this is a note, not a guard.
         let drill_first_layer = 0usize;
         let drill_last_layer = board.get_layer_count() - 1;
-        let mut drills = Vec::new();
         // :108.
         for current_drill_shape in drill_shapes {
             // :110-121.
@@ -181,23 +186,26 @@ impl DrillPage {
                 drill_first_layer,
                 drill_last_layer,
             );
-            // :125-127.
+            // :125-127. Appended to `this.drills` **as it goes**, not collected and assigned at
+            // the end: `:126` is `this.drills.add(newDrill)`, so a throw part-way through the
+            // loop leaves the page holding the drills built so far, and quirk #168's memo is
+            // that partial list rather than always an empty one.
             if new_drill.calculate_expansion_rooms(engine, board) {
-                drills.push(DrillId(engine.rooms.drills.insert(new_drill)));
+                let id = DrillId(engine.rooms.drills.insert(new_drill));
+                self.drills.get_or_insert_with(Vec::new).push(id);
             }
         }
-        self.drills = Some(drills.clone());
         // :130.
-        drills
+        self.drills.clone().unwrap_or_default()
     }
 
     /// The obstacle cut-out loop of `getDrills` (DrillPage.java:67-96), as a **view**: the same
     /// call [`get_drills`](Self::get_drills) makes, with the per-entry trace kept instead of
     /// discarded.
     ///
-    /// `net_number` is the engine's, because `:65` has written it into the page before the loop
-    /// runs; a caller that passes the page's own stale `netNumber` would get a different answer
-    /// from `:77`'s `isDrillable`.
+    /// It reads the **engine's** net number rather than the page's, because `:65` has written
+    /// the engine's into the page before the loop runs; over a page's own stale `netNumber`,
+    /// `:77`'s `isDrillable` would answer differently for every item.
     pub fn obstacle_cutout_trace(
         &self,
         engine: &AutorouteEngine,
