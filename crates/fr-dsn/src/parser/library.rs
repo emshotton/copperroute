@@ -20,7 +20,7 @@ use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::read_on_off_scope;
 use crate::parser::geometry::{
-    self as shape, DsnLayer, DsnLayerStructure, DsnPolygonPath, DsnShape, ReadAreaScopeResult,
+    self as shape, DsnLayer, DsnLayerStructure, DsnShape, ReadAreaScopeResult,
 };
 use crate::parser::placement::write_component_scope;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
@@ -329,6 +329,11 @@ pub fn write_package_scope(p: &mut WriteScopeParameter<'_>, board_package: &fr_b
         for board_shape in outline {
             p.file.start_scope_nl();
             p.file.write("outline");
+            // totalized: Package.writeScope — Java calls `currentOutline.writeScope(...)` on
+            // `boardToDsnRel`'s result with no null check (Package.java:200-202), one of the few
+            // sites in the package that does not. The port writes an empty `(outline)` scope
+            // instead of NPEing. Unreachable: `board_to_dsn_rel_shape` never answers `None` for
+            // a shape `fr-board` holds.
             if let Some(current_outline) = p
                 .coordinate_transform
                 .board_to_dsn_rel_shape(board_shape, DsnLayer::signal())
@@ -447,6 +452,10 @@ pub fn write_library_scope(p: &mut WriteScopeParameter<'_>) {
     }
 
     for i in 1..=p.board.library.padstacks.count() {
+        // totalized: Library.writeScope — Java hands `padstacks.get(i)` straight to
+        // `writePadstackScope` (Library.java:46-47), and `Padstacks.get(int)` warns and returns
+        // `null` for an index outside `1..=count`, which `writePadstackScope` then NPEs on. The
+        // port skips the entry. Unreachable: the loop bounds are the collection's own count.
         let Some(padstack) = p.board.library.padstacks.get(PadstackId(i)) else {
             continue;
         };
@@ -820,9 +829,18 @@ pub fn read_library_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
                 continue;
             };
             outlines.push(board_shape);
-            if let DsnShape::Path(path) = current_shape {
-                outline_widths.push(path.width);
-                outline_is_closed.push(path_is_closed(path));
+            // Java's `instanceof Path` (Library.java:349) matches **both** subclasses:
+            // `PolygonPath` and `PolylinePath` share `Path` as their base, and both carry
+            // `width`/`coordinateArr`. A `(polyline_path …)` package outline therefore takes
+            // this branch too.
+            let path = match current_shape {
+                DsnShape::Path(path) => Some((path.width, path.coordinate_arr.as_slice())),
+                DsnShape::PolylinePath(path) => Some((path.width, path.coordinate_arr.as_slice())),
+                _ => None,
+            };
+            if let Some((width, coords)) = path {
+                outline_widths.push(width);
+                outline_is_closed.push(path_is_closed(coords));
             } else {
                 outline_widths.push(0.0);
                 // Non-path shapes (polygons/rects) are closed
@@ -879,8 +897,7 @@ pub fn read_library_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
 
 /// `Library.readScope`'s outline-closed test (Library.java:351-355): a path whose first corner
 /// equals its last.
-fn path_is_closed(path: &DsnPolygonPath) -> bool {
-    let coords = &path.coordinate_arr;
+fn path_is_closed(coords: &[f64]) -> bool {
     if coords.len() < 4 {
         // Java leaves the array's `false` default in place.
         return false;

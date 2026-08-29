@@ -408,9 +408,17 @@ fn part_library_scope_reads_logical_parts_and_mappings() {
     //   logicalPart 1 name='LP1' pinCount=2
     //     partPin 0 index=0 pin='1' gate='GATEA' gateSwap=3 gatePin='A' gatePinSwap=4
     //     partPin 1 index=1 pin='2' gate='GATEA' gateSwap=3 gatePin='B' gatePinSwap=4
-    // `PartLibrary.readScope` itself only fills `ReadScopeParameter.logicalParts`/
-    // `.logicalPartMappings` in *file* order (Network's `LogicalParts.add` is what sorts by pin
-    // index later, and that is Task 9's), so this asserts the file order `2`, `1`.
+    // That probe output is the **board-side** `LogicalPart`, i.e. the state *after*
+    // `Network.insertLogicalParts` has run and `LogicalParts.add` has sorted the pins by index —
+    // which is why it reads `1`, `2` where the file says `2`, `1`. It is therefore evidence for
+    // Task 9's stage, not this one, and is quoted only to show the field values.
+    //
+    // This test observes the stage before that sort: `PartLibrary.readScope` appends each
+    // `LogicalPart` to `scopeParameter.logicalParts` in *file* order (PartLibrary.java:117) and
+    // builds its `partPinArr` straight from the `(pin …)` sub-scopes in the order it reads them,
+    // with nothing in the method reordering them. So the assertions below are file order,
+    // `2` then `1`. The sorted board-side order belongs to `Network.insertLogicalParts`
+    // (Plan 3 Task 9) and is not pinned by any test here.
     let text = synthetic(
         "  (part_library\n    (logical_part_mapping LP1\n      (comp U2 U1)\n    )\n    \
          (logical_part LP1\n      (pin 2 0 GATEA 3 B 4)\n      (pin 1 0 GATEA 3 A 4)\n    )\n  )",

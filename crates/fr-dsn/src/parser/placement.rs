@@ -493,12 +493,25 @@ fn get_keepout<'a>(board: &'a Board, component_id: i32, name: &str) -> Option<&'
 }
 
 /// `ObstacleArea.name` reached through the `Item` enum — Java gets it from the shared base class.
+///
+/// The four arms are exactly [`Item::is_obstacle_area`]'s set, which is what makes the
+/// `is_obstacle_area()` guard in [`get_keepout`] redundant; the guard is kept because Java's
+/// `instanceof ObstacleArea` (Component.java:177) is explicit there, and the `debug_assert!`
+/// below keeps the two variant lists from drifting apart if `fr-board` ever grows a fifth
+/// `ObstacleArea` subclass.
 fn obstacle_area_name(item: &Item) -> Option<&str> {
     match item {
         Item::ObstacleArea(a) => a.name(),
         Item::ConductionArea(a) => a.name(),
         Item::ViaObstacleArea(a) => a.name(),
         Item::ComponentObstacleArea(a) => a.name(),
-        _ => None,
+        _ => {
+            debug_assert!(
+                !item.is_obstacle_area(),
+                "an ObstacleArea variant is missing from obstacle_area_name; get_keepout would \
+                 silently stop finding its keepouts"
+            );
+            None
+        }
     }
 }

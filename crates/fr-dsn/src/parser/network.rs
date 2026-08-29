@@ -716,7 +716,10 @@ impl NetList {
 
     /// The nets in `NetId` order — Java reaches `nets.values()` directly from inside the class
     /// (NetList.java:47) and `Network`/`Structure` iterate the map the same way.
-    pub fn values(&self) -> std::collections::btree_map::Values<'_, NetId, DsnNet> {
+    ///
+    /// Returns an opaque iterator rather than `btree_map::Values`, so the backing collection
+    /// stays an implementation detail.
+    pub fn values(&self) -> impl DoubleEndedIterator<Item = &DsnNet> + ExactSizeIterator {
         self.nets.values()
     }
 

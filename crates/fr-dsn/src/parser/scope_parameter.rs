@@ -28,8 +28,14 @@ use crate::parser::{header, library, network, part_library, placement, structure
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnReadOptions {
     /// How long `Board::normalize_all_traces_checked` may run at the end of the `wiring` scope
-    /// before the read gives up on it. Default 60 s (plan ruling 4); Task 15 asserts that no
-    /// fixture in the corpus comes near it.
+    /// before the read gives up on it. Default 60 s (plan ruling 4); Task 15's corpus sweep
+    /// asserts that no fixture comes near it.
+    ///
+    /// [`Duration::ZERO`] means "give up before the first check", i.e. skip normalisation
+    /// entirely and push Java's `"Wiring: normalization of traces failed"` warning. That is a
+    /// **deterministic** trip: Java's `TimeLimit.isExceeded` compares strictly greater than the
+    /// deadline, so a zero budget would otherwise depend on at least one millisecond having
+    /// elapsed inside the walk. See `wiring::read_wiring_scope`.
     pub normalize_time_limit: Duration,
 }
 
@@ -122,8 +128,8 @@ pub struct ReadScopeParameter<'a> {
     /// too (`Communication.SpecctraParserInfo.WriteResolution`); Task 10's `read_board` is what
     /// assembles this and the four sibling fields below into the board's `Communication`.
     pub write_resolution: Option<fr_board::WriteResolution>,
-    /// `ReadScopeParameter.viaAtSmdAllowed` (ReadScopeParameter.java:74) — filled by
-    /// `Structure.readControlScope` (Structure.java:468) from the `(control (via_at_smd on|off))`
+    /// `ReadScopeParameter.viaAtSmdAllowed` (ReadScopeParameter.java:58) — filled by
+    /// `Structure.readControlScope` (Structure.java:469) from the `(control (via_at_smd on|off))`
     /// scope, and read by `Network`'s via-info construction. Added in Plan 3 Task 6, the task
     /// that ports the `control` scope; the field's Java initialiser is `false`.
     pub via_at_smd_allowed: bool,
@@ -199,7 +205,7 @@ pub struct WriteScopeParameter<'a> {
     /// `WriteScopeParameter.file`.
     pub file: IndentFileWriter<&'a mut dyn Write>,
     /// `WriteScopeParameter.identifierType`, built from the DSN reserved-character set
-    /// (`{"(", ")", " ", ";", "-", "_"}`, WriteScopeParameter.java:33) and the caller's quote
+    /// (`{"(", ")", " ", ";", "-", "_"}`, WriteScopeParameter.java:35) and the caller's quote
     /// character.
     pub identifier_type: IdentifierType,
     /// `WriteScopeParameter.coordinateTransform`.
@@ -287,7 +293,7 @@ fn read_scope_generic(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> 
     loop {
         let token = p.scanner.next_token()?;
         let Some(token) = token else {
-            // End of file (ScopeKeyword.java:53-55).
+            // End of file (ScopeKeyword.java:55-57).
             return Ok(true);
         };
         if token == Token::Close {

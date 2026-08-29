@@ -64,3 +64,11 @@ SesReader                ses_reader.rs
 SesImportSummary         ses_reader.rs
 RulesReader              rules_reader.rs
 RulesWriter              rules_writer.rs
+
+# `SessionToEagle` (io/specctra/parser/SessionToEagle.java, 627 lines) is **out of Plan 3's
+# scope** — the plan's Architecture paragraph puts it, with `io/kicad/**`, in Plan 8 ("fr-core +
+# surfaces"). It is a SES-to-Eagle-script converter: it reads a session file and emits an Eagle
+# CAD command script, touching neither the DSN grammar nor the board. Mapped here (rather than
+# left unmapped, which would print `UNMAPPED SessionToEagle`, or excluded by weakening the
+# script) so its one public method is checked against the deferral marker in `lib.rs`.
+SessionToEagle           lib.rs

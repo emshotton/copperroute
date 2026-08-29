@@ -280,6 +280,10 @@ pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         for j in 0..current_part.pin_count() as i32 {
             p.file.new_line();
+            // totalized: PartLibrary.writeScope — Java dereferences `currentPart.getPin(j)`
+            // unchecked (PartLibrary.java:63-65), and `LogicalPart.getPin(int)` warns and
+            // returns `null` out of range. The port skips the pin. Unreachable: the loop bound
+            // is `currentPart.pinCount()`.
             let Some(current_pin) = current_part.get_pin(j) else {
                 continue;
             };

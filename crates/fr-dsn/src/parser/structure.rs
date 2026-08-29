@@ -10,7 +10,7 @@
 //! handed out in insertion order, so the sequence below is what every later parity test compares
 //! against. In Java's order:
 //!
-//! 1. `createBoard` (Structure.java:1139-1290) — `BasicBoard`'s constructor inserts the outline,
+//! 1. `createBoard` (Structure.java:1139-1286) — `BasicBoard`'s constructor inserts the outline,
 //!    which therefore always takes id 1;
 //! 2. still inside `createBoard` (:1279-1285), the **holes** in the outline, one obstacle per
 //!    hole per board layer (the layer loop is the inner one);
@@ -58,7 +58,7 @@ use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, sk
 // is the scope that reads them and the name is part of the `structure` scope's vocabulary.
 pub use crate::parser::geometry::{DsnLayer, DsnLayerStructure};
 
-/// `Limits.CRIT_INT` as a `f64`, for the scale-factor overflow loop (Structure.java:1211).
+/// `Limits.CRIT_INT` as a `f64`, for the scale-factor overflow loop (Structure.java:1200).
 const CRIT_INT: f64 = fr_geometry::CRIT_INT as f64;
 
 // ----------------------------------------------------------------------------- Plane.java
@@ -92,7 +92,7 @@ impl DsnPlane {
     }
 }
 
-/// `Plane.readScope` (Plane.java:52-83): a `(plane <net> <shape> (window …)*)` scope. Called only
+/// `Plane.readScope` (Plane.java:54-83): a `(plane <net> <shape> (window …)*)` scope. Called only
 /// from within `Structure.readScope` (Structure.java:1001-1005), not from the top-level `pcb`
 /// scope.
 ///
@@ -114,7 +114,7 @@ pub fn read_plane_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError
 
     // read the net name
     let Some(Token::Str(net_name)) = p.scanner.next_token()? else {
-        // "String expected" (Plane.java:60-66).
+        // "String expected" (Plane.java:63-69).
         return Ok(false);
     };
     p.scanner.set_scope_identifier(&net_name);
@@ -131,7 +131,7 @@ pub fn read_plane_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError
 
 // ------------------------------------------------------------------------- Structure.java
 
-/// `Structure.KeepoutType` (Structure.java:1295-1299).
+/// `Structure.KeepoutType` (Structure.java:1288-1292).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum KeepoutType {
     Keepout,
@@ -139,7 +139,7 @@ enum KeepoutType {
     PlaceKeepout,
 }
 
-/// `Structure.BoardConstructionInfo` (Structure.java:1301-1310): everything the `structure` scope
+/// `Structure.BoardConstructionInfo` (Structure.java:1294-1303): everything the `structure` scope
 /// accumulates before `createBoard` turns it into a [`Board`].
 #[derive(Debug, Default)]
 struct BoardConstructionInfo {
@@ -159,7 +159,7 @@ struct BoardConstructionInfo {
     layer_dependent_rules: Vec<StructureLayerRule>,
 }
 
-/// `Structure.LayerRule` (Structure.java:1312-1321) — the private nested class, not
+/// `Structure.LayerRule` (Structure.java:1305-1314) — the private nested class, not
 /// `Rule.LayerRule`.
 // renamed: Structure.LayerRule -> StructureLayerRule (Rule.java has a `LayerRule` of its own,
 // which Task 8 ports; Rust has no nesting to keep the two names apart).
@@ -348,7 +348,7 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
         }
     }
 
-    // insert the planes (Structure.java:1069-1121)
+    // insert the planes (Structure.java:1067-1122)
     if !insert_planes(p)? {
         return Ok(false);
     }
@@ -370,7 +370,7 @@ fn ensure_layer_structure(p: &mut ReadScopeParameter<'_>, info: &BoardConstructi
     }
 }
 
-/// `Structure.readBoundaryScope` (Structure.java:271-302).
+/// `Structure.readBoundaryScope` (Structure.java:273-304).
 fn read_boundary_scope(
     scanner: &mut DsnScanner,
     info: &mut BoardConstructionInfo,
@@ -382,7 +382,7 @@ fn read_boundary_scope(
         if next_token == Some(Token::Close) {
             break;
         }
-        // Java's loop has no end-of-file guard at all (Structure.java:275-289): `nextToken()`
+        // Java's loop has no end-of-file guard at all (Structure.java:277-292): `nextToken()`
         // answers `null`, which is neither bracket, so it spins forever appending nothing.
         // totalized: Structure.readBoundaryScope loops forever at end of file; the port stops.
         let Some(token) = next_token else {
@@ -399,12 +399,12 @@ fn read_boundary_scope(
         }
         prev_was_open = is_open;
     }
-    // Java warns and returns `true` for a null shape here (Structure.java:292-296).
+    // Java warns and returns `true` for a null shape here (Structure.java:297-301).
     add_boundary_shape(info, current_shape);
     Ok(true)
 }
 
-/// `Structure.addBoundaryShape` (Structure.java:304-321).
+/// `Structure.addBoundaryShape` (Structure.java:306-325).
 fn add_boundary_shape(info: &mut BoardConstructionInfo, shape: Option<DsnShape>) {
     let Some(shape) = shape else {
         return;
@@ -427,9 +427,9 @@ fn add_boundary_shape(info: &mut BoardConstructionInfo, shape: Option<DsnShape>)
     // else: "unexpected layer at boundary", an `FRLogger.warn` this port drops.
 }
 
-/// `Structure.readLayerScope` (Structure.java:323-403).
+/// `Structure.readLayerScope` (Structure.java:327-409).
 ///
-/// `_string_quote` is Java's `stringQuote` parameter (Structure.java:324), which its body never
+/// `_string_quote` is Java's `stringQuote` parameter (Structure.java:328), which its body never
 /// reads; kept so the signature matches the Java method it ports.
 fn read_layer_scope(
     scanner: &mut DsnScanner,
@@ -445,7 +445,7 @@ fn read_layer_scope(
     let mut next_token = scanner.next_token()?;
     while next_token != Some(Token::Close) {
         if next_token != Some(Token::Open) {
-            // "( expected" (Structure.java:333-337).
+            // "( expected" (Structure.java:339-341).
             return Ok(false);
         }
         next_token = scanner.next_token()?;
@@ -457,6 +457,11 @@ fn read_layer_scope(
                 } else if next_token != Some(Token::Kw(Keyword::Signal))
                     && !matches!(&next_token, Some(Token::Str(s)) if s == Keyword::Jumper.name())
                 {
+                    // totalized: Structure.readLayerScope — at end of file `nextToken` is `null`
+                    // and Java evaluates `nextToken.toString()` (Structure.java:349), which
+                    // NPEs out of the whole read. The port takes the same branch a genuinely
+                    // unknown type takes and sets `layer_ok = false`, so the truncated layer is
+                    // dropped and the caller returns normally.
                     // Java compares `nextToken.toString()` against `Keyword.JUMPER.getName()`
                     // (Structure.java:349). `Keyword` has no `toString` override, so that test
                     // can only succeed for a `String` token — which is exactly what the lexer
@@ -464,7 +469,7 @@ fn read_layer_scope(
                     layer_ok = false;
                 }
                 if scanner.next_token()? != Some(Token::Close) {
-                    // ") expected" (Structure.java:367-371).
+                    // ") expected" (Structure.java:370-372).
                     return Ok(false);
                 }
             }
@@ -505,7 +510,7 @@ fn read_layer_scope(
     Ok(true)
 }
 
-/// `Structure.readViaPadstacks` (Structure.java:405-441): the `(via <name>* (spare <name>*))`
+/// `Structure.readViaPadstacks` (Structure.java:411-444): the `(via <name>* (spare <name>*))`
 /// scope. `None` is Java's `null`.
 pub(crate) fn read_via_padstacks(
     scanner: &mut DsnScanner,
@@ -518,13 +523,18 @@ pub(crate) fn read_via_padstacks(
             Some(Token::Close) => break,
             Some(Token::Open) => {
                 if scanner.next_token()? == Some(Token::Kw(Keyword::Spare)) {
+                    // totalized: Structure.readViaPadstacks — the recursive `(spare …)` call
+                    // returns `null` on a bad token or at end of file, and Java hands that
+                    // straight to `normalVias.addAll(spareVias)` (Structure.java:438), which
+                    // NPEs. The port uses the empty list, so the outer scope still returns the
+                    // normal vias it did read.
                     spare_vias = read_via_padstacks(scanner)?.unwrap_or_default();
                 } else {
                     let _ = skip_scope(scanner)?;
                 }
             }
             Some(Token::Str(s)) => normal_vias.push(s),
-            // "String expected" (Structure.java:428-433), and end of file, where Java's loop
+            // "String expected" (Structure.java:430-434), and end of file, where Java's loop
             // would spin: both answer `null` here.
             _ => return Ok(None),
         }
@@ -534,12 +544,12 @@ pub(crate) fn read_via_padstacks(
     Ok(Some(normal_vias))
 }
 
-/// `Structure.readControlScope` (Structure.java:443-476).
+/// `Structure.readControlScope` (Structure.java:446-476).
 fn read_control_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let mut prev_was_open = false;
     loop {
         let Some(next_token) = p.scanner.next_token()? else {
-            // "unexpected end of file" (Structure.java:452-458).
+            // "unexpected end of file" (Structure.java:456-462).
             return Ok(false);
         };
         if next_token == Token::Close {
@@ -559,7 +569,7 @@ fn read_control_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> 
     Ok(true)
 }
 
-/// `Structure.readSnapAngle` (Structure.java:478-509). `None` is Java's `null`, which the caller
+/// `Structure.readSnapAngle` (Structure.java:478-508). `None` is Java's `null`, which the caller
 /// treats as "leave the current snap angle alone" (Structure.java:1017-1020).
 pub fn read_snap_angle(
     scanner: &mut DsnScanner,
@@ -569,11 +579,11 @@ pub fn read_snap_angle(
         Some(Token::Kw(Keyword::NinetyDegree)) => AngleRestriction::NinetyDegree,
         Some(Token::Kw(Keyword::FortyfiveDegree)) => AngleRestriction::FortyFiveDegree,
         Some(Token::Kw(Keyword::None)) => AngleRestriction::None,
-        // "unexpected token" (Structure.java:491-496).
+        // "unexpected token" (Structure.java:489-493).
         _ => return Ok(None),
     };
     if scanner.next_token()? != Some(Token::Close) {
-        // "closing bracket expected" (Structure.java:498-504).
+        // "closing bracket expected" (Structure.java:497-501).
         return Ok(None);
     }
     Ok(Some(snap_angle))
@@ -581,13 +591,13 @@ pub fn read_snap_angle(
 
 // ------------------------------------------------------------- keepouts, planes, power planes
 
-/// `Structure.insertKeepout(ReadAreaScopeResult, …)` (Structure.java:834-882).
+/// `Structure.insertKeepout(ReadAreaScopeResult, …)` (Structure.java:857-901).
 ///
 // totalized: Structure.insertKeepout — Java dereferences `area` (which `Shape.readAreaScope` may
 // have returned as `null`), `area.shapeList`'s first element and
 // `Shape.transformAreaToBoard`'s result, none of them checked. Each of those NPEs aborts the
 // whole read. The port folds them into the branch Java already has one line further down for a
-// keepout it cannot enforce (`dimension() < 2`, Structure.java:840-853): the keepout is dropped
+// keepout it cannot enforce (`dimension() < 2`, Structure.java:864-876): the keepout is dropped
 // and the read continues, which is the same observable board for every input Java does not crash
 // on.
 fn insert_keepout(
@@ -626,11 +636,17 @@ fn insert_keepout(
 
     let layer_structure = p.layer_structure.clone().unwrap_or_default();
     let Some(board) = p.board.as_mut() else {
-        // "board not initialized" (Structure.java:855-858).
+        // "board not initialized" (Structure.java:877-881).
         return Ok(false);
     };
     if current_layer == DsnLayer::signal() {
         for i in 0..board.get_layer_count() {
+            // totalized: Structure.insertKeepout — Java indexes the *DSN* layer structure with
+            // the *board's* layer count (`scopeParameter.layerStructure.layers[i]`,
+            // Structure.java:884-885), so a DSN layer structure shorter than the board's throws
+            // `ArrayIndexOutOfBoundsException`. `.get(i)` treats a missing layer as non-signal
+            // and skips it; the two counts agree on every board `create_board` builds, since it
+            // derives the board's layer count from `layerInfo` (Structure.java:1141).
             if layer_structure.layers.get(i).is_some_and(|l| l.is_signal) {
                 insert_keepout_on_layer(
                     board,
@@ -652,14 +668,14 @@ fn insert_keepout(
             fixed_state,
         );
     } else {
-        // "unknown layer name" (Structure.java:875-880).
+        // "unknown layer name" (Structure.java:892-898).
         return Ok(false);
     }
     Ok(true)
 }
 
 /// `Structure.insertKeepout(BasicBoard, Area, int, String, KeepoutType, FixedState)`
-/// (Structure.java:884-916).
+/// (Structure.java:903-933).
 // renamed: the six-argument `insertKeepout` overload -> insert_keepout_on_layer.
 fn insert_keepout_on_layer(
     board: &mut Board,
@@ -683,7 +699,7 @@ fn insert_keepout_on_layer(
             .rules
             .clearance_matrix
             .get_no(name)
-            // "clearance class not found" (Structure.java:902-906).
+            // "clearance class not found" (Structure.java:920-924).
             .unwrap_or_else(BoardRules::clearance_class_none),
     };
     match keepout_type {
@@ -699,7 +715,7 @@ fn insert_keepout_on_layer(
     }
 }
 
-/// `Structure.readScope`'s plane loop (Structure.java:1069-1121), one conduction area per entry
+/// `Structure.readScope`'s plane loop (Structure.java:1067-1122), one conduction area per entry
 /// of `ReadScopeParameter.planeList`, creating any missing net first.
 fn insert_planes(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     // Java iterates `scopeParameter.planeList` in place; nothing inside the loop appends to it,
@@ -765,7 +781,7 @@ fn insert_planes_inner(
             continue;
         };
         if current_layer.no < 0 {
-            // "unexpected layer name" (Structure.java:1113-1118) — the one branch here that
+            // "unexpected layer name" (Structure.java:1115-1120) — the one branch here that
             // fails the whole read.
             return Ok(false);
         }
@@ -775,7 +791,7 @@ fn insert_planes_inner(
                 .rules
                 .clearance_matrix
                 .get_no(name)
-                // "clearance class not found" (Structure.java:1091-1097).
+                // "clearance class not found" (Structure.java:1092-1097).
                 .unwrap_or_else(BoardRules::clearance_class_none),
             None => board
                 .rules
@@ -796,10 +812,10 @@ fn insert_planes_inner(
     Ok(true)
 }
 
-/// `Structure.insertMissingPowerPlanes` (Structure.java:539-571): every non-signal layer that
+/// `Structure.insertMissingPowerPlanes` (Structure.java:526-571): every non-signal layer that
 /// carries a net name but no conduction area gets one covering the whole board.
 ///
-/// Java fetches `board.getConductionAreas()` **once**, before the loop (Structure.java:541), so a
+/// Java fetches `board.getConductionAreas()` **once**, before the loop (Structure.java:528), so a
 /// conduction area this method itself inserts is not visible to later iterations. Reproduced.
 fn insert_missing_power_planes(layer_info: &[DsnLayer], p: &mut ReadScopeParameter<'_>) {
     let Some(board) = p.board.as_mut() else {
@@ -848,10 +864,16 @@ fn insert_missing_power_planes(layer_info: &[DsnLayer], p: &mut ReadScopeParamet
             .nets
             .get_by_name_and_subnet(&current_net_id.name, current_net_id.subnet_no)
         else {
-            // "net not found" (Structure.java:555-561).
+            // "net not found" (Structure.java:553-557).
             continue;
         };
         let net_number = current_net.net_number;
+        // totalized: Structure.insertMissingPowerPlanes — Java passes `currentLayer.no` straight
+        // to `board.insertConductionArea` (Structure.java:562-568) with no sign check, so a
+        // layer whose `no` was never assigned (`-1`, the `pcb`/`signal` pseudo-layers) indexes
+        // `layers[-1]` and throws. The port skips the layer. Unreachable from a real read: only
+        // layers built by `read_layer_scope`, which numbers them from `found_layer_count`, ever
+        // reach `layer_info`.
         if current_layer.no < 0 {
             continue;
         }
@@ -869,7 +891,7 @@ fn insert_missing_power_planes(layer_info: &[DsnLayer], p: &mut ReadScopeParamet
 
 // --------------------------------------------------------------------------- board rules
 
-/// `Structure.updateBoardRules` (Structure.java:608-667): applies the DSN `rule` scopes to the
+/// `Structure.updateBoardRules` (Structure.java:610-670): applies the DSN `rule` scopes to the
 /// board rules that are about to be handed to [`Board::new`].
 fn update_board_rules(
     p: &ReadScopeParameter<'_>,
@@ -931,14 +953,14 @@ fn update_board_rules(
     }
 }
 
-/// `Structure.setClearanceRule` (Structure.java:673-808): "converts a dsn clearance rule into a
+/// `Structure.setClearanceRule` (Structure.java:672-808): "converts a dsn clearance rule into a
 /// board clearance rule. If layerIndex is negative, the rule is set on all layers. Returns true,
 /// if the string smd_to_turn_gap was found."
 ///
 /// `layer_index` is `None` for Java's negative "all layers".
 ///
 /// **Both `setValue` orders are mandatory.** Java writes `setValue(first, second, …)` *and*
-/// `setValue(second, first, …)` (Structure.java:768-769,785-787) because
+/// `setValue(second, first, …)` (Structure.java:768-769,785-788) because
 /// [`ClearanceMatrix::set_value`] writes exactly one cell with quirk #83's J-then-I indexing —
 /// the symmetric pair is the only thing that keeps a DSN-sourced matrix symmetric.
 pub fn set_clearance_rule(
@@ -974,7 +996,7 @@ pub fn set_clearance_rule(
         let current_pair: [String; 2] = if rule.clearance_class_pairs.len() == 2 {
             // Java bug: Structure.setClearanceRule — this branch ignores `currentString` entirely
             // and re-reads the first two entries of the whole list on **every** iteration
-            // (Structure.java:734-744), so a two-entry `(type a b)` applies the same pair
+            // (Structure.java:719-728), so a two-entry `(type a b)` applies the same pair
             // twice; and the `for i` loop that
             // strips the quotes tests `currentPair[1]`'s leading `_` on both iterations, i.e.
             // once before `currentPair[1]`'s own quotes have been stripped and once after.
@@ -992,10 +1014,19 @@ pub fn set_clearance_rule(
             pair
         } else if let Some(rest) = current_string.strip_prefix(string_quote) {
             // split at the second occurrence of stringQuote
+            //
+            // Deviation: Java's `currentString.split(stringQuote, 2)` (Structure.java:732) is a
+            // **regex** split; `splitn` is a literal one. The two agree for every quote
+            // character any real exporter writes (`"`, `'`, backtick — none is a regex
+            // metacharacter), but `Parser.readQuoteChar` (Parser.java:147-168) accepts *any*
+            // string token, so `(string_quote .)` would make Java split at every character and
+            // this port split at the literal dot. Not emulated: doing so would need a regex
+            // engine, which the plan forbids as a dependency, for an input no fixture in the
+            // 105-file corpus contains. See `docs/java-quirks.md`.
             let mut parts = rest.splitn(2, string_quote);
             let first = parts.next().unwrap_or_default().to_string();
             let Some(second) = parts.next() else {
-                // "'_' expected" (Structure.java:750-756).
+                // "'_' expected" (Structure.java:733-739).
                 continue;
             };
             let Some(second) = second.strip_prefix('_') else {
@@ -1078,7 +1109,7 @@ fn create_default_clearance_classes(board_rules: &mut BoardRules) {
     append_clearance_class(board_rules, "area");
 }
 
-/// `Structure.appendClearanceClass` (Structure.java:826-832).
+/// `Structure.appendClearanceClass` (Structure.java:826-840).
 fn append_clearance_class(board_rules: &mut BoardRules, name: &str) -> usize {
     board_rules.clearance_matrix.append_class(name);
     let result = board_rules
@@ -1110,7 +1141,7 @@ fn append_clearance_class(board_rules: &mut BoardRules, name: &str) -> usize {
 
 // ------------------------------------------------------------------------------ createBoard
 
-/// `Structure.OutlineShape` (Structure.java:1324-1353): "used to separate the holes in the
+/// `Structure.OutlineShape` (Structure.java:1316-1353): "used to separate the holes in the
 /// outline".
 // renamed: OutlineShape — Java's nested-class constructor `OutlineShape(PolylineShape)` becomes `OutlineShape::new` (Rust has no implicit constructors).
 struct OutlineShape {
@@ -1121,7 +1152,7 @@ struct OutlineShape {
 }
 
 impl OutlineShape {
-    /// `OutlineShape(PolylineShape)` (Structure.java:1331-1336).
+    /// `OutlineShape(PolylineShape)` (Structure.java:1324-1329).
     fn new(shape: PolylineShapeRef) -> OutlineShape {
         let bounding_box = shape.as_ops().bounding_box();
         let convex_shapes = shape.split_to_convex();
@@ -1133,7 +1164,7 @@ impl OutlineShape {
         }
     }
 
-    /// `OutlineShape.containsAllCorners` (Structure.java:1339-1352).
+    /// `OutlineShape.containsAllCorners` (Structure.java:1331-1352).
     fn contains_all_corners(&self, other_shape: &OutlineShape) -> bool {
         let Some(convex_shapes) = &self.convex_shapes else {
             // calculation of the convex shapes failed
@@ -1150,7 +1181,7 @@ impl OutlineShape {
     }
 }
 
-/// `Structure.separateHoles` (Structure.java:573-603): "calculates shapes in outlineShapes, which
+/// `Structure.separateHoles` (Structure.java:573-605): "calculates shapes in outlineShapes, which
 /// are holes in the outline and returns them in the result list", **removing them from
 /// `outline_shapes`** as Java's `outlineShapes.remove(...)` does.
 fn separate_holes(outline_shapes: &mut Vec<PolylineShapeRef>) -> Vec<PolylineShapeRef> {
@@ -1184,7 +1215,7 @@ fn separate_holes(outline_shapes: &mut Vec<PolylineShapeRef>) -> Vec<PolylineSha
     hole_list
 }
 
-/// `Structure.createBoard` (Structure.java:1139-1290): everything between the end of the
+/// `Structure.createBoard` (Structure.java:1139-1286): everything between the end of the
 /// `structure` scope's token loop and a live [`Board`].
 ///
 /// `Ok(false)` is Java's `false`: no layers, no outline (with `boardOutlineOk` cleared), a
@@ -1208,7 +1239,7 @@ fn create_board(
             return Ok(false);
         }
         // totalized: Structure.createBoard — `Shape.boundingBox()` is `null` for a
-        // `PolylinePath` with fewer than two corners (PolylinePath.java:98-101), which Java
+        // `PolylinePath` with fewer than two corners (PolylinePath.java:69-72), which Java
         // dereferences unchecked here (:1160-1164). The port skips such a shape; if every
         // outline shape is one, it takes the same "outline missing" exit two lines above.
         let mut boxes = info
@@ -1237,7 +1268,7 @@ fn create_board(
     let mut board_layer_arr: Vec<Layer> = Vec::with_capacity(layer_count);
     for current_layer in &info.layer_info {
         if current_layer.no < 0 || current_layer.no as usize >= layer_count {
-            // "illegal layer number" (Structure.java:1175-1181).
+            // "illegal layer number" (Structure.java:1173-1179).
             return Ok(false);
         }
         board_layer_arr.push(Layer::new(
@@ -1262,7 +1293,7 @@ fn create_board(
     // make scalefactor smaller, if there is a danger of integer overflow.
     //
     // Java bug: Structure.createBoard — `scaleFactor` is an `int` and `/= 10` is **integer** division
-    // (Structure.java:1211-1214), so it truncates to 0 as soon as the loop runs more times than
+    // (Structure.java:1199-1203), so it truncates to 0 as soon as the loop runs more times than
     // the resolution has decimal digits — which happens for any board whose boundary reaches
     // `CRIT_INT / 5 == 6_710_886` in DSN units, whatever the resolution. `CoordinateTransform`
     // then divides by zero and every DSN coordinate written back out is `Infinity`/`NaN`
@@ -1283,7 +1314,7 @@ fn create_board(
         bounding_box.transform_to_board(&coordinate_transform)
     else {
         // `Rectangle.transformToBoard` always builds an `IntBox` (Rectangle.java:58-69); Java's
-        // `(IntBox)` cast at Structure.java:1218 relies on exactly that.
+        // `(IntBox)` cast at Structure.java:1207 relies on exactly that.
         unreachable!("Rectangle.transformToBoard returns an IntBox");
     };
     let bounds = bounds.offset(1000.0);
@@ -1347,7 +1378,7 @@ fn create_board(
         )
     };
 
-    // not ported: Structure.createBoard's old-KiCad warning (Structure.java:1263-1268) — an
+    // not ported: Structure.createBoard's old-KiCad warning (Structure.java:1255-1259) — an
     // `FRLogger.warn` and nothing else: it is neither a `ReadScopeParameter.warnings` entry nor
     // a `BoardReadResult` variant, so it leaves no trace in anything this port returns.
     // `Communication::host_is_old_kicad` is already ported in `fr-board` for whoever wants it.

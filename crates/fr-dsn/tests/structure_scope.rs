@@ -97,7 +97,7 @@ fn synthetic(resolution: &str, structure_body: &str) -> String {
 #[test]
 fn a_degenerate_bounding_box_clears_board_outline_ok_and_builds_no_board() {
     // Probe on `(boundary (rect pcb 0 0 0 0))` answers `OutlineMissing`, i.e. `createBoard`
-    // returned false at `maxCoor == 0` (Structure.java:1206-1209).
+    // returned false at `maxCoor == 0` (Structure.java:1195-1198).
     let text = synthetic("10", "    (boundary\n      (rect pcb 0 0 0 0)\n    )");
     read_pcb(&text, |ok, p| {
         assert!(!ok, "Structure.readScope propagates createBoard's false");
@@ -182,7 +182,7 @@ fn a_clearance_rule_writes_both_index_orders() {
             762
         );
         // No `smd_to_turn_gap` rule was read, so `pinEdgeToTurnDist` falls back to the minimum
-        // trace half width (Structure.java:663-665).
+        // trace half width (Structure.java:667-669).
         assert!((board.rules.get_pin_edge_to_turn_dist() - 762.0).abs() < 1e-12);
     });
 }
@@ -365,7 +365,7 @@ fn read_autoroute_settings_scope_reads_costs_and_layer_rules() {
 
 #[test]
 fn an_autoroute_settings_scope_after_a_keepout_is_never_read() {
-    // Java bug (Structure.java:1005-1011): the `AutorouteSettings.readScope` call sits *inside*
+    // Java bug (Structure.java:1006-1012): the `AutorouteSettings.readScope` call sits *inside*
     // the `if (scopeParameter.layerStructure == null)` guard, so a `keepout`/`plane`/`via_keepout`
     // scope earlier in the same `structure` scope — which is what creates the layer structure —
     // makes the whole `autoroute_settings` scope go unread *and* unskipped.

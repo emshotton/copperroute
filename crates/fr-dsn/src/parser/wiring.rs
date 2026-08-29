@@ -75,8 +75,14 @@ pub fn read_wiring_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErro
     // Wiring.java:345-352, plan ruling 4. Java: `try { board.normalizeAllTraces(); } catch
     // (Exception e) { FRLogger.debug(msg); scopeParameter.warnings.add(msg); }` — the call is
     // :347, the message literal :349 and the `warnings.add` :351.
-    let deadline = TimeLimit::new(p.options.normalize_time_limit_ms());
-    let stop = move || deadline.is_exceeded();
+    let limit_ms = p.options.normalize_time_limit_ms();
+    let deadline = TimeLimit::new(limit_ms);
+    // A zero budget trips before the first check. Java's `TimeLimit.isExceeded` compares
+    // *strictly* greater than the deadline (TimeLimit.java:20), so `TimeLimit::new(0)` alone
+    // would only trip once a millisecond had elapsed inside the walk — which makes
+    // `DsnReadOptions { normalize_time_limit: Duration::ZERO }` a race rather than an opt-out.
+    // The explicit test gives it a defined meaning and makes the trip deterministic.
+    let stop = move || limit_ms <= 0 || deadline.is_exceeded();
     // totalized: Wiring.readScope dereferences `boardHandling.getRoutingBoard()` unguarded
     // (Wiring.java:345), so a DSN whose `structure` scope produced no board — the
     // `boardOutlineOk == false` case — NPEs straight out of `DsnReader.readBoard`, which has no
