@@ -38,7 +38,15 @@ use crate::parser::scope_parameter::skip_scope;
 /// # Defaults, and where they come from
 ///
 /// Every getter below reproduces `RouterSettings`' own null-coalescing default, because Java's
-/// fields are boxed and start `null`:
+/// fields are boxed and start `null`. **The nullability itself is part of the model**, not just
+/// the default: `AutorouteSettings.readScope` calls `setViasAllowed`/`setViaCosts`/
+/// `setPlaneViaCosts`/`setStartRipupCosts` **only** when the corresponding token appears
+/// (:50-58), so a file that omits `(via_costs …)` leaves `scoring.viaCosts` at `null` and every
+/// higher-priority settings source's value survives the merge. A field that stored the coalesced
+/// default instead would report `1` — an *opinion* — and silently overwrite them (Plan 4 Task 6
+/// review, controller ruling L; JVM row `SProbe H.reduced.merged.getViaCosts = 50`). The four
+/// fields that can be absent are therefore `Option`, and the raw `*_raw` accessors expose that;
+/// the plain getters below coalesce, because that is what the DSN/`.rules` **writers** call.
 ///
 /// | Field | Java | Default |
 /// |---|---|---|
@@ -55,14 +63,15 @@ pub struct DsnRouterSettings {
     run_router: bool,
     /// `RouterSettings.optimizer.enabled` (`getRunOptimizer`/`setRunOptimizer`, :561-568).
     run_optimizer: bool,
-    /// `RouterSettings.viasAllowed` (`getViasAllowed`, :595-597).
-    vias_allowed: bool,
-    /// `RouterSettings.scoring.viaCosts` (:600-611).
-    via_costs: i32,
-    /// `RouterSettings.scoring.planeViaCosts` (:613-624).
-    plane_via_costs: i32,
-    /// `RouterSettings.scoring.startRipupCosts` (:537-548).
-    start_ripup_costs: i32,
+    /// `RouterSettings.viasAllowed` (`getViasAllowed`, :595-597). `None` is Java's `null` — the
+    /// `(vias …)` token was absent, so `readScope` never called the setter (:50-51).
+    vias_allowed: Option<bool>,
+    /// `RouterSettings.scoring.viaCosts` (:600-611). `None` is Java's `null` (:52-53).
+    via_costs: Option<i32>,
+    /// `RouterSettings.scoring.planeViaCosts` (:613-624). `None` is Java's `null` (:54-55).
+    plane_via_costs: Option<i32>,
+    /// `RouterSettings.scoring.startRipupCosts` (:537-548). `None` is Java's `null` (:56-57).
+    start_ripup_costs: Option<i32>,
     /// `RouterSettings.layers[i].routable` (:629-670).
     layer_active: Vec<bool>,
     /// `RouterSettings.layers[i].preferredDirectionHorizontal` (:709-749). `None` is Java's
@@ -73,6 +82,21 @@ pub struct DsnRouterSettings {
     preferred_direction_trace_costs: Vec<f64>,
     /// `RouterSettings.scoring.undesiredDirectionTraceCost` (:795-813,838-853).
     against_preferred_direction_trace_costs: Vec<f64>,
+    /// `RouterSettings.boardSpecificTraceCostsApplied` (:111, `private transient Boolean`).
+    ///
+    /// Both per-layer cost arrays are **always** populated — `setLayerCount` seeds every entry
+    /// with `1.0` (:466-472) — so their values alone cannot say whether the file named a cost.
+    /// This flag can: `setLayerCount` clears it on a reallocation (:457) and the two trace-cost
+    /// setters set it (:776, :858), so it is `true` exactly when at least one
+    /// `(preferred_direction_trace_costs …)` / `(against_preferred_direction_trace_costs …)`
+    /// token was read (`AutorouteSettings.java:139-145`). Plan 4's conversion needs it: it is
+    /// what makes `applyBoardSpecificOptimizationsIfNeeded` re-tune, or not. JVM rows `SProbe
+    /// H.reduced.raw.areBoardSpecificTraceCostsApplied = false` against
+    /// `H.full.raw.… = true` for the same file with its four cost lines restored.
+    ///
+    /// Java's field is `private`, so `ReflectionUtil.copyFields` never carries it (quirk 127) —
+    /// and neither does [`Self::apply_new_values_from`].
+    board_specific_trace_costs_applied: bool,
 }
 
 impl Default for DsnRouterSettings {
@@ -82,28 +106,40 @@ impl Default for DsnRouterSettings {
 }
 
 impl DsnRouterSettings {
-    /// `new RouterSettings()` (RouterSettings.java:13) with no layers yet — every field at the
-    /// default its Java getter coalesces to.
+    /// `new RouterSettings()` (RouterSettings.java:119-124) with no layers yet — every nullable
+    /// field **absent**, exactly as Java's boxed fields start `null`. The getters below are what
+    /// coalesce absence into Java's default.
     #[must_use]
     pub fn new() -> DsnRouterSettings {
         DsnRouterSettings {
             run_router: true,
             run_optimizer: false,
-            vias_allowed: true,
-            via_costs: 1,
-            plane_via_costs: 1,
-            start_ripup_costs: 1,
+            vias_allowed: None,
+            via_costs: None,
+            plane_via_costs: None,
+            start_ripup_costs: None,
             layer_active: Vec::new(),
             preferred_direction_is_horizontal: Vec::new(),
             preferred_direction_trace_costs: Vec::new(),
             against_preferred_direction_trace_costs: Vec::new(),
+            board_specific_trace_costs_applied: false,
         }
     }
 
     /// `RouterSettings.setLayerCount` (RouterSettings.java:455-477): resizes the per-layer arrays
     /// and re-seeds every entry — `routable = true`, `preferredDirectionHorizontal = null`, both
     /// trace costs `1.0`.
+    ///
+    /// [`Self::board_specific_trace_costs_applied`] is cleared **only** when the count actually
+    /// changes (`:456-457` — the write sits inside the reallocation branch) while the reseeding
+    /// below runs on every call. That asymmetry is quirk #126; reproduced here rather than
+    /// simplified, so this type answers `areBoardSpecificTraceCostsApplied` exactly as Java's
+    /// object does.
     pub fn set_layer_count(&mut self, layer_count: usize) {
+        if self.layer_active.len() != layer_count {
+            // Java bug: setLayerCount (RouterSettings.java:456-457) — see quirk #126.
+            self.board_specific_trace_costs_applied = false;
+        }
         self.layer_active = vec![true; layer_count];
         self.preferred_direction_is_horizontal = vec![None; layer_count];
         self.preferred_direction_trace_costs = vec![1.0; layer_count];
@@ -138,48 +174,76 @@ impl DsnRouterSettings {
         self.run_optimizer = value;
     }
 
-    /// `RouterSettings.getViasAllowed` (RouterSettings.java:595-597).
+    /// `RouterSettings.getViasAllowed` (RouterSettings.java:595-597): `true` when absent.
     #[must_use]
     pub fn vias_allowed(&self) -> bool {
+        self.vias_allowed.unwrap_or(true)
+    }
+
+    /// The raw, un-coalesced `viasAllowed` — `None` where the file named no `(vias …)`.
+    // added in Plan 4: (no Java counterpart — a raw field read in Java)
+    #[must_use]
+    pub fn vias_allowed_raw(&self) -> Option<bool> {
         self.vias_allowed
     }
 
     /// `RouterSettings.setViasAllowed(boolean)` (RouterSettings.java:216-218).
     pub fn set_vias_allowed(&mut self, value: bool) {
-        self.vias_allowed = value;
+        self.vias_allowed = Some(value);
     }
 
-    /// `RouterSettings.getViaCosts` (RouterSettings.java:600-602).
+    /// `RouterSettings.getViaCosts` (RouterSettings.java:600-602): `1` when absent.
     #[must_use]
     pub fn via_costs(&self) -> i32 {
+        self.via_costs.unwrap_or(1)
+    }
+
+    /// The raw, un-coalesced `scoring.viaCosts` — `None` where the file named no `(via_costs …)`.
+    // added in Plan 4: (no Java counterpart — a raw field read in Java)
+    #[must_use]
+    pub fn via_costs_raw(&self) -> Option<i32> {
         self.via_costs
     }
 
     /// `RouterSettings.setViaCosts` (RouterSettings.java:604-611): clamped up to 1.
     pub fn set_via_costs(&mut self, value: i32) {
-        self.via_costs = value.max(1);
+        self.via_costs = Some(value.max(1));
     }
 
-    /// `RouterSettings.getPlaneViaCosts` (RouterSettings.java:613-615).
+    /// `RouterSettings.getPlaneViaCosts` (RouterSettings.java:613-615): `1` when absent.
     #[must_use]
     pub fn plane_via_costs(&self) -> i32 {
+        self.plane_via_costs.unwrap_or(1)
+    }
+
+    /// The raw, un-coalesced `scoring.planeViaCosts`.
+    // added in Plan 4: (no Java counterpart — a raw field read in Java)
+    #[must_use]
+    pub fn plane_via_costs_raw(&self) -> Option<i32> {
         self.plane_via_costs
     }
 
     /// `RouterSettings.setPlaneViaCosts` (RouterSettings.java:617-624): clamped up to 1.
     pub fn set_plane_via_costs(&mut self, value: i32) {
-        self.plane_via_costs = value.max(1);
+        self.plane_via_costs = Some(value.max(1));
     }
 
-    /// `RouterSettings.getStartRipupCosts` (RouterSettings.java:537-539).
+    /// `RouterSettings.getStartRipupCosts` (RouterSettings.java:537-539): `1` when absent.
     #[must_use]
     pub fn start_ripup_costs(&self) -> i32 {
+        self.start_ripup_costs.unwrap_or(1)
+    }
+
+    /// The raw, un-coalesced `scoring.startRipupCosts`.
+    // added in Plan 4: (no Java counterpart — a raw field read in Java)
+    #[must_use]
+    pub fn start_ripup_costs_raw(&self) -> Option<i32> {
         self.start_ripup_costs
     }
 
     /// `RouterSettings.setStartRipupCosts` (RouterSettings.java:541-548): clamped up to 1.
     pub fn set_start_ripup_costs(&mut self, value: i32) {
-        self.start_ripup_costs = value.max(1);
+        self.start_ripup_costs = Some(value.max(1));
     }
 
     /// `RouterSettings.getLayerActive` (RouterSettings.java:658-670): `false` for an
@@ -246,10 +310,13 @@ impl DsnRouterSettings {
     }
 
     /// `RouterSettings.setPreferredDirectionTraceCosts` (RouterSettings.java:756-773): clamped up
-    /// to 0.1.
+    /// to 0.1, and sets [`Self::are_board_specific_trace_costs_applied`] (`:776`).
     pub fn set_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         if let Some(slot) = self.preferred_direction_trace_costs.get_mut(layer) {
             *slot = value.max(0.1);
+            // `boardSpecificTraceCostsApplied = true` (:776) — inside the range guard, as Java
+            // has it, so an out-of-range layer sets nothing.
+            self.board_specific_trace_costs_applied = true;
         }
     }
 
@@ -263,11 +330,24 @@ impl DsnRouterSettings {
     }
 
     /// `RouterSettings.setAgainstPreferredDirectionTraceCosts` (RouterSettings.java:838-853):
-    /// clamped up to 0.1.
+    /// clamped up to 0.1, and sets [`Self::are_board_specific_trace_costs_applied`] (`:858`).
     pub fn set_against_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         if let Some(slot) = self.against_preferred_direction_trace_costs.get_mut(layer) {
             *slot = value.max(0.1);
+            // `boardSpecificTraceCostsApplied = true` (:858).
+            self.board_specific_trace_costs_applied = true;
         }
+    }
+
+    /// `RouterSettings.areBoardSpecificTraceCostsApplied` (RouterSettings.java:257-259):
+    /// `Boolean.TRUE.equals(boardSpecificTraceCostsApplied)`.
+    ///
+    /// For a settings object built by [`read_autoroute_settings_scope`] this answers "the file
+    /// named at least one per-layer trace cost", which is the only way to tell a named `1.0`
+    /// from `setLayerCount`'s seeded `1.0`.
+    #[must_use]
+    pub fn are_board_specific_trace_costs_applied(&self) -> bool {
+        self.board_specific_trace_costs_applied
     }
 
     /// `RouterSettings.applyNewValuesFrom(RouterSettings)` (RouterSettings.java:907-929) —
@@ -287,10 +367,20 @@ impl DsnRouterSettings {
     /// | `scoring.{preferredDirectionTraceCost,undesiredDirectionTraceCost}` | `double[]` | copied **only** when the target's array is `null` or empty (:285) |
     /// | `layers` | `LayerSettings[]` | merged element-wise when the target is at least as long, else replaced; each element's `Boolean routable`/`preferredDirectionHorizontal` copy when non-`null` (:291-326) |
     ///
-    /// Every field of this type is always set (`read_autoroute_settings_scope` calls
-    /// [`Self::set_layer_count`] before it fills anything), so "non-null copies" is an
-    /// unconditional copy here; only the two array rules are conditional, and they are what makes
-    /// this more than `*self = other.clone()`.
+    /// **All four rules are conditional.** An earlier revision of this port stored the four
+    /// nullable scalars as plain `bool`/`i32` and copied them unconditionally, on the reasoning
+    /// that `read_autoroute_settings_scope` always fills them — it does not: `readScope` calls
+    /// each setter only when its token appears (`AutorouteSettings.java:50-58`). Copying the
+    /// coalesced default instead of skipping an absent field is exactly what rule 2 exists to
+    /// prevent (Plan 4 Task 6 review, controller ruling L).
+    ///
+    /// `run_router`/`run_optimizer` stay unconditional, and correctly so: `readScope` assigns
+    /// both after the loop from locals that default to `true` (`:67-68`), so they are never
+    /// absent on an object this module produces.
+    ///
+    /// [`Self::board_specific_trace_costs_applied`] is **not** copied — Java's field is
+    /// `private`, and rule 1 (`ReflectionUtil.java:226-228`) skips non-`public` fields. That is
+    /// quirk 127, reproduced here by omission.
     ///
     /// Java returns the number of fields it changed, which no caller of `applyNewValuesFrom`
     /// reads (`RulesReader.java:156` discards it); this returns `()`.
@@ -305,10 +395,20 @@ impl DsnRouterSettings {
     pub fn apply_new_values_from(&mut self, other: &DsnRouterSettings) {
         self.run_router = other.run_router;
         self.run_optimizer = other.run_optimizer;
-        self.vias_allowed = other.vias_allowed;
-        self.via_costs = other.via_costs;
-        self.plane_via_costs = other.plane_via_costs;
-        self.start_ripup_costs = other.start_ripup_costs;
+
+        // Rule 2 (`ReflectionUtil.java:235`): a `null` source field is skipped.
+        if other.vias_allowed.is_some() {
+            self.vias_allowed = other.vias_allowed;
+        }
+        if other.via_costs.is_some() {
+            self.via_costs = other.via_costs;
+        }
+        if other.plane_via_costs.is_some() {
+            self.plane_via_costs = other.plane_via_costs;
+        }
+        if other.start_ripup_costs.is_some() {
+            self.start_ripup_costs = other.start_ripup_costs;
+        }
 
         // `layers` (ReflectionUtil.java:291-326): merge into the target's own elements when it
         // has at least as many, otherwise take the source's array wholesale.

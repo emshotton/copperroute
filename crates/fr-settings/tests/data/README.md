@@ -15,7 +15,7 @@ rebuilt jar.
 | `BProbe.java` | Task 5's `applyBoardSpecificOptimizations` over four synthetic stacks and any DSN fixtures named on the command line, plus the Q9 merge block | yes |
 | `RProbe.java` | Quirk 119's real consequence: `setLayerCount`'s effect on `--router.layers.*` values (L1-L4), and what Java's array branch leaves behind when the *next* path segment is bogus (A1-A3) | yes |
 | `CProbe.java` | Task 7's `EnvironmentVariablesSource` (A), `CliSettings`' value-consumption and flag-mapping rules (B), the five `SettingsMergerTest` CLI cases merged (C), the dead `LegacyBridge`'s whole flag table (D) and the `-de` classification matrix including a real file whose name contains `+` (E); run with `-XX:ActiveProcessorCount=4` | yes |
-| `SProbe.java` | Task 6's `SettingsMerger`, `SettingsSource` and the five in-scope `settings/sources/**` classes: the whole `DefaultSettings` table field by field (A), the ported `SettingsMergerTest` cases plus the only-null-sources NPE and the stable-sort tie (B), `addOrReplaceSources` (C), every source name and priority (D), both `.rules` goldens raw and through the accessors (E), `DsnFileSettings` over three fixtures with no `(autoroute_settings)` block — quirk 128's evidence (F), and that seeding merged under `DefaultSettings` (G); run with `-XX:ActiveProcessorCount=4` and the fixtures directory as `argv[0]` | yes |
+| `SProbe.java` | Task 6's `SettingsMerger`, `SettingsSource` and the five in-scope `settings/sources/**` classes: the whole `DefaultSettings` table field by field (A), the ported `SettingsMergerTest` cases plus the only-null-sources NPE and the stable-sort tie (B), `addOrReplaceSources` (C), every source name and priority (D), both `.rules` goldens raw and through the accessors (E), `DsnFileSettings` over three fixtures with no `(autoroute_settings)` block — quirk 128's evidence (F), and that seeding merged under `DefaultSettings` (G), and — fix round 1 — absence versus the coalesced default on a reduced `.rules` file (H); run with `-XX:ActiveProcessorCount=4`, the fixtures directory as `argv[0]` and this directory as `argv[1]` | yes |
 
 ## Recorded commands
 
@@ -43,7 +43,8 @@ done
 /opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
     -cp "$JAR:." VProbe
 /opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
-    -cp "$JAR:." SProbe /Users/em/Development/freerouting/freerouting/fixtures
+    -cp "$JAR:." SProbe /Users/em/Development/freerouting/freerouting/fixtures \
+    /Users/em/Development/freerouting/freerouting-rs/crates/fr-settings/tests/data
 
 # CProbe pins availableProcessors for its `validate()` rows (block C)
 /opt/homebrew/opt/openjdk@25/bin/javac -cp "$JAR" -d . CProbe.java
@@ -59,3 +60,13 @@ F=/Users/em/Development/freerouting/freerouting/fixtures
 
 The transcripts these produced are in
 `.superpowers/sdd/2026-08-28-plan-4-settings/task-{3,4,5,6,7}-report.md`.
+
+## Committed inputs
+
+`Issue029-hw48na_reduced.rules` is `../freerouting/fixtures/Issue029-hw48na_valid.rules` with
+eight lines deleted — `(vias on)`, `(via_costs 50)`, `(plane_via_costs 5)`,
+`(start_ripup_costs 100)` and the four per-layer trace-cost lines. It is the input `SProbe` block
+`H` and `tests/sources.rs::an_unnamed_rules_field_does_not_overwrite_a_lower_priority_source`
+share: a scope that names *some* fields and omits others, which is what distinguishes "absent"
+from "the coalesced default" (controller ruling L, quirks row for the Plan 3 gap). It is committed
+rather than generated so the JVM transcript and the Rust test read the same bytes.

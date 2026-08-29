@@ -65,6 +65,26 @@ use crate::RouterSettings;
 /// - `fanout`, `optimizer` and `scoring` come back as the *present but empty* objects
 ///   `new RouterSettings()` allocates, not as `None` — JVM-verified, `SProbe E.processorRaw`.
 ///
+/// **Every setter is called only where `readScope` calls it.** `(vias …)`, `(via_costs …)`,
+/// `(plane_via_costs …)` and `(start_ripup_costs …)` are each optional tokens
+/// (`AutorouteSettings.java:50-58`), so a file that omits one leaves the corresponding
+/// `RouterSettings` field `None` and every higher-priority source's value survives the merge.
+/// Getting this wrong is a wrong-output bug with no crash to find it: an earlier revision of this
+/// conversion wrote the *coalesced defaults* instead, so a `.rules` file with no `(via_costs …)`
+/// pushed `viaCosts = 1` over `DefaultSettings`' 50. JVM-measured on a reduced fixture —
+/// `SProbe H.reduced.merged.getViaCosts = 50` where the port answered 1 (Task 6 review,
+/// controller ruling L; the root fix is the four `Option` fields and the
+/// `boardSpecificTraceCostsApplied` flag now carried by `DsnRouterSettings` itself).
+///
+/// The two per-layer cost arrays are the subtle half: `setLayerCount` seeds both with `1.0`
+/// (`RouterSettings.java:466-472`), so their *values* cannot say whether the file named a cost —
+/// only `boardSpecificTraceCostsApplied` can (`:776`, `:858`). The setters are therefore replayed
+/// only when [`DsnRouterSettings::are_board_specific_trace_costs_applied`] is set, which leaves
+/// the seeded `1.0`s and the `false` flag untouched otherwise. Replaying *both* arrays when the
+/// flag is set, rather than only the array whose setter actually ran, reaches the identical end
+/// state: writing a layer's seeded `1.0` back over itself changes no value, and the flag is a
+/// single boolean either way.
+///
 /// Every field the scope does not name is left absent.
 impl From<DsnRouterSettings> for RouterSettings {
     fn from(dsn: DsnRouterSettings) -> Self {
@@ -78,26 +98,40 @@ impl From<&DsnRouterSettings> for RouterSettings {
         result.set_layer_count(dsn.get_layer_count());
 
         // `(vias …)`, `(via_costs …)`, `(plane_via_costs …)`, `(start_ripup_costs …)`
-        // (AutorouteSettings.java:50-58).
-        result.set_vias_allowed(Some(dsn.vias_allowed()));
-        result.set_via_costs(dsn.via_costs());
-        result.set_plane_via_costs(dsn.plane_via_costs());
-        result.set_start_ripup_costs(dsn.start_ripup_costs());
+        // (AutorouteSettings.java:50-58) — each setter runs only when its token was read.
+        if let Some(vias_allowed) = dsn.vias_allowed_raw() {
+            result.set_vias_allowed(Some(vias_allowed));
+        }
+        if let Some(via_costs) = dsn.via_costs_raw() {
+            result.set_via_costs(via_costs);
+        }
+        if let Some(plane_via_costs) = dsn.plane_via_costs_raw() {
+            result.set_plane_via_costs(plane_via_costs);
+        }
+        if let Some(start_ripup_costs) = dsn.start_ripup_costs_raw() {
+            result.set_start_ripup_costs(start_ripup_costs);
+        }
 
-        // `(layer_rule …)` (:59-63, readLayerRule).
+        // `(layer_rule …)` (:59-63, readLayerRule). `active` is unconditional because
+        // `setLayerCount` seeds `routable = true` on both sides, so writing the read-back value
+        // is a no-op for a layer the file never mentioned (:112-114 with :471).
+        let trace_costs_were_named = dsn.are_board_specific_trace_costs_applied();
         for layer in 0..dsn.get_layer_count() {
             result.set_layer_active(layer, dsn.get_layer_active(layer));
             if let Some(horizontal) = dsn.preferred_direction_is_horizontal_raw(layer) {
                 result.set_preferred_direction_is_horizontal(layer, horizontal);
             }
-            result.set_preferred_direction_trace_costs(
-                layer,
-                dsn.get_preferred_direction_trace_costs(layer),
-            );
-            result.set_against_preferred_direction_trace_costs(
-                layer,
-                dsn.get_against_preferred_direction_trace_costs(layer),
-            );
+            // `:139-145` — and the flag they set at `RouterSettings.java:776`/`:858`.
+            if trace_costs_were_named {
+                result.set_preferred_direction_trace_costs(
+                    layer,
+                    dsn.get_preferred_direction_trace_costs(layer),
+                );
+                result.set_against_preferred_direction_trace_costs(
+                    layer,
+                    dsn.get_against_preferred_direction_trace_costs(layer),
+                );
+            }
         }
 
         // `withAutoroute`/`withPostroute` are applied after the loop (:67-68).

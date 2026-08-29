@@ -312,6 +312,64 @@ public class SProbe {
       }
     }
 
+    // ---- H: absence vs. the coalesced default — Task 6 fix round 1, controller ruling L ----
+    // `Issue029-hw48na_reduced.rules` is `Issue029-hw48na_valid.rules` with eight lines deleted:
+    // `(vias on)`, `(via_costs 50)`, `(plane_via_costs 5)`, `(start_ripup_costs 100)` and the
+    // four per-layer trace-cost lines. Java's readScope calls no setter for any of them, so the
+    // fields stay null and `boardSpecificTraceCostsApplied` stays at the `false` setLayerCount
+    // left. Both `(preferred_direction …)` lines are kept, so the per-layer directions still land.
+    System.out.println("## H absence vs. default (reduced rules file)");
+    String probeData = args.length > 1 ? args[1] : ".";
+    File reduced = new File(probeData, "Issue029-hw48na_reduced.rules");
+    RulesFileSettings reducedSource = new RulesFileSettings(reduced);
+    RouterSettings h = reducedSource.getSettings();
+    p("H.reduced.raw.viasAllowed", h.viasAllowed);
+    p("H.reduced.raw.scoring.viaCosts", h.scoring == null ? null : h.scoring.viaCosts);
+    p("H.reduced.raw.scoring.planeViaCosts", h.scoring == null ? null : h.scoring.planeViaCosts);
+    p("H.reduced.raw.scoring.startRipupCosts", h.scoring == null ? null : h.scoring.startRipupCosts);
+    p("H.reduced.raw.enabled", h.enabled);
+    p(
+        "H.reduced.raw.optimizer.enabled",
+        h.optimizer == null ? null : h.optimizer.enabled);
+    p("H.reduced.raw.layerCount", h.getLayerCount());
+    p(
+        "H.reduced.raw.scoring.preferredDirectionTraceCost",
+        h.scoring == null ? null : h.scoring.preferredDirectionTraceCost);
+    p(
+        "H.reduced.raw.scoring.undesiredDirectionTraceCost",
+        h.scoring == null ? null : h.scoring.undesiredDirectionTraceCost);
+    for (int i = 0; i < h.getLayerCount(); i++) {
+      p(
+          "H.reduced.raw.layers[" + i + "]",
+          "routable="
+              + s(h.layers[i].routable)
+              + " prefHoriz="
+              + s(h.layers[i].preferredDirectionHorizontal));
+    }
+    p("H.reduced.raw.areBoardSpecificTraceCostsApplied", h.areBoardSpecificTraceCostsApplied());
+
+    RouterSettings hMerged =
+        new SettingsMerger(new DefaultSettings(), new RulesFileSettings(reduced)).merge();
+    p("H.reduced.merged.getViaCosts", hMerged.getViaCosts());
+    p("H.reduced.merged.getPlaneViaCosts", hMerged.getPlaneViaCosts());
+    p("H.reduced.merged.getStartRipupCosts", hMerged.getStartRipupCosts());
+    p("H.reduced.merged.getViasAllowed", hMerged.getViasAllowed());
+    p("H.reduced.merged.layerCount", hMerged.getLayerCount());
+    p(
+        "H.reduced.merged.areBoardSpecificTraceCostsApplied",
+        hMerged.areBoardSpecificTraceCostsApplied());
+
+    // The positive half: the unmodified file names both trace costs, so the setter *does* run
+    // and the flag comes out true.
+    RouterSettings hFull =
+        new RulesFileSettings(new File(fixtures, "Issue029-hw48na_valid.rules")).getSettings();
+    p("H.full.raw.areBoardSpecificTraceCostsApplied", hFull.areBoardSpecificTraceCostsApplied());
+    p("H.full.raw.scoring.viaCosts", hFull.scoring.viaCosts);
+
+    // And what a `.rules` file with no `(autoroute_settings …)` scope at all gives: readScope
+    // never runs, so RulesFileSettings falls back to a blank `new RouterSettings()`.
+    p("H.blank.layerCount", new RulesFileSettings("nope.rules").getSettings().getLayerCount());
+
     // ---- G: a DSN source merged under DefaultSettings — quirk Q18's consequence -------------
     System.out.println("## G Q18: the DSN source's seeded arrays block later sources");
     try (InputStream in = new FileInputStream(new File(fixtures, "Issue066-Project_GP8B.dsn"))) {

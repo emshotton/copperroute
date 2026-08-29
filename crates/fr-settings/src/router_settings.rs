@@ -24,17 +24,17 @@
 //! | `setOptimizerEnabled` | `:230-238` | `gui/windows/routing/WindowAutorouteParameter.java:515` |
 //! | `setFanoutEnabled` | `:583-592` | `WindowAutorouteParameter.java:507` |
 //! | `getRunFanout` | `:573` | `WindowAutorouteParameter.java:590` |
-//! | `isFanoutEnabled` | `:578` | `autoroute/pipeline/{RoutingPipeline,BatchAutorouter,AutorouteBatchLoop}.java` — Plan 6 |
+//! | `isFanoutEnabled` | `:578` | `autoroute/pipeline/{RoutingPipeline,BatchAutorouter,AutorouteBatchLoop}.java` — **ported in Task 6 fix round 1** |
 //!
-//! So four of the five are GUI-only and are candidates for `// not ported:`, while
-//! `isFanoutEnabled` has a real headless caller that arrives with Plan 6's routing pipeline.
-//! Task 11 owns that decision (its brief is the audit-to-zero and `// not ported:` roster task);
-//! the markers below record the obligation so `grep -rn "added in Task"` lists it.
+//! `isFanoutEnabled` had a real headless caller, so it is ported (see [`Self::is_fanout_enabled`],
+//! whose doc comment records the `getRunFanout` default asymmetry, quirk #139). The other four
+//! are GUI-only and are candidates for `// not ported:`; Task 11 owns that decision (its brief is
+//! the audit-to-zero and `// not ported:` roster task), and the markers below record the
+//! obligation so `grep -rn "added in Task"` lists it.
 //!
 // added in Task 11: setAlgorithm
 // added in Task 11: setOptimizerEnabled
 // added in Task 11: getRunFanout
-// added in Task 11: isFanoutEnabled
 // added in Task 11: setFanoutEnabled
 //!
 //! ## Transient-field serde treatment, JVM-verified
@@ -374,6 +374,28 @@ impl RouterSettings {
     /// `RouterSettings.setRunRouter` (`:555-557`).
     pub fn set_run_router(&mut self, value: bool) {
         self.enabled = Some(value);
+    }
+
+    /// `RouterSettings.isFanoutEnabled` (`:578-580`):
+    /// `fanout != null && Boolean.TRUE.equals(fanout.enabled)` — absent means **false**.
+    ///
+    /// Its neighbour `getRunFanout` (`:573-575`) carries the identical javadoc ("Returns whether
+    /// the fanout pre-pass should run") and the **opposite** default: `fanout != null &&
+    /// fanout.enabled != null ? fanout.enabled : true`. So on a `RouterSettings` that never went
+    /// through `DefaultSettings`, `getRunFanout()` says run and `isFanoutEnabled()` says do not.
+    /// Only `isFanoutEnabled` has headless callers —
+    /// `autoroute/pipeline/{RoutingPipeline.java:93,99, BatchAutorouter.java:115,
+    /// AutorouteBatchLoop.java:85,89,435}` — which is why it is ported here and `getRunFanout`
+    /// (GUI-only, `WindowAutorouteParameter.java:590`) stays deferred. See
+    /// `docs/java-quirks.md` #139.
+    ///
+    /// obligation: Plan 6 owns `autoroute/pipeline/**`; this is the accessor it gates the fanout
+    /// pre-pass on.
+    pub fn is_fanout_enabled(&self) -> bool {
+        self.fanout
+            .as_ref()
+            .and_then(|fanout| fanout.enabled)
+            .unwrap_or(false)
     }
 
     /// `RouterSettings.getRunOptimizer` (`:560-562`): an absent `optimizer` *or* an absent

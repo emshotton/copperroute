@@ -686,6 +686,97 @@ fn read_router_settings_extracts_the_autoroute_scope() {
     assert_eq!(settings.get_against_preferred_direction_trace_costs(1), 3.0);
 }
 
+/// Absence is not the coalesced default: a scope that names no `(vias …)`, `(via_costs …)`,
+/// `(plane_via_costs …)` or `(start_ripup_costs …)`, and no per-layer trace cost, leaves all four
+/// scalars **`None`** and `areBoardSpecificTraceCostsApplied()` **`false`** — while the coalescing
+/// getters still answer Java's `true`/`1`/`1.0` so the writers are unaffected.
+///
+/// This is the shape Plan 4's `From<&DsnRouterSettings> for RouterSettings` needs (controller
+/// ruling L): storing the coalesced default instead would make a `.rules` file that mentions none
+/// of these fields silently overwrite a higher-priority source's values. JVM-verified —
+/// `crates/fr-settings/tests/data/SProbe.java` block `H`, run against the clone-HEAD jar:
+/// `H.reduced.raw.viasAllowed = null`, `H.reduced.raw.scoring.viaCosts = null`,
+/// `H.reduced.raw.areBoardSpecificTraceCostsApplied = false`.
+#[test]
+fn read_router_settings_leaves_unnamed_scalars_absent() {
+    let rules = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fr-settings/tests/data/Issue029-hw48na_reduced.rules"
+    ))
+    .expect("the reduced fixture is committed next to SProbe.java");
+    let settings = rules_reader::read_router_settings(&rules[..])
+        .expect("no scanner error")
+        .expect("the fixture has an (autoroute_settings ...) scope");
+
+    // Absent, because the file names none of them.
+    assert_eq!(settings.vias_allowed_raw(), None);
+    assert_eq!(settings.via_costs_raw(), None);
+    assert_eq!(settings.plane_via_costs_raw(), None);
+    assert_eq!(settings.start_ripup_costs_raw(), None);
+    assert!(!settings.are_board_specific_trace_costs_applied());
+
+    // The coalescing getters — what the writers call — still answer Java's defaults, so no
+    // emitted byte changes.
+    assert!(settings.vias_allowed());
+    assert_eq!(settings.via_costs(), 1);
+    assert_eq!(settings.plane_via_costs(), 1);
+    assert_eq!(settings.start_ripup_costs(), 1);
+    assert_eq!(settings.get_preferred_direction_trace_costs(0), 1.0);
+    assert_eq!(settings.get_against_preferred_direction_trace_costs(1), 1.0);
+
+    // What the file *does* name still lands: `setLayerCount` seeded the layers and both
+    // `(preferred_direction …)` lines were read (SProbe H.reduced.raw.layers[*]).
+    assert_eq!(settings.get_layer_count(), 2);
+    assert_eq!(
+        settings.preferred_direction_is_horizontal_raw(0),
+        Some(false)
+    );
+    assert_eq!(
+        settings.preferred_direction_is_horizontal_raw(1),
+        Some(true)
+    );
+
+    // The unmodified fixture names both trace costs, so the flag comes out true
+    // (SProbe H.full.raw.areBoardSpecificTraceCostsApplied = true).
+    let full = fixture_bytes("Issue029-hw48na_valid.rules");
+    let full = rules_reader::read_router_settings(&full[..])
+        .expect("no scanner error")
+        .expect("has an (autoroute_settings ...) scope");
+    assert!(full.are_board_specific_trace_costs_applied());
+    assert_eq!(full.via_costs_raw(), Some(50));
+}
+
+/// Rule 2 of `ReflectionUtil.copyFields` (:235) in `apply_new_values_from`: a source whose field
+/// is absent must **not** overwrite the target's value with a coalesced default.
+#[test]
+fn apply_new_values_from_skips_absent_scalars() {
+    let mut target = DsnRouterSettings::new();
+    target.set_layer_count(2);
+    target.set_via_costs(50);
+    target.set_plane_via_costs(5);
+    target.set_start_ripup_costs(100);
+    target.set_vias_allowed(false);
+
+    // A source that names none of the four.
+    let mut source = DsnRouterSettings::new();
+    source.set_layer_count(2);
+    target.apply_new_values_from(&source);
+
+    assert_eq!(target.via_costs(), 50);
+    assert_eq!(target.plane_via_costs(), 5);
+    assert_eq!(target.start_ripup_costs(), 100);
+    assert!(!target.vias_allowed());
+
+    // …and one that names two of them overwrites exactly those two.
+    source.set_via_costs(7);
+    source.set_vias_allowed(true);
+    target.apply_new_values_from(&source);
+    assert_eq!(target.via_costs(), 7);
+    assert!(target.vias_allowed());
+    assert_eq!(target.plane_via_costs(), 5);
+    assert_eq!(target.start_ripup_costs(), 100);
+}
+
 /// The three ways `readRouterSettings` answers `null` (RulesReader.java:194-196, :203-212, :235).
 #[test]
 fn read_router_settings_returns_none_without_a_scope() {

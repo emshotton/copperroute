@@ -21,7 +21,7 @@
 //! The transcript is in `.superpowers/sdd/2026-08-28-plan-4-settings/task-6-report.md`; probe
 //! rows are cited as `SProbe A.*` … `SProbe G.*` throughout.
 //!
-//! # The four `SettingsMergerTest` cases that are *not* here
+//! # The ten `SettingsMergerTest` cases that are *not* here
 //!
 //! `multipleSourcesMerging`, `priorityOrdering`, `partialOverrides`, `environmentVariablesPriority`,
 //! `complexMerging`, `cliCanDisableRouterAndOptimizer`, `legacyBatchModeEnablesRouterWhenJsonDisablesIt`,
@@ -162,7 +162,9 @@ fn source_priorities_and_names() {
     assert_eq!(priority::DSN_FILE, 20);
     assert_eq!(priority::SES_FILE, 30);
     assert_eq!(priority::RULES_FILE, 40);
-    assert_eq!(priority::GUI, 50);
+    // 65, not the 50 `SettingsSource.java:36-39`'s javadoc claims — `GuiSettingsSource.PRIORITY`
+    // is 65 (`:36`) and `SettingsMerger`'s class javadoc agrees. Quirk #138.
+    assert_eq!(priority::GUI, 65);
     assert_eq!(priority::ENVIRONMENT, 55);
     assert_eq!(priority::CLI, 60);
     assert_eq!(priority::API, 70);
@@ -577,6 +579,15 @@ fn rules_file_settings_parses_hw48na_rules() {
 /// all.
 ///
 /// `SProbe F.Issue413-test.dsn`, `F.Issue066-Project_GP8B.dsn`, `F.Issue026-J2_reference.dsn`.
+///
+/// **Fixture substitution:** Java's three single-assertion tests (`dsnFileSettingsReturnsNonNull`,
+/// `…PriorityIs20`, `…SourceNameContainsFilename`, `:76-98`) use `Issue143-rpi_splitter.dsn`,
+/// which reaches this port through `DsnTestFixtures.openResource` — a *test-resource* lookup, not
+/// the fixtures directory. `Issue026-J2_reference.dsn` stands in for it here: it is in
+/// `../freerouting/fixtures` (so `parity::fixture` finds it), it likewise has no
+/// `(autoroute_settings)` block, and it is already one of Plan 3's byte-parity references. The
+/// three assertions are about the priority, the name and non-nullness, none of which depends on
+/// which DSN is read; the JVM row for the substitute is `SProbe F.Issue026-J2_reference.dsn.*`.
 #[test]
 fn dsn_file_settings_seeds_the_layer_count() {
     if !parity::require_java_dir() {
@@ -662,6 +673,118 @@ fn dsn_source_seeds_the_arrays_that_block_later_sources() {
     for layer in merged.layers.as_ref().expect("seeded") {
         assert_eq!(layer.preferred_direction_horizontal, None);
     }
+}
+
+/// A file under `crates/fr-settings/tests/data/`.
+fn probe_data(name: &str) -> std::path::PathBuf {
+    std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/")).join(name)
+}
+
+/// **Task 6 fix round 1, controller ruling L.** `Issue029-hw48na_reduced.rules` is the golden
+/// with eight lines deleted — `(vias on)`, `(via_costs 50)`, `(plane_via_costs 5)`,
+/// `(start_ripup_costs 100)` and the four per-layer trace-cost lines. Java's `readScope` calls no
+/// setter for any of them, so the four scalars stay `null` and `boardSpecificTraceCostsApplied`
+/// stays at the `false` that `setLayerCount` left; the merge therefore keeps `DefaultSettings`'
+/// 50 / 5 / 100.
+///
+/// The port used to store the *coalesced defaults* in `DsnRouterSettings` (plain `bool`/`i32`
+/// with no way to say "absent"), so this merged to `viaCosts = 1` and a `true` flag. Both halves
+/// are JVM-measured — `SProbe H.reduced.merged.getViaCosts = 50`,
+/// `H.reduced.merged.areBoardSpecificTraceCostsApplied = false`, against
+/// `H.full.raw.areBoardSpecificTraceCostsApplied = true` for the unmodified file.
+#[test]
+fn an_unnamed_rules_field_does_not_overwrite_a_lower_priority_source() {
+    let host = host();
+    let reduced = std::fs::read(probe_data("Issue029-hw48na_reduced.rules")).expect("committed");
+
+    // The source's own view: absent means absent (SProbe H.reduced.raw.*).
+    let source = RulesFileSettings::new(&reduced[..], "Issue029-hw48na_reduced.rules");
+    let raw = source.get_settings().expect("never null");
+    assert_eq!(raw.vias_allowed, None);
+    let raw_scoring = raw.scoring.as_ref().expect("allocated");
+    assert_eq!(raw_scoring.via_costs, None);
+    assert_eq!(raw_scoring.plane_via_costs, None);
+    assert_eq!(raw_scoring.start_ripup_costs, None);
+    assert!(!raw.are_board_specific_trace_costs_applied());
+    // What the file *does* name still lands.
+    assert_eq!(raw.enabled, Some(true));
+    assert_eq!(
+        raw.optimizer.as_ref().expect("allocated").enabled,
+        Some(true)
+    );
+    assert_eq!(raw.get_layer_count(), 2);
+    let raw_layers = raw.layers.as_ref().expect("seeded");
+    assert_eq!(raw_layers[0].preferred_direction_horizontal, Some(false));
+    assert_eq!(raw_layers[1].preferred_direction_horizontal, Some(true));
+    // The arrays are present and seeded — `setLayerCount` filled them (SProbe
+    // H.reduced.raw.scoring.preferredDirectionTraceCost = [1.0, 1.0]).
+    assert_eq!(
+        raw_scoring.preferred_direction_trace_cost.as_deref(),
+        Some(&[1.0, 1.0][..])
+    );
+    assert_eq!(
+        raw_scoring.undesired_direction_trace_cost.as_deref(),
+        Some(&[1.0, 1.0][..])
+    );
+
+    // Merged under DefaultSettings: the defaults survive (SProbe H.reduced.merged.*).
+    let merged = SettingsMerger::new(vec![
+        boxed(DefaultSettings::new(&host)),
+        boxed(RulesFileSettings::new(
+            &reduced[..],
+            "Issue029-hw48na_reduced.rules",
+        )),
+    ])
+    .merge(&host);
+    assert_eq!(merged.get_via_costs(), 50);
+    assert_eq!(merged.get_plane_via_costs(), 5);
+    assert_eq!(merged.get_start_ripup_costs(), 100);
+    assert!(merged.get_vias_allowed());
+    assert_eq!(merged.get_layer_count(), 2);
+    assert!(!merged.are_board_specific_trace_costs_applied());
+
+    // The unmodified golden names all four, and both trace costs, so all four land and the flag
+    // is set (SProbe H.full.raw.*).
+    if !parity::require_java_dir() {
+        return;
+    }
+    let full = std::fs::read(parity::fixture("Issue029-hw48na_valid.rules")).expect("golden");
+    let full = RulesFileSettings::new(&full[..], "Issue029-hw48na_valid.rules");
+    let full = full.get_settings().expect("never null");
+    assert_eq!(
+        full.scoring.as_ref().expect("allocated").via_costs,
+        Some(50)
+    );
+    assert_eq!(full.vias_allowed, Some(true));
+    assert!(full.are_board_specific_trace_costs_applied());
+}
+
+/// `RouterSettings.isFanoutEnabled` (`:578-580`) — ported in fix round 1 because
+/// `autoroute/pipeline/**` (Plan 6) gates the fanout pre-pass on it.
+///
+/// Absent is `false`, unlike its identically-documented neighbour `getRunFanout` (`:573-575`),
+/// whose absent-default is `true` — quirk #139.
+#[test]
+fn is_fanout_enabled_defaults_to_false_when_absent() {
+    // `new RouterSettings()` allocates `fanout` but leaves `enabled` null.
+    assert!(!RouterSettings::new().is_fanout_enabled());
+    // …and `Self::default()` leaves `fanout` itself absent.
+    assert!(!RouterSettings::default().is_fanout_enabled());
+
+    let mut settings = RouterSettings::new();
+    settings.fanout.as_mut().expect("allocated").enabled = Some(true);
+    assert!(settings.is_fanout_enabled());
+    settings.fanout.as_mut().expect("allocated").enabled = Some(false);
+    assert!(!settings.is_fanout_enabled());
+
+    // DefaultSettings turns it on (DefaultSettings.java:117).
+    let host = host();
+    assert!(
+        DefaultSettings::new(&host)
+            .get_settings()
+            .expect("never null")
+            .is_fanout_enabled()
+    );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -781,9 +904,20 @@ fn dsn_router_settings_round_trips_through_router_settings() {
     }
 }
 
-/// Where the reverse conversion is lossy: it goes through `RouterSettings`' null-coalescing
-/// getters, so an unset `preferredDirectionHorizontal` comes back as the getter's alternating
-/// `layer % 2 == 1` default (`RouterSettings.java:743,747`) instead of staying unset.
+/// Where the reverse conversion is lossy. It goes through `RouterSettings`' null-coalescing
+/// getters, so **every** absent field comes back as its default: an unset
+/// `preferredDirectionHorizontal` as the alternating `layer % 2 == 1` (`RouterSettings.java:743,
+/// 747`), an unset `viasAllowed` as `true` (`:596`), and the three cost scalars as `1`
+/// (`:538,601,614`). The forward conversion is **not** lossy in that direction any more — since
+/// Task 6 fix round 1, `DsnRouterSettings` carries those four as `Option` and forwards absence as
+/// absence (controller ruling L). The reverse cannot: it is what the DSN/`.rules` *writers* see,
+/// and a writer must emit a value for every token.
+///
+/// The reverse also always ends up with `are_board_specific_trace_costs_applied() == true`,
+/// because it replays the two trace-cost setters for every layer unconditionally — it has to, or
+/// a `RouterSettings` that got its costs through a merge (quirk 127 clears the flag there) would
+/// be written out with `1.0`s. Nothing reads that flag on a reverse-converted object; the writers
+/// read only the values.
 #[test]
 fn reverse_conversion_applies_the_getters_defaults() {
     let mut blank = RouterSettings::new();

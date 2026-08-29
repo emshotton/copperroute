@@ -15,8 +15,9 @@ use crate::{HostEnvironment, RouterSettings};
 /// numbers override what came before.
 ///
 /// Two of these have no source in this crate: `JSON_FILE` (spec §2 — no persistent config file)
-/// and `GUI` (no GUI in this port). They are kept so the ladder reads the way Java documents it
-/// and so nobody reuses one of the numbers.
+/// and `GUI` (no GUI in this port). They are kept so the ladder reads the way Java *runs* it and
+/// so nobody reuses one of the numbers — note that `GUI` is **65**, not the 50 the interface's
+/// own javadoc claims (quirk #138).
 pub mod priority {
     /// `sources/DefaultSettings.java:83`.
     pub const DEFAULT: i32 = 0;
@@ -28,8 +29,16 @@ pub mod priority {
     pub const SES_FILE: i32 = 30;
     /// `sources/RulesFileSettings.java:18`.
     pub const RULES_FILE: i32 = 40;
-    /// `sources/GuiSettingsSource.java` — not ported (no GUI), the number is reserved.
-    pub const GUI: i32 = 50;
+    /// `sources/GuiSettingsSource.java:36` — not ported (no GUI), the number is reserved.
+    ///
+    /// Java bug: getPriority (`SettingsSource.java:36-39`) — the interface's javadoc says
+    /// "50 = GUI settings", and it is the only place that says 50. The constant is
+    /// `GuiSettingsSource.PRIORITY = 65` (`:36`), and `SettingsMerger`'s own class javadoc
+    /// agrees ("GUI settings (priority 65)", `SettingsMerger.java:44-50`). The ladder the code
+    /// runs therefore puts the GUI **above** the environment (55) and CLI (60), not below them —
+    /// the opposite of what a reader of the interface concludes. 65 is what this port uses; see
+    /// `docs/java-quirks.md` #138.
+    pub const GUI: i32 = 65;
     /// `sources/EnvironmentVariablesSource.java` (Task 7).
     pub const ENVIRONMENT: i32 = 55;
     /// `sources/CliSettings.java` (Task 7).
@@ -66,7 +75,13 @@ pub enum SourceKind {
     Cli,
     /// `sources/ApiSettings.java`.
     Api,
-    /// Any source declared outside this crate; the name is its identity.
+    /// Any source declared outside this crate; **the string is the identity**, so two distinct
+    /// types that pass the same name collide (one replaces the other) and one type that returns
+    /// two different names never replaces itself. Java compares `Class` objects, which cannot do
+    /// either. Nothing in this crate is affected — every ported source has its own constant — but
+    /// an external implementor must treat the string as a type name, not as a label: derive it
+    /// from the type (`stringify!`/`std::any::type_name`) rather than from a filename or a
+    /// user-supplied string.
     Custom(&'static str),
 }
 
@@ -183,7 +198,7 @@ impl SettingsMerger {
             return RouterSettings::new();
         }
 
-        let mut sorted: Vec<&Box<dyn SettingsSource>> = self.sources.iter().collect();
+        let mut sorted: Vec<&dyn SettingsSource> = self.sources.iter().map(Box::as_ref).collect();
         sorted.sort_by_key(|source| source.get_priority());
 
         let mut merged: Option<RouterSettings> = None;
