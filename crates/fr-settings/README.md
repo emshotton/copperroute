@@ -209,7 +209,7 @@ processor count is observable in two different ways.
 | `DefaultSettings`, `DsnFileSettings`, `RulesFileSettings`, `SesFileSettings`, `ApiSettings`, `EnvironmentVariablesSource`, `CliSettings` | `sources/` |
 | `GlobalSettings.applyCommandLineArguments` | `sources/cli.rs` — the legacy flag table, on a `LegacyBridge` **nothing reads** (ruling 8) |
 | `autoroute/{BoardUpdateStrategy,ItemSelectionStrategy}` | `optimizer_settings.rs` |
-| `util/gson/{GsonProvider,RouterSettingsTypeAdapterFactory}` | `json.rs` |
+| `util/gson/{GsonProvider,RouterSettingsTypeAdapterFactory}` | `json.rs` (`create`/`read` not ported, per `lib.rs`'s roster); the write half (`JavaNumberFormatter`) moved to `fr_dsn::format::json` in Plan 5 (ruling 7) |
 | `Freerouting.java` + `RoutingJobScheduler`'s merge sequence | `resolve.rs` (`resolve_headless`) |
 | `JsonFileSettings` (priority 10) | **not ported** — spec §2, no persistent config file; the number and identity are reserved |
 | `GuiSettingsSource` (priority **65**, not the javadoc's 50 — quirk #138) | **not ported** — no GUI; number and identity reserved |

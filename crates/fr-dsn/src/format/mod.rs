@@ -1,9 +1,10 @@
 //! Specctra text-format primitives shared by every DSN/SES writer: indentation tracking
-//! (`IndentFileWriter`), legal-identifier quoting (`IdentifierType`) and Java-identical number
-//! rendering (`double`).
+//! (`IndentFileWriter`), legal-identifier quoting (`IdentifierType`), Java-identical number
+//! rendering (`double`) and the Gson-compatible JSON formatter (`json`).
 pub mod double;
 pub mod identifier;
 pub mod indent_writer;
+pub mod json;
 
 pub use double::{
     format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
@@ -11,3 +12,4 @@ pub use double::{
 };
 pub use identifier::{DSN_RESERVED, IdentifierType, SES_RESERVED};
 pub use indent_writer::IndentFileWriter;
+pub use json::{JavaNumberFormatter, to_gson_string_pretty};

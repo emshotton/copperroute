@@ -87,6 +87,7 @@ the snake_case Specctra tokens.
 | `CoordinateTransform` | `CoordinateTransform` |
 | `IdentifierType`, `IndentFileWriter` | `format::IdentifierType`, `format::IndentFileWriter` |
 | `Double.toString`, `Float.toString`, `String.format("%.Nf", …)`, `Math.rint`/`Math.round` | `format::double::{java_double_to_string, java_float_to_string, java_format_fixed, java_rint, java_round, java_round_to_int}` |
+| `util/gson/GsonProvider`'s Gson configuration (write half) | `format::json::{JavaNumberFormatter, to_gson_string_pretty}` — moved here from `fr-settings` in Plan 5 (ruling 7) so `fr-drc` can reuse it without depending on that crate; `fr-settings::RouterSettings::to_json_string_pretty` is a thin wrapper over `to_gson_string_pretty` |
 | `SessionToEagle` | not here — Plan 8 |
 | `settings.RouterSettings` | `parser::DsnRouterSettings` (crate-local, ruling 5) |
 

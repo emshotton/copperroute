@@ -3,45 +3,23 @@
 //!
 //! `GsonProvider.GSON` (`GsonProvider.java:12-20`) is built with `setPrettyPrinting()`,
 //! `disableHtmlEscaping()`, `Strictness.LENIENT` and the `RouterSettingsTypeAdapterFactory`, and
-//! with **no** `serializeNulls()` and **no** `serializeSpecialFloatingPointValues()`. That fixes
-//! five things this module has to reproduce, all of them JVM-verified by
+//! with **no** `serializeNulls()` and **no** `serializeSpecialFloatingPointValues()`. The write
+//! half of that configuration — two-space pretty printing, `Number.toString()` number rendering,
+//! the non-finite-float refusal and the `U+2028`/`U+2029` string escapes — is
+//! `fr_dsn::format::json::JavaNumberFormatter` and `fr_dsn::format::json::to_gson_string_pretty`,
+//! moved there in Plan 5 (`docs/superpowers/plans/2026-08-29-plan-5-drc.md` ruling 7): `fr-drc`'s
+//! KiCad DRC report needs the identical formatter and must not depend on this crate.
+//! [`RouterSettings::to_json_string_pretty`] is a thin wrapper over `to_gson_string_pretty`; see
+//! `fr_dsn::format::json`'s module docs for that half's four JVM-verified points. Two things
+//! about *this* type still have to be reproduced here, not there, both JVM-verified by
 //! `crates/fr-settings/tests/data/JProbe.java` (transcript in the Task 10 report):
 //!
-//! 1. **Two-space indent, `": "` after every key, no trailing newline.** `serde_json`'s
-//!    [`PrettyFormatter`] is byte-identical to Gson's `JsonWriter` here, so this module wraps it
-//!    rather than reimplementing it.
-//! 2. **`null` fields are omitted.** Gson's default is `serializeNulls = false`; the port's
+//! 1. **`null` fields are omitted.** Gson's default is `serializeNulls = false`; the port's
 //!    equivalent is `#[serde(skip_serializing_if = "Option::is_none")]` on every field of the five
-//!    structs. That attribute is load-bearing twice over — see [`JavaNumberFormatter::write_null`].
-//! 3. **Key order is `getDeclaredFields()` order**, which is the Rust field order (Task 1 pinned
+//!    structs. That attribute is load-bearing twice over — see
+//!    `fr_dsn::format::json::JavaNumberFormatter::write_null`'s docs.
+//! 2. **Key order is `getDeclaredFields()` order**, which is the Rust field order (Task 1 pinned
 //!    the two together in `RouterSettings::FIELD_NAMES`).
-//! 4. **Numbers are written with `Number.toString()`.** The delegate adapter builds a `JsonElement`
-//!    tree of `JsonPrimitive`s and `JsonWriter.value(Number)` appends `value.toString()` — so a
-//!    `Double` field prints as `Double.toString` and a `Float` field as `Float.toString`. Both use
-//!    scientific notation outside `[1e-3, 1e7)`, which Rust's shortest-round-trip formatter does
-//!    not, so [`JavaNumberFormatter`] routes every float through Plan 3's
-//!    `java_double_to_string`/`java_float_to_string`.
-//! 5. **A non-finite float is refused — in both directions.** Without
-//!    `serializeSpecialFloatingPointValues()`, `Gson.toJson` throws `IllegalArgumentException`
-//!    ("… is not a valid double value as per JSON specification"), and *reading* one back throws
-//!    too: `JsonIOException: MalformedJsonException: JSON forbids NaN and infinities`. The reader
-//!    rejects it despite `Strictness.LENIENT` because the factory reads the document in two
-//!    passes — `elementAdapter.read(in)` builds a tree with the lenient textual reader
-//!    (`RouterSettingsTypeAdapterFactory.java:50`), then `delegate.fromJsonTree(tree)` (`:56`)
-//!    re-reads that tree through a **fresh `JsonTreeReader` at default strictness**, which is
-//!    where `nextDouble` refuses it. `Strictness.LENIENT` therefore governs only the first,
-//!    textual pass. JVM-verified in `JProbe.java` block H, including the quoted spelling
-//!    `{"hole_clearance_um": "NaN"}`, which is coerced and then refused the same way.
-//!    [`RouterSettings::to_json_string_pretty`] returns an error to match, and `serde_json`
-//!    already rejects `NaN`/`Infinity` on the read side, so the two agree in both directions.
-//! 6. **`U+2028` and `U+2029` are escaped, `<`, `>`, `&`, `'` are not.** `disableHtmlEscaping()`
-//!    turns off the HTML set only; Gson's `JsonWriter` escapes the two line separators
-//!    unconditionally, because they are legal in a JSON string but illegal in a JavaScript one.
-//!    JVM-verified (`JProbe.java` block J): `"a\u2028b\u2029c"` is written as `a\u2028b\u2029c`
-//!    while `<&>'` are written raw. `serde_json` escapes neither, so
-//!    [`JavaNumberFormatter::write_string_fragment`] adds the two.  Unreachable for the settings
-//!    strings in practice — but `result_json` is a user-supplied path, and the escape is ten
-//!    lines, so it is implemented rather than documented as a known-wrong output.
 //!
 //! The read side is `RouterSettingsTypeAdapterFactory.read` (`:53-70`): the delegate reflective
 //! adapter drops every `transient` field, and the factory then re-reads **`layers`** — and only
@@ -71,11 +49,7 @@
 //! `tests/json.rs::{the_lenient_reader_shapes_are_not_ported,
 //! the_lenient_reader_coercions_are_not_ported}` and recorded as `docs/java-quirks.md` row 141.
 
-use std::io;
-
-use fr_dsn::format::double::{java_double_to_string, java_float_to_string};
-use serde::Serialize;
-use serde_json::ser::{Formatter, PrettyFormatter};
+use fr_dsn::format::json::to_gson_string_pretty;
 
 use crate::{FanoutSettings, OptimizerSettings, RouterSettings, ScoringSettings, SettingsError};
 
@@ -97,161 +71,6 @@ pub(crate) fn constructed_optimizer() -> Option<OptimizerSettings> {
 /// `RouterSettings.java:121` — `this.scoring = new ScoringSettings()`.
 pub(crate) fn constructed_scoring() -> Option<ScoringSettings> {
     Some(ScoringSettings::default())
-}
-
-// -------------------------------------------------------------------------------------------
-// the formatter
-// -------------------------------------------------------------------------------------------
-
-/// The message `Gson` puts on the `IllegalArgumentException` it throws for a non-finite float,
-/// abbreviated to the part that is not value-dependent.
-const NON_FINITE: &str = "not a valid double value as per JSON specification (Gson refuses it: GsonProvider never \
-     calls serializeSpecialFloatingPointValues)";
-
-/// [`PrettyFormatter`] with Java's number formatting.
-///
-/// Only the nine methods `PrettyFormatter` itself overrides are forwarded; every other method of
-/// [`Formatter`] keeps its default body, which is what `PrettyFormatter` uses too. The three
-/// methods below are the whole of the divergence from `serde_json`'s output.
-struct JavaNumberFormatter<'a> {
-    inner: PrettyFormatter<'a>,
-}
-
-impl JavaNumberFormatter<'_> {
-    fn new() -> Self {
-        Self {
-            inner: PrettyFormatter::new(),
-        }
-    }
-}
-
-impl Formatter for JavaNumberFormatter<'_> {
-    /// Unreachable for an actual `null`: every `Option` field of the five settings structs carries
-    /// `skip_serializing_if = "Option::is_none"`, and no collection this type serialises has a
-    /// nullable element. `serde_json`'s `serialize_f32`/`serialize_f64` route NaN and ±Infinity
-    /// here instead of to [`Self::write_f64`], so this is exactly Gson's refusal point.
-    #[inline]
-    fn write_null<W>(&mut self, _writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        Err(io::Error::new(io::ErrorKind::InvalidData, NON_FINITE))
-    }
-
-    /// `Float.toString` — `JsonWriter.value(Number)` on a `JsonPrimitive` holding a `Float`.
-    #[inline]
-    fn write_f32<W>(&mut self, writer: &mut W, value: f32) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        writer.write_all(java_float_to_string(value).as_bytes())
-    }
-
-    /// `Double.toString` — the same, for a `Double`.
-    #[inline]
-    fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        writer.write_all(java_double_to_string(value).as_bytes())
-    }
-
-    /// Gson's `JsonWriter` escapes `U+2028`/`U+2029` unconditionally — `disableHtmlEscaping()`
-    /// only turns off the `<`, `>`, `&`, `'`, `=` set (`JProbe.java` block J). `serde_json`
-    /// escapes neither, and it never splits a fragment inside a character, so a plain scan of the
-    /// fragment is enough.
-    #[inline]
-    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        let mut rest = fragment;
-        while let Some(index) = rest.find(['\u{2028}', '\u{2029}']) {
-            writer.write_all(&rest.as_bytes()[..index])?;
-            let separator = rest[index..].chars().next().expect("a char boundary");
-            writer.write_all(if separator == '\u{2028}' {
-                br"\u2028"
-            } else {
-                br"\u2029"
-            })?;
-            rest = &rest[index + separator.len_utf8()..];
-        }
-        writer.write_all(rest.as_bytes())
-    }
-
-    // --- the nine `PrettyFormatter` overrides, forwarded verbatim ---------------------------
-
-    #[inline]
-    fn begin_array<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.begin_array(writer)
-    }
-
-    #[inline]
-    fn end_array<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.end_array(writer)
-    }
-
-    #[inline]
-    fn begin_array_value<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.begin_array_value(writer, first)
-    }
-
-    #[inline]
-    fn end_array_value<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.end_array_value(writer)
-    }
-
-    #[inline]
-    fn begin_object<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.begin_object(writer)
-    }
-
-    #[inline]
-    fn end_object<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.end_object(writer)
-    }
-
-    #[inline]
-    fn begin_object_key<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.begin_object_key(writer, first)
-    }
-
-    #[inline]
-    fn begin_object_value<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.begin_object_value(writer)
-    }
-
-    #[inline]
-    fn end_object_value<W>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: ?Sized + io::Write,
-    {
-        self.inner.end_object_value(writer)
-    }
 }
 
 // -------------------------------------------------------------------------------------------
@@ -281,12 +100,8 @@ impl RouterSettings {
     /// # Errors
     ///
     /// [`SettingsError::Json`] if any float field is NaN or ±Infinity, which is where `Gson`
-    /// throws `IllegalArgumentException` (module docs, point 5).
+    /// throws `IllegalArgumentException` (`fr_dsn::format::json`'s module docs, point 3).
     pub fn to_json_string_pretty(&self) -> Result<String, SettingsError> {
-        let mut buffer = Vec::new();
-        let mut serializer =
-            serde_json::Serializer::with_formatter(&mut buffer, JavaNumberFormatter::new());
-        self.serialize(&mut serializer)?;
-        Ok(String::from_utf8(buffer).expect("serde_json writes UTF-8"))
+        Ok(to_gson_string_pretty(self)?)
     }
 }

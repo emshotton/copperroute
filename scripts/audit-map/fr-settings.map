@@ -30,12 +30,16 @@ JsonFileSettings            lib.rs
 GuiSettingsSource           lib.rs
 # Task 10: the Gson configuration `RouterSettings`'s JSON in/out reproduces. Task 11 added
 # `util/gson` as a fourth audit invocation (see `crates/fr-settings/README.md`), so every class in
-# that package is mapped here. `RouterSettingsTypeAdapterFactory` spans two files: the behaviour is
-# in `json.rs`, and the `// not ported:` markers for its two methods are in `lib.rs`'s roster. The
-# three adapters below carry no `RouterSettings` type at all and are roster-only.
+# that package is mapped here. `RouterSettingsTypeAdapterFactory` spans three files: the
+# `// not ported:` markers for its `create`/`read` methods are in `lib.rs`'s roster, and its
+# `write` half — Plan 5 Task 1 moved the actual `JavaNumberFormatter` (and `GsonProvider.GSON`'s
+# configuration of it) down into `fr-dsn::format::json` so `fr-drc` can reuse it without depending
+# on this crate (ruling 7) — is `../../fr-dsn/src/format/json.rs`. The three adapters below carry
+# no `RouterSettings` type at all and are roster-only.
 GsonProvider                json.rs
-RouterSettingsTypeAdapterFactory json.rs
+GsonProvider                ../../fr-dsn/src/format/json.rs
 RouterSettingsTypeAdapterFactory lib.rs
+RouterSettingsTypeAdapterFactory ../../fr-dsn/src/format/json.rs
 InstantTypeAdapter          lib.rs
 PathTypeAdapter             lib.rs
 ByteArrayToBase64TypeAdapter lib.rs

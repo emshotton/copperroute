@@ -34,9 +34,9 @@ pub use dsn_reader::{read_board, read_metadata};
 pub use dsn_writer::write;
 pub use error::{BoardMetadata, BoardReadResult, DsnError, FileFormat};
 pub use format::{
-    DSN_RESERVED, IdentifierType, IndentFileWriter, SES_RESERVED, format_placement_rotation,
-    java_double_to_string, java_float_to_string, java_format_fixed, java_rint, java_round,
-    java_round_to_int,
+    DSN_RESERVED, IdentifierType, IndentFileWriter, JavaNumberFormatter, SES_RESERVED,
+    format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
+    java_rint, java_round, java_round_to_int, to_gson_string_pretty,
 };
 pub use keyword::{Keyword, ScopeKeyword};
 pub use lexer::{DsnScanner, LexicalState, Token};
@@ -54,10 +54,11 @@ pub mod prelude {
     pub use crate::{
         BoardMetadata, BoardReadResult, CoordinateTransform, DSN_RESERVED, DsnCircle, DsnError,
         DsnLayer, DsnLayerStructure, DsnPolygon, DsnPolygonPath, DsnPolylinePath, DsnReadOptions,
-        DsnRectangle, DsnScanner, DsnShape, FileFormat, IdentifierType, IndentFileWriter, Keyword,
-        LexicalState, ReadAreaScopeResult, ReadScopeParameter, SES_RESERVED, ScopeKeyword,
-        SesImportSummary, Token, WriteScopeParameter, format_placement_rotation,
-        java_double_to_string, java_float_to_string, java_format_fixed, java_rint, java_round,
-        java_round_to_int, read_board, read_metadata, read_scope, skip_scope, write,
+        DsnRectangle, DsnScanner, DsnShape, FileFormat, IdentifierType, IndentFileWriter,
+        JavaNumberFormatter, Keyword, LexicalState, ReadAreaScopeResult, ReadScopeParameter,
+        SES_RESERVED, ScopeKeyword, SesImportSummary, Token, WriteScopeParameter,
+        format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
+        java_rint, java_round, java_round_to_int, read_board, read_metadata, read_scope,
+        skip_scope, to_gson_string_pretty, write,
     };
 }

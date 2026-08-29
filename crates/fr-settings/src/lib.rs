@@ -202,8 +202,10 @@ pub mod prelude {
 //   .java:21-69) — Gson's `TypeAdapterFactory` dispatch: it answers `null` for every type but
 //   `RouterSettings` (`:24-27`) and otherwise wraps the delegate reflective adapter. `serde` binds
 //   the (de)serialiser to the type at compile time, so there is no factory to port; what the
-//   returned adapter *does* is [`json`], and its `write` half is
-//   [`RouterSettings::to_json_string_pretty`]'s `JavaNumberFormatter`.
+//   returned adapter *does* is [`json`], and its `write` half — pretty printing, Java number
+//   rendering, non-finite refusal, the two extra escapes — is
+//   `fr_dsn::format::json::JavaNumberFormatter`, moved there in Plan 5 (ruling 7) so `fr-drc` can
+//   reuse it without depending on this crate; see `crates/fr-dsn/src/format/json.rs`.
 // not ported: RouterSettingsTypeAdapterFactory.read (:48-67) — the two-pass read (lenient textual
 //   pass, then a fresh `JsonTreeReader` at default strictness) is described and reproduced in
 //   [`json`]; the entry point is [`RouterSettings::from_json_str`], and the `layers` re-read at

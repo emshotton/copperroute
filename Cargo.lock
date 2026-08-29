@@ -134,6 +134,8 @@ dependencies = [
  "fr-board",
  "fr-geometry",
  "parity",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 
