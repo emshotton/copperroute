@@ -445,22 +445,22 @@ pub fn write_library_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();
     p.file.write("library");
 
+    let board = p.board;
     // Java guards both loops with a `!= null` check on a field this port makes non-nullable.
-    for i in 1..=p.board.library.packages.count() {
-        let board_package = p.board.library.packages.get(i).clone();
-        write_package_scope(p, &board_package);
+    for i in 1..=board.library.packages.count() {
+        let board_package = board.library.packages.get(i);
+        write_package_scope(p, board_package);
     }
 
-    for i in 1..=p.board.library.padstacks.count() {
+    for i in 1..=board.library.padstacks.count() {
         // totalized: Library.writeScope — Java hands `padstacks.get(i)` straight to
         // `writePadstackScope` (Library.java:46-47), and `Padstacks.get(int)` warns and returns
         // `null` for an index outside `1..=count`, which `writePadstackScope` then NPEs on. The
         // port skips the entry. Unreachable: the loop bounds are the collection's own count.
-        let Some(padstack) = p.board.library.padstacks.get(PadstackId(i)) else {
+        let Some(padstack) = board.library.padstacks.get(PadstackId(i)) else {
             continue;
         };
-        let padstack = padstack.clone();
-        write_padstack_scope(p, &padstack);
+        write_padstack_scope(p, padstack);
     }
 
     p.file.end_scope();

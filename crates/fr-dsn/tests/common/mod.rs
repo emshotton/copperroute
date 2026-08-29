@@ -20,13 +20,13 @@
 use fr_board::{Board, Item};
 
 /// A fixture from the Java repo's corpus.
+///
+/// Resolves through `parity::java_dir()`, so `FREEROUTING_JAVA_DIR` is honoured here too —
+/// unset, it falls back to the same `../freerouting` sibling checkout this used to hard-code.
 pub fn fixture(name: &str) -> String {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    );
-    std::fs::read_to_string(format!("{path}{name}"))
-        .unwrap_or_else(|e| panic!("fixture {name}: {e}"))
+    let path = parity::java_dir().join("fixtures").join(name);
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("fixture {name} ({}): {e}", path.display()))
 }
 
 /// A file under `crates/fr-dsn/tests/data/`.

@@ -1469,6 +1469,7 @@ pub fn write_structure_scope(
     p: &mut WriteScopeParameter<'_>,
     autoroute_settings: Option<&DsnRouterSettings>,
 ) {
+    let board = p.board;
     p.file.start_scope_nl();
     p.file.write("structure");
 
@@ -1492,8 +1493,12 @@ pub fn write_structure_scope(
 
     if let Some(settings) = autoroute_settings {
         // write the auto-route settings
-        let layer_structure = p.board.layer_structure().clone();
-        write_autoroute_settings_scope(&mut p.file, settings, &layer_structure, &p.identifier_type);
+        write_autoroute_settings_scope(
+            &mut p.file,
+            settings,
+            board.layer_structure(),
+            &p.identifier_type,
+        );
     }
 
     // write the conduction areas
@@ -1760,9 +1765,10 @@ fn clearance_equals(cl_matrix: &ClearanceMatrix, layer1: usize, layer2: usize) -
 // renamed: Layer.writeScope -> write_layer_scope (the read half of `Layer.java` is in
 // `parser/geometry.rs`; this is the half the `structure` writer owns).
 pub fn write_layer_scope(p: &mut WriteScopeParameter<'_>, layer_index: usize, write_rule: bool) {
+    let board = p.board;
     p.file.start_scope_nl();
     p.file.write("layer ");
-    let board_layer = p.board.layer_structure().layers[layer_index].clone();
+    let board_layer = &board.layer_structure().layers[layer_index];
     p.identifier_type.write(&board_layer.name, &mut p.file);
     p.file.new_line();
     p.file.write("(type ");

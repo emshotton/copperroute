@@ -188,10 +188,10 @@ outputs were generated from do not. Two different behaviours when
 - **Every other fixture-reading suite fails**: `library_scope.rs`,
   `network_scope.rs`, `placement_scope.rs`, `structure_scope.rs`,
   `rules_round_trip.rs`, `ses_round_trip.rs` and the rest of `dsn_reader.rs`
-  read through `tests/common/mod.rs`'s `fixture()`, which resolves
-  `../../../freerouting/fixtures/` at compile time and panics on a missing
-  file. It also ignores `FREEROUTING_JAVA_DIR`. Extending the guard to those
-  suites means a call site per test, not a helper change.
+  read through `tests/common/mod.rs`'s `fixture()`, which resolves via
+  `parity::java_dir()` (so it *does* honour `FREEROUTING_JAVA_DIR`) but has no
+  skip guard, so it panics on a missing file rather than skipping. Extending
+  the guard to those suites means a call site per test, not a helper change.
 
 Everything that reads only `tests/data/` or `tests/reference/` — the lexer,
 the number formatters, `IdentifierType` — needs no checkout at all.

@@ -2457,12 +2457,13 @@ pub fn write_rule_scope(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
 /// the identifier writer (Rule.java:147), and the closing `") "` (:158) carries a trailing
 /// space.
 fn write_layer_rule(net_class: &NetClass, layer_index: usize, p: &mut WriteScopeParameter<'_>) {
+    let board = p.board;
     p.file.start_scope_nl();
     p.file.write("layer_rule ");
 
-    let current_board_layer_name = p.board.layer_structure().layers[layer_index].name.clone();
+    let current_board_layer_name = &board.layer_structure().layers[layer_index].name;
 
-    p.file.write(&current_board_layer_name);
+    p.file.write(current_board_layer_name);
     p.file.start_scope_nl();
     p.file.write("rule ");
 
@@ -2915,6 +2916,7 @@ pub fn write_net_class(
 /// Note the layer names go out **raw**, not through the identifier writer (Network.java:165).
 // renamed: Network.writeCircuit -> write_circuit.
 fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
+    let board = p.board;
     let min_trace_length = net_class.get_minimum_trace_length();
     let max_trace_length = net_class.get_maximum_trace_length();
     p.file.start_scope_nl();
@@ -2924,9 +2926,9 @@ fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
     let layer_count = net_class.layer_count();
     for i in 0..layer_count {
         if net_class.is_active_routing_layer(i) {
-            let name = p.board.layer_structure().layers[i].name.clone();
+            let name = &board.layer_structure().layers[i].name;
             p.file.write(" ");
-            p.file.write(&name);
+            p.file.write(name);
         }
     }
     p.file.write(")");

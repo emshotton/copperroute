@@ -35,6 +35,9 @@ CoordinateTransform      coordinate_transform.rs
 Structure                parser/structure.rs
 Plane                    parser/structure.rs
 AutorouteSettings        parser/autoroute_settings.rs
+# The plan's File Structure lists `PlaceControl` with `structure.rs`; it lives instead in the
+# shared header-scopes file alongside `Parser`/`Resolution`/`Unit` — all four are tiny scopes
+# with no dedicated file of their own (Plan 3 Task 6/module docs of `parser/header.rs`).
 PlaceControl             parser/header.rs
 Library                  parser/library.rs
 Package                  parser/library.rs

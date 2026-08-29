@@ -79,11 +79,15 @@ fn write_rules<'a>(
     // see `docs/java-quirks.md`.
     p.file.write(design_name);
 
-    write_snap_angle(&mut p.file, p.board.rules.trace_angle_restriction);
+    write_snap_angle(&mut p.file, board.rules.trace_angle_restriction);
 
     if let Some(settings) = settings {
-        let layer_structure = p.board.layer_structure().clone();
-        write_autoroute_settings_scope(&mut p.file, settings, &layer_structure, &p.identifier_type);
+        write_autoroute_settings_scope(
+            &mut p.file,
+            settings,
+            board.layer_structure(),
+            &p.identifier_type,
+        );
     }
 
     // write the default rule using 0 as default layer
@@ -103,29 +107,28 @@ fn write_rules<'a>(
     // `p3t15` mode 3 writes 20 lines — the sole unexpected diff in Task 15's 530-pair corpus
     // sweep, and the reason that pair is in `sweep-p3t15.sh`'s `EXPECTED_DIFFS`. See the
     // `RulesWriter.writeRules` row in `docs/java-quirks.md`'s totalization table.
-    for i in 1..=p.board.library.padstacks.count() {
+    for i in 1..=board.library.padstacks.count() {
         // totalized: RulesWriter.writeRules — Java reads `padstacks.get(i).name` with no null
         // check (RulesWriter.java:92-93), and `Padstacks.get(int)` warns and returns `null` for
         // an index it considers out of range (Padstacks.java:34-46), so an inconsistent library
         // NPEs the whole write. The port skips the entry, which is the same output for every
         // library the reader builds: the loop is bounded by `count()` and `Padstacks::add`
         // assigns ids densely from 1, so `get` never answers `None` here.
-        let Some(current_padstack) = p.board.library.padstacks.get(PadstackId(i)) else {
+        let Some(current_padstack) = board.library.padstacks.get(PadstackId(i)) else {
             continue;
         };
         // Java's `getViaPadstack(name) != null` filter (RulesWriter.java:93): only padstacks the
         // board also lists as *via* padstacks are written. The via-padstack list may name the
         // same padstack twice (`Network.readViaInfo` appends without checking), which this loop
         // is immune to — it iterates the library, not the via list.
-        if p.board
+        if board
             .library
             .get_via_padstack_by_name(&current_padstack.name)
             .is_none()
         {
             continue;
         }
-        let current_padstack = current_padstack.clone();
-        write_padstack_scope(&mut p, &current_padstack);
+        write_padstack_scope(&mut p, current_padstack);
     }
 
     write_via_infos(

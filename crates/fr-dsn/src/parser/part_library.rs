@@ -237,7 +237,8 @@ fn read_part_pin(scanner: &mut DsnScanner) -> Result<Option<DsnPartPin>, DsnErro
 /// there (PartLibrary.java:58), which its own lexer cannot read back.
 // renamed: PartLibrary.writeScope -> write_part_library_scope.
 pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
-    if p.board.library.logical_parts.count() == 0 {
+    let board = p.board;
+    if board.library.logical_parts.count() == 0 {
         return;
     }
     p.file.start_scope_nl();
@@ -245,16 +246,16 @@ pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
 
     // write the logical part mappings
 
-    for i in 1..=p.board.library.logical_parts.count() {
-        let current_part_name = p.board.library.logical_parts.get(i).name.clone();
+    for i in 1..=board.library.logical_parts.count() {
+        let current_part_name = &board.library.logical_parts.get(i).name;
         p.file.start_scope_nl();
         p.file.write("logical_part_mapping ");
-        p.identifier_type.write(&current_part_name, &mut p.file);
+        p.identifier_type.write(current_part_name, &mut p.file);
         p.file.new_line();
         p.file.write("(comp");
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        for j in 1..=p.board.components.count() as i32 {
-            let current_component = p.board.components.get(j);
+        for j in 1..=board.components.count() as i32 {
+            let current_component = board.components.get(j);
             if current_component
                 .get_logical_part()
                 .is_some_and(|part| part == i)
@@ -270,8 +271,8 @@ pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
 
     // write the logical parts.
 
-    for i in 1..=p.board.library.logical_parts.count() {
-        let current_part = p.board.library.logical_parts.get(i).clone();
+    for i in 1..=board.library.logical_parts.count() {
+        let current_part = board.library.logical_parts.get(i);
 
         p.file.start_scope_nl();
         p.file.write("logical_part ");

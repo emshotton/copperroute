@@ -674,7 +674,7 @@ fn a_missing_via_padstack_fails_the_read_and_loses_its_warning() {
 // -------------------------------------------------------------------- the corpus smoke test
 
 /// The `.dsn` corpus the golden was captured from. Honours `FREEROUTING_JAVA_DIR` through
-/// `parity::java_dir`, unlike `common::fixture`'s compile-time path.
+/// `parity::java_dir`, same as `common::fixture` now does.
 fn corpus_dir() -> std::path::PathBuf {
     parity::java_dir().join("fixtures")
 }

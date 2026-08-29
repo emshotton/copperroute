@@ -84,6 +84,9 @@ pub fn write<W: Write>(
     design_name: &str,
 ) -> io::Result<()>;
 
+// crates/fr-dsn/src/ses_writer.rs      (only as `fr_dsn::ses_writer::snapped_endpoint`)
+pub fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<FloatPoint>;
+
 // crates/fr-dsn/src/ses_reader.rs      (only as `fr_dsn::ses_reader::read`)
 pub fn read(
     input: impl Read,
@@ -101,6 +104,9 @@ pub fn read(
 ) -> Result<bool, DsnError>;
 
 pub fn read_router_settings(input: impl Read) -> Result<Option<DsnRouterSettings>, DsnError>;
+
+// crates/fr-dsn/src/rules_reader.rs    (only as `fr_dsn::rules_reader::discover_layer_structure`)
+pub fn discover_layer_structure(text: &str) -> Result<DsnLayerStructure, DsnError>;
 
 // crates/fr-dsn/src/rules_writer.rs    (only as `fr_dsn::rules_writer::write`)
 pub fn write<W: Write>(
@@ -453,9 +459,12 @@ absent, and a non-ignored sibling test runs in every configuration so the suite
 cannot silently become a no-op.
 
 **Per-fixture goldens** — `crates/fr-dsn/tests/data/*.txt`, each captured from
-the pinned 2.3.0 jar and each carrying **its own regeneration command in a `#`
-header** (compared verbatim below the header). Four probe programs live beside
-them:
+the pinned 2.3.0 jar (compared verbatim below its `#` header). Four probe
+programs live beside them. Most goldens carry their own regeneration command
+in that header; the four `*-rules.txt` goldens are the exception — their
+header only points at `tests/rules_round_trip.rs` (`RProbe.java`'s `dump` /
+`write` / `writesettings` modes), whose module docs carry the actual
+regeneration commands for all four.
 
 | probe | what it dumps | consumed by |
 |---|---|---|
@@ -487,9 +496,17 @@ Java-package-dependency test whose Rust analogue is the crate's own dependency
 list, enforced at compile time (`fr-dsn` may only see `fr-board`,
 `fr-geometry`, `thiserror`).
 
-`tests/parity` is a helper library crate with no `fr-dsn` dependency; every
-suite skips itself with a printed message when `../freerouting` is absent
-(`parity::require_reference`).
+`tests/parity` is a helper library crate with no `fr-dsn` dependency. Only
+`parity_dsn.rs`, `parity_ses.rs` and the two corpus tests in `dsn_reader.rs`
+skip with a printed message when `../freerouting` (or `$FREEROUTING_JAVA_DIR`)
+is missing, by calling `parity::require_java_dir()` first and returning. Every
+other fixture-reading suite fails instead: `library_scope.rs`,
+`network_scope.rs`, `placement_scope.rs`, `structure_scope.rs`,
+`rules_round_trip.rs`, `ses_round_trip.rs` and the rest of `dsn_reader.rs` read
+through `tests/common/mod.rs`'s `fixture()`, which resolves via
+`parity::java_dir()` (so it *does* honour `FREEROUTING_JAVA_DIR`) but has no
+skip guard, so it panics on a missing file rather than skipping. Extending the
+guard to those suites means a call site per test, not a helper change.
 
 ## Differential drivers
 
@@ -548,8 +565,8 @@ would still surface as a `DIFF` on a mode nobody excused.
   Three items were re-deferred by the Task 15 review and are still open minors:
   (a) `p3t2` mode 0 omits rotation formatting above 1e7 — a coverage gap, not a
   known divergence; (b) `point` is shadowed twice in `format/double.rs` (~:148);
-  (c) `JavaRandom` is duplicated across four differential binaries and wants a
-  shared module.
+  (c) `JavaRandom` is duplicated across two differential binaries
+  (`p2t13.rs`, `p3t2.rs`) and wants a shared module.
 - **Task 3** — `lexer/mod.rs` is 1,088 lines (the action switch could be split).
   The `p3t3` Rust twin prints a fixed `ERROR java.lang.Error` line where Java
   prints the real exception class, so a scan error on a future fixture would show

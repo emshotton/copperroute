@@ -151,9 +151,9 @@ pub fn java_format_fixed(x: f64, precision: usize) -> String {
         point = 0;
     }
     ds.extend_from_slice(digits.as_bytes());
-    let mut point = point as usize;
+    let mut point_index = point as usize;
 
-    let keep = point + precision;
+    let keep = point_index + precision;
     if keep >= ds.len() {
         // More precision than the shortest digits carry: Java pads with zeros rather than
         // continuing the exact binary expansion.
@@ -166,7 +166,7 @@ pub fn java_format_fixed(x: f64, precision: usize) -> String {
             loop {
                 if i == 0 {
                     ds.insert(0, b'1');
-                    point += 1;
+                    point_index += 1;
                     break;
                 }
                 i -= 1;
@@ -180,15 +180,15 @@ pub fn java_format_fixed(x: f64, precision: usize) -> String {
         }
     }
 
-    let integer_part = if point == 0 {
+    let integer_part = if point_index == 0 {
         "0".to_string()
     } else {
-        String::from_utf8_lossy(&ds[..point]).into_owned()
+        String::from_utf8_lossy(&ds[..point_index]).into_owned()
     };
     if precision == 0 {
         format!("{sign}{integer_part}")
     } else {
-        let fraction = String::from_utf8_lossy(&ds[point..]).into_owned();
+        let fraction = String::from_utf8_lossy(&ds[point_index..]).into_owned();
         format!("{sign}{integer_part}.{fraction}")
     }
 }
