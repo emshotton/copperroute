@@ -1,9 +1,9 @@
 // Plan 5 Task 4 JVM probe: `DesignRulesChecker.getAllUnconnectedItems()`, normalised.
 //
 // The list Java returns is **not** reproducible run to run: `connectedSets` is a
-// `HashSet<Item>` (DesignRulesChecker.java:118) over a class with no `hashCode` override, so
+// `HashSet<Item>` (DesignRulesChecker.java:123) over a class with no `hashCode` override, so
 // `allItems`' order and `findRepresentativeItem`'s choice among equal-kind candidates
-// (`:188-197`) are identity-hash ordered, and `itemsByNet` is a `HashMap` (`:93`) whose
+// (`:188-200`) are identity-hash ordered, and `itemsByNet` is a `HashMap` (`:95`) whose
 // iteration order is table-size dependent. Plan-5 ruling 3 verified all of that on the JVM with
 // `-XX:hashCode=0..4`.
 //
@@ -17,22 +17,22 @@
 //   via_dangling <n>
 //   first=<id>
 //
-// with the `unconnectedItems` lines sorted by net number (at most one entry per net, `:131-147`),
+// with the `unconnectedItems` lines sorted by net number (at most one entry per net, `:136-148`),
 // each `items` list sorted ascending, and each representative reduced to its **kind class**: a
 // set holding a `Pin` always yields a `Pin` and a set holding no `Pin` but a `Trace` always
-// yields a `Trace` (`:188-195`), so the class is hash-independent even though the item is not.
+// yields a `Trace` (`:188-198`), so the class is hash-independent even though the item is not.
 // The two dangling blocks are printed in full, in Java's own order — `board.getItems()`,
 // descending id (BasicBoard.java:603-605).
 //
-// `track_dangling_candidates` is the trace phase **before its dedup** (`:154-160`, without
-// `:162`): every trace whose start or end contact set is empty. The emitted `track_dangling`
+// `track_dangling_candidates` is the trace phase **before its dedup** (`:152-158`, without
+// `:160`): every trace whose start or end contact set is empty. The emitted `track_dangling`
 // count is *not* hash-independent, because the dedup drops a trace that some net entry's
-// `firstItem` happens to be (`:162`) and `findRepresentativeItem` picks that item out of a
+// `firstItem` happens to be (`:160`) and `findRepresentativeItem` picks that item out of a
 // `HashSet` — measured on this jar, the Natural Tone Preamp fixture emits 111 under
 // `-XX:hashCode=0,1,2,4`, 109 under `-XX:hashCode=3` and 110 under the default. The candidate
 // set is what both sides can be held to; the port's own emitted count is asserted separately, in
 // `crates/fr-drc/tests/unconnected.rs`, as a regression guard on its ascending-id divergence
-// (plan-5 ruling 3). `via_dangling` has no dedup at all (`:168-174`), so it is printed as
+// (plan-5 ruling 3). `via_dangling` has no dedup at all (`:168-175`), so it is printed as
 // emitted.
 //
 // The constructor's second argument is `null`, as every headless caller passes it; the port

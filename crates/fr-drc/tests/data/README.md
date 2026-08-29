@@ -6,7 +6,7 @@ They are committed so the numbers can be re-checked against a rebuilt jar.
 | Driver | What it probes | Needs the jar |
 |---|---|---|
 | `DrcListProbe.java` | `DesignRulesChecker.getAllClearanceViolations()` (DesignRulesChecker.java:52-81) — the **deduplicated** list, in walk order, one line per violation with every field. The complement of Task 2's `crates/fr-board/tests/data/DrcProbe.java`, which dumps the *per item* lists before deduplication. Doubles are printed with `Double.toString`, so the port compares exact bits through `fr_dsn::format::double::java_double_to_string`. | yes |
-| `UnconnectedProbe.java` | `DesignRulesChecker.getAllUnconnectedItems()` (DesignRulesChecker.java:91-176) — the **hash-independent projection** of the list (see below). Writes the transcript to the file named by its second argument, not to stdout, because `FRLogger` prints a warning line to stdout on one of the fixtures. | yes |
+| `UnconnectedProbe.java` | `DesignRulesChecker.getAllUnconnectedItems()` (DesignRulesChecker.java:91-178) — the **hash-independent projection** of the list (see below). Writes the transcript to the file named by its second argument, not to stdout, because `FRLogger` prints a warning line to stdout on one of the fixtures. | yes |
 
 | Transcript | Fixture | Rows |
 |---|---|---|
@@ -49,21 +49,21 @@ done
 ## What `*.unconnected.txt` can and cannot hold
 
 `getAllUnconnectedItems` is **not reproducible run to run on the JVM**: `connectedSets` is a
-`HashSet<Item>` (DesignRulesChecker.java:118) over a class with no `hashCode` override, and
-`itemsByNet` is a `HashMap` (`:93`). Plan-5 ruling 3 measured that and fixed the port's order
+`HashSet<Item>` (DesignRulesChecker.java:123) over a class with no `hashCode` override, and
+`itemsByNet` is a `HashMap` (`:95`). Plan-5 ruling 3 measured that and fixed the port's order
 (ascending item id, ascending net number, quirks row #144). So the probe prints only what both
 sides can be held to:
 
 - the net entries **sorted by net number**, each with its `items` list **sorted ascending** and
   each representative reduced to its **kind class** (`Pin` / `Trace` / `other`) — a set holding a
-  Pin always yields a Pin, one holding no Pin but a Trace always yields a Trace (`:188-195`), so
+  Pin always yields a Pin, one holding no Pin but a Trace always yields a Trace (`:188-198`), so
   the class survives any hash order even though the item does not;
-- `track_dangling_candidates`: the trace phase **before** its dedup (`:154-160` without `:162`),
+- `track_dangling_candidates`: the trace phase **before** its dedup (`:152-158` without `:160`),
   i.e. every trace with a contact-free end, in `board.getItems()` order;
-- `via_dangling`: as emitted — that phase has no dedup at all (`:168-174`).
+- `via_dangling`: as emitted — that phase has no dedup at all (`:168-175`).
 
 The **emitted** `track_dangling` count is deliberately *not* in the transcript, because it is
-hash-dependent: the dedup at `:162` drops whichever dangling trace a net entry's `firstItem`
+hash-dependent: the dedup at `:160` drops whichever dangling trace a net entry's `firstItem`
 happens to be, and `findRepresentativeItem` picks that item out of a `HashSet`. Measured on this
 jar, the Natural Tone Preamp fixture emits
 

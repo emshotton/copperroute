@@ -1,23 +1,23 @@
 //! Plan 5 Task 4: `DesignRulesChecker::get_all_unconnected_items`
-//! (`drc/DesignRulesChecker.java:91-176`) and `drc.UnconnectedItems`.
+//! (`drc/DesignRulesChecker.java:91-178`) and `drc.UnconnectedItems`.
 //!
 //! # Provenance, and what can be compared at all
 //!
 //! Java's list is **not reproducible run to run**. `connectedSets` is a `HashSet<Item>`
-//! (`:118`) over a class with no `hashCode` override, so `allItems`' order and
-//! `findRepresentativeItem`'s choice among equal-kind candidates (`:186-198`) are identity-hash
-//! ordered; `itemsByNet` is a `HashMap` (`:93`) whose iteration order is table-size dependent.
+//! (`:123`) over a class with no `hashCode` override, so `allItems`' order and
+//! `findRepresentativeItem`'s choice among equal-kind candidates (`:186-201`) are identity-hash
+//! ordered; `itemsByNet` is a `HashMap` (`:95`) whose iteration order is table-size dependent.
 //! Plan-5 ruling 3 measured that on the JVM and the port answers it with **ascending item id**
 //! and **ascending net number** — a deliberate divergence, quirks row #144.
 //!
 //! So the JVM golden is the *hash-independent projection* of the result:
 //! `crates/fr-drc/tests/data/UnconnectedProbe.java` sorts each entry's items, sorts the entries
 //! by net number, reduces each representative to its **kind class** (a set holding a `Pin`
-//! always yields a `Pin`; one holding no `Pin` but a `Trace` always yields a `Trace`, `:188-195`),
+//! always yields a `Pin`; one holding no `Pin` but a `Trace` always yields a `Trace`, `:188-198`),
 //! and prints the trace phase as its pre-dedup **candidate** set. The emitted `track_dangling`
 //! *count* is hash-dependent too — Natural Tone Preamp gives 109, 110 or 111 out of 111
 //! candidates on the same jar depending on `-XX:hashCode`, and 110 vs 111 across two runs of the
-//! same mode — because the dedup at `:162` drops whichever dangling trace a net entry's
+//! same mode — because the dedup at `:160` drops whichever dangling trace a net entry's
 //! `firstItem` happens to be (quirk #146). The port's ascending-id representatives make **108**
 //! of the 111, a different point in the same space; that number is asserted below as this port's
 //! own regression guard, **not** as Java parity, and `tests/data/README.md` tabulates the
@@ -212,7 +212,7 @@ fn render(board: &Board, entries: &[UnconnectedItems]) -> String {
 
     // The probe's `track_dangling_candidates` block is the trace phase *before* its dedup: the
     // emitted entries plus whichever dangling trace the dedup dropped for being some net entry's
-    // `first_item` (`:162`, quirk #146). Reconstructing it here is what makes the comparison
+    // `first_item` (`:160`, quirk #146). Reconstructing it here is what makes the comparison
     // hash-independent — and it is a strictly stronger check than comparing the emitted list,
     // because it pins both halves of the quirk.
     let mut candidates: Vec<u32> = entries
@@ -252,7 +252,7 @@ fn render(board: &Board, entries: &[UnconnectedItems]) -> String {
 
 #[test]
 fn entries_are_ordered_by_ascending_net_number() {
-    // Ruling 3: Java iterates `itemsByNet`, a `HashMap<Integer, List<Item>>` (`:93`, `:103`),
+    // Ruling 3: Java iterates `itemsByNet`, a `HashMap<Integer, List<Item>>` (`:95`, `:104`),
     // whose order is table-size dependent; the port uses a `BTreeMap`, i.e. ascending net
     // number. Deliberate divergence, quirks row #144.
     if !parity::require_java_dir() {
@@ -270,8 +270,8 @@ fn entries_are_ordered_by_ascending_net_number() {
 
 #[test]
 fn items_within_an_entry_are_ascending_by_id() {
-    // Ruling 3: Java's `setItems` is a `HashSet<Item>` (`:118`) and `allItems` is
-    // `connectedSets.get(0)` followed by `connectedSets.get(1)` (`:143-145`), so each half is
+    // Ruling 3: Java's `setItems` is a `HashSet<Item>` (`:123`) and `allItems` is
+    // `connectedSets.get(0)` followed by `connectedSets.get(1)` (`:143-146`), so each half is
     // identity-hash ordered; the port keeps `Board::connected_set`'s `BTreeSet` order, i.e.
     // ascending id within each half. Deliberate divergence, quirks row #144.
     let mut board = two_groups_board();
@@ -287,12 +287,12 @@ fn items_within_an_entry_are_ascending_by_id() {
 
 #[test]
 fn the_representative_is_the_lowest_id_pin_then_trace_then_item() {
-    // `findRepresentativeItem` (`:186-198`) — ruling 3's fourth choice. Group 0 here holds a Pin
+    // `findRepresentativeItem` (`:186-201`) — ruling 3's fourth choice. Group 0 here holds a Pin
     // and a Trace, group 1 only a Trace.
     let mut board = dedup_board();
     let entries = DesignRulesChecker::new(&mut board).get_all_unconnected_items();
     let entry = &entries[0];
-    // Set 0 = {trace 3, pin 4}: `:188-192` scans the *whole* set for a Pin before `:193-196`
+    // Set 0 = {trace 3, pin 4}: `:188-192` scans the *whole* set for a Pin before `:194-198`
     // looks at Traces, so the Pin wins even though the Trace has the lower id.
     assert_eq!(entry.all_items, [3, 4, 2].map(ItemId));
     assert_eq!(entry.first_item, ItemId(4));
@@ -306,7 +306,7 @@ fn the_representative_is_the_lowest_id_pin_then_trace_then_item() {
 
 #[test]
 fn the_dangling_dedup_only_checks_first_item() {
-    // `:162`: `unconnectedItems.stream().anyMatch(ui -> ui.firstItem == trace)`. A trace that is
+    // `:160`: `unconnectedItems.stream().anyMatch(ui -> ui.firstItem == trace)`. A trace that is
     // already a net entry's `secondItem` — or a member of its `allItems` — is emitted a second
     // time as a `track_dangling` entry. Quirk #146.
     let mut board = dedup_board();
@@ -353,7 +353,7 @@ fn a_first_item_trace_is_the_one_case_the_dedup_catches() {
 
 #[test]
 fn the_via_phase_has_no_dedup_at_all() {
-    // `:168-174` — no `anyMatch` guard, unlike the trace phase. A via that is already a net
+    // `:168-175` — no `anyMatch` guard, unlike the trace phase. A via that is already a net
     // entry's representative is emitted again.
     if !parity::require_java_dir() {
         return;
@@ -375,7 +375,7 @@ fn the_via_phase_has_no_dedup_at_all() {
 
 #[test]
 fn a_net_with_one_item_is_never_unconnected() {
-    // `:105-107`.
+    // `:108-110`.
     let mut board = single_item_net_board();
     let entries = DesignRulesChecker::new(&mut board).get_all_unconnected_items();
     assert!(
@@ -514,7 +514,7 @@ fn trace_representative_board() -> Board {
     board
 }
 
-/// One pin on net 1 and nothing else — `netItems.size() <= 1` (`:105-107`).
+/// One pin on net 1 and nothing else — `netItems.size() <= 1` (`:108-110`).
 fn single_item_net_board() -> Board {
     let mut board = bare_board(&[0]);
     board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
