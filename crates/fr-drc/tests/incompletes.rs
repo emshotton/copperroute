@@ -63,6 +63,11 @@ fn counters(board: &mut Board) -> (i32, usize, usize, usize) {
 
 #[test]
 fn dev_board_counts() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // `IncompletesProbe` on the HEAD jar; also `RatsnestClearanceHeadlessTest`'s
     // `EXPECTED_UNCONNECTED = 9` and `KiCadDrcViolationRoutingTest.issue5754HoleClearanceViolations`.
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -71,6 +76,11 @@ fn dev_board_counts() {
 
 #[test]
 fn bbd_mars_64_counts() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // `KiCadDrcViolationRoutingTest.issue5756TrackAnd1HoleClearanceViolations` asserts the 3.
     let mut board =
         fixture_board("Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn");
@@ -79,6 +89,11 @@ fn bbd_mars_64_counts() {
 
 #[test]
 fn natural_tone_preamp_counts() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // `KiCadDrcViolationRoutingTest.issue5757UnconnectedItems` asserts the 145.
     let mut board = fixture_board("Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn");
     assert_eq!(counters(&mut board), (218, 145, 145, 145));
@@ -86,6 +101,11 @@ fn natural_tone_preamp_counts() {
 
 #[test]
 fn empty_board_has_no_incompletes() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // `RatsnestClearanceHeadlessTest.emptyBoardHasNoIncompletesAndNoViolations` (`:117-121`).
     let mut board = fixture_board("empty_board.dsn");
     assert_eq!(counters(&mut board), (0, 0, 0, 0));
@@ -273,6 +293,11 @@ fn an_empty_net_contributes_nothing() {
 
 #[test]
 fn lazy_initialisation_matches_java() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // Every one of the eight accessors opens `if (netIncompletes == null) calculateAllIncompletes();`
     // (`:664-666`, `:709-711`, `:737-739`, `:751-753`, `:766-769`, `:781-783`, `:801-803`), so a
     // fresh checker answers the same as one that was initialised by hand.
@@ -314,6 +339,11 @@ fn lazy_initialisation_matches_java() {
 
 #[test]
 fn out_of_range_net_numbers_answer_the_java_defaults() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // `:712-714` returns 0, `:754-756` returns 0, `:804-806` returns null. Java's bound is the
     // **array length**, i.e. `maxNetNumber`, and 0 and negatives are rejected by the same test.
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -377,6 +407,11 @@ fn recalculate_net_incompletes_initialises_and_returns() {
 
 #[test]
 fn statistics_block() {
+    // Every fixture below is read from the sibling Java checkout, which is not vendored;
+    // `tests/parity`'s contract is that such a suite skips loudly rather than panicking.
+    if !parity::require_java_dir() {
+        return;
+    }
     // The dev board's two violations are `expected=500.0 actual=0.0` each
     // (`tests/data/Issue575-drc_dev-board_4_hole_clearance_violations.list.txt`), and the board
     // is 0.1 um per board unit, so every one of min/max/avg is `500.0 * 0.1 = 50.0`.
