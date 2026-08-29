@@ -3,10 +3,19 @@
 //!
 //! Java walks `source.getClass().getDeclaredFields()` reflectively and applies eight rules to each
 //! field. Rust has no runtime field table, so each struct gets an explicit, hand-written field
-//! table — [`CopyFields::merge_fields_into`] — listing its fields **in Java declaration order**
-//! (pinned by each struct's `FIELD_NAMES` const and `tests/struct_shape.rs`), each one routed
-//! through the helper named after the rule that governs it. No macro generates these tables: the
-//! order is load-bearing and must stay readable (plan ruling 4).
+//! table — [`CopyFields::merge_fields_into`] — listing its fields **in Java declaration order**,
+//! each one routed through the helper named after the rule that governs it. No macro generates
+//! these tables: the order is load-bearing and must stay readable (plan ruling 4).
+//!
+//! A hand-written table can silently omit a field, so each struct has a
+//! `*_table_covers_every_field` test in `tests/copy_fields.rs`: it populates **every** `pub` field
+//! of the source with a distinct non-default value, copies into a `default()` target and asserts
+//! the whole struct compares equal (plus the same under [`MergeMode::FillAbsent`]). Omit one
+//! table entry and that equality fails. Each struct's `FIELD_NAMES` const and
+//! `tests/struct_shape.rs` pin the *order* against Java's `getDeclaredFields()`; these tests pin
+//! the table's *completeness* against the struct, and tie the two together by asserting the
+//! change count against `FIELD_NAMES.len()` wherever the struct has no nested object to make the
+//! arithmetic indirect.
 //!
 //! ## The eight rules (`ReflectionUtil.java` line numbers)
 //!
@@ -262,30 +271,38 @@ pub fn object_array_merge<T: CopyFields + Default + Clone>(
         return; // rule 2.
     };
     let mut inner = MergeReport::default();
-    match dst {
-        Some(target) if target.len() >= source.len() => {
+    // Java's `targetLength` is 0 for a null target (`:299-301`), and the arm is chosen on that
+    // number alone — not on nullness — so an *empty* source array takes the merge arm even when
+    // the target is null.
+    let target_len = dst.as_ref().map_or(0, Vec::len);
+    if target_len >= source.len() {
+        // Merge arm (`:302-312`). A `None` target reaches this only when the source is empty too
+        // (`0 >= 0`), and there Java's `targetObjArray` is the null it just read: the loop body
+        // never runs and `field.set` is never called, so the target field stays **null** rather
+        // than becoming an empty array. JVM-verified (task-2-report.md, probe K).
+        if let Some(target) = dst.as_mut() {
             for (element, slot) in source.iter().zip(target.iter_mut()) {
                 element.merge_fields_into(slot, mode, &mut inner);
             }
         }
-        Some(target) if mode == MergeMode::FillAbsent => {
-            // No Java analogue (rule 6 replaces a too-short target outright). "Fill what is
-            // absent" cannot mean "discard what is present", so the target grows to the source's
-            // length with default elements and every slot is then filled element-wise.
-            target.resize_with(source.len(), T::default);
-            for (element, slot) in source.iter().zip(target.iter_mut()) {
-                element.merge_fields_into(slot, mode, &mut inner);
-            }
+    } else if mode == MergeMode::FillAbsent && dst.is_some() {
+        // No Java analogue (rule 6 replaces a too-short target outright). "Fill what is absent"
+        // cannot mean "discard what is present", so the target grows to the source's length with
+        // default elements and every slot is then filled element-wise.
+        let target = dst.as_mut().expect("is_some checked above");
+        target.resize_with(source.len(), T::default);
+        for (element, slot) in source.iter().zip(target.iter_mut()) {
+            element.merge_fields_into(slot, mode, &mut inner);
         }
-        _ => {
-            let mut fresh = Vec::with_capacity(source.len());
-            for element in source {
-                let mut slot = T::default();
-                element.merge_fields_into(&mut slot, mode, &mut inner);
-                fresh.push(slot);
-            }
-            *dst = Some(fresh);
+    } else {
+        // Replacement arm (`:313-326`).
+        let mut fresh = Vec::with_capacity(source.len());
+        for element in source {
+            let mut slot = T::default();
+            element.merge_fields_into(&mut slot, mode, &mut inner);
+            fresh.push(slot);
         }
+        *dst = Some(fresh);
     }
     report.errors.append(&mut inner.errors);
     report.fields_changed += source.len();
@@ -541,7 +558,16 @@ impl CopyFields for DesignRulesCheckerSettings {
     /// `DesignRulesCheckerSettings.java:11-19` — three Java `boolean` **primitives**, so all three
     /// go through rule 2's default suppression.
     fn merge_fields_into(&self, target: &mut Self, _mode: MergeMode, report: &mut MergeReport) {
-        // MergeMode has no meaning for a non-nullable field: there is no "absent" to detect.
+        // `MergeMode` is ignored here, and on `DebugSettings` below, because every field is a
+        // non-nullable Java primitive: there is no `None` for `FillAbsent` to detect, so
+        // "fill only what is absent" and "the source wins" are the same operation. Note this is a
+        // *representational* limit, not a decision — rule 2 already makes `false`/`0` unmergeable
+        // (quirks row 115), so "absent" and "default" are the same state either way.
+        //
+        // obligation: Task 7 (`GlobalSettings`) must revisit this. `GlobalSettings.java:351` runs
+        // `copyFields(loadedSettings, defaultSettings)` over a struct holding both of these, which
+        // is a *load-then-default* direction — if that path ever wants `fill_absent` semantics,
+        // these two structs need boxed fields first, not a mode argument.
         primitive_bool_copy(self.enabled, &mut target.enabled, report);
         primitive_bool_copy(self.include_warnings, &mut target.include_warnings, report);
         primitive_bool_copy(self.include_errors, &mut target.include_errors, report);
