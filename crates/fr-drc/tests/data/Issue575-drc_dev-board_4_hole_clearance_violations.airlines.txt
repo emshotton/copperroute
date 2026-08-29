@@ -1,0 +1,9 @@
+net=1 from=126 to=133 fromCorner=1304000.0,-870500.0 toCorner=1315250.0,-876300.0
+net=1 from=275 to=280 fromCorner=1241000.0,-521100.0 toCorner=1255000.0,-521100.0
+net=1 from=278 to=281 fromCorner=1255000.0,-493100.0 toCorner=1269000.0,-493100.0
+net=1 from=56 to=70 fromCorner=1276125.0,-695000.0 toCorner=1276000.0,-712000.0
+net=1 from=174 to=813 fromCorner=1276250.0,-662000.0 toCorner=1254540.0,-630939.0
+net=1 from=275 to=812 fromCorner=1241000.0,-521100.0 toCorner=1246140.0,-588508.0
+net=41 from=197 to=255 fromCorner=1326375.0,-678000.0 toCorner=1301750.0,-607500.0
+net=46 from=186 to=57 fromCorner=1309750.0,-695000.0 toCorner=1291875.0,-695000.0
+net=47 from=198 to=43 fromCorner=1309875.0,-678000.0 toCorner=1292000.0,-678000.0

@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::{Board, ClearanceViolation, ItemId, ItemKind};
 
+use crate::net_incompletes::NetIncompletes;
 use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 
 /// Port of `drc.DesignRulesChecker` (DesignRulesChecker.java:29-821).
@@ -45,13 +46,23 @@ pub struct DesignRulesChecker<'a> {
     /// `calculateAllIncompletes` (`:620`) and read by `BoardStatistics`, so it is a public field
     /// here too rather than a getter Java does not have.
     pub max_connections: i32,
-    //
-    // Java's `private NetIncompletes[] netIncompletes` (DesignRulesChecker.java:35) — `null`
-    // until `calculateAllIncompletes()` runs, which is why every reader calls that first — lands
-    // with the type itself in Task 5 (`net_incompletes.rs`), as
-    // `Option<Vec<NetIncompletes>>`: `None` is Java's `null`. It is left out here rather than
-    // stubbed, because a field of a type that does not exist yet does not compile and a
-    // placeholder type would have to be deleted again.
+    /// Java `netIncompletes` (DesignRulesChecker.java:35), one [`NetIncompletes`] per net number,
+    /// indexed by `netNumber - 1` (`:617-621`).
+    ///
+    /// `None` is Java's `null`: the field stays null until `calculateAllIncompletes()` runs,
+    /// which is why every one of its eight readers begins `if (netIncompletes == null)
+    /// calculateAllIncompletes();`. Java's array is never *partly* filled — `:618-621` writes
+    /// every slot in one loop — so the nullability belongs to the whole `Vec`, not to its
+    /// elements.
+    ///
+    // added in Task 6: DesignRulesChecker.netIncompletes — the writer. Task 5 lands the field and
+    // the type; `calculateAllIncompletes` and the eight readers that lazily call it are Task 6's,
+    // which is why nothing in this crate reads the field yet.
+    #[expect(
+        dead_code,
+        reason = "written by Task 6's calculate_all_incompletes, read by its eight accessors"
+    )]
+    net_incompletes: Option<Vec<NetIncompletes>>,
 }
 
 impl<'a> DesignRulesChecker<'a> {
@@ -64,6 +75,8 @@ impl<'a> DesignRulesChecker<'a> {
             // Java leaves `maxConnections` at the `int` default until `calculateAllIncompletes`
             // writes it (DesignRulesChecker.java:620).
             max_connections: 0,
+            // Java leaves `netIncompletes` null until the same call (`:617`).
+            net_incompletes: None,
         }
     }
 
