@@ -268,9 +268,6 @@ fn output_is_non_empty() {
 /// `SesRoundTripTest.placementRotationFormattingMatchesKicadStyle` (SesRoundTripTest.java:271-278).
 #[test]
 fn placement_rotation_formatting_matches_kicad_style() {
-    if !parity::require_java_dir() {
-        return;
-    }
     assert_eq!(format_placement_rotation(0.0), "0");
     assert_eq!(format_placement_rotation(339.0), "339");
     assert_eq!(format_placement_rotation(338.5), "338.5");
