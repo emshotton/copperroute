@@ -20,36 +20,56 @@
 //! # Which combinations are reachable — the pruning rule
 //!
 //! The task brief expected the 4 × 4 × 2 × 2 = 64 cross product to prune to 40 "reachable"
-//! combinations. Re-derived against Java, **none of the 64 is unreachable**, so the table runs
-//! all of them; the pruning rule is written down here as the reachability argument it was meant
-//! to be, rather than left implicit (Task 8 report, deviation 3).
+//! combinations. The table runs all 64 instead: 44 of them are reachable from the CLI-started
+//! headless path this matrix models, and the remaining 20 are kept deliberately as extra
+//! coverage of the merge algebra, labelled as such below rather than passed off as paths Java
+//! runs. The pruning rule is therefore written down as the reachability argument it was meant to
+//! be, rather than left implicit (Task 8 report, deviation D1 and fix round 1).
 //!
 //! The rules axis is already the *pruned* one: the two rules slots are the CLI's
 //! `initialRulesFile`, which feeds **merge #1** (`Freerouting.java:129-136`), and the scheduler's
 //! own choice, which feeds **merge #2** (`RoutingJobScheduler.java:118-152`,
-//! `job.rules ?? -dr ?? adjacent <design>.rules`). Of their four shapes, three are trivially
-//! reachable and the fourth needs a word:
+//! `job.rules ?? -dr ?? adjacent <design>.rules`). Of their four shapes, two are reachable from
+//! the CLI-started path this matrix models, one is reachable there only with a DSN input, and one
+//! is not reachable there at all:
 //!
-//! - `none` — no `-dr`, no `job.rules`, no adjacent file.
-//! - `cli` — `-dr R`: `Freerouting.java:130` also stores `R` as `job.rules`, so the scheduler
-//!   picks the same file and both merges see `R`.
-//! - `scheduler` — either an adjacent `<design>.rules` next to a DSN input (`:131-151`, which is
-//!   `isDsn`-gated) **or** an API job that arrived with its own `job.rules` (`:118-121`, which is
-//!   not). The second entry point is why this shape is reachable even with no DSN: the scheduler
-//!   is shared by the CLI and the API, and `ApiSettings` at priority 70 exists precisely because
-//!   of it.
-//! - `cli ≠ scheduler` — an API job that carries `job.rules = A` in a process that was also
-//!   started with `-dr R`: merge #1 sees `R` (`Freerouting.java:129`, which reads
-//!   `globalSettings.initialRulesFile` and nothing else) and merge #2 sees `A` (`:118-121` wins
-//!   the `else if` chain). It is the only shape where the two merges disagree about the rules,
-//!   and therefore the one that would expose a wrong split between the linear form's
-//!   `fill_absent_from` and its post-merge re-apply. Dropping it — the brief's "cli rules ≠
-//!   adjacent rules" row is exactly this — would have removed the most load-bearing column in
-//!   the table.
+//! - `none` — no `-dr`, no adjacent file. **CLI-reachable.**
+//! - `cli` — `-dr R`: `Freerouting.java:130` also stores `R` as `job.rules`, so the scheduler's
+//!   `else if` chain picks the same file and both merges see `R`. **CLI-reachable.**
+//! - `scheduler` — an adjacent `<design>.rules` beside a DSN input (`:131-151`). The probe is
+//!   `isDsn`-gated, so this shape is **CLI-reachable only on the three DSN rows**; the
+//!   `dsn-none/rules-scheduler` cases are extra coverage (below).
+//! - `cli ≠ scheduler` — merge #1 sees `R` and merge #2 sees a different file. Nothing in the
+//!   CLI path can produce it: `Freerouting.java:129` reads `globalSettings.initialRulesFile`,
+//!   `:130` gives `job.rules` that same file, and the scheduler prefers `job.rules` (`:118-121`).
+//!   **Not CLI-reachable** — extra coverage.
 //!
-//! The shape "merge #1 has rules, merge #2 has none" is the one that really is unreachable (the
-//! scheduler's chain cannot lose a `-dr` file that merge #1 already read), and it is absent from
-//! the axis.
+//! The shape "merge #1 has rules, merge #2 has none" is unreachable for a different reason (the
+//! scheduler's chain cannot lose a `-dr` file merge #1 already read) and is absent from the axis
+//! altogether.
+//!
+//! ## The two columns that are extra coverage, and why they are not "the API path"
+//!
+//! An earlier revision of this file justified `rules-scheduler` without a DSN, and `rules-split`,
+//! by pointing at an API job carrying its own `job.rules` — the scheduler is shared by the CLI
+//! and the API, after all. **That justification is wrong, and the reviewer caught it.** An API
+//! job never runs merge #1: `job.routerSettings` is `new RouterSettings()`
+//! (`core/RoutingJob.java:105`), or the request body deserialised straight into one
+//! (`api/v1/JobInputResource.java:203-211`), or a bare `setLayerCount` (`:337-339`, `:540-542`).
+//! So `new ApiSettings(job.routerSettings)` at priority 70 (`RoutingJobScheduler.java:163-166`)
+//! is a **sparse** payload there, not a complete one, and merge #2's own `0..60` chain does the
+//! real work — which is the opposite of the premise
+//! [`fr_settings::resolve_headless`] linearises. The API path needs a different composition and
+//! is Plan 8's problem (`obligation:` on `resolve_headless`).
+//!
+//! The two columns stay in the table regardless: they are the only inputs anywhere in the matrix
+//! where the two merges see *different* rules, and they are where the linearisation's one
+//! boundary showed up (`tests/precedence.rs::a_split_rules_pair_restarts_the_cost_array_race`) —
+//! which no CLI-reachable case could have found. They are labelled as synthetic coverage rather
+//! than as a path Java runs. What they do *not* do is separate `fill_absent_from` from the
+//! post-merge re-apply: both steps consume the same source and the re-apply overwrites whatever
+//! the fill wrote, so that one distinction is drawn by `src/resolve.rs`'s step tests instead
+//! (fix round 1's mutation table).
 //!
 //! # Fixtures and the board
 //!
@@ -153,6 +173,9 @@ pub const PRIMARY_RULES: &str = "Plan4Matrix-primary.rules";
 /// merge #2 see different rules cannot pass by coincidence.
 pub const ADJACENT_RULES: &str = "Plan4Matrix-adjacent.rules";
 
+/// The four rules shapes. `rules-none` and `rules-cli` are reachable from the CLI-started path on
+/// every DSN row; `rules-scheduler` is reachable there only on the three DSN rows (the adjacent
+/// probe is `isDsn`-gated); `rules-split` is **synthetic** — see the module docs.
 pub const RULES_CASES: [RulesCase; 4] = [
     RulesCase {
         id: "rules-none",
@@ -241,9 +264,18 @@ pub fn cases() -> Vec<Case> {
 // the sources each axis value builds
 // ---------------------------------------------------------------------------------------------
 
-/// `crates/fr-settings/tests/data/<name>`.
+/// `crates/fr-settings/tests/data/<name>`, resolved from the **workspace root** rather than from
+/// `CARGO_MANIFEST_DIR`.
+///
+/// `env!("CARGO_MANIFEST_DIR")` expands in whichever crate compiles this module, so it would name
+/// the wrong directory for a `#[path]` include from outside `fr-settings` — and Task 9's driver
+/// (`scripts/differential/rust`) is exactly that. [`parity::workspace_root`] is derived from the
+/// `parity` crate's own manifest directory, so it answers the same path for every consumer, the
+/// way [`parity::fixture`] already does for the DSN fixtures below.
 pub fn data_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    parity::workspace_root()
+        .join("crates")
+        .join("fr-settings")
         .join("tests")
         .join("data")
         .join(name)

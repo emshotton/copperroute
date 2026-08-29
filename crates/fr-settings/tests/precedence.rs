@@ -116,6 +116,14 @@ fn two_merge_form(
     // `RulesFileSettings` already parsed, which differ only in how the layer structure was
     // discovered (`RulesReader.discoverLayerStructure` vs the board's) — the matrix's boards
     // carry the same layer names as the `.rules` fixtures, so the two agree.
+    //
+    // Java's guard here is `rulesData != null && job.board != null` (`:172`); this form drops the
+    // `job.board != null` half, exactly as `resolve_headless` does and for the same reason (see
+    // its doc comment): the rules arrive already parsed, so there is no board to apply the
+    // *other* `.rules` scopes to, and the two forms have to make the same choice for the
+    // board-less comparison in `the_merge_alone_agrees_without_a_board` to mean anything. Every
+    // case that reaches this line with `board == None` is one Java's scheduler never reaches at
+    // all — it abandons a board-less job before `:172`.
     if let Some(rules) = &scheduler_rules {
         let parsed = rules
             .get_settings()
@@ -416,7 +424,7 @@ fn merge_with_no_default_source_panics_in_validate() {
 /// The brief expects `validate()`'s second call — merge #2's (`SettingsMerger.java:189`) — to be
 /// idempotent, on the grounds that `.rules` carries none of the three fields it touches. It is
 /// not, and the reason has nothing to do with `.rules`: `validate` maps `maxPasses == 0` to
-/// `Integer.MAX_VALUE` (`RouterSettings.java:936-940`) and then, on the next call, maps
+/// `Integer.MAX_VALUE` (`RouterSettings.java:937-940`) and then, on the next call, maps
 /// `Integer.MAX_VALUE` — being `> 9999` — to `9999`.
 ///
 /// So `--router.max_passes=0`, the spelling a user reaches for to mean "no pass limit", yields

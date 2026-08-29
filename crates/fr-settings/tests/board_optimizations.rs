@@ -72,11 +72,10 @@ fn synthetic_board(width: i32, height: i32, is_signal: &[bool]) -> Board {
 /// A real board, read the way `RoutingJobScheduler` reads one before it calls
 /// `applyBoardSpecificOptimizations` (`RoutingJobScheduler.java:186`).
 fn fixture_board(name: &str) -> Board {
-    let path = std::path::Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    ))
-    .join(name);
+    // `parity::fixture`, not a `CARGO_MANIFEST_DIR`-relative literal: the latter cannot see
+    // `FREEROUTING_JAVA_DIR` and breaks whenever the checkout is not a sibling of the Java clone
+    // (a `git worktree`, for instance). Task 8 fix round 1.
+    let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match fr_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {

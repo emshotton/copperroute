@@ -73,7 +73,7 @@
 //! 3. **`validate()` is not idempotent.** The plan expects the second call to be a no-op because
 //!    `.rules` carries none of its three fields. It is a no-op for `max_threads` and
 //!    `trace_pull_tight_accuracy`, but `max_passes == 0` becomes `Integer.MAX_VALUE` on the first
-//!    call (`RouterSettings.java:936-940`) and `9999` on the second, because `MAX_VALUE > 9999`.
+//!    call (`RouterSettings.java:937-940`) and `9999` on the second, because `MAX_VALUE > 9999`.
 //!    Quirk #140.
 //!
 //! # Where the linearisation stops being exact
@@ -143,6 +143,26 @@ impl Steps {
 
 /// Plan ruling 1: the linear form of Java's two merges plus the post-merge rules re-apply.
 ///
+/// # It models the CLI-started path, and only that
+///
+/// The linearisation's premise is that merge #1's result is *complete* — every field non-null
+/// after `DefaultSettings` — so that re-injecting it at priority 70 makes merge #2's own `0..60`
+/// chain reachable only where merge #1 left a field absent. That holds for a job started by
+/// `Freerouting.java:125-146`, which is the only entry point that runs merge #1.
+///
+/// It does **not** hold for an API job. There `job.routerSettings` is `new RouterSettings()`
+/// (`core/RoutingJob.java:105`), the request body deserialised into one
+/// (`api/v1/JobInputResource.java:203-211`), or a bare `setLayerCount` (`:337-339`, `:540-542`) —
+/// a *sparse* payload at priority 70, with merge #2's own chain doing the real work. Feeding one
+/// of those to `resolve_headless` as `SettingsInputs` would answer the wrong thing, because
+/// `fill_absent_from` is not the same operation as "merge #2's sources, with a sparse override on
+/// top".
+///
+// obligation: RoutingJobScheduler.scheduleJob — Plan 8 owns the API surface (plan ruling 10) and
+// must compose the API path separately: merge #2 alone, with `ApiSettings(job.routerSettings)`
+// as a sparse priority-70 source, rather than calling `resolve_headless`. `docs/java-quirks.md`
+// carries the same note.
+///
 /// `board` is `None` for "there is no board" — the merge without the board tuning. Java reaches
 /// that shape nowhere in the headless path, and its three sites disagree about what it would
 /// mean: `HeadlessBoardManager.java:740` guards on `board != null` and skips its pass,
@@ -153,6 +173,14 @@ impl Steps {
 /// in it, and dropping a whole rules tier is the more surprising of the two readings. See the
 /// module docs for the one input family where the board-less answer then differs from Java's two
 /// merges.
+///
+// totalized: applyBoardSpecificOptimizations (RouterSettings.java:266-267) — Java dereferences
+// `board.boundingBox` with no null check, so `RoutingJobScheduler.java:186`'s unguarded
+// `job.routerSettings.applyBoardSpecificOptimizations(job.board)` throws a
+// `NullPointerException` for a board-less job; the scheduler's `catch (Exception)` at `:243-249`
+// logs it and sets the job `TERMINATED`. This port returns the merged settings instead. No
+// reachable caller observes the difference — the scheduler only gets there once
+// `HeadlessBoardManager` has produced a board — and quirk row "totalized" records it.
 ///
 /// # Panics
 ///
@@ -200,6 +228,11 @@ fn resolve_headless_steps(
     }
     // `SettingsMerger.java:189`. This is the object `RoutingJobScheduler.java:163-166` re-injects
     // at priority 70.
+    //
+    // Java bug: validate (RouterSettings.java:932-941) — this call maps `maxPasses == 0` to
+    // `Integer.MAX_VALUE` (`:937-940`) and the second one below maps that to `9999` (`:934-936`),
+    // so the headless path's two merges turn `--router.max_passes=0` into 9999 where a single
+    // merge answers `Integer.MAX_VALUE`. Quirk #140.
     settings.validate(host);
 
     // --- `HeadlessBoardManager.applyRouterSettingsForLoadedBoard` (`:739-748`) ----------------
@@ -243,6 +276,8 @@ fn resolve_headless_steps(
         settings.fill_absent_from(scheduler_rules);
     }
     if steps.second_validate {
+        // Java bug: validate (RouterSettings.java:934-936) — the second half of quirk #140: it is
+        // this call that sees the `Integer.MAX_VALUE` the first one wrote and clamps it to 9999.
         settings.validate(host); // `SettingsMerger.java:189`, again.
     }
 
