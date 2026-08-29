@@ -226,8 +226,9 @@ methods with dozens of branches.
       `RouterSettings::to_json_string_pretty` on the Rust side (Plan 4 Task 10).
       Byte-for-byte: two-space indent, `getDeclaredFields()` key order, `null`
       fields omitted (Gson's default `serializeNulls = false`), floats through
-      `Double.toString`/`Float.toString`, and the seven `transient` fields
-      absent. 84 cases, 4 287 lines, **0 diffs**.
+      `Double.toString`/`Float.toString`, and all **nine** `transient` fields
+      absent (`RouterSettings.java:61,64,67,70`, `OptimizerSettings.java:80,84,91`,
+      `ScoringSettings.java:30,35`). 84 cases, 4 287 lines, **0 diffs**.
     - `2` — every case, whatever `<case-index>` says. `all 0` and
       `<anything> 2` are the same run.
 

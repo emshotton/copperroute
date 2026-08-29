@@ -21,10 +21,27 @@
 //!    scientific notation outside `[1e-3, 1e7)`, which Rust's shortest-round-trip formatter does
 //!    not, so [`JavaNumberFormatter`] routes every float through Plan 3's
 //!    `java_double_to_string`/`java_float_to_string`.
-//! 5. **A non-finite float is refused, not written.** Without
+//! 5. **A non-finite float is refused — in both directions.** Without
 //!    `serializeSpecialFloatingPointValues()`, `Gson.toJson` throws `IllegalArgumentException`
-//!    ("… is not a valid double value as per JSON specification") *before* `Strictness.LENIENT`
-//!    ever gets a say. [`RouterSettings::to_json_string_pretty`] returns an error to match.
+//!    ("… is not a valid double value as per JSON specification"), and *reading* one back throws
+//!    too: `JsonIOException: MalformedJsonException: JSON forbids NaN and infinities`. The reader
+//!    rejects it despite `Strictness.LENIENT` because the factory reads the document in two
+//!    passes — `elementAdapter.read(in)` builds a tree with the lenient textual reader
+//!    (`RouterSettingsTypeAdapterFactory.java:50`), then `delegate.fromJsonTree(tree)` (`:56`)
+//!    re-reads that tree through a **fresh `JsonTreeReader` at default strictness**, which is
+//!    where `nextDouble` refuses it. `Strictness.LENIENT` therefore governs only the first,
+//!    textual pass. JVM-verified in `JProbe.java` block H, including the quoted spelling
+//!    `{"hole_clearance_um": "NaN"}`, which is coerced and then refused the same way.
+//!    [`RouterSettings::to_json_string_pretty`] returns an error to match, and `serde_json`
+//!    already rejects `NaN`/`Infinity` on the read side, so the two agree in both directions.
+//! 6. **`U+2028` and `U+2029` are escaped, `<`, `>`, `&`, `'` are not.** `disableHtmlEscaping()`
+//!    turns off the HTML set only; Gson's `JsonWriter` escapes the two line separators
+//!    unconditionally, because they are legal in a JSON string but illegal in a JavaScript one.
+//!    JVM-verified (`JProbe.java` block J): `"a\u2028b\u2029c"` is written as `a\u2028b\u2029c`
+//!    while `<&>'` are written raw. `serde_json` escapes neither, so
+//!    [`JavaNumberFormatter::write_string_fragment`] adds the two.  Unreachable for the settings
+//!    strings in practice — but `result_json` is a user-supplied path, and the escape is ten
+//!    lines, so it is implemented rather than documented as a known-wrong output.
 //!
 //! The read side is `RouterSettingsTypeAdapterFactory.read` (`:53-70`): the delegate reflective
 //! adapter drops every `transient` field, and the factory then re-reads **`layers`** — and only
@@ -38,14 +55,21 @@
 //!   them.
 //! - Unknown keys are ignored at every level (no `deny_unknown_fields`).
 //!
-//! not ported: Strictness.LENIENT (GsonProvider.java:19) — Gson's *reader* leniency. The JVM probe
-//! (JProbe block D) shows `GsonProvider.GSON.fromJson` also accepting unquoted names, single-quoted
-//! strings, a leading `//` comment and a quoted scalar coerced to the field's type
-//! (`{"max_passes": "42"}` → `42`), none of which `serde_json` accepts. Nothing in this port feeds
-//! it non-strict JSON: `JsonFileSettings` — Gson's only reader of this type in headless Java — is
-//! out of scope (spec §2), and Plan 8's MCP `settings` input arrives as parsed JSON. Pinned as a
-//! divergence by `tests/json.rs::the_lenient_reader_shapes_are_not_ported` and recorded in
-//! `docs/java-quirks.md`.
+//! not ported: Strictness.LENIENT (GsonProvider.java:19) — Gson's *reader* leniency, plus the
+//! coercions the reflective adapters do on top of it. The JVM probe shows
+//! `GsonProvider.GSON.fromJson` accepting unquoted names, single-quoted names, a leading `//`
+//! comment, a quoted scalar coerced to the field's type (`{"max_passes": "42"}` → `42`,
+//! `{"strict_drc": "true"}` → `true`) (block D), and — block I — a duplicate key (last wins), a
+//! fractional literal truncated into an `Integer` field (`1.9` → `1`), and an empty,
+//! whitespace-only or literal-`null` document (a `null` `RouterSettings`, where a *quoted*
+//! `"null"` is still a `JsonSyntaxException`). `serde_json` rejects every one of them. **The list
+//! is illustrative, not exhaustive** — the rule is "Gson's reader is more permissive", and no
+//! test enumerates the boundary. Nothing in this port feeds it non-strict JSON: `JsonFileSettings`
+//! — Gson's only reader of this type in headless Java — is out of scope (spec §2), and Plan 8's
+//! MCP `settings` input arrives as parsed JSON. The divergence is acceptance-only: where Gson
+//! reads a value the port reports an error, never a *different* value. Pinned by
+//! `tests/json.rs::{the_lenient_reader_shapes_are_not_ported,
+//! the_lenient_reader_coercions_are_not_ported}` and recorded as `docs/java-quirks.md` row 141.
 
 use std::io;
 
@@ -130,6 +154,29 @@ impl Formatter for JavaNumberFormatter<'_> {
         W: ?Sized + io::Write,
     {
         writer.write_all(java_double_to_string(value).as_bytes())
+    }
+
+    /// Gson's `JsonWriter` escapes `U+2028`/`U+2029` unconditionally — `disableHtmlEscaping()`
+    /// only turns off the `<`, `>`, `&`, `'`, `=` set (`JProbe.java` block J). `serde_json`
+    /// escapes neither, and it never splits a fragment inside a character, so a plain scan of the
+    /// fragment is enough.
+    #[inline]
+    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        let mut rest = fragment;
+        while let Some(index) = rest.find(['\u{2028}', '\u{2029}']) {
+            writer.write_all(&rest.as_bytes()[..index])?;
+            let separator = rest[index..].chars().next().expect("a char boundary");
+            writer.write_all(if separator == '\u{2028}' {
+                br"\u2028"
+            } else {
+                br"\u2029"
+            })?;
+            rest = &rest[index + separator.len_utf8()..];
+        }
+        writer.write_all(rest.as_bytes())
     }
 
     // --- the nine `PrettyFormatter` overrides, forwarded verbatim ---------------------------

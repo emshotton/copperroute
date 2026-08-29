@@ -238,17 +238,19 @@ fn keys_at(json: &str, depth: usize) -> Vec<String> {
 // the write side
 // -------------------------------------------------------------------------------------------
 
-/// `JProbe.java` block A. The 16 keys Gson emits, in `getDeclaredFields()` order, with the four
-/// `transient` fields absent — `layers` included, which the brief's illustrative key list had
-/// wrong (`RouterSettingsSerializationTest.routerSettingsSerializationAndDeserialization` asserts
-/// `json` does **not** contain `"layers"`, and the JVM agrees).
+/// `JProbe.java` block A. The 16 keys Gson emits, in `getDeclaredFields()` order, with all four
+/// of `RouterSettings`'s `transient` fields absent — **`layers` among them**. The brief's
+/// illustrative key list wrongly included `layers`;
+/// `RouterSettingsSerializationTest.routerSettingsSerializationAndDeserialization` asserts
+/// `json` does **not** contain `"layers"`, and the JVM agrees.
 #[test]
 fn emitted_key_set_matches_gson() {
     let json = fully_populated()
         .to_json_string_pretty()
         .expect("serialises");
+    let top = keys(&json);
     assert_eq!(
-        keys(&json),
+        top,
         [
             "enabled",
             "algorithm",
@@ -268,9 +270,8 @@ fn emitted_key_set_matches_gson() {
             "result_json",
         ]
     );
-    // The three `transient` scalars and the array — checked against the *top-level* key list,
-    // because `max_items` is a legitimate key of `fanout` and `optimizer`.
-    let top = keys(&json);
+    // Checked against the *top-level* key list rather than by substring, because `max_items` is
+    // a legitimate key of both `fanout` and `optimizer`.
     for absent in [
         "layers",
         "max_items",
@@ -551,6 +552,70 @@ fn the_lenient_reader_shapes_are_not_ported() {
     }
     // The one shape Gson rejects too (`JsonSyntaxException`).
     assert!(RouterSettings::from_json_str(r#"{"max_passes": 42,}"#).is_err());
+}
+
+/// `JProbe.java` block H (fix round 1). Reading a non-finite float back is refused too, despite
+/// `Strictness.LENIENT`: `RouterSettingsTypeAdapterFactory.read` builds the tree with the lenient
+/// textual reader (`:50`) and then re-reads it through `delegate.fromJsonTree` (`:56`), a fresh
+/// `JsonTreeReader` at default strictness, whose `nextDouble` throws
+/// `MalformedJsonException: JSON forbids NaN and infinities`. `serde_json` rejects the same five
+/// documents, so this is an **agreement**, not a divergence — the row it corrects in
+/// `docs/java-quirks.md` claimed Gson would read them back.
+#[test]
+fn non_finite_floats_are_refused_on_the_read_side_too() {
+    for refused_by_gson in [
+        r#"{"hole_clearance_um": NaN}"#,
+        r#"{"hole_clearance_um": Infinity}"#,
+        r#"{"hole_clearance_um": -Infinity}"#,
+        r#"{"scoring": {"bend_penalty": NaN}}"#,
+        r#"{"hole_clearance_um": "NaN"}"#,
+    ] {
+        assert!(
+            RouterSettings::from_json_str(refused_by_gson).is_err(),
+            "{refused_by_gson:?} is refused by Gson and must be refused here"
+        );
+    }
+}
+
+/// `JProbe.java` block I (fix round 1): three more shapes Gson's reader accepts and this port
+/// does not. Illustrative, not exhaustive — see the `not ported:` note in `crate::json`.
+#[test]
+fn the_lenient_reader_coercions_are_not_ported() {
+    // Duplicate key: Gson keeps the last (`maxPasses = 2`); `serde` reports a duplicate field.
+    assert!(RouterSettings::from_json_str(r#"{"max_passes": 1, "max_passes": 2}"#).is_err());
+    // A fractional literal in an `Integer` field: Gson truncates to 1; `serde` rejects the type.
+    assert!(RouterSettings::from_json_str(r#"{"max_passes": 1.9}"#).is_err());
+    // An empty, whitespace-only or literal-`null` document: Gson answers a *null* `RouterSettings`
+    // (`RouterSettingsTypeAdapterFactory.java:51-53`), which this port has no way to spell —
+    // `from_json_str` returns `RouterSettings`, not `Option<RouterSettings>` — so it errors.
+    for null_document_for_gson in ["null", "", "   "] {
+        assert!(RouterSettings::from_json_str(null_document_for_gson).is_err());
+    }
+    // A *quoted* "null" is a `JsonSyntaxException` on both sides.
+    assert!(RouterSettings::from_json_str(r#""null""#).is_err());
+}
+
+/// `JProbe.java` block J (fix round 1). `disableHtmlEscaping()` turns off the `<`/`>`/`&`/`'` set
+/// only; Gson's `JsonWriter` still escapes the two Unicode line separators, which are legal in a
+/// JSON string and illegal in a JavaScript one. The transcript is
+/// `"algorithm": "a b c"` and `"result_json": "<&>'\""`, byte for byte.
+#[test]
+fn the_unicode_line_separators_are_escaped_and_the_html_set_is_not() {
+    let mut s = RouterSettings::new();
+    s.algorithm = Some("a\u{2028}b\u{2029}c".to_string());
+    s.result_json_path = Some("<&>'\"".to_string());
+    assert_eq!(
+        s.to_json_string_pretty().expect("serialises"),
+        concat!(
+            "{\n",
+            "  \"algorithm\": \"a\\u2028b\\u2029c\",\n",
+            "  \"fanout\": {},\n",
+            "  \"optimizer\": {},\n",
+            "  \"scoring\": {},\n",
+            "  \"result_json\": \"<&>'\\\"\"\n",
+            "}"
+        )
+    );
 }
 
 // -------------------------------------------------------------------------------------------

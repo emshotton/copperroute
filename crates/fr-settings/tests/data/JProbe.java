@@ -275,6 +275,68 @@ public final class JProbe {
                 .fromJson("{\"max_passes\": 42}", RouterSettings.class)
                 .maxPasses);
 
+
+    h("H: non-finite floats on the READ side (fix round 1)");
+    for (String bad :
+        new String[] {
+          "{\"hole_clearance_um\": NaN}",
+          "{\"hole_clearance_um\": Infinity}",
+          "{\"hole_clearance_um\": -Infinity}",
+          "{\"scoring\": {\"bend_penalty\": NaN}}",
+          "{\"hole_clearance_um\": \"NaN\"}",
+        }) {
+      try {
+        RouterSettings h1 = GsonProvider.GSON.fromJson(bad, RouterSettings.class);
+        System.out.println(
+            "OK   " + bad + "  -> holeClearanceUm=" + h1.holeClearanceUm
+                + " scoring.bendPenalty=" + (h1.scoring == null ? "-" : h1.scoring.bendPenalty));
+      } catch (RuntimeException e) {
+        System.out.println(
+            "FAIL " + bad + "  -> " + e.getClass().getSimpleName() + ": " + e.getMessage());
+      }
+    }
+    System.out.println(
+        "  (mechanism: the textual pass is RouterSettingsTypeAdapterFactory.java:50, which uses"
+            + " the LENIENT reader; :56 re-reads the tree through delegate.fromJsonTree, i.e. a"
+            + " fresh JsonTreeReader at default strictness)");
+
+    h("I: three more lenient-reader shapes (fix round 1)");
+    RouterSettings i1 =
+        GsonProvider.GSON.fromJson(
+            "{\"max_passes\": 1, \"max_passes\": 2}", RouterSettings.class);
+    System.out.println("duplicate key -> maxPasses=" + i1.maxPasses);
+    try {
+      RouterSettings i2 = GsonProvider.GSON.fromJson("{\"max_passes\": 1.9}", RouterSettings.class);
+      System.out.println("fractional for an Integer field -> maxPasses=" + i2.maxPasses);
+    } catch (RuntimeException e) {
+      System.out.println("fractional for an Integer field -> " + e.getClass().getSimpleName());
+    }
+    for (String doc : new String[] {"null", "", "   ", "\"\"", "\"null\"", "[]"}) {
+      try {
+        RouterSettings i3 = GsonProvider.GSON.fromJson(doc, RouterSettings.class);
+        System.out.println(
+            "document <" + doc + "> -> " + (i3 == null ? "null RouterSettings" : "an object"));
+      } catch (RuntimeException e) {
+        System.out.println("document <" + doc + "> -> " + e.getClass().getSimpleName());
+      }
+    }
+
+    h("J: U+2028 / U+2029 in a String field, with HTML escaping off (fix round 1)");
+    RouterSettings j = new RouterSettings();
+    j.algorithm = "a\u2028b\u2029c";
+    j.resultJsonPath = "<&>'\"";
+    String jjson = GsonProvider.GSON.toJson(j);
+    StringBuilder escaped = new StringBuilder();
+    for (int k = 0; k < jjson.length(); k++) {
+      char ch = jjson.charAt(k);
+      if (ch < 0x20 || ch > 0x7e) {
+        escaped.append(String.format("<U+%04X>", (int) ch));
+      } else {
+        escaped.append(ch);
+      }
+    }
+    System.out.println(escaped);
+
     h("E: round trip of A's output");
     String json = GsonProvider.GSON.toJson(a);
     RouterSettings e = GsonProvider.GSON.fromJson(json, RouterSettings.class);

@@ -92,6 +92,11 @@ use crate::{FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, S
 /// (`SettingsMerger.java:22-31` — a source's `null` means "no opinion", not "off"). Field
 /// declaration order matches Java's `getDeclaredFields()` order exactly, because the merge
 /// engine's `copy_fields` (Task 2) iterates it in that order; see [`Self::FIELD_NAMES`].
+///
+/// **To write this type as JSON, call [`Self::to_json_string_pretty`], never
+/// `serde_json::to_string_pretty`**: the latter formats floats with Rust's shortest
+/// round-trip formatter, not `Double.toString`/`Float.toString`, and does not escape
+/// `U+2028`/`U+2029` — so it is not Gson-compatible. See [`crate::json`].
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RouterSettings {
     /// `RouterSettings.java:20-21`.

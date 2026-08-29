@@ -12,7 +12,8 @@
 //! * `1` — the same object through `GsonProvider.GSON` on the Java side and
 //!   `RouterSettings::to_json_string_pretty` here (Plan 4 Task 10). Byte-for-byte: two-space
 //!   indent, declaration key order, `null` fields omitted, floats through `Double.toString` /
-//!   `Float.toString`, and the seven `transient` fields absent.
+//!   `Float.toString`, and all nine `transient` fields absent (`RouterSettings.java:61,64,67,70`,
+//!   `OptimizerSettings.java:80,84,91`, `ScoringSettings.java:30,35`).
 //! * `2` — every case, whatever `<case-index>` says (`all 0` and `<anything> 2` are the same run).
 //!
 //! Every case is preceded by a `CASE <id>` line, so a diff names the row that moved.
