@@ -46,7 +46,8 @@ use fr_board::ids::TreeObject;
 use fr_board::{Board, ItemId, RoomId, ShapeSearchTree, StopCheck, TimeLimit, TreeId};
 use fr_geometry::{Simplex, TileShape};
 
-use crate::arena::{DoorId, IncompleteRoomId};
+use crate::arena::{DoorId, DrillId, IncompleteRoomId, PageId};
+use crate::autoroute::drill::DrillPageArray;
 use crate::autoroute::expansion::sorted_neighbours::SortedRoomNeighbours;
 use crate::autoroute::expansion::{
     ExpandableRef, ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
@@ -78,13 +79,19 @@ pub struct AutorouteEngine {
     /// after a connection is completed for performance reasons."
     pub maintain_database: bool,
 
-    /// The `maxDrillPageWidth` of `:89-90`, kept so Task 7's `DrillPageArray` is built from the
-    /// number this constructor computed rather than recomputing it from a board that may have
-    /// changed since.
-    ///
-    /// added in Task 7: `AutorouteEngine.drillPageArray` (`:56`, `:91`) — the
-    /// `new DrillPageArray(this.board, maxDrillPageWidth)` of `:91`.
+    /// The `maxDrillPageWidth` of `:89-90`, kept so [`drill_pages`](Self::drill_pages) is built
+    /// from the number this constructor computed rather than recomputing it from a board that may
+    /// have changed since.
     pub max_drill_page_width: i32,
+
+    /// `drillPageArray` (`:56`): "the 2-dimensional array of rectangular pages of
+    /// `ExpansionDrill`s", built once by the constructor (`:91`) and never replaced.
+    ///
+    /// Private with [`drill_pages`](Self::drill_pages)/[`drill_pages_mut`](Self::drill_pages_mut)
+    /// accessors where Java's field is package-private, because
+    /// [`drill_page_drills`](Self::drill_page_drills) has to move the grid out of it and put it
+    /// back — a caller holding the field open across that would see a grid with no pages.
+    drill_page_array: DrillPageArray,
 
     /// `completeExpansionRooms` (`:74`): "the list of complete expansion rooms on the routing
     /// board."
@@ -150,12 +157,16 @@ impl AutorouteEngine {
             .get_default_via_diameter(&board.library.padstacks);
         let max_drill_page_width = ((5.0 * default_via_diameter) as i32).max(10_000);
 
+        // AutorouteEngine.java:91.
+        let drill_page_array = DrillPageArray::new(board, max_drill_page_width);
+
         AutorouteEngine {
             rooms: ExpansionRoomStore::new(),
             complete_expansion_rooms: Vec::new(),
             tree,
             maintain_database,
             max_drill_page_width,
+            drill_page_array,
             // :87.
             net_number: -1,
             time_limit: None,
@@ -319,13 +330,59 @@ impl AutorouteEngine {
     /// drill pages intersecting with shape so they must be recalculated at the next call of
     /// `getDrills()`."
     ///
-    /// added in Task 7: `DrillPageArray.invalidate` — the whole body is
-    /// `this.drillPageArray.invalidate(shape)`, and the array is Task 7's. The method exists now
-    /// because [`Self::remove_complete_expansion_room`] (`:411`) and Task 9's
-    /// `additionalUpdateAfterChange` both call it, so its call sites can be written once.
+    /// Its two call sites are [`Self::remove_complete_expansion_room`] (`:411`) and Task 9's
+    /// `RoutingBoard.additionalUpdateAfterChange` (RoutingBoard.java:107).
+    ///
+    /// A shape that misses the board's bounding box invalidates **nothing**:
+    /// `DrillPageArray::overlapping_pages` intersects with the bounds before it walks the grid
+    /// (DrillPageArray.java:79).
     pub fn invalidate_drill_pages(&mut self, shape: &TileShape) {
-        // The body is Task 7's, per the `added in Task 7:` marker on the doc above.
-        let _ = shape;
+        // :599.
+        self.drill_page_array.invalidate(shape);
+    }
+
+    /// `drillPageArray` (`:56`) for a read.
+    pub fn drill_pages(&self) -> &DrillPageArray {
+        &self.drill_page_array
+    }
+
+    /// `drillPageArray` (`:56`) for a write.
+    pub fn drill_pages_mut(&mut self) -> &mut DrillPageArray {
+        &mut self.drill_page_array
+    }
+
+    /// `drillPage.getDrills(autorouteEngine, ctrl.attachSmdAllowed)`
+    /// (MazeExpansionEngine.java:148-150) — the **borrow bridge**, and the one method in this
+    /// file that is not a port of a Java member.
+    ///
+    /// Java's `DrillPage.getDrills(AutorouteEngine, boolean)` is a method on an object the engine
+    /// owns (`:56`) that takes the engine, so a Rust caller would need `&mut` on the page and
+    /// `&mut` on its owner at the same time. This moves the page grid out of the array, runs
+    /// `getDrills`, and puts it back — including on an unwind, because
+    /// `DrillPage::get_drills` panics where Java throws (quirk #168) and an engine left with an
+    /// empty grid would then fail its **next** `overlappingPages` instead.
+    ///
+    /// Nothing reachable from `getDrills` touches the grid: the only Java writers are
+    /// `invalidateDrillPages` and `resetAllDoors`, whose callers are `initConnection`,
+    /// `removeCompleteExpansionRoom`, `RoutingBoard.additionalUpdateAfterChange` and
+    /// `autorouteConnection` — none of which `completeExpansionRoom` can reach.
+    pub fn drill_page_drills(
+        &mut self,
+        board: &mut Board,
+        page: PageId,
+        attach_smd: bool,
+        stop: StopCheck<'_>,
+    ) -> Vec<DrillId> {
+        let (i, j) = self.drill_page_array.split(page);
+        let mut pages = self.drill_page_array.take_pages();
+        let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            pages[j][i].get_drills(self, board, attach_smd, stop)
+        }));
+        self.drill_page_array.restore_pages(pages);
+        match outcome {
+            Ok(drills) => drills,
+            Err(payload) => std::panic::resume_unwind(payload),
+        }
     }
 
     /// Port of `generateRoomIdNo()` (AutorouteEngine.java:671-674): `++expansionRoomInstanceCount`,
@@ -844,7 +901,8 @@ impl AutorouteEngine {
             }
         }
 
-        // added in Task 7: `DrillPageArray.reset` — AutorouteEngine.java:668.
+        // :668. Two disjoint fields of `self`: the grid and the drill arena.
+        self.drill_page_array.reset(&mut self.rooms.drills);
     }
 }
 

@@ -82,7 +82,7 @@ SortedRoomNeighbours              autoroute/expansion/sorted_neighbours.rs
 Sorted45DegreeRoomNeighbours      autoroute/expansion/sorted_neighbours_45.rs
 SortedOrthogonalRoomNeighbours    autoroute/expansion/sorted_neighbours_orthogonal.rs
 
-# --- autoroute/drill/ (Task 8) ------------------------------------------------------------------
+# --- autoroute/drill/ (Task 7) ------------------------------------------------------------------
 DrillPage                         autoroute/drill/page.rs
 DrillPageArray                    autoroute/drill/page_array.rs
 ExpansionDrill                    autoroute/drill/expansion_drill.rs

@@ -457,6 +457,66 @@ methods with dozens of branches.
       `touching_side : dir2 not found` and answer an empty array, and the
       removal still succeeds — because `:383` binds `ExpansionDoor`'s
       *narrowing* `otherRoom(CompleteExpansionRoom)` overload and skips all four.
+  - `P6T7Probe.java` — the drill pages, the page array and the expansion drills
+    (Plan 6 Task 7). Consumed by `crates/fr-router/tests/drill.rs`, whose page
+    grids, overlapping-page sets, drill counts, drill shapes and locations,
+    `getId()` hashes and per-layer room ids are all this probe's output. It
+    declares `package app.freerouting.autoroute.drill;` so it can reflect into
+    `DrillPageArray`'s `private` `pages`/`columnCount`/`rowCount`/`pageWidth`/
+    `pageHeight` and into `DrillPage`'s `private` `drills`/`netNumber`. Its
+    board is `P6T3.build`'s any-angle board verbatim — two layers, a two-pin
+    component whose first pad is **SMD** (one layer) and whose second is a
+    **through** pad (the same octagon on both layers), and two traces on
+    different nets — which is what makes modes 3 and 4 possible at all. Eleven
+    modes:
+
+    - `0` — the page grid for four bounding boxes. Pins the `ceil` chain of
+      `DrillPageArray.java:37-41`, including that `pageWidth` is **recomputed**
+      from `columnCount`: a 20 000-unit board over 7 000-unit pages gives
+      `columnCount=3 pageWidth=6667`, not two columns of 7 000.
+    - `1` — `overlappingPages`, printing `minJ`/`maxJ`/`minI`/`maxI` alongside
+      each answer. The fractional `maxJ` of the first probe
+      (`1.6499175041247938`) is what makes the mixed-type loop bounds of
+      `:81-88` observable; a port that truncates `maxJ` answers 1 page where
+      Java answers 4.
+    - `2` / `3` — `getDrills(engine, false)` and `getDrills(engine, true)` on
+      the component page: **13** drills against **11**, the difference being the
+      three little shapes wedged around the SMD pad, which collapse into one
+      when `attachSmd` skips it (`DrillPage.java:80-84`).
+    - `4` — the obstacle cut-out loop entry by entry: the eight tree entries,
+      which are drillable, which pin is `drillAllowed`, each tree shape, and
+      whether it produced a cut-out. This is what pins the `prevObstacleShape`
+      carry (`:87`): the through pin's two entries carry the **same** octagon
+      and the second produces no cut-out. Four cut-outs without `attachSmd`,
+      three with.
+    - `5` — `calculateExpansionRooms` three ways: a location where
+      `completeExpansionRoom` answers more than one room (false, nothing bound),
+      the same location as a single-layer drill (true, one slot), and a location
+      free on both layers, twice — the second call finds the rooms the first
+      created instead of building new ones.
+    - `6` — `getDrills` under a `Stoppable` that always answers true. Pins
+      **quirk #168**: `NullPointerException at DrillPage.java:108`, and then
+      `netNumber(field)=1 drills=0` with the next call answering the memoised
+      empty list.
+    - `7` — `getId` across a net change. Pins **quirk #167** (hazard B):
+      `-29760001` fresh, `-29759999` on net 1, `-29759998` on net 2, with 13 and
+      then 30 drills; `reset()` keeps the memo and `invalidate()` drops it
+      without restoring `netNumber`.
+    - `8` — `getDrills` on an engine whose `incompleteExpansionRooms` has never
+      been created. Pins **quirk #169**: **zero** drills where mode 2 gets 13,
+      with 28 swallowed `NullPointerException`s.
+    - `9` — a drill whose upper layer alone is blocked by a keepout:
+      `calculateExpansionRooms=false` with `roomArr[0]` bound and `roomArr[1]`
+      null.
+    - `10` — the engine's **own** array (`AutorouteEngine.java:91`) and its two
+      drill hooks, on a board whose bounding box is one page wide. The full
+      -10 000..10 000 board cannot be used here: completing a room inside a
+      10 000-wide page trips **quirk #162**'s non-terminating
+      `calculateNewIncompleteRooms` and the probe OOMs. Pins that
+      `invalidateDrillPages` reaches the page, that a shape outside the board's
+      bounding box invalidates nothing, and that the recomputation answers
+      **ten** drills where the first answered nine — the rooms the first pass
+      created are in the tree by then.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

@@ -556,7 +556,7 @@ pub struct DrillPage { shape: IntBox, net_number: i32, drills: Option<Vec<DrillI
 impl DrillPage {
     /// `getDrills(AutorouteEngine, boolean)` (:63-131) — recomputes whenever the engine's net
     /// differs from the memoised one, **mutating `netNumber`, which is part of `getId`**
-    /// (:190-193): hazard B, quirk #164.
+    /// (:190-193): hazard B, quirk #167 (the plan's "#164" label went to Task 6).
     pub fn get_drills(&mut self, engine: &mut AutorouteEngine, board: &mut Board,
                       attach_smd: bool, stop: StopCheck<'_>) -> Vec<DrillId>;
 }
@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #167.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #170.** Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
@@ -1205,6 +1205,22 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > `completeExpansionRoom`'s `catch` returns a **fresh empty** collection rather than the rooms
 > completed so far, which the task brief and the controller's ruling-7 note both had the other
 > way round.
+> Task 7 landed **#167**, **#168** and **#169**. #167 is the plan's own hazard B, which the plan
+> text and the Task 7 brief both label "#164" — that id went to Task 6, so hazard B's row is
+> **#167**: `DrillPage.getId` hashes the `netNumber` that `getDrills` overwrites at
+> `DrillPage.java:65`, so recomputing a page changes the sort key it is already stored under.
+> The plan's *own* label #167 ("`DrillPageArray.overlappingPages` mixes an `int` lower bound with
+> a `double` upper bound") got **no row**: the mixture is transcribed and tested
+> (`overlapping_pages_uses_javas_mixed_loop_bounds`), but it is not a defect — `j < maxJ` over an
+> integer `j` agrees with `j < ceil(maxJ)`, so nothing observable differs from a correct reading;
+> only a *truncating* port diverges, and the code comment plus the test carry that. The other two
+> rows the plan did not anticipate: **#168**, a cancelled `PolylineArea.splitToConvex` makes
+> `getDrills` throw at `DrillPage.java:108` **and** leaves the page memoised as having no drills,
+> because `:65-66` install the fresh empty list before the work; and **#169**,
+> `AutorouteEngine.removeIncompleteExpansionRoom:370` dereferences the lazily created
+> `incompleteExpansionRooms` with no null guard, which — through
+> `ExpansionDrill.calculateExpansionRooms` and `completeExpansionRoom`'s swallowing `catch` —
+> silently costs **every drill** on an engine that has never had an incomplete room added.
 > Tasks 8 and 12 must take the next free id *at the time they write*, re-checking
 > `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one

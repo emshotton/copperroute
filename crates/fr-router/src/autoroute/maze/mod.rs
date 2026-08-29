@@ -5,9 +5,11 @@
 //! every `ExpandableObject` carries, so the expansion doors could not be built without it. Task 6
 //! adds [`engine`], the room lifecycle half of [`AutorouteEngine`]: it owns the
 //! `ExpansionRoomStore`, the compensated tree handle and the net number, and it is what every
-//! later task in `maze/` is written against. The control block, the queue and the search itself
-//! arrive in Tasks 8-13 and 16; the roster in `scripts/audit-map/fr-router.map` records where
-//! each lands.
+//! later task in `maze/` is written against. Task 7 filled in its three drill hooks — the
+//! `DrillPageArray` the constructor builds, `invalidateDrillPages` and `resetAllDoors`' last
+//! line — plus the `drill_page_drills` borrow bridge. The control block, the queue and the
+//! search itself arrive in Tasks 8-13 and 16; the roster in
+//! `scripts/audit-map/fr-router.map` records where each lands.
 
 pub mod engine;
 pub mod search_element;

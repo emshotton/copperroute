@@ -182,6 +182,20 @@ impl Point {
         pole.translate_by(&v)
     }
 
+    /// Returns a deterministic tie-breaking id for this point. Java `Point.getId()`
+    /// (Point.java:66) is abstract; both concrete overrides are unfolded here — `31 * x + y` for
+    /// an [`IntPoint`] (IntPoint.java:126-128) and the three-`BigInteger` fold for a
+    /// [`RationalPoint`] (RationalPoint.java:66-70).
+    ///
+    /// The one consumer in the port is `autoroute.drill.ExpansionDrill.getId`
+    /// (ExpansionDrill.java:127-130), which hashes the drill's location.
+    pub fn get_id(&self) -> i32 {
+        match self {
+            Point::Int(p) => p.get_id(),
+            Point::Rational(p) => p.get_id(),
+        }
+    }
+
     /// Approximates the coordinates of this point by float coordinates. Java `Point.toFloat()`.
     pub fn to_float(&self) -> FloatPoint {
         match self {

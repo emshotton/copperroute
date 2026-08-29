@@ -17,12 +17,13 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 6 of 18
+## State: Task 7 of 18
 
 What exists is the data-model floor the other twelve tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
-neighbour sorters that turn a completed room into its door list, and — from
-Task 6 — the `AutorouteEngine` that owns all of it:
+neighbour sorters that turn a completed room into its door list, the
+`AutorouteEngine` that owns all of it, and — from Task 7 — the drill pages that
+manufacture its layer changes:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -44,6 +45,9 @@ Task 6 — the `AutorouteEngine` that owns all of it:
 | `SortedOrthogonalRoomNeighbours` | `src/autoroute/expansion/sorted_neighbours_orthogonal.rs` | `SortedOrthogonalRoomNeighbours.java:19-728` |
 | `JavaTreeSet` | `src/java_tree_set.rs` | `java.util.TreeMap`'s red-black `put` |
 | `AutorouteEngine` (the room lifecycle) | `src/autoroute/maze/engine.rs` | `AutorouteEngine.java:39-675`, minus `autorouteConnection` |
+| `DrillPage` | `src/autoroute/drill/page.rs` | `DrillPage.java:21-193` |
+| `DrillPageArray` | `src/autoroute/drill/page_array.rs` | `DrillPageArray.java:15-120` |
+| `ExpansionDrill` | `src/autoroute/drill/expansion_drill.rs` | `ExpansionDrill.java:17-139` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
@@ -266,7 +270,7 @@ sound between connections, when no id from the old arena survives.
 ## Audit
 
 `scripts/audit-map/fr-router.map` maps every class of the five Java packages
-this crate ports (ruling 13). As of Task 6 the package-root invocation reaches
+this crate ports (ruling 13). As of Task 7 the package-root invocation reaches
 **zero MISSING and zero UNMAPPED**, over Task 1's three classes and over the
 whole package root:
 
@@ -295,9 +299,61 @@ to **11**: every one of `AutorouteEngine`'s sixteen rows is closed, by a real
 `describeShapeBounds` (`not ported:`, a GUI sink and an `FRLogger` formatter).
 The eleven that remain are `AutorouteControl` (2, Task 8),
 `DestinationDistance` (3, Task 8), `MazeListElement.compareTo` (Task 8),
-`MazeSearchEngine` (4, Tasks 11-13) and `MazeTraceShover` (1, Task 12). All five
-`autoroute` invocations stay at zero UNMAPPED, and `autoroute/drill` (23,
-Task 7) and `autoroute/path` (7, Tasks 14-15) are untouched.
+`MazeSearchEngine` (4, Tasks 11-13) and `MazeTraceShover` (1, Task 12). Task 7
+took `autoroute/drill` from 23 MISSING to **0**: every public method of the
+three classes is a real `fn` except the three `emitDiagnostic`/`emitDiagnostics`
+sinks, which carry `not ported:` markers naming a GUI overlay. All five
+`autoroute` invocations stay at zero UNMAPPED, and only `autoroute/path` (7,
+Tasks 14-15) is untouched.
+
+## The drill package (Task 7)
+
+`src/autoroute/drill/` is where the maze search gets its layer changes. A
+`DrillPage` takes its rectangle, cuts every obstacle out of it, splits the
+remainder into convex pieces and puts an `ExpansionDrill` at each piece's centre
+of gravity; the drill then binds one expansion room per layer and is dropped
+unless every layer resolves to exactly one. `DrillPageArray` is the index — the
+board's bounding box tiled into pages of at most
+`max(5 * defaultViaDiameter, 10000)`, the number `AutorouteEngine`'s
+constructor computes at `AutorouteEngine.java:89-90`.
+
+Four places the port's shape differs from Java's, each forced:
+
+1. **The drills live in `ExpansionRoomStore::drills`, not on the page.** A drill
+   is an `ExpandableObject`, so the maze search stores one in a
+   `MazeSearchElement.backtrackDoor` — which is a `DrillId` here (ruling 16).
+   The page keeps `Option<Vec<DrillId>>`, and the `Option` is Java's `null`: an
+   empty list is a *memoised answer*, not "not calculated".
+2. **A page is addressed by a flat `PageId`**, `j * columnCount + i`, where Java
+   uses the object reference. The grid is built once and never resized, so the
+   index is the identity.
+3. **`AutorouteEngine::drill_page_drills` is a borrow bridge.**
+   `DrillPage.getDrills(AutorouteEngine, boolean)` is a method on an object the
+   engine owns that takes the engine. The bridge moves the page grid out of the
+   array, runs `getDrills` and puts it back — on the unwind too, because
+   `get_drills` panics where Java throws (quirk #168) and an engine left with an
+   empty grid would fail its *next* `overlappingPages` instead.
+4. **`ExpansionRoomStore` learned Java's null-ness for `incompleteExpansionRooms`.**
+   `new_incomplete_room` is `addIncompleteExpansionRoom` and creates the list;
+   `new_unlisted_incomplete_room` is the bare constructor
+   `ExpansionDrill.calculateExpansionRooms:76-77` calls and does not. Without
+   that distinction the port would build drills where Java builds none — see
+   quirk #169.
+
+Two transcriptions that look like tidying opportunities and are not: the
+`ceil` chain of `DrillPageArray.java:37-41` recomputes `pageWidth` from
+`columnCount` rather than reusing `maxPageWidth`, and `overlappingPages`'
+loops compare an `int` counter against a **`double`** bound (`:81-88`).
+`overlapping_pages_uses_javas_mixed_loop_bounds`
+(`crates/fr-router/tests/drill.rs`) is the test that fails if the second is
+"cleaned up" to an `int`.
+
+`DrillPage::obstacle_cutout_trace` is the one added API with no Java
+counterpart. It is a **view** of the cut-out loop `get_drills` runs, not a copy,
+and it exists because the `prevObstacleShape` carry (`:87`) is otherwise
+unobservable: cutting the same hole out of a `PolylineArea` twice is
+idempotent, so dropping the carry changes no drill count on any board tried —
+only the per-entry trace shows it.
 
 ## Quirk-register numbering
 
@@ -317,7 +373,14 @@ walk); and Task 6 wrote **#164** (`removeCompleteExpansionRoom` binds
 neighbour), **#165** (`completeExpansionRooms` is a strict subset of the
 complete rooms that exist, and the abandoned ones keep their doors) and
 **#166** (`completeExpansionRoom`'s `catch` returns a fresh empty collection
-for rooms it has already committed). The next free id is **#167**. Every later
+for rooms it has already committed); and Task 7 wrote **#167**
+(`DrillPage.getId` hashes the `netNumber` that `getDrills` overwrites, so
+recomputing a page changes the sort key it is stored under — plan-6 ruling 4's
+hazard B), **#168** (a cancelled `splitToConvex` makes `getDrills` throw *and*
+leaves the page memoised as having no drills) and **#169**
+(`removeIncompleteExpansionRoom` dereferences a lazily created list with no null
+guard, which silently costs every drill on an engine that has never had an
+incomplete room added). The next free id is **#170**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.

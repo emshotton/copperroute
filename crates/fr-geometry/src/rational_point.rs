@@ -123,6 +123,21 @@ impl RationalPoint {
         tmp1.cmp(&tmp2)
     }
 
+    /// Returns a deterministic tie-breaking id for this point (RationalPoint.java:66-70):
+    /// `31 * (31 * x.hashCode() + y.hashCode()) + z.hashCode()`, unrolled as Java writes it.
+    ///
+    /// The three hashes are `java.math.BigInteger.hashCode()`, reproduced by
+    /// [`java_big_integer_hash_code`]; every step is `int` arithmetic and wraps.
+    pub fn get_id(&self) -> i32 {
+        let mut result = java_big_integer_hash_code(&self.x);
+        result = 31i32
+            .wrapping_mul(result)
+            .wrapping_add(java_big_integer_hash_code(&self.y));
+        31i32
+            .wrapping_mul(result)
+            .wrapping_add(java_big_integer_hash_code(&self.z))
+    }
+
     /// Approximates the coordinates of this point by float coordinates.
     ///
     /// Java special-cases `z == 0` (the line at infinity) and substitutes `Float.MAX_VALUE` — a
@@ -308,5 +323,90 @@ impl Hash for RationalPoint {
             self.y.hash(state);
             self.z.hash(state);
         }
+    }
+}
+
+/// `java.math.BigInteger.hashCode()`, which `RationalPoint.getId` (RationalPoint.java:66-70) folds
+/// three of together.
+///
+/// The JDK's implementation is
+/// ```java
+/// int hashCode = 0;
+/// for (int i = 0; i < mag.length; i++) {
+///   hashCode = (int) (31 * hashCode + (mag[i] & LONG_MASK));
+/// }
+/// return hashCode * signum;
+/// ```
+/// where `mag` is the magnitude as `int` words in **big-endian** order with no leading zero word,
+/// and `signum` is -1, 0 or 1. [`BigInt::to_u32_digits`] answers the same magnitude words
+/// little-endian, so the fold runs over them reversed; `(mag[i] & LONG_MASK)` widens the word to
+/// an unsigned `long` and the `(int)` cast throws the widening away again, which is exactly
+/// `word as i32`.
+///
+/// Not on [`RationalPoint`] itself because it is `BigInteger`'s method, not the point's, and
+/// nothing else in the port needs a `BigInteger` hash.
+pub fn java_big_integer_hash_code(value: &BigInt) -> i32 {
+    let (sign, digits) = value.to_u32_digits();
+    let mut hash_code: i32 = 0;
+    for word in digits.iter().rev() {
+        hash_code = 31i32.wrapping_mul(hash_code).wrapping_add(*word as i32);
+    }
+    let signum = match sign {
+        Sign::Minus => -1,
+        Sign::NoSign => 0,
+        Sign::Plus => 1,
+    };
+    hash_code.wrapping_mul(signum)
+}
+
+#[cfg(test)]
+mod get_id_tests {
+    use super::*;
+    use std::str::FromStr;
+
+    /// Ground truth from the HEAD jar under JDK 25 (`BigInteger.hashCode()` and
+    /// `RationalPoint.getId()`, run from a probe in `app.freerouting.geometry.planar`):
+    ///
+    /// ```text
+    /// 0 -> 0                                          1 -> 1                     -1 -> -1
+    /// 5 -> 5                                         -5 -> -5           4294967296 -> 31
+    /// -4294967296 -> -31                  1234567890123 -> 1912285068
+    /// 123456789012345678901234567890 -> 1915528825
+    /// -98765432109876543210987654321 -> 617350118
+    /// rationalPoint(7,-11,3).getId() = 6389
+    /// rationalPoint(123456789012345678901234567890, -5, 4294967296).getId() = -1717769283
+    /// ```
+    #[test]
+    fn the_big_integer_hash_code_is_javas() {
+        let cases: [(&str, i32); 10] = [
+            ("0", 0),
+            ("1", 1),
+            ("-1", -1),
+            ("5", 5),
+            ("-5", -5),
+            ("4294967296", 31),
+            ("-4294967296", -31),
+            ("1234567890123", 1_912_285_068),
+            ("123456789012345678901234567890", 1_915_528_825),
+            ("-98765432109876543210987654321", 617_350_118),
+        ];
+        for (text, expected) in cases {
+            let value = BigInt::from_str(text).expect("a decimal literal");
+            assert_eq!(
+                java_big_integer_hash_code(&value),
+                expected,
+                "BigInteger({text}).hashCode()"
+            );
+        }
+    }
+
+    #[test]
+    fn a_rational_points_id_folds_the_three_hashes() {
+        let point = RationalPoint::new(BigInt::from(7), BigInt::from(-11), BigInt::from(3));
+        assert_eq!(point.get_id(), 6389);
+
+        let big = BigInt::from_str("123456789012345678901234567890").expect("a decimal literal");
+        let point = RationalPoint::new(big, BigInt::from(-5), BigInt::from(4_294_967_296i64));
+        assert_eq!(point.get_id(), -1_717_769_283);
     }
 }

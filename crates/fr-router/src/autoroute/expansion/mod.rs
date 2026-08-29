@@ -58,6 +58,7 @@ use fr_geometry::{FloatLine, TileShape};
 
 use crate::Arena;
 use crate::arena::{DoorId, IncompleteRoomId, TargetDoorId};
+use crate::autoroute::drill::ExpansionDrill;
 
 /// Every expansion room and door of one routing run, plus the room-id counter.
 ///
@@ -99,8 +100,28 @@ pub struct ExpansionRoomStore {
     /// Every `TargetItemExpansionDoor`, likewise (Java reaches them through
     /// `CompleteFreeSpaceExpansionRoom.targetDoors`).
     pub target_doors: Arena<TargetItemExpansionDoor>,
+    /// Every `ExpansionDrill` a `DrillPage` has built (`autoroute/drill/DrillPage.java:122-127`).
+    ///
+    /// Java has no such container: a drill is owned by the page's `drills` list. The port needs
+    /// one place to own them because a drill is an `ExpandableObject`, so the maze search stores
+    /// it in a `MazeSearchElement.backtrackDoor` as a bare index
+    /// ([`crate::arena::DrillId`]) — the same reason the doors live here.
+    ///
+    /// [`Self::clear`] deliberately leaves this arena alone: `AutorouteEngine.clear`
+    /// (AutorouteEngine.java:306-317) does not touch `drillPageArray` either, so a page's
+    /// memoised drills survive it in Java too. See that method's docs for what that costs.
+    pub drills: Arena<ExpansionDrill>,
     /// `AutorouteEngine.expansionRoomInstanceCount` (:77).
     room_instance_count: i32,
+    /// Whether `AutorouteEngine.incompleteExpansionRooms` (`:71`) is **non-null**.
+    ///
+    /// Java's field starts `null` and is created lazily by the *first*
+    /// `addIncompleteExpansionRoom` (`:342-345`); `clear` (`:314`) sets it back to `null`. The
+    /// arena above is the list's contents, so this flag is all that is left of the null-ness —
+    /// and the null-ness is observable, because `removeIncompleteExpansionRoom` (`:368-371`)
+    /// dereferences the field with no guard. See
+    /// [`Self::remove_incomplete_expansion_room`] and `docs/java-quirks.md` #169.
+    incomplete_list_created: bool,
 }
 
 /// The store is the [`RoomLookup`] the room-bearing search-tree queries take: a complete room's
@@ -184,6 +205,15 @@ impl ExpansionRoomStore {
         self.doors.clear();
         self.target_doors.clear();
         self.room_instance_count = 0;
+        // AutorouteEngine.java:314: `incompleteExpansionRooms = null`.
+        self.incomplete_list_created = false;
+        // `self.drills` is deliberately **not** cleared: `AutorouteEngine.clear` (`:306-317`)
+        // does not touch `drillPageArray`, so in Java the pages keep their memoised drills and
+        // those drills keep references to rooms that have just left the tree. The port's ids go
+        // stale in a different way — `Arena::clear` restarts the room indices, so a kept
+        // `RoomRef` would alias a *different* room rather than a dead one — but the only caller
+        // is `RoutingBoard.finishAutoroute` (`:899-905`), which drops the engine on the next
+        // line, so neither the stale references nor the aliases are ever read.
     }
 
     // --- construction ---------------------------------------------------------------------
@@ -211,12 +241,37 @@ impl ExpansionRoomStore {
         room_id
     }
 
-    /// `new IncompleteFreeSpaceExpansionRoom(shape, layer, containedShape)` —
-    /// `AutorouteEngine.addIncompleteExpansionRoom`'s allocation (AutorouteEngine.java:341-350).
+    /// The whole of `AutorouteEngine.addIncompleteExpansionRoom(TileShape, int, TileShape)`
+    /// (AutorouteEngine.java:341-350): allocate the room, **create the list if it is null**
+    /// (`:343-345`) and append.
     ///
-    /// Java also appends the room to `incompleteExpansionRooms`, which the arena is; the rest of
-    /// that method (the list's lazy creation) has no counterpart.
+    /// The arena is the list's contents, so the append is the insert; the lazy creation is the
+    /// [`incomplete_list_created`](Self::incomplete_list_created) flag, and it is not decoration
+    /// — see [`remove_incomplete_expansion_room`](Self::remove_incomplete_expansion_room).
+    ///
+    /// Use [`new_unlisted_incomplete_room`](Self::new_unlisted_incomplete_room) where Java calls
+    /// the **constructor** directly instead of this method.
     pub fn new_incomplete_room(
+        &mut self,
+        shape: Option<TileShape>,
+        layer: usize,
+        contained_shape: Option<TileShape>,
+    ) -> IncompleteRoomId {
+        // AutorouteEngine.java:343-345.
+        self.incomplete_list_created = true;
+        self.new_unlisted_incomplete_room(shape, layer, contained_shape)
+    }
+
+    /// `new IncompleteFreeSpaceExpansionRoom(shape, layer, containedShape)`
+    /// (IncompleteFreeSpaceExpansionRoom.java:18-22) — the bare constructor, **without**
+    /// `addIncompleteExpansionRoom`'s list append.
+    ///
+    /// Its one Java caller is `ExpansionDrill.calculateExpansionRooms` (ExpansionDrill.java:
+    /// 76-77), which builds a room it hands straight to `completeExpansionRoom` and never puts
+    /// in the engine's list. The port cannot express "in the heap but not in the list" for
+    /// incomplete rooms — the arena is both — so what this preserves is the part that *is*
+    /// observable: the list's null-ness, which `removeIncompleteExpansionRoom` reads.
+    pub fn new_unlisted_incomplete_room(
         &mut self,
         shape: Option<TileShape>,
         layer: usize,
@@ -230,6 +285,11 @@ impl ExpansionRoomStore {
                     contained_shape,
                 )),
         )
+    }
+
+    /// Whether `AutorouteEngine.incompleteExpansionRooms` (`:71`) is non-null — see the field.
+    pub fn incomplete_list_created(&self) -> bool {
+        self.incomplete_list_created
     }
 
     /// `new ObstacleExpansionRoom(item, indexInItem, tree)` (ItemAutorouteInfo.java:78,
@@ -692,8 +752,28 @@ impl ExpansionRoomStore {
     /// Java's `incompleteExpansionRooms.remove(room)` is an `ArrayList.remove(Object)`, i.e. the
     /// first element `equals` it — `IncompleteFreeSpaceExpansionRoom` has no `equals` override,
     /// so that is reference identity, which is what removing the arena slot is.
+    ///
+    /// # Panics
+    // Java bug: `AutorouteEngine.removeIncompleteExpansionRoom` — `:370` dereferences
+    // `incompleteExpansionRooms` with no null guard, although every other reader of the field
+    // (`getFirstIncompleteExpansionRoom:357`, `initConnection:99`, `clear:307`) has one. The
+    /// list is null until the first `addIncompleteExpansionRoom` (`:343-345`) and again after
+    /// `clear` (`:314`), so this throws a `NullPointerException` on an engine that has never had
+    /// an incomplete room added. It is reachable: `ExpansionDrill.calculateExpansionRooms:79`
+    /// reaches it through `completeExpansionRoom:469` for a room it built with the bare
+    /// constructor, and `completeExpansionRoom`'s own `catch` then turns the throw into an empty
+    /// room list, so **every drill on a virgin engine is silently dropped**. See
+    /// `docs/java-quirks.md` #169; `crates/fr-router/tests/drill.rs`'s
+    /// `a_virgin_engine_yields_no_drills_at_all` is the probe's mode 8 verbatim.
     pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
         self.remove_all_doors(RoomRef::Incomplete(room));
+        assert!(
+            self.incomplete_list_created,
+            "AutorouteEngine.removeIncompleteExpansionRoom: incompleteExpansionRooms is null — \
+             Java throws a NullPointerException here too (AutorouteEngine.java:370), and the \
+             lazily created list (`:343-345`) does not exist until the first \
+             addIncompleteExpansionRoom"
+        );
         self.incomplete_rooms.remove(room.0);
     }
 
