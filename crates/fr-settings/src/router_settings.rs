@@ -207,6 +207,47 @@ impl RouterSettings {
             ..Default::default()
         }
     }
+
+    /// `RouterSettings.getLayerCount` (`RouterSettings.java:442-448`): the configured layer count,
+    /// `0` when `layers` is absent.
+    ///
+    /// Ported here rather than with the rest of the per-layer accessors (Task 3/5) because rule
+    /// 6's object-array merge is meaningless to test without it — `SettingsMergerTest.java:259-277`
+    /// asserts on it directly.
+    pub fn get_layer_count(&self) -> usize {
+        self.layers.as_ref().map_or(0, Vec::len)
+    }
+
+    /// `RouterSettings.setLayerCount` (`RouterSettings.java:455-477`): sizes `layers` and seeds
+    /// the two per-layer cost arrays with a neutral `1.0`.
+    ///
+    /// Reallocating `layers` clears [`Self::board_specific_trace_costs_applied`] (`:456-457`), but
+    /// the per-layer reset at `:471-477` runs on **every** call, so an existing `layers` of the
+    /// right length still has `routable` forced back to `Some(true)` and the other two fields back
+    /// to `None`. `scoring.preferredDirectionTraceCost`/`undesiredDirectionTraceCost` are likewise
+    /// replaced unconditionally (`:466-467`), which is the one place a populated cost array is
+    /// discarded despite rule 5's first-writer-wins.
+    ///
+    /// Java takes an `int` and would throw `NegativeArraySizeException` for a negative count; no
+    /// caller can reach that (`board.getLayerCount()` and a parsed layer list are both
+    /// non-negative), so the port takes a `usize`.
+    ///
+    /// Ported here for the same reason as [`Self::get_layer_count`] — both Java merge tests build
+    /// their fixtures with it.
+    pub fn set_layer_count(&mut self, layer_count: usize) {
+        if !matches!(&self.layers, Some(layers) if layers.len() == layer_count) {
+            self.board_specific_trace_costs_applied = Some(false);
+            self.layers = Some(vec![LayerSettings::default(); layer_count]);
+        }
+        let scoring = self.scoring.get_or_insert_with(ScoringSettings::default);
+        scoring.preferred_direction_trace_cost = Some(vec![1.0; layer_count]);
+        scoring.undesired_direction_trace_cost = Some(vec![1.0; layer_count]);
+        for layer in self.layers.as_mut().expect("set above").iter_mut() {
+            layer.routable = Some(true);
+            layer.preferred_direction_horizontal = None;
+            layer.bend_cost = None;
+        }
+    }
 }
 
 // `RouterSettings.clone()` (RouterSettings.java:486-522) is intentionally left MISSING for this

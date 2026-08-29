@@ -15,9 +15,11 @@
 //!
 //! Task 1 scope: the crate skeleton, the data model (`RouterSettings` and its four nested value
 //! types, `DesignRulesCheckerSettings`, `DebugSettings`), the two strategy enums, [`HostEnvironment`]
-//! and the error types. The merge engine (`copy_fields`, `SettingsMerger`, the settings sources)
-//! is Tasks 2 and onward.
+//! and the error types. Task 2 adds the merge engine ([`copy_fields`] — `ReflectionUtil.copyFields`
+//! as a hand-written per-struct field table, plus `RouterSettings::apply_new_values_from` and its
+//! inverse `fill_absent_from`). `SettingsMerger` and the settings sources are Tasks 3 and onward.
 
+pub mod copy_fields;
 pub mod drc_settings;
 pub mod error;
 pub mod fanout_settings;
@@ -27,6 +29,7 @@ pub mod optimizer_settings;
 pub mod router_settings;
 pub mod scoring_settings;
 
+pub use copy_fields::{CopyFields, JavaEnum, MergeMode};
 pub use drc_settings::{DebugSettings, DesignRulesCheckerSettings};
 pub use error::{MergeError, MergeReport, SettingsError};
 pub use fanout_settings::FanoutSettings;
@@ -39,8 +42,8 @@ pub use scoring_settings::ScoringSettings;
 /// Re-exports every public type of the crate, for `use fr_settings::prelude::*;`.
 pub mod prelude {
     pub use crate::{
-        BoardUpdateStrategy, DebugSettings, DesignRulesCheckerSettings, FanoutSettings,
-        HostEnvironment, ItemSelectionStrategy, LayerSettings, MergeError, MergeReport,
-        OptimizerSettings, RouterSettings, ScoringSettings, SettingsError,
+        BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings, FanoutSettings,
+        HostEnvironment, ItemSelectionStrategy, JavaEnum, LayerSettings, MergeError, MergeMode,
+        MergeReport, OptimizerSettings, RouterSettings, ScoringSettings, SettingsError,
     };
 }
