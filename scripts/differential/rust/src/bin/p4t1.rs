@@ -17,30 +17,26 @@
 //!
 //! Every case is preceded by a `CASE <id>` line, so a diff names the row that moved.
 //!
-//! # Where the two sides build their inputs differently, and why that is exact
+//! # Both sides parse the `.rules` file twice, because Java does
 //!
-//! Java parses the scheduler's `.rules` file **twice**, with two different layer structures:
+//! Java reads the scheduler's `.rules` file **twice**, with two different layer structures:
 //!
 //! * at priority 40 through `RulesFileSettings` → `RulesReader.readRouterSettings`, whose layer
-//!   structure is *discovered from the file itself* (`RulesReader.java:238-273`, a
+//!   structure is *discovered from the file itself* (`RulesReader.java:198`, `:238-274`, a
 //!   `LinkedHashSet` of the `(layer_rule …)` names), and
 //! * again after the merge through `RulesReader.read(…, board, settings)`, whose layer structure
 //!   is the **board's** (`RulesReader.java:112`).
 //!
-//! `fr_settings::SettingsInputs` has one `scheduler_rules` field for both, so this driver feeds
-//! it the *board*-structured parse. That is exact whenever a board is present, which is every
-//! case here: the priority-40 slot reaches the answer only through `fill_absent_from`, and by
-//! that point `HeadlessBoardManager.java:741-745` has filled every `layers[i]` field and both
-//! `scoring` cost arrays, leaving only `resultJsonPath`, `optimizer.timeoutString` and
-//! `fanout.timeoutString` absent — three fields no `(autoroute_settings)` block can carry. The
-//! two parses differ only when the file names fewer layers than the board has (a 4-layer board
-//! and a two-`layer_rule` file map `B.Cu` to index 3 and index 1 respectively), and the driver's
-//! `dsn4-*` rows are exactly where that would show. Recorded in the Task 9 report as the one
-//! place `SettingsInputs` is lossier than Java.
+//! They disagree whenever the file names fewer layers than the board has: a two-`layer_rule` file
+//! on a four-layer board puts `B.Cu` at index 3 in the second parse and at index 1 in the first.
+//! `fr_settings::SettingsInputs` therefore takes the file's **bytes** and performs both parses
+//! itself (Task 8 fix round 2, controller ruling N; quirk #142), so this driver hands them over
+//! unparsed. Before that, it fed one board-structured parse and 13 of these 84 rows disagreed
+//! with the JVM.
 //!
-//! The `-dr` file at priority 40 of **merge #1** (`cli_rules`) is *not* re-parsed: Java reaches it
-//! only through `RulesFileSettings`, so this driver does too.
-
+//! The `-dr` file at priority 40 of **merge #1** (`cli_rules`) is read only once by Java, through
+//! `RulesFileSettings`; it is bytes here too, and `resolve_headless` parses it that one way.
+//!
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -48,11 +44,7 @@ use std::time::UNIX_EPOCH;
 
 use fr_board::prelude::*;
 use fr_dsn::format::double::{java_double_to_string, java_float_to_string};
-use fr_dsn::keyword::Keyword;
-use fr_dsn::lexer::{DsnScanner, LexicalState, Token};
-use fr_dsn::parser::autoroute_settings::read_autoroute_settings_scope;
-use fr_dsn::parser::geometry::DsnLayerStructure;
-use fr_dsn::parser::scope_parameter::{skip_scope, DsnReadOptions};
+use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::BoardReadResult;
 use fr_geometry::{IntBox, PolylineShapeRef, TileShape};
 use fr_settings::prelude::*;
@@ -233,69 +225,18 @@ fn resolve_case(
     let dsn = dsn_bytes
         .as_ref()
         .map(|bytes| DsnFileSettings::new(&bytes[..], &base_name(&case.dsn)));
-    let cli_rules = cli_rules_bytes
-        .as_ref()
-        .map(|bytes| RulesFileSettings::new(&bytes[..], &base_name(&case.cli_rules)));
-    // The board-structured parse — see the module docs.
-    let scheduler_rules = scheduler_rules_bytes
-        .as_ref()
-        .and_then(|bytes| read_rules_against_board(bytes, &board));
     let env = EnvironmentVariablesSource::new(&parse_env(&case.env));
     let cli = CliSettings::new(&parse_argv(&case.argv));
 
+    // Both `.rules` slots go in unparsed — see the module docs.
     let inputs = SettingsInputs {
         dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
-        cli_rules: cli_rules.as_ref().and_then(SettingsSource::get_settings),
-        scheduler_rules: scheduler_rules.as_ref(),
+        cli_rules: cli_rules_bytes.as_deref(),
+        scheduler_rules: scheduler_rules_bytes.as_deref(),
         env: env.get_settings(),
         cli: cli.get_settings(),
     };
     resolve_headless(&inputs, Some(&board), host)
-}
-
-/// `RulesReader.read`'s `(autoroute_settings …)` arm alone (`RulesReader.java:80-99`, `:153-157`):
-/// the file parsed against the **board's** layer structure (`:112`).
-///
-/// It is `read_router_settings` (`fr_dsn::rules_reader`) with `discover_layer_structure` replaced
-/// by [`DsnLayerStructure::from_board`], which is the single difference between Java's two
-/// parses of the same bytes.
-fn read_rules_against_board(bytes: &[u8], board: &Board) -> Option<RouterSettings> {
-    let text = String::from_utf8_lossy(bytes).into_owned();
-    let layer_structure = DsnLayerStructure::from_board(board.layer_structure());
-    let mut scanner = DsnScanner::new(&text).ok()?;
-
-    // The `(rules PCB <name>` header (`RulesReader.java:80-110`); the name is consumed and, on a
-    // mismatch, only logged.
-    if scanner.next_token().ok()?? != Token::Open {
-        return None;
-    }
-    if scanner.next_token().ok()?? != Token::Kw(Keyword::Rules) {
-        return None;
-    }
-    if scanner.next_token().ok()?? != Token::Kw(Keyword::PcbScope) {
-        return None;
-    }
-    scanner.yybegin(LexicalState::Name);
-    scanner.next_token().ok()?;
-
-    // `:116-162`, keeping only the `AUTOROUTE_SETTINGS` arm: every other scope writes the board's
-    // rules, not the settings.
-    let mut prev_was_open = false;
-    loop {
-        let next_token = scanner.next_token().ok()??;
-        if next_token == Token::Close {
-            return None;
-        }
-        let is_open = next_token == Token::Open;
-        if prev_was_open {
-            if next_token == Token::Kw(Keyword::AutorouteSettings) {
-                let parsed = read_autoroute_settings_scope(&mut scanner, &layer_structure).ok()?;
-                return parsed.map(|parsed| RouterSettings::from(&parsed));
-            }
-            skip_scope(&mut scanner).ok()?;
-        }
-        prev_was_open = is_open;
-    }
 }
 
 /// The case's board: either `BProbe.java`'s synthetic recipe with the named layer count, or —

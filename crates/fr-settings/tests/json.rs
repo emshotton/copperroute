@@ -571,11 +571,14 @@ fn golden_path() -> PathBuf {
 /// by case id. The remaining 20 `x-*` rows exist only in the TSV, so only `run.sh` covers them —
 /// and it covers all 84.
 ///
-/// The resolution below is `tests/precedence.rs`'s, not `p4t1.rs`'s: the driver parses the
-/// scheduler's `.rules` against the *board's* layer structure where this test uses the
-/// file-discovered one, and the two differ only in per-layer fields — `layers` and both
-/// `scoring` cost arrays — every one of which Gson drops. The golden is therefore the same text
-/// either way, which this test is also the proof of.
+/// The resolution below is one call to `resolve_headless` with the `.rules` **bytes**, which is
+/// what `p4t1.rs` now does too: since Task 8's fix round 2, `resolve_headless` performs both of
+/// Java's parses itself — the file-discovered one for the priority-40 slot and the
+/// board-structured one for the post-merge re-apply (quirk #142). An earlier revision of this
+/// comment noted that the two sides fed different single parses and that the golden was the same
+/// text either way, because the two differ only in per-layer fields — `layers` and both `scoring`
+/// cost arrays — every one of which Gson drops. That remains true of the golden, and is no longer
+/// something this test has to rely on.
 #[test]
 fn p4t1_mode_1_parity() {
     if !parity::require_java_dir() {
@@ -590,17 +593,14 @@ fn p4t1_mode_1_parity() {
     let mut checked = 0;
     for case in &matrix::cases() {
         let dsn = matrix::dsn_source(case.dsn);
-        let cli_rules = matrix::rules_source(case.rules.cli_rules);
-        let scheduler_rules = matrix::rules_source(case.rules.scheduler_rules);
+        let cli_rules = matrix::rules_bytes(case.rules.cli_rules);
+        let scheduler_rules = matrix::rules_bytes(case.rules.scheduler_rules);
         let env = matrix::env_source(case.env);
         let cli = matrix::cli_source(case.cli);
-        let scheduler_rules = scheduler_rules
-            .as_ref()
-            .and_then(SettingsSource::get_settings);
         let inputs = SettingsInputs {
             dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
-            cli_rules: cli_rules.as_ref().and_then(SettingsSource::get_settings),
-            scheduler_rules,
+            cli_rules: cli_rules.as_deref(),
+            scheduler_rules: scheduler_rules.as_deref(),
             env: env.get_settings(),
             cli: cli.get_settings(),
         };

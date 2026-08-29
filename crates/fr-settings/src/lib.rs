@@ -68,6 +68,7 @@ pub mod prelude {
     pub use crate::sources::cli::{
         DeSlots, LegacyBridge, apply_command_line_arguments, classify_de_arguments,
     };
+    pub use crate::sources::rules_file::apply_rules_file_against_board;
     pub use crate::sources::{
         ApiSettings, CliSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource,
         RulesFileSettings, SesFileSettings,

@@ -303,18 +303,23 @@ pub fn dsn_source(case: &DsnCase) -> Option<DsnFileSettings> {
     cache[index].clone()
 }
 
-/// A `.rules` source read from `tests/data`, parsed once per file and cloned.
-pub fn rules_source(name: Option<&str>) -> Option<RulesFileSettings> {
+/// The **bytes** of a `.rules` file from `tests/data`, read once per file and cloned.
+///
+/// Bytes rather than a parsed source, because Java parses the scheduler's `.rules` twice with two
+/// different layer structures and `fr_settings::resolve_headless` therefore takes the file itself
+/// (quirk #142). The two-merge form in `tests/precedence.rs` builds its priority-40
+/// `RulesFileSettings` from these same bytes, so both forms consume one input.
+pub fn rules_bytes(name: Option<&str>) -> Option<Vec<u8>> {
     let name = name?;
-    static CACHE: OnceLock<BTreeMap<String, RulesFileSettings>> = OnceLock::new();
+    static CACHE: OnceLock<BTreeMap<String, Vec<u8>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| {
         [PRIMARY_RULES, ADJACENT_RULES]
             .into_iter()
             .map(|name| {
-                (
-                    name.to_string(),
-                    RulesFileSettings::from_path(&data_path(name)),
-                )
+                let path = data_path(name);
+                let bytes = std::fs::read(&path)
+                    .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+                (name.to_string(), bytes)
             })
             .collect()
     });

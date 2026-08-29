@@ -29,18 +29,24 @@
 //! ```text
 //! s = DefaultSettings                                  // 0
 //! s.apply(dsn)                                         // 20
-//! s.apply(cli_rules)                                   // 40   ( -dr / -de …rules only )
+//! s.apply(parse(cli_rules))                            // 40   ( -dr / -de …rules only )
 //! s.apply(env)                                         // 55
 //! s.apply(cli)                                         // 60
 //! s.validate()                                         // merge #1's validate, == the priority-70 payload
 //! s.set_layer_count(board) if it disagrees             // HeadlessBoardManager.java:741-744
 //! s.apply_board_specific_optimizations(board)          // HeadlessBoardManager.java:745
 //! s.board_specific_trace_costs_applied = None          // the private flag never survives merge #2
-//! s.fill_absent_from(scheduler_rules)                  // merge #2's own 0..60 chain, all of it
+//! s.fill_absent_from(parse(scheduler_rules))           // merge #2's own 0..60 chain, all of it
 //! s.validate()                                         // merge #2's validate
-//! s.apply(scheduler_rules)                             // RulesReader.java:153-157
+//! s.apply(parse_against(scheduler_rules, board))       // RulesReader.java:112, :153-157
 //! s.apply_board_specific_optimizations(board)          // RoutingJobScheduler.java:186
 //! ```
+//!
+//! `parse` is `RulesReader.readRouterSettings` — the layer structure discovered from the file's
+//! own `(layer_rule …)` names — and `parse_against` is `RulesReader.read`, whose layer structure
+//! is the **board's**. They are two different readings of the same bytes and Java performs both,
+//! which is why the rules slots of [`SettingsInputs`] are byte slices rather than parsed objects
+//! (quirk #142).
 //!
 //! `crates/fr-settings/tests/precedence.rs` runs both forms over a 64-case matrix and asserts
 //! they agree field for field; Task 9's `p4t1` runs the same matrix against the JVM.
@@ -93,6 +99,7 @@ use std::path::{Path, PathBuf};
 
 use fr_board::Board;
 
+use crate::sources::rules_file::apply_rules_file_against_board;
 use crate::{HostEnvironment, RouterSettings, SettingsSource, sources::DefaultSettings};
 
 /// Everything the headless path can feed the merge. Every field is optional; `None` means the
@@ -103,14 +110,30 @@ pub struct SettingsInputs<'a> {
     /// `RoutingJobScheduler.java:111-115`). `None` is a non-DSN input, where the scheduler
     /// registers no DSN source at all.
     pub dsn: Option<&'a RouterSettings>,
-    /// `RulesFileSettings` from `-dr` / `-de …rules`, priority 40 — **merge #1 only**
-    /// (`Freerouting.java:129-136`).
-    pub cli_rules: Option<&'a RouterSettings>,
-    /// The `.rules` the scheduler resolved (`job.rules ?? -dr ?? adjacent <design>.rules`,
-    /// `RoutingJobScheduler.java:118-152` — see [`resolve_scheduler_rules_path`]). It reaches the
-    /// result twice: at priority 40 in merge #2, and again through the post-merge re-apply at
-    /// `RulesReader.java:153-157`.
-    pub scheduler_rules: Option<&'a RouterSettings>,
+    /// The **bytes** of the `-dr` / `-de …rules` file, priority 40 — **merge #1 only**
+    /// (`Freerouting.java:129-136`). Parsed here through `RulesReader.readRouterSettings`, which
+    /// is the only way Java reaches this file.
+    pub cli_rules: Option<&'a [u8]>,
+    /// The **bytes** of the `.rules` the scheduler resolved (`job.rules ?? -dr ?? adjacent
+    /// <design>.rules`, `RoutingJobScheduler.java:118-152` — see
+    /// [`resolve_scheduler_rules_path`]).
+    ///
+    /// Bytes, not a parsed `RouterSettings`, because **Java parses this file twice with two
+    /// different layer structures** and both results reach the answer:
+    ///
+    /// 1. at priority 40 in merge #2, through `RulesFileSettings` →
+    ///    `RulesReader.readRouterSettings`, whose layer structure is *discovered from the file*
+    ///    (`RulesReader.java:198`, `:238-274`);
+    /// 2. after merge #2, through `RulesReader.read(…, job.board, job.routerSettings)`
+    ///    (`RoutingJobScheduler.java:172-181`), whose layer structure is the **board's**
+    ///    (`RulesReader.java:112`).
+    ///
+    /// A two-`layer_rule` file read against a four-layer board puts `B.Cu` at index 3 in the
+    /// second parse and at index 1 in the first. Handing `resolve_headless` one parsed object
+    /// therefore cannot be right for both steps — it was wrong on 13 of Task 9's 84 differential
+    /// rows — so it takes the bytes and performs both parses itself. Quirk #142;
+    /// [`crate::sources::rules_file::apply_rules_file_against_board`] is the second one.
+    pub scheduler_rules: Option<&'a [u8]>,
     /// `EnvironmentVariablesSource`, priority 55.
     pub env: Option<&'a RouterSettings>,
     /// `CliSettings`, priority 60.
@@ -163,16 +186,15 @@ impl Steps {
 // as a sparse priority-70 source, rather than calling `resolve_headless`. `docs/java-quirks.md`
 // carries the same note.
 ///
-/// `board` is `None` for "there is no board" — the merge without the board tuning. Java reaches
-/// that shape nowhere in the headless path, and its three sites disagree about what it would
-/// mean: `HeadlessBoardManager.java:740` guards on `board != null` and skips its pass,
+/// `board` is `None` for "there is no board" — the merge alone. Java reaches that shape nowhere in
+/// the headless path, and each of its three board-facing sites answers it differently:
+/// `HeadlessBoardManager.java:740` guards on `board != null` and skips its pass;
 /// `RoutingJobScheduler.java:172` guards the post-merge `.rules` re-apply on
-/// `rulesData != null && job.board != null`, and `:186` guards nothing at all — a null board
-/// there is an `NPE` at `RouterSettings.java:267`. This port skips both board passes and **keeps**
-/// the re-apply: `scheduler_rules` arrives already parsed, so there is nothing board-shaped left
-/// in it, and dropping a whole rules tier is the more surprising of the two readings. See the
-/// module docs for the one input family where the board-less answer then differs from Java's two
-/// merges.
+/// `rulesData != null && job.board != null`; `:186` guards nothing at all, so a null board there
+/// is an `NPE` at `RouterSettings.java:267`. This port follows the first two exactly — with no
+/// board there is no layer structure for the second parse of the `.rules` file to resolve against
+/// (quirk #142), so the re-apply *cannot* run — and totalizes the third. See the module docs for
+/// the one input family where the board-less answer then differs from Java's two merges.
 ///
 // totalized: applyBoardSpecificOptimizations (RouterSettings.java:266-267) — Java dereferences
 // `board.boundingBox` with no null check, so `RoutingJobScheduler.java:186`'s unguarded
@@ -180,7 +202,8 @@ impl Steps {
 // `NullPointerException` for a board-less job; the scheduler's `catch (Exception)` at `:243-249`
 // logs it and sets the job `TERMINATED`. This port returns the merged settings instead. No
 // reachable caller observes the difference — the scheduler only gets there once
-// `HeadlessBoardManager` has produced a board — and quirk row "totalized" records it.
+// `HeadlessBoardManager` has produced a board — and quirk row "totalized" records it. It is the
+// only one of the three sites this port does not follow literally; `:172`'s guard is reproduced.
 ///
 /// # Panics
 ///
@@ -217,8 +240,8 @@ fn resolve_headless_steps(
     if let Some(dsn) = inputs.dsn {
         settings.apply_new_values_from(dsn); // 20
     }
-    if let Some(cli_rules) = inputs.cli_rules {
-        settings.apply_new_values_from(cli_rules); // 40
+    if let Some(cli_rules) = parse_rules_file(inputs.cli_rules) {
+        settings.apply_new_values_from(&cli_rules); // 40
     }
     if let Some(env) = inputs.env {
         settings.apply_new_values_from(env); // 55
@@ -272,8 +295,10 @@ fn resolve_headless_steps(
     // Since merge #1's result sits above all of them at priority 70, they can only reach a field
     // it left absent, which is `fill_absent_from` (plan ruling 1's Q1 channel: `layers[i]`'s
     // three nullable fields, `resultJsonPath` and the two `timeoutString`s).
-    if let Some(scheduler_rules) = inputs.scheduler_rules {
-        settings.fill_absent_from(scheduler_rules);
+    // The priority-40 parse — `RulesFileSettings`, layer structure discovered from the file
+    // itself. **Not** the board-structured one below; see [`SettingsInputs::scheduler_rules`].
+    if let Some(scheduler_rules) = parse_rules_file(inputs.scheduler_rules) {
+        settings.fill_absent_from(&scheduler_rules);
     }
     if steps.second_validate {
         // Java bug: validate (RouterSettings.java:934-936) — the second half of quirk #140: it is
@@ -282,11 +307,20 @@ fn resolve_headless_steps(
     }
 
     // --- the post-merge re-apply (`:172-181` → `RulesReader.java:153-157`) --------------------
-    // `targetSettings.applyNewValuesFrom(parsedSettings)` on the already-merged object: this is
-    // what puts `(autoroute_settings)` above the environment and the command line (quirk Q2).
-    if let (true, Some(scheduler_rules)) = (steps.post_merge_rules_reapply, inputs.scheduler_rules)
-    {
-        settings.apply_new_values_from(scheduler_rules);
+    // `RulesReader.read(new ByteArrayInputStream(rulesData), designName, job.board,
+    // job.routerSettings)`: the file parsed a *second* time, against the board's layer structure,
+    // and `applyNewValuesFrom`'d onto the already-merged object — which is what puts
+    // `(autoroute_settings)` above the environment and the command line (quirk Q2), and what
+    // makes the two parses observably different (quirk #142).
+    //
+    // Java's guard is `rulesData != null && job.board != null` (`:172`), reproduced exactly: with
+    // no board there is no layer structure to parse against, so the step cannot run at all.
+    if let (true, Some(bytes), Some(board)) = (
+        steps.post_merge_rules_reapply,
+        inputs.scheduler_rules,
+        board,
+    ) {
+        apply_rules_file_against_board(bytes, board, &mut settings);
     }
 
     // --- `RoutingJobScheduler.java:186` -------------------------------------------------------
@@ -296,6 +330,18 @@ fn resolve_headless_steps(
     }
 
     settings
+}
+
+/// `RulesFileSettings`' parse (`sources/RulesFileSettings.java:81-93` →
+/// `RulesReader.readRouterSettings`, `RulesReader.java:180-236`): the layer structure is
+/// discovered from the file's own `(layer_rule …)` names, and every failure — an empty stream, a
+/// bad header, no `(autoroute_settings …)` scope, an unreadable file — gives Java a blank
+/// `RouterSettings` whose `applyNewValuesFrom` writes nothing. `None` here is that blank.
+fn parse_rules_file(bytes: Option<&[u8]>) -> Option<RouterSettings> {
+    match fr_dsn::rules_reader::read_router_settings(bytes?) {
+        Ok(Some(parsed)) => Some(RouterSettings::from(parsed)),
+        Ok(None) | Err(_) => None,
+    }
 }
 
 /// How the scheduler picks the `.rules` file that feeds merge #2 and the post-merge re-apply
@@ -357,18 +403,31 @@ mod tests {
     use fr_geometry::{IntBox, PolylineShapeRef, TileShape};
 
     use super::*;
-    use crate::sources::{CliSettings, EnvironmentVariablesSource, RulesFileSettings};
+    use crate::sources::{CliSettings, EnvironmentVariablesSource};
 
     fn host() -> HostEnvironment {
         HostEnvironment::with_processors(4)
     }
 
     /// `BProbe.java`'s synthetic board: an `IntBox` outline that is also the bounding box, and a
-    /// stack of signal layers.
+    /// stack of signal layers named `L0`, `L1`, … — the names [`rules_bytes`] writes into its
+    /// `layer_rule`s, so that the board-structured parse of those bytes
+    /// (`RulesReader.java:112`) resolves them.
     fn board(layer_count: usize) -> Board {
+        named_board(
+            &(0..layer_count)
+                .map(|i| format!("L{i}"))
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    /// The same board with the layer names spelled out — for the one test that feeds it a
+    /// committed `.rules` fixture, whose `layer_rule`s name `F.Cu`/`B.Cu`.
+    fn named_board(names: &[String]) -> Board {
         let layers = LayerStructure::new(
-            (0..layer_count)
-                .map(|i| Layer::new(format!("L{i}"), true))
+            names
+                .iter()
+                .map(|name| Layer::new(name.clone(), true))
                 .collect(),
         );
         let clearance_matrix = ClearanceMatrix::get_default_instance(&layers, 10);
@@ -394,50 +453,58 @@ mod tests {
         settings
     }
 
-    /// A `.rules` file's `(autoroute_settings)` block, built the way
-    /// `AutorouteSettings.readScope` builds one.
-    fn rules(layer_count: usize) -> RouterSettings {
-        let mut settings = RouterSettings::new();
-        settings.set_layer_count(layer_count);
-        settings.set_via_costs(99);
-        settings.set_preferred_direction_is_horizontal(0, true);
-        settings
+    /// A minimal `.rules` file: `(via_costs 99)` and one `layer_rule` naming the board's first
+    /// layer horizontal. Only layer 0 is named, so every other layer's
+    /// `preferredDirectionHorizontal` stays absent on both parses — which is what makes the Q1
+    /// channel visible.
+    ///
+    /// Bytes rather than a `RouterSettings`, because `resolve_headless` parses the file twice
+    /// itself (quirk #142).
+    fn rules_bytes() -> Vec<u8> {
+        b"(rules PCB unit\n  (autoroute_settings\n    (vias on)\n    (via_costs 99)\n    (layer_rule L0\n      (active on)\n      (preferred_direction horizontal)\n    )\n  )\n)\n"
+            .to_vec()
     }
 
-    /// Ruling 1's Q1 channel, and the correction to survey Q1: with no rules in merge #1, the
-    /// scheduler's `.rules` reaches `layers[0].preferredDirectionHorizontal` — a field merge #1
-    /// left `null` — through `fill_absent_from`, while its `viaCosts` reaches the answer only
-    /// through the post-merge re-apply, because `DefaultSettings` already wrote 50 there.
+    /// Ruling 1's Q1 channel, and the correction to survey Q1: the scheduler's `.rules` reaches
+    /// `layers[0].preferredDirectionHorizontal` — a field merge #1 left `null` — through
+    /// `fill_absent_from`, while its `viaCosts` reaches the answer only through the post-merge
+    /// re-apply, because `DefaultSettings` already wrote 50 there. Turning the re-apply off tells
+    /// the two channels apart: the direction still lands, `viaCosts` falls back to 50.
     ///
-    /// Turning the re-apply off is what tells the two channels apart: the direction still lands,
-    /// `viaCosts` falls back to `DefaultSettings`' 50.
-    ///
-    /// The board is `None` here on purpose: with a board, the first board pass
-    /// (`HeadlessBoardManager.java:745`) fills every `preferredDirectionHorizontal` before
-    /// merge #2 runs, so the `.rules` direction arrives through the re-apply instead — which
-    /// `the_first_board_pass_closes_the_direction_channel` pins separately.
+    /// The first board pass is switched off for the same reason the board is switched *on*: with
+    /// it, `HeadlessBoardManager.java:745` fills every `preferredDirectionHorizontal` before
+    /// merge #2 runs and the fill channel has nothing left to carry
+    /// (`the_first_board_pass_closes_the_direction_channel`); without the board, the post-merge
+    /// re-apply cannot run at all, because Java guards it on `job.board != null`
+    /// (`RoutingJobScheduler.java:172`) and the second parse needs the board's layer structure
+    /// (quirk #142). Both switches are `#[cfg(test)]`; Java runs every step.
     #[test]
     fn adjacent_rules_reach_only_the_fields_merge_one_left_null() {
         let host = host();
+        let board = board(2);
         let dsn = bare_dsn(2);
-        let rules = rules(2);
+        let rules = rules_bytes();
         let inputs = SettingsInputs {
             dsn: Some(&dsn),
             scheduler_rules: Some(&rules),
             ..SettingsInputs::default()
         };
+        let no_first_pass = Steps {
+            first_board_optimization: false,
+            ..Steps::JAVA
+        };
 
-        let resolved = resolve_headless(&inputs, None, &host);
+        let resolved = resolve_headless_steps(&inputs, Some(&board), &host, no_first_pass);
         assert!(resolved.get_preferred_direction_is_horizontal(0));
         assert_eq!(resolved.get_via_costs(), 99);
 
         let without_reapply = resolve_headless_steps(
             &inputs,
-            None,
+            Some(&board),
             &host,
             Steps {
                 post_merge_rules_reapply: false,
-                ..Steps::JAVA
+                ..no_first_pass
             },
         );
         assert!(
@@ -451,7 +518,7 @@ mod tests {
         );
     }
 
-    /// The other half of the same story: once there *is* a board, the first board pass fills
+    /// The other half of the same story: once the first board pass runs, it fills
     /// `preferredDirectionHorizontal` on every layer (`RouterSettings.java:361-363`), so the
     /// priority-70 payload is no longer null there and the `.rules` direction can only arrive
     /// through the post-merge re-apply. The end result is the same either way — which is why
@@ -461,7 +528,7 @@ mod tests {
         let host = host();
         let board = board(2);
         let dsn = bare_dsn(2);
-        let rules = rules(2);
+        let rules = rules_bytes();
         let inputs = SettingsInputs {
             dsn: Some(&dsn),
             scheduler_rules: Some(&rules),
@@ -487,6 +554,38 @@ mod tests {
         // Layer 1 is where the two differ: the file says nothing about it, and the alternation
         // makes it vertical.
         assert!(!without_reapply.get_preferred_direction_is_horizontal(1));
+    }
+
+    /// Quirk #142, in isolation: the same bytes, the same board, two answers.
+    ///
+    /// The file names two `layer_rule`s, `L0` and `L3`. Read against its own names
+    /// (`RulesReader.readRouterSettings` → `discoverLayerStructure`, `:198`) they are layers 0 and
+    /// **1** of a two-layer stack; read against a four-layer board (`RulesReader.read`, `:112`)
+    /// they are layers 0 and **3**. Feeding `resolve_headless` a single pre-parsed
+    /// `RouterSettings` — what `SettingsInputs` held before fix round 2 — could only ever be right
+    /// for one of the two steps.
+    #[test]
+    fn a_rules_file_is_parsed_twice_against_two_layer_structures() {
+        let bytes = b"(rules PCB unit\n  (autoroute_settings\n    (layer_rule L0\n      (active on)\n      (preferred_direction horizontal)\n    )\n    (layer_rule L3\n      (active off)\n      (preferred_direction horizontal)\n    )\n  )\n)\n";
+
+        // 1. the file-discovered structure: two layers, `L3` at index 1.
+        let discovered = parse_rules_file(Some(bytes)).expect("the scope parses");
+        assert_eq!(discovered.get_layer_count(), 2);
+        assert!(!discovered.get_layer_active(1), "`L3` landed at index 1");
+
+        // 2. the board's structure: four layers, `L3` at index 3.
+        let mut target = RouterSettings::new();
+        target.set_layer_count(4);
+        assert!(apply_rules_file_against_board(
+            bytes,
+            &board(4),
+            &mut target
+        ));
+        assert!(
+            target.get_layer_active(1),
+            "index 1 is `L1`, which the file never names"
+        );
+        assert!(!target.get_layer_active(3), "`L3` landed at index 3");
     }
 
     /// The environment and the CLI sources every case in the pair of tests below shares.
@@ -525,13 +624,12 @@ mod tests {
     fn the_first_board_optimization_pass_leaves_no_trace_in_the_final_result() {
         let host = host();
         let (env, cli) = env_and_cli();
-        let rules_2 = rules(2);
-        let rules_4 = rules(4);
+        let rules = rules_bytes();
+        let scheduler_rules: &[u8] = &rules;
 
         for layer_count in [2usize, 4] {
             let board = board(layer_count);
             let dsn = bare_dsn(layer_count);
-            let scheduler_rules = if layer_count == 2 { &rules_2 } else { &rules_4 };
             for (dsn_input, cli_rules) in [
                 (None, None),
                 (Some(&dsn), None),
@@ -603,23 +701,26 @@ mod tests {
         assert_eq!(directions, vec![true, true, true, false]);
     }
 
-    /// `RulesFileSettings` is what feeds `scheduler_rules` in the real path; this pins that the
-    /// linear form is happy with the object that source produces, not only with a hand-built one.
+    /// A committed `.rules` fixture — the one the matrix and the `p4t1` differential use —
+    /// through the whole pass, so the linear form is pinned against a real file and not only
+    /// against bytes written in this module. The board carries the file's own layer names, which
+    /// is what the board-structured parse resolves `layer_rule F.Cu`/`B.Cu` against.
     #[test]
     fn a_rules_file_source_drives_the_same_answer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("data")
             .join("Plan4Matrix-primary.rules");
-        let source = RulesFileSettings::from_path(&path);
+        let bytes = std::fs::read(&path).expect("committed fixture");
         let host = host();
         let dsn = bare_dsn(2);
         let inputs = SettingsInputs {
             dsn: Some(&dsn),
-            scheduler_rules: source.get_settings(),
+            scheduler_rules: Some(&bytes),
             ..SettingsInputs::default()
         };
-        let resolved = resolve_headless(&inputs, Some(&board(2)), &host);
+        let board = named_board(&["F.Cu".to_string(), "B.Cu".to_string()]);
+        let resolved = resolve_headless(&inputs, Some(&board), &host);
         assert_eq!(resolved.get_via_costs(), 40);
         assert_eq!(resolved.get_plane_via_costs(), 4);
         assert_eq!(resolved.get_start_ripup_costs(), 140);

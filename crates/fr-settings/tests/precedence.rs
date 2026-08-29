@@ -27,8 +27,16 @@
 //!    omission was harmless.
 //! 2. **`validate()` is not idempotent.** The brief says the second call is; it is not, for
 //!    `max_passes = 0` — see `the_second_validate_is_not_idempotent_for_max_passes_zero`.
-//! 3. **Nothing in the 64-case cross product is unreachable**, so the matrix runs all 64 rather
-//!    than the brief's 40 — the reachability argument is in [`matrix`]'s module docs.
+//! 3. **44 of the 64 cross-product cases are reachable from the CLI-started path and the other 20
+//!    are deliberate extra coverage**, so the matrix runs all 64 rather than the brief's 40 — the
+//!    reachability argument is in [`matrix`]'s module docs.
+//! 4. **One `.rules` file, two parses.** Java reads the scheduler's `.rules` twice — once against
+//!    the layer structure discovered from the file (`RulesReader.java:198`, priority 40) and once
+//!    against the **board's** (`:112`, the post-merge re-apply). Both forms below therefore
+//!    consume the same raw **bytes** and parse them twice, which is what
+//!    [`resolve_headless`] does internally (quirk #142). Feeding one pre-parsed `RouterSettings`
+//!    for both steps disagreed with the JVM on 13 of `p4t1`'s 84 rows (Task 8 fix round 2,
+//!    controller ruling N).
 
 mod matrix;
 
@@ -58,8 +66,17 @@ fn two_merge_form(
     with_ses: bool,
 ) -> RouterSettings {
     let dsn = matrix::dsn_source(case.dsn);
-    let cli_rules = matrix::rules_source(case.rules.cli_rules);
-    let scheduler_rules = matrix::rules_source(case.rules.scheduler_rules);
+    // One set of bytes per rules slot, exactly as Java holds them: `routingJob.rules.getData()`
+    // for merge #1 (`Freerouting.java:131-135`) and `rulesData` for merge #2 and the post-merge
+    // re-apply (`RoutingJobScheduler.java:118-181`). Both forms parse *these* bytes.
+    let cli_rules_bytes = matrix::rules_bytes(case.rules.cli_rules);
+    let scheduler_rules_bytes = matrix::rules_bytes(case.rules.scheduler_rules);
+    let cli_rules = cli_rules_bytes
+        .as_ref()
+        .map(|bytes| RulesFileSettings::new(&bytes[..], "cli.rules"));
+    let scheduler_rules = scheduler_rules_bytes
+        .as_ref()
+        .map(|bytes| RulesFileSettings::new(&bytes[..], "scheduler.rules"));
     let env = matrix::env_source(case.env);
     let cli = matrix::cli_source(case.cli);
 
@@ -111,24 +128,12 @@ fn two_merge_form(
     let mut merged2 = SettingsMerger::new(sources).merge(host);
 
     // --- the post-merge rules re-apply: `:172-181` -> `RulesReader.java:153-157` --------------
-    // Java re-parses the `.rules` bytes against the *board's* layer structure and calls
-    // `applyNewValuesFrom` on the already-merged object. The port applies the settings
-    // `RulesFileSettings` already parsed, which differ only in how the layer structure was
-    // discovered (`RulesReader.discoverLayerStructure` vs the board's) — the matrix's boards
-    // carry the same layer names as the `.rules` fixtures, so the two agree.
-    //
-    // Java's guard here is `rulesData != null && job.board != null` (`:172`); this form drops the
-    // `job.board != null` half, exactly as `resolve_headless` does and for the same reason (see
-    // its doc comment): the rules arrive already parsed, so there is no board to apply the
-    // *other* `.rules` scopes to, and the two forms have to make the same choice for the
-    // board-less comparison in `the_merge_alone_agrees_without_a_board` to mean anything. Every
-    // case that reaches this line with `board == None` is one Java's scheduler never reaches at
-    // all — it abandons a board-less job before `:172`.
-    if let Some(rules) = &scheduler_rules {
-        let parsed = rules
-            .get_settings()
-            .expect("RulesFileSettings is never null");
-        merged2.apply_new_values_from(parsed);
+    // `RulesReader.read(new ByteArrayInputStream(rulesData), designName, job.board,
+    // job.routerSettings)`: the **second** parse of the same bytes, against the board's layer
+    // structure (`RulesReader.java:112`) rather than the file's own names — see quirk #142. The
+    // guard is Java's `rulesData != null && job.board != null` (`:172`), both halves.
+    if let (Some(bytes), Some(board)) = (&scheduler_rules_bytes, board) {
+        apply_rules_file_against_board(bytes, board, &mut merged2);
     }
 
     // --- `:186` ------------------------------------------------------------------------------
@@ -145,17 +150,15 @@ fn linear_form(
     host: &HostEnvironment,
 ) -> RouterSettings {
     let dsn = matrix::dsn_source(case.dsn);
-    let cli_rules = matrix::rules_source(case.rules.cli_rules);
-    let scheduler_rules = matrix::rules_source(case.rules.scheduler_rules);
+    let cli_rules = matrix::rules_bytes(case.rules.cli_rules);
+    let scheduler_rules = matrix::rules_bytes(case.rules.scheduler_rules);
     let env = matrix::env_source(case.env);
     let cli = matrix::cli_source(case.cli);
 
     let inputs = SettingsInputs {
         dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
-        cli_rules: cli_rules.as_ref().and_then(SettingsSource::get_settings),
-        scheduler_rules: scheduler_rules
-            .as_ref()
-            .and_then(SettingsSource::get_settings),
+        cli_rules: cli_rules.as_deref(),
+        scheduler_rules: scheduler_rules.as_deref(),
         env: env.get_settings(),
         cli: cli.get_settings(),
     };
@@ -189,6 +192,10 @@ fn the_two_forms_agree_over_the_whole_matrix() {
 /// This is the sharper half of the equivalence: `applyBoardSpecificOptimizations`
 /// (`RoutingJobScheduler.java:186`) re-derives `layers` and both cost arrays from the board at the
 /// end, so the board-full comparison above cannot see a difference in what the *merge* produced.
+///
+/// With no board, neither form runs the post-merge `.rules` re-apply either — Java guards it on
+/// `job.board != null` (`RoutingJobScheduler.java:172`) and its parse needs the board's layer
+/// structure (quirk #142) — so what this compares is the two merges and nothing else.
 #[test]
 fn the_merge_alone_agrees_without_a_board() {
     if !parity::require_java_dir() {
@@ -303,8 +310,10 @@ fn cli_settings(argv: &[&str]) -> CliSettings {
     CliSettings::new(&argv)
 }
 
-fn matrix_rules(name: &str) -> RulesFileSettings {
-    RulesFileSettings::from_path(&matrix::data_path(name))
+/// The bytes of a committed `.rules` fixture — what `resolve_headless` takes, because it parses
+/// the file twice itself (quirk #142).
+fn matrix_rules(name: &str) -> Vec<u8> {
+    std::fs::read(matrix::data_path(name)).expect("committed fixture")
 }
 
 /// Q2: `RulesReader.read` re-applies the `.rules` file's `(autoroute_settings)` block to the
@@ -329,7 +338,7 @@ fn rules_outrank_env_and_cli_for_autoroute_fields() {
 
     let inputs = SettingsInputs {
         dsn: Some(&dsn),
-        scheduler_rules: rules.get_settings(),
+        scheduler_rules: Some(&rules),
         env: env.get_settings(),
         cli: cli.get_settings(),
         ..SettingsInputs::default()
