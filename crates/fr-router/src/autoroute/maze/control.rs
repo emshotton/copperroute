@@ -11,11 +11,16 @@
 //! would put a lifetime on `AutorouteControl` and on everything that holds one, for two `f64`s.
 //!
 //! not ported: `AutorouteControl.settings` — the field itself; see above for its two readers.
+//!
+//! The four `Math.max(double, double)` sites of `rebuildViaInfo` (`:258`, `:272`, `:273`, `:276`)
+//! are [`java_max`], not `f64::max`: Java propagates a NaN where Rust absorbs one, and the two
+//! disagree on signed zero. See `destination_distance.rs`' module docs for why the distinction is
+//! load-bearing in this package.
 
 use fr_board::ids::{ItemId, ViaRuleId};
 use fr_board::rules::PadstackLookup;
 use fr_board::{Board, Item};
-use fr_geometry::Point;
+use fr_geometry::{Point, java_max};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 /// Port of `AutorouteControl.ViaMask` (AutorouteControl.java:299-310): one entry of the
@@ -409,7 +414,7 @@ impl AutorouteControl {
                     .padstack_shape_max_width(padstack, j)
                     .map_or(0.0, |width| 0.5 * width);
                 let slot = &mut self.via_radii[j as usize];
-                *slot = slot.max(current_radius);
+                *slot = java_max(*slot, current_radius);
             }
             // :260
             self.via_infos.push(ViaMask {
@@ -430,11 +435,11 @@ impl AutorouteControl {
 
         for j in 0..self.layer_count {
             // :271-274
-            self.via_radii[j] = self.via_radii[j].max(f64::from(self.trace_half_width[j]));
-            self.max_via_radius = self.max_via_radius.max(self.via_radii[j]);
+            self.via_radii[j] = java_max(self.via_radii[j], f64::from(self.trace_half_width[j]));
+            self.max_via_radius = java_max(self.max_via_radius, self.via_radii[j]);
         }
         let mut via_cost_factor = self.max_via_radius; // :275
-        via_cost_factor = via_cost_factor.max(1.0); // :276
+        via_cost_factor = java_max(via_cost_factor, 1.0); // :276
         if pure_smd_net {
             // :277-281. The second half of quirk #172: "pure SMD boards need a much cheaper via
             // escape to avoid exhausting the local pad channel before the search commits to a

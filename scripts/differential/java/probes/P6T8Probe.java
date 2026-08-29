@@ -19,6 +19,9 @@
 // Modes:
 //   dd                     `DestinationDistance` over six configurations x a point/layer grid.
 //   ctrl <dsn> [netNo]     `AutorouteControl` over a real board, every field printed.
+//   nan                    what `Math.min`/`Math.max` do to a NaN trace cost on the way through
+//                          `DestinationDistance` — Rust's `f64::min`/`f64::max` absorb it,
+//                          `Math.min`/`Math.max` propagate it.
 //   viadiv <dsn> <rules>   the ruling-H mechanism: what a `ViaRule` reaches after
 //                          `RulesReader.applyViaInfo` has replaced the via info it names.
 //
@@ -39,7 +42,8 @@
 //
 //   java -Djava.awt.headless=true -jar build/libs/freerouting-current-executable.jar \
 //       -de fixtures/Issue593-BBD_Mars-64.dsn -do /tmp/h-without.ses -mp 1 -mt 1 -oit 0
-//   java ... -de fixtures/Issue593-BBD_Mars-64.dsn -dr <ruling-h-redeclare.rules> \
+//   java ... -de fixtures/Issue593-BBD_Mars-64.dsn \
+//       -dr <freerouting-rs>/crates/fr-router/tests/data/ruling-h-redeclare.rules \
 //       -do /tmp/h-with.ses -mp 1 -mt 1 -oit 0
 //
 // which emits 123 `(via ...)` without the rules file and 45 with it (2192 diff lines between the
@@ -72,6 +76,7 @@ public class P6T8Probe {
     switch (mode) {
       case "dd" -> destinationDistance();
       case "ctrl" -> control(args[1], args.length > 2 ? Integer.parseInt(args[2]) : -1);
+      case "nan" -> nanPropagation();
       case "viadiv" -> viaDivergence(args[1], args[2]);
       default -> throw new IllegalArgumentException("mode " + mode);
     }
@@ -229,6 +234,53 @@ public class P6T8Probe {
     t.join(new IntBox(0, 0, 100, 100), 0);
     t.join(new IntBox(500, 500, 600, 600), 1);
     grid("twoLayer", t, 2);
+  }
+
+  /**
+   * A NaN horizontal trace cost on layer 0. Java's `Math.min`/`Math.max` propagate the NaN
+   * (`if (a != a) return a;`), so it reaches `calculate`'s answer; Rust's `f64::min`/`f64::max`
+   * absorb it, which would make quirk #170 unreachable from this direction.
+   */
+  static void nanPropagation() {
+    ExpansionCostFactor[] costs = {
+      new ExpansionCostFactor(Double.NaN, 2.0),
+      new ExpansionCostFactor(0.5, 1.2),
+      new ExpansionCostFactor(2.5, 1.5),
+      new ExpansionCostFactor(3.0, 5.0),
+    };
+    DestinationDistance d =
+        new DestinationDistance(costs, new boolean[] {true, true, true, true}, 50.0, 40.0);
+    d.join(new IntBox(0, 0, 100, 100), 0);
+    d.join(new IntBox(500, 500, 600, 600), 3);
+    d.join(new IntBox(200, 200, 300, 300), 1);
+    System.out.println("case nanComponentHorizontal");
+    dumpCosts(d);
+    IntBox[] boxes = {new IntBox(0, 0, 100, 100), new IntBox(700, 200, 900, 400)};
+    for (int layer = 0; layer < 4; layer++) {
+      for (IntBox b : boxes) {
+        double v = d.calculate(b, layer);
+        System.out.println(
+            "  nan box["
+                + b.ll.x
+                + ","
+                + b.ll.y
+                + ".."
+                + b.ur.x
+                + ","
+                + b.ur.y
+                + "] layer="
+                + layer
+                + " => "
+                + (Double.isNaN(v) ? "NaN" : f(v))
+                + " isNaN="
+                + Double.isNaN(v));
+      }
+    }
+    // And what the two languages' library calls do, in isolation.
+    System.out.println("  mathMin(NaN, 1.0)=" + Math.min(Double.NaN, 1.0));
+    System.out.println("  mathMin(1.0, NaN)=" + Math.min(1.0, Double.NaN));
+    System.out.println("  mathMax(NaN, 1.0)=" + Math.max(Double.NaN, 1.0));
+    System.out.println("  mathMax(1.0, NaN)=" + Math.max(1.0, Double.NaN));
   }
 
   // =============================================================================================

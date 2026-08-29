@@ -525,7 +525,7 @@ methods with dozens of branches.
     verbatim as `crates/fr-router/tests/data/p6t8-destination-distance.txt` and
     `…/p6t8-autoroute-control.txt`, and both are **replayed row for row** by
     `crates/fr-router/tests/{destination_distance,control}.rs` — so a
-    regenerated probe and a stale expectation cannot silently disagree. Three
+    regenerated probe and a stale expectation cannot silently disagree. Four
     modes:
 
     - `dd` — `DestinationDistance` in seven configurations (four/three/two/one
@@ -547,6 +547,14 @@ methods with dozens of branches.
       Issue593 answers `attachSmdAllowed=true` from `viaInfos=[0..1
       attach=false]` and `minNormalViaCost=400.0` against net 0's `4000.0`) and
       **quirk #173** (`ctrl net=1094 threw java.lang.NullPointerException`).
+    - `nan` — a NaN horizontal trace cost on layer 0, to pin that Java's
+      `Math.min`/`Math.max` **propagate** it (`if (a != a) return a;`) where
+      Rust's `f64::min`/`f64::max` absorb it. Every layer arm of `calculate`
+      answers `NaN`. This is why all 29 `Math.min`/`Math.max` sites in
+      `control.rs` and `destination_distance.rs` are `fr_geometry::java_min` /
+      `java_max` — and it is what makes quirk #170's NaN reachable from this
+      direction at all. Committed output:
+      `crates/fr-router/tests/data/p6t8-nan-propagation.txt`.
     - `viadiv <dsn> <rules>` — the ruling-H mechanism at HEAD: reads the `.dsn`,
       applies the `.rules` file with `RulesReader.read`, and prints both the
       `viaInfos` list and what each `ViaRule` actually reaches, with

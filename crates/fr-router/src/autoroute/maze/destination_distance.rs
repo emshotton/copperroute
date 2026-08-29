@@ -5,8 +5,21 @@
 //! Pure and fully unit-testable: it holds three bounding boxes, a cost model derived once in the
 //! constructor, and 250 lines of one-to-four-layer path enumeration. `tests/destination_distance.rs`
 //! replays a JVM transcript over it row for row.
+//!
+//! # Every `Math.min`/`Math.max` here is [`java_min`]/[`java_max`], never `f64::min`/`f64::max`
+//!
+//! Java propagates a NaN (`Math.min` opens with `if (a != a) return a;`); Rust's `f64::min`
+//! *absorbs* it (`x.min(NaN) == x`, IEEE 754-2019 `minimumNumber`), and the two also disagree on
+//! signed zero. That is not academic here: quirk #170 — `MazeListElement.compareTo`'s NaN
+//! fall-through, and the whole reason its comparator is a transcribed `<`/`>` chain rather than
+//! `total_cmp` — argues that a NaN reaches `sortingValue` **through this method**
+//! (`MazeSearchEngine.java:884`). On `f64::min` it never could: the first
+//! `result = result.min(tmp)` would discard it, and the port would be internally inconsistent.
+//! `IntBox::weighted_distance`, which `calculate` calls, already uses `java_max` for the same
+//! reason. Pinned by `P6T8Probe` mode `nan` and
+//! `tests/destination_distance.rs::a_nan_trace_cost_propagates_through_calculate_as_java_does`.
 
-use fr_geometry::{FloatPoint, IntBox};
+use fr_geometry::{FloatPoint, IntBox, java_max, java_min};
 use fr_settings::ExpansionCostFactor;
 
 /// Port of `maze.DestinationDistance` (DestinationDistance.java:11-391).
@@ -110,20 +123,22 @@ impl DestinationDistance {
 
         // :85-94. "Note: for inner layers we assume, that cost in preferred direction is 1."
         let mut max_inner_side_trace_cost =
-            max_component_side_trace_cost.min(max_solder_side_trace_cost);
+            java_min(max_component_side_trace_cost, max_solder_side_trace_cost);
         for ind2 in 1..layer_count.saturating_sub(1) {
             if !layer_active[ind2] {
                 continue; // :88-90
             }
-            let current_max_cost = trace_costs[ind2].horizontal.max(trace_costs[ind2].vertical);
-            max_inner_side_trace_cost = max_inner_side_trace_cost.min(current_max_cost);
+            let current_max_cost =
+                java_max(trace_costs[ind2].horizontal, trace_costs[ind2].vertical);
+            max_inner_side_trace_cost = java_min(max_inner_side_trace_cost, current_max_cost);
         }
         // :95-98
         let min_component_inner_trace_cost =
-            min_component_side_trace_cost.min(max_inner_side_trace_cost);
-        let min_solder_inner_trace_cost = min_solder_side_trace_cost.min(max_inner_side_trace_cost);
+            java_min(min_component_side_trace_cost, max_inner_side_trace_cost);
+        let min_solder_inner_trace_cost =
+            java_min(min_solder_side_trace_cost, max_inner_side_trace_cost);
         let min_component_solder_inner_trace_cost =
-            min_component_inner_trace_cost.min(min_solder_inner_trace_cost);
+            java_min(min_component_inner_trace_cost, min_solder_inner_trace_cost);
 
         DestinationDistance {
             trace_costs: trace_costs.to_vec(),
@@ -260,13 +275,13 @@ impl DestinationDistance {
                         + self.min_solder_side_trace_cost * solder_side_min_delta
                         + min_normal_via_cost
                 };
-            result = result.min(tmp_distance); // :247
+            result = java_min(result, tmp_distance); // :247
 
             // :249-255 — two layer distance on component and solder side with two vias.
             tmp_distance = component_side_max_delta
                 + component_side_min_delta * self.min_component_inner_trace_cost
                 + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance); // :257
+            result = java_min(result, tmp_distance); // :257
 
             if self.active_layer_count == 2 {
                 return result; // :259-261
@@ -276,19 +291,19 @@ impl DestinationDistance {
             tmp_distance = inner_side_max_delta
                 + inner_side_min_delta * self.min_component_inner_trace_cost
                 + min_normal_via_cost;
-            result = result.min(tmp_distance); // :268
+            result = java_min(result, tmp_distance); // :268
 
             // :270-276 — three layer distance. The `+ +` at `:274` is Java's own double unary
             // plus, which is a no-op.
             tmp_distance = solder_side_max_delta
                 + self.min_component_solder_inner_trace_cost * solder_side_min_delta
                 + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             // :278-279
             tmp_distance =
                 component_side_max_delta + component_side_min_delta + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             if self.active_layer_count == 3 {
                 return result; // :281-283
@@ -296,12 +311,12 @@ impl DestinationDistance {
 
             // :285-287
             tmp_distance = inner_side_max_delta + inner_side_min_delta + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             // :289-293 — four layer distance.
             tmp_distance =
                 solder_side_max_delta + solder_side_min_delta + 3.0 * min_normal_via_cost;
-            return result.min(tmp_distance);
+            return java_min(result, tmp_distance);
         }
 
         if layer == self.layer_count - 1 {
@@ -326,13 +341,13 @@ impl DestinationDistance {
                         + self.min_component_side_trace_cost * component_side_min_delta
                         + min_normal_via_cost
                 };
-            result = result.min(tmp_distance); // :317
+            result = java_min(result, tmp_distance); // :317
 
             // :318-320
             tmp_distance = solder_side_max_delta
                 + solder_side_min_delta * self.min_solder_inner_trace_cost
                 + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             if self.active_layer_count <= 2 {
                 return result; // :321-323
@@ -342,18 +357,18 @@ impl DestinationDistance {
             tmp_distance = inner_side_min_delta * self.min_solder_inner_trace_cost
                 + inner_side_max_delta
                 + min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             // :328-334 — three layer distance.
             tmp_distance = component_side_max_delta
                 + self.min_component_solder_inner_trace_cost * component_side_min_delta
                 + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             // :335-336
             tmp_distance =
                 solder_side_max_delta + solder_side_min_delta + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             if self.active_layer_count == 3 {
                 return result; // :337-339
@@ -361,12 +376,12 @@ impl DestinationDistance {
 
             // :340-341
             tmp_distance = inner_side_max_delta + inner_side_min_delta + 2.0 * min_normal_via_cost;
-            result = result.min(tmp_distance);
+            result = java_min(result, tmp_distance);
 
             // :343-346 — four layer distance.
             tmp_distance =
                 component_side_max_delta + component_side_min_delta + 3.0 * min_normal_via_cost;
-            return result.min(tmp_distance);
+            return java_min(result, tmp_distance);
         }
 
         // :349-357 — distance to inner layer box, one layer distance.
@@ -380,25 +395,25 @@ impl DestinationDistance {
 
         // :359-363 — two layer distance.
         let mut tmp_distance = inner_side_max_delta + inner_side_min_delta + min_normal_via_cost;
-        result = result.min(tmp_distance);
+        result = java_min(result, tmp_distance);
         // :364-368
         tmp_distance = component_side_max_delta
             + component_side_min_delta * self.min_component_inner_trace_cost
             + min_normal_via_cost;
-        result = result.min(tmp_distance);
+        result = java_min(result, tmp_distance);
         // :369-371
         tmp_distance = solder_side_max_delta
             + solder_side_min_delta * self.min_solder_inner_trace_cost
             + min_normal_via_cost;
-        result = result.min(tmp_distance);
+        result = java_min(result, tmp_distance);
 
         // :373-376 — three layer distance.
         tmp_distance =
             component_side_max_delta + component_side_min_delta + 2.0 * min_normal_via_cost;
-        result = result.min(tmp_distance);
+        result = java_min(result, tmp_distance);
         // :377-378
         tmp_distance = solder_side_max_delta + solder_side_min_delta + 2.0 * min_normal_via_cost;
-        result.min(tmp_distance)
+        java_min(result, tmp_distance)
     }
 }
 

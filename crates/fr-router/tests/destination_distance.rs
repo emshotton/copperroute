@@ -267,6 +267,77 @@ fn calculate_cheap_does_not_mutate_the_receiver() {
     assert_ne!(cheap, before, "and on this box it is strictly cheaper");
 }
 
+/// Java's `Math.min`/`Math.max(double, double)` **propagate** a NaN (`if (a != a) return a;`);
+/// Rust's `f64::min`/`f64::max` **absorb** it (`x.min(NaN) == x`, IEEE 754-2019 `minimumNumber`).
+/// Every one of the 25 `Math.min`/`Math.max` sites in this class is therefore
+/// [`fr_geometry::java_min`] / [`fr_geometry::java_max`], the transcription
+/// `IntBox::weighted_distance` already uses.
+///
+/// It matters because quirk #170 — `MazeListElement.compareTo`'s NaN fall-through, and the reason
+/// the comparator is transcribed as a `<`/`>` chain rather than `total_cmp` — argues that a NaN
+/// reaches `sortingValue` *through this method*. On `f64::min` it never could: the first
+/// `result = result.min(tmp)` would discard it. The two decisions have to agree.
+///
+/// The literals are `P6T8Probe` mode `nan` (`tests/data/p6t8-nan-propagation.txt`): a NaN
+/// horizontal trace cost on layer 0 leaves `minComp=2.0` but `maxComp=NaN`, and every one of the
+/// four layer arms then answers `NaN`.
+#[test]
+fn a_nan_trace_cost_propagates_through_calculate_as_java_does() {
+    let costs = vec![
+        ExpansionCostFactor {
+            horizontal: f64::NAN,
+            vertical: 2.0,
+        },
+        ExpansionCostFactor {
+            horizontal: 0.5,
+            vertical: 1.2,
+        },
+        ExpansionCostFactor {
+            horizontal: 2.5,
+            vertical: 1.5,
+        },
+        ExpansionCostFactor {
+            horizontal: 3.0,
+            vertical: 5.0,
+        },
+    ];
+    let mut d = DestinationDistance::new(&costs, &[true, true, true, true], 50.0, 40.0);
+    d.join(&IntBox::from_coords(0, 0, 100, 100), 0);
+    d.join(&IntBox::from_coords(500, 500, 600, 600), 3);
+    d.join(&IntBox::from_coords(200, 200, 300, 300), 1);
+
+    // `costs minComp=2.000000 maxComp=NaN minSold=3.000000 maxSold=5.000000 maxInner=NaN
+    //  minCompInner=NaN minSoldInner=NaN minCompSoldInner=NaN` — `NaN < 2.0` is false, so `:64`'s
+    // `else` puts the NaN in `maxComponentSideTraceCost`, and `Math.min` carries it into the four
+    // derived costs from there.
+    assert_eq!(d.min_component_side_trace_cost, 2.0);
+    assert!(d.max_component_side_trace_cost.is_nan());
+    assert_eq!(d.min_solder_side_trace_cost, 3.0);
+    assert_eq!(d.max_solder_side_trace_cost, 5.0);
+    assert!(d.max_inner_side_trace_cost.is_nan(), "Math.min at :86");
+    assert!(d.min_component_inner_trace_cost.is_nan(), ":95");
+    assert!(d.min_solder_inner_trace_cost.is_nan(), ":96");
+    assert!(d.min_component_solder_inner_trace_cost.is_nan(), ":97-98");
+
+    // `nan box[...] layer=N => NaN isNaN=true` for both boxes on all four layers.
+    for layer in 0..4 {
+        for b in [
+            IntBox::from_coords(0, 0, 100, 100),
+            IntBox::from_coords(700, 200, 900, 400),
+        ] {
+            assert!(
+                d.calculate(&b, layer).is_nan(),
+                "calculate({b:?}, {layer}) must answer NaN, as Java's Math.min does;                  f64::min would have discarded it"
+            );
+            assert!(d.calculate_cheap_distance(&b, layer).is_nan());
+        }
+    }
+
+    // And this is the NaN quirk #170's fall-through consumes: `sortingValue = expansionValue +
+    // destinationDistance.calculate(...)` (MazeSearchEngine.java:884).
+    assert!((1.0 + d.calculate(&IntBox::from_coords(0, 0, 100, 100), 0)).is_nan());
+}
+
 /// `boxIsEmpty` (`:36`, `:123-125`): before any `join`, every layer answers `Integer.MAX_VALUE` —
 /// **as a `double`**, so the port must answer `2147483647.0`, not `f64::MAX` and not infinity.
 #[test]

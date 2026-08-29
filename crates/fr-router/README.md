@@ -423,14 +423,17 @@ attachSmdAllowed` is a routing gate at `MazeExpansionEngine.java:339`. Two
 probes ran against the **HEAD** jar (2.3.0 is not used anywhere in Plan 6):
 
 * `P6T8Probe viadiv ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn
-  /tmp/redeclare.rules` — after `RulesReader.applyViaInfo` replaces the fixture's
+  crates/fr-router/tests/data/ruling-h-redeclare.rules` — after
+  `RulesReader.applyViaInfo` replaces the fixture's
   only via info, `viaInfos.get(name)` says `attach=true` while **both** `default`
   via rules still reach the detached original (`attach=false`, `inList=false`).
   The mechanism survives at HEAD, so the port's index-based rule computes a
   different control block.
-* the HEAD jar routing that fixture with `-mp 1 -mt 1 -oit 0` emits **123**
-  `(via …)` without the `.rules` file and **45** with it, and the two `.ses`
-  files differ by 2192 diff lines. The file is nowhere near unobservable.
+* the HEAD jar routing that fixture with `-mp 1 -mt 1 -oit 0`, once plain and
+  once with `-dr crates/fr-router/tests/data/ruling-h-redeclare.rules`, emits
+  **123** `(via …)` without the `.rules` file and **45** with it, and the two
+  `.ses` files differ by 2192 diff lines. The file is nowhere near
+  unobservable.
 
 What is still missing is the port routing the same board with the same `.rules`,
 which is the comparison that actually decides the row. The `obligation:` marker
