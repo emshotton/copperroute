@@ -14,7 +14,7 @@
 //!
 //! The key set is flavor-dependent while the field order must be Java's declaration order
 //! regardless — Gson writes `Class.getDeclaredFields()` order — so a `#[derive(Serialize)]` with
-//! `#[serde(rename)]` cannot express it. The four `Serialize` impls below walk the DTOs in
+//! `#[serde(rename)]` cannot express it. The `Serialize` impls below walk the four DTOs in
 //! declaration order and take their key strings from the table. Everything *below* the key is
 //! `serde_json`'s, driven by [`JavaNumberFormatter`], which is the write half of
 //! `GsonProvider.GSON` (`util/gson/GsonProvider.java:12-20`, moved into `fr-dsn` by ruling 7):
@@ -185,7 +185,8 @@ impl DesignRulesChecker<'_> {
 }
 
 // -------------------------------------------------------------------------------------------
-// The four `Serialize` impls, in Java's declaration order
+// The six `Serialize` impls: one per DTO, in Java's declaration order, plus two list wrappers
+// that thread the flavor down to each element
 // -------------------------------------------------------------------------------------------
 
 /// `io.kicad.KiCadDrcReport`, in `getDeclaredFields()` order (KiCadDrcReport.java:20-57).
@@ -294,7 +295,9 @@ impl Serialize for ItemSer<'_> {
 }
 
 /// `io.kicad.KiCadDrcPosition` (KiCadDrcPosition.java:9-13), whose `coordX`/`coordY` are
-/// `@SerializedName`d back to `x`/`y` in both jars. The two `f64`s go through
+/// `@SerializedName`d back to `x`/`y` on HEAD; 2.3.0's `drc.DrcPosition` simply names the fields
+/// `x`/`y` (`javap -p`), so this is one pair of keys the two jars already agree on. The two `f64`s
+/// go through
 /// [`JavaNumberFormatter`], i.e. `Double.toString`.
 struct PositionSer<'a>(&'a KiCadDrcPosition);
 
