@@ -49,9 +49,9 @@ import java.util.Map;
  * <ul>
  *   <li>{@code 0} — the canonical dump (one {@code path=value} line per field, sorted by path);
  *       {@code <case-index|all>} picks one row or the whole table.
- *   <li>{@code 1} — the same object through {@code GsonProvider.GSON}. <b>Java-only</b> until Plan
- *       4 Task 10 gives the Rust side a Gson-shaped serialiser; {@code p4t1.rs} refuses mode 1
- *       rather than pretending to agree.
+ *   <li>{@code 1} — the same object through {@code GsonProvider.GSON}. Plan 4 Task 10 gave
+ *       {@code p4t1.rs} its twin, {@code RouterSettings::to_json_string_pretty}; the two agree
+ *       byte for byte over the whole table.
  *   <li>{@code 2} — every case, whatever {@code case-index} says ({@code all 0} and
  *       {@code <anything> 2} are the same run).
  * </ul>
@@ -258,7 +258,7 @@ public final class P4T1 {
   private static void emit(PrintStream out, RouterSettings settings, int mode) {
     if (mode == 1) {
       // Task 10's comparison surface: only the fields Gson round-trips appear, which is itself
-      // the thing that task compares. No Rust twin for it yet (see the class comment).
+      // the thing that task compares. The Rust twin is `RouterSettings::to_json_string_pretty`.
       out.println(GsonProvider.GSON.toJson(settings));
       return;
     }

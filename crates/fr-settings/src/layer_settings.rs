@@ -11,18 +11,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct LayerSettings {
     /// Whether the layer is routable by the autorouter. `LayerSettings.java:9-10`.
-    #[serde(rename = "routable")]
+    #[serde(rename = "routable", default, skip_serializing_if = "Option::is_none")]
     pub routable: Option<bool>,
 
     /// Whether the preferred trace direction on this layer is horizontal.
     /// `LayerSettings.java:12-13`.
-    #[serde(rename = "preferred_direction_horizontal")]
+    #[serde(
+        rename = "preferred_direction_horizontal",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub preferred_direction_horizontal: Option<bool>,
 
     /// Per-layer bend cost added to the maze expansion value each time the router changes
     /// direction on this layer. `None` means "use the board default". Valid range when
     /// non-`None`: 0.0 (no penalty) to 9.9 (strongly avoids bends). `LayerSettings.java:15-21`.
-    #[serde(rename = "bend_cost")]
+    #[serde(rename = "bend_cost", default, skip_serializing_if = "Option::is_none")]
     pub bend_cost: Option<f64>,
 }
 

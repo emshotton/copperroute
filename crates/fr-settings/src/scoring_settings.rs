@@ -35,44 +35,82 @@ pub struct ScoringSettings {
     pub undesired_direction_trace_cost: Option<Vec<f64>>,
 
     /// The cost of 1 mm of trace length routed in the preferred direction. `ScoringSettings.java:35-37`.
-    #[serde(rename = "default_preferred_direction_trace_cost")]
+    #[serde(
+        rename = "default_preferred_direction_trace_cost",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub default_preferred_direction_trace_cost: Option<f64>,
 
     /// The cost of 1 mm of trace length routed in the undesired direction. `ScoringSettings.java:39-41`.
-    #[serde(rename = "default_undesired_direction_trace_cost")]
+    #[serde(
+        rename = "default_undesired_direction_trace_cost",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub default_undesired_direction_trace_cost: Option<f64>,
 
     /// The cost of a via on a regular (non-plane) net. `ScoringSettings.java:43-46`.
-    #[serde(rename = "via_costs", alias = "viaCosts")]
+    #[serde(
+        rename = "via_costs",
+        alias = "viaCosts",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub via_costs: Option<i32>,
 
     /// The cost of a via placed on a plane. `ScoringSettings.java:48-49`.
-    #[serde(rename = "plane_via_costs")]
+    #[serde(
+        rename = "plane_via_costs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub plane_via_costs: Option<i32>,
 
     /// Base ripup cost for the first ripup-and-reroute pass. A routing-control parameter
     /// multiplied by the pass number inside `BatchAutorouter`; does NOT appear in the board-score
     /// formula. `ScoringSettings.java:51-58`.
-    #[serde(rename = "start_ripup_costs", alias = "startRipupCosts")]
+    #[serde(
+        rename = "start_ripup_costs",
+        alias = "startRipupCosts",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub start_ripup_costs: Option<i32>,
 
     /// The penalty for an unrouted net. `ScoringSettings.java:60-61`.
     ///
     /// `Float` in Java (not `Double`) — `f32` here. `fr_dsn::java_float_to_string` is the
     /// formatter of record if this ever reaches text (plan ruling reference, brief).
-    #[serde(rename = "unrouted_net_penalty")]
+    #[serde(
+        rename = "unrouted_net_penalty",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub unrouted_net_penalty: Option<f32>,
 
     /// The penalty for a clearance violation. `ScoringSettings.java:63-64`. `Float` in Java.
-    #[serde(rename = "clearance_violation_penalty")]
+    #[serde(
+        rename = "clearance_violation_penalty",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub clearance_violation_penalty: Option<f32>,
 
     /// The penalty for a bend. `ScoringSettings.java:66-67`. `Float` in Java.
-    #[serde(rename = "bend_penalty")]
+    #[serde(
+        rename = "bend_penalty",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub bend_penalty: Option<f32>,
 
     /// Default bend cost/penalty per direction change on a layer. `ScoringSettings.java:69-70`.
-    #[serde(rename = "default_bend_cost")]
+    #[serde(
+        rename = "default_bend_cost",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub default_bend_cost: Option<f64>,
 }
 

@@ -63,6 +63,17 @@
 //! - `layers` gets `#[serde(skip_serializing)]` only — deserialisation stays enabled, matching
 //!   the custom re-read.
 //!
+//! Task 10 finished the picture on the write side: every field also carries
+//! `skip_serializing_if = "Option::is_none"` (Gson's default is `serializeNulls = false`), and
+//! `fanout`/`optimizer`/`scoring` carry a `default = "…"` that reproduces Gson running
+//! `RouterSettings()` before the reflective adapter writes anything. See [`crate::json`] for the
+//! whole contract, `Double.toString`/`Float.toString` number formatting included.
+//!
+//! **Correction to Task 10's brief:** its `emitted_key_set_matches_gson` key list contains
+//! `"layers"`. It must not — `layers` is `transient` and the factory's `write()` never adds it
+//! back, which `RouterSettingsSerializationTest` asserts directly
+//! (`assertFalse(json.contains("\"layers\""))`) and `JProbe.java` block A re-verifies.
+//!
 //! **Correction to the task brief's illustrative code snippet:** the brief's snippet attaches
 //! `skip_serializing` to `max_items`/`save_intermediate_stages`/`ignore_net_classes` (implying
 //! they are readable, not writable) and no skip at all to `layers` (implying it round-trips both
@@ -84,43 +95,71 @@ use crate::{FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, S
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RouterSettings {
     /// `RouterSettings.java:20-21`.
-    #[serde(rename = "enabled")]
+    #[serde(rename = "enabled", default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 
     /// `RouterSettings.java:23-24`.
-    #[serde(rename = "algorithm")]
+    #[serde(rename = "algorithm", default, skip_serializing_if = "Option::is_none")]
     pub algorithm: Option<String>,
 
     /// Configuration for the SMD-pin fanout pre-pass. `RouterSettings.java:26-28`.
-    #[serde(rename = "fanout")]
+    #[serde(
+        rename = "fanout",
+        default = "crate::json::constructed_fanout",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub fanout: Option<FanoutSettings>,
 
     /// `RouterSettings.java:30-31`.
-    #[serde(rename = "copper_to_edge_clearance_um")]
+    #[serde(
+        rename = "copper_to_edge_clearance_um",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub copper_to_edge_clearance_um: Option<f64>,
 
     /// `RouterSettings.java:33-34`.
-    #[serde(rename = "hole_clearance_um")]
+    #[serde(
+        rename = "hole_clearance_um",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub hole_clearance_um: Option<f64>,
 
     /// Opt-in width necking: when a connection fails at its net-class trace width, retry it once
     /// with all trace half-widths clamped to this width (in micrometers). 0/absent = off.
     /// `RouterSettings.java:36-43`.
-    #[serde(rename = "neck_width_um")]
+    #[serde(
+        rename = "neck_width_um",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub neck_width_um: Option<f64>,
 
     /// When true, a routed connection whose newly inserted traces/vias carry clearance
     /// violations is ripped up again and counted as not routed for that pass.
     /// `RouterSettings.java:45-52`.
-    #[serde(rename = "strict_drc")]
+    #[serde(
+        rename = "strict_drc",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub strict_drc: Option<bool>,
 
     /// `RouterSettings.java:54-55`.
-    #[serde(rename = "job_timeout")]
+    #[serde(
+        rename = "job_timeout",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub job_timeout_string: Option<String>,
 
     /// `RouterSettings.java:57-58`.
-    #[serde(rename = "max_passes")]
+    #[serde(
+        rename = "max_passes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub max_passes: Option<i32>,
 
     /// `transient` — never round-tripped through JSON. See the module doc comment.
@@ -130,7 +169,7 @@ pub struct RouterSettings {
 
     /// `transient`, but specially re-read on deserialize (not on serialize). See the module doc
     /// comment. `RouterSettings.java:63-64`.
-    #[serde(rename = "layers", skip_serializing)]
+    #[serde(rename = "layers", default, skip_serializing)]
     pub layers: Option<Vec<LayerSettings>>,
 
     /// `transient` — never round-tripped through JSON. See the module doc comment.
@@ -144,7 +183,12 @@ pub struct RouterSettings {
     pub ignore_net_classes: Option<Vec<String>>,
 
     /// The accuracy of the pull tight algorithm. `RouterSettings.java:72-76`.
-    #[serde(rename = "trace_pull_tight_accuracy", alias = "tracePullTightAccuracy")]
+    #[serde(
+        rename = "trace_pull_tight_accuracy",
+        alias = "tracePullTightAccuracy",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trace_pull_tight_accuracy: Option<i32>,
 
     /// `Boolean` field under a plural-sounding JSON key: Java's own `@SerializedName` renames it
@@ -152,29 +196,54 @@ pub struct RouterSettings {
     /// type both read as a single flag, not a collection. Not a bug — just the serialised name —
     /// so no `// Java bug:` marker; this doc note is the record the controller decision asked
     /// for.
-    #[serde(rename = "allowed_via_types")]
+    #[serde(
+        rename = "allowed_via_types",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub vias_allowed: Option<bool>,
 
     /// If true, the trace width at static pins smaller than the trace width is lowered
     /// automatically to the pin width, if necessary. `RouterSettings.java:81-88`.
-    #[serde(rename = "automatic_neckdown", alias = "automaticNeckdown")]
+    #[serde(
+        rename = "automatic_neckdown",
+        alias = "automaticNeckdown",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub automatic_neckdown: Option<bool>,
 
     /// `RouterSettings.java:90-91`.
-    #[serde(rename = "optimizer")]
+    #[serde(
+        rename = "optimizer",
+        default = "crate::json::constructed_optimizer",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub optimizer: Option<OptimizerSettings>,
 
     /// `RouterSettings.java:93-94`.
-    #[serde(rename = "scoring")]
+    #[serde(
+        rename = "scoring",
+        default = "crate::json::constructed_scoring",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub scoring: Option<ScoringSettings>,
 
     /// `RouterSettings.java:96-97`.
-    #[serde(rename = "max_threads")]
+    #[serde(
+        rename = "max_threads",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub max_threads: Option<i32>,
 
     /// Optional path for a machine-readable routing result manifest (JSON). Used by benchmark and
     /// autopilot harnesses; ignored when `None` or blank. `RouterSettings.java:99-104`.
-    #[serde(rename = "result_json")]
+    #[serde(
+        rename = "result_json",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub result_json_path: Option<String>,
 
     /// When `Some(true)`, per-layer trace costs were initialized from board geometry (or set

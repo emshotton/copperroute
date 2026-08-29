@@ -222,10 +222,12 @@ methods with dozens of branches.
       `boardSpecificTraceCostsApplied` (through its accessor). The
       `copyFields` change count is deliberately **not** printed (plan 4
       ruling 2 — it is not reproducible and no caller reads it).
-    - `1` — the same object through `GsonProvider.GSON`. **Java-only** until
-      Plan 4 Task 10 (serde parity) gives the Rust side a Gson-shaped
-      serialiser; `p4t1` exits 3 on mode 1 rather than printing something that
-      could agree by accident, so `run.sh p4t1 … 1` is not a passing run yet.
+    - `1` — the same object through `GsonProvider.GSON` on the Java side and
+      `RouterSettings::to_json_string_pretty` on the Rust side (Plan 4 Task 10).
+      Byte-for-byte: two-space indent, `getDeclaredFields()` key order, `null`
+      fields omitted (Gson's default `serializeNulls = false`), floats through
+      `Double.toString`/`Float.toString`, and the seven `transient` fields
+      absent. 84 cases, 4 287 lines, **0 diffs**.
     - `2` — every case, whatever `<case-index>` says. `all 0` and
       `<anything> 2` are the same run.
 
@@ -474,11 +476,24 @@ the driver expects, or none at all.
   84 cases, 5 728 lines, **0 diffs**. Measured on the reference machine
   (JDK 25, `-XX:ActiveProcessorCount=4`): 2.3 s for the JVM side, 0.6 s for the
   Rust side, ~15 s for the whole `run.sh` invocation once both sides are built
-  (most of that is `javac`). Mode 1 is Java-only (see "Layout").
+  (most of that is `javac`). Mode 1 — the Gson dump — is the same 84 cases,
+  4 287 lines, 0 diffs (Plan 4 Task 10).
 
   ```sh
   ./scripts/differential/run.sh p4t1                    # all 84 cases, mode 0
+  ./scripts/differential/run.sh p4t1 scripts/differential/matrix/p4t1-cases.tsv all 1  # the Gson dump
   ./scripts/differential/run.sh p4t1 scripts/differential/matrix/p4t1-cases.tsv 8 0   # one case
+  ```
+
+  Mode 1's Java output, with its two header lines stripped, is committed as
+  `crates/fr-settings/tests/golden/p4t1-mode1/all.txt`, so
+  `crates/fr-settings/tests/json.rs::p4t1_mode_1_parity` keeps the Gson parity
+  pinned without a JVM. Regenerate it with
+
+  ```sh
+  ./scripts/differential/run.sh p4t1 scripts/differential/matrix/p4t1-cases.tsv all 1
+  tail -n +3 scripts/differential/build/p4t1.j.out \
+    > crates/fr-settings/tests/golden/p4t1-mode1/all.txt
   ```
 
   **The transcription risk, and how to re-check it.** `P4T1.java` is the only
@@ -529,7 +544,6 @@ covers.
 
 | Item | Why it is open | Raised by |
 |---|---|---|
-| `p4t1` mode 1 (the Gson dump) has no Rust twin | Plan 4 Task 10 owns serde/Gson key parity; until it lands there is nothing on the Rust side shaped like `GsonProvider.GSON.toJson`, so `p4t1` exits 3 on mode 1 rather than emitting a near-miss that could agree by accident. The Java half is written and works, so Task 10's job is to add the twin, not the driver. | Plan 4 Task 9 |
 | `p4t1` builds `scheduler_rules` from the board-structured parse | `fr_settings::SettingsInputs` has one field where Java has two differently-parsed objects (see the `p4t1` entry under "Per-driver arguments"). Exact for every case with a board, but a Plan 8 caller that wires the field from `RulesFileSettings` alone will be wrong on any board whose layer set is a strict superset of the `.rules` file's — 13 of these 84 rows. Either `SettingsInputs` grows a second field or the hand-off says which parse belongs there. | Plan 4 Task 9 |
 | `p3t2` mode 0 never formats a rotation above `1e7` | `formatPlacementRotation` is exercised in modes 1-3, whose generators keep values inside DSN coordinate ranges and `[0, 360)`. `Double.toString` switches to `E` notation at `1e7`, and no mode drives a *rotation* across that boundary — so the `String.format("%.3f", …)` path is unproven for a value that large. Java only ever passes it a placement angle, so nothing reachable produces one; it is coverage debt, not a suspected bug. | Plan 3 Task 2 review |
 | `crates/fr-dsn/src/format/double.rs` shadows `point` twice (`:148` `i32`, `:154` `usize`) | Deliberate — the first is signed so the "value below 1" branch can subtract, the second is the index the layout loop needs — but two bindings of one name in twelve lines is easy to misread. A rename (`point_signed` / `point`) is a safe, mechanical change nobody has had a reason to make yet. | Plan 3 Task 2 review |
@@ -591,6 +605,7 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p3t15` sweep (all 5 modes × all 106 fixtures = **530 pairs**) | see below | **0 unexpected** | 525 MATCH + 5 `XDIFF` (`Issue229` modes 0-3, `empty_board` mode 3), both explained in the next two rows |
 | `p3t15` (`Issue229-display-8-digit-hc595.dsn`, modes 0-3) | Java 3 / 59 / 18 / 0 vs Rust 502 / 3907 / 1922 / 55 | XDIFF | **Expected** (controller ruling E). The 2.3.0 jar's `DsnFile.readStringScope` has no resync loop where the clone's HEAD does, and the port follows HEAD (the plan's Java source authority), so the two readers legitimately build different boards from this file. The 2.3.0 reader gives up after one item where the port builds 501; mode 3 is Java 0 lines because the collapsed board also has no library, so `RulesWriter` NPEs on it as it does for `empty_board.dsn` below. Mode 4 — the raw token stream — still MATCHes on this file, which is the evidence that the divergence is in the parser and not in the scanner. Never "fixed" by changing the port. |
 | `p4t1` (`matrix/p4t1-cases.tsv`, `all 0`) | 5728 | 0 | exact match — 84 cases (Task 8's 64-case matrix + 20 Task 9 rows) of the real two-merge headless composition against `fr_settings::resolve_headless` |
+| `p4t1` (`matrix/p4t1-cases.tsv`, `all 1`) | 4287 | 0 | exact match — the same 84 cases through `GsonProvider.GSON` vs `RouterSettings::to_json_string_pretty` (Plan 4 Task 10) |
 | `p3t15` (`empty_board.dsn`, mode 3) | Java 0 / Rust 20 | XDIFF | **Expected** — Java throws. The file has no `(library …)` scope at all, so `BoardLibrary.padstacks` stays `null` and `RulesWriter.writeRules` NPEs on `padstacks.count()` (`NullPointerException: Cannot invoke "app.freerouting.core.Padstacks.count()" because "p_par.board.library.padstacks" is null`). The port's field is a value, not a reference, so it writes a complete 20-line `.rules` file. New in Task 15; recorded in `docs/java-quirks.md`'s totalization table. |
 
 Every diff line traces to an already-documented, deliberate divergence in

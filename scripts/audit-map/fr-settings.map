@@ -28,3 +28,8 @@ CliSettings                 sources/cli.rs
 GlobalSettings              sources/cli.rs
 JsonFileSettings            lib.rs
 GuiSettingsSource           lib.rs
+# Task 10: the Gson configuration `RouterSettings`'s JSON in/out reproduces. `util/gson` is not
+# one of this plan's three audit invocations; these rows are here so Task 11's roster can add it
+# without first having to find the port.
+GsonProvider                json.rs
+RouterSettingsTypeAdapterFactory json.rs

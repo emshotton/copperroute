@@ -9,8 +9,10 @@
 //! # Modes
 //!
 //! * `0` — the canonical dump. `<case-index|all>` picks one row or the whole table.
-//! * `1` — Java-only (Gson). Plan 4 Task 10 owns serde parity; this driver refuses the mode
-//!   rather than emitting something that would agree by accident.
+//! * `1` — the same object through `GsonProvider.GSON` on the Java side and
+//!   `RouterSettings::to_json_string_pretty` here (Plan 4 Task 10). Byte-for-byte: two-space
+//!   indent, declaration key order, `null` fields omitted, floats through `Double.toString` /
+//!   `Float.toString`, and the seven `transient` fields absent.
 //! * `2` — every case, whatever `<case-index>` says (`all 0` and `<anything> 2` are the same run).
 //!
 //! Every case is preceded by a `CASE <id>` line, so a diff names the row that moved.
@@ -155,15 +157,6 @@ fn main() {
     let select = args[1].clone();
     let mode: u8 = args[2].parse().expect("mode must be 0-2");
 
-    if mode == 1 {
-        eprintln!(
-            "p4t1: mode 1 is the Gson dump, which Plan 4 Task 10 (serde parity) owns. The Rust \
-             side has no Gson-shaped serialiser yet, so this driver refuses the mode instead of \
-             printing something that could agree by accident."
-        );
-        std::process::exit(3);
-    }
-
     let stdout = std::io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
@@ -209,7 +202,11 @@ fn main() {
     };
     for case in selected {
         writeln!(out, "CASE {}", case.id).expect("write");
-        emit(&mut out, &resolve_case(case, &fixtures, &data, &host));
+        emit(
+            &mut out,
+            &resolve_case(case, &fixtures, &data, &host),
+            if mode == 2 { 0 } else { mode },
+        );
     }
 }
 
@@ -352,7 +349,19 @@ fn build_board(case: &Case, dsn_bytes: Option<&[u8]>) -> Board {
 // the normalised dump — the Java field names, sorted by path
 // -------------------------------------------------------------------------------------------
 
-fn emit(out: &mut impl Write, settings: &RouterSettings) {
+fn emit(out: &mut impl Write, settings: &RouterSettings, mode: u8) {
+    if mode == 1 {
+        // Task 10's comparison surface: `GsonProvider.GSON.toJson(settings)` on the Java side.
+        writeln!(
+            out,
+            "{}",
+            settings
+                .to_json_string_pretty()
+                .expect("a resolved RouterSettings has no non-finite float")
+        )
+        .expect("write");
+        return;
+    }
     let mut lines: Vec<String> = Vec::new();
     dump_router(&mut lines, settings);
     lines.sort();

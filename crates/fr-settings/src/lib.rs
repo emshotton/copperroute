@@ -27,7 +27,9 @@
 //! `DsnRouterSettings` ⇄ `RouterSettings` conversion pair Plan 3 ruling 5 parked here. Task 7
 //! adds the environment-variable and CLI sources, plus the dead `LegacyBridge` (plan ruling 8)
 //! and `classify_de_arguments` (plan ruling 10); Task 8 adds [`resolve`] — `resolve_headless`, the linear
-//! form of Java's two-merge headless precedence, and `resolve_scheduler_rules_path`.
+//! form of Java's two-merge headless precedence, and `resolve_scheduler_rules_path`. Task 10
+//! adds [`json`] — `RouterSettings::from_json_str`/`to_json_string_pretty`, the Gson-compatible
+//! JSON in and out `util/gson/{GsonProvider,RouterSettingsTypeAdapterFactory}.java` define.
 
 pub mod board_optimizations;
 pub mod copy_fields;
@@ -36,6 +38,7 @@ pub mod error;
 pub mod fanout_settings;
 pub mod field_path;
 pub mod host;
+pub mod json;
 pub mod layer_settings;
 pub mod merger;
 pub mod optimizer_settings;
