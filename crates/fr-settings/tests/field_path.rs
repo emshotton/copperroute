@@ -227,6 +227,24 @@ fn boolean_conversion_silently_falls_back_to_false() {
     assert_eq!(settings.enabled, Some(false));
 }
 
+/// The array-navigation branch trims each token before handing it to `convertValue`
+/// (`ReflectionUtil.java:71`, `valTokens[i].trim()`), but a scalar leaf's value reaches
+/// `Boolean.parseBoolean` untrimmed — so the same `" true "` means `true` through an array and
+/// `false` at the top level. JVM-verified: `layers.routable = " true , true "` gives
+/// `true,true` while `enabled = " true "` gives `false`.
+#[test]
+fn array_tokens_are_trimmed_but_scalar_leaves_are_not() {
+    let mut settings = RouterSettings::new();
+    settings.set_layer_count(2);
+    set_field_value(&mut settings, "layers.routable", " true , true ").expect("resolves");
+    let layers = settings.layers.as_ref().expect("allocated");
+    assert_eq!(layers[0].routable, Some(true));
+    assert_eq!(layers[1].routable, Some(true));
+
+    set_field_value(&mut settings, "enabled", " true ").expect("resolves");
+    assert_eq!(settings.enabled, Some(false));
+}
+
 // ---------------------------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------------------------
