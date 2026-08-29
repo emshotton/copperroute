@@ -318,6 +318,65 @@ methods with dozens of branches.
     It calls `FRLogger.disableLogging()` first, because `completeShape` warns
     on stdout for every seed room whose shape is of the wrong class for the
     regime and the port drops every `FRLogger` payload.
+  - `P6T3.java` — `SortedRoomNeighbours`, the any-angle neighbour sorter (Plan 6
+    Task 4). Twin: `p6t3`. It declares `package
+    app.freerouting.autoroute.expansion;` and reaches the class's `private`
+    members by reflection — `calculateNeighbours`, the `sortedNeighbours` /
+    `ownNetObjects` / `completedRoom` fields, and the whole `private class
+    SortedRoomNeighbour`. There is no other way to see the sorted list:
+    `calculate` consumes the instance and returns only the completed room, and
+    every method above `calculateNeighbours` needs an `AutorouteEngine`, which
+    the port does not have until Task 6. Compiled and run against the clone's
+    HEAD jar with a **JDK 25**, like `p6t2`, with `FRLogger.disableLogging()`
+    first.
+
+    Five modes, and each buys something different:
+
+    - `0` — the brief's mode. The `P2T10.java` board plus `n` random obstacle
+      areas, the autoroute tree seeded with three
+      `CompleteFreeSpaceExpansionRoom`s (so `calculateNeighbours` really meets
+      `TreeObject::Room` leaves, which is the arm `fr-board`'s
+      `tree_shape_of`/`ignore_object` used to panic on), and `rooms` seed rooms
+      that are either a `completeShape` output — what
+      `AutorouteEngine.completeExpansionRoom` actually hands the sorter — or an
+      obstacle room over a random item shape. A *random box* seed room is
+      useless here: it almost never **touches** anything, so every interesting
+      branch stays dead.
+    - `4` — mode 0 with every obstacle snapped to a 500-unit grid. Without it a
+      completed room's corner never lands exactly on an obstacle's and
+      `calculateNeighbours`' whole **dimension-0** branch
+      (`SortedRoomNeighbours.java:286-326` — `equalsCorner`,
+      `containsOnBorderLineNo`, both corner flags) is never reached: mode 0
+      produces no corner touch at all.
+    - `5` — the **whole** of `SortedRoomNeighbours.complete` against a real
+      `AutorouteEngine` (`new AutorouteEngine(routingBoard, 1, false)` plus
+      `initConnection`): `tryRemoveEdge` and its `completeShape` retry,
+      `calculateNewIncompleteRooms`, `calculateIncompleteRoomsWithEmptyNeighbours`
+      and `calculateTargetDoors` — some 250 lines mode 0 cannot reach, because
+      everything above `calculateNeighbours` mutates engine state. The port has
+      no engine until Task 6, so it drives the same five services out of its
+      `ExpansionRoomStore`; what is compared is the engine-visible result (the
+      completed room and its shape, its doors and target doors, the seed room's
+      shape after `tryRemoveEdge`, and every incomplete room on the engine's
+      list). The room ids come from the engine's own counter on both sides so
+      they stay in lockstep, and the incomplete list is reset between calls —
+      nothing drains it here, and letting it grow makes the dump quadratic.
+      **Both sides skip a call whose room shape has more border lines than its
+      `toSimplex()` does**: that is quirk #162, an unterminating loop in
+      `calculateNewIncompleteRooms` that kills the JVM with an
+      `OutOfMemoryError` (seed 42 reaches it at `i=124`), and it is skipped
+      rather than tolerated. It costs 4 of 1 000 completions.
+    - `1`, `2`, `3` — the hazard-F probes, which build `SortedRoomNeighbour`s
+      through the inner class's constructor and insert them into a `TreeSet`
+      with no board in the way. `1` is random touches on all four sides; `2`
+      puts every neighbour of a probe on the **same** side, so the comparator's
+      first key always ties; `3` gives every neighbour `roomTouchIsCorner`, so
+      both corners collapse to the room's own corner, every distance delta is 0
+      and only the `Direction.compareFrom` branch and the id difference are
+      left. Mode 3 is what found the divergence that made the port transcribe
+      `java.util.TreeMap` (quirk #160): with the port on a `BTreeSet` it diffed
+      in both directions — an element Java keeps that a `BTreeSet` drops, and a
+      different survivor order.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader
@@ -356,10 +415,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t2`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t2`, `p6t3`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t2`).
+  since Plan 6 on `fr-router` (for `p6t2` and `p6t3`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -382,7 +441,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t2` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t2`/`p6t3` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -687,6 +746,23 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p6t2 5 5 2000   # a sparser one
   ```
 
+- `p6t3 <mode> <seed> <n> <rooms>` — `SortedRoomNeighbours::calculate_neighbours`
+  against `SortedRoomNeighbours.calculateNeighbours`, and the comparator behind
+  it (Plan 6 Task 4). Defaults `0 42 20 1000`. Per call it prints every sorted
+  neighbour (both touching side numbers, both corner flags, both corners, the
+  neighbour object's kind and id, its shape and the intersection with their
+  corner lists), the deferred own-net list, and the completed room's door list
+  (`first_room`, `second_room`, `dimension`, shape corners) — geometry and
+  order, never counts.
+
+  ```sh
+  ./scripts/differential/run.sh p6t3                  # 0 42 20 1000 — 7 597 lines, 0 diffs
+  ./scripts/differential/run.sh p6t3 4 42 30 1000     # the grid board: corner touches
+  ./scripts/differential/run.sh p6t3 3 42 0 2000      # the hazard-F probe (quirk #160)
+  ./scripts/differential/run.sh p6t3 0 5 5 2000       # a sparser board
+  ./scripts/differential/run.sh p6t3 5 42 20 1000     # the whole of `complete`, with an engine
+  ```
+
   **What mode 3 buys, and why it exists.** The ratsnest has exactly one free
   choice in it: `NetIncompletes.calculateNetItems` seeds its outer loop from
   `uniqueItems.iterator().next()` over a `HashSet<Item>`
@@ -780,6 +856,13 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p6t2` (seed 42, n=20, 2000 rooms) | 26979 | 0 | exact match (6 000 `completeShape` + 6 000 `divideLargeRoom` calls, 2 000 per angle regime) |
 | `p6t2` (seeds 7/123/999/20260829, n=40) | 26433-26933 | 0 | exact match |
 | `p6t2` (seed 0 n=60, seed 42 n=120, seed 5 n=5) | 12809-29588 | 0 | exact match (denser and sparser boards) |
+| `p6t3` mode 0 (seed 42, n=20, 1000 rooms) | 7597 | 0 | exact match (`calculateNeighbours`, its sorted set and its doors) |
+| `p6t3` mode 0 (seeds 7/123/999/20260829/0/5) | 7135-20110 | 0 | exact match |
+| `p6t3` mode 4 (grid obstacles, seeds 42/7/999/20260829) | 8192-17951 | 0 | exact match — the only mode that reaches the dimension-0 corner-touch branch |
+| `p6t3` mode 1 (20 000 comparator probes) | 179296 | 0 | exact match (250 silent `TreeSet` drops, all the same ones) |
+| `p6t3` mode 2 (30 000 same-side probes) | 262021 | 0 | exact match (8 374 drops) |
+| `p6t3` mode 3 (30 000 corner-touch probes, seeds 20260829/7) | 292682, 293041 | 0 | exact match — **with `JavaTreeSet`**; on a `BTreeSet` this mode diffs (quirk #160) |
+| `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the ~0.4 % of calls quirk #162 makes non-terminating |
 | `p2t15` (10 seeds × n∈{30,120}) | 499-1111 | 0 | exact match at every one of the 20 seed/n combinations (see "`p2t15` sweep" below) |
 | `p3t2` (mode 0, seed 42) | 10000000 | 0 | exact match (`Double.toString`/`Float.toString` over random bit patterns) |
 | `p3t2` (mode 1, seed 42) | 1000000 | 0 | exact match (DSN-coordinate-shaped values; adds `formatPlacementRotation`) |

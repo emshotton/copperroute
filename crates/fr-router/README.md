@@ -215,7 +215,9 @@ from 28 to **27**, both at zero UNMAPPED; Task 3 left both untouched, because
 `fr-board`. There the two `// added in Plan 6:` markers on
 `crates/fr-board/src/searchtree/shape_search_tree.rs` became `renamed:` markers
 naming `AutorouteSearchTreeExt`, and `./scripts/audit-port.sh board/searchtree
-crates/fr-board/src` still exits 0.
+crates/fr-board/src` still exits 0. Task 4 took `autoroute/expansion` from 13
+MISSING to **6** — exactly the two 45-degree/90-degree siblings, three methods
+each, which are Task 5's.
 
 ## Quirk-register numbering
 
@@ -224,6 +226,54 @@ written**. Plan 6's plan text labels its rows `#155`–`#168`, but `#155` was
 already taken by Plan 5, so those labels are **not** row ids. Task 2 wrote the
 first three Plan 6 rows and they landed as **#156, #157, #158**; Task 3 wrote
 **#159** (`ShapeSearchTree90Degree.completeShape` drops a room the base class
-and the 45-degree override keep), so the next free id is **#160**. Every later
-task must re-read the register's last row rather than trust the plan's labels —
-the plan carries an amendment saying so.
+and the 45-degree override keep); Task 4 wrote **#160** (the non-transitive
+`SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop) and **#161**
+(the id tie-break subtracting a room id from an item id) and **#162** (an
+unterminating `calculateNewIncompleteRooms`), so the next free id is **#163**. Every later task must re-read the register's last row rather than
+trust the plan's labels — the plan carries an amendment saying so.
+
+## `SortedRoomNeighbours` (Task 4), and why the crate has a `JavaTreeSet`
+
+`crates/fr-router/src/autoroute/expansion/sorted_neighbours.rs` ports the
+any-angle base class and `selectCalculationMode`; the two angle-restricted
+siblings are Task 5's and `complete` falls through to the base algorithm until
+they land. Java's entry points take an `AutorouteEngine`; the port takes apart
+the five services they read off it (net number, tree id,
+`generateRoomIdNo`, `removeAllDoors`, `addIncompleteExpansionRoom`), so Task 6's
+engine can call it without any signature here changing.
+
+**Plan-6 ruling 4 says the neighbour set is a `BTreeSet`. It cannot be.**
+`SortedRoomNeighbour.compareTo` is not a total order, and on such a comparator
+`std`'s `BTreeSet` and Java's `TreeSet` keep *different* elements and iterate
+the survivors in *different* orders — both measured, against the HEAD jar, by
+`scripts/differential/run.sh p6t3 3`. The container is therefore
+`crates/fr-router/src/java_tree_set.rs`'s `JavaTreeSet`, a transcription of
+`java.util.TreeMap`'s red-black `put`, `fixAfterInsertion` and in-order
+traversal. Quirk row #160 records the measurement; the test
+`the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does` pins
+both the Java answer and the `BTreeSet` answer so the choice cannot be
+"simplified" away. **Task 8's `MazeListElement` queue should re-check the same
+question** before reusing `BTreeSet`: ruling 4 also prescribes one there, and its
+comparator has a documented five-way `Equal` (quirk #156).
+
+`scripts/differential/run.sh p6t3` covers the class in six modes: `0`/`4` are
+`calculateNeighbours` over a random board (`4` snaps the obstacles to a grid,
+which is the only way the **dimension-0** corner-touch branch is ever reached);
+`5` is the whole of `complete` against a real Java `AutorouteEngine`; `1`/`2`/`3`
+are the comparator probes. Mode 5 also found **quirk #162**: an unterminating
+`calculateNewIncompleteRooms` — `:512` indexes `fromRoom.getShape().toSimplex()`
+with side numbers computed against the *un-simplified* shape, and when
+`toSimplex()` dropped the line `firstTouchingSideNo` names, the `for (;;)` at
+`:562` allocates rooms for ever. It is reproduced, not guarded; the driver skips
+those calls on both sides.
+
+## The `fr-board` obligation Task 4 discharges
+
+`ShapeSearchTree::tree_shape_of` and `ignore_object` used to panic on a
+`TreeObject::Room`. They now take a `RoomLookup` — the room counterpart of
+`ItemLookup`, with `room_tree_shape` and `room_shape_layer`, implemented in this
+crate by `ExpansionRoomStore`. The queries gained `*_with_rooms` twins
+(`overlapping_tree_entries_with_rooms`, `overlapping_objects_with_rooms`); the
+original signatures are delegating wrappers that pass `NoRooms`, so every Plan
+2-5 caller and test is untouched and a board-level caller that reaches a room
+leaf still panics, deliberately.

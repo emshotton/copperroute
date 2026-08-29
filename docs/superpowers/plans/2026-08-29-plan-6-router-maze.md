@@ -1185,11 +1185,27 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #160** (Task 3 landed #159: the 90° `completeShape` override drops a room it
-> ignores by shape). Tasks 4, 5, 8 and 12 must take the next free id *at the time
+> **The next free row id is #163.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> a room it ignores by shape); Task 4 landed **#160** (the non-transitive
+> `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
+> id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
+> plan did not anticipate: `SortedRoomNeighbours.calculateNewIncompleteRooms` **does not
+> terminate** when `fromRoom.getShape().toSimplex()` has fewer border lines than the shape the
+> side numbers were computed against. Tasks 5, 8 and 12 must take the next free id *at the time
 > they write*, re-checking `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
 > row); do not write it again.
+>
+> **Amendment (Task 4) — hazard F's container.** Ruling 4 and Task 4's brief both prescribe a
+> `BTreeSet` for `SortedRoomNeighbours.sortedNeighbours`. **It does not reproduce Java.** On a
+> comparator that is not a total order, `std`'s `BTreeSet` (binary search inside a B-tree node) and
+> `java.util.TreeSet` (a root-to-leaf walk of a red-black tree) compare different pairs, so they
+> **keep different elements and iterate the survivors in different orders** — measured against the
+> HEAD jar by `scripts/differential/run.sh p6t3 3`, which diffs in both of those ways with a
+> `BTreeSet` and is byte-for-byte with a transcription of `java.util.TreeMap`
+> (`crates/fr-router/src/java_tree_set.rs`). Task 8 must re-run the same question before putting
+> `MazeListElement` in a `BTreeSet`: its `compareTo` has a documented five-way `Equal` (quirk #156)
+> and a NaN fall-through (plan label #155), and neither is a total order either.
 
 | new # | what | Java site |
 |---|---|---|

@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t2" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t2, p6t3" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -199,6 +199,17 @@ case "$driver" in
     javaclass=P6T2
     javapkg="board.searchtree"
     default_args=(42 20 2000)
+    needs_jar=1
+    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
+    ;;
+  p6t3)
+    # Plan 6 Task 4: `SortedRoomNeighbours` — the any-angle neighbour sorter, its comparator and
+    # the doors `calculateNeighbours` builds. Declares `package app.freerouting.autoroute.expansion`
+    # so it can reflect into the class's private members (the sorted set is unobservable from
+    # outside), and compiles against the clone's HEAD jar like `p6t2`.
+    javaclass=P6T3
+    javapkg="autoroute.expansion"
+    default_args=(0 42 20 1000)
     needs_jar=1
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     ;;

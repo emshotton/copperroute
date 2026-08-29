@@ -43,6 +43,7 @@
 pub mod arena;
 pub mod autoroute;
 pub mod error;
+pub mod java_tree_set;
 
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 pub use autoroute::{
@@ -52,6 +53,7 @@ pub use autoroute::{
     ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor,
 };
 pub use error::RouterError;
+pub use java_tree_set::JavaTreeSet;
 
 /// `AutorouteControl.ExpansionCostFactor` (`autoroute/maze/AutorouteControl.java:287`), the
 /// per-layer horizontal/vertical trace-cost pair.
@@ -67,8 +69,9 @@ pub mod prelude {
         Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteSearchTreeExt,
         CompleteFreeSpaceExpansionRoom, DoorId, DrillId, ExpandableRef, ExpansionCostFactor,
         ExpansionDoor, ExpansionRoomStore, FreeSpaceExpansionRoom,
-        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, MazeAdjustment, MazeSearchElement,
-        ObstacleExpansionRoom, PageId, RoomRef, RouterError, TargetDoorId, TargetItemExpansionDoor,
+        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
+        MazeSearchElement, ObstacleExpansionRoom, PageId, RoomRef, RouterError, TargetDoorId,
+        TargetItemExpansionDoor,
     };
 }
 

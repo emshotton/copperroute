@@ -177,11 +177,13 @@ impl ObstacleExpansionRoom {
     }
 }
 
-// added in Task 4: `ObstacleExpansionRoom.createOverlapDoor`
-// (ObstacleExpansionRoom.java:72-100) — its five guards read `Item.isRoutable`,
-// `Item.sharesNet` and `instanceof PolylineTrace`, and its only caller is
-// `SortedRoomNeighbours.calculateNewIncompleteRooms` (Task 4), which is also where the door it
-// creates is linked into both rooms.
+// renamed: `ObstacleExpansionRoom.createOverlapDoor` (ObstacleExpansionRoom.java:72-100) is
+// `crate::autoroute::expansion::sorted_neighbours::create_overlap_door`, a free function rather
+// than a method: three of its five guards read the **board** (`Item.isRoutable`,
+// `Item.sharesNet`, `instanceof PolylineTrace`) and the door it builds has to go into the
+// store's arena, neither of which a `&mut self` on this struct can reach. Its only caller is
+// `SortedRoomNeighbours.calculateNeighbours` (`SortedRoomNeighbours.java:240` — the 2-dimensional
+// overlap branch; the marker this replaces named `calculateNewIncompleteRooms`, which is wrong).
 //
 // not ported: `ObstacleExpansionRoom.emitDiagnostic` (ObstacleExpansionRoom.java:150-158) — an
 // `AutorouteDiagnostic.Sink`, i.e. a GUI overlay (`global-constraints.md`).

@@ -37,6 +37,54 @@ impl ItemLookup for BTreeMap<ItemId, Item> {
     }
 }
 
+/// Read access to the **expansion rooms** a router has inserted into this tree, for the query
+/// methods that have to resolve a [`TreeObject::Room`] leaf.
+///
+/// The room counterpart of [`ItemLookup`], and it exists for the same reason: a leaf holds a
+/// [`TreeObject`] key, not the object, and `fr-board` cannot name
+/// `autoroute.expansion.CompleteFreeSpaceExpansionRoom` — the room and its arena live in
+/// `fr-router` (plan-6 ruling 16). Java has no such interface because
+/// `CompleteFreeSpaceExpansionRoom implements SearchTreeObject`
+/// (`autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:19-20`) and the tree simply asks
+/// the object.
+///
+/// Both methods drop the `index` argument their Java originals take, because both Java bodies
+/// ignore it: `getTreeShape(ShapeTree, int)` answers `getShape()` (`:66-69`) and
+/// `shapeLayer(int)` answers `getLayer()` (`:71-74`) — a room has exactly one tree shape
+/// (`treeShapeCount` is the constant 1, `:62-64`). The third `SearchTreeObject` method the
+/// queries call, `isObstacle(int)`, is the constant `true` for every net (`:76-79`) and so needs
+/// no lookup at all.
+///
+/// `None` means "this id is not a live room", which is Java's dead reference: every caller below
+/// panics on it exactly where Java would have thrown a `NullPointerException`.
+pub trait RoomLookup {
+    /// `CompleteFreeSpaceExpansionRoom.getTreeShape(ShapeTree, int)`
+    /// (CompleteFreeSpaceExpansionRoom.java:66-69).
+    fn room_tree_shape(&self, id: RoomId) -> Option<&TileShape>;
+
+    /// `CompleteFreeSpaceExpansionRoom.shapeLayer(int)`
+    /// (CompleteFreeSpaceExpansionRoom.java:71-74).
+    fn room_shape_layer(&self, id: RoomId) -> Option<usize>;
+}
+
+/// The [`RoomLookup`] of a tree that holds no expansion rooms — every board-level caller.
+///
+/// It is what the room-free overloads below pass, so a `TreeObject::Room` leaf reached through
+/// one of them panics with the message it panicked with before this trait existed rather than
+/// being silently skipped. Only `fr-router` ever supplies a real room lookup.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NoRooms;
+
+impl RoomLookup for NoRooms {
+    fn room_tree_shape(&self, _id: RoomId) -> Option<&TileShape> {
+        None
+    }
+
+    fn room_shape_layer(&self, _id: RoomId) -> Option<usize> {
+        None
+    }
+}
+
 /// One `TreeSet<EntrySortedByClearance>` element (ShapeSearchTree.java:1135-1158).
 ///
 /// Java's `compareTo` is `Signum.asInt(clearance - other.clearance)` and then
@@ -718,13 +766,14 @@ impl ShapeSearchTree {
     /// the tree calling `setSearchTreeEntries` back into it (the `not ported: Storable` note on
     /// [`ShapeTree`]), which is the same inversion [`ShapeSearchTree::insert_item`] uses.
     ///
-    /// obligation: the two `TreeObject::Room` arms of the private `tree_shape_of` and
-    /// `ignore_object` still panic — both now carry an `added in Task 4:` marker saying so — so
-    /// a room inserted here must not be reached by
-    /// [`Self::overlapping_tree_entries`] and friends until Plan 6 Task 4 gives those queries a
-    /// way to resolve a room's shape and layer. The low-level
-    /// [`ShapeTree::overlaps`](crate::datastructures::ShapeTree::overlaps) is unaffected —
-    /// it never looks inside the object key.
+    /// A room inserted here is answered by the `*_with_rooms` queries
+    /// ([`Self::overlapping_tree_entries_with_rooms`],
+    /// [`Self::overlapping_objects_with_rooms`]), which take the [`RoomLookup`] that resolves
+    /// its shape and layer. The room-free overloads pass [`NoRooms`] and therefore still panic
+    /// on a room leaf — deliberately, because a board-level caller that reaches one has queried
+    /// a tree it does not own. (Plan 6 Task 4 discharged the obligation this note used to
+    /// record.) The low-level [`ShapeTree::overlaps`](crate::datastructures::ShapeTree::overlaps)
+    /// is unaffected — it never looks inside the object key.
     pub fn insert_room(&mut self, room: RoomId, shape: &TileShape) -> Option<LeafId> {
         let bounds = self.tree.bounding_shape(shape)?;
         Some(self.tree.insert_leaf(TreeObject::Room(room), 0, bounds))
@@ -796,6 +845,7 @@ impl ShapeSearchTree {
         &self,
         entry: TreeEntry<TreeObject>,
         items: &'a impl ItemLookup,
+        rooms: &'a impl RoomLookup,
         ctx: &ItemCtx<'_>,
     ) -> Cow<'a, TileShape> {
         match entry.object {
@@ -814,21 +864,18 @@ impl ShapeSearchTree {
                         )
                     })
             }
-            // added in Task 4: `CompleteFreeSpaceExpansionRoom.getTreeShape`
-            // (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:66-69). Rooms **have
-            // arrived**: Plan 6 Task 2 populated `TreeObject::Room` through
-            // [`Self::insert_room`], so this arm is now reachable rather than hypothetical.
-            // What is still missing is the *resolution* — a room's shape lives in `fr-router`'s
-            // arena and `fr-board` has no way to look it up — so plan-6 Task 4 owes this
-            // method (and [`Self::ignore_object`]) a room lookup before `SortedRoomNeighbours`
-            // queries a tree that holds rooms.
-            TreeObject::Room(id) => {
+            // `CompleteFreeSpaceExpansionRoom.getTreeShape`
+            // (autoroute/expansion/CompleteFreeSpaceExpansionRoom.java:66-69), which ignores
+            // both of its arguments and answers the room's own shape. `fr-board` cannot name a
+            // room, so the shape comes from the caller's [`RoomLookup`] — [`NoRooms`] for every
+            // board-level caller, `fr-router`'s room store for `SortedRoomNeighbours`.
+            TreeObject::Room(id) => Cow::Borrowed(rooms.room_tree_shape(id).unwrap_or_else(|| {
                 panic!(
-                    "ShapeSearchTree: expansion room {id:?} — room shape resolution is owed by \
-                     plan-6 Task 4; until then no room-bearing tree may be queried through \
-                     overlapping_tree_entries"
+                    "ShapeSearchTree: expansion room {id:?} has a leaf in tree {:?} but the \
+                     supplied RoomLookup does not resolve it — Java NPEs here too",
+                    self.id
                 )
-            }
+            })),
         }
     }
 }
@@ -856,7 +903,26 @@ impl ShapeSearchTree {
         items: &impl ItemLookup,
         ctx: &ItemCtx<'_>,
     ) -> BTreeSet<TreeObject> {
-        self.overlapping_tree_entries(shape, layer, ignore_net_nos, items, ctx)
+        self.overlapping_objects_with_rooms(shape, layer, ignore_net_nos, items, &NoRooms, ctx)
+    }
+
+    /// [`Self::overlapping_objects`] over a tree that also holds expansion rooms — the same
+    /// method, with the [`RoomLookup`] that resolves a [`TreeObject::Room`] leaf.
+    ///
+    /// Java needs no such twin: its leaves hold the `SearchTreeObject` itself. Added in plan-6
+    /// Task 4 for `SortedRoomNeighbours`, which queries the autoroute tree after the engine has
+    /// been inserting complete rooms into it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn overlapping_objects_with_rooms(
+        &self,
+        shape: &TileShape,
+        layer: Option<usize>,
+        ignore_net_nos: &[i32],
+        items: &impl ItemLookup,
+        rooms: &impl RoomLookup,
+        ctx: &ItemCtx<'_>,
+    ) -> BTreeSet<TreeObject> {
+        self.overlapping_tree_entries_with_rooms(shape, layer, ignore_net_nos, items, rooms, ctx)
             .into_iter()
             .map(|entry| entry.object)
             .collect()
@@ -882,6 +948,26 @@ impl ShapeSearchTree {
         items: &impl ItemLookup,
         ctx: &ItemCtx<'_>,
     ) -> Vec<TreeEntry<TreeObject>> {
+        self.overlapping_tree_entries_with_rooms(shape, layer, ignore_net_nos, items, &NoRooms, ctx)
+    }
+
+    /// [`Self::overlapping_tree_entries`] over a tree that also holds expansion rooms — the same
+    /// method, with the [`RoomLookup`] that resolves a [`TreeObject::Room`] leaf.
+    ///
+    /// This is the entry point `autoroute.expansion.SortedRoomNeighbours.calculateNeighbours`
+    /// (`SortedRoomNeighbours.java:201`) uses: by then `AutorouteEngine.addCompleteRoom`
+    /// (`AutorouteEngine.java:534`) has put complete rooms in the tree, so the query answers
+    /// rooms as well as items and both have to be resolvable.
+    #[allow(clippy::too_many_arguments)]
+    pub fn overlapping_tree_entries_with_rooms(
+        &self,
+        shape: &TileShape,
+        layer: Option<usize>,
+        ignore_net_nos: &[i32],
+        items: &impl ItemLookup,
+        rooms: &impl RoomLookup,
+        ctx: &ItemCtx<'_>,
+    ) -> Vec<TreeEntry<TreeObject>> {
         let Some(bounds) = self.tree.bounding_shape(shape) else {
             return Vec::new();
         };
@@ -894,10 +980,10 @@ impl ShapeSearchTree {
             .overlaps(&bounds)
             .into_iter()
             .filter(|entry| {
-                if self.ignore_object(*entry, layer, ignore_net_nos, items, ctx) {
+                if self.ignore_object(*entry, layer, ignore_net_nos, items, rooms, ctx) {
                     return false;
                 }
-                let current_shape = self.tree_shape_of(*entry, items, ctx);
+                let current_shape = self.tree_shape_of(*entry, items, rooms, ctx);
                 // ShapeSearchTree.java:421-427: for two octagons the bounds test already
                 // decided it, so Java skips the intersection check "for performance reasons".
                 // `currentShape instanceof IntOctagon` is again a type test.
@@ -921,6 +1007,7 @@ impl ShapeSearchTree {
         layer: Option<usize>,
         ignore_net_nos: &[i32],
         items: &impl ItemLookup,
+        rooms: &impl RoomLookup,
         ctx: &ItemCtx<'_>,
     ) -> bool {
         match entry.object {
@@ -937,17 +1024,20 @@ impl ShapeSearchTree {
                     .iter()
                     .any(|net_no| !item.is_obstacle_for_net(*net_no))
             }
-            // added in Task 4: `CompleteFreeSpaceExpansionRoom.shapeLayer` / `isObstacle(int)`
-            // (CompleteFreeSpaceExpansionRoom.java:71-84 — both are constants: the room's own
-            // layer, and `true` for every net). Rooms **have arrived** in this tree from Plan 6
-            // Task 2; the room lookup that would let this arm answer them is plan-6 Task 4's,
-            // the same obligation as in [`Self::tree_shape_of`].
+            // `CompleteFreeSpaceExpansionRoom.shapeLayer` / `isObstacle(int)`
+            // (CompleteFreeSpaceExpansionRoom.java:71-84): both are constants — the room's own
+            // layer, and `true` for **every** net. So a room is ignored only by layer; the net
+            // loop below can never ignore one, because Java's test is
+            // `!currentObject.isObstacle(n)` and a room's answer is always `true`.
             TreeObject::Room(id) => {
-                panic!(
-                    "ShapeSearchTree: expansion room {id:?} — room layer/obstacle resolution is \
-                     owed by plan-6 Task 4; until then no room-bearing tree may be queried \
-                     through overlapping_tree_entries"
-                )
+                let room_layer = rooms.room_shape_layer(id).unwrap_or_else(|| {
+                    panic!(
+                        "ShapeSearchTree: expansion room {id:?} has a leaf in tree {:?} but the \
+                         supplied RoomLookup does not resolve it — Java NPEs here too",
+                        self.id
+                    )
+                });
+                layer.is_some_and(|layer| room_layer != layer)
             }
         }
     }
@@ -1008,7 +1098,7 @@ impl ShapeSearchTree {
         // ShapeSearchTree.java:470-489.
         let mut sorted_items: BTreeSet<EntrySortedByClearance> = BTreeSet::new();
         for entry in self.tree.overlaps(&offset_bounds) {
-            if self.ignore_object(entry, layer, ignore_net_nos, items, ctx) {
+            if self.ignore_object(entry, layer, ignore_net_nos, items, &NoRooms, ctx) {
                 continue;
             }
             let TreeObject::Item(id) = entry.object else {
@@ -1044,7 +1134,7 @@ impl ShapeSearchTree {
                 current_half_clearance = tmp_half_clearance;
                 current_offset_shape = shape.enlarge(f64::from(current_half_clearance));
             }
-            let tmp_shape = self.tree_shape_of(sorted.entry, items, ctx);
+            let tmp_shape = self.tree_shape_of(sorted.entry, items, &NoRooms, ctx);
             let tmp_offset_shape = tmp_shape.enlarge(f64::from(current_half_clearance));
             if current_offset_shape.intersects(&tmp_offset_shape) {
                 result.push(sorted.entry);

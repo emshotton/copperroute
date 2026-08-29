@@ -34,6 +34,7 @@ pub mod free_space_room;
 pub mod incomplete_room;
 pub mod obstacle_room;
 pub mod room;
+pub mod sorted_neighbours;
 pub mod target_door;
 
 pub use complete_room::CompleteFreeSpaceExpansionRoom;
@@ -42,6 +43,9 @@ pub use free_space_room::FreeSpaceExpansionRoom;
 pub use incomplete_room::IncompleteFreeSpaceExpansionRoom;
 pub use obstacle_room::ObstacleExpansionRoom;
 pub use room::{ExpandableRef, RoomRef};
+pub use sorted_neighbours::{
+    CalculationMode, SortedRoomNeighbour, SortedRoomNeighbours, select_calculation_mode,
+};
 pub use target_door::{TargetItemExpansionDoor, target_door_id};
 
 use fr_board::searchtree::ShapeSearchTree;
@@ -77,6 +81,22 @@ pub struct ExpansionRoomStore {
     pub target_doors: Arena<TargetItemExpansionDoor>,
     /// `AutorouteEngine.expansionRoomInstanceCount` (:77).
     room_instance_count: i32,
+}
+
+/// The store is the [`RoomLookup`] the room-bearing search-tree queries take: a complete room's
+/// `getTreeShape`/`shapeLayer` are its own shape and layer
+/// (CompleteFreeSpaceExpansionRoom.java:66-74), and this is where they live.
+///
+/// A stale [`RoomId`] answers `None`, which is Java's dead reference; the tree turns that into
+/// the `NullPointerException` Java would have thrown.
+impl fr_board::RoomLookup for ExpansionRoomStore {
+    fn room_tree_shape(&self, id: RoomId) -> Option<&TileShape> {
+        self.complete_rooms.get(id.0)?.get_tree_shape(0)
+    }
+
+    fn room_shape_layer(&self, id: RoomId) -> Option<usize> {
+        Some(self.complete_rooms.get(id.0)?.shape_layer(0))
+    }
 }
 
 impl ExpansionRoomStore {
@@ -606,6 +626,46 @@ impl ExpansionRoomStore {
             self.room_id_no(d.first_room)?,
             self.room_id_no(d.second_room)?,
         ))
+    }
+
+    /// The room-list half of `AutorouteEngine.removeAllDoors(ExpansionRoom)`
+    /// (AutorouteEngine.java:603-615): unlink every door of `room` from the room on its other
+    /// side, drop any incomplete room that other side turns out to be, and then clear `room`'s
+    /// own door list.
+    ///
+    /// Java's method is on the engine because it needs `incompleteExpansionRooms`; the port's is
+    /// on the store because that list *is* the store's incomplete arena. Task 6's
+    /// `AutorouteEngine::remove_all_doors` delegates here — the name deliberately matches Java's
+    /// only in this file, which `audit-port.sh` does not scope `AutorouteEngine` to, so the
+    /// obligation to write the engine method stays open (the same arrangement as
+    /// [`next_room_id_no`](Self::next_room_id_no)).
+    pub fn remove_all_doors(&mut self, room: RoomRef) {
+        // Java iterates `room.getDoors()` while `removeIncompleteExpansionRoom` mutates *other*
+        // rooms' door lists, never this one's, so a snapshot is the same traversal.
+        let doors: Vec<DoorId> = self.room_doors(room).to_vec();
+        for door in doors {
+            let Some(other) = self.doors.get(door.0).and_then(|d| d.other_room(room)) else {
+                // AutorouteEngine.java:606-608.
+                continue;
+            };
+            self.remove_door(other, ExpandableRef::Door(door));
+            if let RoomRef::Incomplete(id) = other {
+                self.remove_incomplete_expansion_room(id);
+            }
+        }
+        self.clear_doors(room);
+    }
+
+    /// The room-list half of `AutorouteEngine.removeIncompleteExpansionRoom`
+    /// (AutorouteEngine.java:368-371): `removeAllDoors(room)` and then drop it from the
+    /// incomplete list.
+    ///
+    /// Java's `incompleteExpansionRooms.remove(room)` is an `ArrayList.remove(Object)`, i.e. the
+    /// first element `equals` it — `IncompleteFreeSpaceExpansionRoom` has no `equals` override,
+    /// so that is reference identity, which is what removing the arena slot is.
+    pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
+        self.remove_all_doors(RoomRef::Incomplete(room));
+        self.incomplete_rooms.remove(room.0);
     }
 
     /// `TargetItemExpansionDoor.getId()` (TargetItemExpansionDoor.java:70-74), with the room id

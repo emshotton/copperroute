@@ -274,12 +274,15 @@ impl CompleteFreeSpaceExpansionRoom {
     }
 }
 
-// added in Task 4: `CompleteFreeSpaceExpansionRoom.calculateTargetDoors`
-// (CompleteFreeSpaceExpansionRoom.java:131-150) — it is reached only from
-// `SortedRoomNeighbours.calculate` (:133) and the two angle-restricted subclasses
-// (Sorted45DegreeRoomNeighbours.java:124, SortedOrthogonalRoomNeighbours.java:155), which are
-// Tasks 4 and 5. It needs `Connectable.getTraceConnectionShape` and the overlapping-tree-entry
-// walk, neither of which exists in this crate yet.
+// added in Task 5: `CompleteFreeSpaceExpansionRoom.calculateTargetDoors`
+// (CompleteFreeSpaceExpansionRoom.java:131-150). **Corrected in Task 4**: this method has no
+// caller in the any-angle class at all. `SortedRoomNeighbours.java:133` calls the *static*
+// `SortedRoomNeighbours.calculateTargetDoors(room, ownNetObjects, engine)` (`:158-185`), which
+// Task 4 ported into `sorted_neighbours.rs`; the only callers of the method on this class are
+// `Sorted45DegreeRoomNeighbours.java:124` and `SortedOrthogonalRoomNeighbours.java:155`, i.e.
+// Task 5. The two are **not** the same function: the static one calls `setNetDependent()` only
+// when the own-net list is non-empty (`:162-164`), this one calls it unconditionally per entry
+// (`:134`), so a subclass marks a room net-dependent where the base class would not.
 //
 // added in Task 6: `CompleteFreeSpaceExpansionRoom.validate`
 // (CompleteFreeSpaceExpansionRoom.java:165-194) — it takes an `AutorouteEngine` and queries the
