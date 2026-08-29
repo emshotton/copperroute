@@ -20,8 +20,10 @@ use fr_board::ClearanceViolation;
 /// (BoardStatisticsClearanceViolations.java:7-20).
 ///
 /// Every field is `Option` because Java's are boxed (`Integer`, `Double`) and start null; Gson
-/// omits a null field, and [`Default`] is that state. [`Self::from_violations`] never produces
-/// one — `BoardStatistics.java:338-367` writes all four on every path, including the empty one.
+/// omits a null field, which is what `skip_serializing_if` reproduces (the workspace convention,
+/// `fr-settings`), and [`Default`] is that state — `a_default_block_serialises_to_nothing` pins
+/// it. [`Self::from_violations`] never produces one: `BoardStatistics.java:338-367` writes all
+/// four on every path, including the empty one.
 ///
 /// The `@SerializedName`s are snake_case and match the schema; unlike the DRC report (plan-5
 /// ruling 1, quirks row #143) this class has no camelCase drift.
@@ -31,16 +33,16 @@ pub struct BoardStatisticsClearanceViolations {
     /// **deduplicated** list `DesignRulesChecker.getAllClearanceViolations` returns
     /// (BoardStatistics.java:341-342), not the report's `violations` array — plan-5 ruling 11
     /// tabulates the two count families.
-    #[serde(rename = "total_count")]
+    #[serde(rename = "total_count", skip_serializing_if = "Option::is_none")]
     pub total_count: Option<i32>,
     /// Java `minViolationUm` (`:12-13`).
-    #[serde(rename = "min_violation_um")]
+    #[serde(rename = "min_violation_um", skip_serializing_if = "Option::is_none")]
     pub min_violation_um: Option<f64>,
     /// Java `maxViolationUm` (`:15-16`).
-    #[serde(rename = "max_violation_um")]
+    #[serde(rename = "max_violation_um", skip_serializing_if = "Option::is_none")]
     pub max_violation_um: Option<f64>,
     /// Java `avgViolationUm` (`:18-19`).
-    #[serde(rename = "avg_violation_um")]
+    #[serde(rename = "avg_violation_um", skip_serializing_if = "Option::is_none")]
     pub avg_violation_um: Option<f64>,
 }
 
@@ -52,14 +54,16 @@ impl BoardStatisticsClearanceViolations {
     /// `Unit.scale(1.0, board.communication.unit, Unit.UM) / max(1, board.communication.resolution)`.
     /// It is a parameter here because `BoardStatistics` — which computes it — is Plan 8's.
     ///
-    /// Three details of `:344-358` that a paraphrase loses, and that the tests pin:
+    /// Three details of `:344-356` that a paraphrase loses, and that the tests pin:
     ///
     /// * the per-violation quantity is `max(0, expected - actual)` (`:348`), so a violation whose
     ///   actual clearance *exceeds* the expected one contributes `0` rather than a negative;
-    /// * the average divides by `violationsList.size()` (`:357`) — **every** violation, not just
+    /// * the average divides by `violationsList.size()` (`:356`) — **every** violation, not just
     ///   the ones with a positive shortfall;
-    /// * the empty list writes `0.0` into all three doubles (`:361-365`), not null, so the JSON
-    ///   carries them.
+    /// * the empty list writes `0.0` into all three doubles (`:357-361`), not null, so the JSON
+    ///   carries them. That is the `violationsList.isEmpty()` arm; the four zeroes at `:362-367`
+    ///   are a *different* arm — `includeClearanceViolations == false` — which this function
+    ///   cannot reach, because a caller who does not want the block does not call it.
     ///
     // renamed: BoardStatistics' clearance block (BoardStatistics.java:338-367) -> this associated function, because plan-5 ruling 5 keeps `BoardStatistics` itself out of `fr-drc`.
     pub fn from_violations(
@@ -69,11 +73,11 @@ impl BoardStatisticsClearanceViolations {
         // BoardStatistics.java:342.
         let total_count = violations.len() as i32;
 
-        // BoardStatistics.java:343-359. Java seeds the minimum at `Double.MAX_VALUE` and the
+        // BoardStatistics.java:343-361. Java seeds the minimum at `Double.MAX_VALUE` and the
         // maximum at `0.0`; the maximum's seed is not observable, because every shortfall is
         // already `>= 0`.
         let (min_violation, max_violation, avg_violation) = if violations.is_empty() {
-            // BoardStatistics.java:361-365.
+            // BoardStatistics.java:357-361.
             (0.0, 0.0, 0.0)
         } else {
             // `Math.min`/`Math.max` (`:348`, `:350-351`) **propagate** NaN, where Rust's
@@ -111,7 +115,7 @@ impl BoardStatisticsClearanceViolations {
                 maximum = java_max(maximum, shortfall_um);
                 sum += shortfall_um;
             }
-            // BoardStatistics.java:357: the divisor is the whole list.
+            // BoardStatistics.java:356: the divisor is the whole list.
             (minimum, maximum, sum / violations.len() as f64)
         };
 

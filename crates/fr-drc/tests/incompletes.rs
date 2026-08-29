@@ -396,10 +396,11 @@ fn statistics_block() {
 
 #[test]
 fn an_empty_violation_list_is_four_zeroes_not_four_nulls() {
-    // `BoardStatistics.java:361-365`: the empty arm writes `0.0` into all three doubles rather
-    // than leaving them null, so Gson emits them. `Default` — Java's uninitialised `Integer`
-    // and `Double` fields — is the *other* state, and is what `BoardStatistics` holds before the
-    // block runs.
+    // `BoardStatistics.java:357-361` — the `violationsList.isEmpty()` arm, **not** the
+    // superficially identical `:362-367`, which is the `includeClearanceViolations == false` one.
+    // It writes `0.0` into all three doubles rather than leaving them null, so Gson emits them.
+    // `Default` — Java's uninitialised `Integer` and `Double` fields — is the *other* state, and
+    // is what `BoardStatistics` holds before the block runs.
     let stats = BoardStatisticsClearanceViolations::from_violations(&[], 0.1);
     assert_eq!(stats.total_count, Some(0));
     assert_eq!(stats.min_violation_um, Some(0.0));
@@ -430,6 +431,18 @@ fn a_negative_shortfall_is_clamped_but_still_averaged_over_every_violation() {
     assert_eq!(stats.min_violation_um, Some(0.0), "the clamped one");
     assert_eq!(stats.max_violation_um, Some(200.0));
     assert_eq!(stats.avg_violation_um, Some(100.0), "200 / 2, not 200 / 1");
+}
+
+#[test]
+fn a_default_block_serialises_to_nothing() {
+    // The doc's "Gson omits a null field" claim, made testable: `Default` is Java's uninitialised
+    // state — four boxed nulls — and `skip_serializing_if = "Option::is_none"` is what reproduces
+    // Gson's omission of them. `from_violations` never produces this state, but `BoardStatistics`
+    // holds it before its clearance block runs (`BoardStatistics.java:338`).
+    assert_eq!(
+        serde_json::to_string(&BoardStatisticsClearanceViolations::default()).unwrap(),
+        "{}",
+    );
 }
 
 #[test]
@@ -528,9 +541,10 @@ fn insert_trace(board: &mut Board, from: (i32, i32), to: (i32, i32), net: i32) -
         .expect("the synthetic trace is neither degenerate nor closed")
 }
 
-/// Items 2 and 3 are pins of net 1, item 4 is a pin of **both** nets and item 5 is a pin of
-/// net 2 — so net 1's list is `[2, 3, 4]`… no: pin 3 sits on top of pin 2 in this board, so the
-/// three offsets are far apart and every pin is its own connected group.
+/// Three pins, far enough apart that each is its own connected group: item 2 on net 1 alone,
+/// item 3 on net 2 alone, and item 4 on **both** nets. So `calculateAllIncompletes` files item 4
+/// twice — net 1's list is `[2, 4]` and net 2's is `[3, 4]`, two pins each — and every net
+/// contributes `max(0, 2 - 1) = 1` to `maxConnections` and one airline.
 fn two_net_pin_board() -> Board {
     let mut board = bare_board(&[0, 4000, 8000]);
     board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // item 2, net 1

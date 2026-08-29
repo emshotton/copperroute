@@ -204,6 +204,29 @@ done
 
 The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`.
 
+The union file is built from the sweep's six `*.airlines.txt` (the five modes plus the default),
+in the same scratch directory:
+
+```sh
+python3 - <<'EOF'
+stems = ["Issue575-drc_dev-board_4_hole_clearance_violations",
+         "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations",
+         "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items"]
+for stem in stems:
+    union = set()
+    for path in [f"h{m}-{stem}.airlines.txt" for m in range(5)] + [f"{stem}.airlines.txt"]:
+        for line in open(path):
+            if not line.strip():
+                continue
+            f = dict(p.split("=", 1) for p in line.split())
+            a, b = sorted((int(f["from"]), int(f["to"])))
+            union.add((int(f["net"]), a, b))
+    with open(f"{stem}.airlines-union.txt", "w") as out:
+        for n, a, b in sorted(union):
+            out.write(f"net={n} a={a} b={b}\n")
+EOF
+```
+
 ## What `*.incompletes.txt` holds
 
 Everything Task 6 ports is a **count** or a **length**, so — unlike `NetIncompletesProbe`'s
@@ -248,26 +271,3 @@ done
 ```
 
 The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0..4`.
-
-The union file is built from the sweep's six `*.airlines.txt` (the five modes plus the default),
-in the same scratch directory:
-
-```sh
-python3 - <<'EOF'
-stems = ["Issue575-drc_dev-board_4_hole_clearance_violations",
-         "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations",
-         "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items"]
-for stem in stems:
-    union = set()
-    for path in [f"h{m}-{stem}.airlines.txt" for m in range(5)] + [f"{stem}.airlines.txt"]:
-        for line in open(path):
-            if not line.strip():
-                continue
-            f = dict(p.split("=", 1) for p in line.split())
-            a, b = sorted((int(f["from"]), int(f["to"])))
-            union.add((int(f["net"]), a, b))
-    with open(f"{stem}.airlines-union.txt", "w") as out:
-        for n, a, b in sorted(union):
-            out.write(f"net={n} a={a} b={b}\n")
-EOF
-```

@@ -318,14 +318,14 @@ impl<'a> DesignRulesChecker<'a> {
     ///
     /// Three steps, in Java's order:
     ///
-    /// 1. **The per-net item lists** (`:544-563`). One list per net number `1..=maxNetNumber`,
+    /// 1. **The per-net item lists** (`:543-561`). One list per net number `1..=maxNetNumber`,
     ///    filled by walking `board.itemList` — descending id (quirk #63) — and appending each
-    ///    connectable item to the list of **every** net it carries (`:556-561`), so a two-net pin
+    ///    connectable item to the list of **every** net it carries (`:556-560`), so a two-net pin
     ///    lands in two lists. The order of a list is not observable: [`NetIncompletes::new`]
     ///    filters it and drops the result into a set (NetIncompletes.java:295).
-    /// 2. **`maxConnections`** (`:567-577`): over the **non-empty** lists only, the number of
+    /// 2. **`maxConnections`** (`:567-578`): over the **non-empty** lists only, the number of
     ///    `Pin`/`ConductionArea` items minus one, clamped at zero, summed. The comment at
-    ///    `:564-567` explains both halves — empty nets used to be counted in the denominator, and
+    ///    `:562-566` explains both halves — empty nets used to be counted in the denominator, and
     ///    `Math.max` is what stops a net of nothing but traces from contributing `-1`.
     /// 3. **The array** (`:617-622`), one entry per index, `netNumber = i + 1`.
     ///
@@ -335,11 +335,11 @@ impl<'a> DesignRulesChecker<'a> {
     ///
     // totalized: DesignRulesChecker.calculateAllIncompletes — Java indexes `netItemLists` with `getNetNumber(i) - 1` unguarded (`:558`), so an item carrying a net number outside `1..=maxNetNumber` throws `ArrayIndexOutOfBoundsException`. The port drops such an item instead. Unreachable from `fr-dsn`, whose reader registers every net it assigns.
     //
-    // not ported: the `focusNets = {98, 99}` block (DesignRulesChecker.java:598-615) — hard-coded
+    // not ported: the `focusNets = {98, 99}` block (DesignRulesChecker.java:594-615) — hard-coded
     // debug logging over two net numbers that mean nothing on any other board, wrapped around a
-    // `validateAndLogPolylineIntegrity()` call that is itself commented out (`:613`), so the loop
-    // computes nothing. Quirks row #149. The `totalItems` sum (`:579`) and the `FRLogger.trace`
-    // it feeds (`:580-590`) go with it — this crate has no logger.
+    // `validateAndLogPolylineIntegrity()` call that is itself commented out (`:611`), so the loop
+    // computes nothing. Quirks row #149. The `totalItems` sum (`:580`) and the `FRLogger.trace`
+    // it feeds (`:581-592`) go with it — this crate has no logger.
     pub fn calculate_all_incompletes(&mut self) {
         let board = &*self.board;
 
@@ -347,9 +347,14 @@ impl<'a> DesignRulesChecker<'a> {
         let max_net_no = board.rules.nets.max_net_number();
         let mut net_item_lists: Vec<Vec<ItemId>> = vec![Vec::new(); max_net_no.max(0) as usize];
 
-        // DesignRulesChecker.java:549-563.
+        // DesignRulesChecker.java:549-561.
         for id in board.items_in_board_order() {
+            // totalized: DesignRulesChecker.calculateAllIncompletes — Java's loop variable *is* the `Item` (`:552`), and its `currentItem == null` test (`:553-555`) is the iterator's end sentinel, not a lookup that can fail. The port carries ids and has to look each one up; an id `items_in_board_order()` yielded is an id the map holds, so the `None` arm is unreachable and skipping is the only answer that keeps the walk total.
             let Some(item) = board.get_item(id) else {
+                debug_assert!(
+                    false,
+                    "board item {id:?} vanished between the walk and the lookup"
+                );
                 continue;
             };
             if !item.is_connectable() {
@@ -366,7 +371,7 @@ impl<'a> DesignRulesChecker<'a> {
             }
         }
 
-        // DesignRulesChecker.java:567-577.
+        // DesignRulesChecker.java:567-578.
         self.max_connections = net_item_lists
             .iter()
             .filter(|list| !list.is_empty())
@@ -380,6 +385,7 @@ impl<'a> DesignRulesChecker<'a> {
                         )
                     })
                     .count() as i64;
+                // totalized: DesignRulesChecker.calculateAllIncompletes — Java's `(int) Math.max(0, endpointCount - 1)` (`:576`) is a **narrowing** cast over a `long`, so a net of more than `2^31` endpoints wraps to an arbitrary (possibly negative) `int`; the port answers 0 instead of wrapping. Unreachable: that many items do not fit in a board.
                 i32::try_from(endpoint_count - 1).unwrap_or(0).max(0)
             })
             .sum();
@@ -452,7 +458,7 @@ impl<'a> DesignRulesChecker<'a> {
     /// **not** the length of the report's `unconnectedItems` array, which is one entry per net
     /// with two or more groups — plan-5 ruling 11 tabulates both families for the three fixtures.
     ///
-    // not ported: `getIncompleteCount`'s `detailsBuilder` (DesignRulesChecker.java:670-690) — the
+    // not ported: `getIncompleteCount`'s `detailsBuilder` (DesignRulesChecker.java:669, filled at :677-688) — the
     // per-net log line, which is `FRLogger`-only and which this crate drops with every other
     // trace call. It carries a Java bug worth recording even so: `:686` appends
     // `netIncompletes` — the whole **array** — where every other `append` in the chain adds a
