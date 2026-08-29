@@ -357,7 +357,10 @@ different observable outcomes, so the three methods now panic
   `crates/fr-settings/src/router_settings.rs` (carrying the `obligation:` comment)
   because `fr-settings` is its only producer and cannot depend on a router crate
   that does not exist yet; when Plan 6 ports `AutorouteControl` it must re-export
-  that type rather than declare a second one. **Added by Plan 5:** the two rows
+  that type rather than declare a second one — **discharged by Plan 6 Task 1**,
+  which re-exports it from `crates/fr-router/src/lib.rs` (plan-6 ruling 8) and pins
+  the two paths to one `TypeId` in `crates/fr-router/tests/skeleton.rs`.
+  **Added by Plan 5:** the two rows
   above the pass-level-recovery row — `DrcJsonFlavor`'s CLI default (Plan 8,
   plan-5 ruling 2, marked at `crates/fr-drc/src/report/json.rs:57`) and
   `quality_score`'s computation (Plan 8, plan-5 ruling 5, carried on

@@ -937,7 +937,8 @@ fn java_math_max(a: f64, b: f64) -> f64 {
 /// `RouterSettings.getTraceCosts` is its only producer and `fr-settings` cannot depend on a
 /// crate that does not exist yet; when Plan 6 ports `AutorouteControl` it should re-export this
 /// type rather than declare a second one. Recorded in `docs/java-quirks.md`'s obligation
-/// register.
+/// register. **Discharged in Plan 6 Task 1**: `fr-router`'s `lib.rs` re-exports it (plan-6
+/// ruling 8) and `crates/fr-router/tests/skeleton.rs` pins the two paths to one `TypeId`.
 ///
 /// (Correction to the task brief, which cites `AutorouteControl.java:118`: the record is declared
 /// at `:287` at the clone's HEAD. `:118` is inside the `AutorouteControl(RoutingBoard, int,

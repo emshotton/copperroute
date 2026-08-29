@@ -797,12 +797,16 @@ impl Item {
         self.header_mut().clear_search_tree_entries();
     }
 
-    /// Port of `Item.getAutorouteInfo` (Item.java:1038-1044).
+    /// Port of `Item.getAutorouteInfo` (Item.java:1038-1044): the per-run autoroute scratch,
+    /// created on demand. The accessors that read and write the [`AutorouteInfo`] body live in
+    /// `fr-router`'s `autoroute/item_info.rs` (plan-6 ruling 15) — `getExpansionRoom` needs both
+    /// the search tree and the engine's room arena, neither of which `fr-board` can reach.
     pub fn get_autoroute_info(&mut self) -> &mut AutorouteInfo {
         self.header_mut().get_autoroute_info()
     }
 
-    /// Port of `Item.getAutorouteInfoPur` (Item.java:1046-1049).
+    /// Port of `Item.getAutorouteInfoPur` (Item.java:1046-1049): the same slot without creating
+    /// it, i.e. `None` where Java returns `null`.
     pub fn get_autoroute_info_pur(&self) -> Option<&AutorouteInfo> {
         self.header().get_autoroute_info_pur()
     }

@@ -13,6 +13,7 @@ use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
+use crate::java_random::JavaRandom;
 use crate::line::Line;
 use crate::point::Point;
 use crate::polygon::Polygon;
@@ -25,57 +26,6 @@ use crate::vector::Vector;
 /// The fixed seed of the `Random` that picks the first corner of the concavity search
 /// (PolygonShape.java:17).
 const SEED: i64 = 99;
-
-/// Java's `java.util.Random`, reproduced bit for bit because `PolygonShape.splitToConvexRecu`
-/// starts its concavity scan at `randomGenerator.nextInt(corners.length)`, which decides how a
-/// non-convex polygon is cut up.
-struct JavaRandom {
-    seed: i64,
-}
-
-impl JavaRandom {
-    const MULTIPLIER: i64 = 0x5DEECE66D_i64;
-    const ADDEND: i64 = 0xB;
-    const MASK: i64 = (1 << 48) - 1;
-
-    fn new(seed: i64) -> JavaRandom {
-        JavaRandom {
-            seed: (seed ^ JavaRandom::MULTIPLIER) & JavaRandom::MASK,
-        }
-    }
-
-    fn next(&mut self, bits: u32) -> i32 {
-        self.seed = self
-            .seed
-            .wrapping_mul(JavaRandom::MULTIPLIER)
-            .wrapping_add(JavaRandom::ADDEND)
-            & JavaRandom::MASK;
-        (self.seed >> (48 - bits)) as i32
-    }
-
-    /// `java.util.Random.nextInt(int bound)`. Panics for `bound <= 0`, where Java throws
-    /// `IllegalArgumentException`; `PolygonShape` only ever passes `corners.length`, which is
-    /// non-zero for every constructible shape.
-    fn next_int(&mut self, bound: i32) -> i32 {
-        assert!(bound > 0, "bound must be positive");
-        let mut r = self.next(31);
-        let m = bound - 1;
-        if bound & m == 0 {
-            // bound is a power of 2
-            r = ((bound as i64 * r as i64) >> 31) as i32;
-        } else {
-            let mut u = r;
-            loop {
-                r = u % bound;
-                if u.wrapping_sub(r).wrapping_add(m) >= 0 {
-                    break;
-                }
-                u = self.next(31);
-            }
-        }
-        r
-    }
-}
 
 /// A shape described by a closed polygon of corner points.
 #[derive(Debug, Clone, PartialEq)]

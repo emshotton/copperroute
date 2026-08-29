@@ -46,6 +46,18 @@ Two members are renamed outright rather than suffixed, each marked
 | `Area` (interface) | `enum Area { Shape(Shape), Polyline(PolylineArea) }` |
 | `PolylineShape` (abstract) | `trait PolylineShapeOps` |
 | `BigInteger` | `num_bigint::BigInt` |
+| `java.util.Random` (JDK) | `struct JavaRandom` (`java_random.rs`) |
+
+One JDK class is ported here too. `JavaRandom` (`java_random.rs`) is
+`java.util.Random` reproduced bit for bit — the 48-bit truncated LCG,
+`nextInt`'s power-of-two fast path and rejection loop, and `nextDouble`'s two
+draws. It was private inside `polygon_shape.rs` until plan-6 ruling 5 promoted
+it: `PolygonShape.splitToConvexRecu` starts its concavity scan at
+`randomGenerator.nextInt(corners.length)` from the fixed seed 99
+(`docs/java-quirks.md` #30), and the maze router's ripup resolver draws from a
+`Random` seeded with `ctrl.ripupCosts`. `rand`'s `StdRng` diverges on the first
+draw, so it is not a dependency; `crates/fr-geometry/tests/java_random.rs`
+pins the stream against a JDK 25 `jshell` run whose command it records.
 
 Invariants: no `f64` on exact paths — coordinate arithmetic stays in `i64`
 (promoting to `BigInt` only where Java does); `f64` is only for genuine

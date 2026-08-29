@@ -1,0 +1,129 @@
+# Class -> Rust path glob (relative to crates/fr-router/src) map for scripts/audit-port.sh's
+# per-class matching. Blank lines and lines starting with `#` are ignored. A class whose Rust home
+# spans more than one file gets one map line per file — not one line with several space-separated
+# globs, which the reader (`read -r cls path`) would only keep the first token of. That "one line
+# per Rust file" form is what `crates/fr-dsn`'s and `fr-drc`'s maps prescribe.
+#
+# Plan-6 ruling 13: this one map covers every class of `autoroute/{,maze,expansion,drill,path}`
+# plus the `board/actions` and `board/optimize` classes the router drives, and Task 18 must reach
+# **zero MISSING and zero UNMAPPED** on all of them. A class whose mapped file does not exist yet
+# reports every method MISSING, which is the point: the map records the obligation, and the
+# invocation's file glob records how much of it is due.
+#
+# Invocations, one per Java package, widening as the crate fills up. As of **Task 1** the first
+# one exits 0 over this task's three classes and over the whole `autoroute/*.java` package root
+# (the out-of-scope and Plan 7 classes are carried by the roster at the foot of `src/lib.rs`):
+#
+#   ./scripts/audit-port.sh autoroute crates/fr-router/src \
+#       'AutorouteAttemptState.java AutorouteAttemptResult.java ItemAutorouteInfo.java' \
+#       scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh autoroute crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+#
+# Tasks 2-17 add the four subpackages, and Task 15/16 the two `board/*` ones:
+#
+#   ./scripts/audit-port.sh autoroute/maze      crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh autoroute/expansion crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh autoroute/drill     crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh autoroute/path      crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh board/actions       crates/fr-router/src 'ForcedViaInserter.java ForcedPadRouter.java DrillItemMover.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh board/optimize      crates/fr-router/src 'TraceShover.java' scripts/audit-map/fr-router.map
+#
+# The `ShapeSearchTree*` and `RoutingBoard` rows below are cross-package, not cross-crate: plan-6
+# ruling 3 puts `completeShape`/`divideLargeRoom` and the five `RoutingBoard` autoroute methods in
+# *this* crate, as extension traits over `fr-board`'s types, so their Rust homes are plain
+# crate-relative paths. `fr-drc`'s map is the precedent for the `../../` form if a later task does
+# need it (`audit-port.sh` globs `"$RS"/$map_path` and tests `-e`, so it resolves).
+
+# --- autoroute/ (the package root) --------------------------------------------------------------
+# Landed in Task 1.
+AutorouteAttemptState             autoroute/attempt.rs
+AutorouteAttemptResult            autoroute/attempt.rs
+ItemAutorouteInfo                 autoroute/item_info.rs
+# Not ported / Plan 7's — matched only by the roster at the foot of lib.rs (ruling 13).
+BoardHistory                      lib.rs
+BoardHistoryEntry                 lib.rs
+PerformanceProfiler               lib.rs
+AutorouteDiagnostic               lib.rs
+BoardUpdateStrategy               lib.rs
+ItemSelectionStrategy             lib.rs
+RoutingFailureLog                 lib.rs
+ItemRouteResult                   lib.rs
+
+# --- autoroute/maze/ (Tasks 2, 9-14, 16) --------------------------------------------------------
+AutorouteEngine                   autoroute/maze/engine.rs
+AutorouteControl                  autoroute/maze/control.rs
+DestinationDistance               autoroute/maze/destination_distance.rs
+MazeListElement                   autoroute/maze/list_element.rs
+MazeSearchElement                 autoroute/maze/search_element.rs
+MazeSearchEngine                  autoroute/maze/search.rs
+MazeSearchEngine                  autoroute/maze/expand.rs
+MazeSearchEngine                  autoroute/maze/queue.rs
+MazeExpansionEngine               autoroute/maze/expansion_engine.rs
+MazeRipupResolver                 autoroute/maze/ripup_resolver.rs
+MazeTraceShover                   autoroute/maze/trace_shover.rs
+# A `FRLogger` sink, 44 loc (ruling 13's not-ported roster).
+MazeFanoutDiagnostics             lib.rs
+
+# --- autoroute/expansion/ (Tasks 3-7) -----------------------------------------------------------
+ExpansionRoom                     autoroute/expansion/room.rs
+CompleteExpansionRoom             autoroute/expansion/room.rs
+ExpandableObject                  autoroute/expansion/room.rs
+FreeSpaceExpansionRoom            autoroute/expansion/free_space_room.rs
+IncompleteFreeSpaceExpansionRoom  autoroute/expansion/incomplete_room.rs
+CompleteFreeSpaceExpansionRoom    autoroute/expansion/complete_room.rs
+ObstacleExpansionRoom             autoroute/expansion/obstacle_room.rs
+ExpansionDoor                     autoroute/expansion/door.rs
+TargetItemExpansionDoor           autoroute/expansion/target_door.rs
+SortedRoomNeighbours              autoroute/expansion/sorted_neighbours.rs
+Sorted45DegreeRoomNeighbours      autoroute/expansion/sorted_neighbours_45.rs
+SortedOrthogonalRoomNeighbours    autoroute/expansion/sorted_neighbours_orthogonal.rs
+
+# --- autoroute/drill/ (Task 8) ------------------------------------------------------------------
+DrillPage                         autoroute/drill/page.rs
+DrillPageArray                    autoroute/drill/page_array.rs
+ExpansionDrill                    autoroute/drill/expansion_drill.rs
+
+# --- autoroute/path/ (Tasks 15-16) --------------------------------------------------------------
+Connection                        autoroute/path/connection.rs
+FoundConnectionLocator            autoroute/path/locator.rs
+FoundConnectionLocator45Degree    autoroute/path/locator_45.rs
+FoundConnectionLocatorAnyAngle    autoroute/path/locator_any_angle.rs
+FoundConnectionInserter           autoroute/path/inserter.rs
+
+# --- board/actions/ and board/optimize/ (Task 15) -----------------------------------------------
+ForcedViaInserter                 board_ext/forced_via_inserter.rs
+ForcedPadRouter                   board_ext/forced_pad_router.rs
+DrillItemMover                    board_ext/drill_item_mover.rs
+TraceShover                       board_ext/trace_shover.rs
+
+# --- board/facade/ and board/searchtree/, the parts plan-6 ruling 3 puts in this crate ----------
+# `RoutingBoard`'s five autoroute methods (initAutoroute, finishAutoroute,
+# checkForcedTracePolyline, additionalUpdateAfterChange, clearAllItemTemporaryAutorouteData) and
+# `ShapeSearchTree.completeShape`/`divideLargeRoom` — the two methods `p2t10` explicitly skipped.
+RoutingBoard                      board_ext/routing_board_ext.rs
+ShapeSearchTree                   autoroute/tree_ext.rs
+ShapeSearchTree45Degree           autoroute/tree_ext.rs
+ShapeSearchTree90Degree           autoroute/tree_ext.rs
+
+# --- Plan 7 (matched only by `// added in Plan 7:` markers in lib.rs) ---------------------------
+BatchAutorouter                   lib.rs
+BatchAutorouterThread             lib.rs
+AutoroutePassRunner               lib.rs
+AutorouteBatchLoop                lib.rs
+AutorouteConnectionRouter         autoroute/maze/engine.rs
+BatchFanout                       lib.rs
+BatchOptimizer                    lib.rs
+BatchOptimizerMultiThreaded       lib.rs
+OptimizeRouteTask                 lib.rs
+RoutingPipeline                   lib.rs
+NamedAlgorithm                    lib.rs
+NamedAlgorithmType                lib.rs
+TaskState                         lib.rs
+AutorouteAirlineCalculator        lib.rs
+AutorouteRuntimeMetrics           lib.rs
+AutorouteUnroutedReport           lib.rs
+TraceTightener                    lib.rs
+TraceTightener45                  lib.rs
+TraceTightener90                  lib.rs
+TraceTightenerAnyAngle            lib.rs
+ViaOptimizer                      lib.rs

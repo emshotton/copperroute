@@ -27,6 +27,25 @@ impl fmt::Display for ItemId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RoomId(pub u32);
 
+/// An `autoroute.expansion.ObstacleExpansionRoom`'s identity — the room an item's tree shape
+/// carries while a connection is being routed (`ItemAutorouteInfo.expansionRoomArr`,
+/// ItemAutorouteInfo.java:20).
+///
+/// Reserved here, like [`RoomId`], because [`crate::items::AutorouteInfo`] stores it and
+/// `fr-board` cannot name `fr-router`'s types (plan-6 ruling 15). It indexes `AutorouteEngine`'s
+/// obstacle-room arena, which is a plain `Vec<Option<T>>` with no generation counter (plan-6
+/// ruling 16), so a stale id reads a hole exactly as Java's stale reference reads a dead object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ObstacleRoomId(pub u32);
+
+/// An `autoroute.path.Connection`'s identity
+/// (`ItemAutorouteInfo.precalculatedConnection`, ItemAutorouteInfo.java:17).
+///
+/// Reserved here for the same reason as [`ObstacleRoomId`]: `fr-router` owns `Connection`, and
+/// the id indexes the engine's connection arena.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ConnectionId(pub u32);
+
 /// A search-tree instance id (`SearchTreeManager`'s per-tree identity, Task 3+).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TreeId(pub u32);

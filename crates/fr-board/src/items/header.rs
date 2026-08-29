@@ -2,7 +2,7 @@
 //!
 //! Java: the field block and the field-only methods of `board/model/items/Item.java:41-67`,
 //! plus `board/actions/ItemSearchTreesInfo.java` (folded into [`ItemHeader::tree_entries`])
-//! and the `ItemAutorouteInfo` slot (an opaque placeholder here; Plan 6 fills it).
+//! and the `ItemAutorouteInfo` slot ([`AutorouteInfo`], whose body Plan 6 Task 1 filled in).
 //!
 //! Java's `Item` is an abstract base class, so its fields live on every subclass instance. The
 //! port has no inheritance: [`crate::items::Item`] is an enum whose nine variant structs each
@@ -14,18 +14,41 @@ use std::collections::HashMap;
 use fr_geometry::TileShape;
 
 use crate::datastructures::LeafId;
-use crate::ids::{ItemId, TreeId};
+use crate::ids::{ConnectionId, ItemId, ObstacleRoomId, TreeId};
 use crate::rules::{BoardRules, Nets};
 use crate::structure::FixedState;
 
-/// Placeholder for `autoroute.ItemAutorouteInfo`, the per-run scratch data `Item.autorouteInfo`
-/// (Item.java:67) points at.
+/// Port of `autoroute.ItemAutorouteInfo` (ItemAutorouteInfo.java:10-105): the per-run autoroute
+/// scratch data `Item.autorouteInfo` (Item.java:67) points at.
 ///
-/// Plan 6 replaces this with the real type. It is deliberately empty and deliberately reached
-/// only through [`ItemHeader::autoroute_info`], so that `Board::deep_copy` can drop it wholesale
-/// (`global-constraints.md`: `clone()` must not copy per-run autoroute scratch).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct AutorouteInfo;
+/// **Ids, not objects** (plan-6 ruling 15). Java's fields are a `Connection` and an
+/// `ObstacleExpansionRoom[]`, both of which are `fr-router` types that `fr-board` cannot name;
+/// they live in `AutorouteEngine`'s arenas and this struct stores their indices. The accessors —
+/// `isStartInfo`, `getPrecalculatedConnection`, `getExpansionRoom` and `resetDoors` — are
+/// `fr-router`'s (`autoroute/item_info.rs`), because `getExpansionRoom` needs both the search
+/// tree and the room arena.
+///
+/// Java's `private final Item item` back-pointer (ItemAutorouteInfo.java:12) is dropped: the
+/// accessors take the owning [`crate::ids::ItemId`] instead.
+///
+/// It is deliberately reached only through [`ItemHeader::get_autoroute_info`], so that
+/// `Board::deep_copy` and [`ItemHeader::clear_derived_data`] can drop it wholesale
+/// (`global-constraints.md`: `clone()` must not copy per-run autoroute scratch; plan-6 ruling 10
+/// makes that drop router-observable and therefore load-bearing).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AutorouteInfo {
+    /// Java `boolean startInfo` (ItemAutorouteInfo.java:15): whether the item belongs to the
+    /// start or destination set of the maze search.
+    pub start_info: bool,
+    /// Java `Connection precalculatedConnection` (ItemAutorouteInfo.java:17); `None` is Java's
+    /// `null`, i.e. "not yet precalculated".
+    pub precalculated_connection: Option<ConnectionId>,
+    /// Java `ObstacleExpansionRoom[] expansionRoomArr` (ItemAutorouteInfo.java:20): one slot per
+    /// tree shape of the item, each `None` until the room is created. An empty vec is Java's
+    /// `null` array — `getExpansionRoom` sizes it on first use and resizes it whenever the
+    /// item's tree-shape count changes (ItemAutorouteInfo.java:57-66).
+    pub expansion_rooms: Vec<Option<ObstacleRoomId>>,
+}
 
 /// One item's per-search-tree data: the leaves it owns in that tree, and the tile shapes that
 /// were inserted for it.
@@ -114,7 +137,7 @@ pub struct ItemHeader {
 
     /// Java `private transient ItemAutorouteInfo autorouteInfo` (Item.java:67).
     ///
-    /// `Box` keeps `ItemHeader` small once Plan 6 gives [`AutorouteInfo`] a body, and `Option`
+    /// `Box` keeps `ItemHeader` small now that [`AutorouteInfo`] has a body, and `Option`
     /// is Java's `null`: `clearAutorouteInfo` (Item.java:1052-1054) sets it back to `None`, and
     /// so must `Board::deep_copy` (`global-constraints.md`).
     pub autoroute_info: Option<Box<AutorouteInfo>>,
@@ -401,7 +424,7 @@ impl ItemHeader {
     /// created on first use.
     pub fn get_autoroute_info(&mut self) -> &mut AutorouteInfo {
         self.autoroute_info
-            .get_or_insert_with(|| Box::new(AutorouteInfo))
+            .get_or_insert_with(|| Box::new(AutorouteInfo::default()))
     }
 
     /// Port of `Item.getAutorouteInfoPur` (Item.java:1046-1049): the same slot without creating
@@ -744,7 +767,7 @@ mod tests {
         let mut h = header(vec![]);
         assert_eq!(h.get_autoroute_info_pur(), None);
         h.get_autoroute_info();
-        assert_eq!(h.get_autoroute_info_pur(), Some(&AutorouteInfo));
+        assert_eq!(h.get_autoroute_info_pur(), Some(&AutorouteInfo::default()));
         h.clear_autoroute_info();
         assert_eq!(h.get_autoroute_info_pur(), None);
     }

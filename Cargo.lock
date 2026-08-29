@@ -162,6 +162,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-router"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-drc",
+ "fr-dsn",
+ "fr-geometry",
+ "fr-settings",
+ "parity",
+ "thiserror",
+]
+
+[[package]]
 name = "fr-settings"
 version = "0.1.0"
 dependencies = [

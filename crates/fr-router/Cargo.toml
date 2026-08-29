@@ -1,0 +1,16 @@
+[package]
+name = "fr-router"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fr-board = { path = "../fr-board" }
+fr-dsn = { path = "../fr-dsn" }
+fr-geometry = { path = "../fr-geometry" }
+fr-settings = { path = "../fr-settings" }
+thiserror.workspace = true
+
+[dev-dependencies]
+fr-drc = { path = "../fr-drc" }
+parity = { path = "../../tests/parity" }

@@ -27,8 +27,8 @@ pub use datastructures::{
 };
 pub use error::BoardError;
 pub use ids::{
-    ItemId, ItemIdGenerator, NetClassId, PadstackId, RoomId, TreeId, TreeObject, ViaInfoId,
-    ViaRuleId,
+    ConnectionId, ItemId, ItemIdGenerator, NetClassId, ObstacleRoomId, PadstackId, RoomId, TreeId,
+    TreeObject, ViaInfoId, ViaRuleId,
 };
 pub use items::{
     AutorouteInfo, ClearanceViolation, ComponentObstacleArea, ComponentOutline, ConductionArea,
@@ -58,17 +58,18 @@ pub mod prelude {
         AngleRestriction, AutorouteInfo, Board, BoardError, BoardLibrary, BoardOutline, BoardRules,
         CLEARANCE_SAFETY_MARGIN, ChangedArea, ClearanceClassIndexed, ClearanceMatrix,
         ClearanceViolation, Communication, Component, ComponentObstacleArea, ComponentOutline,
-        Components, ConductionArea, Connectable, ConnectableRef, DEFAULT_MAX_TREE_SHAPE_WIDTH,
-        DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge, DrillItemData,
-        DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader, ItemId,
-        ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId, LogicalPart,
-        LogicalParts, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS, Net, NetClass, NetClassId,
-        NetClasses, Nets, Node, NodeId, ObstacleArea, ObstacleAreaData, Package, PackagePin,
-        Packages, Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin,
-        PlanarDelaunayTriangulation, PolylineTrace, RoomId, SearchTreeManager, ShapeAndEntrySide,
-        ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries, ShapeTree, StopCheck,
-        StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries, TreeEntry, TreeId,
-        TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId,
-        WriteResolution, compare_to_ignore_case, equals_ignore_case, java_to_lower, java_to_upper,
+        Components, ConductionArea, Connectable, ConnectableRef, ConnectionId,
+        DEFAULT_MAX_TREE_SHAPE_WIDTH, DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge,
+        DrillItemData, DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader,
+        ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId,
+        LogicalPart, LogicalParts, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS, Net,
+        NetClass, NetClassId, NetClasses, Nets, Node, NodeId, ObstacleArea, ObstacleAreaData,
+        ObstacleRoomId, Package, PackagePin, Packages, Padstack, PadstackId, PadstackLookup,
+        Padstacks, PartPin, Pin, PlanarDelaunayTriangulation, PolylineTrace, RoomId,
+        SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree, ShapeTraceEntries,
+        ShapeTree, StopCheck, StopConnectionOption, TimeLimit, TraceExitRestriction, TreeEntries,
+        TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo, ViaInfoId, ViaInfos, ViaObstacleArea,
+        ViaRule, ViaRuleId, WriteResolution, compare_to_ignore_case, equals_ignore_case,
+        java_to_lower, java_to_upper,
     };
 }
