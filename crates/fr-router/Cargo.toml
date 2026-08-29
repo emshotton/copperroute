@@ -6,11 +6,11 @@ license.workspace = true
 
 [dependencies]
 fr-board = { path = "../fr-board" }
-fr-dsn = { path = "../fr-dsn" }
 fr-geometry = { path = "../fr-geometry" }
 fr-settings = { path = "../fr-settings" }
 thiserror.workspace = true
 
 [dev-dependencies]
 fr-drc = { path = "../fr-drc" }
+fr-dsn = { path = "../fr-dsn" }
 parity = { path = "../../tests/parity" }

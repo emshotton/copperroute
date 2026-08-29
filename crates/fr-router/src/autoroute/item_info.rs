@@ -9,9 +9,36 @@
 //! obstacle-room arena — neither of which `fr-board` can name (plan-6 ruling 15).
 //!
 //! Java's `private final Item item` back-pointer (:12) is the `ItemId` argument each function
-//! takes. Java's methods are instance methods on an info object the caller has already fetched
-//! with `item.getAutorouteInfo()`, which creates the info on demand; the read/write pairs below
-//! do the same, so the observable behaviour matches even on an item that has no scratch yet.
+//! takes. Java's methods are instance methods on an info object the caller fetches first, and
+//! **there are two ways to fetch it** — which one a call site uses is observable, because
+//! `getAutorouteInfo` allocates an `ItemAutorouteInfo` on an item that has none:
+//!
+//! * `getAutorouteInfo()` (Item.java:1038-1044), which **creates on demand**, is what all twelve
+//!   in-scope call sites but one use: `path/Connection.java:43` (`getPrecalculatedConnection`)
+//!   and `:127` (`setPrecalculatedConnection`); `maze/MazeSearchEngine.java:978`
+//!   (`setStartInfo(false)`) and `:1012` (`setStartInfo(true)`);
+//!   `expansion/TargetItemExpansionDoor.java:46` (`isStartInfo`);
+//!   `expansion/SortedRoomNeighbours.java:237,274`,
+//!   `expansion/Sorted45DegreeRoomNeighbours.java:136,157` and
+//!   `expansion/SortedOrthogonalRoomNeighbours.java:172,194` (all `getExpansionRoom`); plus
+//!   `maze/AutorouteEngine.java:329` (`emitDiagnostics`, not ported — and note its `!= null`
+//!   guard at :330 is dead, since `getAutorouteInfo` never returns null).
+//! * `getAutorouteInfoPur()` (Item.java:1046-1049), which is **nullable and creates nothing**, is
+//!   used at exactly one site: `maze/AutorouteEngine.java:662`, inside `resetAllDoors`
+//!   (:654-668). It null-checks and then calls `resetDoors()` **and**
+//!   `setPrecalculatedConnection(null)` through the same reference, so neither of those two
+//!   reaches a fresh info there.
+//!
+//! The functions below follow their call sites: everything except [`reset_doors`] goes through
+//! `Item::get_autoroute_info()` and creates, because that is what its callers do;
+//! [`reset_doors`] goes through `get_autoroute_info_pur` and does not.
+//!
+//! obligation: `AutorouteEngine.resetAllDoors` (Task 9) must **not** call
+//! [`set_precalculated_connection`] — it creates, and Java's :662-666 does not, so calling it in a
+//! loop over `board.getItems()` would allocate scratch on every item Java skips. Use
+//! `Item::get_autoroute_info_pur_mut` (added to `fr-board` in Task 1 for this call site: Java has
+//! no such twin only because `getAutorouteInfoPur` already hands back a mutable reference) and
+//! write `precalculated_connection = None` through it, under the same `is_some` guard.
 //!
 //! not ported: `ItemAutorouteInfo.emitDiagnostics` (ItemAutorouteInfo.java:94-104) — it drives
 //! `AutorouteDiagnostic.Sink`, a GUI overlay (`global-constraints.md`: no GUI, no observers), and

@@ -63,8 +63,9 @@ at the foot of `src/lib.rs` names each class and the task or plan that owns it;
   maze would be non-deterministic and would dissolve every acceptance criterion
   in ruling 1.
 * **No new workspace dependencies** (rulings 5, 16, 17). The crate depends on
-  `fr-board`, `fr-dsn`, `fr-geometry`, `fr-settings` and `thiserror`, and on
-  nothing else. Not `rand` (see `JavaRandom` above), not `slotmap` (see
+  `fr-board`, `fr-geometry`, `fr-settings` and `thiserror`, and on nothing else
+  (`fr-dsn`, `fr-drc` and `parity` are dev-dependencies, for the fixtures and
+  the parity harness). Not `rand` (see `JavaRandom` above), not `slotmap` (see
   `Arena` below), not `rayon`.
 * **Deterministic containers, transcribed rather than chosen** (ruling 4).
   `BTreeSet`, never `BinaryHeap` — Java pops `mazeExpansionList.iterator()

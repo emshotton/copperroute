@@ -120,6 +120,45 @@ fn deep_copy_drops_a_populated_autoroute_info() {
 }
 
 #[test]
+fn get_autoroute_info_pur_mut_writes_without_creating() {
+    // The accessor `AutorouteEngine.resetAllDoors` (AutorouteEngine.java:661-667) needs: Java
+    // null-checks `getAutorouteInfoPur()` and then calls `setPrecalculatedConnection(null)`
+    // through the same reference, so an item with no scratch is skipped rather than given one.
+    let mut board = p2t11_board();
+    let untouched = ItemId(5);
+    assert_eq!(
+        board
+            .get_item_mut(untouched)
+            .unwrap()
+            .get_autoroute_info_pur_mut(),
+        None
+    );
+    assert_eq!(
+        board.get_item(untouched).unwrap().get_autoroute_info_pur(),
+        None,
+        "the read created nothing"
+    );
+
+    let id = ItemId(4);
+    populate(&mut board, id);
+    let info = board
+        .get_item_mut(id)
+        .unwrap()
+        .get_autoroute_info_pur_mut()
+        .expect("populated");
+    info.precalculated_connection = None;
+    assert_eq!(
+        board
+            .get_item(id)
+            .unwrap()
+            .get_autoroute_info_pur()
+            .unwrap()
+            .precalculated_connection,
+        None
+    );
+}
+
+#[test]
 fn clear_autoroute_info_drops_a_populated_body() {
     let mut board = p2t11_board();
     let id = ItemId(4);

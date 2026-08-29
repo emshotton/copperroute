@@ -433,6 +433,16 @@ impl ItemHeader {
         self.autoroute_info.as_deref()
     }
 
+    /// `Item.getAutorouteInfoPur` (Item.java:1046-1049) reached **mutably**.
+    ///
+    /// Java needs no such twin: `getAutorouteInfoPur` hands back a mutable object reference, so
+    /// `AutorouteEngine.resetAllDoors` (AutorouteEngine.java:661-667) can null-check it and then
+    /// call `resetDoors()` / `setPrecalculatedConnection(null)` through it without ever creating
+    /// the info. `&self` cannot do that in Rust, so this is the accessor that call site needs.
+    pub fn get_autoroute_info_pur_mut(&mut self) -> Option<&mut AutorouteInfo> {
+        self.autoroute_info.as_deref_mut()
+    }
+
     /// Port of `Item.clearAutorouteInfo` (Item.java:1051-1054).
     pub fn clear_autoroute_info(&mut self) {
         self.autoroute_info = None;

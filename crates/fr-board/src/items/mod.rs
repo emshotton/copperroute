@@ -811,6 +811,13 @@ impl Item {
         self.header().get_autoroute_info_pur()
     }
 
+    /// `Item.getAutorouteInfoPur` (Item.java:1046-1049) reached **mutably** — see
+    /// [`ItemHeader::get_autoroute_info_pur_mut`] for why Java needs no such twin. This is the
+    /// accessor `AutorouteEngine.resetAllDoors` needs (plan-6 Task 9).
+    pub fn get_autoroute_info_pur_mut(&mut self) -> Option<&mut AutorouteInfo> {
+        self.header_mut().get_autoroute_info_pur_mut()
+    }
+
     /// Port of `Item.clearAutorouteInfo` (Item.java:1051-1054) and its one override,
     /// `Via.clearAutorouteInfo` (Via.java:226-230), which also drops the via's cached
     /// `autorouteDrillInfo`.
