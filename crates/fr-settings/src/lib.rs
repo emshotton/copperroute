@@ -26,7 +26,8 @@
 //! [`sources`], the five in-scope `settings/sources/**` classes plus the
 //! `DsnRouterSettings` ⇄ `RouterSettings` conversion pair Plan 3 ruling 5 parked here. Task 7
 //! adds the environment-variable and CLI sources, plus the dead `LegacyBridge` (plan ruling 8)
-//! and `classify_de_arguments` (plan ruling 10); Task 8 adds `resolve_headless`.
+//! and `classify_de_arguments` (plan ruling 10); Task 8 adds [`resolve`] — `resolve_headless`, the linear
+//! form of Java's two-merge headless precedence, and `resolve_scheduler_rules_path`.
 
 pub mod board_optimizations;
 pub mod copy_fields;
@@ -38,6 +39,7 @@ pub mod host;
 pub mod layer_settings;
 pub mod merger;
 pub mod optimizer_settings;
+pub mod resolve;
 pub mod router_settings;
 pub mod scoring_settings;
 pub mod sources;
@@ -51,6 +53,10 @@ pub use host::HostEnvironment;
 pub use layer_settings::LayerSettings;
 pub use merger::{SettingsMerger, SettingsSource, SourceKind, priority};
 pub use optimizer_settings::{BoardUpdateStrategy, ItemSelectionStrategy, OptimizerSettings};
+pub use resolve::{
+    SettingsInputs, resolve_headless, resolve_scheduler_rules_path,
+    resolve_scheduler_rules_path_with,
+};
 pub use router_settings::{ExpansionCostFactor, RouterSettings};
 pub use scoring_settings::ScoringSettings;
 
@@ -67,7 +73,8 @@ pub mod prelude {
         BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings,
         ExpansionCostFactor, FanoutSettings, FieldKind, FieldSpec, HostEnvironment,
         ItemSelectionStrategy, JavaEnum, LayerSettings, MergeError, MergeMode, MergeReport,
-        OptimizerSettings, RouterSettings, ScoringSettings, SettingsError, SettingsMerger,
-        SettingsSource, SourceKind, priority, set_field_value,
+        OptimizerSettings, RouterSettings, ScoringSettings, SettingsError, SettingsInputs,
+        SettingsMerger, SettingsSource, SourceKind, priority, resolve_headless,
+        resolve_scheduler_rules_path, resolve_scheduler_rules_path_with, set_field_value,
     };
 }

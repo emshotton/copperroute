@@ -1,0 +1,22 @@
+(rules PCB matrix_adjacent
+  (autoroute_settings
+    (fanout on)
+    (autoroute on)
+    (postroute off)
+    (vias off)
+    (via_costs 90)
+    (plane_via_costs 9)
+    (start_ripup_costs 190)
+    (start_pass_no 1)
+    (layer_rule F.Cu
+      (active on)
+      (preferred_direction vertical)
+      (preferred_direction_trace_costs 6.5)
+      (against_preferred_direction_trace_costs 7.5)
+    )
+    (layer_rule B.Cu
+      (active on)
+      (preferred_direction horizontal)
+    )
+  )
+)
