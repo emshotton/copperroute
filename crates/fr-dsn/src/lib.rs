@@ -15,6 +15,7 @@ pub mod format;
 pub mod keyword;
 pub mod lexer;
 pub mod parser;
+pub mod ses_writer;
 
 pub use coordinate_transform::CoordinateTransform;
 pub use dsn_reader::{read_board, read_metadata};
