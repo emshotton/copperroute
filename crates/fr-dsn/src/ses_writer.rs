@@ -3,7 +3,7 @@
 //!
 //! # Deviation from Java: the coordinate transform is a parameter
 //!
-//! `SesWriter.writeSessionScope` (SesWriter.java:77-79) derives the session-file transform from
+//! `SesWriter.writeSessionScope` (SesWriter.java:80-82) derives the session-file transform from
 //! the board: `board.communication.coordinateTransform.dsnToBoard(1) / board.communication
 //! .resolution`. This port's `fr-board` `Communication` has no `coordinateTransform` field —
 //! Plan 3 ruling A keeps [`CoordinateTransform`] in `fr-dsn`, where the rest of the Specctra
@@ -74,7 +74,7 @@ pub fn write<W: Write>(
     output_file.flush()
 }
 
-/// `SesWriter.writeSessionScope` (SesWriter.java:73-93).
+/// `SesWriter.writeSessionScope` (SesWriter.java:73-94).
 fn write_session_scope<W: Write>(
     board: &Board,
     ct: &CoordinateTransform,
@@ -83,7 +83,7 @@ fn write_session_scope<W: Write>(
     session_name: &str,
     design_name: &str,
 ) {
-    // SesWriter.java:77-79. See the module docs for why `ct` is a parameter here.
+    // SesWriter.java:80-82. See the module docs for why `ct` is a parameter here.
     let scale_factor = ct.dsn_to_board(1.0) / f64::from(board.communication.resolution);
     let coordinate_transform = CoordinateTransform::new(scale_factor, 0.0, 0.0);
     file.start_scope(false);
@@ -99,7 +99,7 @@ fn write_session_scope<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writePlacement` (SesWriter.java:95-115).
+/// `SesWriter.writePlacement` (SesWriter.java:96-114).
 fn write_placement<W: Write>(
     board: &Board,
     identifier_type: &IdentifierType,
@@ -117,7 +117,7 @@ fn write_placement<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writeComponents` (SesWriter.java:117-146): "writes all components with the given
+/// `SesWriter.writeComponents` (SesWriter.java:117-151): "writes all components with the given
 /// package to the session file".
 ///
 /// Java takes the `Package` object and compares `currentComponent.getPackage() == pkg` by
@@ -163,7 +163,7 @@ fn write_components<W: Write>(
     }
 }
 
-/// `SesWriter.writeComponent` (SesWriter.java:148-175): one `(place <name> <x> <y> front|back
+/// `SesWriter.writeComponent` (SesWriter.java:153-181): one `(place <name> <x> <y> front|back
 /// <rotation> [(lock_type position)])` line.
 fn write_component<W: Write>(
     identifier_type: &IdentifierType,
@@ -175,7 +175,7 @@ fn write_component<W: Write>(
     file.write("(place ");
     identifier_type.write(&component.name, file);
     // totalized: SesWriter.writeComponent dereferences `component.getLocation().toFloat()`
-    // (SesWriter.java:153) with no null check, so an unplaced component with undeleted items
+    // (SesWriter.java:163) with no null check, so an unplaced component with undeleted items
     // NPEs there — after the `(place <name>` above has already been written. The port writes
     // the same prefix and then skips the location group, exactly as `Component.writeScope`
     // (the DSN path) does for an unplaced component. Unreachable from `read_board`: every
@@ -193,7 +193,7 @@ fn write_component<W: Write>(
         } else {
             file.write(" back ");
         }
-        // The only `String.format` in the Specctra package (SesWriter.java:229-238).
+        // The only `String.format` in the Specctra package (SesWriter.java:259-269).
         file.write(&format_placement_rotation(
             component.get_rotation_in_degree(),
         ));
@@ -205,7 +205,7 @@ fn write_component<W: Write>(
     file.write(")");
 }
 
-/// `SesWriter.writeWasIs` (SesWriter.java:177-215): one `(pins <cmp>-<pin> <cmp>-<pin>)` line per
+/// `SesWriter.writeWasIs` (SesWriter.java:183-218): one `(pins <cmp>-<pin> <cmp>-<pin>)` line per
 /// pin that was swapped with another.
 ///
 /// Both of Java's `component not found` branches are `FRLogger.warn` + *keep going*: the
@@ -226,7 +226,7 @@ fn write_was_is<W: Write>(
         };
         let swapped_with = current_pin.get_changed_to();
         // Java compares object identity: `currentPin.getChangedTo() != currentPin`
-        // (SesWriter.java:184).
+        // (SesWriter.java:190).
         if swapped_with == pin_id {
             continue;
         }
@@ -240,7 +240,7 @@ fn write_was_is<W: Write>(
     file.end_scope();
 }
 
-/// One `<component>-<packagePin>` half of a `(pins …)` line (SesWriter.java:186-197 and :199-210,
+/// One `<component>-<packagePin>` half of a `(pins …)` line (SesWriter.java:193-199 and :204-210,
 /// which are the same six statements twice).
 // renamed: the two inlined halves of SesWriter.writeWasIs -> write_swapped_pin.
 fn write_swapped_pin<W: Write>(
@@ -263,7 +263,7 @@ fn write_swapped_pin<W: Write>(
     }
     let component = board.components.get(component_id);
     let component_name = component.name.clone();
-    // totalized: SesWriter.writeWasIs dereferences `getPin(...).name` (SesWriter.java:191) with no
+    // totalized: SesWriter.writeWasIs dereferences `getPin(...).name` (SesWriter.java:198, :209) with no
     // a pin index past the package's pin count would NPE. The port writes the component name and
     // the separating `-` and then stops, which is the closest total behaviour. Unreachable: a
     // pin's index always comes from its own package.
@@ -280,9 +280,9 @@ fn write_swapped_pin<W: Write>(
     }
 }
 
-/// `SesWriter.writeRoutes` (SesWriter.java:217-231).
+/// `SesWriter.writeRoutes` (SesWriter.java:220-233).
 ///
-/// `Parser.writeScope` is called with `reduced = true` here (SesWriter.java:226) — the SES
+/// `Parser.writeScope` is called with `reduced = true` here (SesWriter.java:229) — the SES
 /// `(parser …)` scope carries only `host_cad`/`host_version`/`constant`/`write_resolution`, never
 /// `(string_quote …)`, `(space_in_quoted_tokens on)` or `(generated_by_freerouting)`.
 fn write_routes<W: Write>(
@@ -300,7 +300,7 @@ fn write_routes<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writeLibrary` (SesWriter.java:233-251): the via padstacks, de-duplicated by name.
+/// `SesWriter.writeLibrary` (SesWriter.java:235-252): the via padstacks, de-duplicated by name.
 ///
 /// Java's `LinkedHashSet<String>` (SesWriter.java:243) is only ever used through `add`'s boolean
 /// return — it is never iterated — so its insertion order is unobservable and a [`BTreeSet`]
@@ -332,7 +332,7 @@ fn write_library<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writePadstack` (SesWriter.java:240-290): one `(padstack <name> (shape …)*
+/// `SesWriter.writePadstack` (SesWriter.java:271-313): one `(padstack <name> (shape …)*
 /// [(attach off)])` scope, covering the layer range between the first and last layer the padstack
 /// actually has a shape on.
 ///
@@ -388,7 +388,7 @@ fn write_padstack<W: Write>(
         file.start_scope_nl();
         file.write("shape");
         // totalized: SesWriter.writePadstack calls `currentShape.writeScopeInt` without checking
-        // `boardToDsnRel`'s `null` (SesWriter.java:280); the port writes an empty `(shape …)`
+        // `boardToDsnRel`'s `null` (SesWriter.java:305); the port writes an empty `(shape …)`
         // scope rather than crashing. Unreachable: every shape `fr-geometry` can hold is one
         // `boardToDsnRel` handles.
         if let Some(current_shape) = current_shape {
@@ -403,7 +403,7 @@ fn write_padstack<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writeNetwork` (SesWriter.java:292-306): every net number `1..=maxNetNumber()`, in
+/// `SesWriter.writeNetwork` (SesWriter.java:315-327): every net number `1..=maxNetNumber()`, in
 /// net-number order.
 fn write_network<W: Write>(
     board: &Board,
@@ -419,7 +419,7 @@ fn write_network<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writeNet` (SesWriter.java:308-355): the wires, vias and signal-layer conduction
+/// `SesWriter.writeNet` (SesWriter.java:329-370): the wires, vias and signal-layer conduction
 /// areas of one net, in `getConnectableItems` order (descending item id — quirk #63 — which is
 /// Java's `TreeSet<Item>` order too).
 ///
@@ -474,7 +474,7 @@ fn write_net<W: Write>(
     }
 }
 
-/// `SesWriter.writeWire` (SesWriter.java:357-406): a trace as a `(wire (path …) [(type …)])`
+/// `SesWriter.writeWire` (SesWriter.java:372-415): a trace as a `(wire (path …) [(type …)])`
 /// scope, with consecutive corners that round to the same integer pair collapsed.
 fn write_wire<W: Write>(
     wire_id: ItemId,
@@ -522,7 +522,7 @@ fn write_wire<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.snappedEndpoint` (SesWriter.java:408-445): "returns the exact pad/via center to use
+/// `SesWriter.snappedEndpoint` (SesWriter.java:426-453): "returns the exact pad/via center to use
 /// for a wire endpoint, or null to keep the corner as-is".
 ///
 /// Java's `getStartContacts()`/`getEndContacts()` return a `TreeSet<Item>`, whose iteration order
@@ -543,7 +543,7 @@ fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<
     } else {
         wire.last_corner()
     };
-    // totalized: SesWriter.snappedEndpoint's `corner.toFloat()` (SesWriter.java:410) NPEs on an
+    // totalized: SesWriter.snappedEndpoint's `corner.toFloat()` (SesWriter.java:428) NPEs on an
     // empty polyline, which
     // `Polyline`'s invariants make unreachable.
     let corner_float = corner?.to_float();
@@ -557,7 +557,7 @@ fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<
         let Some(contact) = board.get_item(contact_id) else {
             continue;
         };
-        // `!(contact instanceof DrillItem drill)` (SesWriter.java:415-417).
+        // `!(contact instanceof DrillItem drill)` (SesWriter.java:432-434).
         let pad_shape = match contact {
             Item::Via(via) => {
                 if layer < contact.first_layer(&ctx) || layer > contact.last_layer(&ctx) {
@@ -592,7 +592,7 @@ fn snapped_endpoint(board: &Board, wire_id: ItemId, start_side: bool) -> Option<
     None
 }
 
-/// `SesWriter.writeVia` (SesWriter.java:447-471): `(via <padstack> <x> <y> [(type …)])`.
+/// `SesWriter.writeVia` (SesWriter.java:455-476): `(via <padstack> <x> <y> [(type …)])`.
 fn write_via<W: Write>(
     via_id: ItemId,
     board: &Board,
@@ -608,7 +608,7 @@ fn write_via<W: Write>(
         return;
     };
     // totalized: SesWriter.writeVia writes `via.getPadstack().name` unconditionally
-    // (SesWriter.java:452); a via
+    // (SesWriter.java:462); a via
     // whose padstack id is not in the library would NPE. Unreachable — every via is inserted with
     // a padstack the library holds.
     let Some(via_padstack) = via.get_padstack(&ctx) else {
@@ -628,7 +628,7 @@ fn write_via<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writeFixedState` (SesWriter.java:473-484): nothing at all for an item that is at
+/// `SesWriter.writeFixedState` (SesWriter.java:478-490): nothing at all for an item that is at
 /// most `SHOVE_FIXED`, else `(type fix)` or `(type protect)`.
 ///
 /// Note this is **not** `Wiring.writeFixedState`: the DSN one emits `(type shove_fixed)` too, and
@@ -650,7 +650,7 @@ fn write_fixed_state<W: Write>(file: &mut IndentFileWriter<W>, fixed_state: Fixe
     }
 }
 
-/// `SesWriter.writePath` (SesWriter.java:486-508): `(path <layer> <width> <x0> <y0> …)`, one
+/// `SesWriter.writePath` (SesWriter.java:492-512): `(path <layer> <width> <x0> <y0> …)`, one
 /// corner pair per line.
 fn write_path<W: Write>(
     layer_name: &str,
@@ -673,7 +673,7 @@ fn write_path<W: Write>(
     file.end_scope();
 }
 
-/// `SesWriter.writeConductionArea` (SesWriter.java:510-551): a signal-layer conduction area as a
+/// `SesWriter.writeConductionArea` (SesWriter.java:514-551): a signal-layer conduction area as a
 /// `(wire <shape> (window …)*)` scope. Unlike the DSN path's
 /// [`crate::parser::wiring`] counterpart it carries neither the net nor the clearance class.
 //

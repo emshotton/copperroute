@@ -6,7 +6,7 @@ use std::io::Write;
 /// Reserved characters for DSN identifiers (`io/specctra/parser/WriteScopeParameter.java:33`).
 pub const DSN_RESERVED: [&str; 6] = ["(", ")", " ", ";", "-", "_"];
 
-/// Reserved characters for SES (session) identifiers (`io/specctra/SesWriter.java:63`).
+/// Reserved characters for SES (session) identifiers (`io/specctra/SesWriter.java:62`).
 pub const SES_RESERVED: [&str; 10] = ["(", ")", " ", ";", "-", "_", "/", "~", "{", "}"];
 
 /// Describes legal identifiers together with the character used for string quotes

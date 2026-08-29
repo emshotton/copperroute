@@ -195,7 +195,7 @@ fn no_reference_contains_a_wire() {
 // one `null_board_is_an_error`; there is no behaviour left to assert once the type system has
 // taken both null cases away.
 
-/// `SesRoundTripTest.sesWriterProducesValidHeader` (SesRoundTripTest.java:57-70).
+/// `SesRoundTripTest.sesWriterProducesValidHeader` (SesRoundTripTest.java:54-71).
 // renamed: sesWriterProducesValidHeader -> valid_header (the task brief's name).
 #[test]
 fn valid_header() {
@@ -214,7 +214,7 @@ fn valid_header() {
     );
 }
 
-/// `SesRoundTripTest.sesWriterOutputIsNonEmpty` (SesRoundTripTest.java:165-172).
+/// `SesRoundTripTest.sesWriterOutputIsNonEmpty` (SesRoundTripTest.java:171-178).
 // renamed: sesWriterOutputIsNonEmpty -> output_is_non_empty (the task brief's name).
 #[test]
 fn output_is_non_empty() {
@@ -225,7 +225,7 @@ fn output_is_non_empty() {
     );
 }
 
-/// `SesRoundTripTest.placementRotationFormattingMatchesKicadStyle` (SesRoundTripTest.java:262-268).
+/// `SesRoundTripTest.placementRotationFormattingMatchesKicadStyle` (SesRoundTripTest.java:271-278).
 #[test]
 fn placement_rotation_formatting_matches_kicad_style() {
     assert_eq!(format_placement_rotation(0.0), "0");
@@ -234,7 +234,7 @@ fn placement_rotation_formatting_matches_kicad_style() {
     assert_eq!(format_placement_rotation(-45.25), "-45.25");
 }
 
-/// `SesRoundTripTest.assertBalancedScopes` (SesRoundTripTest.java:270-274).
+/// `SesRoundTripTest.assertBalancedScopes` (SesRoundTripTest.java:280-284).
 ///
 /// **Java wins over the brief**, which describes this helper as counting brackets "outside quoted
 /// strings": Java's counts every `(` and `)` character in the file, quoted ones included. Ported
@@ -245,7 +245,7 @@ fn assert_balanced_scopes(content: &str) {
     assert_eq!(opens, closes, "SES scopes must be balanced");
 }
 
-/// `SesRoundTripTest.assertUniqueLibraryPadstacks` (SesRoundTripTest.java:276-292), with the
+/// `SesRoundTripTest.assertUniqueLibraryPadstacks` (SesRoundTripTest.java:286-302), with the
 /// `\(padstack\s+([^\s()]+)` regex hand-rolled (`fr-dsn` has no `regex` dependency).
 fn assert_unique_library_padstacks(content: &str) {
     let library_start = content
@@ -287,7 +287,7 @@ fn assert_unique_library_padstacks(content: &str) {
 }
 
 /// The three assertions of `SesRoundTripTest.issue742SesRoundTripsWithoutErrors`
-/// (SesRoundTripTest.java:228-260) that do not need `SesReader`: balanced scopes, unique
+/// (SesRoundTripTest.java:234-269) that do not need `SesReader`: balanced scopes, unique
 /// `library_out` padstacks, and KiCad-style rotation formatting in the placement records.
 ///
 /// Java imports `Issue742-tastexx-pcb.ses` into the board before writing; the wire data that
