@@ -2413,7 +2413,7 @@ fn search_lib_package(
 
 // -------------------------------------------------------------------------- Rule.java writers
 
-/// `Rule.writeScope(NetClass, WriteScopeParameter)` (Rule.java:116-133): a net class's `(rule
+/// `Rule.writeScope(NetClass, WriteScopeParameter)` (Rule.java:119-137): a net class's `(rule
 /// (width …))` scope, followed by one `(layer_rule …)` per layer whose trace width differs.
 // renamed: Rule.writeScope -> write_rule_scope (the read half is `read_rule_scope` above).
 pub fn write_rule_scope(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
@@ -2437,8 +2437,9 @@ pub fn write_rule_scope(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
     }
 }
 
-/// `Rule.writeLayerRule` (Rule.java:135-158). Note the layer name goes out **raw**, not through
-/// the identifier writer (Rule.java:144), and the closing `") "` carries a trailing space.
+/// `Rule.writeLayerRule` (Rule.java:139-161). Note the layer name goes out **raw**, not through
+/// the identifier writer (Rule.java:147), and the closing `") "` (:158) carries a trailing
+/// space.
 fn write_layer_rule(net_class: &NetClass, layer_index: usize, p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();
     p.file.write("layer_rule ");
@@ -2463,11 +2464,11 @@ fn write_layer_rule(net_class: &NetClass, layer_index: usize, p: &mut WriteScope
     p.file.end_scope();
 }
 
-/// `Rule.writeDefaultRule` (Rule.java:160-196): "writes the default rule as a scope to an output
+/// `Rule.writeDefaultRule` (Rule.java:164-201): "writes the default rule as a scope to an output
 /// dsn-file" — the width, the default clearance, the smd-to-turn gap and the named clearance
 /// rules.
 ///
-/// The trace width is always the **layer-0** width, even when `layer` is not 0 (Rule.java:167);
+/// The trace width is always the **layer-0** width, even when `layer` is not 0 (Rule.java:172);
 /// only the clearances are read on `layer`.
 // renamed: Rule.writeDefaultRule -> write_default_rule.
 pub fn write_default_rule(p: &mut WriteScopeParameter<'_>, layer: usize) {
@@ -2514,19 +2515,29 @@ pub fn write_default_rule(p: &mut WriteScopeParameter<'_>, layer: usize) {
     p.file.end_scope();
 }
 
-/// `Rule.writeNonDefaultClearanceRules` (Rule.java:198-226): "write the clearance rules, which
+/// [`CLASS_CLEARANCE_SEPARATOR`] as the `&str` [`IndentFileWriter::write`] takes.
+///
+/// Java's `DsnFile.CLASS_CLEARANCE_SEPARATOR` is a `char` (DsnFile.java:20) that
+/// `Rule.writeNonDefaultClearanceRules` passes to `Writer.write(int)` (Rule.java:225); this port
+/// keeps the `char` for the readers that split on it and adds this one-character `&str` for the
+/// writer, rather than allocating a `String` per loop iteration. `separator_str_matches_char`
+/// pins the two together.
+const CLASS_CLEARANCE_SEPARATOR_STR: &str = "-";
+
+/// `Rule.writeNonDefaultClearanceRules` (Rule.java:204-230): "write the clearance rules, which
 /// are different from the default clearance."
 ///
 /// **Dead code in Java, ported anyway.** Its only call site is the commented-out line in
-/// [`write_default_rule`] (Rule.java:193), so nothing in the DSN write path reaches it and no
+/// [`write_default_rule`] (Rule.java:198), so nothing in the DSN write path reaches it and no
 /// fixture's output depends on it. Kept because the plan asks for all six `Rule` writers and
 /// because the outer loop's bound is a live Java bug worth carrying: `i` runs to `clCount`
-/// **inclusive** (`i <= clCount`, Rule.java:204) where `j` stops at `clCount - 1`, so the last
+/// **inclusive** (`i <= clCount`, Rule.java:210) where `j` stops at `clCount - 1`, so the last
 /// `i` iteration reads `clMatrix.getValue(clCount, …)` — out of range. Java's `getValue` clamps
 /// and returns 0 rather than throwing, and so does this port's.
 // Java bug: Rule.writeNonDefaultClearanceRules — `for (int i = 1; i <= clCount; i++)` walks one
 // class past the end of the clearance matrix (quirk table).
-pub fn write_non_default_clearance_rules(
+#[allow(dead_code, reason = "dead in Java too — see the doc comment")]
+fn write_non_default_clearance_rules(
     p: &mut WriteScopeParameter<'_>,
     layer: usize,
     default_clearance: i32,
@@ -2552,16 +2563,16 @@ pub fn write_non_default_clearance_rules(
             p.file.write(&java_double_to_string(current_clearance));
             p.file.write(" (type ");
             p.identifier_type.write(&name_i, &mut p.file);
-            p.file.write(&CLASS_CLEARANCE_SEPARATOR.to_string());
+            p.file.write(CLASS_CLEARANCE_SEPARATOR_STR);
             p.identifier_type.write(&name_j, &mut p.file);
             p.file.write("))");
         }
     }
 }
 
-/// `Rule.writeNamedClearanceRules` (Rule.java:228-252): "write the clearance rules for the named
+/// `Rule.writeNamedClearanceRules` (Rule.java:233-255): "write the clearance rules for the named
 /// classes in the clearance matrix" — the diagonal entry of every class except `default`.
-pub fn write_named_clearance_rules(p: &mut WriteScopeParameter<'_>, layer: usize) {
+fn write_named_clearance_rules(p: &mut WriteScopeParameter<'_>, layer: usize) {
     let cl_count = p.board.rules.clearance_matrix.get_class_count();
 
     for i in 1..cl_count {
@@ -2587,7 +2598,7 @@ pub fn write_named_clearance_rules(p: &mut WriteScopeParameter<'_>, layer: usize
 /// `Rule.writeItemClearanceClass` (Rule.java:305-311).
 ///
 /// The literal is 2.3.0's `"(clearance_class "` (plan ruling 1); the clone's HEAD writes
-/// `"(clearanceClass "`, which its own lexer cannot read back.
+/// `"(clearanceClass "` (:308), which its own lexer cannot read back.
 // renamed: Rule.writeItemClearanceClass -> write_item_clearance_class.
 pub fn write_item_clearance_class<W: Write>(
     name: &str,
@@ -2612,7 +2623,7 @@ pub(crate) fn clearance_class_name(rules: &BoardRules, index: usize) -> &str {
 
 // --------------------------------------------------------------------------- Net.java writers
 
-/// `Net.writeScope(WriteScopeParameter, rules.Net, Collection<Pin>)` (Net.java:97-115): one
+/// `Net.writeScope(WriteScopeParameter, rules.Net, Collection<Pin>)` (Net.java:27-44): one
 /// `(net <name> <subnet> (pins …))` scope.
 // renamed: Net.writeScope -> write_net_scope.
 pub fn write_net_scope(p: &mut WriteScopeParameter<'_>, net_number: i32, pin_list: &[ItemId]) {
@@ -2642,7 +2653,7 @@ pub fn write_net_scope(p: &mut WriteScopeParameter<'_>, net_number: i32, pin_lis
     p.file.end_scope();
 }
 
-/// `Net.writeNetId(rules.Net, IndentFileWriter, IdentifierType)` (Net.java:117-125).
+/// `Net.writeNetId(rules.Net, IndentFileWriter, IdentifierType)` (Net.java:46-54).
 // renamed: Net.writeNetId -> write_net_id (the port takes the net's two written fields rather
 // than the `rules.Net` object, so `Wiring.writeNet` can call it without a second lookup).
 pub fn write_net_id<W: Write>(
@@ -2665,7 +2676,7 @@ fn write_net_id_parts<W: Write>(
     file.write(&subnet_number.to_string());
 }
 
-/// `Net.writePin(WriteScopeParameter, board.model.items.Pin)` (Net.java:127-146): one
+/// `Net.writePin(WriteScopeParameter, board.model.items.Pin)` (Net.java:56-74): one
 /// `<component>-<pin>` entry inside a `(pins …)` scope.
 // renamed: Net.writePin -> write_pin.
 pub fn write_pin(p: &mut WriteScopeParameter<'_>, pin_id: ItemId) {
@@ -2676,11 +2687,11 @@ pub fn write_pin(p: &mut WriteScopeParameter<'_>, pin_id: ItemId) {
     let Item::Pin(pin) = item else {
         return;
     };
-    // Java's "component not found" branch (Net.java:132-135) dereferences the very reference it
+    // Java's "component not found" branch (Net.java:61-64) dereferences the very reference it
     // just found to be null, so it can only ever throw; the port simply returns, as the branch
     // was plainly meant to.
     // Java bug: Net.writePin — `FRLogger.warn("… at '" + currentComponent.name + "'")` inside the
-    // `currentComponent == null` guard (Net.java:134) NPEs instead of warning.
+    // `currentComponent == null` guard (Net.java:62) NPEs instead of warning.
     let component_id = item.component_id();
     if component_id < 1
         || component_id > i32::try_from(board.components.count()).unwrap_or(i32::MAX)
@@ -2698,7 +2709,8 @@ pub fn write_pin(p: &mut WriteScopeParameter<'_>, pin_id: ItemId) {
         .get(package_no)
         .get_pin(pin.get_pin_index())
     else {
-        // "Net.write_scope: pin number out of range" — an `FRLogger.warn` this port drops.
+        // "Net.write_scope: pin number out of range" (Net.java:66-69) — an `FRLogger.warn`
+        // this port drops.
         return;
     };
     let lib_pin_name = lib_pin.name.clone();
@@ -2731,7 +2743,7 @@ pub fn write_network_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.end_scope();
 }
 
-/// `Network.writeViaInfos(BoardRules, IndentFileWriter, IdentifierType)` (Network.java:58-77).
+/// `Network.writeViaInfos(BoardRules, IndentFileWriter, IdentifierType)` (Network.java:58-76).
 ///
 /// The extra `padstacks` parameter is this port's: Java's `ViaInfo.getPadstack()` returns the
 /// `Padstack` object, where `fr-board`'s returns a [`PadstackId`] (Plan 2's "no object references
@@ -2770,7 +2782,7 @@ pub fn write_via_infos<W: Write>(
     }
 }
 
-/// `Network.writeViaRules(BoardRules, IndentFileWriter, IdentifierType)` (Network.java:79-93).
+/// `Network.writeViaRules(BoardRules, IndentFileWriter, IdentifierType)` (Network.java:78-91).
 ///
 /// The literal is 2.3.0's `"via_rule"` (plan ruling 1); the clone's HEAD writes `"viaRule"`.
 // renamed: Network.writeViaRules -> write_via_rules.
@@ -2795,7 +2807,7 @@ pub fn write_via_rules<W: Write>(
     }
 }
 
-/// `Network.writeNetClasses` (Network.java:95-100).
+/// `Network.writeNetClasses` (Network.java:93-97).
 // renamed: Network.writeNetClasses -> write_net_classes.
 pub fn write_net_classes(p: &mut WriteScopeParameter<'_>) {
     let board = p.board;
@@ -2804,12 +2816,12 @@ pub fn write_net_classes(p: &mut WriteScopeParameter<'_>) {
     }
 }
 
-/// `Network.writeNetClass(rules.NetClass, WriteScopeParameter)` (Network.java:102-159): the
+/// `Network.writeNetClass(rules.NetClass, WriteScopeParameter)` (Network.java:99-150): the
 /// `(class …)` scope — the class name, its nets **eight per line**, the trace clearance class, an
 /// optional via rule, the width rules, the circuit and the two flags.
 ///
 /// The extra `net_class_id` parameter replaces Java's `nets.get(i).getNetClass() == netClass`
-/// object-identity test (Network.java:110), which `fr-board`'s [`NetClassId`]-valued
+/// object-identity test (Network.java:108), which `fr-board`'s [`NetClassId`]-valued
 /// `Net::get_net_class` expresses as an index comparison.
 ///
 /// The two flag literals are 2.3.0's `"(pull_tight off)"` and `"(shove_fixed on)"` (plan
@@ -2849,7 +2861,7 @@ pub fn write_net_class(
 
     if let Some(via_rule_id) = net_class.get_via_rule() {
         // write the via rule
-        // totalized: Java writes `netClass.getViaRule().name` (Network.java:184); a net class
+        // totalized: Java writes `netClass.getViaRule().name` (Network.java:130); a net class
         // holding a via-rule index the rule list does not have would panic on the slice index
         // here, so the port skips the line instead. `Network.insertNetClass` only ever stores an
         // index it just looked up.
@@ -2880,11 +2892,11 @@ pub fn write_net_class(
     p.file.end_scope();
 }
 
-/// `Network.writeCircuit(rules.NetClass, WriteScopeParameter)` (Network.java:161-201): the
+/// `Network.writeCircuit(rules.NetClass, WriteScopeParameter)` (Network.java:152-190): the
 /// `(circuit (use_layer …) [(length <max> <min>)])` sub-scope of a `(class …)`.
 ///
 /// The literal is 2.3.0's `"(use_layer"` (plan ruling 1); the clone's HEAD writes `"(useLayer"`.
-/// Note the layer names go out **raw**, not through the identifier writer (Network.java:194).
+/// Note the layer names go out **raw**, not through the identifier writer (Network.java:165).
 // renamed: Network.writeCircuit -> write_circuit.
 fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
     let min_trace_length = net_class.get_minimum_trace_length();
@@ -2925,6 +2937,16 @@ fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
 
 #[cfg(test)]
 mod tests {
+    /// `CLASS_CLEARANCE_SEPARATOR_STR` is the writer's spelling of the reader's
+    /// [`CLASS_CLEARANCE_SEPARATOR`]; the two must never drift apart (DsnFile.java:20).
+    #[test]
+    fn separator_str_matches_char() {
+        assert_eq!(
+            CLASS_CLEARANCE_SEPARATOR_STR,
+            CLASS_CLEARANCE_SEPARATOR.to_string()
+        );
+    }
+
     use super::*;
 
     fn scan(text: &str) -> DsnScanner {

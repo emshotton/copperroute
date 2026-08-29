@@ -22,7 +22,7 @@
 //! # The writers
 //!
 //! `Structure.writeScope` and its helpers live at the foot of this file, together with
-//! `Layer.writeScope` (Layer.java:48-66) and `Plane.writeScope` (Plane.java:18-51) — the two
+//! `Layer.writeScope` (Layer.java:48-66) and `Plane.writeScope` (Plane.java:17-51) — the two
 //! one-scope writers whose only caller is `Structure.writeScope`. `write_snap_angle` emits the
 //! 2.3.0 literal `"snap_angle "`, never HEAD's `"snapAngle "` (plan ruling 1).
 
@@ -1423,7 +1423,7 @@ fn to_polyline_shape(shape: Shape) -> Option<PolylineShapeRef> {
 // =================================================================== the `structure` writers
 //
 // `Structure.writeScope` and everything it calls, plus `Layer.writeScope` (Layer.java:48-66) and
-// `Plane.writeScope` (Plane.java:18-51) — the two one-scope writers whose only caller is this
+// `Plane.writeScope` (Plane.java:17-51) — the two one-scope writers whose only caller is this
 // file. Ported in Plan 3 Task 11; the module-head marker above named them.
 
 /// `Structure.writeScope` (Structure.java:52-91).
@@ -1431,7 +1431,7 @@ fn to_polyline_shape(shape: Shape) -> Option<PolylineShapeRef> {
 /// `autoroute_settings` is Java's `WriteScopeParameter.autorouteSettings`, which this port passes
 /// as an argument instead of storing on the parameter object (see [`WriteScopeParameter::new`]).
 /// `DsnWriter.writePcbScope` constructs the parameter with a literal `null` there
-/// (DsnWriter.java:63), so on the DSN write path this is always `None` and the
+/// (DsnWriter.java:65), so on the DSN write path this is always `None` and the
 /// `(autoroute_settings …)` scope is never emitted.
 // renamed: Structure.writeScope -> write_structure_scope.
 pub fn write_structure_scope(
@@ -1527,7 +1527,8 @@ fn write_boundaries(p: &mut WriteScopeParameter<'_>) {
     // lookup the outline in the board
     let board = p.board;
     let Some(outline_id) = board.get_outline() else {
-        // "Structure.write_scope: board outline not found" — an `FRLogger.warn` this port drops.
+        // "Structure.write_scope: board outline not found" (Structure.java:159-162) — an
+        // `FRLogger.warn` this port drops.
         return;
     };
     let Some(Item::BoardOutline(outline)) = board.items.get(&outline_id) else {
@@ -1536,10 +1537,20 @@ fn write_boundaries(p: &mut WriteScopeParameter<'_>) {
 
     // write the outline
     for i in 0..outline.shape_count() {
+        // totalized: `BoardOutline.getShape(i)` warns and returns `null` for an out-of-range
+        // index (BoardOutline.java:163-169), which `boardToDsn` would then NPE on
+        // (Structure.java:168); this port's `get_shape` answers `None` and the shape is skipped.
+        // The loop is bounded by `shapeCount()`, so the index is always in range and no
+        // reachable caller sees the difference.
         let Some(shape) = outline.get_shape(i) else {
             continue;
         };
         let shape = shape.to_shape();
+        // totalized: Java calls `outlineShape.writeScope(...)` (Structure.java:171) on the result
+        // of `boardToDsn(outline.getShape(i), Layer.SIGNAL)` (:168) with **no** null check, unlike
+        // the sibling `writeKeepoutScope`/`Plane.writeScope`, which both guard their border shape;
+        // a `null` would NPE. The port skips the boundary instead. `board_to_dsn_shape` never
+        // answers `None`, so no reachable caller sees the difference.
         let Some(outline_shape) = p
             .coordinate_transform
             .board_to_dsn_shape(&shape, DsnLayer::signal())
@@ -1652,7 +1663,8 @@ fn write_keepout_scope(p: &mut WriteScopeParameter<'_>, keepout_id: ItemId) {
     }
     for hole in &holes {
         // totalized: Structure.writeKeepoutScope dereferences `boardToDsn`'s result for a hole
-        // without the `null` check it applies to the border (Structure.java:359-360); the port
+        // without the `null` check it applies to the border two lines above
+        // (Structure.java:256-257, inside `writeKeepoutScope` :229-271); the port
         // skips a hole it cannot transform. `board_to_dsn_shape` never answers `None`, so no
         // reachable caller sees the difference.
         if let Some(dsn_hole) = p
@@ -1734,7 +1746,7 @@ pub fn write_layer_scope(p: &mut WriteScopeParameter<'_>, layer_index: usize, wr
     p.file.end_scope();
 }
 
-/// `Plane.writeScope` (Plane.java:18-51): one `(plane <net> <shape> (window …)*)` scope for a
+/// `Plane.writeScope` (Plane.java:17-51): one `(plane <net> <shape> (window …)*)` scope for a
 /// conduction area on a non-signal layer.
 // renamed: Plane.writeScope -> write_plane_scope.
 pub fn write_plane_scope(p: &mut WriteScopeParameter<'_>, conduction_id: ItemId) {
@@ -1744,7 +1756,8 @@ pub fn write_plane_scope(p: &mut WriteScopeParameter<'_>, conduction_id: ItemId)
         return;
     };
     if conduction.net_count() != 1 {
-        // "Plane.write_scope: unexpected net count" — an `FRLogger.warn` this port drops.
+        // "Plane.write_scope: unexpected net count" (Plane.java:20-23) — an `FRLogger.warn` this
+        // port drops.
         return;
     }
     // totalized: Java dereferences `rules.nets.get(...)` without a null check (Plane.java:24);
