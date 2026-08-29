@@ -42,20 +42,30 @@ use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 // Fixtures and helpers
 // ---------------------------------------------------------------------------------------------
 
+mod common;
+use common::JAR_VERSION;
+
 const DEV_BOARD: &str = "Issue575-drc_dev-board_4_hole_clearance_violations.dsn";
 const BBD_MARS_64: &str = "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn";
 const EMPTY_BOARD: &str = "empty_board.dsn";
 
 /// The three fixtures whose Gson bytes are committed under `tests/data/<stem>.head.json`.
 const GOLDEN_FIXTURES: [&str; 3] = [DEV_BOARD, BBD_MARS_64, EMPTY_BOARD];
-/// `Constants.FREEROUTING_VERSION` of the jar the goldens came from — the same jar and the same
-/// literal as `tests/report.rs`. A rebuilt jar with a new version needs both updated.
-const JAR_VERSION: &str = "2.3.1-SNAPSHOT";
 
 /// The dev board's `quality_score` as the 2.3.0 CLI printed it (`-de … -drc …`, verified while
 /// writing this task): a `float` widened to `double` (Freerouting.java:349), which is where the
 /// `.078369140625` tail comes from. `fr-drc` never computes it — it is injected (ruling 5).
-const DEV_BOARD_SCORE: f64 = 902.078369140625;
+///
+/// Declared `f32` because that is what `getNormalizedScore` returns and what
+/// [`DrcReportOptions::quality_score`] takes; the widening to the DTO's `Double` is
+/// `generate_report`'s, and `f64::from` below is the same cast written out where the DTO is
+/// filled by hand. The literal is exact in both widths, which is the point.
+// The literal is written out to its full `double` text on purpose: it is the exact value the jar
+// printed, and seeing all fifteen digits is what shows the number is a widened `float`. Clippy
+// would have it as `902.078_37`, which is the same `f32` and no longer recognisable as the
+// reference's `qualityScore`.
+#[allow(clippy::excessive_precision)]
+const DEV_BOARD_SCORE: f32 = 902.078369140625;
 
 fn data_dir() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data")
@@ -102,7 +112,7 @@ fn fixture_board(name: &str) -> (Board, CoordinateTransform) {
     }
 }
 
-fn options(source: &str, date: &str, quality_score: Option<f64>) -> DrcReportOptions {
+fn options(source: &str, date: &str, quality_score: Option<f32>) -> DrcReportOptions {
     DrcReportOptions {
         source: source.to_string(),
         // `Freerouting.initializeDrc` hard-codes `"mm"` (Freerouting.java:335-336, quirk #151).
@@ -118,7 +128,7 @@ fn options(source: &str, date: &str, quality_score: Option<f64>) -> DrcReportOpt
 fn json_for(
     fixture: &str,
     date: &str,
-    quality_score: Option<f64>,
+    quality_score: Option<f32>,
     flavor: DrcJsonFlavor,
 ) -> String {
     let (mut board, transform) = fixture_board(fixture);
@@ -162,14 +172,10 @@ fn normalised_json_for(fixture: &str, date: &str, flavor: DrcJsonFlavor) -> Stri
 /// The top-level keys of a two-space pretty document, in the order they were written — the whole
 /// point of the flavor tests, and something a `serde_json::Value` round trip would destroy.
 fn top_level_keys(json: &str) -> Vec<String> {
+    // `strip_prefix("  \"")` already excludes every nested key: a deeper line has a *third*
+    // space where this pattern wants the quote. No further depth guard is needed.
     json.lines()
-        .filter_map(|line| {
-            let rest = line.strip_prefix("  \"")?;
-            if line.starts_with("   ") {
-                return None;
-            }
-            Some(rest.split_once("\": ")?.0.to_string())
-        })
+        .filter_map(|line| Some(line.strip_prefix("  \"")?.split_once("\": ")?.0.to_string()))
         .collect()
 }
 
@@ -273,16 +279,20 @@ fn flavors_differ_only_in_the_key_tables_eight_strings() {
     if !parity::require_java_dir() {
         return;
     }
-    const REWRITES: [(&str, &str); 8] = [
+    // Seven pairs, not eight: `FlavorKeys` has eight fields, but `unconnected_items` and
+    // `unconnected_items_type` carry the *same* two strings, and `str::replace` is global — the
+    // one `("unconnectedItems", "unconnected_items")` entry rewrites the key and the `type` value
+    // alike. Listing it twice would have been a no-op on the second pass, which is why it is
+    // listed once.
+    const REWRITES: [(&str, &str); 7] = [
         ("coordinateUnits", "coordinate_units"),
         ("kicadVersion", "kicad_version"),
         ("freeroutingVersion", "freerouting_version"),
+        // Both the `unconnectedItems` key and the `unconnectedItems` `type` value.
         ("unconnectedItems", "unconnected_items"),
         ("schematicParity", "schematic_parity"),
         ("qualityScore", "quality_score"),
         ("holeClearance", "hole_clearance"),
-        // The eighth entry is the `type` half of `unconnectedItems`, rewritten by the same pair.
-        ("unconnectedItems", "unconnected_items"),
     ];
 
     for fixture in GOLDEN_FIXTURES {
@@ -337,7 +347,7 @@ fn quality_score_is_java_double_text() {
         .expect("cannot read tests/data/gson-escapes.txt");
 
     let mut score = bare_report("probe");
-    score.quality_score = Some(DEV_BOARD_SCORE);
+    score.quality_score = Some(f64::from(DEV_BOARD_SCORE));
     let score_902 = line_with(
         &score.to_json(DrcJsonFlavor::FreeroutingHead).unwrap(),
         "qualityScore",

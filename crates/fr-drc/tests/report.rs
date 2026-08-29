@@ -40,11 +40,8 @@ const BBD_MARS_64: &str = "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_vio
 const NATURAL_TONE_PREAMP: &str = "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn";
 const EMPTY_BOARD: &str = "empty_board.dsn";
 
-/// `Constants.FREEROUTING_VERSION` of the jar the transcripts came from. The port never reads a
-/// version of its own: `generate_report` prefixes `"Freerouting "` to whatever
-/// [`DrcReportOptions::freerouting_version`] carries (DesignRulesChecker.java:212-213), so this is
-/// only the value the golden files were taken with.
-const JAR_VERSION: &str = "2.3.1-SNAPSHOT";
+mod common;
+use common::JAR_VERSION;
 
 /// A real board plus the transform `Structure.createBoard` built for it — Java reaches both
 /// through `board.communication` (DesignRulesChecker.java:507, `:510`); Plan 3 ruling A leaves the
@@ -296,6 +293,14 @@ fn natural_tone_preamp_is_the_jvms_maximal_run_minus_three_dangling_tracks() {
     // so it drops three `track_dangling` entries — in place, because both sides walk the board's
     // items descending. Everything else, including the whole 44-entry `unconnectedItems` block,
     // is identical.
+    //
+    // **What this fixture cannot see.** Natural Tone Preamp has *zero* clearance violations
+    // (`tests/data/*.incompletes.txt`: `totalCount=0`), so every one of its 112 violations comes
+    // out of `getAllUnconnectedItems`. A regression anywhere in `convert_clearance_violation` —
+    // the `holeClearance`/`clearance` split, the two `%.4f` clearances, the two-item `items`
+    // array — is invisible here. That half is pinned by `three_fixtures_match_the_jvm_byte_for_byte`
+    // on the dev board (2 `holeClearance`) and BBD Mars-64 (64 `holeClearance` + 12 `clearance`),
+    // and corpus-wide by `p5t1`.
     if !parity::require_java_dir() {
         return;
     }

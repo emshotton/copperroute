@@ -4,11 +4,11 @@
 //! # One table, two rows
 //!
 //! Java has no flavors: each jar hard-codes one spelling in its DTOs' `@SerializedName`s, and the
-//! two jars disagree (ruling 1). The port carries both in [`KEYS`], the single place any flavored
-//! string is *chosen* — the six keys, and the two `type` **values** that move with them. The DTO
-//! itself always holds HEAD's `type` string, because that is what Java stores in the field
-//! (`report/build.rs`'s `head_kind_string`); [`FlavorKeys::violation_type`] is where the rename
-//! happens, and the [`HEAD`] row is what it matches against.
+//! two jars disagree (ruling 1). The port carries both as [`HEAD`] and [`KICAD`], the single place
+//! any flavored string is *chosen* — the six keys, and the two `type` **values** that move with
+//! them. The DTO itself always holds HEAD's `type` string, because that is what Java stores in the
+//! field (`report/build.rs`'s `head_kind_string`); [`FlavorKeys::violation_type`] is where the
+//! rename happens, and the [`HEAD`] row is what it matches against.
 //!
 //! # Why the serialisation is hand-written
 //!
@@ -16,7 +16,7 @@
 //! regardless — Gson writes `Class.getDeclaredFields()` order — so a `#[derive(Serialize)]` with
 //! `#[serde(rename)]` cannot express it. The `Serialize` impls below walk the four DTOs in
 //! declaration order and take their key strings from the table. Everything *below* the key is
-//! `serde_json`'s, driven by [`JavaNumberFormatter`], which is the write half of
+//! `serde_json`'s, driven by [`fr_dsn::format::json::JavaNumberFormatter`], which is the write half of
 //! `GsonProvider.GSON` (`util/gson/GsonProvider.java:12-20`, moved into `fr-dsn` by ruling 7):
 //!
 //! - two-space indent, `": "` after every key, no trailing newline;
@@ -33,7 +33,7 @@
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
-use fr_dsn::format::json::JavaNumberFormatter;
+use fr_dsn::format::json::to_gson_string_pretty;
 
 use crate::checker::DesignRulesChecker;
 use crate::error::DrcError;
@@ -46,7 +46,8 @@ use crate::report::{KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation, KiCadDr
 
 /// Which spelling of the KiCad DRC schema to emit (plan-5 ruling 2).
 ///
-/// The discriminants are [`KEYS`]' indices; nothing outside this module depends on that.
+/// [`DrcJsonFlavor::keys`] maps a variant to its row by `match`, not by discriminant value —
+/// adding a third flavor is then a compile error rather than an out-of-bounds index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DrcJsonFlavor {
     /// The clone's HEAD: camelCase keys, `holeClearance`, `unconnectedItems`. The parity default.
@@ -62,7 +63,7 @@ pub enum DrcJsonFlavor {
 }
 
 /// The strings that move between the two flavors: six keys and the two `type` values, one row per
-/// [`DrcJsonFlavor`]. (Ruling 2 calls it "nine strings"; there are eight fields and seven distinct
+/// [`DrcJsonFlavor`] ([`HEAD`] and [`KICAD`]). (Ruling 2 calls it "nine strings"; there are eight fields and seven distinct
 /// rewrites, because `unconnectedItems` is both a key and one of the two `type` values. The count
 /// is the plan's arithmetic, not a measurement — see
 /// `tests/report_json.rs::flavors_differ_only_in_the_key_tables_eight_strings`.) Every other key — `$schema`, `date`, `source`, `violations`, and
@@ -80,45 +81,43 @@ struct FlavorKeys {
     unconnected_items_type: &'static str,
 }
 
-/// Row 0 is the HEAD jar's `@SerializedName`s (`io/kicad/KiCadDrc*.java`); row 1 is
+/// The HEAD jar's `@SerializedName`s (`io/kicad/KiCadDrc*.java`).
+///
+/// This is also the spelling the DTOs always *store* in `KiCadDrcViolation::kind`: Java puts
+/// whatever `UnconnectedItems.type` (UnconnectedItems.java:31, `:36`) and `convertToDrcViolation`
+/// (DesignRulesChecker.java:326-330) computed into the field, and only Gson's `@SerializedName`s
+/// differ between the two jars — so `report/build.rs` keeps its own `head_kind_string` and its
+/// `"holeClearance"` literal, and [`FlavorKeys::violation_type`] renames what it wrote.
+const HEAD: &FlavorKeys = &FlavorKeys {
+    coordinate_units: "coordinateUnits",
+    kicad_version: "kicadVersion",
+    freerouting_version: "freeroutingVersion",
+    unconnected_items: "unconnectedItems",
+    schematic_parity: "schematicParity",
+    quality_score: "qualityScore",
+    hole_clearance_type: "holeClearance",
+    unconnected_items_type: "unconnectedItems",
+};
+
 /// `tools/freerouting-2.3.0.jar`'s field names (`javap -p app/freerouting/drc/DrcReport.class`),
 /// which are KiCad 9.0.1's too.
-const KEYS: [FlavorKeys; 2] = [
-    /* FreeroutingHead */
-    FlavorKeys {
-        coordinate_units: "coordinateUnits",
-        kicad_version: "kicadVersion",
-        freerouting_version: "freeroutingVersion",
-        unconnected_items: "unconnectedItems",
-        schematic_parity: "schematicParity",
-        quality_score: "qualityScore",
-        hole_clearance_type: "holeClearance",
-        unconnected_items_type: "unconnectedItems",
-    },
-    /* KiCad */
-    FlavorKeys {
-        coordinate_units: "coordinate_units",
-        kicad_version: "kicad_version",
-        freerouting_version: "freerouting_version",
-        unconnected_items: "unconnected_items",
-        schematic_parity: "schematic_parity",
-        quality_score: "quality_score",
-        hole_clearance_type: "hole_clearance",
-        unconnected_items_type: "unconnected_items",
-    },
-];
-
-/// The HEAD row, which is the spelling the DTOs always *store* in `KiCadDrcViolation::kind`:
-/// Java puts whatever `UnconnectedItems.type` (UnconnectedItems.java:31, `:36`) and
-/// `convertToDrcViolation` (DesignRulesChecker.java:326-330) computed into the field, and only
-/// Gson's `@SerializedName`s differ between the two jars — so `report/build.rs` keeps its own
-/// `head_kind_string` and its `"holeClearance"` literal, and [`FlavorKeys::violation_type`]
-/// renames what it wrote.
-const HEAD: &FlavorKeys = &KEYS[DrcJsonFlavor::FreeroutingHead as usize];
+const KICAD: &FlavorKeys = &FlavorKeys {
+    coordinate_units: "coordinate_units",
+    kicad_version: "kicad_version",
+    freerouting_version: "freerouting_version",
+    unconnected_items: "unconnected_items",
+    schematic_parity: "schematic_parity",
+    quality_score: "quality_score",
+    hole_clearance_type: "hole_clearance",
+    unconnected_items_type: "unconnected_items",
+};
 
 impl DrcJsonFlavor {
     fn keys(self) -> &'static FlavorKeys {
-        &KEYS[self as usize]
+        match self {
+            DrcJsonFlavor::FreeroutingHead => HEAD,
+            DrcJsonFlavor::KiCad => KICAD,
+        }
     }
 }
 
@@ -151,15 +150,13 @@ impl KiCadDrcReport {
     /// `serializeSpecialFloatingPointValues()` (`fr_dsn::format::json`'s module docs, point 3).
     /// Nothing `generate_report` produces can be non-finite; a hand-built report can.
     pub fn to_json(&self, flavor: DrcJsonFlavor) -> Result<String, DrcError> {
-        let mut buffer = Vec::new();
-        let mut serializer =
-            serde_json::Serializer::with_formatter(&mut buffer, JavaNumberFormatter::new());
-        ReportSer {
+        // `fr_dsn::format::json::to_gson_string_pretty` *is* `GsonProvider.GSON.toJson` (ruling 7
+        // moved it there); rebuilding its three lines here would be a second copy of a byte-parity
+        // entry point, which is what that move existed to prevent.
+        Ok(to_gson_string_pretty(&ReportSer {
             report: self,
             keys: flavor.keys(),
-        }
-        .serialize(&mut serializer)?;
-        Ok(String::from_utf8(buffer).expect("serde_json writes UTF-8"))
+        })?)
     }
 }
 
@@ -298,7 +295,7 @@ impl Serialize for ItemSer<'_> {
 /// `@SerializedName`d back to `x`/`y` on HEAD; 2.3.0's `drc.DrcPosition` simply names the fields
 /// `x`/`y` (`javap -p`), so this is one pair of keys the two jars already agree on. The two `f64`s
 /// go through
-/// [`JavaNumberFormatter`], i.e. `Double.toString`.
+/// [`fr_dsn::format::json::JavaNumberFormatter`], i.e. `Double.toString`.
 struct PositionSer<'a>(&'a KiCadDrcPosition);
 
 impl Serialize for PositionSer<'_> {

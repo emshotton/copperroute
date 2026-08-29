@@ -26,7 +26,8 @@ pub use json::DrcJsonFlavor;
 #[derive(Debug, Clone, PartialEq)]
 pub struct KiCadDrcReport {
     // renamed: KiCadDrcReport.jsonSchema -> json_schema (KiCadDrcReport.java:20-21); its
-    // `@SerializedName` is `$schema`, which Task 8's key table carries.
+    // `@SerializedName` is `$schema`, which `report/json.rs`'s `ReportSer` writes verbatim — it is
+    // one of the keys both flavors share.
     /// Java `jsonSchema` (KiCadDrcReport.java:20-21), a `final` initialised in place.
     pub json_schema: &'static str,
     /// Java `coordinateUnits` (KiCadDrcReport.java:24-25): the unit name the report's numbers are
@@ -112,7 +113,9 @@ pub struct KiCadDrcViolation {
     /// `:421`). Java's javadoc also names `"ignore"`, which nothing produces.
     pub severity: &'static str,
     // renamed: KiCadDrcViolation.type -> kind, because `type` is a Rust keyword. The
-    // `@SerializedName("type")` (KiCadDrcViolation.java:33) is what Task 8's key table emits.
+    // `@SerializedName("type")` (KiCadDrcViolation.java:33) is what `report/json.rs`'s
+    // `ViolationSer` emits; the *value* is flavored by `FlavorKeys::violation_type`, the key is
+    // not.
     /// Java `type` (KiCadDrcViolation.java:33-34): `"clearance"`, `"holeClearance"`,
     /// `"unconnectedItems"`, `"track_dangling"` or `"via_dangling"` — the HEAD spellings
     /// (plan-5 ruling 1). Ruling 2's KiCad flavor renames two of them at serialisation time; this

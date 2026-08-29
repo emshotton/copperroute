@@ -38,11 +38,20 @@ pub struct DrcReportOptions {
     /// `Constants.FREEROUTING_VERSION` (DesignRulesChecker.java:212-213). The `"Freerouting "`
     /// prefix is [`DesignRulesChecker::generate_report`]'s, exactly as it is Java's.
     pub freerouting_version: String,
-    /// `Freerouting.java:349`: `(double) finalStats.getNormalizedScore(routerSettings.scoring)` —
-    /// a `float` widened to `double`, which is where the `.078369140625` tails come from.
+    /// `Freerouting.java:349`: `(double) finalStats.getNormalizedScore(routerSettings.scoring)`.
+    ///
+    /// **`f32`, not `f64`, and the widening is this crate's.** `BoardStatistics.getNormalizedScore`
+    /// returns a `float` (BoardStatistics.java:624) and the report's field is a `Double`
+    /// (KiCadDrcReport.java:56-57), so *every* score Java can put in a DRC document is a widened
+    /// `float` — which is where the `.078369140625` tails come from. Typing the injected value
+    /// `f64` would let a caller hand in a number Java could never produce (`902.0783691`), and
+    /// `Double.toString` would render it, so the port would emit a document no jar can match.
+    /// Taking an `f32` and performing `Freerouting.java:349`'s cast here makes that
+    /// unrepresentable. Plan 8 passes `getNormalizedScore`'s return value straight through.
+    ///
     /// `None` is Java's `null`, which Gson omits from the JSON; `BoardStatistics` itself is
     /// Plan 8's (plan-5 ruling 5).
-    pub quality_score: Option<f64>,
+    pub quality_score: Option<f32>,
 }
 
 /// The board unit and the DSN transform `convertCoordinate` reaches through `board.communication`
@@ -121,7 +130,9 @@ impl DesignRulesChecker<'_> {
             format!("Freerouting {}", options.freerouting_version),
             &options.date,
         );
-        report.quality_score = options.quality_score;
+        // `Freerouting.java:349`'s `(double)` cast, performed here so the DTO's field keeps
+        // Java's `Double` type while only float-representable values can reach it.
+        report.quality_score = options.quality_score.map(f64::from);
 
         // DesignRulesChecker.java:216.
         let violations = self.get_all_clearance_violations();
@@ -245,10 +256,11 @@ fn convert_unconnected_items(
 
         // DesignRulesChecker.java:387-392.
         //
-        // not ported: the `switch`'s `default -> "Unconnected item: " + itemDesc` arm
-        // (DesignRulesChecker.java:391) — dead code. The `switch` runs only inside this branch,
-        // whose guard already narrowed `type` to the two literals the arms above cover, so the
-        // third arm cannot be reached. Recorded alongside quirk #146.
+        // not ported: the `switch`'s `default -> "Unconnected item: " + itemDesc` arm (DesignRulesChecker.java:391) — dead code.
+        // The `switch` runs only inside this branch, whose guard already narrowed `type` to the
+        // two literals the arms above cover, so the third arm cannot be reached. Recorded
+        // alongside quirk #146. (`audit-port.sh` is line-based, so the citation sits on the
+        // marker's own line — `docs/java-quirks.md` §Process notes.)
         let description = match unconnected_items.kind {
             UnconnectedKind::ViaDangling => "Via is not connected or connected on only one layer",
             _ => "Track has unconnected end",
@@ -301,8 +313,9 @@ fn convert_unconnected_items(
 /// (DesignRulesChecker.java:161) and `"via_dangling"` (`:172`).
 ///
 /// Ruling 2's `KiCad` flavor renames the first of the three to `unconnected_items`; that key table
-/// is **Task 8's** and lives with the serialiser, because Java stores the HEAD spelling in the DTO
-/// and only Gson's `@SerializedName`s differ between the two jars.
+/// lives with the serialiser (`report/json.rs`'s `HEAD`/`KICAD` rows and
+/// `FlavorKeys::violation_type`), because Java stores the HEAD spelling in the DTO and only
+/// Gson's `@SerializedName`s differ between the two jars.
 fn head_kind_string(kind: UnconnectedKind) -> &'static str {
     match kind {
         UnconnectedKind::UnconnectedItems => "unconnectedItems",
@@ -331,11 +344,14 @@ fn is_hole(board: &Board, id: ItemId) -> bool {
 ///
 // totalized: getItemDescription's net lookup (DesignRulesChecker.java:456) — Java writes `board.rules.nets.get(item.getNetNumber(0)).name` with no null check, so a net number the `Nets` table does not know throws `NullPointerException`. The port omits the suffix instead. Unreachable from `fr-dsn`, whose reader registers every net it assigns.
 pub fn item_description(board: &Board, id: ItemId) -> String {
-    let Some(item) = board.get_item(id) else {
-        // Java dereferences the `Item` it was handed; an id this board does not know cannot reach
-        // here from any caller in this module.
-        return String::new();
-    };
+    // Java is handed the `Item` itself and dereferences it, so an id the board does not know is a
+    // `NullPointerException` there. Every id reaching here came out of this board's own violation
+    // or unconnected list, so the arm is unreachable — and it panics rather than returning a
+    // plausible-looking empty description, which would put a silently wrong string into a parity
+    // document. `tests/corpus.rs` runs the whole path over all 105 corpus fixtures.
+    let item = board
+        .get_item(id)
+        .unwrap_or_else(|| panic!("item_description: board has no item {}", id.0));
 
     // DesignRulesChecker.java:442-452. The chain tests `Trace`, `Via`, `Pin`, `ConductionArea`,
     // then falls back to the Java simple class name — which for the five remaining `Item`
@@ -381,11 +397,10 @@ fn detailed_trace_description(
 ) -> String {
     // DesignRulesChecker.java:471.
     let mut desc = "Track".to_string();
-    let Some(item) = board.get_item(id) else {
-        // As in `item_description`: an id the board does not know cannot reach here — Java is
-        // handed the `Item` itself and would dereference it.
-        return desc;
-    };
+    // As in `item_description`: unreachable, and a panic rather than a truncated `"Track"`.
+    let item = board
+        .get_item(id)
+        .unwrap_or_else(|| panic!("detailed_trace_description: board has no item {}", id.0));
 
     // DesignRulesChecker.java:473-477 — the same net suffix as `getItemDescription`, written out
     // a second time in Java. See that method's `totalized:` marker for the null-net arm.
@@ -433,11 +448,12 @@ fn item_position(
     coords: &DrcCoordinates,
     coordinate_unit: &str,
 ) -> KiCadDrcPosition {
-    let Some(item) = board.get_item(id) else {
-        // As in `item_description`: unreachable — every id here came out of the board's own
-        // violation or unconnected list. Java holds the `Item` and calls `boundingBox()` on it.
-        return KiCadDrcPosition::new(0.0, 0.0);
-    };
+    // As in `item_description`: unreachable — every id here came out of the board's own violation
+    // or unconnected list, and Java holds the `Item` and calls `boundingBox()` on it. A panic
+    // rather than a `(0.0, 0.0)` that would read as a real coordinate.
+    let item = board
+        .get_item(id)
+        .unwrap_or_else(|| panic!("item_position: board has no item {}", id.0));
     let centre = TileShape::Box(item.bounding_box(&board.ctx())).centre_of_gravity();
     KiCadDrcPosition::new(
         coords.convert_coordinate(centre.x, coordinate_unit),

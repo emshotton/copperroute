@@ -39,24 +39,20 @@ fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> 
     f(ok, &mut p)
 }
 
+/// A fixture out of the sibling Java checkout, located through [`parity::fixture`] — so
+/// `FREEROUTING_JAVA_DIR` is honoured and the suite works in a `git worktree`, where the
+/// hard-coded `../../../freerouting` this used to spell resolves to nothing.
 fn fixture(name: &str) -> String {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    );
-    std::fs::read_to_string(format!("{path}{name}"))
-        .unwrap_or_else(|e| panic!("fixture {name}: {e}"))
+    let path = parity::fixture(name);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
 /// The `(library …)` block of a committed 2.3.0 reference round-trip, dedented by the two
 /// spaces the enclosing `(pcb …)` scope adds, so it can be compared against a writer run at
 /// indent level 0.
 fn reference_scope(design: &str, header: &str) -> String {
-    let path = format!(
-        "{}/../../tests/reference/{design}/roundtrip.dsn",
-        env!("CARGO_MANIFEST_DIR")
-    );
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    let path = parity::reference(design, "roundtrip.dsn");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let open = format!("  ({header}");
     let mut out = String::new();
     let mut inside = false;
@@ -72,7 +68,7 @@ fn reference_scope(design: &str, header: &str) -> String {
             }
         }
     }
-    assert!(inside, "no `{header}` scope in {path}");
+    assert!(inside, "no `{header}` scope in {}", path.display());
     // The writers emit no trailing newline after the closing bracket.
     out.pop();
     out

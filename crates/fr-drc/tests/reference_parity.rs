@@ -206,7 +206,11 @@ fn port_json(row: &Row, reference: &parity::DrcReportDoc) -> String {
             .clone()
             .expect("the reference carries a date"),
         freerouting_version: version,
-        quality_score: reference.quality_score,
+        // The reference's score is JSON text, so it parses as `f64`; `DrcReportOptions` takes the
+        // `f32` `getNormalizedScore` actually returned (Freerouting.java:349). The narrowing is
+        // exact for every value a jar can write, and the byte comparison below is the proof: a
+        // lossy round trip would move `qualityScore`'s digits and fail the whole document.
+        quality_score: reference.quality_score.map(|score| score as f32),
     };
 
     let (mut board, transform) = load_board(row);

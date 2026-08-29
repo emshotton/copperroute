@@ -39,8 +39,10 @@ const FIXED_DATE: &str = "1970-01-01T00:00:00Z";
 /// as `DesignRulesChecker.java:212-213` does.
 const FIXED_VERSION: &str = "p5t1";
 
-/// `P5T1.FIXED_QUALITY_SCORE`.
-const FIXED_QUALITY_SCORE: f64 = -1.0;
+/// `P5T1.FIXED_QUALITY_SCORE` (a `double` there; `f32` here because `DrcReportOptions` takes
+/// `getNormalizedScore`'s `float` and performs `Freerouting.java:349`'s widening itself —
+/// `-1.0` is exact in both widths).
+const FIXED_QUALITY_SCORE: f32 = -1.0;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();

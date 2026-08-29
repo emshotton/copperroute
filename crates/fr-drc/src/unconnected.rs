@@ -50,8 +50,9 @@ impl UnconnectedItems {
     // Note — not a marker: this constructor is ported, but nothing in the Java tree calls it.
     // `getAllUnconnectedItems` uses the three-argument `allItems` form
     // (`DesignRulesChecker.java:146`) and the `type` form (`:161`, `:172`). It is kept because it
-    // is public API of the ported class and costs one line; if Task 11's audit prefers a smaller
-    // surface it can go.
+    // is public API of the ported class and costs one line. Task 11 kept it, with the same
+    // reason: the audit gates the *class's* public methods, and dropping one because no caller
+    // needs it today turns a checked surface into an undocumented gap.
     pub fn new_pair(first_item: ItemId, second_item: ItemId) -> Self {
         UnconnectedItems {
             first_item,
