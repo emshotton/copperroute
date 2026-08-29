@@ -17,12 +17,15 @@
 //! types, `DesignRulesCheckerSettings`, `DebugSettings`), the two strategy enums, [`HostEnvironment`]
 //! and the error types. Task 2 adds the merge engine ([`copy_fields`] — `ReflectionUtil.copyFields`
 //! as a hand-written per-struct field table, plus `RouterSettings::apply_new_values_from` and its
-//! inverse `fill_absent_from`). `SettingsMerger` and the settings sources are Tasks 3 and onward.
+//! inverse `fill_absent_from`). Task 3 adds [`field_path`] — `ReflectionUtil.setFieldValue`, the string-keyed half of the
+//! same Java class, which Task 7's environment-variable and CLI sources drive. `SettingsMerger`
+//! and the settings sources themselves are Tasks 4 and onward.
 
 pub mod copy_fields;
 pub mod drc_settings;
 pub mod error;
 pub mod fanout_settings;
+pub mod field_path;
 pub mod host;
 pub mod layer_settings;
 pub mod optimizer_settings;
@@ -33,6 +36,7 @@ pub use copy_fields::{CopyFields, JavaEnum, MergeMode};
 pub use drc_settings::{DebugSettings, DesignRulesCheckerSettings};
 pub use error::{MergeError, MergeReport, SettingsError};
 pub use fanout_settings::FanoutSettings;
+pub use field_path::{FieldKind, FieldSpec, set_field_value};
 pub use host::HostEnvironment;
 pub use layer_settings::LayerSettings;
 pub use optimizer_settings::{BoardUpdateStrategy, ItemSelectionStrategy, OptimizerSettings};
@@ -43,7 +47,8 @@ pub use scoring_settings::ScoringSettings;
 pub mod prelude {
     pub use crate::{
         BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings, FanoutSettings,
-        HostEnvironment, ItemSelectionStrategy, JavaEnum, LayerSettings, MergeError, MergeMode,
-        MergeReport, OptimizerSettings, RouterSettings, ScoringSettings, SettingsError,
+        FieldKind, FieldSpec, HostEnvironment, ItemSelectionStrategy, JavaEnum, LayerSettings,
+        MergeError, MergeMode, MergeReport, OptimizerSettings, RouterSettings, ScoringSettings,
+        SettingsError, set_field_value,
     };
 }

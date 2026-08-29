@@ -58,6 +58,21 @@ pub enum MergeError {
         /// The value that failed to match a constant.
         value: String,
     },
+
+    /// A property path asked for something the field's type cannot do: assigning a scalar string
+    /// to a struct- or array-typed field (Java: `convertValue` returns the raw `String` and
+    /// `field.set` throws `IllegalArgumentException`, `ReflectionUtil.java:203-204` + `:41`), or
+    /// navigating *through* a scalar field (Java: `field.getType().getDeclaredConstructor()`
+    /// throws `NoSuchMethodException`, `:77`). Added by Task 3 alongside
+    /// [`crate::field_path::set_field_value`]; `copy_fields` never produces it, because its
+    /// source and target fields always have the same Rust type.
+    #[error("field {path}: {value:?} cannot be assigned to a field of this type")]
+    TypeMismatch {
+        /// Dotted path to the field.
+        path: String,
+        /// The value that could not be assigned.
+        value: String,
+    },
 }
 
 /// Outcome of one `copy_fields` pass: how many fields were actually written, and every per-field

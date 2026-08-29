@@ -184,11 +184,11 @@ pub fn enum_copy<T: JavaEnum>(
 
 /// Rule 4's kernel: `Enum.valueOf(T, name)` then assign (`ReflectionUtil.java:262-265`).
 ///
-// added in Task 3: setFieldValue — `ReflectionUtil.setFieldValue` (ReflectionUtil.java:21-205) is
-// the *other*, string-keyed half of this file: it resolves a dotted property name against a
-// target object and coerces the value, with enum matching that is case-**in**sensitive
-// (:158-164), unlike rule 4's exact match here. It belongs with Task 3's `field_path.rs`, which
-// owns the dotted-path resolution the settings sources need.
+// `ReflectionUtil.setFieldValue` (ReflectionUtil.java:21-205) is the *other*, string-keyed half
+// of the same Java class: it resolves a dotted property name against a target object and coerces
+// the value, with enum matching that is case-**in**sensitive (:158-164), unlike rule 4's exact
+// match here. Ported in Task 3 as [`crate::field_path::set_field_value`]; the obligation marker
+// that stood here is discharged.
 ///
 /// Exact and case-sensitive. Where Java throws `IllegalArgumentException` — which
 /// `copyFields`' `catch (Exception e)` (:338-340) then swallows — this pushes a
