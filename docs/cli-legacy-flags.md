@@ -5,15 +5,27 @@ the port's subcommand form. **It forwards raw values.** Java, by contrast,
 normalises most flag values *while parsing* — clamping, dividing, lower-casing,
 or falling back to a default for an unrecognised word. Reproducing those rules
 is `fr-settings`' job — **Plan 4** Task 7 in the event, not the "Plan 5" this
-file guessed at when it was written; the "Plan 5" cells below mean "the
-`fr-settings` plan". This file records the rules once, from the Java, so the
-later plans do not re-derive them (and get them wrong).
+file guessed at when it was written (`fr-settings` is Plan **4** and `fr-drc` is
+Plan 5 in the Plan 3+ numbering; the cells below have been renumbered). This file
+records the rules once, from the Java, so the later plans do not re-derive them
+(and get them wrong).
 
-**Ported.** `crates/fr-settings/src/sources/cli.rs` now carries all of this:
-`LegacyBridge` + `apply_command_line_arguments` for the flag table (dead, per
-plan 4 ruling 8), `CliSettings` for the two flags that reach the router, and
-`classify_de_arguments` for the `-de` rule below (plan 4 ruling 10 — the
-binary still reproduces the rule itself; Plan 8 rewires it).
+**Ported, and five of them are dead on purpose.**
+`crates/fr-settings/src/sources/cli.rs` carries all of this:
+
+- **`apply_command_line_arguments(&[String]) -> LegacyBridge`** — the flag table
+  below, with every normalisation applied exactly as Java applies it. **Nothing
+  reads the result.** `-oit`, `-us`, `-is`, `-hr`, `-inc` and `-drc`'s
+  `routerSettings.enabled = false` write only Java's `@Deprecated` bridge
+  (`GlobalSettings.java:51-53`), which no routing path consults, so they are
+  **parsed but dead** — in Java, and therefore here (plan 4 ruling 8,
+  `docs/java-quirks.md` row 131). Making them live would make the port *more
+  capable than Java*; `docs/plan-4-handoff.md` §10 hands that decision to Plan 8
+  as a product decision, not a bug fix.
+- **`CliSettings`** — the only two flags that actually reach the router, `-mp`
+  and `-mt` (`CliSettings.mapFlagToProperty`, `:102-110`).
+- **`classify_de_arguments(&[String]) -> DeSlots`** — the `-de` rule below (plan 4
+  ruling 10 — the binary still reproduces the rule itself; Plan 8 rewires it).
 
 Baseline: freerouting **v2.3.0**. Primary source
 `app/freerouting/settings/GlobalSettings.java`, method
@@ -34,13 +46,13 @@ flag is skipped rather than aborting the run.
 
 | Flag | Java field | Java normalisation | Java location | Where the port must apply it |
 |---|---|---|---|---|
-| `-mp` | `routerSettings.maxPasses` | `Integer.decode(v)`; then `< 0 → 1`, `> 9999 → 9999`. **`0` is deliberately allowed and means *unlimited*.** A second, *different* clamp runs later in `RouterSettings.validate()`: there `< 0 \|\| > 9999 → 9999` and `== 0 → Integer.MAX_VALUE`. | `GlobalSettings.java:675-686`; `RouterSettings.java:932-941` | `fr-settings` (Plan 5), at both the parse step and a `validate()` equivalent. Plan 6/7's pass loop must treat `max_passes == 0` as "no limit", never "no passes". |
-| `-mt` | `routerSettings.optimizer.maxThreads` | `Integer.decode(v)`; then `< 0 → 0`, `> 1024 → 1024`. **No further normalisation on this path** — see the quirk below. | `GlobalSettings.java:688-698` | `fr-settings` (Plan 5); Plan 6's optimizer thread pool. |
-| `-oit` | `routerSettings.optimizer.optimizationImprovementThreshold` | `Float.parseFloat(v) / 100`; then `<= 0 → 0.0f`. Note the value is a **percentage** on the command line and a fraction in the settings, and the division happens before the clamp. Parsed as `float`, not `double`. **Correction (Plan 4 Task 7, JVM-verified):** an earlier revision of this table said `-oit -5` becomes `0.0f`. It does not — `-5` starts with `-`, so the blanket rule above never consumes it and the field keeps its previous value. The `<= 0` clamp is reachable only from a literal zero. | `GlobalSettings.java:700-708` | `fr-settings` (Plan 5). Keep the `f32` rounding — a `f64` division by 100 gives a different bit pattern. |
-| `-us` | `routerSettings.optimizer.boardUpdateStrategy` | `v.toLowerCase().trim()`; then `"global" → GLOBAL_OPTIMAL`, `"hybrid" → HYBRID`, **anything else → `GREEDY`**. There is no error for an unrecognised word. | `GlobalSettings.java:710-719` | `fr-settings` (Plan 5). Must be a total function with a `GREEDY` fallback, not a `FromStr` that fails. |
-| `-is` | `routerSettings.optimizer.itemSelectionStrategy` | `v.toLowerCase().trim()`; then **prefix** match `indexOf("seq") == 0 → SEQUENTIAL`, `indexOf("rand") == 0 → RANDOM`, **anything else → `PRIORITIZED`**. Prefix, not equality: `sequential`, `seq`, `sequestered` all give `SEQUENTIAL`. | `GlobalSettings.java:721-731` | `fr-settings` (Plan 5). Prefix match with a `PRIORITIZED` fallback. |
-| `-hr` | `routerSettings.optimizer.hybridRatio` | `v.trim()` only — stored as a raw `String` and parsed later. | `GlobalSettings.java:732-736` | `fr-settings` (Plan 5): keep it a string here, parse where Java parses it. |
-| `-inc` | `routerSettings.ignoreNetClasses` | `v.split(",")` — **the individual entries are not trimmed and not lower-cased**, unlike `debug.filter_by_net` (`GlobalSettings.java:552-557`), which does both. `-inc "GND, VCC"` yields `["GND", " VCC"]` and the second never matches a net class. | `GlobalSettings.java:810-815` | `fr-settings` (Plan 5). Reproduce the missing trim; do not "fix" it before parity. |
+| `-mp` | `routerSettings.maxPasses` | `Integer.decode(v)`; then `< 0 → 1`, `> 9999 → 9999`. **`0` is deliberately allowed and means *unlimited*.** A second, *different* clamp runs later in `RouterSettings.validate()`: there `< 0 \|\| > 9999 → 9999` and `== 0 → Integer.MAX_VALUE`. | `GlobalSettings.java:675-686`; `RouterSettings.java:932-941` | `fr-settings` (Plan 4), at both the parse step and a `validate()` equivalent. Plan 6/7's pass loop must treat `max_passes == 0` as "no limit", never "no passes". |
+| `-mt` | `routerSettings.optimizer.maxThreads` | `Integer.decode(v)`; then `< 0 → 0`, `> 1024 → 1024`. **No further normalisation on this path** — see the quirk below. | `GlobalSettings.java:688-698` | `fr-settings` (Plan 4); Plan 6's optimizer thread pool. |
+| `-oit` | `routerSettings.optimizer.optimizationImprovementThreshold` | `Float.parseFloat(v) / 100`; then `<= 0 → 0.0f`. Note the value is a **percentage** on the command line and a fraction in the settings, and the division happens before the clamp. Parsed as `float`, not `double`. **Correction (Plan 4 Task 7, JVM-verified):** an earlier revision of this table said `-oit -5` becomes `0.0f`. It does not — `-5` starts with `-`, so the blanket rule above never consumes it and the field keeps its previous value. The `<= 0` clamp is reachable only from a literal zero. | `GlobalSettings.java:700-708` | `fr-settings` (Plan 4). Keep the `f32` rounding — a `f64` division by 100 gives a different bit pattern. |
+| `-us` | `routerSettings.optimizer.boardUpdateStrategy` | `v.toLowerCase().trim()`; then `"global" → GLOBAL_OPTIMAL`, `"hybrid" → HYBRID`, **anything else → `GREEDY`**. There is no error for an unrecognised word. | `GlobalSettings.java:710-719` | `fr-settings` (Plan 4). Must be a total function with a `GREEDY` fallback, not a `FromStr` that fails. |
+| `-is` | `routerSettings.optimizer.itemSelectionStrategy` | `v.toLowerCase().trim()`; then **prefix** match `indexOf("seq") == 0 → SEQUENTIAL`, `indexOf("rand") == 0 → RANDOM`, **anything else → `PRIORITIZED`**. Prefix, not equality: `sequential`, `seq`, `sequestered` all give `SEQUENTIAL`. | `GlobalSettings.java:721-731` | `fr-settings` (Plan 4). Prefix match with a `PRIORITIZED` fallback. |
+| `-hr` | `routerSettings.optimizer.hybridRatio` | `v.trim()` only — stored as a raw `String` and parsed later. | `GlobalSettings.java:732-736` | `fr-settings` (Plan 4): keep it a string here, parse where Java parses it. |
+| `-inc` | `routerSettings.ignoreNetClasses` | `v.split(",")` — **the individual entries are not trimmed and not lower-cased**, unlike `debug.filter_by_net` (`GlobalSettings.java:552-557`), which does both. `-inc "GND, VCC"` yields `["GND", " VCC"]` and the second never matches a net class. | `GlobalSettings.java:810-815` | `fr-settings` (Plan 4). Reproduce the missing trim; do not "fix" it before parity. |
 
 ## Non-router flags the port currently drops
 
@@ -82,7 +94,7 @@ adopts one gets it right.
      consumer is `BatchOptimizer.java:58` (`… .optimizer.maxThreads > 1`), so
      `-mt 0` selects the **single-threaded** optimizer.
 
-   Plan 5 must therefore keep `optimizer.max_threads` and `router.max_threads`
+   Plans 6/7 must therefore keep `optimizer.max_threads` and `router.max_threads`
    as distinct fields with distinct normalisations, and must not "helpfully"
    map `-mt 0` to the core count.
 
@@ -122,7 +134,7 @@ goes to `initialInputFile` (the design input) when no `.dsn` has been seen yet,
 and to `designSessionFilename` (the session) otherwise
 (`GlobalSettings.java:609-621`). The port gives it its own `--kicad-json`
 option on `route`/`drc` so a KiCad board file never silently poses as a SES
-session. Two consequences for Plan 5/8, which owns the loader:
+session. Two consequences for Plan 8, which owns the loader:
 
 - `-de board.json -do out.ses` routes in Java but currently fails in the port
   with `-de input must include a .dsn file`, because `--kicad-json` does not

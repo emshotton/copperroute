@@ -422,11 +422,14 @@ resolved the items marked ✓ below — verified against the committed tree)
   `clearanceViolationCount` (Item.java:357-361) are explicitly deferred
   (`items/mod.rs`, `connectivity.rs:992`) because they build
   `drc.ClearanceViolation` objects, which is Plan 5's DRC layer to define.
-- Apply Java's flag normalisation (`-oit /100`, `-mp`/`-mt` clamps,
-  `-us`/`-is` folding) in `fr-settings` (carried forward from Plan 1's
-  hand-off, **still open**). Note the plan numbering moved after Plan 2 was
-  written: `fr-settings` is **Plan 4** and `fr-drc` is Plan 5, so this bullet
-  and its `docs/java-quirks.md` register row are Plan 4's, not Plan 5's.
+- ~~Apply Java's flag normalisation (`-oit /100`, `-mp`/`-mt` clamps,
+  `-us`/`-is` folding) in `fr-settings`~~ — **discharged in Plan 4 Task 7**
+  (`crates/fr-settings/src/sources/cli.rs`; see `docs/plan-4-handoff.md` and the
+  register row in `docs/java-quirks.md`). What remains open is the *wiring*:
+  `crates/freerouting/src/legacy.rs` still forwards raw values, which is Plan 8's
+  one-call rewire. Note the plan numbering moved after Plan 2 was written:
+  `fr-settings` is **Plan 4** and `fr-drc` is Plan 5, so this bullet was Plan 4's,
+  not Plan 5's.
 
 **Plan 6 (autoroute expansion rooms):**
 - **`RoomId`/`TreeObject` room ordering must be re-checked once rooms are

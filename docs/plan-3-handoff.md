@@ -622,24 +622,47 @@ would still surface as a `DIFF` on a mode nobody excused.
 
 ## Obligations for later plans
 
-### Plan 4 (`fr-settings`)
+### Plan 4 (`fr-settings`) — all three DISCHARGED; see `docs/plan-4-handoff.md`
 
-- **`DsnRouterSettings` → `RouterSettings` (plan ruling 5).** Write the
-  `From`/`Into` pair and decide which type the surfaces carry. `DsnRouterSettings`
-  has **no `Eq`**; `apply_new_values_from` copies only this type's fields — the
-  two per-layer `double[]` cost arrays are *not* copied onto a target that
-  already has them. Markers: `parser/autoroute_settings.rs:34`, `:278`.
-- **Three ported APIs are not jar-pinned (ruling H).**
-  `RulesReader.readRouterSettings`, `RulesReader.discoverLayerStructure` and
-  `RouterSettings.applyNewValuesFrom` exist only at the clone's HEAD, so no JVM
-  golden backs them — Rust tests only. Plan 4 is their first consumer and should
-  re-derive them against whatever jar it pins.
-- **Legacy-CLI value normalisation, still open from Plan 1.** `-oit /100`,
-  `-mp`/`-mt` clamps (`0` means *unlimited* for `-mp` and *single-threaded* for
-  `-mt`), `-us`/`-is` folding, `-inc` not trimming. Tabulated in
-  `docs/cli-legacy-flags.md`; `legacy.rs` forwards raw values on purpose so the
-  rule is applied once, in `fr-settings`. *(Plan 1/2's text says "Plan 5" —
-  `fr-settings` is Plan **4** in the Plan 3+ numbering.)*
+- ~~**`DsnRouterSettings` → `RouterSettings` (plan ruling 5).**~~ **Discharged in
+  Plan 4 Task 6 (`6e742bf`), with the gap it left closed in that task's fix round
+  (`826756a`, controller ruling L).** The `From`/`Into` pair lives in
+  `crates/fr-settings/src/sources/mod.rs`; the surfaces carry
+  `fr_settings::RouterSettings`, and `DsnRouterSettings` stays `fr-dsn`'s internal
+  subset. Both traps were handled: no `Eq` (the round trip compares field by
+  field) and `apply_new_values_from`'s DSN-subset scope (superseded — the sources
+  call `RouterSettings::apply_new_values_from`, the full one). **The trap this
+  hand-off did not foresee:** `DsnRouterSettings` stored its four scalar defaults
+  *eagerly*, so it could not express *absence*, and a `.rules` file that omitted
+  `(via_costs …)` pushed `1` over `DefaultSettings`' `50`. Ruling L fixed it at
+  the root — `Option` fields, `board_specific_trace_costs_applied`, `*_raw`
+  accessors, a conditional `apply_new_values_from` — with the coalescing getters
+  kept so no emitted byte moved (`p3t15` mode 3 and the full 530-pair sweep
+  re-run MATCH). **Lesson: a subset type that a merge engine will consume must
+  carry absence, not defaults.**
+- ~~**Three ported APIs are not jar-pinned (ruling H).**~~ **Discharged in Plan 4
+  Task 9 (`9bfab5e`).** All three are now backed by a JVM differential against the
+  clone's HEAD jar, not by Rust tests alone: `scripts/differential/java/P4T1.java`
+  builds the real `RulesFileSettings`, whose `getSettings()` calls
+  `RulesReader.readRouterSettings` (`RulesFileSettings.java:83`), which calls
+  `discoverLayerStructure` (`RulesReader.java:198`); and the real
+  `SettingsMerger.merge` calls `RouterSettings.applyNewValuesFrom`. Every
+  `.rules`-carrying row of the 84-case table exercises all three, at **0 diffs**
+  in all three modes. This is exactly what found controller ruling N (the file is
+  parsed **twice**, quirk #142) — 13 of the 84 rows diverged until it was fixed.
+- **Legacy-CLI value normalisation — the `fr-settings` half is discharged, the
+  wiring half is Plan 8's.** **Discharged in Plan 4 Task 7 (`1c81176`):**
+  `crates/fr-settings/src/sources/cli.rs` carries the whole table —
+  `apply_command_line_arguments` → `LegacyBridge` with `-oit /100`, the `-mp`/`-mt`
+  clamps, `-us`/`-is` folding and `-inc`'s missing trim — plus `CliSettings` for
+  the two flags that actually reach the router and `classify_de_arguments` for the
+  `-de` rule. JVM-verified, with one correction to
+  `docs/cli-legacy-flags.md`: **`-oit -5` keeps the previous value**, because the
+  blanket rule never consumes an argument starting with `-` (quirk #135). **Still
+  open (Plan 8):** `crates/freerouting/src/legacy.rs` still forwards raw values
+  and still reproduces the `-de` rule itself — plan 4 ruling 10 kept the binary
+  untouched, so the rewire is Plan 8's one-call change. Plan 8 must also decide
+  whether to make the five dead flags live (see `docs/plan-4-handoff.md` §10).
 
 ### Plan 5 (`fr-drc`)
 
