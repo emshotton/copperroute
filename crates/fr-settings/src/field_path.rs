@@ -446,14 +446,14 @@ impl FanoutSettings {
 /// `String.trim()`: strips code units `<= ' '` from both ends — *not* Rust's `str::trim`, which
 /// also strips Unicode whitespace such as `U+00A0` (verified: `Double.parseDouble(" 7")`
 /// throws, while `Double.parseDouble("\t7\n")` gives `7.0`).
-fn java_trim(value: &str) -> &str {
+pub(crate) fn java_trim(value: &str) -> &str {
     value.trim_matches(|c: char| c <= '\u{20}')
 }
 
 /// `String.split(regex)` with the default limit: pieces in order, **trailing empty pieces
 /// dropped**; and when the separator does not occur at all, the whole string as a single piece
 /// (so `"".split(",")` is `[""]` while `",".split(",")` is `[]`).
-fn java_split(value: &str, is_separator: impl Fn(char) -> bool + Copy) -> Vec<&str> {
+pub(crate) fn java_split(value: &str, is_separator: impl Fn(char) -> bool + Copy) -> Vec<&str> {
     if !value.contains(is_separator) {
         return vec![value];
     }

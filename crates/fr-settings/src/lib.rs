@@ -25,7 +25,8 @@
 //! Task 6 adds [`merger`] — `SettingsSource`, the priority ladder and `SettingsMerger` — and
 //! [`sources`], the five in-scope `settings/sources/**` classes plus the
 //! `DsnRouterSettings` ⇄ `RouterSettings` conversion pair Plan 3 ruling 5 parked here. Task 7
-//! adds the environment-variable and CLI sources; Task 8 adds `resolve_headless`.
+//! adds the environment-variable and CLI sources, plus the dead `LegacyBridge` (plan ruling 8)
+//! and `classify_de_arguments` (plan ruling 10); Task 8 adds `resolve_headless`.
 
 pub mod board_optimizations;
 pub mod copy_fields;
@@ -55,8 +56,12 @@ pub use scoring_settings::ScoringSettings;
 
 /// Re-exports every public type of the crate, for `use fr_settings::prelude::*;`.
 pub mod prelude {
+    pub use crate::sources::cli::{
+        DeSlots, LegacyBridge, apply_command_line_arguments, classify_de_arguments,
+    };
     pub use crate::sources::{
-        ApiSettings, DefaultSettings, DsnFileSettings, RulesFileSettings, SesFileSettings,
+        ApiSettings, CliSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource,
+        RulesFileSettings, SesFileSettings,
     };
     pub use crate::{
         BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings,

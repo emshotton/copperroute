@@ -4,8 +4,16 @@
 the port's subcommand form. **It forwards raw values.** Java, by contrast,
 normalises most flag values *while parsing* — clamping, dividing, lower-casing,
 or falling back to a default for an unrecognised word. Reproducing those rules
-is Plan 5's `fr-settings` job; this file records them once, from the Java, so
-Plans 5 and 8 do not re-derive them (and get them wrong).
+is `fr-settings`' job — **Plan 4** Task 7 in the event, not the "Plan 5" this
+file guessed at when it was written; the "Plan 5" cells below mean "the
+`fr-settings` plan". This file records the rules once, from the Java, so the
+later plans do not re-derive them (and get them wrong).
+
+**Ported.** `crates/fr-settings/src/sources/cli.rs` now carries all of this:
+`LegacyBridge` + `apply_command_line_arguments` for the flag table (dead, per
+plan 4 ruling 8), `CliSettings` for the two flags that reach the router, and
+`classify_de_arguments` for the `-de` rule below (plan 4 ruling 10 — the
+binary still reproduces the rule itself; Plan 8 rewires it).
 
 Baseline: freerouting **v2.3.0**. Primary source
 `app/freerouting/settings/GlobalSettings.java`, method
@@ -28,7 +36,7 @@ flag is skipped rather than aborting the run.
 |---|---|---|---|---|
 | `-mp` | `routerSettings.maxPasses` | `Integer.decode(v)`; then `< 0 → 1`, `> 9999 → 9999`. **`0` is deliberately allowed and means *unlimited*.** A second, *different* clamp runs later in `RouterSettings.validate()`: there `< 0 \|\| > 9999 → 9999` and `== 0 → Integer.MAX_VALUE`. | `GlobalSettings.java:675-686`; `RouterSettings.java:932-941` | `fr-settings` (Plan 5), at both the parse step and a `validate()` equivalent. Plan 6/7's pass loop must treat `max_passes == 0` as "no limit", never "no passes". |
 | `-mt` | `routerSettings.optimizer.maxThreads` | `Integer.decode(v)`; then `< 0 → 0`, `> 1024 → 1024`. **No further normalisation on this path** — see the quirk below. | `GlobalSettings.java:688-698` | `fr-settings` (Plan 5); Plan 6's optimizer thread pool. |
-| `-oit` | `routerSettings.optimizer.optimizationImprovementThreshold` | `Float.parseFloat(v) / 100`; then `<= 0 → 0.0f`. Note the value is a **percentage** on the command line and a fraction in the settings, and the division happens before the clamp, so `-oit -5` becomes `0.0f`. Parsed as `float`, not `double`. | `GlobalSettings.java:700-708` | `fr-settings` (Plan 5). Keep the `f32` rounding — a `f64` division by 100 gives a different bit pattern. |
+| `-oit` | `routerSettings.optimizer.optimizationImprovementThreshold` | `Float.parseFloat(v) / 100`; then `<= 0 → 0.0f`. Note the value is a **percentage** on the command line and a fraction in the settings, and the division happens before the clamp. Parsed as `float`, not `double`. **Correction (Plan 4 Task 7, JVM-verified):** an earlier revision of this table said `-oit -5` becomes `0.0f`. It does not — `-5` starts with `-`, so the blanket rule above never consumes it and the field keeps its previous value. The `<= 0` clamp is reachable only from a literal zero. | `GlobalSettings.java:700-708` | `fr-settings` (Plan 5). Keep the `f32` rounding — a `f64` division by 100 gives a different bit pattern. |
 | `-us` | `routerSettings.optimizer.boardUpdateStrategy` | `v.toLowerCase().trim()`; then `"global" → GLOBAL_OPTIMAL`, `"hybrid" → HYBRID`, **anything else → `GREEDY`**. There is no error for an unrecognised word. | `GlobalSettings.java:710-719` | `fr-settings` (Plan 5). Must be a total function with a `GREEDY` fallback, not a `FromStr` that fails. |
 | `-is` | `routerSettings.optimizer.itemSelectionStrategy` | `v.toLowerCase().trim()`; then **prefix** match `indexOf("seq") == 0 → SEQUENTIAL`, `indexOf("rand") == 0 → RANDOM`, **anything else → `PRIORITIZED`**. Prefix, not equality: `sequential`, `seq`, `sequestered` all give `SEQUENTIAL`. | `GlobalSettings.java:721-731` | `fr-settings` (Plan 5). Prefix match with a `PRIORITIZED` fallback. |
 | `-hr` | `routerSettings.optimizer.hybridRatio` | `v.trim()` only — stored as a raw `String` and parsed later. | `GlobalSettings.java:732-736` | `fr-settings` (Plan 5): keep it a string here, parse where Java parses it. |
@@ -78,8 +86,11 @@ adopts one gets it right.
    as distinct fields with distinct normalisations, and must not "helpfully"
    map `-mt 0` to the core count.
 
-3. **`-oit` divides before it clamps**, and parses as `float`. Any negative or
-   zero percentage collapses to exactly `0.0f`.
+3. **`-oit` divides before it clamps**, and parses as `float`. A zero
+   percentage collapses to exactly `0.0f`. A *negative* one never gets that
+   far: the blanket value rule refuses any argument starting with `-`, so
+   `-oit -5` is a silent no-op and the clamp's negative arm is dead code
+   (JVM-verified, Plan 4 Task 7 — `docs/java-quirks.md` row 135).
 
 4. **`-us` / `-is` never reject a value.** Both are total functions onto an
    enum with a fixed default (`GREEDY`, `PRIORITIZED`). A typo silently

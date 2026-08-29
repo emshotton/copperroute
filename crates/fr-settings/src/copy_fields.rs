@@ -575,10 +575,17 @@ impl CopyFields for DesignRulesCheckerSettings {
         // *representational* limit, not a decision — rule 2 already makes `false`/`0` unmergeable
         // (quirks row 115), so "absent" and "default" are the same state either way.
         //
-        // obligation: Task 7 (`GlobalSettings`) must revisit this. `GlobalSettings.java:351` runs
-        // `copyFields(loadedSettings, defaultSettings)` over a struct holding both of these, which
-        // is a *load-then-default* direction — if that path ever wants `fill_absent` semantics,
-        // these two structs need boxed fields first, not a mode argument.
+        // Task 2's `obligation:` for this decision is **discharged by Task 7**, which is the only
+        // task that touches `GlobalSettings`. The `copyFields(loadedSettings, defaultSettings)`
+        // call it worried about is `GlobalSettings.load` (`GlobalSettings.java:351`), inside the
+        // `freerouting.json` read — out of scope by spec §2 (no persistent config file), which is
+        // also why `JsonFileSettings` is unported and priority 10 is only reserved. Task 7's own
+        // scope — `EnvironmentVariablesSource`, `CliSettings` and the dead `LegacyBridge` — merges
+        // neither struct: the env and CLI sources go through `set_field_value` on a
+        // `RouterSettings`, and `apply_command_line_arguments` only *records* `-drc`'s
+        // `drcSettings.enabled` on `LegacyBridge`. So no `MergeMode` argument is observable here,
+        // and no boxed fields are needed. Should a later plan port `GlobalSettings.load`, the note
+        // above still applies: `fill_absent` semantics would need boxed fields first.
         primitive_bool_copy(self.enabled, &mut target.enabled, report);
         primitive_bool_copy(self.include_warnings, &mut target.include_warnings, report);
         primitive_bool_copy(self.include_errors, &mut target.include_errors, report);

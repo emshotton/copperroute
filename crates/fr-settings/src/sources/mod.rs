@@ -9,21 +9,30 @@
 //! | `DsnFileSettings` | [`DsnFileSettings`] | 20 |
 //! | `SesFileSettings` | [`SesFileSettings`] | 30 |
 //! | `RulesFileSettings` | [`RulesFileSettings`] | 40 |
+//! | `EnvironmentVariablesSource` | [`EnvironmentVariablesSource`] | 55 |
+//! | `CliSettings` | [`CliSettings`] | 60 |
 //! | `ApiSettings` | [`ApiSettings`] | 70 |
 //!
-//! `EnvironmentVariablesSource` (55) and `CliSettings` (60) arrive with Task 7.
+//! [`cli`] also carries the two pieces of `settings/GlobalSettings.applyCommandLineArguments`
+//! that belong beside `CliSettings`: the dead [`cli::LegacyBridge`] (plan ruling 8) and the `-de`
+//! file classifier [`cli::classify_de_arguments`] (plan ruling 10).
+//!
 //! `JsonFileSettings` (10) and `GuiSettingsSource` (50) are out of scope — no persistent config
 //! file (spec §2) and no GUI — and Task 11 writes their `// not ported:` roster.
 
 pub mod api;
+pub mod cli;
 pub mod default_settings;
 pub mod dsn_file;
+pub mod env;
 pub mod rules_file;
 pub mod ses_file;
 
 pub use api::ApiSettings;
+pub use cli::CliSettings;
 pub use default_settings::DefaultSettings;
 pub use dsn_file::DsnFileSettings;
+pub use env::EnvironmentVariablesSource;
 pub use rules_file::RulesFileSettings;
 pub use ses_file::SesFileSettings;
 

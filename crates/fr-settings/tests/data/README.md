@@ -1,8 +1,8 @@
 # `fr-settings` JVM probes (Plan 4)
 
 JUnit-free Java drivers whose output is the source of every expected value in
-`crates/fr-settings/tests/{field_path,router_settings,board_optimizations}.rs` and of quirks rows
-114-127 in `docs/java-quirks.md`. They are committed so Task 9's `p4t*` differential can reuse the
+`crates/fr-settings/tests/{field_path,router_settings,board_optimizations,sources,env_source,cli_source}.rs`
+and of quirks rows 114-137 in `docs/java-quirks.md`. They are committed so Task 9's `p4t*` differential can reuse the
 matrix instead of re-deriving it, and so any of these expectations can be re-checked against a
 rebuilt jar.
 
@@ -14,6 +14,7 @@ rebuilt jar.
 | `VProbe.java` | Task 4's accessors, clamps, `setLayerCount`, `clone` and `validate` (blocks A-F); run with `-XX:ActiveProcessorCount=4` | yes |
 | `BProbe.java` | Task 5's `applyBoardSpecificOptimizations` over four synthetic stacks and any DSN fixtures named on the command line, plus the Q9 merge block | yes |
 | `RProbe.java` | Quirk 119's real consequence: `setLayerCount`'s effect on `--router.layers.*` values (L1-L4), and what Java's array branch leaves behind when the *next* path segment is bogus (A1-A3) | yes |
+| `CProbe.java` | Task 7's `EnvironmentVariablesSource` (A), `CliSettings`' value-consumption and flag-mapping rules (B), the five `SettingsMergerTest` CLI cases merged (C), the dead `LegacyBridge`'s whole flag table (D) and the `-de` classification matrix including a real file whose name contains `+` (E); run with `-XX:ActiveProcessorCount=4` | yes |
 | `SProbe.java` | Task 6's `SettingsMerger`, `SettingsSource` and the five in-scope `settings/sources/**` classes: the whole `DefaultSettings` table field by field (A), the ported `SettingsMergerTest` cases plus the only-null-sources NPE and the stable-sort tie (B), `addOrReplaceSources` (C), every source name and priority (D), both `.rules` goldens raw and through the accessors (E), `DsnFileSettings` over three fixtures with no `(autoroute_settings)` block — quirk 128's evidence (F), and that seeding merged under `DefaultSettings` (G); run with `-XX:ActiveProcessorCount=4` and the fixtures directory as `argv[0]` | yes |
 
 ## Recorded commands
@@ -44,6 +45,11 @@ done
 /opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
     -cp "$JAR:." SProbe /Users/em/Development/freerouting/freerouting/fixtures
 
+# CProbe pins availableProcessors for its `validate()` rows (block C)
+/opt/homebrew/opt/openjdk@25/bin/javac -cp "$JAR" -d . CProbe.java
+/opt/homebrew/opt/openjdk@25/bin/java -XX:ActiveProcessorCount=4 -Djava.awt.headless=true \
+    -cp "$JAR:." CProbe
+
 # BProbe takes DSN fixtures as arguments; Task 5's goldens used these three
 F=/Users/em/Development/freerouting/freerouting/fixtures
 /opt/homebrew/opt/openjdk@25/bin/javac -cp "$JAR" -d . BProbe.java
@@ -52,4 +58,4 @@ F=/Users/em/Development/freerouting/freerouting/fixtures
 ```
 
 The transcripts these produced are in
-`.superpowers/sdd/2026-08-28-plan-4-settings/task-{3,4,5,6}-report.md`.
+`.superpowers/sdd/2026-08-28-plan-4-settings/task-{3,4,5,6,7}-report.md`.
