@@ -6,14 +6,42 @@
 # This map is used against **two** crates, because Plan 5's port is split across them:
 #
 #   ./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' scripts/audit-map/fr-drc.map
-#   ./scripts/audit-port.sh drc crates/fr-drc/src   '*.java'                  scripts/audit-map/fr-drc.map
+#   ./scripts/audit-port.sh drc crates/fr-drc/src   'DesignRulesChecker.java' scripts/audit-map/fr-drc.map
 #
-# The paths below are therefore relative to whichever `src` the invocation names; the
-# `ClearanceViolation` rows are the cross-crate ones (plan-5 ruling 9 puts that class in
-# `fr-board`, because `Item.clearanceViolations` returns it and `fr-board` cannot depend on
-# `fr-drc`). Of the two forms the plan offers for that row — one `ClearanceViolation` line per
-# Rust file, or a single line with a wider glob — this map uses **one line per file**, which is
-# what `crates/fr-dsn`'s map header prescribes and what keeps the audit scoped to the two files
-# that actually hold the port.
+# The second glob widens as the crate fills up: Task 4 adds `UnconnectedItems.java`, Task 5
+# `NetIncompletes.java AirLine.java`, and Task 11 turns it into the plain `'*.java'` the plan
+# asks for, with the whole map resolving and no `MISSING` left. Until then a class whose mapped
+# file does not exist yet reports every method `MISSING` — which is the point: the map records
+# the obligation, the glob records how much of it is due.
+#
+# The paths below are relative to whichever `src` the invocation names, so the `ClearanceViolation`
+# rows appear twice: once crate-relative (for the `fr-board` invocation) and once as `../../` (for
+# the `fr-drc` one). Plan-5 ruling 9 puts that class in `fr-board`, because `Item.clearanceViolations`
+# returns it and `fr-board` cannot depend on `fr-drc`; `audit-port.sh` resolves the `../` form fine
+# (it globs `"$RS"/$map_path` and tests `-e`), so the plan's recorded fallback — a separate
+# `fr-board.map` — was not needed. Of the two forms the plan offers for the row, this map uses
+# **one line per Rust file**, which is what `crates/fr-dsn`'s map header prescribes and what keeps
+# the audit scoped to the files that actually hold the port.
+
+# --- drc/ ---------------------------------------------------------------------------------------
+DesignRulesChecker       checker.rs
+DesignRulesChecker       report/build.rs
 ClearanceViolation       items/clearance_violation.rs
 ClearanceViolation       board/clearance.rs
+ClearanceViolation       ../../fr-board/src/items/clearance_violation.rs
+ClearanceViolation       ../../fr-board/src/board/clearance.rs
+NetIncompletes           net_incompletes.rs
+AirLine                  airline.rs
+UnconnectedItems         unconnected.rs
+
+# --- io/kicad/ and core/scoring/, for the invocations Tasks 6-8 add ------------------------------
+KiCadDrcReport           report/mod.rs
+KiCadDrcViolation        report/mod.rs
+KiCadDrcViolationItem    report/mod.rs
+KiCadDrcPosition         report/mod.rs
+BoardStatisticsClearanceViolations  statistics.rs
+# The last three are matched only by the `// added in Plan 8:` markers Task 11 puts in `lib.rs`
+# (plan-5 ruling 13 keeps the KiCad board-JSON reader/writer out of this plan).
+KiCadJsonReader          lib.rs
+KiCadJsonWriter          lib.rs
+KiCadBoardJson           lib.rs
