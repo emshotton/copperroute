@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #176.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #184** (was #176 when this block was written; Tasks 7-14 landed #167-#181 and Task 15a landed #182-#183). Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
@@ -1271,6 +1271,30 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > changes" are already made and `p2t11`/`p2t15` stay MATCH; and the four `fr-router` methods
 > answer `Result<bool, BoardError>` where Java answers `boolean`, so Task 15 must thread the
 > `StopCheck` and the `?` through `FoundConnectionInserter`.
+>
+> **Amendment (controller ruling AB, executed as Task 15a) — the pull-tight family.** Ruling 2
+> assigns `board/optimize/**`'s mutating half and "`RoutingBoard.optChangedArea`/pull-tight" to
+> Plan 7. Task 15 found that self-contradictory (task-15-report.md §1): Java's trace insertion
+> pull-tightens **every** inserted polyline unconditionally —
+> `FoundConnectionInserter.java:185` passes `tidyWidth = Integer.MAX_VALUE`, so
+> `RoutingBoard.insertForcedTracePolyline:860`'s `tidyWidth > 0` holds; `optNetNoArr` is empty, so
+> `PolylineTrace.pullTight:821`'s filter never fires; and `NetClass.pullTight` defaults to `true`
+> — so plan-6 ruling 1(b)'s "same inserted item geometry" is unreachable without it. **Ruling AB**
+> amends ruling 2 for exactly five names, which a new **Task 15a** ported:
+> `TraceTightener`, `TraceTightener90`, `TraceTightener45`, `TraceTightenerAnyAngle` and
+> `PolylineTrace.pullTight` (both overloads). `ViaOptimizer`, `optChangedArea`'s batch callers and
+> `removeItemsAndPullTight` stay Plan 7's, and so does `TraceShover.springOverObstacles` — quirk
+> #182 is why the tighteners do not need it. Consequences: **quirk #34's `equals_geometric`
+> obligation is discharged** (all four `Line.equals` call sites now use it); the two `pullTight`
+> overloads live in `fr_router::board_ext::PolylineTraceExt` because their argument is a
+> `TraceTightener`, with `renamed:` markers in `crates/fr-board/src/items/trace.rs`;
+> `PolylineTrace.{check,correct,swap}ConnectionToPin` keep their `// added in Plan 7:` markers
+> (ruling AB named neither, and `FoundConnectionInserter.insertTrace:140-141` sets
+> `pinEdgeToTurnDist = -1` for the whole insertion, so Plan 6 never reaches the branch that calls
+> them); and `PolylineTrace.change`'s `board.additionalUpdateAfterChange` call
+> (PolylineTrace.java:942) is still `// added in Plan 6:` in `fr-board` — **Task 15b must thread
+> the `AutorouteEngine` through**, because `insertForcedTracePolyline` runs inside a live
+> `autorouteConnection`.
 >
 > **Amendment (Task 4) — hazard F's container.** Ruling 4 and Task 4's brief both prescribe a
 > `BTreeSet` for `SortedRoomNeighbours.sortedNeighbours`. **It does not reproduce Java.** On a

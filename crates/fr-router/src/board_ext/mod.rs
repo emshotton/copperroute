@@ -55,12 +55,16 @@ mod drill_item_mover;
 mod forced_pad_router;
 mod forced_via_inserter;
 mod routing_board_ext;
+pub mod tightener;
 mod trace_shover;
 
 pub use drill_item_mover::DrillItemMover;
 pub use forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 pub use forced_via_inserter::ForcedViaInserter;
 pub use routing_board_ext::RoutingBoardExt;
+pub use tightener::{
+    PolylineTraceExt, TraceTightener, TraceTightener45, TraceTightener90, TraceTightenerAnyAngle,
+};
 pub use trace_shover::{SpringOverOutcome, TraceShover};
 
 /// The degraded value of the two `catch (Exception e) { FRLogger.error("Couldn't normalize

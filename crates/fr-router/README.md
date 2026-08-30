@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 14 of 18
+## State: Task 15a of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -25,6 +25,7 @@ neighbour sorters that turn a completed room into its door list, the
 `AutorouteEngine` that owns all of it, the drill pages that manufacture its
 layer changes, the four leaf types the maze search itself is written against
 (the control block, the cost bound, the queue element and the guarded queue),
+the pull-tight family controller ruling AB moved out of Plan 7,
 and — from Tasks 9, 10 and 10b — the seam with `fr-board`: `RoutingBoardExt`
 plus **both halves** of the four shove algorithms, the `check` family the maze
 consults before it commits to a trace or a via and the mutating family that then
@@ -507,8 +508,9 @@ the port and the jar differ there, `ViaRule` needs owned `ViaInfo` copies (or
 Plan-2 ruling 4 left five `RoutingBoard` methods out of `fr-board` because each
 one needs an `AutorouteEngine`, which `fr-board` cannot name. Plan-6 ruling 3
 puts them here as `RoutingBoardExt`, an extension trait over `fr_board::Board`
-that Plan 7 extends further (`optChangedArea`, the pull-tight entry points, the
-tighteners). The same reasoning brings `board.optimize.TraceShover` and
+that Plan 7 extends further (`optChangedArea` and `ViaOptimizer`; the pull-tight
+entry points and the tighteners themselves arrived in Task 15a, controller
+ruling AB). The same reasoning brings `board.optimize.TraceShover` and
 `board.actions.DrillItemMover` into this crate: both take a `RoutingBoard`, and
 the router is their only caller.
 
@@ -1080,3 +1082,75 @@ matches Java.
 `:142-144`), which needs `ctrl.isFanout` and so no Plan 6 fixture reaches, and
 the conduction-area shrink (`:167-175`), which needs a start item whose
 trace-connection shape is 2-dimensional.
+
+
+## The pull-tight family (Task 15a, controller ruling AB)
+
+`board/optimize/TraceTightener.java` (547 lines) and its three regime
+subclasses — `TraceTightener90` (169), `TraceTightener45` (674),
+`TraceTightenerAnyAngle` (1004) — plus `PolylineTrace.pullTight`'s two overloads
+(`board/trace/PolylineTrace.java:809-863` and `:869-890`) live in
+`src/board_ext/tightener/`. Ruling 2 had put all of them in Plan 7. **Task 15
+found that unworkable** (`task-15-report.md`): Java's trace insertion
+pull-tightens *every* inserted polyline unconditionally —
+`FoundConnectionInserter.java:185` passes `tidyWidth = Integer.MAX_VALUE`, so
+`RoutingBoard.insertForcedTracePolyline:860`'s `tidyWidth > 0` holds;
+`optNetNoArr` is empty, so `PolylineTrace.pullTight:821`'s net filter never
+fires; and `NetClass.pullTight` defaults to `true` — so plan-6 ruling 1(b)'s
+"same inserted item geometry" cannot be met without it. **Controller ruling AB**
+moved exactly those five names into Plan 6. `ViaOptimizer`, `optChangedArea`'s
+batch callers and `removeItemsAndPullTight` stay Plan 7's.
+
+**Reference identity is the algorithm.** All three `pullTight` overrides loop
+`while (newResult != prevResult)` — *object* identity — and
+`PolylineTrace.pullTight:837` reads `newLines != lines` the same way to decide
+whether the trace changed at all. Every step in this module therefore answers
+`Option<Polyline>`, where `None` is Java's "returned the argument object": the
+`Option`'s discriminant **is** Java's `!=`. Several steps rebuild a polyline
+that happens to be value-equal to their input, so a value comparison would loop
+where Java stops (and stop where Java loops).
+
+**`springOverObstacles` is still Plan 7's, and quirk #182 is why.**
+`TraceTightener.avoidAcidTraps` is the family's only caller of it, and its first
+statement is `if (true) { return polyline; }` — the whole body below is dead.
+Controller ruling AA's line therefore holds unchanged.
+
+**Quirk #34 is discharged here.** Java's four `Line.equals` call sites are
+`Simplex.borderLineIndex` (done in Plan 1) and three tightener sites —
+`TraceTightener.repositionLine:281`, `TraceTightenerAnyAngle.repositionLine:568`
+and `:576` — all of which now use `Line::equals_geometric`. Each compares a
+*translated* line with its original to detect a sub-unit translation that did
+not move it, which is exactly where the geometric and the structural test
+disagree. `tests/tightener.rs`'s `lineeq` rows (`onLine`, `subUnit`, `halfInt`)
+pin all three: mutating any of them to `==` makes the test fail.
+
+**Quirk #183 makes a whole branch dead.**
+`TraceTightenerAnyAngle.smoothenEndCornerAtTrace:907-908` reads
+`prevLineDirection` from the same line as `lineDirection`, and the `bend` arm
+needs one projection `ZERO` and the other `POSITIVE` — impossible for two equal
+directions. So `:988-1001` never runs. The `smooth` fixture carries the one
+geometry that separates the two indices, so the quirk cannot be lost silently.
+
+**What the module still owes.** `PolylineTrace.change` calls
+`board.additionalUpdateAfterChange(this)` (`PolylineTrace.java:942`), which
+needs an `AutorouteEngine`; `fr-board`'s `Board::change_trace` still carries the
+`// added in Plan 6:` marker for it, and this module's entry points take no
+engine, so `pull_tight_with` does not make that call. It touches the engine's
+room/drill database, never the board's item list, so no probe row can see it —
+but **Task 15b must thread the engine through**, because
+`insertForcedTracePolyline` runs inside a live `autorouteConnection`.
+`PolylineTrace.{check,correct,swap}ConnectionToPin` also keep their
+`// added in Plan 7:` markers in `crates/fr-board/src/items/trace.rs`: ruling AB
+named neither, and `FoundConnectionInserter.insertTrace:140-141` sets
+`pinEdgeToTurnDist` to `-1` for the whole insertion, so no Plan-6 path reaches
+the branch at `PolylineTrace.pullTight:841-861` that calls them. Probe mode
+`pinedge` records the JVM's answers there for whoever does port them — the
+branch *is* entered on that fixture and Java answers `false` on every row, which
+is what the port answers too, so nothing is hidden behind a green test.
+
+**Where the numbers come from.** `scripts/differential/java/probes/P6T15aProbe.java`
+(compiled with `P6T9Probe.java`, whose board it reuses) and its committed stdout
+`tests/data/p6t15a-tightener.txt` — eleven modes, including one fixed
+eleven-polyline table per regime and three 256-row `java.util.Random(4242)`
+blocks the Rust side replays with `JavaRandom`. Every row is compared, not
+sampled.

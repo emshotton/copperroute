@@ -97,8 +97,8 @@
 // added in Plan 7: `PolylineTrace.checkConnectionToPin` (PolylineTrace.java:1013-1076) — needs the start/end contacts, `board.rules.getPinEdgeToTurnDist()` and `board.clearanceValue`.
 // added in Plan 7: `PolylineTrace.correctConnectionToPin` (PolylineTrace.java:1082-1245) — the acid-trap correction; needs `board.checkPolylineTrace` and `board.insertTrace`.
 // added in Plan 7: `PolylineTrace.swapConnectionToPin` (PolylineTrace.java:1252-1313) — needs the start contacts and `Pin.calcNearestExitRestrictionDirection`.
-// added in Plan 7: `Trace.pullTight` (Trace.java:483) and `PolylineTrace.pullTight` (both overloads, PolylineTrace.java:809-890) -> `fr-router`'s `RoutingBoardExt` (plan-rulings.md #4); `TraceTightener` is Plan 7 too.
-// added in Plan 7: `PolylineTrace.smoothenEndCornersFork` (PolylineTrace.java:893-915) -> `TraceTightener.smoothenEndCornersAtTrace`.
+// renamed: `Trace.pullTight` (Trace.java:483) and `PolylineTrace.pullTight` (both overloads, PolylineTrace.java:809-863 and :869-890) -> `fr_router::board_ext::PolylineTraceExt::{pull_tight_with, pull_tight}` (plan-rulings.md #4): both take a `TraceTightener`, which is `fr-router`'s type. **Controller ruling AB** moved that class family out of Plan 7 into Plan 6 Task 15a, because `RoutingBoard.insertForcedTracePolyline:861` pull-tightens every inserted polyline unconditionally and plan-6 ruling 1's geometry parity is unreachable without it.
+// added in Plan 7: `PolylineTrace.smoothenEndCornersFork` (PolylineTrace.java:893-915) -> the `TraceTightener.smoothenEndCornersAtTrace` it drives landed in Plan 6 Task 15a (`fr_router::board_ext::TraceTightener::smoothen_end_corners_at_trace`); this wrapper has no Plan-6 caller, so it stays Plan 7's.
 // not ported: `PolylineTrace.write(ObjectOutputStream)` (PolylineTrace.java:926-934) — Java
 // serialization, which `global-constraints.md` excludes.
 

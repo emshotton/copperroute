@@ -991,6 +991,64 @@ methods with dozens of branches.
       `connectionItems=n=0` — the direct evidence for quirk #180 that the field
       is an empty list and never `null`.
 
+  - `P6T15aProbe.java` — the **pull-tight family** (Plan 6 Task 15a, controller
+    ruling AB): `board/optimize/TraceTightener.java` (547 lines) and its three
+    regime subclasses `TraceTightener90` (169), `TraceTightener45` (674) and
+    `TraceTightenerAnyAngle` (1004), plus `board/trace/PolylineTrace.java`'s two
+    `pullTight` overloads (`:809-863`, `:869-890`). It declares
+    `package app.freerouting.board.optimize` so it can name the three
+    package-private subclasses and call the package-private `repositionLines` /
+    `skipSegmentsOfLength0` and the protected `repositionLine`, and it
+    **compiles together with `P6T9Probe.java`**, reusing that probe's
+    `build(AngleRestriction)` board rather than declaring a second fixture.
+    Its stdout is committed as
+    `crates/fr-router/tests/data/p6t15a-tightener.txt` (2 983 lines); every
+    polyline prints as its **line array** — the lines are the polyline's only
+    state and they are `IntPoint`-based, so the dump is exact — plus the corner
+    list, where a `RationalPoint` corner prints `~(<Double.toString x>,
+    <Double.toString y>)`. Eleven modes:
+
+    - `inst` — `getInstance` (`:87-114`): which concrete class each
+      `AngleRestriction` builds, the `Math.max(minTranslateDist, 100)` clamp of
+      `:112`, and `splitTracesAtKeepPoint` with and without a keep point.
+    - `lineeq` — **quirk #34** in situ. A pair table showing where Java's
+      geometric `Line.equals` and a structural end-point comparison disagree
+      (including the degenerate line, where Java's `this == other` shortcut is
+      the one documented divergence of `Line::equals_geometric`), a
+      `Line.translate` table, and four hand-built five-line arrays —
+      `square`, `onLine`, `subUnit`, `halfInt` — run through `repositionLine`
+      in all three regimes. `onLine` reaches `TraceTightener.java:281`,
+      `subUnit` reaches `TraceTightenerAnyAngle.java:568`'s replacement branch
+      and `halfInt` reaches `:576`'s `return null`; each of the three was
+      verified to change its row when the site is mutated to `==`.
+    - `t90` / `t45` / `tany` — one eleven-polyline table per regime through the
+      six-argument `pullTight`, plus `repositionLines` and
+      `skipSegmentsOfLength0` called directly, the same table under a clip
+      octagon that excludes everything, and four `minTranslateDist` values.
+    - `trace` — `PolylineTrace.pullTight(TraceTightener)` and
+      `pullTight(boolean, int, Stoppable)` on the board's own traces and on an
+      inserted detour, in all three regimes, with the whole item list
+      (`getItems()` order, descending id — quirk #63) and `maxGeneratedId`
+      after each; plus the four refusals of `:811-828`.
+    - `smooth` — `smoothenEndCornersAtTrace` and both overrides per regime, on
+      a fixture of seven extra traces: one whose start corner is the SMD **pin**
+      (the contact loop's `else { return null; }` arm), a pair meeting at an
+      acute angle with an orthogonal other line (the `acuteAngle` arm), a pair
+      meeting at a right angle with `cornerCount > 2` (the `bend` arm, and
+      through it `repositionLine`), a pair meeting at a **last** corner, and a
+      pair placed so that the row moves the moment
+      `TraceTightenerAnyAngle:908`'s `prevLineDirection` index is "fixed" —
+      which is **quirk #183**'s pin.
+    - `pinedge` — `PolylineTrace.pullTight:841-861`, the
+      `pinEdgeToTurnDist > 0` branch that calls `swapConnectionToPin` /
+      `correctConnectionToPin`. Those two keep their `// added in Plan 7:`
+      markers, so this mode is ground truth for whoever ports them; on this
+      fixture Java answers `false` on every row, which is what the port answers
+      too.
+    - `rand90` / `rand45` / `randany` — 256 random polylines each from one
+      `java.util.Random(4242)` stream, replayed on the Rust side with
+      `fr_geometry::JavaRandom`.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

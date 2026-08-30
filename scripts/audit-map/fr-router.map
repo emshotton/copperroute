@@ -26,13 +26,21 @@
 #   ./scripts/audit-port.sh autoroute/drill     crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
 #   ./scripts/audit-port.sh autoroute/path      crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
 #   ./scripts/audit-port.sh board/actions       crates/fr-router/src 'ForcedViaInserter.java ForcedPadRouter.java DrillItemMover.java' scripts/audit-map/fr-router.map
-#   ./scripts/audit-port.sh board/optimize      crates/fr-router/src 'TraceShover.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh board/optimize      crates/fr-router/src 'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java' scripts/audit-map/fr-router.map
 #
 # As of **Task 9** the two `board/*` packages exit 0 over the files this task ports; the other two
 # `board/actions` classes arrive in Task 10, which is when the wide glob above starts passing:
 #
 #   ./scripts/audit-port.sh board/actions  crates/fr-router/src 'DrillItemMover.java' scripts/audit-map/fr-router.map
 #   ./scripts/audit-port.sh board/optimize crates/fr-router/src 'TraceShover.java'    scripts/audit-map/fr-router.map
+#
+# As of **Task 15a** (controller ruling AB) the `board/optimize` invocation covers the four
+# `TraceTightener*` files too and still exits 0; only `ViaOptimizer.java` is left out of the glob,
+# because it is Plan 7's and has no `lib.rs` roster entry yet:
+#
+#   ./scripts/audit-port.sh board/optimize crates/fr-router/src \
+#       'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java' \
+#       scripts/audit-map/fr-router.map
 #
 # The `ShapeSearchTree*` and `RoutingBoard` rows below are cross-package, not cross-crate: plan-6
 # ruling 3 puts `completeShape`/`divideLargeRoom` and the five `RoutingBoard` autoroute methods in
@@ -113,6 +121,18 @@ ForcedViaInserter                 board_ext/forced_via_inserter.rs
 ForcedPadRouter                   board_ext/forced_pad_router.rs
 DrillItemMover                    board_ext/drill_item_mover.rs
 TraceShover                       board_ext/trace_shover.rs
+# The pull-tight family (Task 15a, **controller ruling AB**). Ruling 2 had put all of
+# `board/optimize`'s mutating half in Plan 7; Task 15 found that Java's trace insertion
+# pull-tightens every polyline unconditionally, so ruling AB moved these four classes — and
+# `PolylineTrace.pullTight`, whose Rust home is `board_ext/tightener/mod.rs` because its argument
+# is a `TraceTightener` — into Plan 6. `ViaOptimizer` stays Plan 7's, and so do `optChangedArea`'s
+# batch callers and `removeItemsAndPullTight`; `optChangedArea` itself keeps its
+# `// added in Plan 7:` marker in `board_ext/tightener/mod.rs`.
+TraceTightener                    board_ext/tightener/mod.rs
+TraceTightener                    board_ext/tightener/base.rs
+TraceTightener90                  board_ext/tightener/tightener_90.rs
+TraceTightener45                  board_ext/tightener/tightener_45.rs
+TraceTightenerAnyAngle            board_ext/tightener/tightener_any_angle.rs
 
 # --- board/facade/ and board/searchtree/, the parts plan-6 ruling 3 puts in this crate ----------
 # `RoutingBoard`'s five autoroute methods (initAutoroute, finishAutoroute,
@@ -144,8 +164,4 @@ TaskState                         lib.rs
 AutorouteAirlineCalculator        lib.rs
 AutorouteRuntimeMetrics           lib.rs
 AutorouteUnroutedReport           lib.rs
-TraceTightener                    lib.rs
-TraceTightener45                  lib.rs
-TraceTightener90                  lib.rs
-TraceTightenerAnyAngle            lib.rs
 ViaOptimizer                      lib.rs
