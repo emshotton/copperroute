@@ -49,7 +49,7 @@ pub use rules::{
 pub use searchtree::{ItemLookup, NoRooms, RoomLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
     AngleRestriction, BoardOutline, Component, Components, FixedState, Layer, LayerStructure,
-    ShapeAndEntrySide, ShapeEntrySide, Unit,
+    ShapeAndEntrySide, ShapeEntrySide, Unit, free_trace_tree_shapes,
 };
 
 /// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
@@ -70,6 +70,7 @@ pub mod prelude {
         ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
         TraceExitRestriction, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo,
         ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId, WriteResolution,
-        compare_to_ignore_case, equals_ignore_case, java_to_lower, java_to_upper,
+        compare_to_ignore_case, equals_ignore_case, free_trace_tree_shapes, java_to_lower,
+        java_to_upper,
     };
 }

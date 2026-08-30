@@ -27,6 +27,17 @@ impl DrillItemMover {
     ///
     /// `false` where a `drill_item` id names something that is not a drill item: Java's parameter
     /// is typed `DrillItem`, so the case cannot arise there.
+    ///
+    /// # Panics
+    ///
+    /// **Panics for every input that survives the two early arms.** `:46-48`'s `isShoveFixed` and
+    /// `:51-56`'s non-trace contact answer `false` normally; anything past them enters the
+    /// per-layer loop, whose body reaches `ForcedPadRouter.checkForcedPad` (`:86-100`) — plan-6
+    /// Task 10's, because Java's dependency there is a cycle back into this method. See the
+    /// `added in Task 10:` marker and its `obligation:` block at the call site. A drill item with
+    /// no tree shape on any of its layers returns `true` without panicking, but no real board
+    /// produces one. Task 10 must land before Task 13, which gives this method its first
+    /// production caller through `TraceShover::check`.
     pub fn check(
         board: &mut Board,
         drill_item: ItemId,
@@ -98,6 +109,10 @@ impl DrillItemMover {
             };
             // :78-84.
             let new_shape = current_shape.translate_by(vector);
+            // totalized: `DrillItemMover.check`'s `newShape.boundingOctagon()` (`:83`) -> a
+            // skipped layer. Java's `boundingOctagon` never answers null for a non-empty shape,
+            // and `newShape` is a live tree shape translated by a vector, so it cannot be empty.
+            // Unreachable — no register row.
             let current_tile_shape = if orthogonal_mode {
                 TileShape::Box(new_shape.bounding_box())
             } else {

@@ -3,6 +3,7 @@
 use std::collections::BTreeSet;
 
 use fr_board::board::ShapeTraceEntries;
+use fr_board::free_trace_tree_shapes;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{ItemId, TimeLimit};
@@ -51,6 +52,16 @@ impl TraceShover {
     /// `Integer.MAX_VALUE` is `f64::from(i32::MAX)`, not `f64::INFINITY`: `:190` compares the
     /// recursive answer against it and `:218` takes a `Math.min` with it, so the exact value is
     /// observable.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the shape being checked overlaps a **shovable foreign-net via** and
+    /// `max_via_recursion_depth > 0`, because `:119-135` then reaches
+    /// [`DrillItemMover::check`], whose main arm is plan-6 Task 10's
+    /// `ForcedPadRouter.checkForcedPad` (see the `added in Task 10:` marker in
+    /// `board_ext/drill_item_mover.rs`). Every other input answers normally. Boards whose
+    /// obstacles are traces, pins and areas — which is every caller Plan 6 has until Task 13
+    /// wires `MazeSearchEngine.java:681` — never reach it.
     #[allow(clippy::too_many_arguments)]
     pub fn check_segment(
         board: &mut Board,
@@ -221,6 +232,10 @@ impl TraceShover {
                 break;
             };
             for i in 0..current_substitute_trace.tile_shape_count() {
+                // totalized: `TraceShover.check`'s `new LineSegment(polyline, i + 1)` (`:170`) ->
+                // a skipped index. Java's constructor only warns for an out-of-range `no`; `i` is
+                // bounded by `tileShapeCount()` = `lines.length - 2`, so it is always in range.
+                // Unreachable — no register row.
                 let Some(mut current_line_segment) =
                     LineSegment::from_polyline(current_substitute_trace.polyline(), i + 1)
                 else {
@@ -315,6 +330,15 @@ impl TraceShover {
     /// — and the self-call (`:394-404`) spends `maxRecursionDepth`. The maze passes
     /// `ctrl.maxShoveTraceRecursionDepth = 20`, a hard-coded constant, so the accounting is
     /// transcribed exactly.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `trace_shape` overlaps a **shovable foreign-net via**, because `:335-342` then
+    /// reaches [`DrillItemMover::check`], whose main arm is plan-6 Task 10's
+    /// `ForcedPadRouter.checkForcedPad` (see the `added in Task 10:` marker in
+    /// `board_ext/drill_item_mover.rs`). Every other input answers normally, including the whole
+    /// substitute-trace recursion. Task 10 must therefore land before Task 13, which is what
+    /// gives this method its first production caller.
     #[allow(clippy::too_many_arguments)]
     pub fn check(
         board: &mut Board,
@@ -510,7 +534,19 @@ impl TraceShover {
             // :388-408.
             let substitute_net_nos = current_substitute_trace.hdr.net_nos.clone();
             let substitute_clearance_class = current_substitute_trace.hdr.clearance_class();
+            // `ShapeAndEntrySide`'s `:28` is `trace.getTreeShape(searchTree, index)`, and Java
+            // computes the piece's shape vector **once** and memoises it on the item
+            // (Item.java:228-238) — every later index is a lookup. The port's pieces carry no
+            // cache, so the vector is computed once here, outside the `for i` loop, and indexed
+            // below. Nothing in the loop mutates the piece (`set_polyline` ran above it) and
+            // `calculate_tree_shapes` reads only the polyline, the tree's compensation class and
+            // the rules, none of which the recursion touches — so this is Java's memoisation, not
+            // a behavioural change.
+            let substitute_tree_shapes = free_trace_tree_shapes(board, &current_substitute_trace);
             for i in 0..current_substitute_trace.tile_shape_count() {
+                // totalized: `TraceShover.check`'s `polyline().lines[i + 1]` (`:389`) -> a skipped
+                // index. `i` is bounded by `tileShapeCount()` = `lines.length - 2`, so `i + 1` is
+                // always in range and Java's array access cannot throw. Unreachable — no row.
                 let Some(current_line) = current_substitute_trace
                     .polyline()
                     .lines()
@@ -526,15 +562,23 @@ impl TraceShover {
                     continue;
                 }
                 // :392-406.
-                let Some(current) = ShapeAndEntrySide::from_free_trace(
+                //
+                // totalized: `TraceShover.check`'s `new ShapeAndEntrySide(…, i, …)` (`:392-393`)
+                // -> a skipped index. Java's constructor cannot fail at all: `:28`'s
+                // `getTreeShape(searchTree, i)` answers null only for an index the piece does not
+                // have, and `:29-33` would then throw. The port refuses that index instead, and
+                // the same bound as above makes it unreachable. No register row.
+                let Some(Some(current_tree_shape)) = substitute_tree_shapes.get(i).cloned() else {
+                    continue;
+                };
+                let current = ShapeAndEntrySide::from_free_trace(
                     board,
                     &current_substitute_trace,
+                    current_tree_shape,
                     i,
                     is_orthogonal_mode,
                     true,
-                ) else {
-                    continue;
-                };
+                );
                 if !Self::check(
                     board,
                     &current.shape,
@@ -682,6 +726,13 @@ impl TraceShover {
                             // ":671-673. check, if 1 obstacle is contained in the other obstacle
                             // and take the bigger obstacle in this case. That may happen in case
                             // of fixed vias inside of pins."
+                            //
+                            // totalized: `TraceShover.springOver`'s `foundObstacleBoundingBox` /
+                            // `currentItem.boundingBox()` (`:674-675`) -> a skipped candidate.
+                            // Neither is null in Java: `:669` set the first alongside
+                            // `foundObstacle`, and `Item.boundingBox` always answers a box. The
+                            // port's `Option`s are `None` only for an id the board has dropped,
+                            // which the query one line up cannot return. Unreachable — no row.
                             let (Some(found_box), Some(current_box)) =
                                 (found_obstacle_bounding_box, current_item_bounding_box)
                             else {
@@ -741,22 +792,18 @@ impl TraceShover {
         let tree = board.trees.get_default_tree().id();
         let mut obstacle_shape: Option<TileShape> = None;
         if try_spring_over {
-            let kind = board.get_item(found_obstacle).map(|it| {
-                (
-                    it.is_obstacle_area() || it.is_trace(),
-                    it.is_drill_item(),
-                    it.tree_shape_count(tree),
-                )
-            });
+            let kind = board
+                .get_item(found_obstacle)
+                .map(|it| (it.is_obstacle_area() || it.is_trace(), it.is_drill_item()));
             match kind {
-                Some((true, _, _)) => {
+                Some((true, _)) => {
                     if board.item_tree_shape_count(found_obstacle, tree) == 1 {
                         obstacle_shape = board.item_tree_shape(found_obstacle, tree, 0);
                     } else {
                         try_spring_over = false;
                     }
                 }
-                Some((false, true, _)) => {
+                Some((false, true)) => {
                     obstacle_shape = tree_shape_on_layer(board, found_obstacle, tree, layer);
                 }
                 _ => {}
@@ -884,6 +931,10 @@ impl TraceShover {
             }
         }
         substitute_lines.push(polyline.lines()[last_intersection_line_no]);
+        // totalized: `TraceShover.springOver`'s `new Polyline(substituteLines)` (`:796`) -> a
+        // refusal. Java's constructor throws only on fewer than three lines or a null entry;
+        // `sideDiff >= 0` makes the array at least three long and every entry was just written.
+        // Unreachable — no register row.
         let Ok(substitute_polyline) = Polyline::from_lines(substitute_lines) else {
             return None;
         };

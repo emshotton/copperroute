@@ -84,6 +84,16 @@ pub trait RoutingBoardExt {
     /// tree, and adds that tree's clearance compensation value to the half width unconditionally
     /// — `TraceShover::check_segment` adds it only when compensation is in use (`:68-70`), which
     /// is not a contradiction because `clearanceCompensationValue` answers 0 when it is not.
+    ///
+    /// # Panics
+    ///
+    /// Panics when any of the polyline's offset shapes overlaps a **shovable foreign-net via**:
+    /// `TraceShover::check` then reaches [`crate::board_ext::DrillItemMover::check`], whose main
+    /// arm is plan-6 Task 10's `ForcedPadRouter.checkForcedPad` (the `added in Task 10:` marker
+    /// in `board_ext/drill_item_mover.rs`). Everything else — trace, pin and area obstacles, the
+    /// whole substitute-trace recursion, the spring-over — answers normally. This method's first
+    /// production caller is `MazeSearchEngine.java:681`, which is Task 13's, so Task 10 must land
+    /// first.
     #[allow(clippy::too_many_arguments)]
     fn check_forced_trace_polyline(
         &mut self,
@@ -217,8 +227,9 @@ impl RoutingBoardExt for Board {
             );
         // :421-422.
         let line_count = polyline.lines().len();
-        // totalized: `polyline.lines.length - 1` (`:422`) underflows for an empty polyline, where
-        // Java throws a `NegativeArraySizeException` inside `offsetShapes`. `Polyline`'s
+        // totalized: `RoutingBoard.checkForcedTracePolyline`'s `polyline.lines.length - 1`
+        // (`:422`) underflows for an empty polyline, where Java throws a
+        // `NegativeArraySizeException` inside `offsetShapes`. `Polyline`'s
         // constructor guarantees at least three lines, so this is unreachable; answering `true`
         // (no shape to check, nothing refused) rather than panicking. No register row.
         if line_count == 0 {

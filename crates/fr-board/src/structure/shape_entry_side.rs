@@ -265,15 +265,17 @@ impl ShapeAndEntrySide {
     }
 
     /// The same constructor for a trace that is **not in the board's item list** — the substitute
-    /// trace pieces [`crate::board::ShapeTraceEntries::next_substitute_trace_piece`] hands back.
+    /// trace pieces [`crate::board::ShapeTraceEntries::next_substitute_trace_piece`] hands back —
+    /// given a tree shape already computed by [`free_trace_tree_shapes`].
     ///
     /// Java needs no twin: `nextSubstituteTracePiece` builds the piece with `this.board` as its
     /// back-pointer (ShapeTraceEntries.java:281), so `Item.getTreeShape` (Item.java:213) sees a
-    /// non-null board, finds no cached shapes and calls `calculateTreeShapes(searchTree)` — the
-    /// piece is never in `itemList`, so nothing else about it is on the board either. The port's
-    /// pieces are plain values with no back-pointer, so the tree shape is computed here instead,
-    /// through the same [`crate::searchtree::ShapeSearchTree::calculate_tree_shapes`] Java's
-    /// `calculateTreeShapes` becomes.
+    /// non-null board, finds no cached shapes and calls `calculateTreeShapes(searchTree)` — once,
+    /// **memoised on the item** (Item.java:228-238), so every later index is a lookup. The port's
+    /// pieces are plain values with no back-pointer and therefore no cache, so the shape vector is
+    /// computed by the caller, once per piece, and indexed here. Taking the shape rather than the
+    /// index is what keeps a piece with *k* tile shapes at *k* lookups instead of *k* full
+    /// recomputations.
     ///
     /// Added in plan-6 Task 9 for `TraceShover.check` (TraceShover.java:392-393), the first
     /// caller of `ShapeAndEntrySide` on a substitute piece; [`ShapeAndEntrySide::new`] keeps its
@@ -281,25 +283,12 @@ impl ShapeAndEntrySide {
     pub fn from_free_trace(
         board: &Board,
         trace: &PolylineTrace,
+        tree_shape: TileShape,
         index: usize,
         orthogonal: bool,
         in_shove_check: bool,
-    ) -> Option<ShapeAndEntrySide> {
-        let ctx = board.ctx();
-        let current_shape = board
-            .trees
-            .get_default_tree()
-            .calculate_tree_shapes(&Item::Trace(trace.clone()), &ctx)
-            .get(index)?
-            .clone()?;
-        Some(Self::build(
-            board,
-            trace,
-            current_shape,
-            index,
-            orthogonal,
-            in_shove_check,
-        ))
+    ) -> ShapeAndEntrySide {
+        Self::build(board, trace, tree_shape, index, orthogonal, in_shove_check)
     }
 
     /// The body of `ShapeAndEntrySide(PolylineTrace, int, boolean, boolean)`
@@ -389,6 +378,21 @@ impl ShapeAndEntrySide {
             from_side: current_from_side,
         }
     }
+}
+
+/// The default tree's shapes for a trace that is **not in the board's item list**, in the order
+/// `Item.getTreeShape(tree, index)` (Item.java:212-226) would answer them.
+///
+/// Java's substitute trace pieces carry a board back-pointer, so `getPrecalculatedTreeShapes`
+/// (Item.java:228-238) computes the vector once and memoises it on the item; the port's pieces are
+/// plain values, so the caller holds the vector instead. Added in plan-6 Task 9 alongside
+/// [`ShapeAndEntrySide::from_free_trace`], which indexes it.
+pub fn free_trace_tree_shapes(board: &Board, trace: &PolylineTrace) -> Vec<Option<TileShape>> {
+    let ctx = board.ctx();
+    board
+        .trees
+        .get_default_tree()
+        .calculate_tree_shapes(&Item::Trace(trace.clone()), &ctx)
 }
 
 /// Port of the private `ShapeAndEntrySide.calcCutlineAtEnd`
