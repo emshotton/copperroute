@@ -39,23 +39,28 @@
 //! also where Java's own `TimeLimit` is checked: `isStopRequested` is not consulted anywhere on
 //! this path, in Java or here.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::panic::AssertUnwindSafe;
 
 use fr_board::ids::TreeObject;
-use fr_board::{Board, ItemId, RoomId, ShapeSearchTree, StopCheck, TimeLimit, TreeId};
-use fr_geometry::{Simplex, TileShape};
+use fr_board::{
+    Board, Item, ItemId, RoomId, ShapeSearchTree, StopCheck, StopConnectionOption, TimeLimit,
+    TreeId,
+};
+use fr_geometry::{Simplex, TileShape, java_min};
+use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 use crate::Arena;
 use crate::arena::{DoorId, DrillId, IncompleteRoomId, PageId};
+use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
 use crate::autoroute::drill::DrillPageArray;
 use crate::autoroute::expansion::sorted_neighbours::SortedRoomNeighbours;
 use crate::autoroute::expansion::{
     ExpandableRef, ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
 };
 use crate::autoroute::item_info;
-use crate::autoroute::maze::MazeSearchElement;
-use crate::autoroute::path::Connection;
+use crate::autoroute::maze::{AutorouteControl, MazeResult, MazeSearchElement, MazeSearchEngine};
+use crate::autoroute::path::{Connection, FoundConnectionInserter, FoundConnectionLocator};
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
@@ -1117,6 +1122,330 @@ impl AutorouteEngine {
         // :668. Two disjoint fields of `self`: the grid and the drill arena.
         self.drill_page_array.reset(&mut self.rooms.drills);
     }
+
+    /// Port of `autorouteConnection(Set<Item>, Set<Item>, AutorouteControl, SortedSet<Item>,
+    /// Map<Item,Integer>)` (AutorouteEngine.java:130-280): "auto-routes a connection between
+    /// `startSet` and `destSet`".
+    ///
+    /// `ripped` is Java's `SortedSet<Item> rippedItemList`, i.e. a `TreeSet<Item>` ordered by
+    /// `Item.compareTo` (`Item.java:95-102`, `other.id - this.id`) and therefore **descending by
+    /// id** (quirk #44): the `:247` loop over it, and `describeConnection`'s two joins, are
+    /// written `.rev()` here. `ripup_costs` is the optional `Map<Item,Integer>` the locator's
+    /// `backtrack` (`:260`, `:319`) fills and null-checks.
+    ///
+    /// # The three recovery boundaries this method owns
+    ///
+    /// Plan-6 ruling 7 fixes five `catch (Exception)` sites; three of them are here — `:139`
+    /// (maze construction), `:157` (`findConnection`) and `:190`
+    /// ([`FoundConnectionLocator::get_instance`]) — and each degrades to a *value*, never to a
+    /// propagated error. The port's currency for Java's exception is a panic in ported geometry,
+    /// so each is a [`std::panic::catch_unwind`] whose `Err` is the same `null` Java's `catch`
+    /// assigns. `AutorouteEngine.completeExpansionRoom:518` is the fourth (Task 6's) and
+    /// [`route_connection`] carries the fifth.
+    ///
+    /// # What is *not* caught
+    ///
+    /// `:260-266` — `board.removeItems`, `removeTraceTails` and
+    /// [`FoundConnectionInserter::get_instance`] — sits **outside** every one of Java's four
+    /// `try` blocks, so a throw there reaches `AutorouteConnectionRouter.route:155-158`'s bare
+    /// `FAILED`. The port's two `Result` channels there are turned into a panic naming that
+    /// handler, which [`route_connection`]'s boundary then converts to the same bare `FAILED` —
+    /// and, as in Java, *without* running the necked retry, which a returned `FAILED` would
+    /// enable (`AutorouteConnectionRouter.java:123-125`).
+    ///
+    /// # Not ported
+    ///
+    // not ported: `AutorouteEngine.autorouteConnection` — the observer bracketing of `:254-258`
+    // and `:268-270` (`global-constraints.md` forbids board observers) and the
+    // `ctrl.netNumber == 33 || 66 || 67` `FRLogger.trace` block of `:163-177` (plan-6 ruling 14,
+    // quirk #158).
+    #[allow(clippy::too_many_arguments)]
+    pub fn autoroute_connection(
+        &mut self,
+        board: &mut Board,
+        start: &BTreeSet<ItemId>,
+        dest: &BTreeSet<ItemId>,
+        ctrl: &AutorouteControl,
+        ripped: &mut BTreeSet<ItemId>,
+        ripup_costs: Option<&mut BTreeMap<ItemId, i32>>,
+        stop: StopCheck<'_>,
+    ) -> AutorouteAttemptResult {
+        self.autoroute_connection_impl(board, start, dest, ctrl, ripped, ripup_costs, stop, false)
+    }
+
+    /// [`Self::autoroute_connection`] with ruling 7's boundary #4 (`AutorouteEngine.java:190`)
+    /// forced, so that `:215-219`'s message-less `FAILED` — which has no other trigger — can be
+    /// pinned against the JVM.
+    ///
+    /// **Test-only, and named so that a production call reads as the mistake it would be.** The
+    /// JVM's lever is `P6T16Probe`'s `locatorfail` mode: an unmodifiable `rippedItemList`, whose
+    /// `add` throws inside `backtrack:318`. A `BTreeSet` cannot refuse an insert, so the port
+    /// cannot reproduce that lever and injects the panic instead.
+    #[doc(hidden)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn autoroute_connection_with_forced_locator_failure(
+        &mut self,
+        board: &mut Board,
+        start: &BTreeSet<ItemId>,
+        dest: &BTreeSet<ItemId>,
+        ctrl: &AutorouteControl,
+        ripped: &mut BTreeSet<ItemId>,
+        ripup_costs: Option<&mut BTreeMap<ItemId, i32>>,
+        stop: StopCheck<'_>,
+        force: bool,
+    ) -> AutorouteAttemptResult {
+        self.autoroute_connection_impl(board, start, dest, ctrl, ripped, ripup_costs, stop, force)
+    }
+
+    /// [`Self::autoroute_connection`] with ruling 7's boundary #4 forced.
+    ///
+    /// `panic_in_locator` has no Java counterpart and no production caller: it exists because
+    /// `:215-219`'s degraded `FAILED` is reachable **only** through the `:190` catch.
+    /// `FoundConnectionLocator::get_instance` itself answers `None` for exactly one input — a
+    /// null `mazeSearchResult` — which `:180` has already excluded, so on the JVM the only lever
+    /// is an exception, and `P6T16Probe`'s `locatorfail` mode pulls it by handing
+    /// `autorouteConnection` an **unmodifiable** `rippedItemList` (`backtrack:318` calls `add`
+    /// on it). A `BTreeSet` cannot refuse an insert, so the port cannot reproduce that lever and
+    /// injects the panic instead; the value asserted against is the probe's.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    fn autoroute_connection_impl(
+        &mut self,
+        board: &mut Board,
+        start: &BTreeSet<ItemId>,
+        dest: &BTreeSet<ItemId>,
+        ctrl: &AutorouteControl,
+        ripped: &mut BTreeSet<ItemId>,
+        ripup_costs: Option<&mut BTreeMap<ItemId, i32>>,
+        stop: StopCheck<'_>,
+        panic_in_locator: bool,
+    ) -> AutorouteAttemptResult {
+        // :136-161 — ruling 7's boundaries #2 (`:139`, the maze construction) and #3 (`:157`,
+        // `findConnection`), which have to be **nested** rather than sequential: a
+        // `MazeSearchEngine` borrows this engine for its whole life, so it cannot be carried out
+        // of the first `catch_unwind` and into the second. The two are still distinct, because
+        // the inner catch fires first and the outer one never sees that panic:
+        //
+        // * `None` — boundary #2 tripped, or `getInstance` answered `null` on its own. Both are
+        //   Java's `mazeSearchAlgo == null` (`:142`, `:145`).
+        // * `Some(None)` — the engine was built and boundary #3 tripped, or `findConnection`
+        //   answered `null`. Both are Java's `searchResult == null`.
+        //
+        // Boundary #3 is not theoretical: `DrillPage.getDrills` panics when the stop flag trips
+        // inside `splitToConvex` (Java NPEs on `drillShapes.length`, DrillPage.java:108), which
+        // is the one production path that reaches it. `P6T16Probe`'s `stopafter` mode pins it.
+        let maze_outcome: Option<Option<MazeResult>> = {
+            let engine: &mut AutorouteEngine = self;
+            let board: &mut Board = board;
+            std::panic::catch_unwind(AssertUnwindSafe(move || {
+                // :138.
+                let mut maze_search_algo =
+                    MazeSearchEngine::get_instance(start, dest, engine, board, ctrl, stop)?;
+                // :153-161.
+                Some(
+                    std::panic::catch_unwind(AssertUnwindSafe(|| {
+                        maze_search_algo.find_connection(board, stop)
+                    }))
+                    .unwrap_or(None),
+                )
+            }))
+            .unwrap_or(None)
+        };
+
+        // :145-151. Note this returns **before** the cleanup of `:198-205`, where every later
+        // early return runs it: a connection whose maze could not be built leaves the rooms and
+        // their leaves in the compensated autoroute tree exactly as `initConnection` left them.
+        // The asymmetry is Java's and is transcribed rather than tidied, but it is **latent**:
+        // `MazeSearchEngine::get_instance` answers `None` only when `init` fails, which is
+        // before any room has been completed. Measured on the JVM by `P6T16Probe` mode `nomaze`,
+        // which prints `completeRooms n=0` and `treeSize=4` (the four board items) after the
+        // failure in all three regimes — which is why it earns no quirk row.
+        let Some(search_result) = maze_outcome else {
+            return AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::Failed,
+                format!(
+                    "Failed to route connection between {}, because the maze search algorithm \
+                     could not be created.",
+                    describe_connection(board, start, dest)
+                ),
+            );
+        };
+
+        // :179-196 — ruling 7's boundary #4.
+        let autoroute_result = match search_result.as_ref() {
+            None => None,
+            Some(search_result) => {
+                let engine: &mut AutorouteEngine = self;
+                let angle_restriction = board.rules.trace_angle_restriction;
+                let board: &mut Board = board;
+                let ripped: &mut BTreeSet<ItemId> = ripped;
+                std::panic::catch_unwind(AssertUnwindSafe(move || {
+                    assert!(
+                        !panic_in_locator,
+                        "AutorouteEngine.autoroute_connection: the injected \
+                         FoundConnectionLocator.get_instance failure of plan-6 ruling 7's fourth \
+                         recovery boundary (AutorouteEngine.java:190)"
+                    );
+                    // :183-189.
+                    FoundConnectionLocator::get_instance(
+                        Some(search_result),
+                        ctrl,
+                        engine,
+                        board,
+                        angle_restriction,
+                        ripped,
+                        ripup_costs,
+                    )
+                }))
+                .unwrap_or(None)
+            }
+        };
+
+        // :198-205. **Before every early return below.** Getting this order wrong leaks rooms
+        // into the next connection and is invisible until a later fixture routes differently.
+        if self.maintain_database {
+            self.reset_all_doors(board);
+        } else {
+            self.clear(board);
+        }
+
+        // :207-213.
+        if search_result.is_none() {
+            return AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::Failed,
+                format!(
+                    "Failed to route connection between {}, because no connection was found \
+                     between their nets.",
+                    describe_connection(board, start, dest)
+                ),
+            );
+        }
+
+        // :215-219 — the boundary-#4 degradation, and the only `FAILED` message with no
+        // "because" clause.
+        let Some(autoroute_result) = autoroute_result else {
+            return AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::Failed,
+                format!(
+                    "Failed to route connection between {}.",
+                    describe_connection(board, start, dest)
+                ),
+            );
+        };
+
+        // :221-228. Reachable only for a **power plane** layer: a disabled *signal* layer makes
+        // `MazeSearchEngine.expandToRoomDoors:396-399` refuse before any target door is expanded,
+        // so the search answers null and `:207` fires instead. `P6T16Probe`'s `inactive` mode
+        // builds the plane.
+        if !ctrl.layer_active[autoroute_result.start_layer]
+            || !ctrl.layer_active[autoroute_result.target_layer]
+        {
+            return AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::Failed,
+                format!(
+                    "Failed to route connection between {}, because some of their layers are \
+                     disabled.",
+                    describe_connection(board, start, dest)
+                ),
+            );
+        }
+
+        // :230-235 is **dead code** and cannot be ported as a branch: `connectionItems` is a
+        // `final` field assigned `new LinkedList<>()` at `FoundConnectionLocator.java:101`,
+        // before both of the constructor's early returns, so Java's definite-assignment rule
+        // makes the `== null` test unsatisfiable. Its two warn branches leave an **empty** list,
+        // which the inserter walks zero times. Recorded as quirk #180 by Task 14, which pinned
+        // `connectionItems n=0` on both branches; the `SKIPPED` state therefore has
+        // no producer anywhere in the autoroute path.
+        // Java bug: `AutorouteEngine.autorouteConnection`'s `connectionItems == null` arm
+        // (`:230-235`) is unreachable — see docs/java-quirks.md #180.
+
+        // :237-245. "Delete the ripped connections."
+        let mut ripped_connections: BTreeSet<ItemId> = BTreeSet::new();
+        let mut changed_nets: BTreeSet<i32> = BTreeSet::new();
+        // obligation: `:241-245`'s `StopConnectionOption` choice — measured: inverting it leaves
+        // all 14 probe modes identical, because no fixture here has a **fanout via** and
+        // `getConnectionItems`/`removeTraceTails` only branch on the option for one
+        // (Item.java:735, RoutingBoard.java:1207-1216). Task 17's corpus needs a fanout board.
+        let stop_connection_option = if ctrl.remove_unconnected_vias {
+            StopConnectionOption::None
+        } else {
+            StopConnectionOption::FanoutVia
+        };
+
+        // :247-252, over Java's `TreeSet<Item>` order — descending id.
+        // obligation: `AutorouteEngine.autorouteConnection`'s `:247` loop order — measured: no
+        // fixture in `tests/autoroute_connection.rs` rips more than **one** item, so reversing
+        // this loop leaves all 14 probe modes byte-identical. `rippedConnections` is a set and
+        // `changedNets` a sorted set, so the order can only matter through
+        // `getConnectionItems`' `FanoutVia` arm, which reads the partially built result
+        // (Item.java:735). Task 17's corpus must include a connection that rips two.
+        for current_ripped_item in ripped.iter().rev() {
+            ripped_connections
+                .extend(board.connection_items(*current_ripped_item, stop_connection_option));
+            let Some(item) = board.get_item(*current_ripped_item) else {
+                continue;
+            };
+            for i in 0..item.net_count() {
+                changed_nets.insert(item.get_net_number(i));
+            }
+        }
+
+        // :260, over `rippedConnections`' own descending order.
+        // obligation: `BasicBoard.removeItems`' iteration order here — measured: the same
+        // one-ripped-item ceiling as `:247` above, so ascending leaves every probe mode
+        // identical. It is load-bearing in principle because `removeItem` refuses a
+        // deletion-forbidden item and the survivors' contacts change as the loop runs.
+        board.remove_items(ripped_connections.iter().rev().copied());
+
+        // :262-263, over `changedNets`' ascending `TreeSet<Integer>` order.
+        for current_net_number in &changed_nets {
+            if let Err(error) =
+                board.remove_trace_tails(*current_net_number, stop_connection_option)
+            {
+                panic!(
+                    "AutorouteEngine.autoroute_connection:263: removeTraceTails failed ({error}) \
+                     — Java's throw here is caught only by \
+                     AutorouteConnectionRouter.route:155-158"
+                );
+            }
+        }
+
+        // :265-266. No `catch` encloses this call: an `Err` is a Java throw and belongs to
+        // `route:155-158`, while `Ok(None)` is Java's `null` and belongs to `:271-277`.
+        let insert_found_connection_algo = FoundConnectionInserter::get_instance(
+            Some(&autoroute_result),
+            board,
+            ctrl,
+            Some(self),
+            stop,
+        );
+        match insert_found_connection_algo {
+            Err(error) => panic!(
+                "AutorouteEngine.autoroute_connection:265: FoundConnectionInserter.getInstance \
+                 failed ({error}) — Java's throw here is caught only by \
+                 AutorouteConnectionRouter.route:155-158"
+            ),
+            // :271-277.
+            // obligation: this arm — measured: no fixture reaches it. Task 15 pinned
+            // `FoundConnectionInserter::get_instance` answering `None` on three boards
+            // (`P6T15Probe`'s `viafail`), but every lever that produces it from *outside*
+            // `autorouteConnection` — an empty `ctrl.viaRule`, a user-fixed via on the drill —
+            // also changes what the maze search finds, because `ForcedViaInserter.check` reads
+            // the same rule (measured: `ctrl.viaRule = new ViaRule("empty")` before the
+            // connection makes the search route round the drill and answer ROUTED). Task 17's
+            // corpus is where a real board reaches it.
+            Ok(None) => AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::Failed,
+                format!(
+                    "Failed to route connection between {}, because the new connection could not \
+                     be inserted.",
+                    describe_connection(board, start, dest)
+                ),
+            ),
+            // :279.
+            Ok(Some(_)) => AutorouteAttemptResult::new(AutorouteAttemptState::Routed),
+        }
+    }
 }
 
 // =================================================================================================
@@ -1154,13 +1483,216 @@ fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
     }
 }
 
+/// Port of the private static `describeConnection(Set<Item>, Set<Item>)`
+/// (AutorouteEngine.java:282-287) — the `", "`-joined `Item.toString()` of each set, with
+/// `" and "` between them.
+///
+/// Both sets are Java `TreeSet<Item>`s, so both joins run **descending by id**
+/// (`Item.compareTo`, Item.java:95-102, is `other.id - this.id` — quirk #44); an id the board no
+/// longer holds contributes nothing, where Java's live reference would still print.
+///
+/// `Item.toString` is [`fr_board::Item`]'s `Display`.
+///
+/// `pub` where Java's is `private static`: `P6T16Probe`'s `describe` mode reaches it by
+/// reflection, and the port's test needs the same direct call — every other route to it is a
+/// `FAILED` message, which a fixture that happens to route does not produce.
+pub fn describe_connection(
+    board: &Board,
+    start_set: &BTreeSet<ItemId>,
+    dest_set: &BTreeSet<ItemId>,
+) -> String {
+    fn join(board: &Board, set: &BTreeSet<ItemId>) -> String {
+        set.iter()
+            .rev()
+            .filter_map(|id| board.get_item(*id))
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+    format!("{} and {}", join(board, start_set), join(board, dest_set))
+}
+
+/// Steps 1-5 of `AutorouteConnectionRouter.route(Item, int, SortedSet<Item>, Map<Item,Integer>,
+/// int)` (AutorouteConnectionRouter.java:30-100) — the Plan 6 half of the seam (plan-6 ruling 2).
+/// Steps 6-8 (`optChangedArea`, the necked retry and the strict-DRC rollback) are Plan 7's and
+/// are marked as such at the end of this function.
+///
+/// # The parameters Java reads off `BatchAutorouter`
+///
+/// Java's `router` field carries five values this function needs. Three come straight from
+/// `RouterSettings` on the production path (`BatchAutorouter.java:110-121`): `getTraceCosts` is
+/// `trace_costs`, `getStartRipupCosts` is `settings.get_start_ripup_costs()` and
+/// `isRemoveUnconnectedVias` is `!settings.is_fanout_enabled()`. The fourth,
+/// `getTracePullTightAccuracy`, is only read by step 6, which is Plan 7's. The fifth,
+/// `isRetainAutorouteDatabase` (`:172-173`), is a **benchmark-only** system property
+/// (`BatchAutorouter.java:63-64,151-154`; `BatchAutorouterThread.java:90` hard-codes `false`), so
+/// it is `retain_autoroute_database` here and is `false` in every production and parity run.
+///
+/// # Deviation from the task brief: `engine` is an `Option`
+///
+/// `RoutingBoard.initAutoroute` (`:882-897`) reads *and writes* the nullable field
+/// `RoutingBoard.autorouteEngine` — it reuses the stored engine when `retainAutorouteDatabase`
+/// and the compensated clearance class match, and replaces it otherwise. `&mut Option<_>` **is**
+/// that field; a `&mut AutorouteEngine` could not express the reuse test, and the write happens
+/// before `autorouteConnection` runs, so it survives the boundary below exactly as Java's field
+/// assignment survives a throw.
+///
+/// # Ruling 7's fifth recovery boundary
+///
+/// `:35`'s `try` / `:154-158`'s `catch (Exception e)` wraps the whole function and degrades to a
+/// **bare** `FAILED` — `new AutorouteAttemptResult(FAILED)`, with no details, which is what tells
+/// it apart from every message-carrying `FAILED` `autoroute_connection` produces. It is reachable
+/// in production: `AutorouteControl::new` panics for a positive net the board does not have
+/// (`AutorouteControl.java:219`, pinned by `P6T8Probe ctrl`), and both of
+/// [`AutorouteEngine::autoroute_connection`]'s uncaught error channels end here.
+// added in Plan 7: `AutorouteConnectionRouter.retryConnectionNecked` (AutorouteConnectionRouter
+// .java:162), and with it steps 6-8 of `AutorouteConnectionRouter.route`.
+// not ported: `AutorouteConnectionRouter.route`'s `router.setAirLine` (`:70`), a GUI progress
+// sink, and its two `isBenchmarkProfileEnabled` timing blocks (`:84-87`).
+#[allow(clippy::too_many_arguments)]
+pub fn route_connection(
+    board: &mut Board,
+    engine: &mut Option<AutorouteEngine>,
+    item: ItemId,
+    net_no: i32,
+    settings: &RouterSettings,
+    trace_costs: &[ExpansionCostFactor],
+    ripped: &mut BTreeSet<ItemId>,
+    ripup_costs: &mut BTreeMap<ItemId, i32>,
+    ripup_pass_no: i32,
+    retain_autoroute_database: bool,
+    stop: StopCheck<'_>,
+) -> AutorouteAttemptResult {
+    // :35, `:154-158` — ruling 7's fifth recovery boundary.
+    std::panic::catch_unwind(AssertUnwindSafe(|| {
+        route_connection_steps_1_to_5(
+            board,
+            engine,
+            item,
+            net_no,
+            settings,
+            trace_costs,
+            ripped,
+            ripup_costs,
+            ripup_pass_no,
+            retain_autoroute_database,
+            stop,
+        )
+    }))
+    // :155-158.
+    .unwrap_or_else(|_| AutorouteAttemptResult::new(AutorouteAttemptState::Failed))
+}
+
+/// The body of [`route_connection`], i.e. `AutorouteConnectionRouter.route:36-90` inside its
+/// `try`.
+#[allow(clippy::too_many_arguments)]
+fn route_connection_steps_1_to_5(
+    board: &mut Board,
+    engine: &mut Option<AutorouteEngine>,
+    item: ItemId,
+    net_no: i32,
+    settings: &RouterSettings,
+    trace_costs: &[ExpansionCostFactor],
+    ripped: &mut BTreeSet<ItemId>,
+    ripup_costs: &mut BTreeMap<ItemId, i32>,
+    ripup_pass_no: i32,
+    retain_autoroute_database: bool,
+    stop: StopCheck<'_>,
+) -> AutorouteAttemptResult {
+    // :37-40.
+    let route_net = board.rules.nets.get(net_no);
+    let contains_plane = route_net.is_some_and(fr_board::rules::Net::contains_plane);
+    let current_via_costs = if contains_plane {
+        settings.get_plane_via_costs()
+    } else {
+        settings.get_via_costs()
+    };
+
+    // :42-47.
+    let mut autoroute_control =
+        AutorouteControl::new(board, net_no, settings, current_via_costs, trace_costs);
+    autoroute_control.ripup_allowed = true;
+    // obligation: `:45`'s `startRipupCosts * ripupPassNo` — measured: probe mode `routeripup`
+    // runs passes 1, 2 and 4 on the blocker board and all three rip the same item at the same
+    // cost, because `MazeRipupResolver`'s price saturates well below `Integer.MAX_VALUE / 100`
+    // on a one-trace obstacle. Task 17's corpus needs a board where two candidates compete.
+    autoroute_control.ripup_costs = settings.get_start_ripup_costs() * ripup_pass_no;
+    // `BatchAutorouter.java:115`: the batch router's `removeUnconnectedVias` is
+    // `!settings.isFanoutEnabled()`.
+    // obligation: the `!` — measured: flipping it leaves every probe mode identical, for the
+    // same reason `:241-245`'s option does. The two obligations close together.
+    autoroute_control.remove_unconnected_vias = !settings.is_fanout_enabled();
+
+    // :49-52.
+    let unconnected_set = board.unconnected_set(item, net_no);
+    if unconnected_set.is_empty() {
+        return AutorouteAttemptResult::new(AutorouteAttemptState::NoUnconnectedNets);
+    }
+
+    // :54-68. Java's `getConnectedSet(int)` is the `stopAtPlane = false` overload
+    // (Item.java:596-598).
+    let connected_set = board.connected_set(item, net_no, false);
+    let (route_start_set, route_dest_set) = if contains_plane {
+        // :57-61, over the `TreeSet<Item>`'s descending id order.
+        for current_item in connected_set.iter().rev() {
+            if matches!(board.get_item(*current_item), Some(Item::ConductionArea(_))) {
+                return AutorouteAttemptResult::new(AutorouteAttemptState::ConnectedToPlane);
+            }
+        }
+        // :62-64 — the plane swap.
+        (connected_set, unconnected_set)
+    } else {
+        // :65-68.
+        (unconnected_set, connected_set)
+    };
+
+    // :71-74. `Math.min` before the `(int)` cast, so the product saturates at `Integer.MAX_VALUE`
+    // rather than wrapping.
+    let max_milliseconds = java_min(
+        100_000.0 * f64::powf(2.0, f64::from(ripup_pass_no - 1)),
+        f64::from(i32::MAX),
+    );
+    let time_limit = TimeLimit::new(max_milliseconds as i32);
+
+    // :76-82. The write to `RoutingBoard.autorouteEngine` happens here, before the connection
+    // runs, so it survives an unwind exactly as Java's field assignment survives a throw.
+    *engine = Some(board.init_autoroute(
+        engine.take(),
+        net_no,
+        autoroute_control.trace_clearance_class_index,
+        Some(time_limit),
+        retain_autoroute_database,
+    ));
+    let autoroute_engine = engine
+        .as_mut()
+        .expect("initAutoroute always answers an engine");
+
+    // :88-90.
+    autoroute_engine.autoroute_connection(
+        board,
+        &route_start_set,
+        &route_dest_set,
+        &autoroute_control,
+        ripped,
+        Some(ripup_costs),
+        stop,
+    )
+
+    // added in Plan 7: steps 6-8 of `AutorouteConnectionRouter.route` — `optChangedArea`
+    // (`:92-118`), the necked retry (`:120-145`) and `applyStrictDrcAfterRoute` (`:147-152`),
+    // together with the `maxItemIdBeforeRoute` / `strictDrcBoardSnapshot` of `:83-85` that only
+    // those three read.
+}
+
 // =================================================================================================
 // The deferral roster for `autoroute/maze/AutorouteEngine.java`
 // =================================================================================================
 
 // `autorouteConnection` is the engine's other half — the maze search itself — and plan-6 ruling 2
-// puts it at the top of this plan's scope, above everything Tasks 7-15 build.
-// added in Task 16: `AutorouteEngine.autorouteConnection`
+// puts it at the top of this plan's scope, above everything Tasks 7-15 build. Task 16 landed it
+// as `AutorouteEngine::autoroute_connection`, together with `describeConnection`
+// (`describe_connection`) and steps 1-5 of `AutorouteConnectionRouter.route`
+// (`route_connection`).
 //
 // not ported: `AutorouteEngine.emitDiagnostics` — it walks `AutorouteDiagnostic.Sink`, a GUI
 // overlay (`global-constraints.md`: no GUI, no observers), and no routing decision reads it. Its
@@ -1172,6 +1704,6 @@ fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
 //
 // `AutorouteConnectionRouter` is `autoroute/pipeline`'s, and plan-6 ruling 2 splits it at step 5;
 // `scripts/audit-map/fr-router.map` maps the class here because steps 1-5 are this engine's entry
-// point.
-// added in Plan 7: `AutorouteConnectionRouter.route`
+// point. Steps 1-5 are `route_connection` above; steps 6-8 and `retryConnectionNecked` stay
+// Plan 7's.
 // added in Plan 7: `AutorouteConnectionRouter.retryConnectionNecked`

@@ -1166,6 +1166,71 @@ methods with dozens of branches.
       is what pins the set's **insertion** order: on the far pair every
       candidate fits, so the winner is the list's first element — 75 with no
       pins, 69 with the end pin only — where any sorted set answers 50.
+  - `P6T16Probe.java` — `AutorouteEngine.autorouteConnection`
+    (AutorouteEngine.java:130-280), `describeConnection` (`:282-287`) and the
+    Plan 6 half of `AutorouteConnectionRouter.route`
+    (AutorouteConnectionRouter.java:30-100, steps 1-5) transcribed inline —
+    `AutorouteConnectionRouter` is package-private in `autoroute.pipeline` and
+    its constructor needs a whole `BatchAutorouter`, which is Plan 7's (Plan 6
+    Task 16). It declares `package app.freerouting.autoroute.path` so it can
+    reuse `P6T15Probe`'s package-private `boardDump` / `poly` / `nets` /
+    `pointOf` and `P6T14Probe`'s `buildBlocked` / `setOf` / `board`, and it
+    reflects into the private static `AutorouteEngine.describeConnection` and
+    the package-private `getRoomsWithTargetItems`, `completeExpansionRooms` and
+    `autorouteSearchTree`. It **compiles together with `P6T11Probe`,
+    `P6T13Probe`, `P6T14Probe` and `P6T15Probe`**. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t16-autoroute-connection.txt` (613 lines);
+    the run pipes through the usual `FRLogger` `grep` plus a second one that
+    strips the stack traces `FRLogger.error(msg, e)` writes at
+    `AutorouteEngine.java:140`, `:158` and `:191`. Every mode runs all three
+    angle regimes and prints the `AutorouteAttemptResult` (state *and* details),
+    the ripped ids, the per-item ripup costs, `maxGeneratedId` before and after,
+    and the whole item list. Fourteen modes:
+
+    - `plain` — `buildSimple`: `ROUTED`, an empty ripped set, one trace.
+    - `via` — `P6T13Probe.build`: the connection crosses two `ExpansionDrill`s,
+      so the insert lays down a via at the layer change.
+    - `ripup` — `buildBlocked` with `viasAllowed` off and ripup on: the search
+      rips the net-2 blocker, so `:238-263`'s deletion runs with a non-empty
+      `rippedItemList`. The 90-degree row is the control — it finds nothing and
+      rips nothing.
+    - `nomaze` — the blocker taken to the outline, so `getInstance` answers
+      null: `:145-151`'s FAILED. The room and tree-leaf counts afterwards are
+      the evidence that this one early return skipping the `:198-205` cleanup is
+      **latent**: `completeRooms n=0`, `treeSize=4`.
+    - `nopath` — the same blocker with ripup off, so `findConnection` answers
+      null: `:207-213`'s FAILED.
+    - `locatorfail` — **ruling 7's boundary #4**, forged with an
+      `unmodifiableSortedSet` `rippedItemList` whose `add` throws inside
+      `backtrack:318`. It is the only way to reach `:215-219`'s message-less
+      FAILED, because `getInstance` answers null for exactly one input and
+      `:180` has already excluded it.
+    - `stop` — an already-tripped `Stoppable`, which bails inside
+      `MazeSearchEngine.init`, so `getInstance` answers null.
+    - `stopafter` — the flag tripping after the queue is seeded, over limits 8,
+      12 and 13 x three regimes, each row also printing the **call count**. Two
+      of the nine reach quirk #168 live: `splitToConvex` answers null and
+      `DrillPage.getDrills:108` NPEs, which only `:157` — boundary #3 — catches.
+    - `inactive` — layer 0 turned into a dedicated **power plane**, the only
+      shape that reaches `:221-228`.
+    - `maintain` — `maintainDatabase = true`, so `:204` takes `resetAllDoors`:
+      the complete-room list and `getRoomsWithTargetItems`' **descending** order
+      carrying into the next `initConnection` on the same net, and dropped on a
+      different one. The connection deliberately fails, so that no board
+      mutation runs `additionalUpdateAfterChange` behind the engine's back.
+    - `route` — steps 1-5 inline: a routed item, the same item again
+      (`NO_UNCONNECTED_NETS` at `:49-52`) and a net the board does not have,
+      which makes `new AutorouteControl` throw and **boundary #5** answer a bare
+      FAILED with empty `details`.
+    - `routeripup` — the same on the blocker board over `ripupPassNo` 1, 2 and
+      4, which is where `:45`'s `startRipupCosts * ripupPassNo` reaches the
+      ripup cost model.
+    - `plane` — `:54-68`'s swap, read off the order `describeConnection` prints
+      the two sets in, plus the `ConductionArea` short-circuit at `:58-60`.
+    - `describe` — `describeConnection` over four set shapes plus every item's
+      `toString`, which pins the `", "` join and the **descending** id order of
+      `TreeSet<Item>`.
+
 
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over

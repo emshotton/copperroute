@@ -401,8 +401,23 @@ impl Board {
             .get_mut(&id)
             .expect("Board::insert_item: just inserted");
         self.trees.insert(inserted, &ctx);
-        // added in Plan 6: `board.additionalUpdateAfterChange(item)` (BoardItemRepository.java:165
-        // -> RoutingBoard.java:96-118), which invalidates the autoroute expansion rooms.
+        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange` (BoardItemRepository.java:
+        // 165 -> RoutingBoard.java:96-118), which invalidates the autoroute expansion rooms an
+        // inserted item overlaps.
+        //
+        // Plan 6 Task 16 measured the wiring and did **not** do it. The call needs an
+        // `AutorouteEngine`, which `fr-board` cannot name (plan-2 ruling 4/11), so it can only be
+        // made at the call site — the `PolylineTrace.change` precedent
+        // (`board/trace_normalize.rs`'s `obligation:`), which works there because that method has
+        // exactly one `fr-router` caller. This one has thirteen, all *inside* `fr-board`, so the
+        // engine would have to be threaded through every typed inserter that reaches it. It is a
+        // no-op on every path either plan actually runs: `RoutingBoard.additionalUpdateAfterChange`
+        // returns at `:100-102` unless `autorouteEngine.maintainDatabase`, and
+        // `maintainDatabase` is `BatchAutorouter.retainAutorouteDatabase`, which is the
+        // benchmark-only system property `freerouting.benchmark.retain_autoroute_database`
+        // (BatchAutorouter.java:63-64,151-154) and is hard-coded `false` in
+        // `BatchAutorouterThread.java:90`. Plan 7 owns `BatchAutorouter`, so Plan 7 is where the
+        // flag can first be true and where the cost is worth paying.
         // BoardItemRepository.java:166.
         self.revision += 1;
         id
@@ -429,8 +444,9 @@ impl Board {
         if item.is_deletion_forbidden(&self.rules) {
             return false;
         }
-        // added in Plan 6: `board.additionalUpdateAfterChange(item)`
-        // (BoardItemRepository.java:192).
+        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange`
+        // (BoardItemRepository.java:192) — see the marker on `insert_item` above for the
+        // measurement Plan 6 Task 16 made and why the wiring waits for `BatchAutorouter`.
         // BoardItemRepository.java:193.
         let item = self
             .items

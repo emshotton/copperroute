@@ -13,7 +13,7 @@
 //!
 //! # State
 //!
-//! **Task 9 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
+//! **Task 16 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
 //! newtypes, the per-connection outcome ([`AutorouteAttemptResult`]), the per-item scratch
 //! accessors ([`autoroute::item_info`]), and — from Task 2 — the expansion rooms, the doors and
 //! [`MazeSearchElement`] ([`autoroute::expansion`]), which is also where `fr-board`'s reserved
@@ -40,8 +40,13 @@
 //! layers) and `MazeRipupResolver` (the ripup decision and its cost model) — together with
 //! [`autoroute::path`]'s [`Connection`], the memoised run of routable items that cost model
 //! divides by. With those in place [`MazeSearchEngine::find_connection`] runs end to end. The
-//! path locators and the connection inserter arrive in Tasks 15-17; the roster at the foot of
-//! this file names each deferred class and the task that owns it.
+//! path locators arrive in Task 14 and the connection inserter in Task 15, with the pull-tight
+//! and forced-trace families of Tasks 15a/15b underneath them. **Task 16 closes the loop:**
+//! [`AutorouteEngine::autoroute_connection`] runs a whole connection end to end — maze search,
+//! locate, ripped-connection deletion, insert — and [`route_connection`] is the Plan 6 half of
+//! the seam with Plan 7 (`AutorouteConnectionRouter.route` steps 1-5, ruling 2), which is the
+//! entry point Plan 7's pass runner and Task 17's `p6t1` call. The roster at the foot of this
+//! file names each still-deferred class and the plan that owns it.
 //!
 //! # House rules
 //!
@@ -72,9 +77,11 @@ pub use autoroute::{
     AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
     AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance,
     DrillPage, DrillPageArray, ExpandableRef, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
-    FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeExpansionEngine,
-    MazeListElement, MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
-    ObstacleExpansionRoom, RoomRef, ShoveResult, TargetItemExpansionDoor, ViaMask,
+    FoundConnectionInserter, FoundConnectionLocator, FreeSpaceExpansionRoom,
+    IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeExpansionEngine, MazeListElement,
+    MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
+    ObstacleExpansionRoom, ResultItem, RoomRef, ShoveResult, TargetItemExpansionDoor, ViaMask,
+    route_connection,
 };
 pub use board_ext::{
     CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, RoutingBoardExt,
@@ -98,11 +105,12 @@ pub mod prelude {
         AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance,
         DoorId, DrillId, DrillItemMover, DrillPage, DrillPageArray, ExpandableRef,
         ExpansionCostFactor, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
-        FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet,
-        MazeAdjustment, MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult,
-        MazeRipupResolver, MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, PageId,
-        RoomRef, RouterError, RoutingBoardExt, ShoveResult, SpringOverOutcome, TargetDoorId,
-        TargetItemExpansionDoor, TraceShover, ViaMask,
+        FoundConnectionInserter, FoundConnectionLocator, FreeSpaceExpansionRoom,
+        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
+        MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult, MazeRipupResolver,
+        MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, PageId, ResultItem, RoomRef,
+        RouterError, RoutingBoardExt, ShoveResult, SpringOverOutcome, TargetDoorId,
+        TargetItemExpansionDoor, TraceShover, ViaMask, route_connection,
     };
 }
 

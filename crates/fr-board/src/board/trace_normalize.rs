@@ -63,8 +63,10 @@ impl Board {
     /// (`src/test/java/app/freerouting/fixtures/CombineStackOverflowTest.java`).
     ///
     /// Java's observer notification (:184-187) and `board.additionalUpdateAfterChange` are not
-    /// ported and Plan 6's respectively.
-    // added in Plan 6: `board.additionalUpdateAfterChange(this)` (PolylineTrace.java:188).
+    /// ported and Plan 7's respectively.
+    // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange` (PolylineTrace.java:188) —
+    // see `Board::insert_item`'s marker for the measurement Plan 6 Task 16 made and why the
+    // wiring waits for `BatchAutorouter`.
     // not ported: the `board.communication.observers.notifyChanged` call (PolylineTrace.java:184-
     // 187) — `global-constraints.md` forbids board observers.
     pub fn combine_trace(&mut self, id: ItemId) -> Result<bool, BoardError> {
@@ -620,8 +622,10 @@ impl Board {
         if !own_trace_split {
             result.push(id);
         }
-        // added in Plan 6: the `board.additionalUpdateAfterChange(currentItem)` loop over a
-        // result of more than one piece (PolylineTrace.java:689-693).
+        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange` — the loop over a result
+        // of more than one piece (PolylineTrace.java:689-693). See `Board::insert_item`'s marker
+        // for the measurement Plan 6 Task 16 made and why the wiring waits for
+        // `BatchAutorouter`.
         Ok(result)
     }
 
