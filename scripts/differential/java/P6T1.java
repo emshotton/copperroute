@@ -74,8 +74,11 @@ import java.util.TreeSet;
  *       {@code initAutoroute} + {@code autorouteConnection}, i.e. `route`'s `:37-90`, with
  *       `ripupAllowed = true`, `ripupCosts = startRipupCosts * ripupPassNo` (`:45`), {@code
  *       removeUnconnectedVias = !settings.isFanoutEnabled()} (the {@code RoutingJob} constructor's
- *       value, BatchAutorouter.java:110-121) and {@code retainAutorouteDatabase = false}
- *       (BatchAutorouterThread.java:90);
+ *       value, BatchAutorouter.java:110-121) and {@code retainAutorouteDatabase = false} — the
+ *       class this driver reproduces sets it from the benchmark-only system property {@code
+ *       freerouting.benchmark.retain_autoroute_database} (BatchAutorouter.java:63-64,154), which
+ *       is unset here; the sibling {@code BatchAutorouterThread.java:90} hard-codes the same
+ *       {@code false};
  *   <li>{@code board.startMarkingChangedArea()} is called before each connection because {@code
  *       AutoroutePassRunner.java:224} calls it there, and the presence of {@code
  *       board.changedArea} is <b>observable</b>: {@code TraceShover.insert:571-575} dereferences it
@@ -350,8 +353,10 @@ public final class P6T1 {
       maxMilliseconds = Math.min(maxMilliseconds, Integer.MAX_VALUE);
       TimeLimit timeLimit = new TimeLimit((int) maxMilliseconds);
 
-      // :76-82. `retainAutorouteDatabase` is the benchmark-only system property, hard-coded
-      // `false` at BatchAutorouterThread.java:90.
+      // :76-82. `retainAutorouteDatabase` is `BatchAutorouter.isRetainAutorouteDatabase()`
+      // (`:172-173`), which this driver reproduces: the benchmark-only system property
+      // `freerouting.benchmark.retain_autoroute_database` (BatchAutorouter.java:63-64,154),
+      // unset here. `BatchAutorouterThread.java:90` hard-codes the same `false`.
       AutorouteEngine autorouteEngine =
           board.initAutoroute(
               routeNetNo, ctrl.traceClearanceClassIndex, null, timeLimit, false);

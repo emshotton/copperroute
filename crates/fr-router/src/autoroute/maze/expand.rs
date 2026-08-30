@@ -793,6 +793,14 @@ impl MazeSearchEngine<'_> {
     /// The `FRLogger.warn` at `:1119` is dropped; its `obstacleHalfWidth = 0` is not, and it is
     /// reachable — an `ObstacleArea` room and a `Pin` room both take it (the pin is a `DrillItem`
     /// but not a `Via`), and `0 >= compensatedTraceHalfWidth` is false for every positive trace.
+    ///
+    /// **The `Via` arm (`:1115-1117`) is reached, and Task 17 measured it.** The controller's
+    /// Task 12 note listed it among the arms no unit fixture discriminates; Task 17's acceptance
+    /// corpus enters it **33** times on `router-rpi-splitter`, **163** on `router-j2-reference`
+    /// and **6 564** on `router-dac2020-bm01` (`tests/reference/router-fixtures.txt`), and every
+    /// connection of all three matches the HEAD jar byte for byte. `router-ecc83-input` and
+    /// `router-tutorial-board` never reach it. This is a coverage note rather than an obligation
+    /// marker: the arm was transcribed and is now exercised, so there is nothing left to close.
     pub fn room_shape_is_thick(&self, board: &Board, obstacle_room: ObstacleRoomId) -> bool {
         let Some(room) = self.engine.rooms.obstacle_room(obstacle_room) else {
             return false;

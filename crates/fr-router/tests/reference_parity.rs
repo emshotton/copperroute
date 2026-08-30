@@ -29,6 +29,14 @@
 //! it being quietly re-entered: it asserts that (b) holds on *all five* stems, so a future change
 //! that demotes one has to say so in the ladder rather than in a passing test.
 //!
+//! # What runs in a debug build
+//!
+//! Only `router-dac2020-bm01` is `#[cfg_attr(debug_assertions, ignore)]` (294 connections
+//! unoptimised is minutes of work; Plan 3's convention). Every other stem — `router-j2-reference`
+//! in particular, which is the regression test for the `describe_connection` snapshot of k = 19 —
+//! runs under a plain `cargo test --workspace`, so this task's own fix is exercised by the default
+//! test command and not only by `--release`.
+//!
 //! # `router-tutorial-board` routes nothing, and that is the assertion
 //!
 //! `examples/tutorial_board/tutorial_board.dsn`'s `(network …)` scope is 438 empty `@:no_net_N`
@@ -89,6 +97,10 @@ fn row(stem: &str) -> Row {
         .find(|r| r.stem == stem)
         .unwrap_or_else(|| panic!("no row for {stem} in router-fixtures.txt"))
 }
+
+/// The one stem whose per-stem test carries `#[cfg_attr(debug_assertions, ignore)]`, and which
+/// [`geometry_is_required_where_it_was_reached`] therefore also skips in a debug build.
+const DEBUG_IGNORED_STEM: &str = "router-dac2020-bm01";
 
 fn reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router.jsonl")
@@ -525,8 +537,13 @@ fn router_dac2020_bm01() {
 }
 
 /// `J2ReferenceRoutingTest.java:29`'s board, routed whole.
+///
+/// **Deliberately not `#[cfg_attr(debug_assertions, ignore)]`.** This is the regression test for
+/// the `describe_connection` snapshot (k = 19, the five-vs-four `polylinetrace` message), so it
+/// has to run under a plain `cargo test --workspace` and not only under `--release`. 45
+/// connections cost well under a second in a debug build; only `router-dac2020-bm01` is expensive
+/// enough to earn the ignore.
 #[test]
-#[cfg_attr(debug_assertions, ignore)]
 fn router_j2_reference() {
     let Some(ladder) = check_all_rungs("router-j2-reference") else {
         return;
@@ -548,9 +565,9 @@ fn router_tutorial_board() {
 }
 
 /// A board with a `(plane …)` net and a copper pour, i.e. `ConductionArea` items on the search
-/// tree that every room completion has to walk past.
+/// tree that every room completion has to walk past. 22 connections; cheap enough to run in a
+/// debug build, so it carries no ignore.
 #[test]
-#[cfg_attr(debug_assertions, ignore)]
 fn router_ecc83_input() {
     let Some(ladder) = check_all_rungs("router-ecc83-input") else {
         return;
@@ -626,10 +643,16 @@ fn every_stem_has_the_connection_count_its_meta_records() {
 /// Ruling 1's (b) rung is *required* on `router-rpi-splitter` and *reported* elsewhere. It is in
 /// fact reached everywhere, so this test says so: if a future change demotes a stem to (a)+(c),
 /// this is the test that fails and the README's ladder table is what has to be updated.
+///
+/// It runs in a debug build too, over every stem but the one whose own test is ignored there:
+/// re-routing `router-dac2020-bm01`'s 294 connections unoptimised is minutes of work, and
+/// [`router_dac2020_bm01`] already covers it under `--release`.
 #[test]
-#[cfg_attr(debug_assertions, ignore)]
 fn geometry_is_required_where_it_was_reached() {
     for row in rows() {
+        if cfg!(debug_assertions) && row.stem == DEBUG_IGNORED_STEM {
+            continue;
+        }
         let Some(ladder) = check(&row.stem) else {
             continue;
         };

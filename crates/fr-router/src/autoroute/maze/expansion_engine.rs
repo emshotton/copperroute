@@ -220,6 +220,17 @@ impl MazeExpansionEngine {
     /// Note the asymmetry with [`Self::expand_to_drill`]: the `minNormalViaCost` goes into
     /// `expansionValue` (`:121`) but the weighted distance goes only into `sortingValue`
     /// (`:122-128`), so a page never charges the walk to it against the path cost.
+    ///
+    /// **Both drill expansions are hot on a real board, and Task 17 measured them.** The
+    /// controller's Task 12 note listed `expandToDrillPage` among the paths no unit fixture
+    /// reaches. Over Task 17's acceptance corpus (`tests/reference/router-fixtures.txt`) this
+    /// method is entered **2 342 / 9 244 / 607 095 / 702** times on `router-rpi-splitter` /
+    /// `router-j2-reference` / `router-dac2020-bm01` / `router-ecc83-input`, and
+    /// [`Self::expand_to_drill`] **4 671 / 5 442 / 198 542 / 0** times on the same four — every
+    /// one of them on a connection that matches the HEAD jar byte for byte. (`router-ecc83-input`
+    /// builds 702 pages and expands to no drill at all: its via padstack never fits.) Only the
+    /// **fanout** half of the drill machinery is unreached, and that needs `ctrl.isFanout`, which
+    /// only `BatchFanout` sets — Plan 7's. Coverage notes rather than obligation markers.
     pub fn expand_to_drill_page(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,

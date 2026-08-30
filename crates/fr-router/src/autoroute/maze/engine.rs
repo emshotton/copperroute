@@ -1378,9 +1378,11 @@ impl AutorouteEngine {
         // **fanout via**. Task 17's driver builds its settings from `DefaultSettings`, where
         // `fanout.enabled` is `true` (`DefaultSettings.java:117`), so
         // `removeUnconnectedVias = !isFanoutEnabled()` is **false** and every one of the 311 corpus
-        // connections that reaches `:241-245` (the other 58 return `NO_UNCONNECTED_NETS` at
-        // `:49-52`) takes the `FanoutVia` arm — the one no unit fixture took — and matches the
-        // HEAD jar byte for byte. What a corpus board still cannot show is the *difference*
+        // connections that reaches `:241-245` takes the `FanoutVia` arm — the one no unit fixture
+        // took — and matches the HEAD jar byte for byte. The other 58 of the corpus's 369 are
+        // **55** that return `NO_UNCONNECTED_NETS` at `AutorouteConnectionRouter.route:49-52` plus
+        // **3** that take `:207-213`'s message-carrying `FAILED` ("no connection was found"):
+        // `router-rpi-splitter` k = 2 and `router-dac2020-bm01` k = 120 and k = 126. What a corpus board still cannot show is the *difference*
         // between the two arms, since `getConnectionItems`/`removeTraceTails` branch on the option
         // only for a fanout via (Item.java:735, RoutingBoard.java:1207-1216) and `BatchFanout` is
         // Plan 7's.
@@ -1481,11 +1483,12 @@ impl AutorouteEngine {
             // (`P6T15Probe`'s `viafail`), but every lever that produces it from *outside*
             // `autorouteConnection` — an empty `ctrl.viaRule`, a user-fixed via on the drill —
             // also changes what the maze search finds, because `ForcedViaInserter.check` reads
-            // the same rule. Task 17's corpus reaches it on a real board: `router-rpi-splitter`
-            // k = 3 and k = 8, `router-j2-reference` k = 19, and twelve connections of
-            // `router-dac2020-bm01` — each with this exact message, matched word for word
-            // against the HEAD jar. `router-j2-reference` k = 19 is also the connection that
-            // proved `describe_connection` had to snapshot its names (see that function).
+            // the same rule. Task 17's corpus reaches it on a real board, on **20** connections
+            // in all: `router-rpi-splitter` k = 3 and 8; `router-j2-reference` k = 6, 9, 10, 12,
+            // 15 and 19; `router-dac2020-bm01` k = 23, 25, 26, 124, 125, 127, 162, 202, 246, 287,
+            // 288 and 290 — each with this exact message, matched word for word against the HEAD
+            // jar. `router-j2-reference` k = 19 is also the connection that proved
+            // `describe_connection` had to snapshot its names (see that function).
             Ok(None) => AutorouteAttemptResult::with_details(
                 AutorouteAttemptState::Failed,
                 format!(
