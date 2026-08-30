@@ -717,6 +717,80 @@ public class P6T10Probe {
         }
       }
     }
+    // A block whose answers are **not** all -1 or 0: shapes placed next to a single obstacle, so
+    // the first border line that `checkTraceShape` accepts varies with where the obstacle sits.
+    // `calcCheckShapeForFromSide` sweeps `offsetShape.borderLine(i)` in index order, so this is
+    // what pins that order and the two-sweep fall-back to clearance class 0.
+    for (AngleRestriction ar :
+        new AngleRestriction[] {AngleRestriction.NONE, AngleRestriction.NINETY_DEGREE}) {
+      build(ar);
+      System.out.println("mode=side lanes angle=" + ar);
+      ForcedPadRouter router = new ForcedPadRouter(board);
+      // A vertical net-3 trace at x = 3000 and a horizontal one at y = 5000, so a probe box can
+      // be boxed in from one side at a time.
+      board.insertTraceWithoutCleaning(
+          new Polyline(
+              new Point[] {new IntPoint(3000, -4000), new IntPoint(3000, 4000)}),
+          0,
+          200,
+          new int[] {3},
+          1,
+          FixedState.UNFIXED);
+      board.insertTraceWithoutCleaning(
+          new Polyline(
+              new Point[] {new IntPoint(-4000, 5000), new IntPoint(4000, 5000)}),
+          0,
+          200,
+          new int[] {3},
+          1,
+          FixedState.UNFIXED);
+      // A three-sided pocket around (-3000, -3000): copper below, right and above, so the only
+      // free border is on the left and `calcFromSide` has to walk past several indices.
+      board.insertTraceWithoutCleaning(
+          new Polyline(
+              new Point[] {new IntPoint(-3600, -3400), new IntPoint(-2400, -3400)}),
+          0, 200, new int[] {3}, 1, FixedState.UNFIXED);
+      board.insertTraceWithoutCleaning(
+          new Polyline(
+              new Point[] {new IntPoint(-2600, -3600), new IntPoint(-2600, -2400)}),
+          0, 200, new int[] {3}, 1, FixedState.UNFIXED);
+      board.insertTraceWithoutCleaning(
+          new Polyline(
+              new Point[] {new IntPoint(-3600, -2600), new IntPoint(-2400, -2600)}),
+          0, 200, new int[] {3}, 1, FixedState.UNFIXED);
+      int[][] centres = {
+        {2600, 0}, {3400, 0}, {2900, 0}, {3000, 0},
+        {0, 4600}, {0, 5400}, {0, 5000}, {3000, 5000},
+        {2700, 4700}, {3300, 5300},
+        {-3000, -3000}, {-2900, -3000}, {-3000, -2900}, {-3000, -3100}
+      };
+      for (int[] c : centres) {
+        for (int half : new int[] {80, 300}) {
+          TileShape shape =
+              new IntBox(c[0] - half, c[1] - half, c[0] + half, c[1] + half);
+          for (int offset : new int[] {0, 30, 300}) {
+            for (int cc : new int[] {0, 1, 2}) {
+              ShapeEntrySide side =
+                  router.calcFromSide(shape, new IntPoint(c[0], c[1]), 0, offset, cc);
+              System.out.println(
+                  "  lane centre=("
+                      + c[0]
+                      + ","
+                      + c[1]
+                      + ") half="
+                      + half
+                      + " offset="
+                      + offset
+                      + " cc="
+                      + cc
+                      + " -> "
+                      + side(side));
+            }
+          }
+        }
+      }
+    }
+
     // `ForcedViaInserter.calculateFromSide` is board-free: a via shape, a room simplex and a
     // distance. Both the orthogonal (`:384-420`) and the diagonal (`:424-459`) sweeps.
     System.out.println("mode=side calculateFromSide");

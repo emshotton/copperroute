@@ -631,7 +631,11 @@ methods with dozens of branches.
       **shovable** free via, which is the arm that runs the full
       `checkForcedPad`. `check viaId=6 result=true ignoreSize=1` is the one that
       proves the Task 9 / Task 10 cycle is closed.
-    - `side` — `calcFromSide` (42 rows, every answer `border=null`) and
+    - `side` — `calcFromSide` on the seven pad shapes (42 rows, every answer
+      `border=null`), then a 504-row **lane** block on a board with a vertical
+      trace, a horizontal one and a three-sided pocket, whose answers span
+      `no` = -1, 0, 1 and 3 and so pin the `offsetShape.borderLine(i)` sweep
+      order and the fall-back second sweep at clearance class 0; then
       `calculateFromSide` (36 rows, both the orthogonal sweep and the diagonal
       fallback, and both `null` arms).
     - `hole` — `holeCheckShape` at hole clearance 0 / 100 / 400 x two padstacks.

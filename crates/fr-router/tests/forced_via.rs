@@ -14,6 +14,8 @@
 //! `unimplemented!()` — are additionally asserted as literals so the intent survives a
 //! regenerated transcript.
 
+use std::collections::BTreeSet;
+
 use fr_board::ids::{ItemId, PadstackId};
 use fr_board::prelude::*;
 use fr_board::rules::ViaInfo;
@@ -374,6 +376,31 @@ fn four_layer_board() -> Board {
                 FixedState::Unfixed,
             );
         }
+    }
+    board
+}
+
+/// `P6T10Probe.fromSides()`'s lane board: [`probe_board`] plus five net-3 traces — a vertical
+/// one at x = 3000, a horizontal one at y = 5000, and a three-sided pocket around (-3000, -3000)
+/// — inserted in the probe's order, so a shape placed against them has a different **first**
+/// acceptable border line depending on where the copper sits.
+fn lane_board(angle: AngleRestriction) -> Board {
+    let mut board = probe_board(angle);
+    for corners in [
+        [Point::new(3000, -4000), Point::new(3000, 4000)],
+        [Point::new(-4000, 5000), Point::new(4000, 5000)],
+        [Point::new(-3600, -3400), Point::new(-2400, -3400)],
+        [Point::new(-2600, -3600), Point::new(-2600, -2400)],
+        [Point::new(-3600, -2600), Point::new(-2400, -2600)],
+    ] {
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&corners),
+            0,
+            200,
+            vec![3],
+            1,
+            FixedState::Unfixed,
+        );
     }
     board
 }
@@ -971,6 +998,68 @@ fn calc_from_side_agrees_with_the_jvm() {
         checked += 1;
     }
     assert_eq!(checked, 42, "7 shapes x 3 offsets x 2 regimes");
+}
+
+/// Probe mode `side`, the `lane` block: 504 rows whose answers are **not** all `-1` and `0`
+/// (`no` takes -1, 0, 1 and 3), so the order in which `calcFromSide` sweeps
+/// `offsetShape.borderLine(i)` — and its fall-back second sweep at clearance class 0 — are
+/// pinned rather than merely exercised.
+#[test]
+fn calc_from_side_walks_javas_border_line_order() {
+    let mut board = lane_board(AngleRestriction::None);
+    let mut checked = 0usize;
+    let mut seen: BTreeSet<i32> = BTreeSet::new();
+    for row in section("side") {
+        if let Some(rest) = row.strip_prefix("mode=side lanes angle=") {
+            board = lane_board(match rest {
+                "NONE" => AngleRestriction::None,
+                "NINETY_DEGREE" => AngleRestriction::NinetyDegree,
+                other => panic!("unknown angle `{other}`"),
+            });
+            continue;
+        }
+        let trimmed = row.trim_start();
+        if !trimmed.starts_with("lane centre=") {
+            continue;
+        }
+        let (cx, cy) = parse_pair(field(row, "centre"));
+        let half: i32 = field(row, "half").parse().unwrap();
+        let shape = TileShape::Box(IntBox::from_coords(
+            cx - half,
+            cy - half,
+            cx + half,
+            cy + half,
+        ));
+        let side = ForcedPadRouter::calc_from_side(
+            &mut board,
+            &shape,
+            &Point::new(cx, cy),
+            0,
+            field(row, "offset").parse().unwrap(),
+            field(row, "cc").parse().unwrap(),
+        );
+        let expected_no: i32 = answer(row)
+            .strip_prefix("no=")
+            .unwrap()
+            .split(' ')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert_eq!(side.no, expected_no, "probe row `{row}`");
+        assert!(side.border_intersection.is_none(), "probe row `{row}`");
+        seen.insert(expected_no);
+        checked += 1;
+    }
+    assert_eq!(
+        checked, 504,
+        "14 centres x 2 half widths x 3 offsets x 3 classes x 2 regimes"
+    );
+    assert_eq!(
+        seen,
+        BTreeSet::from([-1, 0, 1, 3]),
+        "the probe's answers must span more than `NOT_CALCULATED` and side 0"
+    );
 }
 
 /// Probe mode `side`, the `calculateFromSide` block: the orthogonal sweep (`:384-420`), the
