@@ -33,11 +33,12 @@ use fr_geometry::{
     TileShape,
 };
 use fr_router::arena::PageId;
+use fr_router::autoroute::drill::ExpansionDrill;
 use fr_router::autoroute::expansion::{ExpandableRef, RoomRef};
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::autoroute::maze::expansion_engine::MazeExpansionEngine;
 use fr_router::autoroute::maze::search::MazeSearchEngine;
-use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListElement};
+use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListElement, ViaMask};
 use fr_router::board_ext::CheckDrillResult;
 use fr_settings::RouterSettings;
 
@@ -394,7 +395,7 @@ fn the_control_carries_a_real_via_rule_and_the_start_ripup_costs() {
 }
 
 // =================================================================================================
-// expandToDrillPage (:115-144) — probe mode `page`
+// expandToDrillPage (:115-143) — probe mode `page`
 // =================================================================================================
 
 #[test]
@@ -454,7 +455,7 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
 }
 
 // =================================================================================================
-// expandToDrillsOfPage (:145-236) and expandToDrill (:31-114) — modes `pagedrills`, `drill`
+// expandToDrillsOfPage (:145-235) and expandToDrill (:31-112) — modes `pagedrills`, `drill`
 // =================================================================================================
 
 /// Drives the shared board up to the drill page's own queue element.
@@ -747,6 +748,8 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
     let plain_ctrl = fixture.ctrl.clone();
     let mut costed_ctrl = fixture.ctrl.clone();
     costed_ctrl.add_via_costs[0][1] = 700;
+    // The probe sets both directions; only `[0][1]` is on the 0 -> 1 path these rows exercise, so
+    // 900 is the one number in this file the transcript does not print.
     costed_ctrl.add_via_costs[1][0] = 900;
     let mut maze = MazeSearchEngine::get_instance(
         &set_of(&[2]),
@@ -816,6 +819,198 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
             0,
         )]
     );
+}
+
+// =================================================================================================
+// The attach-SMD half of the expansion — probe mode `attachsmd`
+// =================================================================================================
+
+#[test]
+fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span() {
+    // === mode attachsmd ===
+    // ctrl attachSmdAllowed=true viaInfos[0].attachSmdAllowed=true
+    //   room=800 spot=onSmdPin layer=0 -> DRILLABLE_WITH_ATTACH_SMD   (the only promoted cell)
+    // pageDrills=42
+    // drill frontSmd rooms=true
+    //   room0=…id=6 layer=0   room1=…id=51 layer=1
+    // --- drill=frontSmd section=0 maskAttachSmdAllowed=false  queue n=0
+    // --- drill=frontSmd section=0 maskAttachSmdAllowed=true   expansion=1700 sorting=5671.421356237
+    // --- drill=frontSmd section=1 maskAttachSmdAllowed=false  queue n=0
+    // --- drill=frontSmd section=1 maskAttachSmdAllowed=true   expansion=1900 sorting=5730
+    //
+    // `ForcedPadRouter.checkForcedPad:281-287` only answers `DRILLABLE_WITH_ATTACH_SMD` when
+    // copper sharing is allowed **and** one of the same-net obstacles is a `Pin`, and
+    // `ForcedViaInserter.checkLayer:82` passes the `ViaInfo`'s own flag — so flipping the board's
+    // one `ViaInfo` to attach-on is what makes `expandToOtherLayers:276-282`'s
+    // `smdAttachedOnComponentSide` write and **both halves** of `maskOk` (`:336-339`) reachable.
+    let mut board = probe_board();
+    board
+        .rules
+        .via_infos
+        .get_mut(ViaInfoId(0))
+        .set_attach_smd_allowed(true);
+    let mut engine = probe_engine(&mut board, 1);
+    let base = probe_control(&board, 1);
+    assert!(base.attach_smd_allowed);
+    assert!(base.via_infos[0].attach_smd_allowed);
+    // The two controls differ **only** in the mask the span loop reads; both keep the attach-on
+    // via rule that `checkLayerWithAnyMatchingVia` walks. Both outlive the maze.
+    let controls: Vec<AutorouteControl> = [false, true]
+        .into_iter()
+        .map(|mask_attach| {
+            let mut ctrl = base.clone();
+            ctrl.add_via_costs[0][1] = 700;
+            ctrl.add_via_costs[1][0] = 900;
+            ctrl.via_infos[0] = ViaMask {
+                from_layer: 0,
+                to_layer: 1,
+                attach_smd_allowed: mask_attach,
+            };
+            ctrl
+        })
+        .collect();
+    let counter = Counter::new();
+    let mut maze = MazeSearchEngine::get_instance(
+        &set_of(&[2]),
+        &set_of(&[3]),
+        &mut engine,
+        &mut board,
+        &base,
+        &|| counter.check(),
+    )
+    .expect("init succeeds");
+
+    // The `checklayer` table again, attach on: `onSmdPin layer=0` is the one promoted cell.
+    let spots = [
+        ("freeSpace", IntPoint::new(1000, 1000)),
+        ("onBlocker", IntPoint::new(400, 0)),
+        ("onSmdPin", IntPoint::new(-2000, 0)),
+        ("onThruPin", IntPoint::new(2000, 0)),
+        ("onFreeVia", IntPoint::new(2500, 2500)),
+    ];
+    let expected: [[CheckDrillResult; 2]; 5] = [
+        [CheckDrillResult::Drillable, CheckDrillResult::Drillable],
+        [CheckDrillResult::Drillable, CheckDrillResult::Drillable],
+        [
+            CheckDrillResult::DrillableWithAttachSmd,
+            CheckDrillResult::Drillable,
+        ],
+        [
+            CheckDrillResult::NotDrillable,
+            CheckDrillResult::NotDrillable,
+        ],
+        [
+            CheckDrillResult::NotDrillable,
+            CheckDrillResult::NotDrillable,
+        ],
+    ];
+    for ((name, location), want) in spots.iter().zip(expected) {
+        let room_shape = TileShape::Box(IntBox::from_coords(
+            location.x - 400,
+            location.y - 400,
+            location.x + 400,
+            location.y + 400,
+        ))
+        .to_simplex();
+        for (layer, want) in want.into_iter().enumerate() {
+            assert_eq!(
+                MazeExpansionEngine::check_layer_with_any_matching_via(
+                    &mut maze,
+                    &mut board,
+                    &TileShape::Simplex(room_shape.clone()),
+                    &Point::Int(*location),
+                    layer,
+                    &[1],
+                ),
+                want,
+                "spot={name} layer={layer}"
+            );
+        }
+    }
+
+    // Partition the board first: `calculateExpansionRooms` completes a room per layer at the
+    // drill location, and completing one from scratch in layer 1's almost-empty half-plane runs
+    // the engine out of heap. `attachSmdAllowed` also changes the cut-out loop, so the page
+    // answers 42 drills here where mode `pagedrills` sees 53.
+    let seed = maze.queue.iter().next().expect("a seeded element").clone();
+    let room_shape = maze
+        .engine
+        .rooms
+        .room_shape(seed.next_room.expect("a next room"))
+        .expect("a shape")
+        .clone();
+    let page = maze.engine.drill_pages().overlapping_pages(&room_shape)[0];
+    let page_drills =
+        maze.engine
+            .drill_page_drills(&mut board, page, base.attach_smd_allowed, &|| {
+                counter.check()
+            });
+    assert_eq!(page_drills.len(), 42);
+
+    let location = Point::new(-2000, 0);
+    let mut drill = ExpansionDrill::new(
+        TileShape::Box(TileShape::get_instance_from_point(&location)),
+        location,
+        0,
+        1,
+    );
+    assert!(drill.calculate_expansion_rooms(maze.engine, &mut board));
+    let drill_rooms = drill.rooms.clone();
+    let drill_id = fr_router::arena::DrillId(maze.engine.rooms.drills.insert(drill));
+    assert_eq!(
+        drill_rooms
+            .iter()
+            .map(|room| room.and_then(|r| maze.engine.rooms.room_id_no(r)))
+            .collect::<Vec<_>>(),
+        vec![Some(6), Some(51)]
+    );
+    assert_eq!(
+        maze.engine.expandable_id_no(ExpandableRef::Drill(drill_id)),
+        -59_581_999
+    );
+
+    // `maskOk`'s two halves (`:336-339`): with `smdAttachedOnComponentSide` set, a mask whose
+    // `fromLayer` is 0 is refused unless the mask itself allows attaching.
+    let expected_rows: [(i32, f64, f64, Option<i32>); 2] = [
+        (1, 1700.0, 5_671.421_356_237, Some(51)),
+        (0, 1900.0, 5730.0, Some(6)),
+    ];
+    for section in 0..2i32 {
+        let element = MazeListElement {
+            door: ExpandableRef::Drill(drill_id),
+            section_no_of_door: section,
+            backtrack_door: None,
+            section_no_of_backtrack_door: 0,
+            expansion_value: 1000.0,
+            sorting_value: 2000.0,
+            next_room: None,
+            shape_entry: FloatLine::new(
+                FloatPoint::new(-2000.0, 0.0),
+                FloatPoint::new(-2000.0, 0.0),
+            ),
+            room_ripped: false,
+            adjustment: MazeAdjustment::None,
+            already_checked: false,
+            ripup_cost: 0,
+        };
+        for (index, ctrl) in controls.iter().enumerate() {
+            maze.ctrl = ctrl;
+            drain(&mut maze);
+            MazeExpansionEngine::expand_to_other_layers(&mut maze, &mut board, &element);
+            let rows = queue_rows(&maze);
+            if index == 0 {
+                assert_eq!(rows, vec![], "section={section} maskAttachSmdAllowed=false");
+            } else {
+                let want = expected_rows[usize::try_from(section).expect("0 or 1")];
+                assert_eq!(rows.len(), 1, "section={section} maskAttachSmdAllowed=true");
+                assert_eq!(
+                    (rows[0].0, rows[0].1, rows[0].2, rows[0].3, rows[0].4),
+                    (-59_581_999, want.0, want.1, want.2, want.3),
+                    "section={section} maskAttachSmdAllowed=true"
+                );
+            }
+        }
+    }
 }
 
 // =================================================================================================

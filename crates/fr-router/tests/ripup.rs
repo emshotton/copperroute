@@ -592,6 +592,11 @@ fn the_detour_is_memoised_through_the_item_autoroute_info() {
     //            detour=1.019320881   memoised=true
     // item 7  -> items=[8,7]    start=null end=null traceLength=1000  detour=2147483647
     // item 9  -> items=[11,10,9] start=null end=null traceLength=2000 detour=2147483647
+    //
+    // The two `items=[…]` lists print in Java's `TreeSet<Item>` order, i.e. **descending** id;
+    // the port's `BTreeSet<ItemId>` is ascending, so the assertions below read `[7, 8]` and
+    // `[9, 10, 11]` for the same membership. Nothing consumes the order — see
+    // `autoroute/path/connection.rs`' type docs.
     let mut f = fixture();
     for id in [2u32, 3, 4, 5] {
         assert_eq!(
@@ -672,7 +677,7 @@ fn the_detour_is_memoised_through_the_item_autoroute_info() {
 }
 
 // =================================================================================================
-// enterThroughSmallDoor (:219-268) and checkLeavingRippedItem (:200-217) — mode `smalldoor`
+// enterThroughSmallDoor (:219-268) and checkLeavingRippedItem (:200-213) — mode `smalldoor`
 // =================================================================================================
 
 #[test]

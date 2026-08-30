@@ -851,7 +851,7 @@ methods with dozens of branches.
     half width of **30** (the stock 1500 leaves no channel at all at this size),
     a two-pin net-1 component at (±2000, 0), a two-pin net-2 component at
     (0, ±2000) whose bent trace crosses the channel between them, and two net-3
-    vias with one and two trace contacts. Thirteen modes:
+    vias with one and two trace contacts. Fourteen modes:
 
     - `items` — the item list in `getItems()` order, so the Rust twin names the
       same ids: 2 and 3 the net-1 pins, 4 and 5 the net-2 pins, 6 the blocker
@@ -884,6 +884,22 @@ methods with dozens of branches.
       × two room sizes (120 and 800 units): all ten `NOT_DRILLABLE` at 120, and
       at 800 free space and the blocker are `DRILLABLE`, the SMD pin only on
       layer 1, the through pin and the free via on neither.
+    - `attachsmd` — the same board with the rule's one `ViaInfo` flipped to
+      **attach-on**, which is the only way `ForcedPadRouter.checkForcedPad:281-287`
+      answers `DRILLABLE_WITH_ATTACH_SMD` (it needs copper sharing *and* a `Pin`
+      among the same-net obstacles) and therefore the only way
+      `checkLayerWithAnyMatchingVia:407-412`'s remember-and-answer path,
+      `expandToOtherLayers:276-282`'s `smdAttachedOnComponentSide` write and
+      **both halves** of `maskOk` (`:336-339`) are reachable. It reprints the
+      `checklayer` table — `onSmdPin layer=0` is the one cell that moves, from
+      `NOT_DRILLABLE` to `DRILLABLE_WITH_ATTACH_SMD` — then partitions the page
+      (42 drills here, where `pagedrills` sees 53, because `attachSmdAllowed`
+      changes the cut-out loop) and runs `expandToOtherLayers` on a drill over the
+      SMD pad from both sections, crossed with a hand-written `ViaMask` whose
+      `attachSmdAllowed` is false and true: false expands nothing, true expands
+      one element. The two `smdAttachedOnSolderSide` writes (`:279-281`,
+      `:306-308`) stay unreachable on this board and carry an `obligation:`
+      marker naming Task 17.
     - `fanoutfac` — `calcFanoutViaRipupCostFactor` on the four board traces
       (1.081730769 for the blocker, whose contact is an SMD pin; 1.0 for the
       three whose only contact is a via) plus the `SHOVE_FIXED` two-corner arm of

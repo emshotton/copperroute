@@ -68,8 +68,8 @@ ripup decision and its cost model) — plus the first member of `autoroute/path`
 | `MazeSearchEngine`'s room-door expansion and cost model | `src/autoroute/maze/expand.rs` | `MazeSearchEngine.java:390-966,1105-1215` |
 | `MazeTraceShover`, `DoorSection` | `src/autoroute/maze/trace_shover.rs` | `MazeTraceShover.java:24-357` |
 | `MazeExpansionEngine`, `Via.getAutorouteDrillInfo` | `src/autoroute/maze/expansion_engine.rs` | `MazeExpansionEngine.java:23-415`, `Via.java:203-217` |
-| `MazeRipupResolver` | `src/autoroute/maze/ripup_resolver.rs` | `MazeRipupResolver.java:25-268` |
-| `Connection` | `src/autoroute/path/connection.rs` | `Connection.java:11-154` |
+| `MazeRipupResolver` | `src/autoroute/maze/ripup_resolver.rs` | `MazeRipupResolver.java:25-269` |
+| `Connection` | `src/autoroute/path/connection.rs` | `Connection.java:11-155` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RoutingBoardExt` | `src/board_ext/routing_board_ext.rs` | `RoutingBoard.java:96-118, 405-448, 882-905, 1240-1249` |
 | `TraceShover` (the two `check`s + `springOver`) | `src/board_ext/trace_shover.rs` | `TraceShover.java:57-411, 592-603, 611-818` |
@@ -910,7 +910,7 @@ runs the whole file — which is what `tests/maze_expand.rs` and `P6T12Probe` do
 leading parameter, because Java's single `private final MazeSearchEngine search`
 field would otherwise have to be a second `&mut` borrow of an engine the search
 already holds. The ground truth is
-`scripts/differential/java/probes/P6T13Probe.java`, thirteen modes, transcript
+`scripts/differential/java/probes/P6T13Probe.java`, fourteen modes, transcript
 `tests/data/p6t13-drills-ripup.txt`.
 
 **Java wins over plan-6 ruling 8: `AutorouteControl.settings` has three readers,
@@ -962,6 +962,21 @@ is a `TreeSet<Item>` (`Item.compareTo` = `other.id - this.id`); a
 `BTreeSet<ItemId>` is ascending. Nothing reads the order — the two consumers are
 `size()` and the `traceLength()` sum, and the memo loop writes the same value
 into every member.
+
+**The attach-SMD half is pinned by a mode-local flag, not a second board.**
+`ForcedPadRouter.checkForcedPad:281-287` answers `DRILLABLE_WITH_ATTACH_SMD` only
+when copper sharing is allowed *and* one of the same-net obstacles is a `Pin`,
+and `ForcedViaInserter.checkLayer:82` passes the `ViaInfo`'s own flag — so
+flipping the rule's one `ViaInfo` to attach-on (probe mode `attachsmd`) is enough
+to reach `checkLayerWithAnyMatchingVia:407-412`'s remember-and-answer path,
+`expandToOtherLayers:276-282`'s `smdAttachedOnComponentSide` write and **both
+halves** of `maskOk` (`:336-339`), all pinned by
+`an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span`.
+Three arms are left without ground truth and carry `obligation:` markers naming
+**Task 17**: `checkRipup`'s `roomWasShoved` branch (`:86-91`, which needs the
+`MazeAdjustment::Left`/`Right` Task 12's own marker already owns), its
+`ALREADY_RIPPED_COSTS` arm (`:92-94`) and the two `smdAttachedOnSolderSide`
+writes (`:279-281`, `:306-308`, which need a bottom-side SMD pad).
 
 **`findConnection` runs end to end.** `tests/maze_drills.rs`'
 `find_connection_reaches_the_destination_door_in_seven_pops` pins the whole pop

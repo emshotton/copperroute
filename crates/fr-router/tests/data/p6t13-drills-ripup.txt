@@ -176,6 +176,33 @@ queue n=1
   room=800 spot=onFreeVia layer=0 -> NOT_DRILLABLE
   room=800 spot=onFreeVia layer=1 -> NOT_DRILLABLE
 
+=== mode attachsmd ===
+ctrl attachSmdAllowed=true viaInfos[0].attachSmdAllowed=true
+  room=800 spot=freeSpace layer=0 -> DRILLABLE
+  room=800 spot=freeSpace layer=1 -> DRILLABLE
+  room=800 spot=onBlocker layer=0 -> DRILLABLE
+  room=800 spot=onBlocker layer=1 -> DRILLABLE
+  room=800 spot=onSmdPin layer=0 -> DRILLABLE_WITH_ATTACH_SMD
+  room=800 spot=onSmdPin layer=1 -> DRILLABLE
+  room=800 spot=onThruPin layer=0 -> NOT_DRILLABLE
+  room=800 spot=onThruPin layer=1 -> NOT_DRILLABLE
+  room=800 spot=onFreeVia layer=0 -> NOT_DRILLABLE
+  room=800 spot=onFreeVia layer=1 -> NOT_DRILLABLE
+pageDrills=42
+drill frontSmd rooms=true
+  room0=CompleteFreeSpaceExpansionRoom id=6 layer=0 shape=[-4000,0..267,1909]
+  room1=CompleteFreeSpaceExpansionRoom id=51 layer=1 shape=[-2395,0..2359,2700]
+--- drill=frontSmd section=0 maskAttachSmdAllowed=false
+queue n=0
+--- drill=frontSmd section=0 maskAttachSmdAllowed=true
+queue n=1
+  [0] door=ExpansionDrill id=-59581999 section=1 backtrack=ExpansionDrill id=-59581999 sectionOfBacktrack=0 expansion=1700.000000000 sorting=5671.421356237 nextRoom=51 nextRoomLayer=1 shapeEntry=(-2000.000000,0.000000)-(-2000.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- drill=frontSmd section=1 maskAttachSmdAllowed=false
+queue n=0
+--- drill=frontSmd section=1 maskAttachSmdAllowed=true
+queue n=1
+  [0] door=ExpansionDrill id=-59581999 section=0 backtrack=ExpansionDrill id=-59581999 sectionOfBacktrack=1 expansion=1900.000000000 sorting=5730.000000000 nextRoom=6 nextRoomLayer=0 shapeEntry=(-2000.000000,0.000000)-(-2000.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
 === mode fanoutfac ===
 trace id=6 halfWidth=30 length=4079.215610874 startContacts=1 endContacts=1 factor=1.081730769
 trace id=8 halfWidth=30 length=1000.000000000 startContacts=1 endContacts=0 factor=1.000000000

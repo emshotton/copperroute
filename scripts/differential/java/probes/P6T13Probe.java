@@ -49,6 +49,12 @@
 //   random     the `Random(ripupCosts)` draws of :158-163 for three seeds
 //   smalldoor  `enterThroughSmallDoor` (:219-268) and `checkLeavingRippedItem` (:200-217)
 //   conn       `Connection.get` / `traceLength` / `getDetour` (Connection.java:39-154)
+//   attachsmd  the same board with the via rule's `ViaInfo` flipped to attach-on, which is the
+//              only way `checkLayerWithAnyMatchingVia` (:407-412) answers DRILLABLE_WITH_ATTACH_SMD
+//              and therefore the only way `expandToOtherLayers`' `smdAttachedOnComponentSide`
+//              write (:277-278) and **both halves** of `maskOk` (:336-339) are reachable. The two
+//              `smdAttachedOnSolderSide` writes (:279-281, :306-308) stay unreachable here — see
+//              the comment in the mode body
 //   find       `findConnection` end to end: the pop sequence and the `Result`
 package app.freerouting.autoroute.maze;
 
@@ -119,6 +125,7 @@ public class P6T13Probe {
       case "random" -> random();
       case "smalldoor" -> smallDoor();
       case "conn" -> conn();
+      case "attachsmd" -> attachSmd();
       case "find" -> find();
       default -> throw new IllegalArgumentException("mode " + mode);
     }
@@ -980,6 +987,118 @@ public class P6T13Probe {
               + String.format(" traceLength=%.9f detour=%.9f", c.traceLength(), c.getDetour()));
       System.out.println(
           "  memoised=" + (item.getAutorouteInfo().getPrecalculatedConnection() == c));
+    }
+  }
+
+  // =============================================================================================
+  // mode `attachsmd`
+  // =============================================================================================
+
+  static void attachSmd() throws Exception {
+    build();
+    // `ForcedPadRouter.checkForcedPad:281-287` only answers DRILLABLE_WITH_ATTACH_SMD when copper
+    // sharing is allowed **and** one of the same-net obstacles is a `Pin`, and
+    // `ForcedViaInserter.checkLayer:82` passes the `ViaInfo`'s own flag for the via phase. So the
+    // whole attach-SMD half of `expandToOtherLayers` is dead unless the rule's via carries it.
+    ViaInfo viaInfo = board.rules.viaInfos.get(0);
+    viaInfo.setAttachSmdAllowed(true);
+    // The two `smdAttachedOnSolderSide` writes (`:279-281`, `:306-308`) stay unreachable on this
+    // board and are carried as an `obligation:` marker naming Task 17: they need a `Pin` obstacle
+    // on the **last** layer at a spot where a drill's rooms can both be built, and this board's
+    // through pin is NOT_DRILLABLE on both layers while its SMD pad lives only on layer 0. A
+    // mode-local back-side pad does not help — `ExpansionDrill.calculateExpansionRooms` answers
+    // false at every offset tried (3150, 3200, 3250, 3300, 3400), because layer 1's free space
+    // north of the partitioned band is not divisible into exactly one room there.
+    AutorouteEngine autorouteEngine = engine(1);
+    AutorouteControl control = control(1);
+    System.out.println(
+        "ctrl attachSmdAllowed="
+            + control.attachSmdAllowed
+            + " viaInfos[0].attachSmdAllowed="
+            + control.viaInfos[0].attachSmdAllowed);
+    MazeSearchEngine maze = maze(autorouteEngine, control);
+    MazeExpansionEngine expander = new MazeExpansionEngine(maze);
+    Method m =
+        priv(
+            MazeExpansionEngine.class,
+            "checkLayerWithAnyMatchingVia",
+            ExpansionDrill.class,
+            int.class,
+            TileShape.class,
+            int[].class);
+
+    // The `checklayer` table again, attach on: the two pin spots move off NOT_DRILLABLE.
+    Object[][] spots = {
+      {"freeSpace", new IntPoint(1000, 1000)},
+      {"onBlocker", new IntPoint(400, 0)},
+      {"onSmdPin", new IntPoint(-2000, 0)},
+      {"onThruPin", new IntPoint(2000, 0)},
+      {"onFreeVia", new IntPoint(2500, 2500)}
+    };
+    for (Object[] spot : spots) {
+      IntPoint location = (IntPoint) spot[1];
+      TileShape roomShape =
+          new IntBox(location.x - 400, location.y - 400, location.x + 400, location.y + 400)
+              .toSimplex();
+      ExpansionDrill d = new ExpansionDrill(TileShape.getInstance(location), location, 0, 1);
+      for (int layer = 0; layer < 2; layer++) {
+        System.out.println(
+            "  room=800 spot="
+                + spot[0]
+                + " layer="
+                + layer
+                + " -> "
+                + m.invoke(expander, d, layer, roomShape, new int[] {1}));
+      }
+    }
+
+    control.addViaCosts[0].toLayer[1] = 700;
+    control.addViaCosts[1].toLayer[0] = 900;
+    // Partition the board first. `ExpansionDrill.calculateExpansionRooms` completes a room per
+    // layer at the drill location, and completing one from scratch in layer 1's almost-empty
+    // half-plane runs the engine out of heap; after `getDrills` the space is already divided and
+    // both rooms are found rather than made.
+    MazeListElement seed = firstElement(maze);
+    DrillPage page =
+        autorouteEngine.drillPageArray.overlappingPages(seed.nextRoom.getShape()).iterator().next();
+    System.out.println(
+        "pageDrills=" + page.getDrills(autorouteEngine, control.attachSmdAllowed).size());
+    Object[][] drills = {{"frontSmd", new IntPoint(-2000, 0)}};
+    for (Object[] spot : drills) {
+      IntPoint location = (IntPoint) spot[1];
+      ExpansionDrill drill =
+          new ExpansionDrill(TileShape.getInstance(location), location, 0, 1);
+      System.out.println(
+          "drill " + spot[0] + " rooms=" + drill.calculateExpansionRooms(autorouteEngine));
+      System.out.println("  room0=" + describeRoom(drill.roomArr[0]));
+      System.out.println("  room1=" + describeRoom(drill.roomArr[1]));
+      for (int section = 0; section < 2; section++) {
+        MazeListElement element =
+            new MazeListElement(
+                drill,
+                section,
+                null,
+                0,
+                1000.0,
+                2000.0,
+                null,
+                new FloatLine(
+                    new FloatPoint(location.x, location.y), new FloatPoint(location.x, location.y)),
+                false,
+                MazeSearchElement.Adjustment.NONE,
+                false);
+        // `maskOk`'s two halves (:336-339). The mask is overwritten **after** `rebuildViaInfo`, so
+        // `checkLayerWithAnyMatchingVia` still sees the attach-on rule while the span loop sees a
+        // mask that does or does not allow attaching.
+        for (boolean maskAttach : new boolean[] {false, true}) {
+          control.viaInfos[0] = new AutorouteControl.ViaMask(0, 1, maskAttach);
+          drain(maze);
+          expander.expandToOtherLayers(element);
+          System.out.println(
+              "--- drill=" + spot[0] + " section=" + section + " maskAttachSmdAllowed=" + maskAttach);
+          dumpQueue(maze);
+        }
+      }
     }
   }
 
