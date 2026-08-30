@@ -87,6 +87,8 @@ impl RoomLookup for NoRooms {
 
 /// One `TreeSet<EntrySortedByClearance>` element (ShapeSearchTree.java:1135-1158).
 ///
+/// renamed: `ShapeSearchTree.EntrySortedByClearance.compareTo` (ShapeSearchTree.java:1153-1157) -> the derived [`Ord`] on `EntrySortedByClearance`.
+///
 /// Java's `compareTo` is `Signum.asInt(clearance - other.clearance)` and then
 /// `entryId - other.entryId`, which is exactly the derived lexicographic `Ord` on
 /// `(clearance, entry_id)` — the clearance values come from the clearance matrix and are

@@ -261,3 +261,16 @@ All four exit 0 with no `MISSING` and no `UNMAPPED` line. A class the map does
 not mention still falls back to the crate-wide search *and* prints
 `UNMAPPED <Class>`, so the map cannot silently rot as new classes come into
 scope.
+
+## Conventions this crate shares with the workspace
+
+**`#![forbid(unsafe_code)]`** sits in the crate root (Plan 6 Task 18, at the
+user's request). It holds for every workspace crate — `fr-geometry`, `fr-board`,
+`fr-dsn`, `fr-settings`, `fr-drc`, `fr-router`, `tests/parity` and the
+`freerouting` binary's `main.rs`. The only `unsafe` left in the repository is the
+`static mut` PRNG in `scripts/differential/rust/src/bin/p2t13.rs`, a differential
+driver rather than a crate; `scripts/differential/README.md` names it.
+
+Deliberate divergences stay greppable: `// not ported:`, `// renamed:`,
+`// added in Plan N:`, `// totalized:` and `// Java bug:`, each matching a row in
+`docs/java-quirks.md` where the divergence is behavioural.

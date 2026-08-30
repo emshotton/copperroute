@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Parity-test helpers: locate the Java clone, fixtures and reference outputs,
 //! and compare text outputs modulo whitespace.
 

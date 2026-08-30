@@ -716,7 +716,21 @@ would still surface as a `DIFF` on a mode nobody excused.
   DSN-reader behaviour change over the 105-file corpus, not a router one. Marker
   at `parser/wiring.rs:596`, which says `Plan 8`, as does the obligation register
   row in `docs/java-quirks.md`.
-- **Via-info / via-rule re-pointing (ruling H).** Decide whether router
+- **Via-info / via-rule re-pointing (ruling H). DECIDED in Plan 6 (Tasks 8 and
+  17): it closes AGAINST the re-pointing, and the fix is a `ViaRule` that owns
+  its `ViaInfo`s — a Plan 7 `fr-board` change.** Plan 6 found the consumer
+  (`AutorouteControl.rebuildViaInfo` reads `attachSmdAllowed`, `getPadstack` and
+  `getClearanceClassIndex` **through `viaRule.getVia(i)`**, and
+  `ctrl.viaInfos[i].attachSmdAllowed` is a routing gate at
+  `MazeExpansionEngine.java:339`) and ran the deciding comparison on the HEAD
+  parity jar: `run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1
+  crates/fr-router/tests/data/ruling-h-redeclare.rules` agrees with the jar on all
+  50 connections **without** the `.rules` file and diverges from k = 8 **with**
+  it — the port routes shorter, because a via attaches to an SMD pad the jar's
+  detached `ViaInfo` forbids. So the divergence is not unobservable and plan-6
+  ruling 9's default does not apply. Tombstones were considered and rejected (they
+  leak the removal into every index walk). `docs/plan-6-handoff.md` §5.2 carries
+  the measurement. The original text follows. Decide whether router
   behaviour on a re-declared via must match Java (then `ViaInfos` needs
   tombstoned entries, or `ViaRule` must own its `ViaInfo`s) or whether
   re-pointing is the better semantics (then say so and close the register row).
@@ -726,14 +740,23 @@ would still surface as a `DIFF` on a mode nobody excused.
 - **Quirk #106 (`Item.getConnectionItems` has no visited set) affects the router,
   not just the importer.** `connection_items_checked` exists; nothing outside the
   DSN import path uses it yet.
-- **Write `scripts/audit-map/fr-board.map`.** The per-class mechanism now exists
+- ~~**Write `scripts/audit-map/fr-board.map`.**~~ — **DONE in Plan 6 Task 18.**
+  The map covers all 77 classes of Plan 2's nine directories and all nine
+  invocations run under the 4-argument form at zero `MISSING` and zero
+  `UNMAPPED`; writing it exposed seven places where the crate-wide search had been
+  satisfied by a *different* class's `fn` or marker, all seven now fixed. The
+  script was **not** relaxed. The original text follows. The per-class mechanism now exists
   and `fr-dsn` uses it; `fr-board`'s nine directories are still audited
   crate-wide, so Plan 2's 357-of-750 collective-match caveat still stands there.
   Mechanical work now — do **not** relax the script instead.
-- Everything Plan 2 already filed for these plans (quirk #74's early return,
-  `equals_geometric` at the `TraceTightener` call sites, `RoutingBoardExt`,
-  `changed_area`'s reset, `catch_unwind` recovery boundaries, room ordering)
-  remains open and unchanged.
+- Everything Plan 2 filed for these plans is **now settled by Plan 6**, and
+  `docs/plan-2-handoff.md` carries the tick beside each: quirk #74's early return
+  (**reproduced**, rulings AD/AE — the identity-token contract is
+  `docs/plan-6-handoff.md` §9), `equals_geometric` at the `TraceTightener` call
+  sites (**discharged**, Task 15a), `RoutingBoardExt` (**built in Plan 6**, ruling
+  3, Task 9), `changed_area`'s reset (exercised on every corpus connection —
+  quirk #177 makes it observable), the `catch_unwind` recovery boundaries (five,
+  ruling 7, each with a test) and the room ordering (**discharged**, Task 2).
 
 ### Plan 8 (`fr-core` + surfaces)
 

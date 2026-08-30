@@ -57,6 +57,31 @@ for dir in board/model/items board/model/structure board/facade \
 done
 ```
 
+**Plan 6 Task 18 added the per-class map those nine now also run under**, which
+discharges the Plan 3 obligation recorded in `docs/java-quirks.md`
+("`audit-port.sh`'s positive match is crate-wide"):
+
+```sh
+for dir in board/model/items board/model/structure board/facade \
+           board/searchtree board/trace board/state rules core/library \
+           datastructures; do
+  ./scripts/audit-port.sh "$dir" crates/fr-board/src '*.java' scripts/audit-map/fr-board.map
+done
+```
+
+All nine exit 0 with no `MISSING` and no `UNMAPPED`. Writing the map exposed —
+and Task 18 fixed — seven places where the crate-wide search had been satisfied
+by a *different* class's `fn` or marker: `Item.setClearanceClassIndex`'s
+`renamed:` marker was split across two lines (the regex is line-based, so it
+matched nothing and `ViaInfo::set_clearance_class_index` was standing in for
+it), and `ShapeTree.Leaf.compareTo`, `ShapeSearchTree.EntrySortedByClearance.compareTo`,
+`PlanarDelaunayTriangulation.{Corner,Edge.compareTo,TriangleGraph.insert}` and
+`Signum.{of,toString}` had no marker of their own at all. The map narrows; the
+script was **not** weakened. Six `board/facade` classes map to a `board/*.rs`
+glob rather than to one file, because `Board` is one Rust type assembled from
+six Java classes (plan-2 ruling 1) and its impls are split across that directory
+by subject — the map's header says so.
+
 Plan 5 Task 2 added a tenth, **per-class** invocation: `drc.ClearanceViolation`
 lives here rather than in `fr-drc` (see the type mapping below), so its methods
 are audited against the two files that hold them.
@@ -270,3 +295,16 @@ whole class line-by-line.
 No other Java class across the nine audited directories declares a class
 without `public` on it — verified by grepping every `class` declaration
 line in each directory for a missing `public` modifier.
+
+## Conventions this crate shares with the workspace
+
+**`#![forbid(unsafe_code)]`** sits in the crate root (Plan 6 Task 18, at the
+user's request). It holds for every workspace crate — `fr-geometry`, `fr-board`,
+`fr-dsn`, `fr-settings`, `fr-drc`, `fr-router`, `tests/parity` and the
+`freerouting` binary's `main.rs`. The only `unsafe` left in the repository is the
+`static mut` PRNG in `scripts/differential/rust/src/bin/p2t13.rs`, a differential
+driver rather than a crate; `scripts/differential/README.md` names it.
+
+Deliberate divergences stay greppable: `// not ported:`, `// renamed:`,
+`// added in Plan N:`, `// totalized:` and `// Java bug:`, each matching a row in
+`docs/java-quirks.md` where the divergence is behavioural.

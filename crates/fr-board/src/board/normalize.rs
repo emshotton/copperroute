@@ -236,7 +236,7 @@ impl Board {
     /// The check is **not** consulted once per picked trace here: `split_trace_checked` already
     /// consults it inside the entry walk that does not terminate, and adding a second site would
     /// make a run stop earlier than the one Java's loop shape implies.
-    // added in Plan 6: BasicBoard.splitTraces (plan ruling 6, closing plan-3 ruling F)
+    // renamed: `BasicBoard.splitTraces` under a `StopCheck` -> `Board::split_traces_checked` (plan-6 ruling 6, closing plan-3 ruling F; the unchecked `Board::split_traces` above delegates to it with `|| false`).
     pub fn split_traces_checked(
         &mut self,
         location: &Point,

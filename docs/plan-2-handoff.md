@@ -322,7 +322,7 @@ resolved the items marked ✓ below — verified against the committed tree)
   Task 10** (`82a647f` `feat(board): stop-checked normalisation for the DSN
   import path`, `d45676f` `feat(dsn): wiring scope, DsnReader
   read_board/read_metadata, stop-checked import normalisation`); **a second
-  half is still OPEN for Plans 6/7.** Plan 3 took the second option, per its
+  half is DISCHARGED in Plan 6 Task 10b and Plan 8 owns its last line.** Plan 3 took the second option, per its
   ruling 4: `fr-board` gained `normalize_all_traces_checked` /
   `normalize_traces_checked` / `normalize_trace_checked` /
   `split_trace_checked` / `connection_items_checked`, and `fr-dsn` runs
@@ -343,6 +343,14 @@ resolved the items marked ✓ below — verified against the committed tree)
   not reach it. Closing it means threading a `StopCheck` through
   `Board::insert_via`/`Board::split_traces`, whose other callers are the
   router. `// obligation:` marker at `crates/fr-dsn/src/parser/wiring.rs:596`.
+  **Plan 6 Task 10b built exactly that** (`c4648d8`): `Board::insert_via_checked`,
+  `Board::insert_escape_via_checked` and `Board::split_traces_checked`, with the
+  three original names kept as delegating `|| false` wrappers so no existing
+  caller moved. `insert_stops_when_the_stop_check_trips`
+  (`crates/fr-router/tests/forced_via.rs`) pins a tripping check on a four-rung
+  ladder answering `BoardError::Stopped`. **What remains is one line in `fr-dsn`
+  and is Plan 8's** by controller ruling (accepted in Task 10b's review):
+  `read_via_scope` still calls the unchecked wrapper.
 - ~~**`ViaInfoId` renumbering across `ViaInfos::remove`.**~~ **Discharged in
   Plan 3 Task 14.** Java's `ViaRule` holds `ViaInfo` object references, so
   removing one from the middle of the list disturbs no rule. This port
@@ -397,7 +405,12 @@ resolved the items marked ✓ below — verified against the committed tree)
   `scripts/audit-map/fr-board.map` and re-run Plan 2's nine directories under it
   — those are still audited with the 3-argument crate-wide form, so the caveat
   below still applies verbatim to `fr-board`. It is mechanical now; Plans 6/7
-  should do it. The original text follows. The script's positive
+  should do it. — **DONE in Plan 6 Task 18**: `scripts/audit-map/fr-board.map`
+  maps all 77 classes of Plan 2's nine directories, and all nine invocations run
+  under the 4-argument form at zero `MISSING` and zero `UNMAPPED`. Writing it
+  exposed seven places where the crate-wide search had been satisfied by a
+  *different* class's `fn` or marker, all seven now fixed
+  (`docs/plan-6-handoff.md` §5.6). The script was **not** weakened. The original text follows. The script's positive
   branch is `grep -rqE "fn <snake>…" <crate src>` over the *whole* crate, so
   for `Foo.getBar` any `fn get_bar…` anywhere satisfies the check — including
   one on an unrelated type. 357 of the 750 distinct `class`/`method` pairs in
@@ -474,17 +487,31 @@ design:
   `ShapeSearchTree`'s `tree_shape_of` and `ignore_object` still panic on a
   `TreeObject::Room`, so a room in the tree must not be reached by
   `overlapping_tree_entries` until Plan 6 Task 4 teaches those queries to
-  resolve a room's shape and layer.
-- **`ShapeSearchTree::complete_shape`/`divide_large_room` are not written at
-  all** — there is no stub function to fill in, only two `// added in Plan 6:`
-  comment markers at the end of
+  resolve a room's shape and layer. — **that last obligation is discharged in
+  Plan 6 Task 4**: the compensated queries resolve a room's shape and layer
+  through the `ExpansionRoomStore`, and
+  `a_room_bearing_tree_answers_queries_through_the_room_lookup`
+  (`crates/fr-router/tests/sorted_neighbours.rs`) is the test.
+- ~~**`ShapeSearchTree::complete_shape`/`divide_large_room` are not written at
+  all**~~ — **discharged in Plan 6 Task 3** (`131211f`): both are
+  `fr_router::AutorouteSearchTreeExt` methods over `ShapeSearchTree`, in all
+  three angle regimes, and the two markers named below became `renamed:` markers
+  naming that trait. `./scripts/audit-port.sh board/searchtree
+  crates/fr-board/src` still exits 0. The original text follows. There were two
+  deferral markers at the end of
   `searchtree/shape_search_tree.rs` (~:1625-1635) recording what belongs there
   and why it cannot land yet (both take and return
   `IncompleteFreeSpaceExpansionRoom`, which is `autoroute/expansion`). The
   markers name `ShapeSearchTree.java:580-693`,
   `ShapeSearchTree45Degree.java:95-281`, `ShapeSearchTree90Degree.java:38-191`
   and `ShapeSearchTree.java:1095-1118`/`ShapeSearchTree45Degree.java:288-298`.
-- **`AutorouteInfo` is an opaque placeholder** (`items/header.rs`) standing
+- ~~**`AutorouteInfo` is an opaque placeholder**~~ — **discharged in Plan 6
+  Task 1** (`9b63cb1`): it now holds `start_info: bool`,
+  `precalculated_connection: Option<ConnectionId>` and
+  `expansion_rooms: Vec<Option<ObstacleRoomId>>` (plan-6 ruling 15 — ids, not
+  objects, because `fr-board` cannot name `fr-router`'s types), with the two new
+  id newtypes beside `RoomId` in `ids.rs`. The original text follows.
+  `AutorouteInfo` was an opaque placeholder (`items/header.rs`) standing
   in for `autoroute.ItemAutorouteInfo`; Plan 6 gives it a real body. It is
   reachable only through `ItemHeader::autoroute_info`/`get_autoroute_info`
   so that `Board::deep_copy` can drop it wholesale (`clear_autoroute_info`),
@@ -501,7 +528,19 @@ design:
   is preserved some other way.
 
 **Plan 7 (shove/tighten/forced-via routing):**
-- **Quirk #74's early return is a decision, not a default.** `Board::
+- ~~**Quirk #74's early return is a decision, not a default.**~~ — **decided,
+  and the opposite way round: quirk #74 is now REPRODUCED** (Plan 6 Task 17b,
+  controller rulings AD and AE, `ead7902`). This bullet's premise — "the port's
+  `Line` is a `Copy` type with no identity to base Java's reference comparison
+  on" — was the thing that had to change. `fr_geometry::Line` now carries a
+  private identity token drawn from a process-wide `AtomicU64`, and
+  `Board::change_trace` compares with `Line::is_same_object`. It is not
+  cosmetic: comparing by value kept a different number of lines, which changed
+  the search-tree shape, which made the DAC2020 board diverge from the jar at
+  `ripupPassNo >= 2`. With the token the acceptance ladder is 15/15 at passes 1,
+  2 and 4. **The contract Plan 7 must keep** is in `docs/plan-6-handoff.md` §9:
+  a new token wherever Java allocates a new `Line`, the same token wherever Java
+  passes the same reference on. The original text follows. `Board::
   change_trace` compares polylines by *value* (the port's `Line` is a
   `Copy` type with no identity to base Java's reference comparison on),
   which lets it take an early return Java's identity comparison never can.
@@ -511,16 +550,24 @@ design:
   + `normalize` always run, since Java only takes its early return for an
   array identity-identical to the one already stored — not a case that can
   arise for a `Copy` value type.
-- **`equals_geometric` at the `TraceTightener` call sites remains entirely
-  open** (see ruling — not a correction — above): `Line.equals`
+- ~~**`equals_geometric` at the `TraceTightener` call sites remains entirely
+  open**~~ — **discharged in Plan 6 Task 15a** (`cd202d0`, controller ruling AB
+  moved the whole tightener family into Plan 6): all four `Line.equals` sites use
+  `equals_geometric`, never `==`. The original text follows (see ruling — not a
+  correction — above): `Line.equals`
   (quirk #34) has four Java call sites; one (`Simplex::border_line_index`)
   predates Plan 2 in `fr-geometry`; the other three
   (`TraceTightener.repositionLine`, `TraceTightenerAnyAngle.repositionLine`
   ×2) are untouched and must use `equals_geometric`, never `==`, when
   ported — using `==` there would silently disable the guard those methods
   exist for.
-- **`RoutingBoardExt` is the shove/pull-tight extension trait**
-  (plan ruling #4, `fr-router`): `Trace.pullTight`/`PolylineTrace.pullTight`
+- ~~**`RoutingBoardExt` is the shove/pull-tight extension trait**~~ —
+  **built in Plan 6, not Plan 7** (plan-6 ruling 3, Task 9, `a3bb81b`), because
+  the maze search reaches `checkForcedTracePolyline` directly; controller rulings
+  AA and AB then brought the mutating halves and the whole tightener family down
+  with it. What is left for Plan 7 is `opt_changed_area` and the pull-tight tail
+  of `removeItemsAndPullTight` (`docs/plan-6-handoff.md` §10). The original text
+  follows (plan ruling #4, `fr-router`): `Trace.pullTight`/`PolylineTrace.pullTight`
   and the `TraceShover` family are marked `// added in Plan 7:` in
   `items/trace.rs` and land there, not in `fr-board`.
 - **`changed_area`'s reset depends on `deep_copy`, not on being cleared

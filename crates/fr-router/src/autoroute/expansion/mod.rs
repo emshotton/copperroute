@@ -130,7 +130,7 @@ pub struct ExpansionRoomStore {
     incomplete_list_created: bool,
 }
 
-/// The store is the [`RoomLookup`] the room-bearing search-tree queries take: a complete room's
+/// The store is the room lookup the room-bearing search-tree queries take: a complete room's
 /// `getTreeShape`/`shapeLayer` are its own shape and layer
 /// (CompleteFreeSpaceExpansionRoom.java:66-74), and this is where they live.
 ///

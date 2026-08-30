@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 17 of 18
+## State: complete (Task 18 of 18)
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -47,7 +47,24 @@ calls on every corner list: the pull-tight family, and
 maze search, locate, ripped-connection deletion, insert — and
 `route_connection` is the Plan 6 half of the seam
 (`AutorouteConnectionRouter.route` steps 1-5, ruling 2), which is the entry
-point Plan 7's pass runner and Task 17's `p6t1` call.
+point Plan 7's pass runner and Task 17's `p6t1` call. **Task 17** turns that loop
+on real boards against the HEAD jar — 369 connections on five stems, all three
+rungs of ruling 1's ladder, at `ripupPassNo` 1, 2 and 4 — and **Task 17b**
+(controller ruling AD) closes the last divergence by reproducing quirk #74.
+**Task 18 closes the plan:** the three in-scope Java suites are ported by name in
+`tests/java_ports.rs`, `tests/fixtures.rs` is the single-pass stand-in for
+`RoutingFixtureTest`'s assertion family (with spec §14.3's DAC2020 smoke test
+running in ordinary CI), every audit invocation in the workspace exits 0 with no
+`MISSING` and no `UNMAPPED`, and `docs/plan-6-handoff.md` is what Plan 7 starts
+from.
+
+**What this crate routes today:** one connection at a time, exactly as
+`AutorouteConnectionRouter.route` steps 1-5 do — maze search, locate, delete the
+ripped connections, insert, with the shove, spring-over and pull-tight families
+underneath. **What it does not:** the pass loop, the fanout pre-pass, the
+optimizer, `ViaOptimizer`, `optChangedArea`, `removeItemsAndPullTight` and the
+necked retry / strict-DRC rollback / failure-log tail of `route` — all Plan 7's
+(ruling 2), all listed in "What Plan 7 inherits" at the foot of this file.
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -279,16 +296,101 @@ Java's id does.
   (`fr-dsn`, `fr-drc` and `parity` are dev-dependencies, for the fixtures and
   the parity harness). Not `rand` (see `JavaRandom` above), not `slotmap` (see
   `Arena` below), not `rayon`.
-* **Deterministic containers, transcribed rather than chosen** (ruling 4).
-  `BTreeSet`, never `BinaryHeap` — Java pops `mazeExpansionList.iterator()
-  .next()` *and re-inserts mutated elements*. Comparators transcribe Java's
-  `<`/`>` chains literally, never `total_cmp` and never
-  `partial_cmp().unwrap()`: on NaN Java's `<` and `>` are both false and the
-  comparison falls through to the next sort key, which both Rust idioms get
-  wrong.
-* **No GUI, no `FRLogger`, no observers, no static mutable state, no clock.**
+* **Deterministic containers, transcribed rather than chosen** (ruling 4, and
+  **ruling Y**). A sorted set, never `BinaryHeap` — Java pops
+  `mazeExpansionList.iterator().next()` *and re-inserts mutated elements*.
+  Comparators transcribe Java's `<`/`>` chains literally, never `total_cmp` and
+  never `partial_cmp().unwrap()`: on NaN Java's `<` and `>` are both false and
+  the comparison falls through to the next sort key, which both Rust idioms get
+  wrong. **Which** sorted set is not a style choice: wherever the comparator is
+  not a total order — `SortedRoomNeighbour` (quirk #160) and `MazeListElement`
+  (quirk #171) — it is [`JavaTreeSet`](src/java_tree_set.rs), a port of
+  `java.util.TreeMap`'s red-black tree, because `BTreeSet`'s B-tree visits a
+  different subset of the elements on insert and therefore **drops a different
+  one** and orders the rest differently. Measured on `run.sh p6t3` mode 3.
+  `BTreeSet` stays, and is used, where the comparator provably is a total order.
+  Two further rules come with it. **The maze queue's `push` is guarded**, not a
+  plain insert: `MazeSearchEngine`'s anonymous `TreeSet` override
+  (`MazeSearchEngine.java:84-125`) refuses any element outside the fanout escape
+  window and Java **ignores the boolean it returns**, so `init` can report success
+  with an empty queue (quirk #178) — `MazeQueue::push` reproduces both halves, and
+  its return value is deliberately discarded at the one site Java discards it.
+  And **there are three copies of the non-transitive neighbour comparator**, one
+  per angle regime (`SortedRoomNeighbours.java:720-762`,
+  `Sorted45DegreeRoomNeighbours.java:803+`, `SortedOrthogonalRoomNeighbours.java:598+`,
+  quirk #160). All three were read and classified rather than assumed, and all
+  three are non-transitive.
+* **No GUI, no `FRLogger`, no observers, no clock, and no static mutable
+  state — with one recorded exception**, controller **ruling AE**:
+  `fr_geometry::Line` carries a private identity token drawn from a process-wide
+  `AtomicU64`, because `PolylineTrace.change` compares `Line`s by **reference**
+  (quirk #74) and the difference is board-observable. The contract Plan 7 must
+  keep: **a new token wherever Java allocates a new `Line`, and `Copy` — the
+  same token — wherever Java passes the same reference on.** The token has one
+  reader (`Line::is_same_object`) with one caller (`Board::change_trace`);
+  nothing reads its *value*, so no output, ordering, hash or serialised form can
+  observe it and runs stay bit-reproducible. Anything else using it to stand in
+  for `==` is a bug.
+* **`#![forbid(unsafe_code)]`** in this crate root, and in every other workspace
+  crate (`fr-geometry`, `fr-board`, `fr-dsn`, `fr-settings`, `fr-drc`,
+  `tests/parity` and the `freerouting` binary's `main.rs`). The one `unsafe` left
+  in the repository is the `static mut` PRNG in
+  `scripts/differential/rust/src/bin/p2t13.rs`, a differential driver rather than
+  a crate; `scripts/differential/README.md` names it.
 * Deliberate Java bugs are reproduced rather than fixed, each with a
   `// Java bug:` marker at the site and a row in `docs/java-quirks.md`.
+
+## Cancellation: six sites, and why a seventh is a bug (ruling 6)
+
+`AutorouteEngine.isStopRequested` (`autoroute/maze/AutorouteEngine.java:294-304`) is
+`timeLimit.limitExceeded() || stoppableThread.isStopRequested()`. Java consults it
+in **six** places inside Plan 6's scope, and the port consults it in exactly the
+same six, each with a test:
+
+| # | Java | port |
+|---|---|---|
+| 1-4 | `MazeSearchEngine.init` — the destination-set walk (`:975`), and three more inside the seeding loops (`:1002`, `:1040`, `:1073`) | `src/autoroute/maze/search.rs`, `MazeSearchEngine::init`; `each_of_the_four_init_stop_sites_aborts_where_java_does` |
+| 5 | the pop loop, **before** the queue is touched (`:323`) | `MazeSearchEngine::find_connection`; `the_pop_loops_stop_check_aborts_before_the_queue_is_touched` |
+| 6 | `DrillPage.getDrills` → `PolylineArea.splitToConvex(stoppableThread)` (`drill/DrillPage.java:103`) | `src/autoroute/drill/page.rs`; `split_to_convex_stops_when_the_stop_check_trips` |
+
+**A seventh site is a bug, not a safety net.** Adding one makes a run stop earlier
+than Java's loop shape implies, which changes the board and breaks the acceptance
+ladder — the divergence is not "we stopped sooner", it is "we routed something
+else". Two consequences are worth spelling out:
+
+* **The inserter is handed `&|| false`** (controller ruling AC). Java checks no stop
+  anywhere below `AutorouteEngine.java:265`, so threading the caller's check into
+  `FoundConnectionInserter` would abort inserts Java completes. Quirk #76's hang
+  stays reachable here exactly as it is in Java; Plan 7 owns the wall clock.
+* **`Board::split_traces_checked` consults the check once**, inside the entry walk
+  that does not terminate — not once per picked trace. The second site would be the
+  seventh.
+
+The `StopCheck`s that plan-3 ruling F threads through `Board::insert_via_checked` /
+`insert_escape_via_checked` / `split_traces_checked` are the *same* mechanism, not
+extra sites: they exist because `ForcedViaInserter.insert` reaches quirk #76's
+machinery from inside the router.
+
+## The five recovery boundaries (ruling 7)
+
+Java's `catch (Exception)` sites inside Plan 6's scope, and what each becomes:
+
+| # | Java | port | what it answers |
+|---|---|---|---|
+| 1 | `AutorouteEngine.completeExpansionRoom:518-520` | `Result`, and **`Err` means an empty collection** (quirk #166) — every caller uses `unwrap_or_default()`, **never** `?` | Java's `return new ArrayList<>()` |
+| 2 | `autorouteConnection:139` (maze construction) | `catch_unwind` | `FAILED` |
+| 3 | `autorouteConnection:157` (`findConnection`) | `catch_unwind` | `FAILED` |
+| 4 | `autorouteConnection:178-190` (the locator) | `catch_unwind` — this is what turns quirk #181's NPE back into Java's `FAILED` | `FAILED` |
+| 5 | `AutorouteConnectionRouter.route:155-158` | `catch_unwind` around `route_connection` | a bare `FAILED` |
+
+Boundaries **6 and 7 are Plan 7's**: `AutoroutePassRunner.java:144` (per pass) and
+`BatchAutorouterThread.java:537` (per item). Both catch `Exception`, not
+`Throwable`, so neither recovers from a stack overflow — quirk #27 crashes both
+languages.
+
+Everything *below* `AutorouteEngine.java:260` deliberately panics rather than
+degrading, because Java has no handler there either and Plan 7's necked retry is
+the real one.
 
 ## `Arena<T>`, and why not `slotmap`
 
@@ -329,7 +431,7 @@ drive to zero. Task 2 moved `autoroute/expansion` from 79 MISSING to **13**
 (the three `Sorted*RoomNeighbours` classes, Tasks 4-5) and `autoroute/maze`
 from 28 to **27**, both at zero UNMAPPED; Task 3 left both untouched, because
 `completeShape`/`divideLargeRoom` are `board/searchtree` classes, audited from
-`fr-board`. There the two `// added in Plan 6:` markers on
+`fr-board`. There the two Plan 6 deferral markers on
 `crates/fr-board/src/searchtree/shape_search_tree.rs` became `renamed:` markers
 naming `AutorouteSearchTreeExt`, and `./scripts/audit-port.sh board/searchtree
 crates/fr-board/src` still exits 0. Task 4 took `autoroute/expansion` from 13
@@ -391,10 +493,114 @@ The wide `board/actions` glob above (which also names `ForcedPadRouter.java` and
 `ForcedViaInserter.java`) started passing in Task 10. There is deliberately **no**
 `board/facade` invocation against this crate: `RoutingBoardExt` carries five of
 `RoutingBoard`'s methods, and the class's other ~100 stay in `fr-board`, whose
-own `board/facade` audit covers them — Task 9 turned the three `added in Plan 6:`
+own `board/facade` audit covers them — Task 9 turned the three Plan 6 deferral
 markers there (`additionalUpdateAfterChange`, `initAutoroute`,
 `checkForcedTracePolyline`) into `renamed:` markers naming this crate, and that
 audit still exits 0.
+
+### Every audit invocation in the workspace (Task 18 runs all of them to zero)
+
+Task 18's acceptance is that **all twenty-nine** invocations below exit 0 with
+no `MISSING` line and no `UNMAPPED` line, on the committed tree. Copy-pasteable:
+
+```sh
+# fr-geometry (Plan 1; scripts/audit-geometry-port.sh is a thin alias for the first)
+./scripts/audit-port.sh geometry/planar crates/fr-geometry/src
+
+# fr-board — Plan 2's nine directories, now under the per-class map Task 18 wrote
+# (this discharges the Plan 3 obligation; the 3-argument crate-wide form still
+# exits 0 and is the weaker check).
+for dir in board/model/items board/model/structure board/facade board/searchtree            board/trace board/state rules core/library datastructures; do
+  ./scripts/audit-port.sh "$dir" crates/fr-board/src '*.java' scripts/audit-map/fr-board.map
+done
+./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' scripts/audit-map/fr-drc.map
+
+# fr-dsn (Plan 3)
+./scripts/audit-port.sh io/specctra        crates/fr-dsn/src '*.java' scripts/audit-map/fr-dsn.map
+./scripts/audit-port.sh io/specctra/parser crates/fr-dsn/src '*.java' scripts/audit-map/fr-dsn.map
+./scripts/audit-port.sh io                 crates/fr-dsn/src \
+    'CoordinateTransform.java BoardReadResult.java BoardMetadata.java FileFormat.java KiCadNetClassNames.java' \
+    scripts/audit-map/fr-dsn.map
+./scripts/audit-port.sh datastructures     crates/fr-dsn/src \
+    'IdentifierType.java IndentFileWriter.java' scripts/audit-map/fr-dsn.map
+
+# fr-settings (Plan 4)
+./scripts/audit-port.sh settings crates/fr-settings/src \
+    'RouterSettings.java LayerSettings.java ScoringSettings.java OptimizerSettings.java \
+     FanoutSettings.java DesignRulesCheckerSettings.java DebugSettings.java \
+     SettingsSource.java SettingsMerger.java GlobalSettings.java' \
+    scripts/audit-map/fr-settings.map
+./scripts/audit-port.sh settings/sources crates/fr-settings/src '*.java' scripts/audit-map/fr-settings.map
+./scripts/audit-port.sh util             crates/fr-settings/src 'ReflectionUtil.java' scripts/audit-map/fr-settings.map
+./scripts/audit-port.sh util/gson        crates/fr-settings/src '*.java' scripts/audit-map/fr-settings.map
+
+# fr-drc (Plan 5)
+./scripts/audit-port.sh drc          crates/fr-drc/src '*.java' scripts/audit-map/fr-drc.map
+./scripts/audit-port.sh io/kicad     crates/fr-drc/src '*.java' scripts/audit-map/fr-drc.map
+./scripts/audit-port.sh core/scoring crates/fr-drc/src \
+    'BoardStatisticsClearanceViolations.java' scripts/audit-map/fr-drc.map
+
+# fr-router (Plan 6) — the five autoroute packages plus the two board/* file sets
+./scripts/audit-port.sh autoroute           crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh autoroute/maze      crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh autoroute/expansion crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh autoroute/drill     crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh autoroute/path      crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh board/actions  crates/fr-router/src \
+    'ForcedViaInserter.java ForcedPadRouter.java DrillItemMover.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh board/optimize crates/fr-router/src \
+    'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java' \
+    scripts/audit-map/fr-router.map
+```
+
+Two invocations are deliberately **absent** and would report `UNMAPPED` if added:
+`autoroute/pipeline` and `autoroute/events` (Plans 7 and 8 — `src/lib.rs`'s
+roster carries both, method by method), and `board/optimize/ViaOptimizer.java`
+(Plan 7, likewise rostered). `audit-port.sh` does not recurse, so the roster is
+the only gate on those, which is why it names every method rather than the class.
+
+Two things the zero does **not** prove, restated because it is easy to over-read:
+the script's positive `fn` match is by name, so under a map it proves the name is
+ported *somewhere in the class's mapped files*, and six `board/facade` classes map
+to a `board/*.rs` glob because `Board` is one Rust type assembled from six Java
+classes. The per-class evidence is the Java citation in every ported body's doc
+comment plus the differential drivers below.
+
+## The probe roster
+
+Every number in this README that is not read off a Java source line came from one
+of these. All of them run against the clone's **HEAD** build (plan-6's global
+constraints make HEAD the parity jar; the pinned 2.3.0 jar of plan-3 ruling 10 is
+not used anywhere in this plan). `scripts/differential/run.sh` prints the jar it
+used in its header line — read it.
+
+| driver / probe | what it pins | run |
+|---|---|---|
+| `java/P6T2.java` + `rust/src/bin/p6t2.rs` | `completeShape` / `divideLargeRoom` in all three angle regimes (Task 3) | `./scripts/differential/run.sh p6t2` |
+| `java/P6T3.java` + `rust/src/bin/p6t3.rs` | the three neighbour sorters, the non-transitive comparator and `JavaTreeSet` (Tasks 4, 5) | `./scripts/differential/run.sh p6t3` |
+| `java/P6T1.java` + `rust/src/bin/p6t1.rs` | **the acceptance ladder** — a whole board, connection by connection (Tasks 17, 17b) | `./scripts/differential/run.sh p6t1 <dsn> <max_items> [ripup_pass_no] [rules]` |
+| `java/P6T17bProbe.java` | quirk #74's `Line` reference comparison, and the `keepAt` counts it changes | see the `ripupPassNo > 1` section |
+| `probes/P6T6Probe.java` | `AutorouteEngine`'s room lifecycle (Task 6) | committed transcript in `tests/data/` |
+| `probes/P6T7Probe.java` | `DrillPage` / `DrillPageArray` / `ExpansionDrill` (Task 7) | ditto |
+| `probes/P6T8Probe.java` | `AutorouteControl`, `DestinationDistance`, `MazeListElement`; mode `viadiv` is ruling H's | ditto |
+| `probes/P6T10Probe.java` | `ForcedPadRouter` / `ForcedViaInserter`'s check half, 320 rows (Task 10) | ditto |
+| `probes/P6T10bProbe.java` | the mutating half and the via-insertion chain (Task 10b) | ditto |
+| `probes/P6T11Probe.java` | `MazeSearchEngine`'s frame, 19 modes (Task 11) | ditto |
+| `probes/P6T12Probe.java` | the room-door expansion and the A\* cost model, 12 modes (Task 12) | ditto |
+| `probes/P6T13Probe.java` | `MazeExpansionEngine`, `MazeRipupResolver`, `Connection`, 14 modes (Task 13) | ditto |
+| `probes/P6T14Probe.java` | the three `FoundConnectionLocator` regimes, 9 modes (Task 14) | ditto |
+| `probes/P6T15aProbe.java` | the pull-tight family, 11 modes incl. 3×256 random polylines (Task 15a) | ditto |
+| `probes/P6T15bProbe.java` | `insertForcedTracePolyline` / `insertForcedTraceSegment` / `springOverObstacles`, 8 modes, 1 621 board dumps (Task 15b) | ditto |
+| `probes/P6T15Probe.java` | `FoundConnectionInserter`, 8 modes (Task 15) | ditto |
+| `probes/P6T16Probe.java` | `autorouteConnection` end to end, 14 modes × 3 regimes (Task 16) | ditto |
+
+**Regenerating the references.** `scripts/gen-router-reference.sh` writes
+`tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
+`tests/reference/router-fixtures.txt`; `--verify-hash-modes` re-runs every stem
+under `-XX:hashCode=0,1,2,3,4` and requires five byte-identical files.
+`cargo test -p fr-router --test reference_parity` is what checks the port against
+them; the DAC2020 stems are `#[cfg_attr(debug_assertions, ignore)]`, so use
+`--release` for the whole ladder.
 
 ## The drill package (Task 7)
 
@@ -1760,3 +1966,41 @@ say about them:
 * **Deeper than 369 connections go.** `routing_board_ext.rs:730` needs a shove
   chain that exhausts the recursion budget, and `inserter.rs:123` needs a ripup
   that removes the located connection's own start or target trace.
+
+
+## What Plan 7 inherits
+
+Everything above `route_connection`, and nothing below it. Each row names the
+Java it starts from and the marker in this tree that records it; `src/lib.rs`'s
+roster carries the same list method by method, so `grep -rn "added in Plan 7"
+crates/` is the complete inventory.
+
+| what | Java | where it is recorded here |
+|---|---|---|
+| `AutorouteConnectionRouter.route` **steps 6-8** — the necked retry, the strict-DRC rollback, the failure-log write | `autoroute/pipeline/AutorouteConnectionRouter.java:160-233` | `src/autoroute/maze/engine.rs:1818`; `src/lib.rs` roster; obligation register |
+| the **pass loop** and the per-pass / per-item recovery boundaries | `AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`, `AutorouteBatchLoop.java:44-56` | `src/lib.rs` roster; the pass-level-recovery row of the obligation register |
+| the **fanout** pre-pass (and with it the only thing that sets `ctrl.isFanout`) | `BatchFanout.java`, `RoutingBoard.fanout` | `src/lib.rs` roster; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
+| the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
+| `ViaOptimizer.optViaLocation` | `board/optimize/ViaOptimizer.java` | `src/lib.rs` roster; `src/board_ext/tightener/mod.rs:13` |
+| `RoutingBoard.optChangedArea` (both overloads) and `RoutingBoard.removeItemsAndPullTight` — the batch callers of the tightener family Plan 6 already ported | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `crates/fr-board/src/board/mod.rs`'s `added in Plan 7:` markers |
+| the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |
+| the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin` | `board/optimize/TraceTightener.java` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `src/board_ext/tightener/` module docs |
+| `RoutingFailureLog` — `fr-board`'s `failure_log: Vec<String>` becomes the real type | `autoroute/RoutingFailureLog.java` | `crates/fr-board/src/board/mod.rs`'s field; `src/lib.rs` roster |
+| **the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s | `rules/ViaRule.java:21`, `io/specctra/RulesReader.java:340-350` | `src/autoroute/maze/control.rs:381`; `crates/fr-board/src/rules/via.rs:262`; obligation register |
+| the eight **re-marked** coverage obligations | see the marker table above | `grep -rn "obligation:" crates/fr-router/src` |
+| `max_passes == 0` means **unlimited** (quirk #140), and `-mt` is **not** a threading policy on the headless path (quirk #143) | `RouterSettings.validate`, `BatchOptimizer.createForHeadless:51-53` | House rules above; `docs/java-quirks.md` |
+
+**The one thing Plan 7 must not do** is re-implement steps 1-5. `route_connection`
+is what 369 connections of byte-identical evidence attach to; a second
+implementation above it would have none.
+
+## What Plan 8 inherits
+
+| what | Java | where it is recorded here |
+|---|---|---|
+| `RoutingPipeline.createForHeadless` and the rest of the pipeline wiring | `autoroute/pipeline/RoutingPipeline.java` | `src/lib.rs` roster (`added in Plan 8:`) |
+| `CancelToken` → this crate's `StopCheck` (six checked sites, ruling 6) | `datastructures/Stoppable`, spec §10 | `src/autoroute/maze/` stop-check sites |
+| `ProgressSink` replacing the dropped observers | `autoroute/events/**`, `NamedAlgorithm` | `src/lib.rs` roster (`not ported:` + `added in Plan 8:`) |
+| `BoardStatistics` — the metric block `tests/fixtures.rs` and `p6t1` stand in for | `core/scoring/BoardStatistics.java:271` | `tests/fixtures.rs` module docs |
+| `Wiring.readViaScope`'s unchecked `insert_via` (the ladder hang's last line) | `io/specctra/parser/Wiring.java:706` | `crates/fr-dsn/src/parser/wiring.rs:596`'s `obligation: Plan 8` |
+| the CLI/MCP surface: legacy-flag value normalisation wiring, MCP concurrency | `GlobalSettings.java:675-731`; spec §13 | `crates/freerouting/src/{legacy.rs,mcp/}`; obligation register |

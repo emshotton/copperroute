@@ -173,7 +173,7 @@ impl ExpansionDoor {
     ///    diagonal corner segment.
     /// 2. **dimension 2 between two `CompleteFreeSpaceExpansionRoom`s** (`:118-132`) — the
     ///    overlapping-corner case of 90- and 45-degree routing. The restraint line is computed by
-    ///    [`calc_door_line_segment`](Self::calc_door_line_segment), and the door is dropped
+    ///    `calc_door_line_segment` (private), and the door is dropped
     ///    entirely if there is none (`:124-127`, "CompleteFreeSpaceExpansionRoom inside other
     ///    room") or if it is shorter than `2 * offset` (`:128-131`, "2 dimensional small doors
     ///    are not yet expanded"). The `instanceof` is on

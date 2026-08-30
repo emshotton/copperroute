@@ -375,8 +375,8 @@ fn trace_connection_shape_of(center: &Point) -> TileShape {
 /// placed at a point.
 ///
 /// not ported: `Via.getAutorouteDrillInfo` (Via.java:203-217) and the `autorouteDrillInfo` field
-/// it memoises (Via.java:52) — see the `added in Plan 6:` marker on
-/// [`Via::clear_autoroute_drill_info`].
+/// it memoises (Via.java:52) — see the `renamed:` marker on
+/// [`Via::clear_autoroute_drill_info`], which names its `fr-router` home.
 #[derive(Debug, Clone)]
 pub struct Via {
     /// The `Item` base-class state (Item.java:41-67).

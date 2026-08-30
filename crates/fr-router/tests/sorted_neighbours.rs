@@ -14,7 +14,7 @@ use fr_board::prelude::*;
 use fr_geometry::{Area, IntBox, IntOctagon, IntVector, Point, Polyline, Shape, TileShape};
 use fr_router::JavaTreeSet;
 use fr_router::autoroute::expansion::sorted_neighbours::{
-    CalculationMode, SortedRoomNeighbour, SortedRoomNeighbours, select_calculation_mode,
+    SortedRoomNeighbour, SortedRoomNeighbours,
 };
 use fr_router::autoroute::expansion::{
     ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
@@ -23,30 +23,13 @@ use fr_router::autoroute::item_info;
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 
 // =================================================================================================
-// The factory dispatch — the port of `SortedRoomNeighboursFactoryTest` (plan-6 ruling 12)
+// The factory dispatch — moved to `tests/java_ports.rs` (Task 18)
 // =================================================================================================
-
-/// `SortedRoomNeighboursFactoryTest`'s three cases in one, because the port has one tree type
-/// parameterised by its angle restriction rather than three subclasses to mock.
-#[test]
-fn select_calculation_mode_dispatches_on_the_tree_subclass() {
-    let tree = |angle| ShapeSearchTree::new(TreeId(1), angle, 0);
-    // selectsOrthogonalCalculationForOrthogonalSearchTree
-    assert_eq!(
-        select_calculation_mode(&tree(AngleRestriction::NinetyDegree)),
-        CalculationMode::Orthogonal
-    );
-    // selects45DegreeCalculationFor45DegreeSearchTree
-    assert_eq!(
-        select_calculation_mode(&tree(AngleRestriction::FortyFiveDegree)),
-        CalculationMode::FortyFiveDegree
-    );
-    // selectsAnyAngleCalculationForOtherSearchTrees
-    assert_eq!(
-        select_calculation_mode(&tree(AngleRestriction::None)),
-        CalculationMode::AnyAngle
-    );
-}
+//
+// `SortedRoomNeighboursFactoryTest`'s three methods (`:15-34`) live in
+// `crates/fr-router/tests/java_ports.rs`, which plan-6 ruling 12 makes the one named home of every
+// ported Java suite. `select_calculation_mode` is still exercised from here indirectly, through
+// every `SortedRoomNeighbours::calculate` call below.
 
 // =================================================================================================
 // Hazard F — the non-transitive comparator (quirk #160)

@@ -54,7 +54,7 @@
 // not ported: `BoardObserverAdaptor.notifyChanged` — board observers.
 // not ported: `BoardObserverAdaptor.notifyMoved` — board observers.
 // added in Plan 3: `board/state/CoordinateTransform.java`'s `boardToUser` and `userToBoard` — the board-to-user unit transform the DSN reader and the SES writer need.
-// added in Plan 8: `board/state/BoardComparator.java` in full, including its nested `ComparisonResult` — it diffs two boards for the **result-manifest/report** layer (spec §10), not for the DRC layer: plan-5 ruling 13 established that nothing in `drc/**` and nothing on the `-drc` path references it, so Plan 5 re-pointed this marker rather than porting it. `crates/fr-drc/src/lib.rs` carries the same line at the crate the ruling was made in.
+// added in Plan 8: `board/state/BoardComparator.java` in full — its `compare` and its nested `ComparisonResult` — it diffs two boards for the **result-manifest/report** layer (spec §10), not for the DRC layer: plan-5 ruling 13 established that nothing in `drc/**` and nothing on the `-drc` path references it, so Plan 5 re-pointed this marker rather than porting it. `crates/fr-drc/src/lib.rs` carries the same line at the crate the ruling was made in.
 
 pub mod changed_area;
 pub mod clearance;
@@ -175,12 +175,12 @@ pub(crate) use item_ctx;
 // The autoroute engine is Plan 6:
 // not ported: `BasicBoard.additionalUpdateAfterChange` (BasicBoard.java:1222-1226) — an empty stub whose whole body is the `RoutingBoard` override below.
 // renamed: `RoutingBoard.additionalUpdateAfterChange` (RoutingBoard.java:96-118) -> `fr_router::board_ext::RoutingBoardExt::additional_update_after_change` — it takes an `AutorouteEngine`, which `fr-board` cannot name (plan-2 ruling 4, plan-6 ruling 3).
-// added in Plan 6: `BasicBoard.areThereItemsOnInactiveLayer` (BasicBoard.java:1443-1462) — takes an `AutorouteControl`.
+// not ported: `BasicBoard.areThereItemsOnInactiveLayer` (BasicBoard.java:1443-1462) — it takes an `AutorouteControl`, returns `void`, and its whole body is one `FRLogger.warn("There is an item on an inactive layer.")` plus a local `hasSomethingOnInactiveLayer` that is assigned and never read. **No caller anywhere in the Java tree** (`grep -rn areThereItemsOnInactiveLayer src/main src/test` finds only the declaration), so porting it would add a headless log line to nothing. Plan 6 Task 18 re-pointed this marker (it had been a Plan 6 deferral) after reading the body.
 // renamed: `RoutingBoard.initAutoroute` (RoutingBoard.java:882-897) -> `fr_router::board_ext::RoutingBoardExt::init_autoroute`; the engine is passed in and handed back where Java reads and writes its `autorouteEngine` field.
 // ported: `RoutingBoard.finishAutoroute` (RoutingBoard.java:899-905) -> `Board::finish_autoroute`
 // (`board/snapshot.rs`), empty until Plan 6 gives `Board` the `autoroute_engine` field it clears.
-// added in Plan 6: `RoutingBoard.autoroute` (RoutingBoard.java:911-971).
-// added in Plan 6: `RoutingBoard.fanout` (RoutingBoard.java:978-1110).
+// added in Plan 7: `RoutingBoard.autoroute` (RoutingBoard.java:911-971) — it builds an `AutorouteControl` and drives `AutorouteEngine.autorouteConnection` for one item, i.e. it is `AutoroutePassRunner`'s per-item step, which plan-6 ruling 2 puts above the seam. Plan 6 delivers what it calls (`fr_router::route_connection`).
+// added in Plan 7: `RoutingBoard.fanout` (RoutingBoard.java:978-1110) — the SMD fanout pass, which plan-6 ruling 2 puts above the seam with the rest of the batch loop.
 // added in Plan 7: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) — its body is `RoutingBoardOperations.optChangedArea` (:52-79), which runs the `TraceTightener`.
 // added in Plan 7: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127) — the removal half is `Board::remove_items_marking_changed_area`; the `combineTraces` + `optChangedArea` tail is Plan 7's.
 // added in Plan 7: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — `DrillItemMover`.
@@ -211,7 +211,7 @@ pub struct Board {
     /// Java `RoutingBoard.failureLog` (RoutingBoard.java:64), an
     /// `autoroute.RoutingFailureLog`. Plan 6 owns that type; the field is a `Vec<String>` hook
     /// until then, as the task brief asks.
-    // added in Plan 6: `autoroute.RoutingFailureLog`, the real element type.
+    // added in Plan 7: `autoroute.RoutingFailureLog`, the real element type — its only reader and writer is `AutoroutePassRunner`, which plan-6 ruling 2 puts in Plan 7; `crates/fr-router/src/lib.rs`'s roster carries the class method for method.
     pub failure_log: Vec<String>,
     /// Java `RoutingBoard.shoveFailingObstacle` (RoutingBoard.java:72), as an id.
     pub shove_failing_obstacle: Option<ItemId>,
@@ -640,7 +640,7 @@ impl Board {
     /// the router, on a board the router has been shoving traces around on. A trip answers
     /// [`BoardError::Stopped`](crate::BoardError::Stopped); the via is already inserted and the
     /// board is left part-split, exactly as Java's would be if its `split` threw.
-    // added in Plan 6: BasicBoard.insertVia (plan ruling 6, closing plan-3 ruling F)
+    // renamed: `BasicBoard.insertVia` under a `StopCheck` -> `Board::insert_via_checked` (plan-6 ruling 6, closing plan-3 ruling F; the unchecked `Board::insert_via` delegates to it with `|| false`).
     #[allow(clippy::too_many_arguments)]
     pub fn insert_via_checked(
         &mut self,
@@ -701,7 +701,7 @@ impl Board {
     /// it yet — `ForcedViaInserter.insert` reaches `insertVia` — but ruling 6 names all three
     /// entry points, and leaving one of them uncancellable would be a hole the next caller falls
     /// into.
-    // added in Plan 6: BasicBoard.insertEscapeVia (plan ruling 6, closing plan-3 ruling F)
+    // renamed: `BasicBoard.insertEscapeVia` under a `StopCheck` -> `Board::insert_escape_via_checked` (plan-6 ruling 6, closing plan-3 ruling F; the unchecked `Board::insert_escape_via` delegates to it with `|| false`).
     #[allow(clippy::too_many_arguments)]
     pub fn insert_escape_via_checked(
         &mut self,

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `fr-board`: the board-model crate — items, rules, library, search trees, and `Board` itself.
 //! Faithful port of freerouting's `board/model/**`, `board/searchtree/**`, `rules/**`, and
 //! `core/library/**` package family (see the Plan 2 design doc).

@@ -22,6 +22,7 @@
 //! `fr_geometry::Signum::as_int_i64`/`as_int_f64` (the two overloads, suffixed the same way as
 //! the rest of `fr-geometry`'s naming scheme).
 //! not ported: lives in fr-geometry: `Signum.negate`, ported as `fr_geometry::Signum::negate`.
+//! not ported: lives in fr-geometry: `Signum.of` (Signum.java:16-25), ported as the two overloads `fr_geometry::Signum::of_i64`/`of_f64`; and `Signum.toString` (Signum.java:32-35), which is the enum constant's name and is `Debug` here.
 //!
 //! added in Plan 3: `IndentFileWriter.startScope` (`datastructures/IndentFileWriter.java`).
 //! added in Plan 3: `IndentFileWriter.endScope`.

@@ -2268,3 +2268,23 @@ needed a handful of call sites updated for the `Polyline` methods that now
 return `Result<Polyline, PolylineError>` instead of `Polyline`/`Option` (see
 `docs/java-quirks.md` quirk #22) — mapped `Err` to the same `"EXC"` tag the
 Java side already used for the equivalent exception.
+
+## The repository's only `unsafe` (Plan 6 Task 18)
+
+Every workspace crate carries `#![forbid(unsafe_code)]` in its crate root as of
+Plan 6 Task 18 — `fr-geometry`, `fr-board`, `fr-dsn`, `fr-settings`, `fr-drc`,
+`fr-router`, `tests/parity` and the `freerouting` binary's `main.rs`. The
+drivers in `scripts/differential/rust` are deliberately **not** in that set,
+because one of them needs `unsafe`:
+
+    scripts/differential/rust/src/bin/p2t13.rs:12   static mut STATE: u64 = 0;
+    scripts/differential/rust/src/bin/p2t13.rs:15   unsafe { … }
+    scripts/differential/rust/src/bin/p2t13.rs:103  unsafe { STATE = seed };
+
+That is the driver's private transcription of `java.util.Random`'s LCG, held in
+a `static mut` so the shuffle can be called from free functions the way
+`Collections.shuffle` is. `grep -rn unsafe --include='*.rs' crates/ tests/`
+answers **nothing**, and the three lines above are the whole inventory for the
+repository. If `p2t13` is ever rewritten (the "`JavaRandom` is copied into four
+driver binaries" row of *Deferred coverage and cleanups* would collapse it into
+the shared module), the `static mut` should go with it and this section with it.

@@ -1,6 +1,10 @@
 //! Plan 6 Task 8: the port of `src/test/java/app/freerouting/autoroute/maze/MazeListElementTest`
 //! (plan-6 ruling 12), plus the two quirk tests ruling 4 asks for.
 //!
+//! **The two Java test methods themselves moved to `crates/fr-router/tests/java_ports.rs`** in
+//! Task 18, which is ruling 12's single named home for the three ported suites; what stays here is
+//! the tie-break, NaN and dropped-element family that suite does not cover.
+//!
 //! # What the Java test does, and what the port has to do instead
 //!
 //! `MazeListElementTest` builds a `TestDoor implements ExpandableObject` whose only live method is
@@ -60,39 +64,14 @@ fn element(door: i32, section_no: i32, expansion: f64, sorting: f64) -> MazeList
 }
 
 // =================================================================================================
-// The two Java test methods, ported one for one
+// The two Java test methods, ported one for one — moved to `tests/java_ports.rs` (Task 18)
 // =================================================================================================
-
-/// `MazeListElementTest.compareToReturnsZeroForSameInstance` (:14-20).
-#[test]
-fn compare_to_returns_zero_for_same_instance() {
-    let ids = test_doors(&[1]);
-    let e = element(1, 0, 0.0, 1.0);
-
-    assert_eq!(e.compare_to(&e, &ids), Ordering::Equal);
-}
-
-/// `MazeListElementTest.compareToSortsBySortingValue` (:22-35): "lower sortingValue must be
-/// expanded first".
-///
-/// Java's `SortedSet<MazeListElement> queue = new TreeSet<>()` is [`JavaTreeSet`] here (plan-6
-/// ruling Y/Z), and `queue.first()` is its first in-order entry.
-#[test]
-fn compare_to_sorts_by_sorting_value() {
-    let ids = test_doors(&[1, 2]);
-    let lower_cost = element(1, 0, 0.0, 1.0);
-    let higher_cost = element(2, 0, 0.0, 2.0);
-
-    let mut queue: JavaTreeSet<MazeListElement> = JavaTreeSet::new();
-    queue.add_by(higher_cost.clone(), |a, b| a.compare_to(b, &ids));
-    queue.add_by(lower_cost.clone(), |a, b| a.compare_to(b, &ids));
-
-    let first = queue.iter().next().expect("a non-empty queue");
-    assert_eq!(
-        first, &lower_cost,
-        "Lower sortingValue must be expanded first"
-    );
-}
+//
+// `MazeListElementTest.compareToReturnsZeroForSameInstance` (:14-20) and
+// `compareToSortsBySortingValue` (:22-35) live in `crates/fr-router/tests/java_ports.rs`, which
+// plan-6 ruling 12 makes the one named home of every ported Java suite, so that
+// `grep -rn MazeListElementTest crates/` gives one answer. Everything below is the quirk family
+// this task added around them, which stays here.
 
 // =================================================================================================
 // The four tie-breaks, in Java's order (MazeListElement.java:80-113)

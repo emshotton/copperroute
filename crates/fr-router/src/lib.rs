@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `fr-router`: freerouting's maze/expansion autorouter — a behavioral Rust port of
 //! `app.freerouting.autoroute.{,maze,expansion,drill,path}` plus the `board/actions` and
 //! `board/optimize` classes the router drives (freerouting, clone HEAD).
@@ -13,7 +15,7 @@
 //!
 //! # State
 //!
-//! **Task 17 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
+//! **Complete (Task 18 of 18).** What the crate holds is the data-model floor: [`Arena`] and its index
 //! newtypes, the per-connection outcome ([`AutorouteAttemptResult`]), the per-item scratch
 //! accessors ([`autoroute::item_info`]), and — from Task 2 — the expansion rooms, the doors and
 //! [`MazeSearchElement`] ([`autoroute::expansion`]), which is also where `fr-board`'s reserved
@@ -50,8 +52,12 @@
 //! connection by connection against the HEAD jar, `scripts/gen-router-reference.sh` commits the
 //! jar's answers to `tests/reference/router-*/`, and `tests/reference_parity.rs` walks plan-6
 //! ruling 1's ladder over them — **369 connections on five boards, all three rungs, including
-//! the inserted geometry and the item ids each connection burned**. The roster at the foot of
-//! this file names each still-deferred class and the plan that owns it.
+//! the inserted geometry and the item ids each connection burned**, at `ripupPassNo` 1, 2 and 4.
+//! **Task 18 closes the plan:** the three in-scope Java suites are ported by name
+//! (`tests/java_ports.rs`), `tests/fixtures.rs` is the single-pass stand-in for
+//! `RoutingFixtureTest`'s assertion family, every audit invocation exits 0 with no `MISSING` and
+//! no `UNMAPPED`, and `docs/plan-6-handoff.md` is what Plan 7 starts from. The roster at the foot
+//! of this file names each still-deferred class and the plan that owns it.
 //!
 //! # House rules
 //!
@@ -67,7 +73,13 @@
 //!   the maze queue): a sorted set, never `BinaryHeap`, and [`JavaTreeSet`] rather than
 //!   `BTreeSet` wherever the comparator is not a total order — the two keep and order different
 //!   elements there. Comparators are transcribed as Java's `<`/`>` chains, never `total_cmp`.
-//! * **No GUI, no `FRLogger`, no observers**, and no static mutable state.
+//! * **No GUI, no `FRLogger`, no observers**, and no static mutable state — with **one recorded
+//!   exception**, controller ruling AE: `fr_geometry::Line` carries an identity token drawn from
+//!   a process-wide `AtomicU64`, because `PolylineTrace.change` compares `Line`s by *reference*
+//!   (quirk #74) and the difference is board-observable. One reader, order-independent.
+//! * **`#![forbid(unsafe_code)]`** in this crate root and in every other workspace crate. The only
+//!   `unsafe` left in the repository is the `static mut` PRNG in
+//!   `scripts/differential/rust/src/bin/p2t13.rs`, which is a differential driver, not a crate.
 //! * `ExpansionCostFactor` is **re-exported** from `fr-settings`, never redeclared (ruling 8 —
 //!   the plan-4 obligation).
 
@@ -189,3 +201,47 @@ pub mod prelude {
 // added in Plan 7: `ItemRouteResult.viaCountReduced`
 // added in Plan 7: `ItemRouteResult.updateImproved`
 // added in Plan 7: `ItemRouteResult.compareTo`
+
+// --- `autoroute/pipeline/**`: Plan 7's whole surface (ruling 2's seam) ----------------------------
+//
+// Sixteen classes, ~2 900 loc, and every one of them sits *above* `AutorouteEngine::
+// autoroute_connection` / [`route_connection`]. `audit-port.sh` does not recurse, so the
+// `autoroute` invocation never reaches them; the roster is what records them instead. Rulings AA
+// and AB moved `ForcedPadRouter`'s routing half, `DrillItemMover`'s mutating half,
+// `TraceShover.insert` and the whole `TraceTightener` family *into* Plan 6, so — unlike the plan
+// as written — those are ported and are not on this list.
+// added in Plan 7: `AutorouteConnectionRouter.route` steps 6-8 — the necked retry, the strict-DRC rollback and the failure-log write (`AutorouteConnectionRouter.java:160-233`). Steps 1-5 are [`route_connection`].
+// added in Plan 7: `AutoroutePassRunner.runPass`, `AutoroutePassRunner.onBoardUpdatedEvent` — the per-pass item loop and its `catch (Exception)` recovery boundary (`AutoroutePassRunner.java:144`).
+// added in Plan 7: `AutorouteBatchLoop.run` — the pass loop, and the `IllegalArgumentException` `RoutableLayersSafetyCheckTest` asserts (`AutorouteBatchLoop.java:52-55`).
+// added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.enforceStrictDrc`, `BatchAutorouter.getAirLine`, `BatchAutorouter.getInitialUnroutedCount`, `BatchAutorouter.getSessionStartTime`, `BatchAutorouter.isFanoutTimedOut`, `BatchAutorouter.getDescription`, `BatchAutorouter.getId`, `BatchAutorouter.getName`, `BatchAutorouter.getType`, `BatchAutorouter.getVersion`.
+// added in Plan 7: `BatchAutorouterThread.getBoard`, `BatchAutorouterThread.getRoutedCount`, `BatchAutorouterThread.getFailedCount`, `BatchAutorouterThread.addBoardUpdatedEventListener`, `BatchAutorouterThread.fireBoardUpdatedEvent` — including the per-item `catch (Exception)` boundary at `BatchAutorouterThread.java:537`.
+// added in Plan 7: `BatchFanout.fanoutBoard`, `BatchFanout.compareTo`, `BatchFanout.fromBoardStatistics`, `BatchFanout.toString`, `BatchFanout.EscapeStatistics`, `BatchFanout.FanoutPassStatus`, `BatchFanout.FanoutRunSummary`.
+// added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.createForHeadless`, `BatchOptimizer.getCurrentPosition`, `BatchOptimizer.getId`, `BatchOptimizer.isTimedOut`.
+// added in Plan 7: `BatchOptimizerMultiThreaded.getNumTasks`, `BatchOptimizerMultiThreaded.getNumTasksFinished`, `BatchOptimizerMultiThreaded.getWinningCandidateScore`, `BatchOptimizerMultiThreaded.isWinningCandidate` — behind quirk #143: `-mt` is not a threading policy on the headless path, so Plan 7 must not make one out of it.
+// added in Plan 7: `OptimizeRouteTask.run`, `OptimizeRouteTask.clean`, `OptimizeRouteTask.getItem`, `OptimizeRouteTask.getRouteResult`.
+// added in Plan 7: `AutorouteAirlineCalculator` and `AutorouteRuntimeMetrics` — both package-private with no public members; the lines record the classes.
+// added in Plan 7: `AutorouteUnroutedReport.build` — the stagnation report; it is a consumer of `fr-drc`, whose `crates/fr-drc/src/lib.rs` carries the same line.
+// added in Plan 8: `RoutingPipeline.createForHeadless`, `RoutingPipeline.createForGui`, `RoutingPipeline.run`, `RoutingPipeline.getAutorouter`, `RoutingPipeline.getOptimizer`, `RoutingPipeline.addStageListener`, `RoutingPipeline.addBoardUpdatedEventListener`, `RoutingPipeline.addTaskStateChangedEventListener` — the wiring from the CLI/MCP surface into Plan 7's stages (spec §13); Plan 7 delivers the stages, Plan 8 the caller.
+// added in Plan 8: `NamedAlgorithm.addBoardSnapshotEventListener`, `NamedAlgorithm.addBoardUpdatedEventListener`, `NamedAlgorithm.addTaskStateChangedEventListener`, `NamedAlgorithm.fireBoardSnapshotEvent`, `NamedAlgorithm.fireBoardUpdatedEvent`, `NamedAlgorithm.fireTaskStateChangedEvent` — the observer base class; Plan 8's `ProgressSink` replaces it.
+// not ported: `NamedAlgorithmType` and `TaskState` — bare enums with no methods, whose only readers are the observer events below and the job store, both out of scope here.
+
+// --- `autoroute/events/**`: observers, replaced by Plan 8's `ProgressSink` -----------------------
+//
+// Six files, ~130 loc, all of them `java.util.EventObject` subclasses and their listener
+// interfaces. Nothing in the maze reads them: `AutorouteEngine.autorouteConnection` brackets its
+// work with `fireBoardSnapshotEvent`-style calls at `:254-270` and the port drops them (ruling 2's
+// "no observers"). Spec §10 gives the port a `ProgressSink` instead, in Plan 8.
+// not ported: `BoardSnapshotEvent.getBoard` — and the class itself.
+// not ported: `BoardSnapshotEventListener` — a one-method listener interface.
+// not ported: `BoardUpdatedEvent.getBoard`, `BoardUpdatedEvent.getBoardStatistics`, `BoardUpdatedEvent.getRouterCounters`.
+// not ported: `BoardUpdatedEventListener` — a one-method listener interface.
+// not ported: `TaskStateChangedEvent.getTaskState`, `TaskStateChangedEvent.getPassNumber`, `TaskStateChangedEvent.getBoardHash`.
+// not ported: `TaskStateChangedEventListener` — a one-method listener interface.
+
+// --- `board/optimize/ViaOptimizer`: Plan 7's, and the last of that directory ---------------------
+//
+// The other five files of `board/optimize` are this crate's (`TraceShover` and the four
+// `TraceTightener*`, controller ruling AB), and the `board/optimize` audit invocation names them.
+// `ViaOptimizer` is deliberately outside that glob: its one public method is called from
+// `RoutingBoard.optChangedArea` (`RoutingBoardOperations.java:52-79`), which is Plan 7's.
+// added in Plan 7: `ViaOptimizer.optViaLocation` (board/optimize/ViaOptimizer.java) — with `RoutingBoard.optChangedArea` and `RoutingBoard.removeItemsAndPullTight`, which reach it.

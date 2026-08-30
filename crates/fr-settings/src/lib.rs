@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `fr-settings`: the router configuration data model and merge engine — a faithful port of
 //! `settings/{RouterSettings,LayerSettings,ScoringSettings,OptimizerSettings,FanoutSettings,
 //! DesignRulesCheckerSettings,DebugSettings,SettingsSource,SettingsMerger}.java`, the in-scope

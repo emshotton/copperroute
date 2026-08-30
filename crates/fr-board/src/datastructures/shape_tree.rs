@@ -198,6 +198,8 @@ impl<O> Node<O> {
 /// Information about a single object stored in a tree: Java `ShapeTree.TreeEntry`
 /// (ShapeTree.java:157-168), used as the element type of [`ShapeTree::overlaps`]'s result set.
 ///
+/// renamed: `ShapeTree.Leaf.compareTo` (ShapeTree.java:216-223) -> the derived [`Ord`] on [`TreeEntry`], which compares `object` first and `shape_index` second.
+///
 /// The derived [`Ord`] compares `object` first and `shape_index` second, reproducing Java's
 /// `Leaf.compareTo` (ShapeTree.java:216-223) — the comparator behind `MinAreaTree.overlaps`'s
 /// `TreeSet<Leaf>`. Java's second half is the `int` subtraction

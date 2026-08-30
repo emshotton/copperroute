@@ -791,14 +791,24 @@ board). Ruling L cost nothing.
   multi-threading policy from them. Doing so would make the port more capable
   than Java — the same class of product decision as the dead legacy flags, and it
   belongs in a recorded decision, not in a router task.
-- **`ExpansionCostFactor` is declared here, with an `obligation:` marker**
-  (`router_settings.rs:934`), because `fr-settings` is its only producer and
+- ~~**`ExpansionCostFactor` is declared here, with an `obligation:` marker**~~ —
+  **discharged in Plan 6 Task 1** (`9b63cb1`, plan-6 ruling 8):
+  `crates/fr-router/src/lib.rs` **re-exports** `fr_settings::ExpansionCostFactor`
+  and declares nothing, and `crates/fr-router/tests/skeleton.rs` pins the two
+  paths to one `TypeId`. The original text follows. It is declared here, with an
+  `obligation:` marker (`router_settings.rs:934`), because `fr-settings` is its only producer and
   cannot depend on a router crate that does not exist. `AutorouteControl.java:287`
   is where Java declares it; when Plan 6 ports `AutorouteControl` it must
   **re-export `fr_settings::ExpansionCostFactor`, not declare a second record**.
   `RouterSettings::get_trace_costs()` is the producer.
-- **`is_fanout_enabled` is ported for you** (`router_settings.rs:472`, with an
-  `obligation:` marker naming Plan 6). Its sibling `getRunFanout` is **not**
+- **`is_fanout_enabled` is ported for you** (`router_settings.rs:472`; the
+  `obligation:` marker there is **re-pointed to Plan 7** by Plan 6 Task 18,
+  because plan-6 ruling 2 puts `autoroute/pipeline/**` — and with it
+  `BatchFanout`, the only thing that sets `ctrl.isFanout` — in Plan 7. Plan 6
+  reads the accessor for exactly one thing:
+  `AutorouteConnectionRouter.route:46`'s
+  `removeUnconnectedVias = !isFanoutEnabled()`, which `route_connection` takes as
+  a parameter). Its sibling `getRunFanout` is **not**
   ported (GUI only) and carries the opposite default — quirk #139 exists because
   the two share a javadoc and disagree.
 - **Quirk #127 means the router sees board-derived trace costs, not the `.rules`
@@ -819,11 +829,27 @@ board). Ruling L cost nothing.
   board change, a re-load — it must decide which variant to call, and quirks #126
   and #127 govern the answer: the `_if_needed` guard consults a flag that
   `setLayerCount` clears only on reallocation.
-- **Via-info / via-rule re-pointing (carried unchanged from Plan 3, still open).**
-  Nothing in Plan 4 touched it; the register row stands.
-- Everything Plan 2 and Plan 3 filed for these plans remains open and unchanged
-  (the ladder hang's second half, quirk #106, pass-level recovery, quirk #82,
-  `scripts/audit-map/fr-board.map`).
+- **Via-info / via-rule re-pointing (carried unchanged from Plan 3).** Nothing in
+  Plan 4 touched it. **Plan 6 decided it** (ruling H, Tasks 8 and 17): it closes
+  *against* the re-pointing, and the fix is a `ViaRule` that owns its `ViaInfo`s —
+  a Plan 7 `fr-board` change. See `docs/plan-6-handoff.md` §5.2 for the
+  measurement.
+- What Plan 2 and Plan 3 filed for these plans, **as Plan 6 left it**: the ladder
+  hang's second half is **discharged** (Task 10b built the `StopCheck` seam; one
+  `fr-dsn` line is re-pointed to Plan 8), `scripts/audit-map/fr-board.map` is
+  **written** (Task 18, all nine directories at zero), quirk #74's early return is
+  **decided and reproduced** (rulings AD/AE), `equals_geometric` at the
+  `TraceTightener` sites is **discharged** (Task 15a), `RoutingBoardExt` is
+  **built** (ruling 3, Task 9), and pass-level recovery is **half done** — Plan 6
+  built the five boundaries inside a connection, Plan 7 owns the two above it.
+  Still open and unchanged: quirk #106 (`Item.getConnectionItems` has no visited
+  set; `connection_items_checked` exists and the router now calls it) and quirk
+  #82, which must stay unfixed and now has three consumers.
+- **Both `-mt` fields survived Plan 6 untouched, and no headless threading policy
+  was invented from them.** The crate is single-threaded (plan-6 ruling 17) and
+  `crates/fr-router/README.md` restates this warning at the top of its house
+  rules, because a threaded maze would be non-deterministic and would dissolve
+  the per-connection acceptance ladder.
 
 ### Plan 8 (`fr-core` + surfaces)
 

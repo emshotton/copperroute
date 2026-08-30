@@ -1133,7 +1133,7 @@ fn insert_door_ok_for_obstacle_room(
 /// that is useful for the autoroute algorithm. It is assumed that this room and other have a
 /// 2-dimensional overlap. Returns false if no door was created."
 ///
-/// It lives here rather than on [`ObstacleExpansionRoom`] because the last three of its five
+/// It lives here rather than on [`ObstacleExpansionRoom`](crate::ObstacleExpansionRoom) because the last three of its five
 /// guards need the board (`Item.isRoutable`, `Item.sharesNet`, `instanceof PolylineTrace`) and
 /// the door it builds has to go into the store's arena; the marker on `obstacle_room.rs` names
 /// this function.

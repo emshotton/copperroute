@@ -765,6 +765,16 @@ HEAD jar (`FREEROUTING_JAR`).
 
 ### Plans 6/7 (`fr-router`)
 
+**Status after Plan 6** (`docs/plan-6-handoff.md`): the router is built up to and
+including one connection (`fr_router::route_connection`), and it calls this crate
+on every acceptance run — `tests/reference_parity.rs` and `tests/fixtures.rs` both
+build a `DesignRulesChecker` per connection for spec §9's metric block, and
+`violations == 0` holds on all 369 corpus connections. Of the bullets below,
+`get_all_airlines`' marker has been **re-pointed from Plan 6 to Plan 7** (its
+consumer `AutorouteUnroutedReport` is `autoroute/pipeline`'s, which plan-6
+ruling 2 puts there), the `-mt` warning was **honoured** (`fr-router` is
+single-threaded and says so), and the rest stand unchanged for Plan 7.
+
 - **Quirk #82 (Delaunay in-circle vacuous on axis-aligned input) must stay
   unfixed.** Carried unchanged from Plans 2 and 3, and now **load-bearing in a
   second crate**: `NetIncompletes` was ported on top of it, and that is *why*
@@ -774,13 +784,18 @@ HEAD jar (`FREEROUTING_JAR`).
   same commit.
 - **The router's DRC gate calls this crate.**
   `autoroute/StrictDrcEnforcementTest` and `fixtures/StrictDrcRoutingTest` are
-  Plans 6/7's ports and are the two in-scope Java DRC suites Plan 5 did not
+  **Plan 7's** — Plan 6 confirmed the split: both drive
+  `BatchAutorouter.enforceStrictDrc`, which is `autoroute/pipeline`'s, so
+  `crates/fr-router/tests/java_ports.rs` names them as out of scope rather than
+  porting them. They are the two in-scope Java DRC suites Plan 5 did not
   land. They exercise `DesignRulesChecker` through the router.
 - **`get_all_airlines` is the ratsnest the batch loop consumes**
   (`autoroute/pipeline/AutorouteUnroutedReport.java:19-80`, a *consumer* of
   this crate: `new DesignRulesChecker(board, null)`, `calculateAllIncompletes`,
-  `getAllAirlines` at `:20-22`; marked `// added in Plan 6:` in
-  `crates/fr-drc/src/lib.rs`). Its **counts** are stable and its **endpoints
+  `getAllAirlines` at `:20-22`; the marker in `crates/fr-drc/src/lib.rs` reads
+  `added in Plan 7:` since Plan 6 Task 18 re-pointed it — `AutorouteUnroutedReport`
+  is an `autoroute/pipeline` class, and plan-6 ruling 2 puts that whole package in
+  Plan 7). Its **counts** are stable and its **endpoints
   are order-dependent** (ruling 4). *A router that branches on which airline it
   gets will not be metric-stable.* Consume the counts, or consume the endpoints
   knowing they are one legitimate spanning tree among several.
@@ -806,7 +821,10 @@ HEAD jar (`FREEROUTING_JAR`).
   parallelised over items without restructuring `SearchTreeManager`'s counter.
 - **`-mt` drives nothing headless** (quirk #143, from Plan 4) — restated here
   because `fr-drc`'s compute is the obvious first candidate for a thread pool
-  and Java has no counterpart.
+  and Java has no counterpart. **Honoured by Plan 6** (ruling 17): `fr-router`
+  spawns nothing, and its README's house rules restate the warning for Plan 7,
+  because a threaded maze would be non-deterministic and would dissolve the
+  per-connection acceptance ladder.
 
 ### Plan 8 (`fr-core` + surfaces)
 

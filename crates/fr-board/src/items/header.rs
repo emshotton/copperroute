@@ -327,9 +327,7 @@ impl ItemHeader {
     }
 
     /// Port of `Item.clearanceClassIndex` (Item.java:917-923).
-    // renamed: Item.clearanceClassIndex -> ItemHeader::clearance_class (and
-    // Item.setClearanceClassIndex -> set_clearance_class), matching the Task 5 brief and the
-    // `clearance_class` naming the rest of the crate already uses.
+    // renamed: `Item.clearanceClassIndex` -> `ItemHeader::clearance_class`, and `Item.setClearanceClassIndex` -> `ItemHeader::set_clearance_class` — matching the Task 5 brief and the `clearance_class` naming the rest of the crate already uses. (One line: `audit-port.sh`'s marker regex is line-based, so a marker split across two lines matches nothing.)
     pub fn clearance_class(&self) -> usize {
         self.clearance_class
     }

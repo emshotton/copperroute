@@ -758,8 +758,10 @@ impl AutorouteEngine {
     /// this catch exists for are `NullPointerException`s inside ported geometry, which the port
     /// raises as panics (ruling 7).
     //
-    // obligation: `AutorouteEngine.completeExpansionRoom` — Tasks 11-16 must consume this with
+    // obligation: `AutorouteEngine.completeExpansionRoom` — every caller must consume this with
     // `.unwrap_or_default()` (or a `match` answering an empty collection), **never** with `?`.
+    // **Discharged for Plan 6 in Tasks 11-16** (`grep -rn "complete_expansion_room" crates/` — no
+    // `?` on any call site) and **standing for Plan 7**, which adds callers above the seam.
     // `Err` is not a failure to propagate: it is Java's `return new ArrayList<>()` at
     // AutorouteEngine.java:520, and propagating it would abort a connection Java completes.
     // `docs/java-quirks.md` #166 carries the reasoning.
@@ -1723,9 +1725,10 @@ fn route_connection_steps_1_to_5(
     // 100000 <pass>`): `router-rpi-splitter`, `router-j2-reference` and `router-ecc83-input`
     // MATCH at both, with ripup costs that differ from pass 1's, and pass 4 additionally
     // exercises `MazeRipupResolver`'s `randomize` draw (plan-6 ruling 5's bit-exact
-    // `JavaRandom`, seeded with `ctrl.ripupCosts`). `router-dac2020-bm01` matches for
-    // k = 1..266 at both passes and then diverges — see `crates/fr-router/README.md`
-    // "The one open divergence" for the measurement.
+    // `JavaRandom`, seeded with `ctrl.ripupCosts`). `router-dac2020-bm01` diverged at k = 267
+    // until controller ruling AD; Task 17b root-caused it to quirk #74 (`PolylineTrace.change`
+    // compares `Line`s by *reference*) and **closed it** — the ladder is 15/15 at passes 1, 2
+    // and 4. See `crates/fr-router/README.md`'s `ripupPassNo > 1` section.
     autoroute_control.ripup_costs = start_ripup_costs * ripup_pass_no;
     // obligation: `AutorouteConnectionRouter.route`'s `:46` `removeUnconnectedVias` —
     // **discharged in Task 17** together with `:241-245`'s `StopConnectionOption`, as Task 16

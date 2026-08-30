@@ -468,8 +468,11 @@ impl RouterSettings {
     /// (GUI-only, `WindowAutorouteParameter.java:590`) stays deferred. See
     /// `docs/java-quirks.md` #139.
     ///
-    /// obligation: Plan 6 owns `autoroute/pipeline/**`; this is the accessor it gates the fanout
-    /// pre-pass on.
+    /// obligation: **Plan 7** owns `autoroute/pipeline/**` (plan-6 ruling 2 moved it there);
+    /// this is the accessor `BatchFanout` gates the fanout pre-pass on. Plan 6 reads it for one
+    /// thing only — `AutorouteConnectionRouter.route:46`'s
+    /// `removeUnconnectedVias = !isFanoutEnabled()`, which `fr_router::route_connection` takes as
+    /// a parameter — so the marker stays open until Plan 7 has the pre-pass itself.
     pub fn is_fanout_enabled(&self) -> bool {
         self.fanout
             .as_ref()

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `fr-dsn`: Specctra DSN/SES/rules text I/O — the reader/writer layer built directly on top of
 //! `fr-board`. Faithful port of `io/specctra/**` and `io/{CoordinateTransform,BoardReadResult,
 //! BoardMetadata,FileFormat}.java` plus `datastructures/{IdentifierType,IndentFileWriter}.java`

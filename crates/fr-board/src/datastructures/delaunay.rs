@@ -162,6 +162,7 @@ pub struct DelaunayCorner {
 }
 
 impl DelaunayCorner {
+    // renamed: `PlanarDelaunayTriangulation.Corner` — the nested class's public constructor (PlanarDelaunayTriangulation.java:312-315), which `audit-port.sh` reads as a method of the enclosing class — -> `DelaunayCorner::new`.
     /// Creates a corner from an item id and a point.
     pub fn new(object: ItemId, point: Point) -> DelaunayCorner {
         DelaunayCorner { object, point }
@@ -169,6 +170,8 @@ impl DelaunayCorner {
 }
 
 /// One line segment of the triangulation's result — Java's `ResultEdge` (line 280-304).
+///
+/// not ported: `PlanarDelaunayTriangulation.Edge.compareTo` (PlanarDelaunayTriangulation.java:418-421) — `this.id - other.id` over the private `Edge`'s allocation counter, which the port replaces with an `EdgeId` index into the arena; nothing sorts `Edge`s, and the result type below is the only `Edge` that leaves the class.
 ///
 /// `start_object`/`end_object` are `Option` because Java's are nullable: the three corners of the
 /// bounding triangle carry a `null` `Storable` (lines 67-69). Edges *between* triangulation
@@ -634,6 +637,7 @@ impl PlanarDelaunayTriangulation {
     // ---------------------------------------------------------------------------------------
 
     /// `TriangleGraph.insert` (line 344-351).
+    // renamed: `PlanarDelaunayTriangulation.TriangleGraph.insert` (PlanarDelaunayTriangulation.java:344-351) -> `graph_insert`, because the crate already has several `insert`s and this one is the private triangle graph's.
     fn graph_insert(&mut self, triangle: TriangleId, parent: Option<TriangleId>) {
         self.initialize_is_on_the_left_of_edge_line_array(triangle);
         match parent {
