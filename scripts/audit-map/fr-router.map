@@ -53,8 +53,12 @@
 AutorouteAttemptState             autoroute/attempt.rs
 AutorouteAttemptResult            autoroute/attempt.rs
 ItemAutorouteInfo                 autoroute/item_info.rs
+# Landed in Plan 7 Task 2 (controller ruling AF).
+BoardHistory                      pipeline/board_history.rs
 # Not ported / Plan 7's — matched only by the roster at the foot of lib.rs (ruling 13).
-BoardHistory                      lib.rs
+# `BoardHistoryEntry` is the **shadowed, dead** top-level class (quirk #199), not the nested entry
+# `BoardHistory.java:188` actually uses; the nested one is `pipeline/board_history.rs`'s and is
+# matched as a method of `BoardHistory` above.
 BoardHistoryEntry                 lib.rs
 PerformanceProfiler               lib.rs
 AutorouteDiagnostic               lib.rs

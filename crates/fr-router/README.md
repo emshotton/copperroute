@@ -520,10 +520,14 @@ no `MISSING` line and no `UNMAPPED` line, on the committed tree. Both of those n
 silently fell back to the weaker crate-wide search, so it fails the run exactly as
 a `MISSING` method does. `ROSTERED` lines are informational and do not: they name
 a class whose every public method is answered by a `not ported:` /
-`added in Task|Plan N:` marker and none by a real `fn`. Twenty-two of them print
-across seven of the twenty-nine invocations (`board/state` 3, `datastructures` 5,
-`io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3, `io/kicad` 3,
-`autoroute` 5). Copy-pasteable:
+`added in Task|Plan N:` marker and none by a real `fn`. **Twenty-three** of them
+print across eight of the **thirty** invocations (`board/state` 3,
+`datastructures` 5, `io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3,
+`io/kicad` 3, `core/scoring` (fr-router) 2, `autoroute` 4). *(The count was
+twenty-two across seven of twenty-nine before Plan 7: Task 1 added the
+`core/scoring crates/fr-router/src` invocation and its two rows, and Task 2's
+`BoardHistory` took `autoroute` from five rows to four. Task 17 owns the rest of
+this section's rewrite.)* Copy-pasteable:
 
 ```sh
 # fr-geometry (Plan 1; scripts/audit-geometry-port.sh is a thin alias for the first)
@@ -561,6 +565,9 @@ DebugSettings.java SettingsSource.java SettingsMerger.java GlobalSettings.java'
 ./scripts/audit-port.sh io/kicad     crates/fr-drc/src '*.java' scripts/audit-map/fr-drc.map
 ./scripts/audit-port.sh core/scoring crates/fr-drc/src \
     'BoardStatisticsClearanceViolations.java' scripts/audit-map/fr-drc.map
+
+# fr-router's own core/scoring slice (Plan 7 Task 1, ruling AG)
+./scripts/audit-port.sh core/scoring crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
 
 # fr-router (Plan 6) — the five autoroute packages plus the two board/* file sets
 ./scripts/audit-port.sh autoroute           crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
@@ -625,6 +632,7 @@ used in its header line — read it.
 | `probes/P6T15bProbe.java` | `insertForcedTracePolyline` / `insertForcedTraceSegment` / `springOverObstacles`, 8 modes, 1 621 board dumps (Task 15b) | ditto |
 | `probes/P6T15Probe.java` | `FoundConnectionInserter`, 8 modes (Task 15) | ditto |
 | `probes/P6T16Probe.java` | `autorouteConnection` end to end, 14 modes × 3 regimes (Task 16) | ditto |
+| `probes/P7T2Probe.java` | `BoardHistory`, 61 calls over five phases incl. the `BoardHistoryTest` replay (Plan 7 Task 2) | ditto |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -2017,6 +2025,96 @@ say about them:
   chain that exhausts the recursion budget, and `inserter.rs:123` needs a ripup
   that removes the located connection's own start or target trace.
 
+
+## `BoardHistory`, the pass loop's best-board memory (Plan 7 Task 2, ruling AF)
+
+`autoroute/BoardHistory.java` was rostered `// not ported:` by plan-6 ruling 13,
+on spec §2's "undo store" exclusion. **Controller ruling AF overturns that**: it is
+not an undo store, it is the memory `AutorouteBatchLoop` restores from at
+`:306-320` and again at `:525-547`, and without it the board written to SES is the
+*last* pass's rather than the *best* pass's. It lives at
+`src/pipeline/board_history.rs`; the eleven roster lines it supersedes are gone,
+and `scripts/audit-map/fr-router.map` now points the class at that file.
+
+### Ruling 8's memory note: 30 live `Board`s, not 30 `byte[]`s — measured
+
+Java stores each snapshot as `board.serialize(false)`, a `byte[]`. This port has no
+`Serializable` (`global-constraints.md`), so ruling 8 stores a `Board` clone, and
+`MAX_HISTORY_SIZE` is 30 either way. The plan named the fallback in advance — a
+`Vec<u8>` of the port's own compact encoding — and required the cost to be measured
+on `Issue730-DAC2020_bm11.dsn` rather than guessed.
+
+**Measured** (release build, macOS `/usr/bin/time -l` maximum resident set size, the
+fixture routed to completion first — 195 connections, 440 items, 179 traces,
+27 vias):
+
+| history | peak RSS |
+|---|---|
+| 0 clones (the routed board alone) | **26.9 MB** |
+| 30 clones | **59.4 MB** |
+
+So a full history costs **≈ 32.5 MB, ≈ 1.08 MB per board**, against a 26 MB DSN
+that reads into a 27 MB process. That is comfortably affordable and the fallback
+stays unbuilt. The number is recorded here so a later board that is an order of
+magnitude larger has something to be compared against.
+
+### What a restored board keeps, and what it loses
+
+`restoreBoard:148` is `BasicBoard.deserialize(entry.board)` — a Java serialization
+round trip — so the restored board is the snapshot with every `transient` field
+reset by `readObject` (`BasicBoard.java:1388-1400`), and only those.
+[`Board::deep_copy`] is that round trip, which is why the port takes a plain
+`clone()` at `:196` (Java's `serialize`) and calls `deep_copy` at `:148` (Java's
+`deserialize`), rather than the other way round. The pairing is asserted field by
+field by `tests/board_history.rs`'s
+`a_restored_board_is_javas_deserialize_round_trip`.
+
+| kept, because Java's `serialize(false)` writes it | lost, because Java's field is `transient` |
+|---|---|
+| the item map — ids, geometry, nets, clearance classes, fixed states | every item's `autorouteInfo` (`Item.java:67`) |
+| components, rules, library, bounding box | `changedArea` (`RoutingBoard.java:67`) |
+| **the item-id counter** — `communication` is a `public final Communication` (`BasicBoard.java:88`) and `ItemIdGenerator.lastGeneratedId` is non-`transient`, so a restored board **re-issues the ids the discarded board burned** | `shoveFailingObstacle` (`:72`) |
+| `failureLog` — `public final`, not `transient` (`RoutingBoard.java:64`) | `shoveFailingLayer` (`:73`) — back to **`0`**, not the `-1` a fresh board starts at, because deserialization runs no constructor (the reproduced Java bug is on `Board::deep_copy`) |
+| | `normalizeSuppressedNetNos` (`BasicBoard.java:96`), `revision` (`:97`) |
+| | the search-tree manager (`:94`); Java rebuilds it by reinserting every item in descending id order, this port clones it — `crates/fr-board/src/board/snapshot.rs`'s module doc is the argument that the two are indistinguishable |
+| | `autorouteEngine` (`RoutingBoard.java:70`), which plan-6 ruling 3 puts outside `Board` altogether |
+
+**Nothing had to be added to `fr-board`.** `deep_copy` already resets all four
+transients, already clears the autoroute scratch (a no-op on a round trip, because
+`autorouteInfo` is `transient` and so a deserialized board's is null anyway), and
+already preserves the id counter. The one place the port and Java's clone differ is
+`fr_geometry::Line`'s identity token (plan-6 ruling AE): Java's serialization mints
+**new** `Line` objects, preserving reference sharing *within* the copy but never
+between the copy and the original, whereas the port's `Clone` copies the token, so a
+copied `Line` is `is_same_object` to the original's. That is unobservable —
+`Line::is_same_object` has exactly one caller in the workspace,
+`Board::change_trace` (quirk #74), which compares a trace's new lines against **that
+same trace's** old lines inside one board.
+
+### `p7t2` and the two recorded hash divergences
+
+`scripts/differential/java/probes/P7T2Probe.java` drives the real `BoardHistory`
+through **61** calls over five phases — a cap-3 history (32 calls), the default
+cap-30 one (11), the `<=` eviction tie (4), `Float.compare`'s fourteen pairs, and a
+replay of `src/test/java/app/freerouting/autoroute/BoardHistoryTest.java` (14) —
+printing the list's whole contents after every call. Its stdout is
+`tests/data/p7t2-board-history.txt`; `tests/board_history.rs` regenerates the
+`boards` section and the first four phases — 291 lines — and compares them **line
+for line**. Hashes print as labels `H0`, `H1`, …
+in order of first appearance, so what is compared is the equality *pattern* across
+entries, never the value (ruling AH).
+
+The `BoardHistoryTest` replay is deliberately **outside** that byte comparison,
+because it found two divergences that ruling AH's Task 3 owns:
+
+| divergence | JVM | this port |
+|---|---|---|
+| `empty_board.dsn` (1 item) vs `Issue159-setonix_2hp-pcb.dsn` (199 items) — **neither has a trace or a via**, and `Board::structural_hash` hashes only traces and vias | different hashes | **the same hash**, so `contains` answers `true` where Java answers `false` and `add` refuses a board Java accepts. Three of the six ported `BoardHistoryTest` methods carry an `XDIFF:` assertion for it |
+| `Issue143-rpi_splitter.dsn` after 1 connection vs after 2 — connection 2 **fails**, inserting nothing, so the two boards carry the same 38 items with the same 38 ids and the same geometry | different hashes (quirk #200: the failed attempt burned ids and filled `DrillItem.center`, a **non-transient** lazy cache that `serialize(true)` writes; 8 501 bytes against 8 566, first difference at offset 5 487) | the same hash — **the right answer**, and Task 3's widening must not learn to reproduce Java's |
+
+Both are pinned by named tests rather than left as prose, and the probe's `POOL_K`
+leaves `k = 2` out of the transcript so that every other line stays a statement about
+`BoardHistory` rather than about the hash.
 
 ## What Plan 7 inherits
 

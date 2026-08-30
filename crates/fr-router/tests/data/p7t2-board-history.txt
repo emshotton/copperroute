@@ -1,0 +1,358 @@
+HEADER jar=/Users/em/Development/freerouting/freerouting/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788015935494 fixture=Issue143-rpi_splitter.dsn ripupPassNo=1 MAX_HISTORY_SIZE=30
+=== boards ===
+  B0 hash=H0 score=0.0 items=33 maxId=33
+  B1 hash=H1 score=199.99464 items=38 maxId=51
+  B3 hash=H2 score=199.99211 items=40 maxId=85
+  B4 hash=H3 score=399.9864 items=45 maxId=100
+  B5 hash=H4 score=599.98364 items=47 maxId=126
+  B6 hash=H4 score=599.98364 items=47 maxId=126
+  B8 hash=H5 score=599.98035 items=49 maxId=190
+  B1X hash=H1 score=199.99464 items=38 maxId=51
+=== phase cap3 ===
+call=1 size ret=0
+  size=0
+call=2 getMaxScore ret=0.0
+  size=0
+call=3 contains(B0) ret=false
+  size=0
+call=4 getRank(B0) ret=-1
+  size=0
+call=5 restoreBestBoard ret=null
+  size=0
+  restored=null
+call=6 add(B0) ret=-
+  size=1
+  entry=0 hash=H0 score=0.0 restoreCount=0
+call=7 add(B0) again ret=-
+  size=1
+  entry=0 hash=H0 score=0.0 restoreCount=0
+call=8 add(B1X-as-B1-twin) ret=-
+  size=2
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+call=9 add(B3) ret=-
+  size=3
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+call=10 contains(B1) ret=true
+  size=3
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+call=11 contains(B4) ret=false
+  size=3
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+call=12 size ret=3
+  size=3
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+call=13 add(B4) at capacity ret=-
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=14 add(B0) at capacity ret=-
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=15 contains(B0) ret=false
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=16 getMaxScore ret=399.9864
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=17 getRank(B1) ret=1
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=18 getRank(B3) ret=2
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=19 getRank(B4) ret=3
+  size=3
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+call=20 restoreBoard(0) ret=board
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=1
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  restored hash=H3 score=399.9864 items=45 maxId=100
+call=21 getRank(restored#1) ret=1
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=1
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+call=22 restoreBoard(1) ret=board
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=2
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  restored hash=H3 score=399.9864 items=45 maxId=100
+call=23 restoreBoard(1) again ret=board
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=2
+  entry=1 hash=H1 score=199.99464 restoreCount=1
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  restored hash=H1 score=199.99464 items=38 maxId=51
+call=24 restoreBoard(1) a third time ret=board
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=2
+  entry=1 hash=H1 score=199.99464 restoreCount=2
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  restored hash=H1 score=199.99464 items=38 maxId=51
+call=25 restoreBoard(-7) is unlimited ret=board
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=3
+  entry=1 hash=H1 score=199.99464 restoreCount=2
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  restored hash=H3 score=399.9864 items=45 maxId=100
+call=26 restoreBestBoard ret=board
+  size=3
+  entry=0 hash=H3 score=399.9864 restoreCount=4
+  entry=1 hash=H1 score=199.99464 restoreCount=2
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  restored hash=H3 score=399.9864 items=45 maxId=100
+call=27 remove(B1) ret=-
+  size=2
+  entry=0 hash=H3 score=399.9864 restoreCount=4
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+call=28 remove(B1) again ret=-
+  size=2
+  entry=0 hash=H3 score=399.9864 restoreCount=4
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+call=29 getRank(B1) ret=-1
+  size=2
+  entry=0 hash=H3 score=399.9864 restoreCount=4
+  entry=1 hash=H2 score=199.99211 restoreCount=0
+call=30 clear ret=-
+  size=0
+call=31 getMaxScore ret=0.0
+  size=0
+call=32 restoreBestBoard ret=null
+  size=0
+  restored=null
+=== phase cap30 ===
+call=1 add(B0) ret=-
+  size=1
+  entry=0 hash=H0 score=0.0 restoreCount=0
+call=2 add(B1) ret=-
+  size=2
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+call=3 add(B3) ret=-
+  size=3
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+call=4 add(B4) ret=-
+  size=4
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  entry=3 hash=H3 score=399.9864 restoreCount=0
+call=5 add(B5) ret=-
+  size=5
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  entry=3 hash=H3 score=399.9864 restoreCount=0
+  entry=4 hash=H4 score=599.98364 restoreCount=0
+call=6 add(B6) ret=-
+  size=5
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  entry=3 hash=H3 score=399.9864 restoreCount=0
+  entry=4 hash=H4 score=599.98364 restoreCount=0
+call=7 add(B8) ret=-
+  size=6
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  entry=3 hash=H3 score=399.9864 restoreCount=0
+  entry=4 hash=H4 score=599.98364 restoreCount=0
+  entry=5 hash=H5 score=599.98035 restoreCount=0
+call=8 getMaxScore ret=599.98364
+  size=6
+  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H1 score=199.99464 restoreCount=0
+  entry=2 hash=H2 score=199.99211 restoreCount=0
+  entry=3 hash=H3 score=399.9864 restoreCount=0
+  entry=4 hash=H4 score=599.98364 restoreCount=0
+  entry=5 hash=H5 score=599.98035 restoreCount=0
+call=9 restoreBestBoard ret=board
+  size=6
+  entry=0 hash=H4 score=599.98364 restoreCount=1
+  entry=1 hash=H5 score=599.98035 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+  entry=3 hash=H1 score=199.99464 restoreCount=0
+  entry=4 hash=H2 score=199.99211 restoreCount=0
+  entry=5 hash=H0 score=0.0 restoreCount=0
+  restored hash=H4 score=599.98364 items=47 maxId=126
+call=10 getRank(best) ret=1
+  size=6
+  entry=0 hash=H4 score=599.98364 restoreCount=1
+  entry=1 hash=H5 score=599.98035 restoreCount=0
+  entry=2 hash=H3 score=399.9864 restoreCount=0
+  entry=3 hash=H1 score=199.99464 restoreCount=0
+  entry=4 hash=H2 score=199.99211 restoreCount=0
+  entry=5 hash=H0 score=0.0 restoreCount=0
+  items maxId=126
+  item id=126 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(552098,2269671),(552083,2269656),(552083,1473029),(955860,1069252),(1116683,1069252),(1366000,819935),(1366000,802200)]
+  item id=116 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(552098,2269671),(531001,2269671)]
+  item id=115 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+  item id=100 type=PolylineTrace nets=[5] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+  item id=98 type=Via nets=[5] cl=3 fixed=UNFIXED center=(531001,1221669)
+  item id=97 type=PolylineTrace nets=[5] cl=1 fixed=UNFIXED layer=1 hw=20320 corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+  item id=93 type=Via nets=[5] cl=3 fixed=UNFIXED center=(765863,1751594)
+  item id=92 type=PolylineTrace nets=[5] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+  item id=84 type=Via nets=[1] cl=3 fixed=UNFIXED center=(977281,2968339)
+  item id=83 type=PolylineTrace nets=[1] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(1016000,3306000),(1016000,3007058),(977281,2968339)]
+  item id=49 type=Via nets=[3] cl=3 fixed=UNFIXED center=(531001,2269671)
+  item id=48 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=1 hw=20320 corners=[(531001,2619005),(531001,2269671)]
+  item id=43 type=Via nets=[3] cl=3 fixed=UNFIXED center=(531001,2619005)
+  item id=42 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+  item id=33 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=32 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=31 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=30 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=29 type=Pin nets=[4] cl=4 fixed=UNFIXED center=(1176000,3306000)
+  item id=28 type=Pin nets=[] cl=4 fixed=UNFIXED center=(566000,3306000)
+  item id=27 type=Pin nets=[] cl=4 fixed=UNFIXED center=(566000,3856000)
+  item id=26 type=Pin nets=[] cl=4 fixed=UNFIXED center=(1466000,3306000)
+  item id=25 type=Pin nets=[] cl=4 fixed=UNFIXED center=(1466000,3856000)
+  item id=24 type=Pin nets=[] cl=4 fixed=UNFIXED center=(936000,3306000)
+  item id=23 type=Pin nets=[3] cl=4 fixed=UNFIXED center=(856000,3306000)
+  item id=22 type=Pin nets=[2] cl=4 fixed=UNFIXED center=(1096000,3306000)
+  item id=21 type=Pin nets=[1] cl=4 fixed=UNFIXED center=(1016000,3306000)
+  item id=20 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=19 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=18 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=17 type=ObstacleArea nets=[] cl=6 fixed=UNFIXED
+  item id=16 type=Pin nets=[5] cl=4 fixed=UNFIXED center=(727900,1884700)
+  item id=15 type=Pin nets=[] cl=4 fixed=UNFIXED center=(727900,2494700)
+  item id=14 type=Pin nets=[] cl=4 fixed=UNFIXED center=(1277900,2494700)
+  item id=13 type=Pin nets=[] cl=4 fixed=UNFIXED center=(727900,1594700)
+  item id=12 type=Pin nets=[] cl=4 fixed=UNFIXED center=(1277900,1594700)
+  item id=11 type=Pin nets=[] cl=4 fixed=UNFIXED center=(727900,2124700)
+  item id=10 type=Pin nets=[3] cl=4 fixed=UNFIXED center=(727900,2204700)
+  item id=9 type=Pin nets=[] cl=4 fixed=UNFIXED center=(727900,1964700)
+  item id=8 type=Pin nets=[] cl=4 fixed=UNFIXED center=(727900,2044700)
+  item id=7 type=Pin nets=[5] cl=4 fixed=UNFIXED center=(666000,802200)
+  item id=6 type=Pin nets=[] cl=5 fixed=UNFIXED center=(359410,381000)
+  item id=5 type=Pin nets=[] cl=5 fixed=UNFIXED center=(1672590,381000)
+  item id=4 type=Pin nets=[3] cl=4 fixed=UNFIXED center=(1366000,802200)
+  item id=3 type=Pin nets=[2] cl=4 fixed=UNFIXED center=(916000,802200)
+  item id=2 type=Pin nets=[1] cl=4 fixed=UNFIXED center=(1116000,802200)
+  item id=1 type=BoardOutline nets=[] cl=2 fixed=SYSTEM_FIXED
+call=11 clear ret=-
+  size=0
+=== phase tie ===
+  B1F hash=H6 score=199.99464 items=38 maxId=51
+call=1 add(B1) at cap 1 ret=-
+  size=1
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+call=2 add(B1F), an equal score and a new hash ret=-
+  size=1
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+call=3 contains(B1F) ret=false
+  size=1
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+call=4 getRank(B1F) ret=-1
+  size=1
+  entry=0 hash=H1 score=199.99464 restoreCount=0
+=== phase floatcompare ===
+compare bits(3f800000,40000000) = -1
+compare bits(40000000,3f800000) = 1
+compare bits(3f800000,3f800000) = 0
+compare bits(00000000,80000000) = 1
+compare bits(80000000,00000000) = -1
+compare bits(80000000,80000000) = 0
+compare bits(7fc00000,3f800000) = 1
+compare bits(3f800000,7fc00000) = -1
+compare bits(7fc00000,7fc00000) = 0
+compare bits(7fc00000,7f800000) = 1
+compare bits(ffc00000,3f800000) = 1
+compare bits(3f800000,ffc00000) = -1
+compare bits(ffc00000,ff800000) = 1
+compare bits(ff800000,7f800000) = -1
+=== phase javatest ===
+  board1 hash=H7 score=0.0 items=1 maxId=1
+  board2 hash=H8 score=0.0 items=199 maxId=199
+call=1 addAndRestoreBoard: add(board1) ret=-
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+call=2 addAndRestoreBoard: restoreBestBoard ret=board
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=1
+  restored hash=H7 score=0.0 items=1 maxId=1
+  notSameInstance=true
+  sameHashAsBoard1=true
+  board1 hash=H7 score=0.0 items=1 maxId=1
+  board2 hash=H8 score=0.0 items=199 maxId=199
+call=3 restoreBestBoardFromMultiple: add(board1) ret=-
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+call=4 restoreBestBoardFromMultiple: add(board2) ret=-
+  size=2
+  entry=0 hash=H7 score=0.0 restoreCount=0
+  entry=1 hash=H8 score=0.0 restoreCount=0
+call=5 restoreBestBoardFromMultiple: restoreBestBoard ret=board
+  size=2
+  entry=0 hash=H7 score=0.0 restoreCount=1
+  entry=1 hash=H8 score=0.0 restoreCount=0
+  restored hash=H7 score=0.0 items=1 maxId=1
+  sameHashAsBoard1=true
+  board1 hash=H7 score=0.0 items=1 maxId=1
+  board2 hash=H8 score=0.0 items=199 maxId=199
+call=6 contains: add(board1) ret=-
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+call=7 contains: contains(board1) ret=true
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+call=8 contains: contains(board2) ret=false
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+  board1 hash=H7 score=0.0 items=1 maxId=1
+  board2 hash=H8 score=0.0 items=199 maxId=199
+call=9 clear: add(board1) add(board2) ret=2
+  size=2
+  entry=0 hash=H7 score=0.0 restoreCount=0
+  entry=1 hash=H8 score=0.0 restoreCount=0
+call=10 clear: clear ret=0
+  size=0
+  board1 hash=H7 score=0.0 items=1 maxId=1
+  board2 hash=H8 score=0.0 items=199 maxId=199
+call=11 sizeCapNeverExceedsMaxHistorySize ret=2
+  size=2
+  entry=0 hash=H7 score=0.0 restoreCount=0
+  entry=1 hash=H8 score=0.0 restoreCount=0
+  withinCap=true
+  board1 hash=H7 score=0.0 items=1 maxId=1
+  board2 hash=H8 score=0.0 items=199 maxId=199
+call=12 sizeCapEvictsWorstEntry: add(board1) ret=1
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+call=13 sizeCapEvictsWorstEntry: add(board2) ret=1
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=0
+call=14 sizeCapEvictsWorstEntry: restoreBestBoard ret=board
+  size=1
+  entry=0 hash=H7 score=0.0 restoreCount=1
+  restored hash=H7 score=0.0 items=1 maxId=1
+  sameHashAsBoard1=true

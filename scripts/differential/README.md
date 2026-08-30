@@ -1334,6 +1334,50 @@ methods with dozens of branches.
       `toString`, which pins the `", "` join and the **descending** id order of
       `TreeSet<Item>`.
 
+  - `P7T2Probe.java` — `autoroute.BoardHistory` (Plan 7 Task 2, controller
+    ruling AF). Consumed by `crates/fr-router/tests/board_history.rs`, whose whole
+    transcript comparison, six ported `BoardHistoryTest` methods and two recorded
+    hash divergences are this probe's output; committed as
+    `crates/fr-router/tests/data/p7t2-board-history.txt`. It declares **`package
+    app.freerouting.autoroute.maze`** — not the brief's `app.freerouting.autoroute`
+    — and **compiles together with `P6T1.java`**, the `P5T2`/`P5T1` and `P7T7`/`P6T1`
+    pattern: the board pool has to be routed exactly the way `p6t1` routes one, and
+    `P6T1.loadBoard` / `pickConnections` / `route` are package-private statics there.
+    The brief's package would have bought no access that reflection does not: the
+    `boards` field, the nested `BoardHistoryEntry`'s four fields and the
+    package-private `BoardHistory(ScoringSettings, int)` constructor are all reached
+    with `setAccessible(true)`, which works from any package on the classpath.
+    Hashes print as **labels** `H0`, `H1`, … in order of first appearance, never as
+    values — Java's is a hex MD5 over `serialize(true)` and the port's is a `u64`
+    over the item graph, so only the equality *pattern* is comparable (ruling AH).
+    Scores print through `Float.toString`. Five sections:
+
+    - `=== boards ===` — the pool. `Bk` is `Issue143-rpi_splitter.dsn` with its
+      first `k` connections routed, each built by an **independent** load and
+      re-route so the pool does not depend on `RoutingBoard.deepCopy`; plus `B1X`,
+      a second independent build of `B1`, so hash equality between two distinct
+      objects is shown. `POOL_K` is `{0, 1, 3, 4, 5, 6, 8}` and the two gaps are
+      deliberate — see quirk #200.
+    - `=== phase cap3 ===` — 32 calls on a history built through the
+      package-private cap-3 constructor: the empty history's four answers, the
+      no-score-gate-below-capacity path, the eviction gate, five `restoreBoard`
+      budgets, `remove` twice and `clear`.
+    - `=== phase cap30 ===` — 13 calls on the public constructor's default cap,
+      ending with the restored best board's whole item list and `maxGeneratedId`.
+    - `=== phase tie ===` — the `<=` of `add`'s eviction gate (`:73`), which
+      nothing in the pool reaches: `B1F` is `B1` with one trace marked
+      `USER_FIXED`, which moves `getHash()` and moves no input of
+      `calculateScore`.
+    - `=== phase floatcompare ===` — `Float.compare` over 14 pairs including both
+      signed zeros and a **negative** NaN, the case where `f32::total_cmp` and
+      `Float.compare` disagree.
+    - `=== phase javatest ===` — `src/test/java/app/freerouting/autoroute/
+      BoardHistoryTest.java`'s six methods replayed against the jar on that
+      suite's own two fixtures. It is **outside** the port's byte-for-byte
+      comparison, because `empty_board.dsn` and `Issue159-setonix_2hp-pcb.dsn`
+      have no trace and no via and `Board::structural_hash` hashes only traces and
+      vias; the divergence is recorded, not fixed, and Task 3 owns it.
+
 - `java/P6T17bProbe.java` — **the Plan 6 Task 17b bisect probe.** It sits beside
   the drivers rather than in `java/probes/` because it is compiled *with*
   `P6T1.java` and reuses its `loadBoard` / `pickConnections` / `routeOne`, so it

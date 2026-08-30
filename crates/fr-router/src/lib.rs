@@ -88,6 +88,7 @@ pub mod autoroute;
 pub mod board_ext;
 pub mod error;
 pub mod java_tree_set;
+pub mod pipeline;
 pub mod score;
 
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
@@ -107,6 +108,7 @@ pub use board_ext::{
 };
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
+pub use pipeline::{BoardHistory, BoardHistoryEntry};
 pub use score::{
     BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
     BoardStatisticsClearanceViolations, BoardStatisticsComponents, BoardStatisticsConnections,
@@ -126,19 +128,19 @@ pub use fr_settings::ExpansionCostFactor;
 pub mod prelude {
     pub use crate::{
         Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
-        AutorouteSearchTreeExt, BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
-        BoardStatisticsClearanceViolations, BoardStatisticsComponents, BoardStatisticsConnections,
-        BoardStatisticsFanout, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
-        BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias,
-        CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance, DoorId, DrillId,
-        DrillItemMover, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor,
-        ExpansionDoor, ExpansionDrill, ExpansionRoomStore, FoundConnectionInserter,
-        FoundConnectionLocator, FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom,
-        IncompleteRoomId, JavaTreeSet, MazeAdjustment, MazeExpansionEngine, MazeListElement,
-        MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
-        ObstacleExpansionRoom, PageId, Rectangle2DFloat, ResultItem, RoomRef, RouterError,
-        RoutingBoardExt, ShoveResult, SpringOverOutcome, TargetDoorId, TargetItemExpansionDoor,
-        TraceShover, ViaMask, route_connection,
+        AutorouteSearchTreeExt, BoardHistory, BoardHistoryEntry, BoardStatistics,
+        BoardStatisticsBends, BoardStatisticsBoard, BoardStatisticsClearanceViolations,
+        BoardStatisticsComponents, BoardStatisticsConnections, BoardStatisticsFanout,
+        BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets, BoardStatisticsPads,
+        BoardStatisticsTraces, BoardStatisticsVias, CompleteFreeSpaceExpansionRoom, Connection,
+        DestinationDistance, DoorId, DrillId, DrillItemMover, DrillPage, DrillPageArray,
+        ExpandableRef, ExpansionCostFactor, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
+        FoundConnectionInserter, FoundConnectionLocator, FreeSpaceExpansionRoom,
+        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
+        MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult, MazeRipupResolver,
+        MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, PageId, Rectangle2DFloat,
+        ResultItem, RoomRef, RouterError, RoutingBoardExt, ShoveResult, SpringOverOutcome,
+        TargetDoorId, TargetItemExpansionDoor, TraceShover, ViaMask, route_connection,
     };
 }
 
@@ -152,22 +154,26 @@ pub mod prelude {
 // and Task 18 runs the whole audit to zero MISSING and zero UNMAPPED.
 // =================================================================================================
 
+// --- No longer deferred: `autoroute/BoardHistory.java` --------------------------------------------
+//
+// `BoardHistory` is **ported** — `pipeline::BoardHistory`, Plan 7 Task 2 under controller ruling
+// AF — and the eleven `// not ported: BoardHistory.*` lines that stood here are deleted with it.
+// Plan-6 ruling 13 had rostered the class on spec §2's "undo store" exclusion; ruling AF overturns
+// that reading. It is not an undo store: it is the pass loop's best-board memory
+// (`AutorouteBatchLoop.java:284, 298-320, 525-547`), and dropping it would write the *last* pass's
+// board to the SES instead of the *best* pass's. `scripts/audit-map/fr-router.map` now points the
+// class at `pipeline/board_history.rs`, so the audit checks it there rather than here.
+
 // --- Out of scope for Plan 6 and Plan 7 alike (ruling 13's not-ported roster) ---------------------
 //
-// `autoroute/BoardHistory.java` + `autoroute/BoardHistoryEntry.java`: the undo/history store, which
-// spec §2 puts out of scope for the whole port. It keeps a ranked list of serialised board
-// snapshots so the batch loop can restore the best one; nothing in the maze search reads it.
-// not ported: `BoardHistory.add`
-// not ported: `BoardHistory.BoardHistoryEntry`
-// not ported: `BoardHistory.clear`
-// not ported: `BoardHistory.contains`
-// not ported: `BoardHistory.getMaxScore`
-// not ported: `BoardHistory.getRank`
-// not ported: `BoardHistory.remove`
-// not ported: `BoardHistory.restoreBestBoard`
-// not ported: `BoardHistory.restoreBoard`
-// not ported: `BoardHistory.size`
-// not ported: `BoardHistoryEntry.compareTo`
+// `autoroute/BoardHistoryEntry.java` (33 loc) stays deferred, and permanently: the public,
+// `Comparable` top-level class — which holds a live `RoutingBoard`, a `BoardStatistics` and an
+// `Instant.now()` — is **shadowed** by `BoardHistory`'s own `private static class
+// BoardHistoryEntry` (BoardHistory.java:188), declared in the same compilation unit, so the
+// import at BoardHistory.java:1-12 never resolves to it and no caller anywhere in `src/main` or
+// `src/test` reaches it. Quirk #199. The entry the port does have is the **nested** one
+// (`pipeline::BoardHistoryEntry`, `board_history.rs`), which has no `compareTo` at all.
+// not ported: `BoardHistoryEntry.compareTo` — `autoroute/BoardHistoryEntry.java:29-32`, the shadowed and unreachable top-level twin (quirk #199).
 //
 // `autoroute/AutorouteDiagnostic.java`: a GUI overlay sink (it declares no public methods of its
 // own — the marker records the class). `autoroute/PerformanceProfiler.java`: a timing sink whose
