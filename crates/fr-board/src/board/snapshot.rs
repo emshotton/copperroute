@@ -179,12 +179,12 @@ impl Board {
     /// Port of `RoutingBoard.finishAutoroute` (RoutingBoard.java:899-905): "clears the auto-route
     /// database in case it was retained" by clearing `autorouteEngine`.
     ///
-    /// Empty until Plan 6 gives [`Board`] an `autoroute_engine` field: this port has nothing
-    /// `autorouteEngine.clear(); autorouteEngine = null;` could act on yet.
-    /// [`Board::deep_copy`] already calls this hook, so Plan 6 only has to fill the body in, not
-    /// find every call site that needs it.
-    // added in Plan 6: `self.autoroute_engine = None` (RoutingBoard.java:901-904 clears the
-    // engine first, if one was retained).
+    /// Empty, and it stays empty: plan-6 ruling 3 puts the engine outside `Board` (it lives in
+    /// `fr-router`, which `fr-board` cannot name), so the real `clear(); autorouteEngine = null`
+    /// is `fr_router::board_ext::RoutingBoardExt::finish_autoroute`, which consumes the engine
+    /// value its caller holds. This hook stays because [`Board::deep_copy`] calls it at Java's
+    /// line, and on a board with no engine field there is nothing left for it to do.
+    // renamed: `RoutingBoard.finishAutoroute`'s engine half (RoutingBoard.java:901-904) -> `fr_router::board_ext::RoutingBoardExt::finish_autoroute`.
     fn finish_autoroute(&mut self) {}
 
     /// Port of `BasicBoard.getHash` (BasicBoard.java:163-166) / `BoardSnapshotManager.getHash`

@@ -563,6 +563,45 @@ methods with dozens of branches.
       `Issue593-BBD_Mars-64.dsn` the list says `attach=true` and both rules say
       `attach=false inList=false` — the detached original. Committed output:
       `crates/fr-router/tests/data/p6t8-ruling-h-viadiv.txt`.
+  - `P6T9Probe.java` — `RoutingBoard`'s five autoroute-facing methods, the
+    check-only half of `board.optimize.TraceShover`, and
+    `board.actions.DrillItemMover.check` / `.tryShoveViaPoints` (Plan 6 Task 9).
+    It declares `package app.freerouting.board.optimize;` so it can call
+    `TraceShover`'s package-private `getIgnoreItemsAtTiePins`, and reflects into
+    `RoutingBoard.autorouteEngine` and `AutorouteEngine`'s three private room
+    lists, none of which any public method exposes. Its stdout is committed
+    verbatim as `crates/fr-router/tests/data/p6t9-board-ext.txt`, one
+    `######## <mode>` section per mode, and every literal in
+    `crates/fr-router/tests/board_ext.rs` is read off it. Six modes, the first
+    on `P6T6Probe`'s bare board and the rest on `P6T7Probe`'s (which is
+    `P6T3.build`'s any-angle board) plus the three nets `Trace.isShoveFixed`
+    dereferences:
+
+    - `upd` — the re-run `task-6-report.md` §8.1 asks for: `initAutoroute` ->
+      `initConnection` **with an item on the new net**, which is the only way to
+      reach `initConnection:111-117` -> `additionalUpdateAfterChange`. Its board
+      carries a net-2 trace and **no** net-1 item, so the single completed room
+      is `netDependent=false` and the `complete=1 -> 0`, `incomplete=5 -> 1`,
+      `treeSize=2 -> 1` transition it prints can only have come from that loop.
+      It also pins `initAutoroute:888-891`'s three-way reuse guard
+      (`reusedTheEngine=true`, `rebuiltOnClassChange=true`,
+      `rebuiltWhenRetainIsFalse=true`) and `finishAutoroute`.
+    - `poly` — `checkForcedTracePolyline` over seven probe polylines x two half
+      widths x both angle regimes, 28 rows.
+    - `seg` — the **static** `TraceShover.check(RoutingBoard, LineSegment, …)`
+      over the same lines x shove direction x half width, 24 rows, printing the
+      `double` it answers (`MAX` for `Integer.MAX_VALUE`).
+    - `inst` — the **instance** `TraceShover.check(TileShape, ShapeEntrySide, …)`
+      at `maxRecursionDepth` 0/1/2/20 and `maxSpringOverRecursionDepth` 0/1/20,
+      56 rows. The `twoSegments shape=0` block is the one that changes with the
+      budget (`false` at depth 0, `true` from depth 1), which is what pins
+      `:356-358`. Its `failing=` column is *not* asserted: it is
+      `board.getShoveFailingObstacle()`, which quirk #174 leaves stale.
+    - `drill` — `DrillItemMover.check` over a free via, a shove-fixed one and
+      one sitting on a through-hole pin, plus `tryShoveViaPoints` on a box and
+      an octagon x `extendedCheck` x both angle regimes. `ignoreSize` is what
+      pins quirk #175.
+    - `tie` — `getIgnoreItemsAtTiePins` over three shapes x three net arrays.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

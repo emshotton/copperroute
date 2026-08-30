@@ -28,6 +28,12 @@
 #   ./scripts/audit-port.sh board/actions       crates/fr-router/src 'ForcedViaInserter.java ForcedPadRouter.java DrillItemMover.java' scripts/audit-map/fr-router.map
 #   ./scripts/audit-port.sh board/optimize      crates/fr-router/src 'TraceShover.java' scripts/audit-map/fr-router.map
 #
+# As of **Task 9** the two `board/*` packages exit 0 over the files this task ports; the other two
+# `board/actions` classes arrive in Task 10, which is when the wide glob above starts passing:
+#
+#   ./scripts/audit-port.sh board/actions  crates/fr-router/src 'DrillItemMover.java' scripts/audit-map/fr-router.map
+#   ./scripts/audit-port.sh board/optimize crates/fr-router/src 'TraceShover.java'    scripts/audit-map/fr-router.map
+#
 # The `ShapeSearchTree*` and `RoutingBoard` rows below are cross-package, not cross-crate: plan-6
 # ruling 3 puts `completeShape`/`divideLargeRoom` and the five `RoutingBoard` autoroute methods in
 # *this* crate, as extension traits over `fr-board`'s types, so their Rust homes are plain
@@ -94,7 +100,11 @@ FoundConnectionLocator45Degree    autoroute/path/locator_45.rs
 FoundConnectionLocatorAnyAngle    autoroute/path/locator_any_angle.rs
 FoundConnectionInserter           autoroute/path/inserter.rs
 
-# --- board/actions/ and board/optimize/ (Task 15) -----------------------------------------------
+# --- board/actions/ and board/optimize/ (Tasks 9-10) --------------------------------------------
+# `DrillItemMover`'s and `TraceShover`'s **check** halves landed in Task 9; the mutating halves are
+# `// added in Plan 7:` markers in `board_ext/mod.rs`. `ForcedPadRouter` and `ForcedViaInserter` are
+# Task 10's, and their files do not exist yet — which is why Task 9's invocations restrict the file
+# glob rather than widening the map.
 ForcedViaInserter                 board_ext/forced_via_inserter.rs
 ForcedPadRouter                   board_ext/forced_pad_router.rs
 DrillItemMover                    board_ext/drill_item_mover.rs
@@ -104,6 +114,10 @@ TraceShover                       board_ext/trace_shover.rs
 # `RoutingBoard`'s five autoroute methods (initAutoroute, finishAutoroute,
 # checkForcedTracePolyline, additionalUpdateAfterChange, clearAllItemTemporaryAutorouteData) and
 # `ShapeSearchTree.completeShape`/`divideLargeRoom` — the two methods `p2t10` explicitly skipped.
+# The five `RoutingBoard` methods landed in Task 9 as `RoutingBoardExt`; the rest of the class
+# stays in `fr-board` (whose own `board/facade` audit covers it, with `renamed:` markers pointing
+# at this crate). There is therefore **no** `board/facade` invocation against `fr-router/src`: the
+# class's other ~100 public methods are not this crate's.
 RoutingBoard                      board_ext/routing_board_ext.rs
 ShapeSearchTree                   autoroute/tree_ext.rs
 ShapeSearchTree45Degree           autoroute/tree_ext.rs

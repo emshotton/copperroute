@@ -9,7 +9,7 @@ use fr_geometry::{FloatLine, FloatPoint, Line, LineSegment, Point, Polyline, Sid
 
 use crate::board::Board;
 use crate::ids::ItemId;
-use crate::items::Item;
+use crate::items::{Item, PolylineTrace};
 
 /// Port of `ShapeEntrySide` (`board/model/structure/ShapeEntrySide.java`, Java's
 /// `CalcFromSide`): the index of the border line of a tile shape where something enters, plus
@@ -251,9 +251,71 @@ impl ShapeAndEntrySide {
         let search_tree = board.trees.get_default_tree();
         // ShapeAndEntrySide.java:28: `trace.getTreeShape(searchTree, index)`, which recomputes if
         // the trace's cache was dropped since insertion (Item.java:212-226).
-        let mut current_shape = board
+        let current_shape = board
             .item_tree_shape_ref(trace_id, search_tree.id(), index)?
             .into_owned();
+        Some(Self::build(
+            board,
+            trace,
+            current_shape,
+            index,
+            orthogonal,
+            in_shove_check,
+        ))
+    }
+
+    /// The same constructor for a trace that is **not in the board's item list** — the substitute
+    /// trace pieces [`crate::board::ShapeTraceEntries::next_substitute_trace_piece`] hands back.
+    ///
+    /// Java needs no twin: `nextSubstituteTracePiece` builds the piece with `this.board` as its
+    /// back-pointer (ShapeTraceEntries.java:281), so `Item.getTreeShape` (Item.java:213) sees a
+    /// non-null board, finds no cached shapes and calls `calculateTreeShapes(searchTree)` — the
+    /// piece is never in `itemList`, so nothing else about it is on the board either. The port's
+    /// pieces are plain values with no back-pointer, so the tree shape is computed here instead,
+    /// through the same [`crate::searchtree::ShapeSearchTree::calculate_tree_shapes`] Java's
+    /// `calculateTreeShapes` becomes.
+    ///
+    /// Added in plan-6 Task 9 for `TraceShover.check` (TraceShover.java:392-393), the first
+    /// caller of `ShapeAndEntrySide` on a substitute piece; [`ShapeAndEntrySide::new`] keeps its
+    /// signature and delegates.
+    pub fn from_free_trace(
+        board: &Board,
+        trace: &PolylineTrace,
+        index: usize,
+        orthogonal: bool,
+        in_shove_check: bool,
+    ) -> Option<ShapeAndEntrySide> {
+        let ctx = board.ctx();
+        let current_shape = board
+            .trees
+            .get_default_tree()
+            .calculate_tree_shapes(&Item::Trace(trace.clone()), &ctx)
+            .get(index)?
+            .clone()?;
+        Some(Self::build(
+            board,
+            trace,
+            current_shape,
+            index,
+            orthogonal,
+            in_shove_check,
+        ))
+    }
+
+    /// The body of `ShapeAndEntrySide(PolylineTrace, int, boolean, boolean)`
+    /// (ShapeAndEntrySide.java:29-77), once `:28`'s tree shape has been fetched — from the board
+    /// for [`ShapeAndEntrySide::new`], and computed on the spot for
+    /// [`ShapeAndEntrySide::from_free_trace`].
+    fn build(
+        board: &Board,
+        trace: &PolylineTrace,
+        current_shape: TileShape,
+        index: usize,
+        orthogonal: bool,
+        in_shove_check: bool,
+    ) -> ShapeAndEntrySide {
+        let search_tree = board.trees.get_default_tree();
+        let mut current_shape = current_shape;
         let mut current_from_side: Option<ShapeEntrySide> = None;
         if orthogonal {
             // ShapeAndEntrySide.java:32-33.
@@ -322,10 +384,10 @@ impl ShapeAndEntrySide {
                 &current_shape,
             ));
         }
-        Some(ShapeAndEntrySide {
+        ShapeAndEntrySide {
             shape: current_shape,
             from_side: current_from_side,
-        })
+        }
     }
 }
 

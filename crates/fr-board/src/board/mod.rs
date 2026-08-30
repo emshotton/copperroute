@@ -173,9 +173,10 @@ pub(crate) use item_ctx;
 // own helper.
 //
 // The autoroute engine is Plan 6:
-// added in Plan 6: `BasicBoard.additionalUpdateAfterChange` (BasicBoard.java:1227) and its `RoutingBoard` override (RoutingBoard.java:96-118).
+// not ported: `BasicBoard.additionalUpdateAfterChange` (BasicBoard.java:1222-1226) — an empty stub whose whole body is the `RoutingBoard` override below.
+// renamed: `RoutingBoard.additionalUpdateAfterChange` (RoutingBoard.java:96-118) -> `fr_router::board_ext::RoutingBoardExt::additional_update_after_change` — it takes an `AutorouteEngine`, which `fr-board` cannot name (plan-2 ruling 4, plan-6 ruling 3).
 // added in Plan 6: `BasicBoard.areThereItemsOnInactiveLayer` (BasicBoard.java:1443-1462) — takes an `AutorouteControl`.
-// added in Plan 6: `RoutingBoard.initAutoroute` (RoutingBoard.java:882-897).
+// renamed: `RoutingBoard.initAutoroute` (RoutingBoard.java:882-897) -> `fr_router::board_ext::RoutingBoardExt::init_autoroute`; the engine is passed in and handed back where Java reads and writes its `autorouteEngine` field.
 // ported: `RoutingBoard.finishAutoroute` (RoutingBoard.java:899-905) -> `Board::finish_autoroute`
 // (`board/snapshot.rs`), empty until Plan 6 gives `Board` the `autoroute_engine` field it clears.
 // added in Plan 6: `RoutingBoard.autoroute` (RoutingBoard.java:911-971).
@@ -184,7 +185,8 @@ pub(crate) use item_ctx;
 // added in Plan 7: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127) — the removal half is `Board::remove_items_marking_changed_area`; the `combineTraces` + `optChangedArea` tail is Plan 7's.
 // added in Plan 7: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — `DrillItemMover`.
 // added in Plan 7: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — `ForcedViaInserter`.
-// added in Plan 7: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402), `checkForcedTracePolyline` (:408-448) and `insertForcedTracePolyline` (:456-876) — the `TraceShover`.
+// renamed: `RoutingBoard.checkForcedTracePolyline` (RoutingBoard.java:405-448) -> `fr_router::board_ext::RoutingBoardExt::check_forced_trace_polyline`; it drives `TraceShover.check`, which lives in `fr-router` because the router is its only caller.
+// added in Plan 7: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402) and `insertForcedTracePolyline` (:456-876) — the mutating half of the `TraceShover`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Board {
     /// Java `BasicBoard.itemList` (BasicBoard.java:70), as a map keyed by the Java item id

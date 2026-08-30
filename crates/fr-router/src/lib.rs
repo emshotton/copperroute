@@ -13,7 +13,7 @@
 //!
 //! # State
 //!
-//! **Task 7 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
+//! **Task 9 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
 //! newtypes, the per-connection outcome ([`AutorouteAttemptResult`]), the per-item scratch
 //! accessors ([`autoroute::item_info`]), and — from Task 2 — the expansion rooms, the doors and
 //! [`MazeSearchElement`] ([`autoroute::expansion`]), which is also where `fr-board`'s reserved
@@ -26,9 +26,14 @@
 //! `completeExpansionRoom`, `completeNeighbourRooms`, the door reset and removal, and ruling 7's
 //! first recovery boundary. Task 7 adds [`autoroute::drill`]: [`DrillPage`], [`DrillPageArray`]
 //! and [`ExpansionDrill`], which is where the maze search gets its layer changes and where
-//! `AutorouteEngine`'s three drill hooks stop being stubs. The maze search itself and the path
-//! locators arrive in Tasks 8-17; the roster at the foot of this file names each deferred class
-//! and the task that owns it.
+//! `AutorouteEngine`'s three drill hooks stop being stubs. Task 8 adds the four leaf types the
+//! maze search is written against ([`AutorouteControl`], [`DestinationDistance`],
+//! [`MazeListElement`], [`MazeQueue`]), and Task 9 adds [`board_ext`]: [`RoutingBoardExt`] —
+//! the five `RoutingBoard` methods plan-2 ruling 4 left out of `fr-board` — plus the
+//! **check-only** half of [`TraceShover`] and [`DrillItemMover`], the shove algorithms the maze
+//! consults through `checkForcedTracePolyline`. The maze search itself and the path locators
+//! arrive in Tasks 10-17; the roster at the foot of this file names each deferred class and the
+//! task that owns it.
 //!
 //! # House rules
 //!
@@ -50,6 +55,7 @@
 
 pub mod arena;
 pub mod autoroute;
+pub mod board_ext;
 pub mod error;
 pub mod java_tree_set;
 
@@ -61,6 +67,7 @@ pub use autoroute::{
     FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeListElement,
     MazeQueue, MazeSearchElement, ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor, ViaMask,
 };
+pub use board_ext::{DrillItemMover, RoutingBoardExt, SpringOverOutcome, TraceShover};
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
 
@@ -77,11 +84,12 @@ pub mod prelude {
     pub use crate::{
         Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
         AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DestinationDistance, DoorId,
-        DrillId, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor, ExpansionDoor,
-        ExpansionDrill, ExpansionRoomStore, FreeSpaceExpansionRoom,
+        DrillId, DrillItemMover, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor,
+        ExpansionDoor, ExpansionDrill, ExpansionRoomStore, FreeSpaceExpansionRoom,
         IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
         MazeListElement, MazeQueue, MazeSearchElement, ObstacleExpansionRoom, PageId, RoomRef,
-        RouterError, TargetDoorId, TargetItemExpansionDoor, ViaMask,
+        RouterError, RoutingBoardExt, SpringOverOutcome, TargetDoorId, TargetItemExpansionDoor,
+        TraceShover, ViaMask,
     };
 }
 

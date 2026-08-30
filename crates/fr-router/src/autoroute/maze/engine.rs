@@ -54,6 +54,7 @@ use crate::autoroute::expansion::{
 };
 use crate::autoroute::item_info;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
+use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
 
 /// Port of `AutorouteEngine` (AutorouteEngine.java:39-675).
@@ -208,21 +209,24 @@ impl AutorouteEngine {
 
             // :111-117. "Invalidate the neighbour rooms of the items of netNumber."
             //
-            // added in Task 9: `RoutingBoard.additionalUpdateAfterChange` (RoutingBoard.java:96-118)
-            // — plan-6 ruling 3 puts it on `RoutingBoardExt`, which Task 9 creates. Its body is
-            // entirely engine work (invalidate the drill pages of every tree shape, then
-            // `removeCompleteExpansionRoom` for every complete room overlapping one, then
-            // `item.clearAutorouteInfo()`), so it needs Task 7's `DrillPageArray` as well as this
-            // engine; writing it here would take both files from their owning tasks.
-            //
-            // obligation: Task 9 must call it from here, once per item of `net_number`, in
-            // `board.getItems()` order (descending id, quirk #63):
-            //
-            //     for item in board.items_in_board_order() {
-            //         if board.get_item(item).is_some_and(|i| i.contains_net(net_number)) {
-            //             board.additional_update_after_change(self, item);
-            //         }
-            //     }
+            // discharged in Task 9: `RoutingBoard.additionalUpdateAfterChange`
+            // (RoutingBoard.java:96-118) landed as `RoutingBoardExt::additional_update_after_change`
+            // (`crates/fr-router/src/board_ext/routing_board_ext.rs`), and this is Java's `:112-116`
+            // loop over `board.getItems()` — `Board::items_in_board_order`, descending id
+            // (quirk #63). `additional_update_after_change` removes rooms from `self`, so the id
+            // list is materialised first, exactly as Java's `Collection<Item> itemList` snapshot is.
+            let items: Vec<ItemId> = board
+                .items_in_board_order()
+                .into_iter()
+                .filter(|id| {
+                    board
+                        .get_item(*id)
+                        .is_some_and(|item| item.contains_net(net_number))
+                })
+                .collect();
+            for item in items {
+                board.additional_update_after_change(self, item);
+            }
         }
         // :120-122.
         self.net_number = net_number;

@@ -17,15 +17,17 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 8 of 18
+## State: Task 9 of 18
 
-What exists is the data-model floor the other ten tasks build on, the
+What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
 neighbour sorters that turn a completed room into its door list, the
 `AutorouteEngine` that owns all of it, the drill pages that manufacture its
-layer changes, and — from Task 8 — the four leaf types the maze search itself is
-written against: the control block, the cost bound, the queue element and the
-guarded queue:
+layer changes, the four leaf types the maze search itself is written against
+(the control block, the cost bound, the queue element and the guarded queue),
+and — from Task 9 — the seam with `fr-board`: `RoutingBoardExt` plus the
+**check-only** half of the two shove algorithms the maze consults before it
+commits to a trace:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -55,6 +57,9 @@ guarded queue:
 | `MazeListElement` | `src/autoroute/maze/list_element.rs` | `MazeListElement.java:11-114` |
 | `MazeQueue` | `src/autoroute/maze/queue.rs` | `MazeSearchEngine.java:84-125` (the anonymous `TreeSet`) |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
+| `RoutingBoardExt` | `src/board_ext/routing_board_ext.rs` | `RoutingBoard.java:96-118, 405-448, 882-905, 1240-1249` |
+| `TraceShover` (the two `check`s + `springOver`) | `src/board_ext/trace_shover.rs` | `TraceShover.java:57-411, 592-603, 611-818` |
+| `DrillItemMover` (`check` + `tryShoveViaPoints`) | `src/board_ext/drill_item_mover.rs` | `DrillItemMover.java:34-103, 256-325` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
 
@@ -317,7 +322,21 @@ closed (`AutorouteControl.rebuildViaInfo` by a real `fn`,
 `MazeSearchEngine.add` by a `renamed:` marker on `MazeQueue::push`) — leaving
 `MazeSearchEngine` (3, Tasks 11-13) and `MazeTraceShover` (1, Task 12). All five
 `autoroute` invocations stay at zero UNMAPPED, and only `autoroute/path` (7,
-Tasks 14-15) is untouched.
+Tasks 14-15) is untouched. Task 9 opened the two `board/*` invocations, each
+restricted to the file it ports, and both exit 0 with zero MISSING and zero
+UNMAPPED:
+
+    ./scripts/audit-port.sh board/actions  crates/fr-router/src 'DrillItemMover.java' scripts/audit-map/fr-router.map
+    ./scripts/audit-port.sh board/optimize crates/fr-router/src 'TraceShover.java'    scripts/audit-map/fr-router.map
+
+The wide `board/actions` glob (which also names `ForcedPadRouter.java` and
+`ForcedViaInserter.java`) starts passing in Task 10. There is deliberately **no**
+`board/facade` invocation against this crate: `RoutingBoardExt` carries five of
+`RoutingBoard`'s methods, and the class's other ~100 stay in `fr-board`, whose
+own `board/facade` audit covers them — Task 9 turned the three `added in Plan 6:`
+markers there (`additionalUpdateAfterChange`, `initAutoroute`,
+`checkForcedTracePolyline`) into `renamed:` markers naming this crate, and that
+audit still exits 0.
 
 ## The drill package (Task 7)
 
@@ -442,6 +461,57 @@ the port and the jar differ there, `ViaRule` needs owned `ViaInfo` copies (or
 `ViaInfos` needs tombstones) and this fixture is the regression test.
 
 
+## `RoutingBoardExt` and the check-only shove (Task 9)
+
+Plan-2 ruling 4 left five `RoutingBoard` methods out of `fr-board` because each
+one needs an `AutorouteEngine`, which `fr-board` cannot name. Plan-6 ruling 3
+puts them here as `RoutingBoardExt`, an extension trait over `fr_board::Board`
+that Plan 7 extends further (`optChangedArea`, the pull-tight entry points, the
+tighteners). The same reasoning brings `board.optimize.TraceShover` and
+`board.actions.DrillItemMover` into this crate: both take a `RoutingBoard`, and
+the router is their only caller.
+
+**The engine is a value, not a field.** Java's `RoutingBoard` owns
+`private transient AutorouteEngine autorouteEngine` (`RoutingBoard.java:70`);
+the port cannot, so `init_autoroute` takes `Option<AutorouteEngine>` where Java
+reads the field and returns the engine where Java writes it, and
+`finish_autoroute` consumes it where Java nulls it. One consequence is recorded
+rather than hidden: Java's `additionalUpdateAfterChange` returns at once while
+`board.autorouteEngine == null` (`:100`), and only `initAutoroute` (`:892`) ever
+sets it, so the port — which has no field to test — always runs the body. That
+equals Java on every production path, because `initAutoroute` is the only
+non-GUI caller of the `AutorouteEngine` constructor
+(`gui/interactive/ExpandTestState.java:167` is the other, and no GUI is ported).
+
+**This is the check half only.** `TraceShover.insert`,
+`TraceShover.springOverObstacles`, `DrillItemMover.insert` and
+`DrillItemMover.shoveVias` are `// added in Plan 7:` markers in the two files.
+The property that makes the split safe is pinned by
+`trace_shover_check_does_not_mutate_the_board`: neither `check` changes the
+board's item set. Both *do* write `shoveFailingObstacle` and burn item ids on
+the substitute trace pieces they build, and Java's do too — neither is in
+`Board::structural_hash`.
+
+**`springOver` returns Java's reference identity.** `TraceShover.check:382` and
+`springOverObstacles:845` both branch on `!=` against the polyline they passed
+in, so `SpringOverOutcome::{Unchanged, Changed}` replaces what would otherwise
+be a lossy `Option<Polyline>`: a detour can be *equal* to the input without
+being *identical* to it, and only the identical case leaves
+`maxSpringOverRecursionDepth` unspent.
+
+**The one open call site.** `DrillItemMover::check`'s main arm reaches
+`ForcedPadRouter.checkForcedPad`, which Task 10 owns — and Java's dependency
+there is a **cycle**: `checkForcedPad` calls back into `DrillItemMover.check`
+(`ForcedPadRouter.java:269-278`) and into `TraceShover.check` (`:322-334`). One
+of the two halves therefore has to land first. Task 9 owns everything on this
+side of the cycle; the site carries an `added in Task 10:` marker and an
+`obligation:` block, and until Task 10 discharges it `DrillItemMover::check`
+answers only the two arms Java reaches before that call (`:46-48`'s
+`isShoveFixed` and `:51-56`'s non-trace contact) and panics beyond them. Nothing
+in Plan 6 reaches it yet: a via only enters `shapeEntries.shoveViaList` when it
+overlaps the shape being checked, and the maze does not call
+`checkForcedTracePolyline` until Task 13.
+
 ## Quirk-register numbering
 
 `docs/java-quirks.md` is allocated **contiguously, in the order rows are
@@ -475,7 +545,11 @@ then drops the new element whole, payload included — plan label #156), **#172*
 which force `attachSmdAllowed` on and scale the via cost by `0.1` — plan label
 #159, an id already spent by Task 3) and **#173** (`initNet`'s null-net arm is
 only reachable for `netNumber <= 0`; a positive unknown net throws two lines
-later). The next free id is **#174**. Every later
+later); and Task 9 wrote **#174** (`TraceShover.check`'s via arm returns
+`false` without setting `shoveFailingObstacle`, so the field keeps a stale item
+that the ripup resolver later reads) and **#175** (`DrillItemMover.check`
+appends the drill item to the caller's own `ignoreItems` collection — a check
+with a visible side effect). The next free id is **#176**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.

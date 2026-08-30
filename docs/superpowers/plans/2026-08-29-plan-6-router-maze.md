@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #174.** Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #176.** Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
@@ -1233,6 +1233,18 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > (see the register's re-pointing row): the mechanism survives at HEAD and the routing probe on
 > `Issue593-BBD_Mars-64.dsn` differs 123 vias vs 45 with and without the `.rules` file, so the
 > row stays open for Task 17's `p6t1` to close with the port's own numbers.
+> Task 9 landed **#174** and **#175**, neither of which the plan anticipated (its hazard P turned
+> out to be a non-issue — see below). **#174**: `TraceShover.check`'s via arm (`:348-350`) is the
+> one refusal in the method that does **not** set `shoveFailingObstacle`, so the field keeps
+> whatever earlier failure wrote it and `MazeRipupResolver` — which reads it — can be handed a
+> stale item from a different call on a different net. **#175**: `DrillItemMover.check` appends
+> the drill item to the caller's own `ignoreItems` collection (`:63`) when one is supplied, while
+> replacing a `null` one with a fresh list — a "check" with a visible side effect, and the reason
+> `shoveVias` copies its list before calling it.
+> **Hazard P is closed with no row.** `grep -n "\.equals(" TraceShover.java` answers three
+> sites — `Direction.equals` at `:177` and `:390` and `Point.equals` at `:518` (which is in
+> `insert`, Plan 7's). There is **no** `Line.equals` call site in the class, so quirk #34's
+> `equals_geometric` obligation stays confined to `TraceTightener*.repositionLine`.
 > Task 12 must take the next free id *at the time it writes*, re-checking
 > `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
