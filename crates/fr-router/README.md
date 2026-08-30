@@ -364,18 +364,24 @@ classes in scope**, and it takes `autoroute/path` from 7 MISSING to **4** —
 marker naming the `AutorouteDiagnostic` sink of ruling 13's roster, and the
 nested class's constructor row (`FoundConnectionLocator.ResultItem`, which the
 audit reads as a public method of the enclosing class) is closed by
-`ResultItem::new` plus a `renamed:` marker. The one that remains is
-`FoundConnectionInserter.getInstance`, Task 15's — so **this invocation exits 1
-until Task 15**, and every other one in the plan exits 0. All five `autoroute`
-invocations stay at zero UNMAPPED. Task 9 opened the two `board/*` invocations, each
-restricted to the file it ports, and both exit 0 with zero MISSING and zero
-UNMAPPED:
+`ResultItem::new` plus a `renamed:` marker. The last one,
+`FoundConnectionInserter.getInstance`, was **Task 15's, and Task 15 closed it**:
+`autoroute/path` now exits 0 with 0 MISSING / 0 UNMAPPED, so **all five
+`autoroute` invocations exit 0**. Task 9 opened the two `board/*` invocations,
+each restricted to the files it ports, and both exit 0 with zero MISSING and
+zero UNMAPPED:
 
-    ./scripts/audit-port.sh board/actions  crates/fr-router/src 'DrillItemMover.java' scripts/audit-map/fr-router.map
-    ./scripts/audit-port.sh board/optimize crates/fr-router/src 'TraceShover.java'    scripts/audit-map/fr-router.map
+    ./scripts/audit-port.sh board/actions  crates/fr-router/src 'ForcedPadRouter.java ForcedViaInserter.java DrillItemMover.java' scripts/audit-map/fr-router.map
+    ./scripts/audit-port.sh board/optimize crates/fr-router/src 'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java' scripts/audit-map/fr-router.map
 
-The wide `board/actions` glob (which also names `ForcedPadRouter.java` and
-`ForcedViaInserter.java`) starts passing in Task 10. There is deliberately **no**
+The `board/optimize` glob was one file until controller ruling AB moved the
+whole tightener family into Plan 6 (Tasks 15a/15b); the widened form above is
+the one that actually covers it. The narrow `'TraceShover.java'` form still
+exits 0, but it no longer audits everything this crate ports from that
+directory.
+
+The wide `board/actions` glob above (which also names `ForcedPadRouter.java` and
+`ForcedViaInserter.java`) started passing in Task 10. There is deliberately **no**
 `board/facade` invocation against this crate: `RoutingBoardExt` carries five of
 `RoutingBoard`'s methods, and the class's other ~100 stay in `fr-board`, whose
 own `board/facade` audit covers them — Task 9 turned the three `added in Plan 6:`
@@ -1262,6 +1268,18 @@ snapshot to `Board::connect_to_trace_of`, a second entry point added to
 `fr-board` that is Java's object reference made explicit. Probe mode `diag` is
 the fixture: routing to a *slanted* target trace leaves Java with one combined
 trace and the naive port with three.
+
+**Quirk #187: each `connectToTrace` stub is sized from the *other* end's
+layer.** `:82` inserts the stub onto `connection.targetItem` with
+`ctrl.traceHalfWidth[connection.startLayer]` and `:97` inserts onto
+`connection.startItem` with `[connection.targetLayer]` — but
+`RoutingBoard.connectToTrace` takes no layer: `:1135` reads
+`toTrace.getLayer()` and inserts the copper there. The two indices are crossed.
+Probe mode `diag` shows it live (`startItem=3 startLayer=1 targetItem=4
+targetLayer=0`: a stub on layer 0 sized from layer 1). It is latent on every
+fixture here only because `buildSimple` gives both layers half width 30; a DSN
+with per-layer widths separates them. Transcribed verbatim with a `// Java bug:`
+marker at each site.
 
 **The `LinkedHashSet` at `:462` is a `Vec` with a membership test**, not a
 `BTreeSet`. `insertFanoutMicroNeckdown` takes the *first* candidate half width

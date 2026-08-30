@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #187** (was #176 when this block was written; Tasks 7-14 landed #167-#181, Task 15a landed #182-#184, Task 15b landed #185 and Task 15 landed #186). Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #188** (was #176 when this block was written; Tasks 7-14 landed #167-#181, Task 15a landed #182-#184, Task 15b landed #185 and Task 15 landed #186 and #187). Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the

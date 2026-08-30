@@ -801,3 +801,75 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
 
     assert_rows_match("viafail", &rows);
 }
+
+/// `getInstance:74` hands `insertVia` a **null** `lastCorner` whenever `connectionItems` is empty
+/// — quirk #180's two early returns are the producers — and `:684-686` only answers it when the
+/// two layers are equal. They need not be: `FoundConnectionLocator.java:130-135` returns with
+/// `targetLayer` at its `0` default *after* `:114` has set `startLayer = startDoor.room.getLayer()`,
+/// which is nonzero whenever the start door's room is not on layer 0.
+///
+/// The locator is forged through its public fields, as Task 14's `warn`-branch tests forge theirs
+/// — the JVM reaches this state only by reflecting a `MazeSearchEngine.Result`, so these two rows
+/// are derived from Java's **control flow** (`ForcedViaInserter.java:140` is the only dereference
+/// of `location` in `insertVia`'s reach, and `:704-706` guards `:708`), not from a probe row.
+fn forged_empty_connection(start_layer: usize) -> FoundConnectionLocator {
+    FoundConnectionLocator {
+        connection_items: Vec::new(),
+        start_item: None,
+        start_layer,
+        target_item: None,
+        target_layer: 0,
+        backtrack_array: Vec::new(),
+    }
+}
+
+/// No padstack spans layer 0 to layer 1, so Java's `:701` loop leaves `foundSuitableSpan` false,
+/// never reaches `:708`, and returns `false` from `:751` — **without** touching `location`. The
+/// answer is `Ok(None)` (`autorouteConnection:271-277`'s message-carrying `FAILED`), not a panic
+/// (`AutorouteConnectionRouter.route:155-158`'s bare one), and the board is untouched.
+#[test]
+fn a_null_last_corner_with_no_spanning_padstack_answers_none() {
+    let mut board = simple_board();
+    let mut ctrl = probe_control(&board, 1);
+    board.rules.via_rules.push(ViaRule::new("empty"));
+    ctrl.via_rule = Some(ViaRuleId(board.rules.via_rules.len() - 1));
+    let before = t15_board_dump(&board);
+    let counter = Counter::new();
+    let result = FoundConnectionInserter::get_instance(
+        Some(&forged_empty_connection(1)),
+        &mut board,
+        &ctrl,
+        None,
+        &|| counter.check(),
+    );
+    assert!(
+        matches!(result, Ok(None)),
+        "no spanning padstack is Java's `return false` at `:751`, not a throw: {result:?}"
+    );
+    assert_eq!(before, t15_board_dump(&board), "nothing was inserted");
+}
+
+/// With the fixture's two-layer `via` padstack the same forged connection *does* reach `:708`,
+/// and there Java throws: `ForcedViaInserter.check` opens with
+/// `location.differenceBy(Point.ZERO)` (ForcedViaInserter.java:140). The port panics at exactly
+/// that call, which plan-6 ruling 7's `catch_unwind` turns back into the bare `FAILED` Java's
+/// NPE produces.
+#[test]
+#[should_panic(expected = "ForcedViaInserter.java:140")]
+fn a_null_last_corner_panics_where_java_dereferences_it() {
+    let mut board = simple_board();
+    let ctrl = probe_control(&board, 1);
+    assert_eq!(
+        ctrl.via_rule,
+        Some(ViaRuleId(0)),
+        "the fixture's spanning rule"
+    );
+    let counter = Counter::new();
+    let _ = FoundConnectionInserter::get_instance(
+        Some(&forged_empty_connection(1)),
+        &mut board,
+        &ctrl,
+        None,
+        &|| counter.check(),
+    );
+}

@@ -119,6 +119,12 @@ impl FoundConnectionInserter {
         // lookup after the insert answers `None` and skips the whole block. So the two traces are
         // snapshotted here, where Java's references are already live and the board still holds
         // them — see `docs/java-quirks.md` #186 and `Board::connect_to_trace_of`.
+        //
+        // obligation: `AutorouteEngine.autorouteConnection:260-263` — Java's reference is older
+        // still, taken during the locator's walk, so a start or target trace that the *ripup*
+        // removes at `:260` is a live object there and `None` here. Strictly smaller than the
+        // deviation #186 fixes, and no fixture reaches it; Task 16 owns that ripup and should
+        // pass the snapshot in rather than let this method take it.
         let target_trace = Self::trace_snapshot(board, connection.target_item);
         let start_trace = Self::trace_snapshot(board, connection.start_item);
         // :45.
@@ -172,6 +178,11 @@ impl FoundConnectionInserter {
         // :77-91.
         // `:78`'s `else` (`:84-90`) is the `FRLogger.warn` for a null `firstCorner`, which
         // happens only when `connectionItems` is empty — so the two tests collapse into one.
+        //
+        // Java bug: FoundConnectionInserter.getInstance:82 sizes the stub onto the **target**
+        // item from `ctrl.traceHalfWidth[connection.startLayer]`, while
+        // `RoutingBoard.connectToTrace:1135` inserts it on `toTrace.getLayer()` — the target
+        // trace's layer. The two indices are crossed; see docs/java-quirks.md #187.
         if let Some(target_trace) = &target_trace
             && let Some(first_corner) = new_instance.first_corner
         {
@@ -186,6 +197,10 @@ impl FoundConnectionInserter {
         }
         // :92-106.
         // `:93`'s `else` (`:99-105`) is the matching `FRLogger.warn`.
+        //
+        // Java bug: FoundConnectionInserter.getInstance:97 is the mirror of `:82` — the stub onto
+        // the **start** item is sized from `ctrl.traceHalfWidth[connection.targetLayer]` and
+        // inserted on the start trace's own layer. docs/java-quirks.md #187.
         if let Some(start_trace) = &start_trace
             && let Some(last_corner) = new_instance.last_corner
         {
@@ -277,8 +292,13 @@ impl FoundConnectionInserter {
                 // obligation: `FoundConnectionInserter.insertTrace:151-162` — no fixture has two
                 // own-net pins whose centres coincide with one trace end, so dropping the
                 // `.rev()` leaves every row of `P6T15Probe` byte-identical. The order is read off
-                // `Item.compareTo`, not guessed. Task 17's per-connection driver on a real board
-                // is where a tie can appear.
+                // `Item.compareTo`, not guessed. **This is live code on a real board**, not a
+                // rare path: `AutorouteControl.java:168` is
+                // `withNeckdown = settings.getAutomaticNeckdown()` and `DefaultSettings.java:103`
+                // (port: `sources/default_settings.rs:90`) sets it **true**, so this pick-up runs
+                // on every trace insert of every settings-pipeline board. Only this plan's
+                // fixtures, which build `RouterSettings::new()`, leave it false. Task 17's
+                // per-connection driver on a real board is where a tie can appear.
                 for id in picked.into_iter().rev() {
                     let Some(item @ Item::Pin(_)) = board.get_item(id) else {
                         continue;
@@ -666,7 +686,10 @@ impl FoundConnectionInserter {
         //
         // obligation: `FoundConnectionInserter.tryNeckDown:553` — no fixture has a pin whose
         // neckdown half width *equals* `ctrl.traceHalfWidth`, so `>=` and `>` agree on every
-        // `P6T15Probe` row. The widths in play are 49 and 69 against 100 and 60. Task 17.
+        // `P6T15Probe` row. The widths in play are 49 and 69 against 100 and 60. Reached through
+        // `insertNeckdown` on **every** settings-pipeline board, because `automaticNeckdown`
+        // defaults to true (`DefaultSettings.java:103`); only this plan's `RouterSettings::new()`
+        // fixtures keep it off, which is why the pinning here is by direct call. Task 17.
         if neck_down_halfwidth >= ctrl.trace_half_width[layer] {
             return Ok(None);
         }
@@ -710,7 +733,8 @@ impl FoundConnectionInserter {
             //
             // obligation: `FoundConnectionInserter.tryNeckDown:586-588` — the one row that
             // reaches this arm has `|dx| > |dy|` strictly, so `>=` and `>` agree. A neck along an
-            // exact diagonal would separate them. Task 17.
+            // exact diagonal would separate them. Live on every settings-pipeline board for the
+            // same reason as `:553`'s marker. Task 17.
             let horizontal_first = (float_from_corner.x - float_neck_down_end_point.x).abs()
                 >= (float_from_corner.y - float_neck_down_end_point.y).abs();
             // :589-595.
@@ -798,7 +822,7 @@ impl FoundConnectionInserter {
         )
     }
 
-    /// The five `insertForcedTraceSegment` calls of `tryNeckDown` (`:596`, `:614`, `:641`,
+    /// The four `insertForcedTraceSegment` calls of `tryNeckDown` (`:596`, `:614`, `:641`,
     /// `:662`) differ only in their two corners and the half width; every other argument is
     /// `ctrl`'s, `Integer.MAX_VALUE`, `true` and `null`.
     ///
@@ -847,10 +871,22 @@ impl FoundConnectionInserter {
     ///
     /// # Panics
     ///
-    /// * when `location` is `None` and the two layers differ — `:708`/`:710` hands it to
-    ///   `ForcedViaInserter.check`, which dereferences it. `getInstance:74` can pass a null
-    ///   `lastCorner` (an empty `connectionItems`), but only with `currentLayer == startLayer`,
-    ///   which `:684-686` answers before reading it;
+    /// * when `location` is `None` **and** a padstack spanning `fromLayer..toLayer` was found.
+    ///   Java's only dereference of `location` in this method's reach is
+    ///   `ForcedViaInserter.check`'s `location.differenceBy(Point.ZERO)`
+    ///   (ForcedViaInserter.java:140), called from `:708` — which `:704-706` guards. So a null
+    ///   `location` with **no** spanning padstack is not an NPE in Java: it falls through to
+    ///   `:721-751` and returns `false`, i.e. `Ok(None)` here and `autorouteConnection:271-277`'s
+    ///   *message-carrying* `FAILED`, not `AutorouteConnectionRouter.route:155-158`'s bare one.
+    ///   The `expect` therefore sits inside the loop, at Java's deref, and not above it.
+    ///
+    ///   A null `location` here is `getInstance:74`'s null `lastCorner`, i.e. an empty
+    ///   `connectionItems`, and it really can arrive with `currentLayer != startLayer`:
+    ///   `FoundConnectionLocator.java:130-135` (quirk #180's second early return) returns with
+    ///   `targetLayer` at its `0` default **after** `:114` has set
+    ///   `startLayer = startDoor.room.getLayer()`, which is nonzero whenever the start door's
+    ///   room is not on layer 0. `a_null_last_corner_with_no_spanning_padstack_answers_none` and
+    ///   `a_null_last_corner_panics_where_java_dereferences_it` pin both halves.
     /// * when `ctrl.viaRule` is `None` — `:701` dereferences it with no guard, exactly as
     ///   `AutorouteControl.rebuildViaInfo:235` already has.
     fn insert_via(
@@ -879,8 +915,6 @@ impl FoundConnectionInserter {
         };
         // :697-698.
         let net_numbers = [ctrl.net_number];
-        let location = location
-            .expect("FoundConnectionInserter.insertVia:708 dereferences a null location (NPE)");
         // :699-700.
         let mut via_info = None;
         let mut found_suitable_span = false;
@@ -908,7 +942,11 @@ impl FoundConnectionInserter {
             }
             // :707.
             found_suitable_span = true;
-            // :708-719.
+            // :708-719. `check` is where Java first touches `location`
+            // (`ForcedViaInserter.java:140`, `location.differenceBy(Point.ZERO)`), so the
+            // `Option` is opened here and not above the loop — see this method's `# Panics`.
+            let location = location
+                .expect("FoundConnectionInserter.insertVia:708 -> ForcedViaInserter.java:140 dereferences a null location (NPE)");
             if ForcedViaInserter::check(
                 board,
                 &current_via_info,
@@ -930,7 +968,10 @@ impl FoundConnectionInserter {
             let _ = found_suitable_span;
             return Ok(false);
         };
-        // :753-783. "insert the via"
+        // :753-783. "insert the via". Reached only when `:708`'s `check` answered true, which
+        // already opened the `Option` above.
+        let location = location
+            .expect("FoundConnectionInserter.insertVia:754 is reached only through :708's check");
         if !ForcedViaInserter::insert(
             board,
             &via_info,
