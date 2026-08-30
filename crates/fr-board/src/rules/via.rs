@@ -377,10 +377,15 @@ impl ViaRule {
     ///
     /// **Deviation, guarded.** `ViaInfo` does not override `equals` (ViaInfo.java:13-107 declares
     /// none), so Java's `List.remove(Object)` compares by **reference**; the port compares by
-    /// value. The two agree wherever a rule cannot hold two equal `ViaInfo`s, which is every
-    /// caller: the sole non-GUI one, `BoardRules.createDefaultViaRule` (BoardRules.java:177-196),
-    /// appends at most one via per `viaInfos` entry and `ViaInfos::add` rejects duplicate names.
-    /// Asserted by `a_rule_cannot_hold_two_equal_via_infos`.
+    /// value. The two agree wherever a rule cannot hold two equal `ViaInfo`s, which is true of
+    /// **this method's** whole caller set: `removeVia` has exactly one non-GUI Java caller,
+    /// `BoardRules.createDefaultViaRule` (BoardRules.java:189), which appends at most one via per
+    /// `viaInfos` entry into a rule it has just built, and `ViaInfos::add` (ViaInfos.java:22-28)
+    /// rejects duplicate names. (`gui/windows/routing/WindowViaRule.java:184` is the other caller
+    /// and is out of scope.) Asserted by `a_rule_cannot_hold_two_equal_via_infos`.
+    ///
+    /// The guard is **this method's alone** — do not read it as covering [`Self::contains`], whose
+    /// caller set is different and whose deviation is live. See that method.
     pub fn remove_via(&mut self, via: &ViaInfo) -> bool {
         match self.vias.iter().position(|v| v == via) {
             Some(index) => {
@@ -398,6 +403,14 @@ impl ViaRule {
 
     /// Port of `ViaRule.getVia` (ViaRule.java:44-47). Java asserts the index is in range and
     /// would then throw; the port panics on the same out-of-range index.
+    ///
+    /// **Java-wins correction to the Plan 7 Task 0 brief**, which specified
+    /// `-> Option<&ViaInfo>` on the grounds that `getVia` "returns **null** for an out-of-range
+    /// index". It does not: `:45` is `assert index >= 0 && index < list.size();` and `:46` is
+    /// `return list.get(index);`, and `LinkedList.get` throws `IndexOutOfBoundsException`. There
+    /// is no `null` return, so the Global Constraint's "`Option` where Java returns `null`" does
+    /// not apply, and an `Option` would have invented a `None` no Java caller can observe. The
+    /// panic also matches [`ViaInfos::get`]'s existing convention for the identical Java shape.
     pub fn get_via(&self, index: usize) -> &ViaInfo {
         &self.vias[index]
     }
@@ -408,8 +421,45 @@ impl ViaRule {
         self.vias.iter()
     }
 
-    /// Port of `ViaRule.contains` (ViaRule.java:55-62). Java compares with `==`, i.e. object
-    /// identity; the port compares by value, with the same guard [`Self::remove_via`] carries.
+    /// Port of `ViaRule.contains` (ViaRule.java:55-62). Java's loop body is a literal
+    /// `viaInfo == currentInfo` (`:57`) — object **identity**; the port compares by value.
+    ///
+    /// **This deviation is NOT covered by [`Self::remove_via`]'s guard, and it is live.**
+    /// `contains` has exactly one non-GUI Java caller, and it is a *dedup* guard across **two
+    /// separately built rules**:
+    ///
+    /// ```java
+    /// // board/facade/RoutingBoard.java:1028-1041 (RoutingBoard.fanout, :978)
+    /// ViaRule combinedViaRule = new ViaRule(ctrlSettings.viaRule.name + "_fallback");
+    /// for (int i = 0; i < ctrlSettings.viaRule.viaCount(); i++)     // :1030-1032
+    ///   combinedViaRule.appendVia(ctrlSettings.viaRule.getVia(i));
+    /// ViaRule defaultViaRule = this.rules.viaRules.firstElement();  // :1034
+    /// for (int i = 0; i < defaultViaRule.viaCount(); i++) {
+    ///   ViaInfo defaultVia = defaultViaRule.getVia(i);
+    ///   if (!combinedViaRule.contains(defaultVia))                  // :1037
+    ///     combinedViaRule.appendVia(defaultVia);                    // :1038
+    /// }
+    /// ```
+    ///
+    /// Java's `==` dedups only *identical objects*, so two rules built at different moments can
+    /// hold value-equal-but-distinct `ViaInfo`s — a `.rules` file that re-declares a `(via …)`
+    /// with identical values and then a `(via_rule …)` rebuilt from the new list is the repro —
+    /// and there **Java appends a duplicate where this port silently skips it**. That changes
+    /// `combinedViaRule`'s length and order, which `:1042-1043` feeds straight into
+    /// `AutorouteControl.rebuildViaInfo`. It is the same aliasing ruling H closed, one method
+    /// over.
+    ///
+    /// Not reachable at Plan 7 Task 0: `RoutingBoard.fanout` is not ported yet. The fanout task
+    /// acquires this caller and owns making it reference-faithful — controller **ruling AN**.
+    /// (`gui/windows/routing/WindowEditVias.java:191` and `WindowViaRule.java:148` are the other
+    /// two callers, both out of scope.)
+    //
+    // obligation: RoutingBoard.fanout (board/facade/RoutingBoard.java:1037) — `ViaRule.contains`
+    // is Java's `==` and this port's value comparison; the fanout merge at :1028-1041 is the one
+    // non-GUI caller and the first place the difference is observable. Addressed to **Plan 7
+    // Task 11** (the fanout task) by controller ruling AN; see docs/java-quirks.md's via-info /
+    // via-rule re-pointing row.
+    // added in Plan 7: Task 0
     pub fn contains(&self, via_info: &ViaInfo) -> bool {
         self.vias.iter().any(|v| v == via_info)
     }
@@ -601,10 +651,17 @@ mod tests {
         assert!(!rule.remove_via(&a));
     }
 
-    /// The guard on [`ViaRule::remove_via`]'s value-vs-reference deviation: the only non-GUI
-    /// builder of a via rule, `BoardRules.createDefaultViaRule` (BoardRules.java:169-199), cannot
-    /// produce two equal `ViaInfo`s, because it appends at most one via per `viaInfos` entry and
-    /// `ViaInfos::add` (ViaInfos.java:22-28) rejects duplicate names.
+    /// The guard on [`ViaRule::remove_via`]'s value-vs-reference deviation. `removeVia`'s only
+    /// non-GUI Java caller is `BoardRules.createDefaultViaRule` (BoardRules.java:189), and the
+    /// rule it calls it on cannot hold two equal `ViaInfo`s: it appends at most one via per
+    /// `viaInfos` entry (`:177-196`) and `ViaInfos::add` (ViaInfos.java:22-28) rejects duplicate
+    /// names.
+    ///
+    /// **This does not generalise to every via rule** — Java has six non-GUI `new ViaRule(…)`
+    /// sites (`BoardRules.java:174`, `Network.java:402` and `:694`, `KiCadJsonReader.java:403`
+    /// and `:439`, `RoutingBoard.java:1029`) and the last of them, `fanout`'s merge, is exactly
+    /// where the same value-vs-reference difference *is* observable. That one is
+    /// [`ViaRule::contains`]' problem, not [`ViaRule::remove_via`]'s; see its doc.
     #[test]
     fn a_rule_cannot_hold_two_equal_via_infos() {
         let layer_structure = crate::structure::LayerStructure::new(vec![

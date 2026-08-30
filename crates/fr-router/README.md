@@ -1915,10 +1915,18 @@ and k = 8 included; the transcript is committed as
 *via-rule* half of the register row — `Network.addViaRule` replacing a `ViaRule`
 while `NetClass.viaRule` keeps the detached original — is **still open**.
 
-### The 28 `obligation:` markers
+### The 27 `obligation:` markers
 
-`grep -rn "obligation:" crates/fr-router/src` answers 28 rows, and they come out
-**14 discharged / 8 re-marked / 1 decided / 5 not this task's**:
+`grep -rn "obligation:" crates/fr-router/src` answers 27 rows, and they come out
+**14 discharged / 8 re-marked / 5 not this task's**.
+
+Task 17 wrote this section when the grep answered **28**; the twenty-eighth was
+ruling H's marker on `AutorouteControl::rebuild_via_info`, and **Plan 7 Task 0
+closed it** — the block at `control.rs:385` is now a `# Ruling H, closed` record,
+not an `obligation:`, so it is outside the total. Its row is at the foot of the
+table below, kept for the trail and marked closed.
+
+The twenty-seven:
 
 * **14 discharged** — a corpus connection reaches the arm *and* the whole
   connection matches the jar, with the fixture and the connection index in the
@@ -1926,8 +1934,6 @@ while `NetClass.viaRule` keeps the detached original — is **still open**.
   coverage: `routing_board_ext.rs:796` and `:939` both DIFF `router-j2-reference`
   when mutated to the alternative Java could have been written with.
 * **8 re-marked** — the measurement that says why no corpus board reaches them.
-* **1 decided** — ruling H, above; **closed in Plan 7 Task 0**, and its marker
-  rewritten from an `obligation:` into the closure record.
 * **1 discharged by construction** (`engine.rs:761`, `completeExpansionRoom`'s
   `Err` contract: Tasks 11-16 consume it as an empty list, and the corpus never
   takes the `Err` arm at all), **2 already discharged in Task 6**
@@ -1952,7 +1958,7 @@ while `NetClass.viaRule` keeps the detached original — is **still open**.
 | `autoroute/path/locator.rs:267` | `FoundConnectionLocator:124-129` (fanout) | **re-marked** | 0 entries; `ctrl.isFanout` is `BatchFanout`'s, i.e. **Plan 7's** — unreachable below the seam |
 | `autoroute/path/locator.rs:398` | `FoundConnectionLocator:167-175` | **re-marked** | max dimension seen is 1 (dac2020 14, j2 4); `router-ecc83-input`'s conduction areas give 0 |
 | `autoroute/maze/mod.rs:57` | `AutorouteEngine.TRACE_WIDTH_TOLERANCE` | discharged in Task 6 | one definition, still |
-| `autoroute/maze/control.rs:381` | `AutorouteControl.rebuildViaInfo` | **decided** | ruling H closes against the re-pointing — see above |
+| ~~`autoroute/maze/control.rs:381`~~ -> `control.rs:385`, **no longer an `obligation:`** | `AutorouteControl.rebuildViaInfo` | **closed in Plan 7 Task 0** (outside the 27) | ruling H closed against the re-pointing; `ViaRule` owns its `ViaInfo`s and the `.rules` repro is MATCH on all 50 connections (`crates/fr-router/tests/data/p7t0-ruling-h-match.txt`) — see above |
 | `autoroute/maze/ripup_resolver.rs:170` | `checkRipup:86-91` (`roomWasShoved`) | **discharged** | entered 5 / 214 / 12 798 times on rpi-splitter / j2 / dac2020 |
 | `autoroute/maze/ripup_resolver.rs:189` | `checkRipup:92-94` (`ALREADY_RIPPED_COSTS`) | **discharged** | returned 1 / 27 / 3 161 times on the same three |
 | `autoroute/maze/trace_shover.rs:404` | `checkShoveTraceLine:236-312` | **discharged** | `:255` pushes 15 / 498 / 27 083, `:307` pushes 12 / 819 / 52 450 |
@@ -2030,7 +2036,7 @@ crates/` is the complete inventory.
 | the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |
 | the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin` | `board/optimize/TraceTightener.java` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `src/board_ext/tightener/` module docs |
 | `RoutingFailureLog` — `fr-board`'s `failure_log: Vec<String>` becomes the real type | `autoroute/RoutingFailureLog.java` | `crates/fr-board/src/board/mod.rs`'s field; `src/lib.rs` roster |
-| **the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s | `rules/ViaRule.java:21`, `io/specctra/RulesReader.java:340-350` | `src/autoroute/maze/control.rs:381`; `crates/fr-board/src/rules/via.rs:262`; obligation register |
+| ~~**the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s~~ — **DONE in Plan 7 Task 0** (via-info half; the `NetClass.viaRule` half is Task 11's, ruling AN) | `rules/ViaRule.java:21`, `io/specctra/RulesReader.java:340-350` | `src/autoroute/maze/control.rs:385`; `crates/fr-board/src/rules/via.rs` `ViaRule`; obligation register |
 | the eight **re-marked** coverage obligations | see the marker table above | `grep -rn "obligation:" crates/fr-router/src` |
 | `max_passes == 0` means **unlimited** (quirk #140), and `-mt` is **not** a threading policy on the headless path (quirk #143) | `RouterSettings.validate`, `BatchOptimizer.createForHeadless:51-53` | House rules above; `docs/java-quirks.md` |
 
