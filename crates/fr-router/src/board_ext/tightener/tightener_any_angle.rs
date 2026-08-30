@@ -31,13 +31,16 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :36.
-        let mut new_result = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => replacement,
-            None => polyline.clone(),
+        // :36. `ever_changed` is seeded from this arm, not from the loop: Java returns
+        // `newResult`, and `PolylineTrace.pullTight:837` compares it against the **original**
+        // argument — so an `avoidAcidTraps` that answered a new object would make Java report
+        // "changed" even if all six steps below then handed their argument back. The arm is dead
+        // today (quirk #182), but the assignment is Java's and is transcribed as such.
+        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
+            Some(replacement) => (replacement, true),
+            None => (polyline.clone(), false),
         };
         // :37-38.
-        let mut ever_changed = false;
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
             let mut current = new_result;
@@ -655,9 +658,12 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         } else {
             (next_corner, next_dist)
         };
-        // :554-557: `currentLines[startNo + 2]` is deliberately left at its default — Java's
-        // second `arraycopy` starts at `startNo + 3`, so the slot the loop overwrites at `:584`
-        // is never copied from `lines`.
+        // :554-557. Java's two `arraycopy`s skip index `startNo + 2`, leaving that one slot
+        // `null`; the port copies the whole array instead, so the slot holds `lines[startNo + 2]`
+        // until `:584` (below) overwrites it. Unobservable: nothing reads that index before the
+        // write — not the `cornersSkippedBefore`/`After` loops (which touch `startNo + 1 - i` and
+        // `startNo + 3 + i`), not `new Polyline`, not the `changedArea` block — and `result` is
+        // only ever set from it after the write.
         let mut current_lines: Vec<Line> = lines.to_vec();
         // :558-563.
         let mut translate_dist = max_translate_dist;
@@ -1007,7 +1013,8 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             current_prev_end_corner = trace_polyline.corner(trace_polyline.corner_count() - 3)?;
             end_line_no -= 1;
         }
-        // :906-908 — quirk #183: both directions come from `lines[endLineNo]`.
+        // :906-908.
+        // Java bug: `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` reads `prevLineDirection` from `lines[endLineNo]`, the same line as `lineDirection` (:907-908); the 45-degree sibling reads `lines[length - 3]` (TraceTightener45.java:586). See docs/java-quirks.md #183.
         let line_direction = trace_polyline.lines()[end_line_no].direction().opposite();
         let prev_line_direction = trace_polyline.lines()[end_line_no].direction().opposite();
 
@@ -1056,7 +1063,13 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             new_lines[new_line_count - 1] = other_trace_line;
             return Some(new_polyline(new_lines));
         } else if found.bend {
-            // :988-1001.
+            // :988-1001 — **dead**, and quirk #183 is why: `scan_contacts` sets `bend` only when
+            // `lineDirection.projection(otherDir)` is `ZERO` *and*
+            // `prevLineDirection.projection(otherDir)` is `POSITIVE`, and `:907-908` above make
+            // the two directions equal, so `Direction.projection` — a pure function of its two
+            // arguments — answers the same `Signum` for both tests. Transcribed anyway: the
+            // moment the index is corrected the arm comes alive, and
+            // `crates/fr-router/tests/tightener.rs`'s `smooth` fixture sees it.
             let other_trace_line = found.other_trace_line.expect("bend implies a match");
             let other_prev_trace_line = found.other_prev_trace_line.expect("bend implies a match");
             let mut check_line_arr: Vec<Line> = vec![other_trace_line; new_line_count];

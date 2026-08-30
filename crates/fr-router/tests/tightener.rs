@@ -13,15 +13,12 @@
 //! quirk #34's `Line.equals` guard and the four refusals of `PolylineTrace.pullTight:811-828` —
 //! are additionally asserted as literals so the intent survives a regenerated transcript.
 
-use std::collections::BTreeSet;
-
-use fr_board::ids::{ItemId, PadstackId};
+use fr_board::ids::ItemId;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::format::double::java_double_to_string;
 use fr_geometry::{
     IntBox, IntOctagon, IntPoint, IntVector, JavaRandom, Line, Point, Polyline, Shape, TileShape,
-    Vector,
 };
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
@@ -1452,7 +1449,3 @@ fn assert_rows(mode: &str, expected: &[&str], actual: &[String]) {
         "mode `{mode}` row count differs from the JVM transcript"
     );
 }
-
-/// Silences the unused-import warning for the few helpers only some regimes use.
-#[allow(dead_code)]
-fn _unused(_: BTreeSet<ItemId>, _: PadstackId, _: Vector, _: TileShape) {}

@@ -38,13 +38,14 @@ impl<'a> TraceTightener45<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :36.
-        let mut new_result = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => replacement,
-            None => polyline.clone(),
+        // :36. `ever_changed` is seeded from this arm, not from the loop — see
+        // [`TraceTightener90::pull_tight`](super::TraceTightener90::pull_tight) for why the
+        // `avoidAcidTraps` result counts as a change in its own right. Dead today (quirk #182).
+        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
+            Some(replacement) => (replacement, true),
+            None => (polyline.clone(), false),
         };
         // :37-38.
-        let mut ever_changed = false;
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
             let mut current = new_result;
@@ -75,10 +76,10 @@ impl<'a> TraceTightener45<'a> {
     /// Port of the private `reduceCorners(Polyline)` (TraceTightener45.java:52-221): "tries to
     /// reduce the amount of corners of polyline. Return polyline, if nothing was changed."
     ///
-    /// # Panics
-    ///
-    /// Where Java's `newCorners` array — sized `polyline.lines.length - 3` at `:75` — overflows
-    /// at `:202`, which is an `ArrayIndexOutOfBoundsException` with no `catch` above it.
+    /// Java's `newCorners` array is sized `polyline.lines.length - 3` (`:75`) and written at
+    /// `:202`, and it cannot overflow: `cornerIndex` runs over `[3, L - 2]` and every pass
+    /// advances it by 1 or 2, so there are at most `L - 4` passes, each writing at most one slot
+    /// from index 1 — the largest index written is `L - 4`, the last valid one.
     fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let line_count = polyline.lines().len();
         // :53-55.
@@ -123,6 +124,7 @@ impl<'a> TraceTightener45<'a> {
             {
                 corner_index += 1;
                 current_corner[2] = current_corner[3].clone();
+                // Java bug: `TraceTightener45.reduceCorners` copies `currentCornerInClipShape[3]` onto slot 2 at `:91` while `currentCorner[3]` was replaced at `:81` and the flag is only recomputed at `:100-101`, so the flag belongs to the *previous* corner. See docs/java-quirks.md #184.
                 current_corner_in_clip_shape[2] = current_corner_in_clip_shape[3];
                 if corner_index < line_count - 1 {
                     current_corner[3] = polyline

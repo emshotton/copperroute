@@ -32,13 +32,16 @@ impl<'a> TraceTightener90<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :27 — `avoidAcidTraps` always answers its argument (quirk #182).
-        let mut new_result = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => replacement,
-            None => polyline.clone(),
+        // :27 — `avoidAcidTraps` always answers its argument (quirk #182). `ever_changed` is
+        // seeded from this arm rather than from the loop, because Java returns `newResult` and
+        // `PolylineTrace.pullTight:837` compares it against the **original** argument: a
+        // replacement here would count as "changed" even if all three steps below then handed
+        // their argument back. The arm is dead, the assignment is Java's.
+        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
+            Some(replacement) => (replacement, true),
+            None => (polyline.clone(), false),
         };
         // :28-29: `prevResult` starts as `null`, so the first round always runs.
-        let mut ever_changed = false;
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
             let mut current = new_result;

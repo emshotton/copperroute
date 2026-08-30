@@ -65,7 +65,14 @@ pub(crate) struct TightenerBase<'a> {
     pub(crate) current_layer: usize,
     /// `TraceTightener.currentHalfWidth` (`:55`) — already clearance-compensated by `:184-185`.
     pub(crate) current_half_width: i32,
-    /// `TraceTightener.currentNetNumbers` (`:56`).
+    /// `TraceTightener.currentNetNumbers` (`:56`). Java leaves it `null` until
+    /// `pullTight:186` or `smoothenEndCornersAtTrace:408` writes it, and
+    /// `BasicBoard.checkTraceShape:1017` dereferences it; the port's empty `Vec` checks against
+    /// no nets instead. Unreachable from any Java caller — both `smoothen*CornerAtTrace`
+    /// overrides are only reached through `smoothenEndCornersAtTrace`, which writes the field
+    /// first — so it is recorded here rather than in `docs/java-quirks.md`, and
+    /// `TraceTightener::smoothen_start_corner_at_trace` repeats the warning where a caller will
+    /// read it.
     pub(crate) current_net_numbers: Vec<i32>,
     /// `TraceTightener.currentClearanceClassIndex` (`:57`).
     pub(crate) current_clearance_class_index: usize,

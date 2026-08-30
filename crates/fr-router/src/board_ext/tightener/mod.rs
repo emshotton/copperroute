@@ -222,7 +222,11 @@ impl<'a> TraceTightener<'a> {
         clearance_class_index: usize,
         contact_pins: Option<BTreeSet<ItemId>>,
     ) -> Option<Polyline> {
-        // :182-188.
+        // :182-188. This is one of the **two** writers of `currentLayer`, `currentHalfWidth`,
+        // `currentNetNumbers` and `currentClearanceClassIndex`; the other is
+        // `TraceTightener.smoothenEndCornersAtTrace` (:406-409). Until one of them has run, Java's
+        // `currentNetNumbers` is `null` and either `smoothen*CornerAtTrace` override throws inside
+        // `BasicBoard.checkTraceShape:1017` — see that pair's doc comment.
         let compensation = board.trees.get_default_tree().clearance_compensation_value(
             clearance_class_index,
             layer,
@@ -283,6 +287,18 @@ impl<'a> TraceTightener<'a> {
 
     /// Port of the abstract `smoothenStartCornerAtTrace(PolylineTrace)`
     /// (TraceTightener.java:544) — the regime dispatch.
+    ///
+    /// # The instance must be primed first
+    ///
+    /// Both overrides read `currentLayer`, `currentHalfWidth`, `currentNetNumbers` and
+    /// `currentClearanceClassIndex`, which **only** `smoothenEndCornersAtTrace:406-409` and the
+    /// six-argument `pullTight:182-188` ever write. Called on a fresh instance, Java
+    /// dereferences the `null` `currentNetNumbers` inside `BasicBoard.checkTraceShape:1017` and
+    /// throws; this port's field is an empty `Vec`, so it would silently check against no nets
+    /// at all. Reach these two through
+    /// [`smoothen_end_corners_at_trace`](Self::smoothen_end_corners_at_trace), or prime the
+    /// instance with [`pull_tight_polyline`](Self::pull_tight_polyline) first — which is what
+    /// `P6T15aProbe.smoothen` and `crates/fr-router/tests/tightener.rs` do.
     pub fn smoothen_start_corner_at_trace(
         &mut self,
         board: &mut Board,
@@ -296,7 +312,8 @@ impl<'a> TraceTightener<'a> {
     }
 
     /// Port of the abstract `smoothenEndCornerAtTrace(PolylineTrace)`
-    /// (TraceTightener.java:546) — the regime dispatch.
+    /// (TraceTightener.java:546) — the regime dispatch. Primed exactly as
+    /// [`smoothen_start_corner_at_trace`](Self::smoothen_start_corner_at_trace) documents.
     pub fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
@@ -325,7 +342,9 @@ impl<'a> TraceTightener<'a> {
         {
             return Ok(false);
         }
-        // :406-409.
+        // :406-409 — the second of the two writers of the `current*` fields the
+        // `smoothen*CornerAtTrace` overrides read; see `TraceTightener.smoothenStartCornerAtTrace`'s
+        // doc comment for what a call on an unprimed instance does in Java.
         let layer = polyline_trace.get_layer();
         let half_width = polyline_trace.get_half_width();
         let net_numbers = polyline_trace.hdr.net_nos.clone();
