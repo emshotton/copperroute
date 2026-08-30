@@ -755,8 +755,10 @@ impl PolylineTraceExt for Board {
             // `PolylineTrace.change:938-944`: a trace that is not on the board just has its
             // polyline replaced (`fr-board`'s `change_trace` reproduces that first test); every
             // other one runs `board.additionalUpdateAfterChange(this)` **before** the search-tree
-            // update. `fr-board` cannot make that call — it needs an `AutorouteEngine` — so it
-            // carries a `// added in Plan 6:` marker and the call is made here, in Java's order.
+            // update. `fr-board` cannot make that call — it needs an `AutorouteEngine` — so
+            // `Board::change_trace` carries an `obligation:` marker
+            // (`crates/fr-board/src/board/trace_normalize.rs:994-1001`) recording that the call is
+            // made **at the call site**; this is that call site, and the order is Java's.
             if let Some(engine) = engine
                 && board.items.get(&trace).is_some_and(Item::is_on_the_board)
             {

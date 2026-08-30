@@ -47,8 +47,8 @@
 //           two ways: by reflection at depth 0/1/2/3 on a board with one obstacle, and through
 //           the public `springOverObstacles` on a board carrying a **row of foreign-net pins**,
 //           where the hard-coded `maxSpringOverRecursionDepth = 20` of `:834` runs out.
-//   poly    `insertForcedTracePolyline` over nine polylines x three regimes x `maxRecursionDepth`
-//           0/20 x `withCheck` x `tidyWidth` 0/MAX_VALUE.
+//   poly    `insertForcedTracePolyline` over the fourteen cases of `cases()` x three regimes x
+//           `maxRecursionDepth` 0/20 x `withCheck` x `tidyWidth` 0/MAX_VALUE (336 rows).
 //   tail    the `tidyWidth > 0` pull-tight tail at `:860-862`: the same insertion run with
 //           `tidyWidth = 0` and with `tidyWidth = Integer.MAX_VALUE`, so the rows where the tail
 //           changes the inserted polyline are visible side by side. Also `pullTightAccuracy`

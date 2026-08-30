@@ -180,7 +180,11 @@ pub trait RoutingBoardExt {
     ///   identity again) and is reassigned only at `:675`, from
     ///   `newPolyline.shorten(…, sampleWidth)`'s last corner under `lastSegmentLength >
     ///   sampleWidth` — a corner strictly nearer `fromCorner` than `toCorner` is, so it can
-    ///   equal neither by value;
+    ///   equal neither by value. That step needs `sampleWidth = 2 * getMinTraceHalfWidth() > 0`:
+    ///   at a zero minimum half width the `:658` guard degenerates to `> 0` and `shorten(_, 0.0)`
+    ///   could leave `newCorner` value-equal to `toCorner` where Java's reference test says no.
+    ///   The conclusion survives anyway — both sides still answer the same *value*, which is all
+    ///   `tryNeckDown:492` compares — and no shipped board has a zero minimum trace half width;
     /// * `None` fails both tests in both languages (`null == firstCorner()` is false).
     ///
     /// The probe prints Java's reference answer beside the value one for all 452 rows of modes
@@ -428,8 +432,12 @@ impl RoutingBoardExt for Board {
         // fix Task 10b made for `ShapeTraceEntries.EntryPoint.trace` and for the same reason: a
         // shove that cuts this trace out of the board leaves Java's reference alive, holding the
         // very lines snapshotted here, where an id lookup would answer `None`. The two agree in
-        // the other direction too — nothing between here and `:680` mutates a *board* trace's
-        // polyline in place (`TraceShover::insert` cuts and re-inserts).
+        // the other direction too, and the reason is `:510`'s `netsEqual(netNumbers)`: it makes
+        // `pickedTrace` **own-net**, and `ShapeTraceEntries` turns only *foreign*-net obstacles
+        // into substitute pieces — so `pickedTrace` is never one of the pieces
+        // `TraceShover.insert:540` (or `check:385`) calls `PolylineTrace.change` on, which are the
+        // only in-place polyline mutations on this path. Splits and cut-outs produce **new**
+        // items and leave the old lines intact, which is exactly what the snapshot holds.
         let picked_items = self.pick_traces(&from_corner, Some(layer));
         let mut picked_trace: Option<Polyline> = None;
         if picked_items.len() == 1 {
@@ -584,8 +592,7 @@ impl RoutingBoardExt for Board {
                 // a shorter combined polyline (see `startShapeNo` above) can make it negative;
                 // `Polyline.shorten` then throws out of its `System.arraycopy`. The port panics
                 // instead, at the same boundary and with a message that names the site.
-                // totalized: a negative `newLineCount` -> a panic, where Java throws
-                // `ArrayIndexOutOfBoundsException` inside `Polyline.shorten`.
+                // totalized: `RoutingBoard.insertForcedTracePolyline:659-661`'s negative `newLineCount` -> a panic, where Java throws `ArrayIndexOutOfBoundsException` inside `Polyline.shorten`.
                 let new_line_count = i64::try_from(new_polyline.lines().len()).unwrap_or(i64::MAX)
                     - (trace_shapes.len() as i64 - last_shape_no as i64 - 1);
                 let new_line_count = usize::try_from(new_line_count).unwrap_or_else(|_| {
@@ -669,6 +676,12 @@ impl RoutingBoardExt for Board {
             }
         }
         // :747-750. "insert the new trace segment"
+        //
+        // totalized: `RoutingBoard.insertForcedTracePolyline`'s `newPolyline.cornerApprox(i)` (`:749`) -> a skipped corner.
+        // Java's `Polyline.cornerApprox` clamps an out-of-range index and warns rather than
+        // answering `null` (Polyline.java:271-281), and `i` is bounded by `cornerCount()`, so the
+        // arm cannot fire. Unreachable — no register row; the same argument as the two
+        // `cornerApprox` reads at `:642-643` above.
         for i in 0..new_polyline.corner_count() {
             let Some(corner) = new_polyline.corner_approx(i) else {
                 continue;
@@ -714,11 +727,11 @@ impl RoutingBoardExt for Board {
         // :777-782. `optNetNoArr` is `TraceTightener`'s `onlyNetNoArr`, and its **only** reader
         // is `PolylineTrace.pullTight:821-823`'s "this trace is not on one of those nets" refusal.
         //
-        // obligation: the `maxRecursionDepth <= 0` arm is unobservable here for the same reason
-        // the `:829` pick is (see that marker): the trace `:860-862` pull-tightens is the one
-        // just inserted, whose nets *are* `netNumbers`, so the filter passes whichever array this
-        // produces. It bites only when `:826-833` re-picks a **foreign** trace. **Task 17**
-        // covers both with one fixture connection.
+        // obligation: `RoutingBoard.insertForcedTracePolyline:777-782`'s `maxRecursionDepth <= 0` arm is unobservable on this fixture.
+        // It is unobservable for the same reason the `:826-833` pick is (see that marker): the
+        // trace `:860-862` pull-tightens is the one just inserted, whose nets *are* `netNumbers`,
+        // so the filter passes whichever array this produces. It bites only when `:826-833`
+        // re-picks a **foreign** trace. **Task 17** covers both with one fixture connection.
         let opt_net_no_arr = if max_recursion_depth <= 0 {
             net_numbers.to_vec()
         } else {
@@ -776,8 +789,8 @@ impl RoutingBoardExt for Board {
                             // **highest** id; `pick_traces`' `BTreeSet<ItemId>` is ascending, so
                             // the same element is `next_back`.
                             //
-                            // obligation: this choice has **no discriminating row** in
-                            // `p6t15b-insert-forced.txt`. Instrumented, the branch is reached
+                            // obligation: `RoutingBoard.insertForcedTracePolyline:826-833`'s `pickItems(...).iterator().next()` has **no discriminating row** in the fixture.
+                            // In `p6t15b-insert-forced.txt`, instrumented, the branch is reached
                             // 118 times across every mode and only **one** of those (a `rand`
                             // row at `(-322, 879)`, 45-degree, candidates 5 and 10) has more than
                             // one trace to choose from — and there `:860-862` pull-tightens

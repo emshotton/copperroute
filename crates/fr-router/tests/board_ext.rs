@@ -1217,7 +1217,7 @@ struct T15bCase {
     cl: usize,
 }
 
-/// `P6T15bProbe.cases()` — the nine insertion cases.
+/// `P6T15bProbe.cases()` — the fourteen insertion cases.
 fn t15b_cases() -> Vec<T15bCase> {
     let case = |name, corners: Vec<Point>, nets: Vec<i32>| T15bCase {
         name,
@@ -1515,7 +1515,7 @@ fn java_round_half_up(value: f64) -> i64 {
 
 // --- mode `poly` --------------------------------------------------------------------------------
 
-/// Probe mode `poly`: `insertForcedTracePolyline` over nine polylines x three regimes x
+/// Probe mode `poly`: `insertForcedTracePolyline` over fourteen polylines x three regimes x
 /// `maxRecursionDepth` 0/20 x `withCheck` x `tidyWidth` 0/MAX_VALUE, with the whole board after
 /// each call.
 #[test]
@@ -1690,7 +1690,7 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
 
 // --- mode `seg` ---------------------------------------------------------------------------------
 
-/// Probe mode `seg`: `insertForcedTraceSegment` over the same nine endpoint pairs, which is where
+/// Probe mode `seg`: `insertForcedTraceSegment` over the same fourteen endpoint pairs, which is where
 /// `:393-400`'s three-way test on the returned corner shows. The probe prints Java's **reference**
 /// identity (`isFrom` / `isTo`) beside the answer; this port compares by value, and the transcript
 /// is the proof that the two agree on every row.
@@ -2038,8 +2038,14 @@ fn the_shove_loop_entry_side_index_is_one_below_the_check_loops() {
 // --- plan-6 ruling 6: the stop check ------------------------------------------------------------
 
 /// Plan-6 ruling 6: the `StopCheck` threaded through `insert_forced_trace_polyline` reaches
-/// `TraceShover::insert`'s `fr-board` calls, so a trip answers `Err(BoardError::Stopped)` rather
-/// than hanging on quirk #76's ladder board.
+/// `TraceShover::insert`'s and `Board::normalize_trace_checked`'s `fr-board` calls, so a trip
+/// answers `Err(BoardError::Stopped)`.
+///
+/// This is ruling 6's **contract** — the check is consulted and the error propagates out of the
+/// entry point. Ruling 6's **motivation**, termination on quirk #76's four-rung ladder board, is
+/// pinned for the same `fr-board` chain by `forced_via.rs`'s
+/// `insert_stops_when_the_stop_check_trips` and for the tightener half by `tightener.rs`'s
+/// `pull_tight_stops_when_the_stop_check_trips`; this test does not rebuild that ladder.
 #[test]
 fn insert_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::None);
