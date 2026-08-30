@@ -744,18 +744,7 @@ impl MazeExpansionEngine {
     /// `ExpandableObject.getShape()` (ExpandableObject.java:16) over the four implementors —
     /// `MazeExpansionEngine.java:39`'s virtual call on `fromElement.backtrackDoor`.
     fn expandable_shape(engine: &AutorouteEngine, object: ExpandableRef) -> Option<TileShape> {
-        match object {
-            ExpandableRef::Door(door) => engine.rooms.door_shape(door),
-            ExpandableRef::TargetDoor(door) => {
-                Some(engine.rooms.target_door(door)?.get_shape().clone())
-            }
-            ExpandableRef::Drill(drill) => {
-                Some(engine.rooms.drills.get(drill.0)?.get_shape().clone())
-            }
-            ExpandableRef::Page(page) => {
-                Some(TileShape::Box(engine.drill_pages().page(page).shape))
-            }
-        }
+        engine.expandable_shape(object)
     }
 
     /// `currentDrill.roomArr[index].getShape()` (`:269-270`, `:298-299`).

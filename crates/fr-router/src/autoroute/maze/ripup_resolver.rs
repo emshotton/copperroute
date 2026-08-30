@@ -470,14 +470,7 @@ impl MazeRipupResolver {
     /// constant 2 (TargetItemExpansionDoor.java:39-42, ExpansionDrill.java:99-102,
     /// DrillPage.java's twin).
     fn expandable_dimension(search: &MazeSearchEngine<'_>, object: ExpandableRef) -> i32 {
-        match object {
-            ExpandableRef::Door(door) => search
-                .engine
-                .rooms
-                .door(door)
-                .map_or(0, |door| door.dimension),
-            ExpandableRef::TargetDoor(_) | ExpandableRef::Drill(_) | ExpandableRef::Page(_) => 2,
-        }
+        search.engine.expandable_dimension(object)
     }
 }
 

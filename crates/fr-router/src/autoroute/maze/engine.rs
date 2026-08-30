@@ -461,6 +461,42 @@ impl AutorouteEngine {
         }
     }
 
+    /// `ExpandableObject.getShape()` (ExpandableObject.java:16) dispatched over the four
+    /// implementors — the virtual call `MazeExpansionEngine.java:39`,
+    /// `FoundConnectionLocator45Degree.java:50` and `:306` and
+    /// `FoundConnectionLocatorAnyAngle.java:46` and `:58` all make.
+    ///
+    /// `None` is Java's `NullPointerException` on a door whose rooms have no shape, or a stale
+    /// reference.
+    pub fn expandable_shape(&self, object: ExpandableRef) -> Option<TileShape> {
+        match object {
+            ExpandableRef::Door(door) => self.rooms.door_shape(door),
+            ExpandableRef::TargetDoor(door) => {
+                Some(self.rooms.target_door(door)?.get_shape().clone())
+            }
+            ExpandableRef::Drill(drill) => {
+                Some(self.rooms.drills.get(drill.0)?.get_shape().clone())
+            }
+            ExpandableRef::Page(page) => {
+                Some(TileShape::Box(self.drill_page_array.page(page).shape))
+            }
+        }
+    }
+
+    /// `ExpandableObject.getDimension()` (ExpandableObject.java:13) dispatched over the four
+    /// implementors — `MazeSearchEngine.java:461`, `MazeRipupResolver.java:220` and
+    /// `FoundConnectionLocator45Degree.java:52`/`:308`.
+    ///
+    /// The three non-door implementors answer the constant 2
+    /// (TargetItemExpansionDoor.java:39-42, ExpansionDrill.java:99-102, DrillPage.java's twin);
+    /// a stale door reference answers 0, where Java would have held a live object.
+    pub fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
+        match object {
+            ExpandableRef::Door(door) => self.rooms.door(door).map_or(0, |door| door.dimension),
+            ExpandableRef::TargetDoor(_) | ExpandableRef::Drill(_) | ExpandableRef::Page(_) => 2,
+        }
+    }
+
     /// `ExpandableObject.getMazeSearchElement(int)` (ExpandableObject.java:35-36) dispatched over
     /// the four implementors, which is what `MazeSearchEngine.occupyNextElement` performs as a
     /// virtual call at `MazeSearchEngine.java:332`, `:342-346` and `:382`.

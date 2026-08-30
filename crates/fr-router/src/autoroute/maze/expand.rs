@@ -999,44 +999,12 @@ impl MazeSearchEngine<'_> {
     /// `ExpandableObject.getDimension()` (ExpandableObject.java:13) over the four implementors —
     /// `MazeSearchEngine.java:461`'s virtual call.
     fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
-        match object {
-            ExpandableRef::Door(door) => self
-                .engine
-                .rooms
-                .door(door)
-                .map_or(0, |door| door.dimension),
-            // TargetItemExpansionDoor.java:39-42 and ExpansionDrill.java:99-102 both answer 2;
-            // DrillPage.java's is 2 as well.
-            ExpandableRef::TargetDoor(_) | ExpandableRef::Drill(_) | ExpandableRef::Page(_) => 2,
-        }
+        self.engine.expandable_dimension(object)
     }
 
     /// `ExpandableObject.getShape().centreOfGravity()` (`MazeSearchEngine.java:859`) over the four
     /// implementors. `None` is Java's `NullPointerException` on a door whose rooms have no shape.
     fn expandable_shape_centre(&self, object: ExpandableRef) -> Option<FloatPoint> {
-        match object {
-            ExpandableRef::Door(door) => {
-                Some(self.engine.rooms.door_shape(door)?.centre_of_gravity())
-            }
-            ExpandableRef::TargetDoor(door) => Some(
-                self.engine
-                    .rooms
-                    .target_door(door)?
-                    .get_shape()
-                    .centre_of_gravity(),
-            ),
-            ExpandableRef::Drill(drill) => Some(
-                self.engine
-                    .rooms
-                    .drills
-                    .get(drill.0)?
-                    .get_shape()
-                    .centre_of_gravity(),
-            ),
-            ExpandableRef::Page(page) => Some(
-                fr_geometry::TileShape::Box(self.engine.drill_pages().page(page).shape)
-                    .centre_of_gravity(),
-            ),
-        }
+        Some(self.engine.expandable_shape(object)?.centre_of_gravity())
     }
 }

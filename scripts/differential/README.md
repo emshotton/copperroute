@@ -926,6 +926,62 @@ methods with dozens of branches.
       destination door 97), each with its head element and the queue size after,
       then the `Result` and the three elements left behind.
 
+  - `P6T14Probe.java` — `FoundConnectionLocator` (FoundConnectionLocator.java:
+    30-569), `FoundConnectionLocator45Degree` (`:27-356`) and
+    `FoundConnectionLocatorAnyAngle` (`:24-454`), i.e. the backtrack walk from a
+    found `MazeSearchEngine.Result` to the `ResultItem` list (Plan 6 Task 14).
+    It declares `package app.freerouting.autoroute.path` so it can call the
+    package-private static `calculateAdditionalCorner` and read the `protected`
+    `backtrackArray` and `ResultItem.corners`/`.layer`, and it **compiles
+    together with `P6T11Probe` and `P6T13Probe`**, reaching the latter's
+    package-private board builders by reflection rather than declaring a fourth
+    fixture. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t14-locator.txt`; the run pipes through the
+    same `grep -Ev`. Every double is printed with `Double.toString`, which
+    `fr_dsn::format::double::java_double_to_string` reproduces. Eight modes:
+
+    - `corner` — `calculateAdditionalCorner` (`:390-404`) over twelve
+      `(from, to)` pairs × both `horizontalFirst` values × the three regimes, so
+      that every branch of `ninetyDegreeCorner` (`:329-342`) and
+      `fortyfiveDegreeCorner` (`:343-389`) is taken. The `NONE` column also
+      prints `same=true`, because `:401` returns **`toPoint` itself** — the
+      object identity the corner dedup of `:432` tests with `!=`.
+    - `share` — which concrete class `getInstance` (`:196-205`) builds:
+      `FoundConnectionLocator45Degree` for **both** `NINETY_DEGREE` and
+      `FORTYFIVE_DEGREE`, `FoundConnectionLocatorAnyAngle` for `NONE`; plus
+      `nullResult=null`, the one and only reason `getInstance` answers null.
+    - `backtrack` — the `backtrackArray` (`:225-327`) of `P6T13Probe.buildSimple`'s
+      search: three elements, target door 97 → `ExpansionDoor` 35 → target door
+      63, whose `nextRoom` is null because `TargetItemExpansionDoor.otherRoom`
+      answers null unconditionally (TargetItemExpansionDoor.java:50-53).
+    - `locate` — the whole walk on that board, once per regime, rebuilding the
+      board each time (the 45° override's `getSectionSegments` can reallocate a
+      door's `sectionArr` and drop the `backtrackDoor`s a second run needs). One
+      `ResultItem` on layer 0, and three different corner lists:
+      `(400,0) (-132,0) (-132,-132) (-132,0) (-400,0)`,
+      `(400,0) (-132,0) (-132,-132) (-264,0) (-400,0)` and `(400,0) (-400,0)`.
+      The 90° list visits `(-132,0)` twice because the rounding loop
+      (`:450-459`) drops only *consecutive* duplicates.
+    - `ripup` — `P6T13Probe.build`'s board, whose found connection crosses two
+      `ExpansionDrill`s: eight backtrack elements and **three** `ResultItem`s on
+      layers 0, 1, 0. There is no via entry — `connectionItems` holds traces
+      only, and `FoundConnectionInserter:66,:74` derives the vias from the layer
+      changes.
+    - `ripped` — `buildSimple`'s board plus a net-2 trace across the channel
+      (`P6T14Probe.buildBlocked`) and `viasAllowed` off, so the search rips it
+      up: an `ObstacleExpansionRoom` in the backtrack array and
+      `ripped n=1 4:1` from `backtrack:316-323`. The trace stops 100 units short
+      of the outline at each end on purpose — taken to the board edge it makes
+      `MazeSearchEngine.getInstance` answer null and there is no result to
+      locate.
+    - `around` — the big board with `viasAllowed` off, so the connection walks
+      eight `ExpansionDoor`s the long way round the blocker: 26 / 25 / 7
+      corners. This is the fixture that reaches the any-angle bend-right corner
+      (`:365-383`) and the clearance-correction loop (`:284-326`).
+    - `reverse` — the same board searched **pin 3 → pin 2**, with and without
+      vias. It is the only fixture in the file that bends far enough left to
+      reach `leftTurnNextCorner` (`:391-408`).
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

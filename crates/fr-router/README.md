@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 13 of 18
+## State: Task 14 of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -35,7 +35,10 @@ the room-door expansion, the A\* cost model and the check-only
 `MazeExpansionEngine` (the drill/layer expansion) and `MazeRipupResolver` (the
 ripup decision and its cost model) — plus the first member of `autoroute/path`,
 `Connection`. **No stub is left under `occupyNextElement`, and
-`findConnection` runs end to end.**
+`findConnection` runs end to end.** Task 14 adds the walk that reads its
+answer: `FoundConnectionLocator` and its two angle-restricted overrides, which
+turn a `MazeResult` into the corner lists `FoundConnectionInserter` (Task 15)
+inserts.
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -351,7 +354,16 @@ classes in scope**, and it takes `autoroute/path` from 7 MISSING to **4** —
 `Connection`'s `get`, `getDetour` and `traceLength` are real `fn`s in
 `src/autoroute/path/connection.rs`; the four that remain are
 `FoundConnectionLocator`'s three and `FoundConnectionInserter.getInstance`
-(Tasks 15-16). All five `autoroute` invocations stay at zero UNMAPPED. Task 9 opened the two `board/*` invocations, each
+(Tasks 15-16). Task 14 takes `autoroute/path` from 4 MISSING to **1**:
+`FoundConnectionLocator.getInstance` is a real `fn` in
+`src/autoroute/path/locator.rs`, `emitDiagnostics` carries a `not ported:`
+marker naming the `AutorouteDiagnostic` sink of ruling 13's roster, and the
+nested class's constructor row (`FoundConnectionLocator.ResultItem`, which the
+audit reads as a public method of the enclosing class) is closed by
+`ResultItem::new` plus a `renamed:` marker. The one that remains is
+`FoundConnectionInserter.getInstance`, Task 15's — so **this invocation exits 1
+until Task 15**, and every other one in the plan exits 0. All five `autoroute`
+invocations stay at zero UNMAPPED. Task 9 opened the two `board/*` invocations, each
 restricted to the file it ports, and both exit 0 with zero MISSING and zero
 UNMAPPED:
 
@@ -985,3 +997,65 @@ two `ExpansionDrill`s, an `ExpansionDoor`, a second target door and then the
 destination door (id 97), each with its expansion and sorting value and the
 queue size after the pop; `find_connection_answers_the_result_the_pop_loop_leaves_behind`
 pins the `MazeResult` and the three elements left in the queue.
+
+## The found-connection locators (Task 14)
+
+`src/autoroute/path/locator.rs` is `FoundConnectionLocator`,
+`src/autoroute/path/locator_45.rs` is `FoundConnectionLocator45Degree` and
+`src/autoroute/path/locator_any_angle.rs` is `FoundConnectionLocatorAnyAngle`.
+The ground truth is `scripts/differential/java/probes/P6T14Probe.java`, eight
+modes, transcript `tests/data/p6t14-locator.txt`. It declares
+`package app.freerouting.autoroute.path` so it can call the package-private
+`calculateAdditionalCorner` and read the `protected` `backtrackArray` and
+`ResultItem`, and it reaches `P6T13Probe`'s boards by reflection rather than
+declaring a fourth fixture.
+
+**Two implementations, three regimes.** `getInstance` (`:196-205`) builds
+`FoundConnectionLocator45Degree` for **both** `NINETY_DEGREE` and
+`FORTYFIVE_DEGREE`, and `FoundConnectionLocatorAnyAngle` for everything else.
+The two 90°/45° runs then diverge inside `calculateAdditionalCorner`
+(`:390-404`), which switches on the angle-restriction **value**, not the class.
+So the port is one `LocatorWalk` with a `LocatorKind` discriminant, and
+`the_three_regimes_locate_three_different_corner_lists` runs one and the same
+maze result through all three: `(400,0) (-132,0) (-132,-132) (-132,0) (-400,0)`,
+`(400,0) (-132,0) (-132,-132) (-264,0) (-400,0)` and `(400,0) (-400,0)`.
+
+**Java wins over the brief: `connectionItems` holds traces, and it is never
+null.** The brief models an entry as a `ConnectionItem::Trace | ::Via` enum
+whose `None` is "Java's SKIPPED signal". Java's `ResultItem` (`:542-551`) is a
+corner list plus a layer, full stop; every via is `FoundConnectionInserter`'s to
+derive from the layer change between two consecutive entries (`:66`) plus one
+final via back to `startLayer` (`:74`). And the field is assigned an empty
+`LinkedList` at `:101`, before both of the constructor's early returns, so the
+`connectionItems == null` test that produces `SKIPPED`
+(`AutorouteEngine.java:227-233`) is dead code — quirk #180, which Task 15 must
+not resurrect. The port's field is a `Vec<ResultItem>`.
+
+**Reference identity is load-bearing.** `calculateNextTrace:432` drops a corner
+with `currentNextCorner != prevCorner`, Java's **reference** test.
+`FoundConnectionLocatorAnyAngle` hands back `this.currentFromPoint` itself at
+`:101` and `:184` (the "door completely passed" index advance) and
+`right/leftTurnNextCorner` return their `fromCorner` argument on a null
+tangential point, so a value comparison would keep corners Java drops. Every
+`FloatPoint` in the walk therefore carries a `u64` identity token.
+
+**The 90° regime emits spikes, and they are Java's.** The rounding loop
+(`:450-459`) drops only *consecutive* duplicates, so the 90° single-room list
+visits `(-132,0)` twice with `(-132,-132)` in between and the layer-change list
+visits `(-130,0)` twice around `(-130,132)`. Both are pinned as literals.
+
+**Five fixtures, and what each one reaches.** `simple_board` gives the
+single-room case; `probe_board` searched pin 2 → pin 3 with vias gives the
+layer change (three `ResultItem`s on layers 0, 1, 0 and **no** via entry);
+the same board with `viasAllowed` off gives the eight-door walk round the
+blocker (26 / 25 / 7 corners); `blocked_board` forces a ripup, so
+`backtrack:316-323` fills `rippedItemList` with item 4 at cost 1 and an
+`ObstacleExpansionRoom` appears in the backtrack array; and `probe_board`
+searched **pin 3 → pin 2** is the only fixture that bends far enough left to
+reach `FoundConnectionLocatorAnyAngle.leftTurnNextCorner` (`:391-408`).
+
+**One latent NPE, reproduced as a panic.** `:287` builds a `FloatLine` from a
+`resultCorner` that `:329` itself treats as nullable, and `:293` dereferences
+it; the port panics there with quirk #181's number, which ruling 7's
+`catch_unwind` around `get_instance` turns back into Java's `FAILED`. No
+fixture reaches it.
