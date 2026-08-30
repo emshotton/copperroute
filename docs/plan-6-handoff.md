@@ -504,13 +504,27 @@ see the README section that lists all eight.
    `BatchAutorouterThread.java:537` (per item). Both catch `Exception`, not
    `Throwable`, so neither recovers from a stack overflow — quirk #27 crashes both
    languages.
+   > **Status (2026-08-30): partly superseded by Plan 7 ruling AM (no rayon/multithread).**
+   > `BatchAutorouterThread` is rostered `// not ported:` — zero callers in `src/main`
+   > or `src/test`. Its `:537` boundary therefore does not exist on any live path, and
+   > Plan 7's pre-flight scan (ruling 9) found `AutoroutePassRunner.java:144` is the
+   > catch of the equally-dead `runMultiThread`: `runSingleThread` has no try/catch at
+   > all. **Plan 7 adds one recovery boundary, not two**, and it propagates.
 3. **The fanout pre-pass** (`BatchFanout`, `RoutingBoard.fanout`). It is the only
    thing that sets `ctrl.isFanout`, which is why two of this plan's coverage
    obligations cannot be discharged below the seam
    (`locator.rs:267`, and half of `engine.rs:1374`).
+   > **Status (2026-08-30): carried into Plan 7 Tasks 11-12.** Plan 7's pre-flight scan
+   > found neither coverage obligation named anywhere in that plan; Plan 7 Task 17 now
+   > records each as discharged or still open.
 4. **The optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`,
    `OptimizeRouteTask`, `ItemRouteResult`, `RoutingFailureLog` (whose `fr-board`
    field is a `Vec<String>` hook today).
+   > **Status (2026-08-30): partly superseded by Plan 7 ruling AM (no rayon/multithread).**
+   > `BatchOptimizerMultiThreaded` and `OptimizeRouteTask` are rostered `// not ported:` —
+   > reachable only from `BatchOptimizer.createForGui`. `BatchOptimizer`, `ItemRouteResult`
+   > and `RoutingFailureLog` are built (Plan 7 Tasks 9, 13, 14); the `Vec<String>` hook is
+   > deleted or re-pointed in Plan 7 Task 9.
 5. **`ViaOptimizer.optViaLocation`**, and with it `RoutingBoard.optChangedArea`
    (both overloads) and `RoutingBoard.removeItemsAndPullTight` — the batch callers
    of the tightener family this plan already ported. Quirk #34's `equals_geometric`
