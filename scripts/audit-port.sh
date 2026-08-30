@@ -9,6 +9,21 @@
 #   `renamed: <Method>`             — ported under a different name
 #   `added in Task N: <Method>`     — deferred to a named later task of the current plan
 #   `added in Plan N: <Method>`     — deferred to a named later plan
+#
+# Three result lines, and what each does to the exit code:
+#   `MISSING <Class>.<method>`  — no `fn` and no marker.                          exit 1
+#   `UNMAPPED <Class>`          — a class map was supplied and does not name       exit 1
+#                                 this class, so it fell back to the weaker
+#                                 crate-wide search.
+#   `ROSTERED <Class>`          — every public method of the class is satisfied    exit 0
+#                                 by a `not ported:` / `added in Task|Plan N:`
+#                                 marker and **none** by a real `fn`. The class
+#                                 is on the deferral roster, not in the port.
+#                                 Informational: it makes a wholly-deferred class
+#                                 visible instead of letting it pass silently,
+#                                 which is what `autoroute/pipeline`'s sixteen
+#                                 classes and `board/optimize/ViaOptimizer.java`
+#                                 do (all rostered to Plan 7/8 in `src/lib.rs`).
 # A task number may carry a single lower-case suffix letter (`Task 10b`), for a task inserted
 # between two numbered ones by a controller ruling after the plan was written.
 # The last two are as specific as the first two (the task/plan number is required), so they
@@ -111,6 +126,9 @@ resolve_scope_files() {
 UNMAPPED_SEEN=""
 
 missing=0
+# An `UNMAPPED` class is a rotted map — the audit silently degraded to the crate-wide search for
+# it — so it fails the run as loudly as a `MISSING` method does.
+unmapped=0
 seen_any=0
 for pattern in $FILE_GLOB; do
   for f in "$JAVA"/$pattern; do
@@ -125,9 +143,18 @@ for pattern in $FILE_GLOB; do
         *)
           echo "UNMAPPED $cls"
           UNMAPPED_SEEN="$UNMAPPED_SEEN $cls"
+          unmapped=1
           ;;
       esac
     fi
+
+    # Per-class tallies for the ROSTERED line below: how many public methods the class has, and
+    # how many of them a real `fn` (or a `renamed:` marker, which also means ported) answered.
+    cls_methods=0
+    cls_ported=0
+    cls_not_ported=0
+    cls_deferred=0
+    cls_missing=0
 
     # NOTE: this loop reads from a process substitution, not a pipe, so that
     # `missing=1` below is visible to the `exit $missing` after the loop — a
@@ -135,35 +162,57 @@ for pattern in $FILE_GLOB; do
     # every hit, making the script vacuously exit 0.
     while read -r m; do
       [[ "$m" == "$cls" ]] && continue   # constructors
+      cls_methods=$((cls_methods + 1))
       snake="$(echo "$m" | sed -E 's/([a-zA-Z])([0-9])/\1_\2/g; s/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z])([A-Z][a-z])/\1_\2/g' | tr 'A-Z' 'a-z')"
       if [[ -n "$MAP_FILE" && "$CLASS_MAPPED" -eq 1 ]]; then
         # Per-class: search only under this class's mapped file(s). An empty SCOPE_FILES (the
         # mapped path glob matched nothing yet) means every method is reported MISSING, which is
         # the intended stricter behaviour, not a fallback.
-        found=1
-        if [[ "${#SCOPE_FILES[@]}" -eq 0 ]] \
-            || ! ( grep -qE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "${SCOPE_FILES[@]}" \
-                || grep -qE "not ported: .*\b${m}\b" "${SCOPE_FILES[@]}" \
-                || grep -qE "renamed: .*\b${m}\b" "${SCOPE_FILES[@]}" \
-                || grep -qE "added in (Task|Plan) [0-9]+[a-z]?:.*\b${m}\b" "${SCOPE_FILES[@]}" ); then
-          found=0
-        fi
-        if [[ "$found" -eq 0 ]]; then
-          echo "MISSING $cls.$m  (expected fn ${snake}*)"
-          missing=1
+        if [[ "${#SCOPE_FILES[@]}" -eq 0 ]]; then
+          kind=missing
+        elif grep -qE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "${SCOPE_FILES[@]}" \
+            || grep -qE "renamed: .*\b${m}\b" "${SCOPE_FILES[@]}"; then
+          kind=ported
+        elif grep -qE "not ported: .*\b${m}\b" "${SCOPE_FILES[@]}"; then
+          kind=not_ported
+        elif grep -qE "added in (Task|Plan) [0-9]+[a-z]?:.*\b${m}\b" "${SCOPE_FILES[@]}"; then
+          kind=deferred
+        else
+          kind=missing
         fi
       else
         # Crate-wide (no map supplied, or class not in the map): identical to the original
         # 3-argument behaviour.
-        if ! grep -rqE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "$RS" \
-            && ! grep -rqE "not ported: .*\b${m}\b" "$RS" \
-            && ! grep -rqE "renamed: .*\b${m}\b" "$RS" \
-            && ! grep -rqE "added in (Task|Plan) [0-9]+[a-z]?:.*\b${m}\b" "$RS"; then
-          echo "MISSING $cls.$m  (expected fn ${snake}*)"
-          missing=1
+        if grep -rqE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "$RS" \
+            || grep -rqE "renamed: .*\b${m}\b" "$RS"; then
+          kind=ported
+        elif grep -rqE "not ported: .*\b${m}\b" "$RS"; then
+          kind=not_ported
+        elif grep -rqE "added in (Task|Plan) [0-9]+[a-z]?:.*\b${m}\b" "$RS"; then
+          kind=deferred
+        else
+          kind=missing
         fi
       fi
+      case "$kind" in
+        ported)     cls_ported=$((cls_ported + 1)) ;;
+        not_ported) cls_not_ported=$((cls_not_ported + 1)) ;;
+        deferred)   cls_deferred=$((cls_deferred + 1)) ;;
+        missing)
+          echo "MISSING $cls.$m  (expected fn ${snake}*)"
+          cls_missing=$((cls_missing + 1))
+          missing=1
+          ;;
+      esac
     done < <(grep -hoE '^\s*public [^=(]*\b([a-zA-Z0-9_]+)\s*\(' "$f" | sed -E 's/.*[^a-zA-Z0-9_]([a-zA-Z0-9_]+)[[:space:]]*\($/\1/' | sort -u)
+
+    # A class whose every public method is answered by a marker and none by an `fn` is not
+    # ported — it is rostered. Say so rather than exiting 0 in silence: without this line
+    # `autoroute/pipeline` and `board/optimize/ViaOptimizer.java` are indistinguishable from a
+    # fully ported package. Informational only; the exit code is unaffected.
+    if [[ "$cls_methods" -gt 0 && "$cls_ported" -eq 0 && "$cls_missing" -eq 0 ]]; then
+      echo "ROSTERED $cls  ($cls_methods public methods, none ported: $cls_not_ported 'not ported:', $cls_deferred 'added in Task|Plan N:')"
+    fi
   done
 done
 
@@ -172,4 +221,7 @@ if [[ "$seen_any" -eq 0 ]]; then
   exit 1
 fi
 
-exit $missing
+if [[ "$missing" -ne 0 || "$unmapped" -ne 0 ]]; then
+  exit 1
+fi
+exit 0

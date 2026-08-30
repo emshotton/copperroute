@@ -20,6 +20,26 @@
 //       app.freerouting.autoroute.maze.P6T12Probe <mode> 2>/dev/null \
 //     | grep -Ev '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+ +(WARN|INFO|DEBUG|ERROR) '
 //
+// The committed transcript is that invocation over every mode, wrapped exactly like this — the
+// two `#` lines and the `=== mode <m> ===` banners come from the wrapper, not from the probe,
+// and each banner is preceded by a **blank line**, which is why the loop starts with a bare
+// `echo`. Run from the repository root (the `cd` above is only for the `javac`):
+//
+//   {
+//     echo '# P6T12Probe transcript — clone HEAD jar, JDK 25, -XX:hashCode=2.'
+//     echo '# Regenerate: see the header of scripts/differential/java/probes/P6T12Probe.java.'
+//     for m in ctrl pop pop2 inactive bend thick neck neck2 smalldoor snapshot shove stale; do
+//       echo
+//       echo "=== mode $m ==="
+//       "$JDK/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+//           -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp "/tmp/p6t12:$JAR" \
+//           app.freerouting.autoroute.maze.P6T12Probe "$m" 2>/dev/null \
+//         | grep -Ev '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+ +(WARN|INFO|DEBUG|ERROR) '
+//     done
+//   } > crates/fr-router/tests/data/p6t12-maze-expand.txt
+//
+// Verified byte-identical to the committed file (md5 aae8904e2e76001321797bd1f62b2ff6, 249 lines).
+//
 // The `grep` strips `FRLogger`'s timestamped lines, which mode `thick` emits on stdout from
 // `MazeSearchEngine:1119` and which would otherwise make the transcript non-reproducible.
 //

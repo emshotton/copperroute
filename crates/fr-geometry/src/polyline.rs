@@ -162,7 +162,7 @@ impl Polyline {
 
     /// [`Polyline::from_lines`] for the callers that **re-read their own array afterwards**.
     ///
-    /// Java's `new Polyline(Line[])` normalises the caller's array **in place**, and five Plan 6
+    /// Java's `new Polyline(Line[])` normalises the caller's array **in place**, and six Plan 6
     /// call sites depend on it (quirk #185's neighbour — see `docs/java-quirks.md`):
     ///
     /// * `removeConsecutiveParallelLines` (Polyline.java:104-131) `return lines` — *the caller's
@@ -175,9 +175,12 @@ impl Polyline {
     /// So when — and only when — **neither** normaliser skipped a line, the caller sees the
     /// flipped directions, and (in this port) the **new identity tokens** those flipped lines
     /// carry. `TraceTightener.java:297` → `:311`, `TraceTightener45.java:421` → `:435` and
-    /// `TraceTightenerAnyAngle.java:158` → `:186`, `:451` → `:465`, `:614` → `:625` all construct
-    /// a `Polyline` from a local array and then read an element of that array back out; the value
-    /// they read is Java's post-normalisation one.
+    /// `TraceTightenerAnyAngle.java:158` → `:186`, `:368` → `:386`, `:451` → `:465`,
+    /// `:614` → `:625` all construct a `Polyline` from a local array and then read an element of
+    /// that array back out; the value they read is Java's post-normalisation one. The
+    /// `TraceTightenerAnyAngle.java:368` site is the strongest of the six: `:386`'s
+    /// `lines = currentLines` makes the whole normalised array the loop's working state and the
+    /// source of the polyline the method returns.
     ///
     /// `from_lines` consumes its `Vec` and can express none of that, which is why this method
     /// exists. Java's two early `return`s before the flip loop (either normaliser answering an

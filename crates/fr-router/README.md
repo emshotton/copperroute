@@ -107,7 +107,7 @@ necked retry / strict-DRC rollback / failure-log tail of `route` — all Plan 7'
 | `ForcedViaInserter` (`checkLayer` + `check` + the two private helpers) | `src/board_ext/forced_via_inserter.rs` | `ForcedViaInserter.java:30-247, 363-461` |
 | `AutorouteEngine::autoroute_connection` + `describe_connection` | `src/autoroute/maze/engine.rs` | `AutorouteEngine.java:130-280, 282-287` |
 | `route_connection` (steps 1-5) | `src/autoroute/maze/engine.rs` | `AutorouteConnectionRouter.java:30-100` |
-| `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
+| `RouterError` | `src/error.rs` | ruling 7's six recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
 
 Two cross-crate prerequisites landed with it:
@@ -339,6 +339,19 @@ Java's id does.
   a crate; `scripts/differential/README.md` names it.
 * Deliberate Java bugs are reproduced rather than fixed, each with a
   `// Java bug:` marker at the site and a row in `docs/java-quirks.md`.
+* **`// pub seam:`** — a `pub` item with **no caller anywhere in the workspace**
+  says on its own line why it is `pub` and who will call it. `rustc`'s `dead_code`
+  lint cannot see an uncalled `pub` item in a library, so nothing else would catch
+  these. `grep -rn "pub seam:" crates/fr-router/src` finds **eight**, added by the
+  Plan 6 final review (finding S7): `AutorouteControl::from_settings` (Plan 7's
+  fanout pre-pass is the Java caller), `DrillPageArray::bounds`,
+  `CompleteFreeSpaceExpansionRoom::{tree_leaf, room_id, tree_shape_count}`,
+  `ExpansionRoomStore::incomplete_list_created`,
+  `TraceTightener45::get_angle_restriction` and
+  `AutorouteAttemptResult::is_routed`. A ninth leftover, a `Polyline`-returning
+  `TraceTightener::pull_tight`, was **removed** in the same wave: it collapsed
+  `pull_tight_opt`'s `None` — Java's `return this` — into a clone, which is exactly
+  the reference identity quirk #74 depends on, and nothing called it.
 
 ## Cancellation: six sites, and why a seventh is a bug (ruling 6)
 
@@ -371,7 +384,7 @@ The `StopCheck`s that plan-3 ruling F threads through `Board::insert_via_checked
 extra sites: they exist because `ForcedViaInserter.insert` reaches quirk #76's
 machinery from inside the router.
 
-## The five recovery boundaries (ruling 7)
+## The six recovery boundaries (ruling 7)
 
 Java's `catch (Exception)` sites inside Plan 6's scope, and what each becomes:
 
@@ -382,8 +395,9 @@ Java's `catch (Exception)` sites inside Plan 6's scope, and what each becomes:
 | 3 | `autorouteConnection:157` (`findConnection`) | `catch_unwind` | `FAILED` |
 | 4 | `autorouteConnection:178-190` (the locator) | `catch_unwind` — this is what turns quirk #181's NPE back into Java's `FAILED` | `FAILED` |
 | 5 | `AutorouteConnectionRouter.route:155-158` | `catch_unwind` around `route_connection` | a bare `FAILED` |
+| 6 | `RoutingBoard.insertForcedTracePolyline:787-841` (ruling AB pulled this method into Plan 6) — the `try` covers `normalize` and `splitTracesAtKeepPoint` | **the `Result` channel, not the panic channel**: `src/board_ext/routing_board_ext.rs:780` and `:787` drop the `Err` and fall through, because `normalize_trace_checked` and `split_traces_at_keep_point` (`board_ext/tightener/base.rs`) are `Result`-returning all the way down and no path below them panics | Java's silent skip — it logs and continues, leaving `newTrace` as it was |
 
-Boundaries **6 and 7 are Plan 7's**: `AutoroutePassRunner.java:144` (per pass) and
+Boundaries **7 and 8 are Plan 7's**: `AutoroutePassRunner.java:144` (per pass) and
 `BatchAutorouterThread.java:537` (per item). Both catch `Exception`, not
 `Throwable`, so neither recovers from a stack overflow — quirk #27 crashes both
 languages.
@@ -501,7 +515,15 @@ audit still exits 0.
 ### Every audit invocation in the workspace (Task 18 runs all of them to zero)
 
 Task 18's acceptance is that **all twenty-nine** invocations below exit 0 with
-no `MISSING` line and no `UNMAPPED` line, on the committed tree. Copy-pasteable:
+no `MISSING` line and no `UNMAPPED` line, on the committed tree. Both of those now
+*set* the exit code — an `UNMAPPED` class means the map rotted and the audit
+silently fell back to the weaker crate-wide search, so it fails the run exactly as
+a `MISSING` method does. `ROSTERED` lines are informational and do not: they name
+a class whose every public method is answered by a `not ported:` /
+`added in Task|Plan N:` marker and none by a real `fn`. Twenty-two of them print
+across seven of the twenty-nine invocations (`board/state` 3, `datastructures` 5,
+`io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3, `io/kicad` 3,
+`autoroute` 5). Copy-pasteable:
 
 ```sh
 # fr-geometry (Plan 1; scripts/audit-geometry-port.sh is a thin alias for the first)
@@ -525,10 +547,10 @@ done
     'IdentifierType.java IndentFileWriter.java' scripts/audit-map/fr-dsn.map
 
 # fr-settings (Plan 4)
-./scripts/audit-port.sh settings crates/fr-settings/src \
-    'RouterSettings.java LayerSettings.java ScoringSettings.java OptimizerSettings.java \
-     FanoutSettings.java DesignRulesCheckerSettings.java DebugSettings.java \
-     SettingsSource.java SettingsMerger.java GlobalSettings.java' \
+settings_files='RouterSettings.java LayerSettings.java ScoringSettings.java
+OptimizerSettings.java FanoutSettings.java DesignRulesCheckerSettings.java
+DebugSettings.java SettingsSource.java SettingsMerger.java GlobalSettings.java'
+./scripts/audit-port.sh settings crates/fr-settings/src "$settings_files" \
     scripts/audit-map/fr-settings.map
 ./scripts/audit-port.sh settings/sources crates/fr-settings/src '*.java' scripts/audit-map/fr-settings.map
 ./scripts/audit-port.sh util             crates/fr-settings/src 'ReflectionUtil.java' scripts/audit-map/fr-settings.map
@@ -553,11 +575,20 @@ done
     scripts/audit-map/fr-router.map
 ```
 
-Two invocations are deliberately **absent** and would report `UNMAPPED` if added:
-`autoroute/pipeline` and `autoroute/events` (Plans 7 and 8 — `src/lib.rs`'s
-roster carries both, method by method), and `board/optimize/ViaOptimizer.java`
-(Plan 7, likewise rostered). `audit-port.sh` does not recurse, so the roster is
-the only gate on those, which is why it names every method rather than the class.
+Three invocations are deliberately **absent**, and they do not all behave the
+same way — measured, not assumed:
+
+| absent invocation | what it prints today | exit |
+|---|---|---|
+| `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
+| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **nine `ROSTERED` lines** — every pipeline class *is* mapped (`fr-router.map:159` `BatchAutorouter lib.rs`) and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING` | 0 |
+| `board/optimize crates/fr-router/src 'ViaOptimizer.java' scripts/audit-map/fr-router.map` | **one `ROSTERED` line** (`ViaOptimizer`, mapped at `fr-router.map:175`, its one public method rostered to Plan 7) | 0 |
+
+Before the Plan 6 final review, the second and third exited 0 with **no output at
+all**, which is why the `ROSTERED` line exists: a wholly-deferred class must be
+visible, not silently indistinguishable from a ported one. `audit-port.sh` does
+not recurse, so `src/lib.rs`'s roster is still the only *gate* on these packages,
+which is why it names every method rather than the class.
 
 Two things the zero does **not** prove, restated because it is easy to over-read:
 the script's positive `fn` match is by name, so under a map it proves the name is
@@ -1524,7 +1555,7 @@ ruling 2's seam, with steps 6-8 (`optChangedArea`, the necked retry, the
 strict-DRC rollback) carrying `// added in Plan 7:` markers at the foot of the
 function.
 
-**Three of ruling 7's five recovery boundaries live here, and two of them are
+**Three of ruling 7's six recovery boundaries live here, and two of them are
 nested rather than sequential.** A `MazeSearchEngine` borrows the engine for its
 whole life, so it cannot be carried out of boundary #2's `catch_unwind` and into
 boundary #3's; the port therefore runs `find_connection`'s catch *inside* the

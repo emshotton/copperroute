@@ -160,18 +160,14 @@ impl<'a> TraceTightener<'a> {
     }
 
     /// Port of the abstract `pullTight(Polyline)` (TraceTightener.java:192) — the regime
-    /// dispatch.
+    /// dispatch — answering `None` where Java hands the **argument object** back, which is what
+    /// `PolylineTrace.pullTight:837`'s `newLines != lines` reads.
     ///
-    /// See `pull_tight_opt` for the version that preserves Java's reference identity.
-    pub fn pull_tight(&mut self, board: &mut Board, polyline: &Polyline) -> Polyline {
-        match self.pull_tight_opt(board, polyline) {
-            Some(tightened) => tightened,
-            None => polyline.clone(),
-        }
-    }
-
-    /// [`Self::pull_tight`], answering `None` where Java hands the argument object back —
-    /// which is what `PolylineTrace.pullTight:837`'s `newLines != lines` reads.
+    /// Java's `:192` has exactly one caller, `TraceTightener.java:189` inside the six-argument
+    /// overload; here that is [`Self::pull_tight_polyline`], and it needs the `None`. A second,
+    /// `Polyline`-returning wrapper existed here until the Plan 6 final review (finding S7): it
+    /// collapsed `None` to `polyline.clone()`, had no caller in the workspace, and would have
+    /// silently discarded exactly the reference identity quirk #74 depends on.
     pub(crate) fn pull_tight_opt(
         &mut self,
         board: &mut Board,

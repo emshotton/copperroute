@@ -26,6 +26,7 @@ impl<'a> TraceTightener45<'a> {
 
     /// Port of `getAngleRestriction()` (TraceTightener45.java:47-49) — a package-private accessor
     /// with no caller anywhere in the Java tree, kept because the class declares it.
+    // pub seam: none, in Java or here — deliberate, and the doc above says why.
     pub fn get_angle_restriction(&self) -> AngleRestriction {
         AngleRestriction::FortyFiveDegree
     }

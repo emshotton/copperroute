@@ -397,11 +397,11 @@ impl AutorouteEngine {
     /// `removeCompleteExpansionRoom`, `RoutingBoard.additionalUpdateAfterChange` and
     /// `autorouteConnection` — none of which `completeExpansionRoom` can reach.
     ///
-    /// **This `catch_unwind` is not a sixth recovery boundary** (plan-6 ruling 7 fixes five). It
-    /// recovers nothing: it restores one field and calls `resume_unwind`, so the panic and every
-    /// observable effect are exactly what they would be without it — a `Drop` guard written as a
-    /// `finally`. Ruling 7's five boundaries are the sites that *degrade to a value*; Task 18's
-    /// audit should count those, not lexical occurrences.
+    /// **This `catch_unwind` is not a recovery boundary** (plan-6 ruling 7 fixes six, and this is
+    /// none of them). It recovers nothing: it restores one field and calls `resume_unwind`, so the
+    /// panic and every observable effect are exactly what they would be without it — a `Drop`
+    /// guard written as a `finally`. Ruling 7's six boundaries are the sites that *degrade to a
+    /// value*; Task 18's audit should count those, not lexical occurrences.
     pub fn drill_page_drills(
         &mut self,
         board: &mut Board,

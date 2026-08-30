@@ -462,13 +462,12 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             }
             // :357-368.
             let keep_before_ind = i - crossed_corners_before_count;
-            let mut current_lines: Vec<Line> = Vec::with_capacity(
-                lines.len() - crossed_corners_before_count - crossed_corners_after_count,
+            let (tmp, current_lines) = splice_and_normalise(
+                &lines,
+                keep_before_ind,
+                new_line,
+                i + 1 + crossed_corners_after_count,
             );
-            current_lines.extend_from_slice(&lines[..keep_before_ind]);
-            current_lines.push(new_line);
-            current_lines.extend_from_slice(&lines[i + 1 + crossed_corners_after_count..]);
-            let tmp = new_polyline(current_lines.clone());
             // :369-379.
             let mut check_ok = false;
             if tmp.lines().len() == current_lines.len() {
@@ -1121,5 +1120,89 @@ fn int_point_of(point: &Point) -> IntPoint {
     match point {
         Point::Int(p) => *p,
         Point::Rational(_) => unreachable!("guarded by an `instanceof IntPoint` test"),
+    }
+}
+
+/// `TraceTightenerAnyAngle.reduceLines:357-368` — build the spliced candidate array and hand it
+/// to `new Polyline(currentLines)`.
+///
+/// **Split out of `reduce_lines` so the write-back is directly testable.** Java's constructor
+/// normalises `currentLines` *in place* (`:368`), and `:386`'s `lines = currentLines` then makes
+/// that normalised array the loop's whole working state and, at `:393`, the polyline the method
+/// returns — so the `Vec` this answers must be the **normalised** array, not the spliced one.
+/// The `tmp.lines.length == currentLines.length` gate at `:370` is exactly
+/// [`Polyline::from_lines_in_place`]'s write-back condition, so every `:386` that executes reads
+/// a normalised array.
+///
+/// Building this with `new_polyline(current_lines.clone())` would carry the *un*-normalised
+/// array forward, whose lines still point the wrong way and still hold their pre-flip identity
+/// tokens (quirks #188 and #74). This is the sixth of Java's six in-place `new Polyline(Line[])`
+/// sites, and the strongest: the array does not merely get re-read, it *becomes* the state.
+/// Found by the Plan 6 final whole-branch review.
+fn splice_and_normalise(
+    lines: &[Line],
+    keep_before_ind: usize,
+    new_line: Line,
+    suffix_start: usize,
+) -> (Polyline, Vec<Line>) {
+    let mut current_lines: Vec<Line> =
+        Vec::with_capacity(keep_before_ind + 1 + (lines.len() - suffix_start));
+    current_lines.extend_from_slice(&lines[..keep_before_ind]);
+    current_lines.push(new_line);
+    current_lines.extend_from_slice(&lines[suffix_start..]);
+    let tmp = new_polyline_in_place(&mut current_lines);
+    (tmp, current_lines)
+}
+
+#[cfg(test)]
+mod reduce_lines_write_back_tests {
+    use super::*;
+
+    /// The write-back at `TraceTightenerAnyAngle.java:368`, pinned at the site that consumes it.
+    ///
+    /// The array handed in is a normalised polyline's own lines with the middle one reversed —
+    /// the shape `:357-368` produces whenever the spliced `newLine` points the other way. Nothing
+    /// is skipped, so Java's `removeConsecutiveParallelLines` / `removeOverlaps` both `return
+    /// lines` (the caller's array) and the constructor's flip loop writes
+    /// `filteredLines[i].opposite()` into it. The caller must therefore see a **different `Line`
+    /// object** at that index, carrying the value the polyline carries.
+    ///
+    /// This is the assertion a `new_polyline(current_lines.clone())` at the call site fails:
+    /// with a clone, `current_lines[1]` is still the very object that was pushed in, so
+    /// `is_same_object` answers `true` and the reversed direction survives into `:386`'s
+    /// `lines = currentLines`.
+    #[test]
+    fn splice_and_normalise_writes_the_flipped_line_back_into_the_loops_array() {
+        let corners = [
+            Point::new(0, 0),
+            Point::new(1000, 0),
+            Point::new(1000, 1000),
+            Point::new(0, 1000),
+        ];
+        let straight = Polyline::from_points(&corners);
+        let lines = straight.lines().to_vec();
+        assert!(lines.len() >= 4);
+
+        // `newLine` is line 1 pointing the other way — same line, opposite direction, and a
+        // *new* object, exactly as `Line.opposite()` allocates one in Java.
+        let reversed = lines[1].opposite();
+        assert!(!reversed.is_same_object(&lines[1]));
+
+        let (tmp, current_lines) = splice_and_normalise(&lines, 1, reversed, 2);
+
+        // Nothing was skipped, so Java's write-back happened: `:370`'s gate holds.
+        assert_eq!(current_lines.len(), lines.len());
+        assert_eq!(tmp.lines().len(), current_lines.len());
+        // ... and the caller's array carries the normalised line, not the one it pushed.
+        assert!(
+            !current_lines[1].is_same_object(&reversed),
+            "`:368` must normalise the caller's array in place (quirk #188)"
+        );
+        assert_eq!(current_lines[1], lines[1]);
+        assert_eq!(current_lines.as_slice(), tmp.lines());
+        // Every other element is untouched, object for object.
+        for i in (0..current_lines.len()).filter(|i| *i != 1) {
+            assert!(current_lines[i].is_same_object(&lines[i]), "index {i}");
+        }
     }
 }

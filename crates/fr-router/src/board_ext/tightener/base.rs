@@ -31,12 +31,12 @@ pub(crate) fn new_polyline(lines: Vec<Line>) -> Polyline {
     })
 }
 
-/// [`new_polyline`] for the tighteners' five `new Polyline(<local array>)` sites that **re-read
+/// [`new_polyline`] for the tighteners' six `new Polyline(<local array>)` sites that **re-read
 /// that array afterwards**.
 ///
 /// Java's constructor normalises the caller's array in place — see
 /// [`Polyline::from_lines_in_place`], which carries the Java line numbers — so
-/// `TraceTightener.java:311`'s `newLine = checkLines[1]` and its four siblings read the
+/// `TraceTightener.java:311`'s `newLine = checkLines[1]` and its five siblings read the
 /// *normalised* line, whose direction may have been flipped and which is therefore a different
 /// `Line` object. Reproducing that is load-bearing since quirk #74: a flipped line is a new
 /// identity token, and `PolylineTrace.change` compares tokens.

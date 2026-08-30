@@ -85,11 +85,16 @@ impl CompleteFreeSpaceExpansionRoom {
     }
 
     /// This room's entry in the compensated tree, or `None` if it is not in one.
+    // pub seam: none in Java — the port's read half of `set_search_tree_entries`
+    // (`CompleteFreeSpaceExpansionRoom.setSearchTreeEntries`), kept `pub` so an out-of-crate
+    // test can assert a room's tree membership. No caller today.
     pub fn tree_leaf(&self) -> Option<LeafId> {
         self.tree_leaf
     }
 
     /// This room's arena index, which is the key the shared search tree stores it under.
+    // pub seam: none in Java — `RoomId` is the port's arena index, not Java's `getId`
+    // (quirk #157 keeps that separate). Kept `pub` for out-of-crate tests. No caller today.
     pub fn room_id(&self) -> RoomId {
         self.room_id
     }
@@ -136,6 +141,10 @@ impl CompleteFreeSpaceExpansionRoom {
 
     /// Port of `treeShapeCount(ShapeTree)` (CompleteFreeSpaceExpansionRoom.java:61-64): always
     /// 1 — a room is one shape on one layer.
+    // pub seam: Java's caller is `ShapeTree.insert` (ShapeTree.java:33,
+    // ShapeSearchTree.java:133) — `obj.treeShapeCount(this)`. Plan 6's
+    // `ExpansionRoomStore::insert_complete_room` short-circuits it with the constant 1 that
+    // this method returns, so the accessor is exercised only by its own unit test.
     pub fn tree_shape_count(&self) -> usize {
         1
     }

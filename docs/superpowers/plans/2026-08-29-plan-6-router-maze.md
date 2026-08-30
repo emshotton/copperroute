@@ -1347,9 +1347,11 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > The same task records the neighbouring fidelity finding: **Java's `new Polyline(Line[])`
 > normalises the caller's array in place** (`removeConsecutiveParallelLines` and `removeOverlaps`
 > return the input array when they skip nothing; the constructor then writes
-> `filteredLines[i] = filteredLines[i].opposite()` into it), and five Plan 6 tightener sites
-> re-read that array afterwards. `Polyline::from_lines_in_place` reproduces it and those five
-> sites use it; see quirk #74's row.
+> `filteredLines[i] = filteredLines[i].opposite()` into it), and six Plan 6 tightener sites
+> re-read that array afterwards. `Polyline::from_lines_in_place` reproduces it and those six
+> sites use it; see quirk #74's row. (The sixth, `TraceTightenerAnyAngle.java:368` -> `:386`, was
+> found by the final whole-branch review; it is the site where the normalised array *becomes* the
+> loop's working state.)
 
 > **Amendment (Task 4) — hazard F's container.** Ruling 4 and Task 4's brief both prescribe a
 > `BTreeSet` for `SortedRoomNeighbours.sortedNeighbours`. **It does not reproduce Java.** On a
@@ -1381,10 +1383,10 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 
 Plus anything Tasks 1–17 find, and — in the `candidate`/obligation register — the ruling-9 row **closed** with its probe output, the ruling-F row **closed** by Task 15, and a new **(Plan 7 obligation)** row for `AutorouteConnectionRouter`'s steps 6–8.
 
-**`crates/fr-router/README.md`:** what the crate routes today (one connection) and what it does not (passes, fanout, optimizer — Plan 7); ruling 1's acceptance table filled in per stem and per connection; the six stop-check sites and why a seventh is a bug; the five recovery boundaries; the container rules (BTreeSet everywhere, the guarded push, the three non-transitive comparators); quirk #143's warning that `-mt` must not become a threading policy; how to regenerate the references and run `p6t1`/`p6t2`/`p6t3`.
+**`crates/fr-router/README.md`:** what the crate routes today (one connection) and what it does not (passes, fanout, optimizer — Plan 7); ruling 1's acceptance table filled in per stem and per connection; the six stop-check sites and why a seventh is a bug; the recovery boundaries (five as ruled, six as delivered — ruling AB pulled `RoutingBoard.insertForcedTracePolyline`'s `catch (Exception)` into scope); the container rules (BTreeSet everywhere, the guarded push, the three non-transitive comparators); quirk #143's warning that `-mt` must not become a threading policy; how to regenerate the references and run `p6t1`/`p6t2`/`p6t3`.
 
 **`docs/plan-6-handoff.md`:** the delivered surface with every public signature; the seventeen rulings with what execution confirmed or corrected (rulings 1, 4, 9 and 10 must each say what the evidence was); parked residuals per task; obligations:
-- **Plan 7** — `AutorouteConnectionRouter.route` steps 6–8; `RoutingBoardExt` gains `opt_changed_area`/pull-tight/the tighteners (and quirk #34's `equals_geometric` at `TraceTightener*.repositionLine`, still open from Plan 2); quirk #74 is **discharged** (Task 17b reproduced Java's reference comparison, ruling AE), so `TraceShover.insert`'s and `correctConnectionToPin`'s `change` calls inherit it already correct and need only `additionalUpdateAfterChange` at the call site; `TraceShover.insert`, `ForcedPadRouter`'s routing half and `DrillItemMover`'s mutating half; the pass/item recovery boundaries (`AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`) on top of this plan's five; `max_passes == 0` means unlimited (quirk #140); no headless threading policy from `-mt` (quirk #143); the whole-board SES byte-parity headline.
+- **Plan 7** — `AutorouteConnectionRouter.route` steps 6–8; `RoutingBoardExt` gains `opt_changed_area`/pull-tight/the tighteners (and quirk #34's `equals_geometric` at `TraceTightener*.repositionLine`, still open from Plan 2); quirk #74 is **discharged** (Task 17b reproduced Java's reference comparison, ruling AE), so `TraceShover.insert`'s and `correctConnectionToPin`'s `change` calls inherit it already correct and need only `additionalUpdateAfterChange` at the call site; `TraceShover.insert`, `ForcedPadRouter`'s routing half and `DrillItemMover`'s mutating half; the pass/item recovery boundaries (`AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`) on top of this plan's six; `max_passes == 0` means unlimited (quirk #140); no headless threading policy from `-mt` (quirk #143); the whole-board SES byte-parity headline.
 - **Plan 8** — `RoutingPipeline.createForHeadless` wiring, `CancelToken` → this crate's `StopCheck`, `ProgressSink` replacing the dropped observers, and `BoardStatistics` (which the metric harness here stands in for).
 
 Steps: ported tests → fixtures harness → audit to zero **without weakening the script** → `fr-board.map` → roster + README → quirks + hand-off + obligation ticks → fmt/clippy/test → commit `test(router): the ported Java suites, audit to zero, README, quirks #155+ and the Plan 6 hand-off`.

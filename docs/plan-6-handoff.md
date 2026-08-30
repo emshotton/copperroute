@@ -148,9 +148,19 @@ immediately before every `route_connection`, because
 `board.changedArea` observable inside `TraceShover::insert`: with it `None`, the
 substitute traces are inserted un-normalised, so the board diverges silently
 rather than failing. Leaving it out **routes a different board** — this is not
-hygiene. Both callers in this tree do it and say so:
-`crates/fr-router/tests/reference_parity.rs` (the acceptance ladder) and
-`crates/fr-router/tests/fixtures.rs`. A second precondition, weaker: the
+hygiene. There are **five** `route_connection` call sites in this tree and
+**three** of them mark, which is the correct split, not a gap:
+
+| call site | marks? | why |
+|---|---|---|
+| `scripts/differential/rust/src/bin/p6t1.rs:241` -> `:248` | yes | production-shaped: it is a pass runner in miniature |
+| `crates/fr-router/tests/fixtures.rs:154` -> `:158` | yes | production-shaped |
+| `crates/fr-router/tests/reference_parity.rs:217` -> `:222` | yes | production-shaped — the acceptance ladder |
+| `crates/fr-router/tests/autoroute_connection.rs:1061` (`route_once`) | **no** | mirrors `P6T16Probe.routeSteps1to5`, which does not mark either; the probe is the oracle, so marking here would make the test disagree with the JVM |
+| `crates/fr-router/tests/autoroute_connection.rs:1159` | **no** | same mirror, same reason |
+
+The rule for Plan 7 is therefore: **every production-shaped caller marks.** The two
+that do not are `P6T16Probe` mirrors and must stay unmarked. A second precondition, weaker: the
 `(item, net)` connection list is computed **once**, before any routing, exactly as
 `AutoroutePassRunner` computes `autorouteItemList` once per pass — an entry whose
 item a later connection ripped up is skipped, not re-derived. The engine's own
@@ -241,7 +251,7 @@ grep -rn  'unsafe' --include='*.rs' scripts/differential/rust/               # p
 | 4 | deterministic containers, transcribed rather than chosen | **superseded in part by ruling Y**: a `BTreeSet` is wrong wherever the comparator is not a total order. `JavaTreeSet` replaces it there. |
 | 5 | `JavaRandom`, not `rand` | held (Task 1). |
 | 6 | cancellation at exactly six sites | held. The six: four in `MazeSearchEngine::init` (`:975` destination set, `:1002`, `:1040`, `:1073`), one in the pop loop (`:323`), one in `DrillPage::get_drills` (`:103`, `splitToConvex`). Each has a test. Ruling AC later fixed that the **inserter** gets `&\|\| false`, because Java checks no stop below `AutorouteEngine.java:265`. |
-| 7 | five recovery boundaries | held, and all five are exercised. Correction: `completeExpansionRoom`'s `catch` returns an **empty** collection, not a partial one (quirk #166) — the plan's note said otherwise. |
+| 7 | five recovery boundaries | **held as six.** The plan's five are delivered and exercised; ruling AB pulled a sixth Java `catch (Exception)` into scope with `insertForcedTracePolyline` (`board/facade/RoutingBoard.java:787-841`, covering `normalize` and `splitTracesAtKeepPoint`). It is discharged through the **`Result` channel**, not `catch_unwind` — `crates/fr-router/src/board_ext/routing_board_ext.rs:780` and `:787` drop the `Err` and fall through, and no path inside the covered region panics. Correction: `completeExpansionRoom`'s `catch` returns an **empty** collection, not a partial one (quirk #166) — the plan's note said otherwise. The full table is in `crates/fr-router/README.md` § "The six recovery boundaries". |
 | 8 | `AutorouteControl` copies out of `RouterSettings` | held, with an undercount: `RouterSettings` has a **third** router-side reader, `getStartRipupCosts` (Task 13). |
 | 9 (**ruling H**) | the via re-pointing verdict, defaulting to "accept" | **the default did NOT apply — see §5.** |
 | 10 | ban the `&self` cold-cache recompute in `fr-router` | held. `grep -rn "item_tree_shape_ref\|item_tile_shape_ref" crates/fr-router/` finds only a doc comment saying never to use them. |
@@ -352,7 +362,7 @@ Grouped by what they are about:
 * **Crossed parameters** — #187 (`connectToTrace` stubs are sized from the *other*
   end's layer).
 * **Aliasing** — #188 (`new Polyline(Line[])` normalises the caller's array in
-  place; five Plan 6 sites read the array back), and #74's rewrite.
+  place; six Plan 6 sites read the array back), and #74's rewrite.
 * **Test-harness and diagnostic quirks** — #189 (`TestingSettings.setMaxPasses`
   is first-writer-wins, which is why `Dac2020Bm01RoutingTest`'s 194 is a *one-pass*
   bound), #190 (hard-coded debug net numbers 33/66/67/94/98 in production routing
@@ -466,9 +476,20 @@ numbers differ and only the first is an inventory:
 | `grep -rn "added in Plan 7" …` | **60** | 75 | 40 | 33 |
 | `grep -rn "added in Plan 8" …` | **13** | 16 | 2 | 2 |
 | `grep -rn "obligation:" …` | **54** | 70 | 28 | 0 |
+| `grep -rn "pub seam:" …` | **8** | 10 | 8 | 0 |
 
-`crates/fr-router/README.md` §"The 28 `obligation:` markers" tabulates that last
-column class by class with the verdict and the evidence for each.
+`crates/fr-router/README.md` §"The 28 `obligation:` markers" tabulates the
+`obligation:` column class by class with the verdict and the evidence for each.
+
+`// pub seam:` is new in the Plan 6 final fix wave (finding S7) and is the answer
+to a question Plan 7 will otherwise have to re-ask: **why is this `pub` item
+`pub` when nothing calls it?** `rustc`'s `dead_code` lint is blind to an uncalled
+`pub` item in a library, so every such item now says on its own line what its Java
+declaration is and who will call it — Plan 7's fanout pre-pass for
+`AutorouteControl::from_settings`, Plan 7's pass loop for
+`AutorouteAttemptResult::is_routed`, and "no caller in the Java tree either" for
+the six that are pure surface fidelity. A ninth was removed rather than marked;
+see the README section that lists all eight.
 
 ### Must build
 
@@ -478,7 +499,7 @@ column class by class with the verdict and the evidence for each.
    the failure-log write. **Do not re-implement steps 1-5** — `route_connection` is
    what 369 connections of byte-identical evidence attach to.
 2. **The pass loop**: `AutoroutePassRunner`, `AutorouteBatchLoop`, `BatchAutorouter`,
-   `BatchAutorouterThread`. With it, the two recovery boundaries *above* the five
+   `BatchAutorouterThread`. With it, the two recovery boundaries *above* the six
    this plan built: `AutoroutePassRunner.java:144` (per pass) and
    `BatchAutorouterThread.java:537` (per item). Both catch `Exception`, not
    `Throwable`, so neither recovers from a stack overflow — quirk #27 crashes both
@@ -514,9 +535,14 @@ column class by class with the verdict and the evidence for each.
 * **`board.start_marking_changed_area()` before every `route_connection`** —
   `AutoroutePassRunner.java:224`. Quirk #177 makes the presence of
   `board.changedArea` observable inside `TraceShover::insert`, so omitting it
-  routes a **different board**, silently. §3 states it beside the signature; both
-  callers in this tree do it. This is the single item most likely to make a Plan 7
-  pass runner diverge without failing.
+  routes a **different board**, silently. §3 states it beside the signature and
+  tabulates all five `route_connection` call sites: the **three production-shaped
+  callers do it** (`p6t1.rs`, `tests/fixtures.rs`, `tests/reference_parity.rs`) and
+  the **two that do not** (`tests/autoroute_connection.rs:1061` and `:1159`) are
+  deliberate mirrors of `P6T16Probe.routeSteps1to5`, which does not mark either —
+  the probe is the oracle there, so marking would break the mirror. A grep that
+  finds three-of-five is finding the right answer, not a gap. This is the single
+  item most likely to make a Plan 7 pass runner diverge without failing.
 * **`max_passes == 0` means unlimited** (quirk #140). Not "zero passes".
 * **`-mt` is not a threading policy on the headless path** (quirk #143):
   `BatchOptimizer.createForHeadless` (`:51-53`) never reads the field, and the

@@ -130,6 +130,9 @@ impl AutorouteAttemptResult {
     }
 
     /// Whether the attempt routed the connection.
+    // pub seam: none in Java — `AutorouteAttemptResult` has no `isRouted()`; its `state` is a
+    // public field every Java caller compares directly. Plan 7's pass loop
+    // (`AutoroutePassRunner`, `BatchAutorouter`) is what will read it. Own-file test only today.
     pub fn is_routed(&self) -> bool {
         self.state == AutorouteAttemptState::Routed
     }

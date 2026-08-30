@@ -1,11 +1,13 @@
 //! [`RouterError`], the crate's one error type.
 //!
 //! Java's autoroute package signals failure three ways: a returned `AutorouteAttemptResult` with
-//! a `FAILED`/`INSERT_ERROR` state, a `null`, and a thrown exception caught at one of five
+//! a `FAILED`/`INSERT_ERROR` state, a `null`, and a thrown exception caught at one of six
 //! `catch (Exception)` sites (plan-6 ruling 7). The first two are *values*, not errors, and stay
 //! values here — [`crate::AutorouteAttemptResult`] and `Option`. This type is only for the third:
-//! a failure that has to travel out of a call, and which the five recovery boundaries turn back
-//! into the specific degraded value Java produces.
+//! a failure that has to travel out of a call, and which the six recovery boundaries turn back
+//! into the specific degraded value Java produces. (Boundary #6,
+//! `RoutingBoard.insertForcedTracePolyline:787-841`, is discharged through this very channel
+//! rather than by a `catch_unwind` — see the crate README's table.)
 
 use thiserror::Error;
 

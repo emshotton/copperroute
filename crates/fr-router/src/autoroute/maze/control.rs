@@ -195,6 +195,10 @@ impl AutorouteControl {
     ///
     /// renamed: the two-constructor overload set becomes `new` (`:123`) and this
     /// (`:117`); Rust has no overloading. `RoutingBoard.java:1023` is the caller.
+    // pub seam: Plan 7 — `RoutingBoard.fanout` (RoutingBoard.java:978, the `new
+    // AutorouteControl(this, pinNetNo, routerSettings)` at `:1023`) is the only Java caller of
+    // this overload, and the fanout pre-pass is Plan 7's. Plan 6's engine builds its control
+    // through `new`, so this has no caller in this tree yet and that is correct.
     pub fn from_settings(
         board: &Board,
         net_no: i32,

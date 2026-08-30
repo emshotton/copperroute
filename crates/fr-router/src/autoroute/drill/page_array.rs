@@ -231,6 +231,10 @@ impl DrillPageArray {
     }
 
     /// `bounds` (`:17`) — the board's bounding box the grid covers.
+    // pub seam: none in Java — `DrillPageArray.bounds` (DrillPageArray.java:17) is a private
+    // field with no getter, read only inside the class (`:35-37`, `:79`). This accessor is the
+    // port's, kept `pub` beside `column_count`/`row_count` so the grid a `DrillPage` belongs to
+    // is inspectable from out-of-crate tests. No caller today.
     pub fn bounds(&self) -> IntBox {
         self.bounds
     }

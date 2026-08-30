@@ -294,6 +294,9 @@ impl ExpansionRoomStore {
     }
 
     /// Whether `AutorouteEngine.incompleteExpansionRooms` (`:71`) is non-null — see the field.
+    // pub seam: none in Java — this is the port's reader for `incompleteExpansionRooms == null`
+    // (AutorouteEngine.java:71, tested at `:345` and `:357`), which quirk #169 makes
+    // observable. Kept `pub` so an out-of-crate test can pin the null-ness. No caller today.
     pub fn incomplete_list_created(&self) -> bool {
         self.incomplete_list_created
     }
