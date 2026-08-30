@@ -511,6 +511,15 @@ method), and `grep -rn "obligation:" crates/` answers **54** (28 in `fr-router`)
 
 ## 13. Evidence
 
+**Prerequisites for anything that touches Java.** A sibling checkout of the Java
+repo at `../freerouting` (`FREEROUTING_JAVA_DIR`), its built jar at
+`../freerouting/build/libs/freerouting-current-executable.jar` (`FREEROUTING_JAR`
+— run `./gradlew build` in the clone if it is missing), and a JDK 25
+(`JAVA25_HOME`, e.g. `/opt/homebrew/opt/openjdk@25`). `p3t3`/`p3t15` additionally
+need the pinned `tools/freerouting-2.3.0.jar`. Tests that need the checkout call
+`parity::require_java_dir()` and skip with a message rather than failing.
+`scripts/differential/README.md` §Running it is the full list.
+
 | claim | how to re-check |
 |---|---|
 | the workspace is green | `cargo test --workspace` — **1 863 passed, 0 failed, 12 ignored**, 92 binaries |
