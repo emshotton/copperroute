@@ -405,8 +405,20 @@ methods with dozens of branches.
     and wraps negative, a quotient that underflows to `-0.0f` (so `Math.max`'s
     signed-zero clause is live), and an `Infinity` maximum against an `Infinity`
     penalty sum, where `calculateScore` is `Inf - Inf = NaN`, the `<= 0f` guard does
-    **not** fire and `Math.max(0, NaN)` is NaN — then `isPinEscaped` for every SMD
-    pin in ascending item id.
+    **not** fire and `Math.max(0, NaN)` is NaN — then five `K0`-`K4` rows that print
+    `DoubleStream.of(v).sum()` for hand-picked vectors, then `isPinEscaped` for
+    every SMD pin in ascending item id.
+
+    The `K` rows exist because the corpus cannot pin `DoubleStream.sum()`'s tail.
+    `BoardStatistics.java:188-189` sums the trace lengths through it, and the JDK's
+    `Collectors.computeFinalSum` finishes with `summands[0] - summands[1]` — a
+    *subtraction*, the compensation slot holding the negated low-order bits — but
+    `:189` narrows the sum to `float` one line later, and the difference is below
+    `float` resolution on every board (measured: 865 of 200 000 random summations
+    diverge at `double` width, 0 of 200 000 at `float` width). `K0`-`K2` are
+    search-found vectors whose compensation is exactly half an ulp of the sum, so
+    the two signs round to different doubles; `K3` drives the
+    `isNaN(tmp) && isInfinite(simpleSum)` arm; `K4` is the empty stream.
 
     Compiled and run against the clone's HEAD jar with a **JDK 25**, like
     `p6t1`/`p6t2`/`p6t3`, under the `p5t*` flag set, so `P5T_HASH_MODE=0..4` sweeps

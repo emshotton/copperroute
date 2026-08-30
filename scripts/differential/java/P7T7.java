@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.DoubleStream;
 
 /**
  * Plan 7 Task 1 differential driver: {@code core.scoring.BoardStatistics}' computing constructor,
@@ -135,6 +136,7 @@ public final class P7T7 {
     emit(out, "D", new BoardStatistics(board, null, true, false), settings, false);
 
     emitSynthetic(out);
+    emitKahan(out);
 
     List<Pin> smdPins = new ArrayList<>(board.getSmdPins());
     smdPins.sort(java.util.Comparator.comparingInt(Item::getId));
@@ -220,6 +222,39 @@ public final class P7T7 {
       p(out, synth.tag(), "calculateScore", f(s.calculateScore(sc)));
       p(out, synth.tag(), "getMaximumScore", f(s.getMaximumScore(sc)));
       p(out, synth.tag(), "getNormalizedScore", f(s.getNormalizedScore(sc)));
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // The Kahan cases: `DoubleStream.sum()` itself
+  // -----------------------------------------------------------------------------------------
+
+  /**
+   * {@code BoardStatistics.java:188-189} sums the trace lengths with {@code
+   * mapToDouble(...).sum()}, which is <b>not</b> a naive fold: {@code DoublePipeline.sum()}
+   * collects through {@code Collectors.sumWithCompensation} (Kahan/Neumaier) and finishes with
+   * {@code Collectors.computeFinalSum}, whose first line is {@code summands[0] - summands[1]} —
+   * a <b>subtraction</b>, because the compensation slot holds the negated low-order bits.
+   *
+   * <p>The corpus cannot pin that sign: the sum feeds a {@code (float)} cast one line later
+   * (`:189`) and the difference is invisible at {@code float} width on every board. These five
+   * vectors pin it at {@code double} width instead. The first three were found by search and each
+   * has a compensation of exactly half an ulp of the sum, so {@code sum - c} and {@code sum + c}
+   * round to <em>different</em> doubles; {@code K3} drives the {@code isNaN(tmp) &&
+   * isInfinite(simpleSum)} arm, which returns the <em>simple</em> sum; {@code K4} is the empty
+   * stream.
+   */
+  private static final double[][] KAHAN = {
+    {44646902.244757555, 15114766.05020856, 134419886.7378119},
+    {153162863.29820704, 22943764.53161407, 51720560.6157495, 294156676.54173774},
+    {29004725.81742059, 21933330.804348517, 86551149.06402807},
+    {Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE},
+    {},
+  };
+
+  private static void emitKahan(PrintStream out) {
+    for (int k = 0; k < KAHAN.length; k++) {
+      p(out, "K" + k, "sum", Double.toString(DoubleStream.of(KAHAN[k]).sum()));
     }
   }
 

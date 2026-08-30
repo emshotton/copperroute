@@ -32,7 +32,7 @@ use fr_board::structure::Unit;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::{java_double_to_string, java_float_to_string, BoardReadResult};
 use fr_router::route_connection;
-use fr_router::score::BoardStatistics;
+use fr_router::score::{java_double_stream_sum, BoardStatistics};
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
@@ -89,6 +89,7 @@ fn main() {
     );
 
     emit_synthetic(&mut out);
+    emit_kahan(&mut out);
 
     // `board.get_smd_pins()` is descending item id (quirk #63); Java sorts its own list ascending,
     // so this reverses.
@@ -577,6 +578,36 @@ fn emit_synthetic<W: Write>(out: &mut W) {
             synth.tag,
             "getNormalizedScore",
             &f(Some(s.normalized_score(&sc))),
+        );
+    }
+}
+
+/// `P7T7.KAHAN` — the five vectors that pin `DoubleStream.sum()`'s **subtracting** tail
+/// (`Collectors.computeFinalSum`: `summands[0] - summands[1]`, the compensation slot being
+/// negated). The corpus cannot pin it, because `BoardStatistics.java:189` narrows the sum to
+/// `f32` one line later; these do, at `double` width. `K3` drives the
+/// `isNaN(tmp) && isInfinite(simpleSum)` arm and `K4` is the empty stream.
+const KAHAN: [&[f64]; 5] = [
+    &[44646902.244757555, 15114766.05020856, 134419886.7378119],
+    &[
+        153162863.29820704,
+        22943764.53161407,
+        51720560.6157495,
+        294156676.54173774,
+    ],
+    &[29004725.81742059, 21933330.804348517, 86551149.06402807],
+    &[f64::MAX, f64::MAX, -f64::MAX],
+    &[],
+];
+
+/// `P7T7.emitKahan`.
+fn emit_kahan<W: Write>(out: &mut W) {
+    for (k, values) in KAHAN.iter().enumerate() {
+        p(
+            out,
+            &format!("K{k}"),
+            "sum",
+            &java_double_to_string(java_double_stream_sum(values.iter().copied())),
         );
     }
 }

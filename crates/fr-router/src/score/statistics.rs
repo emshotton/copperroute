@@ -6,6 +6,7 @@ use fr_board::rules::BoardRules;
 use fr_board::structure::{FixedState, Unit};
 use fr_board::{Board, ItemId};
 use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker};
+use fr_geometry::java_min;
 
 use super::dtos::{
     BoardStatisticsBends, BoardStatisticsBoard, BoardStatisticsComponents,
@@ -340,8 +341,9 @@ impl BoardStatistics {
                 let mut angle = (to_degrees(dy2.atan2(dx2) - dy1.atan2(dx1))).abs();
                 // `:306-308`: the two normalisations Java writes, both kept — the second is a
                 // no-op after the first, but `Math.min` and the ternary are not the same
-                // function on a NaN input.
-                angle = java_min_f64(angle, 360.0 - angle);
+                // function on a NaN input. `fr_geometry::java_min`, not a local copy and not
+                // `f64::min` (plan-6 convention 4): Java propagates NaN and Rust absorbs it.
+                angle = java_min(angle, 360.0 - angle);
                 angle = if angle > 180.0 { 360.0 - angle } else { angle };
                 // `:310-316`.
                 if (angle - 90.0).abs() < 1.0 {
@@ -619,28 +621,53 @@ fn unescape_unicode(text: &str) -> String {
 
 /// `java.util.stream.DoubleStream.sum()` — **not** a naive fold.
 ///
-/// The JDK sums with Neumaier compensation and keeps a plain running total beside it, returning
-/// the plain one only when the compensated total is NaN and the plain one is infinite
-/// (`Collectors.computeFinalSum`). `BoardStatistics.java:188-189` reaches it through
-/// `board.getTraces().stream().mapToDouble(Trace::getLength).sum()`, and the compensation moves
-/// the last bits of a board with many traces — which the `(float)` cast one line later does not
-/// always hide.
+/// `DoublePipeline.sum()` collects into a three-slot array through
+/// `Collectors.sumWithCompensation` (Kahan/Neumaier) while keeping a plain running total in the
+/// third slot, then hands the array to `Collectors.computeFinalSum`.
+/// `BoardStatistics.java:188-189` reaches it through
+/// `board.getTraces().stream().mapToDouble(Trace::getLength).sum()`.
 ///
-// renamed: the JDK's `DoubleStream.sum` / `DoublePipeline.sum` / `Collectors.sumWithCompensation` -> this function; it is runtime-library code rather than freerouting code, so it has no `audit-port.sh` row.
-fn java_double_stream_sum(values: impl Iterator<Item = f64>) -> f64 {
+/// **The compensation slot holds the *negated* low-order bits, so the final sum SUBTRACTS it.**
+/// JDK 25 `Collectors.computeFinalSum` (java.base, `src.zip`), comment and all:
+///
+/// ```java
+/// static double computeFinalSum(double[] summands) {
+///     // Final sum with better error bounds subtract second summand as it is negated
+///     double tmp = summands[0] - summands[1];
+///     double simpleSum = summands[summands.length - 1];
+///     if (Double.isNaN(tmp) && Double.isInfinite(simpleSum))
+///         return simpleSum;
+///     else
+///         return tmp;
+/// }
+/// ```
+///
+/// Adding it instead moves *away* from the true sum by twice the compensation — measured at
+/// double width on 865 of 200 000 random summations, and invisible at `f32` width on all of them,
+/// which is why the whole `p7t7` corpus passes either way. `the_kahan_sum_subtracts_the_negated_
+/// compensation_term` pins the sign with three vectors whose compensation lands exactly on a
+/// rounding tie.
+///
+/// Public because the sum is a general JDK helper: `BoardStatistics`' only use narrows it to
+/// `f32` one line later (`:189`), which hides the difference, but a later caller that does not
+/// narrow would see it.
+///
+// renamed: the JDK's `DoubleStream.sum` / `DoublePipeline.sum` / `Collectors.sumWithCompensation` / `Collectors.computeFinalSum` -> this function; it is runtime-library code rather than freerouting code, so it has no `audit-port.sh` row.
+pub fn java_double_stream_sum(values: impl Iterator<Item = f64>) -> f64 {
     let mut sum = 0.0_f64;
     let mut compensation = 0.0_f64;
     let mut simple_sum = 0.0_f64;
     for value in values {
-        // `Collectors.sumWithCompensation`.
+        // `Collectors.sumWithCompensation`: `compensation` is `intermediateSum[1]`, the negated
+        // low-order bits.
         let tmp = value - compensation;
         let velvel = sum + tmp;
         compensation = (velvel - sum) - tmp;
         sum = velvel;
         simple_sum += value;
     }
-    // `Collectors.computeFinalSum`.
-    let tmp = sum + compensation;
+    // `Collectors.computeFinalSum`: `summands[0] - summands[1]`, because `summands[1]` is negated.
+    let tmp = sum - compensation;
     if tmp.is_nan() && simple_sum.is_infinite() {
         simple_sum
     } else {
@@ -653,24 +680,6 @@ fn java_double_stream_sum(values: impl Iterator<Item = f64>) -> f64 {
 /// exists to name the Java method at the call site.
 fn java_abs_f32(value: f32) -> f32 {
     value.abs()
-}
-
-/// `Math.min(double, double)` (java.lang.Math), transcribed statement for statement rather than
-/// delegated to `f64::min`: Java **propagates** NaN where Rust returns the non-NaN operand, and
-/// Java's signed-zero clause tests **`a`**'s bits (the mirror of `Math.max`'s, which tests `b`'s)
-/// where Rust documents the equal-inputs case as non-deterministic.
-/// `BoardStatistics.java:306` is the only caller.
-fn java_min_f64(a: f64, b: f64) -> f64 {
-    // `if (a != a) return a;`
-    if a.is_nan() {
-        return a;
-    }
-    // `if ((a == 0.0d) && (b == 0.0d) && (doubleToRawLongBits(a) == negativeZeroDoubleBits)) return a;`
-    if a == 0.0 && b == 0.0 && a.to_bits() == (-0.0_f64).to_bits() {
-        return a;
-    }
-    // `return (a <= b) ? a : b;` — false against a NaN `b`, so the NaN is returned.
-    if a <= b { a } else { b }
 }
 
 /// `Math.toDegrees(double)` (java.lang.Math): `angrad * 180.0 / PI`, in that association.

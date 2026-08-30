@@ -14,7 +14,7 @@ use fr_board::structure::{FixedState, Unit};
 use fr_drc::DesignRulesChecker;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::route_connection;
-use fr_router::score::BoardStatistics;
+use fr_router::score::{BoardStatistics, java_double_stream_sum};
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
@@ -635,7 +635,7 @@ fn a_multi_net_smd_pin_is_counted_on_net_index_zero_only() {
     assert_eq!(after.total_smd_pins, before.total_smd_pins);
 }
 
-/// The four synthetic cases `p7t7` prints as `S0`-`S3`, with the JVM's own `Float.toString`
+/// The six synthetic cases `p7t7` prints as `S0`-`S5`, with the JVM's own `Float.toString`
 /// values. Each pins one width decision a plausible mis-transcription would lose; the driver's
 /// Javadoc explains them one by one.
 ///
@@ -826,4 +826,67 @@ fn the_connection_counters_are_fr_drcs_own() {
         stats.clearance_violations.total_count,
         Some(drc.get_all_clearance_violations().len() as i32)
     );
+}
+
+/// `BoardStatistics.java:188-189`'s `mapToDouble(Trace::getLength).sum()` is
+/// `java.util.stream.DoubleStream.sum()`, which the JDK finishes in `Collectors.computeFinalSum`:
+///
+/// ```java
+/// // Final sum with better error bounds subtract second summand as it is negated
+/// double tmp = summands[0] - summands[1];
+/// ```
+///
+/// A **subtraction** — the compensation slot holds the negated low-order bits. Adding it instead
+/// moves away from the true sum by twice the compensation, and **the corpus cannot see that**:
+/// `:189` narrows the sum to `f32` one line later, and the divergence is below `f32` resolution on
+/// every board (measured: 865 of 200 000 random summations diverge at `double` width, 0 of 200 000
+/// at `float` width). So the sign is pinned here instead, at `double` width, against the JVM's own
+/// `Double.toString` output — the `K0`-`K4` rows of `p7t7`.
+///
+/// The first three vectors were found by search: each has a compensation of exactly half an ulp of
+/// the sum, so `sum - c` and `sum + c` round to *different* doubles. `K3` drives the
+/// `isNaN(tmp) && isInfinite(simpleSum)` arm, which returns the **simple** sum rather than the
+/// compensated one; `K4` is the empty stream.
+#[test]
+fn the_kahan_sum_subtracts_the_negated_compensation_term() {
+    let cases: [(&str, &[f64], f64); 5] = [
+        (
+            "K0",
+            &[44646902.244757555, 15114766.05020856, 134419886.7378119],
+            1.94181555032778E8,
+        ),
+        (
+            "K1",
+            &[
+                153162863.29820704,
+                22943764.53161407,
+                51720560.6157495,
+                294156676.54173774,
+            ],
+            5.219838649873083E8,
+        ),
+        (
+            "K2",
+            &[29004725.81742059, 21933330.804348517, 86551149.06402807],
+            1.3748920568579715E8,
+        ),
+        ("K3", &[f64::MAX, f64::MAX, -f64::MAX], f64::INFINITY),
+        ("K4", &[], 0.0),
+    ];
+
+    for (tag, values, expected) in cases {
+        let actual = java_double_stream_sum(values.iter().copied());
+        assert_eq!(
+            actual.to_bits(),
+            expected.to_bits(),
+            "{tag}: {actual} != {expected}"
+        );
+    }
+
+    // The counterfactual, so the assertions above cannot be satisfied by a naive fold either:
+    // for `K0` all three of the compensated sum, the wrong-signed compensated sum and the plain
+    // `+=` fold are different doubles.
+    let k0 = cases[0].1;
+    let naive: f64 = k0.iter().sum();
+    assert_ne!(naive.to_bits(), cases[0].2.to_bits());
 }

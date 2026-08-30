@@ -49,7 +49,9 @@ pub use int_octagon::IntOctagon;
 pub use int_point::IntPoint;
 pub use int_vector::IntVector;
 pub use java_random::JavaRandom;
-pub use limits::{CRIT_INT, JAVA_DOUBLE_MIN_VALUE, java_max, java_min, java_round};
+pub use limits::{
+    CRIT_INT, JAVA_DOUBLE_MIN_VALUE, java_max, java_max_f32, java_min, java_min_f32, java_round,
+};
 pub use line::Line;
 pub use line_segment::LineSegment;
 pub use point::Point;
@@ -76,6 +78,6 @@ pub mod prelude {
         JAVA_DOUBLE_MIN_VALUE, JavaRandom, Line, LineSegment, Point, Polygon, PolygonShape,
         Polyline, PolylineArea, PolylineError, PolylineShapeOps, PolylineShapeRef, RationalPoint,
         RationalVector, RegularTileShape, Shape, ShapeBoundingDirections, ShapeOps, Side, Signum,
-        Simplex, TileShape, Vector, java_max, java_min, java_round,
+        Simplex, TileShape, Vector, java_max, java_max_f32, java_min, java_min_f32, java_round,
     };
 }

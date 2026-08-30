@@ -12,10 +12,12 @@
 //!
 //! # What is here, and what is not
 //!
-//! Ported: the field block (`:36-78`), the two delegating constructors with live callers
-//! (`:83-86`, `:99-102`), the computing constructor (`:110-427`), `isPinEscaped` (`:554-576`),
-//! `calculateScore` (`:593-616`), `getMaximumScore` (`:618-621`), `getNormalizedScore`
-//! (`:623-635`), the nested `BoardStatisticsFanout` (`:637-647`) and the ten sibling DTOs.
+//! Ported: the field block (`:37-79`), the two delegating constructors with live callers
+//! (`:84-86`, `:100-102`), the computing constructor (`:110-427`), `isPinEscaped` (`:555-576`),
+//! `calculateScore` (`:597-616`), `getMaximumScore` (`:619-621`), `getNormalizedScore`
+//! (`:624-635`), the nested `BoardStatisticsFanout` (`:638-647`) and the ten sibling DTOs.
+//! (Member bodies, not their javadoc — the same ranges the audit map and the `// Java bug:`
+//! markers cite.)
 //!
 //! The eleventh DTO, `BoardStatisticsClearanceViolations`, is **not** redeclared: Plan 5
 //! delivered it and the block of this constructor that fills it, and
@@ -34,7 +36,7 @@ pub use dtos::{
     BoardStatisticsConnections, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
     BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias, Rectangle2DFloat,
 };
-pub use statistics::{BoardStatistics, BoardStatisticsFanout};
+pub use statistics::{BoardStatistics, BoardStatisticsFanout, java_double_stream_sum};
 
 /// `core.scoring.BoardStatisticsClearanceViolations`, defined in `fr-drc` (plan-5 ruling 5) and
 /// re-exported here so a reader of this module finds all twelve DTOs in one place.

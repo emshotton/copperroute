@@ -7,6 +7,7 @@
 //! the last bits, and both `AutorouteBatchLoop:425`'s `> lastBestScore + 0.5` and
 //! `BatchOptimizer:220-230`'s `< improvementThreshold` are threshold comparisons on it.
 
+use fr_geometry::java_max_f32;
 use fr_settings::ScoringSettings;
 
 use super::statistics::BoardStatistics;
@@ -121,7 +122,7 @@ impl BoardStatistics {
     /// `calculateScore` is then `Inf - Inf = NaN`. `Math.max(0, NaN)` (`:634`) is the
     /// two-argument `float` overload after binary numeric promotion and it **propagates** that
     /// NaN, where Rust's `f32::max` would return the non-NaN `0.0` — which is why
-    /// `java_max_f32` below is transcribed rather than delegated. `p7t7`'s synthetic case `S5` is
+    /// [`fr_geometry::java_max_f32`] is used rather than `f32::max`. `p7t7`'s synthetic case `S5` is
     /// the JVM's own answer for it, and `float_narrowing_matches_java` fails without the
     /// transcription.
     ///
@@ -136,27 +137,4 @@ impl BoardStatistics {
         // :634.
         java_max_f32(0.0, self.calculate_score(scoring) / maximum_score) * 1000.0
     }
-}
-
-/// `Math.max(float, float)` (java.lang.Math), transcribed statement for statement rather than
-/// delegated to `f32::max`, because the two differ on **both** of the inputs this call can see:
-///
-/// * a NaN quotient — Rust's `f32::max` returns the *other* operand, so it would answer `0.0`
-///   where Java answers `NaN`;
-/// * a `-0.0` quotient — a small negative `calculateScore` over a large `maximumScore`
-///   underflows to `-0.0f` (`p7t7`'s synthetic case `S4`). Java's second clause makes
-///   `max(+0.0, -0.0)` return `+0.0`, while Rust's documents that for inputs which compare
-///   equal "either input may be returned non-deterministically". The difference is visible:
-///   `Float.toString` renders the two as `0.0` and `-0.0`.
-fn java_max_f32(a: f32, b: f32) -> f32 {
-    // `if (a != a) return a;`
-    if a.is_nan() {
-        return a;
-    }
-    // `if ((a == 0.0f) && (b == 0.0f) && (floatToRawIntBits(b) == negativeZeroFloatBits)) return a;`
-    if a == 0.0 && b == 0.0 && b.to_bits() == (-0.0_f32).to_bits() {
-        return a;
-    }
-    // `return (a >= b) ? a : b;` — false against a NaN `b`, so the NaN is returned.
-    if a >= b { a } else { b }
 }
