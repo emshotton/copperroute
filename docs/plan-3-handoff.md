@@ -709,8 +709,13 @@ would still surface as a `DIFF` on a mode nobody excused.
   (`board/actions/ForcedViaInserter.java:348`), and
   `crates/fr-router/tests/forced_via.rs`
   `insert_stops_when_the_stop_check_trips` pins that a tripping check on a
-  four-rung ladder answers `BoardError::Stopped` rather than hanging. Marker at
-  `parser/wiring.rs:596`.
+  four-rung ladder answers `BoardError::Stopped` rather than hanging. **One line
+  of wiring remains and it is Plan 8's, by controller ruling** (accepted in Task
+  10b's review): `fr-dsn`'s `read_via_scope` still calls the unchecked wrapper,
+  and passing it the reader's own `normalize_time_limit`-backed check is a
+  DSN-reader behaviour change over the 105-file corpus, not a router one. Marker
+  at `parser/wiring.rs:596`, which says `Plan 8`, as does the obligation register
+  row in `docs/java-quirks.md`.
 - **Via-info / via-rule re-pointing (ruling H).** Decide whether router
   behaviour on a re-declared via must match Java (then `ViaInfos` needs
   tombstoned entries, or `ViaRule` must own its `ViaInfo`s) or whether
