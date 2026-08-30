@@ -209,3 +209,100 @@ ruling 2's `DrcJsonFlavor::KiCad` spelling, not a parity target either.
 **Never edit a generated file by hand** — regenerate with
 `scripts/gen-drc-reference.sh [stem ...]`. The one thing that changes on every regeneration is
 `date` (and `java.log`'s timestamps); the parity test drops it on both sides.
+
+---
+
+# Router references (`router-*`, Plan 6 Task 17)
+
+`tests/reference/router-<stem>/router.jsonl` is one JSON line per **routed
+connection** — the third reference family in this directory, and the first that
+is neither a whole file the jar wrote (`fixtures.txt`'s DSN/SES round trips) nor
+a report it generated (`drc-fixtures.txt`'s `-drc` documents).
+
+`scripts/gen-router-reference.sh` writes them from
+`tests/reference/router-fixtures.txt` (`stem|dsn|max_items`, paths relative to
+the Java checkout) and `crates/fr-router/tests/reference_parity.rs` reads the
+same table, so the generator and the tests cannot drift apart.
+
+## A third script, and the HEAD jar again
+
+Like `gen-drc-reference.sh` this one is pinned to the clone's **HEAD** build, not
+to the 2.3.0 jar the DSN/SES references need: HEAD's `autoroute/**` has been
+refactored away from upstream (`MazeSearchAlgo` → `maze/MazeSearchEngine`,
+`LocateFoundConnectionAlgo*` → `path/FoundConnectionLocator*`, and
+`MazeExpansionEngine`/`MazeRipupResolver`/`AutorouteConnectionRouter` do not
+exist there at all), so a 2.3.0 reference would be a *different algorithm*.
+
+Unlike the DRC generator it cannot drive the CLI: the CLI runs the whole pipeline
+(fanout, passes, the optimizer) and plan-6 ruling 2 cuts the port at step 5 of
+`AutorouteConnectionRouter.route`. So it compiles and runs
+`scripts/differential/java/P6T1.java` — the same driver
+`scripts/differential/run.sh p6t1` diffs live against the Rust twin.
+
+Per stem: `router.jsonl` (the driver's stdout **verbatim**, minus its `HEADER`
+line), `java.log` (its stderr) and `router.meta.txt` (the jar's identity and
+version, `java -version`, the hash mode, the driver path, the connection count,
+the command line and the `HEADER` line, every machine-specific prefix replaced by
+`<FREEROUTING_JAVA_DIR>` or `<workspace>`). The `HEADER` line is the one thing
+not committed as-is: it names the jar by absolute path, byte size and mtime,
+which are properties of a checkout rather than of a board.
+
+## The five stems
+
+| stem | dsn | connections | why |
+|---|---|---|---|
+| `router-rpi-splitter` | `fixtures/Issue143-rpi_splitter.dsn` | 8 of 9 | the smallest board that actually routes — plan-6 ruling 11's MATCH-first fixture |
+| `router-dac2020-bm01` | `fixtures/Issue508-DAC2020_bm01.dsn` | 294 (all) | spec §14.3's smoke board, and the only place in the corpus where a connection rips |
+| `router-j2-reference` | `fixtures/Issue026-J2_reference.dsn` | 45 (all) | `J2ReferenceRoutingTest.java:29`'s board |
+| `router-tutorial-board` | `examples/tutorial_board/tutorial_board.dsn` | **0** | the CLI end-to-end board (spec §14.4) |
+| `router-ecc83-input` | `fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn` | 22 (all) | a `(plane …)` net, i.e. `ConductionArea` items on the search tree |
+
+`router-tutorial-board` is empty **on purpose**: the shipped example board's
+`(network …)` scope is 438 empty `@:no_net_N` nets, so no item has a non-empty
+unconnected set and there is nothing to route. The stem is a regression guard on
+the DSN reader and on `Board::unconnected_set` — "the port agrees there is
+nothing to route here" — and its zero is pinned in `router.meta.txt` by
+`every_stem_has_the_connection_count_its_meta_records`.
+
+`max_items` is deliberately larger than the candidate count on three stems: the
+acceptance is per connection, and truncating a board hides the congested
+connections, which are the only ones that rip.
+
+## The hash-mode sweep passes on all five
+
+    scripts/gen-router-reference.sh --verify-hash-modes
+
+regenerates each stem under `-XX:hashCode=0,1,2,3,4` and requires five
+byte-identical files:
+
+    == router-rpi-splitter    5 modes agree (f4f76285affd, 8 connections)
+    == router-dac2020-bm01    5 modes agree (a7a7c0dc039c, 294 connections)
+    == router-j2-reference    5 modes agree (b7198cefe3a2, 45 connections)
+    == router-tutorial-board  5 modes agree (e3b0c44298fc, 0 connections)
+    == router-ecc83-input     5 modes agree (64318fe24b56, 22 connections)
+
+This is plan-6 ruling 1's premise checked **per connection** — attempt state,
+ripped set, every inserted trace polyline and via, and the metric block — rather
+than end-to-end on SES output. Unlike the DRC family, where
+`drc-natural-tone-preamp` is genuinely hash-dependent (quirk #146), the router's
+own containers are `TreeSet`/`TreeMap`/`LinkedHashMap` throughout (plan-6
+ruling 4) and no stem depends on `Object.hashCode`. The references are still
+generated under `-XX:hashCode=2` for the same hygiene reason the DRC ones are.
+
+## There is no normalisation
+
+`parity::parse_router_jsonl` parses the committed line into typed values and
+`crates/fr-router/tests/reference_parity.rs` compares them rung by rung (plan-6
+ruling 1: state + ripped set, then geometry, then spec §9's metrics), but nothing
+is rewritten on either side. Coordinates and `traceLength` are compared as the
+**strings** `Double.toString` and `java_double_to_string` produced, so no
+re-parse can round a value into agreement.
+
+## Wall clock
+
+Quirk #162 (`SortedRoomNeighbours.calculateNewIncompleteRooms`) does not
+terminate for a small fraction of room completions and neither language guards
+it, so a board that reaches it hangs the JVM *and* the port. The generator bounds
+itself with `timeout(1)` (`ROUTER_TIMEOUT`, default 1800 s) and reports the stem
+as failed rather than hanging the machine; `run.sh p6t1` bounds both sides the
+same way (`P6T1_TIMEOUT`, default 900 s). No corpus stem currently reaches it.

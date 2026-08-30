@@ -301,6 +301,42 @@ methods with dozens of branches.
       that line unconditionally, the way `p4t1`'s twin prints
       `JSON_SOURCE_EMPTY`: this side computes the fact, that side states it, and
       the harness's diff is the assertion.
+  - `P6T1.java` — one **real DSN board**, its first `maxItems` connections routed
+    through steps 1-5 of `AutorouteConnectionRouter.route` (Plan 6 Task 17,
+    plan-6 ruling 2's seam). Twin: `p6t1`. It declares `package
+    app.freerouting.autoroute.maze;` and is compiled and run against the clone's
+    HEAD jar with a **JDK 25**, like `p6t2`/`p6t3`. It is also the driver behind
+    `scripts/gen-router-reference.sh`, so the committed
+    `tests/reference/router-*/router.jsonl` references and this differential can
+    never describe different runs.
+
+    It reproduces exactly the slice below the seam and nothing above it: the
+    connection list is `board.getItems()` order (descending item id, quirk #63)
+    × each item's own net index order, keeping the `(item, net)` pairs with a
+    non-empty `getUnconnectedSet`, computed **once** before any routing;
+    `board.startMarkingChangedArea()` runs before each connection because
+    `AutoroutePassRunner.java:224` does and quirk #177 makes it observable; and
+    no `optChangedArea`, necked retry, strict-DRC rollback or `finishAutoroute`
+    runs. The settings come from `DefaultSettings` + `setLayerCount` +
+    `applyBoardSpecificOptimizations`, **not** a bare `new RouterSettings()` —
+    `DefaultSettings.java:103` sets `automaticNeckdown` and `:117` sets
+    `fanout.enabled`, and a bare constructor would take `tryNeckDown` and the
+    `FanoutVia` arm of `AutorouteEngine.java:241-245` out of the comparison.
+
+    One JSON line per connection: attempt state and `details`, the ripped-item id
+    set, the per-item ripup costs, `maxGeneratedId` before and after, every
+    inserted trace (id, layer, half width, corner list) and via (id, centre,
+    padstack, layer span), and spec §9's metric block. Coordinates and
+    `traceLength` are JSON *strings* rendered by `Double.toString` on one side
+    and `java_double_to_string` on the other, so the rendering itself is the
+    comparison surface. Line 1 is the usual `HEADER` (jar path, size, mtime) and
+    `java -version` goes to stderr.
+
+    `run.sh` bounds **both** sides with `timeout(1)` (`P6T1_TIMEOUT`, default
+    900 s): quirk #162's non-termination is unguarded in Java and in the port
+    alike, so a corpus connection can hang on both sides and the harness has to
+    report rather than hang.
+
   - `P6T2.java` — `ShapeSearchTree.completeShape` and `divideLargeRoom` in all
     three angle regimes (Plan 6 Task 3). Twin: `p6t2`. **This closes the gap
     `p2t10` documents**: `p2t10`'s eight modes reach "every public
@@ -1279,10 +1315,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t2`, `p6t3`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t2` and `p6t3`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2` and `p6t3`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1305,7 +1341,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t2`/`p6t3` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -1589,6 +1625,28 @@ the driver expects, or none at all.
   ./scripts/differential/sweep-p5t2.sh 3                   # just the ratsnest parity surface
   P5T2_UNION=1 ./scripts/differential/sweep-p5t2.sh 2      # + the six-hash-mode airline union
   ```
+
+- `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-]` — the first `maxItems`
+  connections of a real board through the plan-6 seam (Plan 6 Task 17). Defaults
+  `8 1` and no rules file. A `maxItems` larger than the board's candidate count
+  means "every connection". The fourth slot exists for plan-6 ruling 9: the
+  comparison that decides the via-info / via-rule re-pointing register row is
+  the port routing `Issue593-BBD_Mars-64.dsn` *with*
+  `crates/fr-router/tests/data/ruling-h-redeclare.rules` against the jar doing
+  the same.
+
+  ```sh
+  ./scripts/differential/run.sh p6t1                                    # rpi-splitter, 8 connections
+  ./scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 100000 1
+  ./scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue026-J2_reference.dsn 100000 4
+  ./scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1 \
+      crates/fr-router/tests/data/ruling-h-redeclare.rules
+  ```
+
+  Measured: MATCH on all four reference boards at `ripupPassNo = 1` (369
+  connections) and on three of them at 2 and 4; `Issue508-DAC2020_bm01` diverges
+  from connection 267 at passes 2 and 4, and the `.rules` run above diverges from
+  connection 8 — both recorded in `crates/fr-router/README.md`.
 
 - `p6t2 <seed> <n> <rooms>` — `AutorouteSearchTreeExt::{complete_shape,
   divide_large_room}` against `ShapeSearchTree.completeShape`/`divideLargeRoom`

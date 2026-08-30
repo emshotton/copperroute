@@ -167,16 +167,16 @@ impl MazeRipupResolver {
                 .map(ObstacleExpansionRoom::get_item),
             _ => None,
         };
-        // obligation: `MazeRipupResolver.checkRipup`'s `roomWasShoved` branch (`:86-91`) has **no
-        // ground truth**. It is entered only for a `MazeListElement` whose `adjustment` is
-        // `LEFT`/`RIGHT`, and the sole producer of those is
+        // obligation: `MazeRipupResolver.checkRipup`'s `roomWasShoved` branch (`:86-91`) —
+        // **discharged in Task 17**, together with `MazeTraceShover`'s collector marker, exactly
+        // as that marker predicted. The branch is entered only for a `MazeListElement` whose
+        // `adjustment` is `LEFT`/`RIGHT`, and the sole producer of those is
         // `MazeSearchEngine.shoveTraceRoom`'s adjustment mapping (`:1153-1159`, `:1184-1190`),
-        // which is fed by `MazeTraceShover`'s door-section collector — the collector Task 12's own
-        // marker in `trace_shover.rs` records as unreached. Every cell of
-        // `P6T13Probe` mode `ripup` therefore has `adjustment = NONE` and takes the `else if`
-        // below. **Task 17** closes both together: the board that makes a shove succeed is the
-        // board that makes this branch reachable, and its acceptance run must show a `checkRipup`
-        // whose previous room is a *shoved* obstacle room sharing a net with the obstacle.
+        // fed by `MazeTraceShover`'s door-section collector. Every cell of `P6T13Probe` mode
+        // `ripup` had `adjustment = NONE`; Task 17's corpus enters this branch on
+        // `router-rpi-splitter` (5 times), `router-j2-reference` (214) and
+        // `router-dac2020-bm01` (12 798), and every connection of all three matches the HEAD jar
+        // byte for byte — attempt state, ripped set, ripup costs and inserted geometry.
         if room_was_shoved {
             // :86-91.
             if let Some(previous_item) = previous_item
@@ -187,13 +187,14 @@ impl MazeRipupResolver {
             }
         } else if previous_item == Some(obstacle_item) {
             // obligation: `MazeRipupResolver.checkRipup`'s `ALREADY_RIPPED_COSTS` arm (`:92-94`)
-            // has **no ground truth**. It needs the popped door to sit between two
+            // — **discharged in Task 17**. It needs the popped door to sit between two
             // `ObstacleExpansionRoom`s of the **same** item — two tree shapes of one trace, with
             // the search crossing from one into the other — which no board `P6T13Probe` reaches
-            // produces: mode `ripup` drives every case from the seeded target door, whose
-            // `otherRoom` is a free-space room, so `previousItem` is always `None`. **Task 17**
-            // must record, for at least one fixture connection, a `checkRipup` that answers
-            // 1 through this arm rather than through the `max(…, 1)` floor of `:166`.
+            // produces (mode `ripup` drives every case from the seeded target door, whose
+            // `otherRoom` is a free-space room, so `previousItem` is always `None`). Task 17's
+            // corpus returns through this arm on `router-rpi-splitter` (once),
+            // `router-j2-reference` (27 times) and `router-dac2020-bm01` (3 161), and every
+            // connection of all three matches the HEAD jar byte for byte.
             // :92-94.
             return ALREADY_RIPPED_COSTS;
         }

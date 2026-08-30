@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 16 of 18
+## State: Task 17 of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -1461,3 +1461,246 @@ user-fixed via on the drill location — also changes what the maze search finds
 because `ForcedViaInserter.check` reads the same rule. Measured: setting
 `ctrl.viaRule = new ViaRule("empty")` before the connection makes the JVM route
 *around* the drill and answer `ROUTED`.
+
+
+## The acceptance ladder (Task 17, ruling 1)
+
+Task 17 is the first time the port routes a **real KiCad board** against the HEAD
+jar. Everything below the plan-6 seam runs: `AutorouteControl`, the plane swap,
+the `TimeLimit`, `initAutoroute` and `autorouteConnection`, connection after
+connection, on the board each previous connection left behind.
+
+**The driver pair is `scripts/differential/run.sh p6t1`** —
+`scripts/differential/java/P6T1.java` (package `app.freerouting.autoroute.maze`,
+compiled against the HEAD jar on JDK 25) against
+`scripts/differential/rust/src/bin/p6t1.rs`. Both print one JSON line per
+connection: the attempt state and its `details`, the ripped-item id set, the
+per-item ripup costs, `maxGeneratedId` before and after, **every inserted trace**
+(id, layer, half width, polyline corner list) and **every inserted via** (id,
+centre, padstack, layer span), then spec §9's metric block. Every coordinate is
+rendered by `Double.toString` on the Java side and `java_double_to_string` on
+this one, as a JSON *string*, so the rendering itself is the comparison surface.
+
+Four choices make the two sides the same experiment, and each is load-bearing:
+
+1. **The settings come from `DefaultSettings`**, sized and tuned for the board by
+   `setLayerCount` + `applyBoardSpecificOptimizations` — the two board-dependent
+   steps of `RouterSettings(RoutingBoard)`. A bare `RouterSettings::new()` would
+   leave `automaticNeckdown` false (`DefaultSettings.java:103` sets it true) and
+   `fanout.enabled` false, which takes `tryNeckDown` *and* the `FanoutVia` arm of
+   `:241-245` out of the comparison — two of Task 15's and Task 16's obligations.
+2. **`startMarkingChangedArea` runs before every connection**, because
+   `AutoroutePassRunner.java:224` runs it there and quirk #177 makes the presence
+   of `board.changedArea` observable inside `TraceShover.insert`.
+3. **The connection list is Java's, computed once**: `board.getItems()` order —
+   `itemList` in descending item id, quirk #63 — × each item's own net index
+   order, keeping the `(item, net)` pairs whose `getUnconnectedSet` is non-empty.
+   That is `AutoroutePassRunner`'s nested walk (`:202`, `:207`) with the pass
+   loop and the plane-skipping filter (Plan 7's) left out.
+4. **Nothing above the seam runs**: no `optChangedArea`, no `retryConnectionNecked`,
+   no strict-DRC rollback, no `finishAutoroute`.
+
+### The references, and the hash-mode premise
+
+`scripts/gen-router-reference.sh` drives the same driver against the HEAD jar
+and writes `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}`;
+`tests/reference/router-fixtures.txt` is the `stem|dsn|max_items` table both it
+and `crates/fr-router/tests/reference_parity.rs` read, so the generator and the
+tests cannot drift apart. `router.jsonl` is the driver's stdout **verbatim**
+minus its `HEADER` line, which names the jar by absolute path and lives in
+`router.meta.txt` instead.
+
+`scripts/gen-router-reference.sh --verify-hash-modes` regenerates every stem
+under `-XX:hashCode=0,1,2,3,4` and requires five byte-identical files. It
+**passes on all five stems** — 8, 294, 45, 0 and 22 connections:
+
+    == router-rpi-splitter    5 modes agree (f4f76285affd, 8 connections)
+    == router-dac2020-bm01    5 modes agree (a7a7c0dc039c, 294 connections)
+    == router-j2-reference    5 modes agree (b7198cefe3a2, 45 connections)
+    == router-tutorial-board  5 modes agree (e3b0c44298fc, 0 connections)
+    == router-ecc83-input     5 modes agree (64318fe24b56, 22 connections)
+
+That is ruling 1's premise checked **per connection** rather than end-to-end on
+SES output: a single-threaded Java routing run does not depend on
+`Object.hashCode`, which is what makes an exact per-connection reference
+meaningful at all. It is a stronger result than the DRC generator's, where one
+of eight stems is genuinely hash-dependent (quirk #146).
+
+### The result, per stem and per rung
+
+| stem | board | connections | (a) state + ripped | (b) geometry | (c) metrics |
+|---|---|---|---|---|---|
+| `router-rpi-splitter` | `Issue143-rpi_splitter.dsn` | 8 (of 9) | **8/8** | **8/8** | **8/8** |
+| `router-dac2020-bm01` | `Issue508-DAC2020_bm01.dsn` | 294 (all) | **294/294** | **294/294** | **294/294** |
+| `router-j2-reference` | `Issue026-J2_reference.dsn` | 45 (all) | **45/45** | **45/45** | **45/45** |
+| `router-tutorial-board` | `examples/tutorial_board/tutorial_board.dsn` | 0 | — | — | — |
+| `router-ecc83-input` | `Issue649-kicad_ecc83-pp_input_board_v1.dsn` | 22 (all) | **22/22** | **22/22** | **22/22** |
+
+**369 connections, and rung (b) — the strictest one — holds on every one of
+them**, including the item ids the connection burned. The ladder's demotion path
+(a connection that reaches (a)+(c) but not (b) becomes a row here rather than a
+failure) is unused, and `geometry_is_required_where_it_was_reached` is the test
+that stops it being quietly re-entered.
+
+Three deviations from the plan's fixture table, all upward except the last:
+
+* **`router-dac2020-bm01` routes the whole board, not the plan's two
+  connections.** The plan set `max_items = 2` before it was known that the board
+  matches exactly; every ripping connection in the corpus lives on it (15 of them
+  rip two or three items at once), and truncating it would have left three of
+  Task 16's obligations unreachable. 294 connections cost ~36 s wall for both
+  sides together.
+* **`router-j2-reference` and `router-ecc83-input` likewise route whole boards.**
+  `router-ecc83-input` is new: the plan's table had no board with a `(plane …)`
+  net, i.e. no `ConductionArea` on the search tree.
+* **`router-tutorial-board` routes nothing, and that is the assertion.** The
+  shipped example board's `(network …)` scope is 438 empty `@:no_net_N` nets, so
+  no item has an unconnected set. The stem is kept as a regression guard on the
+  DSN reader and on `Board::unconnected_set`: "the port agrees there is nothing
+  to route here", with the zero pinned in `router.meta.txt`.
+
+### The MISMATCH this found, and the fix
+
+**`router-j2-reference` connection k = 19**, `:271-277`'s "could not be inserted"
+message. Both sides compute the same destination set —
+`[946,945,944,936,935,43,42,37,36]`, five traces and four pins — but the jar's
+message names five `polylinetrace`s and the port's named four.
+
+`describeConnection`'s inputs are Java `Set<Item>` — **object references** taken
+at `AutorouteConnectionRouter.route:54-68` — while the port's are
+`BTreeSet<ItemId>`. The failed insert removes one of those five traces, so an id
+lookup against the board as it stands at `:271` silently drops it, where Java's
+live reference still prints. Task 16 had recorded that as an accepted asymmetry
+in `describe_connection`'s doc comment; the corpus proved it wrong. The fix is in
+`autoroute/maze/engine.rs`: `autoroute_connection` snapshots both sets'
+`Item.toString()`s at entry — before anything can remove an item — and every one
+of the five `describeConnection` sites builds its message from the snapshot.
+Snapshotting is exactly equivalent to Java's late evaluation, because
+`Item.toString` (Item.java:1258-1269) and `Pin.toString` (`:676-692`) read only
+`getClass().getSimpleName()`, `componentId` and `pinIndex`, none of which a
+routing pass can change. `describe_connection(board, start, dest)` stays as the
+public entry point for a caller that has not mutated the board (`P6T16Probe`'s
+`describe` mode reaches it by reflection), and `router_j2_reference` is the
+regression test.
+
+### The one open divergence: `ripupPassNo > 1` on the largest board
+
+Every committed reference is `ripupPassNo = 1`. Task 17 also swept **2** and
+**4** over the whole corpus, because that is where
+`AutorouteConnectionRouter.route:45`'s `startRipupCosts * ripupPassNo` and — at
+pass 4 — `MazeRipupResolver`'s `randomize` draw (plan-6 ruling 5's bit-exact
+`JavaRandom`, seeded with `ctrl.ripupCosts`) become live.
+
+`router-rpi-splitter`, `router-j2-reference` and `router-ecc83-input` **MATCH at
+both passes**. `router-dac2020-bm01` matches for **k = 1..266** at both and then
+diverges: at k = 267 the output is still identical — same state, no rips, the
+same six trace polylines, the same metric block — but the port consumes **1 489**
+item ids where the jar consumes **1 483**, so every later id is shifted by 6. The
+divergence becomes visible geometry at k = 270 (the jar's fourth trace has 20
+corners, the port's 19); rungs (a) and (c) still hold there.
+
+Six extra *transient* traces inside one insert, with the same final geometry, is
+an off-by-one in the `insertForcedTracePolyline` / `springOverObstacles`
+recursion or in the shove's substitute-piece loop — Task 15a/15b code, pinned
+against `P6T15bProbe`'s 1 621 rows but not against a connection that performs
+1 400 inserts. Localising it needs Java-side visibility this task did not build:
+a probe that logs `maxGeneratedId` around each `RoutingBoard.insertForcedTracePolyline`
+call inside `FoundConnectionInserter.insertTrace`. It is filed as an open row in
+`docs/java-quirks.md` and belongs to **Plan 7**, which owns `ripupPassNo > 1`.
+
+### Ruling H is decided, and it closes against the re-pointing
+
+`scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn
+50 1 crates/fr-router/tests/data/ruling-h-redeclare.rules` is the comparison the
+register row had been waiting for since Plan 3 — the port routing the board with
+the `.rules` file, against the jar doing the same.
+
+* **without** the `.rules` file the two agree on all 50 connections, byte for
+  byte;
+* **with** it they first differ at k = 6 (one extra item id, identical geometry)
+  and genuinely diverge from k = 8 on: the jar lays four traces there and the
+  port two, cumulative trace length `1401450.8259119983` against
+  `1395031.4105961146`. The port routes *shorter*, which is exactly what
+  `attachSmdAllowed = true` buys — a via attaching to an SMD pad the jar's
+  detached `ViaInfo` forbids. Rungs (a) and (c) still hold on every connection;
+  it is (b) that fails.
+
+So the divergence is **not** unobservable and plan-6 ruling 9's default does not
+apply. Per its other branch the fix is `ViaRule` owning its `ViaInfo`s (or
+`ViaInfos` keeping tombstones), an `fr-board` change outside this task's file
+list and named in the Task 18 hand-off. The `obligation:` marker on
+`AutorouteControl::rebuild_via_info` carries the measurement and stays until that
+lands. No acceptance fixture uses a `.rules` file, so the reference set is
+unaffected.
+
+### The 28 `obligation:` markers
+
+`grep -rn "obligation:" crates/fr-router/src` answers 28 rows, and they come out
+**14 discharged / 8 re-marked / 1 decided / 5 not this task's**:
+
+* **14 discharged** — a corpus connection reaches the arm *and* the whole
+  connection matches the jar, with the fixture and the connection index in the
+  table below. Three of them are discharged twice over, by mutation as well as by
+  coverage: `routing_board_ext.rs:792` and `:931` both DIFF `router-j2-reference`
+  when mutated to the alternative Java could have been written with.
+* **8 re-marked** — the measurement that says why no corpus board reaches them.
+* **1 decided** — ruling H, above.
+* **1 discharged by construction** (`engine.rs:761`, `completeExpansionRoom`'s
+  `Err` contract: Tasks 11-16 consume it as an empty list, and the corpus never
+  takes the `Err` arm at all), **2 already discharged in Task 6**
+  (`maze/mod.rs:57`, `expansion/mod.rs:190`), and **2 that are not Task 17's** —
+  `expansion/complete_room.rs:5` is Plan 2's `TreeObject::Room` obligation,
+  discharged by the class existing, and `tightener/mod.rs:759` is a
+  cross-reference to an `fr-board` marker in `board/trace_normalize.rs`.
+
+| marker | Java | verdict | evidence |
+|---|---|---|---|
+| `board_ext/routing_board_ext.rs:730` | `insertForcedTracePolyline:777-782` | **re-marked** | 0 entries over 369 connections; every corpus call has `maxRecursionDepth > 0` |
+| `board_ext/routing_board_ext.rs:792` | `insertForcedTracePolyline:826-833` | **discharged** | ≥2 candidate traces on rpi-splitter (2), j2 (4), dac2020 (6); mutating `next_back()` → `next()` DIFFs j2 at k = 44 |
+| `board_ext/routing_board_ext.rs:931` | `insertForcedTracePolyline`'s `ShapeEntrySide` index | **discharged** | differs from `i + 1` on 50/508/5160/39 evaluations; mutating to `i + 1` DIFFs j2 and dac2020 |
+| `board_ext/tightener/mod.rs:759` | `Board::change_trace`'s call site | not Task 17's | a cross-reference to `fr-board`'s own marker |
+| `autoroute/path/inserter.rs:123` | `autorouteConnection:260-263` | **re-marked** | both endpoints resolve on the board in all 311 evaluations, the 97 ripping connections included |
+| `autoroute/path/inserter.rs:292` | `insertTrace:151-162` | **re-marked** | the loop runs 820 times (564 of them find exactly one pin); the count is never more than 1 |
+| `autoroute/path/inserter.rs:403` | `insertTrace:264` | **discharged** | VIOLATION_CORRECTED on the **last** corner: rpi-splitter 2, j2 6, dac2020 7 |
+| `autoroute/path/inserter.rs:446` | `insertTrace:448-450` | **discharged** | the suppressed second write happens 6 / 8 / 85 times on rpi-splitter / j2 / dac2020 |
+| `autoroute/path/inserter.rs:687` | `tryNeckDown:553` | **re-marked** | the gate is reached 116 times and is a strict inequality every time; nothing below it is reached |
+| `autoroute/path/inserter.rs:734` | `tryNeckDown:586-588` | **re-marked** | 0 entries — `:553` returns on all 116 |
+| `autoroute/path/inserter.rs:907` | `insertVia:687-696` | **discharged** | called with `fromLayer > toLayer` 2 / 4 / 34 times on rpi-splitter / j2 / dac2020 |
+| `autoroute/path/locator.rs:267` | `FoundConnectionLocator:124-129` (fanout) | **re-marked** | 0 entries; `ctrl.isFanout` is `BatchFanout`'s, i.e. **Plan 7's** — unreachable below the seam |
+| `autoroute/path/locator.rs:395` | `FoundConnectionLocator:167-175` | **re-marked** | max dimension seen is 1 (dac2020 14, j2 4); `router-ecc83-input`'s conduction areas give 0 |
+| `autoroute/maze/mod.rs:57` | `AutorouteEngine.TRACE_WIDTH_TOLERANCE` | discharged in Task 6 | one definition, still |
+| `autoroute/maze/control.rs:381` | `AutorouteControl.rebuildViaInfo` | **decided** | ruling H closes against the re-pointing — see above |
+| `autoroute/maze/ripup_resolver.rs:170` | `checkRipup:86-91` (`roomWasShoved`) | **discharged** | entered 5 / 214 / 12 798 times on rpi-splitter / j2 / dac2020 |
+| `autoroute/maze/ripup_resolver.rs:189` | `checkRipup:92-94` (`ALREADY_RIPPED_COSTS`) | **discharged** | returned 1 / 27 / 3 161 times on the same three |
+| `autoroute/maze/trace_shover.rs:404` | `checkShoveTraceLine:236-312` | **discharged** | `:255` pushes 15 / 498 / 27 083, `:307` pushes 12 / 819 / 52 450 |
+| `autoroute/maze/expansion_engine.rs:492` | `expandToOtherLayers:279-281` | **re-marked** | 0 entries; all five corpus boards are two-layer with no bottom-side SMD pad |
+| `autoroute/maze/engine.rs:761` | `completeExpansionRoom`'s `Err` contract | discharged by construction | Tasks 11-16 consume it as an empty list; the corpus never takes the `Err` arm (0 panics in 369 connections) |
+| `autoroute/maze/engine.rs:1374` | `autorouteConnection:241-245` | **discharged** | all 311 connections that reach it take the `FanoutVia` arm, which no unit fixture took |
+| `autoroute/maze/engine.rs:1386` | `autorouteConnection:247` | **discharged** | dac2020 rips 2 items at k = 252 and 3 at k = 261/279/286/293 |
+| `autoroute/maze/engine.rs:1409` | `BasicBoard.removeItems`' order | **discharged** | dac2020 removes 2 (×7), 3 (×22), 4 (×3) and 7 (×1) connection items at once |
+| `autoroute/maze/engine.rs:1463` | `autorouteConnection:271-277` | **discharged** | rpi-splitter k = 3 and k = 8, j2 k = 19, dac2020 ×12 |
+| `autoroute/maze/engine.rs:1698` | `route:45` (`startRipupCosts * ripupPassNo`) | **discharged, one XDIFF** | passes 2 and 4 MATCH on three stems; dac2020 diverges from k = 267 (open row above) |
+| `autoroute/maze/engine.rs:1704` | `route:46` (`removeUnconnectedVias`) | **discharged** | the corpus runs it `false` on all 369 connections, the opposite of every unit fixture |
+| `autoroute/expansion/mod.rs:190` | `AutorouteEngine.clear` | discharged in Task 6 | — |
+| `autoroute/expansion/complete_room.rs:5` | Plan 2's `TreeObject::Room` | discharged by the class | — |
+
+The eight re-marked rows fall into three groups, which is the useful thing to
+say about them:
+
+* **Plan 7's, not a fixture's.** `locator.rs:267`'s fanout arm needs
+  `ctrl.isFanout`, which only `BatchFanout` sets, and `locator.rs:395` needs a
+  connection whose *start item* is a conduction area, which
+  `AutoroutePassRunner`'s plane-skipping item selection
+  (`BatchAutorouter.java:383-389`) decides. Both live above the plan-6 seam; no
+  board can discharge them here. The same is true of the half of
+  `engine.rs:1374`'s question that survives its discharge — the corpus takes the
+  `FanoutVia` arm on every connection but cannot show it *differing* from `None`,
+  because that needs a fanout via.
+* **A fixture the corpus does not have.** `expansion_engine.rs:492` needs a
+  bottom-side SMD pad (all five boards are two-layer with none);
+  `inserter.rs:292` needs two own-net pins sharing one trace end;
+  `inserter.rs:687`/`:734` need a pin narrower than the trace with a clear
+  diagonal run from it.
+* **Deeper than 369 connections go.** `routing_board_ext.rs:730` needs a shove
+  chain that exhausts the recursion budget, and `inserter.rs:123` needs a ripup
+  that removes the located connection's own start or target trace.

@@ -1,0 +1,36 @@
+# Router reference fixtures for scripts/gen-router-reference.sh (Plan 6 Task 17).
+#
+#   stem|dsn|max_items
+#
+# `dsn` is relative to the Java checkout ($FREEROUTING_JAVA_DIR, default ../freerouting).
+# `max_items` is the number of connections `P6T1` routes: it walks `board.getItems()` (descending
+# item id, quirk #63) × each item's own net index order and keeps the `(item, net)` pairs whose
+# `getUnconnectedSet` is non-empty, stopping at `max_items`. A number larger than the board's
+# candidate count therefore means "every connection of the board"; that is deliberate for the two
+# stems where it is affordable, because ruling 1's acceptance is per connection and a truncated
+# board hides the congested connections — which are the only ones that rip.
+#
+# The stems are prefixed `router-` so they cannot collide with the DSN/SES reference stems in
+# fixtures.txt or the DRC stems in drc-fixtures.txt.
+#
+# | stem                  | connections | why                                                     |
+# |-----------------------|-------------|---------------------------------------------------------|
+# | router-rpi-splitter   | 8 of 9      | smallest board that actually routes; ruling 1(b)'s      |
+# |                       |             | MATCH-first fixture (the brief's 8)                      |
+# | router-dac2020-bm01   | 294 (all)   | spec §14.3's smoke board. The brief says 2; the whole    |
+# |                       |             | board matches exactly and is where every ripping         |
+# |                       |             | connection in the corpus lives, so it is not truncated   |
+# | router-j2-reference   | 45 (all)    | `J2ReferenceRoutingTest.java:29`'s board                 |
+# | router-tutorial-board | 0           | the CLI end-to-end board (spec §14.4). Its `(network …)` |
+# |                       |             | scope is 438 empty `@:no_net_N` nets, so **no** item has |
+# |                       |             | an unconnected set and the board routes nothing. The row |
+# |                       |             | is kept because "the port agrees there is nothing to     |
+# |                       |             | route here" is the assertion, and a future DSN reader    |
+# |                       |             | change that invented nets would break it                 |
+# | router-ecc83-input    | 22 (all)    | a board with a `(plane …)` net and a copper pour, i.e.   |
+# |                       |             | `ConductionArea` items on the search tree                |
+router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|8
+router-dac2020-bm01|fixtures/Issue508-DAC2020_bm01.dsn|100000
+router-j2-reference|fixtures/Issue026-J2_reference.dsn|100000
+router-tutorial-board|examples/tutorial_board/tutorial_board.dsn|8
+router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|100000

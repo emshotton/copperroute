@@ -727,11 +727,15 @@ impl RoutingBoardExt for Board {
         // :777-782. `optNetNoArr` is `TraceTightener`'s `onlyNetNoArr`, and its **only** reader
         // is `PolylineTrace.pullTight:821-823`'s "this trace is not on one of those nets" refusal.
         //
-        // obligation: `RoutingBoard.insertForcedTracePolyline:777-782`'s `maxRecursionDepth <= 0` arm is unobservable on this fixture.
-        // It is unobservable for the same reason the `:826-833` pick is (see that marker): the
-        // trace `:860-862` pull-tightens is the one just inserted, whose nets *are* `netNumbers`,
-        // so the filter passes whichever array this produces. It bites only when `:826-833`
-        // re-picks a **foreign** trace. **Task 17** covers both with one fixture connection.
+        // obligation: `RoutingBoard.insertForcedTracePolyline:777-782`'s `maxRecursionDepth <= 0` arm is still unobservable — **re-marked in Task 17**.
+        // It is unobservable for the same reason the `:826-833` pick was (see that marker, which
+        // Task 17 *did* discharge): the trace `:860-862` pull-tightens is the one just inserted,
+        // whose nets *are* `netNumbers`, so the filter passes whichever array this produces.
+        // Measured over Task 17's whole acceptance corpus — 369 connections on five boards,
+        // `tests/reference/router-fixtures.txt` — with a counter on this arm: **it is entered
+        // zero times**. Every corpus call reaches `insertForcedTracePolyline` with
+        // `maxRecursionDepth > 0`, so `optNetNoArr` is always the empty array. Reaching it needs
+        // a shove chain deep enough to exhaust the recursion budget, which no board here has.
         let opt_net_no_arr = if max_recursion_depth <= 0 {
             net_numbers.to_vec()
         } else {
@@ -789,17 +793,21 @@ impl RoutingBoardExt for Board {
                             // **highest** id; `pick_traces`' `BTreeSet<ItemId>` is ascending, so
                             // the same element is `next_back`.
                             //
-                            // obligation: `RoutingBoard.insertForcedTracePolyline:826-833`'s `pickItems(...).iterator().next()` has **no discriminating row** in the fixture.
+                            // obligation: `RoutingBoard.insertForcedTracePolyline:826-833`'s `pickItems(...).iterator().next()` — **discharged in Task 17**.
                             // In `p6t15b-insert-forced.txt`, instrumented, the branch is reached
                             // 118 times across every mode and only **one** of those (a `rand`
                             // row at `(-322, 879)`, 45-degree, candidates 5 and 10) has more than
                             // one trace to choose from — and there `:860-862` pull-tightens
-                            // neither of them, so `next()` and `next_back()` leave the same
-                            // board (verified by mutation). Reaching it needs
-                            // `normalize` at `:791` to answer `true` **and** two traces at
-                            // `newCorner`; `ownNetCross` gives the first and `ownNetTee` the
-                            // second, and no case on this board gives both. **Task 17** must
-                            // record a fixture connection that does.
+                            // neither of them, so `next()` and `next_back()` left the same board.
+                            // Task 17's corpus does discriminate it: instrumented, the branch
+                            // sees **two or more** candidate traces on `router-rpi-splitter`
+                            // (2 evaluations), `router-j2-reference` (4) and
+                            // `router-dac2020-bm01` (6, up to 4 candidates at once). Mutating
+                            // `next_back()` — Java's `iterator().next()` over the **descending**
+                            // `TreeSet<Item>` (quirk #44) — to `next()` makes
+                            // `router-j2-reference` DIFF at connection k = 44 while
+                            // `router-rpi-splitter` still matches, so the order is load-bearing
+                            // and pinned by `tests/reference_parity.rs`.
                             let picked = self.pick_traces(&new_corner, Some(layer));
                             new_trace =
                                 picked.iter().next_back().copied().filter(|id| {
@@ -928,13 +936,16 @@ fn combine_with_picked(new_polyline: &Polyline, picked: Option<&Polyline>) -> Po
 /// `agree=true`. The expression is transcribed exactly all the same, because nothing in
 /// `ShapeEntrySide` *guarantees* the two agree.
 ///
-/// obligation: `RoutingBoard.insertForcedTracePolyline`'s `ShapeEntrySide` index has **no board
-/// row that discriminates it**: because the two indices agree on every fixture here, changing
-/// this expression to `checkForcedTracePolyline`'s leaves all 1 621 rows of modes `poly`, `tail`,
-/// `seg`, `neck` and `rand` byte-identical (verified by mutation). Probe mode `side` pins the
-/// index values themselves; **Task 17** should record, for one fixture connection, a shove whose
-/// entry side differs between the two — a polyline whose segment before the shove line re-enters
-/// that line's offset shape through a different border side.
+/// obligation: `RoutingBoard.insertForcedTracePolyline`'s `ShapeEntrySide` index — **discharged
+/// in Task 17**. Task 15b could not discriminate it: the two indices agreed on every unit
+/// fixture, so changing this expression to `checkForcedTracePolyline`'s `i + 1` left all 1 621
+/// rows of modes `poly`, `tail`, `seg`, `neck` and `rand` byte-identical. Task 17's corpus
+/// separates them twice over. Instrumented, this expression **differs** from `i + 1` on 50 of 63
+/// evaluations in `router-rpi-splitter`, 508 of 553 in `router-j2-reference`, 5 160 of 6 084 in
+/// `router-dac2020-bm01` and 39 of 71 in `router-ecc83-input`; and mutating it to `i + 1` makes
+/// `router-j2-reference` and `router-dac2020-bm01` DIFF against the HEAD jar while
+/// `router-rpi-splitter` and `router-ecc83-input` still match. Probe mode `side` pins the index
+/// values themselves.
 fn shape_entry_index(combined_polyline: &Polyline, trace_shape_count: usize, i: usize) -> usize {
     combined_polyline.corner_count() - trace_shape_count - 1 + i
 }

@@ -285,3 +285,211 @@ pub struct DrcPositionDoc {
     pub x: f64,
     pub y: f64,
 }
+
+// =================================================================================================
+// The router reference (Plan 6 Task 17, ruling 1)
+// =================================================================================================
+//
+// `tests/reference/<stem>/router.jsonl` is one JSON line per connection, written verbatim by
+// `scripts/differential/java/P6T1.java` through `scripts/gen-router-reference.sh`. The types below
+// are a *parity projection* of that line, in the driver's own field order, so that
+// `crates/fr-router/tests/reference_parity.rs` can read a reference and compare it rung by rung
+// against what the port produces — rather than diffing two strings and reporting "line 214
+// differs".
+//
+// Why the coordinates are `String`s: the driver renders an `IntPoint` corner as `"(x,y)"` and a
+// rational one as `"~(x,y)"` through `Double.toString`, and `traceLength` likewise. Keeping the
+// rendering as the comparison surface means no re-parse can round a value into agreement, and it
+// is the same choice `DrcViolationItemDoc::uuid` makes for `String.valueOf(item.getId())`.
+
+/// One connection of a `router.jsonl` reference.
+///
+/// Every field after `state` is `#[serde(default)]` because a `"GONE"` line — a connection whose
+/// item an earlier connection ripped up — carries only the first four.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RouterConnectionDoc {
+    /// 1-based index into the driver's connection list.
+    pub k: usize,
+    /// The board item id the connection starts from.
+    pub item: i64,
+    /// The net number routed.
+    pub net: i32,
+    /// `AutorouteAttemptState`'s Java name, or the driver's own `"GONE"`.
+    pub state: String,
+    /// `AutorouteAttemptResult.details`; `""` where Java's one-argument constructor stored the
+    /// empty string.
+    #[serde(default)]
+    pub details: String,
+    /// The ripped-item id set, rendered in Java's descending `TreeSet<Item>` order (quirk #44).
+    #[serde(default)]
+    pub ripped: Vec<i64>,
+    /// `(item id, cost)` pairs, sorted by item id on both sides — see `P6T1.routeOne`.
+    #[serde(rename = "ripupCosts", default)]
+    pub ripup_costs: Vec<(i64, i32)>,
+    #[serde(rename = "maxIdBefore", default)]
+    pub max_id_before: i64,
+    #[serde(rename = "maxIdAfter", default)]
+    pub max_id_after: i64,
+    /// Ruling 1(b): every trace the connection inserted, in insertion (ascending id) order.
+    #[serde(default)]
+    pub traces: Vec<RouterTraceDoc>,
+    /// Ruling 1(b): every via the connection inserted, in insertion order.
+    #[serde(default)]
+    pub vias: Vec<RouterViaDoc>,
+    /// Inserted items that are neither a trace nor a via — always 0 so far, printed rather than
+    /// dropped so that a new item kind cannot arrive unnoticed.
+    #[serde(rename = "otherInserted", default)]
+    pub other_inserted: usize,
+    /// Ruling 1(c). Absent on a `"GONE"` line.
+    #[serde(default)]
+    pub metrics: Option<RouterMetrics>,
+}
+
+/// One inserted trace of a `router.jsonl` line.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RouterTraceDoc {
+    pub id: i64,
+    pub layer: usize,
+    #[serde(rename = "halfWidth")]
+    pub half_width: i32,
+    /// `"(x,y)"` per `IntPoint` corner, `"~(x,y)"` for a rational one.
+    pub corners: Vec<String>,
+}
+
+/// One inserted via of a `router.jsonl` line.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RouterViaDoc {
+    pub id: i64,
+    pub center: String,
+    pub padstack: String,
+    #[serde(rename = "firstLayer")]
+    pub first_layer: usize,
+    #[serde(rename = "lastLayer")]
+    pub last_layer: usize,
+}
+
+/// Spec §9's four metrics, measured on the live board after one connection.
+///
+/// `trace_length` is the string `Double.toString(board.cumulativeTraceLength())` produced, so that
+/// two runs that agree exactly agree byte for byte; [`RouterMetrics::trace_length_value`] parses it
+/// for the ±10 % band ruling 1(c) allows.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RouterMetrics {
+    /// `DesignRulesChecker.getIncompleteCount()`.
+    pub incompletes: i64,
+    /// `Net.getViaCount()` for the routed net.
+    pub vias: i64,
+    /// `BasicBoard.cumulativeTraceLength()`, as `Double.toString` rendered it.
+    #[serde(rename = "traceLength")]
+    pub trace_length: String,
+    /// `DesignRulesChecker.getAllClearanceViolations().size()`.
+    pub violations: i64,
+}
+
+/// The per-connection *change* in the two counted metrics — ruling 1(c)'s "incompletes delta
+/// equal, via delta equal".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RouterMetricDelta {
+    pub incompletes: i64,
+    pub vias: i64,
+}
+
+impl RouterMetrics {
+    /// `trace_length` as a number. Java's `Double.toString` and Rust's `f64::from_str` agree on
+    /// every finite value's *value* (they disagree only on rendering, which is why the field is
+    /// kept as a string), so this is exact for both sides' output.
+    ///
+    /// # Panics
+    ///
+    /// If the field is not a finite `Double.toString` rendering — which would mean the reference
+    /// or the port emitted something the other side cannot have produced, and is a failure worth
+    /// stopping on rather than tolerating.
+    #[must_use]
+    pub fn trace_length_value(&self) -> f64 {
+        self.trace_length
+            .parse::<f64>()
+            .unwrap_or_else(|e| panic!("traceLength {:?} is not a double: {e}", self.trace_length))
+    }
+
+    /// The change this connection made, against the previous connection of the same stem. `None`
+    /// for the first connection, where the absolute values are the delta from the loaded board.
+    #[must_use]
+    pub fn delta(&self, previous: Option<&RouterMetrics>) -> RouterMetricDelta {
+        let (base_incompletes, base_vias) = previous.map_or((0, 0), |p| (p.incompletes, p.vias));
+        RouterMetricDelta {
+            incompletes: self.incompletes - base_incompletes,
+            vias: self.vias - base_vias,
+        }
+    }
+
+    /// Ruling 1(c) for one connection: the two deltas equal, `violations == 0` on **both** sides,
+    /// and the cumulative trace length within ±10 %.
+    ///
+    /// `Ok(())` or the first failing rung, named — the caller turns it into the panic, so that a
+    /// harness that only *reports* rung (c) (the README's table) can use the same check.
+    ///
+    /// # Errors
+    ///
+    /// One line naming the rung that failed and both sides' values.
+    pub fn check_spec9(
+        &self,
+        previous: Option<&RouterMetrics>,
+        expected: &RouterMetrics,
+        expected_previous: Option<&RouterMetrics>,
+    ) -> Result<(), String> {
+        let mine = self.delta(previous);
+        let theirs = expected.delta(expected_previous);
+        if mine.incompletes != theirs.incompletes {
+            return Err(format!(
+                "incompletes delta {} != Java's {} (absolute {} vs {})",
+                mine.incompletes, theirs.incompletes, self.incompletes, expected.incompletes
+            ));
+        }
+        if mine.vias != theirs.vias {
+            return Err(format!(
+                "via delta {} != Java's {} (absolute {} vs {})",
+                mine.vias, theirs.vias, self.vias, expected.vias
+            ));
+        }
+        if self.violations != 0 || expected.violations != 0 {
+            return Err(format!(
+                "clearance violations must be 0: port {}, Java {}",
+                self.violations, expected.violations
+            ));
+        }
+        let (mine, theirs) = (self.trace_length_value(), expected.trace_length_value());
+        // A zero reference length is only reachable before anything is routed, where the port's
+        // must be zero too; the relative band would be a division by zero.
+        let within = if theirs == 0.0 {
+            mine == 0.0
+        } else {
+            ((mine - theirs) / theirs).abs() <= 0.10
+        };
+        if !within {
+            return Err(format!(
+                "trace length {mine} is outside ±10 % of Java's {theirs}"
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Parses a whole `router.jsonl` reference.
+///
+/// # Errors
+///
+/// Any `serde_json` parse failure, with the 1-based line number prefixed.
+pub fn parse_router_jsonl(s: &str) -> Result<Vec<RouterConnectionDoc>, String> {
+    s.lines()
+        .enumerate()
+        .filter(|(_, line)| !line.trim().is_empty())
+        .map(|(i, line)| {
+            serde_json::from_str::<RouterConnectionDoc>(line)
+                .map_err(|e| format!("router.jsonl line {}: {e}", i + 1))
+        })
+        .collect()
+}

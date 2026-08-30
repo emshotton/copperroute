@@ -402,23 +402,25 @@ impl MazeTraceShover {
         // :236-312. The door-section collector.
         //
         // obligation: `MazeTraceShover.checkShoveTraceLine`'s door-section collector (`:236-312`)
-        // has **no ground truth**. Every one of `P6T12Probe` mode `shove`'s 26 cells reports
-        // `sections=0`, because `TraceShover.check` answers `shoveWidth <= 0` on that board and
-        // `:213-215` returns before this loop is reached — so the trace-fork skip (`:240-248`),
-        // both `sideOf` tests (`:266-278`), the nearest-corner choice (`:279-286`), the
-        // `fromDoorCompareDistance` skip (`:287-290`), the projection test (`:293-306`) and both
-        // `DoorSection` constructions (`:255`, `:307`) are transcription only. Because the two
-        // lists this fills are always empty, `MazeSearchEngine.shoveTraceRoom`'s adjustment
-        // mapping (`:1153-1159`, `:1184-1190`) never runs either, so **nothing in the crate has
-        // ever produced a `MazeAdjustment::Left` or `Right`** — and that adjustment gates
-        // `shoveTraceRoom`'s own two halves (`:1139`, `:1171`) and `expandToDoorSection`'s
-        // `roomRipped` (`:885-887`).
+        // — **discharged in Task 17**. Task 12 had no ground truth for it: every one of
+        // `P6T12Probe` mode `shove`'s 26 cells reported `sections=0`, because `TraceShover.check`
+        // answers `shoveWidth <= 0` on that board and `:213-215` returns before this loop is
+        // reached — so the trace-fork skip (`:240-248`), both `sideOf` tests (`:266-278`), the
+        // nearest-corner choice (`:279-286`), the `fromDoorCompareDistance` skip (`:287-290`),
+        // the projection test (`:293-306`) and both `DoorSection` constructions (`:255`, `:307`)
+        // were transcription only, and with the two lists always empty
+        // `MazeSearchEngine.shoveTraceRoom`'s adjustment mapping (`:1153-1159`, `:1184-1190`)
+        // never ran either.
         //
-        // **Task 17** must therefore include, in its acceptance corpus, a board on which a shove
-        // genuinely succeeds with a candidate door on the shove side within `shoveWidth`, so that
-        // this loop fills and `MazeAdjustment::Left`/`Right` are produced; extend `P6T12Probe`
-        // mode `shove` against that board, and name the fixture in the task report. A Rust-only
-        // test would pin the port to itself rather than to Java, which is why none is added here.
+        // Task 17's acceptance corpus fills both lists. Instrumented over
+        // `tests/reference/router-fixtures.txt`, `:255` constructs a `DoorSection` 15 times on
+        // `router-rpi-splitter`, 498 on `router-j2-reference` and 27 083 on
+        // `router-dac2020-bm01`, and `:307` constructs one 12 / 819 / 52 450 times on the same
+        // three. `MazeAdjustment::Left`/`Right` therefore *are* produced — which the
+        // `roomWasShoved` marker in `ripup_resolver.rs` confirms downstream, entering its branch
+        // 5 / 214 / 12 798 times — and every connection of all three boards matches the HEAD jar
+        // byte for byte, so `shoveTraceRoom`'s two halves (`:1139`, `:1171`) and
+        // `expandToDoorSection`'s `roomRipped` (`:885-887`) are pinned to Java, not to the port.
         for current_door in room_doors {
             // :237-239.
             if current_door == from_door {

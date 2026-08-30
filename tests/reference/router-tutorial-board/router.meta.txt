@@ -1,0 +1,10 @@
+jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
+jar size     63288652 bytes
+jar mtime    2026-08-29 08:05:35 -0700
+jar version  Freerouting 2.3.1-SNAPSHOT
+java         openjdk version "25.0.4.1" 2026-08-18
+hash mode    -XX:hashCode=2
+driver       <workspace>/scripts/differential/java/P6T1.java
+connections  0
+command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 <FREEROUTING_JAVA_DIR>/examples/tutorial_board/tutorial_board.dsn 8 1
+header       HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788015935494 fixture=tutorial_board.dsn maxItems=8 ripupPassNo=1 rules=-

@@ -1219,6 +1219,13 @@ impl AutorouteEngine {
         stop: StopCheck<'_>,
         panic_in_locator: bool,
     ) -> AutorouteAttemptResult {
+        // The two sets' `Item.toString()`s, taken **before** anything can remove an item.
+        // Java's sets are `Set<Item>`, so every `describeConnection` below prints a live
+        // reference — including a trace `:260` ripped or the inserter split away. See
+        // [`describe_connection`]'s doc comment for the measurement.
+        let start_names = connection_item_names(board, start);
+        let dest_names = connection_item_names(board, dest);
+
         // :136-161 — ruling 7's boundaries #2 (`:139`, the maze construction) and #3 (`:157`,
         // `findConnection`), which have to be **nested** rather than sequential: a
         // `MazeSearchEngine` borrows this engine for its whole life, so it cannot be carried out
@@ -1267,7 +1274,7 @@ impl AutorouteEngine {
                 format!(
                     "Failed to route connection between {}, because the maze search algorithm \
                      could not be created.",
-                    describe_connection(board, start, dest)
+                    describe_connection_from_names(&start_names, &dest_names)
                 ),
             );
         };
@@ -1317,7 +1324,7 @@ impl AutorouteEngine {
                 format!(
                     "Failed to route connection between {}, because no connection was found \
                      between their nets.",
-                    describe_connection(board, start, dest)
+                    describe_connection_from_names(&start_names, &dest_names)
                 ),
             );
         }
@@ -1329,7 +1336,7 @@ impl AutorouteEngine {
                 AutorouteAttemptState::Failed,
                 format!(
                     "Failed to route connection between {}.",
-                    describe_connection(board, start, dest)
+                    describe_connection_from_names(&start_names, &dest_names)
                 ),
             );
         };
@@ -1346,7 +1353,7 @@ impl AutorouteEngine {
                 format!(
                     "Failed to route connection between {}, because some of their layers are \
                      disabled.",
-                    describe_connection(board, start, dest)
+                    describe_connection_from_names(&start_names, &dest_names)
                 ),
             );
         }
@@ -1365,10 +1372,18 @@ impl AutorouteEngine {
         let mut ripped_connections: BTreeSet<ItemId> = BTreeSet::new();
         let mut changed_nets: BTreeSet<i32> = BTreeSet::new();
         // obligation: `AutorouteEngine.autorouteConnection`'s `:241-245` `StopConnectionOption`
-        // choice — measured: inverting it leaves
-        // all 14 probe modes identical, because no fixture here has a **fanout via** and
-        // `getConnectionItems`/`removeTraceTails` only branch on the option for one
-        // (Item.java:735, RoutingBoard.java:1207-1216). Task 17's corpus needs a fanout board.
+        // choice — **discharged in Task 17**. Task 16 measured that inverting it left all 14 probe
+        // modes identical, because those fixtures build `RouterSettings::new()` (fanout disabled,
+        // so `removeUnconnectedVias` is `true` and the option is `None`) and none of them has a
+        // **fanout via**. Task 17's driver builds its settings from `DefaultSettings`, where
+        // `fanout.enabled` is `true` (`DefaultSettings.java:117`), so
+        // `removeUnconnectedVias = !isFanoutEnabled()` is **false** and every one of the 311 corpus
+        // connections that reaches `:241-245` (the other 58 return `NO_UNCONNECTED_NETS` at
+        // `:49-52`) takes the `FanoutVia` arm — the one no unit fixture took — and matches the
+        // HEAD jar byte for byte. What a corpus board still cannot show is the *difference*
+        // between the two arms, since `getConnectionItems`/`removeTraceTails` branch on the option
+        // only for a fanout via (Item.java:735, RoutingBoard.java:1207-1216) and `BatchFanout` is
+        // Plan 7's.
         let stop_connection_option = if ctrl.remove_unconnected_vias {
             StopConnectionOption::None
         } else {
@@ -1376,12 +1391,16 @@ impl AutorouteEngine {
         };
 
         // :247-252, over Java's `TreeSet<Item>` order — descending id.
-        // obligation: `AutorouteEngine.autorouteConnection`'s `:247` loop order — measured: no
-        // fixture in `tests/autoroute_connection.rs` rips more than **one** item, so reversing
-        // this loop leaves all 14 probe modes byte-identical. `rippedConnections` is a set and
-        // `changedNets` a sorted set, so the order can only matter through
-        // `getConnectionItems`' `FanoutVia` arm, which reads the partially built result
-        // (Item.java:735). Task 17's corpus must include a connection that rips two.
+        // obligation: `AutorouteEngine.autorouteConnection`'s `:247` loop order — **discharged
+        // in Task 17**. No fixture in `tests/autoroute_connection.rs` rips more than **one** item,
+        // so reversing this loop left all 14 probe modes byte-identical.
+        // `router-dac2020-bm01` rips **two** items at k = 252 and **three** at k = 261, 279, 286
+        // and 293 (fifteen multi-rip connections in all, plus one on `router-j2-reference`), and
+        // every one of them matches the HEAD jar's ripped set, per-item ripup costs and inserted
+        // geometry. The order still cannot be *isolated* by mutation — `rippedConnections` is a
+        // set and `changedNets` a sorted set, so it reaches the output only through
+        // `getConnectionItems`' `FanoutVia` arm reading the partially built result
+        // (Item.java:735), which needs a fanout via (Plan 7).
         for current_ripped_item in ripped.iter().rev() {
             ripped_connections
                 .extend(board.connection_items(*current_ripped_item, stop_connection_option));
@@ -1399,10 +1418,13 @@ impl AutorouteEngine {
         }
 
         // :260, over `rippedConnections`' own descending order.
-        // obligation: `BasicBoard.removeItems`' iteration order here — measured: the same
-        // one-ripped-item ceiling as `:247` above, so ascending leaves every probe mode
-        // identical. It is load-bearing in principle because `removeItem` refuses a
-        // deletion-forbidden item and the survivors' contacts change as the loop runs.
+        // obligation: `BasicBoard.removeItems`' iteration order here — **discharged in Task 17**
+        // alongside `:247`'s. Task 16 had the same one-ripped-item ceiling, so ascending left
+        // every probe mode identical. `router-dac2020-bm01` removes **two** connection items at
+        // once seven times, three 22 times, four three times and **seven** once (and
+        // `router-j2-reference` two once), all matching the HEAD jar. The order is load-bearing
+        // in principle because `removeItem` refuses a deletion-forbidden item and the survivors'
+        // contacts change as the loop runs.
         board.remove_items(ripped_connections.iter().rev().copied());
 
         // :262-263, over `changedNets`' ascending `TreeSet<Integer>` order.
@@ -1453,21 +1475,23 @@ impl AutorouteEngine {
                  AutorouteConnectionRouter.route:155-158"
             ),
             // :271-277.
-            // obligation: `AutorouteEngine.autorouteConnection`'s `:271-277` arm — measured: no
-            // fixture reaches it. Task 15 pinned
+            // obligation: `AutorouteEngine.autorouteConnection`'s `:271-277` arm — **discharged
+            // in Task 17**. No unit fixture reached it: Task 15 pinned
             // `FoundConnectionInserter::get_instance` answering `None` on three boards
             // (`P6T15Probe`'s `viafail`), but every lever that produces it from *outside*
             // `autorouteConnection` — an empty `ctrl.viaRule`, a user-fixed via on the drill —
             // also changes what the maze search finds, because `ForcedViaInserter.check` reads
-            // the same rule (measured: `ctrl.viaRule = new ViaRule("empty")` before the
-            // connection makes the search route round the drill and answer ROUTED). Task 17's
-            // corpus is where a real board reaches it.
+            // the same rule. Task 17's corpus reaches it on a real board: `router-rpi-splitter`
+            // k = 3 and k = 8, `router-j2-reference` k = 19, and twelve connections of
+            // `router-dac2020-bm01` — each with this exact message, matched word for word
+            // against the HEAD jar. `router-j2-reference` k = 19 is also the connection that
+            // proved `describe_connection` had to snapshot its names (see that function).
             Ok(None) => AutorouteAttemptResult::with_details(
                 AutorouteAttemptState::Failed,
                 format!(
                     "Failed to route connection between {}, because the new connection could not \
                      be inserted.",
-                    describe_connection(board, start, dest)
+                    describe_connection_from_names(&start_names, &dest_names)
                 ),
             ),
             // :279.
@@ -1516,10 +1540,29 @@ fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
 /// `" and "` between them.
 ///
 /// Both sets are Java `TreeSet<Item>`s, so both joins run **descending by id**
-/// (`Item.compareTo`, Item.java:95-102, is `other.id - this.id` — quirk #44); an id the board no
-/// longer holds contributes nothing, where Java's live reference would still print.
+/// (`Item.compareTo`, Item.java:95-102, is `other.id - this.id` — quirk #44).
 ///
 /// `Item.toString` is [`fr_board::Item`]'s `Display`.
+///
+/// # The sets hold live references, so their names outlive the board
+///
+/// Java's sets are `Set<Item>` — object references taken at `AutorouteConnectionRouter.route:54-68`
+/// — while the port's are `BTreeSet<ItemId>`. An item the connection *removes* (a ripped item at
+/// `:260`, or a trace the inserter split or whose tail it deleted) is still printed by Java, whose
+/// reference is alive, and would be silently dropped by an id lookup against the board as it
+/// stands at `:271`. So the names are snapshotted at entry to
+/// [`AutorouteEngine::autoroute_connection`] and every message is built from the snapshot by
+/// the private `describe_connection_from_names`; this entry point resolves them against `board`
+/// for a caller who has not mutated it.
+///
+/// Snapshotting is exactly equivalent to Java's late evaluation, because `Item.toString`
+/// (Item.java:1258-1269) and `Pin.toString` (`:676-692`) read only `getClass().getSimpleName()`,
+/// `componentId` and `pinIndex`, none of which a routing pass can change.
+///
+/// Measured: `router-j2-reference` k = 19 is the corpus connection that proves it. Its dest set is
+/// `[946,945,944,936,935,43,42,37,36]` on both sides, but the failed insert removes one of the five
+/// traces, so before this snapshot the port's `:271-277` message carried four `polylinetrace`s
+/// where the JVM's carries five.
 ///
 /// `pub` where Java's is `private static`: `P6T16Probe`'s `describe` mode reaches it by
 /// reflection, and the port's test needs the same direct call — every other route to it is a
@@ -1529,15 +1572,25 @@ pub fn describe_connection(
     start_set: &BTreeSet<ItemId>,
     dest_set: &BTreeSet<ItemId>,
 ) -> String {
-    fn join(board: &Board, set: &BTreeSet<ItemId>) -> String {
-        set.iter()
-            .rev()
-            .filter_map(|id| board.get_item(*id))
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-    format!("{} and {}", join(board, start_set), join(board, dest_set))
+    describe_connection_from_names(
+        &connection_item_names(board, start_set),
+        &connection_item_names(board, dest_set),
+    )
+}
+
+/// One set's `Item.toString()`s, in Java's descending-id `TreeSet<Item>` order — the snapshot
+/// [`describe_connection`]'s doc comment explains.
+pub(crate) fn connection_item_names(board: &Board, set: &BTreeSet<ItemId>) -> Vec<String> {
+    set.iter()
+        .rev()
+        .filter_map(|id| board.get_item(*id))
+        .map(ToString::to_string)
+        .collect()
+}
+
+/// `describeConnection`'s two `", "` joins with `" and "` between them, over names already taken.
+pub(crate) fn describe_connection_from_names(start: &[String], dest: &[String]) -> String {
+    format!("{} and {}", start.join(", "), dest.join(", "))
 }
 
 /// Steps 1-5 of `AutorouteConnectionRouter.route(Item, int, SortedSet<Item>, Map<Item,Integer>,
@@ -1660,15 +1713,24 @@ fn route_connection_steps_1_to_5(
         AutorouteControl::new(board, net_no, settings, current_via_costs, trace_costs);
     autoroute_control.ripup_allowed = true;
     // obligation: `AutorouteConnectionRouter.route`'s `:45` `startRipupCosts * ripupPassNo` —
-    // measured: probe mode `routeripup` runs passes 1, 2 and 4 on the blocker board and all
-    // three rip the same item at the same cost, because `MazeRipupResolver`'s price saturates
-    // well below `Integer.MAX_VALUE / 100` on a one-trace obstacle. Task 17's corpus needs a
-    // board where two candidates compete.
+    // **discharged in Task 17 for `ripupPassNo` 1, 2 and 4, with one recorded XDIFF**. Task 16
+    // measured that probe mode `routeripup`'s three passes all rip the same item at the same
+    // cost, because `MazeRipupResolver`'s price saturates on a one-trace obstacle. Task 17 reran
+    // the whole corpus at `ripupPassNo = 2` and `= 4` (`scripts/differential/run.sh p6t1 <dsn>
+    // 100000 <pass>`): `router-rpi-splitter`, `router-j2-reference` and `router-ecc83-input`
+    // MATCH at both, with ripup costs that differ from pass 1's, and pass 4 additionally
+    // exercises `MazeRipupResolver`'s `randomize` draw (plan-6 ruling 5's bit-exact
+    // `JavaRandom`, seeded with `ctrl.ripupCosts`). `router-dac2020-bm01` matches for
+    // k = 1..266 at both passes and then diverges — see `crates/fr-router/README.md`
+    // "The one open divergence" for the measurement.
     autoroute_control.ripup_costs = start_ripup_costs * ripup_pass_no;
-    // obligation: `AutorouteConnectionRouter.route`'s `:46` `removeUnconnectedVias` — measured:
-    // flipping the flag leaves every probe mode identical, for the same reason `:241-245`'s
-    // `StopConnectionOption` does (no fixture has a fanout via). The two obligations close
-    // together.
+    // obligation: `AutorouteConnectionRouter.route`'s `:46` `removeUnconnectedVias` —
+    // **discharged in Task 17** together with `:241-245`'s `StopConnectionOption`, as Task 16
+    // predicted. Task 16 measured that flipping the flag left every probe mode identical, because
+    // those fixtures build `RouterSettings::new()`. Task 17's driver takes the value the
+    // `RoutingJob` constructor computes (`!settings.isFanoutEnabled()`) from a `DefaultSettings`
+    // table, where fanout is enabled — so the corpus runs the flag **false** on all 369
+    // connections, the opposite of every unit fixture, and matches the HEAD jar throughout.
     autoroute_control.remove_unconnected_vias = remove_unconnected_vias;
 
     // :49-52.

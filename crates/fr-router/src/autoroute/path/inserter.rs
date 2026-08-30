@@ -123,8 +123,14 @@ impl FoundConnectionInserter {
         // obligation: `AutorouteEngine.autorouteConnection:260-263` — Java's reference is older
         // still, taken during the locator's walk, so a start or target trace that the *ripup*
         // removes at `:260` is a live object there and `None` here. Strictly smaller than the
-        // deviation #186 fixes, and no fixture reaches it; Task 16 owns that ripup and should
-        // pass the snapshot in rather than let this method take it.
+        // deviation #186 fixes; Task 16 owns that ripup and should pass the snapshot in rather
+        // than let this method take it. **Re-marked in Task 17**: measured over the whole
+        // acceptance corpus (369 connections, `tests/reference/router-fixtures.txt`), the ripup
+        // never removes either endpoint — `connection.start_item` and `connection.target_item`
+        // resolve on the board at this point in **all 311** evaluations, the 97 connections that
+        // did rip something included. The sibling snapshot that *is* reached is
+        // `describe_connection`'s (`engine.rs`), which `router-j2-reference` k = 19 forced Task 17
+        // to fix.
         let target_trace = Self::trace_snapshot(board, connection.target_item);
         let start_trace = Self::trace_snapshot(board, connection.start_item);
         // :45.
@@ -289,16 +295,17 @@ impl FoundConnectionInserter {
                 // unconditional, so Java's winner is the *lowest* id it visits last; the port's
                 // `BTreeSet` is ascending, so it walks it in reverse to land on the same pin.
                 //
-                // obligation: `FoundConnectionInserter.insertTrace:151-162` — no fixture has two
-                // own-net pins whose centres coincide with one trace end, so dropping the
-                // `.rev()` leaves every row of `P6T15Probe` byte-identical. The order is read off
-                // `Item.compareTo`, not guessed. **This is live code on a real board**, not a
-                // rare path: `AutorouteControl.java:168` is
-                // `withNeckdown = settings.getAutomaticNeckdown()` and `DefaultSettings.java:103`
-                // (port: `sources/default_settings.rs:90`) sets it **true**, so this pick-up runs
-                // on every trace insert of every settings-pipeline board. Only this plan's
-                // fixtures, which build `RouterSettings::new()`, leave it false. Task 17's
-                // per-connection driver on a real board is where a tie can appear.
+                // obligation: `FoundConnectionInserter.insertTrace:151-162` — **re-marked in
+                // Task 17**. The `.rev()` is Java's descending `TreeSet<Item>` order
+                // (`Item.compareTo`, quirk #44), read off the source rather than guessed, and it
+                // can only be observed when **two** own-net pins share a trace end. This *is*
+                // live code on a real board — `AutorouteControl.java:168` is
+                // `withNeckdown = settings.getAutomaticNeckdown()`, `DefaultSettings.java:103`
+                // sets it true, and Task 17's driver builds its settings from `DefaultSettings`
+                // exactly so that this path runs — and the corpus does reach the loop (820
+                // evaluations, 564 of which find exactly one pin). But **no evaluation anywhere
+                // in the corpus finds two**: instrumented, the pin count at a trace end is 0 or 1
+                // every time, so `.rev()` and the forward walk still agree.
                 for id in picked.into_iter().rev() {
                     let Some(item @ Item::Pin(_)) = board.get_item(id) else {
                         continue;
@@ -400,10 +407,13 @@ impl FoundConnectionInserter {
             if ok_point == last_corner || neckdown_inserted || micro_neckdown_inserted {
                 // :218-263 — the ADVANCE arm, whose body below `:219` is `FRLogger.trace` only.
                 from_corner_no = i;
-            // obligation: `FoundConnectionInserter.insertTrace:264` — the VIOLATION_CORRECTED
-            // arm *is* reached (dropping `:275-276` fails mode `around`), but never on the last
-            // corner, so dropping `i != trace.corners.length - 1` leaves every `P6T15Probe` row
-            // identical. Task 17.
+            // obligation: `FoundConnectionInserter.insertTrace:264` — **discharged in Task 17**.
+            // Task 15 could reach the VIOLATION_CORRECTED arm (dropping `:275-276` fails mode
+            // `around`) but never on the **last** corner, so the `i != trace.corners.length - 1`
+            // guard was unobservable there. Task 17's corpus reaches it with `i` at the last
+            // corner on `router-rpi-splitter` (2 evaluations), `router-j2-reference` (6) and
+            // `router-dac2020-bm01` (7), and every one of those connections matches the HEAD jar
+            // byte for byte.
             } else if ok_point == first_corner && i != trace.corners.len() - 1 {
                 // :264-319. "if okPoint == insertPolyline.firstCorner() the spring over may have
                 // failed. Spring over may correct the situation because an insertion, which is ok
@@ -443,10 +453,12 @@ impl FoundConnectionInserter {
             .set_pin_edge_to_turn_dist(saved_edge_to_turn_dist);
         // :448-451.
         //
-        // obligation: `FoundConnectionInserter.insertTrace:448-450` — `firstCorner` is
-        // first-write-wins, and its only reader (`:80`) is reached on one fixture (`diag`) whose
-        // `connectToTrace` answers the same board for either corner, so always overwriting it
-        // leaves every `P6T15Probe` row identical. Task 17.
+        // obligation: `FoundConnectionInserter.insertTrace:448-450` — **discharged in Task 17**.
+        // `firstCorner` is first-write-wins, and Task 15's only fixture that read it (`diag`)
+        // answered the same board for either corner. Task 17's corpus performs the **second and
+        // later** write — the one this guard suppresses — on `router-rpi-splitter` (6
+        // evaluations), `router-j2-reference` (8) and `router-dac2020-bm01` (85), and every one
+        // of those connections matches the HEAD jar byte for byte.
         if self.first_corner.is_none() {
             self.first_corner = Some(trace.corners[0]);
         }
@@ -684,12 +696,14 @@ impl FoundConnectionInserter {
         }
         // :553-555.
         //
-        // obligation: `FoundConnectionInserter.tryNeckDown:553` — no fixture has a pin whose
-        // neckdown half width *equals* `ctrl.traceHalfWidth`, so `>=` and `>` agree on every
-        // `P6T15Probe` row. The widths in play are 49 and 69 against 100 and 60. Reached through
-        // `insertNeckdown` on **every** settings-pipeline board, because `automaticNeckdown`
-        // defaults to true (`DefaultSettings.java:103`); only this plan's `RouterSettings::new()`
-        // fixtures keep it off, which is why the pinning here is by direct call. Task 17.
+        // obligation: `FoundConnectionInserter.tryNeckDown:553` — **re-marked in Task 17**. The
+        // `>=`/`>` question needs a pin whose neckdown half width *equals* `ctrl.traceHalfWidth`.
+        // Task 17's driver does put the method in production shape — its settings come from
+        // `DefaultSettings`, so `automaticNeckdown` is true and `tryNeckDown` runs — and the
+        // corpus reaches this gate 116 times (`router-rpi-splitter` 1, `router-j2-reference` 37,
+        // `router-dac2020-bm01` 78). **Every one of them is a strict inequality**, and every one
+        // returns here, so nothing below this line is reached on any corpus connection either
+        // (see the `:586-588` marker).
         if neck_down_halfwidth >= ctrl.trace_half_width[layer] {
             return Ok(None);
         }
@@ -731,10 +745,13 @@ impl FoundConnectionInserter {
             // :584-588. "add a corner in case neckDownEndPoint is not exactly on the line from
             // fromCorner to toCorner"
             //
-            // obligation: `FoundConnectionInserter.tryNeckDown:586-588` — the one row that
-            // reaches this arm has `|dx| > |dy|` strictly, so `>=` and `>` agree. A neck along an
-            // exact diagonal would separate them. Live on every settings-pipeline board for the
-            // same reason as `:553`'s marker. Task 17.
+            // obligation: `FoundConnectionInserter.tryNeckDown:586-588` — **re-marked in
+            // Task 17**. The one Task 15 row that reaches this arm has `|dx| > |dy|` strictly, so
+            // `>=` and `>` agree; a neck along an exact diagonal would separate them. Task 17's
+            // corpus does not help: instrumented, **no** corpus connection gets past `:553`'s
+            // gate at all (0 of 116 evaluations), so this line is never evaluated on a real
+            // board. The board that would discriminate it needs a pin narrower than the trace
+            // *and* a clear diagonal run from it.
             let horizontal_first = (float_from_corner.x - float_neck_down_end_point.x).abs()
                 >= (float_from_corner.y - float_neck_down_end_point.y).abs();
             // :589-595.
@@ -904,10 +921,12 @@ impl FoundConnectionInserter {
         }
         // :687-696. "sort the input layers"
         //
-        // obligation: `FoundConnectionInserter.insertVia:687-696` — on a two-layer board with a
-        // full-span padstack the sort cannot change `:704`'s answer, so removing it leaves every
-        // `P6T15Probe` row identical. It bites on a board with a partial-span padstack, which no
-        // fixture here has. Task 17.
+        // obligation: `FoundConnectionInserter.insertVia:687-696` — **discharged in Task 17**.
+        // On Task 15's two-layer boards with a full-span padstack the sort could not change
+        // `:704`'s answer. Task 17's corpus calls `insertVia` with `fromLayer > toLayer` — the
+        // input the swap exists for — on `router-rpi-splitter` (2 of 6 calls),
+        // `router-j2-reference` (4 of 8) and `router-dac2020-bm01` (34 of 86), and every one of
+        // those connections matches the HEAD jar byte for byte, vias included.
         let (from_layer, to_layer) = if input_from_layer < input_to_layer {
             (input_from_layer, input_to_layer)
         } else {

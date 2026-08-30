@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t2, p6t3" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -63,6 +63,11 @@ extra_jar_sources=()
 # the Rust twin's `HostEnvironment::with_processors` reads the same number out of
 # `P4T1_PROCESSORS`, and both sides print it in their header line so a mismatch is a diff.
 java_flags=()
+# Set by `p6t1`: a wall-clock bound, in seconds, applied to **both** sides of the run (empty means
+# no bound). `timeout(1)` is coreutils'; on macOS it comes from `brew install coreutils` as either
+# `timeout` or `gtimeout`, and the harness falls back to running unbounded — with a warning — when
+# neither is on the PATH.
+run_timeout=""
 # The two `p5t*` drivers need three JVM flags beyond the shared `-Djava.awt.headless=true`:
 #
 #   * `-Duser.language=en -Duser.country=US` is load-bearing, not hygiene. Every `%.4f` in a
@@ -202,6 +207,25 @@ case "$driver" in
     needs_jar=1
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     ;;
+  p6t1)
+    # Plan 6 Task 17: one real DSN board, its first `maxItems` connections routed through steps
+    # 1-5 of `AutorouteConnectionRouter.route` (plan-6 ruling 2's seam) — the driver behind
+    # `scripts/gen-router-reference.sh` and `crates/fr-router/tests/reference_parity.rs`.
+    # Declares `package app.freerouting.autoroute.maze` (the brief's package, so the driver can
+    # reach package-private members of the engine if it ever needs to) and compiles against the
+    # clone's HEAD jar like `p6t2`/`p6t3`.
+    #
+    # `P6T1_TIMEOUT` bounds the wall clock on **both** sides: quirk #162
+    # (`SortedRoomNeighbours.calculateNewIncompleteRooms`) does not terminate for a small fraction
+    # of room completions and neither language guards it, so a corpus connection can hang in Java
+    # and in the port alike. Without the bound the harness would hang rather than report.
+    javaclass=P6T1
+    javapkg="autoroute.maze"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 8 1)
+    needs_jar=1
+    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
+    run_timeout="${P6T1_TIMEOUT:-900}"
+    ;;
   p6t3)
     # Plan 6 Tasks 4 and 5: the three neighbour sorters — the any-angle base class, its comparator
     # and the doors `calculateNeighbours` builds (modes 0-5), plus `Sorted45DegreeRoomNeighbours`
@@ -270,8 +294,20 @@ if [[ "$needs_jar" -eq 1 ]]; then
 
   echo "== running ($driver ${args[*]:-}) =="
   export FREEROUTING_JAR
-  "$JAVABIN" ${java_flags+"${java_flags[@]}"} -Djava.awt.headless=true -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
-  "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"} >"$r_out"
+  # `bound` is empty for every driver but `p6t1`, so this expands to nothing and the two commands
+  # are exactly what they were before.
+  bound=()
+  if [[ -n "$run_timeout" ]]; then
+    if command -v timeout >/dev/null 2>&1; then
+      bound=(timeout "$run_timeout")
+    elif command -v gtimeout >/dev/null 2>&1; then
+      bound=(gtimeout "$run_timeout")
+    else
+      echo "warning: no timeout(1) on PATH; running $driver unbounded" >&2
+    fi
+  fi
+  ${bound+"${bound[@]}"} "$JAVABIN" ${java_flags+"${java_flags[@]}"} -Djava.awt.headless=true -cp "$jar_out:$FREEROUTING_JAR" "app.freerouting.$javapkg.$javaclass" ${args+"${args[@]}"} >"$j_out"
+  ${bound+"${bound[@]}"} "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"} >"$r_out"
 
   echo "== diffing =="
   if diff -q "$j_out" "$r_out" >/dev/null; then

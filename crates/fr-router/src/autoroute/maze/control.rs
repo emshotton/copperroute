@@ -395,9 +395,28 @@ impl AutorouteControl {
     /// ```
     ///
     /// so `attachSmdAllowed` here (and every `ViaMask.attachSmdAllowed`, which
-    /// `MazeExpansionEngine.java:339` reads as a routing gate) differs. **Task 17** closes the
-    /// register row by running `p6t1` with and without that `.rules` file against the jar; the
-    /// Java half is already pinned in `docs/java-quirks.md` and `task-8-report.md`.
+    /// `MazeExpansionEngine.java:339` reads as a routing gate) differs.
+    ///
+    /// **Task 17 ran the deciding comparison and the row closes the other way: the re-pointing
+    /// is router-observable, so it is a divergence to fix rather than semantics to accept.**
+    /// `scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1
+    /// <rules>` — the port against the HEAD jar, both reading the same board and the same
+    /// `crates/fr-router/tests/data/ruling-h-redeclare.rules`:
+    ///
+    /// * **without** the `.rules` file the two agree on all 50 connections, byte for byte;
+    /// * **with** it they first differ at connection k = 6 (one extra item id, same geometry) and
+    ///   then genuinely diverge from k = 8 on — at k = 8 the jar lays four traces and the port
+    ///   two, with cumulative trace lengths `1401450.8259119983` and `1395031.4105961146`. The
+    ///   port routes *shorter*, which is what `attachSmdAllowed = true` buys: it lets a via
+    ///   attach to an SMD pad the jar's detached `ViaInfo` forbids. Attempt state, ripped set,
+    ///   incompletes and via counts still agree on every connection, so it is ruling 1's rung (b)
+    ///   that fails, not (a) or (c).
+    ///
+    /// Per plan-6 ruling 9's other branch, the fix is `ViaRule` owning its `ViaInfo`s (or
+    /// `ViaInfos` keeping tombstones) — an `fr-board` change, outside this task's scope, named in
+    /// the Task 18 hand-off. This marker stays until that lands, and `Issue593-BBD_Mars-64.dsn`
+    /// plus that `.rules` file is its regression test. No acceptance fixture uses a `.rules`
+    /// file, so `tests/reference/router-fixtures.txt` is unaffected.
     pub fn rebuild_via_info(&mut self, board: &Board, via_costs: i32, net_number: i32) {
         let rule_id = self
             .via_rule

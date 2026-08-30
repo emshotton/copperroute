@@ -491,16 +491,16 @@ impl MazeExpansionEngine {
                     {
                         // obligation: `MazeExpansionEngine.expandToOtherLayers`'
                         // `smdAttachedOnSolderSide` writes (`:279-281` here and `:306-308` in the
-                        // up loop) have **no ground truth**. Both need
-                        // `checkLayerWithAnyMatchingVia` to answer `DRILLABLE_WITH_ATTACH_SMD` on
-                        // the **last** layer, i.e. a `Pin` obstacle there at a location where the
-                        // drill's rooms can both be built. `P6T13Probe` mode `attachsmd` pins the
-                        // component-side twin and both halves of `maskOk` off the board's
-                        // layer-0 SMD pad; this board has no layer-1 pad (its through pin is
-                        // `NOT_DRILLABLE` on both layers), and a mode-local back-side pad does not
-                        // help — `ExpansionDrill.calculateExpansionRooms` answers `false` at every
-                        // offset tried. **Task 17** must name a fixture with a bottom-side SMD pad
-                        // and record a via mask refused by `maskOk`'s solder-side clause.
+                        // up loop) still have **no ground truth** — **re-marked in Task 17**.
+                        // Both need `checkLayerWithAnyMatchingVia` to answer
+                        // `DRILLABLE_WITH_ATTACH_SMD` on the **last** layer, i.e. a `Pin` obstacle
+                        // there at a location where the drill's rooms can both be built.
+                        // `P6T13Probe` mode `attachsmd` pins the component-side twin and both
+                        // halves of `maskOk` off the board's layer-0 SMD pad. Measured over
+                        // Task 17's acceptance corpus (369 connections, five boards) with a
+                        // counter on this write: **zero entries**. All five corpus boards are
+                        // two-layer, and none of them has a bottom-side SMD pad the drill's rooms
+                        // can be built around; the fixture that would discharge this needs one.
                         smd_attached_on_solder_side = true;
                     }
                 }

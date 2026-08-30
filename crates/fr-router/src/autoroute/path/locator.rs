@@ -265,12 +265,15 @@ impl FoundConnectionLocator {
             // :124-129: "may happen only in case of fanout".
             //
             // obligation: `FoundConnectionLocator` — the fanout arm (`:124-129` here and the
-            // `atFanoutEnd` short-circuit at `:142-144`) is transcribed but has **no ground
-            // truth**: it fires only when the maze search's destination door is an
-            // `ExpansionDrill`, which needs `ctrl.isFanout`, and no Plan 6 fixture produces a
-            // fanout search. **Task 17** must route one fanout connection through
-            // `P6T14Probe` (or its per-connection driver) and pin `targetLayer`, the
-            // `currentTargetShape` of `:159` and the first `ResultItem`.
+            // `atFanoutEnd` short-circuit at `:142-144`) is transcribed but still has **no ground
+            // truth** — **re-marked in Task 17**. It fires only when the maze search's
+            // destination door is an `ExpansionDrill`, which needs `ctrl.isFanout`. Measured over
+            // Task 17's acceptance corpus (369 connections, five boards) with a counter on this
+            // arm: **zero entries**. `ctrl.isFanout` is set by `BatchFanout`, which is
+            // `autoroute/pipeline`'s and therefore **Plan 7's** — `p6t1` drives
+            // `AutorouteConnectionRouter.route`, whose `AutorouteControl` never sets it. No board
+            // can discharge this obligation below the plan-6 seam; Plan 7's fanout pre-pass is
+            // where it closes.
             ExpandableRef::Drill(drill) => {
                 let drill = engine
                     .rooms
@@ -392,14 +395,18 @@ impl FoundConnectionLocator {
                 // :167-175: "the target is a conduction area, make a save connection by
                 // shrinking the shape by the trace halfwidth."
                 //
-                // obligation: `FoundConnectionLocator` — this shrink (`:167-175`) is unreachable
-                // from every fixture in `crates/fr-router/tests/locator.rs`: the intersection of
-                // a pin's trace-connection shape with its room is 0-dimensional on all 25
-                // evaluations the suite makes, and reaching `dimension() >= 2` needs a
-                // **conduction area** as the start item, which no fixture has. **Task 17** must
-                // route a connection whose start item is a conduction area and pin the shrunk
-                // `currentTargetShape`. Mutation M14 (this test forced to `false`) survives the
-                // whole suite today, which is exactly what the obligation records.
+                // obligation: `FoundConnectionLocator` — this shrink (`:167-175`) is still
+                // unreachable — **re-marked in Task 17**. It was unreachable from every fixture
+                // in `crates/fr-router/tests/locator.rs` (0-dimensional on all 25 evaluations),
+                // and reaching `dimension() >= 2` needs a **conduction area** as the start item.
+                // Task 17 added `router-ecc83-input` to the corpus precisely because its
+                // `(plane …)` net puts `ConductionArea` items on the search tree; instrumented,
+                // its 14 evaluations are **all** 0-dimensional, and over the whole corpus the
+                // largest dimension seen is **1** (`router-dac2020-bm01` 14 evaluations,
+                // `router-j2-reference` 4). What is still missing is a connection whose *start
+                // item* is the conduction area itself, which `AutoroutePassRunner`'s
+                // plane-skipping item selection (`BatchAutorouter.java:383-389`) makes a Plan 7
+                // question.
                 if walk.current_target_shape.dimension() >= 2 {
                     let start_room_layer = walk
                         .engine
