@@ -6,6 +6,8 @@ use fr_board::searchtree::ShapeSearchTree;
 use fr_board::{ItemId, TimeLimit, TreeId};
 use fr_geometry::{IntPoint, Point, TileShape, Vector};
 
+use crate::board_ext::forced_pad_router::{CheckDrillResult, ForcedPadRouter};
+
 /// Port of `board.actions.DrillItemMover` (DrillItemMover.java:26-326) — the check half.
 ///
 /// Java's class is `final` with a private constructor and nothing but static methods; the port is
@@ -28,16 +30,11 @@ impl DrillItemMover {
     /// `false` where a `drill_item` id names something that is not a drill item: Java's parameter
     /// is typed `DrillItem`, so the case cannot arise there.
     ///
-    /// # Panics
-    ///
-    /// **Panics for every input that survives the two early arms.** `:46-48`'s `isShoveFixed` and
-    /// `:51-56`'s non-trace contact answer `false` normally; anything past them enters the
-    /// per-layer loop, whose body reaches `ForcedPadRouter.checkForcedPad` (`:86-100`) — plan-6
-    /// Task 10's, because Java's dependency there is a cycle back into this method. See the
-    /// `added in Task 10:` marker and its `obligation:` block at the call site. A drill item with
-    /// no tree shape on any of its layers returns `true` without panicking, but no real board
-    /// produces one. Task 10 must land before Task 13, which gives this method its first
-    /// production caller through `TraceShover::check`.
+    /// The per-layer loop reaches `ForcedPadRouter.checkForcedPad` (`:86-100`), which calls this
+    /// method back (`ForcedPadRouter.java:269-278`): Java's dependency here is a **cycle**, so
+    /// Task 9 landed this side with the call site as an `added in Task 10:` marker and Task 10
+    /// replaced it with the real call. `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
+    /// in `tests/forced_via.rs` is the test that pins the closed cycle against the JVM.
     pub fn check(
         board: &mut Board,
         drill_item: ItemId,
@@ -122,36 +119,26 @@ impl DrillItemMover {
                 }
             };
             // :85.
-            let _from_side = ShapeEntrySide::from_point(&center, &current_tile_shape);
-            // :86-100.
-            //
-            // added in Task 10: `ForcedPadRouter.checkForcedPad` (ForcedPadRouter.java:221-340),
-            // which this call reaches with `(currentTileShape, fromSide, currentLayer,
-            // drillItem.netNumbers, drillItem.clearanceClassIndex(), attachAllowed,
-            // effectiveIgnoreItems, maxRecursionDepth, maxViaRecursionDepth, true, timeLimit)` and
-            // refuses on `CheckDrillResult.NOT_DRILLABLE`.
-            //
-            // obligation: Java's dependency here is a **cycle** — `checkForcedPad` calls back into
-            // `DrillItemMover.check` (`:269-278`) and into `TraceShover.check` (`:322-334`) — so
-            // the two halves cannot both land in one task. Task 9 owns everything the cycle
-            // reaches on this side; Task 10 owns `checkForcedPad` and replaces the panic below
-            // with the real call. Until then only the two arms above (`:46-48` and `:51-56`) are
-            // answerable, which is exactly what `drill_item_mover_check_agrees_with_the_jvm`
-            // pins; the third probe row (`check viaId=6 result=true`) is Task 10's.
-            let _ = (
-                attach_allowed,
+            let from_side = ShapeEntrySide::from_point(&center, &current_tile_shape);
+            // :86-100. `checkOnlyFront` is `true` here — this is the "moving drill items" case
+            // its javadoc names, and the only caller that passes it.
+            if ForcedPadRouter::check_forced_pad(
+                board,
+                &current_tile_shape,
+                &from_side,
+                current_layer,
                 &net_numbers,
                 clearance_class_index,
+                attach_allowed,
+                Some(effective_ignore_items),
                 max_recursion_depth,
                 max_via_recursion_depth,
-                &effective_ignore_items,
+                true,
                 time_limit,
-            );
-            unimplemented!(
-                "DrillItemMover.check reaches ForcedPadRouter.checkForcedPad \
-                 (ForcedPadRouter.java:221-340), which plan-6 Task 10 owns — see the \
-                 `added in Task 10:` marker at this site"
-            );
+            ) == CheckDrillResult::NotDrillable
+            {
+                return false;
+            }
         }
         // :102.
         true

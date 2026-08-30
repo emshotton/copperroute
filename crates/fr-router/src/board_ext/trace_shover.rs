@@ -53,15 +53,9 @@ impl TraceShover {
     /// recursive answer against it and `:218` takes a `Math.min` with it, so the exact value is
     /// observable.
     ///
-    /// # Panics
-    ///
-    /// Panics when the shape being checked overlaps a **shovable foreign-net via** and
-    /// `max_via_recursion_depth > 0`, because `:119-135` then reaches
-    /// [`DrillItemMover::check`], whose main arm is plan-6 Task 10's
-    /// `ForcedPadRouter.checkForcedPad` (see the `added in Task 10:` marker in
-    /// `board_ext/drill_item_mover.rs`). Every other input answers normally. Boards whose
-    /// obstacles are traces, pins and areas — which is every caller Plan 6 has until Task 13
-    /// wires `MazeSearchEngine.java:681` — never reach it.
+    /// A shape that overlaps a **shovable foreign-net via** reaches [`DrillItemMover::check`] at
+    /// `:119-135`, and through it `ForcedPadRouter::check_forced_pad`, which reaches this method
+    /// back: the three form one mutual recursion, closed by plan-6 Task 10.
     #[allow(clippy::too_many_arguments)]
     pub fn check_segment(
         board: &mut Board,
@@ -331,14 +325,11 @@ impl TraceShover {
     /// `ctrl.maxShoveTraceRecursionDepth = 20`, a hard-coded constant, so the accounting is
     /// transcribed exactly.
     ///
-    /// # Panics
-    ///
-    /// Panics when `trace_shape` overlaps a **shovable foreign-net via**, because `:335-342` then
-    /// reaches [`DrillItemMover::check`], whose main arm is plan-6 Task 10's
-    /// `ForcedPadRouter.checkForcedPad` (see the `added in Task 10:` marker in
-    /// `board_ext/drill_item_mover.rs`). Every other input answers normally, including the whole
-    /// substitute-trace recursion. Task 10 must therefore land before Task 13, which is what
-    /// gives this method its first production caller.
+    /// A `trace_shape` that overlaps a **shovable foreign-net via** reaches
+    /// [`DrillItemMover::check`] at `:335-342`, and through it
+    /// `ForcedPadRouter::check_forced_pad`, which reaches this method back at
+    /// `ForcedPadRouter.java:322-334`: the three form one mutual recursion, closed by plan-6
+    /// Task 10.
     #[allow(clippy::too_many_arguments)]
     pub fn check(
         board: &mut Board,

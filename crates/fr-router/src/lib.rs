@@ -31,9 +31,10 @@
 //! [`MazeListElement`], [`MazeQueue`]), and Task 9 adds [`board_ext`]: [`RoutingBoardExt`] —
 //! the five `RoutingBoard` methods plan-2 ruling 4 left out of `fr-board` — plus the
 //! **check-only** half of [`TraceShover`] and [`DrillItemMover`], the shove algorithms the maze
-//! consults through `checkForcedTracePolyline`. The maze search itself and the path locators
-//! arrive in Tasks 10-17; the roster at the foot of this file names each deferred class and the
-//! task that owns it.
+//! consults through `checkForcedTracePolyline`. Task 10 closes their cycle with
+//! [`ForcedPadRouter`] and adds [`ForcedViaInserter`], the two-phase gate the maze asks before it
+//! places a via. The maze search itself and the path locators arrive in Tasks 11-17; the roster
+//! at the foot of this file names each deferred class and the task that owns it.
 //!
 //! # House rules
 //!
@@ -67,7 +68,10 @@ pub use autoroute::{
     FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeListElement,
     MazeQueue, MazeSearchElement, ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor, ViaMask,
 };
-pub use board_ext::{DrillItemMover, RoutingBoardExt, SpringOverOutcome, TraceShover};
+pub use board_ext::{
+    CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, RoutingBoardExt,
+    SpringOverOutcome, TraceShover,
+};
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
 

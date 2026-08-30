@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 9 of 18
+## State: Task 10 of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -25,9 +25,9 @@ neighbour sorters that turn a completed room into its door list, the
 `AutorouteEngine` that owns all of it, the drill pages that manufacture its
 layer changes, the four leaf types the maze search itself is written against
 (the control block, the cost bound, the queue element and the guarded queue),
-and — from Task 9 — the seam with `fr-board`: `RoutingBoardExt` plus the
-**check-only** half of the two shove algorithms the maze consults before it
-commits to a trace:
+and — from Tasks 9 and 10 — the seam with `fr-board`: `RoutingBoardExt` plus the
+**check-only** half of the four shove algorithms the maze consults before it
+commits to a trace or a via:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -60,6 +60,8 @@ commits to a trace:
 | `RoutingBoardExt` | `src/board_ext/routing_board_ext.rs` | `RoutingBoard.java:96-118, 405-448, 882-905, 1240-1249` |
 | `TraceShover` (the two `check`s + `springOver`) | `src/board_ext/trace_shover.rs` | `TraceShover.java:57-411, 592-603, 611-818` |
 | `DrillItemMover` (`check` + `tryShoveViaPoints`) | `src/board_ext/drill_item_mover.rs` | `DrillItemMover.java:34-103, 256-325` |
+| `ForcedPadRouter` (`checkForcedPad` + `calcFromSide` + `inFrontOfPad`) | `src/board_ext/forced_pad_router.rs` | `ForcedPadRouter.java:42-54, 57-212, 221-340, 471-500` |
+| `ForcedViaInserter` (`checkLayer` + `check` + the two private helpers) | `src/board_ext/forced_via_inserter.rs` | `ForcedViaInserter.java:30-247, 363-461` |
 | `RouterError` | `src/error.rs` | ruling 7's five recovery boundaries |
 | `ExpansionCostFactor` | re-exported from `fr-settings` | `AutorouteControl.java:287` |
 
@@ -484,13 +486,15 @@ non-GUI caller of the `AutorouteEngine` constructor
 (`gui/interactive/ExpandTestState.java:167` is the other, and no GUI is ported).
 
 **This is the check half only.** `TraceShover.insert`,
-`TraceShover.springOverObstacles`, `DrillItemMover.insert` and
-`DrillItemMover.shoveVias` are `// added in Plan 7:` markers in the two files.
+`TraceShover.springOverObstacles`, `DrillItemMover.insert`,
+`DrillItemMover.shoveVias`, `ForcedPadRouter.forcedPad` and
+`ForcedViaInserter.insert` are `// added in Plan 7:` markers in the four files.
 The property that makes the split safe is pinned by
-`trace_shover_check_does_not_mutate_the_board`: neither `check` changes the
-board's item set. Both *do* write `shoveFailingObstacle` and burn item ids on
-the substitute trace pieces they build, and Java's do too — neither is in
-`Board::structural_hash`.
+`trace_shover_check_does_not_mutate_the_board` and
+`check_forced_pad_does_not_mutate_the_board`: no `check` changes the board's
+item set. They *do* write `shoveFailingObstacle` / `shoveFailingLayer` and burn
+item ids on the substitute trace pieces they build, and Java's do too — none of
+those is in `Board::structural_hash`.
 
 **`springOver` returns Java's reference identity.** `TraceShover.check:382` and
 `springOverObstacles:845` both branch on `!=` against the polyline they passed
@@ -499,18 +503,38 @@ be a lossy `Option<Polyline>`: a detour can be *equal* to the input without
 being *identical* to it, and only the identical case leaves
 `maxSpringOverRecursionDepth` unspent.
 
-**The one open call site.** `DrillItemMover::check`'s main arm reaches
-`ForcedPadRouter.checkForcedPad`, which Task 10 owns — and Java's dependency
-there is a **cycle**: `checkForcedPad` calls back into `DrillItemMover.check`
-(`ForcedPadRouter.java:269-278`) and into `TraceShover.check` (`:322-334`). One
-of the two halves therefore has to land first. Task 9 owns everything on this
-side of the cycle; the site carries an `added in Task 10:` marker and an
-`obligation:` block, and until Task 10 discharges it `DrillItemMover::check`
-answers only the two arms Java reaches before that call (`:46-48`'s
-`isShoveFixed` and `:51-56`'s non-trace contact) and panics beyond them. Nothing
-in Plan 6 reaches it yet: a via only enters `shapeEntries.shoveViaList` when it
-overlaps the shape being checked, and the maze does not call
-`checkForcedTracePolyline` until Task 13.
+## `ForcedPadRouter` and `ForcedViaInserter` (Task 10), and the cycle closed
+
+`DrillItemMover.check:86` calls `ForcedPadRouter.checkForcedPad`, and
+`checkForcedPad` calls `DrillItemMover.check` back
+(`ForcedPadRouter.java:269-278`) and `TraceShover.check` too (`:322-334`). That
+is a **cycle**, so one half had to land without the other: Task 9 landed
+`TraceShover.check` and `DrillItemMover.check` with the `checkForcedPad` call
+site as an `added in Task 10:` marker that panicked, and Task 10 replaced it
+with the real call. `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
+in `tests/forced_via.rs` is the test that proves it: probe row
+`check viaId=6 delta=(300,0) result=true ignoreSize=1`, which Task 9 could
+print from the JVM but not run in Rust.
+
+**`inFrontOfPad` carries a typo (quirk #176).** `ForcedPadRouter.java:78`, the
+third disjunct of `case 0`, reads `Math.min(lineA.x + lineA.y, lineB.x +
+lineB.x)` — `lineB.x` twice, where every sibling case and both neighbouring
+disjuncts read `x + y`. Reproduced with a `// Java bug:` marker; the visible
+consequence is that at `fromSide = 0` the answer depends on which end point of
+the line is `a`, so the same geometric line reversed gives the opposite answer.
+`checkForcedPad` consults `inFrontOfPad` only when `checkOnlyFront` is true,
+which is exactly the `DrillItemMover.check` path.
+
+**`ForcedViaInserter.insert` is not here, and Java is why.** The brief asked for
+it, and also declared `ForcedPadRouter.forcedPad` `// added in Plan 7:`. Those
+two cannot both hold: `insert`'s per-layer body is three `forcedPad` calls
+(`:297`, `:317`, `:333`) before `BasicBoard.insertVia` (`:348`), and `forcedPad`
+in turn reaches `DrillItemMover.shoveVias` (`:364`) and `TraceShover.insert`
+(`:416`) — plan-6 ruling 2's "`board/optimize/**`'s mutating half", i.e. Plan
+7's, and already `// added in Plan 7:` markers from Task 9. So `insert` is a
+Plan 7 marker too, and Task 15 (`FoundConnectionInserter.java:754`) is the task
+that needs the resolution. `task-10-report.md` §2.1 records it as a
+**NEEDS_CONTEXT** with the three options.
 
 ## Quirk-register numbering
 
@@ -549,7 +573,10 @@ later); and Task 9 wrote **#174** (`TraceShover.check`'s via arm returns
 `false` without setting `shoveFailingObstacle`, so the field keeps a stale item
 that the ripup resolver later reads) and **#175** (`DrillItemMover.check`
 appends the drill item to the caller's own `ignoreItems` collection — a check
-with a visible side effect). The next free id is **#176**. Every later
+with a visible side effect); and Task 10 wrote **#176**
+(`ForcedPadRouter.inFrontOfPad`'s `case 0` reads `lineB.x` twice where every
+sibling reads `x + y`, so the same geometric line answers differently depending
+on the order of its two defining points). The next free id is **#177**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.

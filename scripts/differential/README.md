@@ -602,6 +602,50 @@ methods with dozens of branches.
       an octagon x `extendedCheck` x both angle regimes. `ignoreSize` is what
       pins quirk #175.
     - `tie` — `getIgnoreItemsAtTiePins` over three shapes x three net arrays.
+  - `P6T10Probe.java` — `board.actions.ForcedPadRouter.checkForcedPad` with its
+    private `inFrontOfPad` and package-private `calcFromSide`, and
+    `board.actions.ForcedViaInserter`'s `checkLayer` / `check` plus its private
+    `holeCheckShape` and `calculateFromSide` (Plan 6 Task 10). It declares
+    `package app.freerouting.board.actions;` so it can call `calcFromSide`
+    directly, and reflects into the three `private static` helpers. Its stdout
+    is committed verbatim as
+    `crates/fr-router/tests/data/p6t10-forced-via.txt`, one `######## <mode>`
+    section per mode, and every literal in
+    `crates/fr-router/tests/forced_via.rs` is read off it. Its two-layer board
+    is `P6T9Probe.build` verbatim; mode `rand` builds a four-layer one. Eight
+    modes:
+
+    - `front` — `inFrontOfPad` over ten lines x eight `fromSide` values x
+      `withSides` x two widths on one octagon, 320 rows, then **600 randomised**
+      `(octagon, line, fromSide, width, withSides)` rows so the eight-case
+      switch is exercised on more than one pad, then the out-of-range arm, a
+      45-degree triangle (which `Simplex.isIntOctagon` accepts) and a skew one
+      (which it does not). The `typoA`/`typoB` pair — the same line with its two
+      defining points swapped — is what pins **quirk #176**.
+    - `pad` — `checkForcedPad` over seven pad shapes x three net arrays x
+      `copperSharingAllowed` x `checkOnlyFront` x both angle regimes, 168 rows,
+      then the recursion-budget ladder, the `ignoreItems` row and a 36-row
+      shove-via block (a free and a shove-fixed foreign-net via inside the
+      checked shape) that pins `:252-279`.
+    - `drill` — the rows Task 9 could not print: `DrillItemMover.check` on the
+      **shovable** free via, which is the arm that runs the full
+      `checkForcedPad`. `check viaId=6 result=true ignoreSize=1` is the one that
+      proves the Task 9 / Task 10 cycle is closed.
+    - `side` — `calcFromSide` (42 rows, every answer `border=null`) and
+      `calculateFromSide` (36 rows, both the orthogonal sweep and the diagonal
+      fallback, and both `null` arms).
+    - `hole` — `holeCheckShape` at hole clearance 0 / 100 / 400 x two padstacks.
+    - `layer` — `checkLayer` over five spots x three via radii x
+      `attachSmdAllowed` x three trace half widths x two net arrays x both angle
+      regimes, 360 rows, plus the `tinyRoom` row where `calculateFromSide`
+      answers `null`.
+    - `check` — `ForcedViaInserter.check` over two hole clearances x six spots x
+      two `ViaInfo`s x two net arrays x four `tracePenHalfwidthArr`s x both angle
+      regimes, 384 rows, each with the `shoveFailingLayer` it leaves behind.
+    - `rand` — the brief's `0 diffs` table: 200 pseudo-random
+      `(location, layer, net, radius, halfWidth)` triples through `checkLayer`
+      on a four-layer board with a trace lattice per layer and sixteen
+      unshovable pins. 108 `DRILLABLE` / 92 `NOT_DRILLABLE` on the JVM.
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

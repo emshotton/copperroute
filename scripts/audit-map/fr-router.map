@@ -101,10 +101,11 @@ FoundConnectionLocatorAnyAngle    autoroute/path/locator_any_angle.rs
 FoundConnectionInserter           autoroute/path/inserter.rs
 
 # --- board/actions/ and board/optimize/ (Tasks 9-10) --------------------------------------------
-# `DrillItemMover`'s and `TraceShover`'s **check** halves landed in Task 9; the mutating halves are
-# `// added in Plan 7:` markers in `board_ext/mod.rs`. `ForcedPadRouter` and `ForcedViaInserter` are
-# Task 10's, and their files do not exist yet — which is why Task 9's invocations restrict the file
-# glob rather than widening the map.
+# `DrillItemMover`'s and `TraceShover`'s **check** halves landed in Task 9, `ForcedPadRouter`'s and
+# `ForcedViaInserter`'s in Task 10. Every mutating half — `TraceShover.insert` /
+# `springOverObstacles`, `DrillItemMover.insert` / `shoveVias`, `ForcedPadRouter.forcedPad` and
+# `ForcedViaInserter.insert` — is an `// added in Plan 7:` marker in the class's own file, because
+# `audit-port.sh` searches only the mapped path once a map is supplied.
 ForcedViaInserter                 board_ext/forced_via_inserter.rs
 ForcedPadRouter                   board_ext/forced_pad_router.rs
 DrillItemMover                    board_ext/drill_item_mover.rs

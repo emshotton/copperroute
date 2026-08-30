@@ -654,8 +654,9 @@ fn ignore_items_at_tie_pins_answers_the_contacts_of_the_own_net_pins() {
 ///   check viaId=8 delta=(300,0) result=false ignoreSize=0
 /// ```
 ///
-/// The third row (`check viaId=6 result=true`) runs the full `checkForcedPad` and is Task 10's —
-/// see the `added in Task 10:` marker in `board_ext/drill_item_mover.rs`.
+/// The third row (`check viaId=6 result=true`) runs the full `checkForcedPad`, which Task 10
+/// landed; it is pinned by `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
+/// in `tests/forced_via.rs`, together with three further deltas and the `viaDepth=0` budget row.
 #[test]
 fn drill_item_mover_check_agrees_with_the_jvm() {
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
