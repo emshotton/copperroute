@@ -226,6 +226,24 @@ impl Board {
         layer: usize,
         net_number: i32,
     ) -> Result<bool, BoardError> {
+        self.split_traces_checked(location, layer, net_number, &|| false)
+    }
+
+    /// [`Board::split_traces`] under a [`StopCheck`], threaded into every
+    /// [`Board::split_trace_checked`] below it (plan-6 ruling 6, closing plan-3 ruling F). A trip
+    /// answers [`BoardError::Stopped`]; the board is left part-split.
+    ///
+    /// The check is **not** consulted once per picked trace here: `split_trace_checked` already
+    /// consults it inside the entry walk that does not terminate, and adding a second site would
+    /// make a run stop earlier than the one Java's loop shape implies.
+    // added in Plan 6: BasicBoard.splitTraces (plan ruling 6, closing plan-3 ruling F)
+    pub fn split_traces_checked(
+        &mut self,
+        location: &Point,
+        layer: usize,
+        net_number: i32,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
         // BasicBoard.java:892-895.
         let picked = self.pick_traces(location, Some(layer));
         let location_shape = TileShape::get_instance_from_point(location).bounding_octagon();
@@ -242,7 +260,11 @@ impl Board {
                 continue;
             }
             // BasicBoard.java:899-904.
-            if self.split_trace(id, Some(&location_shape))?.len() != 1 {
+            if self
+                .split_trace_checked(id, Some(&location_shape), stop)?
+                .len()
+                != 1
+            {
                 trace_split = true;
             }
         }

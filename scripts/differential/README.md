@@ -650,6 +650,61 @@ methods with dozens of branches.
       `(location, layer, net, radius, halfWidth)` triples through `checkLayer`
       on a four-layer board with a trace lattice per layer and sixteen
       unshovable pins. 108 `DRILLABLE` / 92 `NOT_DRILLABLE` on the JVM.
+  - `P6T10bProbe.java` — the **via-insertion chain** (Plan 6 Task 10b, controller
+    ruling AA): `board.actions.ForcedPadRouter.forcedPad` (`:346-465`),
+    `board.optimize.TraceShover.insert` (`:417-591`),
+    `board.actions.DrillItemMover.insert` (`:110-167`) / `.shoveVias`
+    (`:173-249`) and `board.actions.ForcedViaInserter.insert` (`:249-356`). Like
+    `P6T10Probe` it declares `package app.freerouting.board.actions;`, so it can
+    call the package-private `forcedPad` directly; nothing here needs reflection.
+    Its board is `P6T10Probe.build` verbatim, plus an optional free net-3 via.
+
+    **Every row mutates the board**, so each rebuilds its board from scratch and
+    then prints the whole item list in `getItems()` order (descending id, quirk
+    #63) plus `communication.idGenerator.maxGeneratedId()` — which is what pins
+    controller ruling AA's exact board-state parity: item ids, split-trace
+    polylines, via positions and padstacks, and the item order itself. Its
+    stdout is committed as `crates/fr-router/tests/data/p6t10b-via-insert.txt`,
+    filtered of the jar's own `FRLogger` lines with
+    `grep -E '^(mode=|  [a-z]|    (item|maxId))'`: mode `trace` deliberately
+    provokes the swallowed `NullPointerException` at `TraceShover.java:572`,
+    which `FRLogger.error` prints to stdout with a wall-clock timestamp. Five
+    modes:
+
+    - `pad` — `forcedPad` over five spots x two radii x two net arrays x
+      `copperSharingAllowed` x two recursion depths x **`changedArea` on/off**,
+      in both angle regimes (320 rows), then the empty-shape and
+      outside-the-bounding-box arms.
+    - `trace` — `TraceShover.insert` over the same grid with the spring-over
+      budget in place of `copperSharingAllowed` (320 rows) and the same two
+      extra arms. The `changedArea=false` rows are what pin **quirk #177**: with
+      `board.changedArea == null` the substitute pieces stay un-normalized
+      (three traces), where `changedArea=true` normalizes them into one.
+    - `shove` — `DrillItemMover.shoveVias` over three via positions x two radii
+      x two net arrays x three via-recursion budgets x `copperSharingAllowed`
+      (144 rows), then `DrillItemMover.insert` over six translation vectors x
+      two recursion depths (72 rows), then the shove-fixed row — all in both
+      angle regimes.
+    - `via` — `ForcedViaInserter.insert` over two hole clearances x seven spots
+      x `attachSmdAllowed` x two net arrays x three `tracePenHalfwidthArr`s, in
+      both angle regimes (336 rows), each with its `shoveFailingLayer` and
+      `shoveFailingObstacle`. The `crossesNet1Trace` spot is plan-3 ruling F's:
+      the via at (0, 400) reaches `BasicBoard.insertVia:287-293` ->
+      `splitTraces` -> `PolylineTrace.split` and splits the trace in two.
+    - `rand` — **five blocks of 120** pseudo-random rows, one per method, each
+      printed as `-> <answer> maxId=<n> items=<n> hash=<String.hashCode of the
+      board dump>`, so a whole board state compares as one integer. The free via
+      is drawn **near the probed shape**, not independently of it, and the
+      `shoveVias` block narrows three draws further (via inside the shape, never
+      on the shape's net, always with a via budget) — because a row that skips
+      the shove is a no-op row. Measured on the JVM after that change, the share
+      of rows that actually change the board is 40 % (`forcedPad`), 44 %
+      (`traceShoverInsert`), 87 % (`shoveVias`), 90 %
+      (`drillItemMoverInsert`) and 43 % (`forcedViaInsert`); all 600 hashes are
+      distinct. The first draft drew the via uniformly over the board and
+      `shoveVias` then answered `true` with an untouched board on all 120 rows —
+      a 0-diffs table over a degenerate board is not a test.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

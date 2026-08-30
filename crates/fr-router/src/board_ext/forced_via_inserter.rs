@@ -1,27 +1,26 @@
-//! Port of the check half of `board.actions.ForcedViaInserter`
-//! (`board/actions/ForcedViaInserter.java`).
+//! Port of `board.actions.ForcedViaInserter` (`board/actions/ForcedViaInserter.java`).
 
-use fr_board::PadstackId;
+use fr_board::datastructures::StopCheck;
 use fr_board::prelude::*;
 use fr_board::rules::ViaInfo;
+use fr_board::{BoardError, PadstackId};
 use fr_geometry::{Circle, FloatPoint, Point, Shape, ShapeOps, Simplex, TileShape, limits};
 
 use crate::board_ext::forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 
-/// Port of `board.actions.ForcedViaInserter` (ForcedViaInserter.java:22-462) — the check half.
+/// Port of `board.actions.ForcedViaInserter` (ForcedViaInserter.java:22-462).
 ///
 /// Java's class is `final` with a private constructor and nothing but static methods; the port is
 /// a unit struct with associated functions and Java's `RoutingBoard board` parameter promoted to
 /// the leading `&mut Board`, matching [`crate::board_ext::DrillItemMover`].
 ///
-/// # This is the check half
+/// # The check half and the shove half
 ///
-/// `checkLayer` (`:30-129`) and `check` (`:131-247`) are here; `insert` (`:249-361`) is
-/// `// added in Task 10b:` in the roster at the bottom of this file, because its per-layer body
-/// is three calls to `ForcedPadRouter.forcedPad`, which reaches `TraceShover.insert` and
-/// `DrillItemMover.shoveVias`. `task-10-report.md` §2.1 records why Task 10 could not land it —
-/// the task brief asked for `insert` while also declaring `forcedPad` Plan 7's, and Java decides
-/// it — and **controller ruling AA** answers it with a new Task 10b that ports all five.
+/// `checkLayer` (`:30-129`) and `check` (`:131-247`) landed in Task 10. [`Self::insert`]
+/// (`:249-356`) is the mutating twin **controller ruling AA** moved into Task 10b: its per-layer
+/// body is three calls to `ForcedPadRouter.forcedPad`, which reaches `TraceShover.insert` and
+/// `DrillItemMover.shoveVias`, and it ends in `BasicBoard.insertVia` — the caller plan-3 ruling F
+/// was waiting for. `task-10-report.md` §2.1 records why Task 10 could not land it.
 pub struct ForcedViaInserter;
 
 impl ForcedViaInserter {
@@ -309,6 +308,199 @@ impl ForcedViaInserter {
         true
     }
 
+    /// Port of `ForcedViaInserter.insert(ViaInfo, Point, int[], int, int[], int, int,
+    /// RoutingBoard)` (ForcedViaInserter.java:249-356): "shoves aside traces, so that a via with
+    /// the input parameters can be inserted without clearance violations. If the shove failed, the
+    /// database may be damaged, so that an undo becomes necessary. `traceClearanceClassIndex` and
+    /// `tracePenHalfwidthArr` is provided to make space for starting a trace in case the trace
+    /// width is bigger than the via shape. Returns false, if the forced via failed."
+    ///
+    /// Up to three `forcedPad` calls per padstack layer — the pad itself (`:297-309`), the drill
+    /// hole where the layer's pad exists but keeps a smaller copper clearance (`:310-330`) and the
+    /// start-trace circle (`:331-346`) — and then a single `BasicBoard.insertVia` at `:348`. Each
+    /// refusal records the layer in `board.shoveFailingLayer` and returns `false` **without**
+    /// inserting anything, which is why
+    /// `insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged` can assert an
+    /// unchanged `maxGeneratedId`.
+    ///
+    /// # Two differences from [`Self::check`], both Java's
+    ///
+    /// * `check:210-212` guards `tracePenHalfwidthArr` with `!= null && i < length`; `insert:277`
+    ///   does neither. So Java throws for a null or short array here, and the port takes a plain
+    ///   `&[i32]` and totalizes the out-of-range index rather than inventing a guard Java lacks.
+    /// * `check:164-166` calls `calcFromSide` **per layer with the layer's own clearance class**,
+    ///   and so does `insert:294-296` — but `insert` then reuses that one `fromSide` for all three
+    ///   `forcedPad` calls of the layer, including the hole check at `:319`, whose clearance class
+    ///   is 0.
+    ///
+    /// # This is plan-3 ruling F's other caller
+    ///
+    /// `:348`'s `BasicBoard.insertVia` reaches `splitTraces` and through it
+    /// `PolylineTrace.split`'s entry re-walk, which does not terminate on a four-rung ladder
+    /// (quirk #76). Plan-6 ruling 6 gives [`Board::insert_via_checked`] a [`StopCheck`] for
+    /// exactly this call, and `insert_stops_when_the_stop_check_trips` pins that a tripping check
+    /// answers [`BoardError::Stopped`] rather than hanging.
+    #[allow(clippy::too_many_arguments)]
+    pub fn insert(
+        board: &mut Board,
+        via_info: &ViaInfo,
+        location: &Point,
+        net_numbers: &[i32],
+        trace_clearance_class_index: usize,
+        trace_pen_halfwidth_arr: &[i32],
+        max_recursion_depth: i32,
+        max_via_recursion_depth: i32,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
+        // :258-262.
+        let translate_vector = location.difference_by(&Point::ZERO);
+        let calc_from_side_offset = board.get_min_trace_half_width();
+        let via_padstack = via_info.get_padstack();
+        let hole_shape = Self::hole_check_shape(board, via_padstack, location);
+        let attach_smd_allowed = via_info.attach_smd_allowed();
+        let via_clearance_class = via_info.get_clearance_class_index();
+        let is_90_degree = board.rules.trace_angle_restriction == AngleRestriction::NinetyDegree;
+        // `:263`'s `for (int i = fromLayer(); i <= toLayer(); i++)` runs zero times for a
+        // padstack whose layer range is empty — and Java then still reaches `insertVia` at
+        // `:348`, so this is an empty range rather than an early return.
+        let layer_range: Vec<i32> = padstack_shape_layer_range(board, via_padstack)
+            .map_or_else(Vec::new, |(from, to)| (from..=to).collect());
+
+        // :263-347.
+        for i in layer_range {
+            // :264-274.
+            let padstack_shape = board
+                .library
+                .padstacks
+                .get(via_padstack)
+                .and_then(|padstack| padstack.get_shape(i))
+                .cloned();
+            let (current_pad_shape, current_clearance_class_index) = match padstack_shape {
+                None => match &hole_shape {
+                    // :267-269.
+                    None => continue,
+                    // :270-271.
+                    Some(hole) => (hole.clone(), 0usize),
+                },
+                // :273. `Shape::translate_by` answers a `Shape`, so Java's `(Shape)` cast — which
+                // would throw for a multi-piece area — has no counterpart here.
+                Some(shape) => (shape.translate_by(&translate_vector), via_clearance_class),
+            };
+            let layer = i as usize;
+            // :275-293.
+            //
+            // totalized: `ForcedViaInserter.insert`'s `tracePenHalfwidthArr[i]` (`:277`) -> a
+            // pen half width of 0, i.e. no start-trace shape. Java has neither a null check nor a
+            // bounds check here (unlike `check:210-212`) and throws; every production caller
+            // sizes the array by the board's layer count. No register row.
+            let pen_half_width = usize::try_from(i)
+                .ok()
+                .and_then(|idx| trace_pen_halfwidth_arr.get(idx))
+                .copied()
+                .unwrap_or(0);
+            let start_trace_circle = match location {
+                Point::Int(point) if pen_half_width > 0 => {
+                    Some(Circle::new(*point, pen_half_width))
+                }
+                _ => None,
+            };
+            // totalized: `ForcedViaInserter.insert`'s `currentPadShape.boundingOctagon()` (`:289`)
+            // -> a skipped layer, exactly as `check:162`. Non-null in Java for a non-empty shape.
+            // Unreachable — no register row.
+            let Some(tile_shape) = bounding_tile(&current_pad_shape, is_90_degree) else {
+                continue;
+            };
+            let start_trace_shape = start_trace_circle.map(|circle| {
+                if is_90_degree {
+                    TileShape::Box(circle.bounding_box())
+                } else {
+                    TileShape::Octagon(circle.bounding_octagon())
+                }
+            });
+            // :294-296. The layer's own clearance class, reused by all three calls below.
+            let from_side = ForcedPadRouter::calc_from_side(
+                board,
+                &tile_shape,
+                location,
+                layer,
+                calc_from_side_offset,
+                current_clearance_class_index,
+            );
+            // :297-309.
+            if !ForcedPadRouter::forced_pad(
+                board,
+                &tile_shape,
+                &from_side,
+                layer,
+                net_numbers,
+                current_clearance_class_index,
+                attach_smd_allowed,
+                None,
+                max_recursion_depth,
+                max_via_recursion_depth,
+                stop,
+            )? {
+                board.set_shove_failing_layer(i);
+                return Ok(false);
+            }
+            // :310-330. "The drill hole must ALSO keep hole clearance from other-net copper on
+            // layers where the pad exists."
+            if current_clearance_class_index != 0
+                && let Some(hole) = &hole_shape
+                && let Some(hole_tile) = bounding_tile(hole, is_90_degree)
+                && !ForcedPadRouter::forced_pad(
+                    board,
+                    &hole_tile,
+                    &from_side,
+                    layer,
+                    net_numbers,
+                    0,
+                    attach_smd_allowed,
+                    None,
+                    max_recursion_depth,
+                    max_via_recursion_depth,
+                    stop,
+                )?
+            {
+                board.set_shove_failing_layer(i);
+                return Ok(false);
+            }
+            // :331-346. "necessary in case startTraceShape is bigger than tileShape". Note the
+            // hard-coded `copperSharingAllowed = true` at `:339`, where the pad call above passed
+            // `viaInfo.attachSmdAllowed()`.
+            if let Some(start_trace_shape) = start_trace_shape
+                && !ForcedPadRouter::forced_pad(
+                    board,
+                    &start_trace_shape,
+                    &from_side,
+                    layer,
+                    net_numbers,
+                    trace_clearance_class_index,
+                    true,
+                    None,
+                    max_recursion_depth,
+                    max_via_recursion_depth,
+                    stop,
+                )?
+            {
+                board.set_shove_failing_layer(i);
+                return Ok(false);
+            }
+        }
+        // :348-355. The `StopCheck` plan-6 ruling 6 threads all the way from the router lands
+        // here, in `splitTraces` -> `PolylineTrace.split`.
+        board.insert_via_checked(
+            via_padstack,
+            location.clone(),
+            net_numbers.to_vec(),
+            via_clearance_class,
+            FixedState::Unfixed,
+            attach_smd_allowed,
+            stop,
+        )?;
+        Ok(true)
+    }
+
     /// Port of the private `ForcedViaInserter.holeCheckShape(Padstack, Point, RoutingBoard)`
     /// (ForcedViaInserter.java:363-375): "hole-clearance substitute shape for a copper-less layer
     /// of a via padstack: the drill still passes through, so other copper must stay
@@ -469,8 +661,7 @@ fn padstack_shape_layer_range(board: &Board, padstack: PadstackId) -> Option<(i3
     if from > to { None } else { Some((from, to)) }
 }
 
-// =================================================================================================
-// The deferral roster for `board/actions/ForcedViaInserter.java`
-// =================================================================================================
-//
-// added in Task 10b: `ForcedViaInserter.insert` (ForcedViaInserter.java:249-356) — three calls to `ForcedPadRouter.forcedPad` per padstack layer (`:297`, `:317`, `:333`) and then `BasicBoard.insertVia` (`:348`); `forcedPad` in turn reaches `TraceShover.insert` and `DrillItemMover.shoveVias`, so all five land together. Its Plan 6 caller is `FoundConnectionInserter.java:754` (Task 15), and ruling 6's `StopCheck` on `Board::insert_via` travels with it. Task 10 shipped this as `added in Plan 7:`; **controller ruling AA** re-assigns it to a new Task 10b between Tasks 10 and 11 — see `task-10-report.md` §2.1, whose option B ruling AA took.
+// The deferral roster for `board/actions/ForcedViaInserter.java` is empty: every method of the
+// class is ported. `checkLayer`, `check`, `holeCheckShape` and `calculateFromSide` landed in
+// Task 10; `insert` above is controller ruling AA's Task 10b, and it is what closes plan-3
+// ruling F by giving `Board::insert_via` its first router-side caller.

@@ -593,14 +593,17 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
                 .get(current_padstack)
                 .is_some_and(|padstack| padstack.attach_allowed);
         let board = p.board.as_mut().expect("checked above");
-        // obligation: Plan 6/7 — BasicBoard.insertVia (Wiring.java:706) walks
+        // obligation: Plan 8 — BasicBoard.insertVia (Wiring.java:706) walks
         // `fromLayer..toLayer` calling `splitTraces` -> `PolylineTrace.split`, i.e. the same
         // machinery quirk #76 does not terminate in, and it is **outside** the
         // `try`/`catch` Java wraps `normalizeAllTraces` in (:346-352). Plan ruling 4's
         // `StopCheck` therefore does not reach it: a DSN whose vias sit on a four-rung ladder can
-        // still wedge the reader. Closing it means threading a `StopCheck` through
-        // `Board::insert_via`/`split_traces`, which Plans 6/7 also call — see
-        // docs/java-quirks.md's obligation register.
+        // still wedge the reader. **The seam now exists**: plan-6 ruling 6 (Task 10b) added
+        // `Board::insert_via_checked`, for `ForcedViaInserter::insert`'s sake, and left
+        // `insert_via` as a `|| false` wrapper. What is left here is to pass this reader's own
+        // `normalize_time_limit`-backed check to it, which changes DSN-reader behaviour under the
+        // 105-file corpus and so was not folded into a router task — see docs/java-quirks.md's
+        // obligation register.
         // totalized: Wiring.readViaScope — Java's `board.insertVia` (:706) cannot fail, and
         // `readViaScope`'s `catch` only covers `IOException`; the port's returns
         // `Result<ItemId, BoardError>` because `split_traces` can surface a `Polyline`

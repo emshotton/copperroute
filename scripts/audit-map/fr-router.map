@@ -105,10 +105,10 @@ FoundConnectionInserter           autoroute/path/inserter.rs
 # `ForcedViaInserter`'s in Task 10. The mutating halves split two ways, per **controller ruling AA**:
 # `ForcedViaInserter.insert`, `ForcedPadRouter.forcedPad`, `TraceShover.insert` and
 # `DrillItemMover.{insert,shoveVias}` are one chain Plan 6 needs (Task 15 reaches it at
-# `FoundConnectionInserter.java:754`) and carry `// added in Task 10b:` markers; only
-# `TraceShover.springOverObstacles`, which nothing in Plan 6 reaches, stays `// added in Plan 7:`.
-# Every marker lives in the class's own file, because `audit-port.sh` searches only the mapped path
-# once a map is supplied.
+# `FoundConnectionInserter.java:754`), and **Task 10b ported all five**; only
+# `TraceShover.springOverObstacles`, which nothing in Plan 6 reaches, is still
+# `// added in Plan 7:`. That marker lives in `board_ext/trace_shover.rs`, because
+# `audit-port.sh` searches only the mapped path once a map is supplied.
 ForcedViaInserter                 board_ext/forced_via_inserter.rs
 ForcedPadRouter                   board_ext/forced_pad_router.rs
 DrillItemMover                    board_ext/drill_item_mover.rs

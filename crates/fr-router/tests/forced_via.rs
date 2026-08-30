@@ -16,6 +16,7 @@
 
 use std::collections::BTreeSet;
 
+use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
 use fr_board::prelude::*;
 use fr_board::rules::ViaInfo;
@@ -23,7 +24,9 @@ use fr_geometry::{
     FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Line, Point, Polyline, Shape, ShapeOps,
     TileShape, Vector,
 };
-use fr_router::board_ext::{CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter};
+use fr_router::board_ext::{
+    CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, TraceShover,
+};
 
 // =================================================================================================
 // The committed JVM transcript
@@ -1640,4 +1643,1127 @@ fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
         ),
         CheckDrillResult::NotDrillable
     );
+}
+
+// =================================================================================================
+// Task 10b — the via-insertion chain: `ForcedPadRouter::forced_pad`, `TraceShover::insert`,
+// `DrillItemMover::{insert, shove_vias}` and `ForcedViaInserter::insert`
+// =================================================================================================
+//
+// # Where these numbers come from
+//
+// `scripts/differential/java/probes/P6T10bProbe.java`, committed with its stdout as
+// `tests/data/p6t10b-via-insert.txt`. Every row here **mutates the board**, so the probe rebuilds
+// its board per row and prints the whole item list in `getItems()` order (descending id, quirk
+// #63) plus `communication.idGenerator.maxGeneratedId()` — which is what pins controller ruling
+// AA's "exact board-state parity": item ids, split-trace polylines, via positions and padstacks,
+// and the item order itself.
+
+const TRANSCRIPT_10B: &str = include_str!("data/p6t10b-via-insert.txt");
+
+/// One probe row of a mutating mode: the `  …` line, the `    maxId=… items=…` line under it and
+/// the `    item …` lines under that.
+struct ProbeCase {
+    row: &'static str,
+    max_id: u32,
+    items: Vec<&'static str>,
+}
+
+/// The `######## <mode>` section of [`TRANSCRIPT_10B`], parsed into [`ProbeCase`]s.
+fn cases(mode: &str) -> Vec<ProbeCase> {
+    let header = format!("######## {mode}");
+    let mut out: Vec<ProbeCase> = Vec::new();
+    let mut inside = false;
+    for line in TRANSCRIPT_10B.lines() {
+        if line.starts_with("######## ") {
+            inside = line == header;
+            continue;
+        }
+        if !inside || line.starts_with('#') || line.starts_with("mode=") {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("    maxId=") {
+            let max_id = rest.split(' ').next().unwrap()["".len()..].parse().unwrap();
+            out.last_mut()
+                .expect("a maxId line always follows a probe row")
+                .max_id = max_id;
+        } else if line.starts_with("    item ") {
+            out.last_mut()
+                .expect("an item line always follows a probe row")
+                .items
+                .push(line);
+        } else {
+            out.push(ProbeCase {
+                row: line,
+                max_id: 0,
+                items: Vec::new(),
+            });
+        }
+    }
+    assert!(!out.is_empty(), "transcript section `{mode}` is empty");
+    out
+}
+
+/// `P6T10bProbe.pt` — `p.toFloat().round()`, rendered `(x,y)`.
+fn dump_point(point: &Point) -> String {
+    let rounded = point.to_float().round();
+    format!("({},{})", rounded.x, rounded.y)
+}
+
+/// `P6T10bProbe.nets` — `java.util.Arrays.toString` with the spaces removed.
+fn dump_nets(net_nos: &[i32]) -> String {
+    let inner: Vec<String> = net_nos.iter().map(i32::to_string).collect();
+    format!("[{}]", inner.join(","))
+}
+
+/// `P6T10bProbe.dump()` — one line per item, in `Board::get_items()` order (descending id).
+fn dump_board(board: &Board) -> Vec<String> {
+    let ctx = board.ctx();
+    let mut out = Vec::new();
+    for item in board.get_items() {
+        let type_name = match item {
+            Item::Trace(_) => "PolylineTrace",
+            Item::Via(_) => "Via",
+            Item::Pin(_) => "Pin",
+            Item::ObstacleArea(_) => "ObstacleArea",
+            Item::ConductionArea(_) => "ConductionArea",
+            Item::ViaObstacleArea(_) => "ViaObstacleArea",
+            Item::ComponentObstacleArea(_) => "ComponentObstacleArea",
+            Item::ComponentOutline(_) => "ComponentOutline",
+            Item::BoardOutline(_) => "BoardOutline",
+        };
+        let mut line = format!(
+            "    item id={} type={} nets={} cl={}",
+            item.id().0,
+            type_name,
+            dump_nets(item.net_nos()),
+            item.clearance_class()
+        );
+        match item {
+            Item::Trace(trace) => {
+                let corners: Vec<String> = (0..trace.corner_count())
+                    .map(|i| {
+                        dump_point(
+                            &trace
+                                .polyline()
+                                .corner(i)
+                                .expect("a corner index below cornerCount"),
+                        )
+                    })
+                    .collect();
+                line.push_str(&format!(
+                    " layer={} hw={} corners=[{}]",
+                    trace.get_layer(),
+                    trace.get_half_width(),
+                    corners.join(",")
+                ));
+            }
+            Item::Via(via) => {
+                let padstack = board
+                    .library
+                    .padstacks
+                    .get(via.get_padstack_id())
+                    .expect("a via's padstack is in the library");
+                line.push_str(&format!(
+                    " padstack={} center={} attach={}",
+                    padstack.name,
+                    dump_point(&via.get_center()),
+                    via.attach_allowed
+                ));
+            }
+            Item::Pin(pin) => {
+                let padstack = pin.get_padstack(&ctx).expect("a pin's padstack");
+                line.push_str(&format!(
+                    " padstack={} center={}",
+                    padstack.name,
+                    dump_point(&pin.get_center(&ctx))
+                ));
+            }
+            _ => {}
+        }
+        out.push(line);
+    }
+    out
+}
+
+fn max_generated_id(board: &Board) -> u32 {
+    board.communication.id_gen.max_generated_id().0
+}
+
+/// `String.hashCode()` (JLS: `s[0]*31^(n-1) + …`, `int` arithmetic, so wrapping) of the probe's
+/// `maxId|items|dump` string — mode `rand`'s compact whole-board fingerprint.
+fn java_string_hash(text: &str) -> i32 {
+    let mut hash: i32 = 0;
+    for c in text.chars() {
+        hash = hash.wrapping_mul(31).wrapping_add(c as i32);
+    }
+    hash
+}
+
+fn board_fingerprint(board: &Board) -> i32 {
+    let dump = dump_board(board);
+    let mut text = format!("{}|{}|", max_generated_id(board), dump.len());
+    for line in &dump {
+        text.push_str(line);
+        text.push('\n');
+    }
+    java_string_hash(&text)
+}
+
+/// Assert the whole board state against one probe row.
+fn assert_board_matches(board: &Board, case: &ProbeCase) {
+    assert_eq!(
+        max_generated_id(board),
+        case.max_id,
+        "maxId after probe row `{}`",
+        case.row
+    );
+    let actual = dump_board(board);
+    assert_eq!(
+        actual.len(),
+        case.items.len(),
+        "item count after probe row `{}`\n  rust: {:#?}\n  java: {:#?}",
+        case.row,
+        actual,
+        case.items
+    );
+    for (got, want) in actual.iter().zip(case.items.iter()) {
+        assert_eq!(got, want, "board state after probe row `{}`", case.row);
+    }
+}
+
+/// `P6T10bProbe.buildWithVia` — the probe board plus a free, unfixed net-3 via.
+fn probe_board_with_via(angle: AngleRestriction, via_center: Point) -> (Board, ItemId) {
+    let mut board = probe_board(angle);
+    let through = PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+    let via = board
+        .insert_via_checked(
+            through,
+            via_center,
+            vec![3],
+            1,
+            FixedState::Unfixed,
+            false,
+            &|| false,
+        )
+        .expect("the probe board has nothing to split");
+    (board, via)
+}
+
+/// `P6T10bProbe.padShape` — a box in the 90-degree regime, an octagon otherwise.
+fn probe_pad_shape(centre: IntPoint, radius: i32, is_90: bool) -> TileShape {
+    if is_90 {
+        TileShape::Box(IntBox::from_coords(
+            centre.x - radius,
+            centre.y - radius,
+            centre.x + radius,
+            centre.y + radius,
+        ))
+    } else {
+        TileShape::Octagon(IntOctagon::new(
+            centre.x - radius,
+            centre.y - radius,
+            centre.x + radius,
+            centre.y + radius,
+            centre.x - centre.y - 2 * radius,
+            centre.x - centre.y + 2 * radius,
+            centre.x + centre.y - 2 * radius,
+            centre.x + centre.y + 2 * radius,
+        ))
+    }
+}
+
+/// `P6T10bProbe.spots()`.
+fn probe_spots() -> [(&'static str, IntPoint); 5] {
+    [
+        ("onNet1Trace", IntPoint::new(0, 200)),
+        ("onNet2Trace", IntPoint::new(-800, 900)),
+        ("onSmdPin", IntPoint::new(-500, 0)),
+        ("freeSpace", IntPoint::new(2000, 2000)),
+        ("offBoard", IntPoint::new(9990, 9990)),
+    ]
+}
+
+fn never_stop() -> impl Fn() -> bool {
+    || false
+}
+
+/// Mode `pad`: `ForcedPadRouter.forcedPad` over 5 spots x 2 radii x 2 net arrays x
+/// `copperSharingAllowed` x 2 recursion depths x `changedArea` on/off, in both angle regimes,
+/// plus the two early arms — **320 grid rows and 2 extra rows**, each with its whole board.
+#[test]
+fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
+    let stop = never_stop();
+    let mut probe_rows = cases("pad").into_iter();
+    let mut checked = 0usize;
+    for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
+        let is_90 = angle == AngleRestriction::NinetyDegree;
+        for (label, centre) in probe_spots() {
+            for radius in [60, 250] {
+                for net_arr in [vec![1], vec![3]] {
+                    for copper_sharing in [false, true] {
+                        for max_recursion_depth in [0, 20] {
+                            for with_changed_area in [false, true] {
+                                let case = probe_rows.next().expect("a probe row per grid point");
+                                let mut board = probe_board(angle);
+                                if with_changed_area {
+                                    board.start_marking_changed_area();
+                                }
+                                board.set_shove_failing_obstacle(None);
+                                let shape = probe_pad_shape(centre, radius, is_90);
+                                let from_side =
+                                    ShapeEntrySide::from_point(&Point::Int(centre), &shape);
+                                let ok = ForcedPadRouter::forced_pad(
+                                    &mut board,
+                                    &shape,
+                                    &from_side,
+                                    0,
+                                    &net_arr,
+                                    1,
+                                    copper_sharing,
+                                    None,
+                                    max_recursion_depth,
+                                    5,
+                                    &stop,
+                                )
+                                .expect("no stop check trips here");
+                                let expected: bool =
+                                    answer(case.row).split(' ').next().unwrap().parse().unwrap();
+                                assert_eq!(
+                                    field(case.row, "spot"),
+                                    label,
+                                    "grid and transcript are out of step"
+                                );
+                                assert_eq!(ok, expected, "probe row `{}`", case.row);
+                                assert_eq!(
+                                    board
+                                        .get_shove_failing_obstacle()
+                                        .map_or("null".to_string(), |id| id.0.to_string()),
+                                    field(case.row, "failing"),
+                                    "shoveFailingObstacle after `{}`",
+                                    case.row
+                                );
+                                assert_board_matches(&board, &case);
+                                checked += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(
+        checked, 320,
+        "2 regimes x 5 spots x 2 radii x 2 nets x 2 share x 2 depths x 2 changedArea"
+    );
+
+    // `:355-358` — an empty pad shape answers `true` and leaves the board alone.
+    let empty_case = probe_rows.next().expect("the emptyShape row");
+    let mut board = probe_board(AngleRestriction::None);
+    board.set_shove_failing_obstacle(None);
+    let empty = TileShape::Box(IntBox::from_coords(100, 100, 0, 0));
+    assert!(
+        ForcedPadRouter::forced_pad(
+            &mut board,
+            &empty,
+            &ShapeEntrySide::NOT_CALCULATED,
+            0,
+            &[1],
+            1,
+            false,
+            None,
+            20,
+            5,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_board_matches(&board, &empty_case);
+
+    // `:359-362` — a pad outside the bounding box answers `false` and records the outline, which
+    // on a board built without one is `null`.
+    let outside_case = probe_rows.next().expect("the outsideBoundingBox row");
+    let mut board = probe_board(AngleRestriction::None);
+    board.set_shove_failing_obstacle(None);
+    let huge = TileShape::Box(IntBox::from_coords(-20_000, -20_000, 20_000, 20_000));
+    assert!(
+        !ForcedPadRouter::forced_pad(
+            &mut board,
+            &huge,
+            &ShapeEntrySide::NOT_CALCULATED,
+            0,
+            &[1],
+            1,
+            false,
+            None,
+            20,
+            5,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_board_matches(&board, &outside_case);
+    assert!(probe_rows.next().is_none(), "every `pad` row was consumed");
+}
+
+/// Mode `trace`: `TraceShover.insert` over the same grid plus the spring-over budget — **320 grid
+/// rows and 2 extra rows**.
+#[test]
+fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
+    let stop = never_stop();
+    let mut probe_rows = cases("trace").into_iter();
+    let mut checked = 0usize;
+    for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
+        let is_90 = angle == AngleRestriction::NinetyDegree;
+        for (label, centre) in probe_spots() {
+            for radius in [60, 250] {
+                for net_arr in [vec![1], vec![3]] {
+                    for max_recursion_depth in [0, 20] {
+                        for spring_over in [0, 3] {
+                            for with_changed_area in [false, true] {
+                                let case = probe_rows.next().expect("a probe row per grid point");
+                                let mut board = probe_board(angle);
+                                if with_changed_area {
+                                    board.start_marking_changed_area();
+                                }
+                                board.set_shove_failing_obstacle(None);
+                                let shape = probe_pad_shape(centre, radius, is_90);
+                                let from_side =
+                                    ShapeEntrySide::from_point(&Point::Int(centre), &shape);
+                                let ok = TraceShover::insert(
+                                    &mut board,
+                                    &shape,
+                                    Some(&from_side),
+                                    0,
+                                    &net_arr,
+                                    1,
+                                    None,
+                                    max_recursion_depth,
+                                    5,
+                                    spring_over,
+                                    &stop,
+                                )
+                                .expect("no stop check trips here");
+                                let expected: bool =
+                                    answer(case.row).split(' ').next().unwrap().parse().unwrap();
+                                assert_eq!(field(case.row, "spot"), label);
+                                assert_eq!(ok, expected, "probe row `{}`", case.row);
+                                assert_eq!(
+                                    board
+                                        .get_shove_failing_obstacle()
+                                        .map_or("null".to_string(), |id| id.0.to_string()),
+                                    field(case.row, "failing"),
+                                    "shoveFailingObstacle after `{}`",
+                                    case.row
+                                );
+                                assert_board_matches(&board, &case);
+                                checked += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(checked, 320);
+
+    let empty_case = probe_rows.next().expect("the emptyShape row");
+    let mut board = probe_board(AngleRestriction::None);
+    board.set_shove_failing_obstacle(None);
+    assert!(
+        TraceShover::insert(
+            &mut board,
+            &TileShape::Box(IntBox::from_coords(100, 100, 0, 0)),
+            Some(&ShapeEntrySide::NOT_CALCULATED),
+            0,
+            &[1],
+            1,
+            None,
+            20,
+            5,
+            0,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_board_matches(&board, &empty_case);
+
+    let outside_case = probe_rows.next().expect("the outsideBoundingBox row");
+    let mut board = probe_board(AngleRestriction::None);
+    board.set_shove_failing_obstacle(None);
+    assert!(
+        !TraceShover::insert(
+            &mut board,
+            &TileShape::Box(IntBox::from_coords(-20_000, -20_000, 20_000, 20_000)),
+            Some(&ShapeEntrySide::NOT_CALCULATED),
+            0,
+            &[1],
+            1,
+            None,
+            20,
+            5,
+            0,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_board_matches(&board, &outside_case);
+    assert!(
+        probe_rows.next().is_none(),
+        "every `trace` row was consumed"
+    );
+}
+
+/// Quirk #177's minimal repro, straight off the probe: with `board.changedArea == null`,
+/// `TraceShover.insert:572`'s `board.changedArea.getArea(layer)` throws a
+/// `NullPointerException` that the `catch (Exception)` one line down swallows — so the substitute
+/// pieces are inserted **un-normalized**, three separate traces, where the identical call on a
+/// board that *is* marking its changed area normalizes them into one.
+///
+/// `ForcedPadRouter.forcedPad:437-441` guards the same null; the two are not symmetric.
+#[test]
+fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized() {
+    let stop = never_stop();
+    let shape = probe_pad_shape(IntPoint::new(0, 200), 60, false);
+    let from_side = ShapeEntrySide::from_point(&Point::new(0, 200), &shape);
+
+    // changedArea == null: the NPE is swallowed, three pieces survive (probe row
+    // `spot=onNet1Trace r=60 nets=[3] maxRec=20 spring=0 changedArea=false`).
+    let mut board = probe_board(AngleRestriction::None);
+    assert!(board.changed_area.is_none());
+    assert!(
+        TraceShover::insert(
+            &mut board,
+            &shape,
+            Some(&from_side),
+            0,
+            &[3],
+            1,
+            None,
+            20,
+            5,
+            0,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_eq!(max_generated_id(&board), 8);
+    assert_eq!(
+        dump_board(&board),
+        vec![
+            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]",
+            "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(500,400)]",
+            "    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(-500,0),(-269,0)]",
+            "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
+            "    item id=3 type=Pin nets=[1] cl=1 padstack=thru center=(500,0)",
+            "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
+            "    item id=1 type=BoardOutline nets=[] cl=0",
+        ]
+    );
+
+    // changedArea != null: `normalize` runs and combines the three into one.
+    let mut board = probe_board(AngleRestriction::None);
+    board.start_marking_changed_area();
+    assert!(
+        TraceShover::insert(
+            &mut board,
+            &shape,
+            Some(&from_side),
+            0,
+            &[3],
+            1,
+            None,
+            20,
+            5,
+            0,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_eq!(max_generated_id(&board), 8);
+    assert_eq!(
+        dump_board(&board),
+        vec![
+            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
+            "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
+            "    item id=3 type=Pin nets=[1] cl=1 padstack=thru center=(500,0)",
+            "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
+            "    item id=1 type=BoardOutline nets=[] cl=0",
+        ]
+    );
+}
+
+/// Mode `shove`: `DrillItemMover.shoveVias` (144 rows) then `DrillItemMover.insert` (72 rows) and
+/// the shove-fixed row, in both angle regimes.
+#[test]
+fn drill_item_mover_shove_vias_and_insert_agree_with_the_jvm() {
+    let stop = never_stop();
+    let mut probe_rows = cases("shove").into_iter();
+    let via_spots = [
+        ("freeSpace", IntPoint::new(2000, 2000)),
+        ("nearNet1Trace", IntPoint::new(0, 250)),
+        ("nearNet2Trace", IntPoint::new(-500, 900)),
+    ];
+    let mut shove_rows = 0usize;
+    let mut insert_rows = 0usize;
+    for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
+        let is_90 = angle == AngleRestriction::NinetyDegree;
+        for (label, via_centre) in via_spots {
+            for radius in [80, 300] {
+                for net_arr in [vec![1], vec![3]] {
+                    for max_via_recursion_depth in [0, 1, 5] {
+                        for copper_sharing in [false, true] {
+                            let case = probe_rows.next().expect("a shoveVias row");
+                            let (mut board, _via) =
+                                probe_board_with_via(angle, Point::Int(via_centre));
+                            board.start_marking_changed_area();
+                            board.set_shove_failing_obstacle(None);
+                            let shape = probe_pad_shape(via_centre, radius, is_90);
+                            let from_side =
+                                ShapeEntrySide::from_point(&Point::Int(via_centre), &shape);
+                            let ok = DrillItemMover::shove_vias(
+                                &mut board,
+                                &shape,
+                                &from_side,
+                                0,
+                                &net_arr,
+                                1,
+                                None,
+                                20,
+                                max_via_recursion_depth,
+                                copper_sharing,
+                                &stop,
+                            )
+                            .expect("no stop check trips here");
+                            assert_eq!(field(case.row, "via"), label);
+                            let expected: bool =
+                                answer(case.row).split(' ').next().unwrap().parse().unwrap();
+                            assert_eq!(ok, expected, "probe row `{}`", case.row);
+                            assert_board_matches(&board, &case);
+                            shove_rows += 1;
+                        }
+                    }
+                }
+            }
+        }
+        for (label, via_centre) in via_spots {
+            for delta in [
+                (0, 0),
+                (300, 0),
+                (-300, 0),
+                (0, 700),
+                (4000, 4000),
+                (20_000, 0),
+            ] {
+                for max_recursion_depth in [0, 20] {
+                    let case = probe_rows.next().expect("an insert row");
+                    let (mut board, via) = probe_board_with_via(angle, Point::Int(via_centre));
+                    board.start_marking_changed_area();
+                    board.set_shove_failing_obstacle(None);
+                    let ok = DrillItemMover::insert(
+                        &mut board,
+                        via,
+                        &Vector::new(delta.0, delta.1),
+                        max_recursion_depth,
+                        5,
+                        None,
+                        &stop,
+                    )
+                    .expect("no stop check trips here");
+                    assert_eq!(field(case.row, "via"), label);
+                    let expected: bool =
+                        answer(case.row).split(' ').next().unwrap().parse().unwrap();
+                    assert_eq!(ok, expected, "probe row `{}`", case.row);
+                    assert_board_matches(&board, &case);
+                    insert_rows += 1;
+                }
+            }
+        }
+        // `:117-119` — a shove-fixed drill item refuses without touching the board.
+        let case = probe_rows.next().expect("the shoveFixed row");
+        let (mut board, unfixed) = probe_board_with_via(angle, Point::new(2000, 2000));
+        board.set_shove_failing_obstacle(None);
+        let through = PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+        let user_fixed = board
+            .insert_via_checked(
+                through,
+                Point::new(3000, 3000),
+                vec![3],
+                1,
+                FixedState::UserFixed,
+                false,
+                &stop,
+            )
+            .unwrap();
+        assert!(
+            !DrillItemMover::insert(
+                &mut board,
+                user_fixed,
+                &Vector::new(300, 0),
+                20,
+                5,
+                None,
+                &stop
+            )
+            .unwrap()
+        );
+        assert!(
+            DrillItemMover::insert(&mut board, unfixed, &Vector::new(0, 0), 20, 5, None, &stop)
+                .unwrap()
+        );
+        assert_board_matches(&board, &case);
+    }
+    assert_eq!(
+        shove_rows, 144,
+        "2 regimes x 3 vias x 2 radii x 2 nets x 3 depths x 2 share"
+    );
+    assert_eq!(insert_rows, 72, "2 regimes x 3 vias x 6 deltas x 2 depths");
+    assert!(
+        probe_rows.next().is_none(),
+        "every `shove` row was consumed"
+    );
+}
+
+/// Mode `via`: `ForcedViaInserter.insert` over 2 hole clearances x 7 spots x `attachSmd` x 2 net
+/// arrays x 3 `tracePenHalfwidthArr`s, in both angle regimes — **336 rows**, each with its whole
+/// board, the `shoveFailingLayer` it left and the `shoveFailingObstacle`.
+#[test]
+fn forced_via_inserter_insert_agrees_with_the_jvm_on_every_probe_row() {
+    let stop = never_stop();
+    let mut probe_rows = cases("via").into_iter();
+    let spots = [
+        ("onNet1Trace", Point::new(0, 200)),
+        ("crossesNet1Trace", Point::new(0, 400)),
+        ("onNet2Trace", Point::new(-800, 900)),
+        ("onSmdPin", Point::new(-500, 0)),
+        ("onThruPin", Point::new(500, 0)),
+        ("freeSpace", Point::new(2000, 2000)),
+        ("offBoard", Point::new(9990, 9990)),
+    ];
+    let mut checked = 0usize;
+    for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
+        for hole_clearance in [0, 300] {
+            for (label, location) in &spots {
+                for attach_smd in [false, true] {
+                    for net_arr in [vec![1], vec![3]] {
+                        for pen in [[0, 0], [30, 30], [400, 400]] {
+                            let case = probe_rows.next().expect("a probe row per grid point");
+                            let mut board = probe_board(angle);
+                            board.rules.set_hole_clearance(hole_clearance);
+                            board.start_marking_changed_area();
+                            board.set_shove_failing_layer(-1);
+                            board.set_shove_failing_obstacle(None);
+                            let through =
+                                PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+                            let via_info = ViaInfo::new("v", through, 1, attach_smd);
+                            let ok = ForcedViaInserter::insert(
+                                &mut board, &via_info, location, &net_arr, 1, &pen, 20, 5, &stop,
+                            )
+                            .expect("no stop check trips here");
+                            assert_eq!(field(case.row, "spot"), *label);
+                            let expected: bool =
+                                answer(case.row).split(' ').next().unwrap().parse().unwrap();
+                            assert_eq!(ok, expected, "probe row `{}`", case.row);
+                            assert_eq!(
+                                board.get_shove_failing_layer().to_string(),
+                                field(case.row, "failingLayer"),
+                                "shoveFailingLayer after `{}`",
+                                case.row
+                            );
+                            assert_eq!(
+                                board
+                                    .get_shove_failing_obstacle()
+                                    .map_or("null".to_string(), |id| id.0.to_string()),
+                                field(case.row, "failing"),
+                                "shoveFailingObstacle after `{}`",
+                                case.row
+                            );
+                            assert_board_matches(&board, &case);
+                            checked += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(
+        checked, 336,
+        "2 regimes x 2 hole clearances x 7 spots x 2 attachSmd x 2 nets x 3 pens"
+    );
+    assert!(probe_rows.next().is_none(), "every `via` row was consumed");
+}
+
+/// The plan-3 ruling F path, asserted as literals: a via inserted at a corner of the net-1 trace
+/// reaches `BasicBoard.insertVia:287-293` -> `splitTraces` -> `PolylineTrace.split` and **splits
+/// the trace it crosses in two**, with the `StopCheck` never tripping.
+///
+/// Probe row: `hc=0 spot=crossesNet1Trace attachSmd=false nets=[1] pen=[0,0]`.
+#[test]
+fn insert_splits_the_traces_it_crosses() {
+    let stop = never_stop();
+    let mut board = probe_board(AngleRestriction::None);
+    board.start_marking_changed_area();
+    let through = PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+    let via_info = ViaInfo::new("v", through, 1, false);
+    assert!(
+        ForcedViaInserter::insert(
+            &mut board,
+            &via_info,
+            &Point::new(0, 400),
+            &[1],
+            1,
+            &[0, 0],
+            20,
+            5,
+            &stop
+        )
+        .unwrap()
+    );
+    // The via is id 6 (burnt before the split), and the split pieces are 7 and 8: the id-burn
+    // order is `insertVia` -> `splitTraces` -> `split`, exactly as Java's.
+    assert_eq!(max_generated_id(&board), 8);
+    assert_eq!(
+        dump_board(&board),
+        vec![
+            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(0,400),(500,400)]",
+            "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(-500,0),(0,0),(0,400)]",
+            "    item id=6 type=Via nets=[1] cl=1 padstack=thru center=(0,400) attach=false",
+            "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
+            "    item id=3 type=Pin nets=[1] cl=1 padstack=thru center=(500,0)",
+            "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
+            "    item id=1 type=BoardOutline nets=[] cl=0",
+        ]
+    );
+}
+
+/// Plan-6 ruling 6, the other half of plan-3 ruling F: on a ladder board (quirk #76's minimal
+/// repro) the walk `insertVia` -> `splitTraces` -> `PolylineTrace.split` ->
+/// `Item.getConnectionItems` does not terminate in Java, so the port threads a [`StopCheck`]
+/// through it. A check that trips after `n` calls must answer [`BoardError::Stopped`] — never
+/// hang, and never be swallowed by the `catch` at `TraceShover.java:573` / `ForcedPadRouter`'s.
+#[test]
+fn insert_stops_when_the_stop_check_trips() {
+    let mut board = probe_board(AngleRestriction::None);
+    board.start_marking_changed_area();
+    // `P6T10bProbe.buildLadder`: four rungs between two rails, all on net 3.
+    for i in 0..4 {
+        let x = 1000 + i * 200;
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(x, 1000), Point::new(x, 1600)]),
+            0,
+            30,
+            vec![3],
+            1,
+            FixedState::Unfixed,
+        );
+    }
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(1000, 1000), Point::new(1600, 1000)]),
+        0,
+        30,
+        vec![3],
+        1,
+        FixedState::Unfixed,
+    );
+    board.insert_trace_without_cleaning(
+        Polyline::from_points(&[Point::new(1000, 1600), Point::new(1600, 1600)]),
+        0,
+        30,
+        vec![3],
+        1,
+        FixedState::Unfixed,
+    );
+
+    let calls = std::cell::Cell::new(0u32);
+    let stop = || {
+        calls.set(calls.get() + 1);
+        calls.get() > 3
+    };
+    let through = PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+    let via_info = ViaInfo::new("v", through, 1, false);
+    let outcome = ForcedViaInserter::insert(
+        &mut board,
+        &via_info,
+        &Point::new(1200, 1000),
+        &[3],
+        1,
+        &[0, 0],
+        20,
+        5,
+        &stop,
+    );
+    assert_eq!(outcome, Err(BoardError::Stopped));
+    assert!(calls.get() > 3, "the stop check was actually consulted");
+}
+
+/// The brief's `forced_pad_shoves_a_foreign_via_and_reports_the_moved_items`: a pad shape over a
+/// free foreign-net via reaches `DrillItemMover.shoveVias` (`forcedPad:364`), which moves the via
+/// out of the way and leaves it at the JVM's coordinates.
+///
+/// Probe rows: `shoveVias via=freeSpace r=80 nets=[1] maxViaRec=1 share=false` and the
+/// `maxViaRec=0` row above it, where the budget is spent and the via stays put.
+#[test]
+fn forced_pad_shoves_a_foreign_via_and_reports_the_moved_items() {
+    let stop = never_stop();
+    let centre = IntPoint::new(2000, 2000);
+    let shape = probe_pad_shape(centre, 80, false);
+    let from_side = ShapeEntrySide::from_point(&Point::Int(centre), &shape);
+
+    // The via budget is spent: `shoveVias:206-208` answers `true` without moving anything.
+    let (mut board, via) = probe_board_with_via(AngleRestriction::None, Point::Int(centre));
+    board.start_marking_changed_area();
+    assert!(
+        DrillItemMover::shove_vias(
+            &mut board,
+            &shape,
+            &from_side,
+            0,
+            &[1],
+            1,
+            None,
+            20,
+            0,
+            false,
+            &stop
+        )
+        .unwrap()
+    );
+    assert!(
+        board.get_item(via).is_some(),
+        "the via is still on the board"
+    );
+    assert_eq!(
+        dump_board(&board)
+            .into_iter()
+            .find(|line| line.contains("type=Via"))
+            .unwrap(),
+        "    item id=6 type=Via nets=[3] cl=1 padstack=thru center=(2000,2000) attach=false"
+    );
+
+    // One unit of via budget is enough: the via moves to (2368, 2000).
+    let (mut board, _via) = probe_board_with_via(AngleRestriction::None, Point::Int(centre));
+    board.start_marking_changed_area();
+    assert!(
+        DrillItemMover::shove_vias(
+            &mut board,
+            &shape,
+            &from_side,
+            0,
+            &[1],
+            1,
+            None,
+            20,
+            1,
+            false,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_eq!(
+        dump_board(&board)
+            .into_iter()
+            .find(|line| line.contains("type=Via"))
+            .unwrap(),
+        "    item id=6 type=Via nets=[3] cl=1 padstack=thru center=(2368,2000) attach=false"
+    );
+}
+
+/// The brief's `insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged`: a
+/// `tracePenHalfwidthArr` wide enough that the start-trace circle cannot be shoved makes
+/// `ForcedViaInserter.insert` refuse at `:343-344` **before** `BasicBoard.insertVia` — so no id
+/// is burnt, no via exists, and the board is byte-identical to the one it started with.
+///
+/// Probe row: `hc=0 spot=crossesNet1Trace attachSmd=false nets=[1] pen=[400,400]`.
+#[test]
+fn insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged() {
+    let stop = never_stop();
+    let mut board = probe_board(AngleRestriction::None);
+    board.start_marking_changed_area();
+    let before = board.structural_hash();
+    let before_dump = dump_board(&board);
+    let through = PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+    let via_info = ViaInfo::new("v", through, 1, false);
+    assert!(
+        !ForcedViaInserter::insert(
+            &mut board,
+            &via_info,
+            &Point::new(0, 400),
+            &[1],
+            1,
+            &[400, 400],
+            20,
+            5,
+            &stop
+        )
+        .unwrap()
+    );
+    assert_eq!(board.get_shove_failing_layer(), 0);
+    assert_eq!(board.get_shove_failing_obstacle(), Some(ItemId(3)));
+    assert_eq!(max_generated_id(&board), 5, "no id was burnt");
+    assert_eq!(dump_board(&board), before_dump);
+    assert_eq!(board.structural_hash(), before);
+}
+
+/// The brief's `>= 100 random cases each, 0 diffs`: **five blocks of 120** pseudo-random rows,
+/// one per method, each asserting the answer, `maxId`, the item count and a `String.hashCode` of
+/// the whole board dump — so a single wrong coordinate anywhere on the board fails the row.
+#[test]
+fn the_five_random_blocks_agree_with_the_jvm() {
+    let stop = never_stop();
+    let mut rows = cases("rand").into_iter();
+    for (which, _label) in [
+        (0, "forcedPad"),
+        (1, "traceShoverInsert"),
+        (2, "shoveVias"),
+        (3, "drillItemMoverInsert"),
+        (4, "forcedViaInsert"),
+    ] {
+        let mut seed: u64 = 20_261_111u64.wrapping_add((which as u64).wrapping_mul(7919));
+        let mut next = move || {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            seed >> 33
+        };
+        let mut next_int = |bound: u64| -> i32 { (next() % bound) as i32 };
+        let mut diffs: Vec<String> = Vec::new();
+        for i in 0..120 {
+            let case = rows.next().expect("120 rows per block");
+            let angle = if next_int(2) == 0 {
+                AngleRestriction::None
+            } else {
+                AngleRestriction::NinetyDegree
+            };
+            let is_90 = angle == AngleRestriction::NinetyDegree;
+            let x = next_int(4000) - 2000;
+            let y = next_int(4000) - 2000;
+            let radius = next_int(400) + 40;
+            let net_no = next_int(3) + 1;
+            let max_recursion_depth = next_int(4) * 7;
+            let max_via_recursion_depth = next_int(4);
+            let spring_over = next_int(3);
+            let copper_sharing = next_int(2) == 0;
+            let with_changed_area = next_int(2) == 0;
+            // `P6T10bProbe.randomBlock`: the via is placed near the probed shape, so the
+            // `shoveVias` block has something to shove; see the comment there.
+            let via_x = x + next_int(700) - 350;
+            let via_y = y + next_int(700) - 350;
+            // `P6T10bProbe.randomBlock`'s block-2 narrowing: the `shoveVias` rows put the via
+            // inside the shape, off the shape's net and with a via budget, because a row that
+            // takes one of `:203-208`'s two skip arms proves nothing. The skip arms themselves
+            // are the deterministic `shove` mode's job.
+            let (via_x, via_y, net_no, max_via_recursion_depth) = if which == 2 {
+                (
+                    x + (via_x - x) / 3,
+                    y + (via_y - y) / 3,
+                    (net_no % 2) + 1,
+                    max_via_recursion_depth + 1,
+                )
+            } else {
+                (via_x, via_y, net_no, max_via_recursion_depth)
+            };
+            let centre = IntPoint::new(x, y);
+            let (mut board, via) = probe_board_with_via(angle, Point::new(via_x, via_y));
+            if with_changed_area {
+                board.start_marking_changed_area();
+            }
+            board.set_shove_failing_obstacle(None);
+            board.set_shove_failing_layer(-1);
+            let shape = probe_pad_shape(centre, radius, is_90);
+            let from_side = ShapeEntrySide::from_point(&Point::Int(centre), &shape);
+            let net_arr = [net_no];
+            let ok = match which {
+                0 => ForcedPadRouter::forced_pad(
+                    &mut board,
+                    &shape,
+                    &from_side,
+                    0,
+                    &net_arr,
+                    1,
+                    copper_sharing,
+                    None,
+                    max_recursion_depth,
+                    max_via_recursion_depth,
+                    &stop,
+                ),
+                1 => TraceShover::insert(
+                    &mut board,
+                    &shape,
+                    Some(&from_side),
+                    0,
+                    &net_arr,
+                    1,
+                    None,
+                    max_recursion_depth,
+                    max_via_recursion_depth,
+                    spring_over,
+                    &stop,
+                ),
+                2 => DrillItemMover::shove_vias(
+                    &mut board,
+                    &shape,
+                    &from_side,
+                    0,
+                    &net_arr,
+                    1,
+                    None,
+                    max_recursion_depth,
+                    max_via_recursion_depth,
+                    copper_sharing,
+                    &stop,
+                ),
+                3 => DrillItemMover::insert(
+                    &mut board,
+                    via,
+                    &Vector::new(x / 8, y / 8),
+                    max_recursion_depth,
+                    max_via_recursion_depth,
+                    None,
+                    &stop,
+                ),
+                _ => {
+                    let through =
+                        PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
+                    let via_info = ViaInfo::new("v", through, 1, copper_sharing);
+                    ForcedViaInserter::insert(
+                        &mut board,
+                        &via_info,
+                        &Point::Int(centre),
+                        &net_arr,
+                        1,
+                        &[radius / 4, radius / 4],
+                        max_recursion_depth,
+                        max_via_recursion_depth,
+                        &stop,
+                    )
+                }
+            }
+            .expect("no stop check trips here");
+            let expected: bool = answer(case.row).split(' ').next().unwrap().parse().unwrap();
+            let expected_hash: i32 = field(case.row, "hash").parse().unwrap();
+            let expected_max_id: u32 = field(case.row, "maxId").parse().unwrap();
+            let expected_items: usize = field(case.row, "items").parse().unwrap();
+            let actual_items = dump_board(&board).len();
+            if ok != expected
+                || max_generated_id(&board) != expected_max_id
+                || actual_items != expected_items
+                || board_fingerprint(&board) != expected_hash
+            {
+                diffs.push(format!(
+                    "i={i}: rust ok={ok} maxId={} items={actual_items} hash={} | java `{}`\n{:#?}",
+                    max_generated_id(&board),
+                    board_fingerprint(&board),
+                    case.row,
+                    dump_board(&board)
+                ));
+            }
+        }
+        assert!(
+            diffs.is_empty(),
+            "{} diffs:\n{}",
+            diffs.len(),
+            diffs.join("\n")
+        );
+    }
+    assert!(rows.next().is_none(), "every `rand` row was consumed");
 }

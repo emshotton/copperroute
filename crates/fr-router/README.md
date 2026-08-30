@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 10 of 18
+## State: Task 10b of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -25,9 +25,10 @@ neighbour sorters that turn a completed room into its door list, the
 `AutorouteEngine` that owns all of it, the drill pages that manufacture its
 layer changes, the four leaf types the maze search itself is written against
 (the control block, the cost bound, the queue element and the guarded queue),
-and — from Tasks 9 and 10 — the seam with `fr-board`: `RoutingBoardExt` plus the
-**check-only** half of the four shove algorithms the maze consults before it
-commits to a trace or a via:
+and — from Tasks 9, 10 and 10b — the seam with `fr-board`: `RoutingBoardExt`
+plus **both halves** of the four shove algorithms, the `check` family the maze
+consults before it commits to a trace or a via and the mutating family that then
+performs the shove and inserts the via:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -485,19 +486,31 @@ equals Java on every production path, because `initAutoroute` is the only
 non-GUI caller of the `AutorouteEngine` constructor
 (`gui/interactive/ExpandTestState.java:167` is the other, and no GUI is ported).
 
-**This is the check half only.** `ForcedViaInserter.insert`,
+**The check half and the shove half.** `ForcedViaInserter.insert`,
 `ForcedPadRouter.forcedPad`, `TraceShover.insert` and
 `DrillItemMover.{insert, shoveVias}` are one chain Plan 6 needs, so
-**controller ruling AA** puts all five in a new **Task 10b** between Tasks 10
-and 11; their markers read `// added in Task 10b:`. Only
-`TraceShover.springOverObstacles`, which nothing in Plan 6 reaches, stays an
-`// added in Plan 7:` marker.
-The property that makes the split safe is pinned by
+**controller ruling AA** put all five in a new **Task 10b** between Tasks 10
+and 11, where they now live. Only `TraceShover.springOverObstacles`, which
+nothing in Plan 6 reaches, is still an `// added in Plan 7:` marker.
+That the `check` half stays check-only is pinned by
 `trace_shover_check_does_not_mutate_the_board` and
 `check_forced_pad_does_not_mutate_the_board`: no `check` changes the board's
 item set. They *do* write `shoveFailingObstacle` / `shoveFailingLayer` and burn
 item ids on the substitute trace pieces they build, and Java's do too — none of
 those is in `Board::structural_hash`.
+
+**The shove half answers `Result<bool, BoardError>`, and only for cancellation.**
+Java's four methods answer `boolean`; the port's answer a `Result` because
+plan-6 ruling 6 threads a `StopCheck` into them, closing plan-3 ruling F:
+`ForcedViaInserter::insert` ends in `Board::insert_via_checked`, which reaches
+`split_traces` -> `PolylineTrace.split`, the walk that does not terminate on a
+four-rung ladder (quirk #76). Every `Err` is either that cancellation
+(`BoardError::Stopped`) or an error `fr-board` already surfaced to its Plan 3
+callers; no method here consults the stop check itself, so no run stops at a
+point Java's control flow does not reach. The two `catch (Exception e)` blocks
+Java wraps `PolylineTrace.normalize` in (`ForcedPadRouter.forcedPad:446-450`,
+`TraceShover.insert:571-575`) swallow every error except `Stopped`, which is not
+a Java value at all.
 
 **`springOver` returns Java's reference identity.** `TraceShover.check:382` and
 `springOverObstacles:845` both branch on `!=` against the polyline they passed
@@ -513,7 +526,7 @@ being *identical* to it, and only the identical case leaves
 (`ForcedPadRouter.java:269-278`) and `TraceShover.check` too (`:322-334`). That
 is a **cycle**, so one half had to land without the other: Task 9 landed
 `TraceShover.check` and `DrillItemMover.check` with the `checkForcedPad` call
-site as an `added in Task 10:` marker that panicked, and Task 10 replaced it
+site deferred to Task 10 behind a marker that panicked, and Task 10 replaced it
 with the real call. `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
 in `tests/forced_via.rs` is the test that proves it: probe row
 `check viaId=6 delta=(300,0) result=true ignoreSize=1`, which Task 9 could
@@ -528,17 +541,66 @@ the line is `a`, so the same geometric line reversed gives the opposite answer.
 `checkForcedPad` consults `inFrontOfPad` only when `checkOnlyFront` is true,
 which is exactly the `DrillItemMover.check` path.
 
-**`ForcedViaInserter.insert` is not here — Task 10b has it.** Task 10's brief
-asked for `insert` and also declared `ForcedPadRouter.forcedPad`
+**`ForcedViaInserter.insert` is in Task 10b, with the rest of its chain.**
+Task 10's brief asked for `insert` and also declared `ForcedPadRouter.forcedPad`
 `// added in Plan 7:`. Those two cannot both hold: `insert`'s per-layer body is
 three `forcedPad` calls (`:297`, `:317`, `:333`) before `BasicBoard.insertVia`
 (`:348`), and `forcedPad` in turn reaches `DrillItemMover.shoveVias` (`:364`)
 and `TraceShover.insert` (`:416`) — already `// added in Plan 7:` markers from
 Task 9 under plan-6 ruling 2. `task-10-report.md` §2.1 raised it as a
 **NEEDS_CONTEXT** with three options, and **controller ruling AA** took option
-B: a new **Task 10b** between Tasks 10 and 11 ports all five, so Task 15
-(`FoundConnectionInserter.java:754`) finds `ForcedViaInserter::insert` waiting
-for it, together with ruling 6's `StopCheck` on `Board::insert_via`.
+B: a new **Task 10b** between Tasks 10 and 11 ports all five.
+
+## The via-insertion chain (Task 10b)
+
+`ForcedViaInserter::insert` -> `ForcedPadRouter::forced_pad` ->
+`{DrillItemMover::shove_vias, TraceShover::insert}` -> `DrillItemMover::insert`
+-> `forced_pad` again. Five methods, one cycle, and the entry point Task 15
+calls at `FoundConnectionInserter.java:754`. `TraceShover.springOverObstacles`
+(`:827-874`) is the one method of the four classes still deferred, and it stays
+Plan 7's because nothing in Plan 6 reaches it.
+
+**They answer `Result<bool, BoardError>` where Java answers `boolean`.** That is
+plan-6 ruling 6 closing plan-3 ruling F: `ForcedViaInserter::insert` ends in
+`Board::insert_via_checked`, which reaches `split_traces` ->
+`PolylineTrace.split`, the walk that does not terminate on a four-rung ladder
+(quirk #76). `Board::{insert_via, insert_escape_via, split_traces}` keep their
+old signatures as delegating `|| false` wrappers, so every Plan 2–5 caller is
+untouched and `p2t11`/`p2t15` stay MATCH. **No method in the chain consults the
+stop check itself** — it is threaded only into the `fr-board` walks below it
+(`split_trace_checked` under `normalize` and under `split_traces`,
+`connection_items_checked` under the tail cleanup), so no run stops at a point
+Java's control flow does not reach.
+
+**Java's two `normalize` catches are reproduced, and they disagree with each
+other.** `ForcedPadRouter.forcedPad:439-450` computes `optArea` as
+`changedArea != null ? getArea(layer) : null` and normalizes; `TraceShover
+.insert:571-575` writes `board.changedArea.getArea(layer)` with **no guard**, so
+on a board that is not marking its changed area it throws a
+`NullPointerException` that its own `catch (Exception e)` swallows — and the
+substitute pieces stay un-normalized. That is quirk #177, pinned both ways by
+`trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized`.
+Every other error at those two sites is dropped exactly as Java drops the
+exception; `BoardError::Stopped` is the sole exception, because it is the port's
+cancellation signal rather than one of Java's.
+
+**`ShapeTraceEntries` had to learn to outlive `cutoutTraces`.** Java's
+`EntryPoint.trace` (`ShapeTraceEntries.java:791`) is a live `PolylineTrace`
+reference, and `nextSubstituteTracePiece` reads the trace's polyline through it
+— *after* `cutoutTraces` has taken that trace off the board, which is the order
+both `forcedPad:405-408` and `TraceShover.insert:511-514` run in. Keying by
+`ItemId` alone lost it: the board lookup answered `None` and the detour piece
+was silently never built, one item id short of Java. `fr-board`'s
+`ShapeTraceEntries` now snapshots each stored trace when it inserts the entry
+point, which is where Java takes its reference.
+
+**Board-state parity is asserted item by item.**
+`scripts/differential/java/probes/P6T10bProbe.java` rebuilds its board per row
+and dumps the whole item list in `getItems()` order plus
+`communication.idGenerator.maxGeneratedId()`; `crates/fr-router/tests/forced_via.rs`
+rebuilds the same board and compares every line. 1 292 grid rows across four
+modes, plus five random blocks of 120 that compare a whole board as one
+`String.hashCode`.
 
 ## Quirk-register numbering
 
@@ -580,7 +642,12 @@ appends the drill item to the caller's own `ignoreItems` collection — a check
 with a visible side effect); and Task 10 wrote **#176**
 (`ForcedPadRouter.inFrontOfPad`'s `case 0` reads `lineB.x` twice where every
 sibling reads `x + y`, so the same geometric line answers differently depending
-on the order of its two defining points). The next free id is **#177**. Every later
+on the order of its two defining points); and Task 10b wrote **#177**
+(`TraceShover.insert` dereferences `board.changedArea` with no null check and
+its own `catch` hides the `NullPointerException`, so the substitute traces are
+inserted un-normalized on a board that is not marking its changed area — while
+`ForcedPadRouter.forcedPad`, the same loop, guards the identical call). The next
+free id is **#178**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.

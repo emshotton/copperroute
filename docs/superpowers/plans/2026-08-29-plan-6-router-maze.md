@@ -1245,10 +1245,32 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > sites — `Direction.equals` at `:177` and `:390` and `Point.equals` at `:518` (which is in
 > `insert`, Plan 7's). There is **no** `Line.equals` call site in the class, so quirk #34's
 > `equals_geometric` obligation stays confined to `TraceTightener*.repositionLine`.
+> Task 10 landed **#176** (`ForcedPadRouter.inFrontOfPad`'s `case 0` typo) and **Task 10b**
+> landed **#177**: `TraceShover.insert:571-575` dereferences `board.changedArea` with no null
+> check and its own `catch (Exception)` hides the resulting `NullPointerException`, so on a board
+> that is not marking its changed area every substitute trace is inserted **un-normalized** —
+> while `ForcedPadRouter.forcedPad:439-444`, the same loop, guards the identical call. JVM-pinned
+> both ways by `P6T10bProbe` mode `trace`'s `changedArea=` axis.
 > Task 12 must take the next free id *at the time it writes*, re-checking
 > `docs/java-quirks.md`'s last row first — **not** the labels below.
 > Plan label #165 is **subsumed** by the landed #158 (hazard C and the NPE are one method and one
 > row); do not write it again.
+>
+> **Amendment (controller ruling AA, executed as Task 10b) — the via-insertion chain, and
+> ruling F closed here rather than in Task 15.** Ruling 2 assigns "`board/optimize/**`'s mutating
+> half" to Plan 7, and Task 9/10's briefs marked `ForcedPadRouter.forcedPad`,
+> `TraceShover.insert`, `DrillItemMover.{insert, shoveVias}` and `ForcedViaInserter.insert`
+> accordingly. Task 10 found that self-contradictory (task-10-report.md §2.1): Task 15 needs
+> `ForcedViaInserter.insert` at `FoundConnectionInserter.java:754`, and ruling 6 closes plan-3
+> ruling F *because* that method reaches `BasicBoard.insertVia`. **Ruling AA** amends ruling 2 for
+> exactly those five methods, which a new **Task 10b** between Tasks 10 and 11 ported;
+> `TraceShover.springOverObstacles` (`:827-874`) stays Plan 7's. Two consequences for later
+> tasks: **plan-3 ruling F is discharged here**, not in Task 15 —
+> `Board::{insert_via_checked, insert_escape_via_checked, split_traces_checked}` exist, with the
+> old three-of-them as delegating `|| false` wrappers, so Task 15's "three `fr-board` signature
+> changes" are already made and `p2t11`/`p2t15` stay MATCH; and the four `fr-router` methods
+> answer `Result<bool, BoardError>` where Java answers `boolean`, so Task 15 must thread the
+> `StopCheck` and the `?` through `FoundConnectionInserter`.
 >
 > **Amendment (Task 4) — hazard F's container.** Ruling 4 and Task 4's brief both prescribe a
 > `BTreeSet` for `SortedRoomNeighbours.sortedNeighbours`. **It does not reproduce Java.** On a

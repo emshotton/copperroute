@@ -15,6 +15,8 @@
 //! the splices exactly — including `popPiece`'s detached sub-list, whose nodes stay alive in the
 //! arena the way Java's stay alive through the returned references.
 
+use std::collections::BTreeMap;
+
 use fr_geometry::{FloatPoint, Polyline, TileShape};
 
 use crate::ids::ItemId;
@@ -78,6 +80,21 @@ pub struct ShapeTraceEntries {
     shape_contains_trace_tails: bool,
     /// Java `private Item foundObstacle` (:40).
     found_obstacle: Option<ItemId>,
+    /// The traces this structure has stored an entry point for, as they stood at
+    /// [`Self::store_items`] time.
+    ///
+    /// Not a Java field: Java's `EntryPoint.trace` (:791) is a **live `PolylineTrace`
+    /// reference**, and `nextSubstituteTracePiece` (:236-280) reads the trace's polyline, half
+    /// width, nets and clearance class through it. A Java reference survives the trace being
+    /// taken off the board — which is exactly what happens in the shove path, where
+    /// `cutoutTraces` runs *before* the `nextSubstituteTracePiece` loop
+    /// (`ForcedPadRouter.forcedPad:405-408`, `TraceShover.insert:511-514`) and removes every
+    /// obstacle trace it is about to build substitutes for. Keying by [`ItemId`] alone loses
+    /// that: the board lookup answers `None` and the substitute piece is silently never built.
+    /// The snapshot is the port's form of the reference, and it is taken where Java takes it —
+    /// when the entry point is created.
+    // renamed: `ShapeTraceEntries.EntryPoint.trace`'s live reference -> this id-keyed snapshot.
+    traces: BTreeMap<ItemId, PolylineTrace>,
 }
 
 impl ShapeTraceEntries {
@@ -103,6 +120,7 @@ impl ShapeTraceEntries {
             max_stack_level: 0,
             shape_contains_trace_tails: false,
             found_obstacle: None,
+            traces: BTreeMap::new(),
         }
     }
 
@@ -211,6 +229,11 @@ impl ShapeTraceEntries {
         let Some(item @ Item::Trace(trace)) = board.get_item(trace_id) else {
             return true;
         };
+        // The snapshot that stands in for Java's live `EntryPoint.trace` reference; see the
+        // field's doc. Taken before any entry point is inserted, so a trace this method then
+        // refuses still has one — harmless, and it keeps the snapshot's contents independent of
+        // which of the method's many exits was taken.
+        self.traces.insert(trace_id, trace.clone());
         let offset_shape = if search_tree.is_clearance_compensation_used() {
             // ShapeTraceEntries.java:326-329.
             let current_offset =
@@ -677,9 +700,10 @@ impl ShapeTraceEntries {
     pub fn next_substitute_trace_piece(&mut self, board: &mut Board) -> Option<PolylineTrace> {
         let (first, last) = self.pop_piece()?;
         let current_trace_id = self.entries[first].trace;
-        let Some(Item::Trace(current_trace)) = board.get_item(current_trace_id) else {
-            return None;
-        };
+        // Java reads `entries[first].trace` — a live reference that outlives `cutoutTraces`
+        // removing the trace from the board — so the port reads its snapshot, not the board.
+        let current_trace = self.traces.get(&current_trace_id).cloned()?;
+        let current_trace = &current_trace;
         let search_tree = board.trees.get_default_tree();
         // ShapeTraceEntries.java:235-245.
         let offset_shape = if search_tree.is_clearance_compensation_used() {
@@ -707,9 +731,7 @@ impl ShapeTraceEntries {
         let piece_line_count = (edge_diff + 3) as usize;
         let mut piece_lines = Vec::with_capacity(piece_line_count);
         let start_line = current_trace.polyline().lines()[self.entries[first].trace_line_no];
-        let Some(Item::Trace(last_trace)) = board.get_item(self.entries[last].trace) else {
-            return None;
-        };
+        let last_trace = self.traces.get(&self.entries[last].trace)?;
         let end_line = last_trace.polyline().lines()[self.entries[last].trace_line_no];
         piece_lines.push(start_line);
         let mut current_edge_no = self.entries[first].edge_index.rem_euclid(edge_count);
@@ -730,9 +752,6 @@ impl ShapeTraceEntries {
             return self.next_substitute_trace_piece(board);
         }
         // ShapeTraceEntries.java:272-281.
-        let Some(Item::Trace(current_trace)) = board.get_item(current_trace_id) else {
-            return None;
-        };
         let half_width = current_trace.get_half_width();
         let net_nos = current_trace.hdr.net_nos.clone();
         let clearance_class = current_trace.hdr.clearance_class();

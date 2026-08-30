@@ -700,8 +700,17 @@ would still surface as a `DIFF` on a mode nobody excused.
 ### Plans 6/7 (`fr-router`)
 
 - **`insert_via → split_traces` is an unchecked path into quirk #76's
-  machinery (ruling F).** Thread a `StopCheck` through `Board::insert_via` /
-  `Board::split_traces`. Marker at `parser/wiring.rs:596`.
+  machinery (ruling F). DISCHARGED — plan-6 ruling 6, Task 10b** (branch
+  `plan-6-router-maze`). `Board::insert_via_checked`,
+  `Board::insert_escape_via_checked` and `Board::split_traces_checked` take a
+  `StopCheck`; the three original names stay as delegating `|| false` wrappers,
+  so every Plan 2-5 caller and test is untouched. The router-side caller ruling F
+  was waiting for is `ForcedViaInserter::insert`
+  (`board/actions/ForcedViaInserter.java:348`), and
+  `crates/fr-router/tests/forced_via.rs`
+  `insert_stops_when_the_stop_check_trips` pins that a tripping check on a
+  four-rung ladder answers `BoardError::Stopped` rather than hanging. Marker at
+  `parser/wiring.rs:596`.
 - **Via-info / via-rule re-pointing (ruling H).** Decide whether router
   behaviour on a re-declared via must match Java (then `ViaInfos` needs
   tombstoned entries, or `ViaRule` must own its `ViaInfo`s) or whether

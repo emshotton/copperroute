@@ -1,14 +1,20 @@
-//! Port of the check half of `board.actions.DrillItemMover` (`board/actions/DrillItemMover.java`).
+//! Port of `board.actions.DrillItemMover` (`board/actions/DrillItemMover.java`).
 
+use fr_board::board::ShapeTraceEntries;
+use fr_board::datastructures::StopCheck;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::searchtree::ShapeSearchTree;
-use fr_board::{ItemId, TimeLimit, TreeId};
-use fr_geometry::{IntPoint, Point, TileShape, Vector};
+use fr_board::{BoardError, ItemId, TimeLimit, TreeId};
+use fr_geometry::{IntOctagon, IntPoint, Point, ShapeOps, TileShape, Vector};
 
 use crate::board_ext::forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 
-/// Port of `board.actions.DrillItemMover` (DrillItemMover.java:26-326) — the check half.
+/// Port of `board.actions.DrillItemMover` (DrillItemMover.java:26-326).
+///
+/// Task 9 landed `check` and `try_shove_via_points`; **controller ruling AA**'s Task 10b added
+/// the mutating `insert` (`:110-167`) and `shove_vias` (`:173-249`), which is the pair
+/// `ForcedPadRouter.forcedPad` and `TraceShover.insert` both need.
 ///
 /// Java's class is `final` with a private constructor and nothing but static methods; the port is
 /// a unit struct with associated functions and Java's `RoutingBoard board` parameter kept in
@@ -32,8 +38,8 @@ impl DrillItemMover {
     ///
     /// The per-layer loop reaches `ForcedPadRouter.checkForcedPad` (`:86-100`), which calls this
     /// method back (`ForcedPadRouter.java:269-278`): Java's dependency here is a **cycle**, so
-    /// Task 9 landed this side with the call site as an `added in Task 10:` marker and Task 10
-    /// replaced it with the real call. `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
+    /// Task 9 landed this side with the call site deferred and Task 10 replaced it with the real
+    /// call. `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
     /// in `tests/forced_via.rs` is the test that pins the closed cycle against the JVM.
     pub fn check(
         board: &mut Board,
@@ -144,6 +150,279 @@ impl DrillItemMover {
         true
     }
 
+    /// Port of `DrillItemMover.insert(DrillItem, Vector, int, int, IntOctagon, RoutingBoard)`
+    /// (DrillItemMover.java:110-167): "translates `drillItem` by `vector` by shoving obstacle
+    /// traces and vias aside, so that no clearance violations occur. If `tidyRegion != null`, it
+    /// will be joined by the bounding octagons of the translated shapes."
+    ///
+    /// The mutating twin of [`Self::check`], and — unlike it — it has **no `TimeLimit`
+    /// parameter**: Java's comment at `shoveVias:225` says why ("no time limit here because the
+    /// item database is already changed"). The [`StopCheck`] it does take is plan-6 ruling 6's,
+    /// and reaches only `fr-board`'s cancellable walks below `forcedPad`; it is not a second
+    /// `isStopRequested` site.
+    ///
+    /// `tidy_region` is transcribed although Java never reads it back: `:144-146` reassigns the
+    /// **parameter**, which is a local, and nothing below it looks at the value. Both live callers
+    /// (`shoveVias:244` and `RoutingBoard`'s mover) pass `null`. Kept so a future caller that
+    /// wants the region finds the accumulation already in Java's place.
+    #[allow(clippy::too_many_arguments)]
+    pub fn insert(
+        board: &mut Board,
+        drill_item: ItemId,
+        vector: &Vector,
+        max_recursion_depth: i32,
+        max_via_recursion_depth: i32,
+        tidy_region: Option<IntOctagon>,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
+        let Some(item) = board.get_item(drill_item) else {
+            return Ok(false);
+        };
+        if !item.is_drill_item() {
+            return Ok(false);
+        }
+        // :117-119.
+        if item.is_shove_fixed(&board.rules) {
+            return Ok(false);
+        }
+        // :121-127.
+        let attach_allowed = match item {
+            Item::Via(via) => via.attach_allowed,
+            _ => false,
+        };
+        // Java re-reads `drillItem.netNumbers` and `clearanceClassIndex()` per iteration
+        // (`:152-153`); neither can change under `forcedPad`, which is handed the drill item in
+        // `ignoreItems` and never touches it, so reading them once here is the same values.
+        let net_numbers = item.net_nos().to_vec();
+        let clearance_class_index = item.clearance_class();
+        let ignore_items = vec![drill_item];
+        let (first_layer, last_layer) = {
+            let ctx = board.ctx();
+            (item.first_layer(&ctx), item.last_layer(&ctx))
+        };
+        // :128. The **default** tree, not the engine's compensated one.
+        let tree = board.trees.get_default_tree().id();
+        let orthogonal_mode = board.rules.trace_angle_restriction == AngleRestriction::NinetyDegree;
+        let mut tidy_region = tidy_region;
+
+        // :129-164.
+        for current_layer in first_layer..=last_layer {
+            let current_ind = current_layer - first_layer;
+            // :132-136. Re-read per iteration, as Java does: `forcedPad` below mutates the board.
+            let Some(current_shape) = board.item_tree_shape(drill_item, tree, current_ind) else {
+                continue;
+            };
+            // :137-143.
+            let new_shape = current_shape.translate_by(vector);
+            // totalized: `DrillItemMover.insert`'s `newShape.boundingOctagon()` (`:142`) -> a
+            // skipped layer, exactly as `check`'s `:83` above. Java's `boundingOctagon` never
+            // answers null for a non-empty shape, and `newShape` is a live tree shape translated
+            // by a vector. Unreachable — no register row.
+            let current_tile_shape = if orthogonal_mode {
+                TileShape::Box(new_shape.bounding_box())
+            } else {
+                match new_shape.bounding_octagon() {
+                    Some(octagon) => TileShape::Octagon(octagon),
+                    None => continue,
+                }
+            };
+            // :144-146. Java reassigns its own parameter; nothing reads it afterwards.
+            if let Some(region) = tidy_region {
+                // totalized: `DrillItemMover.insert`'s `currentTileShape.boundingOctagon()`
+                // (`:145`) -> the region left as it was. Non-null in Java for any non-empty tile
+                // shape. Unreachable — no register row.
+                if let Some(octagon) = current_tile_shape.bounding_octagon() {
+                    tidy_region = Some(region.union(&octagon));
+                }
+            }
+            // :147. The centre is re-read per iteration too, and does not move until `:165`.
+            let Some(center) = drill_item_center(board, drill_item) else {
+                return Ok(false);
+            };
+            let from_side = ShapeEntrySide::from_point(&center, &current_tile_shape);
+            // :148-159.
+            if !ForcedPadRouter::forced_pad(
+                board,
+                &current_tile_shape,
+                &from_side,
+                current_layer,
+                &net_numbers,
+                clearance_class_index,
+                attach_allowed,
+                Some(&ignore_items),
+                max_recursion_depth,
+                max_via_recursion_depth,
+                stop,
+            )? {
+                return Ok(false);
+            }
+            // :160-163. Note this is the **untranslated** shape's bounding box, not
+            // `currentTileShape`'s.
+            let current_bounding_box = current_shape.bounding_box();
+            for j in 0..4 {
+                // `PolylineShape.cornerApprox` (PolylineShape.java:68-70) is `corner(no).toFloat()`.
+                let corner = current_bounding_box.corner(j).to_float();
+                board.join_changed_area(&corner, current_layer);
+            }
+        }
+        // :165-166.
+        board.move_item_by(drill_item, vector)?;
+        Ok(true)
+    }
+
+    /// Port of `DrillItemMover.shoveVias(TileShape, ShapeEntrySide, int, int[], int,
+    /// Collection<Item>, int, int, boolean, RoutingBoard)` (DrillItemMover.java:173-249): "shoves
+    /// vias out of `obstacleShape`. Returns false, if the database is damaged, so that an undo is
+    /// necessary afterwards."
+    ///
+    /// # `false` means "damaged", not "did not shove"
+    ///
+    /// Three of the four early exits answer **`true`** — `:192-194` when `storeItems` refuses,
+    /// `:198-200` when nothing shovable overlaps, and `:206-208` when the via-recursion budget is
+    /// spent — and so does the `continue` at `:241-243` for a via no candidate centre worked for.
+    /// The **only** `false` is `:244-246`, where [`Self::insert`] itself failed after the board
+    /// had already been changed. Callers read it that way: `forcedPad:363-374` and
+    /// `TraceShover.insert:435-447` both abandon the whole shove on `false`.
+    ///
+    /// `ignore_items` is `Option<&[ItemId]>` where Java takes a `Collection<Item>`: this one is
+    /// **read only** (`:196` removes from the entries' own via list, `:220-223` copies it into a
+    /// fresh `LinkedList` per candidate), unlike [`Self::check`]'s, which quirk #175 records as
+    /// having a visible side effect. The fresh copy per candidate is exactly why: it is what
+    /// stops `check`'s `:63` append from reaching this method's caller.
+    #[allow(clippy::too_many_arguments)]
+    pub fn shove_vias(
+        board: &mut Board,
+        obstacle_shape: &TileShape,
+        from_side: &ShapeEntrySide,
+        layer: usize,
+        net_numbers: &[i32],
+        clearance_class_index: usize,
+        ignore_items: Option<&[ItemId]>,
+        max_recursion_depth: i32,
+        max_via_recursion_depth: i32,
+        copper_sharing_allowed: bool,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
+        // :184-190. The **default** tree, not the engine's compensated one.
+        let mut shape_entries = ShapeTraceEntries::new(
+            obstacle_shape.clone(),
+            layer,
+            net_numbers.to_vec(),
+            clearance_class_index,
+            Some(*from_side),
+        );
+        let obstacles = board.overlapping_items_with_clearance(
+            obstacle_shape,
+            Some(layer),
+            &[],
+            clearance_class_index,
+        );
+        // :192-194. `storeItems` refusing answers **true** here — this method only reports
+        // database damage, and refusing to store is the caller's problem, not damage.
+        if !shape_entries.store_items(board, &obstacles, false, copper_sharing_allowed) {
+            return Ok(true);
+        }
+        // :195-200.
+        if let Some(ignored) = ignore_items {
+            shape_entries
+                .shove_via_list
+                .retain(|id| !ignored.contains(id));
+        }
+        if shape_entries.shove_via_list.is_empty() {
+            return Ok(true);
+        }
+        // :201.
+        let shape_radius = 0.5 * obstacle_shape.bounding_box().min_width();
+
+        // :202-247.
+        for current_via in shape_entries.shove_via_list.clone() {
+            // :203-205.
+            if board
+                .get_item(current_via)
+                .is_none_or(|item| item.shares_net_no(net_numbers))
+            {
+                continue;
+            }
+            // :206-208. Again **true**: the budget is spent, not the database.
+            if max_via_recursion_depth <= 0 {
+                return Ok(true);
+            }
+            // :209-216.
+            let try_via_centers = Self::try_shove_via_points(
+                board,
+                obstacle_shape,
+                layer,
+                current_via,
+                clearance_class_index,
+                true,
+            );
+            // totalized: `DrillItemMover.shoveVias`'s `(IntPoint) currentVia.getCenter()`
+            // (`:215`) -> `false`, i.e. "the database is damaged". Java casts and throws a
+            // `ClassCastException` for a via whose centre is a `RationalPoint`; every via on a
+            // board has an `IntPoint` centre, because `BasicBoard.insertVia` is only ever handed
+            // one. No register row.
+            let Some(current_via_center) = drill_item_center(board, current_via) else {
+                return Ok(false);
+            };
+            let via_max_width = via_shape_max_width(board, current_via, layer);
+            let max_dist = 0.5 * via_max_width + shape_radius;
+            let max_dist_square = max_dist * max_dist;
+            let check_via_center = current_via_center.to_float();
+
+            // :217-240. `relCoor` is Java's, declared outside the loop and read after it; the
+            // break on success means the value read is always the successful candidate's.
+            let mut new_via_center: Option<IntPoint> = None;
+            let mut rel_coor: Option<Vector> = None;
+            for (i, try_via_center) in try_via_centers.iter().enumerate() {
+                if i == 0
+                    || check_via_center.distance_square(&try_via_center.to_float())
+                        <= max_dist_square
+                {
+                    // :220-223. A **fresh** list per candidate, so quirk #175's append inside
+                    // `check` never reaches this method's caller.
+                    let mut local_ignore_items: Vec<ItemId> =
+                        ignore_items.map(<[ItemId]>::to_vec).unwrap_or_default();
+                    let delta = Point::Int(*try_via_center).difference_by(&current_via_center);
+                    rel_coor = Some(delta.clone());
+                    // :225-234. "No time limit here because the item database is already
+                    // changed." — Java passes `null` for the `TimeLimit`, and so does the port.
+                    let shove_ok = Self::check(
+                        board,
+                        current_via,
+                        &delta,
+                        max_recursion_depth,
+                        max_via_recursion_depth - 1,
+                        Some(&mut local_ignore_items),
+                        None,
+                    );
+                    if shove_ok {
+                        new_via_center = Some(*try_via_center);
+                        break;
+                    }
+                }
+            }
+            // :241-243.
+            if new_via_center.is_none() {
+                continue;
+            }
+            // :244-246. The one arm that answers `false`.
+            let rel_coor = rel_coor.expect("a candidate that answered `shoveOk` set `relCoor`");
+            if !Self::insert(
+                board,
+                current_via,
+                &rel_coor,
+                max_recursion_depth,
+                max_via_recursion_depth - 1,
+                None,
+                stop,
+            )? {
+                return Ok(false);
+            }
+        }
+        // :248.
+        Ok(true)
+    }
+
     /// Port of `DrillItemMover.tryShoveViaPoints` (DrillItemMover.java:256-325): "calculates
     /// possible new locations for a via to shove outside `obstacleShape`. If `extendedCheck` is
     /// true, more than 1 possible new location is calculated."
@@ -248,6 +527,26 @@ pub(crate) fn drill_item_center(board: &Board, id: ItemId) -> Option<Point> {
     }
 }
 
+/// `0.5 * currentVia.getShapeOnLayer(layer).boundingBox().maxWidth()`'s inner half
+/// (DrillItemMover.java:213 and TraceShover.java:325): the drill item's padstack shape on this
+/// layer, or `0.0` where Java would throw a `NullPointerException`.
+///
+/// Java's list is a `List<Via>` and `ShapeTraceEntries.storeItems` (ShapeTraceEntries.java:192-196)
+/// pushes only `Via`s into it, so the `_ => 0.0` arm asserts an invariant that lives one crate
+/// away; see task-9-report.md §11's N2 for why it stays data-driven rather than a panic.
+pub(crate) fn via_shape_max_width(board: &Board, id: ItemId, layer: usize) -> f64 {
+    let ctx = board.ctx();
+    match board.get_item(id) {
+        Some(Item::Via(via)) => via
+            .get_shape_on_layer(layer, &ctx)
+            .map_or(0.0, |shape| shape.bounding_box().max_width()),
+        Some(Item::Pin(pin)) => pin
+            .get_shape_on_layer(layer, &ctx)
+            .map_or(0.0, |shape| shape.bounding_box().max_width()),
+        _ => 0.0,
+    }
+}
+
 /// `DrillItem.getTreeShapeOnLayer(ShapeSearchTree, int)` (DrillItem.java:240-249) with Java's
 /// cold-cache half intact: `Item.getTreeShape` (Item.java:212-226) drops the item's derived data
 /// and recomputes when nothing is cached for `tree`, which `Board::item_tree_shape` reproduces
@@ -281,9 +580,6 @@ pub(crate) fn tree_by_id(board: &Board, tree: TreeId) -> &ShapeSearchTree {
         .unwrap_or_else(|| panic!("board_ext: no search tree with id {tree:?}"))
 }
 
-// =================================================================================================
-// The deferral roster for `board/actions/DrillItemMover.java`
-// =================================================================================================
-//
-// added in Task 10b: `DrillItemMover.insert` (DrillItemMover.java:110-167) — translates the drill item for real and joins the changed area. Task 9 marked it `added in Plan 7:`; **controller ruling AA** moves it into a new Task 10b with the rest of the `ForcedViaInserter.insert` chain.
-// added in Task 10b: `DrillItemMover.shoveVias` (DrillItemMover.java:173-249) — reached from `TraceShover.insert:435` and from `ForcedPadRouter.forcedPad:364`, and it calls `DrillItemMover.insert`. Task 9 marked it `added in Plan 7:`; **controller ruling AA** moves it into a new Task 10b with the rest of the `ForcedViaInserter.insert` chain.
+// The deferral roster for `board/actions/DrillItemMover.java` is empty: every method of the class
+// is ported. `check` and `tryShoveViaPoints` landed in Task 9, `checkForcedPad`'s call site closed
+// in Task 10, and `insert` / `shoveVias` above are controller ruling AA's Task 10b.

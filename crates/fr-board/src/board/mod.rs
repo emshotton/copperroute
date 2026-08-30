@@ -590,6 +590,9 @@ impl Board {
     }
 
     /// Port of `BasicBoard.insertVia` (BasicBoard.java:268-295).
+    ///
+    /// Delegates to [`Self::insert_via_checked`] with a `|| false` stop check, exactly as Plan 3
+    /// did for `normalize_all_traces`, so every Plan 2-5 caller is untouched.
     pub fn insert_via(
         &mut self,
         padstack: crate::ids::PadstackId,
@@ -598,6 +601,40 @@ impl Board {
         clearance_class: usize,
         fixed_state: FixedState,
         attach_allowed: bool,
+    ) -> Result<ItemId, crate::BoardError> {
+        self.insert_via_checked(
+            padstack,
+            center,
+            net_nos,
+            clearance_class,
+            fixed_state,
+            attach_allowed,
+            &|| false,
+        )
+    }
+
+    /// [`Self::insert_via`] under a [`StopCheck`](crate::datastructures::StopCheck), threaded
+    /// into the `splitTraces` loop at `BasicBoard.java:287-293` and through it into
+    /// `PolylineTrace.split`'s entry re-walk — **the loop quirk #76 never leaves**.
+    ///
+    /// This is what closes `docs/plan-3-handoff.md`'s ruling F: plan-3 gave `split_trace` and
+    /// `normalize_all_traces` a stop check and deferred "the other caller" until one existed.
+    /// Plan-6 ruling 6 names it: `ForcedViaInserter.insert`
+    /// (`board/actions/ForcedViaInserter.java:348`) reaches `BasicBoard.insertVia` from inside
+    /// the router, on a board the router has been shoving traces around on. A trip answers
+    /// [`BoardError::Stopped`](crate::BoardError::Stopped); the via is already inserted and the
+    /// board is left part-split, exactly as Java's would be if its `split` threw.
+    // added in Plan 6: BasicBoard.insertVia (plan ruling 6, closing plan-3 ruling F)
+    #[allow(clippy::too_many_arguments)]
+    pub fn insert_via_checked(
+        &mut self,
+        padstack: crate::ids::PadstackId,
+        center: Point,
+        net_nos: Vec<i32>,
+        clearance_class: usize,
+        fixed_state: FixedState,
+        attach_allowed: bool,
+        stop: crate::datastructures::StopCheck<'_>,
     ) -> Result<ItemId, crate::BoardError> {
         let id = self.new_item_id();
         let via = Via::new(
@@ -612,7 +649,7 @@ impl Board {
         let (from_layer, to_layer) = self.padstack_layer_range(padstack);
         for layer in from_layer..to_layer {
             for net_number in &net_nos {
-                self.split_traces(&center, layer as usize, *net_number)?;
+                self.split_traces_checked(&center, layer as usize, *net_number, stop)?;
             }
         }
         Ok(id)
@@ -632,6 +669,34 @@ impl Board {
         fixed_state: FixedState,
         smd_layer: usize,
     ) -> Result<ItemId, crate::BoardError> {
+        self.insert_escape_via_checked(
+            padstack,
+            center,
+            net_nos,
+            clearance_class,
+            fixed_state,
+            smd_layer,
+            &|| false,
+        )
+    }
+
+    /// [`Self::insert_escape_via`] under a [`StopCheck`](crate::datastructures::StopCheck), for
+    /// the same reason as [`Self::insert_via_checked`] (plan-6 ruling 6). Nothing in Plan 6 calls
+    /// it yet — `ForcedViaInserter.insert` reaches `insertVia` — but ruling 6 names all three
+    /// entry points, and leaving one of them uncancellable would be a hole the next caller falls
+    /// into.
+    // added in Plan 6: BasicBoard.insertEscapeVia (plan ruling 6, closing plan-3 ruling F)
+    #[allow(clippy::too_many_arguments)]
+    pub fn insert_escape_via_checked(
+        &mut self,
+        padstack: crate::ids::PadstackId,
+        center: Point,
+        net_nos: Vec<i32>,
+        clearance_class: usize,
+        fixed_state: FixedState,
+        smd_layer: usize,
+        stop: crate::datastructures::StopCheck<'_>,
+    ) -> Result<ItemId, crate::BoardError> {
         let id = self.new_item_id();
         let mut via = Via::new(
             ItemHeader::new(id, net_nos.clone(), clearance_class, 0, fixed_state),
@@ -647,7 +712,7 @@ impl Board {
         let (from_layer, to_layer) = self.padstack_layer_range(padstack);
         for layer in from_layer..=to_layer {
             for net_number in &net_nos {
-                self.split_traces(&center, layer as usize, *net_number)?;
+                self.split_traces_checked(&center, layer as usize, *net_number, stop)?;
             }
         }
         Ok(id)

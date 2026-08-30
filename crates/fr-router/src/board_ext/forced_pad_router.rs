@@ -1,13 +1,15 @@
-//! Port of the check half of `board.actions.ForcedPadRouter` (`board/actions/ForcedPadRouter.java`).
+//! Port of `board.actions.ForcedPadRouter` (`board/actions/ForcedPadRouter.java`).
 
 use fr_board::board::ShapeTraceEntries;
+use fr_board::datastructures::StopCheck;
 use fr_board::free_trace_tree_shapes;
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_board::{ItemId, TimeLimit};
+use fr_board::{BoardError, ItemId, StopConnectionOption, TimeLimit};
 use fr_geometry::{Direction, Line, Point, Polyline, PolylineShapeOps, TileShape};
 
 use crate::board_ext::drill_item_mover::{DrillItemMover, drill_item_center};
+use crate::board_ext::swallow_normalize_error;
 use crate::board_ext::trace_shover::TraceShover;
 
 /// Port of `board.actions.ForcedPadRouter.CheckDrillResult` (ForcedPadRouter.java:494-500).
@@ -25,19 +27,19 @@ pub enum CheckDrillResult {
     NotDrillable,
 }
 
-/// Port of `board.actions.ForcedPadRouter` (ForcedPadRouter.java:33-500) — the check half.
+/// Port of `board.actions.ForcedPadRouter` (ForcedPadRouter.java:33-500).
 ///
 /// Java's class holds a `private final RoutingBoard board`; the port passes the board per call
 /// instead (plan-2 ruling 11: `Board` is `Send + Sync` and holds no back-pointers), so every
 /// method is an associated function on a unit struct.
 ///
-/// # This is the check half
+/// # The check half and the shove half
 ///
-/// Task 10 needed this class only to *ask* whether a pad would fit; the mutating `forcedPad`
-/// (`:346-465`) is `// added in Task 10b:` in the roster at the bottom of this file, because it
-/// reaches `TraceShover.insert` and `DrillItemMover.shoveVias` — the chain controller ruling AA
-/// assigned to Task 10b. `check_forced_pad_does_not_mutate_the_board` in `tests/forced_via.rs`
-/// pins the property that makes the split safe until then.
+/// [`Self::check_forced_pad`] only *asks* whether a pad would fit — Task 10 landed it, and
+/// `check_forced_pad_does_not_mutate_the_board` in `tests/forced_via.rs` pins that it changes
+/// nothing. [`Self::forced_pad`] is the mutating twin **controller ruling AA** moved into Task
+/// 10b: it shoves for real and, per its own javadoc, "if the shove failed, the database may be
+/// damaged, so that an undo becomes necessary".
 pub struct ForcedPadRouter;
 
 impl ForcedPadRouter {
@@ -252,6 +254,223 @@ impl ForcedPadRouter {
         }
         // :338.
         result
+    }
+
+    /// Port of `ForcedPadRouter.forcedPad(TileShape, ShapeEntrySide, int, int[], int, boolean,
+    /// Collection<Item>, int, int)` (ForcedPadRouter.java:346-465): "shoves aside traces, so that
+    /// a pad with the input parameters can be inserted without clearance violations. Returns
+    /// false, if the shove failed. In this case the database may be damaged, so that an undo
+    /// becomes necessary."
+    ///
+    /// The mutating twin of [`Self::check_forced_pad`]. Three shapes of difference are worth
+    /// naming, because a reader who knows `checkForcedPad` will look for them:
+    ///
+    /// * it has **no `checkOnlyFront` and no `TimeLimit`** — the `inFrontOfPad` short-circuit is a
+    ///   check-time optimisation and there is no cancellation once the database is changing;
+    /// * the via arm is not here at all: `:363-374` hands the whole problem to
+    ///   [`DrillItemMover::shove_vias`], and `:389` then insists the entries' via list came back
+    ///   **empty** (`obstaclesShovable && shoveViaList.isEmpty()`);
+    /// * there is **no `stackDepth() > 1` gate**. `checkForcedPad:297-300` has one; this method
+    ///   does not, so a pad whose entries stack answers `false` there and shoves here.
+    ///
+    /// `ignore_items` is `Option<&[ItemId]>`: Java's `:386`'s `removeAll` mutates the local
+    /// obstacle list, never the caller's collection, and `:420` passes the same reference straight
+    /// down to `TraceShover.insert`, which is equally read-only. `check_forced_pad` takes the
+    /// slice for the same reason.
+    ///
+    /// The [`StopCheck`] is plan-6 ruling 6's, threaded into the `fr-board` walks below this one
+    /// that Java cannot leave on a ladder board (quirk #76): `PolylineTrace.split` under
+    /// `normalize`, and `Item.getConnectionItems` under the tail cleanup at `:445-457`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn forced_pad(
+        board: &mut Board,
+        pad_shape: &TileShape,
+        from_side: &ShapeEntrySide,
+        layer: usize,
+        net_numbers: &[i32],
+        clearance_class_index: usize,
+        copper_sharing_allowed: bool,
+        ignore_items: Option<&[ItemId]>,
+        max_recursion_depth: i32,
+        max_via_recursion_depth: i32,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
+        // :355-358. FRLogger.warn("ShoveTraceAux.forced_pad: padShape is empty")
+        if pad_shape.is_empty() {
+            return Ok(true);
+        }
+        // :359-362.
+        if !PolylineShapeOps::is_contained_in(pad_shape, &board.get_bounding_box()) {
+            let outline = board.get_outline();
+            board.set_shove_failing_obstacle(outline);
+            return Ok(false);
+        }
+        // :363-374. Note `copperSharingAllowed = false` here, where `TraceShover.insert:444`
+        // passes `true` to the same method.
+        if !DrillItemMover::shove_vias(
+            board,
+            pad_shape,
+            from_side,
+            layer,
+            net_numbers,
+            clearance_class_index,
+            ignore_items,
+            max_recursion_depth,
+            max_via_recursion_depth,
+            false,
+            stop,
+        )? {
+            return Ok(false);
+        }
+
+        // :375-387. The **default** tree, not the engine's compensated one.
+        let mut shape_entries = ShapeTraceEntries::new(
+            pad_shape.clone(),
+            layer,
+            net_numbers.to_vec(),
+            clearance_class_index,
+            Some(*from_side),
+        );
+        let mut obstacles = board.overlapping_items_with_clearance(
+            pad_shape,
+            Some(layer),
+            &[],
+            clearance_class_index,
+        );
+        if let Some(ignored) = ignore_items {
+            obstacles.retain(|id| !ignored.contains(id));
+        }
+        // :388-395. The third argument is `isPadCheck`: `true` here, `false` in
+        // `TraceShover.insert:455` — the difference `ShapeTraceEntries.storeItems:180-183` reads.
+        let obstacles_shovable =
+            shape_entries.store_items(board, &obstacles, true, copper_sharing_allowed)
+                && shape_entries.shove_via_list.is_empty();
+        if !obstacles_shovable {
+            let found = shape_entries.get_found_obstacle();
+            board.set_shove_failing_obstacle(found);
+            return Ok(false);
+        }
+        // :396-403.
+        let trace_piece_count = shape_entries.substitute_trace_count();
+        if trace_piece_count == 0 {
+            return Ok(true);
+        }
+        if max_recursion_depth <= 0 {
+            let found = shape_entries.get_found_obstacle();
+            board.set_shove_failing_obstacle(found);
+            return Ok(false);
+        }
+        // :404-406.
+        let tails_exist_before = board.contains_trace_tails(obstacles.iter().copied(), net_numbers);
+        shape_entries.cutout_traces(board, &obstacles);
+        let is_orthogonal_mode = matches!(pad_shape, TileShape::Box(_));
+
+        // :407-464.
+        loop {
+            let Some(current_substitute_trace) = shape_entries.next_substitute_trace_piece(board)
+            else {
+                break;
+            };
+            // :412-420.
+            // totalized: `ForcedPadRouter.forcedPad`'s `firstCorner().equals(lastCorner())` (`:412`)
+            // -> a skipped piece for a polyline with no corners at all, where Java throws a
+            // `NullPointerException` on the receiver. `nextSubstituteTracePiece` builds every
+            // piece from at least three lines, so it cannot arise. `Option<Point>`'s `PartialEq`
+            // is Java's `Point.equals` exactly, `getClass()` test included. No register row.
+            if current_substitute_trace.first_corner() == current_substitute_trace.last_corner() {
+                continue;
+            }
+            let substitute_net_nos = current_substitute_trace.hdr.net_nos.clone();
+            let substitute_clearance_class = current_substitute_trace.hdr.clearance_class();
+            // Java's `ShapeAndEntrySide:28` calls `trace.getTreeShape(searchTree, index)`, which
+            // memoises the whole vector on the item (Item.java:228-238) the first time — so Java
+            // computes it once per piece and looks it up per index, even though `insert` below
+            // mutates the board in between. The port has no per-item cache, so the vector is
+            // computed once here, outside the `for i` loop, which is that memoisation.
+            let substitute_tree_shapes = free_trace_tree_shapes(board, &current_substitute_trace);
+            for i in 0..current_substitute_trace.tile_shape_count() {
+                // totalized: `ForcedPadRouter.forcedPad`'s `new ShapeAndEntrySide(…, i, …)`
+                // (`:417-418`) -> a skipped index. `i` is bounded by `tileShapeCount()`, so `:28`'s
+                // `getTreeShape(searchTree, i)` is always in range and Java's constructor cannot
+                // fail. Unreachable — no register row.
+                let Some(Some(current_tree_shape)) = substitute_tree_shapes.get(i).cloned() else {
+                    continue;
+                };
+                // `inShoveCheck = false` (`:418`), where both `check` paths pass `true`: with it
+                // false, `ShapeAndEntrySide:70-73` fills a `fromSide` in from the piece's own
+                // polyline whenever the cut lines produced none.
+                let current = ShapeAndEntrySide::from_free_trace(
+                    board,
+                    &current_substitute_trace,
+                    current_tree_shape,
+                    i,
+                    is_orthogonal_mode,
+                    false,
+                );
+                if !TraceShover::insert(
+                    board,
+                    &current.shape,
+                    current.from_side.as_ref(),
+                    layer,
+                    &substitute_net_nos,
+                    substitute_clearance_class,
+                    ignore_items,
+                    max_recursion_depth - 1,
+                    max_via_recursion_depth,
+                    0,
+                    stop,
+                )? {
+                    return Ok(false);
+                }
+            }
+            // :429-431.
+            for i in 0..current_substitute_trace.corner_count() {
+                if let Some(corner) = current_substitute_trace.polyline().corner_approx(i) {
+                    board.join_changed_area(&corner, layer);
+                }
+            }
+            // :432-437.
+            let end_corners = if tails_exist_before {
+                None
+            } else {
+                Some([
+                    current_substitute_trace.first_corner(),
+                    current_substitute_trace.last_corner(),
+                ])
+            };
+            // :438. The piece keeps the id `nextSubstituteTracePiece` burnt for it.
+            let inserted = board.insert_item(Item::Trace(current_substitute_trace));
+            // :439-444.
+            let opt_area = board
+                .changed_area
+                .as_ref()
+                .map(|changed_area| changed_area.get_area(layer));
+            // :446-450. Java wraps `normalize` in `catch (Exception e)` and only logs — see the
+            // "the two `normalize` catches" section on the module.
+            swallow_normalize_error(board.normalize_trace_checked(
+                inserted,
+                opt_area.as_ref(),
+                stop,
+            ))?;
+            // :452-462.
+            if let Some(end_corners) = end_corners {
+                for corner in end_corners.into_iter().flatten() {
+                    let Some(tail) =
+                        board.get_trace_tail(&corner, Some(layer), &substitute_net_nos)
+                    else {
+                        continue;
+                    };
+                    let connection =
+                        board.connection_items_checked(tail, StopConnectionOption::Via, stop)?;
+                    board.remove_items(connection);
+                    for net_number in &substitute_net_nos {
+                        board.combine_traces(*net_number)?;
+                    }
+                }
+            }
+        }
+        // :464.
+        Ok(true)
     }
 
     /// Port of `ForcedPadRouter.calcFromSide(TileShape, Point, int, int, int)`
@@ -537,8 +756,6 @@ fn calc_check_shape_for_from_side(shape_center: &Point, border_line: &Line) -> O
     check_line.offset_shape(1, 0)
 }
 
-// =================================================================================================
-// The deferral roster for `board/actions/ForcedPadRouter.java`
-// =================================================================================================
-//
-// added in Task 10b: `ForcedPadRouter.forcedPad` (ForcedPadRouter.java:346-465) — the mutating twin of `checkForcedPad`; it reaches `DrillItemMover.shoveVias` (`:364`) and `TraceShover.insert` (`:416`). `ForcedViaInserter.insert` is its only caller — see that file's roster. Task 10 shipped this as `added in Plan 7:` on the authority of plan-6 ruling 2 ("`board/optimize/**`'s mutating half"); **controller ruling AA** overrides that for this method and the four others it needs, and puts all five in a new Task 10b between Tasks 10 and 11 — see `task-10-report.md` §2.1, whose option B ruling AA took.
+// The deferral roster for `board/actions/ForcedPadRouter.java` is empty: every method of the class
+// is ported. `checkForcedPad`, `inFrontOfPad`, `calcFromSide` and `calcCheckShapeForFromSide`
+// landed in Task 10; `forcedPad` above is controller ruling AA's Task 10b.
