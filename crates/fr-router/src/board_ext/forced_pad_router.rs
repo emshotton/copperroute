@@ -33,11 +33,11 @@ pub enum CheckDrillResult {
 ///
 /// # This is the check half
 ///
-/// Plan 6 needs this class only to *ask* whether a pad would fit; the mutating `forcedPad`
-/// (`:346-465`) is `// added in Plan 7:` in the roster at the bottom of this file, because it
-/// reaches `TraceShover.insert` and `DrillItemMover.shoveVias`, both of which plan-6 ruling 2
-/// puts in Plan 7. `check_forced_pad_does_not_mutate_the_board` in `tests/forced_via.rs` pins
-/// the property that makes the split safe.
+/// Task 10 needed this class only to *ask* whether a pad would fit; the mutating `forcedPad`
+/// (`:346-465`) is `// added in Task 10b:` in the roster at the bottom of this file, because it
+/// reaches `TraceShover.insert` and `DrillItemMover.shoveVias` — the chain controller ruling AA
+/// assigned to Task 10b. `check_forced_pad_does_not_mutate_the_board` in `tests/forced_via.rs`
+/// pins the property that makes the split safe until then.
 pub struct ForcedPadRouter;
 
 impl ForcedPadRouter {
@@ -473,11 +473,37 @@ impl ForcedPadRouter {
 /// The `shape` parameter Java declares is unused in its body — the shape only reaches the method
 /// through `shapeCenter` and `borderLine` — so the port does not take it.
 ///
-/// totalized: `ForcedPadRouter.calcCheckShapeForFromSide`'s `new Line(shapeCenter, dir)` (`:49-51`)
-/// -> `None`. Java only logs a warning for a non-`IntPoint` centre and then builds a `Line` whose
-/// arithmetic is broken; the port refuses the border line instead, which makes `calcFromSide` fall
-/// through to `NOT_CALCULATED`. No register row: every production caller passes an `IntPoint`.
+/// # The degraded value for all three failure arms is "skip this border line"
+///
+/// Java can leave this method three ways that are not a shape, and **all three end in a crash**
+/// rather than in a value: two of them here and one in the caller. The port answers `None` at
+/// each, and `calcFromSide:475-490` treats that exactly as it treats a border line whose check
+/// shape was built but rejected — it moves to the next `i`, and falls through to
+/// `ShapeEntrySide::NOT_CALCULATED` if no line works.
+///
+/// **Why that degraded value, and not a `Result`.** Plan-6 ruling 7 fixes the recovery boundaries
+/// at five named `catch` sites, and neither this method nor `calcFromSide` is one of them; adding
+/// a sixth would push a `Result` through `ForcedViaInserter::check` and `::insert`, whose Java
+/// forms answer `boolean`. More to the point, `NOT_CALCULATED` is **Java's own vocabulary for
+/// this method**: `calcFromSide:491` already returns it when both sweeps find no usable side. So
+/// skipping a line the port cannot build a check shape for lands on a value Java itself produces
+/// for "no side works", instead of inventing one. Every caller already handles it —
+/// `ForcedViaInserter.check:164-166` hands `NOT_CALCULATED` straight to `checkForcedPad`, which
+/// takes `fromSide.no = -1` without complaint.
+///
+/// **Reachability.** All three arms look unreachable in production, which is the argument for "no
+/// register row", not for "no marker". `offset` is `board.getMinTraceHalfWidth()` at both call
+/// sites (`ForcedViaInserter.java:166`, `:296`) and is therefore `>= 0`, so `offsetShape` only
+/// grows the pad and its centre stays strictly interior; `lines[0]` and `lines[1]` are
+/// perpendicular by construction, and `lines[2]` is parallel to `lines[0]` but through the
+/// centre's *projection*, which coincides with the centre only if the centre sits within half a
+/// unit of the offset border line.
 fn calc_check_shape_for_from_side(shape_center: &Point, border_line: &Line) -> Option<TileShape> {
+    // totalized: `ForcedPadRouter.calcCheckShapeForFromSide`'s `new Line(shapeCenter, dir)`
+    // (`:49-51`) -> skip this border line. Java only logs a warning for a non-`IntPoint` centre
+    // and then builds a `Line` whose arithmetic is broken (Line.java:36-42). See the
+    // "degraded value" section above; no register row, every production caller passes an
+    // `IntPoint`.
     let Point::Int(centre) = shape_center else {
         return None;
     };
@@ -490,8 +516,24 @@ fn calc_check_shape_for_from_side(shape_center: &Point, border_line: &Line) -> O
         Line::from_direction(*centre, &current_direction.turn_45_degree(2)),
         Line::from_direction(offset_projection.round(), &current_direction),
     ];
+    // totalized: `ForcedPadRouter.calcCheckShapeForFromSide`'s `new Polyline(lines)` (`:52`) -> skip
+    // this border line. `Polyline::from_lines` is `Err` on exactly one input class — the
+    // `removeOverlaps` underflow where Java reads `tmpArr[-1]` and throws
+    // `ArrayIndexOutOfBoundsException: Index -1` (Polyline.java:148), quirk #22. Java's **other**
+    // sub-three-line exit is not an error at all: it stores `lines = new Line[0]` (`:78-81`) and
+    // returns normally, which the port reproduces as `Ok` with an empty polyline — that path
+    // therefore falls to the `offset_shape` arm below, not to this one. See the "degraded value"
+    // section above.
     let check_line = Polyline::from_lines(lines).ok()?;
     // :53.
+    //
+    // totalized: `ForcedPadRouter.calcCheckShapeForFromSide`'s `checkLine.offsetShape(1, 0)`
+    // (`:53`) -> skip this border line. This is the arm the empty polyline above reaches: with
+    // `lines.length == 0`, `no > lines.length - 3` holds, so Java warns and returns **`null`**
+    // (Polyline.java:518-521) — it does not throw here. The crash is one call later:
+    // `calcFromSide:479` hands that `null` to `BasicBoard.checkTraceShape`, whose first statement
+    // is `shape.isContainedIn(boundingBox)` (BasicBoard.java:990), a `NullPointerException`. See
+    // the "degraded value" section above.
     check_line.offset_shape(1, 0)
 }
 
@@ -499,4 +541,4 @@ fn calc_check_shape_for_from_side(shape_center: &Point, border_line: &Line) -> O
 // The deferral roster for `board/actions/ForcedPadRouter.java`
 // =================================================================================================
 //
-// added in Plan 7: `ForcedPadRouter.forcedPad` (ForcedPadRouter.java:346-465) — the mutating twin of `checkForcedPad`; it reaches `DrillItemMover.shoveVias` (`:364`) and `TraceShover.insert` (`:416`), which plan-6 ruling 2 puts in Plan 7 ("`board/optimize/**`'s mutating half"), so it cannot land before they do. `ForcedViaInserter.insert` is its only caller — see that file's roster.
+// added in Task 10b: `ForcedPadRouter.forcedPad` (ForcedPadRouter.java:346-465) — the mutating twin of `checkForcedPad`; it reaches `DrillItemMover.shoveVias` (`:364`) and `TraceShover.insert` (`:416`). `ForcedViaInserter.insert` is its only caller — see that file's roster. Task 10 shipped this as `added in Plan 7:` on the authority of plan-6 ruling 2 ("`board/optimize/**`'s mutating half"); **controller ruling AA** overrides that for this method and the four others it needs, and puts all five in a new Task 10b between Tasks 10 and 11 — see `task-10-report.md` §2.1, whose option B ruling AA took.

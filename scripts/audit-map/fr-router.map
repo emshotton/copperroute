@@ -100,12 +100,15 @@ FoundConnectionLocator45Degree    autoroute/path/locator_45.rs
 FoundConnectionLocatorAnyAngle    autoroute/path/locator_any_angle.rs
 FoundConnectionInserter           autoroute/path/inserter.rs
 
-# --- board/actions/ and board/optimize/ (Tasks 9-10) --------------------------------------------
+# --- board/actions/ and board/optimize/ (Tasks 9-10, 10b) ---------------------------------------
 # `DrillItemMover`'s and `TraceShover`'s **check** halves landed in Task 9, `ForcedPadRouter`'s and
-# `ForcedViaInserter`'s in Task 10. Every mutating half — `TraceShover.insert` /
-# `springOverObstacles`, `DrillItemMover.insert` / `shoveVias`, `ForcedPadRouter.forcedPad` and
-# `ForcedViaInserter.insert` — is an `// added in Plan 7:` marker in the class's own file, because
-# `audit-port.sh` searches only the mapped path once a map is supplied.
+# `ForcedViaInserter`'s in Task 10. The mutating halves split two ways, per **controller ruling AA**:
+# `ForcedViaInserter.insert`, `ForcedPadRouter.forcedPad`, `TraceShover.insert` and
+# `DrillItemMover.{insert,shoveVias}` are one chain Plan 6 needs (Task 15 reaches it at
+# `FoundConnectionInserter.java:754`) and carry `// added in Task 10b:` markers; only
+# `TraceShover.springOverObstacles`, which nothing in Plan 6 reaches, stays `// added in Plan 7:`.
+# Every marker lives in the class's own file, because `audit-port.sh` searches only the mapped path
+# once a map is supplied.
 ForcedViaInserter                 board_ext/forced_via_inserter.rs
 ForcedPadRouter                   board_ext/forced_pad_router.rs
 DrillItemMover                    board_ext/drill_item_mover.rs

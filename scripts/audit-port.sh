@@ -9,6 +9,8 @@
 #   `renamed: <Method>`             — ported under a different name
 #   `added in Task N: <Method>`     — deferred to a named later task of the current plan
 #   `added in Plan N: <Method>`     — deferred to a named later plan
+# A task number may carry a single lower-case suffix letter (`Task 10b`), for a task inserted
+# between two numbered ones by a controller ruling after the plan was written.
 # The last two are as specific as the first two (the task/plan number is required), so they
 # record an obligation rather than waive the check: `grep -rn "added in Task"` lists everything
 # still owed.
@@ -143,7 +145,7 @@ for pattern in $FILE_GLOB; do
             || ! ( grep -qE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "${SCOPE_FILES[@]}" \
                 || grep -qE "not ported: .*\b${m}\b" "${SCOPE_FILES[@]}" \
                 || grep -qE "renamed: .*\b${m}\b" "${SCOPE_FILES[@]}" \
-                || grep -qE "added in (Task|Plan) [0-9]+:.*\b${m}\b" "${SCOPE_FILES[@]}" ); then
+                || grep -qE "added in (Task|Plan) [0-9]+[a-z]?:.*\b${m}\b" "${SCOPE_FILES[@]}" ); then
           found=0
         fi
         if [[ "$found" -eq 0 ]]; then
@@ -156,7 +158,7 @@ for pattern in $FILE_GLOB; do
         if ! grep -rqE "fn ${snake}(_[a-z0-9_]+)?\s*[<(]" "$RS" \
             && ! grep -rqE "not ported: .*\b${m}\b" "$RS" \
             && ! grep -rqE "renamed: .*\b${m}\b" "$RS" \
-            && ! grep -rqE "added in (Task|Plan) [0-9]+:.*\b${m}\b" "$RS"; then
+            && ! grep -rqE "added in (Task|Plan) [0-9]+[a-z]?:.*\b${m}\b" "$RS"; then
           echo "MISSING $cls.$m  (expected fn ${snake}*)"
           missing=1
         fi

@@ -485,10 +485,13 @@ equals Java on every production path, because `initAutoroute` is the only
 non-GUI caller of the `AutorouteEngine` constructor
 (`gui/interactive/ExpandTestState.java:167` is the other, and no GUI is ported).
 
-**This is the check half only.** `TraceShover.insert`,
-`TraceShover.springOverObstacles`, `DrillItemMover.insert`,
-`DrillItemMover.shoveVias`, `ForcedPadRouter.forcedPad` and
-`ForcedViaInserter.insert` are `// added in Plan 7:` markers in the four files.
+**This is the check half only.** `ForcedViaInserter.insert`,
+`ForcedPadRouter.forcedPad`, `TraceShover.insert` and
+`DrillItemMover.{insert, shoveVias}` are one chain Plan 6 needs, so
+**controller ruling AA** puts all five in a new **Task 10b** between Tasks 10
+and 11; their markers read `// added in Task 10b:`. Only
+`TraceShover.springOverObstacles`, which nothing in Plan 6 reaches, stays an
+`// added in Plan 7:` marker.
 The property that makes the split safe is pinned by
 `trace_shover_check_does_not_mutate_the_board` and
 `check_forced_pad_does_not_mutate_the_board`: no `check` changes the board's
@@ -525,16 +528,17 @@ the line is `a`, so the same geometric line reversed gives the opposite answer.
 `checkForcedPad` consults `inFrontOfPad` only when `checkOnlyFront` is true,
 which is exactly the `DrillItemMover.check` path.
 
-**`ForcedViaInserter.insert` is not here, and Java is why.** The brief asked for
-it, and also declared `ForcedPadRouter.forcedPad` `// added in Plan 7:`. Those
-two cannot both hold: `insert`'s per-layer body is three `forcedPad` calls
-(`:297`, `:317`, `:333`) before `BasicBoard.insertVia` (`:348`), and `forcedPad`
-in turn reaches `DrillItemMover.shoveVias` (`:364`) and `TraceShover.insert`
-(`:416`) — plan-6 ruling 2's "`board/optimize/**`'s mutating half", i.e. Plan
-7's, and already `// added in Plan 7:` markers from Task 9. So `insert` is a
-Plan 7 marker too, and Task 15 (`FoundConnectionInserter.java:754`) is the task
-that needs the resolution. `task-10-report.md` §2.1 records it as a
-**NEEDS_CONTEXT** with the three options.
+**`ForcedViaInserter.insert` is not here — Task 10b has it.** Task 10's brief
+asked for `insert` and also declared `ForcedPadRouter.forcedPad`
+`// added in Plan 7:`. Those two cannot both hold: `insert`'s per-layer body is
+three `forcedPad` calls (`:297`, `:317`, `:333`) before `BasicBoard.insertVia`
+(`:348`), and `forcedPad` in turn reaches `DrillItemMover.shoveVias` (`:364`)
+and `TraceShover.insert` (`:416`) — already `// added in Plan 7:` markers from
+Task 9 under plan-6 ruling 2. `task-10-report.md` §2.1 raised it as a
+**NEEDS_CONTEXT** with three options, and **controller ruling AA** took option
+B: a new **Task 10b** between Tasks 10 and 11 ports all five, so Task 15
+(`FoundConnectionInserter.java:754`) finds `ForcedViaInserter::insert` waiting
+for it, together with ruling 6's `StopCheck` on `Board::insert_via`.
 
 ## Quirk-register numbering
 

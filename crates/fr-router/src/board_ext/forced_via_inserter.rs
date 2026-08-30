@@ -17,11 +17,11 @@ use crate::board_ext::forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 /// # This is the check half
 ///
 /// `checkLayer` (`:30-129`) and `check` (`:131-247`) are here; `insert` (`:249-361`) is
-/// `// added in Plan 7:` in the roster at the bottom of this file, because its per-layer body is
-/// three calls to `ForcedPadRouter.forcedPad`, which reaches `TraceShover.insert` and
-/// `DrillItemMover.shoveVias` — plan-6 ruling 2's "`board/optimize/**`'s mutating half", i.e.
-/// Plan 7's. See `task-10-report.md` §2.1: this is a **contradiction in the task brief**, which
-/// asked for `insert` here while also declaring `forcedPad` Plan 7's, and Java decides it.
+/// `// added in Task 10b:` in the roster at the bottom of this file, because its per-layer body
+/// is three calls to `ForcedPadRouter.forcedPad`, which reaches `TraceShover.insert` and
+/// `DrillItemMover.shoveVias`. `task-10-report.md` §2.1 records why Task 10 could not land it —
+/// the task brief asked for `insert` while also declaring `forcedPad` Plan 7's, and Java decides
+/// it — and **controller ruling AA** answers it with a new Task 10b that ports all five.
 pub struct ForcedViaInserter;
 
 impl ForcedViaInserter {
@@ -473,4 +473,4 @@ fn padstack_shape_layer_range(board: &Board, padstack: PadstackId) -> Option<(i3
 // The deferral roster for `board/actions/ForcedViaInserter.java`
 // =================================================================================================
 //
-// added in Plan 7: `ForcedViaInserter.insert` (ForcedViaInserter.java:249-356) — three calls to `ForcedPadRouter.forcedPad` per padstack layer (`:297`, `:317`, `:333`) and then `BasicBoard.insertVia` (`:348`). `forcedPad` reaches `TraceShover.insert` and `DrillItemMover.shoveVias`, which plan-6 ruling 2 assigns to Plan 7, so `insert` cannot land before them. Its Plan 6 caller is `FoundConnectionInserter.java:754` (Task 15); see `task-10-report.md` §2.1 for the brief contradiction this resolves and the ruling-6 `StopCheck` that travels with it.
+// added in Task 10b: `ForcedViaInserter.insert` (ForcedViaInserter.java:249-356) — three calls to `ForcedPadRouter.forcedPad` per padstack layer (`:297`, `:317`, `:333`) and then `BasicBoard.insertVia` (`:348`); `forcedPad` in turn reaches `TraceShover.insert` and `DrillItemMover.shoveVias`, so all five land together. Its Plan 6 caller is `FoundConnectionInserter.java:754` (Task 15), and ruling 6's `StopCheck` on `Board::insert_via` travels with it. Task 10 shipped this as `added in Plan 7:`; **controller ruling AA** re-assigns it to a new Task 10b between Tasks 10 and 11 — see `task-10-report.md` §2.1, whose option B ruling AA took.

@@ -634,7 +634,7 @@ impl TraceShover {
     ///
     /// Reached from Plan 6 only through the instance [`check`](Self::check) (`:369`), which passes
     /// `overConnectedPins = false` and `contactPins = null`; `springOverObstacles` — the caller
-    /// that passes the other combination — is `// added in Plan 7:` (see `board_ext/mod.rs`).
+    /// that passes the other combination — is `// added in Task 10b:` (see `board_ext/mod.rs`).
     /// The whole method is ported anyway, because `check`'s call reaches every branch of it.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn spring_over(
@@ -967,5 +967,5 @@ impl TraceShover {
 //
 // The mutating half. `insert` shoves for real and, per its own javadoc, "if the shove does not
 // work, the database may be damaged" — which is exactly why Plan 6 needs only `check`.
-// added in Plan 7: `TraceShover.insert` (TraceShover.java:417-591) — the mutating twin of the instance `check`.
+// added in Task 10b: `TraceShover.insert` (TraceShover.java:417-591) — the mutating twin of the instance `check`, reached from `ForcedPadRouter.forcedPad:416`. Task 9 marked it `added in Plan 7:` under plan-6 ruling 2; **controller ruling AA** moves it, `TraceShover.insert`'s callee `DrillItemMover.shoveVias`, `DrillItemMover.insert`, `ForcedPadRouter.forcedPad` and `ForcedViaInserter.insert` into a new Task 10b, because Plan 6 needs `ForcedViaInserter.insert` at `FoundConnectionInserter.java:754` (Task 15). `TraceShover.springOverObstacles` below stays Plan 7's — nothing in Plan 6 reaches it.
 // added in Plan 7: `TraceShover.springOverObstacles` (TraceShover.java:827-874) — the public wrapper that runs the private `springOver` in both senses and keeps the shorter result. Plan 6 reaches `springOver` only through the instance `check` (`:367-387`), which is why `spring_over` above is `pub(crate)` and this wrapper is not ported yet.

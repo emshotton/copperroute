@@ -285,5 +285,5 @@ pub(crate) fn tree_by_id(board: &Board, tree: TreeId) -> &ShapeSearchTree {
 // The deferral roster for `board/actions/DrillItemMover.java`
 // =================================================================================================
 //
-// added in Plan 7: `DrillItemMover.insert` (DrillItemMover.java:110-167) — translates the drill item for real and joins the changed area.
-// added in Plan 7: `DrillItemMover.shoveVias` (DrillItemMover.java:173-249) — reached from `TraceShover.insert:435`, and it calls `DrillItemMover.insert`.
+// added in Task 10b: `DrillItemMover.insert` (DrillItemMover.java:110-167) — translates the drill item for real and joins the changed area. Task 9 marked it `added in Plan 7:`; **controller ruling AA** moves it into a new Task 10b with the rest of the `ForcedViaInserter.insert` chain.
+// added in Task 10b: `DrillItemMover.shoveVias` (DrillItemMover.java:173-249) — reached from `TraceShover.insert:435` and from `ForcedPadRouter.forcedPad:364`, and it calls `DrillItemMover.insert`. Task 9 marked it `added in Plan 7:`; **controller ruling AA** moves it into a new Task 10b with the rest of the `ForcedViaInserter.insert` chain.
