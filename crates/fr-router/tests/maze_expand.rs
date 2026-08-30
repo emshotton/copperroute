@@ -1578,3 +1578,123 @@ fn a_stale_trace_index_is_refused_silently_by_the_shover() {
     );
     assert!(out.is_empty(), "sections=0");
 }
+
+/// Probe mode `neck2` — the two `withNeckdown` call sites, which is where quirk #179 *bites*.
+/// `:407-414` runs only for an `ExpansionDoor` and narrows **both** `halfWidthAdd` and `halfWidth`;
+/// `:442-451` runs only for a `TargetItemExpansionDoor` and narrows `halfWidth` alone. Either way
+/// the value comes from `checkNeckDownAtDestPin`, i.e. the *start* pin's `49.0`.
+///
+/// The round is run on **room 4**, whose shape has `minWidth() = 687.49`: `:458`'s
+/// `minWidth() < 2 * halfWidth` makes it **thin** against the control's 1600 and **thick** against
+/// the pin's 49, so each site flips.
+/// ```text
+/// --- site=targetDoor    withNeckdown=false targetDoor=66     room=4 roomMinWidth=687.4942085903301 checkNeckDownAtDestPin=49.0
+///   expandToRoomDoors=false   queue n=0
+/// --- site=targetDoor    withNeckdown=true  targetDoor=66
+///   expandToRoomDoors=true    queue n=1   (97, expansion=1000.0, sorting=1000.0)
+/// --- site=expansionDoor withNeckdown=false expansionDoor=66 dimension=1
+///   expandToRoomDoors=true    queue n=1   (ExpansionDoor 129, expansion=1007.153180628, sorting=3572.056297706)
+/// --- site=expansionDoor withNeckdown=true  expansionDoor=66 dimension=1
+///   expandToRoomDoors=true    queue n=2   (66 @1550.0/2380.0, 97 @2550.0/2550.0)
+/// ```
+#[test]
+fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
+    type Expected = (bool, Vec<(i32, f64, f64)>);
+    let cases: [(&str, bool, Expected); 4] = [
+        ("targetDoor", false, (false, vec![])),
+        ("targetDoor", true, (true, vec![(97, 1000.0, 1000.0)])),
+        (
+            "expansionDoor",
+            false,
+            (true, vec![(129, 1_007.153_180_628, 3_572.056_297_706)]),
+        ),
+        (
+            "expansionDoor",
+            true,
+            (true, vec![(66, 1550.0, 2380.0), (97, 2550.0, 2550.0)]),
+        ),
+    ];
+    for (site, neckdown, (expanded, rows)) in cases {
+        let mut board = probe_board();
+        let mut engine = probe_engine(&mut board, 1);
+        let mut settings = probe_settings(&board);
+        settings.set_automatic_neckdown(neckdown);
+        let trace_costs = settings.get_trace_costs();
+        let mut ctrl =
+            AutorouteControl::new(&board, 1, &settings, settings.get_via_costs(), &trace_costs);
+        ctrl.vias_allowed = false;
+        assert_eq!(ctrl.with_neckdown, neckdown);
+        let counter = Counter::new();
+        let mut maze = MazeSearchEngine::get_instance(
+            &set_of(&[2]),
+            &set_of(&[3]),
+            &mut engine,
+            &mut board,
+            &ctrl,
+            &|| counter.check(),
+        )
+        .expect("init succeeds on this board");
+
+        // The **second** seeded element: room 4, 1041 units tall.
+        let seed = maze.queue.iter().last().expect("two seeded").clone();
+        let room = seed.next_room.expect("a room");
+        assert_eq!(maze.engine.rooms.room_id_no(room), Some(4));
+        let room_min_width = maze
+            .engine
+            .rooms
+            .room_shape(room)
+            .expect("a shape")
+            .min_width();
+        assert!((room_min_width - 687.494_208_590_330_1).abs() < 1e-9);
+        assert_eq!(ctrl.compensated_trace_half_width[0], 1600);
+        assert_eq!(maze.check_neck_down_at_dest_pin(&board, room), 49.0);
+
+        let element = if site == "targetDoor" {
+            assert_eq!(maze.engine.expandable_id_no(seed.door), 66);
+            seed
+        } else {
+            let door = maze.engine.rooms.room_doors(room)[0];
+            assert_eq!(maze.engine.rooms.door_id_no(door), Some(66));
+            assert_eq!(maze.engine.rooms.door(door).expect("live").dimension, 1);
+            let centre = maze
+                .engine
+                .rooms
+                .door_shape(door)
+                .expect("live")
+                .centre_of_gravity();
+            MazeListElement {
+                door: ExpandableRef::Door(door),
+                section_no_of_door: 0,
+                backtrack_door: None,
+                section_no_of_backtrack_door: 0,
+                expansion_value: 0.0,
+                sorting_value: 0.0,
+                next_room: Some(room),
+                shape_entry: FloatLine::new(centre, centre),
+                room_ripped: false,
+                adjustment: MazeAdjustment::None,
+                already_checked: false,
+                ripup_cost: 0,
+            }
+        };
+
+        drain(&mut maze);
+        assert_eq!(
+            maze.expand_to_room_doors(&mut board, &element),
+            expanded,
+            "site={site} withNeckdown={neckdown}"
+        );
+        let got: Vec<(i32, f64, f64)> = maze
+            .queue
+            .iter()
+            .map(|e| {
+                (
+                    maze.engine.expandable_id_no(e.door),
+                    r9(e.expansion_value),
+                    r9(e.sorting_value),
+                )
+            })
+            .collect();
+        assert_eq!(got, rows, "site={site} withNeckdown={neckdown}");
+    }
+}

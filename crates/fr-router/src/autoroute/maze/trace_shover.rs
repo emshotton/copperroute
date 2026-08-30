@@ -399,7 +399,26 @@ impl MazeTraceShover {
             }
         };
 
-        // :236-312.
+        // :236-312. The door-section collector.
+        //
+        // obligation: `MazeTraceShover.checkShoveTraceLine`'s door-section collector (`:236-312`)
+        // has **no ground truth**. Every one of `P6T12Probe` mode `shove`'s 26 cells reports
+        // `sections=0`, because `TraceShover.check` answers `shoveWidth <= 0` on that board and
+        // `:213-215` returns before this loop is reached — so the trace-fork skip (`:240-248`),
+        // both `sideOf` tests (`:266-278`), the nearest-corner choice (`:279-286`), the
+        // `fromDoorCompareDistance` skip (`:287-290`), the projection test (`:293-306`) and both
+        // `DoorSection` constructions (`:255`, `:307`) are transcription only. Because the two
+        // lists this fills are always empty, `MazeSearchEngine.shoveTraceRoom`'s adjustment
+        // mapping (`:1153-1159`, `:1184-1190`) never runs either, so **nothing in the crate has
+        // ever produced a `MazeAdjustment::Left` or `Right`** — and that adjustment gates
+        // `shoveTraceRoom`'s own two halves (`:1139`, `:1171`) and `expandToDoorSection`'s
+        // `roomRipped` (`:885-887`).
+        //
+        // **Task 17** must therefore include, in its acceptance corpus, a board on which a shove
+        // genuinely succeeds with a candidate door on the shove side within `shoveWidth`, so that
+        // this loop fills and `MazeAdjustment::Left`/`Right` are produced; extend `P6T12Probe`
+        // mode `shove` against that board, and name the fixture in the task report. A Rust-only
+        // test would pin the port to itself rather than to Java, which is why none is added here.
         for current_door in room_doors {
             // :237-239.
             if current_door == from_door {

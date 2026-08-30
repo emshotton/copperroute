@@ -860,7 +860,13 @@ pop began. Java wins; the test is named for what Java does.
 **`MazeTraceShover` never writes the board.** Despite the name it calls only
 `RoutingBoard.checkTraceSegment` and the static `TraceShover.check`, and then
 *collects* the door sections a successful shove would open. Every one of its
-tests asserts the board's item count before and after.
+tests asserts the board's item count before and after. The collector itself
+(`MazeTraceShover.java:236-312`) has **no ground truth**: on every board the
+probe reaches, `TraceShover.check` refuses first and `:213-215` returns before
+the loop, so nothing in the crate has ever produced a `MazeAdjustment::Left` or
+`Right`. That is carried as an `obligation:` marker at the site naming **Task
+17**, whose acceptance corpus must include a board on which a shove genuinely
+succeeds with a candidate door on the shove side.
 
 **Hazard N is two guards, not one.** The brief names `MazeTraceShover:64-66` as
 "the silent `continue`"; it is a `return false`, and the genuine silent

@@ -154,6 +154,24 @@ room=2 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
 room=4 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
 bareRoom checkNeckDownAtDestPin=0.0
 
+=== mode neck2 ===
+--- site=targetDoor withNeckdown=false targetDoor=66 room=4 roomMinWidth=687.4942085903301 compensatedTraceHalfWidth=1600 checkNeckDownAtDestPin=49.0
+  expandToRoomDoors=false
+queue n=0
+--- site=targetDoor withNeckdown=true targetDoor=66 room=4 roomMinWidth=687.4942085903301 compensatedTraceHalfWidth=1600 checkNeckDownAtDestPin=49.0
+  expandToRoomDoors=true
+queue n=1
+  [0] door=TargetItemExpansionDoor id=97 item=3 treeEntryNo=0 room=4 dest=true section=0 backtrack=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false sectionOfBacktrack=0 expansion=1000.000000000 sorting=1000.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- site=expansionDoor withNeckdown=false expansionDoor=66 dimension=1 room=4 roomMinWidth=687.4942085903301 compensatedTraceHalfWidth=1600 checkNeckDownAtDestPin=49.0
+  expandToRoomDoors=true
+queue n=1
+  [0] door=ExpansionDoor id=129 section=0 backtrack=ExpansionDoor id=66 sectionOfBacktrack=0 expansion=1007.153180628 sorting=3572.056297706 nextRoom=5 nextRoomLayer=0 shapeEntry=(-2148.436486,501.165588)-(-2148.436486,501.165588) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- site=expansionDoor withNeckdown=true expansionDoor=66 dimension=1 room=4 roomMinWidth=687.4942085903301 compensatedTraceHalfWidth=1600 checkNeckDownAtDestPin=49.0
+  expandToRoomDoors=true
+queue n=2
+  [0] door=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 backtrack=ExpansionDoor id=66 sectionOfBacktrack=0 expansion=1550.000000000 sorting=2380.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=97 item=3 treeEntryNo=0 room=4 dest=true section=0 backtrack=ExpansionDoor id=66 sectionOfBacktrack=0 expansion=2550.000000000 sorting=2550.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
 === mode smalldoor ===
 room=2 door=33 dimension=1 doorShape=[-4700,-10000..-4700,0] shapeEntry=(-4700.000000,-5000.000000)
 halfWidth=1600 doorIsSmall=false expandToRoomDoors=true

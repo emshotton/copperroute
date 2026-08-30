@@ -775,7 +775,7 @@ methods with dozens of branches.
     `crates/fr-router/tests/data/p6t12-maze-expand.txt`; the run pipes through a
     `grep -Ev` that strips `FRLogger`'s timestamped lines (mode `thick` emits one
     from `MazeSearchEngine:1119`), which is what makes the transcript
-    reproducible. Eleven modes:
+    reproducible. Twelve modes:
 
     - `ctrl` — the `AutorouteControl` fields the expansion reads on the shared
       board, so every later mode's arithmetic can be checked by hand:
@@ -804,6 +804,13 @@ methods with dozens of branches.
     - `neck` — `checkNeckDownAtDestPin` on the two seeded rooms and on a bare
       one: **quirk #179**, the method that never asks whether the pin is a
       destination pin.
+    - `neck2` — the same board under `withNeckdown = true`, which is where quirk
+      #179 *bites*: `expandToRoomDoors`' two neckdown call sites (`:407-414`
+      through an `ExpansionDoor`, `:442-451` through a
+      `TargetItemExpansionDoor`) narrow `halfWidth` to the **start** pin's 49.
+      The round is run on room 4, whose `minWidth()` is 687.49 — thin against
+      `2 × 1600` and thick against `2 × 49` — so each site is printed with the
+      setting off and on and the two disagree (0 elements vs 1, and 1 vs 2).
     - `smalldoor` — `expandToRoomDoors` entered through an `ExpansionDoor`, at
       the control's own half width and at an absurd one, so `doorIsSmall`
       (`:415`) decides the round: `true` with four elements, then `false` with

@@ -33,6 +33,9 @@
 //              `addCosts`/`adjustment` matrix that drives `roomRipped` and `ripupCost`
 //   thick      `roomShapeIsThick` on a trace room and on a via room
 //   neck       `checkNeckDownAtDestPin` on a room with and without a pin target door
+//   neck2      the same board under `withNeckdown = true`, which is where quirk #179 bites: both
+//              `expandToRoomDoors` call sites (`:407-414` through an `ExpansionDoor`, `:442-451`
+//              through a `TargetItemExpansionDoor`) narrow `halfWidth` to the *start* pin's 49
 //   smalldoor  `expandToRoomDoors` through a door that `doorIsSmall` refuses
 //   snapshot   the door-list snapshot of `:559`: the doors visited in one round
 //   shove      `shoveTraceRoom` / `MazeTraceShover.checkShoveTraceLine` on a trace obstacle room
@@ -53,6 +56,7 @@ import app.freerouting.geometry.planar.IntBox;
 import app.freerouting.geometry.planar.IntPoint;
 import app.freerouting.geometry.planar.Point;
 import app.freerouting.geometry.planar.Polyline;
+import app.freerouting.settings.RouterSettings;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.LinkedList;
@@ -70,6 +74,7 @@ public class P6T12Probe {
       case "bend" -> bend();
       case "thick" -> thick();
       case "neck" -> neck();
+      case "neck2" -> neck2();
       case "smalldoor" -> smallDoor();
       case "snapshot" -> snapshot();
       case "shove" -> shove();
@@ -368,11 +373,77 @@ public class P6T12Probe {
   }
 
   /**
-   * `expandToRoomDoors` entered through an `ExpansionDoor` rather than a target door, so `:405`
-   * bites and `doorIsSmall` is consulted (`:415`). At the control's own half width the door is
-   * big enough and the round expands four elements; at an absurd half width `doorIsSmall`
-   * answers true, `:501-511` returns `somethingExpanded` (false) and nothing is expanded.
+   * The two `withNeckdown` call sites of `expandToRoomDoors`, which are where quirk #179 bites.
+   * `:407-414` runs only for an `ExpansionDoor` and narrows **both** `halfWidthAdd` and
+   * `halfWidth`; `:442-451` runs only for a `TargetItemExpansionDoor` and narrows `halfWidth`
+   * alone. Either way the value comes from `checkNeckDownAtDestPin`, which answers the *start*
+   * pin's neckdown half width.
+   *
+   * <p>The round is run on **room 4**, whose shape is 1041 units tall: `:458`'s
+   * `minWidth() < 2 * halfWidth` makes it thin against the control's 1600 and thick against the
+   * pin's 49, so each site is printed with `withNeckdown` off and on and the two disagree.
    */
+  static void neck2() throws Exception {
+    for (String site : new String[] {"targetDoor", "expansionDoor"}) {
+      for (boolean neckdown : new boolean[] {false, true}) {
+        P6T11Probe.build();
+        AutorouteEngine autorouteEngine = P6T11Probe.engine(new P6T11Probe.Counter(0), 1);
+        RouterSettings settings = new RouterSettings(P6T11Probe.board);
+        settings.setAutomaticNeckdown(neckdown);
+        AutorouteControl control =
+            new AutorouteControl(
+                P6T11Probe.board, 1, settings, settings.getViaCosts(), settings.getTraceCosts());
+        control.viasAllowed = false;
+        MazeSearchEngine maze =
+            MazeSearchEngine.getInstance(
+                P6T11Probe.setOf(2), P6T11Probe.setOf(3), autorouteEngine, control);
+        // The **second** seeded element: its room is 1041 units tall, which is thin against
+        // `2 * 1600` and thick against `2 * 49`.
+        MazeListElement seed = null;
+        for (MazeListElement e : maze.mazeExpansionList) {
+          seed = e;
+        }
+        CompleteExpansionRoom room = seed.nextRoom;
+        MazeListElement element;
+        String doorInfo;
+        if (site.equals("targetDoor")) {
+          element = seed;
+          doorInfo = "targetDoor=" + seed.door.getId();
+        } else {
+          ExpansionDoor door = room.getDoors().iterator().next();
+          FloatPoint centre = door.getShape().centreOfGravity();
+          element =
+              new MazeListElement(
+                  door,
+                  0,
+                  null,
+                  0,
+                  0.0,
+                  0.0,
+                  room,
+                  new FloatLine(centre, centre),
+                  false,
+                  MazeSearchElement.Adjustment.NONE,
+                  false);
+          doorInfo = "expansionDoor=" + door.getId() + " dimension=" + door.dimension;
+        }
+        Method neckDown = priv("checkNeckDownAtDestPin", CompleteExpansionRoom.class);
+        System.out.println(
+            "--- site=" + site
+                + " withNeckdown=" + control.withNeckdown
+                + " " + doorInfo
+                + " room=" + room.getId()
+                + " roomMinWidth=" + room.getShape().minWidth()
+                + " compensatedTraceHalfWidth=" + control.compensatedTraceHalfWidth[0]
+                + " checkNeckDownAtDestPin=" + neckDown.invoke(maze, room));
+        maze.mazeExpansionList.clear();
+        Method m = priv("expandToRoomDoors", MazeListElement.class);
+        System.out.println("  expandToRoomDoors=" + m.invoke(maze, element));
+        P6T11Probe.dumpQueue(maze);
+      }
+    }
+  }
+
   static void smallDoor() throws Exception {
     Method small = priv("doorIsSmall", ExpansionDoor.class, double.class);
     Method m = priv("expandToRoomDoors", MazeListElement.class);
