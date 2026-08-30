@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 11 of 18
+## State: Task 12 of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -29,8 +29,10 @@ and — from Tasks 9, 10 and 10b — the seam with `fr-board`: `RoutingBoardExt`
 plus **both halves** of the four shove algorithms, the `check` family the maze
 consults before it commits to a trace or a via and the mutating family that then
 performs the shove and inserts the via. Task 11 adds the search's own frame:
-`MazeSearchEngine`'s construction, `init` and pop loop, with the room-door
-expansion (Task 12) and the drill/ripup expanders (Task 13) still stubs:
+`MazeSearchEngine`'s construction, `init` and pop loop; Task 12 adds its body —
+the room-door expansion, the A\* cost model and the check-only
+`MazeTraceShover` — leaving only the drill and ripup expanders (Task 13) as
+stubs:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -60,6 +62,8 @@ expansion (Task 12) and the drill/ripup expanders (Task 13) still stubs:
 | `MazeListElement` | `src/autoroute/maze/list_element.rs` | `MazeListElement.java:11-114` |
 | `MazeQueue` | `src/autoroute/maze/queue.rs` | `MazeSearchEngine.java:84-125` (the anonymous `TreeSet`) |
 | `MazeSearchEngine`'s frame, `MazeResult`, `ShoveResult` | `src/autoroute/maze/search.rs` | `MazeSearchEngine.java:41-152,287-384,763-789,969-1103,1217-1256` |
+| `MazeSearchEngine`'s room-door expansion and cost model | `src/autoroute/maze/expand.rs` | `MazeSearchEngine.java:390-966,1105-1215` |
+| `MazeTraceShover`, `DoorSection` | `src/autoroute/maze/trace_shover.rs` | `MazeTraceShover.java:24-357` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RoutingBoardExt` | `src/board_ext/routing_board_ext.rs` | `RoutingBoard.java:96-118, 405-448, 882-905, 1240-1249` |
 | `TraceShover` (the two `check`s + `springOver`) | `src/board_ext/trace_shover.rs` | `TraceShover.java:57-411, 592-603, 611-818` |
@@ -330,7 +334,11 @@ closed (`AutorouteControl.rebuildViaInfo` by a real `fn`,
 took `autoroute/maze` from 4 MISSING to **1**: `MazeSearchEngine.getInstance`,
 `findConnection` and `occupyNextElement` are real `fn`s in
 `src/autoroute/maze/search.rs`, and the one that remains is
-`MazeTraceShover.checkShoveTraceLine` (Task 12). All five
+`MazeTraceShover.checkShoveTraceLine`. Task 12 closed that one too, so
+`autoroute/maze` is at **0 MISSING**: `checkShoveTraceLine` is a real `fn` in
+`src/autoroute/maze/trace_shover.rs`, and the seven private
+`MazeSearchEngine` methods it landed alongside it live in
+`src/autoroute/maze/expand.rs`, which the class map already pointed at. All five
 `autoroute` invocations stay at zero UNMAPPED, and only `autoroute/path` (7,
 Tasks 14-15) is untouched. Task 9 opened the two `board/*` invocations, each
 restricted to the file it ports, and both exit 0 with zero MISSING and zero
@@ -656,8 +664,11 @@ inserted un-normalized on a board that is not marking its changed area — while
 `ForcedPadRouter.forcedPad`, the same loop, guards the identical call); and
 Task 11 wrote **#178** (`MazeSearchEngine.init` ignores the `boolean` its own
 overridden `add` returns, so a fanout control whose escape window rejects every
-seeded door still produces a live engine with an empty queue). The next
-free id is **#179**. Every later
+seeded door still produces a live engine with an empty queue); and Task 12
+wrote **#179** (`MazeSearchEngine.checkNeckDownAtDestPin` never asks whether the
+pin is a *destination* pin and returns from inside its loop, so a start pin's
+neckdown silently shrinks the trace the search plans through a room it is only
+passing through). The next free id is **#180**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.
@@ -815,3 +826,59 @@ inside it. `ShapeSearchTree.completeShape` then answers **zero** candidate
 rooms, `init` answers `false`, and `getInstance` answers `null` for a reason
 that has nothing to do with the method under test. JVM-verified on the HEAD jar
 before the fixture was changed.
+
+## The room-door expansion and the cost model (Task 12)
+
+`src/autoroute/maze/expand.rs` is `MazeSearchEngine`'s *body* — the seven
+private methods one pop of the queue runs — and
+`src/autoroute/maze/trace_shover.rs` is `MazeTraceShover`, the check-only shove
+probe two of them consult. Together they close `autoroute/maze`'s last audit
+row.
+
+**The cost model has exactly one producer.** `expandToDoorSection` (`:791-965`)
+is the only place outside `init` that builds a `MazeListElement`, so every
+number in the A\* frontier is made there: a bend penalty of
+`ctrl.bendCosts[layer]` charged when `crossProduct² > 0.01 · |prev|² · |next|²`
+(a **normalised** test — `sin² > 0.01`, about 5.7°, and scale-independent);
+`expansionValue = from.expansionValue + addCosts + bend + weightedDistance(...)`
+under the layer's horizontal/vertical trace costs; `sortingValue` = that plus
+`destinationDistance.calculate`; and `roomRipped` / `ripupCost` set only by a
+positive `addCosts` with `Adjustment.NONE`, or `roomRipped` alone inherited from
+an already-checked ripped parent. `the_bend_penalty_fires_exactly_above_sin_squared_one_percent`
+straddles the threshold by **one unit** — `dy = 100` is below it and `dy = 101`
+above, because with `dx = 1000` the test reduces to `99·dy² > 1000²`.
+
+**The door snapshot is taken *after* completing the neighbours, not before.**
+The task brief asked for a test named "the door snapshot is taken before
+completing neighbours"; Java's `new LinkedList<>(nextRoom.getDoors())` is at
+`:559` and `completeNeighbourRooms` at `:419`, so the snapshot guards the
+*iteration*, not the completion. It is observable on this board: completing room
+2's neighbours removes one door and adds another, and the round then expands
+through the post-completion list (66, 67, 33) — door 67 did not exist when the
+pop began. Java wins; the test is named for what Java does.
+
+**`MazeTraceShover` never writes the board.** Despite the name it calls only
+`RoutingBoard.checkTraceSegment` and the static `TraceShover.check`, and then
+*collects* the door sections a successful shove would open. Every one of its
+tests asserts the board's item count before and after.
+
+**Hazard N is two guards, not one.** The brief names `MazeTraceShover:64-66` as
+"the silent `continue`"; it is a `return false`, and the genuine silent
+`continue`s are `expandToTargetDoors`' pair at `:656-668`. Both are ported
+verbatim and both are pinned — the first by shortening a trace's polyline
+underneath a room that keeps its `indexInItem`, the second by forcing every
+`treeEntryNo` past the item's current tree-shape count.
+
+**All seven private Java methods are `pub` here**, for the reason the frame's
+four are: Java's ground-truth probe reaches them with `setAccessible(true)`, and
+the branches that matter — the layer-active gate, the small-door refusal, the
+bend threshold, the two stale-index skips — are not separable through
+`occupyNextElement` alone.
+
+**Four Task 13 markers remain inside `expandToRoomDoors`:**
+`MazeRipupResolver.checkRipup` and `.checkLeavingRippedItem` (`:506`, `:519`)
+and `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`,
+`:620`, the latter also needing `Via.getAutorouteDrillInfo`). Their branches are
+guarded by `ctrl.ripupAllowed`, `currentDoorIsSmall` and `ctrl.viasAllowed`, so
+a control with vias and ripup off runs the whole file — which is what
+`tests/maze_expand.rs` and `P6T12Probe` do.

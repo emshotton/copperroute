@@ -13,18 +13,23 @@
 //! [`list_element`] ([`MazeListElement`], the queue's element and its non-total comparator) and
 //! [`queue`] ([`MazeQueue`], the guarded `TreeSet` `MazeSearchEngine` installs). The search
 //! Task 11 adds [`search`], the search's frame: the [`MazeSearchEngine`] struct, `getInstance`,
-//! `init`, the pop loop and the four helpers those need. The cost model and the room-door
-//! expansion (Task 12, `expand.rs`), the drill and ripup expanders (Task 13) and
-//! `autorouteConnection` (Task 16) are still to come; the roster in
+//! `init`, the pop loop and the four helpers those need. Task 12 adds [`expand`],
+//! the room-door expansion and the cost model (`expandToRoomDoors` through
+//! `expandToDoorSection`, plus `roomShapeIsThick`, `shoveTraceRoom` and
+//! `checkNeckDownAtDestPin`), and [`trace_shover`] ([`MazeTraceShover`], the check-only shove
+//! probe those use). The drill and ripup expanders (Task 13) and `autorouteConnection` (Task 16)
+//! are still to come; the roster in
 //! `scripts/audit-map/fr-router.map` records where each lands.
 
 pub mod control;
 pub mod destination_distance;
 pub mod engine;
+pub mod expand;
 pub mod list_element;
 pub mod queue;
 pub mod search;
 pub mod search_element;
+pub mod trace_shover;
 
 pub use control::{AutorouteControl, ViaMask};
 pub use destination_distance::DestinationDistance;
@@ -33,6 +38,7 @@ pub use list_element::MazeListElement;
 pub use queue::MazeQueue;
 pub use search::{ALREADY_RIPPED_COSTS, MazeResult, MazeSearchEngine, ShoveResult};
 pub use search_element::{MazeAdjustment, MazeSearchElement};
+pub use trace_shover::{DoorSection, MazeTraceShover};
 
 /// `AutorouteEngine.TRACE_WIDTH_TOLERANCE` (`autoroute/maze/AutorouteEngine.java:41`):
 /// `public static final int TRACE_WIDTH_TOLERANCE = 2`.

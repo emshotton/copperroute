@@ -762,6 +762,66 @@ methods with dozens of branches.
       foreign-net trace's first tile is cut back from `[-160,-160..160,2160]` to
       `[-160,300..160,2160]` and the own-net trace is left alone.
 
+  - `P6T12Probe.java` — `MazeSearchEngine`'s room-door expansion and cost model
+    (Plan 6 Task 12): the private `expandToRoomDoors` (`:390-626`),
+    `expandToTargetDoors` (`:629-704`), `expandToDoor` (`:707-759`),
+    `expandToDoorSection` (`:791-965`), `roomShapeIsThick` (`:1105-1123`),
+    `shoveTraceRoom` (`:1130-1201`) and `checkNeckDownAtDestPin` (`:1207-1215`),
+    plus the public static `MazeTraceShover.checkShoveTraceLine`
+    (MazeTraceShover.java:32-314). It declares the same package as `P6T11Probe`
+    and **compiles together with it**, reusing its `build()`, `control()`,
+    `engine()`, `setOf()` and `dumpQueue()`; it reaches the seven private methods
+    with `setAccessible(true)`. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t12-maze-expand.txt`; the run pipes through a
+    `grep -Ev` that strips `FRLogger`'s timestamped lines (mode `thick` emits one
+    from `MazeSearchEngine:1119`), which is what makes the transcript
+    reproducible. Eleven modes:
+
+    - `ctrl` — the `AutorouteControl` fields the expansion reads on the shared
+      board, so every later mode's arithmetic can be checked by hand:
+      `traceHalfWidth=[1500,1500]`, `compensatedTraceHalfWidth=[1600,1600]`,
+      `bendCosts=[0.0,0.0]`, `traceCosts[0] = (1.0, 2.0)`, `withNeckdown=false`,
+      `ripupAllowed=false`, `maxShoveTraceRecursionDepth=20`.
+    - `pop` / `pop2` — the **pop-loop tail**: `getInstance` then one or two
+      `occupyNextElement`s, with `viasAllowed` switched off so the drill-page
+      block of `:601-623` (Task 13's `MazeExpansionEngine`) stays out of it. The
+      first pop completes a neighbour (3 rooms -> 4) and expands five elements
+      through the *post-completion* door list; the second pops into room 4, whose
+      1041-unit height makes `nextRoomIsThick` false, and expands nothing.
+    - `inactive` — `layerActive[0] = false` on a **signal** layer: `:396-401`
+      answers `true` with the queue untouched and no room completed.
+    - `bend` — `expandToDoorSection` over four `dy` values straddling the
+      `sin² > 0.01` threshold (with `dy = 100` below and `dy = 101` above it,
+      because `99·dy² > 1000²`), each crossed with the four
+      `addCosts`/`adjustment` combinations that drive `roomRipped` and
+      `ripupCost`; plus the already-checked ripped parent of `:887`'s second
+      clause and the two refusals of `:798-849`. `bendCosts[0]` is set to `100.0`
+      by hand, because the board's own settings answer `0.0` and the whole block
+      would be dead.
+    - `thick` — `roomShapeIsThick` on an `ObstacleArea` room and a `Pin` room
+      (both the `FRLogger.warn` arm) and on four traces of half width 100, 1500,
+      1600 and 2000, which straddle the `traceHalfWidth + 100 >= 1600` boundary.
+    - `neck` — `checkNeckDownAtDestPin` on the two seeded rooms and on a bare
+      one: **quirk #179**, the method that never asks whether the pin is a
+      destination pin.
+    - `smalldoor` — `expandToRoomDoors` entered through an `ExpansionDoor`, at
+      the control's own half width and at an absurd one, so `doorIsSmall`
+      (`:415`) decides the round: `true` with four elements, then `false` with
+      none.
+    - `snapshot` — the door list of room 2 before and after
+      `completeNeighbourRooms`: 4 doors become 3, one of them new. Java's
+      snapshot at `:559` is taken **after** that call, which is what mode `pop`
+      then shows the round expanding through.
+    - `shove` — `shoveTraceRoom` and `checkShoveTraceLine`: the two early `true`s
+      of `:39-44`, a 24-cell table over the three segments of a net-2 obstacle
+      trace whose half width and clearance class match the control's, the
+      2-dimensional link-door branch of `:73-96`, and **hazard N** — the trace's
+      polyline shortened underneath a room that keeps its `indexInItem`, which
+      `:65-66` refuses silently. Every cell also reports the board's item count
+      before and after, which is how the check-only property is pinned.
+    - `stale` — `expandToTargetDoors` with every `treeEntryNo` forced to 99:
+      `:656-658` skips all of them and the method answers `false`.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

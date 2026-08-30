@@ -1,0 +1,231 @@
+# P6T12Probe transcript — clone HEAD jar, JDK 25, -XX:hashCode=2.
+# Regenerate: see the header of scripts/differential/java/probes/P6T12Probe.java.
+
+=== mode ctrl ===
+netNumber=1
+layerCount=2
+layerActive=[true, true]
+traceHalfWidth=[1500, 1500]
+compensatedTraceHalfWidth=[1600, 1600]
+bendCosts=[0.0, 0.0]
+traceCosts[0] horizontal=1.0 vertical=2.0
+traceCosts[1] horizontal=2.0 vertical=1.0
+withNeckdown=false
+viasAllowed=true
+ripupAllowed=false
+isFanout=false
+maxShoveTraceRecursionDepth=20
+maxShoveViaRecursionDepth=5
+maxSpringOverRecursionDepth=5
+traceClearanceClassIndex=1
+
+=== mode pop ===
+instance=ok
+--- before
+queue n=2
+  [0] door=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=2 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- after pop 1 occupyNextElement=true
+completeRooms n=4
+queue n=5
+  [0] door=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=95 item=3 treeEntryNo=0 room=2 dest=true section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1000.000000000 sorting=1000.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [2] door=ExpansionDoor id=66 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1550.000000000 sorting=3930.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-3098.000000,0.000000)-(-1002.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [3] door=ExpansionDoor id=67 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=11149.268182262 sorting=20379.268182262 nextRoom=5 nextRoomLayer=0 shapeEntry=(-3884.326137,-8621.203369)-(-215.673863,-2419.796631) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [4] door=ExpansionDoor id=33 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=10846.197490365 sorting=21737.317726594 nextRoom=1 nextRoomLayer=0 shapeEntry=(-4700.000000,-8398.000000)-(-4700.000000,-1602.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode pop2 ===
+instance=ok
+--- before
+queue n=2
+  [0] door=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=2 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- after pop 1 occupyNextElement=true
+completeRooms n=4
+queue n=5
+  [0] door=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=95 item=3 treeEntryNo=0 room=2 dest=true section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1000.000000000 sorting=1000.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [2] door=ExpansionDoor id=66 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1550.000000000 sorting=3930.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-3098.000000,0.000000)-(-1002.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [3] door=ExpansionDoor id=67 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=11149.268182262 sorting=20379.268182262 nextRoom=5 nextRoomLayer=0 shapeEntry=(-3884.326137,-8621.203369)-(-215.673863,-2419.796631) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [4] door=ExpansionDoor id=33 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=10846.197490365 sorting=21737.317726594 nextRoom=1 nextRoomLayer=0 shapeEntry=(-4700.000000,-8398.000000)-(-4700.000000,-1602.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- after pop 2 occupyNextElement=true
+completeRooms n=5
+queue n=4
+  [0] door=TargetItemExpansionDoor id=95 item=3 treeEntryNo=0 room=2 dest=true section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1000.000000000 sorting=1000.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=ExpansionDoor id=66 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1550.000000000 sorting=3930.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-3098.000000,0.000000)-(-1002.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [2] door=ExpansionDoor id=67 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=11149.268182262 sorting=20379.268182262 nextRoom=5 nextRoomLayer=0 shapeEntry=(-3884.326137,-8621.203369)-(-215.673863,-2419.796631) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [3] door=ExpansionDoor id=33 section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=10846.197490365 sorting=21737.317726594 nextRoom=1 nextRoomLayer=0 shapeEntry=(-4700.000000,-8398.000000)-(-4700.000000,-1602.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode inactive ===
+layer0isSignal=true
+expandToRoomDoors=true
+queue n=2
+  [0] door=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=2 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=830.000000000 nextRoom=4 nextRoomLayer=0 shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode bend ===
+bendCosts[0]=100.0
+traceCosts[0] horizontal=1.0 vertical=2.0
+backtrackCog=(0.000000,0.000000)
+  sections=1
+expandToDoorSection dy=0 addCosts=0 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1000.000000000 sorting=2330.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,0.000000)-(2000.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=0 addCosts=7 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1007.000000000 sorting=2337.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,0.000000)-(2000.000000,0.000000) roomRipped=true adjustment=NONE alreadyChecked=false ripupCost=7
+  sections=1
+expandToDoorSection dy=0 addCosts=7 adjustment=RIGHT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1007.000000000 sorting=2337.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,0.000000)-(2000.000000,0.000000) roomRipped=false adjustment=RIGHT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=0 addCosts=7 adjustment=LEFT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1007.000000000 sorting=2337.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,0.000000)-(2000.000000,0.000000) roomRipped=false adjustment=LEFT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=100 addCosts=0 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1019.803902719 sorting=2349.803902719 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,100.000000)-(2000.000000,100.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=100 addCosts=7 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1026.803902719 sorting=2356.803902719 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,100.000000)-(2000.000000,100.000000) roomRipped=true adjustment=NONE alreadyChecked=false ripupCost=7
+  sections=1
+expandToDoorSection dy=100 addCosts=7 adjustment=RIGHT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1026.803902719 sorting=2356.803902719 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,100.000000)-(2000.000000,100.000000) roomRipped=false adjustment=RIGHT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=100 addCosts=7 adjustment=LEFT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1026.803902719 sorting=2356.803902719 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,100.000000)-(2000.000000,100.000000) roomRipped=false adjustment=LEFT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=101 addCosts=0 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1120.198019994 sorting=2450.198019994 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,101.000000)-(2000.000000,101.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=101 addCosts=7 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1127.198019994 sorting=2457.198019994 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,101.000000)-(2000.000000,101.000000) roomRipped=true adjustment=NONE alreadyChecked=false ripupCost=7
+  sections=1
+expandToDoorSection dy=101 addCosts=7 adjustment=RIGHT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1127.198019994 sorting=2457.198019994 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,101.000000)-(2000.000000,101.000000) roomRipped=false adjustment=RIGHT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=101 addCosts=7 adjustment=LEFT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1127.198019994 sorting=2457.198019994 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,101.000000)-(2000.000000,101.000000) roomRipped=false adjustment=LEFT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=1000 addCosts=0 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=2336.067977500 sorting=4463.155187748 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,1000.000000)-(2000.000000,1000.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=1000 addCosts=7 adjustment=NONE => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=2343.067977500 sorting=4470.155187748 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,1000.000000)-(2000.000000,1000.000000) roomRipped=true adjustment=NONE alreadyChecked=false ripupCost=7
+  sections=1
+expandToDoorSection dy=1000 addCosts=7 adjustment=RIGHT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=2343.067977500 sorting=4470.155187748 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,1000.000000)-(2000.000000,1000.000000) roomRipped=false adjustment=RIGHT alreadyChecked=false ripupCost=0
+  sections=1
+expandToDoorSection dy=1000 addCosts=7 adjustment=LEFT => true
+queue n=1
+  [0] door=ExpansionDoor id=28897 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=2343.067977500 sorting=4470.155187748 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,1000.000000)-(2000.000000,1000.000000) roomRipped=false adjustment=LEFT alreadyChecked=false ripupCost=0
+sections=1
+expandToDoorSection rippedParent => true
+queue n=1
+  [0] door=ExpansionDoor id=28961 section=0 backtrack=ExpansionDoor id=28833 sectionOfBacktrack=0 expansion=1000.000000000 sorting=2330.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(2000.000000,0.000000)-(2000.000000,0.000000) roomRipped=true adjustment=NONE alreadyChecked=false ripupCost=0
+expandToDoorSection occupied => false
+expandToDoorSection nullEntry => false
+queue n=0
+
+=== mode thick ===
+compensatedTraceHalfWidth[0]=1600
+clearanceCompensationValue(1,0)=100
+obstacleArea => false
+pin => false
+trace id=8 halfWidth=2000 clearanceClass=1 roomShapeIsThick=true
+trace id=7 halfWidth=1600 clearanceClass=1 roomShapeIsThick=true
+trace id=6 halfWidth=1500 clearanceClass=1 roomShapeIsThick=true
+trace id=5 halfWidth=100 clearanceClass=1 roomShapeIsThick=false
+
+=== mode neck ===
+room=2 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
+room=4 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
+bareRoom checkNeckDownAtDestPin=0.0
+
+=== mode smalldoor ===
+room=2 door=33 dimension=1 doorShape=[-4700,-10000..-4700,0] shapeEntry=(-4700.000000,-5000.000000)
+halfWidth=1600 doorIsSmall=false expandToRoomDoors=true
+queue n=4
+  [0] door=TargetItemExpansionDoor id=95 item=3 treeEntryNo=0 room=2 dest=true section=0 backtrack=ExpansionDoor id=33 sectionOfBacktrack=0 expansion=11271.202242884 sorting=11271.202242884 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false section=0 backtrack=ExpansionDoor id=33 sectionOfBacktrack=0 expansion=10846.197490365 sorting=11676.197490365 nextRoom=null nextRoomLayer=- shapeEntry=(-500.000000,0.000000)-(-500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [2] door=ExpansionDoor id=67 section=0 backtrack=ExpansionDoor id=33 sectionOfBacktrack=0 expansion=2847.135578085 sorting=12077.135578085 nextRoom=5 nextRoomLayer=0 shapeEntry=(-3884.326137,-8621.203369)-(-215.673863,-2419.796631) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [3] door=ExpansionDoor id=66 section=0 backtrack=ExpansionDoor id=33 sectionOfBacktrack=0 expansion=10345.167954171 sorting=12725.167954171 nextRoom=4 nextRoomLayer=0 shapeEntry=(-3098.000000,0.000000)-(-1002.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+room=2 door=33 dimension=1 doorShape=[-4700,-10000..-4700,0] shapeEntry=(-4700.000000,-5000.000000)
+halfWidth=100000 doorIsSmall=true expandToRoomDoors=false
+queue n=0
+
+=== mode snapshot ===
+room=2 doorsBefore=4
+doorsAfterCompletion=3
+  door[0] id=33 dimension=1 inSnapshot=true shape=[-4700,-10000..-4700,0]
+  door[1] id=66 dimension=1 inSnapshot=true shape=[-4700,0..600,0]
+  door[2] id=67 dimension=1 inSnapshot=false shape=[-4700,-10000..600,-1041]
+
+=== mode shove ===
+instance=ok
+itemCountBefore=4
+shoveTraceRoom(obstacleArea)=true
+itemCountAfter=4
+checkShoveTraceLine targetDoorFrom=true sections=0
+trace id=5 halfWidth=1500 clearanceClass=1 lines=5 treeShapes=3
+  treeShape[0]=[-8600,-9600..1600,-6400]
+  treeShape[1]=[-1600,-9600..1600,-2900]
+  treeShape[2]=[-1600,-6100..7600,-2900]
+--- cornerNo=0 roomBox=[-8600,-9600..1600,-6400] indexInItem=0 lines=5 fromDoor=166720 upperRight=166820 lower=166920 leftEdge=167020 doorSections=1 doorSegment=(-7663.000000,-6400.000000)-(-3500.000000,-6400.000000)
+  section=0 left=false entryAtA=true => false sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=false => false sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=true => false sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=false => false sections=0 itemsUnchanged=true
+--- cornerNo=1 roomBox=[-1600,-9600..1600,-2900] indexInItem=1 lines=5 fromDoor=166752 upperRight=166852 lower=166952 leftEdge=167052 doorSections=1 doorSegment=(-663.000000,-2900.000000)-(0.000000,-2900.000000)
+  section=0 left=false entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=false => true sections=0 itemsUnchanged=true
+--- cornerNo=2 roomBox=[-1600,-6100..7600,-2900] indexInItem=2 lines=5 fromDoor=166784 upperRight=166884 lower=166984 leftEdge=167084 doorSections=1 doorSegment=(-663.000000,-2900.000000)-(3000.000000,-2900.000000)
+  section=0 left=false entryAtA=true => false sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=false => false sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=true => false sections=0 itemsUnchanged=true
+  section=0 left=false entryAtA=false => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=true => true sections=0 itemsUnchanged=true
+  section=0 left=true entryAtA=false => false sections=0 itemsUnchanged=true
+--- linkDoor id=163873 shape=[-1600,-6100..1600,-2900] maxWidth=3862.924345622109 sections=1 upper=167282 lower=167382
+  link left=false => true sections=0 itemsUnchanged=true
+  shoveTraceRoom left=false => true
+queue n=0
+  link left=true => true sections=0 itemsUnchanged=true
+  shoveTraceRoom left=true => true
+queue n=0
+--- stale indexInItem=2 lines=3
+  checkShoveTraceLine=false sections=0
+
+=== mode stale ===
+expandToTargetDoors healthy=true
+queue n=1
+  [0] door=TargetItemExpansionDoor id=95 item=3 treeEntryNo=0 room=2 dest=true section=0 backtrack=TargetItemExpansionDoor id=64 item=2 treeEntryNo=0 room=2 dest=false sectionOfBacktrack=0 expansion=1000.000000000 sorting=1000.000000000 nextRoom=null nextRoomLayer=- shapeEntry=(500.000000,0.000000)-(500.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+targetDoor item=2 treeEntryNo=99 treeShapeCount=1
+targetDoor item=3 treeEntryNo=99 treeShapeCount=2
+expandToTargetDoors stale=false
+queue n=0
+itemCount=4

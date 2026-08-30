@@ -7,11 +7,12 @@
 //! Task 11 owns the *frame*: the struct, `getInstance` (`:135-152`), `init` (`:969-1103`),
 //! `findConnection` (`:300-312`), `occupyNextElement` (`:314-384`), `doorIsSmall` (`:763-789`),
 //! `reduceTraceShapesAtTiePins` (`:154-167`), `segmentProjection` (`:173-204`),
-//! `toImpactedPoints` (`:287-292`) and the two nested result types (`:1218-1227`, `:1233-1257`). The three
-//! expanders `occupyNextElement` dispatches to are Tasks 12 and 13; each is a stub carrying the
-//! marker that names it and its owning task, and each **panics** rather than answering a
-//! plausible-looking value, because a silent "nothing expanded" would make the pop loop look
-//! healthy while routing nothing.
+//! `toImpactedPoints` (`:287-292`) and the two nested result types (`:1218-1227`, `:1233-1257`).
+//! Task 12 landed the third of the expanders `occupyNextElement` dispatches to,
+//! `expandToRoomDoors`, in `expand.rs`; the two drill expanders are still Task 13's, and each is a
+//! stub carrying the marker that names it and its owning task. Both **panic** rather than
+//! answering a plausible-looking value, because a silent "nothing expanded" would make the pop
+//! loop look healthy while routing nothing.
 //!
 //! # Why `engine` is a field and `board` is a parameter
 //!
@@ -580,9 +581,7 @@ impl<'a> MazeSearchEngine<'a> {
 
         // :375-380. Note that this is **not** an `else` of the drill branch above: a drill
         // element with a next room reaches both.
-        if list_element.next_room.is_some()
-            && !self.expand_to_room_doors(board, &list_element, stop)
-        {
+        if list_element.next_room.is_some() && !self.expand_to_room_doors(board, &list_element) {
             // "occupation by ripup is delayed or nothing was expanded. In case nothing was
             // expanded allow the section to be occupied from somewhere else, if the next room is
             // thin."
@@ -775,20 +774,6 @@ impl<'a> MazeSearchEngine<'a> {
         unimplemented!(
             "added in Task 13: MazeExpansionEngine.expandToOtherLayers \
              (MazeExpansionEngine.java), reached from MazeSearchEngine.java:372"
-        )
-    }
-
-    // added in Task 12: `MazeSearchEngine.expandToRoomDoors`
-    #[allow(unused_variables)]
-    pub(crate) fn expand_to_room_doors(
-        &mut self,
-        board: &mut Board,
-        list_element: &MazeListElement,
-        stop: StopCheck<'_>,
-    ) -> bool {
-        unimplemented!(
-            "added in Task 12: MazeSearchEngine.expandToRoomDoors \
-             (MazeSearchEngine.java:390-…), reached from MazeSearchEngine.java:376"
         )
     }
 }

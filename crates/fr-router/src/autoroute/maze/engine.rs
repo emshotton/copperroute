@@ -482,6 +482,45 @@ impl AutorouteEngine {
         }
     }
 
+    /// `ExpandableObject.otherRoom(CompleteExpansionRoom)` (ExpandableObject.java:22) dispatched
+    /// over the four implementors, which is what `MazeSearchEngine.expandToDoorSection` performs
+    /// as a virtual call at `MazeSearchEngine.java:851`.
+    ///
+    /// It lives here for the same reason [`Self::maze_search_element`] does. `None` is Java's
+    /// `null`, which three of the four implementors answer unconditionally
+    /// (TargetItemExpansionDoor.java:50-53, ExpansionDrill.java:104-107, DrillPage.java:184-187);
+    /// only `ExpansionDoor` (`:78-92`) has a room on the other side, and it narrows an incomplete
+    /// one back to `null`.
+    pub fn expandable_other_room(&self, object: ExpandableRef, room: RoomRef) -> Option<RoomRef> {
+        match object {
+            ExpandableRef::Door(door) => self.rooms.door(door)?.other_complete_room(room),
+            ExpandableRef::TargetDoor(door) => self.rooms.target_door(door)?.other_room(room),
+            ExpandableRef::Drill(drill) => self.rooms.drills.get(drill.0)?.other_room(room),
+            ExpandableRef::Page(page) => self.drill_page_array.page(page).other_room(room),
+        }
+    }
+
+    /// `ExpandableObject.mazeSearchElementCount()` (ExpandableObject.java:31) dispatched over the
+    /// four implementors — `MazeSearchEngine.shoveTraceRoom`'s virtual call at
+    /// `MazeSearchEngine.java:1132`.
+    ///
+    /// `None` is the unallocated `sectionArr` an `ExpansionDoor` throws on
+    /// (ExpansionDoor.java:95-97) or a stale reference; the other three always answer.
+    pub fn maze_search_element_count(&self, object: ExpandableRef) -> Option<usize> {
+        match object {
+            ExpandableRef::Door(door) => self.rooms.door(door)?.maze_search_element_count(),
+            ExpandableRef::TargetDoor(door) => {
+                Some(self.rooms.target_door(door)?.maze_search_element_count())
+            }
+            ExpandableRef::Drill(drill) => {
+                Some(self.rooms.drills.get(drill.0)?.maze_search_element_count())
+            }
+            ExpandableRef::Page(page) => {
+                Some(self.drill_page_array.page(page).maze_search_element_count())
+            }
+        }
+    }
+
     /// [`maze_search_element`](Self::maze_search_element), mutably — Java's callers write the
     /// element's public fields through the reference they hold.
     pub fn maze_search_element_mut(
