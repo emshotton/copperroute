@@ -61,11 +61,14 @@ use parity::{RouterConnectionDoc, RouterMetrics, RouterTraceDoc, RouterViaDoc};
 // The fixture table
 // ---------------------------------------------------------------------------------------------
 
-/// One row of `tests/reference/router-fixtures.txt`: `stem|dsn|max_items`.
+/// One row of `tests/reference/router-fixtures.txt`: `stem|dsn|max_items[|ripup_pass_no]`.
 struct Row {
     stem: String,
     dsn: String,
     max_items: usize,
+    /// `AutorouteConnectionRouter.route:45`'s `ripupPassNo`; the optional fourth field, 1 by
+    /// default. Only `router-dac2020-bm01-pass2` sets it (Plan 6 Task 17b).
+    ripup_pass_no: i32,
 }
 
 /// Reads the generator's own fixture table, so the tests and the references cannot drift apart.
@@ -79,13 +82,20 @@ fn rows() -> Vec<Row> {
         .map(|line| {
             let mut fields = line.split('|');
             let mut next = || fields.next().unwrap_or_default().trim().to_string();
-            let (stem, dsn, max_items) = (next(), next(), next());
+            let (stem, dsn, max_items, ripup_pass_no) = (next(), next(), next(), next());
             Row {
                 stem,
                 dsn,
                 max_items: max_items
                     .parse()
                     .unwrap_or_else(|e| panic!("max_items {max_items:?}: {e}")),
+                ripup_pass_no: if ripup_pass_no.is_empty() {
+                    1
+                } else {
+                    ripup_pass_no
+                        .parse()
+                        .unwrap_or_else(|e| panic!("ripup_pass_no {ripup_pass_no:?}: {e}"))
+                },
             }
         })
         .collect()
@@ -98,9 +108,10 @@ fn row(stem: &str) -> Row {
         .unwrap_or_else(|| panic!("no row for {stem} in router-fixtures.txt"))
 }
 
-/// The one stem whose per-stem test carries `#[cfg_attr(debug_assertions, ignore)]`, and which
-/// [`geometry_is_required_where_it_was_reached`] therefore also skips in a debug build.
-const DEBUG_IGNORED_STEM: &str = "router-dac2020-bm01";
+/// The stems whose per-stem tests carry `#[cfg_attr(debug_assertions, ignore)]`, and which
+/// [`geometry_is_required_where_it_was_reached`] therefore also skips in a debug build. Both are
+/// the DAC2020 board, at `ripupPassNo` 1 and 2.
+const DEBUG_IGNORED_STEMS: [&str; 2] = ["router-dac2020-bm01", "router-dac2020-bm01-pass2"];
 
 fn reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router.jsonl")
@@ -217,7 +228,7 @@ fn route_stem(row: &Row) -> Vec<RouterConnectionDoc> {
             &trace_costs,
             &mut ripped,
             &mut ripup_costs,
-            1,
+            row.ripup_pass_no,
             settings.get_start_ripup_costs(),
             !settings.is_fanout_enabled(),
             false,
@@ -536,6 +547,22 @@ fn router_dac2020_bm01() {
     assert_eq!(ladder.connections, 294);
 }
 
+/// The same board at `ripupPassNo = 2`, the Plan 6 Task 17b regression pin.
+///
+/// `AutorouteConnectionRouter.route:45` multiplies `startRipupCosts` by the pass number, so this
+/// is the first stem where a ripup is priced as a later pass would price it — and where the port
+/// diverged until quirk #74 (`PolylineTrace.change`'s reference comparison) was reproduced:
+/// connection 267 consumed six extra transient item ids and connection 270 routed different
+/// geometry. See `docs/java-quirks.md` and Task 17b's report.
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn router_dac2020_bm01_pass2() {
+    let Some(ladder) = check_all_rungs("router-dac2020-bm01-pass2") else {
+        return;
+    };
+    assert_eq!(ladder.connections, 294);
+}
+
 /// `J2ReferenceRoutingTest.java:29`'s board, routed whole.
 ///
 /// **Deliberately not `#[cfg_attr(debug_assertions, ignore)]`.** This is the regression test for
@@ -650,7 +677,7 @@ fn every_stem_has_the_connection_count_its_meta_records() {
 #[test]
 fn geometry_is_required_where_it_was_reached() {
     for row in rows() {
-        if cfg!(debug_assertions) && row.stem == DEBUG_IGNORED_STEM {
+        if cfg!(debug_assertions) && DEBUG_IGNORED_STEMS.contains(&row.stem.as_str()) {
             continue;
         }
         let Some(ladder) = check(&row.stem) else {

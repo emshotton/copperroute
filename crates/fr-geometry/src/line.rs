@@ -8,6 +8,7 @@
 //! which turns Java's warning into a compile-time guarantee.
 
 use std::cmp::Ordering;
+use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -31,29 +32,92 @@ use crate::vector::Vector;
 /// **Equality note.** Java overrides `Line.equals` with a *geometric* test (collinear end points
 /// plus the same direction sense) but does **not** override `hashCode`, so Java's own
 /// `equals`/`hashCode` contract is broken and `Line`s in hash containers behave by identity. This
-/// port derives structural `PartialEq`/`Eq`/`Hash` on the two end points instead, which is a
+/// port implements structural `PartialEq`/`Eq`/`Hash` on the two end points instead, which is a
 /// lawful pair. Java's geometric test is `overlaps` plus a direction check; it is available as
 /// [`Line::equals_geometric`], next to [`Line::fast_equals`] and [`Line::get_id`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// **Identity note.** One Java caller compares two `Line`s with `!=` rather than `equals` —
+/// `PolylineTrace.change` (PolylineTrace.java:960, :972) — so it asks whether they are the same
+/// *object*. [`Line::is_same_object`] answers that question here; see the private `identity` field.
+#[derive(Clone, Copy)]
 pub struct Line {
     /// The first point defining this line.
     pub a: IntPoint,
     /// The second point defining this line; the line points from `a` towards `b`.
     pub b: IntPoint,
+    /// Java's **object identity**, and nothing else — see [`Line::is_same_object`].
+    ///
+    /// Java's `Line` is a heap object, and one caller compares two of them with `!=` rather than
+    /// `equals`: `PolylineTrace.change` (PolylineTrace.java:960, :972) walks the old and the new
+    /// polyline looking for the first and the last line that is *not the same object*, and the
+    /// two indices decide how many search-tree leaves the changed trace reuses
+    /// (`ShapeSearchTree.changeEntries`). A value comparison answers a different question and
+    /// keeps more leaves, which leaves the search tree a different *shape* — see
+    /// `docs/java-quirks.md` and `Board::change_trace`.
+    ///
+    /// This port's `Line` is a `Copy` value, so it carries the identity itself: a fresh
+    /// constructor call takes a fresh token, exactly as `new Line(...)` allocates a fresh
+    /// object, and every copy of the value keeps the token, exactly as copying a Java reference
+    /// keeps the object. The token takes no part in `PartialEq`, `Eq`, `Hash` or `Debug`, so no
+    /// other comparison in the port can see it.
+    identity: u32,
+}
+
+/// The token source behind `Line::identity`. `Relaxed` is enough: the tokens are only ever
+/// compared for equality, never ordered, printed or persisted.
+static LINE_IDENTITY: AtomicU32 = AtomicU32::new(1);
+
+fn next_line_identity() -> u32 {
+    LINE_IDENTITY.fetch_add(1, AtomicOrdering::Relaxed)
+}
+
+impl PartialEq for Line {
+    /// Structural, as before: the identity token is invisible here (see the `identity` field).
+    fn eq(&self, other: &Line) -> bool {
+        self.a == other.a && self.b == other.b
+    }
+}
+
+impl Eq for Line {}
+
+impl std::hash::Hash for Line {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.a.hash(state);
+        self.b.hash(state);
+    }
+}
+
+impl std::fmt::Debug for Line {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Line")
+            .field("a", &self.a)
+            .field("b", &self.b)
+            .finish()
+    }
 }
 
 impl Line {
+    /// Java's `lineA != lineB` — **reference** identity, not the geometric `equals`.
+    ///
+    /// True only for a value copied from the same constructor call; see the private `identity` field.
+    /// The one caller is `Board::change_trace` (`PolylineTrace.change`, PolylineTrace.java:960
+    /// and :972); nothing else in the port may use it to stand in for `==`.
+    pub fn is_same_object(&self, other: &Line) -> bool {
+        self.identity == other.identity
+    }
+
     /// Creates a directed Line from two points.
     pub fn new(a: IntPoint, b: IntPoint) -> Line {
-        Line { a, b }
+        Line {
+            a,
+            b,
+            identity: next_line_identity(),
+        }
     }
 
     /// Creates a directed Line from four integer coordinates.
     pub fn from_coords(ax: i32, ay: i32, bx: i32, by: i32) -> Line {
-        Line {
-            a: IntPoint::new(ax, ay),
-            b: IntPoint::new(bx, by),
-        }
+        Line::new(IntPoint::new(ax, ay), IntPoint::new(bx, by))
     }
 
     /// Creates a directed Line from a point and a direction (`b = a + dir.get_vector()`).
@@ -945,5 +1009,51 @@ mod tests {
             diag.perpendicular_projection(&Point::Int(IntPoint::new(4, 0))),
             Point::Int(IntPoint::new(2, 2))
         );
+    }
+
+    /// Java's `Line` is a heap object and `PolylineTrace.change` (PolylineTrace.java:960, :972)
+    /// compares two of them with `!=`. `is_same_object` models that: a fresh constructor call is
+    /// a fresh object, a copy of the value is the same object, and `==` keeps answering the
+    /// structural question.
+    #[test]
+    fn is_same_object_is_java_reference_identity_and_not_value_equality() {
+        let line = l(0, 0, 10, 0);
+        let copy = line;
+        let rebuilt = l(0, 0, 10, 0);
+
+        // A copy of the value is Java's copy of the reference.
+        assert!(line.is_same_object(&copy));
+        // A second `new Line(...)` is a second object, even with the same coordinates.
+        assert!(!line.is_same_object(&rebuilt));
+        // ... while `==` is unchanged, and stays a structural test.
+        assert_eq!(line, rebuilt);
+        assert_eq!(line, copy);
+
+        // The token takes no part in `Hash` either, so the lawful `Eq`/`Hash` pair holds.
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let hash = |x: &Line| {
+            let mut h = DefaultHasher::new();
+            x.hash(&mut h);
+            h.finish()
+        };
+        assert_eq!(hash(&line), hash(&rebuilt));
+
+        // A line copied out of a slice — how `Polyline`'s lines reach a caller — keeps it.
+        let arr = [line, rebuilt];
+        assert!(arr[0].is_same_object(&line));
+        assert!(arr[1].is_same_object(&rebuilt));
+        assert!(!arr[1].is_same_object(&line));
+
+        // `opposite()` is Java's `new Line(b, a)`: a new object.
+        assert!(!line.opposite().is_same_object(&line));
+    }
+
+    /// The token is invisible in `Debug`, so no committed transcript or golden file can see it.
+    #[test]
+    fn debug_does_not_show_the_identity_token() {
+        let rendered = format!("{:?}", l(1, 2, 3, 4));
+        assert_eq!(rendered, format!("{:?}", l(1, 2, 3, 4)));
+        assert!(!rendered.contains("identity"), "{rendered}");
     }
 }

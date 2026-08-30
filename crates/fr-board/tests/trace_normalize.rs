@@ -138,6 +138,24 @@ fn item_ids(board: &Board) -> Vec<u32> {
         .collect()
 }
 
+/// The trace's polyline, for the tests that need its `Line` objects themselves (quirk #74).
+fn board_polyline(board: &Board, id: ItemId) -> &Polyline {
+    let Some(Item::Trace(trace)) = board.get_item(id) else {
+        panic!("not a trace on the board: {id:?}")
+    };
+    trace.polyline()
+}
+
+/// The trace's default-tree leaves, in order.
+fn tree_entries(board: &Board, id: ItemId) -> Vec<Option<LeafId>> {
+    let tree = board.default_tree_id();
+    board
+        .get_item(id)
+        .and_then(|item| item.get_search_tree_entries(tree))
+        .expect("the trace is on the board")
+        .to_vec()
+}
+
 fn entry_count(board: &Board, id: ItemId) -> Option<usize> {
     let tree = board.default_tree_id();
     board
@@ -984,6 +1002,85 @@ fn change_replaces_the_geometry_and_reuses_what_it_can() {
         vec![(0, 0), (10000, 5000), (20000, 0)]
     );
     assert_eq!(entry_count(&board, trace), Some(2));
+}
+
+/// Quirk #74, and the root cause of the `router-dac2020-bm01` `ripupPassNo >= 2` divergence
+/// (Plan 6 Task 17b): `PolylineTrace.change` compares the two line arrays with `!=` — **object
+/// identity** (PolylineTrace.java:960, :972) — so a *freshly built* polyline differs at index 0
+/// however equal its values are, and Java always falls through to `changeEntries` and the
+/// `normalize(clipShape)` tail (`:1001`). Probed on the JVM over `p2t11` mode 8's S5 geometry:
+/// Java is left with the single trace `[(0,0) (30000,0)]`.
+#[test]
+fn change_to_a_value_equal_but_freshly_built_polyline_still_normalizes() {
+    let (mut board, _) = trace_board(1);
+    // `P2T11` S1/S5: a four-corner trace and a second trace lying on its middle segment.
+    let s5 = tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[10000, 0, 20000, 0],
+    );
+    // A new `Polyline` over the same points: value-equal, but not one of the same `Line`
+    // objects.
+    let rebuilt = Polyline::from_points(&pts(&[0, 0, 10000, 0, 20000, 0, 30000, 0]));
+    assert_eq!(rebuilt, *board_polyline(&board, s5), "value-equal");
+    board.change_trace(s5, rebuilt);
+    // `S5 after: [(0,0) (30000,0)]` — the split-and-recombine of the `normalize` tail. A value
+    // comparison would have taken the ":963" early return and left both traces standing.
+    let remaining = trace_ids(&board);
+    assert_eq!(remaining.len(), 1, "traces left: {remaining:?}");
+    assert_eq!(
+        corners(&board, ItemId(remaining[0])),
+        vec![(0, 0), (30000, 0)]
+    );
+}
+
+/// The other half of quirk #74: a new polyline that *reuses* the old `Line` objects at its start
+/// is what Java's `!=` calls unchanged, and `changeEntries` then keeps those leaves rather than
+/// removing and re-inserting them. Keeping the wrong number of them is what left the port's
+/// `MinAreaTree` a different shape.
+#[test]
+fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
+    let (mut board, _) = trace_board(1);
+    let trace = tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 10000, 10000, 20000, 10000],
+    );
+    assert_eq!(entry_count(&board, trace), Some(3));
+    // Java's `Line[]`: the leading lines are the very objects already stored, only the last one
+    // is new. `indexOfFirstDifferentLine` is then 4 (the closing line), so `keepAtStartCount` is
+    // 2 and the first two leaves survive untouched.
+    let old: Vec<Line> = board_polyline(&board, trace).lines().to_vec();
+    let mut lines = old.clone();
+    let last = lines.len() - 1;
+    lines[last] = Line::new(
+        fr_geometry::IntPoint::new(25000, 0),
+        fr_geometry::IntPoint::new(25000, 20000),
+    );
+    let entries_before = tree_entries(&board, trace);
+    board.change_trace(
+        trace,
+        Polyline::from_lines(lines).expect("a valid polyline"),
+    );
+    let entries_after = tree_entries(&board, trace);
+    assert_eq!(entries_after.len(), 3);
+    assert_eq!(
+        entries_after[..2],
+        entries_before[..2],
+        "the two leaves before `keepAtStartCount` are reused, not rebuilt"
+    );
+    assert_ne!(entries_after[2], entries_before[2]);
 }
 
 #[test]

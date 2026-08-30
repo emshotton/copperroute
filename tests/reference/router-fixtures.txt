@@ -1,6 +1,6 @@
 # Router reference fixtures for scripts/gen-router-reference.sh (Plan 6 Task 17).
 #
-#   stem|dsn|max_items
+#   stem|dsn|max_items[|ripup_pass_no]
 #
 # `dsn` is relative to the Java checkout ($FREEROUTING_JAVA_DIR, default ../freerouting).
 # `max_items` is the number of connections `P6T1` routes: it walks `board.getItems()` (descending
@@ -9,6 +9,13 @@
 # candidate count therefore means "every connection of the board"; that is deliberate for the two
 # stems where it is affordable, because ruling 1's acceptance is per connection and a truncated
 # board hides the congested connections — which are the only ones that rip.
+#
+# `ripup_pass_no` is `AutorouteConnectionRouter.route:45`'s multiplier — `ctrl.ripupCosts =
+# startRipupCosts * ripupPassNo`, i.e. which pass of `AutoroutePassRunner`'s loop the connection is
+# being routed in. It defaults to **1**, the value every stem below the last one uses; the last one
+# pins **2**, where the multiplier and `MazeRipupResolver`'s ripup pricing are live. Plan 6 Task 17b
+# added it: pass 1 matched by compensation over a search tree whose *shape* had already diverged
+# (quirk #74), and only a pass >= 1 exercise reaches the connection that shows it.
 #
 # The stems are prefixed `router-` so they cannot collide with the DSN/SES reference stems in
 # fixtures.txt or the DRC stems in drc-fixtures.txt.
@@ -29,8 +36,13 @@
 # |                       |             | change that invented nets would break it                 |
 # | router-ecc83-input    | 22 (all)    | a board with a `(plane …)` net and a copper pour, i.e.   |
 # |                       |             | `ConductionArea` items on the search tree                |
+# | router-dac2020-bm01-  | 294 (all)   | the same board at `ripupPassNo = 2` — Plan 6 Task 17b's  |
+# | pass2                 |             | regression pin. It diverged at connection 267 (six extra |
+# |                       |             | transient item ids) and at 270 (real geometry) until     |
+# |                       |             | quirk #74 was reproduced                                 |
 router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|8
 router-dac2020-bm01|fixtures/Issue508-DAC2020_bm01.dsn|100000
 router-j2-reference|fixtures/Issue026-J2_reference.dsn|100000
 router-tutorial-board|examples/tutorial_board/tutorial_board.dsn|8
 router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|100000
+router-dac2020-bm01-pass2|fixtures/Issue508-DAC2020_bm01.dsn|100000|2

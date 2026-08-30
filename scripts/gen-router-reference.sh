@@ -152,7 +152,7 @@ run_driver() {
 }
 
 write_meta() {
-  local out="$1" dsn="$2" max_items="$3" header="$4"
+  local out="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" header="$5"
   {
     echo "jar          $(portable "$JAR")"
     echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
@@ -163,18 +163,20 @@ write_meta() {
     echo "hash mode    -XX:hashCode=$HASH_MODE"
     echo "driver       $(portable "$DRIVER")"
     echo "connections  $(wc -l < "$out/router.jsonl" | tr -d ' ')"
-    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 %s %s 1\n' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_items"
+    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 %s %s %s\n' \
+        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_items" "$ripup_pass_no"
     echo "header       $(portable "$header")"
   } > "$out/router.meta.txt"
 }
 
 each_row() {
-  local body="$1" stem dsn max_items
-  while IFS='|' read -r stem dsn max_items || [[ -n "$stem" ]]; do
+  local body="$1" stem dsn max_items ripup_pass_no
+  # The fourth field is optional and defaults to 1 — the `ripupPassNo` every stem but
+  # `router-dac2020-bm01-pass2` uses (Plan 6 Task 17b).
+  while IFS='|' read -r stem dsn max_items ripup_pass_no || [[ -n "$stem" ]]; do
     [[ -z "$stem" || "$stem" == \#* ]] && continue
     wanted "$stem" || continue
-    "$body" "$stem" "$dsn" "$max_items"
+    "$body" "$stem" "$dsn" "$max_items" "${ripup_pass_no:-1}"
   done < "$FIXTURES"
 }
 
@@ -204,14 +206,14 @@ compile_driver() {
 STATUS=0
 
 generate_one() {
-  local stem="$1" dsn="$2" max_items="$3" out="$REF/$1" tmp
+  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$REF/$1" tmp
   mkdir -p "$out"
   tmp="$out/router.raw.tmp"
   echo "== $stem"
   rm -f "$tmp"
   # Write to a temporary and move only after the JVM exits 0 *and* left a HEADER behind, so a
   # failed or timed-out run leaves the committed reference and its meta untouched, together.
-  if ! run_driver "$tmp" "$out/java.log" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_items" 1 \
+  if ! run_driver "$tmp" "$out/java.log" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_items" "$ripup_pass_no" \
       || [[ ! -s "$tmp" ]]; then
     echo "   the driver failed for $stem; see $out/java.log (router.jsonl left untouched)" >&2
     rm -f "$tmp"
@@ -228,12 +230,12 @@ generate_one() {
   fi
   tail -n +2 "$tmp" > "$out/router.jsonl"
   rm -f "$tmp"
-  write_meta "$out" "$dsn" "$max_items" "$header"
+  write_meta "$out" "$dsn" "$max_items" "$ripup_pass_no" "$header"
   report_states "$out/router.jsonl"
 }
 
 meta_one() {
-  local stem="$1" dsn="$2" max_items="$3" out="$REF/$1"
+  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$REF/$1"
   echo "== $stem"
   if [[ ! -f "$out/router.jsonl" ]]; then
     echo "   no router.jsonl to describe; run without --meta-only first" >&2
@@ -242,17 +244,18 @@ meta_one() {
   fi
   local header
   header="$(grep -m1 '^header  *' "$out/router.meta.txt" 2>/dev/null | sed 's/^header  *//')"
-  write_meta "$out" "$dsn" "$max_items" "${header:-<unknown>}"
+  write_meta "$out" "$dsn" "$max_items" "$ripup_pass_no" "${header:-<unknown>}"
   echo "   router.meta.txt rewritten (router.jsonl untouched)"
 }
 
 sweep_one() {
-  local stem="$1" dsn="$2" max_items="$3" mode raw digest
+  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" mode raw digest
   echo "== $stem"
   local digests=() counts=()
   for mode in 0 1 2 3 4; do
     raw="$SCRATCH/$stem-h$mode.jsonl"
-    if run_driver "$raw" "$SCRATCH/$stem-h$mode.log" "$mode" "$JAVA_DIR/$dsn" "$max_items" 1; then
+    if run_driver "$raw" "$SCRATCH/$stem-h$mode.log" "$mode" "$JAVA_DIR/$dsn" "$max_items" \
+        "$ripup_pass_no"; then
       # The HEADER line is stripped for the same reason the reference strips it: it carries the
       # jar's mtime, which is the same in all five runs but is not a property of the board.
       tail -n +2 "$raw" > "$raw.body"

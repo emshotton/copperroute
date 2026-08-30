@@ -968,33 +968,29 @@ impl Board {
     /// so this returns `()` as well — the second and last place a
     /// [`crate::BoardError`] stops (the other is [`Board::insert_trace`]).
     ///
-    /// # The one divergence in this file — and it is board-observable
+    /// # Java compares the two line arrays by **object identity**
     ///
-    /// Java compares the two line arrays with `!=` — **reference** identity
-    /// (PolylineTrace.java:960,972) — and `Line` does not override `equals`, so no value
-    /// comparison is available to it at all. The port's `Line` is a `Copy` value type, so the
-    /// comparison here is structural, and **the port therefore takes an early return that Java
-    /// cannot**: for any *freshly built* polyline Java's `!=` fires at once, so it always falls
-    /// through to `changeEntries` **and to the `normalize(clipShape)` tail** (:1001). The port,
-    /// handed a value-equal polyline, returns at :963/:975 and runs neither.
+    /// `PolylineTrace.java:960` and `:972` use `!=` on `Line` objects, not `equals` — and `Line`
+    /// does not override `equals` in a way this code could reach anyway, so what the two loops
+    /// find is the first and the last line that is *not the same object*. The port reproduces
+    /// that with [`Line::is_same_object`](fr_geometry::Line::is_same_object): the port's `Line` is a `Copy` value that
+    /// carries an identity token taken at construction, so a value copied out of the old
+    /// polyline compares "same object" and a freshly constructed line never does, exactly as in
+    /// Java.
     ///
-    /// That is a difference in the board, not just in how many tree leaves are reused. Probed on
-    /// the JVM: on `p2t11` mode 8's S5 geometry (a four-corner trace plus a trace lying on its
-    /// middle segment), `change` to a value-equal polyline leaves Java with **one** trace
-    /// `[(0,0) (30000,0)]` — the normalisation split and recombined it — and leaves this port
-    /// with **two**.
+    /// The two indices are not cosmetic. They set `keepAtStartCount` / `keepAtEndCount`, which
+    /// decide how many of the trace's search-tree leaves `ShapeSearchTree.changeEntries` reuses
+    /// rather than removes and re-inserts — and a leaf removed and re-inserted lands somewhere
+    /// else in `MinAreaTree`, so the *shape* of the search tree diverges. A value comparison
+    /// keeps more leaves (a tightener that rebuilds a line with an unchanged value looks
+    /// "unchanged" to it), and `ShapeSearchTree45Degree.completeShape` — whose obstacle order is
+    /// its tree-walk order — then completes a different room. Plan 6 Task 17b bisected the
+    /// `router-dac2020-bm01` `ripupPassNo >= 2` divergence to exactly this: quirk #74.
     ///
-    /// Where the new polyline reuses the old array's elements — which is how `Polyline`'s own
-    /// operations and Plan 7's `TraceShover` build one — the two agree, and the only residue is
-    /// that a fresh `Line` carrying an old `Line`'s value makes the port keep more (identical)
-    /// tree entries than Java.
+    /// Java's "both polylines are equal, no change necessary" early returns (`:963`, `:975`) are
+    /// therefore reachable only for an array whose lines are the very objects already stored,
+    /// and the port now takes them under the same condition.
     ///
-    /// `change_trace` has **no production caller yet**: Java's are
-    /// `PolylineTrace.correctConnectionToPin` (:1229) and `TraceShover` (:385,:540), all Plan 7.
-    /// **Plan 7 must decide before wiring either of them**, and the recommendation is to *drop
-    /// the early return*: Java reaches it only for an array that is identity-identical to the
-    /// one already stored, which for a `Copy` value type is not a case that can arise. Recorded
-    /// in docs/java-quirks.md.
     // obligation: `PolylineTrace.change`'s `board.additionalUpdateAfterChange(this)`
     // (PolylineTrace.java:944 — the plan's `:942` predates a HEAD edit) needs an
     // `AutorouteEngine`, which `fr-board` cannot name, so this method cannot make it.
@@ -1027,7 +1023,7 @@ impl Board {
         let last_index = new_lines.len().min(old_lines.len());
         let mut index_of_first_different_line = last_index;
         for i in 0..last_index {
-            if new_lines[i] != old_lines[i] {
+            if !new_lines[i].is_same_object(&old_lines[i]) {
                 index_of_first_different_line = i;
                 break;
             }
@@ -1038,7 +1034,7 @@ impl Board {
         // PolylineTrace.java:968-979: and the last.
         let mut index_of_last_different_line: i64 = -1;
         for i in 1..=last_index {
-            if new_lines[new_lines.len() - i] != old_lines[old_lines.len() - i] {
+            if !new_lines[new_lines.len() - i].is_same_object(&old_lines[old_lines.len() - i]) {
                 index_of_last_different_line = (new_lines.len() - i) as i64;
                 break;
             }
