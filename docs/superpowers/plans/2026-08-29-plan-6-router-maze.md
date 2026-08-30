@@ -1185,7 +1185,7 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > | #161 | **#157** | `CompleteFreeSpaceExpansionRoom.compareTo` tests one type, casts to another |
 > | #165 (+ the null-shape NPE the plan did not anticipate) | **#158** | `IncompleteFreeSpaceExpansionRoom.getId` over a mutable, nullable shape |
 >
-> **The next free row id is #185** (was #176 when this block was written; Tasks 7-14 landed #167-#181 and Task 15a landed #182-#184). Task 3 landed **#159** (the 90° `completeShape` override drops
+> **The next free row id is #186** (was #176 when this block was written; Tasks 7-14 landed #167-#181, Task 15a landed #182-#184 and Task 15b landed #185). Task 3 landed **#159** (the 90° `completeShape` override drops
 > a room it ignores by shape); Task 4 landed **#160** (the non-transitive
 > `SortedRoomNeighbour.compareTo` and its `TreeSet`'s silent drop — plan label #162), **#161** (the
 > id tie-break subtracting a room id from an item id — plan label #163) and **#162**, which the
@@ -1292,9 +1292,28 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 > (ruling AB named neither, and `FoundConnectionInserter.insertTrace:140-141` sets
 > `pinEdgeToTurnDist = -1` for the whole insertion, so Plan 6 never reaches the branch that calls
 > them); and `PolylineTrace.change`'s `board.additionalUpdateAfterChange` call
-> (PolylineTrace.java:942) is still `// added in Plan 6:` in `fr-board` — **Task 15b must thread
+> (PolylineTrace.java:944) was still `// added in Plan 6:` in `fr-board` — **Task 15b threaded
 > the `AutorouteEngine` through**, because `insertForcedTracePolyline` runs inside a live
 > `autorouteConnection`.
+>
+> **Amendment (controller ruling AB, executed as Task 15b) — the two forced-trace inserters and
+> `springOverObstacles`.** The same ruling moves `RoutingBoard.insertForcedTraceSegment`
+> (`:361-402`), `RoutingBoard.insertForcedTracePolyline` (`:456-876`) and
+> `TraceShover.springOverObstacles` (`:827-874`) out of Plan 7 into Plan 6, because
+> `FoundConnectionInserter:176` calls the polyline one and `tryNeckDown` /
+> `insertFanoutMicroNeckdown` call the segment one five times. All three landed in **Task 15b**;
+> `board/optimize/TraceShover.java`'s deferral roster is now **empty** and
+> `crates/fr-board/src/board/mod.rs`'s marker for the two inserters became a `renamed:`.
+> Two findings the amendment records:
+> * **`optChangedArea` is not reached from `insertForcedTracePolyline`.** Its tail (`:773-875`)
+>   builds its own `TraceTightener` and calls `splitTracesAtKeepPoint` plus one
+>   `PolylineTrace.pullTight`; the `optChangedArea` callers are `forcedVia:348`, `insertTrace:293`,
+>   `autoroute:962` and `fanout:1101`, all Plan 7's. Ruling AB's conditional ("port only the branch
+>   reached, mark the rest") therefore does not arise — there is no call to port or to mark.
+> * **`PolylineTraceExt::pull_tight_with` gained an engine-carrying twin**,
+>   `pull_tight_with_engine(board, trace, algo, Option<&mut AutorouteEngine>)`, where the `Option`
+>   is Java's nullable `RoutingBoard.autorouteEngine` field; the old name is the `None` wrapper, so
+>   Task 15a's callers and tests are untouched.
 >
 > **Amendment (Task 4) — hazard F's container.** Ruling 4 and Task 4's brief both prescribe a
 > `BTreeSet` for `SortedRoomNeighbours.sortedNeighbours`. **It does not reproduce Java.** On a

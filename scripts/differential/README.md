@@ -1049,6 +1049,58 @@ methods with dozens of branches.
       `java.util.Random(4242)` stream, replayed on the Rust side with
       `fr_geometry::JavaRandom`.
 
+  - `P6T15bProbe.java` — the **forced-trace inserters** (Plan 6 Task 15b,
+    controller ruling AB): `board/facade/RoutingBoard.insertForcedTracePolyline`
+    (`:456-876`), `insertForcedTraceSegment` (`:361-402`) and
+    `board/optimize/TraceShover.springOverObstacles` (`:827-874`). It declares
+    `package app.freerouting.board.optimize` so it can reflect into
+    `TraceShover`'s private `springOver` for the recursion-depth ladder, and it
+    **compiles together with `P6T9Probe.java`**, reusing that probe's
+    `build(AngleRestriction)` board. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t15b-insert-forced.txt` (11 448 lines) and
+    `crates/fr-router/tests/board_ext.rs` regenerates each mode and compares it
+    line by line. Every row rebuilds its board from scratch, because every row
+    mutates it; the polyline dump format is `P6T15aProbe`'s, and each mutating
+    row is followed by `maxId=`, `failing=`/`failingLayer=` and one line per
+    board item in `getItems()` order. Eight modes:
+
+    - `spring` — `springOverObstacles` over eight polylines x two half widths x
+      three net arrays x `contactPins` null / non-null, in all three regimes
+      (288 rows), on a board carrying a user-fixed via and a shove-fixed trace.
+      Each row prints Java's reference answer (`same=`) beside a value one
+      (`sameVal=`); they agree on all 317 rows of this mode and `ladder`, which
+      is what licenses the port's `Option<Polyline>`.
+    - `ladder` — the recursion limit, two ways: the private `springOver` by
+      reflection at depth 0/1/2/3/20, and the public entry point over a row of
+      user-fixed vias 400 apart, where `:834`'s hard-coded budget of 20 turns a
+      66-line detour into `null` between the 20th via and the 21st. Then four
+      `overlap` rows where two vias' bounding boxes intersect and neither
+      contains the other — `springOver:679-681`'s bare `return null`, the one
+      refusal that leaves `shoveFailingObstacle` untouched.
+    - `poly` — `insertForcedTracePolyline` over fourteen polylines x three
+      regimes x `maxRecursionDepth` 0/20 x `withCheck` x `tidyWidth`
+      0/`MAX_VALUE`, with the whole board after each call.
+    - `tail` — the `tidyWidth > 0` pull-tight tail at `:860-862`: four
+      `tidyWidth`s x four `pullTightAccuracy`s, so the rows where the tail
+      changes the inserted polyline sit beside the ones where it does not, plus
+      the `maxRecursionDepth <= 0` arm of `:777-782` (the only one with a
+      non-empty `optNetNoArr`).
+    - `seg` — `insertForcedTraceSegment` over the same endpoint pairs, printing
+      Java's reference `isFrom` / `isTo` beside the answer.
+    - `neck` — the shape `FoundConnectionInserter.tryNeckDown:473-491` and
+      `insertFanoutMicroNeckdown:596-675` drive: five segment pairs at seven
+      half widths, with `tidyWidth = Integer.MAX_VALUE`, `withCheck = true` and
+      `timeLimit = null` exactly as those five call sites pass them.
+    - `side` — the `ShapeEntrySide` index `:567-571` computes for shove shape
+      `i` beside `checkForcedTracePolyline:429`'s for the same shape, and the
+      `ShapeEntrySide.no` each produces. The two expressions differ by one and
+      **agree on every row**, which is the evidence the difference is benign.
+    - `rand` — 128 randomised `insertForcedTracePolyline` calls and 128
+      randomised `insertForcedTraceSegment` calls from one
+      `java.util.Random(4242)` stream, each row carrying `String.hashCode` of
+      the whole board dump so a board compares as one integer (186 distinct
+      hashes over the 256 rows).
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

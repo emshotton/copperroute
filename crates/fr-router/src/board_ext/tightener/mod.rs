@@ -29,15 +29,20 @@
 //! #182). Controller ruling AA's line, which keeps `springOverObstacles` in Plan 7, therefore
 //! holds unchanged.
 //!
-//! # What this module still owes
+//! # `PolylineTrace.change` -> `additionalUpdateAfterChange`
 //!
 //! `PolylineTrace.change` calls `board.additionalUpdateAfterChange(this)`
-//! (PolylineTrace.java:942), which needs an `AutorouteEngine`; `fr-board`'s
-//! [`Board::change_trace`] carries the `// added in Plan 6:` marker for it and this module's
-//! entry points take no engine, so [`PolylineTraceExt::pull_tight_with`] does not make that call
-//! either. It changes the engine's room/drill database, never the board's item list, so no
-//! probe row in `tests/data/p6t15a-tightener.txt` can see it — but **Task 15b must thread the
-//! engine through**, because `insertForcedTracePolyline` runs inside a live `autorouteConnection`.
+//! (PolylineTrace.java:944) before it touches the search tree, and that call needs an
+//! `AutorouteEngine`. Task 15a's entry points took none, so [`PolylineTraceExt::pull_tight_with`]
+//! did not make it. **Task 15b threads it**, as controller ruling AB requires:
+//! [`PolylineTraceExt::pull_tight_with_engine`] takes `Option<&mut AutorouteEngine>` — Java's
+//! nullable `RoutingBoard.autorouteEngine` field (`:70`), which `additionalUpdateAfterChange:100`
+//! tests before doing anything — and `pull_tight_with` is the `None` wrapper Task 15a's callers
+//! and tests keep using. The call changes the engine's room/drill database, never the board's
+//! item list, so no probe row in `tests/data/p6t15a-tightener.txt` or
+//! `tests/data/p6t15b-insert-forced.txt` can see it; it is threaded because
+//! `insertForcedTracePolyline` runs inside a live `autorouteConnection`, not because a fixture
+//! catches it.
 
 // added in Plan 7: `TraceTightener.optChangedArea` (TraceTightener.java:121-169) — the batch
 // entry point that walks `board.changedArea` layer by layer and calls `PolylineTrace.pullTight`,
@@ -55,6 +60,9 @@ use std::collections::BTreeSet;
 use fr_board::datastructures::StopCheck;
 use fr_board::prelude::*;
 use fr_geometry::{FloatPoint, IntDirection, IntOctagon, Line, Point, Polyline, Side, Signum};
+
+use crate::autoroute::maze::engine::AutorouteEngine;
+use crate::board_ext::RoutingBoardExt;
 
 pub(crate) use base::TightenerBase;
 pub use tightener_45::TraceTightener45;
@@ -650,7 +658,21 @@ pub trait PolylineTraceExt {
     /// Port of `PolylineTrace.pullTight(TraceTightener)` (PolylineTrace.java:809-863): "tries to
     /// shorten this trace without creating clearance violations. Returns true, if the trace was
     /// changed."
+    ///
+    /// The `None`-engine wrapper over [`Self::pull_tight_with_engine`]: equivalent to Java on a
+    /// board whose `autorouteEngine` field is `null`, which is every board outside a live
+    /// `autorouteConnection`.
     fn pull_tight_with(board: &mut Board, trace: ItemId, algo: &mut TraceTightener<'_>) -> bool;
+
+    /// [`Self::pull_tight_with`] with Java's `RoutingBoard.autorouteEngine` (RoutingBoard.java:70)
+    /// passed in, so the `PolylineTrace.change` this method performs can run
+    /// `board.additionalUpdateAfterChange(this)` (PolylineTrace.java:944) — see the module docs.
+    fn pull_tight_with_engine(
+        board: &mut Board,
+        trace: ItemId,
+        algo: &mut TraceTightener<'_>,
+        engine: Option<&mut AutorouteEngine>,
+    ) -> bool;
 
     /// Port of `PolylineTrace.pullTight(boolean, int, Stoppable)` (PolylineTrace.java:869-890):
     /// "tries to pull this trace tight without creating clearance violations. Returns true, if
@@ -666,6 +688,15 @@ pub trait PolylineTraceExt {
 
 impl PolylineTraceExt for Board {
     fn pull_tight_with(board: &mut Board, trace: ItemId, algo: &mut TraceTightener<'_>) -> bool {
+        <Board as PolylineTraceExt>::pull_tight_with_engine(board, trace, algo, None)
+    }
+
+    fn pull_tight_with_engine(
+        board: &mut Board,
+        trace: ItemId,
+        algo: &mut TraceTightener<'_>,
+        engine: Option<&mut AutorouteEngine>,
+    ) -> bool {
         // :811-820.
         let Some(item) = board.items.get(&trace) else {
             return false;
@@ -721,6 +752,16 @@ impl PolylineTraceExt for Board {
         );
         // :837-840 — a **reference** comparison in Java.
         if let Some(new_lines) = new_lines {
+            // `PolylineTrace.change:938-944`: a trace that is not on the board just has its
+            // polyline replaced (`fr-board`'s `change_trace` reproduces that first test); every
+            // other one runs `board.additionalUpdateAfterChange(this)` **before** the search-tree
+            // update. `fr-board` cannot make that call — it needs an `AutorouteEngine` — so it
+            // carries a `// added in Plan 6:` marker and the call is made here, in Java's order.
+            if let Some(engine) = engine
+                && board.items.get(&trace).is_some_and(Item::is_on_the_board)
+            {
+                board.additional_update_after_change(engine, trace);
+            }
             board.change_trace(trace, new_lines);
             return true;
         }
@@ -765,7 +806,9 @@ impl PolylineTraceExt for Board {
             None,
             -1,
         );
-        // :889.
+        // :889. Java's `this.board` here is a `RoutingBoard` whose `autorouteEngine` this entry
+        // point cannot name; its callers are Plan 7's batch optimizer, which runs outside
+        // `autorouteConnection`.
         Ok(<Board as PolylineTraceExt>::pull_tight_with(
             board,
             trace,

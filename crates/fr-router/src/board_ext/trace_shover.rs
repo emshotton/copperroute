@@ -896,12 +896,12 @@ impl TraceShover {
     /// if there were no obstacles. If `contactPins != null`, all pins not contained in
     /// `contactPins` are regarded as obstacles, even if they are of the own net."
     ///
-    /// Reached from Plan 6 through the instance [`check`](Self::check) (`:369`) and
+    /// Reached from Plan 6 three ways: the instance [`check`](Self::check) (`:369`) and
     /// [`insert`](Self::insert) (`:523`), both of which pass `overConnectedPins = false` and
-    /// `contactPins = null`; `springOverObstacles` — the only caller that passes the other
-    /// combination — stays `// added in Plan 7:` in this file's roster, because nothing in
-    /// Plan 6 reaches it. The whole method is ported anyway: `check`'s call reaches every
-    /// branch of it.
+    /// `contactPins = null`, and [`spring_over_obstacles`](Self::spring_over_obstacles)
+    /// (`:836`, `:850`), which is the only caller that passes `true` — and so the only one that
+    /// switches off `:702-711`'s "the obstacle already has a trace contact on this layer" veto.
+    /// It stays `pub(crate)` because Java's is `private`.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn spring_over(
         board: &mut Board,
@@ -1225,13 +1225,125 @@ impl TraceShover {
             Some(changed) => Some(changed),
         }
     }
+
+    /// Port of `TraceShover.springOverObstacles(Polyline, int, int, int[], int, Set<Pin>)`
+    /// (TraceShover.java:827-874): "checks, if there are obstacle in the way of `polyline` and
+    /// tries to wrap the polyline trace around these obstacles. Returns null, if that is not
+    /// possible. Returns polyline, if there were no obstacles. This function looks contrary to
+    /// the previous function for the *shortest* way around the obstacles. If `contactPins !=
+    /// null`, all pins not contained in `contactPins` are regarded as obstacles, even if they are
+    /// of the own net."
+    ///
+    /// It runs the private `springOver` twice — once on `polyline` and once on its
+    /// reverse — and keeps whichever detour is shorter, so it is the only caller that passes
+    /// `overConnectedPins = true` (`:842`, `:856`), which is what switches off `:702-711`'s
+    /// "the obstacle already has a trace contact on this layer, do not try" veto.
+    ///
+    /// # `Option<Polyline>` where Java has three answers
+    ///
+    /// Java distinguishes `null` (no way round), *the argument object* (no obstacle) and a fresh
+    /// polyline (the detour) by reference. This answers `None` for the first and `Some` for the
+    /// other two, which is exactly what its one production caller needs:
+    /// `RoutingBoard.insertForcedTracePolyline:525` tests only `newPolyline == null` and then
+    /// uses the value. The probe prints both Java's `same=` (reference) and a `sameVal=`
+    /// (value) column for all 317 rows of modes `spring` and `ladder`, and they agree on every
+    /// one — see `crates/fr-router/tests/data/p6t15b-insert-forced.txt`.
+    ///
+    /// # The recursion budget
+    ///
+    /// `:834`'s `maxSpringOverRecursionDepth` is a **local constant, 20** — not the caller's
+    /// `maxSpringOverRecursionDepth`, which is a different budget spent by `check` and `insert`.
+    /// `spring_over_obstacles_stops_at_the_recursion_limit` pins it: a row of user-fixed vias
+    /// 400 apart is wrapped one per recursion, and the answer turns from a 66-line detour to
+    /// `None` between the 20th via and the 21st.
+    #[allow(clippy::too_many_arguments)]
+    pub fn spring_over_obstacles(
+        board: &mut Board,
+        polyline: &Polyline,
+        half_width: i32,
+        layer: usize,
+        net_numbers: &[i32],
+        clearance_class_index: usize,
+        contact_pins: Option<&BTreeSet<ItemId>>,
+    ) -> Option<Polyline> {
+        // :834.
+        const MAX_SPRING_OVER_RECURSION_DEPTH: i32 = 20;
+
+        // :835-847. `counterClockWiseResult == polyline` is Java's "no obstacle".
+        let counter_clock_wise_result = match Self::spring_over(
+            board,
+            polyline.clone(),
+            half_width,
+            layer,
+            net_numbers,
+            clearance_class_index,
+            true,
+            MAX_SPRING_OVER_RECURSION_DEPTH,
+            contact_pins,
+        ) {
+            Some(SpringOverOutcome::Unchanged) => return Some(polyline.clone()),
+            Some(SpringOverOutcome::Changed(detour)) => Some(detour),
+            None => None,
+        };
+
+        // :849-858. The second sense. An `Unchanged` here is `polyline.reverse()` itself, which
+        // is the object Java handed `springOver`.
+        let reversed = java_reverse(polyline);
+        let clock_wise_result = match Self::spring_over(
+            board,
+            reversed.clone(),
+            half_width,
+            layer,
+            net_numbers,
+            clearance_class_index,
+            true,
+            MAX_SPRING_OVER_RECURSION_DEPTH,
+            contact_pins,
+        ) {
+            Some(SpringOverOutcome::Unchanged) => Some(reversed),
+            Some(SpringOverOutcome::Changed(detour)) => Some(detour),
+            None => None,
+        };
+
+        // :859-873. `lengthApprox` ties go to the clockwise result.
+        match (clock_wise_result, counter_clock_wise_result) {
+            (Some(clock_wise), Some(counter_clock_wise)) => {
+                if clock_wise.length_approx() <= counter_clock_wise.length_approx() {
+                    Some(java_reverse(&clock_wise))
+                } else {
+                    Some(counter_clock_wise)
+                }
+            }
+            (Some(clock_wise), None) => Some(java_reverse(&clock_wise)),
+            (None, Some(counter_clock_wise)) => Some(counter_clock_wise),
+            (None, None) => None,
+        }
+    }
+}
+
+/// Java's `Polyline.reverse()` (Polyline.java:320-327), which routes through
+/// `new Polyline(Line[])`.
+///
+/// [`Polyline::reverse`] answers `Err` on the one input class where Java throws — the
+/// `tmpArr[-1]` read of `Polyline.removeOverlaps` (Polyline.java:148, quirk #22). No `catch`
+/// stands between `springOverObstacles` and `AutorouteConnectionRouter.route:155-158`
+/// (`RoutingBoard.insertForcedTracePolyline`'s only `try` opens at `:787`, well past the
+/// `springOverObstacles` call at `:522-524`), so the port panics there and the caller's
+/// `catch_unwind` boundary turns it into that method's bare `FAILED`, exactly as Task 14 ruled
+/// for `FoundConnectionLocator`'s latent NPEs and Task 15a for the tighteners.
+// totalized: Java's ArrayIndexOutOfBoundsException out of `Polyline.reverse` becomes a panic.
+fn java_reverse(polyline: &Polyline) -> Polyline {
+    polyline
+        .reverse()
+        .unwrap_or_else(|e| panic!("Polyline.reverse() threw (Polyline.java:148, quirk #22): {e}"))
 }
 
 // =================================================================================================
 // The deferral roster for `board/optimize/TraceShover.java`
 // =================================================================================================
 //
-// One method is left. `TraceShover.insert` — the other half of the mutating pair — landed in
-// Task 10b under controller ruling AA, because `ForcedPadRouter.forcedPad:416` reaches it and
-// Plan 6 needs that chain at `FoundConnectionInserter.java:754` (Task 15).
-// added in Plan 7: `TraceShover.springOverObstacles` (TraceShover.java:827-874) — the public wrapper that runs the private `springOver` in both senses and keeps the shorter result. Plan 6 reaches `springOver` only through the instance `check` (`:367-387`), which is why `spring_over` above is `pub(crate)` and this wrapper is not ported yet.
+// **Empty.** `TraceShover.insert` landed in Task 10b under controller ruling AA (because
+// `ForcedPadRouter.forcedPad:416` reaches it and Plan 6 needs that chain at
+// `FoundConnectionInserter.java:754`), and `springOverObstacles` — the last one — landed in
+// Task 15b under the same ruling, because `RoutingBoard.insertForcedTracePolyline:522-524` calls
+// it on every polyline it inserts.

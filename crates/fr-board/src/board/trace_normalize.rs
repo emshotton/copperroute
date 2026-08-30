@@ -991,7 +991,14 @@ impl Board {
     /// the early return*: Java reaches it only for an array that is identity-identical to the
     /// one already stored, which for a `Copy` value type is not a case that can arise. Recorded
     /// in docs/java-quirks.md.
-    // added in Plan 6: `board.additionalUpdateAfterChange(this)` (PolylineTrace.java:942).
+    // obligation: `PolylineTrace.change`'s `board.additionalUpdateAfterChange(this)`
+    // (PolylineTrace.java:944 — the plan's `:942` predates a HEAD edit) needs an
+    // `AutorouteEngine`, which `fr-board` cannot name, so this method cannot make it.
+    // Plan 6 Task 15b (controller ruling AB) makes it **at the call site** instead:
+    // `fr_router::board_ext::PolylineTraceExt::pull_tight_with_engine` runs it, guarded by
+    // Java's own `isOnTheBoard()` test (`:938-942`), immediately before calling this
+    // method. Every further caller Plan 7 wires up — `PolylineTrace.correctConnectionToPin`
+    // (`:1229`) and `TraceShover`'s two `change` calls (`:385`, `:540`) — must do the same.
     // not ported: `board.itemList.saveForUndo(this)` (:948) — no undo stack (Task 12) — the
     // observer notification (:987-990) and the `FRLogger.error` in the catch (:1003).
     pub fn change_trace(&mut self, id: ItemId, new_polyline: Polyline) {

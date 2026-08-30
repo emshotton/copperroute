@@ -113,10 +113,10 @@ FoundConnectionInserter           autoroute/path/inserter.rs
 # `ForcedViaInserter`'s in Task 10. The mutating halves split two ways, per **controller ruling AA**:
 # `ForcedViaInserter.insert`, `ForcedPadRouter.forcedPad`, `TraceShover.insert` and
 # `DrillItemMover.{insert,shoveVias}` are one chain Plan 6 needs (Task 15 reaches it at
-# `FoundConnectionInserter.java:754`), and **Task 10b ported all five**; only
-# `TraceShover.springOverObstacles`, which nothing in Plan 6 reaches, is still
-# `// added in Plan 7:`. That marker lives in `board_ext/trace_shover.rs`, because
-# `audit-port.sh` searches only the mapped path once a map is supplied.
+# `FoundConnectionInserter.java:754`), and **Task 10b ported all five**.
+# `TraceShover.springOverObstacles` followed in **Task 15b** under controller ruling AB, because
+# `RoutingBoard.insertForcedTracePolyline:522-524` calls it on every polyline it inserts, so
+# `TraceShover`'s deferral roster is now **empty**.
 ForcedViaInserter                 board_ext/forced_via_inserter.rs
 ForcedPadRouter                   board_ext/forced_pad_router.rs
 DrillItemMover                    board_ext/drill_item_mover.rs
@@ -138,10 +138,12 @@ TraceTightenerAnyAngle            board_ext/tightener/tightener_any_angle.rs
 # `RoutingBoard`'s five autoroute methods (initAutoroute, finishAutoroute,
 # checkForcedTracePolyline, additionalUpdateAfterChange, clearAllItemTemporaryAutorouteData) and
 # `ShapeSearchTree.completeShape`/`divideLargeRoom` — the two methods `p2t10` explicitly skipped.
-# The five `RoutingBoard` methods landed in Task 9 as `RoutingBoardExt`; the rest of the class
-# stays in `fr-board` (whose own `board/facade` audit covers it, with `renamed:` markers pointing
-# at this crate). There is therefore **no** `board/facade` invocation against `fr-router/src`: the
-# class's other ~100 public methods are not this crate's.
+# The five `RoutingBoard` methods landed in Task 9 as `RoutingBoardExt`, and **Task 15b** added a
+# sixth and seventh under controller ruling AB — `insertForcedTracePolyline` and
+# `insertForcedTraceSegment`, whose `fr-board` marker became a `renamed:` pointing here. The rest
+# of the class stays in `fr-board` (whose own `board/facade` audit covers it, with `renamed:`
+# markers pointing at this crate). There is therefore **no** `board/facade` invocation against
+# `fr-router/src`: the class's other ~100 public methods are not this crate's.
 RoutingBoard                      board_ext/routing_board_ext.rs
 ShapeSearchTree                   autoroute/tree_ext.rs
 ShapeSearchTree45Degree           autoroute/tree_ext.rs

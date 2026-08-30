@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 15a of 18
+## State: Task 15b of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -39,7 +39,10 @@ ripup decision and its cost model) — plus the first member of `autoroute/path`
 `findConnection` runs end to end.** Task 14 adds the walk that reads its
 answer: `FoundConnectionLocator` and its two angle-restricted overrides, which
 turn a `MazeResult` into the corner lists `FoundConnectionInserter` (Task 15)
-inserts.
+inserts. Tasks 15a and 15b, both controller ruling AB, add what that inserter
+calls on every corner list: the pull-tight family, and
+`RoutingBoard.insertForcedTracePolyline` / `insertForcedTraceSegment` with the
+`TraceShover.springOverObstacles` they drive.
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -509,8 +512,8 @@ Plan-2 ruling 4 left five `RoutingBoard` methods out of `fr-board` because each
 one needs an `AutorouteEngine`, which `fr-board` cannot name. Plan-6 ruling 3
 puts them here as `RoutingBoardExt`, an extension trait over `fr_board::Board`
 that Plan 7 extends further (`optChangedArea` and `ViaOptimizer`; the pull-tight
-entry points and the tighteners themselves arrived in Task 15a, controller
-ruling AB). The same reasoning brings `board.optimize.TraceShover` and
+entry points and the tighteners themselves arrived in Task 15a and the two
+forced-trace inserters in Task 15b, both controller ruling AB). The same reasoning brings `board.optimize.TraceShover` and
 `board.actions.DrillItemMover` into this crate: both take a `RoutingBoard`, and
 the router is their only caller.
 
@@ -1110,10 +1113,11 @@ whether the trace changed at all. Every step in this module therefore answers
 that happens to be value-equal to their input, so a value comparison would loop
 where Java stops (and stop where Java loops).
 
-**`springOverObstacles` is still Plan 7's, and quirk #182 is why.**
+**The tighteners do not need `springOverObstacles`, and quirk #182 is why.**
 `TraceTightener.avoidAcidTraps` is the family's only caller of it, and its first
 statement is `if (true) { return polyline; }` — the whole body below is dead.
-Controller ruling AA's line therefore holds unchanged.
+(`springOverObstacles` itself arrived one task later, from the *other* side —
+`insertForcedTracePolyline` calls it; see the next section.)
 
 **Quirk #34 is discharged here.** Java's four `Line.equals` call sites are
 `Simplex.borderLineIndex` (done in Plan 1) and three tightener sites —
@@ -1131,14 +1135,19 @@ needs one projection `ZERO` and the other `POSITIVE` — impossible for two equa
 directions. So `:988-1001` never runs. The `smooth` fixture carries the one
 geometry that separates the two indices, so the quirk cannot be lost silently.
 
-**What the module still owes.** `PolylineTrace.change` calls
-`board.additionalUpdateAfterChange(this)` (`PolylineTrace.java:942`), which
-needs an `AutorouteEngine`; `fr-board`'s `Board::change_trace` still carries the
-`// added in Plan 6:` marker for it, and this module's entry points take no
-engine, so `pull_tight_with` does not make that call. It touches the engine's
-room/drill database, never the board's item list, so no probe row can see it —
-but **Task 15b must thread the engine through**, because
-`insertForcedTracePolyline` runs inside a live `autorouteConnection`.
+**The `additionalUpdateAfterChange` seam, closed in Task 15b.**
+`PolylineTrace.change` calls `board.additionalUpdateAfterChange(this)`
+(`PolylineTrace.java:944`), which needs an `AutorouteEngine`; Task 15a's entry
+points took none, so `pull_tight_with` did not make that call. Task 15b added
+`PolylineTraceExt::pull_tight_with_engine`, which takes
+`Option<&mut AutorouteEngine>` — Java's nullable `RoutingBoard.autorouteEngine`
+field, which `additionalUpdateAfterChange:100` tests before doing anything — and
+makes the call, guarded by Java's own `isOnTheBoard()` test, immediately before
+`Board::change_trace`. `pull_tight_with` is the `None` wrapper, so Task 15a's
+callers and tests are unchanged. The call touches the engine's room/drill
+database and never the board's item list, so no probe row on either side can see
+it; it is threaded because `insertForcedTracePolyline` runs inside a live
+`autorouteConnection`, not because a fixture catches it.
 `PolylineTrace.{check,correct,swap}ConnectionToPin` also keep their
 `// added in Plan 7:` markers in `crates/fr-board/src/items/trace.rs`: ruling AB
 named neither, and `FoundConnectionInserter.insertTrace:140-141` sets
@@ -1154,3 +1163,60 @@ is what the port answers too, so nothing is hidden behind a green test.
 eleven-polyline table per regime and three 256-row `java.util.Random(4242)`
 blocks the Rust side replays with `JavaRandom`. Every row is compared, not
 sampled.
+
+## The forced-trace inserters and `springOverObstacles` (Task 15b, controller ruling AB)
+
+The same ruling that moved the tighteners moved three more names into Plan 6,
+and Task 15b ported them:
+
+| Java | lines | Rust |
+|---|---|---|
+| `board/facade/RoutingBoard.insertForcedTracePolyline` | `:456-876` | `RoutingBoardExt::insert_forced_trace_polyline` |
+| `board/facade/RoutingBoard.insertForcedTraceSegment` | `:361-402` | `RoutingBoardExt::insert_forced_trace_segment` |
+| `board/optimize/TraceShover.springOverObstacles` | `:827-874` | `TraceShover::spring_over_obstacles` |
+
+`FoundConnectionInserter:176` calls the first on every segment of every routed
+connection and `tryNeckDown` / `insertFanoutMicroNeckdown` call the second five
+times, so neither could stay in Plan 7; `insertForcedTracePolyline:522-524`
+calls the third on every polyline it inserts, which is what emptied
+`board/optimize/TraceShover.java`'s deferral roster.
+
+**`optChangedArea` is not reached from here.** Ruling AB asked for "only the
+branch reached, and a marker on the rest" *if* the insertion tail called it. It
+does not: the tail (`:773-875`) builds its own `TraceTightener`, calls
+`splitTracesAtKeepPoint` and then a single `PolylineTrace.pullTight`. Java's
+`optChangedArea` callers are `forcedVia:348`, `insertTrace:293`, `autoroute:962`
+and `fanout:1101` — all Plan 7's — so the only `// added in Plan 7:` marker left
+in `board_ext/` is `TraceTightener.optChangedArea`'s.
+
+**Java's `==` on the returned corner is value equality here, and that is
+measured.** `insertForcedTraceSegment:394-400` compares the polyline's answer
+against `insertPolyline.firstCorner()` / `lastCorner()` by *reference*, and so
+does `FoundConnectionInserter.tryNeckDown:492`. The port compares by value; the
+probe prints both columns for all 452 rows of modes `poly`, `seg` and `rand` and
+they agree on every one, which the method's doc comment derives from the three
+possible answers.
+
+**Quirk #185: `:756` dereferences a `newTrace` that `:791` guards.**
+`newTrace.combine()` runs with no null test 35 lines before
+`newTrace != null && newTrace.normalize(...)`, and
+`insertTraceWithoutCleaning` really can answer `null` after the `:659-661`
+resample. No `catch` covers `:756`, so the port panics and Task 14's ruling turns
+that into `AutorouteConnectionRouter.route:155-158`'s bare `FAILED` — the same
+degraded value Java produces. Latent on every fixture row.
+
+**The one asymmetry that is *not* a bug.** `insertForcedTracePolyline:570`
+computes its `ShapeEntrySide` index as the shove line's index **minus one**,
+where `checkForcedTracePolyline:429` uses the index itself. Probe mode `side`
+prints both indices and both `ShapeEntrySide.no` values for 45 shape rows and every
+row says `agree=true`: `ShapeEntrySide` walks *down* from its argument for the
+first border crossing, so both forms find the same *entry* side. The expression
+is transcribed exactly all the same, with an `obligation:` marker for Task 17.
+
+**Where the numbers come from.**
+`scripts/differential/java/probes/P6T15bProbe.java` (compiled with
+`P6T9Probe.java`, whose board it reuses) and its committed stdout
+`tests/data/p6t15b-insert-forced.txt` — eight modes, 11 448 lines, every
+mutating row followed by `maxId`, `shoveFailingObstacle`/`Layer` and the whole
+item list. `tests/board_ext.rs` regenerates each mode and compares it line by
+line.

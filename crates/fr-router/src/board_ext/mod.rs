@@ -23,14 +23,26 @@
 //! `ForcedPadRouter::forced_pad`, `TraceShover::insert` and `DrillItemMover::{insert, shove_vias}`
 //! are one chain Plan 6 genuinely needs — Task 15 reaches it at
 //! `FoundConnectionInserter.java:754` — so ruling AA moved all five out of Plan 7 into a new
-//! **Task 10b** between Tasks 10 and 11, where they now live. `TraceShover.springOverObstacles`
-//! is **not** in that chain (nothing in Plan 6 reaches it) and keeps its `// added in Plan 7:`
-//! marker in `trace_shover.rs`'s roster.
+//! **Task 10b** between Tasks 10 and 11, where they now live.
+//!
+//! **Controller ruling AB** then moved three more names, as **Task 15a** (the pull-tight family,
+//! [`mod tightener`](tightener)) and **Task 15b**:
+//! [`RoutingBoardExt::insert_forced_trace_polyline`], [`RoutingBoardExt::insert_forced_trace_segment`]
+//! and [`TraceShover::spring_over_obstacles`] — the three the autoroute path reaches at
+//! `FoundConnectionInserter:176` and at its five `tryNeckDown` / `insertFanoutMicroNeckdown` call
+//! sites. `board/optimize/TraceShover.java`'s deferral roster is empty as a result; the only
+//! `// added in Plan 7:` marker left in this module is `TraceTightener.optChangedArea`'s, and
+//! `insertForcedTracePolyline` does **not** reach it (see that method's doc).
 //!
 //! # The two `normalize` catches, and what a `StopCheck` trip does to them
 //!
 //! `ForcedPadRouter.forcedPad:446-450` and `TraceShover.insert:571-575` both wrap
-//! `PolylineTrace.normalize` in a bare `catch (Exception e) { FRLogger.error(…) }`. Plan-6
+//! `PolylineTrace.normalize` in a bare `catch (Exception e) { FRLogger.error(…) }`, and Task 15b
+//! added a third of the same shape — `RoutingBoard.insertForcedTracePolyline:787-842`, whose
+//! `try` covers `normalize` **and** `splitTracesAtKeepPoint` **and** the `pickItems` re-pick, and
+//! whose degraded value is "leave `newTrace` as it is and fall through to the pull-tight tail"
+//! (that one is handled inline rather than through `swallow_normalize_error`, because it drops
+//! two different calls' errors and has to skip the rest of the block). Plan-6
 //! ruling 7 asks for the *degraded value* Java produces, and here it is "the substitute trace
 //! stays as it was inserted, and the loop carries on" — so `swallow_normalize_error` drops the
 //! error, exactly as Java drops the exception.

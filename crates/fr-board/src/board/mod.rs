@@ -186,7 +186,7 @@ pub(crate) use item_ctx;
 // added in Plan 7: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — `DrillItemMover`.
 // added in Plan 7: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — `ForcedViaInserter`.
 // renamed: `RoutingBoard.checkForcedTracePolyline` (RoutingBoard.java:405-448) -> `fr_router::board_ext::RoutingBoardExt::check_forced_trace_polyline`; it drives `TraceShover.check`, which lives in `fr-router` because the router is its only caller.
-// added in Plan 7: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402) and `insertForcedTracePolyline` (:456-876) — the mutating half of the `TraceShover`.
+// renamed: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402) and `insertForcedTracePolyline` (:456-876) -> `fr_router::board_ext::RoutingBoardExt::{insert_forced_trace_segment, insert_forced_trace_polyline}` — the mutating half of the `TraceShover`, which lives in `fr-router` for the same reason `checkForcedTracePolyline` does, plus an `AutorouteEngine` for the `PolylineTrace.change` in its pull-tight tail. **Controller ruling AB** moved them out of Plan 7 into Plan 6 Task 15b, because `FoundConnectionInserter:176` and its five `tryNeckDown` / `insertFanoutMicroNeckdown` call sites are on the autoroute path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Board {
     /// Java `BasicBoard.itemList` (BasicBoard.java:70), as a map keyed by the Java item id
