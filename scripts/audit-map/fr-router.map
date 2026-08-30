@@ -101,7 +101,13 @@ DrillPage                         autoroute/drill/page.rs
 DrillPageArray                    autoroute/drill/page_array.rs
 ExpansionDrill                    autoroute/drill/expansion_drill.rs
 
-# --- autoroute/path/ (Tasks 15-16) --------------------------------------------------------------
+# --- autoroute/path/ (Tasks 13-15) --------------------------------------------------------------
+# Closed by Task 15: `FoundConnectionInserter.getInstance` was this directory's last MISSING row,
+# so `audit-port.sh autoroute/path …` now exits 0. The class's other methods are private or
+# package-private in Java and do not appear in the audit's public-method list; they are ported all
+# the same (`insertTrace`, `insertVia`, `insertNeckdown`, `tryNeckDown`,
+# `insertFanoutMicroNeckdown`), with `formatPoint`, `shouldTraceFanoutDiagnostics` and
+# `traceFanoutDiagnostic` marked `not ported:` as `FRLogger` payload builders.
 Connection                        autoroute/path/connection.rs
 FoundConnectionLocator            autoroute/path/locator.rs
 FoundConnectionLocator45Degree    autoroute/path/locator_45.rs

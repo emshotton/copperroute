@@ -1,0 +1,719 @@
+=== mode simple ===
+=== NINETY_DEGREE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=1
+    [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-132,0) (-400,0)
+  ripped n=0
+  insert=ok maxIdBefore=3
+    maxId=7
+    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-132,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== FORTYFIVE_DEGREE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=1
+    [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-264,0) (-400,0)
+  ripped n=0
+  insert=ok maxIdBefore=3
+    maxId=7
+    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-264,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== NONE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=1
+    [0] layer=0 corners=2 (400,0) (-400,0)
+  ripped n=0
+  insert=ok maxIdBefore=3
+    maxId=4
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(400,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode via ===
+=== NINETY_DEGREE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=3
+    [0] layer=0 corners=2 (2000,0) (1180,0)
+    [1] layer=1 corners=7 (1180,0) (1180,-974) (451,-974) (372,-974) (372,-1080) (-130,-1080) (-130,-974)
+    [2] layer=0 corners=5 (-130,-974) (-130,0) (-130,132) (-130,0) (-2000,0)
+  ripped n=0
+  insert=ok maxIdBefore=15
+    maxId=32
+    item id=32 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-130,-974)->(-617,-1909),(-130,-974)->(-2000,0),(-2000,0)->(-2487,-935)] corners=[(-130,-974),(-2000,0)]
+    item id=28 type=Via nets=[1] cl=1 center=(-130,-974) padstack=via layers=0..1
+    item id=27 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=7 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(1393,0)->(1394,1),(217,0)->(217,1),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),~(151.75,-1241.25),(217,-1176),(217,-915),(400,0),(0,2000)]
+    item id=23 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(1180,0)->(1667,-655),(1180,0)->(-130,-974),(-130,-974)->(357,-1629)] corners=[(1180,0),(-130,-974)]
+    item id=17 type=Via nets=[1] cl=1 center=(1180,0) padstack=via layers=0..1
+    item id=16 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(2000,0)->(2000,-1),(2000,0)->(1180,0),(1180,0)->(1180,1)] corners=[(2000,0),(1180,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== FORTYFIVE_DEGREE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=3
+    [0] layer=0 corners=2 (2000,0) (1180,0)
+    [1] layer=1 corners=7 (1180,0) (1180,-245) (451,-974) (372,-1053) (372,-1080) (-24,-1080) (-130,-974)
+    [2] layer=0 corners=5 (-130,-974) (-130,0) (-130,132) (-262,0) (-2000,0)
+  ripped n=0
+  insert=ok maxIdBefore=15
+    maxId=32
+    item id=32 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-130,-974)->(-617,-1909),(-130,-974)->(-2000,0),(-2000,0)->(-2487,-935)] corners=[(-130,-974),(-2000,0)]
+    item id=28 type=Via nets=[1] cl=1 center=(-130,-974) padstack=via layers=0..1
+    item id=27 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=7 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(1393,0)->(1394,1),(217,0)->(217,1),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),~(151.75,-1241.25),(217,-1176),(217,-915),(400,0),(0,2000)]
+    item id=23 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(1180,0)->(1667,-655),(1180,0)->(-130,-974),(-130,-974)->(357,-1629)] corners=[(1180,0),(-130,-974)]
+    item id=17 type=Via nets=[1] cl=1 center=(1180,0) padstack=via layers=0..1
+    item id=16 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(2000,0)->(2000,-1),(2000,0)->(1180,0),(1180,0)->(1180,1)] corners=[(2000,0),(1180,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== NONE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=3
+    [0] layer=0 corners=2 (2000,0) (1180,0)
+    [1] layer=1 corners=2 (1180,0) (-130,-974)
+    [2] layer=0 corners=3 (-130,-974) (-1962,220) (-2000,0)
+  ripped n=0
+  insert=ok maxIdBefore=15
+    maxId=25
+    item id=25 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-130,-974)->(-617,-1909),(-130,-974)->(-2000,0),(-2000,0)->(-2487,-935)] corners=[(-130,-974),(-2000,0)]
+    item id=23 type=Via nets=[1] cl=1 center=(-130,-974) padstack=via layers=0..1
+    item id=22 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=7 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(1393,0)->(1394,1),(217,0)->(217,1),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),~(151.75,-1241.25),(217,-1176),(217,-915),(400,0),(0,2000)]
+    item id=18 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(1180,0)->(1667,-655),(1180,0)->(-130,-974),(-130,-974)->(-617,-319)] corners=[(1180,0),(-130,-974)]
+    item id=17 type=Via nets=[1] cl=1 center=(1180,0) padstack=via layers=0..1
+    item id=16 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(2000,0)->(2000,-1),(2000,0)->(1180,0),(1180,0)->(1180,1)] corners=[(2000,0),(1180,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode around ===
+=== NINETY_DEGREE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=1
+    [0] layer=0 corners=26 (2000,0) (874,0) (874,-501) (874,-1981) (1701,-1981) (1701,-1784) (1450,-1784) (1450,-1845) (1333,-1845) (1333,-2560) (862,-2560) (789,-2560) (789,-2670) (-516,-2670) (-516,-2516) (-516,-2468) (-563,-2468) (-563,-2395) (-636,-2395) (-636,-2301) (-729,-2301) (-729,-1252) (-1866,-1252) (-1998,-1252) (-2000,-1252) (-2000,0)
+  ripped n=0
+  insert=ok maxIdBefore=14
+    maxId=39
+    item id=39 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=5 lines=[(2000,0)->(4670,-1211),(2000,0)->(789,-2670),(-636,-2301)->(-729,-2301),(-2000,0)->(-3271,2300),(-2000,0)->(-2626,-1)] corners=[(2000,0),~(956.3629213483146,-2301.0),~(-728.4473913043478,-2301.0),(-2000,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=6 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=4 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),(400,0),(0,2000)]
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== FORTYFIVE_DEGREE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=1
+    [0] layer=0 corners=25 (2000,0) (1375,0) (874,-501) (874,-1154) (1701,-1981) (1504,-1784) (1450,-1784) (1389,-1845) (1333,-1845) (1333,-2089) (862,-2560) (789,-2633) (789,-2670) (-362,-2670) (-516,-2516) (-516,-2515) (-563,-2468) (-636,-2395) (-636,-2394) (-729,-2301) (-1778,-1252) (-1866,-1252) (-1998,-1252) (-2000,-1250) (-2000,0)
+  ripped n=0
+  insert=ok maxIdBefore=14
+    maxId=38
+    item id=38 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=5 lines=[(2000,0)->(4670,-1211),(2000,0)->(789,-2670),(-362,-2670)->(-1775,-3581),(-361,-2669)->(-2000,0),(-2000,0)->(-4669,-1639)] corners=[(2000,0),~(1264.674322314121,-1621.2382819333588),~(-360.84370983655197,-2669.254507898867),(-2000,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=6 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=4 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),(400,0),(0,2000)]
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== NONE
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=1
+    [0] layer=0 corners=7 (2000,0) (331,-2249) (278,-2282) (-154,-2282) (-250,-2177) (-1990,-57) (-2000,0)
+  ripped n=0
+  insert=ok maxIdBefore=14
+    maxId=20
+    item id=20 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=7 lines=[(2000,0)->(2163,-123),(2000,0)->(278,-2282),(278,-2282)->(153,-2297),(1,-2297)->(0,-2297),(-2449,-1)->(-2450,0),(-297,-2153)->(-2000,0),(-2000,0)->(-4153,-1703)] corners=[(2000,0),(278,-2282),(153,-2297),(-153,-2297),(-297,-2153),(-2000,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=6 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=4 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),(400,0),(0,2000)]
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode totrace ===
+=== NINETY_DEGREE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=3 (200,600) (615,600) (615,585)
+    [1] layer=1 corners=3 (615,585) (400,585) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=13
+    item id=13 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(517,-43)] corners=[(615,585),(400,0)]
+    item id=11 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=10 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(-397,803),(-400,600)->(615,585),(615,585)->(618,788)] corners=[(-400,600),(615,585)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== FORTYFIVE_DEGREE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=3 (200,600) (600,600) (615,585)
+    [1] layer=1 corners=3 (615,585) (400,370) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=13
+    item id=13 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(517,-43)] corners=[(615,585),(400,0)]
+    item id=11 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=10 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(-397,803),(-400,600)->(615,585),(615,585)->(618,788)] corners=[(-400,600),(615,585)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== NONE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=2 (200,600) (615,585)
+    [1] layer=1 corners=2 (615,585) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=9
+    item id=9 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(283,43)] corners=[(615,585),(400,0)]
+    item id=8 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(200,600)->(615,585),(-400,600)->(400,600),(400,600)->(400,599)] corners=[(200,600),(400,600)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(-400,601),(-400,600)->(400,600),(200,600)->(615,585)] corners=[(-400,600),(200,600)]
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(200,600)->(203,683),(200,600)->(615,585),(615,585)->(612,502)] corners=[(200,600),(615,585)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode diag ===
+=== NINETY_DEGREE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=3 (200,640) (615,640) (615,585)
+    [1] layer=1 corners=3 (615,585) (400,585) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=17
+    item id=17 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=6 lines=[(200,640)->(1000,693),(200,640)->(253,-160),(-400,600)->(400,653),(200,640)->(615,640),(615,640)->(615,585),(615,585)->(614,585)] corners=[(200,640),~(200.01649012381594,639.7510924707028),~(203.77358490566039,640.0),(615,640),(615,585)]
+    item id=13 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(517,-43)] corners=[(615,585),(400,0)]
+    item id=11 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== FORTYFIVE_DEGREE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=3 (200,640) (560,640) (615,585)
+    [1] layer=1 corners=3 (615,585) (400,370) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=17
+    item id=17 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=6 lines=[(200,640)->(1000,693),(200,640)->(253,-160),(-400,600)->(400,653),(200,640)->(560,640),(560,640)->(615,585),(615,585)->(614,584)] corners=[(200,640),~(200.01649012381594,639.7510924707028),~(203.77358490566039,640.0),(560,640),(615,585)]
+    item id=13 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(517,-43)] corners=[(615,585),(400,0)]
+    item id=11 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== NONE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=2 (200,640) (615,585)
+    [1] layer=1 corners=2 (615,585) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=15
+    item id=15 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=5 lines=[(200,640)->(1000,693),(200,640)->(253,-160),(-400,600)->(400,653),(200,640)->(615,585),(615,585)->(604,502)] corners=[(200,640),~(200.01649012381594,639.7510924707028),~(201.25767103568452,639.8333207061141),(615,585)]
+    item id=11 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(283,43)] corners=[(615,585),(400,0)]
+    item id=10 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode viafail ===
+=== emptyRule
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=3
+    [0] layer=0 corners=2 (2000,0) (1180,0)
+    [1] layer=1 corners=7 (1180,0) (1180,-974) (451,-974) (372,-974) (372,-1080) (-130,-1080) (-130,-974)
+    [2] layer=0 corners=5 (-130,-974) (-130,0) (-130,132) (-130,0) (-2000,0)
+  ripped n=0
+  insert=null maxIdBefore=15
+    maxId=16
+    item id=16 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(2000,0)->(2000,-1),(2000,0)->(1180,0),(1180,0)->(1180,1)] corners=[(2000,0),(1180,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=6 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=4 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),(400,0),(0,2000)]
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== blockedTrace
+  drill=(-130,-974)
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=3
+    [0] layer=0 corners=2 (2000,0) (1180,0)
+    [1] layer=1 corners=7 (1180,0) (1180,-974) (451,-974) (372,-974) (372,-1080) (-130,-1080) (-130,-974)
+    [2] layer=0 corners=5 (-130,-974) (-130,0) (-130,132) (-130,0) (-2000,0)
+  ripped n=0
+  insert=null maxIdBefore=16
+    maxId=22
+    item id=18 type=Via nets=[1] cl=1 center=(1180,0) padstack=via layers=0..1
+    item id=17 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(2000,0)->(2000,-1),(2000,0)->(1180,0),(1180,0)->(1180,1)] corners=[(2000,0),(1180,0)]
+    item id=16 type=Via nets=[2] cl=1 center=(-130,-974) padstack=via layers=0..1
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=6 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=4 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),(400,0),(0,2000)]
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== refusedCheck
+  startItem=2 startLayer=0 targetItem=3 targetLayer=0
+  connectionItems n=3
+    [0] layer=0 corners=2 (2000,0) (1180,0)
+    [1] layer=1 corners=7 (1180,0) (1180,-974) (451,-974) (372,-974) (372,-1080) (-130,-1080) (-130,-974)
+    [2] layer=0 corners=5 (-130,-974) (-130,0) (-130,132) (-130,0) (-2000,0)
+  ripped n=0
+  insert=null maxIdBefore=15
+    maxId=16
+    item id=16 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(2000,0)->(2000,-1),(2000,0)->(1180,0),(1180,0)->(1180,1)] corners=[(2000,0),(1180,0)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2500,-2499),(2500,-2500)->(3500,-2500),(3500,-2500)->(3500,-2501)] corners=[(2500,-2500),(3500,-2500)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,-2500)->(2501,-2500),(2500,-2500)->(2500,-3500),(2500,-3500)->(2499,-3500)] corners=[(2500,-2500),(2500,-3500)]
+    item id=9 type=Via nets=[3] cl=1 center=(2500,-2500) padstack=via layers=0..1
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(2500,2500)->(2499,2500),(2500,2500)->(2500,3500),(2500,3500)->(2501,3500)] corners=[(2500,2500),(2500,3500)]
+    item id=7 type=Via nets=[3] cl=1 center=(2500,2500) padstack=via layers=0..1
+    item id=6 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=4 lines=[(0,-2000)->(-5,-1999),(0,-2000)->(400,0),(400,0)->(0,2000),(0,2000)->(5,2001)] corners=[(0,-2000),(400,0),(0,2000)]
+    item id=5 type=Pin nets=[2] cl=1 center=(0,2000)
+    item id=4 type=Pin nets=[2] cl=1 center=(0,-2000)
+    item id=3 type=Pin nets=[1] cl=1 center=(2000,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-2000,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode neck ===
+tryNeckDown hw=100 pin=2 from=(-200,0) to=(-400,0) result=(-200,0) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=2 from=(-100,0) to=(-400,0) result=(-100,0) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=2 from=(200,0) to=(400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=2 from=(-200,300) to=(-400,0) result=(-200,300) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=2 from=(-400,0) to=(400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=3 from=(-200,0) to=(-400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=3 from=(-100,0) to=(-400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=3 from=(200,0) to=(400,0) result=(200,0) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=3 from=(-200,300) to=(-400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=100 pin=3 from=(-400,0) to=(400,0) result=(-316,60) isFrom=false isTo=false
+    maxId=6
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=69 n=3 lines=[(-349,0)->(-369,11),(-349,0)->(-316,60),(-316,60)->(-336,71)] corners=[(-349,0),(-316,60)]
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=100 n=3 lines=[(-400,0)->(-400,1),(-400,0)->(-349,0),(-349,0)->(-349,1)] corners=[(-400,0),(-349,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=2 from=(-200,0) to=(-400,0) result=(-200,0) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=2 from=(-100,0) to=(-400,0) result=(-100,0) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=2 from=(200,0) to=(400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=2 from=(-200,300) to=(-400,0) result=(-200,300) isFrom=true isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=2 from=(-400,0) to=(400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=3 from=(-200,0) to=(-400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=3 from=(-100,0) to=(-400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=3 from=(200,0) to=(400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=3 from=(-200,300) to=(-400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+tryNeckDown hw=60 pin=3 from=(-400,0) to=(400,0) result=null isFrom=false isTo=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-200,0) to=(400,0) startPin=null endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-200,0) to=(400,0) startPin=null endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-200,0) to=(400,0) startPin=2 endPin=null result=false
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=100 n=3 lines=[(400,0)->(400,-1),(400,0)->(349,0),(349,0)->(349,-1)] corners=[(400,0),(349,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-200,0) to=(400,0) startPin=2 endPin=3 result=false
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=100 n=3 lines=[(400,0)->(400,-1),(400,0)->(349,0),(349,0)->(349,-1)] corners=[(400,0),(349,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-400,0) to=(-310,0) startPin=null endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-400,0) to=(-310,0) startPin=null endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-400,0) to=(-310,0) startPin=2 endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-310,0)->(-310,-1),(-310,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-310,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-400,0) to=(-310,0) startPin=2 endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-310,0)->(-310,-1),(-310,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-310,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-310,0) to=(-400,0) startPin=null endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-310,0) to=(-400,0) startPin=null endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-310,0) to=(-400,0) startPin=2 endPin=null result=true
+    maxId=6
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-349,0)->(-349,1),(-349,0)->(-310,0),(-310,0)->(-310,1)] corners=[(-349,0),(-310,0)]
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=100 n=3 lines=[(-400,0)->(-400,1),(-400,0)->(-349,0),(-349,0)->(-349,1)] corners=[(-400,0),(-349,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=100 from=(-310,0) to=(-400,0) startPin=2 endPin=3 result=true
+    maxId=6
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-349,0)->(-349,1),(-349,0)->(-310,0),(-310,0)->(-310,1)] corners=[(-349,0),(-310,0)]
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=100 n=3 lines=[(-400,0)->(-400,1),(-400,0)->(-349,0),(-349,0)->(-349,1)] corners=[(-400,0),(-349,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-200,0) to=(400,0) startPin=null endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-200,0) to=(400,0) startPin=null endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-200,0) to=(400,0) startPin=2 endPin=null result=false
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=60 n=3 lines=[(400,0)->(400,-1),(400,0)->(309,0),(309,0)->(309,-1)] corners=[(400,0),(309,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-200,0) to=(400,0) startPin=2 endPin=3 result=false
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=60 n=3 lines=[(400,0)->(400,-1),(400,0)->(309,0),(309,0)->(309,-1)] corners=[(400,0),(309,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-400,0) to=(-310,0) startPin=null endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-400,0) to=(-310,0) startPin=null endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-400,0) to=(-310,0) startPin=2 endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-400,0) to=(-310,0) startPin=2 endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-310,0) to=(-400,0) startPin=null endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-310,0) to=(-400,0) startPin=null endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-310,0) to=(-400,0) startPin=2 endPin=null result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+insertNeckdown hw=60 from=(-310,0) to=(-400,0) startPin=2 endPin=3 result=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== mode micro ===
+micro base=100 from=(-700,0) to=(-400,0) startPin=null endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=75 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-700,0) to=(-400,0) startPin=null endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=69 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-700,0) to=(-400,0) startPin=2 endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-700,0) to=(-400,0) startPin=2 endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-300,0) to=(-400,0) startPin=null endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=50 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-300,0) to=(-400,0) startPin=null endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=50 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-300,0) to=(-400,0) startPin=2 endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=100 from=(-300,0) to=(-400,0) startPin=2 endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-700,0) to=(-400,0) startPin=null endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-700,0) to=(-400,0) startPin=null endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-700,0) to=(-400,0) startPin=2 endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-700,0) to=(-400,0) startPin=2 endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-700,0)->(-700,1),(-700,0)->(-400,0),(-400,0)->(-400,1)] corners=[(-700,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-300,0) to=(-400,0) startPin=null endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-300,0) to=(-400,0) startPin=null endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-300,0) to=(-400,0) startPin=2 endPin=null result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro base=66 from=(-300,0) to=(-400,0) startPin=2 endPin=3 result=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=49 n=3 lines=[(-300,0)->(-300,-1),(-300,0)->(-400,0),(-400,0)->(-400,-1)] corners=[(-300,0),(-400,0)]
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+micro same=false
+    maxId=4
+    item id=4 type=PolylineTrace nets=[2] cl=1 layer=0 hw=30 n=3 lines=[(0,-900)->(-1,-900),(0,-900)->(0,900),(0,900)->(1,900)] corners=[(0,-900),(0,900)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0

@@ -19,6 +19,7 @@
 //! only when the inserter runs. `P6T14Probe`'s mode `ripup` is exactly that case.
 
 mod connection;
+pub mod inserter;
 pub mod locator;
 // The two overrides export nothing public — `calculate_next_trace_corners` is `pub(crate)` and
 // every helper is private — so they are not part of the crate's surface. They are separate
@@ -28,6 +29,7 @@ pub(crate) mod locator_45;
 pub(crate) mod locator_any_angle;
 
 pub use connection::Connection;
+pub use inserter::FoundConnectionInserter;
 pub use locator::{
     BacktrackElement, FoundConnectionLocator, LocatorKind, ResultItem, calculate_additional_corner,
 };

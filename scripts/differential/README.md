@@ -1101,6 +1101,72 @@ methods with dozens of branches.
       the whole board dump so a board compares as one integer (186 distinct
       hashes over the 256 rows).
 
+  - `P6T15Probe.java` — `FoundConnectionInserter`
+    (`autoroute/path/FoundConnectionInserter.java:23-807`), the only class in
+    Plan 6 that mutates the board's item set (Plan 6 Task 15). It declares
+    `package app.freerouting.autoroute.path` so it can reach the private
+    constructor and the package-private `insertNeckdown` (`:525-537`), and it
+    reflects into the private `tryNeckDown` (`:539-676`) and
+    `insertFanoutMicroNeckdown` (`:455-523`). It **compiles together with
+    `P6T11Probe.java`, `P6T13Probe.java` and `P6T14Probe.java`**, reusing that
+    last probe's board helpers rather than declaring a fifth fixture, plus one
+    fixture of its own (`buildNeck`) whose trace half width is wide enough that
+    a pin's neckdown half width is strictly below it. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t15-inserter.txt` (719 lines);
+    `crates/fr-router/tests/inserter.rs` regenerates the six `getInstance`
+    modes and `inserter.rs`' own `#[cfg(test)]` module regenerates the two
+    private-method modes, both line by line. Every row rebuilds its board, and
+    every insert is followed by `insert=ok|null`, `maxIdBefore=`, `maxId=` and
+    one line per board item in `getItems()` order — traces with their polyline,
+    vias with their centre, padstack name and layer span. The `grep` that
+    strips `FRLogger`'s timestamped lines also has to strip `TRACE`, because
+    this is the chattiest class in `autoroute/path`. Eight modes:
+
+    - `simple` — `buildSimple`'s two-pin board in all three regimes: one
+      `ResultItem`, no layer change, so both `insertVia` calls take the
+      `inputFromLayer == inputToLayer` early return of `:684-686` and the
+      board gains exactly one trace. The 90-degree and 45-degree regimes run
+      the `:171-405` segment loop four times and burn ids 4, 5 and 6 before the
+      combined trace lands on 7; free angle burns only id 4.
+    - `via` — `P6T13Probe.build`'s board, whose found connection crosses two
+      `ExpansionDrill`s: three `ResultItem`s on layers 0, 1, 0, so the layer
+      changes at `:66` insert **two** vias. `connectionItems` carries no via
+      entry at all — the inserter derives them.
+    - `around` — the same board with `viasAllowed` off, so the connection walks
+      the long way round the net-2 blocker (26 / 25 / 7 corners). It is the
+      only fixture that reaches the `:264-319` VIOLATION_CORRECTED arm.
+    - `totrace` — `buildSimple` plus a net-1 trace as the destination item, so
+      `connection.targetItem instanceof PolylineTrace` (`:77`) holds. The
+      target corner lands *on* the trace, so `connectToTrace` takes
+      `RoutingBoard.connectToTrace:1123-1126`'s "already on the trace" return.
+    - `diag` — the same with a **slanted** target trace, so the located
+      connection's first corner is not on it. This is the quirk #186 fixture:
+      Java's live `Trace` reference still describes the *undivided* polyline
+      after the insert has split it, so the stub is inserted and both halves of
+      the split trace are removed as tails. The JVM ends with one combined
+      trace whose corner list carries two rational corners; an id lookup ends
+      with three.
+    - `viafail` — three ways for `insertVia` to answer `false`, each of which
+      makes `getInstance` answer `null` *after* the board has been mutated:
+      `emptyRule` (an empty `ctrl.viaRule`, so `foundSuitableSpan` stays false
+      and `:722-729` fires), `blockedTrace` (a user-fixed foreign-net via on
+      the second drill location, which makes the layer-1 trace fail first) and
+      `refusedCheck` (a via rule whose only padstack spans both layers but is
+      far too large to place, so `ForcedViaInserter.check` at `:708` refuses
+      every candidate and `:730-734` fires).
+    - `neck` — `tryNeckDown` over five corner pairs x both pins x two trace
+      half widths, then `insertNeckdown` over three corner pairs x the four
+      `(startPin, endPin)` combinations, each row printing Java's reference
+      `isFrom` / `isTo` beside the answer. One row reaches the `:578-660`
+      insertion arm and leaves a 100-wide segment and a 69-wide neck behind;
+      four `insertNeckdown` rows answer **true**.
+    - `micro` — `insertFanoutMicroNeckdown` over two corner pairs x two base
+      half widths x the four pin combinations. The inserted trace's half width
+      identifies which element of the `LinkedHashSet` at `:462-471` won, which
+      is what pins the set's **insertion** order: on the far pair every
+      candidate fits, so the winner is the list's first element — 75 with no
+      pins, 69 with the end pin only — where any sorted set answers 50.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

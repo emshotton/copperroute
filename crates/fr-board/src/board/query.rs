@@ -953,6 +953,12 @@ impl Board {
 
     /// Port of `RoutingBoard.connectToTrace` (RoutingBoard.java:1116-1170): insert a stub from
     /// `from_point` to the nearest point on `to_trace`.
+    ///
+    /// Java's second parameter is a `Trace` **object reference**, not an id, and the method reads
+    /// only its polyline, layer and net numbers — all of which a caller can hold across a board
+    /// mutation that removes the item. [`Self::connect_to_trace_of`] is that caller's entry
+    /// point; this one looks the trace up first, which is what every caller whose reference is
+    /// still in the board does.
     pub fn connect_to_trace(
         &mut self,
         from_point: &Point,
@@ -967,8 +973,39 @@ impl Board {
         let polyline = trace.polyline().clone();
         let trace_layer = trace.get_layer();
         let net_nos = item.net_nos().to_vec();
-        let first_corner = trace.first_corner();
-        let last_corner = trace.last_corner();
+        self.connect_to_trace_of(
+            from_point,
+            &polyline,
+            trace_layer,
+            &net_nos,
+            pen_half_width,
+            clearance_class,
+        )
+    }
+
+    /// [`Self::connect_to_trace`] on a trace the board may no longer hold — the whole of
+    /// `RoutingBoard.connectToTrace:1123-1169` below its three reads of `toTrace`.
+    ///
+    /// Not a Java method: it is Java's *object reference* made explicit. `toTrace` is a live
+    /// `Trace` object, so `FoundConnectionInserter:79`/`:94` — which pass
+    /// `connection.targetItem` and `connection.startItem`, references taken before the whole
+    /// insert ran — still see the **original, undivided** polyline and its two end corners even
+    /// after the insert has split that trace in two or removed it. An id lookup answers nothing
+    /// there, and the stub and the two tail removals of `:1157-1168` never happen. See
+    /// `docs/java-quirks.md` #186.
+    #[allow(clippy::too_many_arguments)]
+    pub fn connect_to_trace_of(
+        &mut self,
+        from_point: &Point,
+        polyline: &Polyline,
+        trace_layer: usize,
+        net_nos: &[i32],
+        pen_half_width: i32,
+        clearance_class: usize,
+    ) -> bool {
+        let first_corner = polyline.first_corner();
+        let last_corner = polyline.last_corner();
+        let net_nos = net_nos.to_vec();
         // RoutingBoard.java:1123-1126.
         if polyline.contains(from_point) {
             return true;
