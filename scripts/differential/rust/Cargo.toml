@@ -117,3 +117,8 @@ path = "src/bin/p6t1.rs"
 [[bin]]
 name = "p6t2"
 path = "src/bin/p6t2.rs"
+
+# Plan 7 Task 1: `BoardStatistics`' score subset over a real (optionally routed) board.
+[[bin]]
+name = "p7t7"
+path = "src/bin/p7t7.rs"

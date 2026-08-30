@@ -366,6 +366,52 @@ methods with dozens of branches.
     the port does not have until Task 6. Compiled and run against the clone's
     HEAD jar with a **JDK 25**, like `p6t2`, with `FRLogger.disableLogging()`
     first.
+  - `P7T7.java` — `core/scoring/BoardStatistics`' score subset (Plan 7 Task 1).
+    Twin: `p7t7`. It declares `package app.freerouting.autoroute.maze;` — **not**
+    `core.scoring` — and `P6T1.java` is compiled alongside it. The task brief asked
+    for the `core.scoring` package, and the reason it is not used is worth writing
+    down: nothing in that package is package-private (`BoardStatistics`, all
+    thirteen DTOs, every field and every method the driver touches are `public`),
+    so the brief's package would buy no access, while `autoroute.maze` buys the
+    one thing the driver does need — `P6T1`'s package-private `loadBoard`,
+    `pickConnections` and `route`. With `routeK > 0` the driver routes the first
+    `routeK` connections through **exactly** `p6t1`'s machinery before scoring, so
+    the two harnesses cannot describe different boards; that is the `P5T2`/`P5T1`
+    pattern, applied for the same reason.
+
+    Per fixture it prints, after the `HEADER` line: every DTO field of four
+    `BoardStatistics` variants, one `key=value` line each, through
+    `Integer.toString` / `Float.toString` / `Double.toString` (a null boxed field
+    prints the token `null`) —
+
+    - `A` = `new BoardStatistics(board)` (`:84-86`), the one every score reader uses;
+    - `B` = `new BoardStatistics(board, null, false)` (`:100-102`), which is what
+      `BatchFanout.java:158-162` builds — clearance violations skipped;
+    - `C` = `new BoardStatistics(board, Unit.MIL, true, true)`, the only combination
+      that reaches the `unit != board.communication.unit` conversion block
+      (`:377-405`);
+    - `D` = `new BoardStatistics(board, null, true, false)`, i.e.
+      `includeConnections = false`, so `connections.maximumCount` and
+      `incompleteCount` stay **null** and no score is printed (`getMaximumScore`
+      would unbox a null `Integer` and throw)
+
+    — then `calculateScore` / `getMaximumScore` / `getNormalizedScore` for A, B and
+    C under **four** `ScoringSettings` presets (the `DefaultSettings` weights, and
+    one each with `unroutedNetPenalty`, `viaCosts` and `bendPenalty` moved off
+    default), then six **synthetic** cases `S0`-`S5` built by field assignment on the
+    public no-argument constructor — `2^24 + 1` connections (the first integer a
+    `float` cannot hold), a three-term `float` penalty sum, the
+    `maximumScore <= 0f` guard, a `viaCount * viaCosts` product that overflows `int`
+    and wraps negative, a quotient that underflows to `-0.0f` (so `Math.max`'s
+    signed-zero clause is live), and an `Infinity` maximum against an `Infinity`
+    penalty sum, where `calculateScore` is `Inf - Inf = NaN`, the `<= 0f` guard does
+    **not** fire and `Math.max(0, NaN)` is NaN — then `isPinEscaped` for every SMD
+    pin in ascending item id.
+
+    Compiled and run against the clone's HEAD jar with a **JDK 25**, like
+    `p6t1`/`p6t2`/`p6t3`, under the `p5t*` flag set, so `P5T_HASH_MODE=0..4` sweeps
+    it: `BoardStatistics` builds two `DesignRulesChecker`s and that class iterates
+    `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3 and 4).
 
     Ten modes, and each buys something different:
 
@@ -1350,10 +1396,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t7`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2` and `p6t3`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t7`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1376,7 +1422,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t7` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -1733,6 +1779,34 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p6t3 8 42 20 1000     # `complete` on a 45-degree tree
   ./scripts/differential/run.sh p6t3 9 42 20 1000     # `complete` on a 90-degree tree
   ```
+
+- `p7t7 <dsn> [routeK] [ripupPassNo]` — `BoardStatistics`' computing constructor,
+  `isPinEscaped` and the three score methods, over a board that `routeK > 0`
+  routes first through `p6t1`'s own machinery (Plan 7 Task 1). Defaults
+  `<dsn> 0 1`; `run.sh p7t7` with no arguments uses `Issue143-rpi_splitter.dsn 0 1`.
+
+  ```sh
+  ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 0 1
+  ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 8 1
+  ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 40 1
+  ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue026-J2_reference.dsn 45 1
+  ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 22 1
+  ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue753-CPU-85_r104.dsn 20 1
+  P5T_HASH_MODE=0 ./scripts/differential/run.sh p7t7 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 8 1
+  ```
+
+  **Eleven fixture/`routeK` pairs, 0 diffs, and 0 diffs again on all five
+  `-XX:hashCode=0..4` modes** for `Issue143-rpi_splitter` at `k = 8`. The corpus is
+  the five `tests/reference/router-fixtures.txt` DSNs plus `Issue413-test`,
+  `Issue103-Board-Unrouted`, `Issue110-RelayModule` and `Issue753-CPU-85_r104`, each
+  scored as loaded and — for five of them — after routing. Between them they reach
+  every branch that matters: a `maximumCount == 0` board (`tutorial_board`, the
+  `getNormalizedScore` guard), a board whose traces are all fixed harder than
+  `SHOVE_FIXED` so `totalWeightedLength` is 0 while `totalLength` is not
+  (`Issue753-CPU-85_r104`, which is also the only stem with clearance violations), a
+  board with a `(plane …)` net and a copper pour so `isPinEscaped`'s
+  `ConductionArea` arms are live (`Issue649-kicad_ecc83`), and a `mil`-resolution
+  board beside the `um` ones.
 
   **What mode 3 buys, and why it exists.** The ratsnest has exactly one free
   choice in it: `NetIncompletes.calculateNetItems` seeds its outer loop from

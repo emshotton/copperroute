@@ -173,3 +173,33 @@ AutorouteAirlineCalculator        lib.rs
 AutorouteRuntimeMetrics           lib.rs
 AutorouteUnroutedReport           lib.rs
 ViaOptimizer                      lib.rs
+
+# --- core/scoring/ (Plan 7 Task 1, controller ruling AG) ---------------------------------------
+#
+# The score-relevant subset of `BoardStatistics` lands in `fr_router::score`; the file-scraping
+# constructor, `countOccurrences`, `toString`, `BoardScoreBreakdown` and `ScoringWeightComparison`
+# are `// added in Plan 8:` markers in `score/mod.rs` (ruling 4). The ten DTOs carry no methods, so
+# their rows exist only to keep the audit scoped and to stop `UNMAPPED` from firing.
+#
+#   ./scripts/audit-port.sh core/scoring crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+#
+# `BoardStatisticsClearanceViolations` is **fr-drc's** (plan-5 ruling 5) and is not redeclared
+# here, so its row uses the cross-crate `../../` form — the `fr-drc.map:45-46` /
+# `fr-settings.map:40,42` precedent, which plan-7 ruling 13 says to follow rather than re-litigate
+# (`audit-port.sh` globs `"$RS"/$map_path` and tests `-e`, so it resolves).
+BoardStatistics                   score/statistics.rs
+BoardStatistics                   score/normalized.rs
+BoardStatistics                   score/mod.rs
+BoardStatisticsBoard              score/dtos.rs
+BoardStatisticsLayers             score/dtos.rs
+BoardStatisticsItems              score/dtos.rs
+BoardStatisticsComponents         score/dtos.rs
+BoardStatisticsPads               score/dtos.rs
+BoardStatisticsNets               score/dtos.rs
+BoardStatisticsConnections        score/dtos.rs
+BoardStatisticsTraces             score/dtos.rs
+BoardStatisticsBends              score/dtos.rs
+BoardStatisticsVias               score/dtos.rs
+BoardStatisticsClearanceViolations  ../../fr-drc/src/statistics.rs
+BoardScoreBreakdown               score/mod.rs
+ScoringWeightComparison           score/mod.rs

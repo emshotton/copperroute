@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t7" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -225,6 +225,26 @@ case "$driver" in
     needs_jar=1
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     run_timeout="${P6T1_TIMEOUT:-900}"
+    ;;
+  p7t7)
+    # Plan 7 Task 1: `core/scoring/BoardStatistics`' computing constructor, `isPinEscaped` and the
+    # three score methods, over a board optionally routed first by `P6T1`'s own machinery.
+    # Declares `package app.freerouting.autoroute.maze` — not the brief's `core.scoring` — so it
+    # can call `P6T1.loadBoard` / `pickConnections` / `route`, which are package-private statics;
+    # nothing in `core/scoring` is package-private, so the brief's package would buy no access.
+    # `P6T1.java` is compiled alongside it, the `p5t2`/`P5T1` pattern: the two drivers cannot then
+    # describe different boards.
+    javaclass=P7T7
+    javapkg="autoroute.maze"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 0 1)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
+    # sweeps this driver too: `BoardStatistics` reaches `DesignRulesChecker` twice, and that class
+    # iterates `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3 and 4).
+    # The sweep is what turns "the score does not depend on `Object.hashCode`" into evidence.
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    run_timeout="${P7T7_TIMEOUT:-900}"
     ;;
   p6t3)
     # Plan 6 Tasks 4 and 5: the three neighbour sorters — the any-angle base class, its comparator

@@ -6,11 +6,14 @@ license.workspace = true
 
 [dependencies]
 fr-board = { path = "../fr-board" }
+# Plan 7 ruling 3: promoted from a dev-dependency to a real dependency by Task 1. `fr_router::score`
+# re-uses `fr_drc::BoardStatisticsClearanceViolations` rather than redeclaring it, and the
+# `BoardStatistics` computing constructor builds two `DesignRulesChecker`s.
+fr-drc = { path = "../fr-drc" }
 fr-geometry = { path = "../fr-geometry" }
 fr-settings = { path = "../fr-settings" }
 thiserror.workspace = true
 
 [dev-dependencies]
-fr-drc = { path = "../fr-drc" }
 fr-dsn = { path = "../fr-dsn" }
 parity = { path = "../../tests/parity" }

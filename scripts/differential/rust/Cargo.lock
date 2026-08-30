@@ -65,6 +65,7 @@ name = "fr-router"
 version = "0.1.0"
 dependencies = [
  "fr-board",
+ "fr-drc",
  "fr-geometry",
  "fr-settings",
  "thiserror",

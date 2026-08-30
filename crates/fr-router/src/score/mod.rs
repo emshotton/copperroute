@@ -1,0 +1,56 @@
+//! `fr_router::score` — the score-relevant subset of `core/scoring/BoardStatistics.java`
+//! (controller ruling AG).
+//!
+//! # Why the router owns the score
+//!
+//! `getNormalizedScore` is the batch pipeline's control flow, not a report number:
+//! `AutorouteBatchLoop` compares it pass to pass (`:425`), `BoardHistory` ranks boards by it, and
+//! `BatchOptimizer` gates an accepted optimisation on it. Ruling AG therefore pulls this subset
+//! forward from Plan 8 and lands it here; Plan 8's `fr-core` **re-exports** these types and adds
+//! the Gson-compatible JSON surface, `BoardScoreBreakdown`, `ScoringWeightComparison` and the
+//! `byte[]`/`FileFormat` constructor. Plan 7 adds no crate.
+//!
+//! # What is here, and what is not
+//!
+//! Ported: the field block (`:36-78`), the two delegating constructors with live callers
+//! (`:83-86`, `:99-102`), the computing constructor (`:110-427`), `isPinEscaped` (`:554-576`),
+//! `calculateScore` (`:593-616`), `getMaximumScore` (`:618-621`), `getNormalizedScore`
+//! (`:623-635`), the nested `BoardStatisticsFanout` (`:637-647`) and the ten sibling DTOs.
+//!
+//! The eleventh DTO, `BoardStatisticsClearanceViolations`, is **not** redeclared: Plan 5
+//! delivered it and the block of this constructor that fills it, and
+//! [`BoardStatistics::clearance_violations`] is `fr_drc`'s type. `fr-drc` moves from a
+//! dev-dependency to a real dependency of this crate for it and for the two
+//! `DesignRulesChecker`s the constructor builds (ruling 3).
+//!
+//! The deferral roster for the rest of `core/scoring` is at the foot of this file.
+
+pub mod dtos;
+pub mod normalized;
+pub mod statistics;
+
+pub use dtos::{
+    BoardStatisticsBends, BoardStatisticsBoard, BoardStatisticsComponents,
+    BoardStatisticsConnections, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
+    BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias, Rectangle2DFloat,
+};
+pub use statistics::{BoardStatistics, BoardStatisticsFanout};
+
+/// `core.scoring.BoardStatisticsClearanceViolations`, defined in `fr-drc` (plan-5 ruling 5) and
+/// re-exported here so a reader of this module finds all twelve DTOs in one place.
+pub use fr_drc::BoardStatisticsClearanceViolations;
+
+// ---------------------------------------------------------------------------------------------
+// The `core/scoring` roster (ruling 4). `scripts/audit-port.sh core/scoring` reads these markers,
+// so each is a checked obligation rather than a silence, and each names the reader that makes it
+// Plan 8's.
+// ---------------------------------------------------------------------------------------------
+
+// added in Plan 8: BoardStatistics.BoardStatistics(byte[], FileFormat) (core/scoring/BoardStatistics.java:436-554) — the SES/DSN **text-scraping** twin of the computing constructor, 119 lines of `countOccurrences` over the raw file bytes. Its only reader is the result manifest: `RoutingJob.setInput`/`setOutput` build a `BoardStatistics` from the file when no board object exists (spec §10), which is Plan 8's surface, and nothing in `autoroute/pipeline/**` calls it.
+// added in Plan 8: BoardStatistics.countOccurrences (core/scoring/BoardStatistics.java:578-586) — the private helper of that constructor and of nothing else.
+// added in Plan 8: BoardStatistics.toString (core/scoring/BoardStatistics.java:588-591) — `GsonProvider.GSON.toJson(this)`, i.e. the JSON surface itself; Plan 8 owns the Gson-compatible serialisation of this whole family (ruling AG).
+// added in Plan 8: BoardScoreBreakdown.of (core/scoring/BoardScoreBreakdown.java:125-164) — the factory that re-derives `calculateScore`'s seven terms one by one for display. It duplicates the arithmetic this module owns rather than adding to it, and its only reader is the CLI/manifest surface.
+// added in Plan 8: ScoringWeightComparison.compare (core/scoring/ScoringWeightComparison.java:41-56) — builds two `BoardScoreBreakdown`s and subtracts them term by term, for the weight-sweep report. Static, stateless, and constructed nowhere in `autoroute/pipeline/**`.
+// added in Plan 8: BoardScoreBreakdown.toSummaryString (core/scoring/BoardScoreBreakdown.java) — the per-term breakdown the CLI's `--score` output prints. It is a *presentation* of `calculateScore`'s terms and has no reader inside the routing loop.
+// added in Plan 8: ScoringWeightComparison.isCandidateBetter (core/scoring/ScoringWeightComparison.java) — the weight-sweep comparator behind the same CLI surface; `autoroute/pipeline/**` compares `getNormalizedScore` directly and never constructs one.
+// added in Plan 8: ScoringWeightComparison.toReportString (core/scoring/ScoringWeightComparison.java) — its report rendering, same reader.

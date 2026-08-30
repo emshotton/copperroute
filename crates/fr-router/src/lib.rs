@@ -88,6 +88,7 @@ pub mod autoroute;
 pub mod board_ext;
 pub mod error;
 pub mod java_tree_set;
+pub mod score;
 
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 pub use autoroute::{
@@ -106,6 +107,12 @@ pub use board_ext::{
 };
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
+pub use score::{
+    BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
+    BoardStatisticsClearanceViolations, BoardStatisticsComponents, BoardStatisticsConnections,
+    BoardStatisticsFanout, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
+    BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias, Rectangle2DFloat,
+};
 
 /// `AutorouteControl.ExpansionCostFactor` (`autoroute/maze/AutorouteControl.java:287`), the
 /// per-layer horizontal/vertical trace-cost pair.
@@ -119,15 +126,19 @@ pub use fr_settings::ExpansionCostFactor;
 pub mod prelude {
     pub use crate::{
         Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
-        AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance,
-        DoorId, DrillId, DrillItemMover, DrillPage, DrillPageArray, ExpandableRef,
-        ExpansionCostFactor, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
-        FoundConnectionInserter, FoundConnectionLocator, FreeSpaceExpansionRoom,
-        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
-        MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult, MazeRipupResolver,
-        MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, PageId, ResultItem, RoomRef,
-        RouterError, RoutingBoardExt, ShoveResult, SpringOverOutcome, TargetDoorId,
-        TargetItemExpansionDoor, TraceShover, ViaMask, route_connection,
+        AutorouteSearchTreeExt, BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
+        BoardStatisticsClearanceViolations, BoardStatisticsComponents, BoardStatisticsConnections,
+        BoardStatisticsFanout, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
+        BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias,
+        CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance, DoorId, DrillId,
+        DrillItemMover, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor,
+        ExpansionDoor, ExpansionDrill, ExpansionRoomStore, FoundConnectionInserter,
+        FoundConnectionLocator, FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom,
+        IncompleteRoomId, JavaTreeSet, MazeAdjustment, MazeExpansionEngine, MazeListElement,
+        MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
+        ObstacleExpansionRoom, PageId, Rectangle2DFloat, ResultItem, RoomRef, RouterError,
+        RoutingBoardExt, ShoveResult, SpringOverOutcome, TargetDoorId, TargetItemExpansionDoor,
+        TraceShover, ViaMask, route_connection,
     };
 }
 
