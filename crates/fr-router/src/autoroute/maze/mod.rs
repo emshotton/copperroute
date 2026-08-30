@@ -12,14 +12,18 @@
 //! [`destination_distance`] ([`DestinationDistance`], the admissible cost bound),
 //! [`list_element`] ([`MazeListElement`], the queue's element and its non-total comparator) and
 //! [`queue`] ([`MazeQueue`], the guarded `TreeSet` `MazeSearchEngine` installs). The search
-//! itself arrives in Tasks 11-13 and 16; the roster in `scripts/audit-map/fr-router.map` records
-//! where each lands.
+//! Task 11 adds [`search`], the search's frame: the [`MazeSearchEngine`] struct, `getInstance`,
+//! `init`, the pop loop and the four helpers those need. The cost model and the room-door
+//! expansion (Task 12, `expand.rs`), the drill and ripup expanders (Task 13) and
+//! `autorouteConnection` (Task 16) are still to come; the roster in
+//! `scripts/audit-map/fr-router.map` records where each lands.
 
 pub mod control;
 pub mod destination_distance;
 pub mod engine;
 pub mod list_element;
 pub mod queue;
+pub mod search;
 pub mod search_element;
 
 pub use control::{AutorouteControl, ViaMask};
@@ -27,6 +31,7 @@ pub use destination_distance::DestinationDistance;
 pub use engine::AutorouteEngine;
 pub use list_element::MazeListElement;
 pub use queue::MazeQueue;
+pub use search::{ALREADY_RIPPED_COSTS, MazeResult, MazeSearchEngine, ShoveResult};
 pub use search_element::{MazeAdjustment, MazeSearchElement};
 
 /// `AutorouteEngine.TRACE_WIDTH_TOLERANCE` (`autoroute/maze/AutorouteEngine.java:41`):

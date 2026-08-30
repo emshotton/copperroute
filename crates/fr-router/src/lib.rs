@@ -33,8 +33,10 @@
 //! **check-only** half of [`TraceShover`] and [`DrillItemMover`], the shove algorithms the maze
 //! consults through `checkForcedTracePolyline`. Task 10 closes their cycle with
 //! [`ForcedPadRouter`] and adds [`ForcedViaInserter`], the two-phase gate the maze asks before it
-//! places a via. The maze search itself and the path locators arrive in Tasks 11-17; the roster
-//! at the foot of this file names each deferred class and the task that owns it.
+//! places a via. Task 11 adds [`MazeSearchEngine`] itself — construction, `getInstance`, `init`,
+//! the pop loop and the four helpers those need, with the expanders still stubs. The cost model,
+//! the room-door expansion and the path locators arrive in Tasks 12-17; the roster at the foot of
+//! this file names each deferred class and the task that owns it.
 //!
 //! # House rules
 //!
@@ -66,7 +68,8 @@ pub use autoroute::{
     AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DestinationDistance, DrillPage,
     DrillPageArray, ExpandableRef, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
     FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeListElement,
-    MazeQueue, MazeSearchElement, ObstacleExpansionRoom, RoomRef, TargetItemExpansionDoor, ViaMask,
+    MazeQueue, MazeResult, MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, RoomRef,
+    ShoveResult, TargetItemExpansionDoor, ViaMask,
 };
 pub use board_ext::{
     CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, RoutingBoardExt,
@@ -91,9 +94,9 @@ pub mod prelude {
         DrillId, DrillItemMover, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor,
         ExpansionDoor, ExpansionDrill, ExpansionRoomStore, FreeSpaceExpansionRoom,
         IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
-        MazeListElement, MazeQueue, MazeSearchElement, ObstacleExpansionRoom, PageId, RoomRef,
-        RouterError, RoutingBoardExt, SpringOverOutcome, TargetDoorId, TargetItemExpansionDoor,
-        TraceShover, ViaMask,
+        MazeListElement, MazeQueue, MazeResult, MazeSearchElement, MazeSearchEngine,
+        ObstacleExpansionRoom, PageId, RoomRef, RouterError, RoutingBoardExt, ShoveResult,
+        SpringOverOutcome, TargetDoorId, TargetItemExpansionDoor, TraceShover, ViaMask,
     };
 }
 

@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 10b of 18
+## State: Task 11 of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -28,7 +28,9 @@ layer changes, the four leaf types the maze search itself is written against
 and — from Tasks 9, 10 and 10b — the seam with `fr-board`: `RoutingBoardExt`
 plus **both halves** of the four shove algorithms, the `check` family the maze
 consults before it commits to a trace or a via and the mutating family that then
-performs the shove and inserts the via:
+performs the shove and inserts the via. Task 11 adds the search's own frame:
+`MazeSearchEngine`'s construction, `init` and pop loop, with the room-door
+expansion (Task 12) and the drill/ripup expanders (Task 13) still stubs:
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -57,6 +59,7 @@ performs the shove and inserts the via:
 | `DestinationDistance` | `src/autoroute/maze/destination_distance.rs` | `DestinationDistance.java:11-391` |
 | `MazeListElement` | `src/autoroute/maze/list_element.rs` | `MazeListElement.java:11-114` |
 | `MazeQueue` | `src/autoroute/maze/queue.rs` | `MazeSearchEngine.java:84-125` (the anonymous `TreeSet`) |
+| `MazeSearchEngine`'s frame, `MazeResult`, `ShoveResult` | `src/autoroute/maze/search.rs` | `MazeSearchEngine.java:41-152,287-384,763-789,969-1103,1217-1256` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RoutingBoardExt` | `src/board_ext/routing_board_ext.rs` | `RoutingBoard.java:96-118, 405-448, 882-905, 1240-1249` |
 | `TraceShover` (the two `check`s + `springOver`) | `src/board_ext/trace_shover.rs` | `TraceShover.java:57-411, 592-603, 611-818` |
@@ -323,7 +326,11 @@ closed (`AutorouteControl.rebuildViaInfo` by a real `fn`,
 `fr-settings` re-export, `DestinationDistance`'s three by real `fn`s,
 `MazeListElement.compareTo` by `compare_to`, and the anonymous `TreeSet`'s
 `MazeSearchEngine.add` by a `renamed:` marker on `MazeQueue::push`) — leaving
-`MazeSearchEngine` (3, Tasks 11-13) and `MazeTraceShover` (1, Task 12). All five
+`MazeSearchEngine` (3, Tasks 11-13) and `MazeTraceShover` (1, Task 12). Task 11
+took `autoroute/maze` from 4 MISSING to **1**: `MazeSearchEngine.getInstance`,
+`findConnection` and `occupyNextElement` are real `fn`s in
+`src/autoroute/maze/search.rs`, and the one that remains is
+`MazeTraceShover.checkShoveTraceLine` (Task 12). All five
 `autoroute` invocations stay at zero UNMAPPED, and only `autoroute/path` (7,
 Tasks 14-15) is untouched. Task 9 opened the two `board/*` invocations, each
 restricted to the file it ports, and both exit 0 with zero MISSING and zero
@@ -646,8 +653,11 @@ on the order of its two defining points); and Task 10b wrote **#177**
 (`TraceShover.insert` dereferences `board.changedArea` with no null check and
 its own `catch` hides the `NullPointerException`, so the substitute traces are
 inserted un-normalized on a board that is not marking its changed area — while
-`ForcedPadRouter.forcedPad`, the same loop, guards the identical call). The next
-free id is **#178**. Every later
+`ForcedPadRouter.forcedPad`, the same loop, guards the identical call); and
+Task 11 wrote **#178** (`MazeSearchEngine.init` ignores the `boolean` its own
+overridden `add` returns, so a fanout control whose escape window rejects every
+seeded door still produces a live engine with an empty queue). The next
+free id is **#179**. Every later
 task must re-read the
 register's last row rather than trust the plan's labels — the plan carries an
 amendment saying so.
@@ -744,3 +754,64 @@ crate by `ExpansionRoomStore`. The queries gained `*_with_rooms` twins
 original signatures are delegating wrappers that pass `NoRooms`, so every Plan
 2-5 caller and test is untouched and a board-level caller that reaches a room
 leaf still panics, deliberately.
+
+## The maze search's frame (Task 11)
+
+`src/autoroute/maze/search.rs` is `MazeSearchEngine`'s *frame*: the struct, the
+constructor, `getInstance`, `init`, `findConnection`, `occupyNextElement`,
+`doorIsSmall`, `reduceTraceShapesAtTiePins`, `segmentProjection`,
+`toImpactedPoints` and the two nested result types. Four things about it are
+decisions rather than transcription.
+
+**The engine is a `&mut` field and the board is a parameter.** Java reaches the
+board through `autorouteEngine.board`; the port cannot, because
+`AutorouteEngine` borrows the board per call. Keeping the engine as a field and
+the board as a parameter is what makes `self.queue.push(e, self.ctrl,
+self.engine, board)` type-check — three disjoint borrows of `self` and one of
+`board` — which is exactly the arrangement `task-8-report.md` §8.1 said Tasks
+11-13 had to preserve. Nothing caches a door id.
+
+**Four private Java members are `pub` here.** `init`, `doorIsSmall`,
+`reduce_trace_shapes_at_tie_pins` and `segment_projection` are `private` /
+`private static` in Java, and Java's own ground-truth probe reaches all four
+with `setAccessible(true)`. Rust integration tests have no reflection, and
+plan-6 ruling 6 demands a test per cancellation site — but all four of `init`'s
+sites collapse into `getInstance`'s single `None`, so an integration test that
+could only call `getInstance` could not tell `:975` from `:1051`.
+
+**`Set<Item>` is `BTreeSet<ItemId>`, walked backwards.** Every production caller
+passes a `TreeSet<Item>` (`Item.getConnectedSet` / `getUnconnectedSet`), and
+`Item.compareTo` is `other.id - this.id` — **descending** id. `init`'s two item
+loops and `reduceTraceShapesAtTiePins`' two loops (the second over
+`getNormalContacts()`, itself a `TreeSet`) therefore iterate `.rev()`. This is
+observable: `init_creates_the_start_rooms_in_javas_descending_item_order` aborts
+`init` on its fourth stop call and reads `incompleteExpansionRooms` in list
+order, where the through pin's two rooms precede the SMD pin's. It is **not**
+observable in the completed rooms of the same board — both orders answer the
+same five rooms with the same ids, because both pin centres fall in the same
+`completeShape` partition — which is why the test reads the incomplete list
+instead.
+
+**The three expanders panic.** `expandToDrillsOfPage` and `expandToOtherLayers`
+(Task 13) and `expandToRoomDoors` (Task 12) are `unimplemented!` stubs carrying
+`added in Task 12:` / `added in Task 13:` markers with the Java method name on
+the same line. A stub that answered `true` — "nothing expanded", the harmless
+value — would make the pop loop look healthy while routing nothing, and the
+first thing that would notice is Task 17's fixture parity. Every Task 11 test is
+built so the pop loop terminates on a destination door or an occupied section
+without reaching one.
+
+### The fixture, and a JVM finding that is not a quirk
+
+`tests/maze_search.rs` uses `P6T7Probe`'s two-pin board with **the two traces
+replaced by one obstacle box**. The traces had to go, and the reason is worth
+recording because it will bite any later task that hand-builds a routing
+fixture: a pin's `getTraceConnectionShape` is a **bare point**
+(`DrillItem.java:359-361`), so the start room only exists if that point is
+outside every foreign obstacle's *compensated* tree shape. On the original board
+the net-2 trace carries the "wide" clearance class, its compensated shape
+reaches from x = -1220 to x = -380, and the start pin sits at (-500, 0) —
+inside it. `ShapeSearchTree.completeShape` then answers **zero** candidate
+rooms, `init` answers `false`, and `getInstance` answers `null` for a reason
+that has nothing to do with the method under test. JVM-verified on the HEAD jar
+before the fixture was changed.

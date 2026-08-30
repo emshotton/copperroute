@@ -53,6 +53,7 @@ use crate::autoroute::expansion::{
     ExpandableRef, ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
 };
 use crate::autoroute::item_info;
+use crate::autoroute::maze::MazeSearchElement;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
@@ -441,6 +442,78 @@ impl AutorouteEngine {
                 .expect("ExpansionDrill.getId: a live drill")
                 .get_id(),
             ExpandableRef::Page(page) => self.drill_page_array.page(page).get_id(),
+        }
+    }
+
+    /// `ExpandableObject.getMazeSearchElement(int)` (ExpandableObject.java:35-36) dispatched over
+    /// the four implementors, which is what `MazeSearchEngine.occupyNextElement` performs as a
+    /// virtual call at `MazeSearchEngine.java:332`, `:342-346` and `:382`.
+    ///
+    /// It lives on the engine for the same reason [`Self::expandable_id_no`] does: two of the four
+    /// arrays are reachable only through the drill arena and the [`DrillPageArray`], which only
+    /// the engine owns.
+    ///
+    /// `None` is Java's throw — an `ExpansionDoor` whose section array is still `null`
+    /// (`ExpansionDoor.java:99-102`), an index past the end, or a stale reference. A
+    /// `TargetItemExpansionDoor` ignores the index entirely (TargetItemExpansionDoor.java:55-58),
+    /// and so a negative one is `None` here where Java answers the single element; that cannot
+    /// arise, because `MazeListElement.sectionNoOfDoor` is only ever a loop index or `0`.
+    pub fn maze_search_element(
+        &self,
+        object: ExpandableRef,
+        section: i32,
+    ) -> Option<&MazeSearchElement> {
+        let index = usize::try_from(section).ok()?;
+        match object {
+            ExpandableRef::Door(door) => self.rooms.door(door)?.get_maze_search_element(index),
+            ExpandableRef::TargetDoor(door) => {
+                Some(self.rooms.target_door(door)?.get_maze_search_element(index))
+            }
+            ExpandableRef::Drill(drill) => {
+                let drill = self.rooms.drills.get(drill.0)?;
+                (index < drill.maze_search_element_count())
+                    .then(|| drill.get_maze_search_element(index))
+            }
+            ExpandableRef::Page(page) => {
+                let page = self.drill_page_array.page(page);
+                (index < page.maze_search_element_count())
+                    .then(|| page.get_maze_search_element(index))
+            }
+        }
+    }
+
+    /// [`maze_search_element`](Self::maze_search_element), mutably — Java's callers write the
+    /// element's public fields through the reference they hold.
+    pub fn maze_search_element_mut(
+        &mut self,
+        object: ExpandableRef,
+        section: i32,
+    ) -> Option<&mut MazeSearchElement> {
+        let index = usize::try_from(section).ok()?;
+        match object {
+            ExpandableRef::Door(door) => self
+                .rooms
+                .door_mut(door)?
+                .get_maze_search_element_mut(index),
+            ExpandableRef::TargetDoor(door) => Some(
+                self.rooms
+                    .target_door_mut(door)?
+                    .get_maze_search_element_mut(index),
+            ),
+            ExpandableRef::Drill(drill) => {
+                let drill = self.rooms.drills.get_mut(drill.0)?;
+                if index >= drill.maze_search_element_count() {
+                    return None;
+                }
+                Some(drill.get_maze_search_element_mut(index))
+            }
+            ExpandableRef::Page(page) => {
+                let page = self.drill_page_array.page_mut(page);
+                if index >= page.maze_search_element_count() {
+                    return None;
+                }
+                Some(page.get_maze_search_element_mut(index))
+            }
         }
     }
 

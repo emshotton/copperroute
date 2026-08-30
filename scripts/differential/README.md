@@ -705,6 +705,63 @@ methods with dozens of branches.
       `shoveVias` then answered `true` with an untouched board on all 120 rows —
       a 0-diffs table over a degenerate board is not a test.
 
+  - `P6T11Probe.java` — `MazeSearchEngine`'s construction, `init` and pop loop
+    (Plan 6 Task 11): `getInstance` (`:135-152`), the private `init`
+    (`:969-1103`), `occupyNextElement` (`:314-384`), `findConnection`
+    (`:300-312`), the private `doorIsSmall` (`:763-789`), the private static
+    `segmentProjection` (`:173-205`) and `reduceTraceShapesAtTiePins`
+    (`:154-172`). It declares `package app.freerouting.autoroute.maze;` so it can
+    read the package-private `mazeExpansionList` and `MazeListElement`'s fields
+    directly, and uses `setAccessible(true)` for the four private members and for
+    `AutorouteEngine`'s two private room lists.
+
+    Its board is `P6T7Probe.build`'s two-pin board with **the two traces replaced
+    by one obstacle box** at `[700,-1000..900,1000]`, plus two declared nets and
+    an empty `ViaRule` on the default net class (`AutorouteControl.initNet:230`
+    and `rebuildViaInfo:235` both dereference what the board does not otherwise
+    have — quirk #173). The traces had to go: under the "wide" clearance class
+    the foreign-net trace's compensated tree shape swallows the start pin's
+    centre, and a pin's `getTraceConnectionShape` is a bare point
+    (`DrillItem.java:359-361`), so `completeShape` answered **no room at all**
+    and `init` reported `false` for a reason that had nothing to do with the
+    method under test. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t11-maze-search.txt`. Eighteen modes:
+
+    - `items` — the board's item list in `getItems()` order, so the Rust twin
+      names the same ids.
+    - `init` — `init` on start = {SMD pin} / dest = {through pin}: the three
+      completed rooms with their target doors, and the two seeded queue elements
+      with their `getId()` hashes and `sortingValue`s.
+    - `startorder` / `startrooms` — a **two-item** start set. `startrooms` aborts
+      on the fourth stop call and dumps `incompleteExpansionRooms` in list order,
+      which is where `TreeSet<Item>`'s descending-id walk (`Item.compareTo` =
+      `other.id - this.id`) is observable; by the time the rooms are completed
+      the two orders happen to agree on this board.
+    - `nostart` — the empty start set (Java's `null`, one stop call) and the
+      empty destination set (`null`, **zero** stop calls: `:975` is inside the
+      loop).
+    - `stop1`..`stop8` — a `Stoppable` that trips on its *n*-th call, which walks
+      all four of `init`'s cancellation sites: `:975`, `:1009`, `:1035` and
+      `:1051` — the last firing once per target door, **including** the
+      destination doors it is about to `continue` past.
+    - `pops` — the destination-door terminator: `occupyNextElement` answers
+      `false`, sets `destinationDoor`, and leaves that door's section
+      **unoccupied**, because `:357-358` returns before `:382`.
+    - `occupied` — every seeded section pre-occupied, so the pop loop skips them
+      all and reaches a destination door pushed behind them. Nothing expands, and
+      the skipped sections never get the `:342-346` backtrack copy.
+    - `fanout` — `init` under a fanout control whose escape window rejects every
+      seeded element: `instance=ok` with `queue n=0`, which is **quirk #178**.
+    - `small` — `doorIsSmall` over three door boxes x seven trace widths x the
+      three angle restrictions (63 rows, and the three restrictions disagree on
+      five of them), plus the two `false` arms for a door onto an
+      `ObstacleExpansionRoom`.
+    - `project` — `segmentProjection` on six hand-built pairs, including the
+      empty projection and the reversed `fromSegment`.
+    - `tiepin` — `reduceTraceShapesAtTiePins` on a pin carrying two nets: the
+      foreign-net trace's first tile is cut back from `[-160,-160..160,2160]` to
+      `[-160,300..160,2160]` and the own-net trace is left alone.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

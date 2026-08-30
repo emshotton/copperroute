@@ -8,9 +8,11 @@
 //! could not hold, because both take and return an expansion room. Tasks 4 and 5 add the three
 //! `Sorted*RoomNeighbours` sorters, and Task 6 adds [`maze::engine`] — the `AutorouteEngine`
 //! that owns every room and door of one routing run. Task 7 adds [`drill`], the layer-change
-//! half: the page grid, the per-page drill memo and the expansion drills themselves. The `path/`
-//! submodule and the rest of `maze/` arrive in Tasks 8-17; the roster at the foot of `lib.rs`
-//! and `scripts/audit-map/fr-router.map` name each one and its task.
+//! half: the page grid, the per-page drill memo and the expansion drills themselves. Task 8 adds
+//! the four leaf types the search is written against, and Task 11 the search's own frame
+//! ([`maze::search`]) — construction, `init` and the pop loop. The `path/` submodule and the rest
+//! of `maze/` arrive in Tasks 12-17; the roster at the foot of `lib.rs` and
+//! `scripts/audit-map/fr-router.map` name each one and its task.
 
 pub mod attempt;
 pub mod drill;
@@ -28,6 +30,6 @@ pub use expansion::{
 };
 pub use maze::{
     AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeListElement,
-    MazeQueue, MazeSearchElement, ViaMask,
+    MazeQueue, MazeResult, MazeSearchElement, MazeSearchEngine, ShoveResult, ViaMask,
 };
 pub use tree_ext::AutorouteSearchTreeExt;
