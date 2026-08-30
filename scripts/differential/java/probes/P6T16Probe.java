@@ -43,10 +43,12 @@
 //   ripup       `P6T14Probe.buildBlocked` with `viasAllowed` off and ripup on, all three regimes:
 //               the search rips the net-2 blocker, so `:238-263`'s ripped-connection deletion
 //               runs with a non-empty `rippedItemList` and the board loses an item
-//   nomaze      the blocker taken all the way to the outline, which makes
-//               `MazeSearchEngine.getInstance` answer null: `:145-151`'s FAILED — plus the room
-//               and tree-leaf counts afterwards, which is quirk #188's evidence that this one
-//               early return skips the cleanup of `:198-205`
+//   nomaze      the blocker taken all the way to the outline. **Only the free-angle row reaches
+//               `:145-151`** — under the two angle restrictions `getInstance` still succeeds and
+//               `findConnection` answers null, so those two land on `:207-213` instead. The room
+//               and tree-leaf counts afterwards are therefore evidence about `:145-151` in the
+//               `NONE` row alone; probe mode `stop` is the one that reaches `:145-151` in all
+//               three regimes. No quirk row — see the method's javadoc
 //   nopath      the same blocker 100 units short of the outline with `viasAllowed` off and ripup
 //               off, so `findConnection` answers null: `:207-213`'s FAILED
 //   locatorfail the `ripup` board with an *unmodifiable* `rippedItemList`, so
@@ -321,11 +323,20 @@ public class P6T16Probe {
   }
 
   /**
-   * `:145-151`. Note the room dump afterwards: this early return sits **before** the cleanup of
-   * `:198-205`, so the complete expansion rooms `MazeSearchEngine.init` built — and their leaves
-   * in the compensated autoroute search tree — survive the failure even though
-   * `maintainDatabase` is false and every other exit would have called `clear()`. That asymmetry
-   * is quirk #188.
+   * `:145-151` in the free-angle regime **only**: with the blocker taken to the outline
+   * `MazeSearchEngine.init` fails and `getInstance` answers null, but under `NINETY_DEGREE` and
+   * `FORTYFIVE_DEGREE` the seeding still succeeds and it is `findConnection` that answers null,
+   * so those two rows land on `:207-213`. Probe mode `stop` is the one that reaches `:145-151`
+   * in all three regimes.
+   *
+   * <p>The room dump afterwards is about the one asymmetry in `autorouteConnection`'s control
+   * flow: `:145-151` returns **before** the cleanup of `:198-205`, where every later early
+   * return runs it, so in principle the complete expansion rooms `MazeSearchEngine.init` built —
+   * and their leaves in the compensated autoroute search tree — would survive a failure that
+   * `clear()` should have swept. The `NONE` row is the one that measures it, and it says the
+   * asymmetry is **latent**: `getInstance` answers null only when `init` fails, which is before
+   * any room has been completed, so `completeRooms n=0` and `treeSize=4` (the four board items).
+   * No quirk row: the register's rule is that a latent asymmetry stays a comment at the site.
    */
   static void noMaze() throws Exception {
     for (AngleRestriction restriction : REGIMES) {
@@ -449,16 +460,16 @@ public class P6T16Probe {
    * consult `isStopRequested`, so a port that checks a seventh (or skips one) lands on a different
    * row.
    *
-   * <p>Every limit here is chosen so that the connection fails **before** the insert. A limit
-   * that lets the search finish (13 or more for the 90-degree regime on this board, where the
-   * whole search costs 14 checks) routes on the JVM but not in the port: plan-3 ruling F and
-   * plan-6 ruling 6 deliberately put a stop check inside `BasicBoard.splitTraces` and
-   * `normalizeTraces`, which Java does not have, so an already-tripped flag aborts the insert
-   * there. That is a recorded divergence, not a parity target — see the crate README.
+   * <p>`limit = 20` is deliberately above the 14 checks the 90-degree search costs on this
+   * board, so that row **routes**: the flag is never tripped, the insert runs, and the trace
+   * lands. It is the row that pins controller ruling AC — Java tests cancellation nowhere below
+   * `AutorouteEngine.java:265`, so `FoundConnectionInserter.getInstance` is handed no stop check
+   * at all and the port must not hand it one either. A port that passed the caller's flag down
+   * would abort here with an error Java has no counterpart for.
    */
   static void stopAfter() throws Exception {
     for (AngleRestriction restriction : REGIMES) {
-      for (int limit : new int[] {8, 12, 13}) {
+      for (int limit : new int[] {8, 12, 20}) {
         P6T14Probe.buildSimple();
         RoutingBoard board = board();
         board.rules.setTraceAngleRestriction(restriction);

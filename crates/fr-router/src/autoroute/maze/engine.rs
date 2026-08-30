@@ -1257,8 +1257,10 @@ impl AutorouteEngine {
         // The asymmetry is Java's and is transcribed rather than tidied, but it is **latent**:
         // `MazeSearchEngine::get_instance` answers `None` only when `init` fails, which is
         // before any room has been completed. Measured on the JVM by `P6T16Probe` mode `nomaze`,
-        // which prints `completeRooms n=0` and `treeSize=4` (the four board items) after the
-        // failure in all three regimes — which is why it earns no quirk row.
+        // whose **free-angle row** — the only one of the three that reaches this return; the
+        // other two get here through `:207-213` instead — prints `completeRooms n=0` and
+        // `treeSize=4` (the four board items) after the failure. That one row is why it earns no
+        // quirk row.
         let Some(search_result) = maze_outcome else {
             return AutorouteAttemptResult::with_details(
                 AutorouteAttemptState::Failed,
@@ -1362,7 +1364,8 @@ impl AutorouteEngine {
         // :237-245. "Delete the ripped connections."
         let mut ripped_connections: BTreeSet<ItemId> = BTreeSet::new();
         let mut changed_nets: BTreeSet<i32> = BTreeSet::new();
-        // obligation: `:241-245`'s `StopConnectionOption` choice — measured: inverting it leaves
+        // obligation: `AutorouteEngine.autorouteConnection`'s `:241-245` `StopConnectionOption`
+        // choice — measured: inverting it leaves
         // all 14 probe modes identical, because no fixture here has a **fanout via** and
         // `getConnectionItems`/`removeTraceTails` only branch on the option for one
         // (Item.java:735, RoutingBoard.java:1207-1216). Task 17's corpus needs a fanout board.
@@ -1382,6 +1385,11 @@ impl AutorouteEngine {
         for current_ripped_item in ripped.iter().rev() {
             ripped_connections
                 .extend(board.connection_items(*current_ripped_item, stop_connection_option));
+            // totalized: `:249`'s `currentRippedItem.netCount()` on an id the board no longer
+            // holds. Java's `rippedItemList` is a set of live `Item` references, so it always
+            // reads the count; the port skips the id. Unreachable today — nothing is removed
+            // until `:260`, three statements below — and it is the same shape
+            // `describe_connection` documents at its own site.
             let Some(item) = board.get_item(*current_ripped_item) else {
                 continue;
             };
@@ -1412,12 +1420,31 @@ impl AutorouteEngine {
 
         // :265-266. No `catch` encloses this call: an `Err` is a Java throw and belongs to
         // `route:155-158`, while `Ok(None)` is Java's `null` and belongs to `:271-277`.
+        //
+        // **The stop check is `&|| false`, not `stop`** (controller ruling AC). Java tests
+        // cancellation **nowhere** below `:265`: plan-6 ruling 6's six sites are all in
+        // `MazeSearchEngine.init` / the pop loop plus `DrillPage.java:103`, and
+        // `FoundConnectionInserter.getInstance`, `ForcedViaInserter.insert`,
+        // `BasicBoard.insertVia`, `BasicBoard.splitTraces` and `PolylineTrace.split` carry no
+        // test at HEAD. Handing the caller's `stop` down here would make an external cancel that
+        // trips *after* the search returns abort an insert Java completes — after `:260` has
+        // already removed the ripped items — so the port would emit a board worse than either
+        // outcome plus a bare `FAILED`. Exact parity wins.
+        //
+        // The price is that **quirk #76's ladder hang becomes reachable from the router's insert
+        // path, exactly as it is in Java**: `PolylineTrace.split`'s entry re-walk does not
+        // terminate on a four-rung ladder, and the `StopCheck` plan-3 ruling F added to
+        // `Board::split_traces_checked` is what a caller would have used to escape it. That
+        // check stays for `fr-dsn`'s reader, which is the caller ruling F was written about. The
+        // **wall clock is the batch loop's**: `AutorouteConnectionRouter.route:71-74` builds a
+        // per-connection `TimeLimit` that `AutorouteEngine.isStopRequested` consults at ruling
+        // 6's six sites, and Plan 7's `AutorouteBatchLoop` owns everything above that.
         let insert_found_connection_algo = FoundConnectionInserter::get_instance(
             Some(&autoroute_result),
             board,
             ctrl,
             Some(self),
-            stop,
+            &|| false,
         );
         match insert_found_connection_algo {
             Err(error) => panic!(
@@ -1426,7 +1453,8 @@ impl AutorouteEngine {
                  AutorouteConnectionRouter.route:155-158"
             ),
             // :271-277.
-            // obligation: this arm — measured: no fixture reaches it. Task 15 pinned
+            // obligation: `AutorouteEngine.autorouteConnection`'s `:271-277` arm — measured: no
+            // fixture reaches it. Task 15 pinned
             // `FoundConnectionInserter::get_instance` answering `None` on three boards
             // (`P6T15Probe`'s `viafail`), but every lever that produces it from *outside*
             // `autorouteConnection` — an empty `ctrl.viaRule`, a user-fixed via on the drill —
@@ -1519,14 +1547,27 @@ pub fn describe_connection(
 ///
 /// # The parameters Java reads off `BatchAutorouter`
 ///
-/// Java's `router` field carries five values this function needs. Three come straight from
-/// `RouterSettings` on the production path (`BatchAutorouter.java:110-121`): `getTraceCosts` is
-/// `trace_costs`, `getStartRipupCosts` is `settings.get_start_ripup_costs()` and
-/// `isRemoveUnconnectedVias` is `!settings.is_fanout_enabled()`. The fourth,
-/// `getTracePullTightAccuracy`, is only read by step 6, which is Plan 7's. The fifth,
-/// `isRetainAutorouteDatabase` (`:172-173`), is a **benchmark-only** system property
-/// (`BatchAutorouter.java:63-64,151-154`; `BatchAutorouterThread.java:90` hard-codes `false`), so
-/// it is `retain_autoroute_database` here and is `false` in every production and parity run.
+/// `route:38-47` reads five values off `router`, and **four of them are per-`BatchAutorouter`
+/// fields, not functions of `RouterSettings`** — because there are two production constructors
+/// and they disagree. `BatchAutorouter.java:110-121` (the `RoutingJob` one) derives
+/// `removeUnconnectedVias = !settings.isFanoutEnabled()`, `traceCosts = getTraceCosts()` and
+/// `startRipupCosts = settings.getStartRipupCosts()`; `:253-261`
+/// (`autoroutePassesForOptimizingItem`, the optimizer's autorouter, which is Plan 7's
+/// `BatchOptimizer` path) passes `removeUnconnectedVias = true` **unconditionally** and takes
+/// `startRipupCosts` from its caller. So all four are parameters here — `trace_costs`,
+/// `start_ripup_costs`, `remove_unconnected_vias` and `retain_autoroute_database` — and Plan 7
+/// wires the second constructor without changing this signature.
+///
+/// The values the `RoutingJob` constructor uses are the documented defaults, and are what every
+/// call site in `tests/autoroute_connection.rs` passes: `settings.get_start_ripup_costs()`,
+/// `!settings.is_fanout_enabled()` and `false`. `retain_autoroute_database`
+/// (`BatchAutorouter.isRetainAutorouteDatabase`, `:172-173`) is a **benchmark-only** system
+/// property (`BatchAutorouter.java:63-64,151-154`; `BatchAutorouterThread.java:90` hard-codes
+/// `false`), so it is `false` in every production and parity run. The fifth value,
+/// `getTracePullTightAccuracy`, is read only by step 6, which is Plan 7's.
+///
+/// `RoutingBoard.finishAutoroute` is deliberately **absent**: Java calls it only from
+/// `RoutingPipeline.java:110` and `RoutingBoardUndoFacade.java:55`, never from `route`.
 ///
 /// # Deviation from the task brief: `engine` is an `Option`
 ///
@@ -1560,6 +1601,8 @@ pub fn route_connection(
     ripped: &mut BTreeSet<ItemId>,
     ripup_costs: &mut BTreeMap<ItemId, i32>,
     ripup_pass_no: i32,
+    start_ripup_costs: i32,
+    remove_unconnected_vias: bool,
     retain_autoroute_database: bool,
     stop: StopCheck<'_>,
 ) -> AutorouteAttemptResult {
@@ -1575,6 +1618,8 @@ pub fn route_connection(
             ripped,
             ripup_costs,
             ripup_pass_no,
+            start_ripup_costs,
+            remove_unconnected_vias,
             retain_autoroute_database,
             stop,
         )
@@ -1596,6 +1641,8 @@ fn route_connection_steps_1_to_5(
     ripped: &mut BTreeSet<ItemId>,
     ripup_costs: &mut BTreeMap<ItemId, i32>,
     ripup_pass_no: i32,
+    start_ripup_costs: i32,
+    remove_unconnected_vias: bool,
     retain_autoroute_database: bool,
     stop: StopCheck<'_>,
 ) -> AutorouteAttemptResult {
@@ -1612,16 +1659,17 @@ fn route_connection_steps_1_to_5(
     let mut autoroute_control =
         AutorouteControl::new(board, net_no, settings, current_via_costs, trace_costs);
     autoroute_control.ripup_allowed = true;
-    // obligation: `:45`'s `startRipupCosts * ripupPassNo` — measured: probe mode `routeripup`
-    // runs passes 1, 2 and 4 on the blocker board and all three rip the same item at the same
-    // cost, because `MazeRipupResolver`'s price saturates well below `Integer.MAX_VALUE / 100`
-    // on a one-trace obstacle. Task 17's corpus needs a board where two candidates compete.
-    autoroute_control.ripup_costs = settings.get_start_ripup_costs() * ripup_pass_no;
-    // `BatchAutorouter.java:115`: the batch router's `removeUnconnectedVias` is
-    // `!settings.isFanoutEnabled()`.
-    // obligation: the `!` — measured: flipping it leaves every probe mode identical, for the
-    // same reason `:241-245`'s option does. The two obligations close together.
-    autoroute_control.remove_unconnected_vias = !settings.is_fanout_enabled();
+    // obligation: `AutorouteConnectionRouter.route`'s `:45` `startRipupCosts * ripupPassNo` —
+    // measured: probe mode `routeripup` runs passes 1, 2 and 4 on the blocker board and all
+    // three rip the same item at the same cost, because `MazeRipupResolver`'s price saturates
+    // well below `Integer.MAX_VALUE / 100` on a one-trace obstacle. Task 17's corpus needs a
+    // board where two candidates compete.
+    autoroute_control.ripup_costs = start_ripup_costs * ripup_pass_no;
+    // obligation: `AutorouteConnectionRouter.route`'s `:46` `removeUnconnectedVias` — measured:
+    // flipping the flag leaves every probe mode identical, for the same reason `:241-245`'s
+    // `StopConnectionOption` does (no fixture has a fanout via). The two obligations close
+    // together.
+    autoroute_control.remove_unconnected_vias = remove_unconnected_vias;
 
     // :49-52.
     let unconnected_set = board.unconnected_set(item, net_no);

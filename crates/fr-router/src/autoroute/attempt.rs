@@ -34,6 +34,17 @@ pub enum AutorouteAttemptState {
     /// `FAILED` — routing failed (:12).
     Failed,
     /// `INSERT_ERROR` — error inserting item (:13).
+    ///
+    /// **No producer exists anywhere at HEAD.** `grep -rn INSERT_ERROR` over the Java tree gives
+    /// this declaration, two *consumers* — `AutorouteConnectionRouter.java:124` (the necked-retry
+    /// guard, Plan 7's) and `BatchFanout.java:341` — and one **stale javadoc**,
+    /// `AutorouteEngine.java:125-128`, which claims `autorouteConnection` returns
+    /// "ALREADY_CONNECTED, ROUTED, NOT_ROUTED, or INSERT_ERROR"; the method can return none of
+    /// those three (and `NOT_ROUTED` is not even a constant of this enum). The arm plan-6's
+    /// Task 15 note pointed at, `RoutingBoard.java:918-999`, does not produce it either.
+    /// So the port constructs it nowhere, and Task 17's corpus cannot reach it.
+    // not ported: `AutorouteAttemptState.INSERT_ERROR`'s producer — there is none at HEAD; the
+    // constant itself is ported because `values()`/`ordinal()` are observable (see `ALL`).
     InsertError,
 }
 

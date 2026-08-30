@@ -684,17 +684,20 @@ fn a_ripping_connection_deletes_javas_items_and_reports_javas_ripped_set() {
 // One test per early return, asserting both the state and the message
 // =================================================================================================
 
-/// Probe mode `nomaze` (`:145-151`): the blocker taken to the outline makes
-/// `MazeSearchEngine.getInstance` answer null in the free-angle regime, and leaves the other two
-/// with no path at all.
+/// Probe mode `nomaze`. The blocker taken to the outline reaches `:145-151` — the
+/// "maze search algorithm could not be created" message — in the **free-angle regime only**:
+/// under `NINETY_DEGREE` and `FORTYFIVE_DEGREE` `MazeSearchEngine::get_instance` still succeeds
+/// and it is `find_connection` that answers `None`, so those two rows land on `:207-213`.
+/// `an_already_stopped_run_fails_before_the_maze_is_built` is the test that reaches `:145-151`
+/// in all three.
 ///
-/// The room and tree-leaf counts afterwards are the point of the extra rows. `:145-151` returns
-/// **before** the cleanup of `:198-205`, where every later early return runs it — an asymmetry
-/// that would leak complete expansion rooms and their leaves in the compensated autoroute tree
-/// into the next connection. The JVM says it is **latent**: `getInstance` answers null only when
-/// `MazeSearchEngine.init` fails, which is before any room has been completed, so
-/// `completeExpansionRooms` is empty either way and the tree holds only the four board items.
-/// That is why it earns no quirk row — but the port transcribes the order anyway, and
+/// The room and tree-leaf counts afterwards are the point of the extra rows, and the `NONE` row
+/// is the one that measures them. `:145-151` returns **before** the cleanup of `:198-205`, where
+/// every later early return runs it — an asymmetry that would leak complete expansion rooms and
+/// their leaves in the compensated autoroute tree into the next connection. The JVM says it is
+/// **latent**: `get_instance` answers `None` only when `init` fails, which is before any room
+/// has been completed, so `completeRooms n=0` and `treeSize=4` (the four board items). That is
+/// why it earns no quirk row — but the port transcribes the order anyway, and
 /// `cleanup_runs_before_every_early_return` is what holds it there.
 #[test]
 fn a_maze_that_cannot_be_built_fails_with_javas_message() {
@@ -971,18 +974,18 @@ fn an_already_stopped_run_fails_before_the_maze_is_built() {
 /// the stop flag, so a port that checks a seventh — or skips one — lands on a different count
 /// and on a different result.
 ///
-/// Every limit is chosen so that the connection fails **before** the insert. A limit that lets
-/// the search finish (14 checks on this board) routes on the JVM but not here: plan-3 ruling F
-/// and plan-6 ruling 6 deliberately put a stop check inside `BasicBoard.splitTraces` and
-/// `normalizeTraces`, which Java has not got, so an already-tripped flag aborts the insert with
-/// `BoardError::Stopped` — a value Java has no counterpart for. Measured with `limit = 20`,
-/// where the JVM answers `ROUTED` after 14 checks and the port answers
-/// `AutorouteConnectionRouter.route:155-158`'s bare `FAILED`; recorded in the crate README.
+/// `limit = 20` is above the 14 checks the 90-degree search costs on this board, so that row
+/// **routes** on both sides. It is the row that pins controller ruling AC: Java tests
+/// cancellation nowhere below `AutorouteEngine.java:265`, so
+/// `FoundConnectionInserter::get_instance` is handed `&|| false` rather than the caller's
+/// `stop`. Passing the caller's flag down instead makes this row answer
+/// `AutorouteConnectionRouter.route:155-158`'s bare `FAILED` after `:260` has already removed
+/// the ripped items — a board worse than either outcome, and 21 stop calls instead of 14.
 #[test]
 fn a_stop_inside_the_pop_loop_degrades_through_boundary_three() {
     let mut rows = Vec::new();
     for regime in REGIMES {
-        for limit in [8u32, 12, 13] {
+        for limit in [8u32, 12, 20] {
             let mut board = simple_board();
             rows.push(format!("=== {} limit={limit}", regime_name(regime)));
             let stop = Stop::after(limit);
@@ -1065,6 +1068,12 @@ fn route_once(
         ripped,
         ripup_costs,
         1,
+        // The `RoutingJob` constructor's defaults (`BatchAutorouter.java:110-121`), which is
+        // what `P6T16Probe.routeSteps1to5` passes. `BatchAutorouter.java:253-261`'s optimizer
+        // constructor uses a caller-supplied `startRipupCosts` and an unconditional `true`, and
+        // that is Plan 7's — which is why both are parameters rather than derived here.
+        settings.get_start_ripup_costs(),
+        !settings.is_fanout_enabled(),
         false,
         &|| stop.check(),
     )
@@ -1157,6 +1166,8 @@ fn route_connection_rips_through_javas_cost_model() {
                 &mut ripped,
                 &mut ripup_costs,
                 pass,
+                settings.get_start_ripup_costs(),
+                !settings.is_fanout_enabled(),
                 false,
                 &|| stop.check(),
             );

@@ -1362,12 +1362,32 @@ of component #1 and pin #1 of component #2, pin #1 of component #1"`.
 writes* the nullable field `RoutingBoard.autorouteEngine`; `&mut Option<_>` is
 that field, and the write happens before `autorouteConnection` runs, so it
 survives boundary #5's unwind exactly as Java's field assignment survives a
-throw. It also takes a `retain_autoroute_database` flag, which is Java's
-`BatchAutorouter.isRetainAutorouteDatabase()` (`:172-173`) — the benchmark-only
-system property `freerouting.benchmark.retain_autoroute_database`
+throw.
+
+**Four of `route:38-47`'s five inputs are parameters, not derivations.** They are
+per-`BatchAutorouter` fields, and the two production constructors disagree about
+them: `BatchAutorouter.java:110-121` (the `RoutingJob` one) derives
+`removeUnconnectedVias = !settings.isFanoutEnabled()`,
+`traceCosts = getTraceCosts()` and
+`startRipupCosts = settings.getStartRipupCosts()`, while `:253-261`
+(`autoroutePassesForOptimizingItem`, the optimizer's autorouter — Plan 7's
+`BatchOptimizer` path) passes `removeUnconnectedVias = true` **unconditionally**
+and takes `startRipupCosts` from *its* caller. So `trace_costs`,
+`start_ripup_costs`, `remove_unconnected_vias` and `retain_autoroute_database`
+are all parameters here, and Plan 7 wires the second constructor without
+changing this signature. The `RoutingJob` values are the documented defaults and
+are what every call site in `tests/autoroute_connection.rs` passes;
+`retain_autoroute_database` is `BatchAutorouter.isRetainAutorouteDatabase()`
+(`:172-173`), the benchmark-only system property
+`freerouting.benchmark.retain_autoroute_database`
 (`BatchAutorouter.java:63-64,151-154`), hard-coded `false` in
 `BatchAutorouterThread.java:90` and therefore `false` in every production and
-parity run.
+parity run. The fifth, `getTracePullTightAccuracy`, is read only by step 6.
+
+**`RoutingBoard.finishAutoroute` is deliberately absent.** Java calls it only
+from `RoutingPipeline.java:110` and `RoutingBoardUndoFacade.java:55`, never from
+`AutorouteConnectionRouter.route`, so a `route_connection` that called it would
+clear a database the next connection is entitled to reuse.
 
 **The five `additionalUpdateAfterChange` markers in `fr-board` are re-pointed to
 Plan 7, with the measurement.** `Board::insert_item`, `Board::remove_item`,
@@ -1375,25 +1395,47 @@ Plan 7, with the measurement.** `Board::insert_item`, `Board::remove_item`,
 `Board::split` all sit on a path Plan 6 reaches, but the call needs an
 `AutorouteEngine`, which `fr-board` cannot name (plan-2 ruling 4/11). The
 `PolylineTrace.change` precedent — make the call at the `fr-router` call site —
-works there because that method has exactly one `fr-router` caller; these five
-have 13, 14, 4, 4 and 14 callers respectively, **all inside `fr-board`**, so the
-engine would have to be threaded through every typed inserter, the normaliser
-and the splitter. And the call is a no-op on every path either plan runs:
+works there because that method has exactly one `fr-router` caller. These five
+have **no `fr-router` caller at all** — every one of them is reached only from
+inside `fr-board`, and the two busiest, `Board::insert_item` and
+`Board::remove_item`, are the funnel every typed inserter and every removal path
+goes through — so the engine would have to be threaded through the whole
+inserter family, the normaliser and the splitter, and therefore through every
+Plan 2-5 caller and test. And the call is a no-op on every path either plan runs:
 `RoutingBoard.additionalUpdateAfterChange:100-102` returns unless
 `maintainDatabase`, which is `retainAutorouteDatabase`, which is the benchmark
 property above. Plan 7 owns `BatchAutorouter` and is where the flag can first be
 true.
 
-**One recorded divergence, measured.** Plan-3 ruling F and plan-6 ruling 6 put a
-stop check inside `BasicBoard.splitTraces` and `normalizeTraces`, which Java has
-not got (it is how the ladder hang of quirk #76 is escaped). So an
-**already-tripped** stop flag aborts the insert with `BoardError::Stopped` where
-Java inserts happily: with `P6T16Probe`'s `stopafter` lever at `limit = 20` on
-`buildSimple`, the JVM answers `ROUTED` after 14 checks and the port answers
-`AutorouteConnectionRouter.route:155-158`'s bare `FAILED`. The committed
-transcript therefore uses limits 8, 12 and 13, every one of which fails before
-the insert; production is unaffected, because `BatchAutorouter` discards a
-stopped pass.
+**The insert is handed `&|| false`, not the caller's stop check** (controller
+ruling AC). Java tests cancellation **nowhere** below `AutorouteEngine.java:265`:
+plan-6 ruling 6's six sites are all in `MazeSearchEngine.init` / the pop loop
+plus `DrillPage.java:103`, and `FoundConnectionInserter.getInstance`,
+`ForcedViaInserter.insert`, `BasicBoard.insertVia`, `BasicBoard.splitTraces` and
+`PolylineTrace.split` carry no test at HEAD. An earlier draft passed `stop`
+down, and `P6T16Probe`'s `stopafter` mode measured what that costs: at
+`limit = 20` on `buildSimple` the JVM answers `ROUTED` after 14 stop checks,
+while the port made 21, aborted the insert with `BoardError::Stopped` and
+answered `AutorouteConnectionRouter.route:155-158`'s bare `FAILED` — *after*
+`:260` had already removed the ripped items, so the board was worse than either
+outcome. Exact parity wins; the `limit = 20` row now routes on both sides and is
+what pins the argument.
+
+**Two consequences, both deliberate.** First, **quirk #76's ladder hang becomes
+reachable from the router's insert path, exactly as it is in Java**:
+`PolylineTrace.split`'s entry re-walk does not terminate on a four-rung ladder,
+and the `StopCheck` plan-3 ruling F added to `Board::split_traces_checked` is
+what a caller would have used to escape it. That check stays on the method for
+`fr-dsn`'s reader, which is the caller ruling F was actually written about; the
+router simply does not use it. Second, **the wall clock belongs to the layer
+above**: `AutorouteConnectionRouter.route:71-74` builds a per-connection
+`TimeLimit` that `AutorouteEngine.isStopRequested` consults at ruling 6's six
+sites, and Plan 7's `AutorouteBatchLoop` owns everything outside that. Note that
+Java does *not* discard a cancelled pass — `AutorouteBatchLoop.java:547` assigns
+`job.board = router.board` and the only restore is the score-driven best-board
+swap at `:525-537`, which never consults the stop flag — so an insert the port
+aborted would have been kept, not thrown away. That is the second reason the
+check does not belong here.
 
 **Where the numbers come from.**
 `scripts/differential/java/probes/P6T16Probe.java` (compiled with `P6T11Probe`,
@@ -1406,8 +1448,9 @@ ripup costs, `maxGeneratedId` before and after, and the whole item list.
 compare line by line; all 14 modes MATCH byte for byte.
 
 **What no unit fixture reaches** (`grep -rn "obligation:"
-crates/fr-router/src/autoroute/maze/engine.rs`, six rows, all forwarded to Task
-17): the `:247` and `:260` iteration orders (no fixture rips more than one
+crates/fr-router/src/autoroute/maze/engine.rs`, seven rows — six of them Task
+16's, the seventh Task 6's `completeExpansionRoom` contract — all forwarded to
+Task 17): the `:247` and `:260` iteration orders (no fixture rips more than one
 item), `:241-245`'s `StopConnectionOption` and `:46`'s `removeUnconnectedVias`
 (no fixture has a fanout via), `:45`'s `startRipupCosts * ripupPassNo` (the
 ripup price saturates identically at passes 1, 2 and 4 on a one-trace obstacle)

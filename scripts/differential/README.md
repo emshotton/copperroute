@@ -1194,10 +1194,14 @@ methods with dozens of branches.
       rips the net-2 blocker, so `:238-263`'s deletion runs with a non-empty
       `rippedItemList`. The 90-degree row is the control — it finds nothing and
       rips nothing.
-    - `nomaze` — the blocker taken to the outline, so `getInstance` answers
-      null: `:145-151`'s FAILED. The room and tree-leaf counts afterwards are
-      the evidence that this one early return skipping the `:198-205` cleanup is
-      **latent**: `completeRooms n=0`, `treeSize=4`.
+    - `nomaze` — the blocker taken to the outline. **Only the free-angle row
+      reaches `:145-151`'s FAILED**; under the two angle restrictions
+      `getInstance` still succeeds and it is `findConnection` that answers null,
+      so those two land on `:207-213` instead (mode `stop` is the one that
+      reaches `:145-151` in all three). The room and tree-leaf counts afterwards
+      are evidence about `:145-151` in the `NONE` row alone, and they say that
+      this one early return skipping the `:198-205` cleanup is **latent**:
+      `completeRooms n=0`, `treeSize=4`.
     - `nopath` — the same blocker with ripup off, so `findConnection` answers
       null: `:207-213`'s FAILED.
     - `locatorfail` — **ruling 7's boundary #4**, forged with an
@@ -1208,9 +1212,14 @@ methods with dozens of branches.
     - `stop` — an already-tripped `Stoppable`, which bails inside
       `MazeSearchEngine.init`, so `getInstance` answers null.
     - `stopafter` — the flag tripping after the queue is seeded, over limits 8,
-      12 and 13 x three regimes, each row also printing the **call count**. Two
+      12 and 20 x three regimes, each row also printing the **call count**. Two
       of the nine reach quirk #168 live: `splitToConvex` answers null and
       `DrillPage.getDrills:108` NPEs, which only `:157` — boundary #3 — catches.
+      The `NINETY_DEGREE limit=20` row is above the 14 checks that search costs,
+      so it **routes**: it is the row that pins controller ruling AC, because
+      Java tests cancellation nowhere below `AutorouteEngine.java:265` and a
+      port that handed the caller's flag to `FoundConnectionInserter.getInstance`
+      answers a bare FAILED there after 21 checks instead.
     - `inactive` — layer 0 turned into a dedicated **power plane**, the only
       shape that reaches `:221-228`.
     - `maintain` — `maintainDatabase = true`, so `:204` takes `resetAllDoors`:

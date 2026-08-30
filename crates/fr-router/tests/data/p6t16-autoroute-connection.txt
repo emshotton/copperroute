@@ -297,13 +297,14 @@
     item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
     item id=1 type=BoardOutline nets=[] cl=0
   stopCalls=13
-=== NINETY_DEGREE limit=13
-  result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets.
-  state=FAILED
+=== NINETY_DEGREE limit=20
+  result=ROUTED: 
+  state=ROUTED
   ripped n=0 []
   ripupCosts n=0 []
   maxIdBefore=3
-    maxId=3
+    maxId=4
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(400,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]
     item id=3 type=Pin nets=[1] cl=1 center=(400,0)
     item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
     item id=1 type=BoardOutline nets=[] cl=0
@@ -330,7 +331,7 @@
     item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
     item id=1 type=BoardOutline nets=[] cl=0
   stopCalls=13
-=== FORTYFIVE_DEGREE limit=13
+=== FORTYFIVE_DEGREE limit=20
   result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets.
   state=FAILED
   ripped n=0 []
@@ -340,7 +341,7 @@
     item id=3 type=Pin nets=[1] cl=1 center=(400,0)
     item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
     item id=1 type=BoardOutline nets=[] cl=0
-  stopCalls=14
+  stopCalls=21
 === NONE limit=8
   result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets.
   state=FAILED
@@ -363,7 +364,7 @@
     item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
     item id=1 type=BoardOutline nets=[] cl=0
   stopCalls=13
-=== NONE limit=13
+=== NONE limit=20
   result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets.
   state=FAILED
   ripped n=0 []
@@ -373,7 +374,7 @@
     item id=3 type=Pin nets=[1] cl=1 center=(400,0)
     item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
     item id=1 type=BoardOutline nets=[] cl=0
-  stopCalls=14
+  stopCalls=21
 === mode inactive ===
 === NINETY_DEGREE
   layerActive=[false,true]
