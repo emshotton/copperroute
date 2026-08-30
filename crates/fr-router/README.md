@@ -491,7 +491,7 @@ included) is reachable with no NaN at all. `JavaTreeSet` therefore grew
 through `iterator().next()` + `it.remove()` (`MazeSearchEngine.java:327-329`)
 and red-black deletion changes the tree shape that later comparisons walk.
 
-### Ruling H: the Java half is pinned, Task 17 closes the row
+### Ruling H: the Java half, and where Task 17 took it
 
 `AutorouteControl.rebuildViaInfo` is the consumer the register's re-pointing row
 had been waiting for since Plan 3: `:236`, `:243-244`, `:247` and `:260` reach
@@ -512,11 +512,13 @@ probes ran against the **HEAD** jar (2.3.0 is not used anywhere in Plan 6):
   `.ses` files differ by 2192 diff lines. The file is nowhere near
   unobservable.
 
-What is still missing is the port routing the same board with the same `.rules`,
-which is the comparison that actually decides the row. The `obligation:` marker
-on `AutorouteControl::rebuild_via_info` names it; Task 17's `p6t1` owns it. If
-the port and the jar differ there, `ViaRule` needs owned `ViaInfo` copies (or
-`ViaInfos` needs tombstones) and this fixture is the regression test.
+The comparison that actually decides the row — the port routing the same board
+with the same `.rules`, against the jar doing the same — is **Task 17's, and it
+ran**: see "Ruling H is decided, and it closes against the re-pointing" at the
+foot of this file. The port and the jar differ, so `ViaRule` needs owned
+`ViaInfo` copies (or `ViaInfos` needs tombstones), this fixture is the regression
+test, and the `obligation:` marker on `AutorouteControl::rebuild_via_info` carries
+the measurement until that `fr-board` change lands.
 
 
 ## `RoutingBoardExt` and the check-only shove (Task 9)

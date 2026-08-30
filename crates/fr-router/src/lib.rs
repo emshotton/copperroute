@@ -13,7 +13,7 @@
 //!
 //! # State
 //!
-//! **Task 16 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
+//! **Task 17 of 18.** What exists so far is the data-model floor: [`Arena`] and its index
 //! newtypes, the per-connection outcome ([`AutorouteAttemptResult`]), the per-item scratch
 //! accessors ([`autoroute::item_info`]), and — from Task 2 — the expansion rooms, the doors and
 //! [`MazeSearchElement`] ([`autoroute::expansion`]), which is also where `fr-board`'s reserved
@@ -45,8 +45,13 @@
 //! [`AutorouteEngine::autoroute_connection`] runs a whole connection end to end — maze search,
 //! locate, ripped-connection deletion, insert — and [`route_connection`] is the Plan 6 half of
 //! the seam with Plan 7 (`AutorouteConnectionRouter.route` steps 1-5, ruling 2), which is the
-//! entry point Plan 7's pass runner and Task 17's `p6t1` call. The roster at the foot of this
-//! file names each still-deferred class and the plan that owns it.
+//! entry point Plan 7's pass runner and Task 17's `p6t1` call. **Task 17 turns that loop on a
+//! real board:** `scripts/differential/{java/P6T1.java,rust/src/bin/p6t1.rs}` route a DSN
+//! connection by connection against the HEAD jar, `scripts/gen-router-reference.sh` commits the
+//! jar's answers to `tests/reference/router-*/`, and `tests/reference_parity.rs` walks plan-6
+//! ruling 1's ladder over them — **369 connections on five boards, all three rungs, including
+//! the inserted geometry and the item ids each connection burned**. The roster at the foot of
+//! this file names each still-deferred class and the plan that owns it.
 //!
 //! # House rules
 //!
