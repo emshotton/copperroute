@@ -725,7 +725,7 @@ methods with dozens of branches.
     (`DrillItem.java:359-361`), so `completeShape` answered **no room at all**
     and `init` reported `false` for a reason that had nothing to do with the
     method under test. Its stdout is committed as
-    `crates/fr-router/tests/data/p6t11-maze-search.txt`. Eighteen modes:
+    `crates/fr-router/tests/data/p6t11-maze-search.txt`. Nineteen modes:
 
     - `items` — the board's item list in `getItems()` order, so the Rust twin
       names the same ids.
