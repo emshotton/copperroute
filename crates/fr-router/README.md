@@ -561,9 +561,10 @@ the only gate on those, which is why it names every method rather than the class
 
 Two things the zero does **not** prove, restated because it is easy to over-read:
 the script's positive `fn` match is by name, so under a map it proves the name is
-ported *somewhere in the class's mapped files*, and six `board/facade` classes map
-to a `board/*.rs` glob because `Board` is one Rust type assembled from six Java
-classes. The per-class evidence is the Java citation in every ported body's doc
+ported *somewhere in the class's mapped files*, and all **eight** `board/facade`
+classes map to a `board/*.rs` glob because `Board` is one Rust type assembled from
+those eight Java classes (`Item` uses the same glob, so nine map rows resolve to
+it). The per-class evidence is the Java citation in every ported body's doc
 comment plus the differential drivers below.
 
 ## The probe roster

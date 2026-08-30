@@ -2283,8 +2283,22 @@ because one of them needs `unsafe`:
 
 That is the driver's private transcription of `java.util.Random`'s LCG, held in
 a `static mut` so the shuffle can be called from free functions the way
-`Collections.shuffle` is. `grep -rn unsafe --include='*.rs' crates/ tests/`
-answers **nothing**, and the three lines above are the whole inventory for the
-repository. If `p2t13` is ever rewritten (the "`JavaRandom` is copied into four
+`Collections.shuffle` is. The three lines above are the whole inventory for the
+repository.
+
+**Check it with the construct, not the word.** A bare
+`grep -rn 'unsafe' --include='*.rs' crates/ tests/` answers **10 lines and that is
+expected**: the eight `#![forbid(unsafe_code)]` attributes plus two doc-comment
+lines at `crates/fr-router/src/lib.rs:80-81` describing them. The check that means
+what it says is
+
+```sh
+grep -rnE 'unsafe (\{|fn |impl |trait )' --include='*.rs' crates/ tests/   # no match, exit 1
+grep -rn  'unsafe' --include='*.rs' scripts/differential/rust/              # p2t13.rs:15, :103
+```
+
+(`p2t13.rs:12`, the `static mut` declaration itself, does not contain the word.)
+
+If `p2t13` is ever rewritten (the "`JavaRandom` is copied into four
 driver binaries" row of *Deferred coverage and cleanups* would collapse it into
 the shared module), the `static mut` should go with it and this section with it.

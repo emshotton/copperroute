@@ -262,6 +262,14 @@ fn route_one(
     );
 
     sb.push_str(&format!(",\"state\":\"{}\"", result.state.name()));
+    // `unwrap_or("")`, not a `null`, and that is correct rather than a gap. Java's `quote`
+    // (P6T1.java:502-505) renders a `null` as the bare token `null`, so a null `details` would
+    // print differently on the two sides — but Java cannot produce one:
+    // `AutorouteAttemptResult.java:10-19` assigns `this.details = ""` in the one-argument
+    // constructor, and all 21 `new AutorouteAttemptResult(...)` sites in `src/main/java` pass
+    // either no details or a string literal/concatenation. The port's `None` is the model of
+    // Java's `""` (see `attempt.rs`'s field doc), so rendering `null` here would be the
+    // divergence. Task 17 review N1, closed by Task 18.
     sb.push_str(&format!(
         ",\"details\":{}",
         quote(result.details.as_deref().unwrap_or(""))

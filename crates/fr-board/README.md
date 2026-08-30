@@ -77,10 +77,12 @@ matched nothing and `ViaInfo::set_clearance_class_index` was standing in for
 it), and `ShapeTree.Leaf.compareTo`, `ShapeSearchTree.EntrySortedByClearance.compareTo`,
 `PlanarDelaunayTriangulation.{Corner,Edge.compareTo,TriangleGraph.insert}` and
 `Signum.{of,toString}` had no marker of their own at all. The map narrows; the
-script was **not** weakened. Six `board/facade` classes map to a `board/*.rs`
-glob rather than to one file, because `Board` is one Rust type assembled from
-six Java classes (plan-2 ruling 1) and its impls are split across that directory
-by subject — the map's header says so.
+script was **not** weakened. All **eight** `board/facade` classes map to a
+`board/*.rs` glob rather than to one file, because `Board` is one Rust type
+assembled from those eight Java classes (plan-2 ruling 1) and its impls are split
+across that directory by subject; `Item` uses the same glob for the half of its
+methods `Board` answers, so **nine** map rows resolve to `board/*.rs`. The map's
+header says so.
 
 Plan 5 Task 2 added a tenth, **per-class** invocation: `drc.ClearanceViolation`
 lives here rather than in `fr-drc` (see the type mapping below), so its methods

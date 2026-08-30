@@ -46,8 +46,12 @@
 //! # What runs in CI
 //!
 //! Only the smoke test. The rest carry `#[cfg_attr(debug_assertions, ignore)]` (Plan 3's
-//! convention) and run under `cargo test --release -- --ignored`, because a full board unoptimised
-//! is minutes of work.
+//! convention), because a full board unoptimised is minutes of work.
+//!
+//! **The command that runs them is a plain `cargo test --release -p fr-router --test fixtures`,
+//! not `-- --ignored`.** `debug_assertions` is off in a release build, so the `cfg_attr` does not
+//! apply and the five are not ignored there — adding `--ignored` filters all six *out* and runs
+//! zero tests. All six take about 14 s together.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -201,7 +205,8 @@ fn check(name: &str, result: &PassResult, max_incomplete_connections: usize) {
 /// `setMaxPasses(1)` and `maxIncompleteConnections(194)` on `Issue508-DAC2020_bm01.dsn`.
 ///
 /// Spec §14.3 names this one as the smoke test that runs in normal CI, so it carries no
-/// `ignore`. Two connections on this board is about a second in a debug build.
+/// `ignore`. Two connections on this board is **0.08 s** in a debug build — the 30 KB DSN read
+/// is nearly all of it, because two connections build very little search tree.
 #[test]
 fn dac2020_bm01_one_pass_two_items_leaves_at_most_194_incompletes() {
     if !parity::require_java_dir() {

@@ -433,7 +433,10 @@ different observable outcomes, so the three methods now panic
   recovery (Plans 6/7), MCP concurrency and the KiCad/`SessionToEagle` deferral
   (Plan 8), the legacy-CLI **wiring** half (Plan 8 — the normalisation itself is
   discharged), `audit-port.sh`'s still-unmapped `fr-board` half, and Plan 3's four
-  zero-coverage paths. **Discharged by Plan 6:** the ladder hang's router half
+  zero-coverage paths. (**That list is a snapshot taken at the end of Plan 5 and is
+  not re-edited** — rows it names as open may have been discharged since; the
+  "Discharged by" sentences that follow are the running record, and the struck-through
+  row itself is always the authority.) **Discharged by Plan 6:** the ladder hang's router half
   (Task 10b built the `StopCheck` seam — one `fr-dsn` line is left, re-pointed to
   Plan 8), `AutorouteControl.ExpansionCostFactor`'s re-export (Task 1, ruling 8),
   quirk #34's `equals_geometric` at `TraceTightener*.repositionLine` (Task 15a),

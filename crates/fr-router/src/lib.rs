@@ -162,6 +162,14 @@ pub mod prelude {
 // own — the marker records the class). `autoroute/PerformanceProfiler.java`: a timing sink whose
 // only output is `FRLogger`.
 // not ported: `AutorouteDiagnostic` — a GUI overlay sink (`global-constraints.md`: no GUI).
+//
+// `autoroute/maze/MazeFanoutDiagnostics.java` (44 loc): the fanout search's `FRLogger.trace`
+// payload builder. It is package-private and declares no public methods, so `audit-port.sh` has
+// nothing to require of it — this line is what makes `scripts/audit-map/fr-router.map`'s
+// `MazeFanoutDiagnostics -> lib.rs` row point at a marker rather than at nothing. The call sites
+// it is dropped from carry their own `not ported:` at
+// `src/autoroute/maze/search.rs` (`MazeSearchEngine.fanoutDiagnostics`, `:65`).
+// not ported: `MazeFanoutDiagnostics` — an `FRLogger.trace` payload builder (ruling 13's roster).
 // not ported: `PerformanceProfiler.start`
 // not ported: `PerformanceProfiler.end`
 // not ported: `PerformanceProfiler.reset`

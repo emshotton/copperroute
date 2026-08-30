@@ -1,8 +1,9 @@
 # Plan 6 hand-off — the maze/expansion autorouter (`fr-router`)
 
-Branch `plan-6-router-maze`, 44 implementation commits on top of `main` (`d5ce6d7`,
-Plan 5 merged 2026-08-29) plus the plan document itself (`db4477b`) — see `git log`
-for the tip, which includes the final documentation commit this file is part of.
+Branch `plan-6-router-maze`, 44 implementation commits (Tasks 1-17b) on top of
+`main` (`d5ce6d7`, Plan 5 merged 2026-08-29), plus the plan document itself
+(`db4477b`) and Task 18's — `git log db4477b..HEAD` is the whole branch. See
+`git log` for the tip.
 
 **Read this before Plan 7.** Plan 7 is the pass loop, the fanout and the optimizer;
 it does not re-implement anything here, and §10 is the list of what it must build.
@@ -138,7 +139,21 @@ pub fn route_connection(
 
 `engine` is `&mut Option<…>` because Java's `RoutingBoard.autorouteEngine` is a
 nullable field the router creates, reuses across connections when
-`retainAutorouteDatabase` is set, and nulls at `finishAutoroute`. The engine's own
+`retainAutorouteDatabase` is set, and nulls at `finishAutoroute`.
+
+**The one precondition the signature cannot express — read this before writing the
+pass runner.** The caller **must** call `board.start_marking_changed_area()`
+immediately before every `route_connection`, because
+`AutoroutePassRunner.java:224` does, and **quirk #177** makes the presence of
+`board.changedArea` observable inside `TraceShover::insert`: with it `None`, the
+substitute traces are inserted un-normalised, so the board diverges silently
+rather than failing. Leaving it out **routes a different board** — this is not
+hygiene. Both callers in this tree do it and say so:
+`crates/fr-router/tests/reference_parity.rs` (the acceptance ladder) and
+`crates/fr-router/tests/fixtures.rs`. A second precondition, weaker: the
+`(item, net)` connection list is computed **once**, before any routing, exactly as
+`AutoroutePassRunner` computes `autorouteItemList` once per pass — an entry whose
+item a later connection ripped up is skipped, not re-derived. The engine's own
 entry point, for a caller that has already built its `AutorouteControl`:
 
 ```rust
@@ -182,6 +197,35 @@ never redeclared (ruling 8, the Plan 4 obligation, discharged in Task 1).
 
 Every Plan 1-5 test stayed green by construction, and `crates/freerouting` was not
 touched except for `#![forbid(unsafe_code)]`.
+
+### `#![forbid(unsafe_code)]`, and the one exception (user request, Task 18)
+
+The attribute is the **first line** of all eight workspace crate roots:
+`crates/{fr-geometry,fr-board,fr-dsn,fr-settings,fr-drc,fr-router}/src/lib.rs`,
+`tests/parity/src/lib.rs` and `crates/freerouting/src/main.rs`. Nothing had to be
+rewritten to make it hold — there was no `unsafe` in any crate before the change.
+
+**There is exactly one `unsafe` left in the repository, and it is not in a crate:**
+`scripts/differential/rust/src/bin/p2t13.rs` — `static mut STATE: u64 = 0;` at
+`:12`, read in an `unsafe` block at `:15`, written in another at `:103`. It is the
+`p2t13` driver's private transcription of `java.util.Random`'s LCG, held in a
+`static mut` so the shuffle can be called from free functions the way
+`Collections.shuffle` is. The differential drivers are deliberately outside the
+`forbid` set for that reason;
+`scripts/differential/README.md` §"The repository's only `unsafe`" is the
+authority, and the "`JavaRandom` is copied into four driver binaries" cleanup in
+that file's *Deferred coverage* section would remove it.
+
+**How to re-check it, precisely.** A bare `grep -rn 'unsafe' --include='*.rs'
+crates/ tests/` answers **10 lines and that is expected**: the eight
+`#![forbid(unsafe_code)]` attributes plus two doc-comment lines in
+`crates/fr-router/src/lib.rs:80-81` that describe them. The check that means what
+it says is the one for an actual `unsafe` construct:
+
+```sh
+grep -rnE 'unsafe (\{|fn |impl |trait )' --include='*.rs' crates/ tests/   # no match, exit 1
+grep -rn  'unsafe' --include='*.rs' scripts/differential/rust/               # p2t13.rs:15, :103
+```
 
 ---
 
@@ -242,7 +286,9 @@ touched except for `#![forbid(unsafe_code)]`.
    `1395031.4105961146`). The port routes *shorter*, which is exactly what
    `attachSmdAllowed = true` buys — a via attaching to an SMD pad the jar's detached
    `ViaInfo` forbids. Rungs (a) and (c) still hold; it is (b) that fails.
-   **The fix, for Plan 7:** `fr_board::rules::ViaRule` must own its `ViaInfo`s, the
+   **The fix is Plan 7's Task 0** — controller **ruling AL** makes it the first
+   task of Plan 7, before anything is built on top of the current ownership model,
+   not a loose follow-up: `fr_board::rules::ViaRule` must own its `ViaInfo`s, the
    way Java's holds object references (`ViaRule.java:21`), so that
    `ViaInfos::remove` cannot re-point a rule. Tombstones were considered and
    rejected — they leak the removal into every index walk. No acceptance fixture
@@ -262,7 +308,12 @@ touched except for `#![forbid(unsafe_code)]`.
    `ShapeSearchTree.EntrySortedByClearance.compareTo`,
    `PlanarDelaunayTriangulation.{Corner,Edge.compareTo,TriangleGraph.insert}` and
    `Signum.{of,toString}` had no marker of their own at all. All seven now do. The
-   script was **not** weakened.
+   script was **not** weakened, and the map narrows rather than widens: re-pointing
+   `BasicBoard` from `board/*.rs` to `items/mod.rs` in a scratch copy makes
+   `board/facade` exit 1 with 30+ `MISSING` lines, so the zero is earned. The one
+   glob it does use covers all **eight** `board/facade` classes plus `Item` —
+   **nine** rows — because `Board` is one Rust type assembled from those eight Java
+   classes (plan-2 ruling 1) and its impls are split across `board/*.rs` by subject.
 7. **`BasicBoard.areThereItemsOnInactiveLayer` has no caller anywhere in the Java
    tree** and its whole body is one `FRLogger.warn`. Re-pointed from a Plan 6
    deferral to `not ported:`.
@@ -406,9 +457,18 @@ that found it, if the question ever recurs.
 ## 10. Obligations for Plan 7
 
 The register in `docs/java-quirks.md` is authoritative; this is the working list.
-`grep -rn "added in Plan 7" crates/` answers **60 lines** (40 of them in
-`crates/fr-router/src/lib.rs`'s roster, which names every deferred class method by
-method), and `grep -rn "obligation:" crates/` answers **54** (28 in `fr-router`).
+The marker inventory, with the scope spelled out — **`crates/*/src` is the code,
+`crates/` additionally sweeps the READMEs' prose about the markers**, so the two
+numbers differ and only the first is an inventory:
+
+| grep | `crates/*/src` | `crates/` | of which `fr-router/src` | of which its `lib.rs` roster |
+|---|---|---|---|---|
+| `grep -rn "added in Plan 7" …` | **60** | 75 | 40 | 33 |
+| `grep -rn "added in Plan 8" …` | **13** | 16 | 2 | 2 |
+| `grep -rn "obligation:" …` | **54** | 70 | 28 | 0 |
+
+`crates/fr-router/README.md` §"The 28 `obligation:` markers" tabulates that last
+column class by class with the verdict and the evidence for each.
 
 ### Must build
 
@@ -444,10 +504,19 @@ method), and `grep -rn "obligation:" crates/` answers **54** (28 in `fr-router`)
 7. **The `ConnectionToPin` trio** — `check`, `correct`, `swapConnectionToPin` in the
    tightener family. `pinEdgeToTurnDist` is `-1` throughout Plan 6, which is what
    keeps them out of reach here.
-8. **The `fr-board` fix ruling H decided**: `ViaRule` owning its `ViaInfo`s (§5).
+8. **The `fr-board` fix ruling H decided**: `ViaRule` owning its `ViaInfo`s (§5.2).
+   Controller **ruling AL** makes this **Plan 7's Task 0** — it changes an ownership
+   model every later task builds on, so it goes first, and its acceptance is the
+   `Issue593` repro in §5.2 turning from DIFF into MATCH.
 
 ### Must know
 
+* **`board.start_marking_changed_area()` before every `route_connection`** —
+  `AutoroutePassRunner.java:224`. Quirk #177 makes the presence of
+  `board.changedArea` observable inside `TraceShover::insert`, so omitting it
+  routes a **different board**, silently. §3 states it beside the signature; both
+  callers in this tree do it. This is the single item most likely to make a Plan 7
+  pass runner diverge without failing.
 * **`max_passes == 0` means unlimited** (quirk #140). Not "zero passes".
 * **`-mt` is not a threading policy on the headless path** (quirk #143):
   `BatchOptimizer.createForHeadless` (`:51-53`) never reads the field, and the
@@ -506,6 +575,7 @@ method), and `grep -rn "obligation:" crates/` answers **54** (28 in `fr-router`)
 | 15 | `get_instance` answers `Result<Option<FoundConnectionInserter>, BoardError>`: `Err` propagates as a bare `FAILED`, `Ok(None)` is a message `FAILED`, and there is no `SKIPPED`. |
 | 16 | `Err` below `AutorouteEngine.java:260` panics rather than degrading — Plan 7's necked retry is the handler. |
 | 17 | eight coverage obligations re-marked with the measurement that says why no corpus board reaches them. |
+| 17 (N1) | **`p6t1`'s two `quote` helpers disagree about `null`, and Task 18 closed it as unreachable.** Java's `P6T1.java:502-505` renders a `null` argument as the bare token `null`; the Rust twin's `p6t1.rs:266` renders `result.details` through `unwrap_or("")`, i.e. `""`. The two would differ on a null `details` — and **Java cannot produce one**: `AutorouteAttemptResult.java:10-19` sets `this.details = ""` in the one-argument constructor and takes a string in the other, and all 21 `new AutorouteAttemptResult(…)` sites in `src/main/java` pass either no details or a literal/concatenation, never `null` (`BatchFanout.java:335,352` guard `details == null` defensively over a field that cannot be). So the null branch of the Java driver's `quote` is dead for this field, and the port's `Option::None` is the correct model of Java's `""` — which is what `crates/fr-router/src/autoroute/attempt.rs:95-102` already documents. Recorded, with a comment at the twin's site, rather than "fixed": rendering `null` there would be the divergence. |
 
 ---
 
@@ -524,7 +594,7 @@ need the pinned `tools/freerouting-2.3.0.jar`. Tests that need the checkout call
 |---|---|
 | the workspace is green | `cargo test --workspace` — **1 863 passed, 0 failed, 12 ignored**, 92 binaries |
 | the acceptance ladder holds | `cargo test --release --workspace` — **1 873 passed, 0 failed, 1 ignored** (the one is `a_four_rung_ladder_never_finishes_normalizing`, quirk #76's non-terminating reproduction, which exists precisely because it cannot pass); `-p fr-router --test reference_parity` alone for just the ladder |
-| the fixture bounds hold | `cargo test --release -p fr-router --test fixtures` — 6 passed, 13.5 s |
+| the fixture bounds hold | `cargo test --release -p fr-router --test fixtures` — 6 passed, ~14 s. **Not** `-- --ignored`: `debug_assertions` is off in release, so the `cfg_attr` does not apply and `--ignored` filters all six out |
 | the ported Java suites pass | `cargo test -p fr-router --test java_ports` |
 | the port matches the jar live | `./scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 8` (and the same with `100000 2` / `100000 4` on the DAC2020 board) |
 | the references are portable across JVMs | `./scripts/gen-router-reference.sh --verify-hash-modes` — five stems, five modes, one file each |
@@ -533,7 +603,7 @@ need the pinned `tools/freerouting-2.3.0.jar`. Tests that need the checkout call
 | Plan 6's markers are all consumed | `grep -rn "added in Plan 6" crates/` returns nothing |
 | ruling 10 is honoured | `grep -rn "item_tree_shape_ref\|item_tile_shape_ref" crates/fr-router/` returns one doc comment forbidding them |
 | the quirk register is contiguous | `grep -o '^| [0-9]\+ ' docs/java-quirks.md` — 193 rows, 1 to 193, no gaps, no duplicates |
-| no crate contains `unsafe` | `grep -rn unsafe --include='*.rs' crates/ tests/` returns nothing; `#![forbid(unsafe_code)]` is in all eight crate roots |
+| no crate contains an `unsafe` construct | `grep -rnE 'unsafe (\{\|fn \|impl \|trait )' --include='*.rs' crates/ tests/` — **no match, exit 1**. A bare `grep -rn unsafe …` over the same paths answers **10** lines and that is expected: the eight `#![forbid(unsafe_code)]` attributes plus two doc-comment lines at `crates/fr-router/src/lib.rs:80-81`. §3's "`forbid(unsafe_code)`" subsection has both commands and the one exception |
 | clippy is clean | `cargo clippy --workspace --all-targets -- -D warnings` — exit 0 |
 | every differential driver is at its documented state | see the table below |
 | `cargo doc` has not regressed | `cargo doc --workspace --no-deps` — see the baseline below |
@@ -573,10 +643,12 @@ documented, and Task 17b re-verified them after the `Line` identity-token change
 
 ## 14. Open items for the user
 
-1. **Ruling H's fix is an `fr-board` change nobody has made.** The decision is made
-   (§5): stop re-pointing. Until `ViaRule` owns its `ViaInfo`s, a `.rules` file that
-   re-declares an existing `(via …)` routes differently from Java. No shipped path
-   does that today, and no acceptance fixture does.
+1. **Ruling H's fix is an `fr-board` change nobody has made — scheduled as Plan 7's
+   Task 0 by controller ruling AL.** The decision is made (§5.2): stop re-pointing.
+   Until `ViaRule` owns its `ViaInfo`s, a `.rules` file that re-declares an existing
+   `(via …)` routes differently from Java. No shipped path does that today, and no
+   acceptance fixture does — which is exactly why it must go first, before more code
+   depends on the index model.
 2. **The `Line` identity token is a genuine, recorded exception to "no static
    mutable state"** (§9). It is the only one in the workspace, it is invisible to
    every output, and it is the reason the DAC2020 board matches at ripup passes 2

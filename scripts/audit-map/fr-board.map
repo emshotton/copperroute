@@ -19,9 +19,9 @@
 # **only** under its mapped path(s); a class this file does not mention falls back to the
 # crate-wide search *and* prints `UNMAPPED`, so the map cannot silently rot.
 #
-# Reading the globs. `Board` is one Rust type assembled from six Java classes (plan-2 ruling 1),
-# and its inherent impls are split across `board/*.rs` by subject; those six classes therefore map
-# to `board/*.rs` rather than to one file. That is the "a class with no single home gets a glob"
+# Reading the globs. `Board` is one Rust type assembled from the **eight** `board/facade` classes
+# (plan-2 ruling 1), and its inherent impls are split across `board/*.rs` by subject; those eight
+# classes therefore map to `board/*.rs` rather than to one file, as does `Item` (nine rows in all). That is the "a class with no single home gets a glob"
 # case the script's header allows, and it is a real narrowing all the same: it excludes
 # `items/`, `rules/`, `library/`, `structure/`, `searchtree/` and `datastructures/`.
 
@@ -69,7 +69,9 @@ ShapeAndEntrySide        structure/shape_entry_side.rs
 ShapeEntrySide           structure/shape_entry_side.rs
 
 # --- board/facade ------------------------------------------------------------------------------
-# The six classes that make up `Board` (plan-2 ruling 1). `board/*.rs` is `mod.rs`, `query.rs`,
+# All eight classes of `board/facade` make up one Rust `Board` (plan-2 ruling 1), so all eight map
+# to the same glob — nine rows in this file use it, the ninth being `Item` above, whose own methods
+# are answered partly by `Board`. `board/*.rs` is `mod.rs`, `query.rs`,
 # `normalize.rs`, `snapshot.rs`, `connectivity.rs`, `clearance.rs`, `changed_area.rs`,
 # `communication.rs`, `shape_trace_entries.rs` and `trace_normalize.rs`.
 BasicBoard               board/*.rs
