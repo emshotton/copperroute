@@ -1439,6 +1439,21 @@ public class P2T11 {
         FixedState.UNFIXED);
     System.out.println("S16 after:  " + traces());
     System.out.println("S16 items=" + ids(board.getItems()));
+
+    // S17: `change` to a **value-equal but freshly built** polyline — quirk #74's control-flow
+    // half. `PolylineTrace.change:960` compares the two line arrays with `!=`, i.e. by object
+    // identity, so a fresh array differs at index 0 however equal its values are: Java never
+    // takes the "both polylines are equal" early return (`:963`), and runs `changeEntries`
+    // **and** the `normalize(clipShape)` tail (`:1001`). Over the S1/S5 geometry — a four-corner
+    // trace plus a second trace lying on its middle segment — that tail splits and recombines,
+    // so one trace `[(0,0) (30000,0)]` is left. A port comparing by value would return at
+    // `:963`, run neither, and leave two traces standing.
+    board = traceBoard(1);
+    PolylineTrace s17 = tr(0, 1000, 1, FixedState.UNFIXED, 0, 0, 10000, 0, 20000, 0, 30000, 0);
+    tr(0, 1000, 1, FixedState.UNFIXED, 10000, 0, 20000, 0);
+    System.out.println("S17 before: " + traces());
+    s17.change(new Polyline(pts(0, 0, 10000, 0, 20000, 0, 30000, 0)));
+    System.out.println("S17 after:  " + traces());
   }
 
   // -------------------------------------------------------------------------------------------

@@ -1,0 +1,496 @@
+# Plan 6 Task 17b — the bisect markers, as a patch against the Java clone's read-only sources.
+#
+# WHAT THIS IS
+#   The `router-dac2020-bm01` `ripupPassNo >= 2` divergence (quirk #74) was bisected in six
+#   levels. Level 1 needs no patching: `scripts/differential/java/P6T17bProbe.java` decorates
+#   `board.communication.idGenerator` and labels every allocation by a `StackWalker` frame.
+#   Levels 2-6 need markers *inside* freerouting, and this patch is them. It is the artefact that
+#   makes the task's load-bearing measurement — 2358 `PolylineTrace.change` calls, of which 1403
+#   disagree between Java's reference comparison and a value one — re-runnable.
+#
+# THE JAVA TREE STAYS READ-ONLY.
+#   Apply into a scratch copy and put the compiled classes *in front of* the jar; never into the
+#   clone.
+#
+#     JDIR=../freerouting/src/main/java          # the clone, untouched
+#     JAR=../freerouting/build/libs/freerouting-current-executable.jar
+#     J25=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+#     SCRATCH=$(mktemp -d)
+#     ( cd "$JDIR" && git ls-files \
+#         app/freerouting/autoroute/maze/MazeSearchEngine.java \
+#         app/freerouting/autoroute/maze/AutorouteEngine.java \
+#         app/freerouting/board/searchtree/ShapeSearchTree45Degree.java \
+#         app/freerouting/board/searchtree/SearchTreeManager.java \
+#         app/freerouting/board/trace/PolylineTrace.java \
+#         app/freerouting/datastructures/MinAreaTree.java \
+#       | cpio -pdm "$SCRATCH" )
+#     ( cd "$SCRATCH" && patch -p1 < <abs path>/scripts/differential/java/p6t17b-bisect.patch )
+#     "$J25/bin/javac" -nowarn -cp "$JAR" -d "$SCRATCH/classes" $(find "$SCRATCH" -name '*.java')
+#
+# VALIDATE BEFORE TRUSTING ANY MARKER — this is not optional.
+#   Compile the *unpatched* copies the same way and run `P6T1` with them ahead of the jar; the
+#   output must be byte-identical to the plain-jar run, which is what proves the clone's sources
+#   and the jar are the same code. With the patch applied and the markers switched off (the
+#   default), the same comparison must still hold; it did, on 20 connections of
+#   `Issue508-DAC2020_bm01` at `ripupPassNo = 2`.
+#
+# RUN
+#   The markers are gated on two `public static` fields the patch adds to `MazeSearchEngine`, and
+#   `P6T17bProbe` sets them from the environment:
+#
+#     P6T17B_DEEP=1  — OCCUPY / OTHERLAYERS / ROOMDOORS / PUSH / DOORSEC (the maze queue),
+#                      CROOM_IN / CROOM_CAND / ROOM (room completion),
+#                      NODE / LEAF / LEAFROOM / RESTRAIN (the 45-degree completeShape walk),
+#                      TINS / TREM (+ a stack signature) and SMINS / SMREM (tree mutations),
+#                      CHANGE (PolylineTrace.change's two index pairs, identity *and* value)
+#                      — all for the one connection `P6T17bProbe`'s `k` names.
+#     P6T17B_DEEP=all — the same markers for *every* connection. Use it on a handful of
+#                      connections only: over a whole board its stderr runs to gigabytes.
+#     P6T17B_CHANGE=1 — CHANGE alone, for every connection. This is the task's **pinning
+#                      measurement**, and it is cheap enough to run over a whole board:
+#
+#                        P6T17B_CHANGE=1 "$J25/bin/java" ... P6T17bProbe \
+#                            ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 267 2 2>c.txt
+#                        grep -c '^CHANGE' c.txt                                  # 2358
+#                        grep '^CHANGE' c.txt | awk '{split($4,a,"="); split($6,b,"=");
+#                          split($5,c,"="); split($7,d,"=");
+#                          if (a[2] != b[2] || c[2] != d[2]) n++} END {print n}'  # 1403
+#
+#                      `idFirst`/`idLast` are Java's reference comparison, `vFirst`/`vLast` the
+#                      same two indices computed with `Line.equals`. The port agrees with the
+#                      first pair on all 2358 and would disagree on 1403 with the second.
+#     P6T17B_TREE=1  — TREENODE: a pre-order dump of the whole autoroute tree (leaf/inner flag
+#                      plus each node's bounding octagon) once per connection, at its first
+#                      `completeShape`. This is the level that put the first structural
+#                      divergence at connection 92, node 414 of 5063.
+#
+#     P6T17B_DEEP=1 "$J25/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+#         -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 \
+#         -cp <probe-classes>:"$SCRATCH/classes":"$JAR" \
+#         app.freerouting.autoroute.maze.P6T17bProbe \
+#         ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 267 2 2>markers.txt
+#
+#   Every marker goes to **stderr**, so the driver's own stdout stays diffable. The port side was
+#   instrumented to match with env-gated `eprintln!`s at the mirrored statements; none of that is
+#   committed (it would be production-path tracing), and the report's §3 names each pair.
+#
+--- a/app/freerouting/autoroute/maze/MazeSearchEngine.java
++++ b/app/freerouting/autoroute/maze/MazeSearchEngine.java
+@@ -85,6 +85,7 @@
+         new TreeSet<>() {
+           @Override
+           public boolean add(MazeListElement element) {
++            p6t17bPush(element);
+             if (ctrl.isFanout && ctrl.fanoutStartPinCenter != null) {
+               app.freerouting.geometry.planar.FloatPoint pinCenterFloat =
+                   ctrl.fanoutStartPinCenter.toFloat();
+@@ -310,7 +311,48 @@
+   /**
+    * Expands the next element in the maze expansion list. Returns false, if the expansion list is
+    * exhausted or the destination is reached.
++   */
++  // ---- P6T17b bisect markers (scripts/differential/java/p6t17b-bisect.patch) ----------------
++  /** Set by P6T17bProbe for the connection under study; every marker below is gated on it. */
++  public static boolean P6T17B = false;
++
++  /** The 1-based index of the connection being routed, for the per-connection tree dump. */
++  public static int P6T17B_K = 0;
++
++  /**
++   * `PolylineTrace.change`'s CHANGE marker alone, for every connection — the task's pinning
++   * measurement. Set separately because the other markers cost gigabytes over a whole board.
+    */
++  public static boolean P6T17B_CHANGE = false;
++
++  static String p6t17bBits(double v) {
++    return Long.toHexString(Double.doubleToLongBits(v));
++  }
++
++  static String p6t17bDoor(ExpandableObject door) {
++    return door.getClass().getSimpleName();
++  }
++
++  static void p6t17bPush(MazeListElement e) {
++    if (!P6T17B) return;
++    System.err.println(
++        "PUSH sort=" + p6t17bBits(e.sortingValue)
++            + " exp=" + p6t17bBits(e.expansionValue)
++            + " door=" + p6t17bDoor(e.door)
++            + " sec=" + e.sectionNoOfDoor
++            + " ripped=" + e.roomRipped
++            + " adj=" + e.adjustment
++            + " cost=" + e.ripupCost
++            + " nextRoom=" + (e.nextRoom == null ? "null" : e.nextRoom.getClass().getSimpleName()));
++  }
++
++  static String p6t17bLine(app.freerouting.geometry.planar.FloatLine l) {
++    if (l == null) return "null";
++    return p6t17bBits(l.a.x) + "," + p6t17bBits(l.a.y)
++        + "/" + p6t17bBits(l.b.x) + "," + p6t17bBits(l.b.y);
++  }
++  // ---- end P6T17b -------------------------------------------------------------------------
++
+   public boolean occupyNextElement() {
+     if (this.destinationDoor != null) {
+       return false; // destination already reached
+@@ -338,6 +380,19 @@
+     }
+     if (!nextElementFound) {
+       return false;
++    }
++    if (P6T17B) {
++      System.err.println(
++          "OCCUPY sort=" + p6t17bBits(listElement.sortingValue)
++              + " exp=" + p6t17bBits(listElement.expansionValue)
++              + " door=" + p6t17bDoor(listElement.door)
++              + " sec=" + listElement.sectionNoOfDoor
++              + " ripped=" + listElement.roomRipped
++              + " adj=" + listElement.adjustment
++              + " nextRoom="
++              + (listElement.nextRoom == null
++                  ? "null"
++                  : listElement.nextRoom.getClass().getSimpleName()));
+     }
+     currentDoorSection.backtrackDoor = listElement.backtrackDoor;
+     currentDoorSection.sectionNoOfBacktrackDoor = listElement.sectionNoOfBacktrackDoor;
+@@ -369,10 +424,12 @@
+     if (ctrl.viasAllowed
+         && listElement.door instanceof ExpansionDrill
+         && !(listElement.backtrackDoor instanceof ExpansionDrill)) {
++      if (P6T17B) System.err.println("  OTHERLAYERS");
+       expansionEngine.expandToOtherLayers(listElement);
+     }
+ 
+     if (listElement.nextRoom != null) {
++      if (P6T17B) System.err.println("  ROOMDOORS");
+       if (!expandToRoomDoors(listElement)) {
+         return true; // occupation by ripup is delayed or nothing was expanded
+         // In case nothing was expanded allow the section to be occupied from
+@@ -752,6 +809,15 @@
+         }
+       }
+ 
++      if (P6T17B) {
++        System.err.println(
++            "  DOORSEC i=" + i
++                + " thick=" + nextRoomIsThick
++                + " add=" + addCosts
++                + " dim=" + toDoor.dimension
++                + " ls=" + p6t17bLine(lineSections[i])
++                + " entry=" + p6t17bLine(newShapeEntry));
++      }
+       if (expandToDoorSection(toDoor, i, newShapeEntry, listElement, addCosts, adjustment)) {
+         somethingExpanded = true;
+       }
+--- a/app/freerouting/autoroute/maze/AutorouteEngine.java
++++ b/app/freerouting/autoroute/maze/AutorouteEngine.java
+@@ -446,8 +446,24 @@
+               + describeShapeBounds(fromDoorShape)
+               + ", ignoreObject="
+               + (ignoreObject == null ? "null" : ignoreObject.getClass().getSimpleName()));
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        System.err.println(
++            "CROOM_IN layer=" + room.getLayer()
++                + " room=" + p6t17bShape(room.getShape())
++                + " contained=" + p6t17bShape(room.getContainedShape())
++                + " fromDoor=" + p6t17bShape(fromDoorShape)
++                + " ignore=" + (ignoreObject == null ? "null" : "obj"));
++      }
+       Collection<IncompleteFreeSpaceExpansionRoom> completedShapes =
+           this.autorouteSearchTree.completeShape(room, this.netNumber, ignoreObject, fromDoorShape);
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        for (IncompleteFreeSpaceExpansionRoom c : completedShapes) {
++          System.err.println(
++              "CROOM_CAND dim=" + c.getShape().dimension()
++                  + " shape=" + p6t17bShape(c.getShape())
++                  + " contained=" + p6t17bShape(c.getContainedShape()));
++        }
++      }
+       int initialCandidateIndex = 0;
+       for (IncompleteFreeSpaceExpansionRoom initialCandidate : completedShapes) {
+         FRLogger.trace(
+@@ -532,6 +548,12 @@
+       completeExpansionRooms = new ArrayList<>();
+     }
+     completeExpansionRooms.add(completedRoom);
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++      System.err.println(
++          "ROOM layer=" + completedRoom.getLayer()
++              + " bounds=" + describeShapeBounds(completedRoom.getShape())
++              + " doors=" + completedRoom.getDoors().size());
++    }
+     this.autorouteSearchTree.insert(completedRoom);
+     FRLogger.trace(
+         "COMPLETE_ROOM added"
+@@ -544,6 +566,18 @@
+     return completedRoom;
+   }
+ 
++  // ---- P6T17b bisect markers -----------------------------------------------------------------
++  static String p6t17bShape(TileShape shape) {
++    if (shape == null) return "null";
++    StringBuilder sb = new StringBuilder("{");
++    for (int i = 0; i < shape.borderLineCount(); i++) {
++      if (i > 0) sb.append(';');
++      sb.append(shape.corner(i));
++    }
++    return sb.append('}').toString();
++  }
++  // ---- end P6T17b ------------------------------------------------------------------------------
++
+   private static String describeShapeBounds(TileShape shape) {
+     if (shape == null) {
+       return "null";
+--- a/app/freerouting/board/searchtree/ShapeSearchTree45Degree.java
++++ b/app/freerouting/board/searchtree/ShapeSearchTree45Degree.java
+@@ -140,6 +140,10 @@
+     }
+ 
+     IntOctagon boundingShape = startShape;
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K != p6t17bLastDump) {
++      p6t17bLastDump = app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K;
++      p6t17bDumpTree();
++    }
+     int roomLayer = room.getLayer();
+     boolean debugAnchor = isCompleteShapeDebugAnchor(netNumber, roomLayer, startShape);
+     int debugStep = 0;
+@@ -154,6 +158,12 @@
+       if (currentNode == null) {
+         break;
+       }
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        System.err.println(
++            "NODE leaf=" + (currentNode instanceof Leaf)
++                + " isect=" + currentNode.boundingShape.intersects(boundingShape)
++                + " bound=" + p6t17bOct(boundingShape.boundingOctagon()));
++      }
+       if (currentNode.boundingShape.intersects(boundingShape)) {
+         if (currentNode instanceof Leaf currentLeaf) {
+           SearchTreeObject currentObject = (SearchTreeObject) currentLeaf.object;
+@@ -175,6 +185,15 @@
+                 ignoredObject,
+                 currentObject);
+           }
++          if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++            TileShape treeShape = currentObject.getTreeShape(this, shapeIndex);
++            System.err.println(
++                "LEAF obs=" + isObstacle + " same=" + sameLayer + " ign=" + ignoredObject
++                    + " cls=" + currentObject.getClass().getSimpleName()
++                    + " idx=" + shapeIndex
++                    + " shape="
++                    + p6t17bOct(treeShape == null ? null : treeShape.boundingOctagon()));
++          }
+           if (isObstacle && sameLayer && !ignoredObject) {
+ 
+             IntOctagon currentObjectShape =
+@@ -189,6 +208,10 @@
+             for (IncompleteFreeSpaceExpansionRoom currentRoom : result) {
+               IntOctagon currentShape = (IntOctagon) currentRoom.getShape();
+               boolean overlaps = currentShape.overlaps(currentObjectShape);
++              if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++                System.err.println(
++                    "  LEAFROOM overlaps=" + overlaps + " room=" + p6t17bOct(currentShape));
++              }
+               if (overlaps) {
+                 if (currentObject instanceof CompleteFreeSpaceExpansionRoom
+                     && ignoreShape != null) {
+@@ -302,6 +325,39 @@
+    * interior of obstacleShape. incompleteRoom.getContainedShape() must be contained in the shape of
+    * the result room.
+    */
++  // ---- P6T17b bisect markers -----------------------------------------------------------------
++  static String p6t17bOct(IntOctagon o) {
++    if (o == null) return "null";
++    return "(" + o.leftX + "," + o.bottomY + "," + o.rightX + "," + o.topY + ","
++        + o.upperLeftDiagonalX + "," + o.lowerRightDiagonalX + ","
++        + o.lowerLeftDiagonalX + "," + o.upperRightDiagonalX + ")";
++  }
++
++  /** The connection whose tree was last dumped, so each connection dumps exactly once. */
++  static int p6t17bLastDump = -1;
++
++  static boolean p6t17bDumping = false;
++
++  /** Pre-order walk of the whole tree: leaf/inner flag plus each node's bounding octagon. */
++  void p6t17bDumpTree() {
++    if (this.root == null) return;
++    java.util.ArrayDeque<TreeNode> stack = new java.util.ArrayDeque<>();
++    stack.push(this.root);
++    while (!stack.isEmpty()) {
++      TreeNode n = stack.pop();
++      boolean leaf = n instanceof Leaf;
++      System.err.println(
++          "TREENODE k=" + app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K
++              + " " + (leaf ? "L" : "I")
++              + " " + p6t17bOct(n.boundingShape.boundingOctagon()));
++      if (!leaf) {
++        stack.push(((InnerNode) n).secondChild);
++        stack.push(((InnerNode) n).firstChild);
++      }
++    }
++  }
++  // ---- end P6T17b ------------------------------------------------------------------------------
++
+   private Collection<IncompleteFreeSpaceExpansionRoom> restrainShape(
+       IncompleteFreeSpaceExpansionRoom incompleteRoom, IntOctagon obstacleShape) {
+     // Search the edge line of obstacleShape, so that shapeToBeContained
+@@ -350,15 +406,33 @@
+     double cutLineDistance = -1;
+     int restrainingLineNo = -1;
+ 
++    StringBuilder p6t17bSb = null;
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++      p6t17bSb = new StringBuilder();
++      p6t17bSb.append("RESTRAIN obst=").append(p6t17bOct(obstacleShape))
++          .append(" room=").append(p6t17bOct(roomShape))
++          .append(" cont=").append(p6t17bOct(shapeToBeContained))
++          .append(" d=");
++    }
+     for (int obstacleLineNo = 0; obstacleLineNo < 8; obstacleLineNo++) {
+       double currentDistance =
+           signedLineDistance(obstacleShape, obstacleLineNo, shapeToBeContained);
++      if (p6t17bSb != null) {
++        p6t17bSb.append(Long.toHexString(Double.doubleToLongBits(currentDistance)))
++            .append(obstacleSegmentTouchesInside(obstacleShape, obstacleLineNo, roomShape)
++                ? "T" : "F")
++            .append(',');
++      }
+       if (currentDistance > cutLineDistance) {
+         if (obstacleSegmentTouchesInside(obstacleShape, obstacleLineNo, roomShape)) {
+           cutLineDistance = currentDistance;
+           restrainingLineNo = obstacleLineNo;
+         }
+       }
++    }
++    if (p6t17bSb != null) {
++      p6t17bSb.append(" pick=").append(restrainingLineNo);
++      System.err.println(p6t17bSb);
+     }
+     if (cutLineDistance >= 0) {
+       IntOctagon restrainedShape =
+--- a/app/freerouting/board/searchtree/SearchTreeManager.java
++++ b/app/freerouting/board/searchtree/SearchTreeManager.java
+@@ -37,6 +37,11 @@
+ 
+   /** Inserts the tree shapes of item into all active search trees. */
+   public void insert(Item item) {
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++      System.err.println(
++          "SMINS id=" + item.getId() + " cls=" + item.getClass().getSimpleName()
++              + " shapes=" + item.treeShapeCount(defaultTree));
++    }
+     for (ShapeSearchTree currentTree : compensatedSearchTrees) {
+       currentTree.insert(item);
+     }
+@@ -48,9 +53,23 @@
+     if (!item.isOnTheBoard()) {
+       return;
+     }
++    int p6t17bTreeNo = 0;
+     for (ShapeSearchTree currentTree : compensatedSearchTrees) {
+ 
+       ShapeTree.Leaf[] currentTreeEntries = item.getSearchTreeEntries(currentTree);
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        int nulls = 0;
++        if (currentTreeEntries != null) {
++          for (ShapeTree.Leaf l : currentTreeEntries) {
++            if (l == null) ++nulls;
++          }
++        }
++        System.err.println(
++            "SMREM id=" + item.getId() + " cls=" + item.getClass().getSimpleName()
++                + " tree=" + (p6t17bTreeNo++)
++                + " entries=" + (currentTreeEntries == null ? -1 : currentTreeEntries.length)
++                + " nulls=" + nulls);
++      }
+       {
+         if (currentTreeEntries != null) {
+           currentTree.remove(currentTreeEntries);
+--- a/app/freerouting/board/trace/PolylineTrace.java
++++ b/app/freerouting/board/trace/PolylineTrace.java
+@@ -980,6 +980,31 @@
+     }
+     int keepAtStartCount = Math.max(indexOfFirstDifferentLine - 2, 0);
+     int keepAtEndCount = Math.max(newPolyline.lines.length - indexOfLastDifferentLine - 3, 0);
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B
++        || app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_CHANGE) {
++      // The pinning measurement of Plan 6 Task 17b: the same two indices computed by *value*
++      // next to the ones Java computes by *reference*. Quirk #74.
++      int valueFirst = lastIndex;
++      for (int i = 0; i < lastIndex; i++) {
++        if (!newPolyline.lines[i].equals(lines.lines[i])) {
++          valueFirst = i;
++          break;
++        }
++      }
++      int valueLast = -1;
++      for (int i = 1; i <= lastIndex; i++) {
++        if (!newPolyline.lines[newPolyline.lines.length - i].equals(
++            lines.lines[lines.lines.length - i])) {
++          valueLast = newPolyline.lines.length - i;
++          break;
++        }
++      }
++      System.err.println(
++          "CHANGE oldLines=" + lines.lines.length + " newLines=" + newPolyline.lines.length
++              + " idFirst=" + indexOfFirstDifferentLine + " idLast=" + indexOfLastDifferentLine
++              + " vFirst=" + valueFirst + " vLast=" + valueLast
++              + " keepS=" + keepAtStartCount + " keepE=" + keepAtEndCount);
++    }
+     PolylineTraceSearchTreeAdapter.changeEntries(
+         this, newPolyline, keepAtStartCount, keepAtEndCount);
+     lines = newPolyline;
+--- a/app/freerouting/datastructures/MinAreaTree.java
++++ b/app/freerouting/datastructures/MinAreaTree.java
+@@ -47,8 +47,40 @@
+     return foundOverlaps;
+   }
+ 
++  // ---- P6T17b bisect markers -----------------------------------------------------------------
++  static boolean p6t17bOn() {
++    return app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B;
++  }
++
++  static String p6t17bBounds(RegularTileShape s) {
++    if (s == null) return "null";
++    app.freerouting.geometry.planar.IntOctagon o = s.boundingOctagon();
++    if (o == null) return "nulloct";
++    return "(" + o.leftX + "," + o.bottomY + "," + o.rightX + "," + o.topY + ","
++        + o.upperLeftDiagonalX + "," + o.lowerRightDiagonalX + ","
++        + o.lowerLeftDiagonalX + "," + o.upperRightDiagonalX + ")";
++  }
++
++  static String p6t17bStack() {
++    StringBuilder sb = new StringBuilder();
++    StackWalker.getInstance()
++        .walk(st -> st.filter(f -> f.getClassName().startsWith("app.freerouting."))
++            .limit(8).toList())
++        .forEach(f -> {
++          if (sb.length() > 0) sb.append('|');
++          String c = f.getClassName();
++          sb.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(f.getMethodName())
++              .append(':').append(f.getLineNumber());
++        });
++    return sb.toString();
++  }
++  // ---- end P6T17b ------------------------------------------------------------------------------
++
+   @Override
+   void insert(Leaf leaf) {
++    if (p6t17bOn()) {
++      System.err.println("TINS n=" + this.leafCount + " " + p6t17bBounds(leaf.boundingShape));
++    }
+     ++this.leafCount;
+ 
+     // Tree is empty - just insert the new leaf
+@@ -122,6 +154,10 @@
+       return;
+     }
+     // remove the leaf node
++    if (p6t17bOn()) {
++      System.err.println("TREM n=" + this.leafCount + " " + p6t17bBounds(leaf.boundingShape)
++          + " " + p6t17bStack());
++    }
+     InnerNode parent = leaf.parent;
+     leaf.boundingShape = null;
+     leaf.parent = null;

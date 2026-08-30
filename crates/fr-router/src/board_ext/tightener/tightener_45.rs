@@ -7,7 +7,7 @@ use fr_geometry::{
     java_max, java_min,
 };
 
-use super::base::{TightenerBase, new_polyline};
+use super::base::{TightenerBase, new_polyline, new_polyline_in_place};
 
 /// `class TraceTightener45 extends TraceTightener` (TraceTightener45.java:21).
 ///
@@ -518,8 +518,11 @@ impl<'a> TraceTightener45<'a> {
             if new_line_side_of_nearest_corner == side_of_nearest_corner
                 || new_line_side_of_nearest_corner == Side::Collinear
             {
-                // :420-432.
-                let tmp = new_polyline(vec![check_line_0, new_line, check_line_2]);
+                // :420-432. `new Polyline(checkLines)` normalises **checkLines itself**, and
+                // `:435` reads element 1 back out of it — see `new_polyline_in_place`.
+                let mut check_lines = vec![check_line_0, new_line, check_line_2];
+                let tmp = new_polyline_in_place(&mut check_lines);
+                let new_line = check_lines[1];
                 if tmp.lines().len() == 3 {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, 0)

@@ -1585,53 +1585,61 @@ public entry point for a caller that has not mutated the board (`P6T16Probe`'s
 `describe` mode reaches it by reflection), and `router_j2_reference` is the
 regression test.
 
-### The one open divergence: `ripupPassNo > 1` on the largest board
+### `ripupPassNo > 1` on the largest board — CLOSED (ruling AD, Task 17b, `ead7902`)
 
-Every committed reference is `ripupPassNo = 1`. Task 17 also swept **2** and
-**4** over the whole corpus, because that is where
-`AutorouteConnectionRouter.route:45`'s `startRipupCosts * ripupPassNo` and — at
-pass 4 — `MazeRipupResolver`'s `randomize` draw (plan-6 ruling 5's bit-exact
-`JavaRandom`, seeded with `ctrl.ripupCosts`) become live.
+Every committed `ripupPassNo = 1` reference is joined by one at **2**:
+`tests/reference/router-dac2020-bm01-pass2/`, whose fixture row carries the
+optional fourth field `ripup_pass_no`. The ladder is green on all five stems at
+passes **1, 2 and 4**:
 
-`router-rpi-splitter`, `router-j2-reference` and `router-ecc83-input` **MATCH at
-both passes**. `router-dac2020-bm01` matches for **k = 1..266** at both and then
-diverges. Reproduce with
+    pass 1  rpi-splitter MATCH  dac2020 MATCH  j2 MATCH  tutorial MATCH  ecc83 MATCH
+    pass 2  rpi-splitter MATCH  dac2020 MATCH  j2 MATCH  tutorial MATCH  ecc83 MATCH
+    pass 4  rpi-splitter MATCH  dac2020 MATCH  j2 MATCH  tutorial MATCH  ecc83 MATCH
+
+Reproduce any rung with
 
     scripts/differential/run.sh p6t1 \
         ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 100000 2
 
-(and the same with a trailing `4`; `1` is the control and MATCHes).
+(`4` and the control `1` likewise). This is where
+`AutorouteConnectionRouter.route:45`'s `startRipupCosts * ripupPassNo` and — at
+pass 4 — `MazeRipupResolver`'s `randomize` draw (plan-6 ruling 5's bit-exact
+`JavaRandom`, seeded with `ctrl.ripupCosts`) become live.
 
-* **k = 267** — the first differing transcript line, file line 268. The output is
-  identical: same state, no rips, the same six trace polylines corner for corner,
-  the same metric block. What differs is `"maxIdAfter":438604` (jar) against
-  `438610` (port): the port consumes **1 489** item ids where the jar consumes
-  **1 483**, `maxIdBefore` `437121` on both. The six surviving trace ids are
-  exactly +6 apart — jar `[438526, 438532, 438578, 438583, 438602, 438604]`,
-  port `[438532, 438538, 438584, 438589, 438608, 438610]` — so the six extra are
-  transient and are spent before the connection's first surviving trace.
-* **k = 268, 269** — the id shift alone.
-* **k = 270** — the first real geometry divergence, and 25 connections differ
-  from there on. The first differing corner is index 12 of the fourth trace: the
-  jar has the **rational** `~(1523296.5,-1066651.5)`, the port the `IntPoint`
-  `(1523292,-1066647)`. Rungs (a) and (c) still hold.
+**What it was.** `router-dac2020-bm01` used to match k = 1..266 at passes 2 and
+4 and then diverge: at k = 267 the output was identical corner for corner but
+the port consumed **1 489** item ids against the jar's **1 483** (six extra
+*transient* ones, `"maxIdAfter":438610` against `438604`), k = 268/269 differed
+by that id shift alone, and k = 270 was the first real geometry difference.
 
-Six extra *transient* traces inside one insert, with byte-identical output
-geometry, is an off-by-one in the `insertForcedTracePolyline` /
-`springOverObstacles` recursion or in the shove's substitute-piece loop — Task
-15a/15b code, pinned against `P6T15bProbe`'s 1 621 rows but not against a
-connection that performs ~1 400 inserts. The rational-vs-integer corner at k = 270
-is the strongest lead: the two sides' `Polyline` normalisation reaches a different
-corner *class*, not merely a different count. Localising it needs Java-side
-visibility this task did not build: a probe logging `maxGeneratedId` around each
-`RoutingBoard.insertForcedTracePolyline` call inside
-`FoundConnectionInserter.insertTrace` (that method is public, so a probe in
-`package app.freerouting.autoroute.path` can bracket the inserter's own calls).
-The full evidence — both transcripts' first differing line, the k = 267 id runs,
-the port's allocation tally by site and k = 270's two trace lists — is the open
-row in `docs/java-quirks.md`, and **controller ruling AD assigns it to Plan 6
-Task 17b**: only the *trigger* (`ripupPassNo > 1`) is `AutorouteBatchLoop`'s,
-while the divergent code is this plan's.
+**What it was not.** Task 17's hypothesis — an off-by-one in
+`insertForcedTracePolyline` / `springOverObstacles` or in the shove's
+substitute-piece loop (Task 15a/15b code), with the rational-vs-integer corner at
+k = 270 as the lead — is **disproved**. Nothing in this crate was wrong.
+
+**The cause.** `PolylineTrace.change` (PolylineTrace.java:960, :972) compares the
+old and the new line arrays with `!=` on `Line` objects — **reference identity**.
+The two indices it finds become `keepAtStartCount` / `keepAtEndCount`, which
+decide how many search-tree leaves `ShapeSearchTree.changeEntries` reuses instead
+of removing and re-inserting; a leaf re-inserted lands elsewhere in
+`MinAreaTree`. The port compared by value (quirk **#74**, filed by Plan 2 as an
+unavoidable divergence and given a production caller by Task 15b's
+`pull_tight_with_engine`), kept more leaves, and so held the same leaves in a
+different tree **shape** — first observably at connection 92.
+`ShapeSearchTree45Degree.completeShape` walks that tree with an explicit stack, so
+its obstacle order *is* the tree's shape: it met the obstacles in a different
+order, `restrainShape` cut a different half-plane, one completed free-space room
+came out `[(1548429,-1053804)..]` in the jar against `[(1553913,-1063354)..]` in
+the port, and that moved a door, a `MazeListElement.sortingValue` and finally the
+six ids.
+
+**The fix** is `fr_geometry::Line`'s private identity token and
+`Line::is_same_object`, with `Board::change_trace` its only caller — quirk #74 in
+`docs/java-quirks.md`, now *reproduced* rather than open, and Plan 6 controller
+ruling **AE** for the departure from "no static mutable state" it takes.
+`scripts/differential/java/P6T17bProbe.java` and
+`crates/fr-router/tests/data/p6t17b-dac2020-k267-pass2.txt` are the instrument and
+the transcript that found it.
 
 ### Ruling H is decided, and it closes against the re-pointing
 
@@ -1704,7 +1712,7 @@ unaffected.
 | `autoroute/maze/engine.rs:1396` | `autorouteConnection:247` | **discharged** | dac2020 rips 2 items at k = 252 and 3 at k = 261/279/286/293 |
 | `autoroute/maze/engine.rs:1423` | `BasicBoard.removeItems`' order | **discharged** | dac2020 removes 2 (×7), 3 (×22), 4 (×3) and 7 (×1) connection items at once |
 | `autoroute/maze/engine.rs:1480` | `autorouteConnection:271-277` | **discharged** | 20 connections: rpi-splitter k = 3, 8; j2 k = 6, 9, 10, 12, 15, 19; dac2020 k = 23, 25, 26, 124, 125, 127, 162, 202, 246, 287, 288, 290 |
-| `autoroute/maze/engine.rs:1718` | `route:45` (`startRipupCosts * ripupPassNo`) | **discharged, one XDIFF** | passes 2 and 4 MATCH on three stems; dac2020 diverges from k = 267 (open row above) |
+| `autoroute/maze/engine.rs:1718` | `route:45` (`startRipupCosts * ripupPassNo`) | **discharged** | passes 1, 2 and 4 MATCH on all five stems (Task 17b closed the dac2020 XDIFF — quirk #74, section above) |
 | `autoroute/maze/engine.rs:1730` | `route:46` (`removeUnconnectedVias`) | **discharged** | the corpus runs it `false` on all 369 connections, the opposite of every unit fixture |
 | `autoroute/expansion/mod.rs:190` | `AutorouteEngine.clear` | discharged in Task 6 | — |
 | `autoroute/expansion/complete_room.rs:5` | Plan 2's `TreeObject::Room` | discharged by the class | — |

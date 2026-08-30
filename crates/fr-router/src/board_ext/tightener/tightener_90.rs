@@ -130,7 +130,13 @@ impl<'a> TraceTightener90<'a> {
     fn try_skip_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let lines = polyline.lines();
         // :74-80. Java's `new Line[polyline.lines.length]` is a null-filled array whose bounds
-        // throw; a `Vec` of the same length indexed with `[]` panics the same way.
+        // throw; a `Vec` of the
+        // same length indexed with `[]` panics the same way **out of bounds** — but not in
+        // bounds: an unwritten in-bounds slot silently carries `lines[0]`'s value *and its
+        // identity token* (quirk #74), where Java carries `null` and NPEs inside
+        // `new Polyline(...)`. Every slot that survives into the result is written first, so the
+        // difference is unreachable; it is a silent-wrong-answer shape rather than a panic
+        // shape, so a future edit to the write pattern has to re-check it.
         let mut new_lines: Vec<Line> = vec![lines[0]; lines.len()];
         new_lines[0] = lines[0];
         new_lines[1] = lines[1];

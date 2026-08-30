@@ -8,7 +8,7 @@
 //! which turns Java's warning into a compile-time guarantee.
 
 use std::cmp::Ordering;
-use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -47,27 +47,66 @@ pub struct Line {
     pub b: IntPoint,
     /// Java's **object identity**, and nothing else — see [`Line::is_same_object`].
     ///
+    // Java bug: PolylineTrace.change (PolylineTrace.java:960, :972) compares two `Line` objects
+    // with `!=` where it means `equals`; this field is the mechanism that reproduces it. Quirk
+    // #74; the reproduction sites are `Board::change_trace`'s two loops in
+    // `crates/fr-board/src/board/trace_normalize.rs`.
+    ///
     /// Java's `Line` is a heap object, and one caller compares two of them with `!=` rather than
     /// `equals`: `PolylineTrace.change` (PolylineTrace.java:960, :972) walks the old and the new
     /// polyline looking for the first and the last line that is *not the same object*, and the
     /// two indices decide how many search-tree leaves the changed trace reuses
     /// (`ShapeSearchTree.changeEntries`). A value comparison answers a different question and
     /// keeps more leaves, which leaves the search tree a different *shape* — see
-    /// `docs/java-quirks.md` and `Board::change_trace`.
+    /// `docs/java-quirks.md` quirk #74 and `Board::change_trace`.
     ///
     /// This port's `Line` is a `Copy` value, so it carries the identity itself: a fresh
     /// constructor call takes a fresh token, exactly as `new Line(...)` allocates a fresh
     /// object, and every copy of the value keeps the token, exactly as copying a Java reference
     /// keeps the object. The token takes no part in `PartialEq`, `Eq`, `Hash` or `Debug`, so no
     /// other comparison in the port can see it.
-    identity: u32,
+    ///
+    /// # Plan 6 controller ruling AE — an accepted departure from "no static mutable state"
+    ///
+    /// The token comes from a process-wide counter, and the plan's Global Constraints forbid
+    /// static mutable state (`docs/superpowers/plans/2026-08-29-plan-6-router-maze.md`, Global
+    /// Constraints, and the plan's amendment block, which records this ruling). Ruling AE
+    /// **accepts** it as the port of Java object identity, for three reasons:
+    ///
+    /// 1. **Nothing reads the counter's value — only the equivalence relation it induces.**
+    ///    `identity` has exactly one reader in the workspace ([`Line::is_same_object`]), which
+    ///    has exactly two callers, both inside one `Board::change_trace` call. No output,
+    ///    ordering, hash or serialised form can observe a token, so two runs over the same input
+    ///    route identically however many `Line`s the process built before.
+    /// 2. **Java's own object identity is process-global mutable state.** A monotone counter is
+    ///    the closest available model, not an invention; the constraint exists to stop the crate
+    ///    inventing a threading policy, and this invents none.
+    /// 3. **Every alternative is worse.** An arena of lines makes `Line::opposite`/`translate`/
+    ///    `turn_90_degree`/`mirror_*` take it as a parameter — a workspace-wide API rewrite for
+    ///    the same mutable state, merely passed explicitly. `Rc`/`Arc<LineData>` pointer identity
+    ///    kills `Copy`, costs an allocation per `Line` in the router's hottest loops, and reuses
+    ///    freed addresses (worse than a counter for silent collisions). A `thread_local!` counter
+    ///    reintroduces cross-thread collisions on a `Send + Sync` `Board`.
+    ///
+    /// The counter is [`u64`] rather than `u32` (ruling AE, review finding S4): the port mints
+    /// tokens Java never allocates — `Polyline::from_polygon`'s overwritten placeholder,
+    /// `remove_overlaps`' filler (one per `Polyline::from_lines`) and
+    /// `offset_shapes_between`'s `[Line; 4]` filler (**one per polyline segment**, inside every
+    /// `check_trace_shape`) — so a `u32` would wrap after enough routing in one process, and a
+    /// wrap is a *silent* false "same object": a wrong `keepAtStartCount`, a different tree
+    /// shape, a different route, no crash. Plan 8 adds a long-lived server process. At
+    /// 2^64 the counter cannot wrap in any run this program can perform.
+    identity: u64,
 }
 
-/// The token source behind `Line::identity`. `Relaxed` is enough: the tokens are only ever
-/// compared for equality, never ordered, printed or persisted.
-static LINE_IDENTITY: AtomicU32 = AtomicU32::new(1);
+/// The token source behind `Line::identity` (Plan 6 controller ruling AE — see that field).
+///
+/// `Relaxed` is enough: the tokens are only ever compared for equality, never ordered, printed or
+/// persisted, so no happens-before relationship is being published. `u64` cannot wrap in any run
+/// this program can perform.
+static LINE_IDENTITY: AtomicU64 = AtomicU64::new(1);
 
-fn next_line_identity() -> u32 {
+fn next_line_identity() -> u64 {
     LINE_IDENTITY.fetch_add(1, AtomicOrdering::Relaxed)
 }
 
@@ -99,7 +138,8 @@ impl std::fmt::Debug for Line {
 impl Line {
     /// Java's `lineA != lineB` — **reference** identity, not the geometric `equals`.
     ///
-    /// True only for a value copied from the same constructor call; see the private `identity` field.
+    /// True exactly for a value copied from the same constructor call; the `u64` token cannot
+    /// wrap, so there is no false positive (see the private `identity` field and ruling AE).
     /// The one caller is `Board::change_trace` (`PolylineTrace.change`, PolylineTrace.java:960
     /// and :972); nothing else in the port may use it to stand in for `==`.
     pub fn is_same_object(&self, other: &Line) -> bool {

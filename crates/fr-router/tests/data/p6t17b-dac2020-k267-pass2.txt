@@ -1,14 +1,25 @@
 # Plan 6 Task 17b — `scripts/differential/java/P6T17bProbe.java` on the HEAD jar.
 #
-#   java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
-#        -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> \
+# Regenerate (JDK 25; the probe is compiled **together with `P6T1.java`**, whose `loadBoard`,
+# `pickConnections` and `routeOne` it reuses, and stdout is the transcript):
+#
+#   J25=/opt/homebrew/opt/openjdk@25
+#   JAR=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
+#   OUT=scripts/differential/build/classes-p6t17b
+#   "$J25/bin/javac" -cp "$JAR" -d "$OUT" \
+#        scripts/differential/java/P6T17bProbe.java scripts/differential/java/P6T1.java
+#   "$J25/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+#        -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp "$OUT:$JAR" \
 #        app.freerouting.autoroute.maze.P6T17bProbe \
-#        <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn 267 2
+#        <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn 267 2 2>/dev/null
+#
+# The transcript is the same without `-XX:hashCode=2` and without the locale flags; they are
+# pinned only so this file's command is the one `run.sh`'s jar mode uses.
 #
 # 1483 item-id allocations inside connection 267 — 1355 ShapeTraceEntries.nextSubstituteTracePiece,
 # 70 ShapeTraceEntries.fastCutoutTrace, 58 BasicBoard.insertTraceWithoutCleaning — then the
 # connection's own P6T1 line. Before Task 17b's fix the port made 1489 (six extra SUB, the first
-# at ordinal 726); it now makes these 1483 in this order. Regenerate with the command above.
+# at ordinal 726); it now makes these 1483 in this order.
 #
 1 437122 SUB
 2 437123 SUB

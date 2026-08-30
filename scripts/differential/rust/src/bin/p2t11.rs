@@ -2036,6 +2036,33 @@ fn dump_split_and_normalize() {
     );
     println!("S16 after:  {}", traces(&board));
     println!("S16 items={}", ids(board.items_in_board_order()));
+
+    // S17: `change` to a value-equal but freshly built polyline — quirk #74's control-flow half;
+    // see `P2T11.java`. Java's `!=` is object identity, so it never takes the "both polylines are
+    // equal" early return and the `normalize` tail leaves one trace `[(0,0) (30000,0)]`.
+    let (mut board, _) = trace_board(1);
+    let s17 = tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 10000, 0, 20000, 0, 30000, 0],
+    );
+    tr(
+        &mut board,
+        0,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[10000, 0, 20000, 0],
+    );
+    println!("S17 before: {}", traces(&board));
+    board.change_trace(
+        s17,
+        Polyline::from_points(&pts(&[0, 0, 10000, 0, 20000, 0, 30000, 0])),
+    );
+    println!("S17 after:  {}", traces(&board));
 }
 
 fn dump_board_normalization_loops() {

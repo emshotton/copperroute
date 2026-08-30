@@ -1023,6 +1023,10 @@ impl Board {
         let last_index = new_lines.len().min(old_lines.len());
         let mut index_of_first_different_line = last_index;
         for i in 0..last_index {
+            // Java bug: PolylineTrace.change compares `newPolyline.lines[i] != lines.lines[i]`
+            // (PolylineTrace.java:960) — `!=` on two `Line` objects, i.e. **reference identity**,
+            // where `Line.equals` (Line.java:57-75) is what the loop reads as if it meant.
+            // Reproduced, quirk #74: `Line::is_same_object` is that identity.
             if !new_lines[i].is_same_object(&old_lines[i]) {
                 index_of_first_different_line = i;
                 break;
@@ -1034,6 +1038,8 @@ impl Board {
         // PolylineTrace.java:968-979: and the last.
         let mut index_of_last_different_line: i64 = -1;
         for i in 1..=last_index {
+            // Java bug: PolylineTrace.change, PolylineTrace.java:972 — the same `!=` identity
+            // comparison as at `:960`, on the tail. Reproduced, quirk #74.
             if !new_lines[new_lines.len() - i].is_same_object(&old_lines[old_lines.len() - i]) {
                 index_of_last_different_line = (new_lines.len() - i) as i64;
                 break;

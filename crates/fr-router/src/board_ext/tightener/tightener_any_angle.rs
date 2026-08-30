@@ -4,7 +4,7 @@
 use fr_board::prelude::*;
 use fr_geometry::{Direction, IntPoint, Line, Point, Polyline, Side, Signum};
 
-use super::base::{C_MAX_COS_ANGLE, TightenerBase, new_polyline};
+use super::base::{C_MAX_COS_ANGLE, TightenerBase, new_polyline, new_polyline_in_place};
 use super::tightener_45::{acute_add_line, trace_polyline_of};
 
 /// `TraceTightenerAnyAngle.SKIP_LENGTH` (TraceTightenerAnyAngle.java:22).
@@ -94,8 +94,14 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         }
         let last_index = polyline.lines().len() - 4;
         // :67-75. Java's `newLines` array is null-filled and its bounds throw; a `Vec` of the
-        // same length indexed with `[]` panics the same way. `currentLines` is reused across
-        // iterations, so a slot the guarded branches did not write keeps its previous value.
+        // same length indexed with `[]` panics the same way **out of bounds** — but not in
+        // bounds: an unwritten in-bounds slot silently carries `lines[0]`'s value *and its
+        // identity token* (quirk #74), where Java carries `null` and NPEs inside
+        // `new Polyline(...)`. Every slot that survives into the result is written first, so the
+        // difference is unreachable; it is a silent-wrong-answer shape rather than a panic
+        // shape, so a future edit to the write pattern has to re-check it.
+        // `currentLines` is reused across iterations, so a slot the guarded branches did not
+        // write keeps its previous value.
         let mut new_lines: Vec<Line> = vec![polyline.lines()[0]; polyline.lines().len()];
         new_lines[0] = polyline.lines()[0];
         new_lines[1] = polyline.lines()[1];
@@ -224,11 +230,18 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 if ok {
                     let skip_corner =
                         new_lines[new_line_index].intersection_approx(&polyline.lines()[i + 2]);
-                    let built = new_polyline(vec![
+                    // `new Polyline(currentLines)` normalises **currentLines itself**, and
+                    // `:186`/`:188`/`:192` read its elements back out — see
+                    // `new_polyline_in_place`.
+                    let mut check_lines = vec![
                         current_lines[0].expect("set above when ok"),
                         current_lines[1].expect("just set"),
                         current_lines[2].expect("set above when ok"),
-                    ]);
+                    ];
+                    let built = new_polyline_in_place(&mut check_lines);
+                    for (slot, line) in current_lines.iter_mut().zip(check_lines.iter()) {
+                        *slot = Some(*line);
+                    }
                     if built.lines().len() != 3 {
                         ok = false;
                     }
@@ -545,7 +558,9 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             {
                 // :450-462.
                 current_lines[start_no + 2] = new_line;
-                let tmp = new_polyline(current_lines.clone());
+                // `new Polyline(currentLines)` normalises **currentLines itself**, and `:465`
+                // reads `currentLines[startNo + 2]` back out — see `new_polyline_in_place`.
+                let tmp = new_polyline_in_place(&mut current_lines);
                 if tmp.lines().len() == current_lines.len() {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, start_no + 1)
@@ -730,8 +745,10 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         current_translate_line.translate(-current_translate_dist);
                     current_lines[start_no + 3 + k] = prev_translated_line;
                 }
-                // :614-625.
-                let tmp = new_polyline(current_lines.clone());
+                // :614-625. `new Polyline(currentLines)` normalises **currentLines itself**,
+                // and `:625` reads `currentLines[startNo + 2]` back out — see
+                // `new_polyline_in_place`.
+                let tmp = new_polyline_in_place(&mut current_lines);
                 if tmp.lines().len() == current_lines.len() {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, start_no + 1)

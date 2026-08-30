@@ -93,8 +93,51 @@ public final class P6T17bProbe {
     field.setAccessible(true);
     field.set(board.communication, tracer);
 
+    // With `p6t17b-bisect.patch` applied and its classes ahead of the jar, the deeper markers
+    // are switched on the same way: `MazeSearchEngine.P6T17B` for the connection under study and
+    // `P6T17B_K` for every connection (the per-connection tree dump). Without the patch the two
+    // fields do not exist, and the probe says so rather than failing obscurely.
+    Field marker = null;
+    Field markerK = null;
+    Field markerChange = null;
+    String deep = System.getenv("P6T17B_DEEP");
+    boolean deepMarkers = deep != null;
+    // `P6T17B_DEEP=all` widens the deep markers to every connection. Use it on a handful of
+    // connections only: over a whole board its stderr runs to gigabytes.
+    boolean deepAllConnections = "all".equals(deep);
+    boolean treeDump = System.getenv("P6T17B_TREE") != null;
+    // `PolylineTrace.change`'s CHANGE marker alone, for every connection — the task's pinning
+    // measurement: 2358 `CHANGE` lines over the first 267 connections of
+    // `Issue508-DAC2020_bm01` at `ripupPassNo = 2`, 1403 of them disagreeing between Java's
+    // reference comparison and a value one. Separate from `P6T17B_DEEP=all`, whose other markers
+    // cost gigabytes over a whole board.
+    boolean changeMarker = System.getenv("P6T17B_CHANGE") != null;
+    if (deepMarkers || treeDump || changeMarker) {
+      try {
+        Class<?> engine = Class.forName("app.freerouting.autoroute.maze.MazeSearchEngine");
+        marker = engine.getDeclaredField("P6T17B");
+        marker.setAccessible(true);
+        markerK = engine.getDeclaredField("P6T17B_K");
+        markerK.setAccessible(true);
+        markerChange = engine.getDeclaredField("P6T17B_CHANGE");
+        markerChange.setAccessible(true);
+        markerChange.setBoolean(null, changeMarker);
+      } catch (NoSuchFieldException e) {
+        System.err.println(
+            "P6T17B_DEEP/P6T17B_TREE/P6T17B_CHANGE need"
+                + " scripts/differential/java/p6t17b-bisect.patch applied"
+                + " and its classes ahead of the jar on the classpath; see that file's header.");
+        System.exit(3);
+      }
+    }
+
     for (P6T1.Connection connection : connections) {
       tracer.active = connection.k() == k;
+      if (marker != null) {
+        // The tree dump runs for every connection; the rest only for the one under study.
+        marker.setBoolean(null, deepMarkers && (deepAllConnections || tracer.active));
+        markerK.setInt(null, connection.k());
+      }
       String line = P6T1.routeOne(board, settings, connection, ripupPassNo);
       if (connection.k() == k) {
         out.println("CONNECTION " + line);

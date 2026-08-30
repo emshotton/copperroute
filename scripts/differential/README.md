@@ -1276,6 +1276,41 @@ methods with dozens of branches.
       `toString`, which pins the `", "` join and the **descending** id order of
       `TreeSet<Item>`.
 
+- `java/P6T17bProbe.java` — **the Plan 6 Task 17b bisect probe.** It sits beside
+  the drivers rather than in `java/probes/` because it is compiled *with*
+  `P6T1.java` and reuses its `loadBoard` / `pickConnections` / `routeOne`, so it
+  routes exactly the connections `p6t1` routes. Usage:
+  `P6T17bProbe <dsn> <k> [ripupPassNo] [raw]`. It prints one line per
+  `idGenerator.newId()` call made while connection `k` is routed — the id and the
+  call site, taken from a `StackWalker` — by swapping a decorating `IdGenerator`
+  into `board.communication.idGenerator`, a `public final` *instance* field that
+  `setAccessible` may still write. It patches nothing.
+
+  On `Issue508-DAC2020_bm01`, `k = 267`, `ripupPassNo = 2` the jar prints 1 483
+  lines (1 355 `SUB` = `ShapeTraceEntries.nextSubstituteTracePiece`, 70
+  `FASTCUT`, 58 `INSTRACE`), committed as
+  `crates/fr-router/tests/data/p6t17b-dac2020-k267-pass2.txt` with its own
+  regeneration command in the header. That was level 1 of the bisect: the port
+  used to make six more.
+
+- `java/p6t17b-bisect.patch` — **levels 2-6 of the same bisect**, as a patch
+  against the Java clone's read-only sources. Apply it into a scratch copy and
+  put the compiled classes *in front of* the jar; never into the clone. Its
+  header carries the exact commands, the environment switches (`P6T17B_DEEP`,
+  `P6T17B_DEEP=all`, `P6T17B_TREE`, `P6T17B_CHANGE`, all read by `P6T17bProbe`),
+  and the validation step that is not optional: the **unpatched** copies,
+  compiled and prepended the same way, must reproduce `P6T1`'s output byte for
+  byte, which is what proves the clone's sources and the jar are the same code.
+
+  The markers are `OCCUPY`/`PUSH`/`DOORSEC` (the maze queue),
+  `CROOM_IN`/`CROOM_CAND`/`ROOM` (room completion),
+  `NODE`/`LEAF`/`LEAFROOM`/`RESTRAIN` (the 45-degree `completeShape` walk),
+  `TINS`/`TREM`/`SMINS`/`SMREM` (search-tree mutations, with a stack signature),
+  `TREENODE` (a pre-order dump of the whole tree, once per connection) and
+  `CHANGE`. The last one is the task's **pinning measurement** and is cheap:
+  `P6T17B_CHANGE=1 … P6T17bProbe …DAC2020_bm01.dsn 267 2` prints 2 358 `CHANGE`
+  lines, of which **1 403** disagree between Java's reference comparison and a
+  value one — the port agrees with the first on all 2 358 (quirk #74).
 
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
@@ -1643,10 +1678,13 @@ the driver expects, or none at all.
       crates/fr-router/tests/data/ruling-h-redeclare.rules
   ```
 
-  Measured: MATCH on all four reference boards at `ripupPassNo = 1` (369
-  connections) and on three of them at 2 and 4; `Issue508-DAC2020_bm01` diverges
-  from connection 267 at passes 2 and 4, and the `.rules` run above diverges from
-  connection 8 — both recorded in `crates/fr-router/README.md`.
+  Measured: MATCH on all five reference stems at `ripupPassNo` **1, 2 and 4**
+  (369 connections per pass). `Issue508-DAC2020_bm01` used to diverge from
+  connection 267 at passes 2 and 4; Task 17b closed that (quirk #74 —
+  `PolylineTrace.change` compares `Line`s by reference), and the pass-2 run is now
+  a committed reference stem of its own, `router-dac2020-bm01-pass2`. The `.rules`
+  run above still diverges from connection 8 — recorded in
+  `crates/fr-router/README.md`.
 
 - `p6t2 <seed> <n> <rooms>` — `AutorouteSearchTreeExt::{complete_shape,
   divide_large_room}` against `ShapeSearchTree.completeShape`/`divideLargeRoom`
@@ -1776,7 +1814,7 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p2t11` (mode 5) | 31 | 0 | exact match (`ShapeTraceEntries`, `ShapeEntrySide`, `ShapeAndEntrySide`) |
 | `p2t11` (mode 6) | 24 | 0 | exact match (cycles/overlaps, `removeIfCycle`, the remaining inserters) |
 | `p2t11` (mode 7) | 35 | 0 | exact match (`PolylineTrace.combine`, both halves, both orders, every refusal) |
-| `p2t11` (mode 8) | 47 | 0 | exact match (`split(IntOctagon)`, `change`, `normalize`, and quirk #22 out of `combineAtStart`) |
+| `p2t11` (mode 8) | 49 | 0 | exact match (`split(IntOctagon)`, `change`, `normalize`, quirk #22 out of `combineAtStart`, and quirk #74's value-equal-but-fresh `change`) |
 | `p2t11` (mode 9) | 35 | 0 | exact match (`combineTraces`/`normalizeTraces`/`normalizeAllTraces`/`splitTraces` and the five callers that end in one of them) |
 | `p2t11` (mode 10) | 5 | 0 | exact match (the 4000-segment `CombineStackOverflowTest` fixture, rebuilt by hand) |
 | `p2t11` (mode 11) | 20 | 2 | `treeArrayCopy`/`treeArraysEqual` only — the documented tree-rebuild-vs-clone divergence (Task 12, see below); every `transientBefore`/`transientOriginalAfterCopy`/`transientCopy`/`overlappingObjects`/`hashEqual`/`diffTraces` line matches |
@@ -1928,7 +1966,12 @@ padstack, two nets) — the shape `PolylineTraceSplitTest.createTestBoard` build
   and — scenarios S14-S16 — quirk #22 reached through `combineAtStart`, where
   the JVM throws `ArrayIndexOutOfBoundsException` out of `combine()` and the
   port answers `BoardError::Normalization`, with `insertTrace`'s own
-  `catch (Exception)` swallowing it at the same place Java's does.
+  `catch (Exception)` swallowing it at the same place Java's does; and — scenario
+  **S17** — `change` to a **value-equal but freshly built** polyline, which is
+  quirk #74's control-flow half under a live Java oracle: the jar's `!=` is object
+  identity, so it never takes the "both polylines are equal" early return, runs
+  the `normalize` tail, and the S1/S5 geometry ends with **one** trace
+  `[(0,0) (30000,0)]` where a value-comparing port would leave two.
 * **9** — `combineTraces` (one net, then all nets, then a no-op call),
   `normalizeTraces`, `normalizeAllTraces`, `splitTraces`, and the five methods
   Task 11 had to leave uncovered because their bodies end in normalisation:

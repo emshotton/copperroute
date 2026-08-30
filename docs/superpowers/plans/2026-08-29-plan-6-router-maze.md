@@ -6,7 +6,7 @@
 
 **Architecture:** Spec §9 (the router's named types — the spec's list is already the clone's HEAD list), §10 (cancellation), §14.3 (`Dac2020Bm01` as the in-CI smoke test), §15 step 7 ("`fr-router` maze + expansion + path (first routed boards)"). `fr-router` sits on `fr-board` (items, rules, search trees, `StopCheck`/`TimeLimit`, changed-area bookkeeping), `fr-settings` (`RouterSettings` accessors, `ExpansionCostFactor`) and `fr-geometry`; it dev-depends on `fr-drc` and `fr-dsn` for the acceptance harness only. It adds two extension traits over `fr-board` types — `AutorouteSearchTreeExt` (the two `// added in Plan 6:` markers at `crates/fr-board/src/searchtree/shape_search_tree.rs:1625-1643`) and `RoutingBoardExt` (Plan 2 ruling 4, **created here** and shared with Plan 7) — because rooms and shove state must not leak into `fr-board`. Everything above `autoroute_connection` (the pass loop, ripup escalation, fanout, optimizer, pull-tight, the mutating half of `TraceShover`) is **Plan 7**.
 
-**Tech Stack:** Rust 2024; `fr-board` (Plan 2); `fr-settings` (Plan 4); `fr-geometry` (Plan 1); `thiserror`. Dev-only: `fr-drc` (Plan 5) and `fr-dsn` (Plan 3) for the acceptance harness, `parity`. **No `rand`** (ruling 5), **no `rayon`** (ruling 17), **no `slotmap`** (ruling 16), no `tracing`, no static mutable state, no clock beyond `fr_board::TimeLimit`.
+**Tech Stack:** Rust 2024; `fr-board` (Plan 2); `fr-settings` (Plan 4); `fr-geometry` (Plan 1); `thiserror`. Dev-only: `fr-drc` (Plan 5) and `fr-dsn` (Plan 3) for the acceptance harness, `parity`. **No `rand`** (ruling 5), **no `rayon`** (ruling 17), **no `slotmap`** (ruling 16), no `tracing`, no static mutable state (**one recorded exception: `fr_geometry::Line`'s identity counter, controller ruling AE — see the amendment block**), no clock beyond `fr_board::TimeLimit`.
 
 **Spec:** `docs/superpowers/specs/2026-08-27-freerouting-rust-port-design.md` (§2, §3, §9, §10, §14, §15). Also binding: `docs/plan-2-handoff.md` (§Obligations → Plan 6 and → Plan 7), `docs/plan-3-handoff.md` (§Plans 6/7 — rulings F and H), `docs/plan-4-handoff.md` (§Plans 6/7 — `ExpansionCostFactor`, `is_fanout_enabled`, quirks #127/#139/#140/#143), `docs/plan-5-handoff.md` (quirk #82 stays unfixed; the ratsnest the metric harness reads), `docs/java-quirks.md`.
 
@@ -1315,6 +1315,42 @@ plus `grep -rn "added in Plan 6" crates/` returning **nothing** (the four `fr-bo
 >   is Java's nullable `RoutingBoard.autorouteEngine` field; the old name is the `None` wrapper, so
 >   Task 15a's callers and tests are untouched.
 >
+> **Amendment (controller ruling AE, executed as Task 17b) — `Line` carries Java's object
+> identity, and that is an accepted departure from "no static mutable state".** `PolylineTrace.change`
+> (PolylineTrace.java:960, :972) compares two `Line` objects with `!=` — **reference** identity —
+> and the two indices it finds set `keepAtStartCount`/`keepAtEndCount`, which decide how many
+> search-tree leaves `ShapeSearchTree.changeEntries` reuses rather than removes and re-inserts.
+> A leaf re-inserted lands elsewhere in `MinAreaTree`, so a port comparing by value holds the same
+> leaves in a differently *shaped* tree, and `ShapeSearchTree45Degree.completeShape` — whose
+> obstacle order is its tree-walk order — then completes a different room. That is quirk **#74**,
+> and it is the whole of the `router-dac2020-bm01` `ripupPassNo >= 2` divergence ruling AD
+> assigned to Task 17b.
+>
+> `fr_geometry::Line` therefore carries a private `identity: u64` taken from a process-wide
+> `AtomicU64`, and answers `Line::is_same_object`; `Board::change_trace` is its only caller and
+> the token takes no part in `PartialEq`, `Eq`, `Hash` or `Debug`. The counter **is** static
+> mutable state, which the Global Constraints above forbid, so ruling AE records the departure
+> rather than letting it pass silently. Accepted because: nothing reads the counter's *value*,
+> only the equivalence relation it induces (one reader, two call sites, both inside one
+> `change_trace`, and no output, ordering, hash or serialised form can observe a token, so runs
+> are bit-reproducible); Java's own object identity is process-global mutable state, so a monotone
+> counter is the closest model rather than an invention, and it invents no threading policy, which
+> is what the constraint guards; and every alternative is worse (an arena is the same state passed
+> explicitly through a workspace-wide API rewrite of `Line::opposite`/`translate`/`turn_90_degree`/
+> `mirror_*`; `Rc`/`Arc` pointer identity kills `Copy`, allocates per `Line` in the router's
+> hottest loops and reuses freed addresses; a `thread_local!` counter reintroduces cross-thread
+> collisions on a `Send + Sync` `Board`). `u64` rather than `u32` because the port mints tokens
+> Java never allocates (`Polyline::from_polygon`'s placeholder, `remove_overlaps`' filler once per
+> `Polyline::from_lines`, `offset_shapes_between`'s filler once per polyline segment) and a wrap
+> would be a *silent* false "same object".
+>
+> The same task records the neighbouring fidelity finding: **Java's `new Polyline(Line[])`
+> normalises the caller's array in place** (`removeConsecutiveParallelLines` and `removeOverlaps`
+> return the input array when they skip nothing; the constructor then writes
+> `filteredLines[i] = filteredLines[i].opposite()` into it), and five Plan 6 tightener sites
+> re-read that array afterwards. `Polyline::from_lines_in_place` reproduces it and those five
+> sites use it; see quirk #74's row.
+
 > **Amendment (Task 4) — hazard F's container.** Ruling 4 and Task 4's brief both prescribe a
 > `BTreeSet` for `SortedRoomNeighbours.sortedNeighbours`. **It does not reproduce Java.** On a
 > comparator that is not a total order, `std`'s `BTreeSet` (binary search inside a B-tree node) and
@@ -1348,7 +1384,7 @@ Plus anything Tasks 1–17 find, and — in the `candidate`/obligation register 
 **`crates/fr-router/README.md`:** what the crate routes today (one connection) and what it does not (passes, fanout, optimizer — Plan 7); ruling 1's acceptance table filled in per stem and per connection; the six stop-check sites and why a seventh is a bug; the five recovery boundaries; the container rules (BTreeSet everywhere, the guarded push, the three non-transitive comparators); quirk #143's warning that `-mt` must not become a threading policy; how to regenerate the references and run `p6t1`/`p6t2`/`p6t3`.
 
 **`docs/plan-6-handoff.md`:** the delivered surface with every public signature; the seventeen rulings with what execution confirmed or corrected (rulings 1, 4, 9 and 10 must each say what the evidence was); parked residuals per task; obligations:
-- **Plan 7** — `AutorouteConnectionRouter.route` steps 6–8; `RoutingBoardExt` gains `opt_changed_area`/pull-tight/the tighteners (and quirk #34's `equals_geometric` at `TraceTightener*.repositionLine`, still open from Plan 2); quirk #74's `change_trace` early return, **still a decision**, now with a production caller in sight (`TraceShover.insert`); `TraceShover.insert`, `ForcedPadRouter`'s routing half and `DrillItemMover`'s mutating half; the pass/item recovery boundaries (`AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`) on top of this plan's five; `max_passes == 0` means unlimited (quirk #140); no headless threading policy from `-mt` (quirk #143); the whole-board SES byte-parity headline.
+- **Plan 7** — `AutorouteConnectionRouter.route` steps 6–8; `RoutingBoardExt` gains `opt_changed_area`/pull-tight/the tighteners (and quirk #34's `equals_geometric` at `TraceTightener*.repositionLine`, still open from Plan 2); quirk #74 is **discharged** (Task 17b reproduced Java's reference comparison, ruling AE), so `TraceShover.insert`'s and `correctConnectionToPin`'s `change` calls inherit it already correct and need only `additionalUpdateAfterChange` at the call site; `TraceShover.insert`, `ForcedPadRouter`'s routing half and `DrillItemMover`'s mutating half; the pass/item recovery boundaries (`AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`) on top of this plan's five; `max_passes == 0` means unlimited (quirk #140); no headless threading policy from `-mt` (quirk #143); the whole-board SES byte-parity headline.
 - **Plan 8** — `RoutingPipeline.createForHeadless` wiring, `CancelToken` → this crate's `StopCheck`, `ProgressSink` replacing the dropped observers, and `BoardStatistics` (which the metric harness here stands in for).
 
 Steps: ported tests → fixtures harness → audit to zero **without weakening the script** → `fr-board.map` → roster + README → quirks + hand-off + obligation ticks → fmt/clippy/test → commit `test(router): the ported Java suites, audit to zero, README, quirks #155+ and the Plan 6 hand-off`.

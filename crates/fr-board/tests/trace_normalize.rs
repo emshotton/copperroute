@@ -1043,10 +1043,13 @@ fn change_to_a_value_equal_but_freshly_built_polyline_still_normalizes() {
     );
 }
 
-/// The other half of quirk #74: a new polyline that *reuses* the old `Line` objects at its start
-/// is what Java's `!=` calls unchanged, and `changeEntries` then keeps those leaves rather than
-/// removing and re-inserting them. Keeping the wrong number of them is what left the port's
-/// `MinAreaTree` a different shape.
+/// The other half of quirk #74, and the half a value comparison gets wrong: `keepAtStartCount`.
+///
+/// The new polyline reuses the old `Line` **objects** everywhere except index 2, which is rebuilt
+/// with an unchanged *value*, and index 4, which really changes. Java's identity comparison stops
+/// at index 2, so `keepAtStartCount` is 0 and every leaf is removed and re-inserted; a value
+/// comparison would stop at index 4, keep two leaves, and leave the search tree a different
+/// shape — which is exactly how the `router-dac2020-bm01` divergence started.
 #[test]
 fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
     let (mut board, _) = trace_board(1);
@@ -1058,29 +1061,37 @@ fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
         &[0, 0, 10000, 0, 10000, 10000, 20000, 10000],
     );
     assert_eq!(entry_count(&board, trace), Some(3));
-    // Java's `Line[]`: the leading lines are the very objects already stored, only the last one
-    // is new. `indexOfFirstDifferentLine` is then 4 (the closing line), so `keepAtStartCount` is
-    // 2 and the first two leaves survive untouched.
+
     let old: Vec<Line> = board_polyline(&board, trace).lines().to_vec();
+    assert_eq!(old.len(), 5);
     let mut lines = old.clone();
-    let last = lines.len() - 1;
-    lines[last] = Line::new(
+    // Index 2: a fresh `Line` carrying the old one's value — "unchanged" to a value comparison,
+    // a different object to Java's `!=`.
+    lines[2] = Line::new(old[2].a, old[2].b);
+    assert_eq!(lines[2], old[2]);
+    assert!(!lines[2].is_same_object(&old[2]));
+    // Index 4: a real change, so neither model can take `change`'s early return and the two
+    // models are compared on the keep counts alone.
+    lines[4] = Line::new(
         fr_geometry::IntPoint::new(25000, 0),
         fr_geometry::IntPoint::new(25000, 20000),
     );
+
     let entries_before = tree_entries(&board, trace);
-    board.change_trace(
-        trace,
-        Polyline::from_lines(lines).expect("a valid polyline"),
-    );
+    let new_polyline = Polyline::from_lines(lines).expect("a valid polyline");
+    assert_eq!(new_polyline.lines().len(), 5, "nothing was normalised away");
+    board.change_trace(trace, new_polyline);
+
     let entries_after = tree_entries(&board, trace);
     assert_eq!(entries_after.len(), 3);
-    assert_eq!(
-        entries_after[..2],
-        entries_before[..2],
-        "the two leaves before `keepAtStartCount` are reused, not rebuilt"
-    );
-    assert_ne!(entries_after[2], entries_before[2]);
+    // `keepAtStartCount == 0`: not one leaf survived. Under a value comparison the first two
+    // would have.
+    for (i, (after, before)) in entries_after.iter().zip(&entries_before).enumerate() {
+        assert_ne!(
+            after, before,
+            "leaf {i} was reused, so keepAtStartCount > 0"
+        );
+    }
 }
 
 #[test]
