@@ -423,7 +423,7 @@ fn plane_board() -> Board {
         .via_infos
         .add(ViaInfo::new("via", via_padstack, 1, false));
     let mut via_rule = ViaRule::new("default");
-    via_rule.append_via(ViaInfoId(0));
+    via_rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
     rules.via_rules.push(via_rule);
     // One net class and one net, because `initNet`'s net<=0 arm still reads **net 1's** trace
     // half widths (`:221`) and Java NPEs on a board with no nets at all.

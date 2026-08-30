@@ -394,16 +394,16 @@ fn apply_layer_rules(
     Ok(())
 }
 
-/// `RulesReader.applyViaInfo(IJFlexScanner, BasicBoard)` (RulesReader.java:340-350) — **the
-/// Plan 2 hand-off's `ViaInfoId` renumbering obligation**.
+/// `RulesReader.applyViaInfo(IJFlexScanner, BasicBoard)` (RulesReader.java:340-350) — **ruling
+/// H's site**.
 ///
 /// Java is three lines: look the name up, remove the hit if there is one, append the new info.
-/// The removal costs Java nothing because its `ViaRule`s hold `ViaInfo` object references; this
-/// port's hold [`fr_board::ViaInfoId`] indices, so the append-at-the-tail has to be paired with a
-/// renumbering of every rule. Both halves live in
-/// [`BoardRules::replace_via_info_renumbering_rules`](fr_board::BoardRules::replace_via_info_renumbering_rules),
-/// next to `ViaInfos::remove`'s hazard note, together with the one deliberate divergence the
-/// index model forces.
+/// The removal costs Java nothing because its `ViaRule`s hold `ViaInfo` object references
+/// (ViaRule.java:21) — a rule that held the removed object keeps it, **detached** from
+/// `viaInfos`. Since Plan 7 Task 0 a [`fr_board::ViaRule`] holds owned copies, so the port does
+/// the same three lines and no rule moves:
+/// [`BoardRules::replace_via_info`](fr_board::BoardRules::replace_via_info), next to
+/// `ViaInfos::remove`'s note.
 // renamed: RulesReader.applyViaInfo -> apply_via_info.
 fn apply_via_info(scanner: &mut DsnScanner, board: &mut Board) -> Result<(), DsnError> {
     let Some(via_info) = read_via_info(scanner, board)? else {
@@ -412,9 +412,7 @@ fn apply_via_info(scanner: &mut DsnScanner, board: &mut Board) -> Result<(), Dsn
     };
     match board.rules.via_infos.get_no(via_info.get_name()) {
         Some(old_id) => {
-            board
-                .rules
-                .replace_via_info_renumbering_rules(old_id, via_info);
+            board.rules.replace_via_info(old_id, via_info);
         }
         // `viaInfos.add(viaInfo)` with nothing to remove (:349).
         None => {

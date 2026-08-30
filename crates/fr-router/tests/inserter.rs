@@ -102,7 +102,7 @@ fn base_board(bounds: IntBox) -> Board {
 
     rules.via_infos.add(ViaInfo::new("v", via, 1, false));
     let mut via_rule = ViaRule::new("rule");
-    via_rule.append_via(ViaInfoId(0));
+    via_rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
     rules.via_rules.push(via_rule);
     let default_class = rules.get_default_net_class();
     rules
@@ -794,7 +794,7 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
     );
     let huge_info = ViaInfoId(board.rules.via_infos.count() - 1);
     let mut huge_rule = ViaRule::new("huge");
-    huge_rule.append_via(huge_info);
+    huge_rule.append_via(board.rules.via_infos.get(huge_info).clone());
     board.rules.via_rules.push(huge_rule);
     located.ctrl.via_rule = Some(ViaRuleId(board.rules.via_rules.len() - 1));
     rows.extend(t15_insert_and_dump(&mut board, &located));

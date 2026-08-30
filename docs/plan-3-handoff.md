@@ -718,7 +718,13 @@ would still surface as a `DIFF` on a mode nobody excused.
   row in `docs/java-quirks.md`.
 - **Via-info / via-rule re-pointing (ruling H). DECIDED in Plan 6 (Tasks 8 and
   17): it closes AGAINST the re-pointing, and the fix is a `ViaRule` that owns
-  its `ViaInfo`s — a Plan 7 `fr-board` change.** Plan 6 found the consumer
+  its `ViaInfo`s — a Plan 7 `fr-board` change. — DONE in Plan 7 Task 0** for the
+  *via-info* half: `ViaRule` holds `Vec<ViaInfo>`, the `p6t1` `.rules` run below is
+  MATCH on all 50 connections (`crates/fr-router/tests/data/p7t0-ruling-h-match.txt`),
+  and the test named at the foot of this bullet is now
+  `re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java`, with its
+  assertion inverted. The *via-rule* half (`Network.addViaRule` →
+  `NetClass.viaRule`) is untouched and still open. Plan 6 found the consumer
   (`AutorouteControl.rebuildViaInfo` reads `attachSmdAllowed`, `getPadstack` and
   `getClearanceClassIndex` **through `viaRule.getVia(i)`**, and
   `ctrl.viaInfos[i].attachSmdAllowed` is a routing gate at

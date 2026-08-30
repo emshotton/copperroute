@@ -446,8 +446,7 @@ impl MazeExpansionEngine {
             let obstacle_clearance_class = via.hdr.clearance_class();
             // :255-258.
             let via_rule_contains = search.ctrl.via_rule.is_some_and(|rule| {
-                board.rules.via_rules[rule.0]
-                    .contains_padstack(obstacle_padstack, &board.rules.via_infos)
+                board.rules.via_rules[rule.0].contains_padstack(obstacle_padstack)
             });
             if !via_rule_contains || obstacle_clearance_class != search.ctrl.via_clearance_class {
                 return;
@@ -692,12 +691,12 @@ impl MazeExpansionEngine {
             return CheckDrillResult::NotDrillable;
         };
         // :381. The rule's via list is read once — `checkLayer` takes the board mutably and
-        // nothing it reaches can change the rules.
-        let vias: Vec<fr_board::ViaInfoId> =
-            board.rules.via_rules[via_rule.0].iter().copied().collect();
-        for via_info_id in vias {
+        // nothing it reaches can change the rules. Java iterates the rule's own `ViaInfo`
+        // objects; the port clones the rule's owned copies out for the same reason.
+        let vias: Vec<fr_board::ViaInfo> =
+            board.rules.via_rules[via_rule.0].iter().cloned().collect();
+        for via_info in &vias {
             // :382-383.
-            let via_info = board.rules.via_infos.get(via_info_id);
             let via_padstack = via_info.get_padstack();
             let clearance_class_index = via_info.get_clearance_class_index();
             let attach_smd_allowed = via_info.attach_smd_allowed();

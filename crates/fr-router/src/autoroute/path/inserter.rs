@@ -944,8 +944,7 @@ impl FoundConnectionInserter {
         let via_count = board.rules.via_rules[via_rule.0].via_count();
         for i in 0..via_count {
             // :702-703.
-            let current_via_info_id = board.rules.via_rules[via_rule.0].get_via(i);
-            let current_via_info = board.rules.via_infos.get(current_via_info_id).clone();
+            let current_via_info = board.rules.via_rules[via_rule.0].get_via(i).clone();
             let current_via_padstack = current_via_info.get_padstack();
             // :704-706.
             let padstack_from = board
@@ -1136,7 +1135,7 @@ mod tests {
 
         rules.via_infos.add(ViaInfo::new("v", via, 1, false));
         let mut via_rule = ViaRule::new("rule");
-        via_rule.append_via(ViaInfoId(0));
+        via_rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
         rules.via_rules.push(via_rule);
         let default_class = rules.get_default_net_class();
         rules

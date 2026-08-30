@@ -753,10 +753,10 @@ probes ran against the **HEAD** jar (2.3.0 is not used anywhere in Plan 6):
 The comparison that actually decides the row — the port routing the same board
 with the same `.rules`, against the jar doing the same — is **Task 17's, and it
 ran**: see "Ruling H is decided, and it closes against the re-pointing" at the
-foot of this file. The port and the jar differ, so `ViaRule` needs owned
-`ViaInfo` copies (or `ViaInfos` needs tombstones), this fixture is the regression
-test, and the `obligation:` marker on `AutorouteControl::rebuild_via_info` carries
-the measurement until that `fr-board` change lands.
+foot of this file. The port and the jar differed, so `ViaRule` needed owned
+`ViaInfo` copies; **Plan 7 Task 0 gave it them** and the same command now MATCHes
+on all 50 connections. This fixture stays the regression test, and its transcript
+is `crates/fr-router/tests/data/p7t0-ruling-h-match.txt`.
 
 
 ## `RoutingBoardExt` and the check-only shove (Task 9)
@@ -1899,10 +1899,21 @@ the `.rules` file, against the jar doing the same.
 So the divergence is **not** unobservable and plan-6 ruling 9's default does not
 apply. Per its other branch the fix is `ViaRule` owning its `ViaInfo`s (or
 `ViaInfos` keeping tombstones), an `fr-board` change outside this task's file
-list and named in the Task 18 hand-off. The `obligation:` marker on
-`AutorouteControl::rebuild_via_info` carries the measurement and stays until that
-lands. No acceptance fixture uses a `.rules` file, so the reference set is
-unaffected.
+list and named in the Task 18 hand-off. No acceptance fixture uses a `.rules`
+file, so the reference set is unaffected.
+
+**Landed in Plan 7 Task 0** (controller ruling AL): `fr_board::rules::ViaRule`
+holds `Vec<ViaInfo>` — owned copies, this port's spelling of Java's
+`List<ViaInfo>` of object references (`ViaRule.java:21`) — so `ViaInfos::remove`
+cannot re-point a rule and `RulesReader.applyViaInfo` leaves every rule on the
+detached original. The command above is now **MATCH on all 50 connections**, k = 6
+and k = 8 included; the transcript is committed as
+`crates/fr-router/tests/data/p7t0-ruling-h-match.txt`. The `obligation:` marker on
+`AutorouteControl::rebuild_via_info` was rewritten to record the closure.
+`ViaRule::{contains_padstack,get_layer_range}` lost their `&ViaInfos` argument and
+`get_via` returns `&ViaInfo`, which is what Java's signatures always were. The
+*via-rule* half of the register row — `Network.addViaRule` replacing a `ViaRule`
+while `NetClass.viaRule` keeps the detached original — is **still open**.
 
 ### The 28 `obligation:` markers
 
@@ -1915,7 +1926,8 @@ unaffected.
   coverage: `routing_board_ext.rs:796` and `:939` both DIFF `router-j2-reference`
   when mutated to the alternative Java could have been written with.
 * **8 re-marked** — the measurement that says why no corpus board reaches them.
-* **1 decided** — ruling H, above.
+* **1 decided** — ruling H, above; **closed in Plan 7 Task 0**, and its marker
+  rewritten from an `obligation:` into the closure record.
 * **1 discharged by construction** (`engine.rs:761`, `completeExpansionRoom`'s
   `Err` contract: Tasks 11-16 consume it as an empty list, and the corpus never
   takes the `Err` arm at all), **2 already discharged in Task 6**

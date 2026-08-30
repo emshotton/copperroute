@@ -1683,7 +1683,10 @@ the driver expects, or none at all.
   connection 267 at passes 2 and 4; Task 17b closed that (quirk #74 —
   `PolylineTrace.change` compares `Line`s by reference), and the pass-2 run is now
   a committed reference stem of its own, `router-dac2020-bm01-pass2`. The `.rules`
-  run above still diverges from connection 8 — recorded in
+  run above **used to diverge from connection 8**; Plan 7 Task 0 gave
+  `fr_board::rules::ViaRule` ownership of its `ViaInfo`s (ruling H) and it is now
+  MATCH on all 50 connections — transcript committed as
+  `crates/fr-router/tests/data/p7t0-ruling-h-match.txt`, background in
   `crates/fr-router/README.md`.
 
 - `p6t2 <seed> <n> <rooms>` — `AutorouteSearchTreeExt::{complete_shape,

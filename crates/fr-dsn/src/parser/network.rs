@@ -1336,8 +1336,9 @@ pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
     let mut current_rule = ViaRule::new(rule_name.clone());
     let mut rule_ok = true;
     for via_name in it {
-        match board.rules.via_infos.get_no(via_name) {
-            Some(current_via) => current_rule.append_via(current_via),
+        match board.rules.via_infos.get_by_name(via_name) {
+            // Java appends the `ViaInfo` object (Network.java:408); the rule owns a copy.
+            Some(current_via) => current_rule.append_via(current_via.clone()),
             // "viaInfo not found" (Network.java:409).
             None => rule_ok = false,
         }
@@ -1775,8 +1776,7 @@ fn create_via_rule(use_via: &[String], net_class: NetClassId, board: &mut Board)
         .get(ItemClass::Via);
     for current_via_name in use_via {
         for i in 0..board.rules.via_infos.count() {
-            let current_via_info = ViaInfoId(i);
-            let info = board.rules.via_infos.get(current_via_info);
+            let info = board.rules.via_infos.get(ViaInfoId(i));
             if info.get_clearance_class_index() != default_via_cl_class {
                 continue;
             }
@@ -1787,7 +1787,7 @@ fn create_via_rule(use_via: &[String], net_class: NetClassId, board: &mut Board)
                 .get_padstack(info.get_padstack())
                 .map(|p| p.name.as_str());
             if padstack_name == Some(current_via_name.as_str()) {
-                new_via_rule.append_via(current_via_info);
+                new_via_rule.append_via(info.clone());
             }
         }
     }
@@ -2815,10 +2815,7 @@ pub fn write_via_rules<W: Write>(
         identifier_type.write(&current_rule.name, file);
         for i in 0..current_rule.via_count() {
             file.write(" ");
-            identifier_type.write(
-                rules.via_infos.get(current_rule.get_via(i)).get_name(),
-                file,
-            );
+            identifier_type.write(current_rule.get_via(i).get_name(), file);
         }
         file.end_scope();
     }

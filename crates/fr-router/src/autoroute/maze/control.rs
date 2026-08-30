@@ -382,15 +382,18 @@ impl AutorouteControl {
     /// null guard, which is a `NullPointerException` for a net class whose `viaRule` is unset
     /// (`NetClass.java:28`, `getViaRule` `:113-115`).
     ///
-    /// # obligation: `AutorouteControl.rebuildViaInfo` — the ruling-H re-pointing divergence
+    /// # Ruling H, closed — `ViaRule` owns its `ViaInfo`s (Plan 7 Task 0)
     ///
     /// `:236`, `:243-244`, `:247` and `:260` reach the `ViaInfo` **through `viaRule.getVia(i)`**.
     /// Java's `ViaRule` holds object *references* (`ViaRule.java:21`), so after
     /// `RulesReader.applyViaInfo` (`RulesReader.java:340-350`) has replaced a via info, the rule
-    /// keeps the **detached original**; this port's `ViaRule` holds `ViaInfoId` indices and
-    /// necessarily reaches the **replacement**. Verified at HEAD by `P6T8Probe viadiv` on
-    /// `Issue593-BBD_Mars-64.dsn` plus a one-line `.rules` re-declaring its only `(via …)` with
-    /// `attach`:
+    /// keeps the **detached original**. This port's `ViaRule` held `ViaInfoId` indices until Plan 7
+    /// Task 0 and necessarily reached the **replacement**; it now holds owned copies and reaches
+    /// the original, so this method's `via_rule.get_via(i)` — a `&ViaInfo` — needs no lookup
+    /// through `board.rules.via_infos` and no logic change.
+    ///
+    /// The divergence was verified at HEAD by `P6T8Probe viadiv` on `Issue593-BBD_Mars-64.dsn`
+    /// plus a one-line `.rules` re-declaring its only `(via …)` with `attach`:
     ///
     /// ```text
     /// after viainfo 0 Via[0-1]_800:400_um attach=true  cl=1
@@ -399,28 +402,28 @@ impl AutorouteControl {
     /// ```
     ///
     /// so `attachSmdAllowed` here (and every `ViaMask.attachSmdAllowed`, which
-    /// `MazeExpansionEngine.java:339` reads as a routing gate) differs.
+    /// `MazeExpansionEngine.java:339` reads as a routing gate) differed. Plan 6 Task 17 ran the
+    /// deciding comparison — `scripts/differential/run.sh p6t1
+    /// ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1 <rules>`, the port against the HEAD
+    /// jar on the same board and the same `crates/fr-router/tests/data/ruling-h-redeclare.rules`:
     ///
-    /// **Task 17 ran the deciding comparison and the row closes the other way: the re-pointing
-    /// is router-observable, so it is a divergence to fix rather than semantics to accept.**
-    /// `scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1
-    /// <rules>` — the port against the HEAD jar, both reading the same board and the same
-    /// `crates/fr-router/tests/data/ruling-h-redeclare.rules`:
+    /// * **without** the `.rules` file the two agreed on all 50 connections, byte for byte;
+    /// * **with** it they first differed at connection k = 6 (one extra item id, same geometry)
+    ///   and then genuinely diverged from k = 8 on — the jar laying four traces to the port's two,
+    ///   cumulative trace lengths `1401450.8259119983` and `1395031.4105961146`. The port routed
+    ///   *shorter*, which is what `attachSmdAllowed = true` buys: it lets a via attach to an SMD
+    ///   pad the jar's detached `ViaInfo` forbids.
     ///
-    /// * **without** the `.rules` file the two agree on all 50 connections, byte for byte;
-    /// * **with** it they first differ at connection k = 6 (one extra item id, same geometry) and
-    ///   then genuinely diverge from k = 8 on — at k = 8 the jar lays four traces and the port
-    ///   two, with cumulative trace lengths `1401450.8259119983` and `1395031.4105961146`. The
-    ///   port routes *shorter*, which is what `attachSmdAllowed = true` buys: it lets a via
-    ///   attach to an SMD pad the jar's detached `ViaInfo` forbids. Attempt state, ripped set,
-    ///   incompletes and via counts still agree on every connection, so it is ruling 1's rung (b)
-    ///   that fails, not (a) or (c).
+    /// so per plan-6 ruling 9's other branch the register row closed **against** the re-pointing.
+    /// **Plan 7 Task 0 landed the fix** (controller ruling AL) and the same command now MATCHes on
+    /// all 50 connections, k = 6 and k = 8 included — transcript committed as
+    /// `crates/fr-router/tests/data/p7t0-ruling-h-match.txt`, which is this marker's regression
+    /// test. No acceptance fixture uses a `.rules` file, so `tests/reference/router-fixtures.txt`
+    /// is unaffected.
     ///
-    /// Per plan-6 ruling 9's other branch, the fix is `ViaRule` owning its `ViaInfo`s (or
-    /// `ViaInfos` keeping tombstones) — an `fr-board` change, outside this task's scope, named in
-    /// the Task 18 hand-off. This marker stays until that lands, and `Issue593-BBD_Mars-64.dsn`
-    /// plus that `.rules` file is its regression test. No acceptance fixture uses a `.rules`
-    /// file, so `tests/reference/router-fixtures.txt` is unaffected.
+    /// The *other* half of that register row — `Network.addViaRule` replacing a `ViaRule` while
+    /// `NetClass.viaRule` keeps the detached original — is **still open**; see
+    /// `BoardRules::replace_via_rule_renumbering_net_classes`.
     pub fn rebuild_via_info(&mut self, board: &Board, via_costs: i32, net_number: i32) {
         let rule_id = self
             .via_rule
@@ -429,11 +432,7 @@ impl AutorouteControl {
 
         // :235-239
         self.via_clearance_class = if via_rule.via_count() > 0 {
-            board
-                .rules
-                .via_infos
-                .get(via_rule.get_via(0))
-                .get_clearance_class_index()
+            via_rule.get_via(0).get_clearance_class_index()
         } else {
             1
         };
@@ -441,7 +440,7 @@ impl AutorouteControl {
         self.attach_smd_allowed = false; // :241
         for i in 0..via_rule.via_count() {
             // :243
-            let current_via = board.rules.via_infos.get(via_rule.get_via(i));
+            let current_via = via_rule.get_via(i);
             if current_via.attach_smd_allowed() {
                 self.attach_smd_allowed = true; // :244-246
             }

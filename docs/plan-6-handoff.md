@@ -539,10 +539,16 @@ see the README section that lists all eight.
 7. **The `ConnectionToPin` trio** — `check`, `correct`, `swapConnectionToPin` in the
    tightener family. `pinEdgeToTurnDist` is `-1` throughout Plan 6, which is what
    keeps them out of reach here.
-8. **The `fr-board` fix ruling H decided**: `ViaRule` owning its `ViaInfo`s (§5.2).
+8. ~~**The `fr-board` fix ruling H decided**: `ViaRule` owning its `ViaInfo`s (§5.2).
    Controller **ruling AL** makes this **Plan 7's Task 0** — it changes an ownership
    model every later task builds on, so it goes first, and its acceptance is the
-   `Issue593` repro in §5.2 turning from DIFF into MATCH.
+   `Issue593` repro in §5.2 turning from DIFF into MATCH.~~ — **DONE in Plan 7 Task 0.**
+   `ViaRule` now holds `Vec<ViaInfo>`; the §5.2 repro
+   (`run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1
+   crates/fr-router/tests/data/ruling-h-redeclare.rules`) is **MATCH on all 50
+   connections**, k = 6 and k = 8 included, transcript at
+   `crates/fr-router/tests/data/p7t0-ruling-h-match.txt`. The *via-rule* half of the
+   register row (`Network.addViaRule` → `NetClass.viaRule`) is untouched and still open.
 
 ### Must know
 

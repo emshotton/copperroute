@@ -3,9 +3,9 @@
 //!
 //! Every expected value is derived from the Java source, with the line cited.
 
-use fr_board::ids::ViaInfoId;
+use fr_board::ids::PadstackId;
 use fr_board::rules::clearance_matrix::CLEARANCE_SAFETY_MARGIN;
-use fr_board::rules::{ClearanceMatrix, Nets, ViaRule};
+use fr_board::rules::{ClearanceMatrix, Nets, ViaInfo, ViaRule};
 use fr_board::structure::{Layer, LayerStructure};
 
 /// The `Layer[] {Top, Bottom}` stack of `ClearanceMatrixTest.java:13`.
@@ -103,6 +103,6 @@ fn via_rule_empty() {
     let empty = ViaRule::empty();
     assert_eq!(empty.name, "empty");
     assert_eq!(empty.via_count(), 0);
-    assert!(!empty.contains(ViaInfoId(0)));
+    assert!(!empty.contains(&ViaInfo::new("v", PadstackId(0), 1, false)));
     assert_eq!(empty.to_string(), "empty");
 }

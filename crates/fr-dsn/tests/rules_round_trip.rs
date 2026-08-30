@@ -20,7 +20,7 @@
 //! The four `dump` outputs get a one-line `#` header prepended by hand (see [`common::golden`]).
 //! `RProbe`'s fifth mode, `divergence`, has no committed golden: it prints what each via *rule*
 //! reaches, and is how the jar's answer quoted in
-//! `re_declared_via_info_re_points_the_existing_via_rule_unlike_java` was obtained.
+//! `re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java` was obtained.
 //!
 //! # What is and is not jar-pinned
 //!
@@ -368,10 +368,7 @@ fn dump_rules(board: &mut Board, ok: bool) -> Vec<String> {
     }
 
     for (i, rule) in board.rules.via_rules.iter().enumerate() {
-        let vias: Vec<&str> = rule
-            .iter()
-            .map(|id| board.rules.via_infos.get(*id).get_name())
-            .collect();
+        let vias: Vec<&str> = rule.iter().map(fr_board::ViaInfo::get_name).collect();
         out.push(format!("viarule {i} {} [{}]", rule.name, vias.join(" ")));
     }
 
@@ -481,22 +478,23 @@ fn assert_bytes_match(actual: &[u8], golden_name: &str) {
 
 /// `RulesReader.applyViaInfo` (RulesReader.java:340-350) through the real reader: a `(via …)`
 /// scope whose name the board already carries has to move that via to the **tail** of
-/// `ViaInfos` — Java's remove-then-add — while every `ViaRule` keeps *naming* the same vias.
+/// `ViaInfos` — Java's remove-then-add — while every `ViaRule` keeps the `ViaInfo` it already
+/// held.
 ///
 /// The list order and the names are Java's, and are what every writer emits.
 ///
-/// **The indices are the port's own behaviour, and they diverge from Java.** Java's `ViaRule`
-/// holds `ViaInfo` object references, so after the replacement its rule still points at the
-/// **removed original**; this port's rule holds an index and necessarily reaches the
-/// **replacement**. The assertion on `rule.iter()` below therefore pins *this port*, not Java.
-/// `re_declared_via_info_re_points_the_existing_via_rule_unlike_java` isolates that divergence
-/// with the jar's own answer next to it; see the open "Via-info / via-rule re-pointing" row in
-/// `docs/java-quirks.md`.
+/// **Since Plan 7 Task 0 so is what the rule reaches.** Java's `ViaRule` holds `ViaInfo` object
+/// references (`ViaRule.java:21`), so after the replacement its rule still holds the **removed
+/// original**; the port's rule holds an owned copy taken when the rule was built, which is the
+/// same original. `re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java`
+/// isolates that with the jar's own answer next to it; see the "Via-info / via-rule re-pointing"
+/// row in `docs/java-quirks.md`.
 ///
-/// `fr-board`'s `replace_via_info_renumbers_every_rule` pins the renumbering itself; this pins
-/// that the reader reaches it.
+/// Named `apply_via_info_renumbers_via_rules` until Plan 7 Task 0. `fr-board`'s
+/// `replace_via_info_leaves_every_rule_alone` pins the replacement itself; this pins that the
+/// reader reaches it.
 #[test]
-fn apply_via_info_renumbers_via_rules() {
+fn apply_via_info_leaves_via_rules_on_their_own_copies() {
     let (mut board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
 
     // The board's own via info, plus a second one so the removal has something after it to shift.
@@ -518,9 +516,9 @@ fn apply_via_info_renumbers_via_rules() {
     let b = board.rules.via_infos.get_no("B").expect("B");
     assert_eq!((a, b), (ViaInfoId(0), ViaInfoId(1)));
 
-    let mut rule = ViaRule::new("renumber_me");
-    rule.append_via(a);
-    rule.append_via(b);
+    let mut rule = ViaRule::new("leave_me_alone");
+    rule.append_via(board.rules.via_infos.get(a).clone());
+    rule.append_via(board.rules.via_infos.get(b).clone());
     board.rules.via_rules.push(rule);
     let rule_index = board.rules.via_rules.len() - 1;
 
@@ -542,20 +540,24 @@ fn apply_via_info_renumbers_via_rules() {
         "the tail entry is the replacement, not the original"
     );
 
-    // The rule's indices were rewritten; the vias it names are unchanged and still in order.
+    // The rule was not touched: same vias, same order, and its "Via[0-1]_800:400_um" is still
+    // the detached original with `attach=false`.
     let rule = &board.rules.via_rules[rule_index];
-    assert_eq!(
-        rule.iter().copied().collect::<Vec<_>>(),
-        [ViaInfoId(1), ViaInfoId(0)]
-    );
-    let resolved: Vec<&str> = rule
-        .iter()
-        .map(|id| board.rules.via_infos.get(*id).get_name())
-        .collect();
+    let resolved: Vec<&str> = rule.iter().map(ViaInfo::get_name).collect();
     assert_eq!(resolved, ["Via[0-1]_800:400_um", "B"]);
+    assert!(
+        !rule.get_via(0).attach_smd_allowed(),
+        "the rule keeps the original, not the replacement"
+    );
 }
 
-/// The re-pointing divergence, isolated — **this pins the port, and Java answers differently.**
+/// The re-pointing divergence, isolated — **closed by Plan 7 Task 0: the port now answers what
+/// Java answers.**
+///
+/// Named `re_declared_via_info_re_points_the_existing_via_rule_unlike_java` until Plan 7 Task 0,
+/// when `ViaRule` gained ownership of its `ViaInfo`s (`ViaRule.java:21` is a `List<ViaInfo>` of
+/// object *references*) and the assertion below inverted. The old name is kept in this comment so
+/// the trail is one grep.
 ///
 /// `Issue593-BBD_Mars-64.dsn` already carries one via info (`Via[0-1]_800:400_um`, `attach=false`)
 /// and two `default` via rules that reach it. A one-line `.rules` file re-declaring that same via
@@ -570,13 +572,14 @@ fn apply_via_info_renumbers_via_rules() {
 /// ```
 ///
 /// — the list holds the replacement (`attach=true`) while both rules still hold the **detached
-/// original** (`attach=false`, and `viaInfos.get(name) != thatObject`). This port cannot express a
-/// detached object, so its rules reach the replacement and answer `attach=true`. Nothing a Plan 3
-/// writer emits differs (both entries share a name); `attach_smd_allowed`, `get_padstack` and
-/// `get_clearance_class_index` are router inputs, so Plans 6/7 own the decision. See the open
-/// obligation row in `docs/java-quirks.md`.
+/// original** (`attach=false`, and `viaInfos.get(name) != thatObject`). The port's rules hold
+/// owned copies made when the rule was built, so they keep the original's `attach=false` too:
+/// `ViaInfos::remove` can no longer reach into a rule. Nothing a Plan 3 writer emits differs
+/// either way (both entries share a name); `attach_smd_allowed`, `get_padstack` and
+/// `get_clearance_class_index` are router inputs, and the router now agrees with the jar —
+/// `crates/fr-router/tests/data/p7t0-ruling-h-match.txt`.
 #[test]
-fn re_declared_via_info_re_points_the_existing_via_rule_unlike_java() {
+fn re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java() {
     let (mut board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
     assert!(
         !board
@@ -601,21 +604,21 @@ fn re_declared_via_info_re_points_the_existing_via_rule_unlike_java() {
             .expect("the replacement")
             .attach_smd_allowed()
     );
-    // Java disagrees about what the rules reach: it answers `false` here, for every rule.
+    // And now it agrees about what the rules reach: the detached original, `attach=false`.
     let reached: Vec<bool> = board
         .rules
         .via_rules
         .iter()
         .flat_map(|rule| rule.iter())
-        .map(|id| board.rules.via_infos.get(*id).attach_smd_allowed())
+        .map(ViaInfo::attach_smd_allowed)
         .collect();
     assert!(
         !reached.is_empty(),
         "the fixture has via rules to reach through"
     );
     assert!(
-        reached.iter().all(|attach| *attach),
-        "the port re-points every rule at the replacement (Java: all false, the detached original)"
+        reached.iter().all(|attach| !*attach),
+        "every rule keeps the detached original, exactly as the jar's `RProbe divergence` prints"
     );
 }
 

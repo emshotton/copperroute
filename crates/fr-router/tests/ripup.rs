@@ -89,7 +89,7 @@ fn probe_board() -> Board {
         .via_infos
         .add(ViaInfo::new("v", PadstackId(3), 1, false));
     let mut via_rule = ViaRule::new("rule");
-    via_rule.append_via(ViaInfoId(0));
+    via_rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
     rules.via_rules.push(via_rule);
     let default_class = rules.get_default_net_class();
     rules

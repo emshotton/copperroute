@@ -127,16 +127,18 @@ pub struct NetClassId(pub usize);
 
 /// Index of a [`crate::rules::ViaInfo`] in [`crate::rules::ViaInfos`].
 ///
-/// Java's `ViaRule.list` is a `List<ViaInfo>` of object references (ViaRule.java:21); the port
-/// stores indices into `BoardRules.viaInfos` instead.
+/// Java's `ViaInfos.get(int)` (ViaInfos.java:36-39) is the same positional access; Java's callers
+/// then keep the object, while this port re-reads through the index.
 ///
-/// **Removal hazard:** `ViaInfos.remove` (ViaInfos.java:62-64) deletes from the middle of a
-/// `List`, which shifts every later index. Java is immune because its `ViaRule`s hold object
-/// references; the port is not — see [`crate::rules::ViaInfos::remove`] and the
-/// `docs/java-quirks.md` obligation-register row "`ViaInfoId` renumbering across
-/// `ViaInfos.remove`". **Discharged in Plan 3 Task 14** by
-/// `BoardRules::replace_via_info_renumbering_rules`, which is the only removal path the DSN
-/// layer uses.
+/// **The removal hazard is gone since Plan 7 Task 0.** `ViaInfos.remove` (ViaInfos.java:62-64)
+/// deletes from the middle of a `List`, which shifts every later index — a hazard only for
+/// something that *stores* a `ViaInfoId` across the removal. `ViaRule` was that something until
+/// Plan 7 Task 0 gave it owned `ViaInfo` copies (ruling H); nothing stores one now, and every
+/// remaining use is a loop counter that never outlives its loop. See
+/// [`crate::rules::ViaInfos::remove`] and the `docs/java-quirks.md` obligation-register row
+/// "`ViaInfoId` renumbering across `ViaInfos.remove`" (discharged in Plan 3 Task 14 by
+/// `BoardRules::replace_via_info_renumbering_rules`, now
+/// [`BoardRules::replace_via_info`](crate::rules::BoardRules::replace_via_info)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViaInfoId(pub usize);
 

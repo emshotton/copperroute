@@ -171,10 +171,7 @@ fn dump(board: &Board, warnings: &[String]) -> Vec<String> {
     }
 
     for (i, rule) in board.rules.via_rules.iter().enumerate() {
-        let vias: Vec<&str> = rule
-            .iter()
-            .map(|id| board.rules.via_infos.get(*id).get_name())
-            .collect();
+        let vias: Vec<&str> = rule.iter().map(fr_board::ViaInfo::get_name).collect();
         out.push(format!("viarule {i} {} [{}]", rule.name, vias.join(" ")));
     }
 

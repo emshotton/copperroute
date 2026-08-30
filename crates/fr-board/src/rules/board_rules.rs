@@ -315,20 +315,18 @@ impl BoardRules {
             .default_item_clearance_classes
             .get(ItemClass::Via);
         for i in 0..self.via_infos.count() {
-            let current_via_info = ViaInfoId(i);
-            let info = self.via_infos.get(current_via_info);
+            let info = self.via_infos.get(ViaInfoId(i));
             if info.get_clearance_class_index() != default_via_cl_class {
                 continue;
             }
             let current_padstack = info.get_padstack();
             let current_from_layer = padstacks.padstack_from_layer(current_padstack);
             let current_to_layer = padstacks.padstack_to_layer(current_padstack);
-            let existing_via = default_rule.get_layer_range(
-                current_from_layer,
-                current_to_layer,
-                &self.via_infos,
-                padstacks,
-            );
+            // `defaultRule.getLayerRange(...)` (BoardRules.java:184) hands Java the rule's own
+            // object; the port clones it so the rule can be mutated below.
+            let existing_via = default_rule
+                .get_layer_range(current_from_layer, current_to_layer, padstacks)
+                .cloned();
             match existing_via {
                 Some(existing) => {
                     // Java NPEs here if either padstack has no shape on `currentFromLayer`;
@@ -337,18 +335,15 @@ impl BoardRules {
                         .padstack_shape_max_width(current_padstack, current_from_layer)
                         .expect("padstack has a shape on its own fromLayer");
                     let existing_width = padstacks
-                        .padstack_shape_max_width(
-                            self.via_infos.get(existing).get_padstack(),
-                            current_from_layer,
-                        )
+                        .padstack_shape_max_width(existing.get_padstack(), current_from_layer)
                         .expect("padstack has a shape on the matched fromLayer");
                     if new_width < existing_width {
                         // The via with the smallest pad shape is preferred.
-                        default_rule.remove_via(existing);
-                        default_rule.append_via(current_via_info);
+                        default_rule.remove_via(&existing);
+                        default_rule.append_via(info.clone());
                     }
                 }
-                None => default_rule.append_via(current_via_info),
+                None => default_rule.append_via(info.clone()),
             }
         }
         self.via_rules.push(default_rule);
@@ -528,10 +523,7 @@ impl BoardRules {
         if default_via_rule.via_count() == 0 {
             return 0.0;
         }
-        let via_padstack = self
-            .via_infos
-            .get(default_via_rule.get_via(0))
-            .get_padstack();
+        let via_padstack = default_via_rule.get_via(0).get_padstack();
         let from_layer = padstacks.padstack_from_layer(via_padstack);
         let to_layer = padstacks.padstack_to_layer(via_padstack);
         let result = padstacks
@@ -788,9 +780,9 @@ mod tests {
         let rule = &rules.via_rules[0];
         assert_eq!(rule.name, "default");
         assert_eq!(rule.via_count(), 2);
-        assert!(rule.contains(ViaInfoId(1)));
-        assert!(rule.contains(ViaInfoId(2)));
-        assert!(!rule.contains(ViaInfoId(0)));
+        assert!(rule.contains(rules.via_infos.get(ViaInfoId(1))));
+        assert!(rule.contains(rules.via_infos.get(ViaInfoId(2))));
+        assert!(!rule.contains(rules.via_infos.get(ViaInfoId(0))));
         assert_eq!(
             rules.net_classes.get(default_class).get_via_rule(),
             Some(ViaRuleId(0))
@@ -876,6 +868,46 @@ mod tests {
                 .get(ViaInfoId(0))
                 .get_clearance_class_index(),
             2
+        );
+    }
+
+    /// The one place [`ViaRule`]'s owned copies are not Java's aliasing, pinned.
+    ///
+    /// `BoardRules.changeClearanceClassIndex` (BoardRules.java:283-288) and
+    /// `removeClearanceClass` (:341-346) walk `viaInfos` and `setClearanceClassIndex` on each hit.
+    /// Java's via *rules* hold those same objects, so a rule sees the new index; the port's rules
+    /// hold copies and do not. **Unreachable in this port and in headless Java alike:** both
+    /// methods have exactly one Java caller,
+    /// `gui/windows/routing/WindowClearanceMatrix.java:273-274`, and no port caller outside these
+    /// unit tests. Recorded rather than worked around, because reproducing Java would mean
+    /// pushing the new index into every rule — which is *wrong* for a rule holding a detached
+    /// original, the very case Plan 7 Task 0 exists to reproduce.
+    #[test]
+    fn clearance_class_renumbering_does_not_reach_a_rules_copy() {
+        let mut rules = rules();
+        rules.clearance_matrix.append_class("power");
+        rules
+            .via_infos
+            .add(ViaInfo::new("a", PadstackId(0), 1, false));
+        let mut rule = ViaRule::new("r");
+        rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
+        rules.via_rules.push(rule);
+
+        let mut items: Vec<TestItem> = Vec::new();
+        rules.change_clearance_class_index(1, 2, items.iter_mut());
+
+        assert_eq!(
+            rules
+                .via_infos
+                .get(ViaInfoId(0))
+                .get_clearance_class_index(),
+            2,
+            "the list entry is renumbered, as in Java"
+        );
+        assert_eq!(
+            rules.via_rules[0].get_via(0).get_clearance_class_index(),
+            1,
+            "the rule's copy is not — Java's rule, sharing the object, would answer 2"
         );
     }
 

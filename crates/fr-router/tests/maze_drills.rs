@@ -110,7 +110,7 @@ fn base_board(bounds: IntBox) -> Board {
 
     rules.via_infos.add(ViaInfo::new("v", via, 1, false));
     let mut via_rule = ViaRule::new("rule");
-    via_rule.append_via(ViaInfoId(0));
+    via_rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
     rules.via_rules.push(via_rule);
     let default_class = rules.get_default_net_class();
     rules
@@ -849,6 +849,13 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
         .via_infos
         .get_mut(ViaInfoId(0))
         .set_attach_smd_allowed(true);
+    // `P6T13Probe.attachSmd:1003-1004` mutates the `ViaInfo` **object** the rule also holds
+    // (`ViaRule.java:21`), so Java's rule sees the new flag. Since Plan 7 Task 0 (ruling H) the
+    // port's rule owns a copy taken when it was built, so the copy is refreshed here — Java's
+    // aliasing, spelled out.
+    let mut via_rule = ViaRule::new("rule");
+    via_rule.append_via(board.rules.via_infos.get(ViaInfoId(0)).clone());
+    board.rules.via_rules[0] = via_rule;
     let mut engine = probe_engine(&mut board, 1);
     let base = probe_control(&board, 1);
     assert!(base.attach_smd_allowed);
