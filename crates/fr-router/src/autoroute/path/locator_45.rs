@@ -38,11 +38,7 @@ fn calc_horizontal_first_from_door(
     if door_dimension != 1 {
         return from_door_box.height() >= from_door_box.width();
     }
-    let Some((left_corner, right_corner)) = door_corners(door_shape) else {
-        // Java dereferences the null `diagonalCornerSegment` at `:59` and throws; an empty door
-        // shape cannot reach here, because `getDimension() == 1` implies a real segment.
-        return from_door_box.height() >= from_door_box.width();
-    };
+    let (left_corner, right_corner) = door_corners(door_shape, "calcHorizontalFirstFromDoor", 59);
     // :68-79.
     let door_half_max_width = door_half_max_width(left_corner, right_corner);
     if f64::from(from_door_box.width()) <= door_half_max_width {
@@ -93,9 +89,7 @@ fn calc_horizontal_first_to_door(
     if door_dimension != 1 {
         return from_door_box.height() <= from_door_box.width();
     }
-    let Some((left_corner, right_corner)) = door_corners(door_shape) else {
-        return from_door_box.height() <= from_door_box.width();
-    };
+    let (left_corner, right_corner) = door_corners(door_shape, "calcHorizontalFirstToDoor", 314);
     // :323-334.
     let door_half_max_width = door_half_max_width(left_corner, right_corner);
     if f64::from(from_door_box.width()) <= door_half_max_width {
@@ -129,16 +123,43 @@ fn calc_horizontal_first_to_door(
 
 /// The shared prologue of the two `calcHorizontalFirst*` methods (`:56-67` = `:311-322`): the
 /// diagonal corner segment of the door shape, ordered left corner first.
-fn door_corners(door_shape: &TileShape) -> Option<(FloatPoint, FloatPoint)> {
-    let door_line_segment = door_shape.diagonal_corner_segment()?;
+///
+/// # Panics
+///
+/// `TileShape.diagonalCornerSegment` answers `null` for an **empty** shape
+/// (TileShape.java:873-881) and Java dereferences it on the very next line (`:59`, `:314`) with
+/// no guard, so an empty door shape throws a `NullPointerException` that
+/// `AutorouteEngine.autorouteConnection:189-195` catches into `AutorouteAttemptState.FAILED` —
+/// the whole connection, not a different route. The port panics for the same input, which
+/// plan-6 ruling 7's `catch_unwind` around
+/// [`FoundConnectionLocator::get_instance`](crate::autoroute::path::FoundConnectionLocator::get_instance)
+/// turns back into that `FAILED`. It is deliberately **not** a totalization (the crate's
+/// `totalized` marker) — falling back
+/// to the `getDimension() != 1` answer would route a wire Java refuses to route.
+///
+/// It is unreachable in practice because the caller has already tested `getDimension() == 1`,
+/// and the empty shape's dimension is -1 — but nothing here asserts that, and Java's own code
+/// does not rely on it either.
+fn door_corners(
+    door_shape: &TileShape,
+    java_method: &str,
+    java_line: u32,
+) -> (FloatPoint, FloatPoint) {
+    let door_line_segment = door_shape.diagonal_corner_segment().unwrap_or_else(|| {
+        panic!(
+            "FoundConnectionLocator45Degree.{java_method}: diagonalCornerSegment is null for an \
+             empty door shape — Java throws a NullPointerException at \
+             FoundConnectionLocator45Degree.java:{java_line}"
+        )
+    });
     // :59-67.
     if door_line_segment.a.x < door_line_segment.b.x
         || (door_line_segment.a.x == door_line_segment.b.x
             && door_line_segment.a.y <= door_line_segment.b.y)
     {
-        Some((door_line_segment.a, door_line_segment.b))
+        (door_line_segment.a, door_line_segment.b)
     } else {
-        Some((door_line_segment.b, door_line_segment.a))
+        (door_line_segment.b, door_line_segment.a)
     }
 }
 

@@ -44,6 +44,7 @@ use fr_geometry::{
 use fr_router::autoroute::expansion::{ExpandableRef, RoomRef};
 use fr_router::autoroute::maze::AutorouteControl;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
+use fr_router::autoroute::maze::search::MazeResult;
 use fr_router::autoroute::maze::search::MazeSearchEngine;
 use fr_router::autoroute::path::{
     FoundConnectionLocator, LocatorKind, calculate_additional_corner,
@@ -1344,20 +1345,160 @@ fn a_null_ripup_cost_map_still_fills_the_ripped_item_set() {
 // The empty connection-item list (:101-111, :130-135)
 // =================================================================================================
 
-/// `connectionItems` is **never null** — the field is assigned an empty `LinkedList` at `:101`,
-/// before both early returns, and it is `final`. So the `connectionItems == null` arm of
-/// `AutorouteEngine.autorouteConnection:227-233` (which answers `SKIPPED`) is dead code, and
-/// what the early returns actually produce is an empty list. See `docs/java-quirks.md` #180.
+/// Probe mode `warn`, `=== unexpectedDestinationDoor`:
+/// ```text
+/// middle door=ExpansionDoor section=0
+/// startItem=2 startLayer=0 targetItem=null targetLayer=0 backtrack n=2 connectionItems=n=0
+/// ```
+///
+/// `:130-135` — the destination door is neither a `TargetItemExpansionDoor` nor an
+/// `ExpansionDrill`, so Java warns and returns with `startItem`/`startLayer` **already set** at
+/// `:112-114` and `targetItem`/`targetLayer` left at their defaults. `connectionItems` is the
+/// empty list `:101` assigned, **not** null — `docs/java-quirks.md` #180.
+///
+/// The forged `MazeResult` is not synthetic geometry: it names the live `ExpansionDoor` the real
+/// walk found at `backtrack_array[1]`, with its own section number, so `backtrack` walks the same
+/// live `backtrackDoor` chain and `start_info.door` is still the start target door.
 #[test]
-fn an_empty_connection_item_list_is_the_early_return_not_a_null() {
+fn an_unexpected_destination_door_yields_an_empty_connection_with_the_start_fields_set() {
     let mut board = simple_board();
-    let located = locate(&mut board, AngleRestriction::None, false);
-    // The happy path is never empty …
-    assert!(!located.locator.connection_items.is_empty());
+    let mut engine = probe_engine(&mut board, 1);
+    let ctrl = probe_control(&board, 1);
+    let counter = Counter::new();
+    let result = {
+        let mut maze = MazeSearchEngine::get_instance(
+            &set_of(&[2]),
+            &set_of(&[3]),
+            &mut engine,
+            &mut board,
+            &ctrl,
+            &|| counter.check(),
+        )
+        .expect("a search engine");
+        maze.find_connection(&mut board, &|| counter.check())
+            .expect("a result")
+    };
+    let mut ripped = BTreeSet::new();
+    let real = FoundConnectionLocator::get_instance(
+        Some(&result),
+        &ctrl,
+        &mut engine,
+        &mut board,
+        AngleRestriction::None,
+        &mut ripped,
+        None,
+    )
+    .expect("a locator");
+    let middle = real.backtrack_array[1];
+    assert!(matches!(middle.door, ExpandableRef::Door(_)));
+    assert_eq!(middle.section_no_of_door, 0);
 
-    // … and the type cannot express Java's `null` at all, which is the point: `Vec`, not
-    // `Option<Vec>`. The two early returns of `:103-111` and `:130-135` build the same empty
-    // `Vec`, and `FoundConnectionInserter` inserts nothing for it.
-    let empty: Vec<fr_router::autoroute::path::ResultItem> = Vec::new();
-    assert!(empty.is_empty());
+    let forged = MazeResult {
+        destination_door: middle.door,
+        section_no_of_door: middle.section_no_of_door,
+    };
+    let mut ripped = BTreeSet::new();
+    let located = FoundConnectionLocator::get_instance(
+        Some(&forged),
+        &ctrl,
+        &mut engine,
+        &mut board,
+        AngleRestriction::None,
+        &mut ripped,
+        None,
+    )
+    .expect("getInstance still answers a locator: only a null result is None");
+    assert_eq!(located.start_item, Some(ItemId(2)));
+    assert_eq!(located.start_layer, 0);
+    assert_eq!(located.target_item, None);
+    assert_eq!(located.target_layer, 0);
+    assert_eq!(located.backtrack_array.len(), 2);
+    assert_eq!(
+        located.connection_items,
+        Vec::new(),
+        "`:101` assigned an empty list before the `:130-135` return, and it is never null"
+    );
+}
+
+/// Probe mode `warn`, `=== orphanDoor`:
+/// ```text
+/// === orphanDoor type=ExpansionDoor section=0
+/// startItem=null startLayer=0 targetItem=null targetLayer=0 backtrack n=1 connectionItems=n=0
+/// ```
+///
+/// `:103-111` — a door section the search never reached has a null `backtrackDoor`, so
+/// `backtrack` (`:271-276`) breaks after one element and `startInfo.door` is an `ExpansionDoor`.
+/// Java warns and leaves **every** field at its default, `connectionItems` included — again the
+/// empty list, not null (`docs/java-quirks.md` #180).
+///
+/// The scan walks `completeExpansionRooms` in list order and each room's doors in list order,
+/// exactly as the probe does, so both sides pick the same door.
+#[test]
+fn a_start_door_that_is_not_a_target_door_yields_an_all_default_locator() {
+    let mut board = simple_board();
+    let mut engine = probe_engine(&mut board, 1);
+    let ctrl = probe_control(&board, 1);
+    let counter = Counter::new();
+    let result = {
+        let mut maze = MazeSearchEngine::get_instance(
+            &set_of(&[2]),
+            &set_of(&[3]),
+            &mut engine,
+            &mut board,
+            &ctrl,
+            &|| counter.check(),
+        )
+        .expect("a search engine");
+        maze.find_connection(&mut board, &|| counter.check())
+            .expect("a result")
+    };
+    assert!(matches!(
+        result.destination_door,
+        ExpandableRef::TargetDoor(_)
+    ));
+
+    let mut orphan: Option<(ExpandableRef, i32)> = None;
+    'scan: for room in engine.complete_expansion_rooms().to_vec() {
+        for door in engine.rooms.room_doors(RoomRef::Complete(room)).to_vec() {
+            let object = ExpandableRef::Door(door);
+            let Some(count) = engine.maze_search_element_count(object) else {
+                continue;
+            };
+            for section in 0..i32::try_from(count).expect("a small section count") {
+                if engine
+                    .maze_search_element(object, section)
+                    .is_some_and(|element| element.backtrack_door.is_none())
+                {
+                    orphan = Some((object, section));
+                    break 'scan;
+                }
+            }
+        }
+    }
+    let (orphan_door, orphan_section) =
+        orphan.expect("the search leaves at least one door section unreached");
+    assert_eq!(orphan_section, 0);
+
+    let forged = MazeResult {
+        destination_door: orphan_door,
+        section_no_of_door: orphan_section,
+    };
+    let mut ripped = BTreeSet::new();
+    let located = FoundConnectionLocator::get_instance(
+        Some(&forged),
+        &ctrl,
+        &mut engine,
+        &mut board,
+        AngleRestriction::None,
+        &mut ripped,
+        None,
+    )
+    .expect("getInstance still answers a locator: only a null result is None");
+    assert_eq!(located.start_item, None);
+    assert_eq!(located.start_layer, 0);
+    assert_eq!(located.target_item, None);
+    assert_eq!(located.target_layer, 0);
+    assert_eq!(located.backtrack_array.len(), 1);
+    assert_eq!(located.connection_items, Vec::new());
+    assert!(ripped.is_empty());
 }

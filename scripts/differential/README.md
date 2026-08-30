@@ -938,12 +938,12 @@ methods with dozens of branches.
     fixture. Its stdout is committed as
     `crates/fr-router/tests/data/p6t14-locator.txt`; the run pipes through the
     same `grep -Ev`. Every double is printed with `Double.toString`, which
-    `fr_dsn::format::double::java_double_to_string` reproduces. Eight modes:
+    `fr_dsn::format::double::java_double_to_string` reproduces. Nine modes:
 
     - `corner` — `calculateAdditionalCorner` (`:390-404`) over twelve
       `(from, to)` pairs × both `horizontalFirst` values × the three regimes, so
       that every branch of `ninetyDegreeCorner` (`:329-342`) and
-      `fortyfiveDegreeCorner` (`:343-389`) is taken. The `NONE` column also
+      `fortyfiveDegreeCorner` (`:343-384`) is taken. The `NONE` column also
       prints `same=true`, because `:401` returns **`toPoint` itself** — the
       object identity the corner dedup of `:432` tests with `!=`.
     - `share` — which concrete class `getInstance` (`:196-205`) builds:
@@ -981,6 +981,15 @@ methods with dozens of branches.
     - `reverse` — the same board searched **pin 3 → pin 2**, with and without
       vias. It is the only fixture in the file that bends far enough left to
       reach `leftTurnNextCorner` (`:391-408`).
+    - `warn` — the constructor's two early returns, reached by forging a
+      `MazeSearchEngine.Result` (its constructor is package-private, so by
+      reflection) over the **live** rooms of a completed search: the
+      `ExpansionDoor` at `backtrackArray[1]` for `:130-135`, which keeps
+      `startItem=2 startLayer=0` and leaves `targetItem`/`targetLayer` at their
+      defaults, and a door section whose `backtrackDoor` is null for `:103-111`,
+      which leaves every field at its default. Both print
+      `connectionItems=n=0` — the direct evidence for quirk #180 that the field
+      is an empty list and never `null`.
 
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over

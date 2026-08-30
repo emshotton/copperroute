@@ -15,7 +15,7 @@
 //! [`LocatorKind`] discriminant, because the only virtual member is
 //! `calculateNextTraceCorners` (`:499`) and the walk mutates the engine's door arena while it
 //! runs — a `&mut dyn` would need the arena's lifetime. The two overrides live in
-//! [`super::locator_45`] and [`super::locator_any_angle`], which is what
+//! `super::locator_45` and `super::locator_any_angle`, which is what
 //! `scripts/audit-map/fr-router.map` points the two subclasses at.
 //!
 //! # Reference identity is load-bearing
@@ -111,7 +111,7 @@ pub struct FoundConnectionLocator {
     /// the found connection."
     ///
     /// **Never `Option`.** The brief calls a `null` here "Java's SKIPPED signal", and
-    /// `AutorouteEngine.autorouteConnection:227-233` does test `connectionItems == null` — but
+    /// `AutorouteEngine.autorouteConnection:230-235` does test `connectionItems == null` — but
     /// the field is assigned an empty `LinkedList` at `:101`, *before* both of the constructor's
     /// early returns, and it is `final`, so no path leaves it null. The SKIPPED arm is dead code;
     /// see `docs/java-quirks.md` #180. What the two early returns do produce is an **empty**
@@ -263,6 +263,14 @@ impl FoundConnectionLocator {
                 );
             }
             // :124-129: "may happen only in case of fanout".
+            //
+            // obligation: `FoundConnectionLocator` — the fanout arm (`:124-129` here and the
+            // `atFanoutEnd` short-circuit at `:142-144`) is transcribed but has **no ground
+            // truth**: it fires only when the maze search's destination door is an
+            // `ExpansionDrill`, which needs `ctrl.isFanout`, and no Plan 6 fixture produces a
+            // fanout search. **Task 17** must route one fanout connection through
+            // `P6T14Probe` (or its per-connection driver) and pin `targetLayer`, the
+            // `currentTargetShape` of `:159` and the first `ResultItem`.
             ExpandableRef::Drill(drill) => {
                 let drill = engine
                     .rooms
@@ -339,8 +347,18 @@ impl FoundConnectionLocator {
                 let index = usize::try_from(walk.current_target_door_index)
                     .expect("a drill index is non-negative");
                 let ExpandableRef::Drill(drill) = backtrack_array[index].door else {
-                    unreachable!(
-                        "layerChanged is set only by the `instanceof ExpansionDrill` test at :148"
+                    // Two ways in. On the ordinary path `layerChanged` is set only by the
+                    // `instanceof ExpansionDrill` test at `:148`, so the cast at `:157` is safe.
+                    // On the fanout path (`:142-144`) there is no test at all — but
+                    // `currentTargetDoorIndex` is still 0 there and `backtrackArray[0].door` is
+                    // `mazeSearchResult.destinationDoor` itself (`:267-269`), which the arm above
+                    // has already matched as a drill. Java would throw a `ClassCastException`
+                    // here, which `AutorouteEngine.autorouteConnection:189-195` catches into
+                    // `FAILED`; the panic is the same outcome under ruling 7's `catch_unwind`.
+                    panic!(
+                        "FoundConnectionLocator: backtrackArray[{index}].door is not an \
+                         ExpansionDrill — Java throws a ClassCastException at \
+                         FoundConnectionLocator.java:157-158"
                     )
                 };
                 let location = walk
@@ -371,7 +389,17 @@ impl FoundConnectionLocator {
                     .expect("the start door's room has a shape")
                     .clone();
                 walk.current_target_shape = target_shape.intersection(&start_room_shape);
-                // :167-175.
+                // :167-175: "the target is a conduction area, make a save connection by
+                // shrinking the shape by the trace halfwidth."
+                //
+                // obligation: `FoundConnectionLocator` — this shrink (`:167-175`) is unreachable
+                // from every fixture in `crates/fr-router/tests/locator.rs`: the intersection of
+                // a pin's trace-connection shape with its room is 0-dimensional on all 25
+                // evaluations the suite makes, and reaching `dimension() >= 2` needs a
+                // **conduction area** as the start item, which no fixture has. **Task 17** must
+                // route a connection whose start item is a conduction area and pin the shrunk
+                // `currentTargetShape`. Mutation M14 (this test forced to `false`) survives the
+                // whole suite today, which is exactly what the obligation records.
                 if walk.current_target_shape.dimension() >= 2 {
                     let start_room_layer = walk
                         .engine

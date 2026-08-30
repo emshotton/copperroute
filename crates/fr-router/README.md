@@ -1003,7 +1003,7 @@ pins the `MazeResult` and the three elements left in the queue.
 `src/autoroute/path/locator.rs` is `FoundConnectionLocator`,
 `src/autoroute/path/locator_45.rs` is `FoundConnectionLocator45Degree` and
 `src/autoroute/path/locator_any_angle.rs` is `FoundConnectionLocatorAnyAngle`.
-The ground truth is `scripts/differential/java/probes/P6T14Probe.java`, eight
+The ground truth is `scripts/differential/java/probes/P6T14Probe.java`, nine
 modes, transcript `tests/data/p6t14-locator.txt`. It declares
 `package app.freerouting.autoroute.path` so it can call the package-private
 `calculateAdditionalCorner` and read the `protected` `backtrackArray` and
@@ -1028,7 +1028,7 @@ derive from the layer change between two consecutive entries (`:66`) plus one
 final via back to `startLayer` (`:74`). And the field is assigned an empty
 `LinkedList` at `:101`, before both of the constructor's early returns, so the
 `connectionItems == null` test that produces `SKIPPED`
-(`AutorouteEngine.java:227-233`) is dead code — quirk #180, which Task 15 must
+(`AutorouteEngine.java:230-235`) is dead code — quirk #180, which Task 15 must
 not resurrect. The port's field is a `Vec<ResultItem>`.
 
 **Reference identity is load-bearing.** `calculateNextTrace:432` drops a corner
@@ -1054,8 +1054,29 @@ blocker (26 / 25 / 7 corners); `blocked_board` forces a ripup, so
 searched **pin 3 → pin 2** is the only fixture that bends far enough left to
 reach `FoundConnectionLocatorAnyAngle.leftTurnNextCorner` (`:391-408`).
 
-**One latent NPE, reproduced as a panic.** `:287` builds a `FloatLine` from a
-`resultCorner` that `:329` itself treats as nullable, and `:293` dereferences
-it; the port panics there with quirk #181's number, which ruling 7's
-`catch_unwind` around `get_instance` turns back into Java's `FAILED`. No
-fixture reaches it.
+**Every null in these files is either Java's own value or Java's crash — never
+a third answer.** `doorLeftCorner`/`doorRightCorner` really do become `null`
+mid-method (`FoundConnectionLocatorAnyAngle.java:92`, `:96`) and stay
+`Option<FloatPoint>`. Everywhere else a null is an NPE that
+`AutorouteEngine.autorouteConnection:189-195` catches into **`FAILED` for the
+whole connection**, so the port panics rather than degrading: a locator that
+quietly answered `None` and carried on would route a wire Java refuses to
+route. That covers `calcDoorLeft/RightCorner`'s `fromRoom` (`:45`, `:57`),
+`FloatPoint.sideOf`'s first dereference (`:87`, `:165`),
+`FloatLine.segmentDistance` in the correction loop (`:293`, `:308`), the null
+`diagonalCornerSegment` of `FoundConnectionLocator45Degree:59`/`:314`, and the
+latent `:287` `FloatLine` of quirk #181. Ruling 7's `catch_unwind` around
+`get_instance` is what turns each panic back into Java's `FAILED`. There is no
+`// totalized:` site in these three files, because no degraded value here
+matches Java.
+
+**Both constructor warn branches are pinned.** Probe mode `warn` forges a
+`MazeSearchEngine.Result` over the **live** rooms of a completed search — the
+`ExpansionDoor` at `backtrackArray[1]` for `:130-135`, and a door section whose
+`backtrackDoor` is null for `:103-111` — and prints
+`connectionItems=n=0` for both, which is quirk #180's direct evidence.
+
+**Two `obligation:` markers name Task 17**: the fanout arm (`:124-129` +
+`:142-144`), which needs `ctrl.isFanout` and so no Plan 6 fixture reaches, and
+the conduction-area shrink (`:167-175`), which needs a start item whose
+trace-connection shape is 2-dimensional.

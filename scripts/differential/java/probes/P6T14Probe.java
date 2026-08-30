@@ -21,12 +21,16 @@
 //   JDK=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 //   cd scripts/differential/java/probes
 //   "$JDK/bin/javac" -cp "$JAR" -d /tmp/p6t14 P6T11Probe.java P6T13Probe.java P6T14Probe.java
-//   "$JDK/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
-//       -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp "/tmp/p6t14:$JAR" \
-//       app.freerouting.autoroute.path.P6T14Probe <mode> 2>/dev/null \
-//     | grep -Ev '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+ +(WARN|INFO|DEBUG|ERROR) '
+//   for m in corner share backtrack locate ripup ripped around reverse warn; do
+//     echo "=== mode $m ==="
+//     "$JDK/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+//         -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp "/tmp/p6t14:$JAR" \
+//         app.freerouting.autoroute.path.P6T14Probe "$m" 2>/dev/null \
+//       | grep -Ev '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+ +(WARN|INFO|DEBUG|ERROR) '
+//   done > crates/fr-router/tests/data/p6t14-locator.txt
 //
-// The `grep` strips `FRLogger`'s timestamped lines.
+// The `=== mode X ===` banners of the committed transcript come from this loop, not from the
+// probe. The `grep` strips `FRLogger`'s timestamped lines.
 //
 // Every double is printed with `Double.toString`, which is what
 // `fr_dsn::format::double::java_double_to_string` reproduces on the Rust side.
@@ -34,7 +38,7 @@
 // Modes:
 //   corner     `calculateAdditionalCorner` (:390-404) over a fixed input table in all three
 //              regimes, i.e. `ninetyDegreeCorner` (:329-342) and `fortyfiveDegreeCorner`
-//              (:343-389) branch by branch
+//              (:343-384) branch by branch
 //   share      `getInstance` (:185-207): the concrete class each of the three regimes builds
 //   backtrack  the `backtrackArray` (:225-327) of the `find`-board search, element by element
 //   locate     the whole walk on the `find` board, once per regime: `startItem`/`startLayer`,
@@ -57,6 +61,9 @@ package app.freerouting.autoroute.path;
 
 import app.freerouting.autoroute.maze.AutorouteControl;
 import app.freerouting.autoroute.maze.AutorouteEngine;
+import app.freerouting.autoroute.expansion.CompleteFreeSpaceExpansionRoom;
+import app.freerouting.autoroute.expansion.ExpandableObject;
+import app.freerouting.autoroute.expansion.ExpansionDoor;
 import app.freerouting.autoroute.maze.MazeSearchEngine;
 import app.freerouting.board.facade.RoutingBoard;
 import app.freerouting.board.model.items.Item;
@@ -66,8 +73,10 @@ import app.freerouting.geometry.planar.FloatPoint;
 import app.freerouting.geometry.planar.IntPoint;
 import app.freerouting.geometry.planar.Point;
 import app.freerouting.geometry.planar.Polyline;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -94,6 +103,7 @@ public class P6T14Probe {
       case "ripped" -> ripped();
       case "around" -> around();
       case "reverse" -> reverse();
+      case "warn" -> warn();
       default -> throw new IllegalArgumentException("unknown mode " + mode);
     }
   }
@@ -167,7 +177,7 @@ public class P6T14Probe {
 
   /**
    * Nine (from, to) pairs times both `horizontalFirst` values times the three regimes. The pairs
-   * are chosen so that every branch of `fortyfiveDegreeCorner` (`:343-389`) is taken, including
+   * are chosen so that every branch of `fortyfiveDegreeCorner` (`:343-384`) is taken, including
    * both sides of its `absDx <= absDy` test, its `toPoint.y >= fromPoint.y` (`:353`, the only
    * non-strict one of the four) and its two `toPoint.x > fromPoint.x` tests.
    */
@@ -412,6 +422,119 @@ public class P6T14Probe {
         dump(located);
       }
     }
+  }
+
+  // =============================================================================================
+  // mode `warn`: the constructor's two early returns (:103-111, :130-135)
+  // =============================================================================================
+
+  /** `new MazeSearchEngine.Result(door, section)` — the constructor is package-private. */
+  static MazeSearchEngine.Result forgeResult(ExpandableObject door, int section) throws Exception {
+    Constructor<MazeSearchEngine.Result> ctor =
+        MazeSearchEngine.Result.class.getDeclaredConstructor(ExpandableObject.class, int.class);
+    ctor.setAccessible(true);
+    return ctor.newInstance(door, section);
+  }
+
+  /** `MazeSearchElement.backtrackDoor`, which is package-private in `autoroute.maze`. */
+  static Object backtrackDoorOf(ExpandableObject door, int section) throws Exception {
+    Object element = door.getMazeSearchElement(section);
+    Field f = element.getClass().getDeclaredField("backtrackDoor");
+    f.setAccessible(true);
+    return f.get(element);
+  }
+
+  @SuppressWarnings("unchecked")
+  static List<CompleteFreeSpaceExpansionRoom> completeRooms(AutorouteEngine autorouteEngine)
+      throws Exception {
+    Field f = AutorouteEngine.class.getDeclaredField("completeExpansionRooms");
+    f.setAccessible(true);
+    List<CompleteFreeSpaceExpansionRoom> rooms =
+        (List<CompleteFreeSpaceExpansionRoom>) f.get(autorouteEngine);
+    return rooms == null ? List.of() : rooms;
+  }
+
+  static void warn() throws Exception {
+    buildSimple();
+    AutorouteEngine autorouteEngine = engine(1);
+    AutorouteControl control = control(1);
+    MazeSearchEngine maze = MazeSearchEngine.getInstance(setOf(2), setOf(3), autorouteEngine, control);
+    MazeSearchEngine.Result result = maze.findConnection();
+
+    // The honest walk first, so the forged ones run over the same live rooms and doors.
+    FoundConnectionLocator real =
+        FoundConnectionLocator.getInstance(
+            result,
+            control,
+            autorouteEngine.autorouteSearchTree,
+            AngleRestriction.NONE,
+            new TreeSet<>(),
+            null);
+    FoundConnectionLocator.BacktrackElement middle = real.backtrackArray[1];
+    System.out.println(
+        "middle door=" + middle.door.getClass().getSimpleName() + " section=" + middle.sectionNoOfDoor);
+
+    // :130-135 — the destination door is an ExpansionDoor, so `targetItem`/`targetLayer` stay at
+    // their defaults while `startItem`/`startLayer` are already set.
+    System.out.println("=== unexpectedDestinationDoor");
+    dumpWarn(
+        FoundConnectionLocator.getInstance(
+            forgeResult(middle.door, middle.sectionNoOfDoor),
+            control,
+            autorouteEngine.autorouteSearchTree,
+            AngleRestriction.NONE,
+            new TreeSet<>(),
+            null));
+
+    // :103-111 — a door section the search never reached, so `backtrack` yields one element and
+    // `startInfo.door` is an ExpansionDoor. Every field stays at its default.
+    ExpandableObject orphan = null;
+    int orphanSection = -1;
+    outer:
+    for (CompleteFreeSpaceExpansionRoom room : completeRooms(autorouteEngine)) {
+      for (ExpansionDoor door : room.getDoors()) {
+        for (int i = 0; i < door.mazeSearchElementCount(); i++) {
+          if (backtrackDoorOf(door, i) == null) {
+            orphan = door;
+            orphanSection = i;
+            break outer;
+          }
+        }
+      }
+    }
+    System.out.println(
+        "=== orphanDoor type="
+            + (orphan == null ? "null" : orphan.getClass().getSimpleName())
+            + " section="
+            + orphanSection);
+    if (orphan != null) {
+      dumpWarn(
+          FoundConnectionLocator.getInstance(
+              forgeResult(orphan, orphanSection),
+              control,
+              autorouteEngine.autorouteSearchTree,
+              AngleRestriction.NONE,
+              new TreeSet<>(),
+              null));
+    }
+  }
+
+  static void dumpWarn(FoundConnectionLocator locator) {
+    System.out.println(
+        "startItem="
+            + itemId(locator.startItem)
+            + " startLayer="
+            + locator.startLayer
+            + " targetItem="
+            + itemId(locator.targetItem)
+            + " targetLayer="
+            + locator.targetLayer
+            + " backtrack n="
+            + locator.backtrackArray.length
+            + " connectionItems="
+            + (locator.connectionItems == null
+                ? "null"
+                : "n=" + locator.connectionItems.size()));
   }
 
   static void dump(Located located) {

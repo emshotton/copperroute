@@ -20,8 +20,12 @@
 
 mod connection;
 pub mod locator;
-pub mod locator_45;
-pub mod locator_any_angle;
+// The two overrides export nothing public — `calculate_next_trace_corners` is `pub(crate)` and
+// every helper is private — so they are not part of the crate's surface. They are separate
+// modules because `scripts/audit-map/fr-router.map` points
+// `FoundConnectionLocator45Degree`/`FoundConnectionLocatorAnyAngle` at these two files.
+pub(crate) mod locator_45;
+pub(crate) mod locator_any_angle;
 
 pub use connection::Connection;
 pub use locator::{

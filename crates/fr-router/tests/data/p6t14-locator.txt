@@ -164,3 +164,9 @@ connectionItems n=3
   [1] layer=1 corners=2 (-764,815) (1180,0)
   [2] layer=0 corners=2 (1180,0) (2000,0)
 ripped n=0
+=== mode warn ===
+middle door=ExpansionDoor section=0
+=== unexpectedDestinationDoor
+startItem=2 startLayer=0 targetItem=null targetLayer=0 backtrack n=2 connectionItems=n=0
+=== orphanDoor type=ExpansionDoor section=0
+startItem=null startLayer=0 targetItem=null targetLayer=0 backtrack n=1 connectionItems=n=0

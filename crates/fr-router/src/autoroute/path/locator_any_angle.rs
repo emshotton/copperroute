@@ -3,7 +3,7 @@
 //! of the traces and vias, which realize a connection found by the maze search algorithm."
 //!
 //! It is the override `FoundConnectionLocator.getInstance` (`:201-205`) picks for every angle
-//! restriction other than 90° and 45°. Where [`super::locator_45`] walks door by door and bends
+//! restriction other than 90° and 45°. Where `super::locator_45` walks door by door and bends
 //! at each one, this one advances the door index as far as it can still *see* through, and lays
 //! a single straight line across the whole visible run.
 //!
@@ -11,14 +11,30 @@
 //! `super(...)` (`:29-37`) — so the port is free functions over
 //! `LocatorWalk`.
 //!
-//! # Nulls
+//! # Nulls, and where a null is a crash rather than a value
 //!
-//! `doorLeftCorner`/`doorRightCorner` become `null` mid-method (`:92`, `:96`) and every later use
-//! is guarded, so both are `Option<FloatPoint>` here and the four tangential helpers take an
+//! `doorLeftCorner`/`doorRightCorner` become `null` **mid-method** (`:92`, `:96`) and every later
+//! use is guarded, so both are `Option<FloatPoint>` here and the four tangential helpers take an
 //! `Option` centre — `FloatPoint.leftTangentialPoint(null, d)` answers `null`
-//! (FloatPoint.java:379-381), which is what the port's `?` does.
+//! (FloatPoint.java:408-410, `:429-431`), which is what the port's `?` does.
+//!
+//! Everywhere **else** a null in this file is a Java `NullPointerException`, not a value, and the
+//! port panics rather than degrading. `FloatPoint.sideOf` (FloatPoint.java:264-271) dereferences
+//! `p1` on its first line; `FloatLine.segmentDistance` (FloatLine.java:113-122) dereferences the
+//! line's own `b` through `perpendicularProjection`; and `calcDoorLeftCorner`/`calcDoorRightCorner`
+//! (`:43-61`) dereference `fromRoom` at `:45`/`:57` with no guard. Java's degraded value at each
+//! of those is *not* a different route but the whole connection failing —
+//! `AutorouteEngine.autorouteConnection:189-195` catches the throw into
+//! `AutorouteAttemptState.FAILED` — so a port that quietly answered `None` and carried on would
+//! route a wire Java does not. Plan-6 ruling 7's `catch_unwind` around
+//! [`FoundConnectionLocator::get_instance`] is what turns these panics back into that `FAILED`.
+//! None of them is a totalization site (the crate's `totalized` marker), because no degraded
+//! value here matches Java: the only faithful outcome is the throw.
+//!
+//! [`FoundConnectionLocator::get_instance`]:
+//!     crate::autoroute::path::FoundConnectionLocator::get_instance
 
-use fr_geometry::{FloatLine, FloatPoint, PolylineShapeOps, Side};
+use fr_geometry::{FloatLine, FloatPoint, PolylineShapeOps, Side, TileShape};
 
 use crate::autoroute::maze::TRACE_WIDTH_TOLERANCE;
 use crate::autoroute::path::locator::{BacktrackElement, LocatedCorner, LocatorWalk};
@@ -26,49 +42,96 @@ use crate::autoroute::path::locator::{BacktrackElement, LocatedCorner, LocatorWa
 /// `private static final double cTolerance = 1.0` (`:26`).
 const C_TOLERANCE: f64 = 1.0;
 
+/// The `fromRoom` prologue both corner helpers share (`:44-45` = `:56-57`), plus the door shape
+/// they read (`:46` = `:58`).
+///
+/// # Panics
+///
+/// Java has **no** guard on any of the three steps. `toInfo.nextRoom` may be null — the probe
+/// prints one (`p6t14-locator.txt`, the last backtrack element, because
+/// `TargetItemExpansionDoor.otherRoom` answers null unconditionally,
+/// TargetItemExpansionDoor.java:50-53) — and `ExpansionDoor.otherRoom(null)` (`:62-71`) matches
+/// neither room and answers null again, so `fromRoom.getShape()` at `:45` throws. The port panics
+/// at the same point, and ruling 7's `catch_unwind` turns that into the `FAILED` Java's
+/// `AutorouteEngine.autorouteConnection:189-195` produces.
+///
+/// The invariant that keeps it unreachable is an **index** one, not a shape one: this file's two
+/// callers index `backtrackArray` at `currentToDoorIndex` and at `i < newDoorInd`, and both are
+/// strictly below `currentTargetDoorIndex`, which the constructor pins at
+/// `backtrackArray.length - 1` (`:163`). The one element with a null `nextRoom` is exactly that
+/// last one — the start door — so it is never passed here. Nothing else asserts it, which is why
+/// this panics rather than answering a value Java never produces.
+fn door_pole_and_shape(
+    walk: &LocatorWalk<'_>,
+    to_info: &BacktrackElement,
+) -> (FloatPoint, TileShape) {
+    // :44-45 = :56-57.
+    let from_room = to_info
+        .next_room
+        .and_then(|room| walk.engine.expandable_other_room(to_info.door, room))
+        .expect(
+            "FoundConnectionLocatorAnyAngle.calcDoorLeftCorner: fromRoom is null — Java throws a \
+             NullPointerException at FoundConnectionLocatorAnyAngle.java:45",
+        );
+    let pole = walk
+        .engine
+        .rooms
+        .room_shape(from_room)
+        .expect(
+            "FoundConnectionLocatorAnyAngle.calcDoorLeftCorner: the common room has no shape — \
+             Java throws a NullPointerException at FoundConnectionLocatorAnyAngle.java:45",
+        )
+        .centre_of_gravity();
+    // :46 = :58.
+    let shape = walk.engine.expandable_shape(to_info.door).expect(
+        "FoundConnectionLocatorAnyAngle.calcDoorLeftCorner: the door has no shape — Java throws a \
+         NullPointerException at FoundConnectionLocatorAnyAngle.java:47",
+    );
+    (pole, shape)
+}
+
 /// Port of the private static `calcDoorLeftCorner(BacktrackElement)` (`:43-49`): "calculates the
 /// left most corner of the shape of toInfo.door seen from the center of the common room with the
 /// previous door."
 ///
-/// `None` is Java's `NullPointerException` at `:45` for a door whose other room is not in the
-/// arena, which cannot happen for a backtrack element the search has just produced.
-fn calc_door_left_corner(walk: &LocatorWalk<'_>, to_info: &BacktrackElement) -> Option<FloatPoint> {
-    // :44-45.
-    let from_room = match to_info.next_room {
-        Some(room) => walk.engine.expandable_other_room(to_info.door, room)?,
-        None => return None,
-    };
-    let pole = walk.engine.rooms.room_shape(from_room)?.centre_of_gravity();
-    // :46-48.
-    let current_to_door_shape = walk.engine.expandable_shape(to_info.door)?;
-    let left_most_corner_no = current_to_door_shape.index_of_left_most_corner(&pole);
-    current_to_door_shape.corner_approx(left_most_corner_no)
+/// # Panics
+///
+/// See [`door_pole_and_shape`]. `TileShape.cornerApprox` also answers `null` for a line-less
+/// simplex (Simplex.java:182-184), and Java lets that null out of the method — but every one of
+/// its four uses dereferences it immediately (`sideOf` at `:87` and `:165`, `segmentDistance` at
+/// `:293` and `:308`), so the throw is only deferred by a line and the port takes it here.
+fn calc_door_left_corner(walk: &LocatorWalk<'_>, to_info: &BacktrackElement) -> FloatPoint {
+    let (pole, shape) = door_pole_and_shape(walk, to_info);
+    // :47-48.
+    let left_most_corner_no = shape.index_of_left_most_corner(&pole);
+    shape.corner_approx(left_most_corner_no).expect(
+        "FoundConnectionLocatorAnyAngle.calcDoorLeftCorner: cornerApprox is null for a line-less \
+         simplex (Simplex.java:182-184), and every caller dereferences it at once",
+    )
 }
 
 /// Port of the private static `calcDoorRightCorner(BacktrackElement)` (`:55-61`).
-fn calc_door_right_corner(
-    walk: &LocatorWalk<'_>,
-    to_info: &BacktrackElement,
-) -> Option<FloatPoint> {
-    // :56-57.
-    let from_room = match to_info.next_room {
-        Some(room) => walk.engine.expandable_other_room(to_info.door, room)?,
-        None => return None,
-    };
-    let pole = walk.engine.rooms.room_shape(from_room)?.centre_of_gravity();
-    // :58-60.
-    let current_to_door_shape = walk.engine.expandable_shape(to_info.door)?;
-    let right_most_corner_no = current_to_door_shape.index_of_right_most_corner(&pole);
-    current_to_door_shape.corner_approx(right_most_corner_no)
+///
+/// # Panics
+///
+/// See [`calc_door_left_corner`].
+fn calc_door_right_corner(walk: &LocatorWalk<'_>, to_info: &BacktrackElement) -> FloatPoint {
+    let (pole, shape) = door_pole_and_shape(walk, to_info);
+    // :59-60.
+    let right_most_corner_no = shape.index_of_right_most_corner(&pole);
+    shape.corner_approx(right_most_corner_no).expect(
+        "FoundConnectionLocatorAnyAngle.calcDoorRightCorner: cornerApprox is null for a line-less \
+         simplex (Simplex.java:182-184), and every caller dereferences it at once",
+    )
 }
 
 /// `FloatPoint.leftTangentialPoint(FloatPoint, double)` with Java's null-argument arm
-/// (FloatPoint.java:379-381).
+/// (FloatPoint.java:408-410).
 fn left_tangential(from: FloatPoint, to: Option<FloatPoint>, distance: f64) -> Option<FloatPoint> {
     from.left_tangential_point(&to?, distance)
 }
 
-/// `FloatPoint.rightTangentialPoint(FloatPoint, double)`, likewise (FloatPoint.java:396-398).
+/// `FloatPoint.rightTangentialPoint(FloatPoint, double)`, likewise (FloatPoint.java:429-431).
 fn right_tangential(from: FloatPoint, to: Option<FloatPoint>, distance: f64) -> Option<FloatPoint> {
     from.right_tangential_point(&to?, distance)
 }
@@ -230,11 +293,16 @@ pub(crate) fn calculate_next_trace_corners(
     let to_index =
         usize::try_from(walk.current_to_door_index).expect("the door index is non-negative");
     let current_to_info = backtrack_array[to_index];
-    let mut door_left_corner = calc_door_left_corner(walk, &current_to_info);
-    let mut door_right_corner = calc_door_right_corner(walk, &current_to_info);
-    // :87-104.
-    if side_of_opt(walk.current_from_point, door_left_corner, door_right_corner)
-        != Some(Side::OnTheRight)
+    let first_left_corner = calc_door_left_corner(walk, &current_to_info);
+    let first_right_corner = calc_door_right_corner(walk, &current_to_info);
+    let mut door_left_corner = Some(first_left_corner);
+    let mut door_right_corner = Some(first_right_corner);
+    // :87-104. Both corners are still the fresh, non-null ones `:85-86` produced, so Java's
+    // `sideOf` here cannot see a null; the two `Option`s exist for `:92`/`:96` below.
+    if walk
+        .current_from_point
+        .side_of(&first_left_corner, &first_right_corner)
+        != Side::OnTheRight
     {
         // "the door is already crossed at this.fromPoint"
         // :89-93: "also the left corner of the door is passed. That may not be the case if the
@@ -338,11 +406,15 @@ pub(crate) fn calculate_next_trace_corners(
         // :162-164.
         let next_index = usize::try_from(current_door_ind).expect("the door index is non-negative");
         let next_to_info = backtrack_array[next_index];
-        let mut next_left_corner = calc_door_left_corner(walk, &next_to_info);
-        let mut next_right_corner = calc_door_right_corner(walk, &next_to_info);
-        // :165-187.
-        if side_of_opt(walk.current_from_point, next_left_corner, next_right_corner)
-            != Some(Side::OnTheRight)
+        let first_next_left = calc_door_left_corner(walk, &next_to_info);
+        let first_next_right = calc_door_right_corner(walk, &next_to_info);
+        let mut next_left_corner = Some(first_next_left);
+        let mut next_right_corner = Some(first_next_right);
+        // :165-187. Fresh and non-null again, for the same reason as `:87`.
+        if walk
+            .current_from_point
+            .side_of(&first_next_left, &first_next_right)
+            != Side::OnTheRight
         {
             // "the door may be already crossed at this.fromPoint"
             // :167-172.
@@ -536,47 +608,43 @@ pub(crate) fn calculate_next_trace_corners(
         for i in check_from_door_index..new_door_ind {
             let index = usize::try_from(i).expect("the door index is non-negative");
             let element = backtrack_array[index];
-            // :292-306.
+            // :292-306. Java dereferences the corner on the next line, with no guard.
             let current_left_corner = calc_door_left_corner(walk, &element);
-            if let Some(left) = current_left_corner {
-                let current_distance = check_line.segment_distance(&left);
-                if current_distance.abs() < trace_halfwidth_middle
-                    && let Some(current_corrected_result) = right_left_tangential_point(
-                        check_line.a,
-                        check_line.b,
-                        current_left_corner,
-                        trace_halfwidth_max,
-                    )
-                    && (corrected_result.is_none()
-                        || corrected_result.is_some_and(|previous| {
-                            current_corrected_result.side_of(&walk.current_from_point, &previous)
-                                == Side::OnTheRight
-                        }))
-                {
-                    corrected_door_ind = i;
-                    corrected_result = Some(current_corrected_result);
-                }
+            let current_distance = check_line.segment_distance(&current_left_corner);
+            if current_distance.abs() < trace_halfwidth_middle
+                && let Some(current_corrected_result) = right_left_tangential_point(
+                    check_line.a,
+                    check_line.b,
+                    Some(current_left_corner),
+                    trace_halfwidth_max,
+                )
+                && (corrected_result.is_none()
+                    || corrected_result.is_some_and(|previous| {
+                        current_corrected_result.side_of(&walk.current_from_point, &previous)
+                            == Side::OnTheRight
+                    }))
+            {
+                corrected_door_ind = i;
+                corrected_result = Some(current_corrected_result);
             }
             // :307-321.
             let current_right_corner = calc_door_right_corner(walk, &element);
-            if let Some(right) = current_right_corner {
-                let current_distance = check_line.segment_distance(&right);
-                if current_distance.abs() < trace_halfwidth_middle
-                    && let Some(current_corrected_result) = left_right_tangential_point(
-                        check_line.a,
-                        check_line.b,
-                        current_right_corner,
-                        trace_halfwidth_max,
-                    )
-                    && (corrected_result.is_none()
-                        || corrected_result.is_some_and(|previous| {
-                            current_corrected_result.side_of(&walk.current_from_point, &previous)
-                                == Side::OnTheLeft
-                        }))
-                {
-                    corrected_door_ind = i;
-                    corrected_result = Some(current_corrected_result);
-                }
+            let current_distance = check_line.segment_distance(&current_right_corner);
+            if current_distance.abs() < trace_halfwidth_middle
+                && let Some(current_corrected_result) = left_right_tangential_point(
+                    check_line.a,
+                    check_line.b,
+                    Some(current_right_corner),
+                    trace_halfwidth_max,
+                )
+                && (corrected_result.is_none()
+                    || corrected_result.is_some_and(|previous| {
+                        current_corrected_result.side_of(&walk.current_from_point, &previous)
+                            == Side::OnTheLeft
+                    }))
+            {
+                corrected_door_ind = i;
+                corrected_result = Some(current_corrected_result);
             }
         }
     }
@@ -594,11 +662,4 @@ pub(crate) fn calculate_next_trace_corners(
         result.push(corner);
     }
     result
-}
-
-/// `FloatPoint.sideOf(FloatPoint, FloatPoint)` where either argument may be Java's `null`
-/// (`:87`, `:165`). Java would throw; both call sites reach this only with two live corners,
-/// because they run before the two nulling assignments of `:92`/`:96`.
-fn side_of_opt(point: FloatPoint, p1: Option<FloatPoint>, p2: Option<FloatPoint>) -> Option<Side> {
-    Some(point.side_of(&p1?, &p2?))
 }
