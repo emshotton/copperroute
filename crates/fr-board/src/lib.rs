@@ -27,8 +27,8 @@ pub use datastructures::{
 };
 pub use error::BoardError;
 pub use ids::{
-    ConnectionId, ItemId, ItemIdGenerator, NetClassId, ObstacleRoomId, PadstackId, RoomId, TreeId,
-    TreeObject, ViaInfoId, ViaRuleId,
+    ConnectionId, DrillId, ItemId, ItemIdGenerator, NetClassId, ObstacleRoomId, PadstackId, RoomId,
+    TreeId, TreeObject, ViaInfoId, ViaRuleId,
 };
 pub use items::{
     AutorouteInfo, ClearanceViolation, ComponentObstacleArea, ComponentOutline, ConductionArea,

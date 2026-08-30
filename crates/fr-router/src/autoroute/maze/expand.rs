@@ -24,13 +24,15 @@
 //! * `roomRipped` is set by a **positive `addCosts` with no adjustment**, or inherited from an
 //!   already-checked parent that was itself ripped; `ripupCost` records only the former.
 //!
-//! # What is still Task 13's
+//! # What Task 13 filled in
 //!
-//! `MazeRipupResolver.checkRipup` / `.checkLeavingRippedItem` (`:506`, `:519`) and
-//! `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`, `:620`) are markers here,
-//! exactly as `search.rs`' three expanders were markers in Task 11. Their branches are guarded by
-//! `ctrl.ripupAllowed`, `currentDoorIsSmall` and `ctrl.viasAllowed`, so a control with vias and
-//! ripup switched off runs the whole of this file — which is what
+//! Four call sites here were `unimplemented!` markers until Task 13:
+//! `MazeRipupResolver.checkLeavingRippedItem` / `.checkRipup` (`:506`, `:519`) and
+//! `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`, `:620`, the second through
+//! `Via.getAutorouteDrillInfo`). They now dispatch to
+//! [`MazeRipupResolver`] and [`MazeExpansionEngine`]. Their branches are
+//! guarded by `ctrl.ripupAllowed`, `currentDoorIsSmall` and `ctrl.viasAllowed`, so a control with
+//! vias and ripup switched off still runs the whole of this file — which is what
 //! `crates/fr-router/tests/maze_expand.rs` does.
 //!
 //! # Visibility
@@ -47,10 +49,12 @@ use fr_geometry::{FloatLine, FloatPoint, Point, Polyline, java_min};
 
 use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, RoomRef};
+use crate::autoroute::maze::expansion_engine::via_autoroute_drill_info;
 use crate::autoroute::maze::search::segment_projection;
 use crate::autoroute::maze::trace_shover::{DoorSection, MazeTraceShover};
 use crate::autoroute::maze::{
-    ALREADY_RIPPED_COSTS, MazeAdjustment, MazeListElement, MazeSearchEngine, TRACE_WIDTH_TOLERANCE,
+    ALREADY_RIPPED_COSTS, MazeAdjustment, MazeExpansionEngine, MazeListElement, MazeRipupResolver,
+    MazeSearchEngine, TRACE_WIDTH_TOLERANCE,
 };
 use crate::board_ext::RoutingBoardExt;
 
@@ -229,7 +233,8 @@ impl MazeSearchEngine<'_> {
                 if next_room_is_thick {
                     // :504-506. "check to enter the thick room from a ripped item through a small
                     // door (after ripup)".
-                    enter_through_small_door = self.check_leaving_ripped_item(board, list_element);
+                    enter_through_small_door =
+                        MazeRipupResolver::check_leaving_ripped_item(self, board, list_element);
                 }
                 if !enter_through_small_door {
                     return something_expanded;
@@ -246,9 +251,13 @@ impl MazeSearchEngine<'_> {
                         .obstacle_room(obstacle_room)
                         .map(super::super::expansion::ObstacleExpansionRoom::get_item);
                     ripup_costs = match obstacle_item {
-                        Some(item) => {
-                            self.check_ripup(board, list_element, item, current_door_is_small)
-                        }
+                        Some(item) => MazeRipupResolver::check_ripup(
+                            self,
+                            board,
+                            list_element,
+                            item,
+                            current_door_is_small,
+                        ),
                         None => -1,
                     };
                     room_rippable = ripup_costs >= 0;
@@ -346,7 +355,12 @@ impl MazeSearchEngine<'_> {
                     .drill_pages()
                     .overlapping_pages(&next_room_shape);
                 for to_drill_page in overlapping_drill_pages {
-                    self.expand_to_drill_page(board, to_drill_page, list_element);
+                    MazeExpansionEngine::expand_to_drill_page(
+                        self,
+                        board,
+                        to_drill_page,
+                        list_element,
+                    );
                     something_expanded = true;
                 }
             } else if let RoomRef::Obstacle(obstacle_room) = next_room {
@@ -360,7 +374,20 @@ impl MazeSearchEngine<'_> {
                     .and_then(|item| board.items.get(&item))
                     .is_some_and(|item| matches!(item, Item::Via(_)));
                 if let (Some(current_via), true) = (obstacle_item, is_via) {
-                    self.expand_to_drill_of_via(board, current_via, list_element, ripup_costs);
+                    // :618-619. `Via.getAutorouteDrillInfo(autorouteSearchTree)` — a `None` is
+                    // the port's stale-item read, where Java holds the live `Via`.
+                    if let Some(via_drill_info) =
+                        via_autoroute_drill_info(self.engine, board, current_via)
+                    {
+                        // :620.
+                        MazeExpansionEngine::expand_to_drill(
+                            self,
+                            board,
+                            via_drill_info,
+                            list_element,
+                            ripup_costs,
+                        );
+                    }
                 }
             }
         }
@@ -1011,69 +1038,5 @@ impl MazeSearchEngine<'_> {
                     .centre_of_gravity(),
             ),
         }
-    }
-
-    // =============================================================================================
-    // The four Task 13 markers this file reaches
-    // =============================================================================================
-
-    // added in Task 13: `MazeRipupResolver.checkLeavingRippedItem`
-    #[allow(unused_variables)]
-    fn check_leaving_ripped_item(
-        &mut self,
-        board: &mut Board,
-        list_element: &MazeListElement,
-    ) -> bool {
-        unimplemented!(
-            "added in Task 13: MazeRipupResolver.checkLeavingRippedItem \
-             (MazeRipupResolver.java), reached from MazeSearchEngine.java:506"
-        )
-    }
-
-    // added in Task 13: `MazeRipupResolver.checkRipup`
-    #[allow(unused_variables)]
-    fn check_ripup(
-        &mut self,
-        board: &mut Board,
-        list_element: &MazeListElement,
-        obstacle_item: fr_board::ItemId,
-        current_door_is_small: bool,
-    ) -> i32 {
-        unimplemented!(
-            "added in Task 13: MazeRipupResolver.checkRipup (MazeRipupResolver.java), reached \
-             from MazeSearchEngine.java:519"
-        )
-    }
-
-    // added in Task 13: `MazeExpansionEngine.expandToDrillPage`
-    #[allow(unused_variables)]
-    fn expand_to_drill_page(
-        &mut self,
-        board: &mut Board,
-        to_drill_page: crate::arena::PageId,
-        list_element: &MazeListElement,
-    ) {
-        unimplemented!(
-            "added in Task 13: MazeExpansionEngine.expandToDrillPage \
-             (MazeExpansionEngine.java), reached from MazeSearchEngine.java:611"
-        )
-    }
-
-    // added in Task 13: `MazeExpansionEngine.expandToDrill`
-    //
-    // The call at `:618-620` first needs `Via.getAutorouteDrillInfo` (Via.java:203-217), which
-    // `crates/fr-board/src/items/drill.rs:673` already carries as an `added in Plan 6` marker.
-    #[allow(unused_variables)]
-    fn expand_to_drill_of_via(
-        &mut self,
-        board: &mut Board,
-        current_via: fr_board::ItemId,
-        list_element: &MazeListElement,
-        ripup_costs: i32,
-    ) {
-        unimplemented!(
-            "added in Task 13: Via.getAutorouteDrillInfo + MazeExpansionEngine.expandToDrill \
-             (MazeExpansionEngine.java), reached from MazeSearchEngine.java:618-620"
-        )
     }
 }

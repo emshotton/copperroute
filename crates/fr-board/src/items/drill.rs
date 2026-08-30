@@ -659,8 +659,6 @@ impl Via {
     /// Port of `Via.clearDerivedData` (Via.java:219-224): the `DrillItem` body plus this via's
     /// cached shapes. The `Item`-level half (the search-tree caches) is
     /// [`ItemHeader::clear_derived_data`], which [`super::Item::clear_derived_data`] calls.
-    // added in Plan 6: `autorouteDrillInfo = null` (Via.java:223) — see
-    // [`Via::clear_autoroute_drill_info`].
     pub fn clear_derived_data(&mut self) {
         self.hdr.clear_derived_data();
         self.drill.clear_derived_data();
@@ -670,10 +668,18 @@ impl Via {
 
     /// The `autorouteDrillInfo = null` half of `Via.clearDerivedData` (Via.java:223) and
     /// `Via.clearAutorouteInfo` (Via.java:226-230).
-    // added in Plan 6: `Via.getAutorouteDrillInfo` (Via.java:203-217) and the
-    // `autorouteDrillInfo` field (Via.java:52). Both are `ExpansionDrill`, an
-    // `app.freerouting.autoroute.drill` type that Plan 6 introduces; until then there is no
-    // cache to drop and this method is empty.
+    ///
+    /// It has no body of its own: the cache is
+    /// [`AutorouteInfo::autoroute_drill_info`](crate::items::AutorouteInfo::autoroute_drill_info),
+    /// which the `super` call in each of those two methods has already dropped whole. See
+    /// [`crate::ids::DrillId`] for why that placement is exactly Java's.
+    //
+    // renamed: `Via.getAutorouteDrillInfo` -> `fr_router`'s
+    // `autoroute::maze::expansion_engine::via_autoroute_drill_info`. It builds an
+    // `autoroute.drill.ExpansionDrill` and fills its room array from
+    // `ItemAutorouteInfo.getExpansionRoom`, neither of which `fr-board` can name (plan-6 ruling
+    // 15, the same split `autoroute/item_info.rs` already makes for `getExpansionRoom`); the
+    // `autorouteDrillInfo` field itself is `AutorouteInfo::autoroute_drill_info` here.
     pub fn clear_autoroute_drill_info(&self) {}
 
     /// Port of `Via.clearAutorouteInfo` (Via.java:226-230).

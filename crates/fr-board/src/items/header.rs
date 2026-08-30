@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use fr_geometry::TileShape;
 
 use crate::datastructures::LeafId;
-use crate::ids::{ConnectionId, ItemId, ObstacleRoomId, TreeId};
+use crate::ids::{ConnectionId, DrillId, ItemId, ObstacleRoomId, TreeId};
 use crate::rules::{BoardRules, Nets};
 use crate::structure::FixedState;
 
@@ -48,6 +48,12 @@ pub struct AutorouteInfo {
     /// `null` array — `getExpansionRoom` sizes it on first use and resizes it whenever the
     /// item's tree-shape count changes (ItemAutorouteInfo.java:57-66).
     pub expansion_rooms: Vec<Option<ObstacleRoomId>>,
+    /// Java `Via.autorouteDrillInfo` (Via.java:52), **not** an `ItemAutorouteInfo` field: the
+    /// `ExpansionDrill` `Via.getAutorouteDrillInfo` (Via.java:203-217) memoises. It is stored here
+    /// because the two sites that null it are exactly the two that null `Item.autorouteInfo` —
+    /// see [`crate::ids::DrillId`] — and because `fr-board` cannot name `fr-router`'s
+    /// `ExpansionDrill`. Non-`Via` items never set it.
+    pub autoroute_drill_info: Option<DrillId>,
 }
 
 /// One item's per-search-tree data: the leaves it owns in that tree, and the tile shapes that

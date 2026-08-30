@@ -17,7 +17,7 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: Task 12 of 18
+## State: Task 13 of 18
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -31,8 +31,11 @@ consults before it commits to a trace or a via and the mutating family that then
 performs the shove and inserts the via. Task 11 adds the search's own frame:
 `MazeSearchEngine`'s construction, `init` and pop loop; Task 12 adds its body —
 the room-door expansion, the A\* cost model and the check-only
-`MazeTraceShover` — leaving only the drill and ripup expanders (Task 13) as
-stubs:
+`MazeTraceShover`; and Task 13 adds the last two classes of `autoroute/maze` —
+`MazeExpansionEngine` (the drill/layer expansion) and `MazeRipupResolver` (the
+ripup decision and its cost model) — plus the first member of `autoroute/path`,
+`Connection`. **No stub is left under `occupyNextElement`, and
+`findConnection` runs end to end.**
 
 | Item | Where | Java |
 | --- | --- | --- |
@@ -64,6 +67,9 @@ stubs:
 | `MazeSearchEngine`'s frame, `MazeResult`, `ShoveResult` | `src/autoroute/maze/search.rs` | `MazeSearchEngine.java:41-152,287-384,763-789,969-1103,1217-1256` |
 | `MazeSearchEngine`'s room-door expansion and cost model | `src/autoroute/maze/expand.rs` | `MazeSearchEngine.java:390-966,1105-1215` |
 | `MazeTraceShover`, `DoorSection` | `src/autoroute/maze/trace_shover.rs` | `MazeTraceShover.java:24-357` |
+| `MazeExpansionEngine`, `Via.getAutorouteDrillInfo` | `src/autoroute/maze/expansion_engine.rs` | `MazeExpansionEngine.java:23-415`, `Via.java:203-217` |
+| `MazeRipupResolver` | `src/autoroute/maze/ripup_resolver.rs` | `MazeRipupResolver.java:25-268` |
+| `Connection` | `src/autoroute/path/connection.rs` | `Connection.java:11-154` |
 | `AutorouteSearchTreeExt` | `src/autoroute/tree_ext.rs` | `ShapeSearchTree.java:580-693,701-811,1095-1118` + `…45Degree.java:38-86,95-281,288-298,305-486` + `…90Degree.java:38-191,198-322` |
 | `RoutingBoardExt` | `src/board_ext/routing_board_ext.rs` | `RoutingBoard.java:96-118, 405-448, 882-905, 1240-1249` |
 | `TraceShover` (the two `check`s + `springOver`) | `src/board_ext/trace_shover.rs` | `TraceShover.java:57-411, 592-603, 611-818` |
@@ -338,9 +344,14 @@ took `autoroute/maze` from 4 MISSING to **1**: `MazeSearchEngine.getInstance`,
 `autoroute/maze` is at **0 MISSING**: `checkShoveTraceLine` is a real `fn` in
 `src/autoroute/maze/trace_shover.rs`, and the seven private
 `MazeSearchEngine` methods it landed alongside it live in
-`src/autoroute/maze/expand.rs`, which the class map already pointed at. All five
-`autoroute` invocations stay at zero UNMAPPED, and only `autoroute/path` (7,
-Tasks 14-15) is untouched. Task 9 opened the two `board/*` invocations, each
+`src/autoroute/maze/expand.rs`, which the class map already pointed at. Task 13
+adds `MazeExpansionEngine` and `MazeRipupResolver`, whose mapped files the class
+map already named, so `autoroute/maze` **stays at 0 MISSING with the two new
+classes in scope**, and it takes `autoroute/path` from 7 MISSING to **4** —
+`Connection`'s `get`, `getDetour` and `traceLength` are real `fn`s in
+`src/autoroute/path/connection.rs`; the four that remain are
+`FoundConnectionLocator`'s three and `FoundConnectionInserter.getInstance`
+(Tasks 15-16). All five `autoroute` invocations stay at zero UNMAPPED. Task 9 opened the two `board/*` invocations, each
 restricted to the file it ports, and both exit 0 with zero MISSING and zero
 UNMAPPED:
 
@@ -803,14 +814,15 @@ same five rooms with the same ids, because both pin centres fall in the same
 `completeShape` partition — which is why the test reads the incomplete list
 instead.
 
-**The three expanders panic.** `expandToDrillsOfPage` and `expandToOtherLayers`
-(Task 13) and `expandToRoomDoors` (Task 12) are `unimplemented!` stubs carrying
-`added in Task 12:` / `added in Task 13:` markers with the Java method name on
-the same line. A stub that answered `true` — "nothing expanded", the harmless
-value — would make the pop loop look healthy while routing nothing, and the
-first thing that would notice is Task 17's fixture parity. Every Task 11 test is
-built so the pop loop terminates on a destination door or an occupied section
-without reaching one.
+**The three expanders panicked until Task 13.** `expandToDrillsOfPage` and
+`expandToOtherLayers` (Task 13) and `expandToRoomDoors` (Task 12) were
+`unimplemented!` stubs carrying `added in Task 12:` / `added in Task 13:`
+markers with the Java method name on the same line. A stub that answered `true`
+— "nothing expanded", the harmless value — would have made the pop loop look
+healthy while routing nothing, and the first thing that would have noticed is
+Task 17's fixture parity. Every Task 11 test is still built so the pop loop
+terminates on a destination door or an occupied section; the three are now real
+`fn`s (the two drill ones on `MazeExpansionEngine`, Java's own split).
 
 ### The fixture, and a JVM finding that is not a quirk
 
@@ -881,10 +893,80 @@ the branches that matter — the layer-active gate, the small-door refusal, the
 bend threshold, the two stale-index skips — are not separable through
 `occupyNextElement` alone.
 
-**Four Task 13 markers remain inside `expandToRoomDoors`:**
+**The four Task 13 markers inside `expandToRoomDoors` are closed.**
 `MazeRipupResolver.checkRipup` and `.checkLeavingRippedItem` (`:506`, `:519`)
-and `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`,
-`:620`, the latter also needing `Via.getAutorouteDrillInfo`). Their branches are
-guarded by `ctrl.ripupAllowed`, `currentDoorIsSmall` and `ctrl.viasAllowed`, so
-a control with vias and ripup off runs the whole file — which is what
-`tests/maze_expand.rs` and `P6T12Probe` do.
+and `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`, `:620`,
+the latter through `Via.getAutorouteDrillInfo`) now dispatch to the two Task 13
+classes. Their branches are still guarded by `ctrl.ripupAllowed`,
+`currentDoorIsSmall` and `ctrl.viasAllowed`, so a control with vias and ripup off
+runs the whole file — which is what `tests/maze_expand.rs` and `P6T12Probe` do.
+
+## The drill/layer expansion, the ripup cost model and `Connection` (Task 13)
+
+`src/autoroute/maze/expansion_engine.rs` is `MazeExpansionEngine`,
+`src/autoroute/maze/ripup_resolver.rs` is `MazeRipupResolver`, and
+`src/autoroute/path/connection.rs` is `Connection`. Both `maze` classes are
+**unit structs** whose associated functions take the `MazeSearchEngine` as their
+leading parameter, because Java's single `private final MazeSearchEngine search`
+field would otherwise have to be a second `&mut` borrow of an engine the search
+already holds. The ground truth is
+`scripts/differential/java/probes/P6T13Probe.java`, thirteen modes, transcript
+`tests/data/p6t13-drills-ripup.txt`.
+
+**Java wins over plan-6 ruling 8: `AutorouteControl.settings` has three readers,
+not two.** `MazeRipupResolver.java:99` reads
+`ctrl.settings.getStartRipupCosts()` to decide whether the pass is still early
+enough to protect fanout vias. It is copied into
+`AutorouteControl::start_ripup_costs` exactly as the two fanout escape lengths
+are.
+
+**`Via.getAutorouteDrillInfo` moved to `fr-router` and its field to
+`AutorouteInfo`.** Java hangs `autorouteDrillInfo` off `Via` itself; the method
+builds an `autoroute.drill.ExpansionDrill` and fills it from
+`ItemAutorouteInfo.getExpansionRoom`, neither of which `fr-board` can name
+(ruling 15). The **field** is `fr_board::AutorouteInfo::autoroute_drill_info`,
+which is exactly equivalent: the only two writers of
+`Via.autorouteDrillInfo = null` (`Via.clearDerivedData` `:223` and
+`Via.clearAutorouteInfo` `:229`) are also the only two writers of
+`Item.autorouteInfo = null` (`Item.java:1053`, `:1064`), and each calls its
+`super` first. `fr-board`'s `Via::clear_autoroute_drill_info` carries the
+`renamed:` marker; `DrillId` moved to `fr_board::ids` beside `ObstacleRoomId`
+and `ConnectionId` and is re-exported from `crate::arena`.
+
+**The memo is load-bearing, not an optimisation.** The via's `ExpansionDrill`
+carries a `MazeSearchElement` per layer and `occupyNextElement` writes
+`isOccupied` through it; a second call that built a fresh drill would let the
+search expand the same via for ever.
+
+**The ripup price, transcribed.** `costFactor` is the obstacle trace's half
+width, or for a via the largest half width among its trace contacts times
+`0.5 · (contactCount − 1)` — so a via with **one** contact is free and costs the
+`max(…, 1)` floor whatever `ctrl.ripupCosts` is (JVM-pinned at 1 for
+`ripupCosts` 1000, 100 000 and 2 000 000 000). `ripupCost = ripupCosts ·
+costFactor / detour · fanoutViaCostFactor`, clamped into
+`[1, Integer.MAX_VALUE / 100]`; `detour` comes from `Connection.getDetour()`
+only when the obstacle is not already fanout-protected and the pass is not a
+fanout pass.
+
+**Plan 6's only randomness is pinned.** `checkRipup:158-163` draws
+`search.randomGenerator.nextDouble()` when `ripupPassNo >= 4 && ripupPassNo % 3
+!= 0` and scales the detour by `0.5 + r²`. `tests/ripup.rs`'
+`pass_four_randomises_and_pass_six_does_not` runs passes 3, 4, 5, 6 and 7 **in
+order on one engine** (29431 / 29303 / 35440 / 29431 / 21087), because the three
+draws are consecutive values of the one generator seeded with `ctrl.ripupCosts`;
+`the_random_draw_matches_the_jvm` pins the raw `JavaRandom` sequence for seeds
+1000, 5000 and 17 against `jshell`.
+
+**`Connection`'s `itemList` is ascending here and descending in Java.** Java's
+is a `TreeSet<Item>` (`Item.compareTo` = `other.id - this.id`); a
+`BTreeSet<ItemId>` is ascending. Nothing reads the order — the two consumers are
+`size()` and the `traceLength()` sum, and the memo loop writes the same value
+into every member.
+
+**`findConnection` runs end to end.** `tests/maze_drills.rs`'
+`find_connection_reaches_the_destination_door_in_seven_pops` pins the whole pop
+sequence on a 2000-unit two-pin board: the seeded target door, a `DrillPage`,
+two `ExpansionDrill`s, an `ExpansionDoor`, a second target door and then the
+destination door (id 97), each with its expansion and sorting value and the
+queue size after the pop; `find_connection_answers_the_result_the_pop_loop_leaves_behind`
+pins the `MazeResult` and the three elements left in the queue.

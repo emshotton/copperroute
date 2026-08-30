@@ -10,8 +10,10 @@
 //! that owns every room and door of one routing run. Task 7 adds [`drill`], the layer-change
 //! half: the page grid, the per-page drill memo and the expansion drills themselves. Task 8 adds
 //! the four leaf types the search is written against, and Task 11 the search's own frame
-//! ([`maze::search`]) — construction, `init` and the pop loop. The `path/` submodule and the rest
-//! of `maze/` arrive in Tasks 12-17; the roster at the foot of `lib.rs` and
+//! ([`maze::search`]) — construction, `init` and the pop loop. Task 12 adds the room-door expansion
+//! and the cost model, and Task 13 the drill/layer expanders, the ripup cost model and the first
+//! member of [`path`] ([`Connection`], the memoised run of routable items the ripup price divides
+//! by). The rest of `path/` arrives in Tasks 15-16; the roster at the foot of `lib.rs` and
 //! `scripts/audit-map/fr-router.map` name each one and its task.
 
 pub mod attempt;
@@ -19,6 +21,7 @@ pub mod drill;
 pub mod expansion;
 pub mod item_info;
 pub mod maze;
+pub mod path;
 pub mod tree_ext;
 
 pub use attempt::{AutorouteAttemptResult, AutorouteAttemptState};
@@ -29,7 +32,9 @@ pub use expansion::{
     TargetItemExpansionDoor,
 };
 pub use maze::{
-    AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeListElement,
-    MazeQueue, MazeResult, MazeSearchElement, MazeSearchEngine, ShoveResult, ViaMask,
+    AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeExpansionEngine,
+    MazeListElement, MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
+    ShoveResult, ViaMask,
 };
+pub use path::Connection;
 pub use tree_ext::AutorouteSearchTreeExt;

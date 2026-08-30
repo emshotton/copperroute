@@ -46,6 +46,7 @@ use fr_board::ids::TreeObject;
 use fr_board::{Board, ItemId, RoomId, ShapeSearchTree, StopCheck, TimeLimit, TreeId};
 use fr_geometry::{Simplex, TileShape};
 
+use crate::Arena;
 use crate::arena::{DoorId, DrillId, IncompleteRoomId, PageId};
 use crate::autoroute::drill::DrillPageArray;
 use crate::autoroute::expansion::sorted_neighbours::SortedRoomNeighbours;
@@ -54,6 +55,7 @@ use crate::autoroute::expansion::{
 };
 use crate::autoroute::item_info;
 use crate::autoroute::maze::MazeSearchElement;
+use crate::autoroute::path::Connection;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
@@ -119,6 +121,19 @@ pub struct AutorouteEngine {
 
     /// `timeLimit` (`:68`): "to stop the expansion algorithm after a time limit is exceeded."
     time_limit: Option<TimeLimit>,
+
+    /// The heap `autoroute.path.Connection` objects live on (plan-6 ruling 15).
+    ///
+    /// **Not a Java field.** Java's `Connection.get` allocates on the heap and every member item
+    /// points at the object through `ItemAutorouteInfo.precalculatedConnection`; the port's
+    /// `AutorouteInfo` holds a [`fr_board::ConnectionId`] into this arena instead. It lives on the
+    /// engine because that is the scope the memo has: `resetAllDoors` (`:654-668`) clears every
+    /// item's `precalculatedConnection` and is the engine's own method.
+    ///
+    /// Nothing removes from it. A cleared memo leaves its slot behind exactly as Java leaves the
+    /// object for the collector, and [`Arena`] never reuses an index, so a `ConnectionId` a
+    /// cleared item still happened to hold could not name a *different* connection.
+    pub connections: Arena<Connection>,
 }
 
 impl AutorouteEngine {
@@ -165,6 +180,7 @@ impl AutorouteEngine {
         AutorouteEngine {
             rooms: ExpansionRoomStore::new(),
             complete_expansion_rooms: Vec::new(),
+            connections: Arena::new(),
             tree,
             maintain_database,
             max_drill_page_width,

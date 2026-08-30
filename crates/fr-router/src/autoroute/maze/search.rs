@@ -9,10 +9,12 @@
 //! `reduceTraceShapesAtTiePins` (`:154-167`), `segmentProjection` (`:173-204`),
 //! `toImpactedPoints` (`:287-292`) and the two nested result types (`:1218-1227`, `:1233-1257`).
 //! Task 12 landed the third of the expanders `occupyNextElement` dispatches to,
-//! `expandToRoomDoors`, in `expand.rs`; the two drill expanders are still Task 13's, and each is a
-//! stub carrying the marker that names it and its owning task. Both **panic** rather than
-//! answering a plausible-looking value, because a silent "nothing expanded" would make the pop
-//! loop look healthy while routing nothing.
+//! `expandToRoomDoors`, in `expand.rs`. The two drill expanders are Task 13's
+//! `MazeExpansionEngine` (`expansion_engine.rs`) — Java's own split, where they are methods of a
+//! separate class the search engine constructs at `:82` — so `occupyNextElement` dispatches to
+//! `MazeExpansionEngine::expand_to_drills_of_page` and `::expand_to_other_layers` rather than to
+//! members of this struct. With those two in place there is no stub left anywhere under
+//! `occupyNextElement`, and [`MazeSearchEngine::find_connection`] runs end to end.
 //!
 //! # Why `engine` is a field and `board` is a parameter
 //!
@@ -44,8 +46,8 @@ use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, RoomRef};
 use crate::autoroute::item_info;
 use crate::autoroute::maze::{
-    AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeListElement,
-    MazeQueue,
+    AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeExpansionEngine,
+    MazeListElement, MazeQueue,
 };
 
 /// `MazeSearchEngine.ALREADY_RIPPED_COSTS` (`:44`): `static final int ALREADY_RIPPED_COSTS = 1`.
@@ -61,9 +63,11 @@ pub const ALREADY_RIPPED_COSTS: i32 = 1;
 ///   are HEAD's and both are carried.
 /// * `MazeFanoutDiagnostics` (`:65`) is on the plan's not-ported roster (a diagnostics sink), so
 ///   there is no field for it.
-/// * `expansionEngine` (`:66`) and `ripupResolver` (`:67`) are Task 13's; the port reaches their
-///   two methods as stubs on this struct rather than declaring two empty types, and the markers
-///   at the foot of the file name the classes.
+/// * `expansionEngine` (`:66`) and `ripupResolver` (`:67`) are Task 13's
+///   [`MazeExpansionEngine`] and
+///   [`crate::autoroute::maze::MazeRipupResolver`]. Both are unit structs
+///   whose functions take this engine as their leading parameter, so there is no field to hold:
+///   Java's two are `final` and constructed once from `this` (`:82-83`).
 #[derive(Debug)]
 pub struct MazeSearchEngine<'a> {
     /// `public final AutorouteEngine autorouteEngine` (`:47`) — see the module docs for why it is
@@ -89,8 +93,10 @@ pub struct MazeSearchEngine<'a> {
     pub search_tree: TreeId,
 
     /// `final Random randomGenerator` (`:63`), seeded at `:79-80` with `ctrl.ripupCosts`
-    /// "to keep v1.9 deterministic randomization across passes". Its only draw is
-    /// `MazeRipupResolver.java:158-163` (Task 13), so nothing in Task 11 advances it.
+    /// "to keep v1.9 deterministic randomization across passes". Its only draw anywhere in the
+    /// plan is `MazeRipupResolver.java:158-163`, i.e.
+    /// [`MazeRipupResolver::check_ripup`](crate::autoroute::maze::MazeRipupResolver::check_ripup)
+    /// on a pass that randomises.
     pub random_generator: JavaRandom,
 
     /// `private ExpandableObject destinationDoor` (`:70`): "the destination door found by the
@@ -108,8 +114,8 @@ impl<'a> MazeSearchEngine<'a> {
     /// (`:75-133`).
     ///
     /// `new MazeFanoutDiagnostics(ctrl)` (`:78`) is dropped (not-ported roster), and so are the
-    /// `MazeExpansionEngine`/`MazeRipupResolver` constructions of `:82-83` — Task 13 supplies
-    /// those two methods directly on this struct.
+    /// `MazeExpansionEngine`/`MazeRipupResolver` constructions of `:82-83` — both are unit structs
+    /// in the port and take this engine as a parameter instead.
     pub fn new(
         engine: &'a mut AutorouteEngine,
         ctrl: &'a AutorouteControl,
@@ -542,7 +548,7 @@ impl<'a> MazeSearchEngine<'a> {
 
         // :348-351.
         if matches!(list_element.door, ExpandableRef::Page(_)) {
-            self.expand_to_drills_of_page(board, &list_element, stop);
+            MazeExpansionEngine::expand_to_drills_of_page(self, board, &list_element, stop);
             return true;
         }
 
@@ -576,7 +582,7 @@ impl<'a> MazeSearchEngine<'a> {
             && matches!(list_element.door, ExpandableRef::Drill(_))
             && !matches!(list_element.backtrack_door, Some(ExpandableRef::Drill(_)))
         {
-            self.expand_to_other_layers(board, &list_element, stop);
+            MazeExpansionEngine::expand_to_other_layers(self, board, &list_element);
         }
 
         // :375-380. Note that this is **not** an `else` of the drill branch above: a drill
@@ -748,34 +754,6 @@ impl<'a> MazeSearchEngine<'a> {
     // =============================================================================================
     // The expanders — Tasks 12 and 13
     // =============================================================================================
-
-    // added in Task 13: `MazeExpansionEngine.expandToDrillsOfPage`
-    #[allow(unused_variables)]
-    pub(crate) fn expand_to_drills_of_page(
-        &mut self,
-        board: &mut Board,
-        list_element: &MazeListElement,
-        stop: StopCheck<'_>,
-    ) {
-        unimplemented!(
-            "added in Task 13: MazeExpansionEngine.expandToDrillsOfPage \
-             (MazeExpansionEngine.java), reached from MazeSearchEngine.java:350"
-        )
-    }
-
-    // added in Task 13: `MazeExpansionEngine.expandToOtherLayers`
-    #[allow(unused_variables)]
-    pub(crate) fn expand_to_other_layers(
-        &mut self,
-        board: &mut Board,
-        list_element: &MazeListElement,
-        stop: StopCheck<'_>,
-    ) {
-        unimplemented!(
-            "added in Task 13: MazeExpansionEngine.expandToOtherLayers \
-             (MazeExpansionEngine.java), reached from MazeSearchEngine.java:372"
-        )
-    }
 }
 
 // =================================================================================================

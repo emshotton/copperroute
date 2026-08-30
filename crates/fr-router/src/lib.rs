@@ -34,8 +34,13 @@
 //! consults through `checkForcedTracePolyline`. Task 10 closes their cycle with
 //! [`ForcedPadRouter`] and adds [`ForcedViaInserter`], the two-phase gate the maze asks before it
 //! places a via. Task 11 adds [`MazeSearchEngine`] itself — construction, `getInstance`, `init`,
-//! the pop loop and the four helpers those need, with the expanders still stubs. The cost model,
-//! the room-door expansion and the path locators arrive in Tasks 12-17; the roster at the foot of
+//! the pop loop and the four helpers those need, with the expanders still stubs. Task 12 adds the
+//! room-door expansion, the A\* cost model and `MazeTraceShover`, and Task 13 the two classes
+//! that close `autoroute/maze` — `MazeExpansionEngine` (drill pages, drills and candidate via
+//! layers) and `MazeRipupResolver` (the ripup decision and its cost model) — together with
+//! [`autoroute::path`]'s [`Connection`], the memoised run of routable items that cost model
+//! divides by. With those in place [`MazeSearchEngine::find_connection`] runs end to end. The
+//! path locators and the connection inserter arrive in Tasks 15-17; the roster at the foot of
 //! this file names each deferred class and the task that owns it.
 //!
 //! # House rules
@@ -65,11 +70,11 @@ pub mod java_tree_set;
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 pub use autoroute::{
     AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
-    AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DestinationDistance, DrillPage,
-    DrillPageArray, ExpandableRef, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
-    FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeListElement,
-    MazeQueue, MazeResult, MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, RoomRef,
-    ShoveResult, TargetItemExpansionDoor, ViaMask,
+    AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance,
+    DrillPage, DrillPageArray, ExpandableRef, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
+    FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeExpansionEngine,
+    MazeListElement, MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
+    ObstacleExpansionRoom, RoomRef, ShoveResult, TargetItemExpansionDoor, ViaMask,
 };
 pub use board_ext::{
     CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, RoutingBoardExt,
@@ -90,13 +95,14 @@ pub use fr_settings::ExpansionCostFactor;
 pub mod prelude {
     pub use crate::{
         Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
-        AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, DestinationDistance, DoorId,
-        DrillId, DrillItemMover, DrillPage, DrillPageArray, ExpandableRef, ExpansionCostFactor,
-        ExpansionDoor, ExpansionDrill, ExpansionRoomStore, FreeSpaceExpansionRoom,
-        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
-        MazeListElement, MazeQueue, MazeResult, MazeSearchElement, MazeSearchEngine,
-        ObstacleExpansionRoom, PageId, RoomRef, RouterError, RoutingBoardExt, ShoveResult,
-        SpringOverOutcome, TargetDoorId, TargetItemExpansionDoor, TraceShover, ViaMask,
+        AutorouteSearchTreeExt, CompleteFreeSpaceExpansionRoom, Connection, DestinationDistance,
+        DoorId, DrillId, DrillItemMover, DrillPage, DrillPageArray, ExpandableRef,
+        ExpansionCostFactor, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
+        FreeSpaceExpansionRoom, IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet,
+        MazeAdjustment, MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult,
+        MazeRipupResolver, MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, PageId,
+        RoomRef, RouterError, RoutingBoardExt, ShoveResult, SpringOverOutcome, TargetDoorId,
+        TargetItemExpansionDoor, TraceShover, ViaMask,
     };
 }
 

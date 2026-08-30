@@ -1,0 +1,278 @@
+# P6T13Probe transcript — clone HEAD jar, JDK 25, -XX:hashCode=2.
+# Regenerate: see the header of scripts/differential/java/probes/P6T13Probe.java.
+
+=== mode items ===
+item id=11 class=PolylineTrace nets=[3] layers=0..0 routable=true bounds=[2470,-2530..3530,-2470]
+item id=10 class=PolylineTrace nets=[3] layers=0..0 routable=true bounds=[2470,-3530..2530,-2470]
+item id=9 class=Via nets=[3] layers=0..1 routable=true bounds=[2400,-2600..2600,-2400]
+item id=8 class=PolylineTrace nets=[3] layers=0..0 routable=true bounds=[2470,2470..2530,3530]
+item id=7 class=Via nets=[3] layers=0..1 routable=true bounds=[2400,2400..2600,2600]
+item id=6 class=PolylineTrace nets=[2] layers=0..0 routable=true bounds=[-30,-2030..430,2030]
+item id=5 class=Pin nets=[2] layers=0..0 routable=false bounds=[-50,1950..50,2050]
+item id=4 class=Pin nets=[2] layers=0..0 routable=false bounds=[-50,-2050..50,-1950]
+item id=3 class=Pin nets=[1] layers=0..1 routable=false bounds=[1930,-70..2070,70]
+item id=2 class=Pin nets=[1] layers=0..0 routable=false bounds=[-2050,-50..-1950,50]
+item id=1 class=BoardOutline nets=[] layers=0..1 routable=false bounds=[33554432,33554432..-33554432,-33554432]
+
+=== mode ctrl ===
+netNumber=1
+layerCount=2
+layerActive=[true, true]
+traceHalfWidth=[30, 30]
+compensatedTraceHalfWidth=[130, 130]
+viaRadii=[141.42135623730948, 141.42135623730948]
+maxViaRadius=141.42135623730948
+minNormalViaCost=141.42135623730948
+minCheapViaCost=113.1370849898476
+addViaCosts[0]=[0, 0]
+traceCosts[0] horizontal=1.0 vertical=2.0
+addViaCosts[1]=[0, 0]
+traceCosts[1] horizontal=2.0 vertical=1.0
+viaLowerBound=0 viaUpperBound=2
+viaClearanceClass=1
+viaInfos.length=1
+viaInfos[0] fromLayer=0 toLayer=1 attachSmdAllowed=false
+attachSmdAllowed=false
+viasAllowed=true
+ripupAllowed=false
+ripupCosts=1000
+ripupPassNo=1
+removeUnconnectedVias=true
+isFanout=false
+startRipupCosts=1
+traceClearanceClassIndex=1
+maxShoveTraceRecursionDepth=20
+bendCosts=[0.0, 0.0]
+withNeckdown=false
+
+=== mode page ===
+instance=ok
+from door=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false section=0
+from expansion=0.000000000 sorting=3830.000000000 shapeEntry=(-2000.000000,0.000000)-(-2000.000000,0.000000) nextRoom=1 layer=0
+overlappingPages n=1
+  page [-4000,-4000..4000,4000] getId=-119040001
+--- page [-4000,-4000..4000,4000]
+queue n=1
+  [0] door=DrillPage id=-119040001 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=141.421356237 sorting=3971.421356237 nextRoom=1 nextRoomLayer=0 shapeEntry=(-2000.000000,0.000000)-(-2000.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode pagedrills ===
+page [-4000,-4000..4000,4000]
+pageElement door=DrillPage id=-119040001 section=0 expansion=141.421356237 sorting=3971.421356237
+drills n=53
+  drill[0] location=(2365,-3350) firstLayer=0 lastLayer=1 getId=67236366 shape=[2359,-4000..2370,-2700] room0=12 room1=13
+  drill[1] location=(3350,-2364) firstLayer=0 lastLayer=1 getId=97528047 shape=[2700,-2370..4000,-2359] room0=26 room1=28
+  drill[2] location=(3350,2544) firstLayer=0 lastLayer=1 getId=102244635 shape=[2700,2446..4000,2641] room0=26 room1=28
+  drill[3] location=(2636,3350) firstLayer=0 lastLayer=1 getId=81748427 shape=[2630,2700..2641,4000] room0=29 room1=30
+  drill[4] location=(3196,3196) firstLayer=0 lastLayer=1 getId=98283393 shape=[2641,2641..4000,4000] room0=26 room1=31
+  drill[5] location=(3350,2365) firstLayer=0 lastLayer=1 getId=102072616 shape=[2700,2359..4000,2370] room0=26 room1=28
+  drill[6] location=(3223,0) firstLayer=0 lastLayer=1 getId=96016394 shape=[2446,-2300..4000,2300] room0=26 room1=28
+  drill[7] location=(3335,2330) firstLayer=0 lastLayer=1 getId=101592116 shape=[2641,2300..4000,2359] room0=26 room1=28
+  drill[8] location=(3350,2408) firstLayer=0 lastLayer=1 getId=102113939 shape=[2700,2370..4000,2446] room0=26 room1=28
+  drill[9] location=(3196,-484) firstLayer=0 lastLayer=1 getId=94746913 shape=[2641,-2359..4000,2300] room0=26 room1=28
+  drill[10] location=(3335,2330) firstLayer=0 lastLayer=1 getId=101592116 shape=[2641,2300..4000,2359] room0=26 room1=28
+  drill[11] location=(3350,2500) firstLayer=0 lastLayer=1 getId=102202351 shape=[2700,2359..4000,2641] room0=26 room1=28
+  drill[12] location=(3196,3196) firstLayer=0 lastLayer=1 getId=98283393 shape=[2641,2641..4000,4000] room0=26 room1=31
+  drill[13] location=(-850,-2402) firstLayer=0 lastLayer=1 getId=-27630671 shape=[-4000,-2446..2300,-2359] room0=2 room1=9
+  drill[14] location=(2403,0) firstLayer=0 lastLayer=1 getId=71587774 shape=[2359,-2300..2446,2300] room0=39 room1=40
+  drill[15] location=(20,-2254) firstLayer=0 lastLayer=1 getId=-1570273 shape=[-15,-2359..54,-2150] room0=47 room1=9
+  drill[16] location=(73,-2254) firstLayer=0 lastLayer=1 getId=8650 shape=[54,-2359..91,-2150] room0=47 room1=9
+  drill[17] location=(121,-2240) firstLayer=0 lastLayer=1 getId=1452072 shape=[91,-2359..150,-2091] room0=47 room1=9
+  drill[18] location=(1383,-1418) firstLayer=0 lastLayer=1 getId=39838256 shape=[150,-2359..2300,-170] room0=48 room1=40
+  drill[19] location=(2220,-140) firstLayer=0 lastLayer=1 getId=66001481 shape=[2111,-170..2300,-111] room0=39 room1=40
+  drill[20] location=(2235,-30) firstLayer=0 lastLayer=1 getId=66554056 shape=[2170,-111..2300,116] room0=39 room1=40
+  drill[21] location=(1952,-191) firstLayer=0 lastLayer=1 getId=57968482 shape=[1889,-233..2014,-170] room0=39 room1=40
+  drill[22] location=(1670,-47) firstLayer=0 lastLayer=1 getId=49705804 shape=[1350,-111..1830,-15] room0=39 room1=40
+  drill[23] location=(994,-720) firstLayer=0 lastLayer=1 getId=28920335 shape=[150,-2034..1952,-15] room0=48 room1=40
+  drill[24] location=(2235,0) firstLayer=0 lastLayer=1 getId=66582886 shape=[2170,-15..2300,15] room0=39 room1=40
+  drill[25] location=(1180,0) firstLayer=0 lastLayer=1 getId=35153381 shape=[530,-15..1830,15] room0=39 room1=40
+  drill[26] location=(2235,63) firstLayer=0 lastLayer=1 getId=66643429 shape=[2170,15..2300,111] room0=39 room1=40
+  drill[27] location=(2220,141) firstLayer=0 lastLayer=1 getId=66271522 shape=[2111,111..2300,170] room0=39 room1=40
+  drill[28] location=(1080,2051) firstLayer=0 lastLayer=1 getId=34145292 shape=[150,170..2300,4000] room0=50 room1=31
+  drill[29] location=(1220,96) firstLayer=0 lastLayer=1 getId=36437277 shape=[499,15..1889,170] room0=39 room1=40
+  drill[30] location=(1670,47) firstLayer=0 lastLayer=1 getId=49796138 shape=[1350,15..1830,111] room0=39 room1=40
+  drill[31] location=(2216,150) firstLayer=0 lastLayer=1 getId=66161007 shape=[2111,130..2300,170] room0=39 room1=40
+  drill[32] location=(1158,1855) firstLayer=0 lastLayer=1 getId=36280634 shape=[346,170..2300,4000] room0=50 room1=53
+  drill[33] location=(1186,150) firstLayer=0 lastLayer=1 getId=35476277 shape=[499,130..1889,170] room0=39 room1=40
+  drill[34] location=(248,1758) firstLayer=0 lastLayer=1 getId=9077607 shape=[150,935..346,2091] room0=50 room1=31
+  drill[35] location=(-1483,-666) firstLayer=0 lastLayer=1 getId=-44820078 shape=[-2091,-1229..-921,-150] room0=2 room1=8
+  drill[36] location=(-1386,-614) firstLayer=0 lastLayer=1 getId=-41880379 shape=[-1909,-1138..-862,-91] room0=2 room1=8
+  drill[37] location=(-1333,-516) firstLayer=0 lastLayer=1 getId=-40207278 shape=[-1850,-1079..-771,91] room0=2 room1=8
+  drill[38] location=(-764,815) firstLayer=0 lastLayer=1 getId=-21977108 shape=[-1909,-988..259,1909] room0=6 room1=53
+  drill[39] location=(-2661,-1226) firstLayer=0 lastLayer=1 getId=-80452036 shape=[-4000,-2359..-1012,-91] room0=1 room1=8
+  drill[40] location=(-130,-974) firstLayer=0 lastLayer=1 getId=-4808843 shape=[-922,-1909..267,43] room0=2 room1=9
+  drill[41] location=(-748,-1754) firstLayer=0 lastLayer=1 getId=-23969261 shape=[-1769,-1985..-150,-1137] room0=2 room1=9
+  drill[42] location=(-2075,-2172) firstLayer=0 lastLayer=1 getId=-63903616 shape=[-4000,-2359..-150,-1985] room0=1 room1=8
+  drill[43] location=(-140,-2230) firstLayer=0 lastLayer=1 getId=-6313769 shape=[-150,-2359..-130,-2091] room0=47 room1=9
+  drill[44] location=(-65,-2237) firstLayer=0 lastLayer=1 getId=-4086171 shape=[-130,-2359..-15,-2150] room0=47 room1=9
+  drill[45] location=(-117,-2137) firstLayer=0 lastLayer=1 getId=-5539203 shape=[-130,-2150..-91,-2111] room0=7 room1=9
+  drill[46] location=(-21,-2156) firstLayer=0 lastLayer=1 getId=-2697526 shape=[-34,-2169..-15,-2150] room0=47 room1=9
+  drill[47] location=(2330,0) firstLayer=0 lastLayer=1 getId=69413031 shape=[2300,-2359..2359,2359] room0=39 room1=40
+  drill[48] location=(2320,2680) firstLayer=0 lastLayer=1 getId=71690601 shape=[2300,2641..2359,2700] room0=69 room1=31
+  drill[49] location=(2395,-3605) firstLayer=0 lastLayer=1 getId=67885041 shape=[2370,-3630..2446,-3554] room0=71 room1=72
+  drill[50] location=(2408,-3815) firstLayer=0 lastLayer=1 getId=68070514 shape=[2370,-4000..2446,-3630] room0=22 room1=72
+  drill[51] location=(3796,-2592) firstLayer=0 lastLayer=1 getId=110595725 shape=[3554,-2630..4000,-2554] room0=15 room1=28
+  drill[52] location=(3748,148) firstLayer=0 lastLayer=1 getId=111798897 shape=[3554,-2446..4000,4000] room0=15 room1=28
+queue n=2
+  [0] door=ExpansionDrill id=-80452036 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=433.228227301 sorting=4403.114875557 nextRoom=null nextRoomLayer=- shapeEntry=(-2130.500000,-310.500000)-(-2130.500000,-310.500000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=ExpansionDrill id=-63903616 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=4033.421356237 sorting=9508.149112026 nextRoom=null nextRoomLayer=- shapeEntry=(-2000.000000,-2126.000000)-(-2000.000000,-2126.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode drill ===
+room minWidth=2134.000000000 2*traceHalfWidth=260
+--- fromPage addCosts=0
+queue n=1
+  [0] door=ExpansionDrill id=67236366 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=8040.526115639 sorting=11555.947471876 nextRoom=null nextRoomLayer=- shapeEntry=(2364.000000,-3350.000000)-(2364.000000,-3350.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- fromDoor addCosts=0
+queue n=1
+  [0] door=ExpansionDrill id=67236366 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=8137.326308149 sorting=11652.747664386 nextRoom=null nextRoomLayer=- shapeEntry=(2364.000000,-3350.000000)-(2364.000000,-3350.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- fromPage addCosts=250
+queue n=1
+  [0] door=ExpansionDrill id=67236366 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=8290.526115639 sorting=11805.947471876 nextRoom=null nextRoomLayer=- shapeEntry=(2364.000000,-3350.000000)-(2364.000000,-3350.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- fromDoor addCosts=250
+queue n=1
+  [0] door=ExpansionDrill id=67236366 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=8387.326308149 sorting=11902.747664386 nextRoom=null nextRoomLayer=- shapeEntry=(2364.000000,-3350.000000)-(2364.000000,-3350.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+thin: minWidth=2134.000000000 2*traceHalfWidth=4000
+--- thin, backtrackDoor=null
+queue n=0
+drill.shape=[2359,-4000..2370,-2700] backtrack.shape=[-4000,-4000..4000,4000] intersects=true
+--- thin, backtrackDoor=the whole page
+queue n=1
+  [0] door=ExpansionDrill id=67236366 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=8137.326308149 sorting=11652.747664386 nextRoom=null nextRoomLayer=- shapeEntry=(2364.000000,-3350.000000)-(2364.000000,-3350.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode layers ===
+drillElements n=2
+drillElement door=ExpansionDrill id=-80452036 section=0 expansion=433.228227301 sorting=4403.114875557
+--- free space
+queue n=1
+  [0] door=ExpansionDrill id=-80452036 section=1 backtrack=ExpansionDrill id=-80452036 sectionOfBacktrack=0 expansion=433.228227301 sorting=4674.649583538 nextRoom=8 nextRoomLayer=1 shapeEntry=(-2130.500000,-310.500000)-(-2130.500000,-310.500000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+--- free space addViaCosts[0][1]=700
+queue n=1
+  [0] door=ExpansionDrill id=-80452036 section=1 backtrack=ExpansionDrill id=-80452036 sectionOfBacktrack=0 expansion=1133.228227301 sorting=5374.649583538 nextRoom=8 nextRoomLayer=1 shapeEntry=(-2130.500000,-310.500000)-(-2130.500000,-310.500000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+viaDrill location=(2500,2500) firstLayer=0 lastLayer=1 getId=76880001 room0=ObstacleExpansionRoom id=7168 layer=0 shape=[2300,2300..2700,2700] room1=ObstacleExpansionRoom id=7169 layer=1 shape=[2300,2300..2700,2700]
+--- obstacle via ripupAllowed=false
+queue n=0
+--- obstacle via ripupAllowed=true
+queue n=1
+  [0] door=ExpansionDrill id=76880001 section=1 backtrack=ExpansionDrill id=76880001 sectionOfBacktrack=0 expansion=1700.000000000 sorting=3530.000000000 nextRoom=7169 nextRoomLayer=1 shapeEntry=(2000.000000,2000.000000)-(2000.000000,2000.000000) roomRipped=true adjustment=NONE alreadyChecked=false ripupCost=0
+
+=== mode checklayer ===
+  room=120 spot=freeSpace layer=0 -> NOT_DRILLABLE
+  room=120 spot=freeSpace layer=1 -> NOT_DRILLABLE
+  room=120 spot=onBlocker layer=0 -> NOT_DRILLABLE
+  room=120 spot=onBlocker layer=1 -> NOT_DRILLABLE
+  room=120 spot=onSmdPin layer=0 -> NOT_DRILLABLE
+  room=120 spot=onSmdPin layer=1 -> NOT_DRILLABLE
+  room=120 spot=onThruPin layer=0 -> NOT_DRILLABLE
+  room=120 spot=onThruPin layer=1 -> NOT_DRILLABLE
+  room=120 spot=onFreeVia layer=0 -> NOT_DRILLABLE
+  room=120 spot=onFreeVia layer=1 -> NOT_DRILLABLE
+  room=800 spot=freeSpace layer=0 -> DRILLABLE
+  room=800 spot=freeSpace layer=1 -> DRILLABLE
+  room=800 spot=onBlocker layer=0 -> DRILLABLE
+  room=800 spot=onBlocker layer=1 -> DRILLABLE
+  room=800 spot=onSmdPin layer=0 -> NOT_DRILLABLE
+  room=800 spot=onSmdPin layer=1 -> DRILLABLE
+  room=800 spot=onThruPin layer=0 -> NOT_DRILLABLE
+  room=800 spot=onThruPin layer=1 -> NOT_DRILLABLE
+  room=800 spot=onFreeVia layer=0 -> NOT_DRILLABLE
+  room=800 spot=onFreeVia layer=1 -> NOT_DRILLABLE
+
+=== mode fanoutfac ===
+trace id=6 halfWidth=30 length=4079.215610874 startContacts=1 endContacts=1 factor=1.081730769
+trace id=8 halfWidth=30 length=1000.000000000 startContacts=1 endContacts=0 factor=1.000000000
+trace id=10 halfWidth=30 length=1000.000000000 startContacts=2 endContacts=0 factor=1.000000000
+trace id=11 halfWidth=30 length=1000.000000000 startContacts=2 endContacts=0 factor=1.000000000
+attached halfWidth=30 length=600.000000000 startContacts=1 endContacts=0 factor=50.000000000
+
+=== mode ripup ===
+--- not routable
+smdPin -> -1
+--- ripupCosts=1000
+blocker -> 29431
+freeVia -> 1
+twoContactVia -> 1
+--- ripupCosts=100000
+blocker -> 2943136
+freeVia -> 1
+twoContactVia -> 1
+--- ripupCosts=2000000000
+blocker -> 21474836
+freeVia -> 1
+twoContactVia -> 13
+--- removeUnconnectedVias=false (fanout protection on)
+blocker -> 29431
+freeVia -> 1
+twoContactVia -> 1
+--- isFanout=true
+blocker -> 30000
+--- randomize
+passNo=3 blocker -> 29431
+passNo=4 blocker -> 29303
+passNo=5 blocker -> 35440
+passNo=6 blocker -> 29431
+passNo=7 blocker -> 21087
+--- doorIsSmall
+blocker small -> -1
+
+=== mode random ===
+seed=1000 0.71018490563207070 0.57483635038566700 0.94641920947920730
+seed=5000 0.08570986187248653 0.84472716259663280 0.25962838019703893
+seed=17 0.73231151395973160 0.69737047836074970 0.08295611145017068
+
+=== mode smalldoor ===
+from door=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false dimension=2 -> false
+checkLeavingRippedItem(from) -> false
+room 1 layer=0
+  door id=33 dim=1 shape=[-1866,-3625..-1866,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+  door id=35 dim=1 shape=[-4000,0..-1866,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+  door id=37 dim=1 shape=[-4000,0..-1866,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+room 2 layer=0
+  door id=33 dim=1 shape=[-1866,-3625..-1866,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+  door id=6206 dim=1 shape=[-106,-1865..267,0] other=ObstacleExpansionRoom blocker=true via=false leaving=true
+  door id=1537988033 dim=1 shape=[-1866,-3625..-150,-1909] other=null blocker=true via=true leaving=false
+  door id=-1901917981 dim=1 shape=[-1866,-3625..-1866,0] other=null blocker=true via=true leaving=false
+  door id=8181055 dim=1 shape=[-1866,0..267,0] other=null blocker=true via=true leaving=false
+  door id=8209730 dim=1 shape=[-106,-1865..267,0] other=null blocker=true via=false leaving=false
+  door id=1619462847 dim=1 shape=[-1866,-3625..-106,-1865] other=null blocker=true via=true leaving=false
+  door id=-576926342 dim=1 shape=[-1866,0..267,0] other=null blocker=true via=true leaving=false
+  door id=68 dim=1 shape=[-1866,0..267,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+room 6 layer=0
+  door id=37 dim=1 shape=[-4000,0..-1866,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+  door id=68 dim=1 shape=[-1866,0..267,0] other=CompleteFreeSpaceExpansionRoom blocker=true via=true leaving=false
+  door id=6331 dim=1 shape=[-106,0..267,1865] other=ObstacleExpansionRoom blocker=true via=false leaving=true
+
+=== mode conn ===
+item 2 -> null
+item 3 -> null
+item 4 -> null
+item 5 -> null
+item 6 -> items=[6] start=(0,2000) startLayer=0 end=(0,-2000) endLayer=0 traceLength=4079.215610874 detour=1.019320881
+  memoised=true
+item 7 -> items=[8,7] start=null startLayer=0 end=null endLayer=0 traceLength=1000.000000000 detour=2147483647.000000000
+  memoised=true
+item 8 -> items=[8,7] start=null startLayer=0 end=null endLayer=0 traceLength=1000.000000000 detour=2147483647.000000000
+  memoised=true
+item 9 -> items=[11,10,9] start=null startLayer=0 end=null endLayer=0 traceLength=2000.000000000 detour=2147483647.000000000
+  memoised=true
+item 10 -> items=[11,10,9] start=null startLayer=0 end=null endLayer=0 traceLength=2000.000000000 detour=2147483647.000000000
+  memoised=true
+item 11 -> items=[11,10,9] start=null startLayer=0 end=null endLayer=0 traceLength=2000.000000000 detour=2147483647.000000000
+  memoised=true
+
+=== mode find ===
+instance=ok
+--- seeded
+queue n=1
+  [0] door=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false section=0 backtrack=null sectionOfBacktrack=0 expansion=0.000000000 sorting=630.000000000 nextRoom=1 nextRoomLayer=0 shapeEntry=(-400.000000,0.000000)-(-400.000000,0.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+pop[0] head=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false section=0 expansion=0.000000000 sorting=630.000000000 -> more=true queue=3
+pop[1] head=DrillPage id=-29760001 section=0 expansion=141.421356237 sorting=771.421356237 -> more=true queue=6
+pop[2] head=ExpansionDrill id=-297909 section=0 expansion=351.421356237 sorting=591.421356237 -> more=true queue=5
+pop[3] head=ExpansionDrill id=-1076319 section=0 expansion=456.833784654 sorting=719.833784654 -> more=true queue=4
+pop[4] head=ExpansionDoor id=35 section=0 expansion=100.000000000 sorting=830.000000000 -> more=true queue=5
+pop[5] head=TargetItemExpansionDoor id=66 item=2 treeEntryNo=0 room=4 dest=false section=0 expansion=200.000000000 sorting=830.000000000 -> more=true queue=4
+pop[6] head=TargetItemExpansionDoor id=97 item=3 treeEntryNo=0 room=4 dest=true section=0 expansion=1000.000000000 sorting=1000.000000000 -> more=false queue=3
+destinationDoor=TargetItemExpansionDoor id=97 item=3 treeEntryNo=0 room=4 dest=true section=0
+--- final
+queue n=3
+  [0] door=ExpansionDrill id=-12022109 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=363.421356237 sorting=1038.302086441 nextRoom=null nextRoomLayer=- shapeEntry=(-400.000000,-291.000000)-(-400.000000,-291.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [1] door=ExpansionDrill id=-15852655 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=400.689557141 sorting=1158.689557141 nextRoom=null nextRoomLayer=- shapeEntry=(-528.000000,-127.000000)-(-528.000000,-127.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0
+  [2] door=ExpansionDoor id=33 section=0 backtrack=TargetItemExpansionDoor id=63 item=2 treeEntryNo=0 room=1 dest=false sectionOfBacktrack=0 expansion=1077.032961427 sorting=1775.960711627 nextRoom=2 nextRoomLayer=0 shapeEntry=(0.000000,-868.000000)-(0.000000,-132.000000) roomRipped=false adjustment=NONE alreadyChecked=false ripupCost=0

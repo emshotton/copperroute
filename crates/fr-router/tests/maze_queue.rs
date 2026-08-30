@@ -102,6 +102,8 @@ fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
         min_cheap_via_cost: 0.0,
         fanout_max_escape_length: 3000.0,
         fanout_min_escape_length: 500.0,
+        // `RouterSettings.getStartRipupCosts`'s default (RouterSettings.java:537-548).
+        start_ripup_costs: 1,
     }
 }
 

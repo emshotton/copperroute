@@ -3,14 +3,20 @@
 //!
 //! # Plan-6 ruling 8: the settings are copied, not borrowed
 //!
-//! Java's `public final RouterSettings settings` (`:20`) has exactly **two** readers anywhere in
-//! `autoroute/{maze,expansion,drill,path}`: `MazeSearchEngine.java:96-97` and `:111-112`, which
-//! read `settings.fanout.maxEscapeLengthMm` / `minEscapeLengthMm`. So the port copies those two
-//! numbers ([`fanout_max_escape_length`](AutorouteControl::fanout_max_escape_length) and its
-//! `min` twin) and holds no reference. A `&RouterSettings` inside a struct the engine mutates
-//! would put a lifetime on `AutorouteControl` and on everything that holds one, for two `f64`s.
+//! **Java wins over the ruling's count.** The ruling says two readers; Task 13 found a third,
+//! `MazeRipupResolver.java:99`'s `ctrl.settings.getStartRipupCosts()`. It is copied the same way,
+//! into [`AutorouteControl::start_ripup_costs`].
 //!
-//! not ported: `AutorouteControl.settings` — the field itself; see above for its two readers.
+//! Java's `public final RouterSettings settings` (`:20`) has exactly **three** readers anywhere
+//! in `autoroute/{maze,expansion,drill,path}`: `MazeSearchEngine.java:96-97` and `:111-112`,
+//! which read `settings.fanout.maxEscapeLengthMm` / `minEscapeLengthMm`, and
+//! `MazeRipupResolver.java:99`. So the port copies those three numbers
+//! ([`fanout_max_escape_length`](AutorouteControl::fanout_max_escape_length), its `min` twin and
+//! [`start_ripup_costs`](AutorouteControl::start_ripup_costs)) and holds no reference. A
+//! `&RouterSettings` inside a struct the engine mutates would put a lifetime on
+//! `AutorouteControl` and on everything that holds one, for three numbers.
+//!
+//! not ported: `AutorouteControl.settings` — the field itself; see above for its three readers.
 //!
 //! The four `Math.max(double, double)` sites of `rebuildViaInfo` (`:258`, `:272`, `:273`, `:276`)
 //! are [`java_max`], not `f64::max`: Java propagates a NaN where Rust absorbs one, and the two
@@ -146,6 +152,17 @@ pub struct AutorouteControl {
     /// Plan-6 ruling 8, second: `MazeSearchEngine.java:111-114`, `minEscapeLengthMm * 1000.0`
     /// or `500.0`. Same unit trap as [`fanout_max_escape_length`](Self::fanout_max_escape_length).
     pub fanout_min_escape_length: f64,
+
+    /// Plan-6 ruling 8, the **third** copied setting — the one the ruling's survey missed:
+    /// `MazeRipupResolver.java:99` reads `ctrl.settings.getStartRipupCosts()` to decide whether
+    /// this pass is still early enough to protect fanout vias
+    /// (`ctrl.ripupCosts <= startRipupCosts * 2`). It is a plain `int` off `RouterSettings`, with
+    /// no board or layer dependence, so it is copied here exactly as the two fanout escape
+    /// lengths are rather than reached through a borrowed settings object.
+    ///
+    /// `RouterSettings.getStartRipupCosts` (RouterSettings.java:537-548) answers
+    /// `scoring != null ? scoring.startRipupCosts : 1`.
+    pub start_ripup_costs: i32,
 }
 
 impl AutorouteControl {
@@ -267,6 +284,8 @@ impl AutorouteControl {
                 .as_ref()
                 .and_then(|f| f.min_escape_length_mm)
                 .map_or(500.0, |mm| mm * 1000.0),
+            // plan-6 ruling 8's third reader, `MazeRipupResolver.java:99`.
+            start_ripup_costs: settings.get_start_ripup_costs(),
         }
     }
 

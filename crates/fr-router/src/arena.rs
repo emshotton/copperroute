@@ -132,9 +132,10 @@ impl<T> Default for Arena<T> {
 // =================================================================================================
 // The arena index newtypes (plan-6 ruling 16).
 //
-// Two of the family already live in `fr-board` — `RoomId` (reserved in Plan 2, because the shared
-// search tree stores it as a `TreeObject`) and `ObstacleRoomId`/`ConnectionId` (added in Task 1,
-// because `AutorouteInfo` stores them). The rest are `fr-router`'s alone and live here.
+// Four of the family already live in `fr-board` — `RoomId` (reserved in Plan 2, because the
+// shared search tree stores it as a `TreeObject`), `ObstacleRoomId`/`ConnectionId` (added in Task
+// 1) and `DrillId` (moved there in Task 13), because `AutorouteInfo` stores all three. The rest
+// are `fr-router`'s alone and live here.
 //
 // Every one of them is a **plain arena index with no generation counter**, exactly as ruling 16
 // requires: a stale id reads a hole, which is as close as a flat vector gets to Java's stale
@@ -159,13 +160,14 @@ pub struct TargetDoorId(pub u32);
 
 /// An `autoroute.drill.ExpansionDrill`'s arena index.
 ///
-/// Declared here in Task 2 because `MazeSearchElement.backtrackDoor` is an `ExpandableObject`
-/// and `ExpansionDrill` is one of its four implementors, so the enum needs the variant before
-/// the drill itself exists.
+/// Declared in Task 2 because `MazeSearchElement.backtrackDoor` is an `ExpandableObject` and
+/// `ExpansionDrill` is one of its four implementors, so the enum needs the variant before the
+/// drill itself exists — and **moved into `fr-board` in Task 13**, joining `ObstacleRoomId` and
+/// `ConnectionId`, because `AutorouteInfo` now stores one for `Via.autorouteDrillInfo`
+/// (Via.java:52). It is re-exported here so every router-side use site keeps the name it knows.
 // (Task 7 adds `ExpansionDrill` itself; this is only its index type, and the class's deferral
 // marker lives in `autoroute/drill/`, where `audit-port.sh` looks for it.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DrillId(pub u32);
+pub use fr_board::DrillId;
 
 /// An `autoroute.drill.DrillPage`'s arena index — the fourth `ExpandableObject` implementor.
 // (Task 7 adds `DrillPage` itself; this is only its index type.)

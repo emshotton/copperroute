@@ -829,6 +829,87 @@ methods with dozens of branches.
     - `stale` — `expandToTargetDoors` with every `treeEntryNo` forced to 99:
       `:656-658` skips all of them and the method answers `false`.
 
+  - `P6T13Probe.java` — `MazeExpansionEngine` (MazeExpansionEngine.java:31-414),
+    `MazeRipupResolver` (MazeRipupResolver.java:35-268), `Connection`
+    (Connection.java:39-154) and the first end-to-end
+    `MazeSearchEngine.findConnection` (Plan 6 Task 13). It declares the same
+    package as `P6T11Probe`/`P6T12Probe` and **compiles together with
+    `P6T11Probe`**, reusing its `fp()`, `fl()`, `describe()`, `dumpQueue()`,
+    `destinationDoor()` and `Counter`; the two package-private classes under test
+    it constructs directly, and it reflects into
+    `MazeExpansionEngine.checkLayerWithAnyMatchingVia` and
+    `MazeRipupResolver.enterThroughSmallDoor`. Its stdout is committed as
+    `crates/fr-router/tests/data/p6t13-drills-ripup.txt`; the run pipes through
+    the same `grep -Ev` (`MazeRipupResolver:173-195` emits one `FRLogger.trace`
+    per `checkRipup`).
+
+    It builds **its own** board rather than reusing Tasks 11-12's, because
+    theirs carries an *empty* `ViaRule` — `ctrl.viaInfos` is zero-length there
+    and every via mask of `MazeExpansionEngine.java:331-345` would be dead. The
+    Task 13 board is an 8000-unit square with a real via padstack, a `ViaInfo`
+    over it and a one-via `ViaRule` on the default net class, a default trace
+    half width of **30** (the stock 1500 leaves no channel at all at this size),
+    a two-pin net-1 component at (±2000, 0), a two-pin net-2 component at
+    (0, ±2000) whose bent trace crosses the channel between them, and two net-3
+    vias with one and two trace contacts. Thirteen modes:
+
+    - `items` — the item list in `getItems()` order, so the Rust twin names the
+      same ids: 2 and 3 the net-1 pins, 4 and 5 the net-2 pins, 6 the blocker
+      trace, 7 and 9 the vias, 8/10/11 their traces.
+    - `ctrl` — the `AutorouteControl` fields the drill/ripup half reads:
+      `viaRadii=[141.42…]`, `minNormalViaCost=141.42…`, `viaInfos[0] = (0, 1,
+      attachSmd=false)`, `viaLowerBound=0`, `viaUpperBound=2`,
+      `startRipupCosts=1`.
+    - `page` — `expandToDrillPage`: the one overlapping page and the single
+      element it produces, which charges `minNormalViaCost` into
+      `expansionValue` but the weighted distance only into `sortingValue`.
+    - `pagedrills` — `expandToDrillsOfPage`: the page's **53** drills, each with
+      its location, layer span, `getId()` and bound rooms, and the **two** queue
+      elements they make — 51 of the 53 are refused by the room-mismatch
+      `continue` of `:180-223`.
+    - `drill` — `expandToDrill` crossed over `addCosts ∈ {0, 250}` and the two
+      cost branches of `:76-85`: through the drill page's own element (no
+      `minNormalViaCost`, and `:56-65` re-aims the comparison corner at the start
+      pin's nearest trace exit corner) and through the room's own door (which
+      adds it). Then the thin-room arm of `:37-51`, with
+      `compensatedTraceHalfWidth[0]` forced to 2000 so the 2134-wide room counts
+      as thin: `backtrackDoor == null` refuses, a backtrack door the drill shape
+      intersects does not.
+    - `layers` — `expandToOtherLayers` on a free-space drill (with and without
+      `addViaCosts[0][1] = 700`, which the constructor leaves at 0) and on the
+      **obstacle-via** arm of `:246-261`, through
+      `Via.getAutorouteDrillInfo`: `ripupAllowed=false` expands nothing,
+      `ripupAllowed=true` expands one element with `roomRipped=true`.
+    - `checklayer` — `checkLayerWithAnyMatchingVia` over five spots × two layers
+      × two room sizes (120 and 800 units): all ten `NOT_DRILLABLE` at 120, and
+      at 800 free space and the blocker are `DRILLABLE`, the SMD pin only on
+      layer 1, the through pin and the free via on neither.
+    - `fanoutfac` — `calcFanoutViaRipupCostFactor` on the four board traces
+      (1.081730769 for the blocker, whose contact is an SMD pin; 1.0 for the
+      three whose only contact is a via) plus the `SHOVE_FIXED` two-corner arm of
+      `:51-56`, which answers 50.0.
+    - `ripup` — `checkRipup`: the not-routable refusal, the small-door refusal,
+      the trace price at `ripupCosts` 1000 / 100 000 / 2 000 000 000 (29431 /
+      2943136 / **21474836**, the `Integer.MAX_VALUE / 100` clamp), both vias at
+      each, `removeUnconnectedVias=false`, `isFanout=true` (30000 — the detour
+      stays 1) and the five randomisation passes.
+    - `random` — `new java.util.Random(seed).nextDouble()` × 3 for seeds 1000,
+      5000 and 17: ruling 5's evidence, reproducible from `jshell`.
+    - `smalldoor` — `enterThroughSmallDoor` and `checkLeavingRippedItem` over
+      **every** door of **every** completed room, against the blocker (net 2) and
+      the free via (net 3). Three doors answer `via=false` — the `sharesNet`
+      refusal of `:260-262` — and two answer `leaving=true`.
+    - `conn` — `Connection.get` on items 2..11: `null` for the four pins (not
+      routable), `[6]` with both end points and `detour=1.019320881` for the
+      blocker, and `[8,7]` / `[11,10,9]` with **no** end points and therefore
+      `detour = Integer.MAX_VALUE` for the two vias. Each line also asserts the
+      memo went back through `ItemAutorouteInfo`.
+    - `find` — the **end-to-end** run, on a separate 2000-unit board with nothing
+      but the two net-1 pins so it terminates: seven pops (target door →
+      `DrillPage` → two `ExpansionDrill`s → `ExpansionDoor` → target door →
+      destination door 97), each with its head element and the queue size after,
+      then the `Result` and the three elements left behind.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader

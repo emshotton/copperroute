@@ -17,16 +17,20 @@
 //! the room-door expansion and the cost model (`expandToRoomDoors` through
 //! `expandToDoorSection`, plus `roomShapeIsThick`, `shoveTraceRoom` and
 //! `checkNeckDownAtDestPin`), and [`trace_shover`] ([`MazeTraceShover`], the check-only shove
-//! probe those use). The drill and ripup expanders (Task 13) and `autorouteConnection` (Task 16)
-//! are still to come; the roster in
-//! `scripts/audit-map/fr-router.map` records where each lands.
+//! probe those use). Task 13 adds the last two of the package's own classes:
+//! [`expansion_engine`] ([`MazeExpansionEngine`], the drill/layer half of the expansion) and
+//! [`ripup_resolver`] ([`MazeRipupResolver`], the ripup decision and its cost model). Only
+//! `autorouteConnection` (Task 16) is still to come; the roster in
+//! `scripts/audit-map/fr-router.map` records where it lands.
 
 pub mod control;
 pub mod destination_distance;
 pub mod engine;
 pub mod expand;
+pub mod expansion_engine;
 pub mod list_element;
 pub mod queue;
+pub mod ripup_resolver;
 pub mod search;
 pub mod search_element;
 pub mod trace_shover;
@@ -34,8 +38,10 @@ pub mod trace_shover;
 pub use control::{AutorouteControl, ViaMask};
 pub use destination_distance::DestinationDistance;
 pub use engine::AutorouteEngine;
+pub use expansion_engine::MazeExpansionEngine;
 pub use list_element::MazeListElement;
 pub use queue::MazeQueue;
+pub use ripup_resolver::MazeRipupResolver;
 pub use search::{ALREADY_RIPPED_COSTS, MazeResult, MazeSearchEngine, ShoveResult};
 pub use search_element::{MazeAdjustment, MazeSearchElement};
 pub use trace_shover::{DoorSection, MazeTraceShover};

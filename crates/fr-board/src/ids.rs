@@ -46,6 +46,21 @@ pub struct ObstacleRoomId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConnectionId(pub u32);
 
+/// An `autoroute.drill.ExpansionDrill`'s identity — the drill `Via.autorouteDrillInfo`
+/// (Via.java:52) memoises for the maze search.
+///
+/// Reserved here for the same reason as [`ObstacleRoomId`] and [`ConnectionId`]: `fr-router` owns
+/// `ExpansionDrill`, and the id indexes the engine's drill arena. `fr-router` re-exports it as
+/// `crate::arena::DrillId`, which is the name every router-side use site knows it by.
+///
+/// Java hangs `autorouteDrillInfo` off `Via` itself rather than off `ItemAutorouteInfo`; the port
+/// stores it *in* [`crate::items::AutorouteInfo`], which is exactly equivalent, because the only
+/// two writers of `Via.autorouteDrillInfo = null` — `Via.clearDerivedData` (Via.java:223) and
+/// `Via.clearAutorouteInfo` (Via.java:229) — are also the only two writers of
+/// `Item.autorouteInfo = null` (Item.java:1053, :1064) and each calls its `super` first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DrillId(pub u32);
+
 /// A search-tree instance id (`SearchTreeManager`'s per-tree identity, Task 3+).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TreeId(pub u32);
