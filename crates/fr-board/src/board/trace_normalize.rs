@@ -45,6 +45,39 @@ use crate::items::Item;
 
 use super::{Board, item_ctx};
 
+// ---- Plan 7 Task 8b: the level-7 `change` identity ledger -------------------------------------
+//
+// Instrumentation, not behaviour: both functions answer `false` unless the named variable is set
+// in the environment, they are read once into a `LazyLock`, and their only caller is the
+// `eprintln!` block in [`Board::change_trace`]. The Java side of the pair is the `CHG` marker
+// `scripts/differential/java/p6t17b-bisect.patch` adds to `PolylineTrace.change`; both write to
+// **stderr**, so a differential driver's stdout transcript is untouched and a run without the
+// variables is byte-identical to one from before this ledger existed. Quirk #210.
+
+/// `P7T8B_CHANGE` — one `CHG` line per `change_trace` call that reaches the identity comparison.
+fn p7t8b_change_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T8B_CHANGE").is_some());
+    *ON
+}
+
+/// `P7T8B_LINES` — adds both polylines' end points to every `CHG` line. Large; off by default.
+fn p7t8b_lines_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T8B_LINES").is_some());
+    *ON
+}
+
+/// `Line[i].a + "/" + Line[i].b`, comma-joined — Java's `IntPoint.toString` is `"(x,y)"`.
+fn join_lines(lines: &[Line]) -> String {
+    lines
+        .iter()
+        .map(|l| format!("({},{})/({},{})", l.a.x, l.a.y, l.b.x, l.b.y))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+// ---- end Plan 7 Task 8b -----------------------------------------------------------------------
+
 /// Java `PolylineTraceNormalization.MAX_NORMALIZATION_DEPTH` (PolylineTraceNormalization.java:16).
 ///
 /// `AGENTS.md` §"Trace Normalisation" says 34; the source says 16, and the source wins
@@ -1051,6 +1084,70 @@ impl Board {
                 index_of_first_different_line = i;
                 break;
             }
+        }
+        // Plan 7 Task 8b's level-7 ledger — the `CHG` line, mirroring the marker
+        // `scripts/differential/java/p6t17b-bisect.patch` adds to `PolylineTrace.change`. Off
+        // unless `P7T8B_CHANGE` is set in the environment, and read-only: the two loops below are
+        // the same two loops re-run over the same slices, and nothing they compute is assigned
+        // back. It sits **above** both of Java's early returns because the divergence it was
+        // built for can be "one side returns here and the other does not", which a marker below
+        // them cannot see. See `docs/java-quirks.md` quirk #210.
+        if p7t8b_change_ledger() {
+            let mut last: i64 = -1;
+            for i in 1..=last_index {
+                if !new_lines[new_lines.len() - i].is_same_object(&old_lines[old_lines.len() - i]) {
+                    last = (new_lines.len() - i) as i64;
+                    break;
+                }
+            }
+            let ret = if index_of_first_different_line == last_index {
+                "early960"
+            } else if last < 0 {
+                "early972"
+            } else {
+                "change"
+            };
+            let keep_s = index_of_first_different_line.saturating_sub(2);
+            let keep_e = (new_lines.len() as i64 - last - 3).max(0);
+            let idrel: String = (0..last_index)
+                .map(|i| {
+                    if new_lines[i].is_same_object(&old_lines[i]) {
+                        '.'
+                    } else {
+                        'X'
+                    }
+                })
+                .collect();
+            let vrel: String = (0..last_index)
+                .map(|i| {
+                    if new_lines[i] == old_lines[i] {
+                        '.'
+                    } else {
+                        'X'
+                    }
+                })
+                .collect();
+            let mut line = format!(
+                "CHG id={} layer={} old={} new={} first={} last={} keepS={} keepE={} ret={} \
+                 idrel={idrel} vrel={vrel}",
+                id.0,
+                layer,
+                old_lines.len(),
+                new_lines.len(),
+                index_of_first_different_line,
+                last,
+                keep_s,
+                keep_e,
+                ret,
+            );
+            if p7t8b_lines_ledger() {
+                line.push_str(" old=[");
+                line.push_str(&join_lines(&old_lines));
+                line.push_str("] new=[");
+                line.push_str(&join_lines(new_lines));
+                line.push(']');
+            }
+            eprintln!("{line}");
         }
         if index_of_first_different_line == last_index {
             return;

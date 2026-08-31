@@ -196,6 +196,18 @@ public final class P6T1 {
     BatchAutorouter router =
         "1-8".equals(steps) ? P7T8Probe.newRouter(board, settings) : null;
 
+    // Plan 7 Task 8b's level-7 item-id ledger. `P6T17bProbe`'s decorator, moved into this driver
+    // so that the `--steps=1-8` path gets it without a second entry point: `idGenerator` is a
+    // `public final` instance field, which `Field.setAccessible(true)` may still write. Off
+    // unless `P7T8B_IDS` is set; the decorator is never installed then, so a run without the
+    // variable executes exactly the code it executed before this ledger existed.
+    if (System.getenv("P7T8B_IDS") != null) {
+      java.lang.reflect.Field idField =
+          app.freerouting.board.state.Communication.class.getDeclaredField("idGenerator");
+      idField.setAccessible(true);
+      idField.set(board.communication, new IdTracer(board.communication.idGenerator));
+    }
+
     for (Connection connection : pickConnections(board, maxItems)) {
       out.println(routeOne(board, settings, connection, ripupPassNo, router));
       out.flush();
@@ -207,6 +219,13 @@ public final class P6T1 {
   // -----------------------------------------------------------------------------------------
 
   /** The board {@code RoutingJob} loads: the DSN, then the optional {@code .rules} file. */
+  /**
+   * Plan 7 Task 8b: `true` when either level-7 bisect ledger is switched on, which is the only
+   * thing that makes {@link #routeOne} write its `CONN` separator to stderr.
+   */
+  static final boolean P7T8B_LEDGER =
+      System.getenv("P7T8B_CHANGE") != null || System.getenv("P7T8B_OCA") != null;
+
   static RoutingBoard loadBoard(Path dsn, Path rules) throws Exception {
     BoardReadResult result;
     String designName = dsn.getFileName().toString();
@@ -239,6 +258,60 @@ public final class P6T1 {
       }
     }
     return board;
+  }
+
+  /**
+   * Plan 7 Task 8b: a decorating {@link app.freerouting.datastructures.IdGenerator} that prints
+   * every allocation and its call site to stderr. The Java half of the level-7 `ID` ledger; the
+   * port's half is {@code Board::new_item_id}'s {@code #[track_caller]} `eprintln!`, under the
+   * same {@code P7T8B_IDS} variable. Lifted from {@code P6T17bProbe.Tracer}, which only ever ran
+   * the steps 1-5 path.
+   */
+  static final class IdTracer implements app.freerouting.datastructures.IdGenerator {
+
+    private final app.freerouting.datastructures.IdGenerator delegate;
+    private int ordinal;
+
+    IdTracer(app.freerouting.datastructures.IdGenerator delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public int newId() {
+      int id = delegate.newId();
+      java.util.List<StackWalker.StackFrame> frames =
+          StackWalker.getInstance()
+              .walk(
+                  stream ->
+                      stream
+                          .filter(f -> f.getClassName().startsWith("app.freerouting."))
+                          .filter(f -> !f.getMethodName().equals("<init>"))
+                          .filter(f -> !f.getClassName().endsWith("P6T1$IdTracer"))
+                          .limit(6)
+                          .toList());
+      StringBuilder sb = new StringBuilder();
+      sb.append("ID ").append(id).append(' ').append(++ordinal).append(' ');
+      boolean first = true;
+      for (StackWalker.StackFrame f : frames) {
+        if (!first) {
+          sb.append('|');
+        }
+        first = false;
+        String c = f.getClassName();
+        sb.append(c.substring(c.lastIndexOf('.') + 1))
+            .append('.')
+            .append(f.getMethodName())
+            .append(':')
+            .append(f.getLineNumber());
+      }
+      System.err.println(sb);
+      return id;
+    }
+
+    @Override
+    public int maxGeneratedId() {
+      return delegate.maxGeneratedId();
+    }
   }
 
   /** {@code args[i]}, with a missing argument, an empty one and {@code -} all meaning "absent". */
@@ -291,6 +364,16 @@ public final class P6T1 {
       Connection connection,
       int ripupPassNo,
       BatchAutorouter router) {
+    // Plan 7 Task 8b: the per-connection separator for the level-7 bisect ledgers. The markers
+    // themselves live in `scripts/differential/java/p6t17b-bisect.patch` (`PolylineTrace.CHG`,
+    // `TraceTightener.OCA*`) and print to **stderr**, unlabelled by connection; this line is what
+    // splits the stream into connections so the two sides' ledgers can be aligned. Stderr only,
+    // so the diffable stdout transcript is untouched, and gated on the same variables, so a run
+    // without them is byte-identical. The port's `p6t1.rs` prints the same line.
+    if (P7T8B_LEDGER) {
+      System.err.println(
+          "CONN k=" + connection.k() + " item=" + connection.itemId() + " net=" + connection.netNo());
+    }
     StringBuilder sb = new StringBuilder();
     sb.append("{\"k\":").append(connection.k())
         .append(",\"item\":").append(connection.itemId())

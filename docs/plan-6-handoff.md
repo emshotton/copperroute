@@ -462,6 +462,18 @@ And two guard rails:
 `scripts/differential/java/p6t17b-bisect.patch` is the committed instrumentation
 that found it, if the question ever recurs.
 
+**Status, Plan 7 Task 8b (2026-08-31): the contract is measured correct, and it is
+*not* what the `router-dac2020-bm01` `--steps=1-8` divergence was.** The patch's
+level-7 `CHG` ledger prints `indexOfFirstDifferentLine`, `indexOfLastDifferentLine`
+and both keep counts for every `PolylineTrace.change` call; over the first 175
+connections of that board at `ripupPassNo = 1` there are **1 499** such calls and
+**all 1 499 agree** between the jar and the port. The divergence is quirk #210, a
+contact-set iteration order in `TraceTightener45.smoothenStartCornerAtTrace`, and
+has nothing to do with `Line` identity. (The earlier observation that forcing
+`is_same_object` to `false` moves the first divergence to connection 83 still
+holds — it holds on top of a corrected contact walk too — but that is what a
+deliberately-wrong identity model does, not evidence about the right one.)
+
 ---
 
 ## 10. Obligations for Plan 7

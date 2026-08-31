@@ -776,6 +776,16 @@ pub(crate) fn acute_add_line(
         .abs();
     translate_dist = java_min(translate_dist, prev_corner_dist);
     translate_dist = java_min(translate_dist, other_dist);
+    // Plan 7 Task 8b's level-7 ledger — `SSCA`. Off unless `P7T8B_OCA` is set; stderr only.
+    if super::p7t8b_oca_ledger() {
+        eprintln!(
+            "SSCA newDir={new_line_dir:?} tline={} hw={current_half_width} \
+             prevDist={prev_corner_dist} otherDist={other_dist} tdist={translate_dist} \
+             sideOfPrev={:?}",
+            super::p7t8b_line(&translate_line),
+            translate_line.side_of(current_prev_end_corner),
+        );
+    }
     if translate_dist < 0.99 {
         return None;
     }
@@ -783,7 +793,14 @@ pub(crate) fn acute_add_line(
     if translate_line.side_of(current_prev_end_corner) == Side::OnTheLeft {
         translate_dist = -translate_dist;
     }
-    Some(translate_line.translate(translate_dist))
+    let add_line = translate_line.translate(translate_dist);
+    if super::p7t8b_oca_ledger() {
+        eprintln!(
+            "SSCB tdist={translate_dist} addLine={}",
+            super::p7t8b_line(&add_line)
+        );
+    }
+    Some(add_line)
 }
 
 /// `trace.polyline()`, plus the two guards `smoothenEndCornersAtTrace2:495-497` applies before

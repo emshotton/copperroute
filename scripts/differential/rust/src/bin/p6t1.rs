@@ -282,6 +282,17 @@ fn route_one(
     ripup_pass_no: i32,
     steps: &str,
 ) -> String {
+    // Plan 7 Task 8b: the per-connection separator for the level-7 bisect ledgers, the twin of
+    // `P6T1.routeOne`'s. The ledgers themselves (`CHG` in `fr_board`'s `change_trace`, `OCA*` in
+    // `fr_router`'s `opt_changed_area`) print to **stderr** without saying which connection they
+    // belong to; this line is what splits the stream. Gated on the same two variables, so a run
+    // without them writes nothing.
+    if std::env::var_os("P7T8B_CHANGE").is_some() || std::env::var_os("P7T8B_OCA").is_some() {
+        eprintln!(
+            "CONN k={} item={} net={}",
+            connection.k, connection.item_id.0, connection.net_no
+        );
+    }
     let mut sb = String::new();
     sb.push_str(&format!(
         "{{\"k\":{},\"item\":{},\"net\":{}",

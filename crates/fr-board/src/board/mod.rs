@@ -381,8 +381,28 @@ impl Board {
     ///
     /// Not a Java method: Java allocates the id inside `Item`'s constructor, which needs the
     /// board; this port's item constructors take the resolved id.
+    //
+    // Plan 7 Task 8b: `#[track_caller]` carries the *caller's* `file:line` into the level-7 `ID`
+    // ledger below — the port's answer to `P6T17bProbe`'s `StackWalker` label on the Java side.
+    // The attribute changes no behaviour; it only makes `Location::caller()` name the call site
+    // instead of this line.
+    #[track_caller]
     pub fn new_item_id(&mut self) -> ItemId {
-        self.communication.id_gen.new_id()
+        let id = self.communication.id_gen.new_id();
+        // Plan 7 Task 8b's level-7 ledger — `ID`. Off unless `P7T8B_IDS` is set; stderr only.
+        // Quirk #210.
+        if p7t8b_ids_ledger() && id.0 >= p7t8b_ids_from() {
+            let caller = std::panic::Location::caller();
+            eprintln!("ID {} {}:{}", id.0, caller.file(), caller.line());
+            if p7t8b_ids_backtrace() {
+                eprintln!(
+                    "IDBT {}\n{}",
+                    id.0,
+                    std::backtrace::Backtrace::force_capture()
+                );
+            }
+        }
+        id
     }
 
     /// Port of `BoardItemRepository.insertItem` (BoardItemRepository.java:135-167), which
@@ -2035,6 +2055,40 @@ impl Board {
             .collect()
     }
 }
+
+// ---- Plan 7 Task 8b: the level-7 item-id ledger -----------------------------------------------
+//
+// Instrumentation, not behaviour: `false` unless `P7T8B_IDS` is set in the environment, read once
+// into a `LazyLock`, and its only caller is the `eprintln!` in [`Board::new_item_id`]. The Java
+// side of the pair is `P6T1`'s `IdTracer`, the decorating `IdGenerator` that
+// `scripts/differential/java/P6T1.java` swaps into `board.communication.idGenerator` under the
+// same variable. Both write to **stderr**. Quirk #210.
+fn p7t8b_ids_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T8B_IDS").is_some());
+    *ON
+}
+
+/// `P7T8B_IDS_FROM` — the lowest item id the `ID` ledger prints, so a run can be narrowed to one
+/// connection's allocations without carrying a quarter of a million lines of board load.
+fn p7t8b_ids_from() -> u32 {
+    static FROM: std::sync::LazyLock<u32> = std::sync::LazyLock::new(|| {
+        std::env::var("P7T8B_IDS_FROM")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0)
+    });
+    *FROM
+}
+
+/// `P7T8B_IDS_BT` — adds a captured backtrace to every printed `ID` line, the port's answer to
+/// the Java `IdTracer`'s `StackWalker` signature. Expensive; use it with `P7T8B_IDS_FROM`.
+fn p7t8b_ids_backtrace() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T8B_IDS_BT").is_some());
+    *ON
+}
+// ---- end Plan 7 Task 8b -----------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

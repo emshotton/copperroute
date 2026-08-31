@@ -68,6 +68,20 @@ use fr_settings::ExpansionCostFactor;
 use crate::autoroute::maze::engine::AutorouteEngine;
 use crate::board_ext::{RoutingBoardExt, ViaOptimizer};
 
+// ---- Plan 7 Task 8b: the level-7 `optChangedArea` sweep ledger ---------------------------------
+//
+// Instrumentation, not behaviour: the function answers `false` unless `P7T8B_OCA` is set in the
+// environment, it is read once into a `LazyLock`, and its only callers are the three `eprintln!`
+// blocks in [`TraceTightener::opt_changed_area`]. The Java side of the pair is the `OCA` /
+// `OCAPT` / `OCASM` / `OCAVIA` marker set `scripts/differential/java/p6t17b-bisect.patch` adds to
+// `TraceTightener.optChangedArea`. Both write to **stderr**. Quirk #210.
+fn p7t8b_oca_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T8B_OCA").is_some());
+    *ON
+}
+// ---- end Plan 7 Task 8b ------------------------------------------------------------------------
+
 pub(crate) use base::TightenerBase;
 pub use tightener_45::TraceTightener45;
 pub use tightener_90::TraceTightener90;
@@ -245,6 +259,31 @@ impl<'a> TraceTightener<'a> {
                 // forward walk of this `BTreeSet` is Java's `TreeSet` iteration order (rooms
                 // first, then items, both by descending id).
                 let items = board.overlapping_objects(&TileShape::Octagon(changed_region), Some(i));
+                // Plan 7 Task 8b's level-7 ledger — `OCA`, the twin of the marker
+                // `scripts/differential/java/p6t17b-bisect.patch` adds to
+                // `TraceTightener.optChangedArea:145`. Off unless `P7T8B_OCA` is set; stderr only.
+                if p7t8b_oca_ledger() {
+                    let objs = items
+                        .iter()
+                        .map(|o| match o {
+                            TreeObject::Item(id) => id.0.to_string(),
+                            _ => "R".to_string(),
+                        })
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    eprintln!(
+                        "OCA layer={i} region=({},{},{},{},{},{},{},{}) n={} objs=[{objs}]",
+                        changed_region.left_x,
+                        changed_region.bottom_y,
+                        changed_region.right_x,
+                        changed_region.top_y,
+                        changed_region.upper_left_diagonal_x,
+                        changed_region.lower_right_diagonal_x,
+                        changed_region.lower_left_diagonal_x,
+                        changed_region.upper_right_diagonal_x,
+                        items.len(),
+                    );
+                }
                 // :146.
                 for current_object in items {
                     // :147-149.
@@ -257,21 +296,32 @@ impl<'a> TraceTightener<'a> {
                             if matches!(board.items.get(&item_id), Some(Item::Trace(_))) =>
                         {
                             // :151.
-                            if <Board as PolylineTraceExt>::pull_tight_with_engine(
+                            let pulled = <Board as PolylineTraceExt>::pull_tight_with_engine(
                                 board,
                                 item_id,
                                 self,
                                 engine.as_deref_mut(),
-                            ) {
+                            );
+                            if p7t8b_oca_ledger() {
+                                eprintln!("OCAPT id={} res={pulled}", item_id.0);
+                            }
+                            if pulled {
                                 // :152-155.
                                 something_changed = true;
                                 if self.split_traces_at_keep_point(board)? {
                                     break;
                                 }
-                            } else if self.smoothen_end_corners_at_trace(board, item_id)? {
-                                // :156-158 — "because items may be removed".
-                                something_changed = true;
-                                break;
+                            } else {
+                                let smoothed =
+                                    self.smoothen_end_corners_at_trace(board, item_id)?;
+                                if p7t8b_oca_ledger() {
+                                    eprintln!("OCASM id={} res={smoothed}", item_id.0);
+                                }
+                                if smoothed {
+                                    // :156-158 — "because items may be removed".
+                                    something_changed = true;
+                                    break;
+                                }
                             }
                         }
                         // :160-165.
@@ -296,13 +346,17 @@ impl<'a> TraceTightener<'a> {
                             // `tests/opt_changed_area.rs`'s
                             // `the_whole_sweep_matches_the_jvm_on_a_real_board` replays it.
                             let unchanged_trace_costs = trace_costs.expect("just matched");
-                            if ViaOptimizer::opt_via_location(
+                            let moved = ViaOptimizer::opt_via_location(
                                 board,
                                 via_id,
                                 Some(unchanged_trace_costs),
                                 self.base().min_translate_dist,
                                 10,
-                            )? {
+                            )?;
+                            if p7t8b_oca_ledger() {
+                                eprintln!("OCAVIA id={} res={moved}", via_id.0);
+                            }
+                            if moved {
                                 something_changed = true;
                             }
                         }
@@ -548,12 +602,23 @@ impl<'a> TraceTightener<'a> {
         let mut connection_to_trace_improved = true;
         let mut current_trace = trace;
         // :426.
+        let mut p7t8b_iter = 0;
         while connection_to_trace_improved {
             connection_to_trace_improved = false;
             // :428.
-            let Some(adjusted_polyline) =
-                self.smoothen_end_corners_at_trace_2(board, current_trace)
-            else {
+            let adjusted = self.smoothen_end_corners_at_trace_2(board, current_trace);
+            // Plan 7 Task 8b's level-7 ledger — `SM1`. Off unless `P7T8B_OCA` is set.
+            if p7t8b_oca_ledger() {
+                p7t8b_iter += 1;
+                eprintln!(
+                    "SM1 iter={p7t8b_iter} trace={} adj={}",
+                    current_trace.0,
+                    adjusted
+                        .as_ref()
+                        .map_or_else(|| "none".to_string(), |p| p.corner_count().to_string())
+                );
+            }
+            let Some(adjusted_polyline) = adjusted else {
                 continue;
             };
             // :430-441.
@@ -593,12 +658,24 @@ impl<'a> TraceTightener<'a> {
                         .last_corner()
                         .expect("an inserted trace has a last corner");
                     let stop = self.base().stop_check();
+                    if p7t8b_oca_ledger() {
+                        eprintln!(
+                            "SMSPL which=first pt={first_corner:?} layer={trace_layer} \
+                             net={current_net_number}"
+                        );
+                    }
                     board.split_traces_checked(
                         &first_corner,
                         trace_layer,
                         current_net_number,
                         stop,
                     )?;
+                    if p7t8b_oca_ledger() {
+                        eprintln!(
+                            "SMSPL which=last pt={last_corner:?} layer={trace_layer} \
+                             net={current_net_number}"
+                        );
+                    }
                     board.split_traces_checked(
                         &last_corner,
                         trace_layer,
@@ -708,6 +785,17 @@ pub(crate) struct ContactScan {
 ///
 /// `None` is Java's `return null` from the enclosing method, which the `else` arm at `:517-519`
 /// takes for any contact that is not a non-shove-fixed `PolylineTrace`.
+//
+// obligation: quirk #210 — this loop walks `contacts` **ascending**, and Java walks the same set
+// **descending**. `trace.getStartContacts()` is `Trace.getNormalContacts`'s `new TreeSet<>()`
+// (Trace.java:179) under `Item.compareTo == item.id - id` (Item.java:95-102), and `:511-514`
+// keeps the *last* matching contact, so with two or more matches the two sides keep different
+// ones. Plan 7 Task 8b localised the whole `--steps=1-8` `router-dac2020-bm01` connection-175
+// divergence to exactly this, and measured that `contacts.iter().rev()` closes it (295/295
+// MATCH at both `ripupPassNo` 1 and 2) without moving any other reference. The fix is a
+// separately authorised follow-up, not this task's; until it lands the divergence is pinned by
+// `crates/fr-router/tests/reference_parity.rs`'s
+// `steps_one_to_eight_on_dac2020_is_the_open_xdiff_at_connection_175`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn scan_contacts(
     board: &Board,
@@ -728,6 +816,18 @@ pub(crate) fn scan_contacts(
         other_prev_trace_line: None,
         prev_corner_side: None,
     };
+    // Plan 7 Task 8b's level-7 ledger — `SSC`. Off unless `P7T8B_OCA` is set; stderr only.
+    if p7t8b_oca_ledger() {
+        eprintln!(
+            "SSC c0={current_end_corner:?} c1={current_prev_end_corner:?} \
+             ldir={line_direction:?} pldir={prev_line_direction:?} contacts=[{}]",
+            contacts
+                .iter()
+                .map(|c| c.0.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+    }
     for current_contact in contacts {
         // :482 and :517-519.
         let item = board.items.get(current_contact)?;
@@ -784,6 +884,21 @@ pub(crate) fn scan_contacts(
             scan.bend = true;
             other_trace_found = true;
         }
+        if p7t8b_oca_ledger() {
+            eprintln!(
+                "SSCC id={} otl={} optl={} approx={:?} side={:?} proj={:?} orth={} \
+                 acute={} bend={} found={other_trace_found}",
+                current_contact.0,
+                p7t8b_line(&current_other_trace_line),
+                p7t8b_line(&current_other_prev_trace_line),
+                current_other_trace_corner_approx,
+                current_prev_corner_side,
+                current_projection,
+                current_other_trace_line.direction().is_orthogonal(),
+                scan.acute_angle,
+                scan.bend,
+            );
+        }
         // :511-516.
         if other_trace_found {
             scan.other_trace_corner_approx = Some(current_other_trace_corner_approx);
@@ -792,7 +907,23 @@ pub(crate) fn scan_contacts(
             scan.other_prev_trace_line = Some(current_other_prev_trace_line);
         }
     }
+    if p7t8b_oca_ledger() {
+        eprintln!(
+            "SSCF acute={} bend={} otl={} side={:?} approx={:?}",
+            scan.acute_angle,
+            scan.bend,
+            scan.other_trace_line
+                .map_or_else(|| "null".to_string(), |l| p7t8b_line(&l)),
+            scan.prev_corner_side,
+            scan.other_trace_corner_approx,
+        );
+    }
     Some(scan)
+}
+
+/// `Line.a + "-" + Line.b` — the shape `TraceTightener45`'s Java `p7pts` helper prints.
+pub(crate) fn p7t8b_line(l: &Line) -> String {
+    format!("({},{})-({},{})", l.a.x, l.a.y, l.b.x, l.b.y)
 }
 
 // =================================================================================================

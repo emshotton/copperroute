@@ -827,11 +827,18 @@ fn steps_one_to_eight_on_dac2020_at_pass_two_matches_the_jar() {
 /// `tests/reference/router-dac2020-bm01/router-steps18.xdiff.txt`. A regression that moves the
 /// divergence earlier makes the 1-174 loop fail.
 ///
-/// The cause is **not** in Task 8's wiring: the whole board is byte-identical at the instant
-/// connection 175 begins (`P6T1_DUMP_BOARD=1`), Java is hash-mode independent here, `p7t3` modes
-/// 0-4 MATCH on this board, and forcing `fr_geometry::Line::is_same_object` to `false` moves the
-/// first divergence to connection 83 — i.e. it is the `Line` reference-identity model, quirks
-/// #74/#188.
+/// The cause is **not** in Task 8's wiring, and — since Plan 7 Task 8b — it is no longer a
+/// hypothesis. It is **quirk #210**: `fr_router::board_ext::tightener::scan_contacts` walks the
+/// contact set of `TraceTightener45.smoothenStartCornerAtTrace` **ascending** where Java's
+/// `TreeSet<Item>` walks it **descending**, and `TraceTightener45.java:511-514` keeps the *last*
+/// matching contact, so the two sides smooth trace 292213's start corner against different
+/// contacts. Task 8b measured that reversing that one walk makes all 294 connections MATCH at
+/// both `ripupPassNo` 1 and 2 and moves no other reference. The earlier reading — the `Line`
+/// reference-identity model, quirks #74/#188 — is **wrong**: forcing
+/// `fr_geometry::Line::is_same_object` to `false` moves the first divergence to connection 83,
+/// but it does so *on top of* a corrected contact walk too, so that is an artefact of the
+/// deliberately-wrong identity model and a different site. See
+/// `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-8b-report.md`.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn steps_one_to_eight_on_dac2020_is_the_open_xdiff_at_connection_175() {
@@ -851,7 +858,7 @@ fn steps_one_to_eight_on_dac2020_is_the_open_xdiff_at_connection_175() {
     assert_eq!((175, got.k), (175, want.k));
     assert_ne!(
         got, want,
-        "connection 175 now matches: the Line-identity divergence is closed. Promote this stem \
+        "connection 175 now matches: quirk #210's contact-walk order is fixed. Promote this stem \
          into steps_one_to_eight_matches_the_jar, delete router-steps18.xdiff.txt, and close the \
          row in docs/java-quirks.md."
     );
