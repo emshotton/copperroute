@@ -2280,15 +2280,12 @@ afterwards would wipe those marks and end a pass early.
 `startMarkingChangedArea` re-creates the store; leaving this one in place makes
 the following sweep see a stale region.
 
-**The `ViaOptimizer` arm is live as of Task 6, and its residual gap is Task 7's.**
-`:160-165` calls `ViaOptimizer::opt_via_location` for real; what is still owed
-under it are the `repositionVia` overloads, rostered `added in Task 7:` in
-`src/board_ext/via_optimizer.rs`. Overload C answers `None` (safe — Java's
-`:132-134` mutates nothing); **overload A panics** (controller ruling B1 — see
-the Task 6 section below). `p7t3` mode 4 therefore *panics* on a board with a
-plane-or-fanout via, and `opt_changed_area.rs`'s
-`mode_four_is_task_sevens_obligation` is the `#[should_panic]` that pins it, so
-the obligation cannot be quietly forgotten. No `engine` is threaded into
+**The `ViaOptimizer` arm is complete as of Task 7.** `:160-165` calls
+`ViaOptimizer::opt_via_location` for real, and Task 7's three `repositionVia`
+overloads closed the last gap under it, so `p7t3` **mode 4** (vias offered to the
+optimiser) is 0 diffs on all three boards and lives inside
+`opt_changed_area.rs`'s `the_whole_sweep_matches_the_jvm_on_a_real_board` loop.
+Task 6's `#[should_panic]` sentinel is deleted. No `engine` is threaded into
 `opt_via_location`: none of the three things it calls — `DrillItemMover::insert`,
 `DrillItemMover::check`, `PolylineTraceExt::pull_tight` — takes one, because Java's
 `DrillItemMover` has no such parameter and Java's three-argument `pullTight`
@@ -2319,77 +2316,159 @@ comparison against the `IntOctagon.EMPTY` singleton — ruling 9's site) and #20
 caller demands `> 0`, so that band is dead acceptance).
 
 **Where the numbers come from.** `scripts/differential/java/P7T3.java` (board
-level: three real boards × modes 0-3, 0 diffs; mode 4 is the `ViaOptimizer`
-measurement) and `scripts/differential/java/P7T6.java` (five modes, 0 diffs).
+level: three real boards × modes 0-4, 0 diffs — mode 4 is the `ViaOptimizer`
+one, closed by Task 7) and `scripts/differential/java/P7T6.java` (five modes, 0 diffs).
 Both transcripts are committed —
 `tests/data/p7t3-opt-changed-area.txt` and
 `tests/data/p7t6-connection-to-pin.txt` — and replayed row by row by
 `tests/opt_changed_area.rs` and `tests/connection_to_pin.rs`.
 
-## `ViaOptimizer`'s entry half (Plan 7 Task 6)
+## `ViaOptimizer` (Plan 7 Tasks 6 and 7)
 
 `board/optimize/ViaOptimizer.java` is 733 lines in three layers: an entry pair
 (`optViaLocation:33-158`, `optPlaneOrFanoutVia:161-296`), three `repositionVia`
-overloads (`:302-365`, `:367-429`, `:435-713`) and one predicate
+overloads (`:302-365`, `:367-429`, `:434-713`) and one predicate
 (`isWithinTolerance:719-732`). **Task 6 ported the entry pair and the predicate;
-the three overloads are Task 7's** and answer `None` until then. The class is
-`board_ext/via_optimizer.rs`, and `scripts/audit-map/fr-router.map`'s
-`ViaOptimizer` row moved from `lib.rs` to it here, as plan ruling 13 says it
-should.
+Task 7 ported the three overloads.** The class is `board_ext/via_optimizer.rs`,
+and `scripts/audit-map/fr-router.map`'s `ViaOptimizer` row moved from `lib.rs` to
+it in Task 6, as plan ruling 13 says it should.
 
-### Overload A panics, overload C answers `None` (controller ruling B1)
+Java overloads on the arity and types of the argument list, so the port renames
+the three:
 
-The two `repositionVia` stubs Task 7 will fill are **not** interchangeable,
-because their two call sites treat a `null` differently.
+| Java | port | who calls it |
+|---|---|---|
+| `repositionVia(board, via, IntPoint, int, int, int)` `:302-365` | `reposition_via_toward_location` | `optPlaneOrFanoutVia:216-217`, plus eight call expressions inside overload C |
+| `repositionVia(board, via, IntPoint, int, int, int, IntPoint, int, int, int)` `:367-429` | `reposition_via_check_candidate` | **only** overload C's four decomposition arms (`:599`, `:627`, `:665`, `:696`) |
+| `repositionVia(board, via, int, int, int, ExpansionCostFactor, Point, int, int, int, ExpansionCostFactor, Point)` `:434-713` | `reposition_via_general` | `optViaLocation:118-131` |
 
-* Overload **C** (`optViaLocation:118-131`) — Java's `:132-134` turns `null` into
-  `return false` and mutates nothing. A `None` stub therefore produces a board
-  Java itself produces whenever its own overload C declines; the divergence is a
-  *missing* move, and `a_refused_move_leaves_the_board_byte_identical` proves the
-  board is untouched.
-* Overload **A** (`optPlaneOrFanoutVia:216-217`) — a `null` does **not** end the
-  method. It falls through to the `:218-260` "project the via to the previous
-  line" branch, which is fully ported and **inserts** at `:282`. Java reaches
-  that branch only when *its* overload A answered `null`. Measured on
+**The dispatch, corrected twice.** The plan's first draft placed it at `:100-140`
+(that range is corner/tolerance computation) and called overload A "the
+two-contact case". It is at **`:46-78`**, and overload A is the **one**-contact /
+plane-or-fanout arm; overload C is the two-trace one. `p7t4`'s `classify` is a
+read-only replica of `:39-106` on both sides, so a port that reached the wrong
+overload would be a diff even where both answers agree.
+
+### The three overloads mutate nothing
+
+`checkTraceSegment` and `DrillItemMover.check` are read-only probes, and both of
+`check`'s recursion depths are **zero** at all nine call sites, so no shove is
+attempted and no item is inserted. That is why `p7t4` modes 3-5 may call an
+overload 27 times per via and still end on the board the routing prologue built,
+and why each of the three modes prints that board afterwards: an inserted item or
+a burned id would show as a `maxId=`/`item id=` diff in the dump. It is also why
+Task 6 could stub overload C inertly — `optViaLocation:132-134` turns a `null`
+into `return false` with nothing mutated.
+
+`tests/via_optimizer_reposition.rs`'s
+`the_general_case_leaves_the_board_untouched_when_no_candidate_improves` makes
+the same statement locally, with `structural_hash`, for every via x every cost
+pair, successes included.
+
+### The candidate order: no scoring pass, and a tie is not a candidate
+
+The plan's transcription note warned that "where two candidates tie, Java keeps
+the **first** found in contact order; the port must not use a `max_by` that keeps
+the last". **There is no `max_by` and no scoring pass anywhere in overload C.**
+It is a sequence of *gated attempts*, each returning the moment it succeeds:
+
+1. `:462-480` — the **overlapping-lines** arm (`sideOf == COLLINEAR` and a
+   positive scalar product). It runs before every cost gate and **returns
+   unconditionally**, `null` included, so the six later families are skipped
+   whenever it fires. Note the crossed parameters: moving toward the *first*
+   from-corner is probed with the *second* trace's half width, layer and
+   clearance class, because it is the second trace that must be re-routed to the
+   new via location. Every later arm crosses them the same way.
+2. `:485-526` — two **weighted-distance** attempts, each asking "is this
+   from-corner cheaper to reach under the *other* layer's costs?" (Java measures
+   both distances to the same point under two cost pairs; that is deliberate, not
+   a copy-paste slip).
+3. `:528-578` — the **acute-angle** case, skipped under `NINETY_DEGREE`: shorten
+   the longer leg to the shorter one's length, then try both endpoints, cheaper
+   first, and take whichever answers.
+4. `:581-711` — **decomposition into axis-parallel parts**, two attempts per
+   non-orthogonal delta, each asking overload B whether the L-shaped detour is
+   clear on *both* legs.
+
+Every gate is a strict `>`, so equal weighted distances **skip the arm
+entirely**. `Issue026-J2_reference`'s via 231 shows it end to end: with
+`costs1 == costs2` overload C answers `null`; on the same board and the same
+geometry it answers `(1228467,-826441)` under `(1.0, 2.0)`/`(2.0, 1.0)` and
+`(1231088,-829062)` under `(2.0, 1.0)`/`(1.0, 2.0)`. Three answers, decided only
+by the gates. `a_candidate_tie_keeps_the_first_in_contact_order` pins all three,
+and recomputes the two gate expressions from `FloatPoint::weighted_distance` so
+the strictness is observed rather than inferred.
+
+### The Task 6 -> Task 7 sentinels, and how they flipped
+
+Task 6 could not answer for overload A, and controller ruling B1 said a stubbed
+arm must be **inert or loud**. The two stubs were not alike:
+
+* overload **C** (`optViaLocation:118-131`) could answer `None` — Java's
+  `:132-134` mutates nothing, so the port produced a board Java itself produces;
+* overload **A** (`optPlaneOrFanoutVia:216-217`) could not. A `null` there falls
+  through to the `:218-260` projection branch, which **inserts** at `:282`, and
+  which Java reaches only when *its* overload A answered `null`. Measured on
   `Issue143-rpi_splitter` at `routeK = 12`, via 84: centre `(977281,2968339)`,
-  Java moves it to `(1016000,3119161)`, and a `None`-stubbed port moved it to
-  `(1016000,2968339)` — a board Java never produces.
+  Java `(1016000,3119161)`, `None`-stubbed port `(1016000,2968339)` — a board
+  Java never produces. So it was an `unimplemented!`, with
+  `ViaOptimizer::reaches_task_seven_guard` and the `TASK7_GUARD` rows both halves
+  of `p7t4` printed so that no committed transcript row recorded a port-only
+  move.
 
-So overload A is an **`unimplemented!`**, not a `None`: a stubbed arm must be
-inert or loud, never a silent port-only mutation. `p7t3` mode 4 therefore
-*panics* on a board with a plane-or-fanout via, and
-`opt_changed_area.rs`'s `mode_four_is_task_sevens_obligation` is the
-`#[should_panic]` that pins it. `ViaOptimizer::reaches_task_seven_guard` is a
-read-only replica of `optPlaneOrFanoutVia:167-215` that lets a caller see the
-guard coming; `P7T4.reachesOverloadA` is the same twenty lines on the Java side,
-so both halves of `p7t4` skip exactly the same vias and **no committed transcript
-row records the port-only move.** Task 7 deletes the panic and the predicate
-together.
+Task 7 deleted the guard, the predicate and the `TASK7_GUARD` rows, and flipped
+every sentinel:
 
-### The measured size of the Task 7 gap
+| sentinel | Task 6 | Task 7 |
+|---|---|---|
+| `opt_changed_area.rs` `mode_four_is_task_sevens_obligation` | `#[should_panic(expected = "repositionVia overload A")]` | **deleted**; mode 4 is inside `the_whole_sweep_matches_the_jvm_on_a_real_board`'s loop |
+| `via_optimizer.rs` `the_only_divergence_is_repositionvia` | eight via ids named as expected divergences | **equality pin**: those same eight rows are asserted identical |
+| `via_optimizer.rs` `a_plane_via_reaches_task_sevens_guard` | both entry points must panic | `a_plane_via_moves_through_overload_a`: via 187 -> `(932812,1011224)`, via 84 -> `(1016000,3119161)` |
+| `via_optimizer.rs` `the_matching_runs_match_the_jvm_row_for_row` | seven of nine board sections | **all nine** |
+| `via_optimizer.rs` `the_overload_dispatch_matches_javas_contact_counts` | the first via row of each run | **every** via row |
+| `ViaOptimizer::reaches_task_seven_guard`, `P7T4.reachesOverloadA`, `takesPlaneArm` | the ruling-B1 guard | **deleted from both halves**, transcript regenerated |
+| `tightener/mod.rs` `obligation: ViaOptimizer.repositionVia — Task 7` | open | **discharged** |
 
-`scripts/differential/run.sh p7t4 <dsn> <mode>` drives both methods over **every
-via** of a board the `P6T1` machinery actually routed (12 connections), printing
-per via the descending contact ids, the dispatch class `:39-106` computes, the
-answer and the centre before and after, then the whole board. Mode 2 drives
-`isWithinTolerance` over 10 256 scripted triples with no board at all. Mode 6 is
-mode 0 with `traceCosts = null`; it is numbered **6, not 3**, because
-`task-7-brief.md:29` reserves 3/4/5 for one overload each.
+Via 84 is worth a second look: overload A answers `(1016000,3007058)`, which
+**is** the check corner, so `optPlaneOrFanoutVia:292-294`'s
+`newViaLocation.equals(checkCorner)` fires and the method recurses once more,
+landing at `(1016000,3119161)`. The two numbers are one call apart, and
+`a_one_contact_via_takes_overload_a` pins both.
 
-| fixture | vias | mode 0 (`optViaLocation`) | mode 1 (`optPlaneOrFanoutVia`) | mode 2 | mode 6 (mode 0, `traceCosts = null`) |
-|---|---|---|---|---|---|
-| `Issue649-kicad_ecc83-pp_input_board_v1` | 0 | **MATCH** (380 lines) | **MATCH** | **MATCH** (10 769) | **MATCH** |
-| `Issue143-rpi_splitter` | 6 (2 one-contact → `TASK7_GUARD`, 4 `TWO_TRACES`) | **MATCH** (68) | **MATCH** (68) | **MATCH** | **MATCH** (68) |
-| `Issue026-J2_reference` | 6, all `TWO_TRACES` | DIFF, 6 via rows | **MATCH** (124 lines) | **MATCH** | DIFF, 6 via rows |
+### The measured evidence
 
-**Ten of twelve MATCH.** The two that do not are overload C's arm, the safe stub:
-the *first* divergent `j2` row (via 264) has an identical `contacts=`, `class=`
-and `center=` and differs only in `result=`, and the five rows after it differ in
-their contact lists only because Java's move of 264 changed the board they are
-read from. `tests/via_optimizer.rs`'s `the_only_divergence_is_repositionvia`
-names the six ids and fails if a different row moves; **when Task 7 lands, its
-list goes empty and it becomes
-`the_matching_runs_match_the_jvm_row_for_row`.**
+`scripts/differential/run.sh p7t4 <dsn> <mode>` drives the class over **every
+via** of a board the `P6T1` machinery actually routed (12 connections). Modes 0,
+1 and 6 drive the entry pair and print, per via, the descending contact ids, the
+dispatch class, the answer and the centre before and after, then the whole board.
+Mode 2 drives `isWithinTolerance` over 10 256 scripted triples with no board.
+**Modes 3, 4 and 5 are Task 7's, one per overload, each driven directly** through
+`setAccessible` on the Java side: 27 scripted `toLocation`s per via for A, 11
+`toLocation`s x 2 role assignments for B, and five cost-pair combinations for C
+with the arguments `optViaLocation:118-131` builds. Mode 6 is mode 0 with
+`traceCosts = null`; it is numbered **6, not 3**, because Task 6 reserved 3/4/5
+for exactly this.
+
+| fixture | vias | 0 | 1 | 2 | 3 (overload A) | 4 (overload B) | 5 (overload C) | 6 |
+|---|---|---|---|---|---|---|---|---|
+| `Issue649-kicad_ecc83-pp_input_board_v1` | 0 | **MATCH** (380) | **MATCH** | **MATCH** (10 769) | **MATCH** | **MATCH** | **MATCH** | **MATCH** |
+| `Issue143-rpi_splitter` | 6 (2 one-contact, 4 `TWO_TRACES`) | **MATCH** (69) | **MATCH** (69) | **MATCH** | **MATCH** (224) | **MATCH** (194) | **MATCH** (84) | **MATCH** (69) |
+| `Issue026-J2_reference` | 6, all `TWO_TRACES` | **MATCH** (125) | **MATCH** (124) | **MATCH** | **MATCH** (280) | **MATCH** (250) | **MATCH** (148) | **MATCH** (125) |
+
+**21 of 21 MATCH** — Task 6 stood at 10 of 12 with every DIFF a `repositionVia`.
+The five remaining corpus stems were run too, modes 0/3/4/5:
+
+| stem | 0 | 3 | 4 | 5 |
+|---|---|---|---|---|
+| `tutorial_board` | **MATCH** (443) | **MATCH** (443) | **MATCH** (443) | **MATCH** (443) |
+| `Issue103-Board-Unrouted` | **MATCH** (1 890) | **MATCH** (2 046) | **MATCH** (2 016) | **MATCH** (1 914) |
+| `Issue413-test` | **MATCH** (47) | **MATCH** (151) | **MATCH** (131) | **MATCH** (63) |
+| `Issue110-RelayModule` | **MATCH** (955) | **MATCH** (1 267) | **MATCH** (1 207) | **MATCH** (955) |
+| `Issue753-CPU-85_r104` | **MATCH** (2 450) | **MATCH** (2 918) | **MATCH** (2 828) | **MATCH** (2 450) |
+
+And `p7t3` — the `optChangedArea` sweep that *calls* the class — is **15 of 15
+MATCH** across its five modes and three boards, mode 4 (vias offered to the
+optimiser) included. That is the discharge of Task 5's `obligation:` marker.
 
 ### Two things the plan got wrong, and Java won
 
@@ -2417,27 +2496,48 @@ uses Java's names; `TraceTightener.optChangedArea:161-164` is the call site that
 feeds `minTranslateDist` into the *accuracy* slot and the literal `10` into the
 depth.
 
-### Two `pub seam:` markers, and what they do to Task 17's count
+**Three more, from Task 7.** The brief's interface block types overload C as
+`Result<bool, BoardError>`; Java returns a nullable `Point`, and none of the three
+overloads can fail, so the port's signatures are `Option<Point>`, `bool` and
+`Option<Point>`. The dispatch note said "overload C recurses (`:292-294`)";
+`:292-294` is `optPlaneOrFanoutVia`'s recursion, which Task 6 already landed —
+**overload C does not recurse into itself**, it calls A and B. And the note said
+"overload C inserts/removes vias — every discarded attempt too"; it does not
+(see "The three overloads mutate nothing" above), so there is no id-burn order to
+reproduce beyond the entry pair's, which Task 6 pinned.
 
-`ViaOptimizer::{opt_plane_or_fanout_via, is_within_tolerance}` are `private` in
-Java and `pub` here — an integration test and a `scripts/differential` binary are
-both *outside* the crate, so `pub(crate)` cannot reach them and the Java twin pays
-the same price with `setAccessible`. `ViaOptimizer::reaches_task_seven_guard` is a
-third, the port's own ruling-B1 predicate. All three carry a `// pub seam:` line
-(Plan 6 finding S7). **This changes a counted Task 17 gate:**
-`docs/superpowers/plans/2026-08-30-plan-7-router-batch.md:1841` expects
-`grep -rn "pub seam:" crates/fr-router/src` to return **six**; the tree was
-already at **ten** before this task (Plan 7 Tasks 2 and 4 added two in
-`pipeline/stop.rs`) and is at **thirteen** after it. Task 17 owns the reconciliation;
-recorded here so the number is not a surprise.
+### Five `pub seam:` markers, and what they do to Task 17's count
 
-### One quirk
+`ViaOptimizer::{opt_plane_or_fanout_via, is_within_tolerance,
+reposition_via_toward_location, reposition_via_check_candidate,
+reposition_via_general}` are `private` in Java and `pub` here — an integration
+test and a `scripts/differential` binary are both *outside* the crate, so
+`pub(crate)` cannot reach them and the Java twin pays the same price with
+`setAccessible`. All five carry a `// pub seam:` line (Plan 6 finding S7).
+Task 6's sixth, `reaches_task_seven_guard`, is deleted. **This moves a counted
+Task 17 gate:** `docs/superpowers/plans/2026-08-30-plan-7-router-batch.md:1841`
+expects `grep -rn "pub seam:" crates/fr-router/src` to return **six**; the tree
+was at **ten** before Task 6, **thirteen** after it, and is at **fifteen** now.
+Task 17 owns the reconciliation; recorded here so the number is not a surprise.
+
+### Two quirks
 
 **#206** — `isWithinTolerance`'s javadoc and `optViaLocation:85-86` both claim it
 "matches the logic in `DrillItem.getNormalContacts()`", which matches trace ends
 **exactly** (`DrillItem.java:288-290`). So the tolerance never decides whether a
 contact is usable; it only gives the `firstCorner`-first test order a chance to
 pick the wrong end of a short trace. Reproduced, test order included.
+
+**#207** — none of the three `repositionVia` overloads tests the board's trace
+angle restriction against the delta it produces, yet
+`optPlaneOrFanoutVia:236-241` — the fallback reached *only* when overload A
+answered `null` — refuses a projection that is not orthogonal under
+`NINETY_DEGREE` or a multiple of 45 degrees under `FORTYFIVE_DEGREE`. The same
+method therefore applies the restriction to one of its two answers and not the
+other. **Latent on the corpus**: overload A walks toward a trace corner, and the
+trace already obeys the restriction, so every move the seven stems produce is
+orthogonal or exactly diagonal. Reproduced as-is, with the measurement in the
+register rather than a claim that the corpus clears it.
 
 ## What Plan 7 inherits
 
@@ -2452,7 +2552,7 @@ crates/` is the complete inventory.
 | the **pass loop** and the per-pass / per-item recovery boundaries | `AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`, `AutorouteBatchLoop.java:44-56` | `src/lib.rs` roster; the pass-level-recovery row of the obligation register |
 | the **fanout** pre-pass (and with it the only thing that sets `ctrl.isFanout`) | `BatchFanout.java`, `RoutingBoard.fanout` | `src/lib.rs` roster; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
 | the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
-| ~~`ViaOptimizer.optViaLocation`~~ — **DONE in Plan 7 Task 6**, with `optPlaneOrFanoutVia` and `isWithinTolerance`; the three `repositionVia` overloads are Task 7's (overload A as an `unimplemented!`, overload C as a `None` — ruling B1) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs`); the two `added in Task 7:` markers in the same file |
+| ~~`ViaOptimizer`, whole~~ — **DONE**: `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` in Plan 7 Task 6, the three `repositionVia` overloads in Task 7 (which also deleted ruling B1's `unimplemented!` and its guard predicate) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:302-365`, `:367-429`, `:434-713`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs` in Task 6) |
 | ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |
 | ~~`RoutingBoard.moveDrillItem`~~ — **rostered `not ported:` in Plan 7 Task 6**: the plan's scan ruling 3 said `ViaOptimizer` moves vias through it, and it does not (`ViaOptimizer.java:136`, `:244`, `:282` call `DrillItemMover` directly). Its only Java caller is `MoveComponent.insert:156`, whose only caller is `gui/interactive/DragItemState.java:56-61` | `RoutingBoard.java:252-295` | `crates/fr-board/src/board/mod.rs`'s `not ported:` marker, with the grep evidence |
 | the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |

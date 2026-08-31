@@ -2082,8 +2082,9 @@ the driver expects, or none at all.
 
 - `p7t4 <dsn> [mode] [accuracy] [routeK]` — `board.optimize.ViaOptimizer`'s
   `optViaLocation` (:33-158), `optPlaneOrFanoutVia` (:161-296) and
-  `isWithinTolerance` (:719-732), over a real board whose vias were placed by real
-  routing (Plan 7 Task 6). Defaults `<dsn> 2 500 12`.
+  `isWithinTolerance` (:719-732) and the three `repositionVia` overloads — A
+  (:302-365), B (:367-429) and C (:434-713) — over a real board whose vias were
+  placed by real routing (Plan 7 Tasks 6 and 7). Defaults `<dsn> 2 500 12`.
 
   **Not to be confused with `java/probes/P7T4Probe.java`**, which is Plan 7 *Task 4*'s
   stop-state probe and feeds `crates/fr-router/tests/data/p7t4-stop-and-counters.txt`.
@@ -2100,42 +2101,49 @@ the driver expects, or none at all.
   `optPlaneOrFanoutVia` driven directly, `2` = `isWithinTolerance` over 10 000
   scripted triples plus 256 exact-boundary ones (no board is loaded), `6` = mode 0
   with `traceCosts = null`, which is `:113-116`'s else-branch. **Mode 6 is numbered
-  6, not 3**: `task-7-brief.md:29` reserves 3/4/5 for one `repositionVia` overload
-  each.
+  6, not 3**: `task-7-brief.md:29` reserved 3/4/5 for one `repositionVia` overload
+  each, and Plan 7 Task 7 filled them —
 
-  **The Task 7 guard.** `repositionVia` overload A is an `unimplemented!` on the
-  Rust side (controller ruling B1): answering `None` there sends
-  `optPlaneOrFanoutVia` into its `:218-260` projection branch, which *inserts*, and
-  which Java reaches only when its own overload A answered `null` — on
-  `Issue143-rpi_splitter` via 84 that moved the via to `(1016000,2968339)` where
-  Java puts it at `(1016000,3119161)`. Both sides therefore run a read-only replica
-  of `optPlaneOrFanoutVia:167-215` (`P7T4.reachesOverloadA` /
-  `ViaOptimizer::reaches_task_seven_guard`) and print `result=TASK7_GUARD` for a via
-  that would reach it, **calling neither method on either side**, so no committed
-  transcript row records the port-only move.
+  * `3` — **overload A**, 27 scripted `toLocation`s per via (the contact trace's two
+    inner corners, the via centre itself, and six offsets at each of 1, 1 000,
+    10 000 and 100 000 units), printed as `repA id=… k=… to=… hw=… layer=… cl=… -> …`;
+  * `4` — **overload B**, 11 `toLocation`s (overload C's four axis-parallel
+    decomposition points, the two from-corners, the centre and four short offsets)
+    x the two role assignments C uses, as `repB id=… k=… r=… to=… connect=… -> …`;
+  * `5` — **overload C**, the arguments `optViaLocation:118-131` builds x five
+    `(horizontal, vertical)` cost-pair combinations, as
+    `repC id=… k=… costs1=… costs2=… from1=… from2=… -> …`.
+
+  **The three overloads mutate nothing** — `checkTraceSegment` and
+  `DrillItemMover.check` (both recursion depths zero) are read-only probes — so the
+  driver may call one 27 times per via and still end on the board the routing
+  prologue built. Each of the three modes prints that board afterwards, which is
+  what pins "no item was inserted and no id was burned".
 
   ```sh
-  for m in 0 1 2 6; do
-    ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn $m 500 12
-    ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn $m 500 12
+  for m in 0 1 2 3 4 5 6; do
+    for f in Issue143-rpi_splitter Issue026-J2_reference Issue649-kicad_ecc83-pp_input_board_v1; do
+      ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/$f.dsn $m 500 12
+    done
   done
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 1 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 2 500 12
-  # expected to DIFF until Plan 7 Task 7 lands repositionVia overload C:
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 0 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 6 500 12
   ```
 
-  **Ten of the twelve fixture/mode pairs are 0 diffs**: mode 2 on every stem
-  (10 769 lines), all four modes of `Issue649-kicad_ecc83-pp_input_board_v1` (no via
-  in its 12-connection prefix), all four of `Issue143-rpi_splitter` (its two
-  one-contact vias are `TASK7_GUARD` rows on both sides), and mode 1 of
-  `Issue026-J2_reference` (all six vias have two trace contacts, so `:188-190`
-  refuses every one). The two that diff are `J2` modes 0 and 6, on **only** the six
-  via rows whose Java answer came out of `repositionVia` **overload C** — Java moves
-  four, and those moves then change the contact lists of the other two.
-  `crates/fr-router/tests/via_optimizer.rs` names all six by id and fails if a
-  different row moves.
+  **All 21 fixture/mode pairs are 0 diffs as of Plan 7 Task 7.** Task 6 stood at ten
+  of twelve, with every DIFF a `repositionVia`: `Issue026-J2_reference` modes 0 and 6
+  diverged on the six via rows whose Java answer came out of overload C, and
+  `Issue143-rpi_splitter`'s two one-contact vias were printed as `result=TASK7_GUARD`
+  rows on **both** sides — a read-only replica of `optPlaneOrFanoutVia:167-215`
+  (`P7T4.reachesOverloadA` / `ViaOptimizer::reaches_task_seven_guard`) skipped them so
+  no committed transcript row recorded a port-only move, because a `None` overload A
+  would have fallen into the `:218-260` projection branch, which *inserts*, and put
+  via 84 at `(1016000,2968339)` where Java puts it at `(1016000,3119161)` (controller
+  ruling B1). **Task 7 deleted the guard and the predicate from both halves and
+  regenerated the transcript**; the two vias now move, to `(932812,1011224)` and
+  `(1016000,3119161)`.
+
+  The other five corpus stems were run too, modes 0/3/4/5: `tutorial_board`,
+  `Issue103-Board-Unrouted`, `Issue413-test`, `Issue110-RelayModule` and
+  `Issue753-CPU-85_r104` — 20 more pairs, all MATCH.
 
   Like `p7t3` it declares `package app.freerouting.autoroute.maze;` and compiles
   `P6T1.java` alongside — the brief asked for `board.optimize`, which would have

@@ -301,8 +301,10 @@ pub mod prelude {
 // `TraceTightener*`, controller ruling AB), and the `board/optimize` audit invocation names them.
 // `ViaOptimizer` is deliberately outside that glob: its one public method is called from
 // `TraceTightener.optChangedArea:160-165`, which Plan 7 Task 5 landed as
-// `board_ext::TraceTightener::opt_changed_area`. **Plan 7 Task 6 ported the class's entry half**
-// — `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` are
-// `board_ext::via_optimizer`, the audit-map row points there, and the arm at `:160-165` is a live
-// call. The three `repositionVia` overloads are Task 7's and are rostered at their call sites in
-// that file; `p7t3` mode 4 is the measurement of what they still cost.
+// `board_ext::TraceTightener::opt_changed_area`. **The class is ported whole**, in
+// `board_ext::via_optimizer`, and the audit-map row points there: Plan 7 Task 6 landed the entry
+// half (`optViaLocation:33-158`, `optPlaneOrFanoutVia:161-296`, `isWithinTolerance:719-732`) and
+// Plan 7 Task 7 the three `repositionVia` overloads (`:302-365` as
+// `reposition_via_toward_location`, `:367-429` as `reposition_via_check_candidate`, `:434-713` as
+// `reposition_via_general` — Java overloads on the argument list and Rust does not). `p7t3` mode 4
+// and `p7t4` modes 0-6 are the measurement: 0 diffs.

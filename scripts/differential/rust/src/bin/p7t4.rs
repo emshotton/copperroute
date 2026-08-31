@@ -1,24 +1,22 @@
-//! Rust twin of `scripts/differential/java/P7T4.java` (Plan 7 Task 6): `board.optimize.ViaOptimizer`'s
-//! `optViaLocation` (ViaOptimizer.java:33-158), `optPlaneOrFanoutVia` (:161-296) and
-//! `isWithinTolerance` (:719-732), over a real DSN board whose vias were placed by real routing.
+//! Rust twin of `scripts/differential/java/P7T4.java` (Plan 7 Tasks 6 and 7):
+//! `board.optimize.ViaOptimizer`'s `optViaLocation` (ViaOptimizer.java:33-158),
+//! `optPlaneOrFanoutVia` (:161-296), `isWithinTolerance` (:719-732) and the three `repositionVia`
+//! overloads — A (:302-365), B (:367-429) and C (:434-713) — over a real DSN board whose vias were
+//! placed by real routing.
 //!
-//! Usage: `p7t4 <dsn> [mode] [accuracy] [routeK]`, modes `0`, `1`, `2` and `6`. See the Java twin's
-//! class comment for what each mode drives, for why mode 6 is not numbered 3
-//! (`task-7-brief.md:29` reserves 3/4/5 for the three `repositionVia` overloads), for why the
-//! driver declares `package app.freerouting.autoroute.maze` rather than `board.optimize`, and for
-//! the scripted `isWithinTolerance` stream mode 2 replays.
+//! Usage: `p7t4 <dsn> [mode] [accuracy] [routeK]`, modes `0`, `1`, `2`, `3`, `4`, `5` and `6`. See
+//! the Java twin's class comment for what each mode drives, for why the `traceCosts = null` mode is
+//! numbered 6 (`task-7-brief.md:29` reserved 3/4/5 for one `repositionVia` overload each, which is
+//! what they now are), for why the driver declares `package app.freerouting.autoroute.maze` rather
+//! than `board.optimize`, and for the scripted `isWithinTolerance` stream mode 2 replays.
 //!
 //! **The budget is disabled on both sides.** `ViaOptimizer` reads no clock of its own; the routing
 //! prologue is `p7t3`'s and the `pull_tight` calls inside the two methods carry a `StopCheck` that
 //! never trips, which is Java's `null` `Stoppable`.
 //!
-//! **The Task 7 guard.** `repositionVia` overload A is an `unimplemented!` on this side
-//! (controller ruling B1 — answering `None` there sends `optPlaneOrFanoutVia` into a branch that
-//! *inserts*, and Java reaches that branch only when its own overload A answered null). So both
-//! sides run a read-only replica of `optPlaneOrFanoutVia:167-215` and print `result=TASK7_GUARD`
-//! for a via that would reach it, **without calling either method on either side**. What is left
-//! diffing is overload C's arm — `optViaLocation:118-131` — where a `None` is a board Java itself
-//! produces. `crates/fr-router/README.md` records the measured counts.
+//! **The three overloads mutate nothing**, so modes 3-5 call them many times per via and still end
+//! on the board the routing prologue built; each prints that board afterwards, which is what pins
+//! "no item was inserted and no id was burned".
 //!
 //! `P6T1.java`'s four routing choices are transcribed here for the reason `p7t3.rs`'s module
 //! comment gives: Rust binaries cannot share a private module, and the Java side is the
@@ -41,7 +39,7 @@ use fr_settings::{ExpansionCostFactor, HostEnvironment, RouterSettings, Settings
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
-        eprintln!("usage: p7t4 <dsn> [mode] [accuracy] [routeK]  (modes 0, 1, 2, 6)");
+        eprintln!("usage: p7t4 <dsn> [mode] [accuracy] [routeK]  (modes 0, 1, 2, 3, 4, 5, 6)");
         std::process::exit(2);
     }
     let dsn = std::fs::canonicalize(&args[0])
@@ -97,6 +95,19 @@ fn main() {
         .collect();
     writeln!(out, "vias n={}", via_ids.len()).expect("write");
 
+    if mode == 3 || mode == 4 || mode == 5 {
+        if mode == 3 {
+            drive_overload_a(&mut out, &mut board, &via_ids);
+        } else if mode == 4 {
+            drive_overload_b(&mut out, &mut board, &via_ids);
+        } else {
+            drive_overload_c(&mut out, &mut board, &via_ids);
+        }
+        dump_board(&mut out, &board);
+        out.flush().expect("flush");
+        return;
+    }
+
     for via_id in via_ids {
         if !matches!(board.get_item(via_id), Some(Item::Via(_))) {
             writeln!(out, "via id={} state=GONE", via_id.0).expect("write");
@@ -109,22 +120,6 @@ fn main() {
         };
         let contacts = contact_ids(&board, via_id);
         let class = classify(&board, via_id);
-        // The Task 7 guard, computed before the call and identically on both sides.
-        let guarded = ViaOptimizer::reaches_task_seven_guard(&board, via_id)
-            && (mode == 1 || takes_plane_arm(&board, via_id));
-        if guarded {
-            writeln!(
-                out,
-                "via id={} center={} minWidth={} contacts={contacts} class={class} \
-                 result=TASK7_GUARD after={}",
-                via_id.0,
-                dump_point(&center),
-                java_double_to_string(min_width),
-                dump_point(&center),
-            )
-            .expect("write");
-            continue;
-        }
         let result = if mode == 1 {
             ViaOptimizer::opt_plane_or_fanout_via(&mut board, via_id, accuracy, 10)
         } else {
@@ -270,15 +265,6 @@ fn classify(board: &Board, via: ItemId) -> &'static str {
     "TWO_TRACES"
 }
 
-/// `optViaLocation:39-78` reduced to "does this via reach the plane/fanout arm?" — the half of
-/// [`classify`] the guard needs. `P7T4.takesPlaneArm` is the same three lines.
-fn takes_plane_arm(board: &Board, via: ItemId) -> bool {
-    matches!(
-        classify(board, via),
-        "PLANE_OR_FANOUT_ONE_CONTACT" | "PLANE_OR_FANOUT_CONDUCTION"
-    )
-}
-
 /// `isWithinTolerance:719-732`, re-transcribed here so the replica needs no `pub(crate)` reach —
 /// the Java twin's `within` helper does exactly the same.
 fn within(p1: Option<&Point>, p2: &Point, tolerance: i32) -> bool {
@@ -288,6 +274,287 @@ fn within(p1: Option<&Point>, p2: &Point, tolerance: i32) -> bool {
     let fp1 = p1.to_float();
     let fp2 = p2.to_float();
     (fp1.x - fp2.x).abs() + (fp1.y - fp2.y).abs() <= f64::from(tolerance)
+}
+
+// ------------------------------------------------------------------------------------------------
+// Modes 3, 4 and 5 — one `repositionVia` overload each
+// ------------------------------------------------------------------------------------------------
+
+/// `P7T4.traceContacts` — the trace contacts of a via, in `getNormalContacts()` order
+/// (descending id).
+fn trace_contacts(board: &Board, via: ItemId) -> Vec<ItemId> {
+    board
+        .normal_contacts(via)
+        .into_iter()
+        .rev()
+        .filter(|id| {
+            board
+                .get_item(*id)
+                .is_some_and(fr_board::items::Item::is_trace)
+        })
+        .collect()
+}
+
+fn polyline_of(board: &Board, trace: ItemId) -> Polyline {
+    match board.get_item(trace) {
+        Some(Item::Trace(t)) => t.polyline().clone(),
+        _ => panic!("a trace contact"),
+    }
+}
+
+fn half_width_of(board: &Board, trace: ItemId) -> i32 {
+    match board.get_item(trace) {
+        Some(Item::Trace(t)) => t.get_half_width(),
+        _ => panic!("a trace contact"),
+    }
+}
+
+fn layer_of(board: &Board, trace: ItemId) -> usize {
+    match board.get_item(trace) {
+        Some(Item::Trace(t)) => t.get_layer(),
+        _ => panic!("a trace contact"),
+    }
+}
+
+fn clearance_of(board: &Board, trace: ItemId) -> usize {
+    board
+        .get_item(trace)
+        .expect("a trace contact")
+        .clearance_class()
+}
+
+fn via_center_rounded(board: &Board, via: ItemId) -> IntPoint {
+    board
+        .drill_center(via)
+        .expect("a via has a centre")
+        .to_float()
+        .round()
+}
+
+fn via_tolerance(board: &Board, via: ItemId) -> i32 {
+    let min_width = match board.get_item(via) {
+        Some(Item::Via(v)) => v.min_width(&board.ctx()),
+        _ => panic!("a via"),
+    };
+    (min_width / 2.0) as i32 + 1
+}
+
+/// `P7T4.targetsA` — the scripted `toLocation` family mode 3 walks per via.
+fn targets_a(center: IntPoint, polyline: &Polyline) -> Vec<IntPoint> {
+    let mut result = Vec::new();
+    result.push(
+        polyline
+            .corner(1)
+            .expect("a trace has at least two corners")
+            .to_float()
+            .round(),
+    );
+    result.push(
+        polyline
+            .corner(polyline.corner_count() - 2)
+            .expect("a trace has at least two corners")
+            .to_float()
+            .round(),
+    );
+    result.push(center);
+    for d in [1, 1000, 10_000, 100_000] {
+        result.push(IntPoint::new(center.x + d, center.y));
+        result.push(IntPoint::new(center.x, center.y + d));
+        result.push(IntPoint::new(center.x + d, center.y + d));
+        result.push(IntPoint::new(center.x - d, center.y));
+        result.push(IntPoint::new(center.x, center.y - d));
+        result.push(IntPoint::new(center.x - d, center.y - d));
+    }
+    result
+}
+
+/// `P7T4.targetsB` — mode 4's `toLocation` family.
+fn targets_b(center: IntPoint, c1: IntPoint, c2: IntPoint) -> Vec<IntPoint> {
+    vec![
+        IntPoint::new(center.x, c1.y),
+        IntPoint::new(c1.x, center.y),
+        IntPoint::new(center.x, c2.y),
+        IntPoint::new(c2.x, center.y),
+        c1,
+        c2,
+        center,
+        IntPoint::new(center.x + 1, center.y),
+        IntPoint::new(center.x + 1, center.y + 1),
+        IntPoint::new(center.x + 1000, center.y + 1000),
+        IntPoint::new(center.x - 1000, center.y),
+    ]
+}
+
+/// `P7T4.COST_PAIRS` — mode 5's five `(horizontal, vertical)` combinations.
+const COST_PAIRS: [[f64; 4]; 5] = [
+    [1.0, 1.0, 1.0, 1.0],
+    [1.0, 2.0, 2.0, 1.0],
+    [2.0, 1.0, 1.0, 2.0],
+    [1.0, 1.0, 2.0, 2.0],
+    [3.0, 1.0, 1.0, 3.0],
+];
+
+/// `P7T4.fromCornerOf` — `optViaLocation:89-96` as a helper, falling back to `corner(1)` when the
+/// via is at neither end so the scripted families are still defined.
+fn from_corner_of(board: &Board, trace: ItemId, via_center: &Point, tolerance: i32) -> Point {
+    let polyline = polyline_of(board, trace);
+    let (first, last) = match board.get_item(trace) {
+        Some(Item::Trace(t)) => (t.first_corner(), t.last_corner()),
+        _ => panic!("a trace contact"),
+    };
+    if within(first.as_ref(), via_center, tolerance) {
+        return polyline.corner(1).expect("at least two corners");
+    }
+    if within(last.as_ref(), via_center, tolerance) {
+        return polyline
+            .corner(polyline.corner_count() - 2)
+            .expect("at least two corners");
+    }
+    polyline.corner(1).expect("at least two corners")
+}
+
+/// Mode 3: `repositionVia` overload A (`:302-365`), driven directly.
+fn drive_overload_a<W: Write>(out: &mut W, board: &mut Board, via_ids: &[ItemId]) {
+    for via_id in via_ids {
+        if !matches!(board.get_item(*via_id), Some(Item::Via(_))) {
+            writeln!(out, "repA id={} state=GONE", via_id.0).expect("write");
+            continue;
+        }
+        let traces = trace_contacts(board, *via_id);
+        let Some(trace) = traces.first().copied() else {
+            writeln!(out, "repA id={} state=NO_TRACE_CONTACT", via_id.0).expect("write");
+            continue;
+        };
+        let center = via_center_rounded(board, *via_id);
+        let hw = half_width_of(board, trace);
+        let layer = layer_of(board, trace);
+        let cl = clearance_of(board, trace);
+        let targets = targets_a(center, &polyline_of(board, trace));
+        for (k, to) in targets.iter().enumerate() {
+            let answer =
+                ViaOptimizer::reposition_via_toward_location(board, *via_id, to, hw, layer, cl);
+            writeln!(
+                out,
+                "repA id={} k={k} to=({},{}) hw={hw} layer={layer} cl={cl} -> {}",
+                via_id.0,
+                to.x,
+                to.y,
+                answer.map_or_else(|| "null".to_string(), |p| dump_point(&p))
+            )
+            .expect("write");
+        }
+    }
+}
+
+/// Mode 4: `repositionVia` overload B (`:367-429`), driven directly.
+fn drive_overload_b<W: Write>(out: &mut W, board: &mut Board, via_ids: &[ItemId]) {
+    for via_id in via_ids {
+        if !matches!(board.get_item(*via_id), Some(Item::Via(_))) {
+            writeln!(out, "repB id={} state=GONE", via_id.0).expect("write");
+            continue;
+        }
+        let traces = trace_contacts(board, *via_id);
+        let Some(t1) = traces.first().copied() else {
+            writeln!(out, "repB id={} state=NO_TRACE_CONTACT", via_id.0).expect("write");
+            continue;
+        };
+        let t2 = traces.get(1).copied().unwrap_or(t1);
+        let via_center = board.drill_center(*via_id).expect("a via has a centre");
+        let tolerance = via_tolerance(board, *via_id);
+        let center = via_center.to_float().round();
+        let c1 = from_corner_of(board, t1, &via_center, tolerance)
+            .to_float()
+            .round();
+        let c2 = from_corner_of(board, t2, &via_center, tolerance)
+            .to_float()
+            .round();
+        for (k, to) in targets_b(center, c1, c2).iter().enumerate() {
+            for r in 0..2 {
+                // `r = 0` is overload C's `!firstDelta.isOrthogonal()` role assignment (:599),
+                // `r = 1` its `!secondDelta.isOrthogonal()` one (:665): the two traces swap places.
+                let moved = if r == 0 { t2 } else { t1 };
+                let connected = if r == 0 { t1 } else { t2 };
+                let connect = if r == 0 { c1 } else { c2 };
+                let answer = ViaOptimizer::reposition_via_check_candidate(
+                    board,
+                    *via_id,
+                    to,
+                    half_width_of(board, moved),
+                    layer_of(board, moved),
+                    clearance_of(board, moved),
+                    &connect,
+                    half_width_of(board, connected),
+                    layer_of(board, connected),
+                    clearance_of(board, connected),
+                );
+                writeln!(
+                    out,
+                    "repB id={} k={k} r={r} to=({},{}) connect=({},{}) -> {answer}",
+                    via_id.0, to.x, to.y, connect.x, connect.y
+                )
+                .expect("write");
+            }
+        }
+    }
+}
+
+/// Mode 5: `repositionVia` overload C (`:434-713`), driven directly.
+fn drive_overload_c<W: Write>(out: &mut W, board: &mut Board, via_ids: &[ItemId]) {
+    for via_id in via_ids {
+        if !matches!(board.get_item(*via_id), Some(Item::Via(_))) {
+            writeln!(out, "repC id={} state=GONE", via_id.0).expect("write");
+            continue;
+        }
+        let class = classify(board, *via_id);
+        if class != "TWO_TRACES" {
+            writeln!(out, "repC id={} class={class} state=SKIP", via_id.0).expect("write");
+            continue;
+        }
+        let traces = trace_contacts(board, *via_id);
+        let t1 = traces[0];
+        let t2 = traces[1];
+        let via_center = board.drill_center(*via_id).expect("a via has a centre");
+        let tolerance = via_tolerance(board, *via_id);
+        let c1 = from_corner_of(board, t1, &via_center, tolerance);
+        let c2 = from_corner_of(board, t2, &via_center, tolerance);
+        for (k, pair) in COST_PAIRS.iter().enumerate() {
+            let costs1 = ExpansionCostFactor {
+                horizontal: pair[0],
+                vertical: pair[1],
+            };
+            let costs2 = ExpansionCostFactor {
+                horizontal: pair[2],
+                vertical: pair[3],
+            };
+            let answer = ViaOptimizer::reposition_via_general(
+                board,
+                *via_id,
+                half_width_of(board, t1),
+                clearance_of(board, t1),
+                layer_of(board, t1),
+                costs1,
+                &c1,
+                half_width_of(board, t2),
+                clearance_of(board, t2),
+                layer_of(board, t2),
+                costs2,
+                &c2,
+            );
+            writeln!(
+                out,
+                "repC id={} k={k} costs1=({},{}) costs2=({},{}) from1={} from2={} -> {}",
+                via_id.0,
+                java_double_to_string(pair[0]),
+                java_double_to_string(pair[1]),
+                java_double_to_string(pair[2]),
+                java_double_to_string(pair[3]),
+                dump_point(&c1),
+                dump_point(&c2),
+                answer.map_or_else(|| "null".to_string(), |p| dump_point(&p))
+            )
+            .expect("write");
+        }
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId};
-use fr_geometry::{FloatLine, IntPoint, Point};
+use fr_geometry::{FloatLine, FloatPoint, IntPoint, Point, Side, java_min};
 use fr_settings::ExpansionCostFactor;
 
 use crate::board_ext::drill_item_mover::DrillItemMover;
@@ -474,136 +474,597 @@ impl ViaOptimizer {
         (dx + dy) <= f64::from(tolerance)
     }
 
-    /// **Not a Java method.** A read-only replica of `optPlaneOrFanoutVia:167-215` that answers
-    /// "would this via reach `reposition_via_toward_location`'s Task 7 guard?", so a test
-    /// or a differential driver can skip exactly the vias whose answer Task 6 does not have —
-    /// and skip them on the *Java* side too, so no committed transcript row records a port-only
-    /// move (controller ruling B1).
+    // -- the three `repositionVia` overloads ------------------------------------------------------
+
+    /// Port of `repositionVia(RoutingBoard, Via, IntPoint, int, int, int)` **overload A**
+    /// (ViaOptimizer.java:302-365): "tries to move the via into the direction of `toLocation` as
+    /// far as possible. Return the new location of the via, or `null`, if no move was possible."
     ///
-    /// It touches nothing: every step is a lookup Java performs before `:216`, in Java's order and
-    /// with Java's early exits (`:168-170` empty, `:171-187` the plane/trace classification,
-    /// `:188-190` no contact trace, `:196-204` not at an endpoint, `:205-211` the check corner).
-    /// `scripts/differential/java/P7T4.java`'s `reachesOverloadA` is the same twenty lines on the
-    /// Java side, and the two agreeing on every via of every corpus stem is itself evidence for
-    /// the classification.
+    /// Java overloads on the arity and types of the argument list; Rust has no overloading, so the
+    /// three are renamed. This one has **one** caller in Java, `optPlaneOrFanoutVia:216-217` — the
+    /// one-contact / plane-or-fanout arm — plus the **eight** call expressions
+    /// [`Self::reposition_via_general`] contains (`:467`, `:475`, `:495`, `:517`, `:558`, `:562`,
+    /// `:568`, `:572`), of which the first two are the collinear arm's either/or.
     ///
-    /// **Task 7 deletes this**, together with the guard it predicts.
-    // pub seam: none in Java — the port's own Task 7 guard predicate. Its callers are
-    // `crates/fr-router/tests/via_optimizer.rs` and `scripts/differential/rust/src/bin/p7t4.rs`,
-    // both outside this crate, so `pub(crate)` cannot reach them.
-    pub fn reaches_task_seven_guard(board: &Board, via: ItemId) -> bool {
-        // :167-170.
-        let contact_list: Vec<ItemId> = board.normal_contacts(via).into_iter().rev().collect();
-        if contact_list.is_empty() {
+    /// The method **mutates nothing**: `checkTraceSegment` and `DrillItemMover.check` are both
+    /// read-only probes. `&mut Board` is the port's, because both of those take `&mut Board` here
+    /// (the search trees are rebuilt lazily).
+    ///
+    /// Two `double` details are Java's and are reproduced literally: `okLength >= Integer.MAX_VALUE`
+    /// is the "no obstacle at all" sentinel `checkTraceSegment` answers (`:331`), and the halving
+    /// loop's `okLength = Math.min(okLength, distance)` is [`java_min`], not `f64::min` (they differ
+    /// on `NaN` and on signed zero).
+    ///
+    /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // pub seam: `repositionVia` overload A is `private` in Java (ViaOptimizer.java:302); the only
+    // callers of this `pub` are `crates/fr-router/tests/via_optimizer_reposition.rs` and
+    // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
+    // Java bug: ViaOptimizer.repositionVia's angle-restriction asymmetry — quirk #207. None of the
+    // three overloads tests `board.rules.getTraceAngleRestriction()` against the delta it produces,
+    // yet `optPlaneOrFanoutVia:236-241` — the fallback reached only when *this* method answers
+    // `null` — refuses a projection whose delta is not orthogonal (`NINETY_DEGREE`) or a multiple
+    // of 45 degrees (`FORTYFIVE_DEGREE`). Reproduced: no test here either. Latent on the corpus,
+    // because a walk toward a trace corner inherits the trace's own angle.
+    pub fn reposition_via_toward_location(
+        board: &mut Board,
+        via: ItemId,
+        to_location: &IntPoint,
+        trace_half_width: i32,
+        trace_layer: usize,
+        trace_cl_class: usize,
+    ) -> Option<Point> {
+        // :310. Java's parameter type `Via` already excludes an id naming nothing.
+        let from_location = board.drill_center(via)?;
+        let to_point = Point::Int(*to_location);
+        // :312-314. `Point::eq` is Java's class-sensitive `equals`, so a rational centre is never
+        // equal to the `IntPoint` argument — exactly as in Java.
+        if from_location == to_point {
+            return None;
+        }
+        // :316-324.
+        let net_numbers = Self::net_nos(board, via);
+        let mut ok_length = board.check_trace_segment(
+            &from_location,
+            &to_point,
+            trace_layer,
+            &net_numbers,
+            trace_half_width,
+            trace_cl_class,
+            false,
+        );
+        // :325-327.
+        if ok_length <= 0.0 {
+            return None;
+        }
+        // :328-335.
+        let float_from_location = from_location.to_float();
+        let float_to_location = to_point.to_float();
+        let new_float_to_location = if ok_length >= f64::from(i32::MAX) {
+            float_to_location
+        } else {
+            float_from_location.change_length(&float_to_location, ok_length)
+        };
+        // :336-338. Java's `DrillItemMover.check(via, delta, 0, 0, null, board, null)` — the two
+        // recursion depths are zero, so no shove is attempted and nothing is inserted.
+        let new_to_location = Point::Int(new_float_to_location.round());
+        let delta = new_to_location.difference_by(&from_location);
+        let check_ok = DrillItemMover::check(board, via, &delta, 0, 0, None, None);
+        // :340-342.
+        if check_ok {
+            return Some(new_to_location);
+        }
+        // :344.
+        let min_length = 0.3 * f64::from(trace_half_width) + 1.0;
+        // :346.
+        ok_length = java_min(ok_length, float_from_location.distance(&float_to_location));
+        // :348-351.
+        let mut current_length = ok_length / 2.0;
+        ok_length = 0.0;
+        let mut result: Option<Point> = None;
+        // :353-363 — a binary search on the length, keeping the **last** accepted point, which is
+        // also the farthest: `okLength` only grows, so a later `checkPoint` is never nearer than an
+        // earlier one. Java's loop, halving included, is transcribed rather than restructured.
+        while current_length >= min_length {
+            let check_point = Point::Int(
+                float_from_location
+                    .change_length(&float_to_location, ok_length + current_length)
+                    .round(),
+            );
+            let delta = check_point.difference_by(&from_location);
+            if DrillItemMover::check(board, via, &delta, 0, 0, None, None) {
+                ok_length += current_length;
+                result = Some(check_point);
+            }
+            current_length /= 2.0;
+        }
+        // :364.
+        result
+    }
+
+    /// Port of `repositionVia(RoutingBoard, Via, IntPoint, int, int, int, IntPoint, int, int, int)`
+    /// **overload B** (ViaOptimizer.java:367-429) — the candidate check. It answers "may the via be
+    /// moved to `toLocation`, with the *other* trace then running from `toLocation` to
+    /// `connectLocation`?", and it is reached **only** from inside
+    /// [`Self::reposition_via_general`]'s four axis-parallel decomposition arms (`:599`, `:627`,
+    /// `:665`, `:696`). It mutates nothing.
+    ///
+    /// Unlike overload A this one demands a *clear* segment on both legs: `okLength <
+    /// Integer.MAX_VALUE` refuses at `:411` and `:425`, i.e. anything short of "no obstacle at
+    /// all" is a refusal, and no partial move is attempted.
+    ///
+    /// `:388-397` is Java's own comment, kept: under `AngleRestriction.NONE` a move shorter than
+    /// 1.5 is refused because `TraceTightenerAnyAngle.reduceCorners` may not be able to remove the
+    /// overlap it generates, which would loop forever.
+    ///
+    /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // pub seam: `repositionVia` overload B is `private` in Java (ViaOptimizer.java:367); the only
+    // callers of this `pub` are `crates/fr-router/tests/via_optimizer_reposition.rs` and
+    // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
+    #[allow(clippy::too_many_arguments)]
+    pub fn reposition_via_check_candidate(
+        board: &mut Board,
+        via: ItemId,
+        to_location: &IntPoint,
+        trace_half_width_1: i32,
+        trace_layer_1: usize,
+        trace_cl_class_1: usize,
+        connect_location: &IntPoint,
+        trace_half_width_2: i32,
+        trace_layer_2: usize,
+        trace_cl_class_2: usize,
+    ) -> bool {
+        // :379.
+        let Some(from_location) = board.drill_center(via) else {
+            return false;
+        };
+        let to_point = Point::Int(*to_location);
+        // :381-384. The `FRLogger.trace` is dropped with every other log payload.
+        if from_location == to_point {
             return false;
         }
-        // :171-187.
-        let mut contact_plane_seen = false;
-        let mut contact_trace: Option<ItemId> = None;
-        for current_contact in contact_list {
-            match board.get_item(current_contact) {
-                Some(Item::ConductionArea(_)) => {
-                    if contact_plane_seen {
-                        return false;
-                    }
-                    contact_plane_seen = true;
-                }
-                Some(item) if item.is_trace() => {
-                    if item.is_shove_fixed(&board.rules) || contact_trace.is_some() {
-                        return false;
-                    }
-                    contact_trace = Some(current_contact);
-                }
-                _ => return false,
+        // :386.
+        let delta = to_point.difference_by(&from_location);
+        // :388-397.
+        if board.rules.trace_angle_restriction == AngleRestriction::None
+            && delta.length_approx() <= 1.5
+        {
+            return false;
+        }
+        // :399.
+        let net_numbers = Self::net_nos(board, via);
+        // :401-409.
+        let ok_length = board.check_trace_segment(
+            &from_location,
+            &to_point,
+            trace_layer_1,
+            &net_numbers,
+            trace_half_width_1,
+            trace_cl_class_1,
+            false,
+        );
+        // :411-413.
+        if ok_length < f64::from(i32::MAX) {
+            return false;
+        }
+        // :415-423.
+        let ok_length = board.check_trace_segment(
+            &to_point,
+            &Point::Int(*connect_location),
+            trace_layer_2,
+            &net_numbers,
+            trace_half_width_2,
+            trace_cl_class_2,
+            false,
+        );
+        // :425-427.
+        if ok_length < f64::from(i32::MAX) {
+            return false;
+        }
+        // :428.
+        DrillItemMover::check(board, via, &delta, 0, 0, None, None)
+    }
+
+    /// Port of the twelve-argument `repositionVia` **overload C** (ViaOptimizer.java:434-713):
+    /// "tries to reposition the via to a better location according to the trace costs. Returns
+    /// `null`, if no better location was found." The two-trace arm's, called once from
+    /// `optViaLocation:118-131`, and the only caller of [`Self::reposition_via_check_candidate`].
+    ///
+    /// The longest method in the class and a plain sequence of candidate attempts, each of which
+    /// **returns the first success**; there is no scoring across candidates and therefore no
+    /// `max_by` that could keep the wrong one of a tie. The four families, in Java's order:
+    ///
+    /// 1. `:462-480` — the **overlapping-lines** case (`sideOf == COLLINEAR` and a positive scalar
+    ///    product): move toward whichever from-corner is *nearer*, and return that answer whatever
+    ///    it is, including `None`. Note the crossed half-widths — the move toward the **first**
+    ///    corner is checked with the **second** trace's width, layer and clearance class, because
+    ///    it is the second trace that has to be re-routed to the new via location. Every later arm
+    ///    crosses them the same way.
+    /// 2. `:485-526` — the two **weighted-distance** attempts: if the same from-corner costs more
+    ///    under its own layer's costs than under the other layer's, try moving there. Java compares
+    ///    `floatFirstTraceFromCorner` against itself under two cost pairs at `:485-490` (and
+    ///    `floatSecondTraceFromCorner` against itself at `:507-512`) — that is deliberate, not a
+    ///    copy-paste slip: it asks "is this corner cheaper to reach on the other layer?".
+    /// 3. `:528-578` — the **acute-angle** case, skipped under `NINETY_DEGREE`: shorten the longer
+    ///    of the two legs to the length of the shorter, then try both endpoints, cheaper first.
+    /// 4. `:581-711` — **decomposition into axis-parallel parts**, two attempts per non-orthogonal
+    ///    delta, each of which asks overload B whether the L-shaped detour through `checkLocation`
+    ///    is clear on both legs.
+    ///
+    /// It mutates nothing: every callee is a read-only probe.
+    ///
+    /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // pub seam: `repositionVia` overload C is `private` in Java (ViaOptimizer.java:434); the only
+    // callers of this `pub` are `crates/fr-router/tests/via_optimizer_reposition.rs` and
+    // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
+    #[allow(clippy::too_many_arguments)]
+    pub fn reposition_via_general(
+        board: &mut Board,
+        via: ItemId,
+        first_trace_half_width: i32,
+        first_trace_cl_class: usize,
+        first_trace_layer: usize,
+        first_trace_costs: ExpansionCostFactor,
+        first_trace_from_corner: &Point,
+        second_trace_half_width: i32,
+        second_trace_cl_class: usize,
+        second_trace_layer: usize,
+        second_trace_costs: ExpansionCostFactor,
+        second_trace_from_corner: &Point,
+    ) -> Option<Point> {
+        // :447.
+        let via_location = board.drill_center(via)?;
+        // :449-452.
+        let first_delta = first_trace_from_corner.difference_by(&via_location);
+        let second_delta = second_trace_from_corner.difference_by(&via_location);
+        let scalar_product = first_delta.scalar_product(&second_delta);
+        // :454-460.
+        let float_via_location = via_location.to_float();
+        let float_first_trace_from_corner = first_trace_from_corner.to_float();
+        let float_second_trace_from_corner = second_trace_from_corner.to_float();
+        let first_trace_from_corner_distance =
+            float_via_location.distance(&float_first_trace_from_corner);
+        let second_trace_from_corner_distance =
+            float_via_location.distance(&float_second_trace_from_corner);
+        let rounded_first_trace_from_corner = float_first_trace_from_corner.round();
+        let rounded_second_trace_from_corner = float_second_trace_from_corner.round();
+
+        // :462-480. "handle case of overlapping lines first".
+        if via_location.side_of(first_trace_from_corner, second_trace_from_corner)
+            == Side::Collinear
+            && scalar_product > 0.0
+        {
+            if second_trace_from_corner_distance < first_trace_from_corner_distance {
+                return Self::reposition_via_toward_location(
+                    board,
+                    via,
+                    &rounded_second_trace_from_corner,
+                    first_trace_half_width,
+                    first_trace_layer,
+                    first_trace_cl_class,
+                );
+            }
+            return Self::reposition_via_toward_location(
+                board,
+                via,
+                &rounded_first_trace_from_corner,
+                second_trace_half_width,
+                second_trace_layer,
+                second_trace_cl_class,
+            );
+        }
+        // :483. Java declares `Point result;` uninitialised; every read below is preceded by an
+        // assignment in the same block, so `None` here changes nothing.
+        let mut result: Option<Point>;
+
+        // :485-490.
+        let mut current_weighted_distance_1 = float_via_location.weighted_distance(
+            &float_first_trace_from_corner,
+            first_trace_costs.horizontal,
+            first_trace_costs.vertical,
+        );
+        let mut current_weighted_distance_2 = float_via_location.weighted_distance(
+            &float_first_trace_from_corner,
+            second_trace_costs.horizontal,
+            second_trace_costs.vertical,
+        );
+
+        // :492-504. "try to move the via in direction of firstTraceFromCorner".
+        if current_weighted_distance_1 > current_weighted_distance_2 {
+            result = Self::reposition_via_toward_location(
+                board,
+                via,
+                &rounded_first_trace_from_corner,
+                second_trace_half_width,
+                second_trace_layer,
+                second_trace_cl_class,
+            );
+            if result.is_some() {
+                return result;
             }
         }
-        // :188-190.
-        let Some(contact_trace) = contact_trace else {
-            return false;
-        };
-        // :191, :194.
-        let Some(via_center) = board.drill_center(via) else {
-            return false;
-        };
-        let tolerance = Self::via_tolerance(board, via);
-        // :196-204.
-        let first = Self::trace_corner(board, contact_trace, TraceEnd::First);
-        let last = Self::trace_corner(board, contact_trace, TraceEnd::Last);
-        let at_first_corner = if Self::is_within_tolerance(first.as_ref(), &via_center, tolerance) {
-            true
-        } else if Self::is_within_tolerance(last.as_ref(), &via_center, tolerance) {
-            false
-        } else {
-            return false;
-        };
-        // :205-211 — the port answers `false` where `Polyline::corner` would, for the reason
-        // `from_corner` gives.
-        let Some(Item::Trace(trace)) = board.get_item(contact_trace) else {
-            return false;
-        };
-        let polyline = trace.polyline();
-        let corner_count = polyline.corner_count();
-        let check_corner = if at_first_corner {
-            polyline.corner(1)
-        } else {
-            polyline.corner(corner_count.wrapping_sub(2))
-        };
-        // :216-217 is the next statement, so reaching here is reaching the guard.
-        check_corner.is_some()
-    }
 
-    // -- Task 7's three overloads ------------------------------------------------------------------
+        // :506-512.
+        current_weighted_distance_1 = float_via_location.weighted_distance(
+            &float_second_trace_from_corner,
+            second_trace_costs.horizontal,
+            second_trace_costs.vertical,
+        );
+        current_weighted_distance_2 = float_via_location.weighted_distance(
+            &float_second_trace_from_corner,
+            first_trace_costs.horizontal,
+            first_trace_costs.vertical,
+        );
 
-    /// # Panics
-    ///
-    /// **Always.** This is Plan 7 Task 7's `ViaOptimizer.repositionVia` overload A, and Task 6
-    /// deliberately does not answer for it — see the marker below and the module's
-    /// "Why overload A panics and overload C does not".
-    // added in Task 7: `ViaOptimizer.repositionVia` overload A (ViaOptimizer.java:302-365) — "tries
-    // to move the via into the direction of toLocation as far as possible. Return the new location
-    // of the via, or null, if no move was possible." One caller: `optPlaneOrFanoutVia:216-217`, the
-    // **one**-contact / plane-or-fanout arm. Task 7 replaces this body; nothing else about the call
-    // site changes. The `unimplemented!` is Plan 6 Task 9's precedent for a half-closed cycle
-    // (`board_ext/mod.rs:19`), and controller ruling B1 requires it here rather than a `None`.
-    #[allow(clippy::too_many_arguments)]
-    fn reposition_via_toward_location(
-        _board: &mut Board,
-        _via: ItemId,
-        _to_location: &IntPoint,
-        _trace_half_width: i32,
-        _trace_layer: usize,
-        _trace_cl_class: usize,
-    ) -> Option<Point> {
-        unimplemented!(
-            "ViaOptimizer.repositionVia overload A (ViaOptimizer.java:302-365) is Plan 7 Task 7's; \
-             answering `None` here would send optPlaneOrFanoutVia into its :218-260 projection \
-             fallback, which Java reaches only when its own overload A answered null, and that \
-             fallback inserts"
-        )
-    }
+        // :514-526. "try to move the via in direction of secondTraceFromCorner".
+        if current_weighted_distance_1 > current_weighted_distance_2 {
+            result = Self::reposition_via_toward_location(
+                board,
+                via,
+                &rounded_second_trace_from_corner,
+                first_trace_half_width,
+                first_trace_layer,
+                first_trace_cl_class,
+            );
+            if result.is_some() {
+                return result;
+            }
+        }
 
-    // added in Task 7: `ViaOptimizer.repositionVia` overload C (ViaOptimizer.java:435-713) — the
-    // twelve-argument one `optViaLocation:118-131` calls, the **two-trace** arm's, and the only
-    // caller of overload B (`:367-429`). Unlike overload A this one may answer `None`: Java's
-    // `:132-134` turns `null` into `return false` with **nothing mutated**, so the stub reproduces a
-    // board Java can really produce — it is a *missing* move, never a wrong one. Measured on
-    // `Issue026-J2_reference` at `routeK = 12`: **four of six vias** reach it and Java moves all
-    // four, which is the whole of `p7t4`'s residual diff.
-    #[allow(clippy::too_many_arguments)]
-    fn reposition_via_general(
-        _board: &mut Board,
-        _via: ItemId,
-        _first_trace_half_width: i32,
-        _first_trace_cl_class: usize,
-        _first_trace_layer: usize,
-        _first_layer_trace_costs: ExpansionCostFactor,
-        _first_trace_from_corner: &Point,
-        _second_trace_half_width: i32,
-        _second_trace_cl_class: usize,
-        _second_trace_layer: usize,
-        _second_layer_trace_costs: ExpansionCostFactor,
-        _second_trace_from_corner: &Point,
-    ) -> Option<Point> {
+        // :528-578. "acute angle".
+        if scalar_product > 0.0
+            && board.rules.trace_angle_restriction != AngleRestriction::NinetyDegree
+        {
+            // :531-548.
+            let to_point_1: IntPoint;
+            let to_point_2: IntPoint;
+            let float_to_point_1: FloatPoint;
+            let float_to_point_2: FloatPoint;
+            if first_trace_from_corner_distance < second_trace_from_corner_distance {
+                to_point_1 = rounded_first_trace_from_corner;
+                float_to_point_1 = float_first_trace_from_corner;
+                float_to_point_2 = float_via_location.change_length(
+                    &float_second_trace_from_corner,
+                    first_trace_from_corner_distance,
+                );
+                to_point_2 = float_to_point_2.round();
+            } else {
+                float_to_point_1 = float_via_location.change_length(
+                    &float_first_trace_from_corner,
+                    second_trace_from_corner_distance,
+                );
+                to_point_1 = float_to_point_1.round();
+                to_point_2 = rounded_second_trace_from_corner;
+                float_to_point_2 = float_second_trace_from_corner;
+            }
+            // :549-554. Both weighted distances are measured between the **same** pair of points,
+            // under the two layers' cost pairs.
+            current_weighted_distance_1 = float_to_point_1.weighted_distance(
+                &float_to_point_2,
+                first_trace_costs.horizontal,
+                first_trace_costs.vertical,
+            );
+            current_weighted_distance_2 = float_to_point_1.weighted_distance(
+                &float_to_point_2,
+                second_trace_costs.horizontal,
+                second_trace_costs.vertical,
+            );
+
+            if current_weighted_distance_1 > current_weighted_distance_2 {
+                // :556-564. "try moving the via first into the direction of toPoint1".
+                result = Self::reposition_via_toward_location(
+                    board,
+                    via,
+                    &to_point_1,
+                    second_trace_half_width,
+                    second_trace_layer,
+                    second_trace_cl_class,
+                );
+                if result.is_none() {
+                    result = Self::reposition_via_toward_location(
+                        board,
+                        via,
+                        &to_point_2,
+                        first_trace_half_width,
+                        first_trace_layer,
+                        first_trace_cl_class,
+                    );
+                }
+            } else {
+                // :566-574. "try moving the via first into the direction of toPoint2".
+                result = Self::reposition_via_toward_location(
+                    board,
+                    via,
+                    &to_point_2,
+                    first_trace_half_width,
+                    first_trace_layer,
+                    first_trace_cl_class,
+                );
+                if result.is_none() {
+                    result = Self::reposition_via_toward_location(
+                        board,
+                        via,
+                        &to_point_1,
+                        second_trace_half_width,
+                        second_trace_layer,
+                        second_trace_cl_class,
+                    );
+                }
+            }
+            // :576-578.
+            if result.is_some() {
+                return result;
+            }
+        }
+
+        // :581. "try decomposition in axisparallel parts".
+
+        // :583-643.
+        if !first_delta.is_orthogonal() {
+            // :584-585.
+            let mut float_check_location =
+                FloatPoint::new(float_via_location.x, float_first_trace_from_corner.y);
+
+            // :587-595. `currentWeightedDistance1` is computed **once** here and read again by the
+            // second attempt at :625 — Java does not recompute it, and it does not change.
+            current_weighted_distance_1 = float_via_location.weighted_distance(
+                &float_first_trace_from_corner,
+                first_trace_costs.horizontal,
+                first_trace_costs.vertical,
+            );
+            current_weighted_distance_2 = float_via_location.weighted_distance(
+                &float_check_location,
+                second_trace_costs.horizontal,
+                second_trace_costs.vertical,
+            );
+            let mut current_weighted_distance_3 = float_check_location.weighted_distance(
+                &float_first_trace_from_corner,
+                first_trace_costs.horizontal,
+                first_trace_costs.vertical,
+            );
+
+            // :597-613.
+            if current_weighted_distance_1
+                > current_weighted_distance_2 + current_weighted_distance_3
+            {
+                let check_location = float_check_location.round();
+                let check_ok = Self::reposition_via_check_candidate(
+                    board,
+                    via,
+                    &check_location,
+                    second_trace_half_width,
+                    second_trace_layer,
+                    second_trace_cl_class,
+                    &rounded_first_trace_from_corner,
+                    first_trace_half_width,
+                    first_trace_layer,
+                    first_trace_cl_class,
+                );
+                if check_ok {
+                    return Some(Point::Int(check_location));
+                }
+            }
+
+            // :615-623.
+            float_check_location =
+                FloatPoint::new(float_first_trace_from_corner.x, float_via_location.y);
+
+            current_weighted_distance_2 = float_via_location.weighted_distance(
+                &float_check_location,
+                second_trace_costs.horizontal,
+                second_trace_costs.vertical,
+            );
+            current_weighted_distance_3 = float_check_location.weighted_distance(
+                &float_first_trace_from_corner,
+                first_trace_costs.horizontal,
+                first_trace_costs.vertical,
+            );
+
+            // :625-641.
+            if current_weighted_distance_1
+                > current_weighted_distance_2 + current_weighted_distance_3
+            {
+                let check_location = float_check_location.round();
+                let check_ok = Self::reposition_via_check_candidate(
+                    board,
+                    via,
+                    &check_location,
+                    second_trace_half_width,
+                    second_trace_layer,
+                    second_trace_cl_class,
+                    &rounded_first_trace_from_corner,
+                    first_trace_half_width,
+                    first_trace_layer,
+                    first_trace_cl_class,
+                );
+                if check_ok {
+                    return Some(Point::Int(check_location));
+                }
+            }
+        }
+
+        // :645-711 — the same twice more, with the two traces' roles exchanged.
+        if !second_delta.is_orthogonal() {
+            // :646-647.
+            let mut float_check_location =
+                FloatPoint::new(float_via_location.x, float_second_trace_from_corner.y);
+
+            // :649-661.
+            current_weighted_distance_1 = float_via_location.weighted_distance(
+                &float_second_trace_from_corner,
+                second_trace_costs.horizontal,
+                second_trace_costs.vertical,
+            );
+            current_weighted_distance_2 = float_via_location.weighted_distance(
+                &float_check_location,
+                first_trace_costs.horizontal,
+                first_trace_costs.vertical,
+            );
+            let mut current_weighted_distance_3 = float_check_location.weighted_distance(
+                &float_second_trace_from_corner,
+                second_trace_costs.horizontal,
+                second_trace_costs.vertical,
+            );
+
+            // :663-679.
+            if current_weighted_distance_1
+                > current_weighted_distance_2 + current_weighted_distance_3
+            {
+                let check_location = float_check_location.round();
+                let check_ok = Self::reposition_via_check_candidate(
+                    board,
+                    via,
+                    &check_location,
+                    first_trace_half_width,
+                    first_trace_layer,
+                    first_trace_cl_class,
+                    &rounded_second_trace_from_corner,
+                    second_trace_half_width,
+                    second_trace_layer,
+                    second_trace_cl_class,
+                );
+                if check_ok {
+                    return Some(Point::Int(check_location));
+                }
+            }
+
+            // :682-691.
+            float_check_location =
+                FloatPoint::new(float_second_trace_from_corner.x, float_via_location.y);
+
+            current_weighted_distance_2 = float_via_location.weighted_distance(
+                &float_check_location,
+                first_trace_costs.horizontal,
+                first_trace_costs.vertical,
+            );
+            current_weighted_distance_3 = float_check_location.weighted_distance(
+                &float_second_trace_from_corner,
+                second_trace_costs.horizontal,
+                second_trace_costs.vertical,
+            );
+
+            // :693-709.
+            if current_weighted_distance_1
+                > current_weighted_distance_2 + current_weighted_distance_3
+            {
+                let check_location = float_check_location.round();
+                let check_ok = Self::reposition_via_check_candidate(
+                    board,
+                    via,
+                    &check_location,
+                    first_trace_half_width,
+                    first_trace_layer,
+                    first_trace_cl_class,
+                    &rounded_second_trace_from_corner,
+                    second_trace_half_width,
+                    second_trace_layer,
+                    second_trace_cl_class,
+                );
+                if check_ok {
+                    return Some(Point::Int(check_location));
+                }
+            }
+        }
+        // :712.
         None
     }
 

@@ -11,14 +11,13 @@
 //! `scripts/differential/run.sh p7t3`. [`the_whole_sweep_matches_the_jvm_on_a_real_board`] replays
 //! modes 0-3 of it here.
 //!
-//! **Mode 4 is deliberately not replayed.** It offers `traceCosts` to the sweep, which opens
-//! `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Plan 7 Task 6 landed that
-//! arm — it is a live call now, not a stub — but `repositionVia` overload A is an
-//! `unimplemented!` until Task 7 (controller ruling B1: a `None` there would push
-//! `optPlaneOrFanoutVia` into a branch that *inserts*, and move a via somewhere Java never puts
-//! it). Two of this fixture's six vias reach it, so mode 4 **panics**;
-//! [`mode_four_is_task_sevens_obligation`] is the `#[should_panic]` that says so, and mode 4's
-//! section is in the committed transcript so Task 7 has the ground truth to match.
+//! **Mode 4 is replayed too, as of Plan 7 Task 7.** It offers `traceCosts` to the sweep, which
+//! opens `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Task 6 landed that arm
+//! but left `repositionVia` overload A an `unimplemented!` (controller ruling B1: a `None` there
+//! would push `optPlaneOrFanoutVia` into a branch that *inserts*, and move a via somewhere Java
+//! never puts it), so mode 4 panicked and `mode_four_is_task_sevens_obligation` was the
+//! `#[should_panic]` that said so. Task 7 ported all three overloads; the mode is now inside
+//! [`the_whole_sweep_matches_the_jvm_on_a_real_board`]'s loop and the `#[should_panic]` is gone.
 //!
 //! The rest of the file is hand-built: each test isolates one branch of the two methods, because
 //! a real board exercises them all at once and could not say which one moved.
@@ -499,8 +498,8 @@ fn the_budget_trips_the_sweep() {
 ///
 /// This is a guard against the via arm leaking into the trace arms. It is **not** a statement
 /// about `optViaLocation`, which Task 6 landed and this board never reaches; the statement about
-/// the arm's remaining gap is [`mode_four_is_task_sevens_obligation`], which runs on a real board
-/// that does have vias in its changed area.
+/// the arm's behaviour on a board that does have vias in its changed area is
+/// [`the_whole_sweep_matches_the_jvm_on_a_real_board`]'s mode 4.
 #[test]
 fn offering_trace_costs_does_not_change_the_trace_arms() {
     let mut board = detour_board(200);
@@ -660,30 +659,12 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
 
 #[test]
 fn the_whole_sweep_matches_the_jvm_on_a_real_board() {
-    for mode in [0, 1, 2, 3] {
+    // Mode 4 (vias present, the `ViaOptimizer` arm live) joined the loop when Plan 7 Task 7 landed
+    // the three `repositionVia` overloads; before that it was `mode_four_is_task_sevens_obligation`,
+    // a `#[should_panic]`.
+    for mode in [0, 1, 2, 3, 4] {
         assert_eq!(p7t3_rows(mode), transcript_mode(mode), "p7t3 mode {mode}");
     }
-}
-
-/// Mode 4 offers `traceCosts`, which opens the `ViaOptimizer` arm. Plan 7 Task 6 landed
-/// `optViaLocation` and wired the arm, but its `repositionVia` overloads are **Task 7's** — and
-/// overload A is an **`unimplemented!`**, not a `None`, by controller ruling B1: answering `None`
-/// there would send `optPlaneOrFanoutVia` into its `:218-260` projection branch, which *inserts*,
-/// and which Java reaches only when its own overload A answered `null`. A stubbed arm must be
-/// inert or loud, never a silent port-only mutation, so mode 4 **panics** rather than diverging
-/// quietly.
-///
-/// This fixture at `routeK = 12` puts two `PLANE_OR_FANOUT_ONE_CONTACT` vias in the changed area
-/// (ids 187 and 84 — `crates/fr-router/tests/via_optimizer.rs`'s
-/// `a_plane_via_reaches_task_sevens_guard` names them), so the sweep reaches the guard.
-///
-/// **Task 7 must delete this test and add mode 4 to the loop above.**
-#[test]
-#[should_panic(expected = "repositionVia overload A")]
-fn mode_four_is_task_sevens_obligation() {
-    // added in Task 7: `ViaOptimizer.repositionVia` overload A (ViaOptimizer.java:302-365) — when
-    // it lands, this becomes `assert_eq!(p7t3_rows(4), transcript_mode(4))` inside the loop above.
-    let _ = p7t3_rows(4);
 }
 
 // -- `P6T1.java`'s choices, as `reference_parity.rs` transcribes them ------------------------------

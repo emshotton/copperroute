@@ -297,10 +297,10 @@ case "$driver" in
     #
     # `<dsn> [mode] [accuracy] [routeK]`. Modes 0-2 are the three angle regimes with no vias
     # offered to the optimiser, 3 widens `pinEdgeToTurnDist` so the `ConnectionToPin` pair fires
-    # hard, and **mode 4 offers vias**. Task 6 landed `ViaOptimizer.optViaLocation` and wired that
-    # arm live, but `repositionVia` overload A is an `unimplemented!` until Task 7 (controller
-    # ruling B1), so **on a board with a plane-or-fanout via mode 4 now PANICS on the Rust side
-    # rather than diffing quietly** — which is the point: a stubbed arm must be inert or loud.
+    # hard, and **mode 4 offers vias**, which opens `TraceTightener.optChangedArea:160-165`'s
+    # `ViaOptimizer` arm. Task 6 landed the entry half and Task 7 the three `repositionVia`
+    # overloads, so mode 4 is 0 diffs on all three boards; before Task 7 it panicked, by
+    # controller ruling B1 (a stubbed arm must be inert or loud).
     #
     # The budget is disabled on both sides by passing `timeLimit = 0` / `RouterBudget::disabled()`,
     # which is Java's own "no limit" (`TraceTightener.java:73-77`): at this entry point the limit
@@ -314,25 +314,25 @@ case "$driver" in
     run_timeout="${P7T3_TIMEOUT:-900}"
     ;;
   p7t4)
-    # Plan 7 Task 6: `board.optimize.ViaOptimizer`'s `optViaLocation` (:33-158),
-    # `optPlaneOrFanoutVia` (:161-296) and `isWithinTolerance` (:719-732), over a real DSN board
+    # Plan 7 Tasks 6 and 7: `board.optimize.ViaOptimizer`'s `optViaLocation` (:33-158),
+    # `optPlaneOrFanoutVia` (:161-296), `isWithinTolerance` (:719-732) and the three
+    # `repositionVia` overloads — A (:302-365), B (:367-429), C (:434-713) — over a real DSN board
     # whose vias were placed by real routing. Declares `package app.freerouting.autoroute.maze`
     # — not the brief's `board.optimize` — for the reason `P7T3` does: it needs
     # `P6T1.loadBoard`/`pickConnections`/`route`, which are package-private statics there, and it
-    # pays for the two private `ViaOptimizer` methods with `setAccessible` instead (the `P6T3`
+    # pays for the five private `ViaOptimizer` methods with `setAccessible` instead (the `P6T3`
     # precedent). `P6T1.java` is compiled alongside so the two cannot describe different boards.
     #
     # `<dsn> [mode] [accuracy] [routeK]`. Mode 0 is `optViaLocation`, 1 is `optPlaneOrFanoutVia`
-    # driven directly, 2 is `isWithinTolerance` over 10 256 scripted triples (no board), and 6 is
-    # mode 0 with `traceCosts = null`. **Mode 6 is numbered 6, not 3**: `task-7-brief.md:29`
-    # reserves 3/4/5 for one `repositionVia` overload each.
+    # driven directly, 2 is `isWithinTolerance` over 10 256 scripted triples (no board), 3/4/5 are
+    # overloads A/B/C driven directly, and 6 is mode 0 with `traceCosts = null`. **Mode 6 is
+    # numbered 6, not 3**: `task-7-brief.md:29` reserved 3/4/5 for one overload each, and Task 7
+    # filled them. All 21 fixture/mode pairs are 0 diffs; Task 6's `TASK7_GUARD` rows and its
+    # `reachesOverloadA` replica are gone from both halves.
     #
-    # `repositionVia` overload A is an `unimplemented!` on the Rust side (controller ruling B1 —
-    # answering `None` sends `optPlaneOrFanoutVia` into a branch that *inserts*, which Java reaches
-    # only when its own overload A answered null). Both sides therefore run a read-only replica of
-    # `optPlaneOrFanoutVia:167-215` and print `result=TASK7_GUARD` for a via that would reach it,
-    # calling neither method. **What still DIFFs is overload C's arm** (`optViaLocation:118-131`,
-    # where a `None` is a board Java itself produces): modes 0 and 6 on a board with two-trace vias.
+    # The three overloads mutate nothing (`checkTraceSegment` and `DrillItemMover.check` with both
+    # recursion depths at zero are read-only probes), so modes 3-5 call them many times per via and
+    # still print the board the routing prologue built — which is what pins "no id was burned".
     #
     # The budget is disabled on both sides: `ViaOptimizer` reads no clock, and the `pullTight`
     # calls inside it take Java's `null` `Stoppable` / the port's never-tripping `StopCheck`.

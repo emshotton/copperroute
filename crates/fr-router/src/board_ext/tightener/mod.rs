@@ -281,25 +281,20 @@ impl<'a> TraceTightener<'a> {
                         {
                             // `ViaOptimizer.optViaLocation(this.board, via, traceCosts,
                             // this.minTranslateDist, 10)` (:161-164) — Task 6 landed the entry
-                            // point, so the arm is live. Note which of Java's two `int` parameters
-                            // gets `minTranslateDist`: `tracePullTightAccuracy`, **not** the
-                            // recursion depth, which is the literal `10`.
+                            // point and Task 7 the three `repositionVia` overloads, so the arm is
+                            // complete. Note which of Java's two `int` parameters gets
+                            // `minTranslateDist`: `tracePullTightAccuracy`, **not** the recursion
+                            // depth, which is the literal `10`.
                             //
-                            // No `engine` is threaded: Task 6's `opt_via_location` takes none,
-                            // because none of the three things it calls accepts one — see that
-                            // method's "No `AutorouteEngine` parameter" section.
+                            // No `engine` is threaded: `opt_via_location` takes none, because none
+                            // of the three things it calls accepts one — see that method's
+                            // "No `AutorouteEngine` parameter" section.
                             //
-                            // obligation: ViaOptimizer.repositionVia — Task 7. **This arm panics
-                            // today on a plane-or-fanout via.** Overload C's stub answers `None`,
-                            // which Java's `:132-134` turns into `return false` with nothing
-                            // mutated — safe. Overload A's stub does **not** answer: a `None` there
-                            // would fall through to `optPlaneOrFanoutVia:218-260`, which inserts,
-                            // and would move the via somewhere Java never chooses, so controller
-                            // ruling B1 made it an `unimplemented!`. `p7t3` mode 4 therefore
-                            // **panics** on a board with a one-contact via until Task 7 lands
-                            // overload A; `tests/opt_changed_area.rs`'s
-                            // `mode_four_is_task_sevens_obligation` is a `#[should_panic]` that
-                            // says so, and Task 7 turns it back into the parity assertion.
+                            // Plan 7 Task 6's `obligation: ViaOptimizer.repositionVia — Task 7` is
+                            // **discharged**: `p7t3` mode 4 (vias offered to the optimiser) is 0
+                            // diffs against the HEAD jar on all three boards, and
+                            // `tests/opt_changed_area.rs`'s
+                            // `the_whole_sweep_matches_the_jvm_on_a_real_board` replays it.
                             let unchanged_trace_costs = trace_costs.expect("just matched");
                             if ViaOptimizer::opt_via_location(
                                 board,

@@ -35,9 +35,10 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 /**
- * Plan 7 Task 6 differential driver: {@code board.optimize.ViaOptimizer}'s {@code optViaLocation}
- * (ViaOptimizer.java:33-158), {@code optPlaneOrFanoutVia} (:161-296) and {@code isWithinTolerance}
- * (:719-732), over a real DSN board whose vias were placed by real routing.
+ * Plan 7 Tasks 6 and 7 differential driver: {@code board.optimize.ViaOptimizer}'s {@code
+ * optViaLocation} (ViaOptimizer.java:33-158), {@code optPlaneOrFanoutVia} (:161-296), {@code
+ * isWithinTolerance} (:719-732) and the three {@code repositionVia} overloads — A (:302-365),
+ * B (:367-429) and C (:434-713) — over a real DSN board whose vias were placed by real routing.
  *
  * <p>Usage: {@code P7T4 <dsn> [mode] [accuracy] [routeK]}. Defaults: {@code mode = 0}, {@code
  * accuracy = 500}, {@code routeK = 12}.
@@ -47,9 +48,10 @@ import java.util.TreeSet;
  * / {@code pickConnections} / {@code route}, which are package-private statics in {@code
  * app.freerouting.autoroute.maze} — and without them this driver cannot describe the same board
  * {@code P7T3} does. The {@code P7T3} / {@code P7T7} / {@code P7T10} precedent wins: the driver
- * declares {@code autoroute.maze} and reaches {@code optPlaneOrFanoutVia} and {@code
- * isWithinTolerance} through {@code setAccessible}, exactly as {@code P6T3} reaches {@code
- * autoroute.expansion}'s private members. Nothing about the measurement changes.
+ * declares {@code autoroute.maze} and reaches {@code optPlaneOrFanoutVia}, {@code
+ * isWithinTolerance} and the three private {@code repositionVia} overloads through {@code
+ * setAccessible}, exactly as {@code P6T3} reaches {@code autoroute.expansion}'s private members.
+ * Nothing about the measurement changes.
  *
  * <p>Modes:
  *
@@ -62,19 +64,25 @@ import java.util.TreeSet;
  *   <li>{@code 2} — {@code isWithinTolerance} over 10 000 scripted triples plus 256 exact-boundary
  *       ones; no board is loaded, so the {@code <dsn>} argument is ignored (it is still required,
  *       and still printed, so the two sides' header lines agree).
+ *   <li>{@code 3} — {@code repositionVia} <b>overload A</b> ({@code :302-365}) driven directly,
+ *       over a scripted family of 27 {@code toLocation}s per via.
+ *   <li>{@code 4} — {@code repositionVia} <b>overload B</b> ({@code :367-429}) driven directly,
+ *       over 11 {@code toLocation}s x 2 role assignments per via.
+ *   <li>{@code 5} — {@code repositionVia} <b>overload C</b> ({@code :434-713}) driven directly,
+ *       with the arguments {@code optViaLocation:118-131} would build and five cost-pair
+ *       combinations, so the weighted comparisons at {@code :492}, {@code :514}, {@code :555},
+ *       {@code :597}, {@code :625}, {@code :663} and {@code :693} all decide both ways.
  *   <li>{@code 6} — mode 0 with {@code traceCosts = null}, which is {@code optViaLocation}'s
  *       {@code :113-116} else-branch ({@code ExpansionCostFactor(1, 1)} for both layers).
- *       <b>Numbered 6, not 3</b>: {@code task-7-brief.md:29} reserves modes {@code 3}, {@code 4}
- *       and {@code 5} for one {@code repositionVia} overload each.
+ *       <b>Numbered 6, not 3</b>: {@code task-7-brief.md:29} reserved modes {@code 3}, {@code 4}
+ *       and {@code 5} for one {@code repositionVia} overload each, which is what they now are.
  * </ul>
  *
- * <p><b>The Task 7 guard.</b> Overload A is an {@code unimplemented!} on the Rust side (controller
- * ruling B1), because answering {@code null} there sends {@code optPlaneOrFanoutVia} into its
- * {@code :218-260} projection fallback — a branch Java reaches only when <i>its</i> overload A
- * answered null, and one that inserts. So both sides run {@code reachesOverloadA}, a read-only
- * replica of {@code :167-215}, and print {@code result=TASK7_GUARD} for a via that would reach it
- * <b>without calling either method</b>. The Java side skips too, deliberately: a transcript row
- * that recorded Java's move against the port's refusal would be a row about Task 7, not Task 6.
+ * <p><b>The three overloads mutate nothing</b> — {@code checkTraceSegment} and {@code
+ * DrillItemMover.check} (called with both recursion depths at zero) are read-only probes — so
+ * modes 3-5 may call them many times per via and still end on the board the routing prologue
+ * built. Each of the three prints that board afterwards, which is what pins "no item was inserted
+ * and no id was burned".
  *
  * <p>Per via the driver prints, <b>before</b> the call: the via id, its centre, its normal-contact
  * ids (descending — {@code Item.compareTo} is {@code other.id - id}), and the dispatch class that
@@ -115,7 +123,7 @@ public final class P7T4 {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 1) {
-      System.err.println("usage: P7T4 <dsn> [mode] [accuracy] [routeK]  (modes 0, 1, 2, 6)");
+      System.err.println("usage: P7T4 <dsn> [mode] [accuracy] [routeK]  (modes 0, 1, 2, 3, 4, 5, 6)");
       System.exit(2);
     }
     out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
@@ -197,6 +205,18 @@ public final class P7T4 {
     }
     out.println("vias n=" + viaIds.size());
 
+    if (mode == 3 || mode == 4 || mode == 5) {
+      if (mode == 3) {
+        driveOverloadA(board, viaIds);
+      } else if (mode == 4) {
+        driveOverloadB(board, viaIds);
+      } else {
+        driveOverloadC(board, viaIds);
+      }
+      dumpBoard(board);
+      return;
+    }
+
     Method optPlaneOrFanoutVia = null;
     if (mode == 1) {
       optPlaneOrFanoutVia =
@@ -222,13 +242,6 @@ public final class P7T4 {
           .append(contactIds(via))
           .append(" class=")
           .append(classify(via));
-      // The Task 7 guard, computed before the call and identically on both sides.
-      boolean guarded = reachesOverloadA(via) && (mode == 1 || takesPlaneArm(via));
-      if (guarded) {
-        sb.append(" result=TASK7_GUARD").append(" after=").append(pointOf(via.getCenter()));
-        out.println(sb);
-        continue;
-      }
       boolean result;
       if (mode == 1) {
         result = (Boolean) optPlaneOrFanoutVia.invoke(null, board, via, accuracy, 10);
@@ -398,61 +411,6 @@ public final class P7T4 {
     return Dispatch.TWO_TRACES;
   }
 
-  /**
-   * {@code optViaLocation:39-78} reduced to "does this via reach the plane/fanout arm?" — the half
-   * of {@link #classify} the guard needs.
-   */
-  static boolean takesPlaneArm(Via via) {
-    Dispatch dispatch = classify(via);
-    return dispatch == Dispatch.PLANE_OR_FANOUT_ONE_CONTACT
-        || dispatch == Dispatch.PLANE_OR_FANOUT_CONDUCTION;
-  }
-
-  /**
-   * A read-only replica of {@code optPlaneOrFanoutVia:167-215}: would this via reach the {@code
-   * repositionVia} overload-A call at {@code :216-217}? The Rust twin's
-   * {@code ViaOptimizer::reaches_task_seven_guard} is the same twenty lines.
-   */
-  static boolean reachesOverloadA(Via via) {
-    Collection<Item> contactList = via.getNormalContacts();
-    if (contactList.isEmpty()) {
-      return false;
-    }
-    boolean contactPlaneSeen = false;
-    PolylineTrace contactTrace = null;
-    for (Item currentContact : contactList) {
-      if (currentContact instanceof ConductionArea) {
-        if (contactPlaneSeen) {
-          return false;
-        }
-        contactPlaneSeen = true;
-      } else if (currentContact instanceof PolylineTrace trace) {
-        if (currentContact.isShoveFixed() || contactTrace != null) {
-          return false;
-        }
-        contactTrace = trace;
-      } else {
-        return false;
-      }
-    }
-    if (contactTrace == null) {
-      return false;
-    }
-    Point viaCenter = via.getCenter();
-    int tolerance = (int) (via.minWidth() / 2) + 1;
-    boolean atFirstCorner;
-    if (within(contactTrace.firstCorner(), viaCenter, tolerance)) {
-      atFirstCorner = true;
-    } else if (within(contactTrace.lastCorner(), viaCenter, tolerance)) {
-      atFirstCorner = false;
-    } else {
-      return false;
-    }
-    Polyline tracePolyline = contactTrace.polyline();
-    int cornerNo = atFirstCorner ? 1 : tracePolyline.cornerCount() - 2;
-    return cornerNo >= 0 && cornerNo < tracePolyline.cornerCount();
-  }
-
   /** {@code isWithinTolerance:719-732}, re-transcribed so {@code classify} needs no reflection. */
   static boolean within(Point p1, Point p2, int tolerance) {
     if (p1 == null || p2 == null) {
@@ -463,6 +421,299 @@ public final class P7T4 {
     double dx = Math.abs(fp1.x - fp2.x);
     double dy = Math.abs(fp1.y - fp2.y);
     return (dx + dy) <= tolerance;
+  }
+
+  // --- modes 3, 4 and 5: one `repositionVia` overload each -------------------------------------
+
+  /**
+   * The scripted {@code toLocation} family mode 3 walks per via: the contact trace's two inner
+   * corners, the via centre itself (which is overload A's {@code :312-314} early return) and six
+   * offsets at each of four magnitudes — 1 is inside every pad, 100000 is off the end of most
+   * traces, and the two in between straddle the {@code okLength} sentinel.
+   */
+  static List<IntPoint> targetsA(IntPoint center, PolylineTrace trace) {
+    List<IntPoint> result = new ArrayList<>();
+    Polyline p = trace.polyline();
+    result.add(p.corner(1).toFloat().round());
+    result.add(p.corner(p.cornerCount() - 2).toFloat().round());
+    result.add(center);
+    for (int d : new int[] {1, 1000, 10000, 100000}) {
+      result.add(new IntPoint(center.x + d, center.y));
+      result.add(new IntPoint(center.x, center.y + d));
+      result.add(new IntPoint(center.x + d, center.y + d));
+      result.add(new IntPoint(center.x - d, center.y));
+      result.add(new IntPoint(center.x, center.y - d));
+      result.add(new IntPoint(center.x - d, center.y - d));
+    }
+    return result;
+  }
+
+  /**
+   * Mode 4's {@code toLocation} family: the four axis-parallel decomposition points overload C
+   * builds at {@code :584}, {@code :615}, {@code :646} and {@code :682}, then the two from-corners,
+   * the centre and four short offsets — the last of which straddle overload B's {@code :388-397}
+   * refusal of a move of length &le; 1.5 under {@code AngleRestriction.NONE}.
+   */
+  static List<IntPoint> targetsB(IntPoint center, IntPoint c1, IntPoint c2) {
+    List<IntPoint> result = new ArrayList<>();
+    result.add(new IntPoint(center.x, c1.y));
+    result.add(new IntPoint(c1.x, center.y));
+    result.add(new IntPoint(center.x, c2.y));
+    result.add(new IntPoint(c2.x, center.y));
+    result.add(c1);
+    result.add(c2);
+    result.add(center);
+    result.add(new IntPoint(center.x + 1, center.y));
+    result.add(new IntPoint(center.x + 1, center.y + 1));
+    result.add(new IntPoint(center.x + 1000, center.y + 1000));
+    result.add(new IntPoint(center.x - 1000, center.y));
+    return result;
+  }
+
+  /** Mode 5's cost pairs — {@code (horizontal, vertical)} per layer, five combinations. */
+  static final double[][] COST_PAIRS = {
+    {1.0, 1.0, 1.0, 1.0},
+    {1.0, 2.0, 2.0, 1.0},
+    {2.0, 1.0, 1.0, 2.0},
+    {1.0, 1.0, 2.0, 2.0},
+    {3.0, 1.0, 1.0, 3.0},
+  };
+
+  /** The trace contacts of a via, in {@code getNormalContacts()} order (descending id). */
+  static List<PolylineTrace> traceContacts(Via via) {
+    List<PolylineTrace> result = new ArrayList<>();
+    for (Item currentContact : via.getNormalContacts()) {
+      if (currentContact instanceof PolylineTrace trace) {
+        result.add(trace);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * {@code optViaLocation:89-96}, as a helper: the trace corner next to the via, or {@code
+   * corner(1)} when the via is at neither end (so the scripted families are still defined).
+   */
+  static Point fromCornerOf(PolylineTrace trace, Point viaCenter, int tolerance) {
+    Polyline p = trace.polyline();
+    if (within(trace.firstCorner(), viaCenter, tolerance)) {
+      return p.corner(1);
+    }
+    if (within(trace.lastCorner(), viaCenter, tolerance)) {
+      return p.corner(p.cornerCount() - 2);
+    }
+    return p.corner(1);
+  }
+
+  /** Mode 3: {@code repositionVia} overload A ({@code :302-365}), driven directly. */
+  static void driveOverloadA(RoutingBoard board, List<Integer> viaIds) throws Exception {
+    Method repositionVia =
+        ViaOptimizer.class.getDeclaredMethod(
+            "repositionVia",
+            RoutingBoard.class,
+            Via.class,
+            IntPoint.class,
+            int.class,
+            int.class,
+            int.class);
+    repositionVia.setAccessible(true);
+    for (int viaId : viaIds) {
+      Item item = board.getItem(viaId);
+      if (!(item instanceof Via via)) {
+        out.println("repA id=" + viaId + " state=GONE");
+        continue;
+      }
+      List<PolylineTrace> traces = traceContacts(via);
+      if (traces.isEmpty()) {
+        out.println("repA id=" + viaId + " state=NO_TRACE_CONTACT");
+        continue;
+      }
+      PolylineTrace trace = traces.get(0);
+      IntPoint center = via.getCenter().toFloat().round();
+      int hw = trace.getHalfWidth();
+      int layer = trace.getLayer();
+      int cl = trace.clearanceClassIndex();
+      List<IntPoint> targets = targetsA(center, trace);
+      for (int k = 0; k < targets.size(); k++) {
+        IntPoint to = targets.get(k);
+        Point answer = (Point) repositionVia.invoke(null, board, via, to, hw, layer, cl);
+        out.println(
+            "repA id="
+                + viaId
+                + " k="
+                + k
+                + " to=("
+                + to.x
+                + ","
+                + to.y
+                + ") hw="
+                + hw
+                + " layer="
+                + layer
+                + " cl="
+                + cl
+                + " -> "
+                + (answer == null ? "null" : pointOf(answer)));
+      }
+    }
+  }
+
+  /** Mode 4: {@code repositionVia} overload B ({@code :367-429}), driven directly. */
+  static void driveOverloadB(RoutingBoard board, List<Integer> viaIds) throws Exception {
+    Method repositionVia =
+        ViaOptimizer.class.getDeclaredMethod(
+            "repositionVia",
+            RoutingBoard.class,
+            Via.class,
+            IntPoint.class,
+            int.class,
+            int.class,
+            int.class,
+            IntPoint.class,
+            int.class,
+            int.class,
+            int.class);
+    repositionVia.setAccessible(true);
+    for (int viaId : viaIds) {
+      Item item = board.getItem(viaId);
+      if (!(item instanceof Via via)) {
+        out.println("repB id=" + viaId + " state=GONE");
+        continue;
+      }
+      List<PolylineTrace> traces = traceContacts(via);
+      if (traces.isEmpty()) {
+        out.println("repB id=" + viaId + " state=NO_TRACE_CONTACT");
+        continue;
+      }
+      PolylineTrace t1 = traces.get(0);
+      PolylineTrace t2 = traces.size() > 1 ? traces.get(1) : traces.get(0);
+      Point viaCenter = via.getCenter();
+      int tolerance = (int) (via.minWidth() / 2) + 1;
+      IntPoint center = viaCenter.toFloat().round();
+      IntPoint c1 = fromCornerOf(t1, viaCenter, tolerance).toFloat().round();
+      IntPoint c2 = fromCornerOf(t2, viaCenter, tolerance).toFloat().round();
+      List<IntPoint> targets = targetsB(center, c1, c2);
+      for (int k = 0; k < targets.size(); k++) {
+        IntPoint to = targets.get(k);
+        for (int r = 0; r < 2; r++) {
+          // r = 0 is overload C's `!firstDelta.isOrthogonal()` role assignment (:599), r = 1 its
+          // `!secondDelta.isOrthogonal()` one (:665): the two traces swap places.
+          PolylineTrace moved = r == 0 ? t2 : t1;
+          PolylineTrace connected = r == 0 ? t1 : t2;
+          IntPoint connect = r == 0 ? c1 : c2;
+          boolean answer =
+              (Boolean)
+                  repositionVia.invoke(
+                      null,
+                      board,
+                      via,
+                      to,
+                      moved.getHalfWidth(),
+                      moved.getLayer(),
+                      moved.clearanceClassIndex(),
+                      connect,
+                      connected.getHalfWidth(),
+                      connected.getLayer(),
+                      connected.clearanceClassIndex());
+          out.println(
+              "repB id="
+                  + viaId
+                  + " k="
+                  + k
+                  + " r="
+                  + r
+                  + " to=("
+                  + to.x
+                  + ","
+                  + to.y
+                  + ") connect=("
+                  + connect.x
+                  + ","
+                  + connect.y
+                  + ") -> "
+                  + answer);
+        }
+      }
+    }
+  }
+
+  /** Mode 5: {@code repositionVia} overload C ({@code :434-713}), driven directly. */
+  static void driveOverloadC(RoutingBoard board, List<Integer> viaIds) throws Exception {
+    Method repositionVia =
+        ViaOptimizer.class.getDeclaredMethod(
+            "repositionVia",
+            RoutingBoard.class,
+            Via.class,
+            int.class,
+            int.class,
+            int.class,
+            ExpansionCostFactor.class,
+            Point.class,
+            int.class,
+            int.class,
+            int.class,
+            ExpansionCostFactor.class,
+            Point.class);
+    repositionVia.setAccessible(true);
+    for (int viaId : viaIds) {
+      Item item = board.getItem(viaId);
+      if (!(item instanceof Via via)) {
+        out.println("repC id=" + viaId + " state=GONE");
+        continue;
+      }
+      Dispatch dispatch = classify(via);
+      if (dispatch != Dispatch.TWO_TRACES) {
+        out.println("repC id=" + viaId + " class=" + dispatch + " state=SKIP");
+        continue;
+      }
+      List<PolylineTrace> traces = traceContacts(via);
+      PolylineTrace t1 = traces.get(0);
+      PolylineTrace t2 = traces.get(1);
+      Point viaCenter = via.getCenter();
+      int tolerance = (int) (via.minWidth() / 2) + 1;
+      Point c1 = fromCornerOf(t1, viaCenter, tolerance);
+      Point c2 = fromCornerOf(t2, viaCenter, tolerance);
+      for (int k = 0; k < COST_PAIRS.length; k++) {
+        double[] pair = COST_PAIRS[k];
+        ExpansionCostFactor costs1 = new ExpansionCostFactor(pair[0], pair[1]);
+        ExpansionCostFactor costs2 = new ExpansionCostFactor(pair[2], pair[3]);
+        Point answer =
+            (Point)
+                repositionVia.invoke(
+                    null,
+                    board,
+                    via,
+                    t1.getHalfWidth(),
+                    t1.clearanceClassIndex(),
+                    t1.getLayer(),
+                    costs1,
+                    c1,
+                    t2.getHalfWidth(),
+                    t2.clearanceClassIndex(),
+                    t2.getLayer(),
+                    costs2,
+                    c2);
+        out.println(
+            "repC id="
+                + viaId
+                + " k="
+                + k
+                + " costs1=("
+                + Double.toString(pair[0])
+                + ","
+                + Double.toString(pair[1])
+                + ") costs2=("
+                + Double.toString(pair[2])
+                + ","
+                + Double.toString(pair[3])
+                + ") from1="
+                + pointOf(c1)
+                + " from2="
+                + pointOf(c2)
+                + " -> "
+                + (answer == null ? "null" : pointOf(answer)));
+      }
+    }
   }
 
   // --- dumps (P7T3's, verbatim) -----------------------------------------------------------------

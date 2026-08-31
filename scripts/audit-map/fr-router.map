@@ -140,8 +140,8 @@ TraceShover                       board_ext/trace_shover.rs
 # `TraceTightener.optChangedArea` itself (and `PolylineTrace`'s `check`/`correct`/`swapConnectionToPin`,
 # which live in the same file for the same reason `pullTight` does), so `board/optimize`'s marker
 # for it is gone. **Plan 7 Task 6** then landed `ViaOptimizer`'s entry half and re-pointed its row
-# (plan ruling 13); the three `repositionVia` overloads are rostered inside
-# `board_ext/via_optimizer.rs` to Task 7.
+# (plan ruling 13), and **Plan 7 Task 7** landed the three `repositionVia` overloads in the same
+# file, so `ViaOptimizer.java` is ported whole and carries no forward marker.
 TraceTightener                    board_ext/tightener/mod.rs
 TraceTightener                    board_ext/tightener/base.rs
 TraceTightener90                  board_ext/tightener/tightener_90.rs
