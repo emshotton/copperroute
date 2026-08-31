@@ -1378,6 +1378,49 @@ methods with dozens of branches.
       have no trace and no via and `Board::structural_hash` hashes only traces and
       vias; the divergence is recorded, not fixed, and Task 3 owns it.
 
+  - `P7T4Probe.java` — the three-state stop, the two small pipeline enums and
+    `RouterCounters` (Plan 7 Task 4, controller ruling AI). `package
+    app.freerouting.core`, the brief's, which reaches `StoppableThread`'s
+    package-private surface and `BatchAutorouter`'s package-private
+    `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` without a module opening; the private
+    `stopRequestState` field is written and read with `setAccessible(true)`, so
+    every starting state is reachable. Consumed by
+    `crates/fr-router/tests/stop_and_progress.rs`, committed as
+    `crates/fr-router/tests/data/p7t4-stop-and-counters.txt` (40 lines, six
+    sections), and **byte-stable across runs** — measured three times.
+
+    It **carries no clock**, deliberately. Ruling AI's deadline is asserted
+    against Java's *code* (the per-job monitor thread at
+    `management/jobs/RoutingJobSchedulerActionThread.java:55-90`, quoted in
+    `crates/fr-router/src/pipeline/stop.rs`) rather than against a timing
+    measurement, because a timing measurement is not reproducible and ruling AI's
+    whole point is that the parity runs never reach the deadline. No
+    `Thread.sleep`, no `System.currentTimeMillis()`.
+
+    - `[enums]` — `StopRequestState`, `TaskState` and `NamedAlgorithmType` with
+      their `ordinal()`s, so the port's variant order is pinned and not guessed.
+    - `[queries-at-rest]` — `isStopRequested()` (`== ALL`, `:28-30`) and
+      `isStopAutoRouterRequested()` (`!= NONE`, `:40-42`) in all three states.
+      The two are adjacent and differ by one comparison; both are read in every
+      state so a swap cannot pass.
+    - `[transitions]` — the full 3 states x 2 requests table, each cell followed
+      by both queries. Six rows.
+    - `[sequences]` — the three orderings the pipeline actually performs:
+      `maxItems` (`requestStop`, so the optimizer stage would **not** run —
+      quirk #202), `maxPasses` (`requestStopAutoRouter`, so it would), and the
+      monitor-thread order, whose second call is a measured no-op (quirk #203).
+    - `[constants]` — the four `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` static finals
+      reflected, all `1000`, which is `RouterBudget::opt_changed_area_ms`'s
+      default. The other three budget literals are **not** reflectable — `250` is
+      inline in `BatchAutorouter.shouldFireBoardUpdate`, `10000L` is an inline
+      `?:` fallback in `BatchFanout.fanoutPass`, and `ProgressThrottler`'s
+      interval is a constructor argument at three instance-field initialisers —
+      so those carry their Java file:line in the port's assertion messages
+      instead.
+    - `[RouterCounters]` — the nine declared instance fields by reflection, in
+      declaration order, with each field's type and its default. All nine
+      default to `null`, which is why the port's fields are `Option`s.
+
 - `java/P6T17bProbe.java` — **the Plan 6 Task 17b bisect probe.** It sits beside
   the drivers rather than in `java/probes/` because it is compiled *with*
   `P6T1.java` and reuses its `loadBoard` / `pickConnections` / `routeOne`, so it

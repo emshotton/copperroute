@@ -1,0 +1,40 @@
+# P7T4Probe — plan 7 task 4 ground truth, HEAD jar
+# core/StopRequestState.java, core/StoppableThread.java:8,20-42,
+# autoroute/pipeline/{NamedAlgorithmType,TaskState}.java, core/RouterCounters.java
+# no clock: this transcript is byte-stable across runs (ruling AI)
+[enums]
+StopRequestState = NONE(0) AUTO_ROUTER_ONLY(1) ALL(2)
+TaskState = IDLE(0) STARTED(1) RUNNING(2) FINISHED(3) CANCELLED(4) TIMED_OUT(5)
+NamedAlgorithmType = ROUTER(0) OPTIMIZER(1)
+[queries-at-rest]
+state=NONE isStopRequested=false isStopAutoRouterRequested=false
+state=AUTO_ROUTER_ONLY isStopRequested=false isStopAutoRouterRequested=true
+state=ALL isStopRequested=true isStopAutoRouterRequested=true
+[transitions]
+from=NONE request=requestStop -> state=ALL isStopRequested=true isStopAutoRouterRequested=true
+from=NONE request=requestStopAutoRouter -> state=AUTO_ROUTER_ONLY isStopRequested=false isStopAutoRouterRequested=true
+from=AUTO_ROUTER_ONLY request=requestStop -> state=ALL isStopRequested=true isStopAutoRouterRequested=true
+from=AUTO_ROUTER_ONLY request=requestStopAutoRouter -> state=AUTO_ROUTER_ONLY isStopRequested=false isStopAutoRouterRequested=true
+from=ALL request=requestStop -> state=ALL isStopRequested=true isStopAutoRouterRequested=true
+from=ALL request=requestStopAutoRouter -> state=ALL isStopRequested=true isStopAutoRouterRequested=true
+[sequences]
+seq=maxItems calls=requestStop state=ALL optimizerStageWouldRun=false
+seq=maxPasses calls=requestStopAutoRouter state=AUTO_ROUTER_ONLY optimizerStageWouldRun=true
+seq=monitorTimeout calls=requestStop,requestStopAutoRouter stateAfterFirst=ALL stateAfterSecond=ALL secondWasNoOp=true
+seq=autoRouterTwice stateAfterFirst=AUTO_ROUTER_ONLY stateAfterSecond=AUTO_ROUTER_ONLY
+[constants]
+AutorouteConnectionRouter.TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP:22 = 1000
+BatchAutorouter.TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP:43 = 1000
+BatchAutorouterThread.TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP:38 = 1000
+AutoroutePassRunner.TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP:32 = 1000
+[RouterCounters]
+field 0 name=passCount type=java.lang.Integer default=null
+field 1 name=queuedToBeRoutedCount type=java.lang.Integer default=null
+field 2 name=routedCount type=java.lang.Integer default=null
+field 3 name=skippedCount type=java.lang.Integer default=null
+field 4 name=rippedCount type=java.lang.Integer default=null
+field 5 name=failedToBeRoutedCount type=java.lang.Integer default=null
+field 6 name=incompleteCount type=java.lang.Integer default=null
+field 7 name=phase type=java.lang.String default=null
+field 8 name=fanoutExtraViasCount type=java.lang.Integer default=null
+fieldCount = 9

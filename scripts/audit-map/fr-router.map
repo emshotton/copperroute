@@ -171,8 +171,12 @@ BatchOptimizerMultiThreaded       lib.rs
 OptimizeRouteTask                 lib.rs
 RoutingPipeline                   lib.rs
 NamedAlgorithm                    lib.rs
-NamedAlgorithmType                lib.rs
-TaskState                         lib.rs
+# Plan 7 Task 4 (ruling AK): the two enums are ported, so they point at `pipeline/mod.rs` rather
+# than at `lib.rs`'s roster. `NamedAlgorithm` itself stays on the roster — its five identity
+# accessors become consts on the two algorithm structs (Tasks 8 and 13) and its three listener
+# lists are `not ported:`, replaced by `pipeline::ProgressSink`.
+NamedAlgorithmType                pipeline/mod.rs
+TaskState                         pipeline/mod.rs
 AutorouteAirlineCalculator        lib.rs
 AutorouteRuntimeMetrics           lib.rs
 AutorouteUnroutedReport           lib.rs
@@ -207,3 +211,15 @@ BoardStatisticsVias               score/dtos.rs
 BoardStatisticsClearanceViolations  ../../fr-drc/src/statistics.rs
 BoardScoreBreakdown               score/mod.rs
 ScoringWeightComparison           score/mod.rs
+
+# --- `core/**`: the four classes Plan 7 Task 4 ports (ruling AI) --------------------------------
+#
+# No workspace `audit-port.sh` invocation covers `core/`'s package root — the thirty listed in
+# `crates/fr-router/README.md` reach `core/library` (fr-board) and `core/scoring` (fr-drc and
+# fr-router) only — so these rows are inert today. They are here so that an invocation added
+# later resolves rather than reporting four `UNMAPPED` classes, and because `crates/fr-router/
+# src/lib.rs`'s `core/**` roster block names the same four.
+StopRequestState                  pipeline/stop.rs
+StoppableThread                   pipeline/stop.rs
+RouterCounters                    pipeline/counters.rs
+ProgressThrottler                 pipeline/stop.rs

@@ -633,6 +633,7 @@ used in its header line — read it.
 | `probes/P6T15Probe.java` | `FoundConnectionInserter`, 8 modes (Task 15) | ditto |
 | `probes/P6T16Probe.java` | `autorouteConnection` end to end, 14 modes × 3 regimes (Task 16) | ditto |
 | `probes/P7T2Probe.java` | `BoardHistory`, 61 calls over five phases incl. the `BoardHistoryTest` replay (Plan 7 Task 2) | ditto |
+| `probes/P7T4Probe.java` | the three-state stop's full 3x2 transition table, the two queries in every state, `StopRequestState`/`TaskState`/`NamedAlgorithmType`'s variant lists and `RouterCounters`' nine reflected fields (Plan 7 Task 4). **Carries no clock**, deliberately — ruling AI's deadline is asserted against Java's monitor-thread *code*, not against a timing measurement, so the transcript is byte-stable across runs | ditto |
 | `java/P7T7.java` + `rust/src/bin/p7t7.rs` | `BoardStatistics`' score subset over a board optionally routed by `P6T1` (Plan 7 Task 1) | `./scripts/differential/run.sh p7t7 <dsn> [routeK] [ripupPassNo]` |
 | `java/P7T10.java` + `rust/src/bin/p7t10.rs` | **ruling AH's decision parity** — `getHash`'s three decision sites over 2 000 scripted board mutations (Plan 7 Task 3) | `P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 <dsn> <steps> [routeK] [warm\|raw]` |
 

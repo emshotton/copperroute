@@ -77,6 +77,9 @@
 //!   exception**, controller ruling AE: `fr_geometry::Line` carries an identity token drawn from
 //!   a process-wide `AtomicU64`, because `PolylineTrace.change` compares `Line`s by *reference*
 //!   (quirk #74) and the difference is board-observable. One reader, order-independent.
+//!   Java's *observers* — `NamedAlgorithm`'s three listener lists and `autoroute/events/**` — are
+//!   replaced by one [`pipeline::ProgressSink`] threaded as `&mut dyn` (controller ruling AK), and
+//!   plan-7 ruling 11 makes it an observer in the strict sense: no port decision reads it.
 //! * **`#![forbid(unsafe_code)]`** in this crate root and in every other workspace crate. The only
 //!   `unsafe` left in the repository is the `static mut` PRNG in
 //!   `scripts/differential/rust/src/bin/p2t13.rs`, which is a differential driver, not a crate.
@@ -108,7 +111,11 @@ pub use board_ext::{
 };
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
-pub use pipeline::{BoardHistory, BoardHistoryEntry};
+pub use pipeline::{
+    BoardHistory, BoardHistoryEntry, NamedAlgorithmType, NoopProgressSink, PassRecord,
+    ProgressSink, ProgressThrottler, RouterBudget, RouterCounters, RouterStop, RoutingEvent,
+    StopRequestState, TaskState,
+};
 pub use score::{
     BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
     BoardStatisticsClearanceViolations, BoardStatisticsComponents, BoardStatisticsConnections,
@@ -138,9 +145,12 @@ pub mod prelude {
         FoundConnectionInserter, FoundConnectionLocator, FreeSpaceExpansionRoom,
         IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
         MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult, MazeRipupResolver,
-        MazeSearchElement, MazeSearchEngine, ObstacleExpansionRoom, PageId, Rectangle2DFloat,
-        ResultItem, RoomRef, RouterError, RoutingBoardExt, ShoveResult, SpringOverOutcome,
-        TargetDoorId, TargetItemExpansionDoor, TraceShover, ViaMask, route_connection,
+        MazeSearchElement, MazeSearchEngine, NamedAlgorithmType, NoopProgressSink,
+        ObstacleExpansionRoom, PageId, PassRecord, ProgressSink, ProgressThrottler,
+        Rectangle2DFloat, ResultItem, RoomRef, RouterBudget, RouterCounters, RouterError,
+        RouterStop, RoutingBoardExt, RoutingEvent, ShoveResult, SpringOverOutcome,
+        StopRequestState, TargetDoorId, TargetItemExpansionDoor, TaskState, TraceShover, ViaMask,
+        route_connection,
     };
 }
 
@@ -247,15 +257,37 @@ pub mod prelude {
 // added in Plan 7: `AutorouteAirlineCalculator` and `AutorouteRuntimeMetrics` — both package-private with no public members; the lines record the classes.
 // added in Plan 7: `AutorouteUnroutedReport.build` — the stagnation report; it is a consumer of `fr-drc`, whose `crates/fr-drc/src/lib.rs` carries the same line.
 // added in Plan 8: `RoutingPipeline.createForHeadless`, `RoutingPipeline.createForGui`, `RoutingPipeline.run`, `RoutingPipeline.getAutorouter`, `RoutingPipeline.getOptimizer`, `RoutingPipeline.addStageListener`, `RoutingPipeline.addBoardUpdatedEventListener`, `RoutingPipeline.addTaskStateChangedEventListener` — the wiring from the CLI/MCP surface into Plan 7's stages (spec §13); Plan 7 delivers the stages, Plan 8 the caller.
-// added in Plan 8: `NamedAlgorithm.addBoardSnapshotEventListener`, `NamedAlgorithm.addBoardUpdatedEventListener`, `NamedAlgorithm.addTaskStateChangedEventListener`, `NamedAlgorithm.fireBoardSnapshotEvent`, `NamedAlgorithm.fireBoardUpdatedEvent`, `NamedAlgorithm.fireTaskStateChangedEvent` — the observer base class; Plan 8's `ProgressSink` replaces it.
-// not ported: `NamedAlgorithmType` and `TaskState` — bare enums with no methods, whose only readers are the observer events below and the job store, both out of scope here.
+// not ported: `NamedAlgorithm.addBoardSnapshotEventListener`, `NamedAlgorithm.addBoardUpdatedEventListener`, `NamedAlgorithm.addTaskStateChangedEventListener`, `NamedAlgorithm.fireBoardSnapshotEvent`, `NamedAlgorithm.fireBoardUpdatedEvent`, `NamedAlgorithm.fireTaskStateChangedEvent` — the three listener lists (`NamedAlgorithm.java:26-31`) and their `add`/`fire` pairs; controller ruling AK replaces the whole mechanism with spec §10's [`pipeline::ProgressSink`], landed in Plan 7 Task 4.
+// The two enums `NamedAlgorithmType` and `TaskState` are **ported** — [`pipeline::NamedAlgorithmType`] and [`pipeline::TaskState`], Plan 7 Task 4 — because `ProgressSink`'s `RoutingEvent::TaskStateChanged` carries both and `PipelineResult` reports a `TaskState`. The `// not ported:` line that stood here ("bare enums with no methods") is deleted with them.
 
-// --- `autoroute/events/**`: observers, replaced by Plan 8's `ProgressSink` -----------------------
+// --- `core/**`: the four classes Plan 7 Task 4 reaches ------------------------------------------
+//
+// No `audit-port.sh` invocation covers `core/`'s package root (the workspace's thirty cover
+// `core/library` and `core/scoring` only), so this block is a roster rather than a gate — it is
+// here because Task 4 ports out of `core/` and a reader must be able to see what it took and what
+// it left.
+//
+//   * `core/StopRequestState.java` (11) and `core/StoppableThread.java`'s flag and four methods
+//     (`:8`, `:20-42`) are [`pipeline::StopRequestState`] and [`pipeline::RouterStop`].
+//   * `core/RouterCounters.java` (48) is [`pipeline::RouterCounters`], nine fields in Java's
+//     declaration order.
+//   * `core/ProgressThrottler.java` (32) is [`pipeline::ProgressThrottler`], together with
+//     `BatchAutorouter.shouldFireBoardUpdate`'s one-millisecond-stricter twin
+//     (`autoroute/pipeline/BatchAutorouter.java:335-343`).
+//
+// `StoppableThread`'s one dropped method, `run`, is rostered **in `pipeline/stop.rs`** and not
+// here: `audit-port.sh`'s per-class mode searches only the class's mapped path
+// (`scripts/audit-map/fr-router.map` points `StoppableThread` at `pipeline/stop.rs`), so a marker
+// in this file would not be found by a scoped `core` invocation. Task 4 review S3.
+
+// --- `autoroute/events/**`: observers, replaced by `pipeline::ProgressSink` ----------------------
 //
 // Six files, ~130 loc, all of them `java.util.EventObject` subclasses and their listener
 // interfaces. Nothing in the maze reads them: `AutorouteEngine.autorouteConnection` brackets its
 // work with `fireBoardSnapshotEvent`-style calls at `:254-270` and the port drops them (ruling 2's
-// "no observers"). Spec §10 gives the port a `ProgressSink` instead, in Plan 8.
+// "no observers"). Spec §10 gives the port a `ProgressSink` instead — [`pipeline::ProgressSink`]
+// and [`pipeline::RoutingEvent`], landed in **Plan 7 Task 4** under controller ruling AK, with one
+// `RoutingEvent` variant per `fire*` call the port keeps. Ruling 11: no port decision reads it.
 // not ported: `BoardSnapshotEvent.getBoard` — and the class itself.
 // not ported: `BoardSnapshotEventListener` — a one-method listener interface.
 // not ported: `BoardUpdatedEvent.getBoard`, `BoardUpdatedEvent.getBoardStatistics`, `BoardUpdatedEvent.getRouterCounters`.
