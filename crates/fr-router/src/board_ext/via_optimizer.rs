@@ -496,15 +496,24 @@ impl ViaOptimizer {
     /// on `NaN` and on signed zero).
     ///
     /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // renamed: `ViaOptimizer.repositionVia(RoutingBoard, Via, IntPoint, int, int, int)` overload A
+    // (ViaOptimizer.java:302-365) -> `ViaOptimizer::reposition_via_toward_location`. Java overloads
+    // on the argument list and Rust does not, so the three share a Java name and need three Rust
+    // ones; this one is named for what its javadoc says it does, "move the via into the direction
+    // of toLocation as far as possible".
     // pub seam: `repositionVia` overload A is `private` in Java (ViaOptimizer.java:302); the only
     // callers of this `pub` are `crates/fr-router/tests/via_optimizer_reposition.rs` and
     // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
-    // Java bug: ViaOptimizer.repositionVia's angle-restriction asymmetry — quirk #207. None of the
-    // three overloads tests `board.rules.getTraceAngleRestriction()` against the delta it produces,
-    // yet `optPlaneOrFanoutVia:236-241` — the fallback reached only when *this* method answers
-    // `null` — refuses a projection whose delta is not orthogonal (`NINETY_DEGREE`) or a multiple
-    // of 45 degrees (`FORTYFIVE_DEGREE`). Reproduced: no test here either. Latent on the corpus,
-    // because a walk toward a trace corner inherits the trace's own angle.
+    // Java bug: ViaOptimizer.repositionVia's angle-restriction asymmetry — quirk #207. No overload
+    // tests `board.rules.getTraceAngleRestriction()` **against the delta it produces**, yet
+    // `optPlaneOrFanoutVia:236-241` — the fallback reached only when *this* method answers `null` —
+    // refuses a projection whose delta is not orthogonal (`NINETY_DEGREE`) or a multiple of 45
+    // degrees (`FORTYFIVE_DEGREE`). Two overloads do *read* the restriction, and neither reading is
+    // a test of the answer: overload B at `:388-390` (a `NONE`-only refusal of moves shorter than
+    // 1.5) and overload C at `:528-529` (the acute-angle arm's `!= NINETY_DEGREE` gate, which
+    // selects a family of candidates rather than checking any candidate's delta). Reproduced: no
+    // test here either. Latent on the corpus, because a walk toward a trace corner inherits the
+    // trace's own angle.
     pub fn reposition_via_toward_location(
         board: &mut Board,
         via: ItemId,
@@ -597,6 +606,10 @@ impl ViaOptimizer {
     /// overlap it generates, which would loop forever.
     ///
     /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // renamed: `ViaOptimizer.repositionVia(RoutingBoard, Via, IntPoint, int, int, int, IntPoint,
+    // int, int, int)` overload B (ViaOptimizer.java:367-429) ->
+    // `ViaOptimizer::reposition_via_check_candidate`, for the reason overload A's marker gives.
+    // Named for its role: it answers yes/no about one candidate location, and only overload C asks.
     // pub seam: `repositionVia` overload B is `private` in Java (ViaOptimizer.java:367); the only
     // callers of this `pub` are `crates/fr-router/tests/via_optimizer_reposition.rs` and
     // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
@@ -693,6 +706,11 @@ impl ViaOptimizer {
     /// It mutates nothing: every callee is a read-only probe.
     ///
     /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // renamed: `ViaOptimizer.repositionVia(RoutingBoard, Via, int, int, int, ExpansionCostFactor,
+    // Point, int, int, int, ExpansionCostFactor, Point)` overload C (ViaOptimizer.java:434-713) ->
+    // `ViaOptimizer::reposition_via_general`, for the reason overload A's marker gives. Named for
+    // its javadoc's "reposition the via to a better location according to the trace costs" — the
+    // general case, and the only one `optViaLocation` calls.
     // pub seam: `repositionVia` overload C is `private` in Java (ViaOptimizer.java:434); the only
     // callers of this `pub` are `crates/fr-router/tests/via_optimizer_reposition.rs` and
     // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.

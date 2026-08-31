@@ -2352,8 +2352,14 @@ overload would be a diff even where both answers agree.
 ### The three overloads mutate nothing
 
 `checkTraceSegment` and `DrillItemMover.check` are read-only probes, and both of
-`check`'s recursion depths are **zero** at all nine call sites, so no shove is
-attempted and no item is inserted. That is why `p7t4` modes 3-5 may call an
+`check`'s recursion depths are **zero** at all **four** of its call sites in the
+class — `ViaOptimizer.java:244`, `:338`, `:358` and `:428`, of which the last three
+are the ones inside the overloads (`via_optimizer.rs:364, 551, 574, 664`) — so no
+shove is attempted and no item is inserted. *(An earlier draft of this section, of
+report §2 and of Task 7's commit message said "nine call sites". Nine is the number
+of call expressions into **overload A** — one from `optPlaneOrFanoutVia:216-217` plus
+eight inside overload C — which is what `overload_b_is_reached_only_from_c` asserts;
+the two counts were crossed.)* That is why `p7t4` modes 3-5 may call an
 overload 27 times per via and still end on the board the routing prologue built,
 and why each of the three modes prints that board afterwards: an inserted item or
 a burned id would show as a `maxId=`/`item id=` diff in the dump. It is also why
@@ -2528,13 +2534,16 @@ Task 17 owns the reconciliation; recorded here so the number is not a surprise.
 contact is usable; it only gives the `firstCorner`-first test order a chance to
 pick the wrong end of a short trace. Reproduced, test order included.
 
-**#207** — none of the three `repositionVia` overloads tests the board's trace
-angle restriction against the delta it produces, yet
-`optPlaneOrFanoutVia:236-241` — the fallback reached *only* when overload A
-answered `null` — refuses a projection that is not orthogonal under
-`NINETY_DEGREE` or a multiple of 45 degrees under `FORTYFIVE_DEGREE`. The same
-method therefore applies the restriction to one of its two answers and not the
-other. **Latent on the corpus**: overload A walks toward a trace corner, and the
+**#207** — no `repositionVia` overload tests the board's trace angle restriction
+**against the delta it produces**, yet `optPlaneOrFanoutVia:236-241` — the
+fallback reached *only* when overload A answered `null` — refuses a projection
+that is not orthogonal under `NINETY_DEGREE` or a multiple of 45 degrees under
+`FORTYFIVE_DEGREE`. The same method therefore applies the restriction to one of
+its two answers and not the other. Two overloads do *read* the restriction, and
+neither reading is a test of the answer: B at `:388-390` (a `NONE`-only refusal
+of moves shorter than 1.5) and C at `:528-529` (the acute-angle arm's
+`!= NINETY_DEGREE` gate, which picks a family of candidates rather than checking
+any candidate's delta). **Latent on the corpus**: overload A walks toward a trace corner, and the
 trace already obeys the restriction, so every move the seven stems produce is
 orthogonal or exactly diagonal. Reproduced as-is, with the measurement in the
 register rather than a claim that the corpus clears it.
