@@ -103,7 +103,7 @@ pub use autoroute::{
     IncompleteFreeSpaceExpansionRoom, MazeAdjustment, MazeExpansionEngine, MazeListElement,
     MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
     ObstacleExpansionRoom, ResultItem, RoomRef, ShoveResult, TargetItemExpansionDoor, ViaMask,
-    route_connection,
+    route_connection, route_connection_full,
 };
 pub use board_ext::{
     CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, RoutingBoardExt,
@@ -112,9 +112,9 @@ pub use board_ext::{
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
 pub use pipeline::{
-    BoardHistory, BoardHistoryEntry, NamedAlgorithmType, NoopProgressSink, PassRecord,
-    ProgressSink, ProgressThrottler, RouterBudget, RouterCounters, RouterStop, RoutingEvent,
-    StopRequestState, TaskState,
+    BatchAutorouter, BoardHistory, BoardHistoryEntry, NamedAlgorithmType, NoopProgressSink,
+    PassRecord, ProgressSink, ProgressThrottler, RouterBudget, RouterCounters, RouterStop,
+    RoutingEvent, StopRequestState, TaskState,
 };
 pub use score::{
     BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
@@ -135,7 +135,7 @@ pub use fr_settings::ExpansionCostFactor;
 pub mod prelude {
     pub use crate::{
         Arena, AutorouteAttemptResult, AutorouteAttemptState, AutorouteControl, AutorouteEngine,
-        AutorouteSearchTreeExt, BoardHistory, BoardHistoryEntry, BoardStatistics,
+        AutorouteSearchTreeExt, BatchAutorouter, BoardHistory, BoardHistoryEntry, BoardStatistics,
         BoardStatisticsBends, BoardStatisticsBoard, BoardStatisticsClearanceViolations,
         BoardStatisticsComponents, BoardStatisticsConnections, BoardStatisticsFanout,
         BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets, BoardStatisticsPads,
@@ -150,7 +150,7 @@ pub mod prelude {
         Rectangle2DFloat, ResultItem, RoomRef, RouterBudget, RouterCounters, RouterError,
         RouterStop, RoutingBoardExt, RoutingEvent, ShoveResult, SpringOverOutcome,
         StopRequestState, TargetDoorId, TargetItemExpansionDoor, TaskState, TraceShover, ViaMask,
-        route_connection,
+        route_connection, route_connection_full,
     };
 }
 
@@ -245,10 +245,25 @@ pub mod prelude {
 // and AB moved `ForcedPadRouter`'s routing half, `DrillItemMover`'s mutating half,
 // `TraceShover.insert` and the whole `TraceTightener` family *into* Plan 6, so — unlike the plan
 // as written — those are ported and are not on this list.
-// added in Plan 7: `AutorouteConnectionRouter.route` steps 6-8 — the necked retry, the strict-DRC rollback and the failure-log write (`AutorouteConnectionRouter.java:160-233`). Steps 1-5 are [`route_connection`].
+// `AutorouteConnectionRouter` is **ported in full** by Plan 7 Task 8: steps 1-5 are
+// [`route_connection`] and the whole of `route` is [`route_connection_full`], with
+// `retryConnectionNecked` (`:162-241`) and `applyStrictDrcAfterRoute` (`:243-254`) beside it in
+// `autoroute/maze/engine.rs`, where `scripts/audit-map/fr-router.map` points the class.
+// The line that stood here said "steps 6-8 … (`AutorouteConnectionRouter.java:160-233`)", and
+// **that range is wrong** — `:160` is `route`'s closing brace and nothing in the 255-line file
+// spans `:160-233` as a unit. The decomposition read out of HEAD is step 6 `:95-121`, step 7
+// `:123-145`, step 8 `:147-153`. `docs/plan-6-handoff.md` §10.1 carries the same wrong range,
+// and its "and the failure-log write" belongs to Task 9's `AutoroutePassRunner.runSingleThread`
+// (`:260-289`), not to this class.
 // added in Plan 7: `AutoroutePassRunner.runPass`, `AutoroutePassRunner.onBoardUpdatedEvent` — the per-pass item loop and its `catch (Exception)` recovery boundary (`AutoroutePassRunner.java:144`).
 // added in Plan 7: `AutorouteBatchLoop.run` — the pass loop, and the `IllegalArgumentException` `RoutableLayersSafetyCheckTest` asserts (`AutorouteBatchLoop.java:52-55`).
-// added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.enforceStrictDrc`, `BatchAutorouter.getAirLine`, `BatchAutorouter.getInitialUnroutedCount`, `BatchAutorouter.getSessionStartTime`, `BatchAutorouter.isFanoutTimedOut`, `BatchAutorouter.getDescription`, `BatchAutorouter.getId`, `BatchAutorouter.getName`, `BatchAutorouter.getType`, `BatchAutorouter.getVersion`.
+// `BatchAutorouter` itself is [`pipeline::BatchAutorouter`] from Plan 7 Task 8 — the constants,
+// the field block, both constructors, the five accessors, the five `NamedAlgorithm` identity
+// members, `getImpactedPoints`, `enforceStrictDrc`, `isFanoutTimedOut`, `shouldFireBoardUpdate`,
+// `removeTails`, `autorouteItem` and `calculateIncompleteCount`. `scripts/audit-map/fr-router.map`
+// gained a second row for the class so both files are searched; what is still owed is rostered
+// **in `pipeline/batch_autorouter.rs`** beside the code, not here:
+// added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.getAirLine`, `BatchAutorouter.getInitialUnroutedCount`, `BatchAutorouter.getSessionStartTime`.
 // added in Plan 7: `BatchAutorouterThread.getBoard`, `BatchAutorouterThread.getRoutedCount`, `BatchAutorouterThread.getFailedCount`, `BatchAutorouterThread.addBoardUpdatedEventListener`, `BatchAutorouterThread.fireBoardUpdatedEvent` — including the per-item `catch (Exception)` boundary at `BatchAutorouterThread.java:537`.
 // added in Plan 7: `BatchFanout.fanoutBoard`, `BatchFanout.compareTo`, `BatchFanout.fromBoardStatistics`, `BatchFanout.toString`, `BatchFanout.EscapeStatistics`, `BatchFanout.FanoutPassStatus`, `BatchFanout.FanoutRunSummary`.
 // added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.createForHeadless`, `BatchOptimizer.getCurrentPosition`, `BatchOptimizer.getId`, `BatchOptimizer.isTimedOut`.

@@ -264,6 +264,58 @@ pub trait RoutingBoardExt {
         keep_point: Option<Point>,
         keep_point_layer: i32,
     ) -> Result<(), BoardError>;
+
+    /// Port of `RoutingBoard.removeItemsAndPullTight(Collection<Item>, int, int)`
+    /// (RoutingBoard.java:124-127, whose body is `RoutingBoardOperations.java:81-120`): "removes
+    /// the items in itemList and pulls the nearby rubber traces tight. Returns false, if some
+    /// items could not be removed, because they were fixed."
+    ///
+    /// The order is Java's: mark + remove (`:90-109`, [`Board::remove_items_marking_changed_area`]),
+    /// then `combineTraces(netNo)` over the changed nets in **ascending** order (`:111-113`), then
+    /// one `optChangedArea` (`:115-116`).
+    ///
+    /// # The signature is Java's, not the plan's
+    ///
+    /// The plan's draft gave this method `accuracy`, `with_preferred_directions`, `stop` and
+    /// `time_limit_ms` parameters. Java has none of them: it takes `(itemList, tidyWidth,
+    /// pullTightAccuracy)` and hard-codes the rest of the `optChangedArea` call — `new int[0]`
+    /// (all nets), `traceCosts = null`, `stoppableThread = null` and
+    /// `timeLimit = PULL_TIGHT_TIME_LIMIT`, which is **2000**
+    /// (`RoutingBoardOperations.java:18`, `:115-116`) and *not* the router's
+    /// `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000`. Java wins (plan conventions §1), so the port
+    /// takes the three Java arguments plus the `engine` every `RoutingBoardExt` method needs.
+    ///
+    /// # `tidyWidth` decides whether the tightener runs at all — and reaches quirk #184
+    ///
+    /// `:83-89` is a three-way switch on `tidyWidth`, and the port reproduces all three arms:
+    ///
+    /// | `tidyWidth` | `tidyRegion` handed to `optChangedArea` | effect |
+    /// |---|---|---|
+    /// | `< 0` or `== 0` | the `IntOctagon.EMPTY` **singleton**, never enlarged | quirk #204's guard is `false`, so the whole `TraceTightener` sweep is skipped |
+    /// | `> 0`, `< i32::MAX` | the union of every removed shape's bounding octagon, `enlarge`d by `tidyWidth` | a **non-null clip shape**, the only one on any port path |
+    /// | `== i32::MAX` | `null` | no restriction (the `None` arm of quirk #204) |
+    ///
+    /// The middle row is why this method is ported at all: it is the **only** caller in either
+    /// language that hands `TraceTightener` a real clip octagon, and therefore the only way to
+    /// reach **quirk #184** (`TraceTightener45.reduceCorners`' stale `currentCornerInClipShape[3]`
+    /// copy), which the plan left as Task 8's reachability obligation. `crates/fr-router/tests/
+    /// batch_autorouter.rs`'s `remove_items_and_pull_tight_reaches_quirk_184s_stale_clip_flag` is
+    /// the directed case.
+    ///
+    /// # Headless-dead
+    ///
+    /// The only Java caller is `gui/interactive/RouteState.java:340` (`RouteState.cancel()` with
+    /// push enabled), so **no Plan 7 code calls this method**: it is ported because the audit
+    /// demands it, because Plan 8's interactive surface may reach it, and because quirk #184's
+    /// reachability is decided here. A grep for callers outside `crates/fr-router/tests` finds
+    /// none, and that is the intended state.
+    fn remove_items_and_pull_tight(
+        &mut self,
+        engine: Option<&mut AutorouteEngine>,
+        item_list: &[ItemId],
+        tidy_width: i32,
+        pull_tight_accuracy: i32,
+    ) -> Result<bool, BoardError>;
 }
 
 impl RoutingBoardExt for Board {
@@ -1021,7 +1073,99 @@ impl RoutingBoardExt for Board {
         self.changed_area = None;
         Ok(())
     }
+
+    fn remove_items_and_pull_tight(
+        &mut self,
+        engine: Option<&mut AutorouteEngine>,
+        item_list: &[ItemId],
+        tidy_width: i32,
+        pull_tight_accuracy: i32,
+    ) -> Result<bool, BoardError> {
+        // RoutingBoardOperations.java:83-89. `tidyRegion` is *the singleton* on the `< MAX_VALUE`
+        // arm — which is what makes quirk #204's reference guard skip the sweep for
+        // `tidyWidth <= 0` — and `null` on the other.
+        let (mut tidy_region, calculate_tidy_region) = if tidy_width < i32::MAX {
+            (Some(IntOctagon::EMPTY), tidy_width > 0)
+        } else {
+            (None, false)
+        };
+
+        // :90-109. The mark + remove + `changedNets` half is `fr-board`'s, because every step of
+        // it is a `Board` mutation; `tidyRegion` is accumulated here because it is `fr-router`'s
+        // `optChangedArea` argument and `fr-board` has no reason to know it exists.
+        //
+        // Java interleaves the two: one pass over `itemList` that, per removable item, joins each
+        // tile shape into the changed area *and* unions its bounding octagon into `tidyRegion`.
+        // The port walks the shapes first and removes second. That is the same answer: the
+        // predicate `isDeletionForbidden() || isUserFixed()` is a property of the item and of the
+        // rules, neither of which any other item's removal changes, and one item's removal does
+        // not move another item's tile shapes. The pre-walk therefore sees exactly the shapes
+        // Java's interleaved loop sees, in the same order.
+        if calculate_tidy_region {
+            for id in item_list {
+                let Some(item) = self.items.get(id) else {
+                    continue;
+                };
+                // :91-92 — the same skip, evaluated on the same item.
+                if item.is_deletion_forbidden(&self.rules) || item.is_user_fixed() {
+                    continue;
+                }
+                let shape_count = {
+                    let ctx = self.ctx();
+                    item.tile_shape_count(&ctx)
+                };
+                for i in 0..shape_count {
+                    // :95-99. A shape the port cannot build is skipped rather than unioned;
+                    // Java's `getTileShape` answers a real shape for every index below the count.
+                    if let Some(shape) = self.item_tile_shape(*id, i)
+                        && let Some(octagon) = shape.bounding_octagon()
+                    {
+                        tidy_region =
+                            Some(tidy_region.unwrap_or(IntOctagon::EMPTY).union(&octagon));
+                    }
+                }
+            }
+        }
+
+        // :90, :93, :100-108 — including `startMarkingChangedArea` at `:90`.
+        let (result, changed_nets) = self.remove_items_marking_changed_area(item_list.to_vec());
+
+        // :111-113. `changedNets` is a `TreeSet<Integer>`, i.e. **ascending** net number (plan-7
+        // ruling 5's per-container decision: the key is a boxed `int`, the comparator is total and
+        // the key cannot mutate, so `BTreeSet<i32>` is exact and no `JavaTreeSet` is needed).
+        // `Board::remove_items_marking_changed_area` already answers one.
+        for net_number in changed_nets {
+            self.combine_traces(net_number)?;
+        }
+
+        // :114. `enlarge` is `offset`, which takes a `double` — Java widens `tidyWidth` here.
+        if calculate_tidy_region {
+            tidy_region = tidy_region.map(|region| region.enlarge(f64::from(tidy_width)));
+        }
+
+        // :115-116. Every argument but `tidyRegion` and `pullTightAccuracy` is a literal:
+        // `new int[0]` (all nets), `traceCosts = null`, `stoppableThread = null` — which is the
+        // never-stopping `StopCheck` — and `PULL_TIGHT_TIME_LIMIT`, declared at `:18` as **2000**.
+        // Not `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`, and therefore not
+        // `RouterBudget::opt_changed_area_ms`: this constant has no other reader and no Java caller
+        // can vary it, so it stays a literal here rather than becoming a port-only knob.
+        self.opt_changed_area(
+            engine,
+            &[],
+            tidy_region,
+            pull_tight_accuracy,
+            None,
+            &|| false,
+            PULL_TIGHT_TIME_LIMIT,
+        )?;
+        // :117.
+        Ok(result)
+    }
 }
+
+/// `RoutingBoardOperations.java:18` — the pull-tight budget `removeItemsAndPullTight` hands
+/// `optChangedArea`. **2000**, not the router's `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000`.
+const PULL_TIGHT_TIME_LIMIT: i32 = 2000;
 
 /// `RoutingBoard.insertForcedTracePolyline:536-542` and `:676-681`, which are the same four
 /// lines twice: with a picked trace to combine with, the new polyline is combined with that

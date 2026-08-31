@@ -37,7 +37,7 @@ pub mod trace_shover;
 
 pub use control::{AutorouteControl, ViaMask};
 pub use destination_distance::DestinationDistance;
-pub use engine::{AutorouteEngine, route_connection};
+pub use engine::{AutorouteEngine, route_connection, route_connection_full};
 pub use expansion_engine::MazeExpansionEngine;
 pub use list_element::MazeListElement;
 pub use queue::MazeQueue;

@@ -182,7 +182,7 @@ pub(crate) use item_ctx;
 // added in Plan 7: `RoutingBoard.autoroute` (RoutingBoard.java:911-971) — it builds an `AutorouteControl` and drives `AutorouteEngine.autorouteConnection` for one item, i.e. it is `AutoroutePassRunner`'s per-item step, which plan-6 ruling 2 puts above the seam. Plan 6 delivers what it calls (`fr_router::route_connection`).
 // added in Plan 7: `RoutingBoard.fanout` (RoutingBoard.java:978-1110) — the SMD fanout pass, which plan-6 ruling 2 puts above the seam with the rest of the batch loop.
 // renamed: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) -> `fr_router::board_ext::RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}` (Rust has no overloading); its body is `RoutingBoardOperations.optChangedArea` (:52-79), which builds a `TraceTightener` — `fr-router`'s type — and runs its `optChangedArea` sweep. Landed in Plan 7 Task 5.
-// added in Plan 7: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127) — the removal half is `Board::remove_items_marking_changed_area`; the `combineTraces` + `optChangedArea` tail is Plan 7's.
+// renamed: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127 -> RoutingBoardOperations.java:81-120) -> `fr_router::board_ext::RoutingBoardExt::remove_items_and_pull_tight`; the removal half stays here as `Board::remove_items_marking_changed_area`, and the `combineTraces` + `optChangedArea` tail needs a `TraceTightener` — `fr-router`'s type — so the whole method is presented there. Landed in Plan 7 Task 8.
 // not ported: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — **GUI only**, and the plan's scan ruling 3 was wrong about who calls it.
 // Ruling 3 folded this method into Plan 7 Task 6 because "both `optViaLocation` and
 // `optPlaneOrFanoutVia` move vias through it". They do not: both call
@@ -416,23 +416,26 @@ impl Board {
             .get_mut(&id)
             .expect("Board::insert_item: just inserted");
         self.trees.insert(inserted, &ctx);
-        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange` (BoardItemRepository.java:
-        // 165 -> RoutingBoard.java:96-118), which invalidates the autoroute expansion rooms an
-        // inserted item overlaps.
+        // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
         //
-        // Plan 6 Task 16 measured the wiring and did **not** do it. The call needs an
-        // `AutorouteEngine`, which `fr-board` cannot name (plan-2 ruling 4/11), so it can only be
-        // made at the call site — the `PolylineTrace.change` precedent
-        // (`board/trace_normalize.rs`'s `obligation:`), which works there because that method has
-        // exactly one `fr-router` caller. This one has thirteen, all *inside* `fr-board`, so the
-        // engine would have to be threaded through every typed inserter that reaches it. It is a
-        // no-op on every path either plan actually runs: `RoutingBoard.additionalUpdateAfterChange`
-        // returns at `:100-102` unless `autorouteEngine.maintainDatabase`, and
-        // `maintainDatabase` is `BatchAutorouter.retainAutorouteDatabase`, which is the
-        // benchmark-only system property `freerouting.benchmark.retain_autoroute_database`
-        // (BatchAutorouter.java:63-64,151-154) and is hard-coded `false` in
-        // `BatchAutorouterThread.java:90`. Plan 7 owns `BatchAutorouter`, so Plan 7 is where the
-        // flag can first be true and where the cost is worth paying.
+        // The Java call is `BoardItemRepository.java:165 -> RoutingBoard.java:96-118`, which
+        // invalidates the autoroute expansion rooms an inserted item overlaps. It needs an
+        // `AutorouteEngine`, which `fr-board` cannot name (plan-2 ruling 4/11), so it could only
+        // be made at the call site — and this one has thirteen call sites, all *inside*
+        // `fr-board`, so the engine would have to be threaded through every typed inserter that
+        // reaches it.
+        //
+        // **Plan 7 Task 8 settled that it never has to be** (controller ruling AJ).
+        // `RoutingBoard.additionalUpdateAfterChange` returns at `:100-102` unless
+        // `autorouteEngine.maintainDatabase`, and `maintainDatabase` is the constructor argument
+        // `RoutingBoard.initAutoroute:892` passes, i.e. `BatchAutorouter.retainAutorouteDatabase`
+        // (`BatchAutorouter.java:63-64,151-154`) — the benchmark-only system property
+        // `freerouting.benchmark.retain_autoroute_database`, `false` on every production and
+        // parity path, and hard-coded `false` at `BatchAutorouterThread.java:90`. The port has no
+        // setter for it at all: `fr_router::route_connection_full` passes `false` unconditionally,
+        // pinned by `crates/fr-router/tests/batch_autorouter.rs`'s
+        // `retain_autoroute_database_is_false_on_every_path` and its `…_has_no_setter` sibling.
+        // So the body this marker stands for is dead code in the port, not deferred work.
         // BoardItemRepository.java:166.
         self.revision += 1;
         id
@@ -459,9 +462,9 @@ impl Board {
         if item.is_deletion_forbidden(&self.rules) {
             return false;
         }
-        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange`
-        // (BoardItemRepository.java:192) — see the marker on `insert_item` above for the
-        // measurement Plan 6 Task 16 made and why the wiring waits for `BatchAutorouter`.
+        // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
+        // (BoardItemRepository.java:192) — see the marker on `insert_item` above for why ruling AJ
+        // makes the whole family dead rather than deferred.
         // BoardItemRepository.java:193.
         let item = self
             .items

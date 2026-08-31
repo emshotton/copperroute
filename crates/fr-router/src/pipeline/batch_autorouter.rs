@@ -1,0 +1,679 @@
+//! [`BatchAutorouter`] — the port of `autoroute/pipeline/BatchAutorouter.java` (565 lines), the
+//! object the pass runner and the optimizer both drive (Plan 7 Task 8).
+//!
+//! Task 8 lands the **scaffold**: the constants (`:38-64`), the field block (`:66-107`), both
+//! constructors (`:110-158`), the five accessors (`:164-182`), the five `NamedAlgorithm` identity
+//! members, `getImpactedPoints` (`:283-297`), `enforceStrictDrc` (`:305-329`), `isFanoutTimedOut`
+//! (`:331-333`), `shouldFireBoardUpdate` (`:335-343`), `removeTails` (`:487-503`),
+//! `autorouteItem` (`:507-514`) and `calculateIncompleteCount` (`:556-564`). `getAutorouteItems`
+//! and `autoroutePass` are Task 9's, `runBatchLoop` and
+//! `autoroutePassesForOptimizingItem` Task 10's / Task 13's; each is a marker at the foot of
+//! this file.
+//!
+//! # Ruling AJ, in one place
+//!
+//! `retainAutorouteDatabase` (`:63-64`, `:151-154`) is
+//! `Boolean.getBoolean("freerouting.benchmark.retain_autoroute_database")` — a benchmark-only
+//! system property, `false` on every production and parity path, and hard-coded `false` at
+//! `BatchAutorouterThread.java:90`. Controller ruling AJ makes it **permanently `false` in the
+//! port, with no setter**: [`BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE`] is a `const`,
+//! [`crate::route_connection_full`] passes `false` unconditionally, and the five
+//! `RoutingBoard.additionalUpdateAfterChange` sites in `fr-board` carry
+//! `// not reachable:` markers rather than deferrals. `crates/fr-router/tests/batch_autorouter.rs`
+//! pins both halves: a behavioural test that the flag behaved as `false`, and a source grep that
+//! no setter exists.
+//!
+//! # What is deliberately not here
+//!
+//! * the three listener lists of `NamedAlgorithm` (`:26-31`) — controller ruling AK replaces them
+//!   with [`crate::pipeline::ProgressSink`];
+//! * the nine `profile*` counters (`:96-105`) and every `System.nanoTime()` block that writes
+//!   them — all guarded by `-Dfreerouting.benchmark.profile`, default `false`;
+//! * `RoutingJob` (`:78`) — Plan 8's, together with the CLI that builds it.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::time::Instant;
+
+use fr_board::StopConnectionOption;
+use fr_board::datastructures::StopCheck;
+use fr_board::items::Item;
+use fr_board::{Board, BoardError, ItemId};
+use fr_drc::DesignRulesChecker;
+use fr_geometry::Point;
+use fr_settings::{ExpansionCostFactor, RouterSettings};
+
+use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
+use crate::autoroute::maze::engine::{AutorouteEngine, route_connection_full};
+use crate::board_ext::RoutingBoardExt;
+use crate::pipeline::board_history::BoardHistory;
+use crate::pipeline::stop::{ProgressThrottler, RouterBudget};
+use crate::pipeline::{NamedAlgorithmType, RouterStop};
+use crate::score::BoardStatistics;
+
+/// Port of `autoroute.pipeline.BatchAutorouter` (BatchAutorouter.java:36-565) — the object the
+/// pass runner and the optimizer both drive.
+///
+/// # The board is a parameter, not a field
+///
+/// Java's `NamedAlgorithm.board` (`NamedAlgorithm.java:37`) is a mutable field that
+/// `applyStrictDrcAfterRoute` even *reassigns* (`AutorouteConnectionRouter.java:251`). The port
+/// has one `Board`, owned by the caller and threaded as `&mut Board`, exactly as
+/// [`crate::route_connection`] takes it — see [`BatchAutorouter::enforce_strict_drc`] for the one
+/// place where that difference is visible and why it is a `// totalized:` rather than a
+/// divergence.
+///
+/// # `withPreferredDirections` is a constructor argument, not a field
+///
+/// The plan's draft listed `with_preferred_directions` among the fields at `:116`. It is not one:
+/// `:130` is a constructor **parameter** whose only effect is which of the two `traceCosts`
+/// arrays `:138-148` builds. Java wins; the port has the same parameter and the same field.
+#[derive(Debug)]
+pub struct BatchAutorouter<'a> {
+    // -- NamedAlgorithm's two surviving fields (NamedAlgorithm.java:33-37) ----------------------
+    /// `NamedAlgorithm.settings` (`NamedAlgorithm.java:33`).
+    settings: &'a RouterSettings,
+
+    // -- BatchAutorouter.java:66-70 ------------------------------------------------------------
+    /// `final boolean removeUnconnectedVias` (`:66`). The `RoutingJob` constructor derives it as
+    /// `!settings.isFanoutEnabled()` (`:115`); `autoroutePassesForOptimizingItem` passes `true`
+    /// unconditionally (`:258`).
+    remove_unconnected_vias: bool,
+    /// `final AutorouteControl.ExpansionCostFactor[] traceCosts` (`:67`), built by `:138-148`.
+    trace_costs: Vec<ExpansionCostFactor>,
+    /// `final boolean retainAutorouteDatabase` (`:68`), assigned from
+    /// `BENCHMARK_RETAIN_AUTOROUTE_DATABASE` at `:154`.
+    ///
+    /// Ruling AJ: the port has **no setter**, so this is always
+    /// [`BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE`], i.e. `false`. It is a field
+    /// rather than a bare `const` read so that the accessor `:172-174` has something to answer
+    /// and the transcription of `:68` is visible.
+    retain_autoroute_database: bool,
+    /// `final int startRipupCosts` (`:69`).
+    start_ripup_costs: i32,
+    /// `final int tracePullTightAccuracy` (`:70`).
+    trace_pull_tight_accuracy: i32,
+
+    // -- BatchAutorouter.java:79-95 ------------------------------------------------------------
+    /// `int totalItemsRouted` (`:79`), incremented by `AutoroutePassRunner.java:222` and read by
+    /// `:214`'s `settings.maxItems` test — quirk #202's site, which is Task 9's.
+    pub total_items_routed: i32,
+    /// `boolean fanoutTimedOut` (`:80`), written by `AutorouteBatchLoop.java:173` (Task 10) and
+    /// read by [`BatchAutorouter::is_fanout_timed_out`].
+    pub fanout_timed_out: bool,
+    /// `int initialUnroutedCount` (`:89`), written by `AutorouteBatchLoop.java:63`.
+    pub initial_unrouted_count: i32,
+    /// `Instant sessionStartTime` (`:92`), written by `AutorouteBatchLoop.java:62`.
+    ///
+    /// Reporting only — no routing decision reads it, so it is not one of ruling AI's clocks.
+    pub session_start_time: Option<Instant>,
+    /// `boolean isOptimizerAutorouter` (`:95`), set by `autoroutePassesForOptimizingItem`
+    /// (`:263`) and read by `AutorouteBatchLoop.java:42, :374` (Task 10).
+    pub is_optimizer_autorouter: bool,
+
+    // -- BatchAutorouter.java:94, 106-107 ------------------------------------------------------
+    /// `long lastBoardUpdateTimestamp` (`:94`) — the state behind
+    /// [`BatchAutorouter::should_fire_board_update`], held as Task 4's
+    /// [`ProgressThrottler::board_update_gate`] rather than as a bare timestamp so the 250 ms
+    /// literal is [`RouterBudget::board_update_throttle_ms`] and a driver can pin it.
+    board_update_gate: ProgressThrottler,
+    /// `BoardStatistics progressStatistics` (`:106`), rebuilt every
+    /// [`BatchAutorouter::PROGRESS_STATISTICS_ITEM_INTERVAL`] items by
+    /// `AutoroutePassRunner.updateProgress` (`:496-501`) — Task 9's writer.
+    pub progress_statistics: Option<BoardStatistics>,
+    /// `int progressItemsSinceStatistics` (`:107`), the counter beside it.
+    pub progress_items_since_statistics: i32,
+
+    /// Controller ruling AI's budget knob. **Not a Java field**: Java writes the four throttles as
+    /// literals (`TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` at `:43`, the `250` at `:338`), and ruling
+    /// AI makes them parameters so every `p7t*` parity run can disable the wall clock on both
+    /// sides. Default [`RouterBudget::default`] is Java's four values exactly.
+    budget: RouterBudget,
+    // not ported: `BatchAutorouter.random` (`:83`, `new Random(0)` at `:135`) — its only reader is
+    // `AutoroutePassRunner.java:59`'s `shuffle(clonedAutorouteItemList, router.random)`, inside
+    // `runMultiThread` (`:40-149`), the dead multithreaded path (quirk #216, plan ruling AM's
+    // "General" clause). `runSingleThread` never shuffles. A tree-wide grep for `router.random`
+    // answers that one line.
+    // not ported: `BatchAutorouter.airLine` (`:86`) — the airline of the connection being routed,
+    // drawn by the GUI. Its five writers are `AutoroutePassRunner.java:45, 81, 142, 146, 164, 329,
+    // 333` and `AutorouteConnectionRouter.java:70`, and its only reader is the public
+    // `getAirLine` accessor (`:519-527`), which nothing on the headless path calls
+    // (`global-constraints.md`: no GUI).
+    // not ported: the nine `profile*` counters (`:96-105`) and `resetPassProfile` /
+    // `logBenchmarkProfile` (`:196-238`) — every writer sits behind
+    // `isBenchmarkProfileEnabled()`, i.e. `-Dfreerouting.benchmark.profile`, default `false`.
+    // not ported: `BatchAutorouter.reusableAutorouteItemList` and `reusableHandledItems`
+    // (`:73-74`) — allocation reuse for `getAutorouteItems` (`:345-409`), which is Task 9's; the
+    // port's `getAutorouteItems` returns a fresh `Vec`, and Java clears both at `:347-348` before
+    // every use, so the reuse is invisible.
+    // not ported: `BatchAutorouter.connectionRouter`, `passRunner`, `batchLoop` (`:75-77`) —
+    // three helper objects whose only state is a back-pointer to this one (their constructors are
+    // `AutorouteConnectionRouter.java:26-28`, `AutoroutePassRunner.java:36-38` and
+    // `AutorouteBatchLoop.java:33-35`). The port's counterparts are free functions and structs
+    // that take `&mut BatchAutorouter`, so there is no field to hold.
+    // added in Plan 8: `NamedAlgorithm.job` (`BatchAutorouter.java:78`) — `core/RoutingJob`, the
+    // CLI/MCP job record; spec §13 puts it in Plan 8's `fr-core`.
+}
+
+impl<'a> BatchAutorouter<'a> {
+    // ---------------------------------------------------------------------------------------------
+    // The constants — BatchAutorouter.java:38-64
+    // ---------------------------------------------------------------------------------------------
+
+    /// `BOARD_RANK_LIMIT = BoardHistory.MAX_HISTORY_SIZE` (`:40`) — "the lowest rank of the board
+    /// to be selected to go back to. Must not exceed `BoardHistory.MAX_HISTORY_SIZE` so the check
+    /// can actually fire."
+    ///
+    /// Written as the reference Java writes, not as the literal `30`, so the two cannot drift.
+    pub const BOARD_RANK_LIMIT: usize = BoardHistory::MAX_HISTORY_SIZE;
+    /// `MAXIMUM_TRIES_ON_THE_SAME_BOARD = 3` (`:42`).
+    pub const MAXIMUM_TRIES_ON_THE_SAME_BOARD: i32 = 3;
+    /// `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000` (`:43`) — the `optChangedArea` budget, which
+    /// controller ruling AI turns into [`RouterBudget::opt_changed_area_ms`]. The constant is
+    /// transcribed anyway because it is `RouterBudget::default`'s value and a reader looking for
+    /// `:43` must find it.
+    pub const TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP: i32 = 1000;
+    /// `STOP_AT_PASS_MINIMUM = 8` (`:46`) — "the minimum number of passes to complete the board,
+    /// unless all items are routed."
+    pub const STOP_AT_PASS_MINIMUM: i32 = 8;
+    /// `STOP_AT_PASS_MODULO = 4` (`:49`).
+    pub const STOP_AT_PASS_MODULO: i32 = 4;
+    /// `STAGNATION_PASS_LIMIT = 10` (`:52`).
+    pub const STAGNATION_PASS_LIMIT: i32 = 10;
+    /// `FANOUT_RECOVERY_STAGNATION_PASSES = 3` (`:54`).
+    pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 = 3;
+    /// `PROGRESS_STATISTICS_ITEM_INTERVAL = 10` (`:57`).
+    pub const PROGRESS_STATISTICS_ITEM_INTERVAL: i32 = 10;
+    /// `STAGNATION_SCORE_THRESHOLD = 0.5F` (`:60`) — an `f32`, as Java writes it, because the
+    /// score it is compared against is `getNormalizedScore`'s `float`.
+    pub const STAGNATION_SCORE_THRESHOLD: f32 = 0.5;
+
+    /// `BENCHMARK_PROFILE_ENABLED = Boolean.getBoolean("freerouting.benchmark.profile")`
+    /// (`:61-62`).
+    ///
+    // not reachable: BatchAutorouter.isBenchmarkProfileEnabled (a Java benchmark-only system property, and the port exposes no setter)
+    ///
+    /// `Boolean.getBoolean` reads a **system property**, so this is `false` unless the JVM was
+    /// started with `-Dfreerouting.benchmark.profile=true`. Ruling AJ's pattern applies to both of
+    /// `:61-64`: the port hard-codes `false` and offers nothing that could flip it, so every
+    /// `System.nanoTime()` block it guards is dead and is rostered `// not ported:` above.
+    pub const BENCHMARK_PROFILE_ENABLED: bool = false;
+
+    /// `BENCHMARK_RETAIN_AUTOROUTE_DATABASE =
+    /// Boolean.getBoolean("freerouting.benchmark.retain_autoroute_database")` (`:63-64`).
+    ///
+    // not reachable: BatchAutorouter.isRetainAutorouteDatabase (a Java benchmark-only system property, and the port exposes no setter)
+    ///
+    /// **Controller ruling AJ.** The property is unset on every production and parity path, and
+    /// `BatchAutorouterThread.java:90` hard-codes the same `false`. Setting it `true` would make
+    /// `AutorouteEngine.maintainDatabase` true (`RoutingBoard.initAutoroute:892`), which is the
+    /// single gate on `RoutingBoard.additionalUpdateAfterChange` (`:100-102`) — the five
+    /// `fr-board` sites that now carry `// not reachable:` markers instead of deferrals.
+    ///
+    /// The port therefore hard-codes `false` **and exposes no way to change it**: there is no
+    /// setter, no builder argument and no environment read.
+    /// `crates/fr-router/tests/batch_autorouter.rs`'s
+    /// `retain_autoroute_database_is_false_on_every_path` proves the behaviour and
+    /// `retain_autoroute_database_has_no_setter` proves the roster.
+    pub const BENCHMARK_RETAIN_AUTOROUTE_DATABASE: bool = false;
+
+    // ---------------------------------------------------------------------------------------------
+    // NamedAlgorithm's identity — BatchAutorouter.java:423-441, :460-463
+    // ---------------------------------------------------------------------------------------------
+    //
+    // Five one-line `return "literal";` overrides of `NamedAlgorithm`'s abstract members. The port
+    // has no `NamedAlgorithm` trait to override — controller ruling AK replaces the class's other
+    // half, the three listener lists, with `ProgressSink` — so the five become associated
+    // constants, which is what the plan calls "Task 4's five consts".
+    //
+    // renamed: `BatchAutorouter.getId` (`:423-426`) -> `BatchAutorouter::ID`, an associated const.
+    // renamed: `BatchAutorouter.getName` (`:428-431`) -> `BatchAutorouter::NAME`.
+    // renamed: `BatchAutorouter.getVersion` (`:433-436`) -> `BatchAutorouter::VERSION`.
+    // renamed: `BatchAutorouter.getDescription` (`:438-441`) -> `BatchAutorouter::DESCRIPTION`.
+    // renamed: `BatchAutorouter.getType` (`:460-463`) -> `BatchAutorouter::TYPE`.
+
+    /// `getId()` (`:423-426`).
+    pub const ID: &'static str = "freerouting-router";
+    /// `getName()` (`:428-431`).
+    pub const NAME: &'static str = "Freerouting Auto-router";
+    /// `getVersion()` (`:433-436`).
+    pub const VERSION: &'static str = "1.0";
+    /// `getDescription()` (`:438-441`).
+    pub const DESCRIPTION: &'static str = "Freerouting Auto-router v1.0";
+    /// `getType()` (`:460-463`).
+    pub const TYPE: NamedAlgorithmType = NamedAlgorithmType::Router;
+
+    // ---------------------------------------------------------------------------------------------
+    // The two constructors — BatchAutorouter.java:110-158
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `BatchAutorouter(StoppableThread, RoutingBoard, RouterSettings, boolean, boolean,
+    /// int, int)` (`:125-158`) — the seven-argument constructor both production paths reach.
+    ///
+    /// `board` is read and not stored: `:142` needs `board.getLayerCount()` for the
+    /// no-preferred-direction cost array and nothing else in the constructor touches it.
+    /// `budget` is controller ruling AI's knob and has no Java counterpart; pass
+    /// [`RouterBudget::default`] for Java's own literals.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        board: &Board,
+        settings: &'a RouterSettings,
+        remove_unconnected_vias: bool,
+        with_preferred_directions: bool,
+        start_ripup_costs: i32,
+        pull_tight_accuracy: i32,
+        budget: RouterBudget,
+    ) -> BatchAutorouter<'a> {
+        // :135 — `new Random(0)`; see the `not ported:` marker on the field block.
+        // :137.
+        // :138-148.
+        let trace_costs = if with_preferred_directions {
+            // :139.
+            settings.get_trace_costs()
+        } else {
+            // :141-147 — "remove preferred direction": one layer's minimum cost used in both
+            // directions.
+            (0..board.get_layer_count())
+                .map(|i| {
+                    let current_min_cost = settings.get_preferred_direction_trace_costs(i);
+                    ExpansionCostFactor {
+                        horizontal: current_min_cost,
+                        vertical: current_min_cost,
+                    }
+                })
+                .collect()
+        };
+
+        BatchAutorouter {
+            settings,
+            // :137.
+            remove_unconnected_vias,
+            trace_costs,
+            // :152-154. Ruling AJ — the `const`, never a parameter.
+            retain_autoroute_database: BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE,
+            // :150-151.
+            start_ripup_costs,
+            trace_pull_tight_accuracy: pull_tight_accuracy,
+            // Java's `int`/`boolean`/`Instant` fields start at their zero values.
+            total_items_routed: 0,
+            fanout_timed_out: false,
+            initial_unrouted_count: 0,
+            session_start_time: None,
+            is_optimizer_autorouter: false,
+            board_update_gate: ProgressThrottler::board_update_gate(
+                budget.board_update_throttle_ms,
+            ),
+            progress_statistics: None,
+            progress_items_since_statistics: 0,
+            budget,
+            // :155-157 — the three helper objects; see the field block's `not ported:` marker.
+        }
+    }
+
+    /// Port of `BatchAutorouter(RoutingJob)` (`:110-122`) — the delegating constructor the
+    /// headless pipeline uses.
+    ///
+    /// `RoutingJob` is Plan 8's (spec §13), so the port takes the three values `:112-120` reads
+    /// off it — `job.board`, `job.routerSettings` and, through them, the four derived arguments:
+    ///
+    /// | Java | value |
+    /// |---|---|
+    /// | `:115` `removeUnconnectedVias` | `!settings.isFanoutEnabled()` |
+    /// | `:116` `withPreferredDirections` | `true`, a literal |
+    /// | `:117` `startRipupCosts` | `settings.getStartRipupCosts()` |
+    /// | `:118-120` `pullTightAccuracy` | `settings.tracePullTightAccuracy`, or **500** when it is `null` |
+    ///
+    /// `:121`'s `this.job = job` is the `added in Plan 8:` marker on the field block.
+    pub fn for_routing_job(
+        board: &Board,
+        settings: &'a RouterSettings,
+        budget: RouterBudget,
+    ) -> BatchAutorouter<'a> {
+        BatchAutorouter::new(
+            board,
+            settings,
+            // :115.
+            !settings.is_fanout_enabled(),
+            // :116.
+            true,
+            // :117.
+            settings.get_start_ripup_costs(),
+            // :118-120. The `null` fallback is Java's own literal, **not**
+            // `RouterSettings.validate`'s (`RouterSettings.java:958-963`), which repairs an
+            // out-of-range value to the same 500 by a different route.
+            settings.trace_pull_tight_accuracy.unwrap_or(500),
+            budget,
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // The accessors — BatchAutorouter.java:160-182, :331-333, :465-473
+    // ---------------------------------------------------------------------------------------------
+
+    /// `isBenchmarkProfileEnabled()` (`:160-162`).
+    pub fn is_benchmark_profile_enabled() -> bool {
+        BatchAutorouter::BENCHMARK_PROFILE_ENABLED
+    }
+
+    /// `isRemoveUnconnectedVias()` (`:164-166`).
+    pub fn is_remove_unconnected_vias(&self) -> bool {
+        self.remove_unconnected_vias
+    }
+
+    /// `getTraceCosts()` (`:168-170`).
+    pub fn get_trace_costs(&self) -> &[ExpansionCostFactor] {
+        &self.trace_costs
+    }
+
+    /// `isRetainAutorouteDatabase()` (`:172-174`) — always `false`; see
+    /// [`BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE`].
+    pub fn is_retain_autoroute_database(&self) -> bool {
+        self.retain_autoroute_database
+    }
+
+    /// `getStartRipupCosts()` (`:176-178`).
+    pub fn get_start_ripup_costs(&self) -> i32 {
+        self.start_ripup_costs
+    }
+
+    /// `getTracePullTightAccuracy()` (`:180-182`).
+    pub fn get_trace_pull_tight_accuracy(&self) -> i32 {
+        self.trace_pull_tight_accuracy
+    }
+
+    /// `isFanoutTimedOut()` (`:331-333`).
+    pub fn is_fanout_timed_out(&self) -> bool {
+        self.fanout_timed_out
+    }
+
+    /// `getInitialUnroutedCount()` (`:465-468`).
+    pub fn get_initial_unrouted_count(&self) -> i32 {
+        self.initial_unrouted_count
+    }
+
+    /// `getSessionStartTime()` (`:470-473`).
+    pub fn get_session_start_time(&self) -> Option<Instant> {
+        self.session_start_time
+    }
+
+    /// The settings the pass runner and the connection router read off `router.settings`.
+    pub fn settings(&self) -> &'a RouterSettings {
+        self.settings
+    }
+
+    /// Controller ruling AI's budget, as handed to the constructor.
+    pub fn budget(&self) -> RouterBudget {
+        self.budget
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // getImpactedPoints — BatchAutorouter.java:283-297
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `getImpactedPoints(Item)` (`:283-297`): the points a routed item "touches", used
+    /// by the pass runner's progress reporting.
+    ///
+    /// The four `instanceof` arms are transcribed in Java's order. **The fourth is dead** and the
+    /// port keeps it anyway: `DrillItem`'s only subclasses in the whole tree are `Via` and `Pin`
+    /// (`grep -rl "extends DrillItem"` answers exactly `board/model/items/Via.java` and
+    /// `Pin.java`), and both are matched two arms earlier. It is transcribed rather than dropped
+    /// because a reader comparing the two files must find `:293-295`, and because a future
+    /// `DrillItem` subclass would make it live in Java.
+    ///
+    /// An id the board does not know answers the empty slice, which is Java's `new Point[0]` at
+    /// `:296` — Java would have NPE'd on a `null` item, but no caller can hand it one.
+    pub fn impacted_points(board: &Board, item: ItemId) -> Vec<Point> {
+        let ctx = board.ctx();
+        match board.get_item(item) {
+            // :284-286.
+            Some(Item::Trace(trace)) => {
+                let mut result = Vec::new();
+                if let Some(first) = trace.first_corner() {
+                    result.push(first);
+                }
+                if let Some(last) = trace.last_corner() {
+                    result.push(last);
+                }
+                result
+            }
+            // :287-289.
+            Some(Item::Via(via)) => vec![via.get_center()],
+            // :290-292.
+            Some(Item::Pin(pin)) => vec![pin.get_center(&ctx)],
+            // :293-295 — dead; see the doc comment.
+            // :296.
+            _ => Vec::new(),
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // enforceStrictDrc — BatchAutorouter.java:299-329
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `enforceStrictDrc(RoutingBoard, int, int)` (`:305-329`): "if any trace/via inserted
+    /// by the connection that just routed (item id above `maxItemIdBefore`) carries a clearance
+    /// violation, rip the whole set of new items and report the connection FAILED, so the pass
+    /// counts it as not routed and later passes (higher ripup costs) retry it. Returns null when
+    /// the connection is clean and may be kept."
+    ///
+    /// `None` is Java's `null` — keep the connection. `Some(result)` is the rejection, whose
+    /// `details` string is Java's, character for character, because
+    /// `AutorouteConnectionRouter.route` returns it to the pass runner and Task 9's failure log
+    /// writes it out.
+    ///
+    /// # The id test is the port's own monotone counter
+    ///
+    /// Java reads `board.communication.idGenerator.maxGeneratedId()` before the route
+    /// (`AutorouteConnectionRouter.java:83`) and compares `currentItem.getId() > maxItemIdBefore`
+    /// after. The port's [`ItemId`] comes from the same monotone counter
+    /// (`fr_board::ids::ItemIdGenerator`), and Plan 6 Task 17's acceptance line "the item ids each
+    /// connection burned" proves the two agree connection by connection over the corpus.
+    ///
+    /// # The walk order
+    ///
+    /// `board.getConnectableItems(netNo)` is `BoardConnectivityQueries.java:23-35` over
+    /// `itemList`, i.e. **descending item id** (quirk #63), and
+    /// [`Board::get_connectable_items`] answers the same order. It decides the order
+    /// `newItems` is built in and therefore the order `removeItems` deletes in.
+    pub fn enforce_strict_drc(
+        board: &mut Board,
+        route_net_no: i32,
+        max_item_id_before: ItemId,
+    ) -> Option<AutorouteAttemptResult> {
+        // :307-308.
+        let mut new_items: Vec<ItemId> = Vec::new();
+        let mut has_violation = false;
+        // :309.
+        for current_item in board.get_connectable_items(route_net_no) {
+            // :310-314.
+            if current_item <= max_item_id_before
+                || !matches!(
+                    board.get_item(current_item),
+                    Some(Item::Trace(_) | Item::Via(_))
+                )
+            {
+                continue;
+            }
+            // :315.
+            new_items.push(current_item);
+            // :316-318. `!hasViolation &&` short-circuits, so Java stops asking once one item has
+            // answered — the port keeps the short circuit because `clearanceViolations()` is the
+            // expensive half.
+            if !has_violation && !board.clearance_violations(current_item).is_empty() {
+                has_violation = true;
+            }
+        }
+        // :320-322.
+        if !has_violation {
+            return None;
+        }
+        // :323.
+        let removed = new_items.len();
+        board.remove_items(new_items);
+        // :324-328.
+        Some(AutorouteAttemptResult::with_details(
+            AutorouteAttemptState::Failed,
+            format!(
+                "strict_drc: connection ripped because {removed} new item(s) included clearance \
+                 violations"
+            ),
+        ))
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // shouldFireBoardUpdate — BatchAutorouter.java:335-343
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `shouldFireBoardUpdate()` (`:335-343`): "limit updates to 4 times per second
+    /// (250 ms)".
+    ///
+    /// Java's body is `System.currentTimeMillis() - lastBoardUpdateTimestamp > 250`, with the
+    /// timestamp rewritten only when the gate fires. That is exactly
+    /// [`ProgressThrottler::board_update_gate`], whose `250` is
+    /// [`RouterBudget::board_update_throttle_ms`] so a driver can pin it (ruling AI).
+    ///
+    /// Progress only — ruling 11 forbids any port decision from reading it.
+    ///
+    /// The plan's draft gave this method a `budget` parameter. Java has none, and a per-call
+    /// budget would rebuild the gate and lose the timestamp; the budget is a constructor argument
+    /// instead, which is where Java's literal lives.
+    pub fn should_fire_board_update(&self) -> bool {
+        self.board_update_gate.should_update()
+    }
+
+    /// [`BatchAutorouter::should_fire_board_update`] with the clock supplied — the seam
+    /// [`ProgressThrottler::should_update_at`] exists for. No Java counterpart; tests only.
+    pub fn should_fire_board_update_at(&self, now: Instant) -> bool {
+        self.board_update_gate.should_update_at(now)
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // removeTails — BatchAutorouter.java:487-503
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `removeTails(Item.StopConnectionOption)` (`:487-503`): mark, strip every trace/via
+    /// stub of every net, then pull the changed area tight.
+    ///
+    /// Three statements, in Java's order:
+    ///
+    /// 1. `:489` `board.startMarkingChangedArea()` — without it `optChangedArea` returns at
+    ///    `RoutingBoardOperations.java:61-63` and the sweep never runs;
+    /// 2. `:490` `board.removeTraceTails(-1, stopConnectionOption)` — `-1` is "all nets"
+    ///    (`RoutingBoard.java:1200`'s `netNumber > 0` test);
+    /// 3. `:492-498` `board.optChangedArea(new int[0], null, tracePullTightAccuracy, traceCosts,
+    ///    thread, TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP)` — all nets, **no clip shape** (ruling 9:
+    ///    `null` runs the sweep), this router's accuracy and cost array, and the 1000 ms budget
+    ///    that is [`RouterBudget::opt_changed_area_ms`].
+    ///
+    /// The two `System.nanoTime()` blocks (`:488`, `:491`, `:499-502`) are the profile counters —
+    /// see the module doc.
+    ///
+    /// `Err` propagates: Java throws out of `removeTraceTails`/`combineTraces` the same way, and
+    /// both of this method's callers (`AutoroutePassRunner.java:298-302` and
+    /// `BatchAutorouter.java:276`) are inside a caller-level boundary rather than swallowing it.
+    pub fn remove_tails(
+        &self,
+        board: &mut Board,
+        engine: Option<&mut AutorouteEngine>,
+        stop_connection_option: StopConnectionOption,
+        stop: StopCheck<'_>,
+    ) -> Result<(), BoardError> {
+        // :489.
+        board.start_marking_changed_area();
+        // :490.
+        board.remove_trace_tails(-1, stop_connection_option)?;
+        // :492-498.
+        board.opt_changed_area(
+            engine,
+            &[],
+            None,
+            self.trace_pull_tight_accuracy,
+            Some(&self.trace_costs),
+            stop,
+            self.budget.opt_changed_area_ms,
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // autorouteItem — BatchAutorouter.java:505-514
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `autorouteItem(Item, int, SortedSet<Item>, Map<Item,Integer>, int)` (`:507-514`):
+    /// "tries to route an item on a specific net. Returns true, if the item is routed." — one
+    /// delegation to `connectionRouter.route`, which is [`route_connection_full`].
+    ///
+    /// The five values Java reads off `router` inside `route:38-47` are handed over here, so the
+    /// wrapper's signature stays the one plan-7 ruling 2 fixed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn autoroute_item(
+        &self,
+        board: &mut Board,
+        engine: &mut Option<AutorouteEngine>,
+        item: ItemId,
+        route_net_no: i32,
+        ripped_item_list: &mut BTreeSet<ItemId>,
+        ripup_costs: &mut BTreeMap<ItemId, i32>,
+        ripup_pass_no: i32,
+        stop: StopCheck<'_>,
+    ) -> AutorouteAttemptResult {
+        // :513.
+        route_connection_full(
+            board,
+            engine,
+            item,
+            route_net_no,
+            self.settings,
+            &self.trace_costs,
+            ripped_item_list,
+            ripup_costs,
+            ripup_pass_no,
+            self.start_ripup_costs,
+            self.remove_unconnected_vias,
+            self.trace_pull_tight_accuracy,
+            self.budget,
+            stop,
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // calculateIncompleteCount — BatchAutorouter.java:556-564
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `calculateIncompleteCount(RoutingBoard)` (`:556-564`): a throw-away
+    /// `DesignRulesChecker` over the whole board, `calculateAllIncompletes()`, then
+    /// `getIncompleteCount()`.
+    ///
+    /// Java's `new DesignRulesChecker(board, null)` is the port's
+    /// [`DesignRulesChecker::new`] — plan ruling 3 is why `fr-drc` is a real dependency. The
+    /// explicit `calculateAllIncompletes()` at `:559` is kept even though
+    /// [`DesignRulesChecker::get_incomplete_count`] would compute it lazily, because Java's call
+    /// order is what decides which of the checker's caches are warm.
+    pub fn calculate_incomplete_count(board: &mut Board) -> usize {
+        // :558.
+        let mut temp_drc = DesignRulesChecker::new(board);
+        // :559.
+        temp_drc.calculate_all_incompletes();
+        // :563.
+        temp_drc.get_incomplete_count()
+    }
+}
+
+// =================================================================================================
+// The deferral roster for `autoroute/pipeline/BatchAutorouter.java`
+// =================================================================================================
+
+// added in Plan 7: `BatchAutorouter.getAutorouteItems` (`:345-409`) and `BatchAutorouter.autoroutePass` (`:415-421`) — the per-pass item selection (plan ruling 10's multi-net duplication) and the delegation to `AutoroutePassRunner.runSingleThread`, both **Task 9**'s.
+// added in Plan 7: `BatchAutorouter.runBatchLoop` (`:479-481`) — one delegation to `AutorouteBatchLoop.run`, which is **Task 10**'s; the port grows it when the loop exists, because a wrapper around nothing would be a stub with a caller.
+// added in Plan 7: `BatchAutorouter.buildUnroutedConnectionsReport` (`:483-485`) — one delegation to `AutorouteUnroutedReport.build`, which is **Task 10**'s (plan scan ruling 6 gave it the stub).
+// added in Plan 7: `BatchAutorouter.autoroutePassesForOptimizingItem` (`:245-281`) — the optimizer's own autorouter loop, **Task 13**'s; it builds a second `BatchAutorouter` through [`BatchAutorouter::new`] with `removeUnconnectedVias = true` and `isOptimizerAutorouter = true`, both of which this file already provides.
+// added in Plan 7: `BatchAutorouter.getAirLine` (`:516-527`) — the GUI airline accessor; its field is `not ported:` on the field block above, and Task 9 decides whether `AutorouteAirlineCalculator.calculateAirline`'s value has any headless reader (plan ruling 6 says it has none).
+// not ported: `BatchAutorouter.autoroutePassMultiThread` (`:411-413`) — one delegation to `AutoroutePassRunner.runMultiThread`, the dead multithreaded path (quirk #216; `grep -rn autoroutePassMultiThread src/main` answers the declaration and nothing else).
+// not ported: `BatchAutorouter.setAirLine` (`:192-194`) — the writer of the `not ported:` `airLine` field.
+// not ported: `BatchAutorouter.addProfileMazeSearchNanos` (`:184-186`), `BatchAutorouter.addProfileOptChangedAreaNanos` (`:188-190`), `BatchAutorouter.resetPassProfile` (`:196-207`), `BatchAutorouter.logBenchmarkProfile` (`:209-238`) — the benchmark profile, all four guarded by `isBenchmarkProfileEnabled()`, i.e. `-Dfreerouting.benchmark.profile`, default `false`.
+// not ported: `BatchAutorouter.threadIndexToLetter` (`:536-554`) — a log-string helper (`0 -> "A"`, `26 -> "AA"`) for the multithreaded pass. Its only callers are `AutoroutePassRunner.java`'s `log*` helpers on the `runMultiThread` path, which `global-constraints.md` drops with the rest of `FRLogger`; a tree-wide `grep -rn threadIndexToLetter src/main` answers `BatchAutorouter.java:536` (the declaration) and `AutoroutePassRunner.java:66, 92` (both inside `runMultiThread`, `:40-149`).
+
+/// `RouterStop` is the port of the `StoppableThread` this class holds as `NamedAlgorithm.thread`
+/// (`NamedAlgorithm.java:25`). It is **not** a field of [`BatchAutorouter`]: plan-6 ruling 6 makes
+/// cancellation a per-call [`StopCheck`], so every method that Java would have read the field in
+/// takes one instead. This alias exists so the roster above can name the type a reader is looking
+/// for.
+pub type BatchAutorouterStop = RouterStop;

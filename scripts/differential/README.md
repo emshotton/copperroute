@@ -337,6 +337,56 @@ methods with dozens of branches.
     alike, so a corpus connection can hang on both sides and the harness has to
     report rather than hang.
 
+    **Plan 7 Task 8 added a fifth and sixth argument**, so the full usage is
+    `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]`:
+
+    - `steps` is `1-5` (the default, Plan 6's slice, and what every committed
+      `tests/reference/router-*/router.jsonl` was generated with — that path is
+      unchanged in every byte, **including the `HEADER` line**, which is why the
+      committed `router.meta.txt` files did not have to be regenerated) or `1-8`,
+      which calls `AutorouteConnectionRouter.route` **in full** through
+      `java/probes/P7T8Probe.java` (the class and `BatchAutorouter.autorouteItem`
+      are both package-private in `app.freerouting.autoroute.pipeline`, so the
+      probe declares that package and forwards). `1-8` adds step 6's
+      `optChangedArea` on `ROUTED`, step 7's necked retry and step 8's strict-DRC
+      rollback. Its transcripts are committed separately as
+      `tests/reference/<stem>/router-steps18.{jsonl,meta.txt}`.
+    - `neckWidthUm` seeds `settings.neckWidthUm` after the two board-dependent
+      settings steps. `DefaultSettings.java:109` leaves it `0.0` and
+      `AutorouteConnectionRouter.java:125` gates the whole necked retry on
+      `getNeckWidthUm() > 0`, so without it step 7 is unreachable on every corpus
+      board. Measured on `Issue026-J2_reference.dsn` at `ripupPassNo = 1`: at
+      `0` the board ends 6 `FAILED` / 32 `ROUTED`, at `100` it ends 1 / 35, and
+      both halves MATCH at both values — the retry fires, routes, and agrees.
+      `300` is wider than every trace on that board, so `narrowerSomewhere`
+      (`:181-190`) is false and the output is byte-identical to `0`.
+
+    **The budget is deliberately asymmetric under `--steps=1-8`, and that is the
+    evidence rather than a gap.** Controller ruling AI asks a parity run to
+    disable `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` on both sides, and the task brief
+    suggested reflecting the field to 0. That **cannot be done**:
+    `AutorouteConnectionRouter.java:22` declares it `private static final int
+    … = 1000`, a compile-time constant, so `javac` inlines it —
+    `javap -c -p -cp <jar> app.freerouting.autoroute.pipeline.AutorouteConnectionRouter`
+    shows `sipush 1000` immediately before each
+    `invokevirtual RoutingBoard.optChangedArea`, and no reflective write reaches
+    the call site. The Rust twin therefore runs with `RouterBudget::disabled()`,
+    i.e. **no** limit, against the jar's live 1000 ms one — and a MATCH then
+    *proves* the Java limit never trips on the corpus, because a tripped limit
+    would have stopped the jar's tightener mid-sweep and left a board this side
+    kept optimising.
+
+    `java_flags` for this driver became the shared `p5t*` set in the same task, so
+    `P5T_HASH_MODE=0..4` sweeps it: `--steps=1-8` reaches `optChangedArea` and
+    `ViaOptimizer`, neither of which Plan 6's hash-mode sweep covered. The default
+    is still `2`, the mode the committed references were generated under.
+
+    `P6T1_DUMP_BOARD=1` widens each connection's line to the **whole** board —
+    every trace and via, then every item's net numbers, clearance class and fixed
+    state, then the changed area per layer. Off by default (the committed
+    transcripts keep their shape); it is a bisection tool, and the one the Task 8
+    report's `router-dac2020-bm01` XDIFF was localised with.
+
   - `P6T2.java` — `ShapeSearchTree.completeShape` and `divideLargeRoom` in all
     three angle regimes (Plan 6 Task 3). Twin: `p6t2`. **This closes the gap
     `p2t10` documents**: `p2t10`'s eight modes reach "every public

@@ -493,11 +493,21 @@ see the README section that lists all eight.
 
 ### Must build
 
-1. **`AutorouteConnectionRouter.route` steps 6-8**
-   (`autoroute/pipeline/AutorouteConnectionRouter.java:160-233`): the necked retry
-   (whose `INSERT_ERROR` state Task 1 already ported), the strict-DRC rollback, and
-   the failure-log write. **Do not re-implement steps 1-5** — `route_connection` is
-   what 369 connections of byte-identical evidence attach to.
+1. **`AutorouteConnectionRouter.route` steps 6-8** — **DONE, Plan 7 Task 8**, as
+   `fr_router::route_connection_full`. **Do not re-implement steps 1-5** —
+   `route_connection` is what 369 connections of byte-identical evidence attach to,
+   and the wrapper is additive (plan-7 ruling 2).
+
+   *Correction, made by that task.* The range this line gave,
+   `AutorouteConnectionRouter.java:160-233`, is **wrong**: `:160` is `route`'s
+   closing brace and nothing in the 255-line file spans `:160-233` as a unit. Read
+   out of HEAD, the decomposition is step 6 `:95-121` (`optChangedArea` on
+   `ROUTED`), step 7 `:123-145` -> `retryConnectionNecked` `:162-241`, step 8
+   `:147-153` -> `applyStrictDrcAfterRoute` `:243-254`, plus the
+   `maxItemIdBeforeRoute` / `strictDrcBoardSnapshot` of `:83-85` that only those
+   three read. And **"the failure-log write" is not this class's**: it is Task 9's
+   `AutoroutePassRunner.runSingleThread` (`:260-289`). `crates/fr-router/src/lib.rs`
+   carried the same wrong range and is re-pointed.
 2. **The pass loop**: `AutoroutePassRunner`, `AutorouteBatchLoop`, `BatchAutorouter`,
    `BatchAutorouterThread`. With it, the two recovery boundaries *above* the six
    this plan built: `AutoroutePassRunner.java:144` (per pass) and

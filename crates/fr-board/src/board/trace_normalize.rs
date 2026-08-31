@@ -62,11 +62,20 @@ impl Board {
     /// merge and blew the stack on a long chain of collinear segments
     /// (`src/test/java/app/freerouting/fixtures/CombineStackOverflowTest.java`).
     ///
-    /// Java's observer notification (:184-187) and `board.additionalUpdateAfterChange` are not
-    /// ported and Plan 7's respectively.
-    // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange` (PolylineTrace.java:188) —
-    // see `Board::insert_item`'s marker for the measurement Plan 6 Task 16 made and why the
-    // wiring waits for `BatchAutorouter`.
+    /// Java's observer notification (:184-187) and its `board.additionalUpdateAfterChange`
+    /// (`:188`) are both dropped — see the two markers below.
+    ///
+    /// # `:188` is per-merge, and this loop body is empty on purpose
+    ///
+    /// Java calls `additionalUpdateAfterChange(this)` **inside** the `while`, so it runs once per
+    /// successful merge and zero times when neither end can grow (Plan 7 Task 5's fix round).
+    /// A caller that needs the hook must therefore drive
+    /// [`Board::combine_trace_at_start`]/[`Board::combine_trace_at_end`] itself rather than call
+    /// this method — which is what `fr_router::board_ext::PolylineTraceExt::swap_connection_to_pin`
+    /// does. **No caller needs it**: ruling AJ makes the hook a no-op on every path (below).
+    // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
+    // (PolylineTrace.java:188) — see `Board::insert_item`'s marker for why controller ruling AJ
+    // makes the whole family dead rather than deferred.
     // not ported: the `board.communication.observers.notifyChanged` call (PolylineTrace.java:184-
     // 187) — `global-constraints.md` forbids board observers.
     pub fn combine_trace(&mut self, id: ItemId) -> Result<bool, BoardError> {
@@ -622,10 +631,10 @@ impl Board {
         if !own_trace_split {
             result.push(id);
         }
-        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange` — the loop over a result
-        // of more than one piece (PolylineTrace.java:689-693). See `Board::insert_item`'s marker
-        // for the measurement Plan 6 Task 16 made and why the wiring waits for
-        // `BatchAutorouter`.
+        // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
+        // — the loop over a result of more than one piece (PolylineTrace.java:689-693). See
+        // `Board::insert_item`'s marker for why controller ruling AJ makes the whole family dead
+        // rather than deferred.
         Ok(result)
     }
 

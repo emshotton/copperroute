@@ -34,7 +34,7 @@ pub use expansion::{
 pub use maze::{
     AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeExpansionEngine,
     MazeListElement, MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement, MazeSearchEngine,
-    ShoveResult, ViaMask, route_connection,
+    ShoveResult, ViaMask, route_connection, route_connection_full,
 };
 pub use path::{Connection, FoundConnectionInserter, FoundConnectionLocator, ResultItem};
 pub use tree_ext::AutorouteSearchTreeExt;

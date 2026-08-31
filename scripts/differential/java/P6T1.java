@@ -2,6 +2,8 @@ package app.freerouting.autoroute.maze;
 
 import app.freerouting.autoroute.AutorouteAttemptResult;
 import app.freerouting.autoroute.AutorouteAttemptState;
+import app.freerouting.autoroute.pipeline.BatchAutorouter;
+import app.freerouting.autoroute.pipeline.P7T8Probe;
 import app.freerouting.board.facade.RoutingBoard;
 import app.freerouting.board.model.items.Connectable;
 import app.freerouting.board.model.items.ConductionArea;
@@ -43,8 +45,9 @@ import java.util.TreeSet;
  * (AutorouteConnectionRouter.java:36-90, plan-6 ruling 2's seam) and prints one JSON line per
  * connection, against the port's {@code fr_router::route_connection}.
  *
- * <p>Usage: {@code P6T1 <dsn> [maxItems] [ripupPassNo] [rules|-]}. Defaults: {@code maxItems = 8},
- * {@code ripupPassNo = 1}, no {@code .rules} file. The fourth slot exists for plan-6 ruling 9 (the
+ * <p>Usage: {@code P6T1 <dsn> [maxItems] [ripupPassNo] [rules|-] [steps] [neckWidthUm]}.
+ * Defaults: {@code maxItems = 8}, {@code ripupPassNo = 1}, no {@code .rules} file,
+ * {@code steps = 1-5}, {@code neckWidthUm = 0}. The fourth slot exists for plan-6 ruling 9 (the
  * via-info / via-rule re-pointing register row): the deciding comparison is Java-with-rules against
  * the port-with-rules on {@code Issue593-BBD_Mars-64.dsn} plus
  * {@code crates/fr-router/tests/data/ruling-h-redeclare.rules} — see Task 8's report §4. It is
@@ -52,6 +55,21 @@ import java.util.TreeSet;
  * the DSN and before anything else, with the design name the input file's base name **without**
  * {@code .dsn}, which is what {@code RulesReader.java:100-110} compares against the
  * {@code (rules PCB <name>} header.
+ *
+ * <h2>{@code steps} (Plan 7 Task 8)</h2>
+ *
+ * <p>{@code 1-5} is Plan 6's slice and is what {@code tests/reference/&lt;stem&gt;/router.jsonl}
+ * was generated with — the transcripts are untouched by this argument's existence. {@code 1-8}
+ * runs {@code AutorouteConnectionRouter.route} <b>in full</b> through
+ * {@link app.freerouting.autoroute.pipeline.P7T8Probe}, adding step 6's {@code optChangedArea} on
+ * {@code ROUTED}, step 7's necked retry and step 8's strict-DRC rollback. Its transcripts are
+ * committed separately as {@code tests/reference/&lt;stem&gt;/router-steps18.jsonl}.
+ *
+ * <p>{@code neckWidthUm} writes {@code settings.neckWidthUm} after the two board-dependent
+ * settings steps. It exists because {@code DefaultSettings.java:109} seeds {@code 0.0}, and
+ * {@code route:125} gates the whole necked retry on {@code getNeckWidthUm() > 0} — so without it
+ * step 7 is unreachable on every corpus board and the {@code 1-8} evidence would be step 6 and
+ * step 8 only. It is ignored under {@code steps = 1-5}, where nothing reads it.
  *
  * <h2>Why the driver and not the pipeline</h2>
  *
@@ -123,7 +141,8 @@ public final class P6T1 {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 1) {
-      System.err.println("usage: P6T1 <dsn> [maxItems] [ripupPassNo] [rules|-]");
+      System.err.println(
+          "usage: P6T1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]");
       System.exit(2);
     }
     // `FRLogger` writes to stdout on several corpus fixtures (degenerate-wire warnings, the
@@ -138,25 +157,47 @@ public final class P6T1 {
     int maxItems = args.length > 1 ? Integer.parseInt(args[1]) : 8;
     int ripupPassNo = args.length > 2 ? Integer.parseInt(args[2]) : 1;
     Path rules = optionalPath(args, 3);
+    String steps = args.length > 4 && !args[4].isBlank() ? args[4] : "1-5";
+    if (!"1-5".equals(steps) && !"1-8".equals(steps)) {
+      System.err.println("steps must be 1-5 or 1-8, not " + steps);
+      System.exit(2);
+    }
+    double neckWidthUm = args.length > 5 ? Double.parseDouble(args[5]) : 0;
 
     Path jar =
         Paths.get(
                 RoutingBoard.class.getProtectionDomain().getCodeSource().getLocation().toURI())
             .toRealPath();
+    // The `1-5` header is **byte-identical** to the one Plan 6 committed into every
+    // `tests/reference/<stem>/router.meta.txt`, because a new argument that defaults to the old
+    // behaviour must not rewrite the old transcript. The two extra fields appear only under
+    // `1-8`, whose own references are `router-steps18.{jsonl,meta.txt}`.
     out.printf(
-        "HEADER jar=%s bytes=%d mtime=%d fixture=%s maxItems=%d ripupPassNo=%d rules=%s%n",
+        "HEADER jar=%s bytes=%d mtime=%d fixture=%s maxItems=%d ripupPassNo=%d rules=%s%s%n",
         jar, Files.size(jar), Files.getLastModifiedTime(jar).toMillis(),
         dsn.getFileName(), maxItems, ripupPassNo,
-        rules == null ? "-" : rules.getFileName());
+        rules == null ? "-" : rules.getFileName(),
+        "1-8".equals(steps)
+            ? " steps=" + steps + " neckWidthUm=" + Double.toString(neckWidthUm)
+            : "");
     System.err.println("java-version " + System.getProperty("java.version"));
 
     RoutingBoard board = loadBoard(dsn, rules);
     RouterSettings settings = new DefaultSettings().getSettings();
     settings.setLayerCount(board.getLayerCount());
     settings.applyBoardSpecificOptimizations(board);
+    // After the two board-dependent steps, so it cannot be overwritten by either of them.
+    settings.neckWidthUm = neckWidthUm;
+
+    // One router for the whole run, as `AutoroutePassRunner` has one per pass: the class holds no
+    // per-connection state that `route` reads (`traceCosts`, `startRipupCosts`,
+    // `tracePullTightAccuracy` and `retainAutorouteDatabase` are all final), so this is a
+    // faithful shape rather than an optimisation.
+    BatchAutorouter router =
+        "1-8".equals(steps) ? P7T8Probe.newRouter(board, settings) : null;
 
     for (Connection connection : pickConnections(board, maxItems)) {
-      out.println(routeOne(board, settings, connection, ripupPassNo));
+      out.println(routeOne(board, settings, connection, ripupPassNo, router));
       out.flush();
     }
   }
@@ -245,7 +286,11 @@ public final class P6T1 {
   // -----------------------------------------------------------------------------------------
 
   static String routeOne(
-      RoutingBoard board, RouterSettings settings, Connection connection, int ripupPassNo) {
+      RoutingBoard board,
+      RouterSettings settings,
+      Connection connection,
+      int ripupPassNo,
+      BatchAutorouter router) {
     StringBuilder sb = new StringBuilder();
     sb.append("{\"k\":").append(connection.k())
         .append(",\"item\":").append(connection.itemId())
@@ -264,7 +309,13 @@ public final class P6T1 {
     int maxIdBefore = board.communication.idGenerator.maxGeneratedId();
 
     AutorouteAttemptResult result =
-        route(board, settings, item, connection.netNo(), rippedItemList, ripupCosts, ripupPassNo);
+        router == null
+            ? route(
+                board, settings, item, connection.netNo(), rippedItemList, ripupCosts, ripupPassNo)
+            // `steps = 1-8`: `AutorouteConnectionRouter.route` in full, entered exactly where the
+            // pass runner enters it (`BatchAutorouter.autorouteItem`, `:507-514`).
+            : P7T8Probe.routeFull(
+                router, item, connection.netNo(), rippedItemList, ripupCosts, ripupPassNo);
 
     sb.append(",\"state\":\"").append(result.state).append('"');
     sb.append(",\"details\":").append(quote(result.details));
@@ -292,6 +343,16 @@ public final class P6T1 {
     sb.append(",\"maxIdAfter\":").append(board.communication.idGenerator.maxGeneratedId());
     appendInsertedGeometry(sb, board, maxIdBefore);
     appendMetrics(sb, board, connection.netNo());
+    // `P6T1_DUMP_BOARD=1` widens the per-connection line to the **whole** board, not just the
+    // items this connection inserted. Plan 7 Task 8 added it as a bisection tool: the default
+    // line's `metrics.traceLength` is a whole-board sum, but nothing in it covers a **via that
+    // moved without changing any trace length**, which is exactly what step 6's
+    // `ViaOptimizer.optViaLocation` arm can do. Off by default so the committed transcripts keep
+    // their shape.
+    if (System.getenv("P6T1_DUMP_BOARD") != null) {
+      appendInsertedGeometry(sb, board, -1);
+      appendBoardState(sb, board);
+    }
     return sb.append('}').toString();
   }
 
@@ -447,6 +508,47 @@ public final class P6T1 {
         .append(",\"traceLength\":\"").append(Double.toString(board.cumulativeTraceLength()))
         .append("\",\"violations\":").append(violations)
         .append('}');
+  }
+
+  /**
+   * `P6T1_DUMP_BOARD`'s second half: every item's non-geometric state — net numbers, clearance
+   * class, fixed state — plus the changed area. Plan 7 Task 8's bisection tool for a divergence
+   * that the geometry dump cannot see.
+   */
+  static void appendBoardState(StringBuilder sb, RoutingBoard board) {
+    sb.append(",\"state2\":[");
+    boolean first = true;
+    for (Item item : board.getItems()) {
+      if (!first) {
+        sb.append(',');
+      }
+      first = false;
+      sb.append('"').append(item.getId()).append('|')
+          .append(item.getClass().getSimpleName()).append('|');
+      for (int i = 0; i < item.netCount(); i++) {
+        if (i > 0) {
+          sb.append(',');
+        }
+        sb.append(item.getNetNumber(i));
+      }
+      sb.append('|').append(item.clearanceClassIndex())
+          .append('|').append(item.getFixedState().ordinal())
+          .append('"');
+    }
+    sb.append(']');
+    sb.append(",\"changedArea\":");
+    if (board.changedArea == null) {
+      sb.append("null");
+      return;
+    }
+    sb.append('[');
+    for (int i = 0; i < board.getLayerCount(); i++) {
+      if (i > 0) {
+        sb.append(',');
+      }
+      sb.append('"').append(board.changedArea.getArea(i).toString()).append('"');
+    }
+    sb.append(']');
   }
 
   /** `P6T15Probe.pt`'s rendering: an exact `IntPoint`, or a `Double.toString` pair marked `~`. */

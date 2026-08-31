@@ -14,10 +14,12 @@
 //! pipeline classes proper. `crates/fr-router/src/lib.rs`'s roster names every class still
 //! deferred and the task that owns it.
 
+pub mod batch_autorouter;
 pub mod board_history;
 pub mod counters;
 pub mod stop;
 
+pub use batch_autorouter::BatchAutorouter;
 pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
 pub use counters::RouterCounters;
 pub use stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState};

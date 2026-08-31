@@ -877,9 +877,9 @@ impl ShapeTraceEntries {
         let clearance_class = trace.hdr.clearance_class();
         let layer_count = board.get_layer_count();
 
-        // added in Plan 7: `RoutingBoard.additionalUpdateAfterChange`
-        // (ShapeTraceEntries.java:112) — see `Board::insert_item`'s marker for the measurement
-        // Plan 6 Task 16 made and why the wiring waits for `BatchAutorouter`.
+        // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
+        // (ShapeTraceEntries.java:112) — see `Board::insert_item`'s marker for why controller
+        // ruling AJ makes the whole family dead rather than deferred.
         let start_id = board.new_item_id();
         let mut start_trace = PolylineTrace::new(
             ItemHeader::new(

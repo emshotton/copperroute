@@ -43,11 +43,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::panic::AssertUnwindSafe;
 
 use fr_board::ids::TreeObject;
+use fr_board::structure::Unit;
 use fr_board::{
     Board, Item, ItemId, RoomId, ShapeSearchTree, StopCheck, StopConnectionOption, TimeLimit,
     TreeId,
 };
-use fr_geometry::{Simplex, TileShape, java_min};
+use fr_geometry::{Simplex, TileShape, java_min, java_round};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 use crate::Arena;
@@ -64,6 +65,7 @@ use crate::autoroute::path::{Connection, FoundConnectionInserter, FoundConnectio
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
+use crate::pipeline::{BatchAutorouter, RouterBudget};
 
 /// Port of `AutorouteEngine` (AutorouteEngine.java:39-675).
 ///
@@ -253,6 +255,20 @@ impl AutorouteEngine {
         // :120-122.
         self.net_number = net_number;
         self.time_limit = time_limit;
+    }
+
+    /// `AutorouteEngine.timeLimit` (`AutorouteEngine.java:68`), the budget `initConnection`
+    /// (`:122`) stored and `:295-296` reads.
+    ///
+    /// Java's field is `private` and has no accessor, so this one is the port's — it exists
+    /// because **quirk #208** (`retryConnectionNecked` reuses `route`'s already-spent
+    /// `TimeLimit`, `AutorouteConnectionRouter.java:171, :209`) has no other observation point:
+    /// the retry's engine is the one left in the caller's `&mut Option<AutorouteEngine>`, and its
+    /// budget is the whole of the quirk. Read-only, and nothing in the crate calls it.
+    /// `crates/fr-router/tests/batch_autorouter.rs`'s
+    /// `the_necked_retry_reuses_the_exhausted_time_limit` is that reader.
+    pub fn time_limit(&self) -> Option<TimeLimit> {
+        self.time_limit
     }
 
     /// `completeExpansionRooms` (`:74`) in list order — see the field docs for why this is not
@@ -1644,8 +1660,13 @@ pub(crate) fn describe_connection_from_names(start: &[String], dest: &[String]) 
 /// in production: `AutorouteControl::new` panics for a positive net the board does not have
 /// (`AutorouteControl.java:219`, pinned by `P6T8Probe ctrl`), and both of
 /// [`AutorouteEngine::autoroute_connection`]'s uncaught error channels end here.
-// added in Plan 7: `AutorouteConnectionRouter.retryConnectionNecked` (AutorouteConnectionRouter
-// .java:162), and with it steps 6-8 of `AutorouteConnectionRouter.route`.
+///
+/// # Plan 7 Task 8: steps 6-8 are [`route_connection_full`]
+///
+/// Plan-7 ruling 2 keeps **this** signature final and wraps it rather than extending it, so every
+/// Plan 6 test and `p6t1 --steps=1-5` keep their entry point. The wrapper is
+/// [`route_connection_full`], immediately below; the two share
+/// `route_connection_steps_1_to_5`'s body and differ only in what they do with its answer.
 // not ported: `AutorouteConnectionRouter.route`'s `router.setAirLine` (`:70`), a GUI progress
 // sink, and its two `isBenchmarkProfileEnabled` timing blocks (`:84-87`).
 #[allow(clippy::too_many_arguments)]
@@ -1666,7 +1687,7 @@ pub fn route_connection(
 ) -> AutorouteAttemptResult {
     // :35, `:154-158` — ruling 7's fifth recovery boundary.
     std::panic::catch_unwind(AssertUnwindSafe(|| {
-        route_connection_steps_1_to_5(
+        match route_connection_steps_1_to_5(
             board,
             engine,
             item,
@@ -1679,15 +1700,66 @@ pub fn route_connection(
             start_ripup_costs,
             remove_unconnected_vias,
             retain_autoroute_database,
+            // Plan 6's entry point never reaches step 8, so it never needs `:84-85`'s clone.
+            false,
             stop,
-        )
+        ) {
+            Steps1To5::Early(result) | Steps1To5::Ran { result, .. } => result,
+        }
     }))
     // :155-158.
     .unwrap_or_else(|_| AutorouteAttemptResult::new(AutorouteAttemptState::Failed))
 }
 
+/// Everything steps 6-8 need out of steps 1-5, i.e. the locals
+/// `AutorouteConnectionRouter.route` keeps alive across `:88-153`.
+///
+/// It is a struct rather than a tuple because five of its seven members are only ever read by
+/// [`retry_connection_necked`] and [`apply_strict_drc_after_route`], and a reader has to be able
+/// to see which Java local each one is.
+struct RouteContext {
+    /// `autorouteControl` (`:42-47`) — the control the first attempt ran with. The necked retry
+    /// reads its `layerCount`, `layerActive` and `traceHalfWidth` (`:182-190`) and **builds a
+    /// fresh one** rather than mutating this.
+    autoroute_control: AutorouteControl,
+    /// `currentViaCosts` (`:39-40`), handed to the neck control's constructor at `:194`.
+    current_via_costs: i32,
+    /// `routeStartSet` (`:63`/`:66`), re-used verbatim by the retry (`:213`).
+    route_start_set: BTreeSet<ItemId>,
+    /// `routeDestSet` (`:64`/`:67`), likewise.
+    route_dest_set: BTreeSet<ItemId>,
+    /// `timeLimit` (`:74`) — **the same object** `:81` and `:209` both pass to `initAutoroute`.
+    /// See [`retry_connection_necked`] for why that is a Java bug the port reproduces.
+    time_limit: TimeLimit,
+    /// `maxItemIdBeforeRoute` (`:83`).
+    max_item_id_before_route: ItemId,
+    /// `strictDrcBoardSnapshot` (`:84-85`) — `isStrictDrc() ? board.serialize(false) : null`,
+    /// which plan-7 ruling 8 makes a `Board` clone.
+    strict_drc_board_snapshot: Option<Board>,
+}
+
+/// What [`route_connection_steps_1_to_5`] answers: either one of the two early returns, or the
+/// attempt's result together with everything steps 6-8 read.
+enum Steps1To5 {
+    /// `:50-52`'s `NO_UNCONNECTED_NETS` or `:57-62`'s `CONNECTED_TO_PLANE` — Java returns before
+    /// `timeLimit` or the snapshot exist, so steps 6-8 are unreachable from here.
+    Early(AutorouteAttemptResult),
+    /// `:88-90` ran. `result` is `autorouteResult`.
+    Ran {
+        /// `autorouteResult` (`:88-90`).
+        result: AutorouteAttemptResult,
+        /// The locals `:95-153` read.
+        context: Box<RouteContext>,
+    },
+}
+
 /// The body of [`route_connection`], i.e. `AutorouteConnectionRouter.route:36-90` inside its
 /// `try`.
+///
+/// `take_strict_drc_snapshot` has no Java counterpart: Java always evaluates `:84-85`, whose
+/// `isStrictDrc()` test then decides. The port lets [`route_connection`] pass `false` so Plan 6's
+/// entry point never clones a board it could not use — `p6t1 --steps=1-5`'s committed references
+/// were measured without the clone, and a clone burns no item ids, so the two agree either way.
 #[allow(clippy::too_many_arguments)]
 fn route_connection_steps_1_to_5(
     board: &mut Board,
@@ -1702,8 +1774,9 @@ fn route_connection_steps_1_to_5(
     start_ripup_costs: i32,
     remove_unconnected_vias: bool,
     retain_autoroute_database: bool,
+    take_strict_drc_snapshot: bool,
     stop: StopCheck<'_>,
-) -> AutorouteAttemptResult {
+) -> Steps1To5 {
     // :37-40.
     let route_net = board.rules.nets.get(net_no);
     let contains_plane = route_net.is_some_and(fr_board::rules::Net::contains_plane);
@@ -1742,7 +1815,9 @@ fn route_connection_steps_1_to_5(
     // :49-52.
     let unconnected_set = board.unconnected_set(item, net_no);
     if unconnected_set.is_empty() {
-        return AutorouteAttemptResult::new(AutorouteAttemptState::NoUnconnectedNets);
+        return Steps1To5::Early(AutorouteAttemptResult::new(
+            AutorouteAttemptState::NoUnconnectedNets,
+        ));
     }
 
     // :54-68. Java's `getConnectedSet(int)` is the `stopAtPlane = false` overload
@@ -1752,7 +1827,9 @@ fn route_connection_steps_1_to_5(
         // :57-61, over the `TreeSet<Item>`'s descending id order.
         for current_item in connected_set.iter().rev() {
             if matches!(board.get_item(*current_item), Some(Item::ConductionArea(_))) {
-                return AutorouteAttemptResult::new(AutorouteAttemptState::ConnectedToPlane);
+                return Steps1To5::Early(AutorouteAttemptResult::new(
+                    AutorouteAttemptState::ConnectedToPlane,
+                ));
             }
         }
         // :62-64 — the plane swap.
@@ -1772,6 +1849,11 @@ fn route_connection_steps_1_to_5(
 
     // :76-82. The write to `RoutingBoard.autorouteEngine` happens here, before the connection
     // runs, so it survives an unwind exactly as Java's field assignment survives a throw.
+    //
+    // `time_limit` is `Copy`, and that is the port of Java's aliasing rather than a departure
+    // from it: `TimeLimit` is written only by its constructor and by `multiply`, which nothing on
+    // this path calls, so every holder of a copy reads the same `start` instant and the same
+    // limit. `:209` hands the retry the same value, which is the whole of quirk #208.
     *engine = Some(board.init_autoroute(
         engine.take(),
         net_no,
@@ -1779,12 +1861,27 @@ fn route_connection_steps_1_to_5(
         Some(time_limit),
         retain_autoroute_database,
     ));
+
+    // :83. `maxGeneratedId()` **after** `initAutoroute` and **before** `autorouteConnection`, so
+    // every id the connection burns is strictly greater.
+    let max_item_id_before_route = board.communication.id_gen.max_generated_id();
+    // :84-85. Plan-7 ruling 8: Java's `board.serialize(false)` / `BasicBoard.deserialize` pair is
+    // a `Board` clone and a restore-from-clone, because `serialize`/`deserialize` are
+    // `// not ported:` in `fr-board` and spec §6 makes `Board: Clone` their replacement. The
+    // clone is taken **before** the connection runs and only when strict DRC is on, exactly as
+    // the ternary does.
+    let strict_drc_board_snapshot = if take_strict_drc_snapshot && settings.is_strict_drc() {
+        Some(board.clone())
+    } else {
+        None
+    };
+
     let autoroute_engine = engine
         .as_mut()
         .expect("initAutoroute always answers an engine");
 
     // :88-90.
-    autoroute_engine.autoroute_connection(
+    let result = autoroute_engine.autoroute_connection(
         board,
         &route_start_set,
         &route_dest_set,
@@ -1792,12 +1889,441 @@ fn route_connection_steps_1_to_5(
         ripped,
         Some(ripup_costs),
         stop,
-    )
+    );
 
-    // added in Plan 7: steps 6-8 of `AutorouteConnectionRouter.route` — `optChangedArea`
-    // (`:92-118`), the necked retry (`:120-145`) and `applyStrictDrcAfterRoute` (`:147-152`),
-    // together with the `maxItemIdBeforeRoute` / `strictDrcBoardSnapshot` of `:83-85` that only
-    // those three read.
+    Steps1To5::Ran {
+        result,
+        context: Box::new(RouteContext {
+            autoroute_control,
+            current_via_costs,
+            route_start_set,
+            route_dest_set,
+            time_limit,
+            max_item_id_before_route,
+            strict_drc_board_snapshot,
+        }),
+    }
+}
+
+// =================================================================================================
+// Steps 6-8 of `AutorouteConnectionRouter.route` — Plan 7 Task 8, plan-7 ruling 2's wrapper
+// =================================================================================================
+
+/// The whole of `AutorouteConnectionRouter.route(Item, int, SortedSet<Item>, Map<Item,Integer>,
+/// int)` (AutorouteConnectionRouter.java:30-160, in a 255-line file): [`route_connection`]'s
+/// steps 1-5 plus **steps 6-8** —
+///
+/// | step | Java | what it does |
+/// |---|---|---|
+/// | 6 | `:95-121` | on `ROUTED`, `optChangedArea` over the whole changed area |
+/// | 7 | `:123-145` -> `retry_connection_necked` (`:162-241`) | on `FAILED`/`INSERT_ERROR` with a neck width, one narrower retry |
+/// | 8 | `:147-153` -> `apply_strict_drc_after_route` (`:243-254`) | on `ROUTED`, the strict-DRC rip and the restore-from-clone |
+///
+/// Plan-7 ruling 2: this **wraps** [`route_connection`] rather than extending it, so Plan 6's
+/// entry point is unchanged and every Plan 6 test and `p6t1 --steps=1-5` keep working.
+///
+/// # The roster line this corrects
+///
+/// `crates/fr-router/src/lib.rs` and `docs/plan-6-handoff.md` §10.1 both said "steps 6-8 …
+/// (`AutorouteConnectionRouter.java:160-233`)". **That range is wrong**: `:160` is `route`'s
+/// closing brace and nothing in the file spans `:160-233` as a unit. The decomposition above is
+/// the one read out of HEAD, the `lib.rs` roster line is re-pointed to it, and the handoff's
+/// "and the failure-log write" belongs to Task 9's `AutoroutePassRunner.runSingleThread`
+/// (`:260-289`), not here.
+///
+/// # `retain_autoroute_database` is not a parameter (controller ruling AJ)
+///
+/// [`route_connection`] takes it because Plan 6 fixed its signature before the ruling. This
+/// wrapper does not: it passes
+/// [`BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE`](BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE),
+/// i.e. `false`, unconditionally, and there is no setter anywhere in the port that could change
+/// it. That is what makes `fr-board`'s five `additionalUpdateAfterChange` sites
+/// `// not reachable:` rather than deferred.
+///
+/// # The two parameters the plan's sketch left out
+///
+/// `trace_pull_tight_accuracy` is `router.getTracePullTightAccuracy()`, which step 6 reads at
+/// `:106` and the retry at `:226`; `budget` is controller ruling AI's knob for the two literal
+/// `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`s at `:109` and `:229`. Java wins over the plan on both.
+#[allow(clippy::too_many_arguments)]
+pub fn route_connection_full(
+    board: &mut Board,
+    engine: &mut Option<AutorouteEngine>,
+    item: ItemId,
+    net_no: i32,
+    settings: &RouterSettings,
+    trace_costs: &[ExpansionCostFactor],
+    ripped: &mut BTreeSet<ItemId>,
+    ripup_costs: &mut BTreeMap<ItemId, i32>,
+    ripup_pass_no: i32,
+    start_ripup_costs: i32,
+    remove_unconnected_vias: bool,
+    trace_pull_tight_accuracy: i32,
+    budget: RouterBudget,
+    stop: StopCheck<'_>,
+) -> AutorouteAttemptResult {
+    // :36, `:156-159` — the same recovery boundary, now wrapping all eight steps because Java's
+    // `try` does. Everything below can throw in Java: `optChangedArea` reaches the whole
+    // tightener family, and `enforceStrictDrc` reaches `removeItems`.
+    std::panic::catch_unwind(AssertUnwindSafe(|| {
+        route_connection_steps_1_to_8(
+            board,
+            engine,
+            item,
+            net_no,
+            settings,
+            trace_costs,
+            ripped,
+            ripup_costs,
+            ripup_pass_no,
+            start_ripup_costs,
+            remove_unconnected_vias,
+            trace_pull_tight_accuracy,
+            budget,
+            stop,
+        )
+    }))
+    // :157-158.
+    .unwrap_or_else(|_| AutorouteAttemptResult::new(AutorouteAttemptState::Failed))
+}
+
+/// The body of [`route_connection_full`], i.e. `AutorouteConnectionRouter.route:37-155` inside
+/// its `try`.
+#[allow(clippy::too_many_arguments)]
+fn route_connection_steps_1_to_8(
+    board: &mut Board,
+    engine: &mut Option<AutorouteEngine>,
+    item: ItemId,
+    net_no: i32,
+    settings: &RouterSettings,
+    trace_costs: &[ExpansionCostFactor],
+    ripped: &mut BTreeSet<ItemId>,
+    ripup_costs: &mut BTreeMap<ItemId, i32>,
+    ripup_pass_no: i32,
+    start_ripup_costs: i32,
+    remove_unconnected_vias: bool,
+    trace_pull_tight_accuracy: i32,
+    budget: RouterBudget,
+    stop: StopCheck<'_>,
+) -> AutorouteAttemptResult {
+    // :37-90.
+    let (autoroute_result, context) = match route_connection_steps_1_to_5(
+        board,
+        engine,
+        item,
+        net_no,
+        settings,
+        trace_costs,
+        ripped,
+        ripup_costs,
+        ripup_pass_no,
+        start_ripup_costs,
+        remove_unconnected_vias,
+        // Ruling AJ — the flag has no setter and is `false` on every path.
+        BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE,
+        // :84-85 is live here, unlike in `route_connection`.
+        true,
+        stop,
+    ) {
+        Steps1To5::Early(result) => return result,
+        Steps1To5::Ran { result, context } => (result, *context),
+    };
+
+    // -- step 6: :95-121 ------------------------------------------------------------------------
+    //
+    // On `ROUTED` only, pull the whole changed area tight. `new int[0]` is "all nets" and `null`
+    // is "no clip shape", which plan-7 ruling 9 / quirk #204 makes "run the sweep". The two
+    // `FRLogger.trace` calls at `:97-101` and `:114-120` and the `maxItemIdBeforeOpt` /
+    // `maxItemIdAfterOpt` they format are dropped with the rest of `FRLogger`; the
+    // `isBenchmarkProfileEnabled` timers at `:102` and `:110-112` are the benchmark profile.
+    if autoroute_result.state == AutorouteAttemptState::Routed {
+        // :103-109.
+        board
+            .opt_changed_area(
+                engine.as_mut(),
+                &[],
+                None,
+                trace_pull_tight_accuracy,
+                Some(&context.autoroute_control.trace_costs),
+                stop,
+                budget.opt_changed_area_ms,
+            )
+            // An `Err` here **panics on purpose**, and that is the port of Java's control flow
+            // rather than an assertion that it cannot happen: `optChangedArea` throws out of the
+            // tightener family in Java too, and `route:36`'s own `try` / `:156-159`'s
+            // `catch (Exception)` degrades it to a **bare** `FAILED`. The panic travels the same
+            // route — `route_connection_full`'s `catch_unwind` is that `catch` — so the value
+            // reaching the pass runner is the one Java produces.
+            .expect("an Err here becomes route's own catch (:156-159) via catch_unwind");
+    }
+
+    // -- step 7: :123-145 -----------------------------------------------------------------------
+    //
+    // The retry fires on `FAILED` **or** `INSERT_ERROR`, and only with a positive neck width.
+    // `getNeckWidthUm()` is `neckWidthUm != null && neckWidthUm > 0 ? neckWidthUm : 0`
+    // (`RouterSettings.java:527-529`), so the test is "a neck width was configured".
+    if (autoroute_result.state == AutorouteAttemptState::Failed
+        || autoroute_result.state == AutorouteAttemptState::InsertError)
+        && settings.get_neck_width_um() > 0.0
+    {
+        // :126-136.
+        let necked_result = retry_connection_necked(
+            board,
+            engine,
+            net_no,
+            &context,
+            settings,
+            trace_costs,
+            ripped,
+            ripup_costs,
+            ripup_pass_no,
+            start_ripup_costs,
+            remove_unconnected_vias,
+            trace_pull_tight_accuracy,
+            budget,
+            stop,
+        );
+        // :137-144. Note the shape: a `null` neck result falls **through** to `:147`, where the
+        // outer state is `FAILED`/`INSERT_ERROR` and step 8 is skipped; a non-null one runs step 8
+        // here and returns either its rejection or the neck result — never `autorouteResult`.
+        if let Some(necked_result) = necked_result {
+            // :138-139.
+            let strict_result = apply_strict_drc_after_route(
+                board,
+                settings,
+                net_no,
+                context.max_item_id_before_route,
+                context.strict_drc_board_snapshot,
+            );
+            // :140-142.
+            if let Some(strict_result) = strict_result {
+                return strict_result;
+            }
+            // :143.
+            return necked_result;
+        }
+        // The snapshot was moved into `apply_strict_drc_after_route` only on the `Some` arm, so
+        // the fall-through below still owns it — but it cannot reach step 8 anyway, because the
+        // state that got here is not `ROUTED`.
+        return autoroute_result;
+    }
+
+    // -- step 8: :147-153 -----------------------------------------------------------------------
+    if autoroute_result.state == AutorouteAttemptState::Routed {
+        // :148-149.
+        let strict_result = apply_strict_drc_after_route(
+            board,
+            settings,
+            net_no,
+            context.max_item_id_before_route,
+            context.strict_drc_board_snapshot,
+        );
+        // :150-152.
+        if let Some(strict_result) = strict_result {
+            return strict_result;
+        }
+    }
+
+    // :155.
+    autoroute_result
+}
+
+/// Port of the private `AutorouteConnectionRouter.retryConnectionNecked(int, AutorouteControl,
+/// int, Set<Item>, Set<Item>, SortedSet<Item>, Map<Item,Integer>, int, TimeLimit)`
+/// (AutorouteConnectionRouter.java:162-241): one more attempt at the same connection with every
+/// layer's trace half width capped at half the configured neck width.
+///
+/// `None` is Java's `null` — "the retry did not route" — and is answered at exactly two places:
+/// `:188-190` when no active layer is wider than the neck, and `:218-220` when the second attempt
+/// did not end `ROUTED`.
+///
+/// # Java bug (quirk #208): the retry inherits the first attempt's exhausted budget
+///
+/// `:171` receives the **same** `TimeLimit` object `route:74` built and `:81` already handed to
+/// the first `initAutoroute`, and `:209` hands that same object to the second one. `TimeLimit`
+/// keeps its construction instant (`TimeLimit.java:8,15`) and is never reset, so the retry's
+/// budget is `maxMilliseconds` minus everything the first attempt spent. On the connections the
+/// retry exists for — the hard ones, where the first attempt ran long and failed — the remaining
+/// budget is smallest, so `AutorouteEngine.autorouteConnection` can trip `limitExceeded()`
+/// immediately and the retry becomes a no-op precisely where it is wanted. A fresh
+/// `new TimeLimit((int) maxMilliseconds)` at `:171` would be the fix. Reproduced verbatim:
+/// [`RouteContext::time_limit`] is `Copy`, which preserves the `start` instant, and the port
+/// hands the same value to both `init_autoroute` calls.
+/// `crates/fr-router/tests/batch_autorouter.rs`'s
+/// `the_necked_retry_reuses_the_exhausted_time_limit` is the pin.
+#[allow(clippy::too_many_arguments)]
+fn retry_connection_necked(
+    board: &mut Board,
+    engine: &mut Option<AutorouteEngine>,
+    route_net_no: i32,
+    context: &RouteContext,
+    settings: &RouterSettings,
+    trace_costs: &[ExpansionCostFactor],
+    ripped: &mut BTreeSet<ItemId>,
+    ripup_costs: &mut BTreeMap<ItemId, i32>,
+    ripup_pass_no: i32,
+    start_ripup_costs: i32,
+    remove_unconnected_vias: bool,
+    trace_pull_tight_accuracy: i32,
+    budget: RouterBudget,
+    stop: StopCheck<'_>,
+) -> Option<AutorouteAttemptResult> {
+    let original_control = &context.autoroute_control;
+
+    // :172. `Math.max(1, resolution)` — the **int** overload, so no NaN can arise and
+    // `java_max` (which exists for the `double` overloads, plan conventions §4) is not the one
+    // Java calls here. A board whose `communication.resolution` is 0 or negative still scales by 1.
+    let board_resolution = board.communication.resolution.max(1);
+    // :173-179. `Unit.scale(neckWidthUm * resolution, UM, boardUnit)`, then `Math.round`, then
+    // the `(int)` cast. `java_round` is half-up on ties (plan conventions §5); Java's
+    // `(int) <long>` narrowing **truncates the high bits** rather than saturating, and Rust's
+    // `i64 as i32` does the same — unreachable at any real neck width, and named because the
+    // two languages agree only by that coincidence.
+    let neck_width = java_round(Unit::scale(
+        settings.get_neck_width_um() * f64::from(board_resolution),
+        Unit::Um,
+        board.communication.unit,
+    )) as i32;
+    // :180. Integer division, then a floor of 1 — so any neck width at all caps at half width 1.
+    let neck_half_width = std::cmp::max(1, neck_width / 2);
+
+    // :181-190. "Is any active layer wider than the neck?" — if not, the retry would change
+    // nothing and Java skips it. The loop breaks on the first hit, so it is a plain `any`.
+    let narrower_somewhere = (0..original_control.layer_count).any(|i| {
+        original_control.layer_active[i] && original_control.trace_half_width[i] > neck_half_width
+    });
+    // :188-190.
+    if !narrower_somewhere {
+        return None;
+    }
+
+    // :192-197. A **fresh** control with the same five constructor arguments and the same three
+    // ripup settings — not a copy of `originalControl`, so every value the constructor derives is
+    // recomputed from the board as it stands *now*, after the failed attempt.
+    let mut neck_control = AutorouteControl::new(
+        board,
+        route_net_no,
+        settings,
+        context.current_via_costs,
+        trace_costs,
+    );
+    neck_control.ripup_allowed = true;
+    neck_control.ripup_costs = start_ripup_costs * ripup_pass_no;
+    neck_control.remove_unconnected_vias = remove_unconnected_vias;
+    // :198-202. The clearance compensation is preserved rather than recomputed: Java takes the
+    // difference `compensated - plain` *before* capping the plain value and adds it back after,
+    // so a layer that is not capped keeps both numbers unchanged and a capped one keeps its own
+    // compensation rather than inheriting the neck's.
+    for i in 0..neck_control.layer_count {
+        let compensation =
+            neck_control.compensated_trace_half_width[i] - neck_control.trace_half_width[i];
+        neck_control.trace_half_width[i] =
+            std::cmp::min(neck_control.trace_half_width[i], neck_half_width);
+        neck_control.compensated_trace_half_width[i] =
+            neck_control.trace_half_width[i] + compensation;
+    }
+
+    // :204-210. The second `initAutoroute`, with the neck control's clearance class and — the
+    // quirk — the **same** `TimeLimit` the first attempt already spent.
+    *engine = Some(board.init_autoroute(
+        engine.take(),
+        route_net_no,
+        neck_control.trace_clearance_class_index,
+        // Java bug: `AutorouteConnectionRouter.retryConnectionNecked` reuses `route`'s `TimeLimit` (`:171`, `:209`) — quirk #208
+        Some(context.time_limit),
+        BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE,
+    ));
+    let neck_engine = engine
+        .as_mut()
+        .expect("initAutoroute always answers an engine");
+
+    // :212-214. The **same** start set, dest set, ripped list and ripup-cost map — the second
+    // attempt sees whatever the first one left in them.
+    let neck_result = neck_engine.autoroute_connection(
+        board,
+        &context.route_start_set,
+        &context.route_dest_set,
+        &neck_control,
+        ripped,
+        Some(ripup_costs),
+        stop,
+    );
+    // :218-220.
+    if neck_result.state != AutorouteAttemptState::Routed {
+        return None;
+    }
+
+    // :223-229. Step 6's sweep again, but with the **neck** control's trace costs.
+    board
+        .opt_changed_area(
+            engine.as_mut(),
+            &[],
+            None,
+            trace_pull_tight_accuracy,
+            Some(&neck_control.trace_costs),
+            stop,
+            budget.opt_changed_area_ms,
+        )
+        // An `Err` here **panics on purpose**, and that is the port of Java's control flow
+        // rather than an assertion that it cannot happen: `optChangedArea` throws out of the
+        // tightener family in Java too, and `route:36`'s own `try` / `:156-159`'s
+        // `catch (Exception)` degrades it to a **bare** `FAILED`. The panic travels the same
+        // route — `route_connection_full`'s `catch_unwind` is that `catch` — so the value
+        // reaching the pass runner is the one Java produces.
+        .expect("an Err here becomes route's own catch (:156-159) via catch_unwind");
+    // not ported: the `FRLogger.info("Necked retry routed net …")` of `:233-239`, and the
+    // `rules.nets.get` it does the lookup for.
+    // :240.
+    Some(neck_result)
+}
+
+/// Port of the private `AutorouteConnectionRouter.applyStrictDrcAfterRoute(int, int, byte[])`
+/// (AutorouteConnectionRouter.java:243-254): with strict DRC on, rip the connection's new items
+/// if any of them carries a clearance violation, and put the board back the way it was.
+///
+/// `None` is Java's `null` — "keep the connection".
+///
+/// # Ruling 8: the snapshot is a `Board` clone
+///
+/// Java's `:251` is `router.board = (RoutingBoard) BasicBoard.deserialize(boardSnapshotBeforeRoute)`.
+/// `BasicBoard.{serialize, deserialize}` are `// not ported:` in `fr-board`
+/// (`board/mod.rs:133`), and spec §6 replaces `deepCopy()` with `Board: Clone`, so the port takes
+/// the clone at `:84-85` and restores from it here. The restore is a whole-board overwrite, which
+/// is what `deserialize` gives Java.
+///
+/// # `// totalized:` — quirk #209, the staleness the port cannot reproduce
+///
+/// Java assigns `router.board`, a **field of `BatchAutorouter`**. `AutorouteBatchLoop.run`'s local
+/// `RoutingBoard board` (`AutorouteBatchLoop.java:38`) was read off that field before the pass and
+/// therefore still points at the pre-restore object, so after a strict-DRC rejection the loop's
+/// local and the router's field are two different boards. It is **latent**: nothing reads the
+/// local again after this point. The port has exactly one `Board`, threaded as `&mut`, so it
+/// cannot have two — the divergence is recorded rather than reproduced.
+fn apply_strict_drc_after_route(
+    board: &mut Board,
+    settings: &RouterSettings,
+    route_net_no: i32,
+    max_item_id_before: ItemId,
+    board_snapshot_before_route: Option<Board>,
+) -> Option<AutorouteAttemptResult> {
+    // :245-247.
+    if !settings.is_strict_drc() {
+        return None;
+    }
+    // :248-249.
+    let rejection = BatchAutorouter::enforce_strict_drc(board, route_net_no, max_item_id_before);
+    // :250-252. **Both** halves of the guard matter: a rejection with a `null` snapshot leaves the
+    // ripped board in place and still reports `FAILED`. That is unreachable on the live path
+    // (`:84-85` takes the snapshot under the same `isStrictDrc()` test this method returned on),
+    // and the port keeps the test rather than asserting it away.
+    if rejection.is_some()
+        && let Some(snapshot) = board_snapshot_before_route
+    {
+        // totalized: `AutorouteConnectionRouter.applyStrictDrcAfterRoute`'s `router.board = …` (`:251`) — quirk #209
+        *board = snapshot;
+    }
+    // :253.
+    rejection
 }
 
 // =================================================================================================
@@ -1820,6 +2346,6 @@ fn route_connection_steps_1_to_5(
 //
 // `AutorouteConnectionRouter` is `autoroute/pipeline`'s, and plan-6 ruling 2 splits it at step 5;
 // `scripts/audit-map/fr-router.map` maps the class here because steps 1-5 are this engine's entry
-// point. Steps 1-5 are `route_connection` above; steps 6-8 and `retryConnectionNecked` stay
-// Plan 7's.
-// added in Plan 7: `AutorouteConnectionRouter.retryConnectionNecked`
+// point. Steps 1-5 are `route_connection`; **Plan 7 Task 8 closed the class** — `route_connection_full`
+// is `route` in full, with `retry_connection_necked` (`:162-241`) and
+// `apply_strict_drc_after_route` (`:243-254`) beside it.

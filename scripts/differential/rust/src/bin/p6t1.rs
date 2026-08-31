@@ -25,11 +25,37 @@
 //! 4. **nothing above the seam runs** — no `opt_changed_area`, no necked retry, no strict-DRC
 //!    rollback, no `finish_autoroute`.
 //!
-//! Usage: `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-]`. The fourth slot exists for plan-6
-//! ruling 9 (the via-info / via-rule re-pointing register row): the deciding comparison is
-//! Java-with-rules against the port-with-rules on `Issue593-BBD_Mars-64.dsn` plus
-//! `crates/fr-router/tests/data/ruling-h-redeclare.rules` — see `P6T1.java`'s class comment and
-//! Task 8's report §4.
+//! Usage: `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]`. The fourth
+//! slot exists for plan-6 ruling 9 (the via-info / via-rule re-pointing register row): the
+//! deciding comparison is Java-with-rules against the port-with-rules on
+//! `Issue593-BBD_Mars-64.dsn` plus `crates/fr-router/tests/data/ruling-h-redeclare.rules` — see
+//! `P6T1.java`'s class comment and Plan 6 Task 8's report §4.
+//!
+//! # `steps` — Plan 7 Task 8
+//!
+//! `1-5` is Plan 6's slice, [`fr_router::route_connection`], and is what
+//! `tests/reference/<stem>/router.jsonl` was generated with; that path and its output are
+//! untouched. `1-8` calls [`fr_router::route_connection_full`], i.e.
+//! `AutorouteConnectionRouter.route` in full — step 6's `optChangedArea` on `ROUTED`, step 7's
+//! necked retry and step 8's strict-DRC rollback. `neckWidthUm` seeds `settings.neckWidthUm`,
+//! which `DefaultSettings.java:109` leaves at `0.0` and `route:125` gates the whole necked retry
+//! on, so without it step 7 is unreachable.
+//!
+//! # The budget, and why the two sides are *not* configured the same
+//!
+//! Controller ruling AI asks a `p7t*` parity run to disable the 1000 ms
+//! `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` on both sides, and the task brief suggested reflecting
+//! the Java constant to `0`. **That cannot be done**: `AutorouteConnectionRouter.java:22` is a
+//! compile-time constant and `javac` inlines it — `javap -c` on the shipping jar shows
+//! `sipush 1000` immediately before each `invokevirtual RoutingBoard.optChangedArea`, so no
+//! reflective write reaches the call site.
+//!
+//! This side therefore runs with [`RouterBudget::disabled`], i.e. **no** limit, against the jar's
+//! live 1000 ms one — and that asymmetry is *stronger* evidence than a matched constant. The two
+//! sweeps can only agree if the Java limit never trips: had it tripped anywhere on the corpus,
+//! the jar's tightener would have stopped mid-sweep and left a board this side kept optimising.
+//! A MATCH is therefore a proof that `--steps=1-8` parity is time-independent, which is what
+//! ruling AI is for. `scripts/differential/java/probes/P7T8Probe.java` carries the same note.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufWriter, Write};
@@ -41,14 +67,15 @@ use fr_dsn::java_double_to_string;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::BoardReadResult;
 use fr_geometry::Point;
-use fr_router::route_connection;
+use fr_router::pipeline::RouterBudget;
+use fr_router::{route_connection, route_connection_full};
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
-        eprintln!("usage: p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-]");
+        eprintln!("usage: p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]");
         std::process::exit(2);
     }
     let dsn = std::fs::canonicalize(&args[0])
@@ -58,17 +85,33 @@ fn main() {
     let rules = args.get(3).filter(|a| !a.is_empty() && *a != "-").map(|a| {
         std::fs::canonicalize(a).unwrap_or_else(|e| panic!("cannot resolve {a}: {e}"))
     });
+    let steps: &str = args.get(4).filter(|a| !a.is_empty()).map_or("1-5", String::as_str);
+    assert!(
+        steps == "1-5" || steps == "1-8",
+        "steps must be 1-5 or 1-8, not {steps}"
+    );
+    let neck_width_um: f64 = args.get(5).map_or(0.0, |a| a.parse().expect("neckWidthUm"));
 
     let stdout = std::io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
-    print_header(&mut out, &dsn, max_items, ripup_pass_no, rules.as_deref());
+    print_header(
+        &mut out,
+        &dsn,
+        max_items,
+        ripup_pass_no,
+        rules.as_deref(),
+        steps,
+        neck_width_um,
+    );
 
     let mut board = load_board(&dsn, rules.as_deref());
-    let settings = build_settings(&board);
+    let mut settings = build_settings(&board);
+    // `P6T1.main`: after the two board-dependent steps, so neither can overwrite it.
+    settings.neck_width_um = Some(neck_width_um);
 
     for connection in pick_connections(&board, max_items) {
-        let line = route_one(&mut board, &settings, &connection, ripup_pass_no);
+        let line = route_one(&mut board, &settings, &connection, ripup_pass_no, steps);
         writeln!(out, "{line}").expect("write");
         out.flush().expect("flush");
     }
@@ -81,12 +124,15 @@ fn main() {
 /// `P6T1.main`'s first line. The jar path comes from the environment `run.sh` exports, where Java
 /// derives it from its own code source — so a mismatch is a real finding rather than a shared
 /// assumption (the `p4t1`/`p5t1` convention).
+#[allow(clippy::too_many_arguments)]
 fn print_header<W: Write>(
     out: &mut W,
     dsn: &std::path::Path,
     max_items: usize,
     pass: i32,
     rules: Option<&std::path::Path>,
+    steps: &str,
+    neck_width_um: f64,
 ) {
     let jar = std::env::var("FREEROUTING_JAR")
         .expect("environment variable FREEROUTING_JAR is not set");
@@ -98,10 +144,20 @@ fn print_header<W: Write>(
         .duration_since(UNIX_EPOCH)
         .expect("after epoch")
         .as_millis();
+    // `P6T1.main`: the `1-5` header is byte-identical to the one every committed
+    // `router.meta.txt` records; the two extra fields appear only under `1-8`.
+    let steps_suffix = if steps == "1-8" {
+        format!(
+            " steps={steps} neckWidthUm={}",
+            java_double_to_string(neck_width_um)
+        )
+    } else {
+        String::new()
+    };
     writeln!(
         out,
         "HEADER jar={} bytes={} mtime={mtime} fixture={} maxItems={max_items} ripupPassNo={pass} \
-         rules={}",
+         rules={}{steps_suffix}",
         jar.display(),
         meta.len(),
         dsn.file_name().expect("a file name").to_string_lossy(),
@@ -224,6 +280,7 @@ fn route_one(
     settings: &RouterSettings,
     connection: &Connection,
     ripup_pass_no: i32,
+    steps: &str,
 ) -> String {
     let mut sb = String::new();
     sb.push_str(&format!(
@@ -245,21 +302,45 @@ fn route_one(
 
     let trace_costs = settings.get_trace_costs();
     let mut engine = None;
-    let result = route_connection(
-        board,
-        &mut engine,
-        connection.item_id,
-        connection.net_no,
-        settings,
-        &trace_costs,
-        &mut ripped,
-        &mut ripup_costs,
-        ripup_pass_no,
-        settings.get_start_ripup_costs(),
-        !settings.is_fanout_enabled(),
-        false,
-        &|| false,
-    );
+    let result = if steps == "1-8" {
+        // `P7T8Probe.routeFull` -> `BatchAutorouter.autorouteItem` -> the whole of
+        // `AutorouteConnectionRouter.route`. The two extra arguments are what steps 6-8 read:
+        // `getTracePullTightAccuracy()` — the `RoutingJob` constructor's value
+        // (`BatchAutorouter.java:118-120`) — and ruling AI's budget, **disabled** here; see the
+        // module comment for why the two sides are deliberately not configured the same.
+        route_connection_full(
+            board,
+            &mut engine,
+            connection.item_id,
+            connection.net_no,
+            settings,
+            &trace_costs,
+            &mut ripped,
+            &mut ripup_costs,
+            ripup_pass_no,
+            settings.get_start_ripup_costs(),
+            !settings.is_fanout_enabled(),
+            settings.trace_pull_tight_accuracy.unwrap_or(500),
+            RouterBudget::disabled(),
+            &|| false,
+        )
+    } else {
+        route_connection(
+            board,
+            &mut engine,
+            connection.item_id,
+            connection.net_no,
+            settings,
+            &trace_costs,
+            &mut ripped,
+            &mut ripup_costs,
+            ripup_pass_no,
+            settings.get_start_ripup_costs(),
+            !settings.is_fanout_enabled(),
+            false,
+            &|| false,
+        )
+    };
 
     sb.push_str(&format!(",\"state\":\"{}\"", result.state.name()));
     // `unwrap_or("")`, not a `null`, and that is correct rather than a gap. Java's `quote`
@@ -304,6 +385,11 @@ fn route_one(
     ));
     append_inserted_geometry(&mut sb, board, max_id_before);
     append_metrics(&mut sb, board, connection.net_no);
+    // `P6T1_DUMP_BOARD=1` — see `P6T1.routeOne`'s comment. A bisection tool, off by default.
+    if std::env::var_os("P6T1_DUMP_BOARD").is_some() {
+        append_inserted_geometry(&mut sb, board, ItemId(0));
+        append_board_state(&mut sb, board);
+    }
     sb.push('}');
     sb
 }
@@ -385,6 +471,53 @@ fn append_metrics(sb: &mut String, board: &mut Board, net_no: i32) {
 // ------------------------------------------------------------------------------------------------
 // Rendering
 // ------------------------------------------------------------------------------------------------
+
+/// `P6T1.appendBoardState` — the non-geometric half of the `P6T1_DUMP_BOARD` bisection dump.
+fn append_board_state(sb: &mut String, board: &Board) {
+    sb.push_str(",\"state2\":[");
+    for (i, id) in board.items_in_board_order().into_iter().enumerate() {
+        let Some(item) = board.get_item(id) else {
+            continue;
+        };
+        if i > 0 {
+            sb.push(',');
+        }
+        let kind = match item {
+            Item::Trace(_) => "PolylineTrace",
+            Item::Via(_) => "Via",
+            Item::Pin(_) => "Pin",
+            Item::ObstacleArea(_) => "ObstacleArea",
+            Item::ConductionArea(_) => "ConductionArea",
+            Item::ViaObstacleArea(_) => "ViaObstacleArea",
+            Item::ComponentObstacleArea(_) => "ComponentObstacleArea",
+            Item::BoardOutline(_) => "BoardOutline",
+            Item::ComponentOutline(_) => "ComponentOutline",
+        };
+        let nets: Vec<String> = item.net_nos().iter().map(i32::to_string).collect();
+        sb.push_str(&format!(
+            "\"{}|{}|{}|{}|{}\"",
+            id.0,
+            kind,
+            nets.join(","),
+            item.clearance_class(),
+            item.get_fixed_state() as i32
+        ));
+    }
+    sb.push(']');
+    sb.push_str(",\"changedArea\":");
+    let Some(changed_area) = board.changed_area.as_ref() else {
+        sb.push_str("null");
+        return;
+    };
+    sb.push('[');
+    for layer in 0..board.get_layer_count() {
+        if layer > 0 {
+            sb.push(',');
+        }
+        sb.push_str(&format!("\"{}\"", changed_area.get_area(layer)));
+    }
+    sb.push(']');
+}
 
 /// `P6T1.pt`.
 fn pt(p: &Point) -> String {

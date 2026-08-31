@@ -594,7 +594,7 @@ Two invocations are deliberately **absent**, and they do not behave the same way
 | absent invocation | what it prints today | exit |
 |---|---|---|
 | `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
-| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **nine `ROSTERED` lines** — every pipeline class *is* mapped (`fr-router.map:159` `BatchAutorouter lib.rs`) and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING` | 0 |
+| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **eight `ROSTERED` lines** — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers | 0 |
 
 Before the Plan 6 final review, the second — and the third, which was
 `board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and

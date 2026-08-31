@@ -220,11 +220,25 @@ case "$driver" in
     # (`SortedRoomNeighbours.calculateNewIncompleteRooms`) does not terminate for a small fraction
     # of room completions and neither language guards it, so a corpus connection can hang in Java
     # and in the port alike. Without the bound the harness would hang rather than report.
+    #
+    # Plan 7 Task 8 added a fifth and sixth argument: `steps` (`1-5` | `1-8`) and `neckWidthUm`.
+    # `1-5` is unchanged in every byte, including the HEADER line the committed
+    # `tests/reference/*/router.meta.txt` records; `1-8` runs
+    # `AutorouteConnectionRouter.route` in full through `probes/P7T8Probe.java`, which is
+    # compiled alongside because `route` and `BatchAutorouter.autorouteItem` are both
+    # package-private in `app.freerouting.autoroute.pipeline`.
     javaclass=P6T1
     javapkg="autoroute.maze"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 8 1)
     needs_jar=1
-    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
+    extra_jar_sources=("$DIFF_ROOT/java/probes/P7T8Probe.java")
+    # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
+    # sweeps this driver too. The default is `2`, which is the mode
+    # `tests/reference/router-*/router.jsonl` was generated under, so nothing changes unless the
+    # variable is set. Plan 7 Task 8 made the swap: `--steps=1-8` reaches `optChangedArea` and
+    # `ViaOptimizer`, neither of which Plan 6's hash-mode sweep covered, so the sweep has to be
+    # available here to tell a port bug from a Java hash-order dependency.
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
     run_timeout="${P6T1_TIMEOUT:-900}"
     ;;
   p7t7)
@@ -239,7 +253,7 @@ case "$driver" in
     javapkg="autoroute.maze"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 0 1)
     needs_jar=1
-    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java" "$DIFF_ROOT/java/probes/P7T8Probe.java")
     # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
     # sweeps this driver too: `BoardStatistics` reaches `DesignRulesChecker` twice, and that class
     # iterates `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3 and 4).
@@ -278,7 +292,7 @@ case "$driver" in
     javapkg="autoroute.maze"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 2000 0 warm)
     needs_jar=1
-    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java" "$DIFF_ROOT/java/probes/P7T8Probe.java")
     java_flags=(
       -Duser.language=en
       -Duser.country=US
@@ -309,7 +323,7 @@ case "$driver" in
     javapkg="autoroute.maze"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 0 500 6)
     needs_jar=1
-    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java" "$DIFF_ROOT/java/probes/P7T8Probe.java")
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     run_timeout="${P7T3_TIMEOUT:-900}"
     ;;
@@ -340,7 +354,7 @@ case "$driver" in
     javapkg="autoroute.maze"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 2 500 12)
     needs_jar=1
-    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java" "$DIFF_ROOT/java/probes/P7T8Probe.java")
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     run_timeout="${P7T4_TIMEOUT:-900}"
     ;;

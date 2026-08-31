@@ -164,7 +164,12 @@ ShapeSearchTree45Degree           autoroute/tree_ext.rs
 ShapeSearchTree90Degree           autoroute/tree_ext.rs
 
 # --- Plan 7 (matched only by `// added in Plan 7:` markers in lib.rs) ---------------------------
+# Plan 7 Task 8 added the second `BatchAutorouter` row: the class's ported half lives in
+# `pipeline/batch_autorouter.rs` and its still-deferred half is rostered there and in `lib.rs`,
+# so both files are in scope. Two rows for one class is the map's documented shape for a Rust
+# home that spans two files (see the header).
 BatchAutorouter                   lib.rs
+BatchAutorouter                   pipeline/batch_autorouter.rs
 BatchAutorouterThread             lib.rs
 AutoroutePassRunner               lib.rs
 AutorouteBatchLoop                lib.rs
