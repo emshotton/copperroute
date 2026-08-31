@@ -535,6 +535,24 @@ see the README section that lists all eight.
    > Plan 7's pre-flight scan (ruling 9) found `AutoroutePassRunner.java:144` is the
    > catch of the equally-dead `runMultiThread`: `runSingleThread` has no try/catch at
    > all. **Plan 7 adds one recovery boundary, not two**, and it propagates.
+   >
+   > **Status (2026-08-31): the second half of the line above is WRONG, and Plan 7
+   > Task 9 (`3e65333`) disproved it against Java** — independently re-verified in that
+   > task's review. `:144` really does close the dead `runMultiThread` (`:40-149`), so
+   > the first half stands; but `runSingleThread` (`:151-336`) opens its **own** `try`
+   > at `:156` and closes it with `catch (Exception e) { job.logError(…); airLine =
+   > null; return false; }` at `:331-335`, wrapping the whole method body. The
+   > pre-flight scan itself said only "no **per-item** try", which is true; the
+   > over-generalisation to "no try/catch at all" entered this line, the plan's Task 9
+   > note 11 and the task brief.
+   >
+   > So **Plan 7 adds two boundaries, and only one of them propagates**: this one
+   > *degrades* to `false` (the plan-6 ruling 7 shape — `AutoroutePassRunner::
+   > run_single_thread`, one `catch_unwind` around the whole body, **not** per item),
+   > and `AutorouteBatchLoop`'s `NoRoutableLayer` (plan-7 ruling 7) propagates. The
+   > current text is in `crates/fr-router/README.md`'s recovery-boundary table and in
+   > `crates/fr-router/src/pipeline/pass_runner.rs`'s method doc, which quotes the
+   > `sed` window. This file is otherwise frozen; only this status line is added.
 3. **The fanout pre-pass** (`BatchFanout`, `RoutingBoard.fanout`). It is the only
    thing that sets `ctrl.isFanout`, which is why two of this plan's coverage
    obligations cannot be discharged below the seam

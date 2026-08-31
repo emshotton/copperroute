@@ -28,11 +28,11 @@ use crate::score::BoardStatistics;
 ///
 // not ported: `AutoroutePassRunner.runMultiThread` (`:40-149`) — its only caller is `BatchAutorouter.autoroutePassMultiThread` (`:411-413`), which has **zero** callers in `src/main` or `src/test` (survey §3.4). No rayon, no threads (ruling AM).
 // not ported: `AutoroutePassRunner.onBoardUpdatedEvent` — **not a method of the class**: it is the single method of an *anonymous* `BoardUpdatedEventListener` declared at `:78-85`, inside the dead `runMultiThread`, and `audit-port.sh`'s line-based extraction attributes it to the enclosing file. Its body forwards the multithreaded workers' board updates to `NamedAlgorithm.fireBoardUpdatedEvent`, which controller ruling AK replaces with [`ProgressSink`] wholesale.
-// not ported: `AutoroutePassRunner.logIncompleteDetails` (`:338-373`) — an `FRLogger`/`job.logDebug` payload builder; every `FRLogger` call in `autoroute/**` is dropped (plan-6 ruling 14).
-// not ported: `AutoroutePassRunner.logRippedItems` (`:375-403`) — likewise; it is also the reason `rippedItemCosts` is a `LinkedHashMap` rather than a `TreeMap` (see [`AutoroutePassRunner::run_single_thread`]).
-// not ported: `AutoroutePassRunner.logTraceRouteComparison` (`:405-455`) — likewise, and guarded by `FRLogger.isTraceEnabled()` at its call site (`:253`).
-// not ported: `AutoroutePassRunner.logNet94Items` (`:457-487`) — likewise, and gated by the hard-coded net number at `:256` (quirk #190, which already lists this site).
-// not ported: `AutoroutePassRunner.logTailRemoval` (`:518-525`) — likewise; called at `:296` and `:303` around `removeTails`.
+// not ported: `AutoroutePassRunner.logIncompleteDetails` (`:338-359`) — an `FRLogger`/`job.logDebug` payload builder; every `FRLogger` call in `autoroute/**` is dropped (plan-6 ruling 14).
+// not ported: `AutoroutePassRunner.logRippedItems` (`:361-395`) — likewise; it is also the reason `rippedItemCosts` is a `LinkedHashMap` rather than a `TreeMap` (see [`AutoroutePassRunner::run_single_thread`]).
+// not ported: `AutoroutePassRunner.logTraceRouteComparison` (`:397-437`) — likewise, and guarded by `FRLogger.isTraceEnabled()` at its call site (`:252`).
+// not ported: `AutoroutePassRunner.logNet94Items` (`:439-487`) — likewise, and gated by the hard-coded net number at `:256` (quirk #190, which already lists this site).
+// not ported: `AutoroutePassRunner.logTailRemoval` (`:518-525`) — likewise; called at `:297` and `:303` around `removeTails`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AutoroutePassRunner;
 
@@ -119,7 +119,7 @@ impl AutoroutePassRunner {
     /// #44**, ascending here and descending there, which is unobservable because
     /// `AutorouteConnectionRouter` only tests membership and counts it; and Java's
     /// `LinkedHashMap<Item, Integer>` is a [`BTreeMap<ItemId, i32>`], because its only
-    /// order-sensitive reader is `logRippedItems` (`:375-403`), which is not ported, and
+    /// order-sensitive reader is `logRippedItems` (`:361-395`), which is not ported, and
     /// Plan 6 Task 17 established that both sides may sort the map by item id.
     #[allow(clippy::too_many_arguments)]
     pub fn run_single_thread(
@@ -289,7 +289,7 @@ impl AutoroutePassRunner {
                     stop_check,
                 );
 
-                // :252-258 are the three log payloads; see the `not ported:` roster above.
+                // :251-258 are the three log payloads; see the `not ported:` roster above.
 
                 // :260-289 — the result switch.
                 match autorouter_result.state {
@@ -339,7 +339,7 @@ impl AutoroutePassRunner {
             }
         }
 
-        // :296 and :303 are `logTailRemoval`; not ported.
+        // :297 and :303 are `logTailRemoval`; not ported.
         // :298-302.
         // `removeTails` forwards `this.thread` to `optChangedArea` (`BatchAutorouter.java:497`),
         // so the check here is `isStopRequested()` (`ALL`) for the same reason the item's is.

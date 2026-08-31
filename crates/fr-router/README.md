@@ -532,14 +532,18 @@ no `MISSING` line and no `UNMAPPED` line, on the committed tree. Both of those n
 silently fell back to the weaker crate-wide search, so it fails the run exactly as
 a `MISSING` method does. `ROSTERED` lines are informational and do not: they name
 a class whose every public method is answered by a `not ported:` /
-`added in Task|Plan N:` marker and none by a real `fn`. **Twenty-three** of them
+`added in Task|Plan N:` marker and none by a real `fn`. **Twenty-one** of them
 print across eight of the **thirty** invocations (`board/state` 3,
 `datastructures` 5, `io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3,
-`io/kicad` 3, `core/scoring` (fr-router) 2, `autoroute` 4). *(The count was
+`io/kicad` 3, `core/scoring` (fr-router) 2, `autoroute` **2**). *(The count was
 twenty-two across seven of twenty-nine before Plan 7: Task 1 added the
 `core/scoring crates/fr-router/src` invocation and its two rows, and Task 2's
-`BoardHistory` took `autoroute` from five rows to four. Task 17 owns the rest of
-this section's rewrite.)* Copy-pasteable:
+`BoardHistory` took `autoroute` from five rows to four. **Plan 7 Task 9 took
+`autoroute` from four to two and the total from twenty-three to twenty-one**, by
+giving `RoutingFailureLog` and `ItemRouteResult` real `fn`s and re-pointing their
+map rows off `lib.rs`; the two that remain there are `BoardHistoryEntry` and
+`PerformanceProfiler`. Task 17 owns the rest of this section's rewrite.)*
+Copy-pasteable:
 
 ```sh
 # fr-geometry (Plan 1; scripts/audit-geometry-port.sh is a thin alias for the first)

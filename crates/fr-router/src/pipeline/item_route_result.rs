@@ -119,7 +119,7 @@ impl ItemRouteResult {
         // :59-65. `viaCountAfter / viaCountBefore` is an **int** division (quirk #212); the
         // `i32` division below truncates towards zero exactly as Java's does, and `:61`'s guard
         // is what keeps it from dividing by zero.
-        // Java bug: `ItemRouteResult` (`:63`) — `viaCountAfter / viaCountBefore` is `int / int`, so the via term truncates to 0 or 1 while the trace term is a `double` (quirk #212).
+        // Java bug: `ItemRouteResult.<init>` — the seven-argument constructor (`:23-66`), at `:63`: `viaCountAfter / viaCountBefore` is `int / int`, so the via term truncates to 0 or 1 while the trace term is a `double` (quirk #212).
         let improvement_percentage = if via_count_before != 0 && trace_length_before != 0.0 {
             let via_term = f64::from(via_count_after / via_count_before);
             let length_term = trace_length_after / trace_length_before;
