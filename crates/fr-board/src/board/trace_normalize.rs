@@ -997,8 +997,19 @@ impl Board {
     // Plan 6 Task 15b (controller ruling AB) makes it **at the call site** instead:
     // `fr_router::board_ext::PolylineTraceExt::pull_tight_with_engine` runs it, guarded by
     // Java's own `isOnTheBoard()` test (`:938-942`), immediately before calling this
-    // method. Every further caller Plan 7 wires up — `PolylineTrace.correctConnectionToPin`
-    // (`:1229`) and `TraceShover`'s two `change` calls (`:385`, `:540`) — must do the same.
+    // method. Every further caller Plan 7 wires up must do the same:
+    // `PolylineTrace.correctConnectionToPin`'s `change` (HEAD's `:1237`; the `:1229` this marker
+    // used to cite predates the same edit that moved `:942` to `:944`) — **discharged by Plan 7
+    // Task 5** in `PolylineTraceExt::correct_connection_to_pin` — and `TraceShover`'s two
+    // `change` calls (`:385`, `:540`), which are still open.
+    //
+    // `PolylineTrace.combine`'s own `additionalUpdateAfterChange` (`:188`) is **not** this
+    // marker's: it sits inside `combine`'s loop rather than before a `change`, so it is
+    // `Board::combine_trace`'s `added in Plan 7:` marker above, which **Task 8** owns (plan line
+    // 871). Task 5's one `combine` caller,
+    // `fr_router::board_ext::PolylineTraceExt::swap_connection_to_pin`, transcribes that loop
+    // itself rather than calling `Board::combine_trace`, precisely so it can place `:188` where
+    // Java places it; nothing here changed.
     // not ported: `board.itemList.saveForUndo(this)` (:948) — no undo stack (Task 12) — the
     // observer notification (:987-990) and the `FRLogger.error` in the catch (:1003).
     pub fn change_trace(&mut self, id: ItemId, new_polyline: Polyline) {

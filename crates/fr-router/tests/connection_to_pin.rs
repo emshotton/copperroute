@@ -27,6 +27,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::format::double::java_double_to_string;
 use fr_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, TileShape};
+use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
 // =================================================================================================
@@ -229,6 +230,11 @@ struct SwapCase {
     stub_end: Point,
     main_corners: Vec<Point>,
     half_width: i32,
+    /// The stub's own half width, normally the main trace's. `wide-stub` makes them differ:
+    /// `swapConnectionToPin` never compares widths, but `combineAtStart` does
+    /// (`PolylineTrace.java:239-244`), so that row is a `swap` that succeeds and whose
+    /// `combine()` then merges **nothing**.
+    stub_half_width: i32,
 }
 
 /// `P7T6.swapTable()`.
@@ -239,36 +245,49 @@ fn swap_table() -> Vec<SwapCase> {
             stub_end: p(-800, 0),
             main_corners: vec![p(-800, 0), p(-200, 300)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-blunt",
             stub_end: p(-800, 0),
             main_corners: vec![p(-800, 0), p(-1400, 300)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "right-stub-sharp",
             stub_end: p(-200, 0),
             main_corners: vec![p(-200, 0), p(-800, 300)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-long",
             stub_end: p(-1200, 0),
             main_corners: vec![p(-1200, 0), p(-300, 700)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-kink",
             stub_end: p(-800, 0),
             main_corners: vec![p(-800, 0), p(-780, 20), p(-200, 400)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-fat",
             stub_end: p(-900, 0),
             main_corners: vec![p(-900, 0), p(-200, 500)],
             half_width: 90,
+            stub_half_width: 90,
+        },
+        SwapCase {
+            name: "wide-stub",
+            stub_end: p(-800, 0),
+            main_corners: vec![p(-800, 0), p(-200, 300)],
+            half_width: 30,
+            stub_half_width: 90,
         },
     ]
 }
@@ -570,7 +589,7 @@ fn swap_rows_for(angle: AngleRestriction) -> Vec<String> {
                 board.insert_trace_without_cleaning(
                     Polyline::from_points(&[p(-500, 0), case.stub_end.clone()]),
                     0,
-                    case.half_width,
+                    case.stub_half_width,
                     vec![1],
                     1,
                     FixedState::ShoveFixed,
@@ -821,4 +840,137 @@ fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
         &mut board, trace, &mut algo
     ));
     assert_eq!(shove_fixed_traces(&board), 1);
+}
+
+// =================================================================================================
+// `combine()`'s `additionalUpdateAfterChange` (PolylineTrace.java:188) — the per-merge call
+// =================================================================================================
+
+/// `swapConnectionToPin:1313` calls `this.combine()`, whose loop is
+///
+/// ```java
+/// while (this.isOnTheBoard() && (this.combineAtStart(true) || this.combineAtEnd(true))) {
+///   somethingChanged = true;
+///   …observers…
+///   board.additionalUpdateAfterChange(this);   // :188
+/// }
+/// ```
+///
+/// so `:188` runs **once per successful merge**, **after** the merge, and **not at all** when
+/// neither end can grow. `combineAtStart`/`combineAtEnd` never call `change()` themselves, so
+/// `:188` is `combine`'s only route to it.
+///
+/// # Why this test exists, and why it needs a live engine
+///
+/// Both differential drivers pass `engine = None` — `additionalUpdateAfterChange` touches the
+/// engine's room/drill database and never the board's item list, so no `p7t3`/`p7t6` row can see
+/// it. An earlier draft of `swap_connection_to_pin` made the call **once, unconditionally, before**
+/// `combine_trace`, which agrees with Java on every driver row and diverges the moment a real
+/// engine is threaded (Tasks 8/9/10/13) — the class of divergence quirk #74 and Plan 6 Task 17b's
+/// `router-dac2020-bm01` bisect were about. So the instrument is an `AutorouteEngine` with
+/// `maintain_database = true` and a completed expansion room next to the stub: what
+/// `RoutingBoard.additionalUpdateAfterChange:103-111` does is remove the complete free-space rooms
+/// overlapping a tree shape of the item, so a removed room is a call and a surviving room is not.
+///
+/// # What each row pins
+///
+/// * **`left-stub-sharp`** — the stub and the trace have the same half width, so `combine()`
+///   merges them; one room goes and the two traces become one. Both the fixed port and the earlier
+///   draft agree here (the pre-merge and post-merge shapes both reach this room), so this row is
+///   the control.
+/// * **`wide-stub`** — the stub is 90 half-width against the trace's 30. `swapConnectionToPin`
+///   never compares widths, but `combineAtStart` does (`PolylineTrace.java:239-244`), so the swap
+///   succeeds and `combine()` merges **nothing**: Java makes **zero** `:188` calls and the room
+///   must survive. This is the row that goes red on the earlier draft — measured, by reverting the
+///   fix: it reports one room removed instead of none.
+///
+/// The premise of the second row is JVM-verified rather than assumed: `p7t6 swap`'s `wide-stub`
+/// rows answer `changed=true` with **both** traces still in the board dump (the stub released to
+/// `UNFIXED` and not absorbed), which is what "the swap succeeded and nothing merged" looks like
+/// from outside.
+///
+/// The remaining divergence of the earlier draft — the *count* on a multi-merge chain, and the
+/// pre- versus post-merge *shape* — is not separable with this instrument, because a completed
+/// room here grows large enough to touch both corridors. It is the same loop, so it stands or
+/// falls with the row above.
+#[test]
+fn combine_calls_additional_update_after_change_once_per_merge_and_never_without_one() {
+    for (case_name, expect_merge) in [("left-stub-sharp", true), ("wide-stub", false)] {
+        let case = swap_table()
+            .into_iter()
+            .find(|c| c.name == case_name)
+            .expect("the case is in the table");
+        let mut board = probe_board(AngleRestriction::None, 100.0);
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[p(-500, 0), case.stub_end.clone()]),
+            0,
+            case.stub_half_width,
+            vec![1],
+            1,
+            FixedState::ShoveFixed,
+        );
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&case.main_corners),
+            0,
+            case.half_width,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let main = last_trace(&board);
+
+        // `maintain_database = true` is what `additionalUpdateAfterChange:100-102` tests before
+        // doing anything.
+        let mut engine = AutorouteEngine::new(&mut board, 1, true);
+        engine.init_connection(&mut board, 1, None);
+        let seed = engine.add_incomplete_expansion_room(
+            None,
+            0,
+            Some(TileShape::Box(IntBox::from_coords(-660, -40, -640, -20))),
+        );
+        let completed = engine
+            .complete_expansion_room(&mut board, seed)
+            .expect("no failure boundary is reached");
+        assert_eq!(
+            completed.len(),
+            2,
+            "{case_name}: the seed completes to two rooms"
+        );
+        let rooms_before = engine.complete_expansion_rooms().len();
+        assert_eq!(rooms_before, 2, "{case_name}");
+
+        assert!(
+            <Board as PolylineTraceExt>::swap_connection_to_pin(
+                &mut board,
+                Some(&mut engine),
+                main,
+                true
+            )
+            .expect("swapConnectionToPin cannot fail in Java"),
+            "{case_name}: the swap itself must succeed in both rows"
+        );
+
+        let rooms_after = engine.complete_expansion_rooms().len();
+        let traces_left = board
+            .get_items()
+            .filter(|item| matches!(item, Item::Trace(_)))
+            .count();
+        if expect_merge {
+            assert_eq!(traces_left, 1, "{case_name}: the stub was absorbed");
+            assert_eq!(
+                rooms_after, 1,
+                "{case_name}: the merge invalidated the room it now overlaps"
+            );
+        } else {
+            assert_eq!(
+                traces_left, 2,
+                "{case_name}: the widths differ, so combineAtStart refuses and nothing merges"
+            );
+            assert_eq!(
+                rooms_after, rooms_before,
+                "{case_name}: zero merges is zero additionalUpdateAfterChange calls \
+                 (PolylineTrace.java:183-190) — this is the assertion the earlier draft failed"
+            );
+        }
+    }
 }

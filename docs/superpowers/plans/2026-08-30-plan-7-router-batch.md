@@ -20,8 +20,13 @@
 > place below and marked "*(scan ruling N)*" at the site.** The five that change what a task builds:
 >
 > * **Quirk ids run from #194, not #189** — the register is contiguous through #193 (ruling 1).
-> * **Task 5 ports `correct` + `swap` only.** `checkConnectionToPin` is already ported in Plan 6;
->   re-transcribing it would be verbatim duplication (ruling 5).
+> * ~~**Task 5 ports `correct` + `swap` only.** `checkConnectionToPin` is already ported in Plan 6;
+>   re-transcribing it would be verbatim duplication (ruling 5).~~ **STRUCK — the scan was wrong
+>   and the Task 5 review adjudicated it (§A).** `checkConnectionToPin` was **not** ported: at
+>   `92c214e`, `git grep -i connection_to_pin -- crates` was empty and every `ConnectionToPin` hit
+>   was a marker or prose. The scanner almost certainly matched the deferral marker at
+>   `tightener/mod.rs:771`. **Task 5 ports the trio**, and did. Ruling 5's *other* two corrections
+>   — the marker is at `:771`, not `:775`, and it names two methods, not three — stand.
 > * **Task 6 also ports `RoutingBoard.moveDrillItem`** — `Board::move_drill_item` does not exist,
 >   though the plan's first draft consumed it as if it did (ruling 3).
 > * **Ruling 7's second recovery boundary is struck.** `AutoroutePassRunner.java:144` is the catch of
@@ -685,12 +690,12 @@ pub struct RouterCounters {
 
 ---
 
-### Task 5: `optChangedArea` and the `ConnectionToPin` **pair** (scan ruling 5)
+### Task 5: `optChangedArea` and the `ConnectionToPin` **trio**
 
 **Files:** `crates/fr-router/src/board_ext/{routing_board_ext,tightener/mod}.rs`, `crates/fr-board/src/{board/mod.rs,items/trace.rs}`; `crates/fr-router/tests/{opt_changed_area,connection_to_pin}.rs`; `scripts/differential/java/{P7T3.java,P7T6.java}`, `scripts/differential/rust/src/bin/{p7t3.rs,p7t6.rs}`.
 
 **Markers this task owns (scan ruling 2 — exact, because Task 17's gate counts them):** `crates/fr-board/src/items/trace.rs` **`:96`** (`Trace.checkConnectionToPin`, abstract — becomes `// renamed:` pointing at the existing `fr-router` fn), **`:97`** (`PolylineTrace.checkConnectionToPin` — same), **`:98`**, **`:99`** (the two this task ports — `// renamed:` pointing at `PolylineTraceExt`), **`:101`** (`PolylineTrace.smoothenEndCornersFork` — its callee landed in Plan 6 Task 15a, so this becomes `// renamed:` pointing at `TraceTightener::smoothen_end_corners_at_trace`; **it was orphaned in the plan's first draft**); `crates/fr-board/src/board/mod.rs` **`:184`** (`RoutingBoard.optChangedArea`); and `crates/fr-router/src/board_ext/tightener/mod.rs` **`:47`** (`TraceTightener.optChangedArea`). `trace.rs:92` is prose about the marker convention and stays.
-**Java:** `board/facade/RoutingBoardOperations.java` — `optChangedArea` `:52-79` (28); `board/facade/RoutingBoard.java` — `optChangedArea` overload 1 `:151-161` (11), overload 2 `:171-190` (20); `board/optimize/TraceTightener.java` — **`optChangedArea(ExpansionCostFactor[])` `:121-169`** (49, the class's last unported method; marker at `crates/fr-router/src/board_ext/tightener/mod.rs:47`); `board/trace/PolylineTrace.java` — **`correctConnectionToPin` `:1082-1245` (164)**, **`swapConnectionToPin` `:1252-1313` (62)**, and re-enabling the four call sites at `pullTight:844, 848, 853, 857`. **`checkConnectionToPin` `:1013-1076` (64) is NOT in scope — Plan 6 already ported it** (scan ruling 5). **≈ 336 Java lines.**
+**Java:** `board/facade/RoutingBoardOperations.java` — `optChangedArea` `:52-79` (28); `board/facade/RoutingBoard.java` — `optChangedArea` overload 1 `:151-161` (11), overload 2 `:171-190` (20); `board/optimize/TraceTightener.java` — **`optChangedArea(ExpansionCostFactor[])` `:121-169`** (49, the class's last unported method; marker at `crates/fr-router/src/board_ext/tightener/mod.rs:47`); `board/trace/PolylineTrace.java` — **`correctConnectionToPin` `:1082-1245` (164)**, **`swapConnectionToPin` `:1252-1313` (62)**, and re-enabling the four call sites at `pullTight:844, 848, 853, 857`. **`checkConnectionToPin` `:1013-1076` (64) IS in scope** — the scan ruling that took it out was a false positive and the Task 5 review struck it (§A); Plan 6 never ported it. **≈ 400 Java lines.**
 
 **Interfaces consumed:** `RouterStop`, `RouterBudget` (**Task 4 — so this task depends on Task 4**, which the dispatch note now records); `TraceTightener::{get_instance, split_traces_at_keep_point, smoothen_end_corners_at_trace}`, `PolylineTraceExt::{pull_tight, pull_tight_with, pull_tight_with_engine}` and **the existing private `check_connection_to_pin`** in `board_ext/tightener/mod.rs` (Plan 6 Tasks 15a/15b); `Board::overlapping_objects` (Plan 2) and the **public field** `Board::changed_area` (a field, not a method). **`Board::join_graphics_update_box` does not exist and is not needed** — it is the GUI repaint box this task rosters `// not ported:`.
 **Interfaces produced:**
@@ -744,12 +749,12 @@ impl<'a> TraceTightener<'a> {
 pub trait PolylineTraceExt {
     /* … pull_tight, pull_tight_with, pull_tight_with_engine (Plan 6 Task 15a) … */
 
-    // `PolylineTrace.checkConnectionToPin` (:1013-1076) is **already implemented** as a private
-    // free fn in this same file (Plan 6). **Do not re-declare or re-transcribe it** (scan ruling 5
-    // — the plan's first draft budgeted its 64 lines and added it to this trait, which would have
-    // been verbatim duplication of an existing logic block). Raise its visibility to `pub(crate)`
-    // — or to a trait method if the two ported methods' callers need it through the trait — and
-    // say in the commit message which you did.
+    /// `PolylineTrace.checkConnectionToPin(boolean)` (:1013-1076) and the abstract
+    /// `Trace.checkConnectionToPin` (`board/model/items/Trace.java:376`) it overrides. **Not**
+    /// ported in Plan 6 — the scan ruling that said so was a false positive (see the struck
+    /// amendment bullet above). A **trait method**, not a private free fn: the pair's callers
+    /// reach it through the trait, and `correctConnectionToPin:1083` is its only Java caller.
+    fn check_connection_to_pin(board: &Board, trace: ItemId, at_start: bool) -> bool;
 
     /// `PolylineTrace.correctConnectionToPin(boolean, int)` (PolylineTrace.java:1082-1245) —
     /// the acid-trap correction; reaches `board.checkPolylineTrace` and `board.insertTrace`.
@@ -769,7 +774,7 @@ pub trait PolylineTraceExt {
 - **Ruling 9's reference comparison** (`RoutingBoardOperations.java:64`): port `clip_shape` as `Option<IntOctagon>` where `None` **runs** the branch, with the `// Java bug:` marker and the test.
 - `RoutingBoardOperations.optChangedArea` returns early when `board.changedArea == null` (`:61-63`), then after the tightener joins `board.joinGraphicsUpdateBox(changedArea.surroundingBox())` (`:77`) — a GUI repaint box, `// not ported:` — and **sets `board.changedArea = null`** (`:78`). That last line is load-bearing: the next `startMarkingChangedArea` re-creates it, and forgetting it makes the second sweep see a stale region.
 - **The trio re-enters through `pullTight`** (`PolylineTrace.java:841-861`), only when the polyline came back unchanged, the angle restriction is **not** 90°, and `board.rules.getPinEdgeToTurnDist() > 0` — then `swapConnectionToPin(true)` `:844`, `swapConnectionToPin(false)` `:848`, `correctConnectionToPin(true, …)` `:853`, `correctConnectionToPin(false, …)` `:857`, **each recursing into `pullTight` on success**. Plan 6 pinned `pinEdgeToTurnDist = -1` inside `FoundConnectionInserter.insertTrace:140-141` (restored at `:447`), which is why the branch was unreachable there and is reachable here: `optChangedArea` calls `pullTight` **outside** that window. Delete the **single-line** marker at **`crates/fr-router/src/board_ext/tightener/mod.rs:771`** — it names **two** methods (`swapConnectionToPin` and `correctConnectionToPin`) and the four calls at `:844-860`, which is exactly this task's scope; `:775` is a bare `false`, and the first draft's "marker block at `:775`" does not exist. Re-point the five `crates/fr-board/src/items/trace.rs` markers listed under **Files** above.
-- **Quirk #182 (`avoidAcidTraps` disabled by `if (true) return`) and quirk #184 (`TraceTightener45.reduceCorners`' stale clip flag)** both live on this path. #184 is *reachable only with a non-null `clipShape`*, i.e. only from `removeItemsAndPullTight`/`RouteState` — both GUI. Re-check that at port time and record the answer; if a Plan 7 caller does pass a clip shape, #184 becomes live and needs a test.
+- **Quirk #182 (`avoidAcidTraps` disabled by `if (true) return`) and quirk #184 (`TraceTightener45.reduceCorners`' stale clip flag)** both live on this path. #184 is *reachable only with a non-null `clipShape`*, i.e. only from `removeItemsAndPullTight`/`RouteState`. Re-check that at port time and record the answer; if a Plan 7 caller does pass a clip shape, #184 becomes live and needs a test. **Task 5 re-checked it and it is dead there**: every `autoroute/pipeline` caller passes `null` (`AutorouteConnectionRouter:103`, `:223`, `BatchAutorouter:492`, `BatchAutorouterThread:527`, `:563`). **The obligation is Task 8's, not "a future task's"** — Task 8 owns `removeItemsAndPullTight` (index line 206, task heading line 869), whose `:117` call is the only Plan 7 path passing a non-null `clipShape`, so **#184 becomes live there and needs a test**.
 - `correctConnectionToPin` (164 lines) calls `combine()` and `insertTrace`, which route through **`PolylineTrace.change` (`board/trace/PolylineTrace.java:937`** — *not* `:188`, which is inside `combine()`; the plan's first draft and `crates/fr-board/src/board/trace_normalize.rs:67` both cite `:188`) — the site quirk #74 is about. Ruling AE's contract (Conventions §7) applies at every `Polyline` construction inside it. (`Trace.java` lives at `board/model/items/`, not `board/trace/`.)
 
 **Tests.**

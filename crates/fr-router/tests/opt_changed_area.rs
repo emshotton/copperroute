@@ -336,29 +336,60 @@ fn the_item_loop_does_not_break_after_a_plain_pull_tight() {
     let mut board = detour_board(200);
     mark_every_trace(&mut board);
     let ids = trace_ids(&board);
+    assert_eq!(
+        ids.len(),
+        3,
+        "two shortenable traces on layer 0, one on layer 1"
+    );
     let before: Vec<Polyline> = ids.iter().map(|id| polyline_of(&board, *id)).collect();
 
-    // Two objects share layer 0. Run the sweep with a stop check that trips after the first
-    // `isStopRequested` of the *second* object, so only one outer iteration's worth of layer-0
-    // work can have happened.
+    // The instrument is **which traces have moved when the sweep is cut**, not how many times the
+    // stop check was read: `is_stop_requested` is also read inside the tighteners' own loops
+    // (Plan 6), so the read count is not a clean per-object counter and a first draft of this test
+    // that asserted `calls > 3` was satisfied by both behaviours.
+    //
+    // Cutting on the sixth read separates them. Measured, by building the same board twice — once
+    // against this port and once against a copy whose `:153-155` break was made unconditional:
+    //
+    // | behaviour | layer-0 trace 0 | layer-0 trace 1 | layer-1 trace |
+    // |---|---|---|---|
+    // | Java's, conditional on `splitTracesAtKeepPoint()` (this port) | moved | moved | untouched |
+    // | the brief's reading, unconditional `break` | **untouched** | moved | **moved** |
+    //
+    // With no keep point — which is every router caller, `RouteState` being the only one that
+    // passes one — `splitTracesAtKeepPoint` is a no-op answering `false`, so layer 0 is walked to
+    // the end and the cut lands on layer 1's first object. An unconditional break leaves layer 0
+    // after one object and reaches layer 1 a whole outer iteration earlier.
     let calls = Cell::new(0u32);
     let stop = || {
         calls.set(calls.get() + 1);
-        false
+        calls.get() >= 6
     };
     let mut algo =
         TraceTightener::get_instance(&mut board, Vec::new(), None, 500, Some(&stop), 0, None, -1);
+    // The tightener has no keep point, so this is the arm's condition and it is `false`.
+    assert!(
+        !algo
+            .split_traces_at_keep_point(&mut board)
+            .expect("cannot fail"),
+        "splitTracesAtKeepPoint is a no-op without a keep point (TraceTightener.java:476-491)"
+    );
     algo.opt_changed_area(&mut board, None, None)
         .expect("cannot fail");
 
     let after: Vec<Polyline> = ids.iter().map(|id| polyline_of(&board, *id)).collect();
-    for (i, (b, a)) in before.iter().zip(after.iter()).enumerate() {
-        assert_ne!(b, a, "trace {i} was not tightened");
-    }
-    // `:147` runs once per object per layer per outer iteration, so more than three reads means
-    // the outer `while` ran more than once — which it must, because the first pass sets
-    // `somethingChanged`.
-    assert!(calls.get() > 3, "the stop check is read at :147");
+    assert_ne!(
+        before[0], after[0],
+        "the layer-0 walk stopped after one object — the `pullTight` arm broke unconditionally"
+    );
+    assert_ne!(
+        before[1], after[1],
+        "the first layer-0 object was not tightened"
+    );
+    assert_eq!(
+        before[2], after[2],
+        "layer 1 must still be untouched at the cut"
+    );
 }
 
 /// `:147-149`, the sweep's only cut. A stop check that trips part-way returns with the rest of the
@@ -461,11 +492,16 @@ fn the_budget_trips_the_sweep() {
 // The `ViaOptimizer` arm — Task 6's obligation
 // =================================================================================================
 
-/// `:160-165`. The arm is stubbed to `false`, so a via in the changed area is left where it is and
-/// `somethingChanged` is not set by it. Asserted here rather than left implicit so that Task 6 has
-/// a test to flip.
+/// `:160-165`. Offering `traceCosts` must not change the **trace** side of the sweep: the arm is
+/// reached only for a `Via`, and it is stubbed to `false`, so `somethingChanged` is never set by
+/// it.
+///
+/// This is a guard against the stub leaking into the trace arms, **not** a proof that the arm is
+/// stubbed — the board carries no vias, so a live `optViaLocation` would agree here too. The proof
+/// that the arm is still stubbed is [`mode_four_is_task_sixs_obligation`], which runs on a real
+/// board that does have vias in its changed area and asserts the port still diverges from the JVM.
 #[test]
-fn the_via_optimizer_arm_is_stubbed() {
+fn offering_trace_costs_does_not_change_the_trace_arms() {
     let mut board = detour_board(200);
     mark_every_trace(&mut board);
     let ids = trace_ids(&board);
@@ -494,9 +530,10 @@ fn the_via_optimizer_arm_is_stubbed() {
         .map(|id| polyline_of(&board, *id))
         .collect::<Vec<_>>();
 
-    // The board carries no vias, so the two agree today for that reason as well; what the test
-    // pins is that offering `traceCosts` changes nothing on the trace side.
-    assert_eq!(with, without);
+    assert_eq!(
+        with, without,
+        "the ViaOptimizer arm must not reach the trace arms"
+    );
 }
 
 // =================================================================================================

@@ -226,7 +226,13 @@ impl<'a> TraceTightener<'a> {
                 if let Some(changed_area) = &mut board.changed_area {
                     changed_area.set_empty(i);
                 }
-                // :138-141.
+                // :138-141. Java's `clearanceMatrix.maxValue(i) + 2 * rules.getMaxTraceHalfWidth()`
+                // is `int` arithmetic before the promotion to `double`, and this reproduces it —
+                // including the operand order, which decides the rounding. Java would *wrap* on
+                // overflow where a debug build panics; unreachable at any realistic clearance and
+                // half width (both are board-rule values in the thousands), and recorded here
+                // because the port's convention is to say so at such sites rather than to widen
+                // silently.
                 let changed_area_offset = 1.5
                     * f64::from(
                         board.rules.clearance_matrix.max_value_on_layer(i)
@@ -858,6 +864,12 @@ pub trait PolylineTraceExt {
     /// followed by `this.combine()`, i.e. the `SHOVE_FIXED` exit stub `correctConnectionToPin`
     /// left behind is released and swallowed into this trace, so the next `pullTight` may route
     /// the pin exit a different way.
+    ///
+    /// `combine()`'s loop is transcribed in the body rather than delegated to
+    /// [`Board::combine_trace`], because `:188`'s `board.additionalUpdateAfterChange(this)` runs
+    /// **inside** it — once per merge, after the merge, never when nothing merges. See the
+    /// comment at that site. `engine` is `None` on every path that has no live
+    /// `autorouteConnection`, which is what both differential drivers pass.
     fn swap_connection_to_pin(
         board: &mut Board,
         engine: Option<&mut AutorouteEngine>,
@@ -1598,14 +1610,44 @@ impl PolylineTraceExt for Board {
         if let Some(Item::Trace(contact_trace)) = board.items.get_mut(&current_contact) {
             contact_trace.hdr.set_fixed_state(fixed_state);
         }
-        // :1313 — `PolylineTrace.combine()` (`:174-190`), which reaches `PolylineTrace.change`
-        // through `combineAtStart`/`combineAtEnd`.
-        if let Some(engine) = engine
-            && board.items.get(&trace).is_some_and(Item::is_on_the_board)
+        // :1313 — `PolylineTrace.combine()` (`:174-192`), transcribed **here** rather than
+        // delegated to [`Board::combine_trace`], because Java's loop body carries a call
+        // `fr-board` cannot make.
+        //
+        // The loop is `while (isOnTheBoard() && (combineAtStart(true) || combineAtEnd(true))) {
+        // …; board.additionalUpdateAfterChange(this); }` (`:183-190`), so `:188` runs **once per
+        // successful merge**, **after** that merge, and **not at all** when neither end can grow.
+        // `combineAtStart` (`:201-332`) and `combineAtEnd` (`:341-456`) never call `change()`
+        // themselves — they `removeItem` the absorbed trace and rebuild this one — so `:188` is
+        // `combine`'s only route to `additionalUpdateAfterChange`, and its payload is the shape
+        // the trace has *after* growing. Invalidating the **pre**-merge shape once, which an
+        // earlier draft of this method did, is a different set of expansion rooms
+        // (`RoutingBoard.additionalUpdateAfterChange:103-104` removes the complete free-space
+        // rooms touching a shape of the item).
+        //
+        // [`Board::combine_trace`] is this same loop with an empty body, and it keeps its own
+        // `added in Plan 7:` marker for `:188`: **Task 8** owns wiring an engine into `fr-board`'s
+        // other `combine` callers (plan line 871, ruling AJ's five). This is the one caller Task 5
+        // owns, so it drives the two halves itself instead of widening `fr-board`'s signature —
+        // additive, and Task 8's marker is left exactly where it was.
+        //
+        // Java's observer notification at `:184-187` is dropped for the reason
+        // `Board::combine_trace` already records: `global-constraints.md` forbids board observers.
+        let mut engine = engine;
+        while board.items.get(&trace).is_some_and(Item::is_on_the_board)
+            && (board.combine_trace_at_start(trace, true)?
+                || board.combine_trace_at_end(trace, true)?)
         {
-            board.additional_update_after_change(engine, trace);
+            // :188. Java has **no** `isOnTheBoard()` guard here — the loop condition tested it
+            // *before* the merge — and `additionalUpdateAfterChange:97-99` answers an item the
+            // board does not know with an early return, which this port's
+            // `RoutingBoardExt::additional_update_after_change` reproduces. So the call is
+            // unconditional, as Java's is.
+            if let Some(engine) = engine.as_deref_mut() {
+                board.additional_update_after_change(engine, trace);
+            }
         }
-        board.combine_trace(trace)?;
+        // Java's `combine()` answers `somethingChanged`; `:1313` discards it, and so does this.
         // :1314.
         Ok(true)
     }

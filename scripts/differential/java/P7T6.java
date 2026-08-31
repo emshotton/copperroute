@@ -355,16 +355,27 @@ public final class P7T6 {
    * swapConnectionToPin:1263-1265} needs the main trace's end to have <b>exactly one</b> contact,
    * which is the stub, and {@code :1275-1289} needs the two to meet at a sharp angle.
    */
-  record SwapCase(String name, Point stubEnd, Point[] mainCorners, int halfWidth) {}
+  /**
+   * {@code stubHalfWidth} is the stub's own half width, which is normally the main trace's.
+   * {@code wide-stub} makes them differ on purpose: {@code swapConnectionToPin} never compares
+   * widths, but {@code combineAtStart} does ({@code PolylineTrace.java:239-244}), so that row is
+   * a {@code swap} that succeeds and whose {@code combine()} then merges <b>nothing</b> — the
+   * shape that separates Java's per-merge {@code additionalUpdateAfterChange} at {@code :188}
+   * from a single unconditional call. The board dump proves the premise (the stub survives as a
+   * separate item); the call count itself is not observable from outside the JVM, and
+   * {@code crates/fr-router/tests/connection_to_pin.rs} pins it against a live engine.
+   */
+  record SwapCase(String name, Point stubEnd, Point[] mainCorners, int halfWidth, int stubHalfWidth) {}
 
   static SwapCase[] swapTable() {
     return new SwapCase[] {
-      new SwapCase("left-stub-sharp", p(-800, 0), new Point[] {p(-800, 0), p(-200, 300)}, 30),
-      new SwapCase("left-stub-blunt", p(-800, 0), new Point[] {p(-800, 0), p(-1400, 300)}, 30),
-      new SwapCase("right-stub-sharp", p(-200, 0), new Point[] {p(-200, 0), p(-800, 300)}, 30),
-      new SwapCase("left-stub-long", p(-1200, 0), new Point[] {p(-1200, 0), p(-300, 700)}, 30),
-      new SwapCase("left-stub-kink", p(-800, 0), new Point[] {p(-800, 0), p(-780, 20), p(-200, 400)}, 30),
-      new SwapCase("left-stub-fat", p(-900, 0), new Point[] {p(-900, 0), p(-200, 500)}, 90),
+      new SwapCase("left-stub-sharp", p(-800, 0), new Point[] {p(-800, 0), p(-200, 300)}, 30, 30),
+      new SwapCase("left-stub-blunt", p(-800, 0), new Point[] {p(-800, 0), p(-1400, 300)}, 30, 30),
+      new SwapCase("right-stub-sharp", p(-200, 0), new Point[] {p(-200, 0), p(-800, 300)}, 30, 30),
+      new SwapCase("left-stub-long", p(-1200, 0), new Point[] {p(-1200, 0), p(-300, 700)}, 30, 30),
+      new SwapCase("left-stub-kink", p(-800, 0), new Point[] {p(-800, 0), p(-780, 20), p(-200, 400)}, 30, 30),
+      new SwapCase("left-stub-fat", p(-900, 0), new Point[] {p(-900, 0), p(-200, 500)}, 90, 90),
+      new SwapCase("wide-stub", p(-800, 0), new Point[] {p(-800, 0), p(-200, 300)}, 30, 90),
     };
   }
 
@@ -376,7 +387,7 @@ public final class P7T6 {
             build(ar, edge);
             Polyline stub = new Polyline(new Point[] {p(-500, 0), c.stubEnd()});
             board.insertTraceWithoutCleaning(
-                stub, 0, c.halfWidth(), new int[] {1}, 1, FixedState.SHOVE_FIXED);
+                stub, 0, c.stubHalfWidth(), new int[] {1}, 1, FixedState.SHOVE_FIXED);
             Point[] mainCorners = c.mainCorners();
             if (!atStart) {
               Point[] reversed = new Point[mainCorners.length];

@@ -1420,13 +1420,18 @@ for the whole insertion, so no Plan-6 path reached the branch at
 `PolylineTrace.pullTight:841-861` that calls them. **Plan 7 Task 5 landed all
 three** and turned the markers into `renamed:` ones — see
 "[`optChangedArea` and the `ConnectionToPin` trio](#optchangedarea-and-the-connectiontopin-trio-plan-7-task-5)"
-below. Probe mode `pinedge` recorded the JVM's answers on the Plan 6 fixture and
-they are all `false`; that is *not* because the branch is inert but because
-`P6T9Probe`'s pad is a **square** 100 × 100 on a two-pin package, which
-`Pin.java:274-276` gives `padXyFactor = 3.0` and
+below. Probe mode `pinedge` recorded the JVM's answers on the Plan 6 fixture:
+**8 `changed=true` rows and 4 `changed=false`**, and none of the eight is this
+branch — they are the net-1 trace tightening through the ordinary
+`newLines != lines` path at `:837`, which returns before `:841`. Only the four
+net-2 rows reach the branch, and all four answer `false`. That is *not* because
+the branch is inert, but because `P6T9Probe`'s pad is a **square** 100 × 100 on a
+two-pin package, which `Pin.java:274-276` gives `padXyFactor = 3.0` and
 `Padstack.getTraceExitDirections:182-193` therefore answers all four directions
-for — an exit restriction set that refuses nothing. `p7t6`'s fixture uses a
-400 × 100 pad on a four-pin package for exactly that reason.
+for; with every direction matched `checkConnectionToPin` can still refuse on
+length (`:1074-1076`), but nothing on that fixture ever does. `p7t6`'s fixture
+uses a 400 × 100 pad on a four-pin package for exactly that reason, and its
+`correct`/`swap` sections carry 102 `changed=true` rows.
 
 **Where the numbers come from.** `scripts/differential/java/probes/P6T15aProbe.java`
 (compiled with `P6T9Probe.java`, whose board it reuses) and its committed stdout
@@ -2303,8 +2308,8 @@ caller demands `> 0`, so that band is dead acceptance).
 
 **Where the numbers come from.** `scripts/differential/java/P7T3.java` (board
 level: three real boards × modes 0-3, 0 diffs; mode 4 is the `ViaOptimizer`
-measurement) and `scripts/differential/java/P7T6.java` (five modes, 0 diffs,
-8 596 lines). Both transcripts are committed —
+measurement) and `scripts/differential/java/P7T6.java` (five modes, 0 diffs).
+Both transcripts are committed —
 `tests/data/p7t3-opt-changed-area.txt` and
 `tests/data/p7t6-connection-to-pin.txt` — and replayed row by row by
 `tests/opt_changed_area.rs` and `tests/connection_to_pin.rs`.

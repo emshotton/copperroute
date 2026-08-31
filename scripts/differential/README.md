@@ -2084,6 +2084,16 @@ the driver expects, or none at all.
   two skips of `pullTight:841-842`, driven through `pullTight` itself). Default
   `check`.
 
+  `swap`'s **`wide-stub`** row is the one to know about: its stub is 90 half-width
+  against the trace's 30, and `swapConnectionToPin` never compares widths while
+  `combineAtStart` does (`PolylineTrace.java:239-244`). So the swap succeeds and
+  `combine()` then merges **nothing** — the JVM-verified premise behind
+  `crates/fr-router/tests/connection_to_pin.rs`'s
+  `combine_calls_additional_update_after_change_once_per_merge_and_never_without_one`,
+  which is the only place `PolylineTrace.java:188`'s per-merge
+  `additionalUpdateAfterChange` is observable: both drivers pass `engine = None`, so
+  no row here can see that call.
+
   ```sh
   ./scripts/differential/run.sh p7t6 check
   ./scripts/differential/run.sh p7t6 correct
@@ -2092,7 +2102,7 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p7t6 edge
   ```
 
-  **All five modes, 0 diffs** (120 / 1518 / 990 / 5244 / 724 lines). The fixture is
+  **All five modes, 0 diffs** (120 / 1518 / 1158 / 5244 / 724 lines). The fixture is
   hand-built and needs no DSN: a four-pin component with a 400 × 100 SMD pad per pin,
   so `Pin.java:274-276` leaves `padXyFactor` at 1.5 and the pad answers only the long
   side's two exit directions. `P6T15aProbe`'s square 100 × 100 pad on a *two*-pin

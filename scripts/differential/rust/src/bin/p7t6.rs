@@ -389,6 +389,11 @@ struct SwapCase {
     stub_end: Point,
     main_corners: Vec<Point>,
     half_width: i32,
+    /// The stub's own half width, normally the main trace's. `wide-stub` makes them differ:
+    /// `swapConnectionToPin` never compares widths, but `combineAtStart` does
+    /// (`PolylineTrace.java:239-244`), so that row is a `swap` that succeeds and whose
+    /// `combine()` then merges **nothing**.
+    stub_half_width: i32,
 }
 
 fn swap_table() -> Vec<SwapCase> {
@@ -398,36 +403,49 @@ fn swap_table() -> Vec<SwapCase> {
             stub_end: p(-800, 0),
             main_corners: vec![p(-800, 0), p(-200, 300)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-blunt",
             stub_end: p(-800, 0),
             main_corners: vec![p(-800, 0), p(-1400, 300)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "right-stub-sharp",
             stub_end: p(-200, 0),
             main_corners: vec![p(-200, 0), p(-800, 300)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-long",
             stub_end: p(-1200, 0),
             main_corners: vec![p(-1200, 0), p(-300, 700)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-kink",
             stub_end: p(-800, 0),
             main_corners: vec![p(-800, 0), p(-780, 20), p(-200, 400)],
             half_width: 30,
+            stub_half_width: 30,
         },
         SwapCase {
             name: "left-stub-fat",
             stub_end: p(-900, 0),
             main_corners: vec![p(-900, 0), p(-200, 500)],
             half_width: 90,
+            stub_half_width: 90,
+        },
+        SwapCase {
+            name: "wide-stub",
+            stub_end: p(-800, 0),
+            main_corners: vec![p(-800, 0), p(-200, 300)],
+            half_width: 30,
+            stub_half_width: 90,
         },
     ]
 }
@@ -441,7 +459,7 @@ fn swap_mode(out: &mut impl Write) {
                     board.insert_trace_without_cleaning(
                         Polyline::from_points(&[p(-500, 0), case.stub_end.clone()]),
                         0,
-                        case.half_width,
+                        case.stub_half_width,
                         vec![1],
                         1,
                         FixedState::ShoveFixed,
