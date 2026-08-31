@@ -26,13 +26,16 @@
 //! "Mars-64 snapshot with 76 violations" the Java suite names, loaded through
 //! `parity::java_dir()` because it lives in the Java checkout.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::structure::FixedState;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
-use fr_router::AutorouteAttemptState;
-use fr_router::BoardStatistics;
-use fr_router::pipeline::BatchAutorouter;
+use fr_router::pipeline::{BatchAutorouter, RouterBudget};
+use fr_router::{AutorouteAttemptState, AutorouteEngine, BoardStatistics, route_connection_full};
+use fr_settings::sources::DefaultSettings;
+use fr_settings::{HostEnvironment, SettingsSource};
 
 /// `StrictDrcEnforcementTest.FIXTURE` (`:23-24`).
 const FIXTURE: &str = "fixtures/Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn";
@@ -96,20 +99,7 @@ fn rips_new_items_when_they_carry_violations() {
     // :43-49. "DSN-imported wiring is fixed; freshly routed items never are. Unfix so the rip
     // behaves as it does for router-inserted items." — `removeItemsAndPullTight`'s refusal is
     // `isUserFixed()`, and `BasicBoard.removeItems` re-tests `isDeletionForbidden()`.
-    let to_unfix: Vec<ItemId> = board
-        .items_in_board_order()
-        .into_iter()
-        .filter(|id| {
-            board.get_item(*id).is_some_and(|item| {
-                matches!(item, Item::Trace(_) | Item::Via(_)) && item.contains_net(net_number)
-            })
-        })
-        .collect();
-    for id in to_unfix {
-        if let Some(item) = board.items.get_mut(&id) {
-            item.set_fixed_state(FixedState::Unfixed);
-        }
-    }
+    unfix_all_wiring(&mut board);
     // :50-55.
     let traces_before = count_traces_on_net(&board, net_number);
     // :55 — `assumeTrue`.
@@ -179,54 +169,151 @@ fn keeps_connections_whose_new_items_are_clean() {
 /// `applyStrictDrcAfterRoute` rejects, the board must be **exactly** the board that was cloned
 /// before the route, not merely one with the new items gone.
 ///
-/// This is what plan-7 ruling 8 buys. Java's `:251` is
-/// `board = (RoutingBoard) BasicBoard.deserialize(snapshot)` — a whole-board replacement — while
-/// the rip at `enforceStrictDrc:323` only removes the *new* trace/via items. The two differ
-/// whenever the connection changed anything else: a shove that moved an existing trace, a
-/// `combineTraces` merge, a pulled-tight polyline. Restoring from the clone undoes all of it, and
-/// [`Board::structural_hash`] covers exactly the field set Java's `serialize(true)` covers (Task
-/// 3, controller ruling AH), so equality here is the port's decision-parity statement about the
-/// rollback.
+/// This runs the real path. `route_connection_full` takes the `:84-85` clone (because
+/// `settings.strict_drc` is on), routes, calls `enforceStrictDrc` at `:249`, and — this is the
+/// statement under test — executes `:250`'s two-part guard and `:251`'s whole-board replacement,
+/// which plan-7 ruling 8 makes `*board = snapshot`.
+///
+/// # Why the assertion needs two halves
+///
+/// `enforceStrictDrc` alone removes the *new* trace/via items, so a board that had only those
+/// added would look restored after the rip. Two things separate the rip from the restore:
+///
+/// * **`structural_hash`** — the rip does not undo what step 6's `optChangedArea` did to
+///   *pre-existing* traces, and on this fixture it did plenty;
+/// * **`maxGeneratedId`** — Java's `BasicBoard.deserialize` restores the whole object graph,
+///   `communication.idGenerator` included, and so does `Board: Clone`. The rip cannot rewind a
+///   counter.
+///
+/// Both are asserted. **Measured RED/GREEN**: disabling the `:250-252` arm leaves the hash
+/// different and the id generator advanced 1398 -> 1427, so each half fails on its own.
+///
+/// # The fixture and the connection
+///
+/// `Issue575-…_clearance_violations.dsn` with every trace and via unfixed — DSN-imported wiring
+/// is `USER_FIXED`, and freshly routed items never are, so unfixing is what makes the board
+/// behave the way it does mid-pass. Connection **6** of the driver's list (net 1) is the one
+/// whose newly inserted items carry violations; the four before it are routed first because the
+/// board state they leave is what makes connection 6 violate.
 #[test]
 fn a_rejected_connection_restores_the_pre_route_board_exactly() {
     if !parity::require_java_dir() {
         return;
     }
     let mut board = load_board();
-    let net_number = violating_net(&mut board);
-    if net_number <= 0 {
-        eprintln!("skipped: fixture must contain a violating routed net");
-        return;
+    unfix_all_wiring(&mut board);
+
+    let mut settings = DefaultSettings::new(&HostEnvironment::detect())
+        .get_settings()
+        .expect("DefaultSettings always answers a table")
+        .clone();
+    settings.set_layer_count(board.get_layer_count());
+    settings.apply_board_specific_optimizations(&board);
+    // `RouterSettings.isStrictDrc` (`:531-534`) — `DefaultSettings.java:110` seeds `false`, so a
+    // production run never reaches `applyStrictDrcAfterRoute`'s body at all.
+    settings.strict_drc = Some(true);
+    assert!(settings.is_strict_drc());
+
+    let trace_costs = settings.get_trace_costs();
+    let mut engine: Option<AutorouteEngine> = None;
+    let mut rejected = 0;
+
+    for (k, (item_id, net_no)) in pick_connections(&board, 6).into_iter().enumerate() {
+        if board.get_item(item_id).is_none() {
+            continue;
+        }
+        // The precondition `docs/plan-6-handoff.md` §3 states.
+        board.start_marking_changed_area();
+        let hash_before = board.structural_hash();
+        let id_before = board.communication.id_gen.max_generated_id();
+
+        let result = route_connection_full(
+            &mut board,
+            &mut engine,
+            item_id,
+            net_no,
+            &settings,
+            &trace_costs,
+            &mut BTreeSet::new(),
+            &mut BTreeMap::new(),
+            1,
+            settings.get_start_ripup_costs(),
+            !settings.is_fanout_enabled(),
+            settings.trace_pull_tight_accuracy.unwrap_or(500),
+            RouterBudget::disabled(),
+            &|| false,
+        );
+
+        let Some(details) = result.details.as_deref() else {
+            continue;
+        };
+        if !details.starts_with("strict_drc: ") {
+            continue;
+        }
+        rejected += 1;
+        assert_eq!(
+            6,
+            k + 1,
+            "connection 6 is the one that violates on this fixture"
+        );
+        // `enforceStrictDrc:324-328` — the state and the message Task 9's failure log writes out.
+        assert_eq!(AutorouteAttemptState::Failed, result.state);
+        assert_eq!(
+            "strict_drc: connection ripped because 4 new item(s) included clearance violations",
+            details
+        );
+        // `applyStrictDrcAfterRoute:250-252` — the restore, both halves.
+        assert_eq!(
+            hash_before,
+            board.structural_hash(),
+            "the rollback must put the whole board back, not merely rip the new items"
+        );
+        assert_eq!(
+            id_before,
+            board.communication.id_gen.max_generated_id(),
+            "…including `communication.idGenerator`, which the rip cannot rewind"
+        );
     }
+    assert_eq!(
+        1, rejected,
+        "exactly one of the first six connections must be rejected, or the test proves nothing"
+    );
+}
+
+/// The Java suite's `:43-49` unfix loop, hoisted: "DSN-imported wiring is fixed; freshly routed
+/// items never are."
+fn unfix_all_wiring(board: &mut Board) {
     for id in board.items_in_board_order() {
-        let unfix = board.get_item(id).is_some_and(|item| {
-            matches!(item, Item::Trace(_) | Item::Via(_)) && item.contains_net(net_number)
-        });
-        if unfix && let Some(item) = board.items.get_mut(&id) {
+        let is_wiring = board
+            .get_item(id)
+            .is_some_and(|item| matches!(item, Item::Trace(_) | Item::Via(_)));
+        if is_wiring && let Some(item) = board.items.get_mut(&id) {
             item.set_fixed_state(FixedState::Unfixed);
         }
     }
+}
 
-    // `AutorouteConnectionRouter.route:84-85` — the clone, taken before the route.
-    let snapshot = board.clone();
-    let hash_before = board.structural_hash();
-
-    // The rejection: everything on the net counts as new, so `enforceStrictDrc` rips it.
-    let rejection = BatchAutorouter::enforce_strict_drc(&mut board, net_number, ItemId(0));
-    assert!(rejection.is_some(), "the fixture must produce a rejection");
-    assert_ne!(
-        hash_before,
-        board.structural_hash(),
-        "the rip must have changed the board, or the restore below proves nothing"
-    );
-
-    // `applyStrictDrcAfterRoute:250-252` — the restore.
-    board = snapshot;
-    assert_eq!(
-        hash_before,
-        board.structural_hash(),
-        "the restore must put the board back exactly"
-    );
+/// `P6T1.pickConnections`, the driver's own connection list.
+fn pick_connections(board: &Board, max_items: usize) -> Vec<(ItemId, i32)> {
+    let mut result = Vec::new();
+    for item_id in board.items_in_board_order() {
+        let Some(item) = board.get_item(item_id) else {
+            continue;
+        };
+        if item.as_connectable().is_none() {
+            continue;
+        }
+        for net_no in item.net_nos().to_vec() {
+            if board.unconnected_set(item_id, net_no).is_empty() {
+                continue;
+            }
+            result.push((item_id, net_no));
+            if result.len() >= max_items {
+                return result;
+            }
+        }
+    }
+    result
 }
 
 /// `board.getItems().stream().filter(it -> it instanceof Trace && it.containsNet(netNumber))

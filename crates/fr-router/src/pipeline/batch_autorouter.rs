@@ -187,10 +187,9 @@ impl<'a> BatchAutorouter<'a> {
     /// score it is compared against is `getNormalizedScore`'s `float`.
     pub const STAGNATION_SCORE_THRESHOLD: f32 = 0.5;
 
+    // not reachable: BatchAutorouter.isBenchmarkProfileEnabled (a Java benchmark-only system property, and the port exposes no setter)
     /// `BENCHMARK_PROFILE_ENABLED = Boolean.getBoolean("freerouting.benchmark.profile")`
     /// (`:61-62`).
-    ///
-    // not reachable: BatchAutorouter.isBenchmarkProfileEnabled (a Java benchmark-only system property, and the port exposes no setter)
     ///
     /// `Boolean.getBoolean` reads a **system property**, so this is `false` unless the JVM was
     /// started with `-Dfreerouting.benchmark.profile=true`. Ruling AJ's pattern applies to both of
@@ -198,10 +197,9 @@ impl<'a> BatchAutorouter<'a> {
     /// `System.nanoTime()` block it guards is dead and is rostered `// not ported:` above.
     pub const BENCHMARK_PROFILE_ENABLED: bool = false;
 
+    // not reachable: BatchAutorouter.isRetainAutorouteDatabase (a Java benchmark-only system property, and the port exposes no setter)
     /// `BENCHMARK_RETAIN_AUTOROUTE_DATABASE =
     /// Boolean.getBoolean("freerouting.benchmark.retain_autoroute_database")` (`:63-64`).
-    ///
-    // not reachable: BatchAutorouter.isRetainAutorouteDatabase (a Java benchmark-only system property, and the port exposes no setter)
     ///
     /// **Controller ruling AJ.** The property is unset on every production and parity path, and
     /// `BatchAutorouterThread.java:90` hard-codes the same `false`. Setting it `true` would make
@@ -419,8 +417,17 @@ impl<'a> BatchAutorouter<'a> {
     /// because a reader comparing the two files must find `:293-295`, and because a future
     /// `DrillItem` subclass would make it live in Java.
     ///
-    /// An id the board does not know answers the empty slice, which is Java's `new Point[0]` at
-    /// `:296` — Java would have NPE'd on a `null` item, but no caller can hand it one.
+    /// Two deviations from Java's `Point[]`, both unreachable and both named rather than hidden:
+    ///
+    /// * an id the board does not know answers the empty `Vec`, which is Java's `new Point[0]` at
+    ///   `:296` — Java would have NPE'd on a `null` item, but no caller can hand it one;
+    /// * Java's `:285` always builds a **two-element** array for a trace, whose entries may be
+    ///   `null`; the port pushes only the corners that exist, so a degenerate polyline would give
+    ///   0 or 1 points where Java gives 2 nulls. `PolylineTrace.firstCorner`/`lastCorner` read
+    ///   `polyline.corner(0)` / `corner(cornerCount - 1)` on a polyline the constructor refuses to
+    ///   build with fewer than two corners (`BasicBoard.java:185-187`), so neither is ever
+    ///   `null` on a board item, and the only consumer — `AutoroutePassRunner`'s progress
+    ///   reporting — reads the array's length rather than indexing it.
     pub fn impacted_points(board: &Board, item: ItemId) -> Vec<Point> {
         let ctx = board.ctx();
         match board.get_item(item) {

@@ -26,10 +26,10 @@ use fr_board::StopConnectionOption;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
-use fr_geometry::{IntBox, IntPoint, Point, Polyline};
+use fr_geometry::{IntBox, IntOctagon, IntPoint, Point, Polyline, Shape, TileShape};
 use fr_router::board_ext::RoutingBoardExt;
 use fr_router::pipeline::{BatchAutorouter, NamedAlgorithmType, RouterBudget};
-use fr_router::{AutorouteEngine, route_connection, route_connection_full};
+use fr_router::{AutorouteAttemptState, AutorouteEngine, route_connection, route_connection_full};
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
@@ -58,6 +58,29 @@ fn p(x: i32, y: i32) -> Point {
 
 fn never() -> bool {
     false
+}
+
+/// [`empty_board`] plus one through-via padstack, so `insert_via` has something to place.
+/// `PadstackId(1)` is the first id the port hands out (`Padstacks::add`).
+fn via_board() -> Board {
+    let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+    let mut rules = BoardRules::new(layers(), clearance_matrix);
+    rules.trace_angle_restriction = AngleRestriction::None;
+    let mut padstacks = Padstacks::new(layers());
+    let shape = Shape::Tile(TileShape::Octagon(IntOctagon::new(
+        -100, -100, 100, 100, -200, 200, -200, 200,
+    )));
+    let via = padstacks.add("via", vec![Some(shape.clone()), Some(shape)], true, false);
+    assert_eq!(PadstackId(1), via, "the port's padstack ids start at 1");
+    Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(padstacks, Packages::new()),
+        Components::new(),
+        Communication::default(),
+    )
 }
 
 /// A two-layer board with `default_clearance` and the given trace-angle regime.
@@ -125,24 +148,6 @@ fn corners_of(board: &Board, id: ItemId) -> Vec<(i32, i32)> {
             }
         })
         .collect()
-}
-
-/// `startMarkingChangedArea` + every trace corner joined — what `TraceShover.insert:571-575` and
-/// `PolylineTrace.change` do for real, condensed.
-fn mark_every_trace(board: &mut Board) {
-    board.start_marking_changed_area();
-    for id in trace_ids(board) {
-        let Some(Item::Trace(trace)) = board.items.get(&id) else {
-            continue;
-        };
-        let layer = trace.get_layer();
-        let corners: Vec<Point> = (0..trace.polyline().corner_count())
-            .filter_map(|i| trace.polyline().corner(i))
-            .collect();
-        for corner in corners {
-            board.join_changed_area(&corner.to_float(), layer);
-        }
-    }
 }
 
 // =================================================================================================
@@ -578,31 +583,38 @@ fn remove_tails_pulls_the_marked_area_tight() {
     );
 }
 
-/// The `StopConnectionOption` argument reaches `removeTraceTails` unchanged:
-/// `AutoroutePassRunner.java:298-302` picks between `NONE` and `FANOUT_VIA`
-/// (`removeUnconnectedVias ? NONE : FANOUT_VIA`), so it is not decoration. With no via on the
-/// board the two options agree, and *that* agreement is the claim — a forwarding bug that
-/// substituted a constant would still have to produce it.
+/// The `StopConnectionOption` argument reaches `removeTraceTails` unchanged, and the two values
+/// **disagree** on a board that has a via stub — which is the only shape in which the forwarding
+/// is observable.
+///
+/// `RoutingBoard.java:1207-1216`: a stub that is a `Via` is skipped when the option is `VIA`, and
+/// skipped when the option is `FANOUT_VIA` and the via is a fanout via. So on a trace-plus-via
+/// tail, `NONE` takes both and `VIA` leaves the via standing. `AutoroutePassRunner.java:298-302`
+/// is the live chooser (`removeUnconnectedVias ? NONE : FANOUT_VIA`), so this is not decoration.
 #[test]
 fn remove_tails_forwards_the_stop_connection_option() {
     let build = || {
-        let mut board = empty_board(200, AngleRestriction::None);
+        let mut board = via_board();
         add_net(&mut board, "N1", 1);
-        insert_trace(
-            &mut board,
-            &[p(-3000, -3000), p(-3000, -1000), p(-1000, -1000)],
-            0,
-            30,
-            1,
-        );
-        insert_trace(&mut board, &[p(-1000, -1000), p(-1000, 2000)], 0, 30, 1);
-        board
+        let trace = insert_trace(&mut board, &[p(-3000, 0), p(-1000, 0)], 0, 30, 1);
+        let via = board
+            .insert_via(
+                PadstackId(1),
+                p(-1000, 0),
+                vec![1],
+                1,
+                FixedState::Unfixed,
+                true,
+            )
+            .expect("the via inserts");
+        (board, trace, via)
     };
     let settings = RouterSettings::new();
-    let mut a = build();
-    let mut b = build();
+
+    let (mut none_board, none_trace, none_via) = build();
+    let (mut via_board, via_trace, via_via) = build();
     let router = BatchAutorouter::new(
-        &a,
+        &none_board,
         &settings,
         false,
         true,
@@ -611,13 +623,25 @@ fn remove_tails_forwards_the_stop_connection_option() {
         RouterBudget::disabled(),
     );
     router
-        .remove_tails(&mut a, None, StopConnectionOption::None, &never)
+        .remove_tails(&mut none_board, None, StopConnectionOption::None, &never)
         .expect("cannot fail");
     router
-        .remove_tails(&mut b, None, StopConnectionOption::Via, &never)
+        .remove_tails(&mut via_board, None, StopConnectionOption::Via, &never)
         .expect("cannot fail");
-    assert_eq!(a.structural_hash(), b.structural_hash());
-    assert!(trace_ids(&a).is_empty());
+
+    assert!(
+        none_board.get_item(none_trace).is_none() && none_board.get_item(none_via).is_none(),
+        "StopConnectionOption::NONE takes the trace and the via"
+    );
+    assert!(
+        via_board.get_item(via_trace).is_none() && via_board.get_item(via_via).is_some(),
+        "StopConnectionOption::VIA takes the trace and leaves the via (RoutingBoard.java:1207-1209)"
+    );
+    assert_ne!(
+        none_board.structural_hash(),
+        via_board.structural_hash(),
+        "the two options must produce different boards, or the argument could be ignored"
+    );
 }
 
 // =================================================================================================
@@ -775,7 +799,8 @@ fn a_non_positive_tidy_width_skips_the_tightener_entirely() {
     );
 }
 
-/// **Quirk #184's reachability obligation** (plan lines 206/777/871), discharged here.
+/// **Quirk #184's reachability obligation** (plan lines 206/777/869/871) — discharged *in the half
+/// that is measurable here*, and the other half named rather than claimed.
 ///
 /// `TraceTightener45.reduceCorners` copies a *stale* `currentCornerInClipShape[3]` onto slot 2
 /// (`TraceTightener45.java:81, :90-91, :100-101`), and the flag it copies gates the two translate
@@ -787,20 +812,32 @@ fn a_non_positive_tidy_width_skips_the_tightener_entirely() {
 /// call in either language that builds a real clip octagon (out of the removed items' shapes,
 /// enlarged by `tidyWidth`) and hands it to `TraceTightener`.
 ///
-/// So the claim this test makes is **reachability, measured**: the middle arm really does clip.
-/// A 45-degree board, a staircase, and a small victim beside it — with `tidyWidth = 1` the clip
-/// is the victim's own box and the staircase is refused; with `tidyWidth = Integer.MAX_VALUE`
-/// the clip is `null` and the same sweep straightens it. Both answers are asserted as literals,
-/// and the second one is `reduceCorners` running with a live `currentClipShape` in the first.
+/// # What this test pins
 ///
-/// **What this test does *not* claim.** Measured RED/GREEN: replacing `tightener_45.rs`'s
-/// `current_corner_in_clip_shape[2] = current_corner_in_clip_shape[3]` with a recomputation
-/// (`!self.base.clip_is_outside(&current_corner[3])`) leaves *both* literals below unchanged. So
-/// the quirk is now **reachable and exercised, with no observed divergence** — the same honest
-/// shape quirk #207's row uses. The register row is updated to say so rather than to claim a
-/// divergence this corpus does not produce.
+/// **That the clip octagon really arrives, and really restricts.** A 45-degree board, a
+/// staircase, and a small victim beside it: at `tidyWidth = 1` the clip is the victim's own box
+/// and the staircase keeps eight of its ten corners; at `Integer.MAX_VALUE` the clip is `null`
+/// and the same sweep, over the same changed area, collapses it to two. Both answers are
+/// literals. A `TraceTightener` that never received the octagon could not produce the first.
+///
+/// # What this test does **not** pin, measured
+///
+/// It does not exercise quirk #184's own statement. Instrumenting
+/// `tightener_45.rs`'s `current_corner_in_clip_shape[2] = current_corner_in_clip_shape[3];`
+/// shows it is reached **exactly once** in the whole test and **with `current_clip_shape ==
+/// None`** (`stale = true`, `fresh = true`, trivially equal in Java too); under the clip octagon
+/// the `:85-99` skip block it lives in is **never entered at all**. Consistently, replacing the
+/// copy with the maximally discriminating mutation `!current_corner_in_clip_shape[3]` leaves
+/// [`QUIRK_184_CLIPPED_STAIRCASE`] **unchanged** and moves only
+/// [`QUIRK_184_UNCLIPPED_STAIRCASE`].
+///
+/// So the register row says exactly that: the clipped `optChangedArea` path is reachable and
+/// pinned, and the stale-copy statement is **not yet reached with a non-null clip shape**.
+/// Closing that half needs a board whose clip octagon cuts through a corner the skip block
+/// actually skips — a duplicate corner or a collinear middle corner inside the clip — and the
+/// `obligation:` marker beside the `// Java bug:` line in `tightener_45.rs` records it.
 #[test]
-fn remove_items_and_pull_tight_reaches_quirk_184s_stale_clip_flag() {
+fn remove_items_and_pull_tight_hands_the_tightener_a_live_clip_octagon() {
     let build = || {
         let mut board = empty_board(200, AngleRestriction::FortyFiveDegree);
         add_net(&mut board, "N1", 1);
@@ -861,7 +898,7 @@ fn remove_items_and_pull_tight_reaches_quirk_184s_stale_clip_flag() {
     );
 }
 
-/// The staircase [`remove_items_and_pull_tight_reaches_quirk_184s_stale_clip_flag`] inserts.
+/// The staircase [`remove_items_and_pull_tight_hands_the_tightener_a_live_clip_octagon`] inserts.
 const QUIRK_184_STAIRCASE_AS_INSERTED: &[(i32, i32)] = &[
     (-6000, -6000),
     (-6000, -4000),
@@ -894,48 +931,63 @@ const QUIRK_184_UNCLIPPED_STAIRCASE: &[(i32, i32)] = &[(-6000, -6000), (0, 0)];
 // Steps 6-8 — AutorouteConnectionRouter.java:95-153
 // =================================================================================================
 
-/// Step 6 (`:95-121`) runs on `ROUTED` and nothing else: a connection that ends `FAILED` leaves
-/// the changed area **standing**, because `optChangedArea` — the only thing that clears it — was
-/// not called.
+/// Step 6 (`:95-121`) runs on `ROUTED` and nothing else, and the observable is the changed area:
+/// `optChangedArea` is the only thing that clears it (`RoutingBoardOperations.java:78`), so a
+/// connection that ends `FAILED` leaves it **standing** — which is the state quirk #177 makes
+/// visible inside `TraceShover::insert` on the *next* connection. It is not bookkeeping.
 ///
-/// This is the state quirk #177 makes observable in the *next* connection, so it is not
-/// bookkeeping.
+/// Both halves are driven through [`route_connection_full`] on `Issue143-rpi_splitter.dsn`,
+/// because a hand-built board has no `Connectable` start item and cannot enter `route` at all.
+/// The fixture supplies one of each: connection 1 ends `ROUTED` and connection 2 ends `FAILED`
+/// (the jar's own answers — `tests/reference/router-rpi-splitter/router-steps18.jsonl`).
 #[test]
 fn step_six_runs_only_on_routed() {
-    let mut board = empty_board(200, AngleRestriction::None);
-    add_net(&mut board, "N1", 1);
-    insert_trace(&mut board, &[p(-3000, 0), p(-1000, 0)], 0, 30, 1);
-    mark_every_trace(&mut board);
-    assert!(board.changed_area.is_some());
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = load_rpi();
+    let settings = rpi_settings(&board, 0.0);
+    let trace_costs = settings.get_trace_costs();
+    let mut engine: Option<AutorouteEngine> = None;
+    let connections = pick_connections(&board, 2);
 
-    // A hand-built board has no `Connectable` start item, so `route_connection_full` cannot run
-    // here; the claim is made directly against `opt_changed_area`, which is the only statement of
-    // step 6, and against the corpus transcripts for the rest.
-    let settings = RouterSettings::new();
-    let router = BatchAutorouter::new(
-        &board,
-        &settings,
-        false,
-        true,
-        100,
-        500,
-        RouterBudget::disabled(),
-    );
-    // Not `ROUTED` -> step 6 is skipped -> the area stands.
-    assert!(board.changed_area.is_some());
-    // `ROUTED` -> step 6 runs -> the area is cleared (`RoutingBoardOperations.java:78`).
-    board
-        .opt_changed_area(
-            None,
-            &[],
-            None,
-            router.get_trace_pull_tight_accuracy(),
-            Some(router.get_trace_costs()),
+    let route = |board: &mut Board, engine: &mut Option<AutorouteEngine>, i: usize| {
+        let (item_id, net_no) = connections[i];
+        board.start_marking_changed_area();
+        route_connection_full(
+            board,
+            engine,
+            item_id,
+            net_no,
+            &settings,
+            &trace_costs,
+            &mut BTreeSet::new(),
+            &mut BTreeMap::new(),
+            1,
+            settings.get_start_ripup_costs(),
+            !settings.is_fanout_enabled(),
+            settings.trace_pull_tight_accuracy.unwrap_or(500),
+            RouterBudget::disabled(),
             &never,
-            router.budget().opt_changed_area_ms,
         )
-        .expect("cannot fail");
-    assert!(board.changed_area.is_none());
+    };
+
+    // `ROUTED` -> step 6 ran -> the area is cleared.
+    let first = route(&mut board, &mut engine, 0);
+    assert_eq!(AutorouteAttemptState::Routed, first.state);
+    assert!(
+        board.changed_area.is_none(),
+        ":103-109's optChangedArea must have run and cleared the area"
+    );
+
+    // Not `ROUTED` -> step 6 skipped -> the area the connection marked is still standing.
+    let second = route(&mut board, &mut engine, 1);
+    assert_eq!(AutorouteAttemptState::Failed, second.state);
+    assert!(
+        board.changed_area.is_some(),
+        "a FAILED connection must leave its marked area for the next one — the `if state == \
+         ROUTED` guard at :95 is the only thing that can"
+    );
 }
 
 /// Step 7 is **skipped** when no active layer is wider than the neck (`:181-190`): the loop

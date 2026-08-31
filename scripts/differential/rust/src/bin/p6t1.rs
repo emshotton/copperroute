@@ -387,6 +387,9 @@ fn route_one(
     append_metrics(&mut sb, board, connection.net_no);
     // `P6T1_DUMP_BOARD=1` — see `P6T1.routeOne`'s comment. A bisection tool, off by default.
     if std::env::var_os("P6T1_DUMP_BOARD").is_some() {
+        // `P6T1.java` passes `-1` where this passes `ItemId(0)`: the port's ids are unsigned and
+        // `ItemIdGenerator` hands out `1` first (`ItemIdGenerator.java:37-55`), so `> 0` and
+        // `> -1` select the same items on every board either side can build.
         append_inserted_geometry(&mut sb, board, ItemId(0));
         append_board_state(&mut sb, board);
     }
@@ -475,13 +478,17 @@ fn append_metrics(sb: &mut String, board: &mut Board, net_no: i32) {
 /// `P6T1.appendBoardState` — the non-geometric half of the `P6T1_DUMP_BOARD` bisection dump.
 fn append_board_state(sb: &mut String, board: &Board) {
     sb.push_str(",\"state2\":[");
-    for (i, id) in board.items_in_board_order().into_iter().enumerate() {
+    // A `first` flag rather than the loop index: an id the board does not resolve is skipped, and
+    // an index-based separator would emit a leading comma if that happened at index 0.
+    let mut first = true;
+    for id in board.items_in_board_order() {
         let Some(item) = board.get_item(id) else {
             continue;
         };
-        if i > 0 {
+        if !first {
             sb.push(',');
         }
+        first = false;
         let kind = match item {
             Item::Trace(_) => "PolylineTrace",
             Item::Via(_) => "Via",

@@ -1101,6 +1101,18 @@ impl RoutingBoardExt for Board {
         // rules, neither of which any other item's removal changes, and one item's removal does
         // not move another item's tile shapes. The pre-walk therefore sees exactly the shapes
         // Java's interleaved loop sees, in the same order.
+        //
+        // **The cost, stated rather than hidden.** Java makes one pass and the port makes two,
+        // so each removable item's tile shapes are computed twice. Three things bound it: the
+        // pre-walk is inside `if calculate_tidy_region`, so the two arms this port actually
+        // reaches — `tidyWidth <= 0` (the `IntOctagon.EMPTY` singleton) and `tidyWidth ==
+        // Integer.MAX_VALUE` (a `null` clip) — do **no** second walk at all; the one arm that
+        // does is the GUI's (`RouteState.cancel`, the method's only Java caller); and the item
+        // list is a single trace tail there, not a board. **No Plan 7 code calls this method**,
+        // so the second walk costs nothing on any production or parity path. Fusing it would mean
+        // either duplicating `Board::remove_items_marking_changed_area`'s body here or widening
+        // its `fr-board` signature with a tidy-region out-parameter that `fr-board` has no reason
+        // to know about; neither is worth it for a headless-dead path.
         if calculate_tidy_region {
             for id in item_list {
                 let Some(item) = self.items.get(id) else {

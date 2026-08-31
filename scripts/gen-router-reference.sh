@@ -19,6 +19,7 @@
 #
 #   router.jsonl      one JSON line per connection, the driver's stdout **minus its HEADER line**
 #   java.log          the driver's stderr (its `java-version` line, plus anything the JVM said)
+#                     (`--steps=1-8` writes router-steps18.jsonl / .meta.txt / java-steps18.log)
 #   router.meta.txt   the jar's identity, `java -version`, the hash mode, the command line and the
 #                     HEADER line, with every machine-specific prefix replaced by
 #                     `<FREEROUTING_JAVA_DIR>` or `<workspace>` so the file is the same on every
@@ -42,6 +43,24 @@
 #                                                     -XX:hashCode=0..4 into a scratch dir and
 #                                                     require five byte-identical files; writes
 #                                                     nothing under tests/reference/
+#   scripts/gen-router-reference.sh --steps=1-8 [stem ...]
+#                                                     the same, but the driver runs
+#                                                     `AutorouteConnectionRouter.route` **in full**
+#                                                     (steps 1-8) and the outputs are named
+#                                                     router-steps18.{jsonl,meta.txt}
+#
+# `--steps=1-8` (Plan 7 Task 8) adds step 6's `optChangedArea` on `ROUTED`, step 7's necked retry
+# and step 8's strict-DRC rollback, through `scripts/differential/java/probes/P7T8Probe.java`
+# (`AutorouteConnectionRouter` and `BatchAutorouter.autorouteItem` are both package-private in
+# `app.freerouting.autoroute.pipeline`, so the probe declares that package and forwards). It
+# combines with `--meta-only` and `--verify-hash-modes`. The `1-5` outputs are untouched by it,
+# including their HEADER line, which is why the Plan 6 references did not have to be regenerated
+# when the argument was added.
+#
+# A stem may carry a committed `tests/reference/<stem>/router-steps18.xdiff.txt`; its contents are
+# appended verbatim to the generated `router-steps18.meta.txt`. That is how a known port-vs-jar
+# divergence is recorded **without** the note being lost on the next regeneration — the note is a
+# committed input, not generated output.
 #
 # `--verify-hash-modes` is the direct check of ruling 1's premise — that a single-threaded Java
 # routing run is reproducible and does not depend on `Object.hashCode`. The survey verified it
@@ -87,11 +106,38 @@ TIMEOUT_SECONDS="${ROUTER_TIMEOUT:-1800}"
 LOCALE_FLAGS=(-Djava.awt.headless=true -Duser.language=en -Duser.country=US)
 
 MODE=generate
-case "${1:-}" in
-  --verify-hash-modes) MODE=sweep; shift ;;
-  --meta-only) MODE=meta; shift ;;
-esac
+# Plan 7 Task 8: `1-5` is Plan 6's slice and the default; `1-8` is the whole of
+# `AutorouteConnectionRouter.route`. The two write different files and never collide.
+STEPS=1-5
+JSONL=router.jsonl
+META=router.meta.txt
+# A separate stderr file per slice: a `--steps=1-8` run must not clobber the `1-5` run's
+# `java.log`, which is committed beside its own transcript.
+JAVALOG=java.log
+DRIVER_SUFFIX=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --verify-hash-modes) MODE=sweep; shift ;;
+    --meta-only) MODE=meta; shift ;;
+    --steps=1-5) STEPS=1-5; shift ;;
+    --steps=1-8)
+      STEPS=1-8
+      JSONL=router-steps18.jsonl
+      META=router-steps18.meta.txt
+      JAVALOG=java-steps18.log
+      DRIVER_SUFFIX=" --steps=1-8"
+      shift
+      ;;
+    --steps=*) echo "error: steps must be 1-5 or 1-8, not ${1#--steps=}" >&2; exit 1 ;;
+    *) break ;;
+  esac
+done
 WANTED=("$@")
+# The driver's fifth and sixth arguments. `neckWidthUm = 0` is `DefaultSettings.java:109`'s own
+# value, so the committed `1-8` transcripts are the production configuration; a non-zero neck is a
+# `run.sh p6t1 … 1-8 <um>` experiment, not a reference.
+STEP_ARGS=()
+[[ "$STEPS" == 1-8 ]] && STEP_ARGS=(- 1-8 0)
 
 # --- preflight -----------------------------------------------------------------------------------
 if [[ ! -f "$JAR" ]]; then
@@ -148,7 +194,8 @@ run_driver() {
   shift 3
   "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
       -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
-      -cp "$CLASSES:$JAR" app.freerouting.autoroute.maze.P6T1 "$@" > "$out" 2> "$log"
+      -cp "$CLASSES:$JAR" app.freerouting.autoroute.maze.P6T1 "$@" ${STEP_ARGS+"${STEP_ARGS[@]}"} \
+      > "$out" 2> "$log"
 }
 
 write_meta() {
@@ -161,12 +208,20 @@ write_meta() {
         | strings | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$' | head -1)"
     echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
     echo "hash mode    -XX:hashCode=$HASH_MODE"
-    echo "driver       $(portable "$DRIVER")"
-    echo "connections  $(wc -l < "$out/router.jsonl" | tr -d ' ')"
-    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 %s %s %s\n' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_items" "$ripup_pass_no"
+    echo "driver       $(portable "$DRIVER")$DRIVER_SUFFIX"
+    echo "connections  $(wc -l < "$out/$JSONL" | tr -d ' ')"
+    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 %s %s %s%s\n' \
+        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_items" "$ripup_pass_no" \
+        "${STEP_ARGS+ ${STEP_ARGS[*]}}"
     echo "header       $(portable "$header")"
-  } > "$out/router.meta.txt"
+    # A committed, hand-written note about this stem's known port-vs-jar divergence, appended
+    # verbatim so regeneration cannot lose it. An `if` and not a `&&`: this is the last command in
+    # the brace group, and a false `[[ ]]` would make the group — and `write_meta` — return 1,
+    # which `set -e` turns into an abort after the first stem that has no note.
+    if [[ -f "$out/${JSONL%.jsonl}.xdiff.txt" ]]; then
+      cat "$out/${JSONL%.jsonl}.xdiff.txt"
+    fi
+  } > "$out/$META"
 }
 
 each_row() {
@@ -199,7 +254,10 @@ compile_driver() {
   echo "== compiling $(portable "$DRIVER") against $(portable "$JAR")"
   rm -rf "$CLASSES"
   mkdir -p "$CLASSES"
-  "$JAVAC_BIN" -cp "$JAR" -d "$CLASSES" "$DRIVER"
+  # `P6T1.java` imports `P7T8Probe` for its `--steps=1-8` path, so the probe is always compiled
+  # alongside — under `1-5` it is loaded and never called.
+  "$JAVAC_BIN" -cp "$JAR" -d "$CLASSES" "$DRIVER" \
+      "$ROOT/scripts/differential/java/probes/P7T8Probe.java"
 }
 
 # --- the three modes -------------------------------------------------------------------------------
@@ -213,9 +271,9 @@ generate_one() {
   rm -f "$tmp"
   # Write to a temporary and move only after the JVM exits 0 *and* left a HEADER behind, so a
   # failed or timed-out run leaves the committed reference and its meta untouched, together.
-  if ! run_driver "$tmp" "$out/java.log" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_items" "$ripup_pass_no" \
+  if ! run_driver "$tmp" "$out/$JAVALOG" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_items" "$ripup_pass_no" \
       || [[ ! -s "$tmp" ]]; then
-    echo "   the driver failed for $stem; see $out/java.log (router.jsonl left untouched)" >&2
+    echo "   the driver failed for $stem; see $out/$JAVALOG ($JSONL left untouched)" >&2
     rm -f "$tmp"
     STATUS=1
     return 0
@@ -228,24 +286,24 @@ generate_one() {
     STATUS=1
     return 0
   fi
-  tail -n +2 "$tmp" > "$out/router.jsonl"
+  tail -n +2 "$tmp" > "$out/$JSONL"
   rm -f "$tmp"
   write_meta "$out" "$dsn" "$max_items" "$ripup_pass_no" "$header"
-  report_states "$out/router.jsonl"
+  report_states "$out/$JSONL"
 }
 
 meta_one() {
   local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$REF/$1"
   echo "== $stem"
-  if [[ ! -f "$out/router.jsonl" ]]; then
-    echo "   no router.jsonl to describe; run without --meta-only first" >&2
+  if [[ ! -f "$out/$JSONL" ]]; then
+    echo "   no $JSONL to describe; run without --meta-only first" >&2
     STATUS=1
     return 0
   fi
   local header
-  header="$(grep -m1 '^header  *' "$out/router.meta.txt" 2>/dev/null | sed 's/^header  *//')"
+  header="$(grep -m1 '^header  *' "$out/$META" 2>/dev/null | sed 's/^header  *//')"
   write_meta "$out" "$dsn" "$max_items" "$ripup_pass_no" "${header:-<unknown>}"
-  echo "   router.meta.txt rewritten (router.jsonl untouched)"
+  echo "   $META rewritten ($JSONL untouched)"
 }
 
 sweep_one() {

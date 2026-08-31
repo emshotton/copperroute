@@ -261,9 +261,10 @@ pub mod prelude {
 // the field block, both constructors, the five accessors, the five `NamedAlgorithm` identity
 // members, `getImpactedPoints`, `enforceStrictDrc`, `isFanoutTimedOut`, `shouldFireBoardUpdate`,
 // `removeTails`, `autorouteItem` and `calculateIncompleteCount`. `scripts/audit-map/fr-router.map`
-// gained a second row for the class so both files are searched; what is still owed is rostered
-// **in `pipeline/batch_autorouter.rs`** beside the code, not here:
-// added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.getAirLine`, `BatchAutorouter.getInitialUnroutedCount`, `BatchAutorouter.getSessionStartTime`.
+// gained a second row for the class so both files are searched. `getInitialUnroutedCount` and
+// `getSessionStartTime` are ported there too, so they are **not** on the line below; what is still
+// owed is rostered **in `pipeline/batch_autorouter.rs`** beside the code, not here:
+// added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.getAirLine`.
 // added in Plan 7: `BatchAutorouterThread.getBoard`, `BatchAutorouterThread.getRoutedCount`, `BatchAutorouterThread.getFailedCount`, `BatchAutorouterThread.addBoardUpdatedEventListener`, `BatchAutorouterThread.fireBoardUpdatedEvent` — including the per-item `catch (Exception)` boundary at `BatchAutorouterThread.java:537`.
 // added in Plan 7: `BatchFanout.fanoutBoard`, `BatchFanout.compareTo`, `BatchFanout.fromBoardStatistics`, `BatchFanout.toString`, `BatchFanout.EscapeStatistics`, `BatchFanout.FanoutPassStatus`, `BatchFanout.FanoutRunSummary`.
 // added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.createForHeadless`, `BatchOptimizer.getCurrentPosition`, `BatchOptimizer.getId`, `BatchOptimizer.isTimedOut`.

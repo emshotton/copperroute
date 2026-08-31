@@ -126,6 +126,20 @@ impl<'a> TraceTightener45<'a> {
                 corner_index += 1;
                 current_corner[2] = current_corner[3].clone();
                 // Java bug: `TraceTightener45.reduceCorners` copies `currentCornerInClipShape[3]` onto slot 2 at `:91` while `currentCorner[3]` was replaced at `:81` and the flag is only recomputed at `:100-101`, so the flag belongs to the *previous* corner. See docs/java-quirks.md #184.
+                // obligation: quirk #184's own condition is still unexercised. Plan 7 Task 8
+                // made the *clip-shape path* reachable —
+                // `RoutingBoardExt::remove_items_and_pull_tight` with
+                // `0 < tidyWidth < i32::MAX` is the only caller in either language that
+                // hands `TraceTightener` a real octagon, and
+                // `batch_autorouter.rs`'s
+                // `remove_items_and_pull_tight_hands_the_tightener_a_live_clip_octagon`
+                // pins it — but instrumenting this statement showed it reached **only**
+                // with `current_clip_shape == None`, where stale and fresh are trivially
+                // equal in Java too. Closing it needs a board whose clip octagon cuts
+                // through a corner the `:85-99` skip block actually skips (a duplicate
+                // corner, or a collinear middle corner) so that the stale flag and the
+                // fresh one differ; then the two translate attempts at `:103-105` and
+                // `:148-151` can be shown to take different branches.
                 current_corner_in_clip_shape[2] = current_corner_in_clip_shape[3];
                 if corner_index < line_count - 1 {
                     current_corner[3] = polyline
