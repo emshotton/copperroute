@@ -11,7 +11,8 @@
 //! a different sort, a different `restoreCount`, one different score digit or one different
 //! restored item fails it. The one line it drops is the `HEADER`, which names the jar by absolute
 //! path and carries its size and mtime — the `p6t1` convention. The last phase, the
-//! `BoardHistoryTest` replay, is outside that comparison for the reason [`expected_lines`] gives.
+//! `BoardHistoryTest` replay, is outside that comparison for the reason [`expected_lines`] gives
+//! — a reason Plan 7 Task 3 changed, and the doc comment there records the change.
 //!
 //! Hashes are compared as an **equality pattern**, not as values: the transcript renders a hash
 //! as a label `H0`, `H1`, … assigned in order of first appearance, because Java's is a hex MD5
@@ -385,13 +386,15 @@ const T2: &str = include_str!("data/p7t2-board-history.txt");
 /// not including) `=== phase javatest ===`, minus the `HEADER` line, which names the jar by
 /// absolute path and carries its size and mtime (the `p6t1` convention).
 ///
-/// The `javatest` phase is **deliberately outside** the byte-for-byte comparison. Its two boards
-/// are `empty_board.dsn` and `Issue159-setonix_2hp-pcb.dsn`, neither of which has a single trace
-/// or via, and [`Board::structural_hash`] hashes **only traces and vias** — so the port gives them
-/// the same hash and the JVM does not. That is a recorded divergence with a named owner: see
-/// [`the_hash_cannot_tell_two_trace_free_boards_apart`], and the six ported `BoardHistoryTest`
-/// methods below, which assert against that phase's lines one value at a time and mark the three
-/// that the divergence moves.
+/// The `javatest` phase is **deliberately outside** the byte-for-byte comparison, but no longer
+/// for the reason it was when Task 2 landed. It was excluded then because its two boards —
+/// `empty_board.dsn` and `Issue159-setonix_2hp-pcb.dsn`, neither of which has a single trace or
+/// via — collided under the narrow [`Board::structural_hash`], so the port could not reproduce the
+/// phase's hash labels at all. Plan 7 Task 3's widening (ruling AH) closed that: the two boards
+/// now get different hashes, and the three `XDIFF:` assertions the collision forced are the JVM's
+/// values below. It stays outside because that phase is a *replay of a different program* — the
+/// Java suite, call by call — and the six ported `BoardHistoryTest` methods below already assert
+/// against its lines one value at a time; regenerating it byte for byte would duplicate them.
 fn expected_lines() -> Vec<&'static str> {
     T2.lines()
         .filter(|line| !line.starts_with("HEADER "))
@@ -916,14 +919,14 @@ fn the_top_level_board_history_entry_class_is_unreachable() {
 // the JVM's, read off `tests/data/p7t2-board-history.txt`'s `=== phase javatest ===` section,
 // which is `P7T2Probe.javaTest` replaying this suite against the HEAD jar.
 //
-// **Three of the six carry an `XDIFF:` assertion**, and all three are the same root cause:
-// `empty_board.dsn` and `Issue159-setonix_2hp-pcb.dsn` have **no traces and no vias**, and
-// `Board::structural_hash` (`crates/fr-board/src/board/snapshot.rs:210-240`) hashes only traces
-// and vias — so the port gives every trace-free board the same hash, where Java's MD5 over
-// `serialize(true)` sees the whole item graph and gives a 1-item board and a 199-item board
-// different ones. **Task 3 (controller ruling AH) owns the widening**, and these three assertions
-// are what it flips; this task's brief is explicit that it consumes `structural_hash` as it stands
-// and reports rather than fixes. See [`the_hash_cannot_tell_two_trace_free_boards_apart`].
+// **All six now match the JVM.** Three of them carried an `XDIFF:` assertion when Task 2 landed,
+// all with the same root cause: `empty_board.dsn` and `Issue159-setonix_2hp-pcb.dsn` have **no
+// traces and no vias**, and `Board::structural_hash` then hashed only traces and vias — so the
+// port gave every trace-free board the same hash, where Java's MD5 over `serialize(true)` sees the
+// whole item graph and gives a 1-item board and a 199-item board different ones. **Plan 7 Task 3
+// (controller ruling AH) widened the hash to `serialize(true)`'s field set**
+// (`crates/fr-board/src/board/snapshot.rs`'s audit table), and the three assertions below are the
+// JVM's values now. See [`trace_free_boards_are_distinguishable`].
 
 /// `BoardHistoryTest.setUp` (BoardHistoryTest.java:27-50): the empty board and the 199-item one,
 /// reloaded before every method — `new BoardStatistics(board)` mutates the board it measures, so
@@ -972,13 +975,10 @@ fn restore_best_board_from_multiple() {
     history.add(&mut board1);
     history.add(&mut board2);
 
-    // XDIFF: the JVM's transcript says `size=2` at call 4 (two entries, `H6` and `H7`). The port
-    // says 1, because `add`'s `contains` gate sees one hash for both trace-free boards. Task 3.
-    assert_eq!(
-        history.size(),
-        1,
-        "XDIFF vs the JVM's 2 — see the section header"
-    );
+    // The JVM's transcript says `size=2` at call 4 (two entries, `H6` and `H7`), and since Task 3
+    // widened the hash the port agrees: `add`'s `contains` gate now tells the two trace-free
+    // boards apart.
+    assert_eq!(history.size(), 2, "the JVM's call-4 size");
 
     let best = history.restore_best_board().expect("assertNotNull(:76)");
     // `assertEquals(board1.getHash(), bestBoard.getHash(), …)` (:78-80) — which holds either way.
@@ -997,12 +997,9 @@ fn contains() {
 
     // `assertTrue(history.contains(board1), …)` (:87).
     assert!(history.contains(&board1));
-    // `assertFalse(history.contains(board2), …)` (:88) — XDIFF: the JVM answers `false`, the port
-    // answers `true`, because the two boards share a hash. Task 3.
-    assert!(
-        history.contains(&board2),
-        "XDIFF vs the JVM's false — see the section header"
-    );
+    // `assertFalse(history.contains(board2), …)` (:88). Before Task 3's widening the port
+    // answered `true` here, because the two trace-free boards shared a hash.
+    assert!(!history.contains(&board2));
 }
 
 /// `BoardHistoryTest.clear` (BoardHistoryTest.java:92-101).
@@ -1014,12 +1011,8 @@ fn clear() {
     let mut history = BoardHistory::new(&scoring);
     history.add(&mut board1);
     history.add(&mut board2);
-    // `assertEquals(2, history.size())` (:97) — XDIFF: the port says 1. Task 3.
-    assert_eq!(
-        history.size(),
-        1,
-        "XDIFF vs the JVM's 2 — see the section header"
-    );
+    // `assertEquals(2, history.size())` (:97). The port said 1 before Task 3's widening.
+    assert_eq!(history.size(), 2);
 
     history.clear();
     // `assertEquals(0, history.size(), "History should be empty after clear()")` (:100).
@@ -1028,9 +1021,10 @@ fn clear() {
 
 /// `BoardHistoryTest.sizeCapNeverExceedsMaxHistorySize` (BoardHistoryTest.java:103-115).
 ///
-/// Transcript call 11: `size=2`, `withinCap=true`. The port's size is 1 (the same XDIFF), and the
-/// assertion this method actually makes — `size() <= MAX_HISTORY_SIZE` — holds either way, so it
-/// is the one ported test the divergence cannot reach.
+/// Transcript call 11: `size=2`, `withinCap=true`. The assertion this method actually makes —
+/// `size() <= MAX_HISTORY_SIZE` — held even before Task 3's widening (when the port's size was 1),
+/// so it is the one ported test the divergence could never reach; the size is pinned here anyway
+/// now that it agrees.
 #[test]
 fn size_cap_never_exceeds_max_history_size() {
     let (mut board1, mut board2, scoring) = set_up();
@@ -1041,6 +1035,7 @@ fn size_cap_never_exceeds_max_history_size() {
 
     // `assertTrue(history.size() <= BoardHistory.MAX_HISTORY_SIZE, …)` (:111-113).
     assert!(history.size() <= BoardHistory::MAX_HISTORY_SIZE);
+    assert_eq!(history.size(), 2, "the JVM's call-11 size");
     assert_eq!(BoardHistory::MAX_HISTORY_SIZE, 30, "BoardHistory.java:29");
 }
 
@@ -1155,28 +1150,24 @@ fn a_restored_board_is_javas_deserialize_round_trip() {
 }
 
 // =================================================================================================
-// The two recorded hash divergences (controller ruling AH — Task 3 owns the fix)
+// The two recorded hash divergences (controller ruling AH) — one closed by Task 3, one deliberate
 // =================================================================================================
 
-/// **XDIFF, recorded not fixed** (this task's brief: "consume `structural_hash` as it exists; if
-/// you find a corpus case where hash inequality vs Java's changes a decision, report it — do not
-/// fix it here").
+/// **Closed by Plan 7 Task 3 (ruling AH); this test is the inversion of Task 2's divergence (a).**
 ///
-/// [`Board::structural_hash`] hashes **only** `Item::Trace` and `Item::Via`
-/// (`crates/fr-board/src/board/snapshot.rs:210-240`), so **every board with no trace and no via
-/// hashes alike** — a 1-item empty board, a 199-item unrouted board and a 33-item unrouted board
-/// all answer the same `u64`. Java's `getHash()` is an MD5 over `serialize(true)`, which writes
-/// `board.itemList` — the whole item graph — and tells all three apart
+/// [`Board::structural_hash`] used to hash **only** `Item::Trace` and `Item::Via`, so **every
+/// board with no trace and no via hashed alike** — a 1-item empty board, a 199-item unrouted board
+/// and a 33-item unrouted board all answered the same `u64`, while Java's MD5 over
+/// `serialize(true)` writes `board.itemList` — the whole item graph — and tells all three apart
 /// (`p7t2-board-history.txt`: `board1 hash=H6 items=1`, `board2 hash=H7 items=199`).
 ///
-/// It changes three `BoardHistory` decisions: `contains` answers `true` where Java answers
-/// `false`, `add` refuses a board Java accepts, and `getRank` finds the wrong entry. In the real
-/// pass loop the exposure is narrow — `AutorouteBatchLoop` adds one board lineage, and every pass
-/// after the first has traces — but it is not nil: pass 1 of a run whose fanout inserted nothing
-/// adds a trace-free board. **Task 3 (ruling AH) widens the hash to the `serialize(true)` field
-/// set, and this test is one of the two it flips.**
+/// That moved three `BoardHistory` decisions: `contains` answered `true` where Java answers
+/// `false`, `add` refused a board Java accepts, and `getRank` found the wrong entry. Task 3's
+/// widening covers `serialize(true)`'s field set (`crates/fr-board/src/board/snapshot.rs`'s audit
+/// table), so all three now agree, and `run.sh p7t10` proves it decision by decision on the
+/// corpus. The test is kept, inverted, so a narrowing cannot come back unnoticed.
 #[test]
-fn the_hash_cannot_tell_two_trace_free_boards_apart() {
+fn trace_free_boards_are_distinguishable() {
     let empty = load_board(EMPTY_BOARD);
     let setonix = load_board(SETONIX);
     let rpi = build_board(RPI_SPLITTER, 0);
@@ -1189,16 +1180,17 @@ fn the_hash_cannot_tell_two_trace_free_boards_apart() {
         assert_eq!(board.get_vias().len(), 0);
     }
 
-    assert_eq!(
+    assert_ne!(
         empty.structural_hash(),
         setonix.structural_hash(),
-        "XDIFF: the JVM gives these H6 and H7"
+        "the JVM gives these H6 and H7"
     );
-    assert_eq!(
+    assert_ne!(
         empty.structural_hash(),
         rpi.structural_hash(),
-        "XDIFF: and the rpi splitter a third value again"
+        "and the rpi splitter a third value again"
     );
+    assert_ne!(setonix.structural_hash(), rpi.structural_hash());
     // `diff_traces` is ruling AH's named tie-break, and it agrees with Java that the boards are
     // not the same — but only about *traces*, which is zero for all three here.
     assert_eq!(empty.diff_traces(&setonix), 0);
@@ -1218,8 +1210,11 @@ fn the_hash_cannot_tell_two_trace_free_boards_apart() {
 /// `8566`, first difference at offset `5487`, where a `null` centre becomes a `Point`.
 ///
 /// So Java's "board hash" moves when nothing about the board's routing state does. Quirk #200.
-/// The port is the one that is right here, and Task 3's widening must **not** learn to reproduce
-/// this: a hash over the item graph gives the port's answer, not the JVM's.
+/// The port is the one that is right here, and **Plan 7 Task 3's widening deliberately did not
+/// learn to reproduce it**: the audit table's skipped row 1 leaves `DrillItem.center` for a pin
+/// (and the three `precalculated*` memos) out, so this test still holds after the widening. The
+/// jar-side exposure is measured by `run.sh p7t10 <dsn> <steps> <routeK> raw`, whose diffs against
+/// the same driver's `warm` mode are quirk #200 and nothing else.
 #[test]
 fn the_hash_ignores_a_failed_pass_that_java_can_still_tell_apart() {
     let b1 = build_board(RPI_SPLITTER, 1);

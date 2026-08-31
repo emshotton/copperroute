@@ -160,7 +160,7 @@ pub(crate) use item_ctx;
 // `shoveFailingLayer`); `deepCopy` additionally clears autoroute scratch and calls
 // `finishAutoroute`. The derived `impl Clone for Board` is not this method — it is Task 12's
 // substitute for `generateSnapshot`/`popSnapshot`/`undo`/`redo` below, which clear nothing.
-// renamed: `BasicBoard.getHash` (BasicBoard.java:163-166) -> `Board::structural_hash`.
+// renamed: `BasicBoard.getHash` (BasicBoard.java:164-166) -> `Board::structural_hash`.
 // ported: `BasicBoard.diffTraces` (BasicBoard.java:168-171) -> `Board::diff_traces`.
 // ported: `RoutingBoard.deepCopy` (RoutingBoard.java:1414-1420) -> `Board::deep_copy`.
 // not ported: `BasicBoard.generateSnapshot`/`popSnapshot` (:1289-1300) — the `UndoableObjects`

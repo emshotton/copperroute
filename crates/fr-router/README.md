@@ -633,6 +633,8 @@ used in its header line — read it.
 | `probes/P6T15Probe.java` | `FoundConnectionInserter`, 8 modes (Task 15) | ditto |
 | `probes/P6T16Probe.java` | `autorouteConnection` end to end, 14 modes × 3 regimes (Task 16) | ditto |
 | `probes/P7T2Probe.java` | `BoardHistory`, 61 calls over five phases incl. the `BoardHistoryTest` replay (Plan 7 Task 2) | ditto |
+| `java/P7T7.java` + `rust/src/bin/p7t7.rs` | `BoardStatistics`' score subset over a board optionally routed by `P6T1` (Plan 7 Task 1) | `./scripts/differential/run.sh p7t7 <dsn> [routeK] [ripupPassNo]` |
+| `java/P7T10.java` + `rust/src/bin/p7t10.rs` | **ruling AH's decision parity** — `getHash`'s three decision sites over 2 000 scripted board mutations (Plan 7 Task 3) | `P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 <dsn> <steps> [routeK] [warm\|raw]` |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -2105,17 +2107,98 @@ for line**. Hashes print as labels `H0`, `H1`, …
 in order of first appearance, so what is compared is the equality *pattern* across
 entries, never the value (ruling AH).
 
-The `BoardHistoryTest` replay is deliberately **outside** that byte comparison,
-because it found two divergences that ruling AH's Task 3 owns:
+The `BoardHistoryTest` replay is deliberately **outside** that byte comparison. It
+found two divergences that ruling AH's Task 3 then settled — **in opposite
+directions**:
 
 | divergence | JVM | this port |
 |---|---|---|
-| `empty_board.dsn` (1 item) vs `Issue159-setonix_2hp-pcb.dsn` (199 items) — **neither has a trace or a via**, and `Board::structural_hash` hashes only traces and vias | different hashes | **the same hash**, so `contains` answers `true` where Java answers `false` and `add` refuses a board Java accepts. Three of the six ported `BoardHistoryTest` methods carry an `XDIFF:` assertion for it |
-| `Issue143-rpi_splitter.dsn` after 1 connection vs after 2 — connection 2 **fails**, inserting nothing, so the two boards carry the same 38 items with the same 38 ids and the same geometry | different hashes (quirk #200: the failed attempt burned ids and filled `DrillItem.center`, a **non-transient** lazy cache that `serialize(true)` writes; 8 501 bytes against 8 566, first difference at offset 5 487) | the same hash — **the right answer**, and Task 3's widening must not learn to reproduce Java's |
+| `empty_board.dsn` (1 item) vs `Issue159-setonix_2hp-pcb.dsn` (199 items) — **neither has a trace or a via**, and `Board::structural_hash` hashed only traces and vias | different hashes | **closed by Task 3.** Before the widening the port gave both the same hash, so `contains` answered `true` where Java answers `false` and `add` refused a board Java accepts; three of the six ported `BoardHistoryTest` methods carried an `XDIFF:` assertion for it. All three now assert the JVM's values, and `trace_free_boards_are_distinguishable` is the inverted pin |
+| `Issue143-rpi_splitter.dsn` after 1 connection vs after 2 — connection 2 **fails**, inserting nothing, so the two boards carry the same 38 items with the same 38 ids and the same geometry | different hashes (quirk #200: the failed attempt burned ids and filled `DrillItem.center`, a **non-transient** lazy cache that `serialize(true)` writes; 8 501 bytes against 8 566, first difference at offset 5 487) | the same hash — **the right answer, kept.** Task 3's widening deliberately leaves a pin's `DrillItem.center`, the three `precalculated*` memos and `Item.smallestClearance` out; `run.sh p7t10 … raw` measures what that costs against the jar |
 
-Both are pinned by named tests rather than left as prose, and the probe's `POOL_K`
-leaves `k = 2` out of the transcript so that every other line stays a statement about
-`BoardHistory` rather than about the hash.
+Both are pinned by named tests rather than left as prose. The probe's `POOL_K`
+still leaves `k = 2` and `k = 7` out of the transcript, and **Task 3 re-checked
+whether they can come back: they cannot.** The gap is quirk #200, not the
+trace-free collision — those two boards differ in the jar only because a failed
+pass filled more pin centres — and since the widening deliberately does not
+reproduce that, the port still calls them equal. `POOL_K` stays as Task 2 left it,
+and the probe's comment now says so.
+
+### `p7t10` and the `structural_hash` audit (controller ruling AH)
+
+`Board::structural_hash` is the port's stand-in for `BasicBoard.getHash()`, which is
+an **MD5 hex string over `serialize(true)`** — `board.getTraces()`,
+`board.getVias()` **and `board.itemList`** (`BoardSnapshotManager.java:29-35`), i.e.
+the whole item graph, not the traces its own javadoc claims (**quirk #201**). Ruling
+AH: do not reproduce the bytes or the digest; cover the field set serialization
+covers, and prove **decision** parity at the three sites where Java compares two
+hashes.
+
+**The audit table lives in `crates/fr-board/src/board/snapshot.rs`'s module doc**,
+one row per field `serialize(true)` reaches, each naming the port field that carries
+it and the test in `crates/fr-board/tests/snapshot.rs` that pins it. It is not
+duplicated here, because a second copy would rot; what belongs here is the summary
+and the three rows that are **skipped**, which are the only judgement calls in it:
+
+| skipped Java field | why it is out |
+|---|---|
+| `DrillItem.center` for a **pin** (DrillItem.java:28), and `precalculatedMinWidth`/`…FirstLayer`/`…LastLayer` (:34-46) | non-`transient`, filled **on demand** — quirk #200. Reproducing them would make a membership test depend on how often the board has been measured. A pin's centre is a pure function of its `componentId` and `pinIndex`, both covered; the memos are pure functions of the padstack, also covered. A **via**'s centre *is* covered: `Via`'s constructor sets it (Via.java:65) |
+| `Item.smallestClearance` (Item.java:47) | `public double`, not `transient`, but `Item.clearanceViolations` (:451-453) only ever **lowers** it, so its value records how many DRC passes have run, not what the item is. `BoardHistory.add` runs one (`BoardHistory.java:198`) *after* taking the entry's hash at `:197`, so hashing it would make every board differ from the history entry it came from |
+| `UndoableObjects`' `stackLevel`, `deletedObjectsStack`, `redoPossible` and every `UndoableObjectNode.level` | this port has no undo stack (`generateSnapshot`/`popSnapshot`/`undo`/`redo` are `not ported:` on `fr-board`'s `board/mod.rs`; a `board.clone()` stands in). The one headless caller that moves them is `BatchOptimizer.optRouteItem`, which brackets one item with `generateSnapshot()` (`:444`) and either `popSnapshot()` (`:503`) or `undo(null)` (`:508`) — **balanced**, with no `getHash()` call inside the window — so they are 0 at every comparison the pipeline makes |
+
+One `covered` row carries a caveat, recorded rather than worked around:
+**`ComponentOutline`'s area**. That variant is the only one whose *relative* area
+`fr-board` does not expose — only the memoised absolute form — and the transform
+behind it reads one board-level input, `components.flipStyleRotateFirst`, that
+`serialize(true)` cannot reach (`Item.board` is `transient`). So the port's hash is
+slightly **more** sensitive than the jar's here. It cannot move a decision: the flag
+is set once when the board is built, and every `getHash` comparison the pipeline
+makes is between two boards of one run.
+
+Two things the widening **added** beyond "the other seven item kinds" are worth
+naming, because both are cases where the old hash could not tell two boards apart
+that Java can:
+
+* **a trace hashes its `Polyline`'s `Line`s, not its corners.** Java serializes every
+  `Line.a`/`Line.b` (Line.java:12-15 — the plan's table said `a`,`b`,`c`, which HEAD
+  does not have), and two polylines can share their corners while their defining end
+  points differ. Pinned by
+  `two_polylines_with_equal_corners_but_different_lines_hash_differently`. The fold
+  goes through `Line`'s `Hash`, which is `a`/`b` only, so **plan-6 ruling AE's
+  identity token cannot reach it** — pinned by
+  `the_line_identity_token_does_not_reach_the_hash`;
+* **the walk is descending item id** (quirk #63), which is the order
+  `itemList.startReadObject()` produces and therefore the order Java's byte stream is
+  written in, and the fold is not commutative — pinned by
+  `reordering_the_item_list_changes_the_hash`.
+
+`fr-geometry`'s `Area`, `Shape` and `Vector` implement no `Hash` (they hold `f64`s
+and shapes whose `Eq` is not derived) and Plan 7 makes no `fr-geometry` API change,
+so `snapshot.rs` walks them structurally through their public accessors instead —
+`TileShape` and `Circle` *are* `Hash`, `PolygonShape` exposes `corners()`,
+`PolylineArea` exposes `get_border()`/`get_holes()`. The one value with neither is a
+`Vector::Rational` (`BigInt` coordinates), which falls back to its derived `Debug`
+written straight into the hasher by a zero-allocation `std::fmt::Write` adapter; no
+corpus board has one. The first implementation used that `Debug` path for *all*
+geometry: complete, but 4.4 ms per call on `tutorial_board.dsn` against the
+structural walk's 0.58 ms.
+
+**The decision-parity evidence is `scripts/differential/run.sh p7t10`.** It drives a
+scripted mutation sequence (insert trace, remove trace, insert via, move via, insert
+obstacle, re-fix an item, restore an earlier snapshot, no-op) over a corpus board and
+prints, after every step, exactly three lines — `FANOUTSTOP` (`BatchFanout.java:152-156`),
+`CONTAINS` (`BoardHistory.java:88-101`) and `RANK` (`:173-186`) — **decisions, never
+hash values**. Its `warm` mode (the default) puts the by-product fields above into a
+canonical state on the Java side first; its `raw` mode does not, and its diffs are
+therefore a *measurement of quirk #200's exposure in the jar*, not a port bug.
+
+**Result: 0 decision diffs on 10 runs over 8 DSNs × 2 000 steps** — `empty_board`,
+`Issue143-rpi_splitter` (unrouted and routed), `Issue026-J2_reference` (unrouted and
+whole-board), `Issue159-setonix_2hp-pcb`, `Issue649-kicad_ecc83`,
+`Issue508-DAC2020_bm01` and `tutorial_board` (unrouted and routed) — and identical
+output across `P7T10_HASH_MODE=0..4`. The `raw` runs diverge on 350 of 6 000 decision
+lines (`Issue143-rpi_splitter`) and 187 of 6 000 (`Issue026-J2_reference`), always
+with Java saying "not in the history" for a board it holds.
 
 ## What Plan 7 inherits
 

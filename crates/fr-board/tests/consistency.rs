@@ -144,9 +144,11 @@ fn deep_copy_is_hash_equal_and_query_equal() {
 
     // The copy must be independent: mutating the original afterwards must not touch it, and the
     // hash must actually be sensitive to the mutation (otherwise the equality check above would
-    // be vacuous). Item 4 is a trace — `structural_hash` only hashes traces and vias (its own
-    // doc comment, `board/snapshot.rs`), so removing an `ObstacleArea` like item 7 would not
-    // move the hash at all and the check would be meaningless.
+    // be vacuous). Item 4 is a trace — the strongest case either way, since the Plan-2 hash
+    // covered only traces and vias. Plan 7 Task 3 (ruling AH) widened `structural_hash` to
+    // `serialize(true)`'s whole field set, so removing item 7's `ObstacleArea` would move it
+    // too now; the trace is kept because this assertion predates the widening and reads the
+    // same before and after it.
     assert!(matches!(board.get_item(ItemId(4)), Some(Item::Trace(_))));
     assert!(board.remove_item(ItemId(4)));
     assert_ne!(

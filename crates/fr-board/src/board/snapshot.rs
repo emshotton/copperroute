@@ -95,38 +95,244 @@
 //! considered — would throw that fidelity away for a property (`toArray()` order) nothing
 //! observes, so [`Board::deep_copy`] does not do it.
 //!
-//! # The hash
+//! # The hash — the ruling-AH audit
 //!
-//! `BasicBoard.getHash` (BasicBoard.java:163-166) delegates to `BoardSnapshotManager.getHash`,
-//! which MD5-hashes `serialize(true)` — the Java-serialized bytes of `board.getTraces()`,
-//! `board.getVias()` and `board.itemList` (i.e. every item, not just traces and vias) in that
-//! order. `autoroute.BoardHistory` (read for the hash *contract* only, per this task's brief)
-//! uses `getHash()` purely as a same-board membership test across autorouting passes
-//! (`BoardHistory.contains`/`getRank`/`remove`, all just string equality on the hash) — it never
-//! inspects the hash's value, only whether two boards produce the same one.
+//! `BasicBoard.getHash` (BasicBoard.java:164-166) delegates to `BoardSnapshotManager.getHash`
+//! (:58-72), which MD5-hashes `serialize(true)` (:26-43) — the Java-serialized bytes of
+//! `board.getTraces()`, `board.getVias()` **and `board.itemList`** (:29-35), in that order.
 //!
-//! [`Board::structural_hash`] is **not** a hash of the same bytes and is not comparable across
-//! languages — Java hashes a serialized object graph including every item kind, this hashes a
-//! trace's `(id, layer, half_width, polyline corners, net numbers, clearance class, fixed
-//! state)` and a via's `(id, layer range, center, padstack, net numbers, clearance class, fixed
-//! state)` and nothing else. The two are not a strict "differ iff" pair — Java's `itemList`
-//! serialization also covers pins, the outline, obstacle/conduction areas, keepouts and the
-//! rules/library, none of which this hashes — but for every field it does cover on a trace or a
-//! via, a change there changes both hashes, and on any board this crate can build the items
-//! outside that coverage (pins, outlines, obstacle areas, keepouts, the rules and library) are
-//! fixed for the duration of one autorouting run — only traces and vias change from pass to pass
-//! — so within one run, this hash's equality answers agree with Java's. See `docs/java-quirks.md`
-//! for the "hash values are not byte-comparable with Java; only same-board equality semantics
-//! are" quirk row.
+//! Java bug: `BasicBoard.getHash`'s own javadoc (BasicBoard.java:163) says "an MD5 hash of the
+//! board **trace** state", and `BoardSnapshotManager.getHash`'s (:57) says "the board trace-state
+//! profile". Both are wrong: the third `writeObject` at :33 writes the whole `itemList`, so the
+//! digest covers **every item**, with every non-`transient` field, transitively. That wrong
+//! comment is exactly what justified this port's original trace-and-via-only hash (Plan 2), which
+//! could not tell two trace-free boards apart at all. `docs/java-quirks.md` #201.
+//!
+//! Controller ruling AH: **do not** reproduce the bytes or the digest — widen this hash until it
+//! covers the field set `serialize(true)` covers, and prove *decision* parity at the three sites
+//! where Java compares two hashes (`autoroute/pipeline/BatchFanout.java:152-156`,
+//! `autoroute/BoardHistory.java:88-101` `contains` and `:173-186` `getRank`). The driver that
+//! proves it is `scripts/differential/run.sh p7t10`; [`Board::diff_traces`] is the tie-break where
+//! only the port could collide.
+//!
+//! ## What `serialize(true)` can actually reach
+//!
+//! `Item.board` is `public transient BasicBoard board` (Item.java:45), so the stream does **not**
+//! drag in the board, its components, its rules or its library: the reachable set is every
+//! `Item`'s own non-`transient` fields, transitively. That is what the table below audits.
+//!
+//! ## The audit table (ruling AH's deliverable)
+//!
+//! One row per field `serialize(true)` reaches. "Covered" means a change to that field moves
+//! [`Board::structural_hash`]; the same table is reproduced in `crates/fr-router/README.md`.
+//!
+//! | Java serialized field | reached via | port field | covered | test |
+//! |---|---|---|---|---|
+//! | `Item.id` (Item.java:42) | `itemList` | `ItemHeader::id` | yes | `the_item_id_reaches_the_hash` |
+//! | `Item.netNumbers` (:53) | `itemList` | `ItemHeader::net_nos` | yes | `the_net_numbers_reach_the_hash` |
+//! | `Item.clearanceClassIndex` (:56) | `itemList` | `ItemHeader::clearance_class` | yes | `the_clearance_class_reaches_the_hash` |
+//! | `Item.fixedState` (:61) | `itemList` | `ItemHeader::fixed_state` | yes | `the_fixed_state_reaches_the_hash` |
+//! | `Item.componentId` (:50) | `itemList` | `ItemHeader::component_id` | yes | `the_component_id_reaches_the_hash` |
+//! | `Item.onTheBoard` (:64) | `itemList` | `ItemHeader::on_the_board` | yes | `the_on_the_board_flag_reaches_the_hash` |
+//! | `Item.smallestClearance` (:47) | `itemList` | `ItemHeader::smallest_clearance` | **skipped** — a DRC by-product, see below | `the_smallest_clearance_by_product_does_not_move_the_hash` |
+//! | the item's concrete class | `itemList` | [`crate::items::ItemKind`] | yes | `the_four_obstacle_area_kinds_are_distinguishable` |
+//! | `Trace.layer` (Trace.java:31) | `getTraces()` | `PolylineTrace::layer` | yes | `the_trace_layer_reaches_the_hash` |
+//! | `Trace.halfWidth` (Trace.java:30) | `getTraces()` | `PolylineTrace::half_width` | yes | `the_trace_half_width_reaches_the_hash` |
+//! | `PolylineTrace.lines` → `Polyline.lines` → every `Line.a`, `Line.b` (Line.java:12-15) | `getTraces()` | `PolylineTrace::lines`, hashed **line by line** | yes | `two_polylines_with_equal_corners_but_different_lines_hash_differently` |
+//! | `Line.dir` (Line.java:17) | — | — | not serialized (`transient`) | — |
+//! | *`Line`'s identity token* (plan-6 ruling AE) | — | `Line::identity` | **must not be**, and is not: the fold goes through `Line`'s `Hash`, which is `a`/`b` only | `the_line_identity_token_does_not_reach_the_hash` |
+//! | `Via.padstack` (Via.java:48) | `getVias()` | `Via::padstack` (a [`crate::ids::PadstackId`]) | yes | `the_via_centre_and_padstack_reach_the_hash` |
+//! | `Via.attachAllowed` (:32) | `getVias()` | `Via::attach_allowed` | yes | `the_via_attach_allowed_flag_reaches_the_hash` |
+//! | `Via.isEscapeVia` (:40), `Via.escapeViaSmdLayer` (:46) | `getVias()` | `Via::is_escape_via`, `Via::escape_via_smd_layer` | yes | `the_via_escape_flags_reach_the_hash` |
+//! | `DrillItem.center` (DrillItem.java:28) — **a via's** | `getVias()` | `DrillItemData::center` | yes (a via is constructed with it, Via.java:65) | `the_via_centre_and_padstack_reach_the_hash` |
+//! | `DrillItem.center` — **a pin's** | `itemList` | `DrillItemData::center` | **skipped** — quirk #200, see below | `filling_the_pin_centre_cache_does_not_move_the_hash` |
+//! | `DrillItem.precalculatedMinWidth`/`…FirstLayer`/`…LastLayer` (:34-46) | `itemList` | the three `OnceLock`s | **skipped** — quirk #200, and pure functions of the padstack, which is covered | `filling_the_via_layer_caches_does_not_move_the_hash` |
+//! | `Pin.pinIndex` (Pin.java:40) | `itemList` | `Pin::pin_index` | yes | `the_pin_index_reaches_the_hash` |
+//! | `Pin.changedTo` (:43) | `itemList` | `Pin::changed_to` | yes | — (`Pin::swap` has no live headless caller; the field is folded in regardless) |
+//! | `ObstacleArea.name` (:31), `.relativeArea` (:33), `.layer` (:36), `.translation` (:39), `.rotationInDegree` (:40), `.sideChanged` (:41) | `itemList` | `ObstacleAreaData`'s six | yes | `the_obstacle_area_geometry_and_layer_reach_the_hash`, `the_obstacle_area_placement_fields_reach_the_hash` |
+//! | `ConductionArea.isObstacle` (:29), `.isFilled` (:30) | `itemList` | `ConductionArea::is_obstacle`, `::is_filled` | yes | `the_conduction_area_flags_reach_the_hash` |
+//! | `ComponentOutline.relativeArea` (:24), `.translation` (:26), `.rotationInDegree` (:27), `.isFront` (:28), `.isCourtyard` (:29), `.isFabrication` (:30), `.isClosed` (:31) | `itemList` | the seven `ComponentOutline` fields (the area through its memoised **absolute** form — see the note below) | yes | `the_component_outline_fields_reach_the_hash` |
+//! | `BoardOutline.shapes` (:30), `.keepoutOutsideOutline` (:43) | `itemList` | `BoardOutline::shapes`, `::keepout_outside_outline` | yes | `the_board_outline_shapes_and_keepout_flag_reach_the_hash` |
+//! | `BoardOutline.keepoutArea` (:36), `.keepoutLines` (:41) | `itemList` | the `OnceLock`/`Option` | **skipped** — lazy caches, pure functions of `shapes` + `keepoutOutsideOutline`, both covered | — |
+//! | `UndoableObjects.objects`' iteration order, `.stackLevel`, `.deletedObjectsStack`, `.redoPossible`, every `UndoableObjectNode.level`/`.undoObject`/`.redoObject` | `itemList` | — | **skipped** — the port has no undo stack, see below | — |
+//! | `ObstacleArea.precalculatedAbsoluteArea` (:38), `ConductionArea.cachedBoard*` (:42-43), `Via`/`Pin.precalculatedShapes`, `Item.searchTreesInfo` (:59), `Item.autorouteInfo` (:67), `Item.board` (:45) | — | — | not serialized (`transient`) | — |
+//!
+//! ### One `covered` row with a caveat: `ComponentOutline`'s area
+//!
+//! `ComponentOutline` is the one variant whose *relative* area this crate does not expose; only
+//! `get_area` (the memoised absolute form) is public, and adding a second accessor would be a
+//! second `fr-board` API change this task does not want. `absolute_area_of` is a pure function of
+//! the four serialized fields (`relativeArea`, `translation`, `rotationInDegree`, `isFront`) **and
+//! one board-level input** — `components.flipStyleRotateFirst` — which `serialize(true)` cannot
+//! reach at all (`Item.board` is `transient`). So this hash is very slightly *more* sensitive than
+//! Java's here: two boards that differ only in that flag would hash differently in the port and
+//! alike in the jar. Harmless, and deliberately not worked around: the flag is set once when the
+//! board is built and never changes, and every `getHash` comparison the pipeline makes is between
+//! two boards of one run. Filling the memo is likewise invisible — `ComponentOutline`'s
+//! `PartialEq` skips it, so `structural_hash` cannot change what `==` answers.
+//!
+//! ### The three `skipped` rows, argued
+//!
+//! 1. **`DrillItem.center` for a pin, and the three `precalculated*` memos.** Java's fields are
+//!    **not** `transient` and are filled **on demand** — `Pin.getCenter` (Pin.java:92-140) calls
+//!    `setCenter` — so in the jar the *first call that asks a pin where it is* changes the board's
+//!    hash without changing the board. Quirk **#200**, measured in Plan 7 Task 2: an unrouted
+//!    `Issue143-rpi_splitter.dsn` hashes `c21982e8…`, and after one `new BoardStatistics(board)`
+//!    `0da46bc9…`; and two boards with byte-identical item lists get different hashes because one
+//!    of them ran a failed pass that populated more pin centres. Reproducing that would make
+//!    `BoardHistory.contains` — a *membership* test — depend on how many times something has been
+//!    measured. **The port does not reproduce it.** A pin's centre is a pure function of its
+//!    `componentId` and `pinIndex` (both covered) plus the component's placement, which
+//!    `serialize(true)` cannot reach anyway (`Item.board` is `transient`), and no headless caller
+//!    moves a pin. The layer/min-width memos are pure functions of the padstack, which is covered.
+//! 2. **`Item.smallestClearance`.** `public double`, not `transient`, so the digest sees it — but
+//!    `Item.clearanceViolations` (Item.java:451-453) only ever *lowers* it, guarded by
+//!    `smallestClearance < 0`, so its value records how many DRC checks have run over the item,
+//!    not what the item is. Same shape as #200, same answer.
+//! 3. **The undo bookkeeping.** `UndoableObjects` holds `stackLevel`, `redoPossible`, a
+//!    `deletedObjectsStack` and a per-node `level`, all non-`transient`; this port has no undo
+//!    stack at all (`generateSnapshot`/`popSnapshot`/`undo`/`redo` are `not ported:` on
+//!    `board/mod.rs`; a `board.clone()` stands in). The one headless caller that moves them is
+//!    `BatchOptimizer.optRouteItem`, which brackets one item's re-route with
+//!    `generateSnapshot()` (BatchOptimizer.java:444) and either `popSnapshot()` (:503) or
+//!    `undo(null)` (:508) — **balanced**, and no `getHash()` call sits inside that window
+//!    (`BatchFanout`'s is in the fanout loop, which never snapshots; `BoardHistory`'s are
+//!    per-pass). So the counters are 0 at every hash comparison the pipeline makes. And at
+//!    `stackLevel == 0` the two writers are no-ops by construction: `UndoableObjects.saveForUndo`
+//!    only builds an undo node when `currentNode.level < this.stackLevel`, and
+//!    `UndoableObjects.insert` stamps the node with `stackLevel` itself — so outside the
+//!    optimizer's window every `UndoableObjectNode` carries `level = 0` and
+//!    `undoObject == redoObject == null`, and there is nothing for the port to be missing.
+//!
+//! ## What the port's fold is
+//!
+//! Not Java's *algorithm* (MD5 over a serialized byte stream) — a `u64` from
+//! [`std::collections::hash_map::DefaultHasher`] (fixed keys, so it is deterministic within one
+//! build) over the fields above, folded **item by item in descending item id**, which is the order
+//! `board.itemList.startReadObject()` walks (quirk #63) and therefore the order Java's stream is
+//! written in. The fold pairs each field set with its own id rather than combining commutatively,
+//! so it is order-sensitive exactly where Java's byte stream is. `totalized:` in spirit: Java's
+//! `getHash` returns `null` when the digest throws (BoardSnapshotManager.java:70) and
+//! `BoardHistory.contains` then NPEs on `entry.hash.equals(hash)`; MD5 is always available, so
+//! that branch is unreachable, and the port's `u64` has no `null` to reproduce.
+//!
+//! Hash *values* are still not comparable with Java's hex string — only the same-board equality
+//! semantics `BoardHistory` and `BatchFanout` actually rely on. See `docs/java-quirks.md` #78 and
+//! #201, and `scripts/differential/run.sh p7t10` for the decision-parity evidence.
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::DefaultHasher;
+use std::fmt::Write as _;
 use std::hash::{Hash, Hasher};
 
+use fr_geometry::{Area, PolylineShapeRef, Shape, Vector};
+
 use crate::ids::ItemId;
-use crate::items::Item;
+use crate::items::{Item, ObstacleAreaData};
 
 use super::Board;
+
+/// A [`std::fmt::Write`] that feeds everything written to it straight into a [`Hasher`].
+///
+/// The fallback for the one geometry value [`Board::structural_hash`] can meet that implements
+/// neither [`Hash`] nor a structural accessor pair: a [`Vector::Rational`]. `fr-geometry`'s
+/// `BigInt` coordinates are `Clone`-only, and Plan 7 makes no `fr-geometry` API change, so the
+/// derived `Debug` — a complete structural rendering — is folded in instead, allocating nothing.
+/// Unreachable in practice: every `translation` on a corpus board is an `IntVector`.
+struct HashWriter<'a, H: Hasher>(&'a mut H);
+
+impl<H: Hasher> std::fmt::Write for HashWriter<'_, H> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.0.write(s.as_bytes());
+        Ok(())
+    }
+}
+
+/// Folds `value`'s `Debug` rendering into `hasher`, followed by a terminator so that two
+/// renderings cannot run together into a third.
+fn hash_debug<H: Hasher, T: std::fmt::Debug + ?Sized>(value: &T, hasher: &mut H) {
+    write!(HashWriter(hasher), "{value:?}").expect("HashWriter never fails");
+    0xffu8.hash(hasher);
+}
+
+/// `Vector`, which is not [`Hash`] because its rational arm holds `BigInt`s.
+fn hash_vector<H: Hasher>(vector: &Vector, hasher: &mut H) {
+    match vector {
+        Vector::Int(v) => {
+            0u8.hash(hasher);
+            v.hash(hasher);
+        }
+        Vector::Rational(_) => {
+            1u8.hash(hasher);
+            hash_debug(vector, hasher);
+        }
+    }
+}
+
+/// `PolylineShape`'s two implementations (`PolylineShape.java`): a convex tile or a polygon.
+fn hash_polyline_shape<H: Hasher>(shape: &PolylineShapeRef, hasher: &mut H) {
+    match shape {
+        PolylineShapeRef::Tile(tile) => {
+            0u8.hash(hasher);
+            tile.hash(hasher);
+        }
+        PolylineShapeRef::Polygon(polygon) => {
+            1u8.hash(hasher);
+            polygon.corners().hash(hasher);
+        }
+    }
+}
+
+/// `Shape`'s three implementations (`Shape.java`). `TileShape` and `Circle` are [`Hash`];
+/// `PolygonShape` is not (its `Vec<Point>` has no derived `Eq`), so its corners are hashed
+/// directly — every one of which is a [`Hash`] `Point`.
+fn hash_shape<H: Hasher>(shape: &Shape, hasher: &mut H) {
+    match shape {
+        Shape::Tile(tile) => {
+            0u8.hash(hasher);
+            tile.hash(hasher);
+        }
+        Shape::Polygon(polygon) => {
+            1u8.hash(hasher);
+            polygon.corners().hash(hasher);
+        }
+        Shape::Circle(circle) => {
+            2u8.hash(hasher);
+            circle.hash(hasher);
+        }
+    }
+}
+
+/// `Area`'s two implementations (`Area.java`): a hole-free `Shape`, or a `PolylineArea`'s border
+/// plus its holes. Structural, so that no part of the geometry is outside the fold.
+fn hash_area<H: Hasher>(area: &Area, hasher: &mut H) {
+    match area {
+        Area::Shape(shape) => {
+            0u8.hash(hasher);
+            hash_shape(shape, hasher);
+        }
+        Area::Polyline(polyline_area) => {
+            1u8.hash(hasher);
+            hash_polyline_shape(polyline_area.get_border(), hasher);
+            polyline_area.get_holes().len().hash(hasher);
+            for hole in polyline_area.get_holes() {
+                hash_polyline_shape(hole, hasher);
+            }
+        }
+    }
+}
+
+/// The six non-`transient` `ObstacleArea` fields (ObstacleArea.java:31-41), shared by all four
+/// area kinds. `precalculatedAbsoluteArea` (:38) is `transient` and absent from Java's stream, so
+/// this hashes the **relative** area — exactly the field `serialize(true)` writes.
+fn hash_obstacle_area<H: Hasher>(area: &ObstacleAreaData, hasher: &mut H) {
+    area.name().hash(hasher);
+    hash_area(area.get_relative_area(), hasher);
+    area.get_layer().hash(hasher);
+    hash_vector(area.get_translation(), hasher);
+    area.get_rotation_in_degree().to_bits().hash(hasher);
+    area.get_side_changed().hash(hasher);
+}
 
 impl Board {
     /// Port of `BasicBoard.clone` (BasicBoard.java:158-161), `RoutingBoard.deepCopy`
@@ -187,61 +393,122 @@ impl Board {
     // renamed: `RoutingBoard.finishAutoroute`'s engine half (RoutingBoard.java:901-904) -> `fr_router::board_ext::RoutingBoardExt::finish_autoroute`.
     fn finish_autoroute(&mut self) {}
 
-    /// Port of `BasicBoard.getHash` (BasicBoard.java:163-166) / `BoardSnapshotManager.getHash`
-    /// (:57-71): a deterministic hash over every trace's `(id, layer, half_width, polyline
-    /// corners, net numbers, clearance class, fixed state)` and every via's `(id, layer range,
-    /// center, padstack, net numbers, clearance class, fixed state)`, in ascending item-id order.
-    /// The last three fields of each tuple are not in the task brief's list; they are added so
-    /// that every `Item` field Java's `itemList` serialization would observe *for these two
-    /// kinds* is covered too (module doc, "The hash") — net numbers, clearance class and fixed
-    /// state can all change on a live trace/via (`assign_net_no`, `change_clearance_class_index`,
-    /// a `FixedState` upgrade) without moving geometry, and each is a real distinguishing fact
-    /// about routing state.
+    /// Port of `BasicBoard.getHash` (BasicBoard.java:164-166) / `BoardSnapshotManager.getHash`
+    /// (:58-72), which is an **MD5 hex string over `serialize(true)`** (:26-43).
     ///
-    /// Not a port of Java's *algorithm* (MD5 over a serialized byte stream) — see the module doc
-    /// for why a same-board equality test over this narrower, crate-native input is the faithful
-    /// reading of the contract `autoroute.BoardHistory` actually uses. `totalized:` in spirit: a
-    /// `u64` from [`std::collections::hash_map::DefaultHasher`] (fixed keys, so it is
-    /// deterministic within one build) stands in for Java's hex MD5 string.
+    /// `serialize(true)` writes `board.getTraces()`, `board.getVias()` **and `board.itemList`**
+    /// (:29-35) through Java object serialization — i.e. the whole item graph, not just the traces
+    /// the method's own comment claims (`Java bug:` on that comment, module doc and
+    /// `docs/java-quirks.md` #201). Controller ruling AH: **do not** reproduce the bytes or the
+    /// digest; cover the field set that serialization covers, and prove *decision* parity at the
+    /// three sites where Java compares two hashes. The field-by-field audit — including the three
+    /// fields deliberately left out and why — is the table in this module's docs; the decision
+    /// parity is `scripts/differential/run.sh p7t10`.
     ///
-    /// Ascending, not [`Board::items_in_board_order`]'s descending: this function has no Java
-    /// original to match the iteration order of (Java hashes the whole serialized `itemList`,
-    /// order-independent for a hash), so it walks `self.items` in its own natural order.
+    /// Deterministic within one build (a `u64` from
+    /// [`std::collections::hash_map::DefaultHasher`], whose keys are fixed), and **not**
+    /// comparable with Java's hex string by value: only the same-board equality semantics
+    /// `BoardHistory.contains`/`getRank` and `BatchFanout:152-156` rely on are preserved.
+    ///
+    /// Descending item id, which is what `board.itemList.startReadObject()` walks (quirk #63) and
+    /// therefore the order Java's stream is written in; the fold is not commutative, so it is
+    /// order-sensitive exactly where Java's byte stream is.
     pub fn structural_hash(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         let ctx = self.ctx();
-        for item in self.items.values() {
-            let id = item.id();
+        // The stream's own length, so a board that is a strict prefix of another cannot collide
+        // with it — Java gets that from the serialized collection headers.
+        self.items.len().hash(&mut hasher);
+        // `board.itemList.startReadObject()` order (quirk #63), i.e. descending id.
+        for (id, item) in self.items.iter().rev() {
+            id.hash(&mut hasher);
+            // The concrete class, which Java's stream carries as the object's class descriptor.
+            item.kind().hash(&mut hasher);
+            // -- `Item`'s own non-transient fields (Item.java:41-67); `smallestClearance` (:47)
+            // is deliberately absent, module doc's skipped row 2.
+            item.net_nos().hash(&mut hasher);
+            item.clearance_class().hash(&mut hasher);
+            item.get_fixed_state().hash(&mut hasher);
+            item.component_id().hash(&mut hasher);
+            item.is_on_the_board().hash(&mut hasher);
             match item {
                 Item::Trace(trace) => {
-                    0u8.hash(&mut hasher);
-                    id.hash(&mut hasher);
                     trace.get_layer().hash(&mut hasher);
                     trace.get_half_width().hash(&mut hasher);
-                    trace.polyline().corners().hash(&mut hasher);
-                    item.net_nos().hash(&mut hasher);
-                    item.clearance_class().hash(&mut hasher);
-                    item.get_fixed_state().hash(&mut hasher);
+                    // `Polyline.lines`, not `corners()`: Java serializes every `Line`'s `a` and
+                    // `b` (Line.java:12-15), and two polylines can share their corners while
+                    // their defining end points differ. `Line`'s `Hash` is `a`/`b` only, so the
+                    // identity token (plan-6 ruling AE) cannot reach this.
+                    trace.polyline().hash(&mut hasher);
                 }
                 Item::Via(via) => {
-                    1u8.hash(&mut hasher);
-                    id.hash(&mut hasher);
-                    via.first_layer(&ctx).hash(&mut hasher);
-                    via.last_layer(&ctx).hash(&mut hasher);
+                    // A via is always constructed with its centre (Via.java:65), so this is real
+                    // state, not the lazily filled cache the module doc's skipped row 1 is about.
                     via.get_center().hash(&mut hasher);
+                    // The padstack id stands in for Java's serialized `Padstack` object, and
+                    // determines the layer span the three `precalculated*` memos hold.
                     via.get_padstack_id().hash(&mut hasher);
-                    item.net_nos().hash(&mut hasher);
-                    item.clearance_class().hash(&mut hasher);
-                    item.get_fixed_state().hash(&mut hasher);
+                    via.attach_allowed.hash(&mut hasher);
+                    via.is_escape_via.hash(&mut hasher);
+                    via.escape_via_smd_layer.hash(&mut hasher);
                 }
-                _ => {}
+                Item::Pin(pin) => {
+                    pin.get_pin_index().hash(&mut hasher);
+                    pin.get_changed_to().hash(&mut hasher);
+                    // `DrillItem.center` is **not** hashed here: module doc's skipped row 1
+                    // (quirk #200). `component_id` above and `pin_index` here determine it.
+                }
+                Item::ObstacleArea(area) => hash_obstacle_area(&area.area, &mut hasher),
+                Item::ViaObstacleArea(area) => hash_obstacle_area(&area.area, &mut hasher),
+                Item::ComponentObstacleArea(area) => hash_obstacle_area(&area.area, &mut hasher),
+                Item::ConductionArea(area) => {
+                    hash_obstacle_area(&area.area, &mut hasher);
+                    area.get_is_obstacle().hash(&mut hasher);
+                    area.get_is_filled().hash(&mut hasher);
+                }
+                Item::ComponentOutline(outline) => {
+                    // The memoised absolute area is a pure function of Java's serialized
+                    // `relativeArea`, `translation`, `rotationInDegree` and `isFront`, and is the
+                    // only form this crate exposes; the other three flags follow.
+                    hash_area(outline.get_area(&ctx), &mut hasher);
+                    hash_vector(outline.get_translation(), &mut hasher);
+                    outline.get_rotation_in_degree().to_bits().hash(&mut hasher);
+                    outline.is_front().hash(&mut hasher);
+                    outline.is_courtyard().hash(&mut hasher);
+                    outline.is_fabrication().hash(&mut hasher);
+                    outline.is_closed().hash(&mut hasher);
+                }
+                Item::BoardOutline(outline) => {
+                    outline.shape_count().hash(&mut hasher);
+                    for index in 0..outline.shape_count() {
+                        match outline.get_shape(index) {
+                            Some(shape) => hash_polyline_shape(shape, &mut hasher),
+                            // Unreachable: `index` comes from `shape_count()`.
+                            None => 0xfeu8.hash(&mut hasher),
+                        }
+                    }
+                    outline
+                        .keepout_outside_outline_generated()
+                        .hash(&mut hasher);
+                    // `keepoutArea`/`keepoutLines` are lazy caches derived from those two —
+                    // module doc's skipped row list.
+                }
             }
         }
         hasher.finish()
     }
 
-    /// Port of `BasicBoard.diffTraces` (BasicBoard.java:168-171) / `BoardSnapshotManager.diffTraces`
-    /// (:81-95): the number of trace ids that appear in exactly one of the two boards.
+    /// Port of `BasicBoard.diffTraces` (BasicBoard.java:169-171) / `BoardSnapshotManager.diffTraces`
+    /// (:86-100): the number of trace ids that appear in exactly one of the two boards — the
+    /// symmetric difference of the two id sets.
+    ///
+    /// Ruling AH makes this the **tie-break** where two distinct boards could collide only in the
+    /// port, so Plan 7 Task 3 re-audited it line by line against `:86-100` and **changed nothing**.
+    /// Java builds a `HashSet<Integer>` of `board`'s trace ids, then walks `compareTo`'s
+    /// incrementing on a miss and *removing* on a hit, and finally adds what is left; the
+    /// `BTreeSet::remove` below is both halves of that test in one call, because it answers
+    /// `false` exactly when `contains` would. The two line-number citations were five and one
+    /// lines stale and are corrected above; the body is Plan 2's, untouched.
     pub fn diff_traces(&self, compare_to: &Board) -> usize {
         let mut trace_ids: BTreeSet<ItemId> = self.get_traces().into_iter().collect();
         let mut result = 0usize;

@@ -120,6 +120,17 @@ public final class P7T2Probe {
    * line of this transcript a diff about {@code structural_hash} rather than about
    * {@code BoardHistory}. {@code B5} and {@code B6} <em>are</em> kept as a pair, because there the
    * two languages agree they are the same board (connection 6 inserts nothing and burns no ids).
+   *
+   * <p><b>Re-checked by Plan 7 Task 3, and the answer is that 2 and 7 cannot come back.</b> Task 2
+   * left this note open ("once Task 3 has widened the hash, someone should re-check"). Task 3
+   * widened {@code Board::structural_hash} to {@code serialize(true)}'s field set, which closed the
+   * <em>other</em> Task 2 divergence — trace-free boards no longer collide — but this one is
+   * quirk #200 and the widening deliberately does <b>not</b> reproduce it: the audit table in
+   * {@code crates/fr-board/src/board/snapshot.rs} leaves a pin's {@code DrillItem.center}, the
+   * three {@code precalculated*} memos and {@code Item.smallestClearance} out, on the argument that
+   * a membership test must not depend on how often the board has been measured. So the port still
+   * calls {@code B1} and {@code B2} equal, {@code POOL_K} stays as it is, and the jar's own
+   * exposure is measured by {@code run.sh p7t10 <dsn> <steps> <routeK> raw} instead.
    */
   private static final int[] POOL_K = {0, 1, 3, 4, 5, 6, 8};
 
@@ -437,8 +448,9 @@ public final class P7T2Probe {
    * after, and stable from then on. {@code AutorouteBatchLoop:283-284} scores the board
    * immediately before {@code bh.add(board)}, so the pass loop only ever sees the settled value;
    * this probe takes the same order so the pool's labels are the ones {@code add} will store.
-   * Quirk row, and a Task 3 (ruling AH) input: the port's {@code Board::structural_hash} covers
-   * the item graph and must not learn to move on a lazily-populated cache.
+   * Quirk #200, and a Task 3 (ruling AH) input that Task 3 acted on: the port's
+   * {@code Board::structural_hash} covers the item graph and, by that task's ruling, does
+   * <b>not</b> learn to move on a lazily-populated cache.
    */
   private static void describeBoard(String name, RoutingBoard board) {
     String score = f(new BoardStatistics(board).getNormalizedScore(scoring));

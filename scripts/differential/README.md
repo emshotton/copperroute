@@ -1452,10 +1452,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t7`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t7`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t7` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1478,7 +1478,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t7` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -1900,6 +1900,91 @@ the driver expects, or none at all.
   triangulation, the `TreeSet<Edge>` and Kruskal), `:225` → `:259-275`
   (`calcLengthViolation`), `:293-322` (`calculateNetItems`), `:328-337`
   (`joinConnectedSets`) and `:344-397` (`Edge` and `NetItem`).
+
+- `p7t10 <dsn> <steps> [routeK] [mode]` — controller ruling AH's **decision-parity**
+  driver (Plan 7 Task 3): the three places Java compares two `BasicBoard.getHash()`
+  values, against `Board::structural_hash`. Defaults `<dsn> 2000 0 warm`; `run.sh
+  p7t10` with no arguments uses `Issue143-rpi_splitter.dsn 2000 0 warm`.
+
+  It rolls one board mutation per step from a shared xorshift64 stream — insert a
+  trace, remove a trace, insert a via, move a via, insert an obstacle area, re-fix an
+  item, restore an earlier snapshot, or **no-op** — and prints after each step
+  exactly three lines:
+
+  ```text
+  FANOUTSTOP <bool>   # BatchFanout.java:152-156's currentBoardHash.equals(lastBoardHash)
+  CONTAINS   <bool>   # BoardHistory.contains (BoardHistory.java:88-101), a 5-entry history
+  RANK       <int>    # BoardHistory.getRank  (BoardHistory.java:173-186), the same history
+  ```
+
+  **Decisions, never hash values** — Java's is a hex MD5 over `serialize(true)` and
+  the port's is a `u64` over the item graph, so the two are not comparable by
+  construction (ruling AH, `docs/java-quirks.md` #78). The no-op is what makes
+  `FANOUTSTOP` true; the restore is what makes `CONTAINS` true and `RANK` a real
+  position rather than `-1`, because a restored deep copy of an earlier snapshot is
+  the board the history holds.
+
+  **`mode` is a Java-side knob.** `warm` (the default, and the acceptance mode) puts
+  every non-`transient` field that is a *by-product of measurement* into a canonical
+  state before each hash: it fills `DrillItem`'s four lazy caches (which is
+  idempotent) and resets `Item.smallestClearance` to its `-1.0` declaration value
+  (which never resets by itself — `Item.clearanceViolations` only lowers it, and
+  `BoardHistory.add` runs a DRC pass at `BoardHistory.java:198` *after* taking the
+  entry's hash at `:197`). `raw` skips all of that, and its diffs are therefore a
+  **measurement of quirk #200's exposure in the jar**, not a port bug: the port
+  deliberately does not reproduce a hash that moves when nothing about the board
+  does (the audit table in `crates/fr-board/src/board/snapshot.rs`).
+
+  `P7T10_STATE=1` adds a fourth line per step, `STATE items=… traces=… vias=…`, on
+  **both** sides. It is off in every committed run; it exists so a decision diff can
+  be told apart from a board diff in one `diff`.
+
+  **`P7T10_HASH_MODE` (default 2) is a performance knob here, not only a determinism
+  one, and the reason is worth knowing before the next driver serializes anything.**
+  `getHash()` is an MD5 over `serialize(true)`, and `ObjectOutputStream`'s
+  back-reference `HandleTable` buckets by `System.identityHashCode` — which
+  `-XX:hashCode=2` pins to the **constant 1**, so every insert collides and
+  `HandleTable.lookup` degenerates into a linear scan of everything written so far.
+  On a board with a few hundred items and large component-outline polygons that is
+  quadratic. Measured on `tutorial_board.dsn` (439 items): **6 s** for 40 steps at
+  `-XX:hashCode=0`, and **not past step 19 in 150 s** at `-XX:hashCode=2`, with
+  `jstack` showing `main` RUNNABLE inside `ObjectOutputStream$HandleTable.lookup`.
+  It is a JDK/flag interaction — the shipped jar runs on a default JVM, where the
+  table hashes properly — and it is neither a freerouting bug nor a port one, so it
+  has no quirk row; it lives here because it will bite the next driver that
+  serializes a board.
+
+  None of this driver's three decisions depends on `Object.hashCode` (they are string
+  equalities between MD5 digests and positions in an `ArrayList`), and that is
+  **shown, not asserted**: `Issue143-rpi_splitter.dsn 2000 0 warm` is byte-identical
+  across `P7T10_HASH_MODE=0,1,2,3,4`. Run the big stems with `P7T10_HASH_MODE=0`.
+
+  ```sh
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/empty_board.dsn 2000 0 warm
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 2000 0 warm
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 2000 8 warm
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue026-J2_reference.dsn 2000 0 warm
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue026-J2_reference.dsn 2000 45 warm
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 2000 0 warm
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 2000 0 warm
+  P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 ../freerouting/examples/tutorial_board/tutorial_board.dsn 2000 0 warm
+  P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue159-setonix_2hp-pcb.dsn 2000 0 warm
+  # the quirk #200 exposure measurement, expected to DIFF:
+  ./scripts/differential/run.sh p7t10 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 2000 0 raw
+  ```
+
+  Like `p7t7`, it declares `package app.freerouting.autoroute.maze;` rather than the
+  plan's `app.freerouting.autoroute`, and `P6T1.java` is compiled alongside it: the
+  package-private `BoardHistory(ScoringSettings, int)` constructor is reached with
+  `setAccessible(true)` (which works from any package on the classpath — the
+  `P7T2Probe` precedent), while `autoroute.maze` buys `P6T1`'s package-private
+  `loadBoard`/`pickConnections`/`route`, so a `routeK > 0` fixture is routed exactly
+  the way `p6t1` routes one. **There is no budget to disable** (ruling AI): nothing on
+  this driver's path reads a clock, and the property the task brief named
+  (`-Dfreerouting.opt_changed_area_ms`) does not exist at HEAD — `opt_changed_area_ms`
+  appears only inside a log string at `BatchAutorouter.java:226`, and
+  `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `private static final int` in four
+  `autoroute/pipeline` classes.
 
 ## Deferred coverage and cleanups
 

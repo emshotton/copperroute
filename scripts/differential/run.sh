@@ -31,7 +31,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t7" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t7, p7t10" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -245,6 +245,46 @@ case "$driver" in
     # The sweep is what turns "the score does not depend on `Object.hashCode`" into evidence.
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     run_timeout="${P7T7_TIMEOUT:-900}"
+    ;;
+  p7t10)
+    # Plan 7 Task 3 (controller ruling AH): the three hash-equality **decisions**
+    # (`BatchFanout.java:152-156`, `BoardHistory.contains`, `BoardHistory.getRank`) over a
+    # scripted board-mutation sequence — decisions, never hash values, which are not comparable
+    # across the two languages by construction.
+    #
+    # Declares `package app.freerouting.autoroute.maze` — not the plan's `autoroute` — for the
+    # same reason `P7T7` does: it needs `P6T1.loadBoard`/`pickConnections`/`route`, which are
+    # package-private statics, while `BoardHistory`'s package-private cap constructor is reached
+    # with `setAccessible(true)` from any package (the `P7T2Probe` precedent). `P6T1.java` is
+    # compiled alongside so the two cannot describe different boards.
+    #
+    # `<dsn> <steps> [routeK] [mode]`; `mode` is `warm` (the acceptance mode) or `raw` (the
+    # quirk #200 exposure measurement — see `P7T10.java`'s class comment).
+    #
+    # `P7T10_HASH_MODE` (default 2, the shared harness value) overrides `-XX:hashCode`, and on
+    # this driver it is a **performance** knob as well as a determinism one. `getHash()` is an MD5
+    # over `serialize(true)`, and `ObjectOutputStream`'s back-reference `HandleTable` buckets by
+    # `System.identityHashCode` — which mode 2 pins to the constant 1, so every insert collides and
+    # the table degenerates to a linear scan. On a board with a few hundred items and large
+    # component-outline polygons that is quadratic: `tutorial_board.dsn` needs **6 s** for 40 steps
+    # at `-XX:hashCode=0` and does not reach step 20 in 150 s at `-XX:hashCode=2` (jstack: `main`
+    # RUNNABLE in `ObjectOutputStream$HandleTable.lookup`). It is a JDK/flag interaction, not a
+    # freerouting behaviour and not a port one — and none of this driver's three decisions depends
+    # on `Object.hashCode` (they are hash-string equalities and list positions), which the mode
+    # sweep in the README demonstrates rather than assumes. Run the big stems with
+    # `P7T10_HASH_MODE=0`.
+    javaclass=P7T10
+    javapkg="autoroute.maze"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 2000 0 warm)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    java_flags=(
+      -Duser.language=en
+      -Duser.country=US
+      -XX:+UnlockExperimentalVMOptions
+      "-XX:hashCode=${P7T10_HASH_MODE:-2}"
+    )
+    run_timeout="${P7T10_TIMEOUT:-1800}"
     ;;
   p6t3)
     # Plan 6 Tasks 4 and 5: the three neighbour sorters — the any-angle base class, its comparator

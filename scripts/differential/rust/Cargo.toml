@@ -122,3 +122,8 @@ path = "src/bin/p6t2.rs"
 [[bin]]
 name = "p7t7"
 path = "src/bin/p7t7.rs"
+
+# Plan 7 Task 3 (ruling AH): the three hash-equality decisions over a scripted mutation sequence.
+[[bin]]
+name = "p7t10"
+path = "src/bin/p7t10.rs"
