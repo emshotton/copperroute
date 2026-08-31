@@ -1068,7 +1068,7 @@ impl Board {
     ///
     /// Java's `getNormalContacts()` / `getStartContacts()` answer a `TreeSet<Item>`, so Java
     /// walks them in descending item id (quirk #44) and most walks in this port are `.rev()`ed
-    /// to match. These three (`:1303`, `:1309` and `:1329` in Java) are the exception, because
+    /// to match. These three (`:1303`, `:1320` and `:1331` in Java) are the exception, because
     /// each computes an **existential** and the action it triggers does not name the contact
     /// that triggered it: the body is "does *any* contact lack `currentNetNumber`?", and the
     /// consequence is `currentItem.removeFromNet(currentNetNumber)`, which depends only on the
@@ -1078,7 +1078,17 @@ impl Board {
     ///
     /// Audited under Plan 7 Task 8b / ruling AY, alongside quirk **#210** — the one contact walk
     /// in the workspace where the direction *did* matter, because
-    /// `TraceTightener45.java:511-514` keeps the last match rather than the first.
+    /// `TraceTightener45.java:511-515` keeps the last match rather than the first.
+    ///
+    /// # The two arms break in different places, and that is Java's
+    ///
+    /// The via arm's `if (somethingChanged) break;` is at **`:1310`, inside** the
+    /// `for (int currentNetNumber : currentItem.netNumbers)` loop at `:1302`, so one visit to a
+    /// via removes at most **one** net. The trace arm's is at **`:1341`, outside** its net loop
+    /// at `:1318`, so one visit to a trace removes **as many nets as the loop finds** — a two-net
+    /// trace whose contacts support neither net ends the visit with *zero* nets, and `:1296`'s
+    /// `netNumbers.length <= 1` guard is never re-consulted within the visit. Quirk **#211**
+    /// records it; both arms below reproduce their own break placement.
     //
     // Java bug: the method computes `result` but never assigns it (RoutingBoard.java:1285,1355),
     // so it always returns `false` even when it changed something — its doc comment promises
@@ -1122,11 +1132,28 @@ impl Board {
                     }
                 } else if item.is_trace() {
                     // RoutingBoard.java:1315-1349.
-                    let mut removed = None;
+                    //
+                    // `removed` is a **list**, not an `Option`: the trace arm's
+                    // `if (somethingChanged) break;` is at `:1341`, *outside* the net loop, so
+                    // Java calls `removeFromNet` once per net the loop finds. See the doc
+                    // comment's "The two arms break in different places" and quirk #211.
+                    //
+                    // Collecting and applying after the loops is exact rather than a
+                    // convenience: nothing the loops read depends on this item's own nets — the
+                    // tests are `currentContact.containsNet(..)` and
+                    // `currentContact instanceof Pin`, both about the *contact* — and `contacts`
+                    // is only recomputed at `:1344`, which is reached only when nothing was
+                    // removed.
+                    let mut removed: Vec<i32> = Vec::new();
                     let mut contacts = self.trace_start_contacts(id);
-                    'ends: for end in 0..2 {
+                    // :1317.
+                    for end in 0..2 {
+                        // :1318. Java re-reads `currentItem.netNumbers` here, but a removal
+                        // always breaks out of the `end` loop at `:1341`, so the second pass
+                        // only ever sees the original list.
                         for current_net_number in &net_nos {
                             let mut pin_found = false;
+                            // :1320-1329.
                             for contact_id in &contacts {
                                 let Some(contact @ Item::Pin(_)) = self.items.get(contact_id)
                                 else {
@@ -1134,7 +1161,7 @@ impl Board {
                                 };
                                 pin_found = true;
                                 if !contact.contains_net(*current_net_number) {
-                                    removed = Some(*current_net_number);
+                                    removed.push(*current_net_number);
                                     break;
                                 }
                             }
@@ -1148,24 +1175,27 @@ impl Board {
                                     if !matches!(contact, Item::Pin(_))
                                         && !contact.contains_net(*current_net_number)
                                     {
-                                        removed = Some(*current_net_number);
+                                        removed.push(*current_net_number);
                                         break;
                                     }
                                 }
                             }
-                            if removed.is_some() {
-                                break 'ends;
-                            }
                         }
+                        // :1341-1343 — **after** the whole net loop, which is what lets a visit
+                        // remove more than one net.
+                        if !removed.is_empty() {
+                            break;
+                        }
+                        // :1344.
                         if end == 0 {
                             contacts = self.trace_end_contacts(id);
                         }
                     }
-                    if let Some(net_number) = removed {
-                        self.items
-                            .get_mut(&id)
-                            .expect("present")
-                            .remove_from_net(net_number);
+                    if !removed.is_empty() {
+                        let target = self.items.get_mut(&id).expect("present");
+                        for net_number in removed {
+                            target.remove_from_net(net_number);
+                        }
                         something_changed = true;
                         break;
                     }

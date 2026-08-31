@@ -768,6 +768,20 @@ public class P2T11 {
     System.out.println("result=" + board.reduceNetsOfRouteItems());
     System.out.println("nets(4)=" + Arrays.toString(board.getItem(4).netNumbers));
 
+    // Plan 7 Task 8b review S4 / quirk #211: the trace arm's `if (somethingChanged) break;` is
+    // at RoutingBoard.java:1341, *outside* the net loop at `:1318`, so ONE visit can call
+    // `removeFromNet` twice. Trace 4 is put on nets {1, 2}; its start contacts are the detour
+    // trace 5 and via 2, so putting 5 on net {2} alone leaves each contact supporting exactly one
+    // of trace 4's two nets and neither supporting the other. Java therefore drops BOTH and the
+    // trace ends the visit with an empty net array.
+    System.out.println("--- reduceNetsOfRouteItems (two nets in one visit)");
+    buildCycleBoard();
+    board.getItem(4).netNumbers = new int[] {1, 2};
+    board.getItem(5).netNumbers = new int[] {2};
+    System.out.println("result=" + board.reduceNetsOfRouteItems());
+    System.out.println("nets(4)=" + Arrays.toString(board.getItem(4).netNumbers));
+    System.out.println("nets(5)=" + Arrays.toString(board.getItem(5).netNumbers));
+
     System.out.println("--- deleteAllTracksAndVias");
     buildCycleBoard();
     board.deleteAllTracksAndVias();

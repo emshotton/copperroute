@@ -1018,6 +1018,29 @@ fn dump_cycles_and_inserters() {
         net_array(board.get_item(ItemId(4)).expect("a trace").net_nos())
     );
 
+    // Plan 7 Task 8b review S4 / quirk #211 — see `P2T11.java`'s comment at the same datum.
+    println!("--- reduceNetsOfRouteItems (two nets in one visit)");
+    let (mut board, _) = build_cycle_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 2];
+    board
+        .get_item_mut(ItemId(5))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![2];
+    println!("result={}", board.reduce_nets_of_route_items());
+    println!(
+        "nets(4)={}",
+        net_array(board.get_item(ItemId(4)).expect("a trace").net_nos())
+    );
+    println!(
+        "nets(5)={}",
+        net_array(board.get_item(ItemId(5)).expect("a trace").net_nos())
+    );
+
     println!("--- deleteAllTracksAndVias");
     let (mut board, _) = build_cycle_board();
     board.delete_all_tracks_and_vias();

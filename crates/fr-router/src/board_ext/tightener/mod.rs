@@ -795,7 +795,7 @@ pub(crate) struct ContactScan {
 /// port's [`BTreeSet<ItemId>`](std::collections::BTreeSet) is ascending, so this walk is
 /// `.rev()`ed like every other `TreeSet<Item>` walk in the workspace.
 ///
-/// It is not cosmetic here: `TraceTightener45.java:511-514` **overwrites**
+/// It is not cosmetic here: `TraceTightener45.java:511-515` **overwrites**
 /// `otherTraceCornerApprox`, `otherTraceLine`, `prevCornerSide` and `otherPrevTraceLine` on
 /// every contact that matches, so the *last* match wins, and with two or more matching contacts
 /// the direction of the walk picks a different one. That choice sets `newLineDir` (`:523-527`),

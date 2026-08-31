@@ -1721,6 +1721,48 @@ fn reduce_nets_of_route_items_reduces_but_always_reports_false() {
 }
 
 #[test]
+fn one_visit_reduces_two_nets_because_the_trace_arm_breaks_outside_its_net_loop() {
+    // `P2T11.java` mode 6, the second `reduceNetsOfRouteItems` datum: `result=false`,
+    // `nets(4)=[]`, `nets(5)=[2]` — the jar's own answer, not a hand-derivation.
+    //
+    // Quirk #211. The via arm's `if (somethingChanged) break;` is at RoutingBoard.java:1310,
+    // *inside* the net loop at `:1302`, so a via loses at most one net per visit. The trace
+    // arm's is at `:1341`, **outside** its net loop at `:1318`, so the loop runs to completion
+    // and `removeFromNet` is called once per net it finds.
+    //
+    // The fixture makes both nets droppable at once: trace 4 is put on nets {1, 2} and its two
+    // start contacts are via 2 (net 1) and the detour trace 5 (net 2), so each contact carries
+    // exactly one of trace 4's nets and lacks the other. Neither contact is a `Pin`, so `:1330`'s
+    // `!pinFound` arm is the one that fires, for **both** nets.
+    let (mut board, _) = board_builder::cycle_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 2];
+    board
+        .get_item_mut(ItemId(5))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![2];
+
+    assert!(
+        !board.reduce_nets_of_route_items(),
+        "quirk #66: always false"
+    );
+    assert_eq!(
+        board.get_item(ItemId(4)).expect("a trace").net_nos(),
+        &[] as &[i32],
+        "both nets must go in the one visit — `:1296`'s `netNumbers.length <= 1` guard is not \
+         re-consulted inside a visit, so stopping after the first removal would leave net 2 \
+         standing and the `while somethingChanged` restart would then skip the item"
+    );
+    // The contact that made net 1 droppable is itself untouched: it has one net, so `:1296`
+    // skips it.
+    assert_eq!(board.get_item(ItemId(5)).expect("a trace").net_nos(), &[2]);
+}
+
+#[test]
 fn delete_all_tracks_and_vias_leaves_only_the_areas_and_the_outline() {
     // `P2T11.java` mode 6: `items=[6 1]`. Java deletes straight from `itemList` and leaves the
     // search trees holding leaves for the removed items; the port removes them from the trees

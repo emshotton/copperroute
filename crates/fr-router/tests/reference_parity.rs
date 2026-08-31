@@ -817,7 +817,7 @@ fn steps_one_to_eight_on_dac2020_at_pass_two_matches_the_jar() {
 /// controller ruling AY authorised the fix: `fr_router::board_ext::tightener::scan_contacts`
 /// walked the contact set of `TraceTightener45.smoothenStartCornerAtTrace` **ascending** where
 /// Java's `TreeSet<Item>` walks it **descending** (quirk #44's ordering), and
-/// `TraceTightener45.java:511-514` keeps the *last* matching contact — so with two or more
+/// `TraceTightener45.java:511-515` keeps the *last* matching contact — so with two or more
 /// matching contacts the two sides smoothed against different ones. On this board it fired
 /// exactly once, at connection 175, trace 292213, and cascaded into 120 of the 294 lines.
 /// `scan_contacts` is now `.rev()`ed and quirk **#210** carries the measurement.
