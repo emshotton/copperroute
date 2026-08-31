@@ -2,18 +2,23 @@
 //! `optViaLocation` (ViaOptimizer.java:33-158), `optPlaneOrFanoutVia` (:161-296) and
 //! `isWithinTolerance` (:719-732), over a real DSN board whose vias were placed by real routing.
 //!
-//! Usage: `p7t4 <dsn> [mode] [accuracy] [routeK]`. See the Java twin's class comment for the four
-//! modes, for why the driver declares `package app.freerouting.autoroute.maze` rather than
-//! `board.optimize`, and for the scripted `isWithinTolerance` stream mode 2 replays.
+//! Usage: `p7t4 <dsn> [mode] [accuracy] [routeK]`, modes `0`, `1`, `2` and `6`. See the Java twin's
+//! class comment for what each mode drives, for why mode 6 is not numbered 3
+//! (`task-7-brief.md:29` reserves 3/4/5 for the three `repositionVia` overloads), for why the
+//! driver declares `package app.freerouting.autoroute.maze` rather than `board.optimize`, and for
+//! the scripted `isWithinTolerance` stream mode 2 replays.
 //!
 //! **The budget is disabled on both sides.** `ViaOptimizer` reads no clock of its own; the routing
 //! prologue is `p7t3`'s and the `pull_tight` calls inside the two methods carry a `StopCheck` that
 //! never trips, which is Java's `null` `Stoppable`.
 //!
-//! **Modes 0, 1 and 3 diff until Plan 7 Task 7.** Both methods reach `repositionVia`, whose three
-//! overloads are Task 7's and answer `None` here; the Java side moves vias the port leaves alone.
-//! Mode 2 is the one this task pins to 0 diffs. `crates/fr-router/README.md` records the measured
-//! counts.
+//! **The Task 7 guard.** `repositionVia` overload A is an `unimplemented!` on this side
+//! (controller ruling B1 — answering `None` there sends `optPlaneOrFanoutVia` into a branch that
+//! *inserts*, and Java reaches that branch only when its own overload A answered null). So both
+//! sides run a read-only replica of `optPlaneOrFanoutVia:167-215` and print `result=TASK7_GUARD`
+//! for a via that would reach it, **without calling either method on either side**. What is left
+//! diffing is overload C's arm — `optViaLocation:118-131` — where a `None` is a board Java itself
+//! produces. `crates/fr-router/README.md` records the measured counts.
 //!
 //! `P6T1.java`'s four routing choices are transcribed here for the reason `p7t3.rs`'s module
 //! comment gives: Rust binaries cannot share a private module, and the Java side is the
@@ -36,7 +41,7 @@ use fr_settings::{ExpansionCostFactor, HostEnvironment, RouterSettings, Settings
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
-        eprintln!("usage: p7t4 <dsn> [mode] [accuracy] [routeK]");
+        eprintln!("usage: p7t4 <dsn> [mode] [accuracy] [routeK]  (modes 0, 1, 2, 6)");
         std::process::exit(2);
     }
     let dsn = std::fs::canonicalize(&args[0])
@@ -62,7 +67,7 @@ fn main() {
         route_one(&mut out, &mut board, &settings, &connection);
     }
 
-    let trace_costs: Option<Vec<ExpansionCostFactor>> = if mode == 3 {
+    let trace_costs: Option<Vec<ExpansionCostFactor>> = if mode == 6 {
         None
     } else {
         Some(vec![
@@ -104,6 +109,22 @@ fn main() {
         };
         let contacts = contact_ids(&board, via_id);
         let class = classify(&board, via_id);
+        // The Task 7 guard, computed before the call and identically on both sides.
+        let guarded = ViaOptimizer::reaches_task_seven_guard(&board, via_id)
+            && (mode == 1 || takes_plane_arm(&board, via_id));
+        if guarded {
+            writeln!(
+                out,
+                "via id={} center={} minWidth={} contacts={contacts} class={class} \
+                 result=TASK7_GUARD after={}",
+                via_id.0,
+                dump_point(&center),
+                java_double_to_string(min_width),
+                dump_point(&center),
+            )
+            .expect("write");
+            continue;
+        }
         let result = if mode == 1 {
             ViaOptimizer::opt_plane_or_fanout_via(&mut board, via_id, accuracy, 10)
         } else {
@@ -247,6 +268,15 @@ fn classify(board: &Board, via: ItemId) -> &'static str {
         }
     }
     "TWO_TRACES"
+}
+
+/// `optViaLocation:39-78` reduced to "does this via reach the plane/fanout arm?" — the half of
+/// [`classify`] the guard needs. `P7T4.takesPlaneArm` is the same three lines.
+fn takes_plane_arm(board: &Board, via: ItemId) -> bool {
+    matches!(
+        classify(board, via),
+        "PLANE_OR_FANOUT_ONE_CONTACT" | "PLANE_OR_FANOUT_CONDUCTION"
+    )
 }
 
 /// `isWithinTolerance:719-732`, re-transcribed here so the replica needs no `pub(crate)` reach —

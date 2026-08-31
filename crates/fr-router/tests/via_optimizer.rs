@@ -14,15 +14,28 @@
 //!
 //! # What is pinned and what is not, and why
 //!
-//! **`repositionVia` is Plan 7 Task 7's, and it is the only thing that diverges here.** All three
-//! overloads (`:302-365`, `:367-429`, `:435-713`) answer `None` in this task, so a via Java moves
-//! *through* one of them is left where it is. The transcript therefore splits into two families:
+//! **`repositionVia` is Plan 7 Task 7's, and it is the only thing that diverges here** — but its
+//! two stubs are not alike, and controller ruling B1 is about the difference.
 //!
-//! * the runs the port matches **row for row** — `Issue649-kicad_ecc83-pp_input_board_v1` in all
-//!   three board modes (its 12-connection prefix routes no via at all) and
+//! * Overload **C** (`optViaLocation:118-131`) answers `None`. Java's `:132-134` turns a `null`
+//!   into `return false` with nothing mutated, so the stub produces a board Java itself produces;
+//!   the divergence is a *missing* move. Pinned by
+//!   [`a_refused_move_leaves_the_board_byte_identical`].
+//! * Overload **A** (`optPlaneOrFanoutVia:216-217`) **panics**. A `None` there would fall through
+//!   to the `:218-260` projection branch, which *inserts*, and which Java reaches only when its own
+//!   overload A answered `null` — so a `None` stub moved `rpi`'s via 84 to `(1016000,2968339)`
+//!   where Java puts it at `(1016000,3119161)`. A stub must be inert or loud, so it is an
+//!   `unimplemented!`, and `ViaOptimizer::reaches_task_seven_guard` is the read-only predicate that
+//!   lets a caller see it coming. [`a_plane_via_reaches_task_sevens_guard`] pins both halves.
+//!
+//! The transcript therefore splits into two families:
+//!
+//! * the runs the port matches **row for row** — all three board modes of
+//!   `Issue649-kicad_ecc83-pp_input_board_v1` (its 12-connection prefix routes no via at all) and
+//!   of `Issue143-rpi_splitter` (whose two vias are `TASK7_GUARD` rows on **both** sides), plus
 //!   `Issue026-J2_reference` mode 1 (`optPlaneOrFanoutVia` refuses every via there at `:188-190`,
 //!   because all six have two trace contacts). [`the_matching_runs_match_the_jvm_row_for_row`].
-//! * the runs that diverge on exactly the vias whose Java answer came from `repositionVia`, and
+//! * the two runs that diverge on exactly the vias whose Java answer came from overload C, and
 //!   agree on **every other column of every other row** — [`the_only_divergence_is_repositionvia`]
 //!   names those vias by id and would fail if a *different* row moved.
 //!
@@ -227,7 +240,7 @@ fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
         ));
     }
 
-    let trace_costs: Option<Vec<ExpansionCostFactor>> = if mode == 3 {
+    let trace_costs: Option<Vec<ExpansionCostFactor>> = if mode == 6 {
         None
     } else {
         Some(vec![
@@ -266,6 +279,20 @@ fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
         };
         let contacts = contact_ids(&board, via_id);
         let class = classify(&board, via_id);
+        // `P7T4`'s Task 7 guard, computed before the call and identically on both sides.
+        if ViaOptimizer::reaches_task_seven_guard(&board, via_id)
+            && (mode == 1 || takes_plane_arm(&board, via_id))
+        {
+            out.push(format!(
+                "via id={} center={} minWidth={} contacts={contacts} class={class} \
+                 result=TASK7_GUARD after={}",
+                via_id.0,
+                dump_point(&center),
+                java_double_to_string(min_width),
+                dump_point(&center),
+            ));
+            continue;
+        }
         let result = if mode == 1 {
             ViaOptimizer::opt_plane_or_fanout_via(&mut board, via_id, 500, 10)
         } else {
@@ -295,7 +322,15 @@ fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
 /// have two trace contacts (so `:188-190` refuses every one of them).
 #[test]
 fn the_matching_runs_match_the_jvm_row_for_row() {
-    for (tag, mode) in [("ecc83", 0), ("ecc83", 1), ("ecc83", 3), ("j2", 1)] {
+    for (tag, mode) in [
+        ("ecc83", 0),
+        ("ecc83", 1),
+        ("ecc83", 6),
+        ("rpi", 0),
+        ("rpi", 1),
+        ("rpi", 6),
+        ("j2", 1),
+    ] {
         assert_eq!(
             p7t4_rows(tag, mode),
             transcript_section(&format!("{tag} mode {mode}")),
@@ -308,13 +343,14 @@ fn the_matching_runs_match_the_jvm_row_for_row() {
 /// per `(tag, mode)`. **These lists are Task 7's checklist**: when the overloads land they become
 /// empty and this test becomes [`the_matching_runs_match_the_jvm_row_for_row`].
 ///
-/// `rpi`'s two are the `PLANE_OR_FANOUT_ONE_CONTACT` vias whose move Java makes through overload A
-/// (`:302-365`); `j2`'s six are `TWO_TRACES` vias, of which Java moves four through overload C
-/// (`:435-713`) and the moves then change the contact ids of the two it does not.
+/// `j2`'s six are `TWO_TRACES` vias, of which Java moves four through **overload C**
+/// (`:435-713`) and the moves then change the contact ids of the two it does not. **`rpi` has
+/// none**: its two `PLANE_OR_FANOUT_ONE_CONTACT` vias would reach overload A, and both sides print
+/// `TASK7_GUARD` for them instead of calling (controller ruling B1), so all three `rpi` modes are
+/// row-for-row matches and live in [`the_matching_runs_match_the_jvm_row_for_row`].
 fn expected_divergent_vias(tag: &str, mode: i32) -> &'static [u32] {
     match (tag, mode) {
-        ("rpi", 0) | ("rpi", 1) | ("rpi", 3) => &[187, 84],
-        ("j2", 0) | ("j2", 3) => &[264, 231, 200, 189, 130, 124],
+        ("j2", 0) | ("j2", 6) => &[264, 231, 200, 189, 130, 124],
         _ => &[],
     }
 }
@@ -326,14 +362,7 @@ fn expected_divergent_vias(tag: &str, mode: i32) -> &'static [u32] {
 /// `:87`/`:194` are right.
 #[test]
 fn the_only_divergence_is_repositionvia() {
-    for (tag, mode) in [
-        ("rpi", 0),
-        ("rpi", 1),
-        ("rpi", 3),
-        ("j2", 0),
-        ("j2", 3),
-        ("ecc83", 0),
-    ] {
+    for (tag, mode) in [("j2", 0), ("j2", 6), ("rpi", 0), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
         let theirs = transcript_section(&format!("{tag} mode {mode}"));
         let divergent = expected_divergent_vias(tag, mode);
@@ -552,44 +581,105 @@ fn the_overload_dispatch_matches_javas_contact_counts() {
 }
 
 /// `:47` and `:76-78` — a via with exactly one contact never reads `firstTrace`/`secondTrace` and
-/// goes straight to the plane/fanout arm, whose answer `optViaLocation` returns unchanged. Pinned
-/// by driving both entry points over the same board and requiring the same answer for every
-/// one-contact via.
+/// goes straight to the plane/fanout arm; `:216-217` is the first thing that arm cannot answer
+/// without Task 7. This test says **what** the two entry points do with `rpi`'s vias, not merely
+/// that they agree:
+///
+/// * the two one-contact vias (187 and 84) reach [`ViaOptimizer::reaches_task_seven_guard`] and
+///   **panic** out of both `opt_via_location` and `opt_plane_or_fanout_via`, with a message naming
+///   `ViaOptimizer.repositionVia` overload A. That the *first* entry point panics is the dispatch
+///   assertion: `:76-78` routed it into the plane arm. It is also the B1 assertion — before
+///   controller ruling B1 via 84 answered `Ok(true)` here and left the board at
+///   `(1016000,2968339)`, which is not where Java puts it;
+/// * the four two-trace vias answer `Ok(false)` from **both** entry points — `opt_via_location`
+///   at `:132-134` because overload C's stub declines, `opt_plane_or_fanout_via` at `:188-190`
+///   because a second trace contact is already recorded — and leave the board untouched.
+///
+/// **Task 7 rewrites the first half** to the centres Java chooses.
 #[test]
-fn a_plane_via_takes_the_plane_arm() {
-    let mut through_opt_via_location = routed_rpi();
-    let mut direct = routed_rpi();
-    let via_ids: Vec<ItemId> = through_opt_via_location
+fn a_plane_via_reaches_task_sevens_guard() {
+    let mut board = routed_rpi();
+    let via_ids: Vec<ItemId> = board
         .get_items()
         .filter(|item| matches!(item, Item::Via(_)))
         .map(Item::id)
         .collect();
-    let mut one_contact_vias = 0;
-    for via_id in via_ids {
-        if through_opt_via_location.normal_contacts(via_id).len() != 1 {
-            continue;
+    let mut one_contact = Vec::new();
+    let mut two_trace = Vec::new();
+    for via_id in &via_ids {
+        if board.normal_contacts(*via_id).len() == 1 {
+            one_contact.push(*via_id);
+        } else {
+            two_trace.push(*via_id);
         }
-        one_contact_vias += 1;
-        let via_location =
-            ViaOptimizer::opt_via_location(&mut through_opt_via_location, via_id, None, 500, 10)
-                .expect("cannot fail");
-        let plane_or_fanout = ViaOptimizer::opt_plane_or_fanout_via(&mut direct, via_id, 500, 10)
-            .expect("cannot fail");
-        assert_eq!(
-            via_location, plane_or_fanout,
-            ":76-78 returns the plane arm's answer unchanged for via {}",
-            via_id.0
-        );
     }
     assert_eq!(
-        one_contact_vias, 2,
-        "the routed `rpi` prefix leaves two one-contact vias"
+        one_contact.iter().map(|id| id.0).collect::<Vec<_>>(),
+        vec![187, 84],
+        "the routed `rpi` prefix leaves exactly these two one-contact vias"
     );
-    assert_eq!(
-        through_opt_via_location.structural_hash(),
-        direct.structural_hash(),
-        "and it took the same path through the board"
-    );
+    assert_eq!(two_trace.len(), 4);
+
+    for via_id in one_contact {
+        assert!(
+            ViaOptimizer::reaches_task_seven_guard(&board, via_id),
+            "via {} must be predicted to reach the guard",
+            via_id.0
+        );
+        for label in ["opt_via_location", "opt_plane_or_fanout_via"] {
+            let before = board.structural_hash();
+            let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let mut scratch = board.clone();
+                if label == "opt_via_location" {
+                    ViaOptimizer::opt_via_location(&mut scratch, via_id, None, 500, 10)
+                } else {
+                    ViaOptimizer::opt_plane_or_fanout_via(&mut scratch, via_id, 500, 10)
+                }
+            }))
+            .expect_err(&format!(
+                "{label} on via {} must reach Task 7's guard",
+                via_id.0
+            ));
+            let message = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied())
+                .unwrap_or("");
+            assert!(
+                message.contains("repositionVia overload A"),
+                "{label} on via {} panicked with an unrelated message: {message}",
+                via_id.0
+            );
+            assert_eq!(
+                before,
+                board.structural_hash(),
+                "the guard must fire before anything is inserted"
+            );
+        }
+    }
+
+    for via_id in two_trace {
+        assert!(
+            !ViaOptimizer::reaches_task_seven_guard(&board, via_id),
+            "a two-trace via stops at :188-190, well before the guard"
+        );
+        let before = board.structural_hash();
+        assert!(
+            !ViaOptimizer::opt_via_location(&mut board, via_id, None, 500, 10)
+                .expect("cannot fail"),
+            ":132-134 — overload C's stub declines and nothing is mutated"
+        );
+        assert!(
+            !ViaOptimizer::opt_plane_or_fanout_via(&mut board, via_id, 500, 10)
+                .expect("cannot fail"),
+            ":188-190 — a second trace contact is already recorded"
+        );
+        assert_eq!(
+            before,
+            board.structural_hash(),
+            "and the board is untouched"
+        );
+    }
 }
 
 /// `:46` — `via.getNormalContacts()` is a `TreeSet<Item>` and `Item.compareTo` is
@@ -764,6 +854,15 @@ fn contact_ids(board: &Board, via: ItemId) -> String {
         })
         .collect();
     format!("[{}]", inner.join(","))
+}
+
+/// `P7T4.takesPlaneArm` — `optViaLocation:39-78` reduced to "does this via reach the plane/fanout
+/// arm?", the half of [`classify`] the Task 7 guard needs.
+fn takes_plane_arm(board: &Board, via: ItemId) -> bool {
+    matches!(
+        classify(board, via),
+        "PLANE_OR_FANOUT_ONE_CONTACT" | "PLANE_OR_FANOUT_CONDUCTION"
+    )
 }
 
 /// `P7T4.classify` — the read-only replica of `optViaLocation:39-106`.

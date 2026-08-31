@@ -229,6 +229,9 @@ impl ViaOptimizer {
     /// crate, so `pub(crate)` (which the brief asked for) does not reach them, and the Java twin
     /// pays for the same reach with `setAccessible`. Nothing inside `fr-router` calls it except
     /// [`Self::opt_via_location`].
+    // pub seam: `optPlaneOrFanoutVia` is `private` in Java (ViaOptimizer.java:161); the only
+    // callers of this `pub` are `crates/fr-router/tests/via_optimizer.rs` and
+    // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
     pub fn opt_plane_or_fanout_via(
         board: &mut Board,
         via: ItemId,
@@ -314,7 +317,7 @@ impl ViaOptimizer {
         let trace_layer = Self::trace_layer(board, contact_trace);
         let trace_cl_class_no = Self::trace_clearance_class(board, contact_trace);
         // :216-217.
-        let mut new_via_location = Self::reposition_via_two_contacts(
+        let mut new_via_location = Self::reposition_via_toward_location(
             board,
             via,
             &rounded_check_corner,
@@ -447,6 +450,9 @@ impl ViaOptimizer {
     /// **inside** the tolerance.
     ///
     /// Private in Java; `pub` here for the reason [`Self::opt_plane_or_fanout_via`] gives.
+    // pub seam: `isWithinTolerance` is `private` in Java (ViaOptimizer.java:719); the only callers
+    // of this `pub` are `crates/fr-router/tests/via_optimizer.rs` and
+    // `scripts/differential/rust/src/bin/p7t4.rs`, both outside the crate.
     // Java bug: ViaOptimizer.isWithinTolerance — quirk #206. The javadoc says this "matches the
     // logic in DrillItem.getNormalContacts()", and `optViaLocation:85-86` repeats the claim. It
     // does not: `getNormalContacts` matches a trace end **exactly** (DrillItem.java:288-290), so
@@ -468,17 +474,99 @@ impl ViaOptimizer {
         (dx + dy) <= f64::from(tolerance)
     }
 
+    /// **Not a Java method.** A read-only replica of `optPlaneOrFanoutVia:167-215` that answers
+    /// "would this via reach `reposition_via_toward_location`'s Task 7 guard?", so a test
+    /// or a differential driver can skip exactly the vias whose answer Task 6 does not have —
+    /// and skip them on the *Java* side too, so no committed transcript row records a port-only
+    /// move (controller ruling B1).
+    ///
+    /// It touches nothing: every step is a lookup Java performs before `:216`, in Java's order and
+    /// with Java's early exits (`:168-170` empty, `:171-187` the plane/trace classification,
+    /// `:188-190` no contact trace, `:196-204` not at an endpoint, `:205-211` the check corner).
+    /// `scripts/differential/java/P7T4.java`'s `reachesOverloadA` is the same twenty lines on the
+    /// Java side, and the two agreeing on every via of every corpus stem is itself evidence for
+    /// the classification.
+    ///
+    /// **Task 7 deletes this**, together with the guard it predicts.
+    // pub seam: none in Java — the port's own Task 7 guard predicate. Its callers are
+    // `crates/fr-router/tests/via_optimizer.rs` and `scripts/differential/rust/src/bin/p7t4.rs`,
+    // both outside this crate, so `pub(crate)` cannot reach them.
+    pub fn reaches_task_seven_guard(board: &Board, via: ItemId) -> bool {
+        // :167-170.
+        let contact_list: Vec<ItemId> = board.normal_contacts(via).into_iter().rev().collect();
+        if contact_list.is_empty() {
+            return false;
+        }
+        // :171-187.
+        let mut contact_plane_seen = false;
+        let mut contact_trace: Option<ItemId> = None;
+        for current_contact in contact_list {
+            match board.get_item(current_contact) {
+                Some(Item::ConductionArea(_)) => {
+                    if contact_plane_seen {
+                        return false;
+                    }
+                    contact_plane_seen = true;
+                }
+                Some(item) if item.is_trace() => {
+                    if item.is_shove_fixed(&board.rules) || contact_trace.is_some() {
+                        return false;
+                    }
+                    contact_trace = Some(current_contact);
+                }
+                _ => return false,
+            }
+        }
+        // :188-190.
+        let Some(contact_trace) = contact_trace else {
+            return false;
+        };
+        // :191, :194.
+        let Some(via_center) = board.drill_center(via) else {
+            return false;
+        };
+        let tolerance = Self::via_tolerance(board, via);
+        // :196-204.
+        let first = Self::trace_corner(board, contact_trace, TraceEnd::First);
+        let last = Self::trace_corner(board, contact_trace, TraceEnd::Last);
+        let at_first_corner = if Self::is_within_tolerance(first.as_ref(), &via_center, tolerance) {
+            true
+        } else if Self::is_within_tolerance(last.as_ref(), &via_center, tolerance) {
+            false
+        } else {
+            return false;
+        };
+        // :205-211 — the port answers `false` where `Polyline::corner` would, for the reason
+        // `from_corner` gives.
+        let Some(Item::Trace(trace)) = board.get_item(contact_trace) else {
+            return false;
+        };
+        let polyline = trace.polyline();
+        let corner_count = polyline.corner_count();
+        let check_corner = if at_first_corner {
+            polyline.corner(1)
+        } else {
+            polyline.corner(corner_count.wrapping_sub(2))
+        };
+        // :216-217 is the next statement, so reaching here is reaching the guard.
+        check_corner.is_some()
+    }
+
     // -- Task 7's three overloads ------------------------------------------------------------------
 
+    /// # Panics
+    ///
+    /// **Always.** This is Plan 7 Task 7's `ViaOptimizer.repositionVia` overload A, and Task 6
+    /// deliberately does not answer for it — see the marker below and the module's
+    /// "Why overload A panics and overload C does not".
     // added in Task 7: `ViaOptimizer.repositionVia` overload A (ViaOptimizer.java:302-365) — "tries
     // to move the via into the direction of toLocation as far as possible. Return the new location
-    // of the via, or null, if no move was possible." Until Task 7 lands it this answers Java's
-    // `null`, which sends `optPlaneOrFanoutVia` into its `:218-260` projection fallback and then to
-    // `:261-263`'s `return false`. Measured on `Issue143-rpi_splitter` at `routeK = 12`: **two of
-    // six vias** take this overload and Java's answer for both is non-null, so `p7t4` mode 0 and
-    // `p7t3` mode 4 diff here until Task 7 — see `crates/fr-router/README.md`.
+    // of the via, or null, if no move was possible." One caller: `optPlaneOrFanoutVia:216-217`, the
+    // **one**-contact / plane-or-fanout arm. Task 7 replaces this body; nothing else about the call
+    // site changes. The `unimplemented!` is Plan 6 Task 9's precedent for a half-closed cycle
+    // (`board_ext/mod.rs:19`), and controller ruling B1 requires it here rather than a `None`.
     #[allow(clippy::too_many_arguments)]
-    fn reposition_via_two_contacts(
+    fn reposition_via_toward_location(
         _board: &mut Board,
         _via: ItemId,
         _to_location: &IntPoint,
@@ -486,14 +574,21 @@ impl ViaOptimizer {
         _trace_layer: usize,
         _trace_cl_class: usize,
     ) -> Option<Point> {
-        None
+        unimplemented!(
+            "ViaOptimizer.repositionVia overload A (ViaOptimizer.java:302-365) is Plan 7 Task 7's; \
+             answering `None` here would send optPlaneOrFanoutVia into its :218-260 projection \
+             fallback, which Java reaches only when its own overload A answered null, and that \
+             fallback inserts"
+        )
     }
 
     // added in Task 7: `ViaOptimizer.repositionVia` overload C (ViaOptimizer.java:435-713) — the
-    // twelve-argument one `optViaLocation:118-131` calls, and the only caller of overload B
-    // (`:367-429`). Until Task 7 lands it this answers Java's `null` and `optViaLocation` returns
-    // `false` at `:132-134`. Measured on `Issue026-J2_reference` at `routeK = 12`: **four of six
-    // vias** reach it and Java moves all four.
+    // twelve-argument one `optViaLocation:118-131` calls, the **two-trace** arm's, and the only
+    // caller of overload B (`:367-429`). Unlike overload A this one may answer `None`: Java's
+    // `:132-134` turns `null` into `return false` with **nothing mutated**, so the stub reproduces a
+    // board Java can really produce — it is a *missing* move, never a wrong one. Measured on
+    // `Issue026-J2_reference` at `routeK = 12`: **four of six vias** reach it and Java moves all
+    // four, which is the whole of `p7t4`'s residual diff.
     #[allow(clippy::too_many_arguments)]
     fn reposition_via_general(
         _board: &mut Board,

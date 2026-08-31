@@ -2040,9 +2040,10 @@ the driver expects, or none at all.
   `pinEdgeToTurnDist` to 100000 so the `ConnectionToPin` pair inside the sweep fires
   on nearly every routed stub; **mode 4 offers `traceCosts`, which opens
   `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Plan 7 Task 6
-  landed that arm — it is a live call now — but the three `repositionVia` overloads
-  under it are Task 7's and still answer `null`, so mode 4 is expected to DIFF until
-  Task 7 lands them.**
+  landed that arm — it is a live call now — but `repositionVia` overload A under it
+  is an `unimplemented!` until Task 7 (controller ruling B1), so on a board with a
+  plane-or-fanout via mode 4 now **panics on the Rust side** rather than diffing
+  quietly. That is deliberate: a stubbed arm must be inert or loud.**
 
   ```sh
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 0 500 12
@@ -2057,15 +2058,14 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 1 500 12
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 2 500 12
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 3 500 12
-  # the repositionVia measurement, expected to DIFF until Task 7:
+  # the repositionVia measurement — PANICS on the Rust side until Task 7 (ruling B1):
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 4 500 12
   ```
 
-  **Twelve fixture/mode pairs (three boards × modes 0-3), 0 diffs.** Mode 4 diffs on
-  `Issue143-rpi_splitter` and `Issue026-J2_reference` — the diff is vias moved through
-  `ViaOptimizer.repositionVia` and the geometry that follows them; on the rpi splitter
-  it is exactly two of six vias, both taking overload A (`ViaOptimizer.java:302-365`) —
-  and *matches* on
+  **Twelve fixture/mode pairs (three boards × modes 0-3), 0 diffs.** Mode 4 **panics**
+  on `Issue143-rpi_splitter` (two of its six vias take overload A,
+  `ViaOptimizer.java:302-365`, which is Task 7's `unimplemented!`); it diffs on
+  `Issue026-J2_reference` — vias Java moves through overload C — and *matches* on
   `Issue649-kicad_ecc83-pp_input_board_v1`, whose changed area holds no via the
   optimiser can improve. Modes 0-3 of the rpi-splitter run are committed as
   `crates/fr-router/tests/data/p7t3-opt-changed-area.txt` and replayed by
@@ -2098,31 +2098,44 @@ the driver expects, or none at all.
   returned boolean and the centre after — then the whole board in `P7T3`'s format.
   Modes: `0` = `optViaLocation` with a `(1.0, 1.0)`-per-layer `traceCosts`, `1` =
   `optPlaneOrFanoutVia` driven directly, `2` = `isWithinTolerance` over 10 000
-  scripted triples plus 256 exact-boundary ones (no board is loaded), `3` = mode 0
-  with `traceCosts = null`, which is `:113-116`'s else-branch.
+  scripted triples plus 256 exact-boundary ones (no board is loaded), `6` = mode 0
+  with `traceCosts = null`, which is `:113-116`'s else-branch. **Mode 6 is numbered
+  6, not 3**: `task-7-brief.md:29` reserves 3/4/5 for one `repositionVia` overload
+  each.
+
+  **The Task 7 guard.** `repositionVia` overload A is an `unimplemented!` on the
+  Rust side (controller ruling B1): answering `None` there sends
+  `optPlaneOrFanoutVia` into its `:218-260` projection branch, which *inserts*, and
+  which Java reaches only when its own overload A answered `null` — on
+  `Issue143-rpi_splitter` via 84 that moved the via to `(1016000,2968339)` where
+  Java puts it at `(1016000,3119161)`. Both sides therefore run a read-only replica
+  of `optPlaneOrFanoutVia:167-215` (`P7T4.reachesOverloadA` /
+  `ViaOptimizer::reaches_task_seven_guard`) and print `result=TASK7_GUARD` for a via
+  that would reach it, **calling neither method on either side**, so no committed
+  transcript row records the port-only move.
 
   ```sh
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 2 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 0 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 1 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 3 500 12
+  for m in 0 1 2 6; do
+    ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn $m 500 12
+    ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn $m 500 12
+  done
   ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 1 500 12
-  # expected to DIFF until Plan 7 Task 7 lands the three repositionVia overloads:
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 0 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 1 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 3 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 2 500 12
+  # expected to DIFF until Plan 7 Task 7 lands repositionVia overload C:
   ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 0 500 12
-  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 3 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 6 500 12
   ```
 
-  **Mode 2 is 0 diffs on every stem (10 769 lines), and so are all four modes of
-  `Issue649-kicad_ecc83-pp_input_board_v1` (no via in its 12-connection prefix) and
-  mode 1 of `Issue026-J2_reference` (all six vias have two trace contacts, so
-  `:188-190` refuses every one).** The remaining five runs diff on **only** the via
-  rows whose Java answer came out of `repositionVia`, which Task 7 owns: two of six
-  vias on the rpi splitter, six of six on `J2` (Java moves four, and those moves then
-  change the contact lists of the other two). `crates/fr-router/tests/via_optimizer.rs`
-  names all eight by id and fails if a different row moves.
+  **Ten of the twelve fixture/mode pairs are 0 diffs**: mode 2 on every stem
+  (10 769 lines), all four modes of `Issue649-kicad_ecc83-pp_input_board_v1` (no via
+  in its 12-connection prefix), all four of `Issue143-rpi_splitter` (its two
+  one-contact vias are `TASK7_GUARD` rows on both sides), and mode 1 of
+  `Issue026-J2_reference` (all six vias have two trace contacts, so `:188-190`
+  refuses every one). The two that diff are `J2` modes 0 and 6, on **only** the six
+  via rows whose Java answer came out of `repositionVia` **overload C** — Java moves
+  four, and those moves then change the contact lists of the other two.
+  `crates/fr-router/tests/via_optimizer.rs` names all six by id and fails if a
+  different row moves.
 
   Like `p7t3` it declares `package app.freerouting.autoroute.maze;` and compiles
   `P6T1.java` alongside — the brief asked for `board.optimize`, which would have

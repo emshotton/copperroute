@@ -62,9 +62,19 @@ import java.util.TreeSet;
  *   <li>{@code 2} — {@code isWithinTolerance} over 10 000 scripted triples plus 256 exact-boundary
  *       ones; no board is loaded, so the {@code <dsn>} argument is ignored (it is still required,
  *       and still printed, so the two sides' header lines agree).
- *   <li>{@code 3} — mode 0 with {@code traceCosts = null}, which is {@code optViaLocation}'s
+ *   <li>{@code 6} — mode 0 with {@code traceCosts = null}, which is {@code optViaLocation}'s
  *       {@code :113-116} else-branch ({@code ExpansionCostFactor(1, 1)} for both layers).
+ *       <b>Numbered 6, not 3</b>: {@code task-7-brief.md:29} reserves modes {@code 3}, {@code 4}
+ *       and {@code 5} for one {@code repositionVia} overload each.
  * </ul>
+ *
+ * <p><b>The Task 7 guard.</b> Overload A is an {@code unimplemented!} on the Rust side (controller
+ * ruling B1), because answering {@code null} there sends {@code optPlaneOrFanoutVia} into its
+ * {@code :218-260} projection fallback — a branch Java reaches only when <i>its</i> overload A
+ * answered null, and one that inserts. So both sides run {@code reachesOverloadA}, a read-only
+ * replica of {@code :167-215}, and print {@code result=TASK7_GUARD} for a via that would reach it
+ * <b>without calling either method</b>. The Java side skips too, deliberately: a transcript row
+ * that recorded Java's move against the port's refusal would be a row about Task 7, not Task 6.
  *
  * <p>Per via the driver prints, <b>before</b> the call: the via id, its centre, its normal-contact
  * ids (descending — {@code Item.compareTo} is {@code other.id - id}), and the dispatch class that
@@ -105,7 +115,7 @@ public final class P7T4 {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 1) {
-      System.err.println("usage: P7T4 <dsn> [mode] [accuracy] [routeK]");
+      System.err.println("usage: P7T4 <dsn> [mode] [accuracy] [routeK]  (modes 0, 1, 2, 6)");
       System.exit(2);
     }
     out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
@@ -165,7 +175,7 @@ public final class P7T4 {
     }
 
     ExpansionCostFactor[] traceCosts = null;
-    if (mode != 3) {
+    if (mode != 6) {
       traceCosts = new ExpansionCostFactor[board.getLayerCount()];
       for (int i = 0; i < traceCosts.length; i++) {
         traceCosts[i] = new ExpansionCostFactor(1.0, 1.0);
@@ -212,6 +222,13 @@ public final class P7T4 {
           .append(contactIds(via))
           .append(" class=")
           .append(classify(via));
+      // The Task 7 guard, computed before the call and identically on both sides.
+      boolean guarded = reachesOverloadA(via) && (mode == 1 || takesPlaneArm(via));
+      if (guarded) {
+        sb.append(" result=TASK7_GUARD").append(" after=").append(pointOf(via.getCenter()));
+        out.println(sb);
+        continue;
+      }
       boolean result;
       if (mode == 1) {
         result = (Boolean) optPlaneOrFanoutVia.invoke(null, board, via, accuracy, 10);
@@ -379,6 +396,61 @@ public final class P7T4 {
       return Dispatch.NOT_AT_ENDPOINT;
     }
     return Dispatch.TWO_TRACES;
+  }
+
+  /**
+   * {@code optViaLocation:39-78} reduced to "does this via reach the plane/fanout arm?" — the half
+   * of {@link #classify} the guard needs.
+   */
+  static boolean takesPlaneArm(Via via) {
+    Dispatch dispatch = classify(via);
+    return dispatch == Dispatch.PLANE_OR_FANOUT_ONE_CONTACT
+        || dispatch == Dispatch.PLANE_OR_FANOUT_CONDUCTION;
+  }
+
+  /**
+   * A read-only replica of {@code optPlaneOrFanoutVia:167-215}: would this via reach the {@code
+   * repositionVia} overload-A call at {@code :216-217}? The Rust twin's
+   * {@code ViaOptimizer::reaches_task_seven_guard} is the same twenty lines.
+   */
+  static boolean reachesOverloadA(Via via) {
+    Collection<Item> contactList = via.getNormalContacts();
+    if (contactList.isEmpty()) {
+      return false;
+    }
+    boolean contactPlaneSeen = false;
+    PolylineTrace contactTrace = null;
+    for (Item currentContact : contactList) {
+      if (currentContact instanceof ConductionArea) {
+        if (contactPlaneSeen) {
+          return false;
+        }
+        contactPlaneSeen = true;
+      } else if (currentContact instanceof PolylineTrace trace) {
+        if (currentContact.isShoveFixed() || contactTrace != null) {
+          return false;
+        }
+        contactTrace = trace;
+      } else {
+        return false;
+      }
+    }
+    if (contactTrace == null) {
+      return false;
+    }
+    Point viaCenter = via.getCenter();
+    int tolerance = (int) (via.minWidth() / 2) + 1;
+    boolean atFirstCorner;
+    if (within(contactTrace.firstCorner(), viaCenter, tolerance)) {
+      atFirstCorner = true;
+    } else if (within(contactTrace.lastCorner(), viaCenter, tolerance)) {
+      atFirstCorner = false;
+    } else {
+      return false;
+    }
+    Polyline tracePolyline = contactTrace.polyline();
+    int cornerNo = atFirstCorner ? 1 : tracePolyline.cornerCount() - 2;
+    return cornerNo >= 0 && cornerNo < tracePolyline.cornerCount();
   }
 
   /** {@code isWithinTolerance:719-732}, re-transcribed so {@code classify} needs no reflection. */

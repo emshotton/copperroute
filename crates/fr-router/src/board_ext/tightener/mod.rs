@@ -289,11 +289,17 @@ impl<'a> TraceTightener<'a> {
                             // because none of the three things it calls accepts one — see that
                             // method's "No `AutorouteEngine` parameter" section.
                             //
-                            // obligation: ViaOptimizer.repositionVia — Task 7. All three overloads
-                            // still answer `null`, so a via whose move Java makes through them is
-                            // left where it is here. `p7t3` mode 4 diffs until Task 7 lands them;
-                            // `tests/opt_changed_area.rs`'s `mode_four_is_task_sevens_obligation`
-                            // is the test that says so.
+                            // obligation: ViaOptimizer.repositionVia — Task 7. **This arm panics
+                            // today on a plane-or-fanout via.** Overload C's stub answers `None`,
+                            // which Java's `:132-134` turns into `return false` with nothing
+                            // mutated — safe. Overload A's stub does **not** answer: a `None` there
+                            // would fall through to `optPlaneOrFanoutVia:218-260`, which inserts,
+                            // and would move the via somewhere Java never chooses, so controller
+                            // ruling B1 made it an `unimplemented!`. `p7t3` mode 4 therefore
+                            // **panics** on a board with a one-contact via until Task 7 lands
+                            // overload A; `tests/opt_changed_area.rs`'s
+                            // `mode_four_is_task_sevens_obligation` is a `#[should_panic]` that
+                            // says so, and Task 7 turns it back into the parity assertion.
                             let unchanged_trace_costs = trace_costs.expect("just matched");
                             if ViaOptimizer::opt_via_location(
                                 board,

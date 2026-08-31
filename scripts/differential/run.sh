@@ -297,8 +297,10 @@ case "$driver" in
     #
     # `<dsn> [mode] [accuracy] [routeK]`. Modes 0-2 are the three angle regimes with no vias
     # offered to the optimiser, 3 widens `pinEdgeToTurnDist` so the `ConnectionToPin` pair fires
-    # hard, and **mode 4 offers vias and is expected to DIFF until Plan 7 Task 6 lands
-    # `ViaOptimizer`** — the port stubs that arm behind an `obligation:` marker naming Task 6.
+    # hard, and **mode 4 offers vias**. Task 6 landed `ViaOptimizer.optViaLocation` and wired that
+    # arm live, but `repositionVia` overload A is an `unimplemented!` until Task 7 (controller
+    # ruling B1), so **on a board with a plane-or-fanout via mode 4 now PANICS on the Rust side
+    # rather than diffing quietly** — which is the point: a stubbed arm must be inert or loud.
     #
     # The budget is disabled on both sides by passing `timeLimit = 0` / `RouterBudget::disabled()`,
     # which is Java's own "no limit" (`TraceTightener.java:73-77`): at this entry point the limit
@@ -321,10 +323,16 @@ case "$driver" in
     # precedent). `P6T1.java` is compiled alongside so the two cannot describe different boards.
     #
     # `<dsn> [mode] [accuracy] [routeK]`. Mode 0 is `optViaLocation`, 1 is `optPlaneOrFanoutVia`
-    # driven directly, 2 is `isWithinTolerance` over 10 256 scripted triples (no board), 3 is mode
-    # 0 with `traceCosts = null`. **Modes 0, 1 and 3 are expected to DIFF until Plan 7 Task 7
-    # lands the three `repositionVia` overloads** — both methods reach them and Java moves vias the
-    # port leaves alone; mode 2 is the mode Task 6 pins to 0 diffs.
+    # driven directly, 2 is `isWithinTolerance` over 10 256 scripted triples (no board), and 6 is
+    # mode 0 with `traceCosts = null`. **Mode 6 is numbered 6, not 3**: `task-7-brief.md:29`
+    # reserves 3/4/5 for one `repositionVia` overload each.
+    #
+    # `repositionVia` overload A is an `unimplemented!` on the Rust side (controller ruling B1 —
+    # answering `None` sends `optPlaneOrFanoutVia` into a branch that *inserts*, which Java reaches
+    # only when its own overload A answered null). Both sides therefore run a read-only replica of
+    # `optPlaneOrFanoutVia:167-215` and print `result=TASK7_GUARD` for a via that would reach it,
+    # calling neither method. **What still DIFFs is overload C's arm** (`optViaLocation:118-131`,
+    # where a `None` is a board Java itself produces): modes 0 and 6 on a board with two-trace vias.
     #
     # The budget is disabled on both sides: `ViaOptimizer` reads no clock, and the `pullTight`
     # calls inside it take Java's `null` `Stoppable` / the port's never-tripping `StopCheck`.

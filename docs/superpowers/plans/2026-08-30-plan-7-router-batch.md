@@ -846,10 +846,16 @@ impl ViaOptimizer {
 **Interfaces produced:**
 ```rust
 impl ViaOptimizer {
-    /// `repositionVia(RoutingBoard, Via, ...)` overload A (:302-365) — the two-contact case.
-    pub(crate) fn reposition_via_two_contacts(/* … */) -> Result<bool, BoardError>;
-    /// Overload B (:367-429) — the three-contact case.
-    pub(crate) fn reposition_via_three_contacts(/* … */) -> Result<bool, BoardError>;
+    /// `repositionVia(RoutingBoard, Via, IntPoint, int, int, int)` overload A (:302-365) — the
+    /// **one-contact / plane-or-fanout** case: its only caller is `optPlaneOrFanoutVia:216-217`.
+    /// *(Task 6 correction: the first draft called this "the two-contact case" and named it
+    /// `reposition_via_two_contacts`. Verified with `grep -n repositionVia` on the Java file —
+    /// overload **C** is the two-trace one. Task 6 landed the stub as
+    /// `reposition_via_toward_location`, and as an `unimplemented!` rather than a `None`, per
+    /// controller ruling B1; Task 7 replaces the body and keeps the name.)*
+    pub(crate) fn reposition_via_toward_location(/* … */) -> Option<Point>;
+    /// Overload B (:367-429) — the candidate check, reached **only** from inside overload C.
+    pub(crate) fn reposition_via_check_candidate(/* … */) -> bool;
     /// Overload C (:435-713) — the general case, 279 lines of candidate enumeration. **The
     /// longest single method in Plan 7 and the one whose branch list must be transcribed rather
     /// than summarised.**
@@ -858,16 +864,16 @@ impl ViaOptimizer {
 ```
 
 **Transcription notes.**
-- Java overloads on the **arity and types** of the contact list, not on a mode flag; the port renames the three (`// renamed:` on each) because Rust has no overloading. `optViaLocation` chooses between them by contact count — read **`:46-78`** (`size() == 1` at `:47`, `!= 2` at `:51`, the plane/fanout arm at `:76-78`) and reproduce the dispatch exactly, including which count falls to the general case. *(The first draft cited `:100-140`, which is corner/tolerance computation.)*
+- Java overloads on the **arity and types** of the contact list, not on a mode flag; the port renames the three (`// renamed:` on each) because Rust has no overloading. `optViaLocation` chooses between them by contact count — read **`:46-78`** (`size() == 1` at `:47`, `!= 2` at `:51`, the plane/fanout arm at `:76-78`) and reproduce the dispatch exactly, including which count falls to the general case. *(The first draft cited `:100-140`, which is corner/tolerance computation.)* **Task 6 correction to the dispatch map below:** overload **A** has exactly one caller, `optPlaneOrFanoutVia:216-217` — the **one**-contact arm; overload **C** is the two-trace one (`optViaLocation:118-131`); overload **B** has no caller outside C. The test names the first draft gave (`a_two_contact_via_takes_overload_a`, `…three_contact…b`, `…four_contact…c`) describe a dispatch that does not exist — rename them `a_one_contact_via_takes_overload_a`, `a_two_trace_via_takes_overload_c` and `overload_b_is_reached_only_from_c`.
 - Overload C's candidate enumeration walks the trace directions of every contact and evaluates a weighted cost with `trace_costs[layer]` — every constant is read from Java, none is chosen. Where two candidates tie, Java keeps the **first** found in contact order (descending id); the port must not use a `max_by` that keeps the last.
 - Ruling AE's `Line`/`Polyline` contract applies at every polyline rebuild in C.
 - Discharge Task 5's `obligation:` marker on the `ViaOptimizer` arm here, and re-run `p7t3 4` (the vias-present mode) to 0 diffs.
 
 **Tests (`crates/fr-router/tests/via_optimizer_reposition.rs`):** one fixed case per overload from `p7t4` modes 3-5; `a_two_contact_via_takes_overload_a`, `…three_contact…b`, `…four_contact…c` (the dispatch pin); `a_candidate_tie_keeps_the_first_in_contact_order`; `the_general_case_leaves_the_board_untouched_when_no_candidate_improves`.
 
-**JVM-pinned evidence (required).** `p7t4` modes `3`/`4`/`5` (one per overload, each driven directly), **0 diffs over every via of the six corpus stems**; then **`p7t3` mode 4 (vias present) 0 diffs**, and `p7t3` modes 0-3 re-run and still 0 diffs.
+**JVM-pinned evidence (required).** `p7t4` modes `3`/`4`/`5` (one per overload, each driven directly), **0 diffs over every via of the six corpus stems**; then **`p7t3` mode 4 (vias present) 0 diffs**, and `p7t3` modes 0-3 re-run and still 0 diffs. *(Task 6 note: modes 3/4/5 are free — Task 6's fourth mode is numbered **6**, not 3, precisely to reserve them. Task 6 also left two things for this task to **delete**: `ViaOptimizer::reaches_task_seven_guard` with the `TASK7_GUARD` rows both halves of `p7t4` print, and the `#[should_panic]` on `opt_changed_area.rs`'s `mode_four_is_task_sevens_obligation`, which becomes the parity assertion. Both exist because overload A's stub had to be an `unimplemented!` rather than a `None` — controller ruling B1.)*
 
-**Steps:** `P7T4.java` modes 3-5 → tests → implement → `p7t4 3/4/5` 0 diffs → `p7t3 4` 0 diffs → discharge Task 5's marker → fmt/clippy/test/audit → commit `feat(router): ViaOptimizer's three repositionVia overloads, discharging the optChangedArea stub`.
+**Steps:** `P7T4.java` modes 3-5 → tests → implement (removing overload A's `unimplemented!` and `reaches_task_seven_guard`) → `p7t4 3/4/5` **and** `0/1/2/6` 0 diffs → `p7t3 4` 0 diffs → discharge Task 5's marker → fmt/clippy/test/audit → commit `feat(router): ViaOptimizer's three repositionVia overloads, discharging the optChangedArea stub`.
 
 ---
 

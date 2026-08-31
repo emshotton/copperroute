@@ -13,12 +13,12 @@
 //!
 //! **Mode 4 is deliberately not replayed.** It offers `traceCosts` to the sweep, which opens
 //! `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Plan 7 Task 6 landed that
-//! arm — it is a live call now, not a stub — but the three `repositionVia` overloads it reaches
-//! are **Task 7's** and still answer `null`, so the port still diverges on exactly the vias whose
-//! Java move came through them (two of six on this fixture; `crates/fr-router/tests/via_optimizer.rs`
-//! pins the gap by id). Mode 4's section is in the committed transcript so that Task 7 has the
-//! ground truth to match, and [`mode_four_is_task_sevens_obligation`] asserts that the port still
-//! *diverges* there, so the obligation cannot be quietly forgotten.
+//! arm — it is a live call now, not a stub — but `repositionVia` overload A is an
+//! `unimplemented!` until Task 7 (controller ruling B1: a `None` there would push
+//! `optPlaneOrFanoutVia` into a branch that *inserts*, and move a via somewhere Java never puts
+//! it). Two of this fixture's six vias reach it, so mode 4 **panics**;
+//! [`mode_four_is_task_sevens_obligation`] is the `#[should_panic]` that says so, and mode 4's
+//! section is in the committed transcript so Task 7 has the ground truth to match.
 //!
 //! The rest of the file is hand-built: each test isolates one branch of the two methods, because
 //! a real board exercises them all at once and could not say which one moved.
@@ -666,22 +666,24 @@ fn the_whole_sweep_matches_the_jvm_on_a_real_board() {
 }
 
 /// Mode 4 offers `traceCosts`, which opens the `ViaOptimizer` arm. Plan 7 Task 6 landed
-/// `optViaLocation` and wired the arm, but its three `repositionVia` overloads are **Task 7's**
-/// and still answer `null` — so the port still diverges, and this test says so, so the obligation
-/// cannot be forgotten. **Task 7 must delete this test and add mode 4 to the loop above.**
+/// `optViaLocation` and wired the arm, but its `repositionVia` overloads are **Task 7's** — and
+/// overload A is an **`unimplemented!`**, not a `None`, by controller ruling B1: answering `None`
+/// there would send `optPlaneOrFanoutVia` into its `:218-260` projection branch, which *inserts*,
+/// and which Java reaches only when its own overload A answered `null`. A stubbed arm must be
+/// inert or loud, never a silent port-only mutation, so mode 4 **panics** rather than diverging
+/// quietly.
 ///
-/// The residual gap is measured, not assumed: on this fixture at `routeK = 12` exactly two of the
-/// six vias in the changed area are ones Java moves through `repositionVia` overload A
-/// (`ViaOptimizer.java:302-365`), and `crates/fr-router/tests/via_optimizer.rs`'s
-/// `the_only_divergence_is_repositionvia` names them by id.
+/// This fixture at `routeK = 12` puts two `PLANE_OR_FANOUT_ONE_CONTACT` vias in the changed area
+/// (ids 187 and 84 — `crates/fr-router/tests/via_optimizer.rs`'s
+/// `a_plane_via_reaches_task_sevens_guard` names them), so the sweep reaches the guard.
+///
+/// **Task 7 must delete this test and add mode 4 to the loop above.**
 #[test]
+#[should_panic(expected = "repositionVia overload A")]
 fn mode_four_is_task_sevens_obligation() {
-    assert_ne!(
-        p7t3_rows(4),
-        transcript_mode(4),
-        "the three repositionVia overloads landed — fold mode 4 into \
-         `the_whole_sweep_matches_the_jvm_on_a_real_board` and delete this test"
-    );
+    // added in Task 7: `ViaOptimizer.repositionVia` overload A (ViaOptimizer.java:302-365) — when
+    // it lands, this becomes `assert_eq!(p7t3_rows(4), transcript_mode(4))` inside the loop above.
+    let _ = p7t3_rows(4);
 }
 
 // -- `P6T1.java`'s choices, as `reference_parity.rs` transcribes them ------------------------------

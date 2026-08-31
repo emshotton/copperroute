@@ -196,7 +196,9 @@ pub(crate) use item_ctx;
 // constraint rather than ported. Its body is `clearShoveFailingObstacle` + un-fixing the
 // SHOVE_FIXED contacts + a `tidyRegion` and `DrillItemMover.insert` + `optChangedArea`; every
 // piece of that already exists in the port, so a later caller (if the GUI is ever ported) can
-// assemble it without new machinery. Recorded as quirk #206.
+// assemble it without new machinery. **Not a quirk row** — this is a "no headless caller" ruling,
+// not a Java bug; the reasoning is `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-6-report.md`
+// §2 and `crates/fr-router/README.md`'s Task 6 section.
 // added in Plan 7: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — `ForcedViaInserter`.
 // renamed: `RoutingBoard.checkForcedTracePolyline` (RoutingBoard.java:405-448) -> `fr_router::board_ext::RoutingBoardExt::check_forced_trace_polyline`; it drives `TraceShover.check`, which lives in `fr-router` because the router is its only caller.
 // renamed: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402) and `insertForcedTracePolyline` (:456-876) -> `fr_router::board_ext::RoutingBoardExt::{insert_forced_trace_segment, insert_forced_trace_polyline}` — the mutating half of the `TraceShover`, which lives in `fr-router` for the same reason `checkForcedTracePolyline` does, plus an `AutorouteEngine` for the `PolylineTrace.change` in its pull-tight tail. **Controller ruling AB** moved them out of Plan 7 into Plan 6 Task 15b, because `FoundConnectionInserter:176` and its five `tryNeckDown` / `insertFanoutMicroNeckdown` call sites are on the autoroute path.
