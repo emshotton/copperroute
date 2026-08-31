@@ -249,9 +249,11 @@ impl RouterStop {
     /// what `RoutingPipeline.java:117` gates the optimizer stage on, so an `AUTO_ROUTER_ONLY`
     /// stop leaves the optimizer running and an `ALL` stop does not — **quirk #202**.
     ///
-    // obligation: Task 9 (`AutoroutePassRunner`) must carry the `// Java bug:` marker for quirk
-    // #202 at its `maxItems` site, which is the *cause*; this method is only the reader. The
-    // marker's Java method name must sit on its own line (Plan 2 ruling 13).
+    // Quirk #202's `// Java bug:` marker sits at the *cause* — the `maxItems` site in
+    // [`crate::pipeline::AutoroutePassRunner::run_single_thread`], which calls
+    // [`RouterStop::request_stop`] where `requestStopAutoRouter` would have been the harmless
+    // choice. This method is only the reader. **Task 4's `obligation:` line is discharged**: the
+    // marker landed in Plan 7 Task 9, `crates/fr-router/src/pipeline/pass_runner.rs`.
     pub fn is_stop_requested(&self) -> bool {
         self.state.get() == StopRequestState::All
     }

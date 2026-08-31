@@ -45,9 +45,12 @@ use fr_settings::{ExpansionCostFactor, RouterSettings};
 use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
 use crate::autoroute::maze::engine::{AutorouteEngine, route_connection_full};
 use crate::board_ext::RoutingBoardExt;
+use crate::error::RouterError;
 use crate::pipeline::board_history::BoardHistory;
+use crate::pipeline::failure_log::RoutingFailureLog;
+use crate::pipeline::pass_runner::AutoroutePassRunner;
 use crate::pipeline::stop::{ProgressThrottler, RouterBudget};
-use crate::pipeline::{NamedAlgorithmType, RouterStop};
+use crate::pipeline::{NamedAlgorithmType, ProgressSink, RouterStop};
 use crate::score::BoardStatistics;
 
 /// Port of `autoroute.pipeline.BatchAutorouter` (BatchAutorouter.java:36-565) — the object the
@@ -642,6 +645,157 @@ impl<'a> BatchAutorouter<'a> {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // getAutorouteItems — BatchAutorouter.java:345-409
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `getAutorouteItems(RoutingBoard)` (`:345-409`) — the pass's work list.
+    ///
+    /// Walks `board.itemList` **descending** (`:351-357`, quirk #63: `UndoableObjects.objects` is
+    /// a `ConcurrentSkipListMap` keyed by `Item`, whose `compareTo` is `other.id - id`,
+    /// `Item.java:95-101`), keeps `Connectable` items that are **not** routable and not already
+    /// in `handledItems` (`:357-360`), and for each net index of such an item computes
+    /// `getConnectedSet(netNo)` (`:363-365`), marking every member with `netCount() <= 1` as
+    /// handled (`:366-370`). The item is appended when its connected set is smaller than
+    /// `board.connectableItemCount(netNo)` and it has no ignored nets (`:375`), and **not** when
+    /// the net contains a plane and the connected set already holds a `ConductionArea`
+    /// (`:383-389`).
+    ///
+    /// # Java bug (plan-7 ruling 10): an item is appended once per qualifying net
+    ///
+    /// `:390`'s `autorouteItemList.add(currentItem)` is **inside** the net loop, so a
+    /// two-net item that qualifies on both nets appears **twice** in the list — and
+    /// `AutoroutePassRunner.java:202, :207` then loops over *every* net index of *each*
+    /// appearance, so that item is routed **four** times in one pass. Worse, the inner index is
+    /// a fresh `0..netCount()` walk rather than the index that qualified, so the pair actually
+    /// routed at appearance *a*, index *b* has nothing to do with the reason the item was
+    /// enqueued.
+    ///
+    /// It is not merely wasteful: each repeat runs against the board the previous one left, so
+    /// the extra attempts route real connections and rip real traces. The port reproduces it
+    /// exactly, because the corpus depends on it.
+    ///
+    // Java bug: `BatchAutorouter.getAutorouteItems` (`:390`) — the append is inside the per-net loop, so a multi-net item enters the work list once per qualifying net and `AutoroutePassRunner:202,207` then routes it netCount times per appearance (quirk #213).
+    ///
+    /// # `&self, &Board`, not `&mut self, &mut Board`
+    ///
+    /// The plan's sketch took both by `&mut`. Nothing here mutates: Java's two mutations are
+    /// `reusableAutorouteItemList.clear()` and `reusableHandledItems.clear()` (`:347-348`), the
+    /// allocation-reuse fields the port's field block rosters `// not ported:` because the port
+    /// returns a fresh [`Vec`] and Java clears both before every use. Narrowing costs a caller
+    /// nothing — a `&mut Board` reborrows — and it is what lets the pass runner hold the list
+    /// while it mutates the board.
+    ///
+    /// # `Vec<ItemId>`, not `Vec<(ItemId, i32)>`
+    ///
+    /// Java's return type is `List<Item>`: the list carries **items**, never `(item, net)` pairs.
+    /// The net numbers the pass runner loops over come from the item itself (`:207`), which is
+    /// the whole reason the bug above is a bug. The plan's first draft said otherwise.
+    pub fn autoroute_items(&self, board: &Board) -> Vec<ItemId> {
+        self.autoroute_items_with_handled(board).0
+    }
+
+    /// [`BatchAutorouter::autoroute_items`], with the `handledItems` set it built.
+    ///
+    /// **Not a Java method** — it is the observation seam `scripts/differential/rust/src/bin/p7t1.rs`
+    /// needs. Java's driver reads the same set off the private `reusableHandledItems` field
+    /// (`:74`) with `Field.setAccessible(true)` **after** the call, which works because Java
+    /// reuses the collection and clears it at `:348`; the port allocates a fresh set per call
+    /// (that field is `not ported:`), so there is nothing for a driver to reflect into and the
+    /// set is returned instead. `getAutorouteItems`' own answer is `.0` and is unaffected.
+    pub fn autoroute_items_with_handled(&self, board: &Board) -> (Vec<ItemId>, BTreeSet<ItemId>) {
+        // :347-350. The port allocates rather than reusing; see the doc.
+        let mut autoroute_item_list: Vec<ItemId> = Vec::new();
+        let mut handled_items: BTreeSet<ItemId> = BTreeSet::new();
+
+        // :351-357 — `itemList.startReadObject()` / `readObject(it)`, i.e. descending item id.
+        for current_item in board.items_in_board_order() {
+            let Some(item) = board.get_item(current_item) else {
+                continue;
+            };
+            // :357 — the bare `instanceof Connectable`, **not** `Item.isConnectable()`: the
+            // latter also demands `netCount() > 0` (Item.java:868-871), and Java does not.
+            if item.as_connectable().is_none() {
+                continue;
+            }
+            // :358-360.
+            if item.is_routable() || handled_items.contains(&current_item) {
+                continue;
+            }
+
+            // :363 — "let's go through all nets of this item".
+            for i in 0..item.net_count() {
+                // :364.
+                let current_net_number = item.get_net_number(i);
+                // :365 — the one-argument `getConnectedSet`, i.e. `stopAtPlane = false`
+                // (Item.java:596-598).
+                let connected_set = board.connected_set(current_item, current_net_number, false);
+                // :366-370.
+                for connected in &connected_set {
+                    if board
+                        .get_item(*connected)
+                        .is_some_and(|c| c.net_count() <= 1)
+                    {
+                        handled_items.insert(*connected);
+                    }
+                }
+                // :372.
+                let net_item_count = board.connectable_item_count(current_net_number);
+
+                // :375-377. Java short-circuits, so `hasIgnoredNets` — which dereferences
+                // `nets.get(netNumber)` without a null check (Item.java:1244) — is reached only
+                // on an item whose connected set is short.
+                if connected_set.len() >= net_item_count || board.has_ignored_nets(current_item) {
+                    continue;
+                }
+
+                // :378, :383-389. `net != null && net.containsPlane()`, then "skip items whose
+                // connected set already contains a `ConductionArea` (copper pour)". Items not yet
+                // connected to the plane are still enqueued so they can be routed to the pour in
+                // this pass.
+                let net = board.rules.nets.get(current_net_number);
+                if net.is_some_and(|net| net.contains_plane()) {
+                    let already_connected_to_plane = connected_set
+                        .iter()
+                        .any(|id| matches!(board.get_item(*id), Some(Item::ConductionArea(_))));
+                    if already_connected_to_plane {
+                        continue;
+                    }
+                }
+
+                // :390. Once per qualifying net index — the bug above.
+                autoroute_item_list.push(current_item);
+                // :391-402 is the `FRLogger.debug` payload; not ported.
+            }
+        }
+
+        // :407.
+        (autoroute_item_list, handled_items)
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // autoroutePass — BatchAutorouter.java:415-421
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of `autoroutePass(int passNo)` (`:415-421`): "auto-routes one ripup pass of all items
+    /// of the board. Returns false, if the board is already completely routed." — one delegation
+    /// to [`AutoroutePassRunner::run_single_thread`].
+    ///
+    /// Java reads everything else off `this`; the port hands the four things the runner cannot
+    /// reach through `&mut self` — the board, the failure log (whose ownership note is on
+    /// [`RoutingFailureLog`]), the stop flag and the progress sink — straight through.
+    pub fn autoroute_pass(
+        &mut self,
+        board: &mut Board,
+        failure_log: &mut RoutingFailureLog,
+        pass_no: i32,
+        stop: &RouterStop,
+        progress: &mut dyn ProgressSink,
+    ) -> Result<bool, RouterError> {
+        // :421.
+        AutoroutePassRunner::run_single_thread(board, self, failure_log, pass_no, stop, progress)
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // calculateIncompleteCount — BatchAutorouter.java:556-564
     // ---------------------------------------------------------------------------------------------
 
@@ -668,11 +822,10 @@ impl<'a> BatchAutorouter<'a> {
 // The deferral roster for `autoroute/pipeline/BatchAutorouter.java`
 // =================================================================================================
 
-// added in Plan 7: `BatchAutorouter.getAutorouteItems` (`:345-409`) and `BatchAutorouter.autoroutePass` (`:415-421`) — the per-pass item selection (plan ruling 10's multi-net duplication) and the delegation to `AutoroutePassRunner.runSingleThread`, both **Task 9**'s.
 // added in Plan 7: `BatchAutorouter.runBatchLoop` (`:479-481`) — one delegation to `AutorouteBatchLoop.run`, which is **Task 10**'s; the port grows it when the loop exists, because a wrapper around nothing would be a stub with a caller.
 // added in Plan 7: `BatchAutorouter.buildUnroutedConnectionsReport` (`:483-485`) — one delegation to `AutorouteUnroutedReport.build`, which is **Task 10**'s (plan scan ruling 6 gave it the stub).
 // added in Plan 7: `BatchAutorouter.autoroutePassesForOptimizingItem` (`:245-281`) — the optimizer's own autorouter loop, **Task 13**'s; it builds a second `BatchAutorouter` through [`BatchAutorouter::new`] with `removeUnconnectedVias = true` and `isOptimizerAutorouter = true`, both of which this file already provides.
-// added in Plan 7: `BatchAutorouter.getAirLine` (`:516-527`) — the GUI airline accessor; its field is `not ported:` on the field block above, and Task 9 decides whether `AutorouteAirlineCalculator.calculateAirline`'s value has any headless reader (plan ruling 6 says it has none).
+// not ported: `BatchAutorouter.getAirLine` (`:516-527`) — the GUI airline accessor of the `not ported:` `airLine` field. Task 9 measured plan ruling 6's claim and confirms it: the field's only writers are `AutoroutePassRunner.java:45, 81, 142, 146, 164, 329, 333` (all `= null`) and `AutorouteConnectionRouter.java:70`, and this accessor is its only reader — nothing headless calls it, so [`crate::pipeline::calculate_airline`] is ported for the audit and has no caller.
 // not ported: `BatchAutorouter.autoroutePassMultiThread` (`:411-413`) — one delegation to `AutoroutePassRunner.runMultiThread`, the dead multithreaded path (quirk #216; `grep -rn autoroutePassMultiThread src/main` answers the declaration and nothing else).
 // not ported: `BatchAutorouter.setAirLine` (`:192-194`) — the writer of the `not ported:` `airLine` field.
 // not ported: `BatchAutorouter.addProfileMazeSearchNanos` (`:184-186`), `BatchAutorouter.addProfileOptChangedAreaNanos` (`:188-190`), `BatchAutorouter.resetPassProfile` (`:196-207`), `BatchAutorouter.logBenchmarkProfile` (`:209-238`) — the benchmark profile, all four guarded by `isBenchmarkProfileEnabled()`, i.e. `-Dfreerouting.benchmark.profile`, default `false`.

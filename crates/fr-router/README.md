@@ -397,9 +397,21 @@ Java's `catch (Exception)` sites inside Plan 6's scope, and what each becomes:
 | 5 | `AutorouteConnectionRouter.route:155-158` | `catch_unwind` around `route_connection` | a bare `FAILED` |
 | 6 | `RoutingBoard.insertForcedTracePolyline:787-841` (ruling AB pulled this method into Plan 6) — the `try` covers `normalize` and `splitTracesAtKeepPoint` | **the `Result` channel, not the panic channel**: `src/board_ext/routing_board_ext.rs:780` and `:787` drop the `Err` and fall through, because `normalize_trace_checked` and `split_traces_at_keep_point` (`board_ext/tightener/base.rs`) are `Result`-returning all the way down and no path below them panics | Java's silent skip — it logs and continues, leaving `newTrace` as it was |
 
-Boundaries **7 and 8 are Plan 7's**: `AutoroutePassRunner.java:144` (per pass) and
-`BatchAutorouterThread.java:537` (per item). Both catch `Exception`, not
-`Throwable`, so neither recovers from a stack overflow — quirk #27 crashes both
+Boundary **7 is Plan 7's, and it landed in Task 9**: `AutoroutePassRunner`'s
+per-pass catch. The line this paragraph used to name, `:144`, is the catch of the
+**dead** `runMultiThread` (`:40-149`) — plan-7 scan ruling 9 was right about that
+much, and wrong to conclude that `runSingleThread` therefore has none.
+`runSingleThread` (`:151-336`) opens its **own** `try` at `:156` and closes it with
+`catch (Exception e) { … return false; }` at `:331-335`; the `sed -n '140,155p'`
+window ruling 9 quoted stops one line short of it. The port is a `catch_unwind`
+around the whole of `AutoroutePassRunner::run_single_thread`'s body, degrading to
+`Ok(false)` — the same *catch, produce a value, do not propagate* shape as 1-6, and
+**not** a per-item boundary, which is the thing ruling 9 was right to forbid: a Java
+exception inside the item loop ends the pass rather than skipping one item.
+
+Boundary **8** is `BatchAutorouterThread.java:537` (per item), on the dead
+multithreaded path, and is still Plan 7/8's. All eight catch `Exception`, not
+`Throwable`, so none recovers from a stack overflow — quirk #27 crashes both
 languages.
 
 Everything *below* `AutorouteEngine.java:260` deliberately panics rather than
@@ -594,7 +606,7 @@ Two invocations are deliberately **absent**, and they do not behave the same way
 | absent invocation | what it prints today | exit |
 |---|---|---|
 | `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
-| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **eight `ROSTERED` lines** — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers | 0 |
+| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **eight `ROSTERED` lines** — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
 
 Before the Plan 6 final review, the second — and the third, which was
 `board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and
@@ -2547,6 +2559,74 @@ any candidate's delta). **Latent on the corpus**: overload A walks toward a trac
 trace already obeys the restriction, so every move the seven stems produce is
 orthogonal or exactly diagonal. Reproduced as-is, with the measurement in the
 register rather than a claim that the corpus clears it.
+
+## The autoroute pass (Plan 7 Task 9)
+
+`BatchAutorouter.getAutorouteItems` (`:345-409`), `autoroutePass` (`:415-421`),
+`AutoroutePassRunner.runSingleThread` (`:151-336`) and `updateProgress` (`:489-516`),
+plus three small classes that had been on the roster: `RoutingFailureLog` (161 loc),
+`ItemRouteResult` (145 loc, in full) and `AutorouteAirlineCalculator.calculateAirline`.
+
+### Quirk #213: an item enters the work list once per qualifying net
+
+`:390`'s `autorouteItemList.add(currentItem)` sits **inside** the `for (int i = 0; i <
+currentItem.netCount(); i++)` loop opened at `:363`, so a two-net item that satisfies
+`:375` on both nets enters the `List<Item>` twice. `runSingleThread` then iterates the
+list (`:202`) and, for each entry, runs a **fresh** `0..netCount()` walk (`:207`) — so
+that item is routed **four** times in one pass, and the net index it is routed on has
+no relation to the index that qualified it.
+
+The repeats are not idle: each runs against the board the previous one left, so they
+route real connections and rip real traces. The port reproduces it exactly, because
+the corpus depends on it. `tests/pass_runner.rs`'s
+`a_two_net_item_is_routed_four_times` and
+`the_inner_index_is_a_net_index_not_the_qualifying_one` are the pins, and `p7t1`
+prints the list in order so a duplicated entry is two `ITEM` lines with one id.
+
+### Java's list is a `List<Item>`, not a list of `(item, net)` pairs
+
+The plan's first draft said otherwise. The net numbers `AutoroutePassRunner:207` loops
+over come from the **item**, read off the live board — which is what makes #213 a bug
+rather than a redundancy. The port's `Vec<ItemId>` is the faithful shape.
+
+### A work-list item can never be ripped up during its own pass
+
+`getAutorouteItems:358-359` keeps only items where `!isRoutable()`;
+`MazeRipupResolver.checkRipup` (`:72-76`) and its `:205-212` twin refuse to rip any
+item where `!isRoutable()`, returning before anything else; and `removeTails`
+(`RoutingBoard.java:1197`) applies the same test. The two sets are **disjoint**. That
+is what lets the port read `netCount()`/`getNetNumber(i)` off the live board where
+Java reads them off an `Item` object that would survive removal from `itemList`.
+
+### Two stop predicates in one method
+
+`:203` and `:208` read `isStopAutoRouterRequested()` (`!= NONE`); the connection
+itself and `removeTails` are handed `router.thread` and poll
+`Stoppable.isStopRequested()` (`== ALL`, `AutorouteEngine.java:294-303`,
+`TraceTightener.java:195-196`). So an `AUTO_ROUTER_ONLY` stop ends the pass *between*
+connections but does not abort one already in flight; `maxItems`' `ALL` does both.
+
+### Three `fireBoardUpdatedEvent` calls, one of them throttled
+
+`:196` and `:321` are **ungated**; only `updateProgress`'s (`:507`) goes through
+`shouldFireBoardUpdate`. All three become `RoutingEvent::BoardUpdated`.
+
+### `RoutingFailureLog` is a parameter here and a board field in Java
+
+`RoutingBoard.java:64` declares it `final` and `:91` constructs it; the port lifts it
+to a caller-owned parameter of `run_single_thread`, because `fr-board` must not depend
+on `fr-router`. The `Vec<String>` hook that stood in for the field is **deleted** — it
+had no reader and no writer — and `crates/fr-board/src/board/mod.rs` carries the
+`// renamed:` that says so.
+
+### `ItemRouteResult` is ported whole, bug included (quirk #212)
+
+`:63`'s `viaCountAfter / viaCountBefore` is an `int` division, so the via term
+truncates while the trace term beside it is a `double`.
+`BatchOptimizer.java:340-348` recomputes the same expression with a `(float)` cast and
+gets the right answer, so the *field* is wrong and the *used* value is right; both are
+ported (the second in Task 14). Pinned by `P7T9Probe`'s 500 scripted tuples.
+
 
 ## What Plan 7 inherits
 

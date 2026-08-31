@@ -32,7 +32,7 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t6, p7t7, p7t10" >&2
+  echo "           p7t6, p7t7, p7t10, p7t1, p7t2" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -300,6 +300,49 @@ case "$driver" in
       "-XX:hashCode=${P7T10_HASH_MODE:-2}"
     )
     run_timeout="${P7T10_TIMEOUT:-1800}"
+    ;;
+  p7t1)
+    # Plan 7 Task 9, item-selection level: `BatchAutorouter.getAutorouteItems`
+    # (BatchAutorouter.java:345-409) — the pass's work list, with its `handledItems` set traced
+    # step by step. Declares `package app.freerouting.autoroute.pipeline` (the brief's), which is
+    # what reaches the package-private `getAutorouteItems`, `autorouteItem`, `autoroutePass` and
+    # `removeTails`; `P7T2.java` is compiled alongside because the two drivers share the board,
+    # the settings and the router, and must not be able to describe different ones.
+    #
+    # `<dsn> [passNo]`. `passNo > 1` runs `passNo - 1` real autoroute passes first, because the
+    # board a pass selects from is the board the previous passes left — see `P7T1.java`'s class
+    # comment. Acceptance is 0 diffs on all six corpus stems x passes 1-3.
+    #
+    # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
+    # sweeps this driver too: a pass reaches `DesignRulesChecker` and `BoardStatistics`, both of
+    # which iterate `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3-4).
+    javaclass=P7T1
+    javapkg="autoroute.pipeline"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 1)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P7T2.java")
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    run_timeout="${P7T1_TIMEOUT:-1800}"
+    ;;
+  p7t2)
+    # Plan 7 Task 9, pass level: `AutoroutePassRunner.runSingleThread`
+    # (AutoroutePassRunner.java:151-336) — one whole autoroute pass. Same package and the same
+    # reason as `p7t1`; `P7T1.java` is *not* compiled alongside, because P7T2 owns the shared
+    # helpers and P7T1 depends on it rather than the other way round.
+    #
+    # `<dsn> [passNo] [maxItems|all]`. The driver prints two halves — a line-for-line
+    # transcription of `runSingleThread`'s loop with `p6t1`'s JSON line per `(item, net index)`,
+    # and then the **real** method on a freshly loaded board, with the two boards compared by
+    # `getHash()` / `structural_hash` (an equality *decision*, never a hash value — ruling AH).
+    # See `P7T2.java`'s class comment for why both halves exist.
+    #
+    # Acceptance is 0 diffs on all six corpus stems x passes 1-3 x `maxItems` in {2, all}.
+    javaclass=P7T2
+    javapkg="autoroute.pipeline"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 1 all)
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    run_timeout="${P7T2_TIMEOUT:-3600}"
     ;;
   p7t3)
     # Plan 7 Task 5: `RoutingBoard.optChangedArea` and the `TraceTightener.optChangedArea` sweep,

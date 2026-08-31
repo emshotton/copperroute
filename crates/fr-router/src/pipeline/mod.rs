@@ -6,22 +6,36 @@
 //!
 //! # State
 //!
-//! **Task 4 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
+//! **Task 9 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
 //! loop's best-board memory (controller ruling AF) — and, from Task 4, the plumbing every later
 //! task threads through: the three-state stop [`RouterStop`] with ruling AI's deadline,
 //! [`RouterBudget`], [`ProgressThrottler`], [`RouterCounters`], [`PassRecord`],
-//! [`NamedAlgorithmType`], [`TaskState`] and the [`ProgressSink`] seam. Tasks 5-15 add the
-//! pipeline classes proper. `crates/fr-router/src/lib.rs`'s roster names every class still
-//! deferred and the task that owns it.
+//! [`NamedAlgorithmType`], [`TaskState`] and the [`ProgressSink`] seam.
+//!
+//! Task 8 added [`BatchAutorouter`] — the object the pass runner and the optimizer both drive —
+//! and **Task 9 the pass itself**: [`BatchAutorouter::autoroute_items`] and
+//! [`BatchAutorouter::autoroute_pass`], [`AutoroutePassRunner`] (`runSingleThread`),
+//! [`RoutingFailureLog`] with its [`ItemFailureInfo`], [`ItemRouteResult`] and
+//! [`calculate_airline`]. Tasks 10-15 add the batch loop, the fanout and the optimizer.
+//! `crates/fr-router/src/lib.rs`'s roster names every class still deferred and the task that
+//! owns it.
 
+pub mod airline;
 pub mod batch_autorouter;
 pub mod board_history;
 pub mod counters;
+pub mod failure_log;
+pub mod item_route_result;
+pub mod pass_runner;
 pub mod stop;
 
+pub use airline::calculate_airline;
 pub use batch_autorouter::BatchAutorouter;
 pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
 pub use counters::RouterCounters;
+pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
+pub use item_route_result::ItemRouteResult;
+pub use pass_runner::AutoroutePassRunner;
 pub use stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState};
 
 use fr_board::ItemId;

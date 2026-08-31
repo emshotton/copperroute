@@ -175,6 +175,59 @@ fn the_typed_query_sets_come_back_in_java_order() {
     assert_eq!(board.get_pin(1, 7), None);
 }
 
+/// `BasicBoard.cumulativeTraceLength` (BasicBoard.java:675-677 ->
+/// BoardItemRepository.java:124-133) and `Net.getCumulativeTraceLength` (Net.java:131) are
+/// accumulator loops that start at `double result = 0`, i.e. **positive** zero. Rust's
+/// `impl Sum for f64` folds from **`-0.0`**, so `.sum()` over an empty iterator answers `-0.0`,
+/// which `Double.toString` renders `"-0.0"` where Java renders `"0.0"`.
+///
+/// Found by `scripts/differential/run.sh p7t2` on
+/// `examples/tutorial_board/tutorial_board.dsn` — a board whose 438 nets are all empty, so a
+/// whole autoroute pass leaves the trace list untouched and the sum is taken over nothing.
+/// Fixed in Plan 7 Task 9 by folding from `0.0` at both sites; this test is the pin, and
+/// `is_sign_negative()` is the assertion because `-0.0 == 0.0` is true and an `assert_eq!`
+/// against `0.0` would pass either way.
+#[test]
+fn an_empty_trace_sum_is_positive_zero_like_javas_accumulator() {
+    let board = p2t11_board();
+    let empty_net = board.rules.nets.max_net_number() + 1;
+    assert!(
+        board.get_connectable_items(empty_net).is_empty(),
+        "the fixture needs a net with no items at all"
+    );
+    let sum = board.net_trace_length(empty_net);
+    assert_eq!(sum, 0.0);
+    assert!(
+        !sum.is_sign_negative(),
+        "Net.java:131 starts at +0.0; Rust's `Sum for f64` starts at -0.0"
+    );
+
+    let empty = Board::new(
+        Vec::new(),
+        0,
+        IntBox::from_coords(-10, -10, 10, 10),
+        BoardRules::new(
+            LayerStructure::new(vec![Layer::new("front", true)]),
+            ClearanceMatrix::get_default_instance(
+                &LayerStructure::new(vec![Layer::new("front", true)]),
+                200,
+            ),
+        ),
+        BoardLibrary::new(
+            Padstacks::new(LayerStructure::new(vec![Layer::new("front", true)])),
+            Packages::new(),
+        ),
+        Components::new(),
+        Communication::default(),
+    );
+    let sum = empty.cumulative_trace_length();
+    assert_eq!(sum, 0.0);
+    assert!(
+        !sum.is_sign_negative(),
+        "BoardItemRepository.java:125 starts at +0.0"
+    );
+}
+
 #[test]
 fn the_scalar_queries_match_the_jvm() {
     // `P2T11.java` mode 0.
@@ -2251,8 +2304,6 @@ fn the_shove_failure_fields_round_trip() {
     board.clear_shove_failing_obstacle();
     assert_eq!(board.get_shove_failing_obstacle(), None);
     assert_eq!(board.get_shove_failing_layer(), -1);
-    // RoutingBoard.java:64: the failure log is a plain hook until Plan 6 types it.
-    assert!(board.failure_log.is_empty());
 }
 
 #[test]

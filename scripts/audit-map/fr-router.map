@@ -64,8 +64,10 @@ PerformanceProfiler               lib.rs
 AutorouteDiagnostic               lib.rs
 BoardUpdateStrategy               lib.rs
 ItemSelectionStrategy             lib.rs
-RoutingFailureLog                 lib.rs
-ItemRouteResult                   lib.rs
+# Plan 7 Task 9 re-pointed these two rows from `lib.rs`: both classes are ported in full there,
+# with their `not ported:` / `renamed:` markers beside the code.
+RoutingFailureLog                 pipeline/failure_log.rs
+ItemRouteResult                   pipeline/item_route_result.rs
 
 # --- autoroute/maze/ (Tasks 2, 6, 8, 11-14, 16) -------------------------------------------------
 # `MazeSearchElement` landed in Task 2 (the expansion doors cannot be built without it), and
@@ -171,7 +173,9 @@ ShapeSearchTree90Degree           autoroute/tree_ext.rs
 BatchAutorouter                   lib.rs
 BatchAutorouter                   pipeline/batch_autorouter.rs
 BatchAutorouterThread             lib.rs
-AutoroutePassRunner               lib.rs
+# Plan 7 Task 9: `runSingleThread` is ported and `runMultiThread` plus the five `log*` helpers
+# are rostered `not ported:` in the same file.
+AutoroutePassRunner               pipeline/pass_runner.rs
 AutorouteBatchLoop                lib.rs
 AutorouteConnectionRouter         autoroute/maze/engine.rs
 BatchFanout                       lib.rs
@@ -186,7 +190,8 @@ NamedAlgorithm                    lib.rs
 # lists are `not ported:`, replaced by `pipeline::ProgressSink`.
 NamedAlgorithmType                pipeline/mod.rs
 TaskState                         pipeline/mod.rs
-AutorouteAirlineCalculator        lib.rs
+# Plan 7 Task 9: `calculateAirline` is ported; the other five members are `not ported:` there.
+AutorouteAirlineCalculator        pipeline/airline.rs
 AutorouteRuntimeMetrics           lib.rs
 AutorouteUnroutedReport           lib.rs
 # Plan 7 Task 6 re-pointed this row from `lib.rs` (plan ruling 13 says so explicitly, and says

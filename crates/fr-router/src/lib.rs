@@ -112,9 +112,10 @@ pub use board_ext::{
 pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
 pub use pipeline::{
-    BatchAutorouter, BoardHistory, BoardHistoryEntry, NamedAlgorithmType, NoopProgressSink,
-    PassRecord, ProgressSink, ProgressThrottler, RouterBudget, RouterCounters, RouterStop,
-    RoutingEvent, StopRequestState, TaskState,
+    AutoroutePassRunner, BatchAutorouter, BoardHistory, BoardHistoryEntry, ItemFailureInfo,
+    ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PassRecord, ProgressSink,
+    ProgressThrottler, RouterBudget, RouterCounters, RouterStop, RoutingEvent, RoutingFailureLog,
+    StopRequestState, TaskState, calculate_airline,
 };
 pub use score::{
     BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
@@ -148,9 +149,9 @@ pub mod prelude {
         MazeSearchElement, MazeSearchEngine, NamedAlgorithmType, NoopProgressSink,
         ObstacleExpansionRoom, PageId, PassRecord, ProgressSink, ProgressThrottler,
         Rectangle2DFloat, ResultItem, RoomRef, RouterBudget, RouterCounters, RouterError,
-        RouterStop, RoutingBoardExt, RoutingEvent, ShoveResult, SpringOverOutcome,
-        StopRequestState, TargetDoorId, TargetItemExpansionDoor, TaskState, TraceShover, ViaMask,
-        route_connection, route_connection_full,
+        RouterStop, RoutingBoardExt, RoutingEvent, RoutingFailureLog, ShoveResult,
+        SpringOverOutcome, StopRequestState, TargetDoorId, TargetItemExpansionDoor, TaskState,
+        TraceShover, ViaMask, route_connection, route_connection_full,
     };
 }
 
@@ -212,30 +213,32 @@ pub mod prelude {
 
 // --- Plan 7's, not this plan's (ruling 2 puts the pass loop and the failure log there) ------------
 //
-// `autoroute/RoutingFailureLog.java`: read and written by `AutoroutePassRunner`, above the seam.
-// added in Plan 7: `RoutingFailureLog.recordFailure`
-// added in Plan 7: `RoutingFailureLog.shouldSkip`
-// added in Plan 7: `RoutingFailureLog.shouldGiveUp`
-// added in Plan 7: `RoutingFailureLog.getFailureCount`
-// added in Plan 7: `RoutingFailureLog.getUnroutableItems`
-// added in Plan 7: `RoutingFailureLog.hasUnroutableItems`
-// added in Plan 7: `RoutingFailureLog.clear`
-// added in Plan 7: `RoutingFailureLog.toString`
-// added in Plan 7: `RoutingFailureLog.ItemFailureInfo`
+// `autoroute/RoutingFailureLog.java` and `autoroute/ItemRouteResult.java` **landed in Plan 7
+// Task 9**; `scripts/audit-map/fr-router.map` points both classes at their own files
+// ([`pipeline::failure_log`] and [`pipeline::item_route_result`]), so their nine and twelve
+// markers moved there with them and no longer sit on this roster.
 //
-// `autoroute/ItemRouteResult.java`: the per-item scorecard the pass runner sorts on.
-// added in Plan 7: `ItemRouteResult.itemId`
-// added in Plan 7: `ItemRouteResult.incompleteCount`
-// added in Plan 7: `ItemRouteResult.incompleteCountBefore`
-// added in Plan 7: `ItemRouteResult.viaCount`
-// added in Plan 7: `ItemRouteResult.traceLength`
-// added in Plan 7: `ItemRouteResult.improved`
-// added in Plan 7: `ItemRouteResult.improvedOver`
-// added in Plan 7: `ItemRouteResult.improvementPercentage`
-// added in Plan 7: `ItemRouteResult.lengthReduced`
-// added in Plan 7: `ItemRouteResult.viaCountReduced`
-// added in Plan 7: `ItemRouteResult.updateImproved`
-// added in Plan 7: `ItemRouteResult.compareTo`
+// * `RoutingFailureLog` — `recordFailure` (`:34-48`) and `getFailureCount` (`:95-101`) are the two
+//   with a live caller (`AutoroutePassRunner.java:269, 272`) and are ported, and so is the nested
+//   `ItemFailureInfo` (`:109-160`) as the map's value type. The other four members and the two
+//   the plan's roster listed as top-level methods but which are **`ItemFailureInfo`'s**
+//   (`shouldGiveUp` `:147-149`, `toString` `:151-159`) are `not ported:` in
+//   `pipeline/failure_log.rs`, each with its grep.
+// * `ItemRouteResult` — the **whole** 145-line class is ported in `pipeline/item_route_result.rs`,
+//   including `improvedOver`, `lengthReduced`, `viaCountReduced` and `updateImproved`, and pinned
+//   against the HEAD jar by `scripts/differential/java/probes/P7T9Probe.java`'s 500 scripted
+//   tuples.
+//
+// `src/test/java/app/freerouting/autoroute/BatchAutorouterDebugTest.java` (521 loc) is **not**
+// ported, although plan ruling 14 lists it: `grep -n BatchAutorouter` over it answers exactly one
+// hit, its own class declaration at `:16`. Its 21 `@Test` methods drive
+// `app.freerouting.debug.DebugControl` — the interactive single-step debugger, with
+// `AtomicBoolean`s, listener lists and `Thread.sleep` — through the global
+// `Freerouting.globalSettings.debugSettings`, and touch no board, no `getAutorouteItems` and no
+// `runSingleThread`. The reasoning is in `crates/fr-router/tests/pass_runner.rs`'s module doc;
+// the one member with a headless counterpart, `DebugSettings.isNetPermitted`, is already ported
+// and tested in `fr-settings`.
+// not ported: `DebugControl` — the interactive single-step debugger `BatchAutorouterDebugTest` exercises (no GUI, no threads).
 
 // --- `autoroute/pipeline/**`: Plan 7's whole surface (ruling 2's seam) ----------------------------
 //
@@ -255,7 +258,17 @@ pub mod prelude {
 // `:123-145`, step 8 `:147-153`. `docs/plan-6-handoff.md` §10.1 carries the same wrong range,
 // and its "and the failure-log write" belongs to Task 9's `AutoroutePassRunner.runSingleThread`
 // (`:260-289`), not to this class.
-// added in Plan 7: `AutoroutePassRunner.runPass`, `AutoroutePassRunner.onBoardUpdatedEvent` — the per-pass item loop and its `catch (Exception)` recovery boundary (`AutoroutePassRunner.java:144`).
+// `AutoroutePassRunner` landed in Plan 7 Task 9 as [`pipeline::AutoroutePassRunner`], and the map
+// points the class there. The line that stood here named `runPass` and `onBoardUpdatedEvent`, and
+// **neither is a method of the class at HEAD**: `grep -n runPass` over the 526-line file is
+// empty, and `onBoardUpdatedEvent` is the single method of an *anonymous*
+// `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, which
+// `audit-port.sh`'s line-based extraction attributes to the enclosing file (its `not ported:`
+// marker therefore lives in `pipeline/pass_runner.rs`, where the map row now points). What the
+// class declares is `runMultiThread` (`:40-149`, dead), `runSingleThread` (`:151-336`, ported)
+// and six private `log*`/`updateProgress` helpers. The line also claimed the
+// `catch (Exception)` boundary is at `:144`: `:144` closes **`runMultiThread`**, and
+// `runSingleThread` has its own `try` at `:156` and `catch` at `:331-335`, which Task 9 ports.
 // added in Plan 7: `AutorouteBatchLoop.run` — the pass loop, and the `IllegalArgumentException` `RoutableLayersSafetyCheckTest` asserts (`AutorouteBatchLoop.java:52-55`).
 // `BatchAutorouter` itself is [`pipeline::BatchAutorouter`] from Plan 7 Task 8 — the constants,
 // the field block, both constructors, the five accessors, the five `NamedAlgorithm` identity
@@ -270,7 +283,10 @@ pub mod prelude {
 // added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.createForHeadless`, `BatchOptimizer.getCurrentPosition`, `BatchOptimizer.getId`, `BatchOptimizer.isTimedOut`.
 // added in Plan 7: `BatchOptimizerMultiThreaded.getNumTasks`, `BatchOptimizerMultiThreaded.getNumTasksFinished`, `BatchOptimizerMultiThreaded.getWinningCandidateScore`, `BatchOptimizerMultiThreaded.isWinningCandidate` — behind quirk #143: `-mt` is not a threading policy on the headless path, so Plan 7 must not make one out of it.
 // added in Plan 7: `OptimizeRouteTask.run`, `OptimizeRouteTask.clean`, `OptimizeRouteTask.getItem`, `OptimizeRouteTask.getRouteResult`.
-// added in Plan 7: `AutorouteAirlineCalculator` and `AutorouteRuntimeMetrics` — both package-private with no public members; the lines record the classes.
+// `AutorouteAirlineCalculator` landed in Plan 7 Task 9 as [`pipeline::calculate_airline`] — the
+// one method with a live caller (`AutorouteConnectionRouter.java:70`) — with its other five
+// members `not ported:` in `pipeline/airline.rs`; the map points the class there.
+// added in Plan 7: `AutorouteRuntimeMetrics` — package-private with no public members; the line records the class.
 // added in Plan 7: `AutorouteUnroutedReport.build` — the stagnation report; it is a consumer of `fr-drc`, whose `crates/fr-drc/src/lib.rs` carries the same line.
 // added in Plan 8: `RoutingPipeline.createForHeadless`, `RoutingPipeline.createForGui`, `RoutingPipeline.run`, `RoutingPipeline.getAutorouter`, `RoutingPipeline.getOptimizer`, `RoutingPipeline.addStageListener`, `RoutingPipeline.addBoardUpdatedEventListener`, `RoutingPipeline.addTaskStateChangedEventListener` — the wiring from the CLI/MCP surface into Plan 7's stages (spec §13); Plan 7 delivers the stages, Plan 8 the caller.
 // not ported: `NamedAlgorithm.addBoardSnapshotEventListener`, `NamedAlgorithm.addBoardUpdatedEventListener`, `NamedAlgorithm.addTaskStateChangedEventListener`, `NamedAlgorithm.fireBoardSnapshotEvent`, `NamedAlgorithm.fireBoardUpdatedEvent`, `NamedAlgorithm.fireTaskStateChangedEvent` — the three listener lists (`NamedAlgorithm.java:26-31`) and their `add`/`fire` pairs; controller ruling AK replaces the whole mechanism with spec §10's [`pipeline::ProgressSink`], landed in Plan 7 Task 4.

@@ -1474,6 +1474,36 @@ methods with dozens of branches.
       declaration order, with each field's type and its default. All nine
       default to `null`, which is why the port's fields are `Option`s.
 
+  - `P7T9Probe.java` — the whole of `autoroute/ItemRouteResult.java` (145 lines):
+    the improvement ladder the **constructor** runs (`:39-57`), the
+    `improvementPercentage` expression (`:59-65`) with its integer-division bug
+    (quirk #212), `compareTo` (`:69-89`), `improvedOver`, `viaCountReduced`,
+    `lengthReduced`, `updateImproved` and the one-argument constructor. `package
+    app.freerouting.autoroute`; the class is public, so no access trick is needed.
+    Not a differential driver — no Rust twin, and `run.sh` does not know it, the
+    `P7T2Probe`/`P7T4Probe` pattern. Committed as
+    `crates/fr-router/tests/data/p7t9-item-route-result.txt` (1 013 lines) and
+    replayed by `crates/fr-router/tests/item_route_result.rs`.
+
+    Why 500 **scripted** tuples rather than a corpus: the class has no live caller
+    a corpus run could observe it through. `BatchOptimizer.optRouteItem` builds one
+    per optimized item and reads `improved()`, but it recomputes the percentage
+    itself with a `(float)` cast (`BatchOptimizer.java:340-348`) rather than
+    reading the field, and `compareTo` is reached only from the GUI-only
+    `BatchAutorouterThread`'s `PriorityQueue`. So it is pinned the way a pure
+    function is: over a domain that reaches every arm of the ladder and both sides
+    of every comparison — `new Random(4919)` over integer ranges `0..5` and a
+    length table that includes `0.0`, so ties on each rung are frequent, and a tie
+    is what selects the *next* rung.
+
+    The transcript carries the **inputs** as well as the answers, so the Rust twin
+    does not reproduce `java.util.Random`; it reads the tuples out of the
+    `[tuples]` block. Floating point crosses as `Float.toString`/`Double.toString`
+    text and the Rust side **parses** it rather than formatting its own — both
+    printers emit the shortest round-tripping form and both parsers are correctly
+    rounded, so the comparison is exact and no `java_float_to_string` enters the
+    test. Byte-stable across runs: no clock, no board, no hash iteration.
+
 - `java/P6T17bProbe.java` — **the Plan 6 Task 17b bisect probe.** It sits beside
   the drivers rather than in `java/probes/` because it is compiled *with*
   `P6T1.java` and reuses its `loadBoard` / `pickConnections` / `routeOne`, so it
@@ -1548,10 +1578,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t3`, `p7t4`, `p7t6`, `p7t7` and `p7t10`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1574,7 +1604,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t3`/`p7t4`/`p7t6`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t6`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -2248,6 +2278,97 @@ the driver expects, or none at all.
   wrong port of these three methods. The whole stdout is committed as
   `crates/fr-router/tests/data/p7t6-connection-to-pin.txt` and replayed by
   `crates/fr-router/tests/connection_to_pin.rs`.
+
+- `p7t1 <dsn> [passNo]` — Plan 7 Task 9, **item-selection** level:
+  `BatchAutorouter.getAutorouteItems` (BatchAutorouter.java:345-409), the pass's work
+  list. Defaults `<dsn> 1`; `run.sh p7t1` with no arguments uses
+  `Issue143-rpi_splitter.dsn 1`.
+
+  `passNo > 1` runs `passNo - 1` real autoroute passes first, because the method's
+  answer depends on the **board**, and the board a pass selects from is the board the
+  previous passes left. So a divergence reported at pass 3 may really be a pass-2
+  routing divergence — which is why the acceptance sweep runs 1, 2 and 3 rather than
+  only 1.
+
+  It prints, before any routing of the pass being reported:
+
+  ```text
+  COUNT 9
+  ITEM 0 23 Pin nets=1 [3]
+  …
+  HANDLED 0 1 [29]
+  …
+  HANDLED-FINAL 10 [2,3,4,7,10,16,21,22,23,29] transcriptionAgrees=true
+  ```
+
+  One `ITEM` line per entry of the list **in list order** — Java's return type is
+  `List<Item>`, so an item that qualified on two nets appears at two ordinals with the
+  same id, which is quirk #213 made visible — with the `netCount()`/net-number list
+  `AutoroutePassRunner:207` will loop over, read off the *item*, not off the list. Then
+  the `handledItems` set after each examined `(item, net index)` step, which is the
+  hidden state `:359` reads to skip a later item.
+
+  The `HANDLED` lines are a **transcription** of `:363-370` run beside the real method
+  on both sides, and `HANDLED-FINAL`'s `transcriptionAgrees` checks it against what the
+  real call built: Java reflects the private `reusableHandledItems` field (`:74`), which
+  works because Java reuses the collection and clears it at `:348`; the port returns the
+  set from `BatchAutorouter::autoroute_items_with_handled`, because it allocates a fresh
+  one per call and has nothing to reflect into. Without that line the trace would be a
+  parallel implementation rather than evidence.
+
+  **Acceptance: 0 diffs on all six corpus stems x passes 1-3** — 18 / 18 MATCH
+  (22/11/11, 591/252/185, 105/36/34, 441/441/441, 52/16/16 lines).
+
+- `p7t2 <dsn> [passNo] [maxItems|all]` — Plan 7 Task 9, **pass** level:
+  `AutoroutePassRunner.runSingleThread` (AutoroutePassRunner.java:151-336), one whole
+  autoroute pass. Defaults `<dsn> 1 all`; `run.sh p7t2` with no arguments uses
+  `Issue143-rpi_splitter.dsn 1 all`. `all` is `settings.maxItems = null`, the CLI's
+  default, which leaves `:213`'s guard false forever.
+
+  `runSingleThread` is one 180-line method with no seam to print from — it loops, calls
+  `router.autorouteItem` and returns a `boolean` — so driving it directly would give a
+  one-line transcript, which localises nothing on a 294-connection board. The driver
+  prints **two halves** instead:
+
+  * `[transcript]` — `p7t1`'s block, then the method's loop transcribed line for line
+    against `:158-330`, calling the *real* `getAutorouteItems`, `autorouteItem` and
+    `removeTails`, with `p6t1`'s JSON line per `(item, net index)` (attempt state,
+    details, ripped set, ripup costs, `maxIdBefore`/`maxIdAfter`, every inserted trace
+    polyline and via, and the failure count on a failure), the `MAXITEMS` line when
+    `:212-221` fires, the `TAILS-BEFORE`/`TAILS-AFTER` deltas around `:298-302` and the
+    closing `COUNTERS` line. Same technique as `P6T1.route` for
+    `AutorouteConnectionRouter.route`'s steps 1-5.
+  * `[real]` — a **freshly loaded** board, the same `passNo - 1` warm-up passes, then
+    the real `BatchAutorouter.autoroutePass(passNo)`. Its return value and board are
+    printed, and the two boards are compared: `BasicBoard.getHash()` on the Java side,
+    `Board::structural_hash` on the port's. What crosses the diff is
+    `equalsTranscript=<bool>`, an **equality decision**, never a hash value — the two
+    are not comparable by construction (controller ruling AH).
+
+  The second half is what makes the first half evidence: if the transcription ever
+  drifted from the method, `equalsTranscript` would go false on the Java side alone and
+  the run would diff against a port that had not changed.
+
+  The Java driver builds its router through `new BatchAutorouter(RoutingJob)`
+  (`:110-122`), not through `P7T8Probe`'s seven-argument constructor: `runSingleThread`
+  dereferences `router.job` on four paths and `router.thread` on three, and a `null`
+  `job` would turn the first failed item into a `NullPointerException` that `:331`'s own
+  catch swallows — the pass would silently return `false` and the driver would compare
+  two empty transcripts.
+
+  **Acceptance: 0 diffs on all six corpus stems x passes 1-3 x `maxItems` in {2, all}**
+  — 36 / 36 MATCH.
+
+  It found one real port divergence on the way, in `fr-board` rather than in Task 9's
+  own code: `Board::cumulative_trace_length` used `.sum()`, and Rust's
+  `impl Sum for f64` folds from **`-0.0`** while Java's `BoardItemRepository.java:125`
+  is an accumulator loop starting at `double result = 0`. An empty trace list therefore
+  printed `"-0.0"` against Java's `"0.0"`. Only `tutorial_board.dsn` reaches it — 438
+  empty nets, so a whole pass leaves the trace list untouched — which is why nothing
+  before this driver had run a *pass* over a board that routes nothing. Fixed at both
+  `f64` sum sites, with `an_empty_trace_sum_is_positive_zero_like_javas_accumulator` in
+  `crates/fr-board/tests/board.rs` as the pin.
+
 
 ## Deferred coverage and cleanups
 

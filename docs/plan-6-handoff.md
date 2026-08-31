@@ -550,6 +550,16 @@ see the README section that lists all eight.
    > reachable only from `BatchOptimizer.createForGui`. `BatchOptimizer`, `ItemRouteResult`
    > and `RoutingFailureLog` are built (Plan 7 Tasks 9, 13, 14); the `Vec<String>` hook is
    > deleted or re-pointed in Plan 7 Task 9.
+   >
+   > **Status (2026-08-31): the hook is DELETED, in Plan 7 Task 9.** `RoutingFailureLog` and
+   > `ItemRouteResult` landed as `fr_router::pipeline::{failure_log, item_route_result}`, and
+   > `Board::failure_log` — the `Vec<String>` — is gone: a tree-wide `grep -rn failure_log crates`
+   > at port time found exactly three hits, its declaration, its initialiser and one
+   > `assert!(board.failure_log.is_empty())` in `crates/fr-board/tests/board.rs`, i.e. **no reader
+   > and no writer**. Re-pointing it was not possible in any case — the real type lives in
+   > `fr-router`, which `fr-board` must not depend on — so the log is a caller-owned parameter of
+   > `AutoroutePassRunner::run_single_thread`, recorded as a `// renamed:` at
+   > `crates/fr-board/src/board/mod.rs`.
 5. **`ViaOptimizer.optViaLocation`**, and with it `RoutingBoard.optChangedArea`
    (both overloads) and `RoutingBoard.removeItemsAndPullTight` — the batch callers
    of the tightener family this plan already ported. Quirk #34's `equals_geometric`

@@ -179,7 +179,7 @@ pub(crate) use item_ctx;
 // renamed: `RoutingBoard.initAutoroute` (RoutingBoard.java:882-897) -> `fr_router::board_ext::RoutingBoardExt::init_autoroute`; the engine is passed in and handed back where Java reads and writes its `autorouteEngine` field.
 // ported: `RoutingBoard.finishAutoroute` (RoutingBoard.java:899-905) -> `Board::finish_autoroute`
 // (`board/snapshot.rs`), empty until Plan 6 gives `Board` the `autoroute_engine` field it clears.
-// added in Plan 7: `RoutingBoard.autoroute` (RoutingBoard.java:911-971) — it builds an `AutorouteControl` and drives `AutorouteEngine.autorouteConnection` for one item, i.e. it is `AutoroutePassRunner`'s per-item step, which plan-6 ruling 2 puts above the seam. Plan 6 delivers what it calls (`fr_router::route_connection`).
+// renamed: `RoutingBoard.autoroute` (RoutingBoard.java:911-971) -> `fr_router::route_connection_full` (`autoroute/maze/engine.rs`), reached through `fr_router::pipeline::BatchAutorouter::autoroute_item`; the method's body *is* that call — it builds an `AutorouteControl`, swaps start and destination for a plane net, sets the `TimeLimit`, calls `initAutoroute` and then `autorouteConnection` — and HEAD's own pipeline reaches it as `AutorouteConnectionRouter.route`, which is where Plan 7 Tasks 8 and 9 ported it. Landed in Plan 7 Task 9.
 // added in Plan 7: `RoutingBoard.fanout` (RoutingBoard.java:978-1110) — the SMD fanout pass, which plan-6 ruling 2 puts above the seam with the rest of the batch loop.
 // renamed: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) -> `fr_router::board_ext::RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}` (Rust has no overloading); its body is `RoutingBoardOperations.optChangedArea` (:52-79), which builds a `TraceTightener` — `fr-router`'s type — and runs its `optChangedArea` sweep. Landed in Plan 7 Task 5.
 // renamed: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127 -> RoutingBoardOperations.java:81-120) -> `fr_router::board_ext::RoutingBoardExt::remove_items_and_pull_tight`; the removal half stays here as `Board::remove_items_marking_changed_area`, and the `combineTraces` + `optChangedArea` tail needs a `TraceTightener` — `fr-router`'s type — so the whole method is presented there. Landed in Plan 7 Task 8.
@@ -223,11 +223,7 @@ pub struct Board {
     pub trees: SearchTreeManager,
     /// Java `RoutingBoard.changedArea` (RoutingBoard.java:67); `null` becomes `None`.
     pub changed_area: Option<ChangedArea>,
-    /// Java `RoutingBoard.failureLog` (RoutingBoard.java:64), an
-    /// `autoroute.RoutingFailureLog`. Plan 6 owns that type; the field is a `Vec<String>` hook
-    /// until then, as the task brief asks.
-    // added in Plan 7: `autoroute.RoutingFailureLog`, the real element type — its only reader and writer is `AutoroutePassRunner`, which plan-6 ruling 2 puts in Plan 7; `crates/fr-router/src/lib.rs`'s roster carries the class method for method.
-    pub failure_log: Vec<String>,
+    // renamed: `RoutingBoard.failureLog` (RoutingBoard.java:64, constructed at `:91`) -> a caller-owned `fr_router::pipeline::RoutingFailureLog`, threaded as a parameter of `AutoroutePassRunner::run_single_thread` — `fr-board` must not depend on `fr-router`, and that is where the type lives. Landed in Plan 7 Task 9, which **deleted** the `Vec<String>` hook that stood here (`docs/plan-6-handoff.md` §10.4): nothing ever read or wrote it, and keeping a second, differently-typed log beside the real one would be a place for the two to disagree. The divergence is unobservable — Java's field is `final`, so no path can swap one board's log for another's, and its only reader is a log-message guard at `AutoroutePassRunner.java:272-273`.
     /// Java `RoutingBoard.shoveFailingObstacle` (RoutingBoard.java:72), as an id.
     pub shove_failing_obstacle: Option<ItemId>,
     /// Java `RoutingBoard.shoveFailingLayer` (RoutingBoard.java:73), initialised to `-1`.
@@ -316,7 +312,6 @@ impl Board {
             bounding_box,
             trees: SearchTreeManager::new(),
             changed_area: None,
-            failure_log: Vec::new(),
             shove_failing_obstacle: None,
             shove_failing_layer: -1,
             normalize_suppressed_net_nos: std::collections::BTreeSet::new(),
@@ -1123,7 +1118,20 @@ impl Board {
         self.ids_where(Item::is_trace)
     }
 
-    /// Port of `BasicBoard.cumulativeTraceLength` (BasicBoard.java:675-677).
+    /// Port of `BasicBoard.cumulativeTraceLength` (BasicBoard.java:675-677) ->
+    /// `BoardItemRepository.cumulativeTraceLength` (BoardItemRepository.java:124-133).
+    ///
+    /// # `fold(0.0, …)`, not `.sum()`
+    ///
+    /// Java is a plain accumulator loop that starts at `double result = 0`, i.e. **positive**
+    /// zero. Rust's `impl Sum for f64` folds from **`-0.0`** (so that summing `[-0.0]` answers
+    /// `-0.0`), and `-0.0` is what an empty iterator therefore returns — which
+    /// `Double.toString` renders as `"-0.0"` where Java renders `"0.0"`. It is invisible the
+    /// moment any non-zero length is added (`-0.0 + x == x`), so the divergence is exactly
+    /// "a board with no traces", plus the degenerate "a board whose every trace has length
+    /// `-0.0`". Measured by `scripts/differential/run.sh p7t2` on
+    /// `examples/tutorial_board/tutorial_board.dsn`, which routes nothing and so keeps an empty
+    /// trace list all the way to the end of the pass. Fixed in Plan 7 Task 9.
     pub fn cumulative_trace_length(&self) -> f64 {
         self.items
             .values()
@@ -1132,7 +1140,7 @@ impl Board {
                 Item::Trace(trace) => Some(trace.get_length()),
                 _ => None,
             })
-            .sum()
+            .fold(0.0, |result, length| result + length)
     }
 
     /// Port of `BasicBoard.getNon45DegreeTraceCount` (BasicBoard.java:1465-1475).
@@ -1838,6 +1846,11 @@ impl Board {
 
     /// Port of `Net.getTraceLength` (Net.java:130-140). Note it walks
     /// `board.getConnectableItems(netNumber)`, not the whole item list.
+    ///
+    /// `fold(0.0, …)` rather than `.sum()`, for the reason
+    /// [`Board::cumulative_trace_length`] gives: Java's `Net.getCumulativeTraceLength`
+    /// (Net.java:131) is an accumulator loop starting at positive zero, and Rust's `Sum for f64`
+    /// starts at `-0.0`. A net with no trace is the reachable case.
     pub fn net_trace_length(&self, net_number: i32) -> f64 {
         self.get_connectable_items(net_number)
             .into_iter()
@@ -1845,7 +1858,7 @@ impl Board {
                 Some(Item::Trace(trace)) => Some(trace.get_length()),
                 _ => None,
             })
-            .sum()
+            .fold(0.0, |result, length| result + length)
     }
 
     /// Port of `Net.getViaCount` (Net.java:143-152).
