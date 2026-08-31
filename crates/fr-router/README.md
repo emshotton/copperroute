@@ -2080,8 +2080,9 @@ field by `tests/board_history.rs`'s
 | | `autorouteEngine` (`RoutingBoard.java:70`), which plan-6 ruling 3 puts outside `Board` altogether |
 
 **Nothing had to be added to `fr-board`.** `deep_copy` already resets all four
-transients, already clears the autoroute scratch (a no-op on a round trip, because
-`autorouteInfo` is `transient` and so a deserialized board's is null anyway), and
+transients, already clears the autoroute scratch — a no-op in JAVA's round trip
+(`autorouteInfo` is `transient`, so a deserialized board's is null anyway) but
+LOAD-BEARING in the port, whose `deep_copy` is a structural clone — and
 already preserves the id counter. The one place the port and Java's clone differ is
 `fr_geometry::Line`'s identity token (plan-6 ruling AE): Java's serialization mints
 **new** `Line` objects, preserving reference sharing *within* the copy but never

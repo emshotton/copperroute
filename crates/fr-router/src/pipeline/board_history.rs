@@ -17,7 +17,7 @@ use crate::score::BoardStatistics;
 /// # What is not ported
 ///
 /// Java's `synchronized` methods and its `ReentrantReadWriteLock` (`:34`) are dropped: the whole
-/// pipeline is single-threaded (survey §3.4, quirk #216 — `-mt` is dead on every path), so there
+/// pipeline is single-threaded (survey §3.4 and quirk #143 — `-mt` is dead on every path, GUI included), so there
 /// is no second thread for them to exclude. Rust's `&mut self` / `&self` split says the same
 /// thing at compile time, and it says it in the same places: every Java method that takes the
 /// write lock (or is `synchronized` and mutates) is `&mut self` here, and every read-lock method
@@ -268,8 +268,11 @@ impl BoardHistory {
                 // on the deserialize, which is why [`Board::deep_copy`] is called on the
                 // *restore* rather than on the snapshot. `deep_copy`'s two extra steps beyond a
                 // plain deserialize — `clearAllItemTemporaryAutorouteData` and `finishAutoroute`,
-                // which belong to `RoutingBoardUndoFacade.deepCopy` — are no-ops on a round trip:
-                // `Item.autorouteInfo` is `transient` (Item.java:67), so a deserialized board's
+                // which belong to `RoutingBoardUndoFacade.deepCopy` — are no-ops in JAVA's round trip:
+                // `Item.autorouteInfo` is `transient` (Item.java:67), so a deserialized board's scratch is
+                // already null. The PORT's `deep_copy` is a structural clone, not serialization, so
+                // `clear_autoroute_scratch` is LOAD-BEARING here — it is what makes the copy match
+                // Java's deserialized board (pinned by fr-board's clearance/round-trip tests). A
                 // is already null, and the port's `finish_autoroute` is empty (plan-6 ruling 3
                 // puts the engine outside `Board`).
                 return Some(entry.board.deep_copy());

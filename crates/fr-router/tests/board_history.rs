@@ -1098,8 +1098,10 @@ fn size_cap_evicts_worst_entry() {
 /// That last one is why `deep_copy` is the right method even though its two extra steps —
 /// `clearAllItemTemporaryAutorouteData` and `finishAutoroute`, which belong to
 /// `RoutingBoardUndoFacade.deepCopy` rather than to a plain `deserialize` — are **not** in
-/// `restoreBoard`'s Java: both are no-ops on a round trip, because `autorouteInfo` is `transient`
-/// and the port's `finish_autoroute` is empty.
+/// `restoreBoard`'s Java: both are no-ops in JAVA (a deserialized board's `autorouteInfo` is
+/// already null — it is `transient`). In the PORT, `deep_copy` is a structural clone, so
+/// `clear_autoroute_scratch` is load-bearing (it produces the null-scratch state Java gets for
+/// free); `finish_autoroute` remains empty.
 #[test]
 fn a_restored_board_is_javas_deserialize_round_trip() {
     let (_, mut b1, scoring) = two_boards();
