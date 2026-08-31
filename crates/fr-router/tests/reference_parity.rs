@@ -786,7 +786,7 @@ fn assert_steps18_matches(stem: &str) {
     }
 }
 
-/// The four stems that MATCH the jar end to end under `--steps=1-8`.
+/// The four cheap stems that MATCH the jar end to end under `--steps=1-8`.
 ///
 /// `router-rpi-splitter` (8 connections), `router-j2-reference` (45), `router-ecc83-input` (22)
 /// and `router-tutorial-board` (0, which is its own assertion — see the module comment). All four
@@ -811,62 +811,42 @@ fn steps_one_to_eight_on_dac2020_at_pass_two_matches_the_jar() {
     assert_steps18_matches("router-dac2020-bm01-pass2");
 }
 
-/// **The open XDIFF, pinned at both ends** (Task 8 report §7; controller ruling AX opened Task 8b
-/// to bisect it).
+/// `router-dac2020-bm01` at `ripupPassNo = 1` MATCHes end to end — **all 294 connections**.
 ///
-/// `router-dac2020-bm01` at `ripupPassNo = 1` is the one stem × pass of the ten that does not
-/// MATCH under `--steps=1-8`. This test asserts exactly what is known, so the row can neither
-/// widen nor close in silence:
+/// This was the plan's one open XDIFF. Plan 7 Task 8b bisected it to a single statement and
+/// controller ruling AY authorised the fix: `fr_router::board_ext::tightener::scan_contacts`
+/// walked the contact set of `TraceTightener45.smoothenStartCornerAtTrace` **ascending** where
+/// Java's `TreeSet<Item>` walks it **descending** (quirk #44's ordering), and
+/// `TraceTightener45.java:511-514` keeps the *last* matching contact — so with two or more
+/// matching contacts the two sides smoothed against different ones. On this board it fired
+/// exactly once, at connection 175, trace 292213, and cascaded into 120 of the 294 lines.
+/// `scan_contacts` is now `.rev()`ed and quirk **#210** carries the measurement.
 ///
-/// * connections **1-174** are identical, including the `maxIdAfter` each one burned;
-/// * connection **175** differs, and differs *there* — Java ends it at `maxIdAfter = 292240` with
-///   five new traces, the port at `292230` with six.
+/// The assertion below is deliberately more than `assert_steps18_matches`: it names connection
+/// 175 in its failure message, because that connection is quirk #210's regression signal and a
+/// bare "k=175 diverged" would lose the reason.
 ///
-/// A fix that closes the divergence makes the `assert_ne!` fail, which is the signal to promote
-/// this stem into [`steps_one_to_eight_matches_the_jar`] and delete
-/// `tests/reference/router-dac2020-bm01/router-steps18.xdiff.txt`. A regression that moves the
-/// divergence earlier makes the 1-174 loop fail.
-///
-/// The cause is **not** in Task 8's wiring, and — since Plan 7 Task 8b — it is no longer a
-/// hypothesis. It is **quirk #210**: `fr_router::board_ext::tightener::scan_contacts` walks the
-/// contact set of `TraceTightener45.smoothenStartCornerAtTrace` **ascending** where Java's
-/// `TreeSet<Item>` walks it **descending**, and `TraceTightener45.java:511-514` keeps the *last*
-/// matching contact, so the two sides smooth trace 292213's start corner against different
-/// contacts. Task 8b measured that reversing that one walk makes all 294 connections MATCH at
-/// both `ripupPassNo` 1 and 2 and moves no other reference. The earlier reading — the `Line`
-/// reference-identity model, quirks #74/#188 — is **wrong**: forcing
-/// `fr_geometry::Line::is_same_object` to `false` moves the first divergence to connection 83,
-/// but it does so *on top of* a corrected contact walk too, so that is an artefact of the
-/// deliberately-wrong identity model and a different site. See
-/// `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-8b-report.md`.
+/// 294 connections, so it carries the same ignore [`router_dac2020_bm01`] does.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
-fn steps_one_to_eight_on_dac2020_is_the_open_xdiff_at_connection_175() {
+fn steps_one_to_eight_on_dac2020_matches_the_jar() {
     let Some((actual, expected)) = steps18_pair("router-dac2020-bm01") else {
         return;
     };
     assert_eq!(294, expected.len());
-    for (i, (got, want)) in actual.iter().zip(expected.iter()).enumerate().take(174) {
+    for (i, (got, want)) in actual.iter().zip(expected.iter()).enumerate() {
+        let k = i + 1;
         assert_eq!(
             got,
             want,
-            "router-dac2020-bm01 k={} must still match — the XDIFF starts at 175, not earlier",
-            i + 1
+            "router-dac2020-bm01 k={k} diverged under --steps=1-8{}:\n  port: {got:?}\n  java: \
+             {want:?}",
+            if k == 175 {
+                " — this is quirk #210's connection: check that \
+                 fr_router::board_ext::tightener::scan_contacts still walks its contacts .rev()ed"
+            } else {
+                ""
+            }
         );
     }
-    let (got, want) = (&actual[174], &expected[174]);
-    assert_eq!((175, got.k), (175, want.k));
-    assert_ne!(
-        got, want,
-        "connection 175 now matches: quirk #210's contact-walk order is fixed. Promote this stem \
-         into steps_one_to_eight_matches_the_jar, delete router-steps18.xdiff.txt, and close the \
-         row in docs/java-quirks.md."
-    );
-    assert_eq!(
-        (292_240, 292_230),
-        (want.max_id_after, got.max_id_after),
-        "the divergence has moved: the jar burned {} ids and the port {}",
-        want.max_id_after,
-        got.max_id_after
-    );
 }

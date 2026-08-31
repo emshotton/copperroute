@@ -785,17 +785,25 @@ pub(crate) struct ContactScan {
 ///
 /// `None` is Java's `return null` from the enclosing method, which the `else` arm at `:517-519`
 /// takes for any contact that is not a non-shove-fixed `PolylineTrace`.
-//
-// obligation: quirk #210 — this loop walks `contacts` **ascending**, and Java walks the same set
-// **descending**. `trace.getStartContacts()` is `Trace.getNormalContacts`'s `new TreeSet<>()`
-// (Trace.java:179) under `Item.compareTo == item.id - id` (Item.java:95-102), and `:511-514`
-// keeps the *last* matching contact, so with two or more matches the two sides keep different
-// ones. Plan 7 Task 8b localised the whole `--steps=1-8` `router-dac2020-bm01` connection-175
-// divergence to exactly this, and measured that `contacts.iter().rev()` closes it (295/295
-// MATCH at both `ripupPassNo` 1 and 2) without moving any other reference. The fix is a
-// separately authorised follow-up, not this task's; until it lands the divergence is pinned by
-// `crates/fr-router/tests/reference_parity.rs`'s
-// `steps_one_to_eight_on_dac2020_is_the_open_xdiff_at_connection_175`.
+///
+/// # The walk is `.rev()`ed, and that is load-bearing
+///
+/// `trace.getStartContacts()` / `getEndContacts()` answer `Trace.getNormalContacts`'s
+/// `new TreeSet<>()` (Trace.java:179) under `Item.compareTo == item.id - id`
+/// (Item.java:95-102), so Java walks a contact set in **descending** item id — quirk #44's
+/// ordering, the same one `Board::change_trace`'s callers and `Item.isCycle`'s roots need. The
+/// port's [`BTreeSet<ItemId>`](std::collections::BTreeSet) is ascending, so this walk is
+/// `.rev()`ed like every other `TreeSet<Item>` walk in the workspace.
+///
+/// It is not cosmetic here: `TraceTightener45.java:511-514` **overwrites**
+/// `otherTraceCornerApprox`, `otherTraceLine`, `prevCornerSide` and `otherPrevTraceLine` on
+/// every contact that matches, so the *last* match wins, and with two or more matching contacts
+/// the direction of the walk picks a different one. That choice sets `newLineDir` (`:523-527`),
+/// the `translateLine` built from it (`:528`) and the `addLine` the smoothed polyline starts
+/// with (`:545`) — a different corner, a different `splitTraces` point, a different number of
+/// smoothing iterations. Quirk **#210** records the measurement: without the `.rev()`,
+/// `router-dac2020-bm01` at `ripupPassNo = 1` diverges from the jar at connection 175 of 294
+/// (Plan 7 Task 8b bisected it there); with it, all 294 MATCH at both passes.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn scan_contacts(
     board: &Board,
@@ -828,7 +836,8 @@ pub(crate) fn scan_contacts(
                 .join(",")
         );
     }
-    for current_contact in contacts {
+    // :481 — **descending**, see this function's doc comment and quirk #210.
+    for current_contact in contacts.iter().rev() {
         // :482 and :517-519.
         let item = board.items.get(current_contact)?;
         let Item::Trace(contact_trace) = item else {

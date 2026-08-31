@@ -1063,6 +1063,22 @@ impl Board {
 
     /// Port of `RoutingBoard.reduceNetsOfRouteItems` (RoutingBoard.java:1284-1356): drop net
     /// numbers from multi-net traces and vias that their contacts do not carry.
+    ///
+    /// # The three contact walks are deliberately **not** `.rev()`ed
+    ///
+    /// Java's `getNormalContacts()` / `getStartContacts()` answer a `TreeSet<Item>`, so Java
+    /// walks them in descending item id (quirk #44) and most walks in this port are `.rev()`ed
+    /// to match. These three (`:1303`, `:1309` and `:1329` in Java) are the exception, because
+    /// each computes an **existential** and the action it triggers does not name the contact
+    /// that triggered it: the body is "does *any* contact lack `currentNetNumber`?", and the
+    /// consequence is `currentItem.removeFromNet(currentNetNumber)`, which depends only on the
+    /// net. The `break` is an early exit, not a selection, so the answer is the same in either
+    /// direction. `pinFound` is likewise order-free: it is true iff the set contains a `Pin` at
+    /// all, and when the pin loop breaks early it has already seen one.
+    ///
+    /// Audited under Plan 7 Task 8b / ruling AY, alongside quirk **#210** — the one contact walk
+    /// in the workspace where the direction *did* matter, because
+    /// `TraceTightener45.java:511-514` keeps the last match rather than the first.
     //
     // Java bug: the method computes `result` but never assigns it (RoutingBoard.java:1285,1355),
     // so it always returns `false` even when it changed something — its doc comment promises
