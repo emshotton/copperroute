@@ -66,7 +66,7 @@ use fr_geometry::{
 use fr_settings::ExpansionCostFactor;
 
 use crate::autoroute::maze::engine::AutorouteEngine;
-use crate::board_ext::RoutingBoardExt;
+use crate::board_ext::{RoutingBoardExt, ViaOptimizer};
 
 pub(crate) use base::TightenerBase;
 pub use tightener_45::TraceTightener45;
@@ -279,13 +279,31 @@ impl<'a> TraceTightener<'a> {
                             if trace_costs.is_some()
                                 && matches!(board.items.get(&via_id), Some(Item::Via(_))) =>
                         {
-                            // obligation: TraceTightener.optChangedArea's ViaOptimizer arm
-                            // (:160-165) — Task 6. `ViaOptimizer.optViaLocation(this.board, via,
-                            // traceCosts, this.minTranslateDist, 10)` answers `false` here, so the
-                            // via is left where it is and `somethingChanged` is not set. Task 6's
-                            // `opt_via_location` takes an `engine: Option<&mut AutorouteEngine>`
-                            // the Java call site has no argument for; thread `engine` — the same
-                            // one this method already carries — when wiring it.
+                            // `ViaOptimizer.optViaLocation(this.board, via, traceCosts,
+                            // this.minTranslateDist, 10)` (:161-164) — Task 6 landed the entry
+                            // point, so the arm is live. Note which of Java's two `int` parameters
+                            // gets `minTranslateDist`: `tracePullTightAccuracy`, **not** the
+                            // recursion depth, which is the literal `10`.
+                            //
+                            // No `engine` is threaded: Task 6's `opt_via_location` takes none,
+                            // because none of the three things it calls accepts one — see that
+                            // method's "No `AutorouteEngine` parameter" section.
+                            //
+                            // obligation: ViaOptimizer.repositionVia — Task 7. All three overloads
+                            // still answer `null`, so a via whose move Java makes through them is
+                            // left where it is here. `p7t3` mode 4 diffs until Task 7 lands them;
+                            // `tests/opt_changed_area.rs`'s `mode_four_is_task_sevens_obligation`
+                            // is the test that says so.
+                            let unchanged_trace_costs = trace_costs.expect("just matched");
+                            if ViaOptimizer::opt_via_location(
+                                board,
+                                via_id,
+                                Some(unchanged_trace_costs),
+                                self.base().min_translate_dist,
+                                10,
+                            )? {
+                                something_changed = true;
+                            }
                         }
                         _ => {}
                     }

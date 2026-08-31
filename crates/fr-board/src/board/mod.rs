@@ -183,7 +183,20 @@ pub(crate) use item_ctx;
 // added in Plan 7: `RoutingBoard.fanout` (RoutingBoard.java:978-1110) — the SMD fanout pass, which plan-6 ruling 2 puts above the seam with the rest of the batch loop.
 // renamed: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) -> `fr_router::board_ext::RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}` (Rust has no overloading); its body is `RoutingBoardOperations.optChangedArea` (:52-79), which builds a `TraceTightener` — `fr-router`'s type — and runs its `optChangedArea` sweep. Landed in Plan 7 Task 5.
 // added in Plan 7: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127) — the removal half is `Board::remove_items_marking_changed_area`; the `combineTraces` + `optChangedArea` tail is Plan 7's.
-// added in Plan 7: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — `DrillItemMover`.
+// not ported: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — **GUI only**, and the plan's scan ruling 3 was wrong about who calls it.
+// Ruling 3 folded this method into Plan 7 Task 6 because "both `optViaLocation` and
+// `optPlaneOrFanoutVia` move vias through it". They do not: both call
+// `DrillItemMover.insert(via, delta, 9, 9, null, board)` and `DrillItemMover.check(...)`
+// **directly** (ViaOptimizer.java:136, :244, :282), and Plan 6 Task 10b already landed both as
+// `fr_router::board_ext::DrillItemMover::{insert, check}`. A fresh grep of the whole Java tree at
+// port time — `grep -rn moveDrillItem src/main/java src/test` — finds exactly two hits: the
+// declaration here, and `board/actions/MoveComponent.java:156` inside `MoveComponent.insert`
+// (:143-176), whose own only caller is `gui/interactive/DragItemState.java:56-61` — a mouse
+// drag. Nothing on the headless path reaches it, so it is rostered under Plan 7's "No GUI"
+// constraint rather than ported. Its body is `clearShoveFailingObstacle` + un-fixing the
+// SHOVE_FIXED contacts + a `tidyRegion` and `DrillItemMover.insert` + `optChangedArea`; every
+// piece of that already exists in the port, so a later caller (if the GUI is ever ported) can
+// assemble it without new machinery. Recorded as quirk #206.
 // added in Plan 7: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — `ForcedViaInserter`.
 // renamed: `RoutingBoard.checkForcedTracePolyline` (RoutingBoard.java:405-448) -> `fr_router::board_ext::RoutingBoardExt::check_forced_trace_polyline`; it drives `TraceShover.check`, which lives in `fr-router` because the router is its only caller.
 // renamed: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402) and `insertForcedTracePolyline` (:456-876) -> `fr_router::board_ext::RoutingBoardExt::{insert_forced_trace_segment, insert_forced_trace_polyline}` — the mutating half of the `TraceShover`, which lives in `fr-router` for the same reason `checkForcedTracePolyline` does, plus an `AutorouteEngine` for the `PolylineTrace.change` in its pull-tight tail. **Controller ruling AB** moved them out of Plan 7 into Plan 6 Task 15b, because `FoundConnectionInserter:176` and its five `tryNeckDown` / `insertFanoutMicroNeckdown` call sites are on the autoroute path.

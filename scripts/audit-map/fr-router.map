@@ -35,11 +35,11 @@
 #   ./scripts/audit-port.sh board/optimize crates/fr-router/src 'TraceShover.java'    scripts/audit-map/fr-router.map
 #
 # As of **Task 15a** (controller ruling AB) the `board/optimize` invocation covers the four
-# `TraceTightener*` files too and still exits 0; only `ViaOptimizer.java` is left out of the glob,
-# because it is Plan 7's and has no `lib.rs` roster entry yet:
+# `TraceTightener*` files too and still exits 0; `ViaOptimizer.java` joined the glob at **Task 6**,
+# which is when its row stopped pointing at `lib.rs`:
 #
 #   ./scripts/audit-port.sh board/optimize crates/fr-router/src \
-#       'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java' \
+#       'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java ViaOptimizer.java' \
 #       scripts/audit-map/fr-router.map
 #
 # The `ShapeSearchTree*` and `RoutingBoard` rows below are cross-package, not cross-crate: plan-6
@@ -139,7 +139,9 @@ TraceShover                       board_ext/trace_shover.rs
 # batch callers and `removeItemsAndPullTight`. **Plan 7 Task 5** then landed
 # `TraceTightener.optChangedArea` itself (and `PolylineTrace`'s `check`/`correct`/`swapConnectionToPin`,
 # which live in the same file for the same reason `pullTight` does), so `board/optimize`'s marker
-# for it is gone; only `ViaOptimizer.optViaLocation` is still rostered, to Task 6.
+# for it is gone. **Plan 7 Task 6** then landed `ViaOptimizer`'s entry half and re-pointed its row
+# (plan ruling 13); the three `repositionVia` overloads are rostered inside
+# `board_ext/via_optimizer.rs` to Task 7.
 TraceTightener                    board_ext/tightener/mod.rs
 TraceTightener                    board_ext/tightener/base.rs
 TraceTightener90                  board_ext/tightener/tightener_90.rs
@@ -182,7 +184,11 @@ TaskState                         pipeline/mod.rs
 AutorouteAirlineCalculator        lib.rs
 AutorouteRuntimeMetrics           lib.rs
 AutorouteUnroutedReport           lib.rs
-ViaOptimizer                      lib.rs
+# Plan 7 Task 6 re-pointed this row from `lib.rs` (plan ruling 13 says so explicitly, and says
+# it happens here rather than in Task 17): `optViaLocation`, `optPlaneOrFanoutVia` and
+# `isWithinTolerance` are ported, and the three `repositionVia` overloads are Task 7's, rostered
+# in the same file.
+ViaOptimizer                      board_ext/via_optimizer.rs
 
 # --- core/scoring/ (Plan 7 Task 1, controller ruling AG) ---------------------------------------
 #

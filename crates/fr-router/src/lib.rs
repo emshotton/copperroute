@@ -301,6 +301,8 @@ pub mod prelude {
 // `TraceTightener*`, controller ruling AB), and the `board/optimize` audit invocation names them.
 // `ViaOptimizer` is deliberately outside that glob: its one public method is called from
 // `TraceTightener.optChangedArea:160-165`, which Plan 7 Task 5 landed as
-// `board_ext::TraceTightener::opt_changed_area` with that one arm stubbed to `false` behind an
-// `obligation:` marker naming Task 6. `p7t3` mode 4 is the measurement of what the stub costs.
-// added in Task 6: `ViaOptimizer.optViaLocation` (board/optimize/ViaOptimizer.java) — reached from `TraceTightener.optChangedArea` (landed, Task 5) and `RoutingBoard.removeItemsAndPullTight` (still Plan 7's).
+// `board_ext::TraceTightener::opt_changed_area`. **Plan 7 Task 6 ported the class's entry half**
+// — `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` are
+// `board_ext::via_optimizer`, the audit-map row points there, and the arm at `:160-165` is a live
+// call. The three `repositionVia` overloads are Task 7's and are rostered at their call sites in
+// that file; `p7t3` mode 4 is the measurement of what they still cost.

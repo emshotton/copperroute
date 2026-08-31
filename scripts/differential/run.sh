@@ -31,8 +31,8 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t6," >&2
-  echo "           p7t7, p7t10" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
+  echo "           p7t6, p7t7, p7t10" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -310,6 +310,31 @@ case "$driver" in
     extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
     java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     run_timeout="${P7T3_TIMEOUT:-900}"
+    ;;
+  p7t4)
+    # Plan 7 Task 6: `board.optimize.ViaOptimizer`'s `optViaLocation` (:33-158),
+    # `optPlaneOrFanoutVia` (:161-296) and `isWithinTolerance` (:719-732), over a real DSN board
+    # whose vias were placed by real routing. Declares `package app.freerouting.autoroute.maze`
+    # — not the brief's `board.optimize` — for the reason `P7T3` does: it needs
+    # `P6T1.loadBoard`/`pickConnections`/`route`, which are package-private statics there, and it
+    # pays for the two private `ViaOptimizer` methods with `setAccessible` instead (the `P6T3`
+    # precedent). `P6T1.java` is compiled alongside so the two cannot describe different boards.
+    #
+    # `<dsn> [mode] [accuracy] [routeK]`. Mode 0 is `optViaLocation`, 1 is `optPlaneOrFanoutVia`
+    # driven directly, 2 is `isWithinTolerance` over 10 256 scripted triples (no board), 3 is mode
+    # 0 with `traceCosts = null`. **Modes 0, 1 and 3 are expected to DIFF until Plan 7 Task 7
+    # lands the three `repositionVia` overloads** — both methods reach them and Java moves vias the
+    # port leaves alone; mode 2 is the mode Task 6 pins to 0 diffs.
+    #
+    # The budget is disabled on both sides: `ViaOptimizer` reads no clock, and the `pullTight`
+    # calls inside it take Java's `null` `Stoppable` / the port's never-tripping `StopCheck`.
+    javaclass=P7T4
+    javapkg="autoroute.maze"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 2 500 12)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
+    run_timeout="${P7T4_TIMEOUT:-900}"
     ;;
   p7t6)
     # Plan 7 Task 5: `PolylineTrace`'s `ConnectionToPin` trio — `check` (the regression oracle for

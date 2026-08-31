@@ -1495,10 +1495,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t3`, `p7t6`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t3`, `p7t6`, `p7t7` and `p7t10`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t3`, `p7t4`, `p7t6`, `p7t7` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1521,7 +1521,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t3`/`p7t6`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t3`/`p7t4`/`p7t6`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -2039,8 +2039,10 @@ the driver expects, or none at all.
   Modes 0-2 are the three angle regimes with `traceCosts = null`; mode 3 widens
   `pinEdgeToTurnDist` to 100000 so the `ConnectionToPin` pair inside the sweep fires
   on nearly every routed stub; **mode 4 offers `traceCosts`, which opens
-  `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm and is expected
-  to DIFF until Plan 7 Task 6 lands `ViaOptimizer`.**
+  `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Plan 7 Task 6
+  landed that arm — it is a live call now — but the three `repositionVia` overloads
+  under it are Task 7's and still answer `null`, so mode 4 is expected to DIFF until
+  Task 7 lands them.**
 
   ```sh
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 0 500 12
@@ -2055,13 +2057,15 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 1 500 12
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 2 500 12
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 3 500 12
-  # the ViaOptimizer measurement, expected to DIFF until Task 6:
+  # the repositionVia measurement, expected to DIFF until Task 7:
   ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 4 500 12
   ```
 
   **Twelve fixture/mode pairs (three boards × modes 0-3), 0 diffs.** Mode 4 diffs on
-  `Issue143-rpi_splitter` and `Issue026-J2_reference` — the diff is vias moved by
-  `ViaOptimizer.optViaLocation` and the geometry that follows them — and *matches* on
+  `Issue143-rpi_splitter` and `Issue026-J2_reference` — the diff is vias moved through
+  `ViaOptimizer.repositionVia` and the geometry that follows them; on the rpi splitter
+  it is exactly two of six vias, both taking overload A (`ViaOptimizer.java:302-365`) —
+  and *matches* on
   `Issue649-kicad_ecc83-pp_input_board_v1`, whose changed area holds no via the
   optimiser can improve. Modes 0-3 of the rpi-splitter run are committed as
   `crates/fr-router/tests/data/p7t3-opt-changed-area.txt` and replayed by
@@ -2075,6 +2079,59 @@ the driver expects, or none at all.
   half passes `RouterBudget::disabled().opt_changed_area_ms`, which is also `0`.
   `TraceTightener`'s constructor builds a `TimeLimit` only when `timeLimit > 0`
   (TraceTightener.java:73-77), so neither side reads a clock.
+
+- `p7t4 <dsn> [mode] [accuracy] [routeK]` — `board.optimize.ViaOptimizer`'s
+  `optViaLocation` (:33-158), `optPlaneOrFanoutVia` (:161-296) and
+  `isWithinTolerance` (:719-732), over a real board whose vias were placed by real
+  routing (Plan 7 Task 6). Defaults `<dsn> 2 500 12`.
+
+  **Not to be confused with `java/probes/P7T4Probe.java`**, which is Plan 7 *Task 4*'s
+  stop-state probe and feeds `crates/fr-router/tests/data/p7t4-stop-and-counters.txt`.
+  The `p7tN` driver numbers and the `P7TnProbe` task numbers are two different
+  sequences and always have been (`p7t3` is Task 5's, `p7t6` is Task 5's); this
+  driver's name is the one the plan's Task 6 brief fixes.
+
+  Per via, in `getItems()` order (descending id, quirk #63), the driver prints the
+  centre, `minWidth`, the **descending** normal-contact ids with their types, the
+  dispatch class `:39-106` computes (a read-only replica on both sides, so a port
+  that reaches the wrong overload is a diff even when both answer `false`), the
+  returned boolean and the centre after — then the whole board in `P7T3`'s format.
+  Modes: `0` = `optViaLocation` with a `(1.0, 1.0)`-per-layer `traceCosts`, `1` =
+  `optPlaneOrFanoutVia` driven directly, `2` = `isWithinTolerance` over 10 000
+  scripted triples plus 256 exact-boundary ones (no board is loaded), `3` = mode 0
+  with `traceCosts = null`, which is `:113-116`'s else-branch.
+
+  ```sh
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 2 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 0 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 1 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 3 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 1 500 12
+  # expected to DIFF until Plan 7 Task 7 lands the three repositionVia overloads:
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 0 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 1 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 3 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 0 500 12
+  ./scripts/differential/run.sh p7t4 ../freerouting/fixtures/Issue026-J2_reference.dsn 3 500 12
+  ```
+
+  **Mode 2 is 0 diffs on every stem (10 769 lines), and so are all four modes of
+  `Issue649-kicad_ecc83-pp_input_board_v1` (no via in its 12-connection prefix) and
+  mode 1 of `Issue026-J2_reference` (all six vias have two trace contacts, so
+  `:188-190` refuses every one).** The remaining five runs diff on **only** the via
+  rows whose Java answer came out of `repositionVia`, which Task 7 owns: two of six
+  vias on the rpi splitter, six of six on `J2` (Java moves four, and those moves then
+  change the contact lists of the other two). `crates/fr-router/tests/via_optimizer.rs`
+  names all eight by id and fails if a different row moves.
+
+  Like `p7t3` it declares `package app.freerouting.autoroute.maze;` and compiles
+  `P6T1.java` alongside — the brief asked for `board.optimize`, which would have
+  reached the two private methods directly but could not have reached `P6T1`'s
+  package-private statics, so the driver pays for the privates with
+  `setAccessible` instead (the `p6t3` precedent) and keeps the board identical to
+  `p7t3`'s. **The budget is disabled on both sides**: `ViaOptimizer` reads no clock,
+  and the `pullTight` calls inside it take Java's `null` `Stoppable` / the port's
+  never-tripping `StopCheck`.
 
 - `p7t6 <mode>` — `PolylineTrace`'s `ConnectionToPin` trio, `checkConnectionToPin`
   (`:1013-1076`), `correctConnectionToPin` (`:1082-1245`) and `swapConnectionToPin`

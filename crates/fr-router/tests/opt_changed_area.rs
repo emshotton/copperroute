@@ -12,11 +12,13 @@
 //! modes 0-3 of it here.
 //!
 //! **Mode 4 is deliberately not replayed.** It offers `traceCosts` to the sweep, which opens
-//! `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm — stubbed to `false` in this
-//! task behind an `obligation:` marker naming Plan 7 Task 6. Its section is in the committed
-//! transcript so that Task 6 has the ground truth to match, and
-//! [`mode_four_is_task_sixs_obligation`] asserts that the port still *diverges* there, so the
-//! obligation cannot be quietly forgotten.
+//! `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Plan 7 Task 6 landed that
+//! arm — it is a live call now, not a stub — but the three `repositionVia` overloads it reaches
+//! are **Task 7's** and still answer `null`, so the port still diverges on exactly the vias whose
+//! Java move came through them (two of six on this fixture; `crates/fr-router/tests/via_optimizer.rs`
+//! pins the gap by id). Mode 4's section is in the committed transcript so that Task 7 has the
+//! ground truth to match, and [`mode_four_is_task_sevens_obligation`] asserts that the port still
+//! *diverges* there, so the obligation cannot be quietly forgotten.
 //!
 //! The rest of the file is hand-built: each test isolates one branch of the two methods, because
 //! a real board exercises them all at once and could not say which one moved.
@@ -489,17 +491,16 @@ fn the_budget_trips_the_sweep() {
 }
 
 // =================================================================================================
-// The `ViaOptimizer` arm — Task 6's obligation
+// The `ViaOptimizer` arm — Task 6 landed it, Task 7 closes it
 // =================================================================================================
 
 /// `:160-165`. Offering `traceCosts` must not change the **trace** side of the sweep: the arm is
-/// reached only for a `Via`, and it is stubbed to `false`, so `somethingChanged` is never set by
-/// it.
+/// reached only for a `Via`, so on a board with no via at all it cannot fire.
 ///
-/// This is a guard against the stub leaking into the trace arms, **not** a proof that the arm is
-/// stubbed — the board carries no vias, so a live `optViaLocation` would agree here too. The proof
-/// that the arm is still stubbed is [`mode_four_is_task_sixs_obligation`], which runs on a real
-/// board that does have vias in its changed area and asserts the port still diverges from the JVM.
+/// This is a guard against the via arm leaking into the trace arms. It is **not** a statement
+/// about `optViaLocation`, which Task 6 landed and this board never reaches; the statement about
+/// the arm's remaining gap is [`mode_four_is_task_sevens_obligation`], which runs on a real board
+/// that does have vias in its changed area.
 #[test]
 fn offering_trace_costs_does_not_change_the_trace_arms() {
     let mut board = detour_board(200);
@@ -664,15 +665,21 @@ fn the_whole_sweep_matches_the_jvm_on_a_real_board() {
     }
 }
 
-/// Mode 4 offers `traceCosts`, which opens the `ViaOptimizer` arm. Until Plan 7 Task 6 lands it,
-/// the port diverges — and this test says so, so the obligation cannot be forgotten. **Task 6
-/// must delete this test and add mode 4 to the loop above.**
+/// Mode 4 offers `traceCosts`, which opens the `ViaOptimizer` arm. Plan 7 Task 6 landed
+/// `optViaLocation` and wired the arm, but its three `repositionVia` overloads are **Task 7's**
+/// and still answer `null` — so the port still diverges, and this test says so, so the obligation
+/// cannot be forgotten. **Task 7 must delete this test and add mode 4 to the loop above.**
+///
+/// The residual gap is measured, not assumed: on this fixture at `routeK = 12` exactly two of the
+/// six vias in the changed area are ones Java moves through `repositionVia` overload A
+/// (`ViaOptimizer.java:302-365`), and `crates/fr-router/tests/via_optimizer.rs`'s
+/// `the_only_divergence_is_repositionvia` names them by id.
 #[test]
-fn mode_four_is_task_sixs_obligation() {
+fn mode_four_is_task_sevens_obligation() {
     assert_ne!(
         p7t3_rows(4),
         transcript_mode(4),
-        "the ViaOptimizer arm landed — fold mode 4 into \
+        "the three repositionVia overloads landed — fold mode 4 into \
          `the_whole_sweep_matches_the_jvm_on_a_real_board` and delete this test"
     );
 }

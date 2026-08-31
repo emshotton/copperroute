@@ -578,20 +578,27 @@ DebugSettings.java SettingsSource.java SettingsMerger.java GlobalSettings.java'
 ./scripts/audit-port.sh board/actions  crates/fr-router/src \
     'ForcedViaInserter.java ForcedPadRouter.java DrillItemMover.java' scripts/audit-map/fr-router.map
 ./scripts/audit-port.sh board/optimize crates/fr-router/src \
-    'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java' \
+    'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java ViaOptimizer.java' \
     scripts/audit-map/fr-router.map
 ```
 
-Three invocations are deliberately **absent**, and they do not all behave the
-same way — measured, not assumed:
+*(Plan 7 Task 6 added `ViaOptimizer.java` to that last glob. It used to be one of
+the three deliberately-absent invocations below, printing a single `ROSTERED`
+line; now that `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` are
+real `fn`s in `board_ext/via_optimizer.rs` — where the map row points — it prints
+nothing and the invocation count is unchanged.)*
+
+Two invocations are deliberately **absent**, and they do not behave the same way
+— measured, not assumed:
 
 | absent invocation | what it prints today | exit |
 |---|---|---|
 | `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
 | `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **nine `ROSTERED` lines** — every pipeline class *is* mapped (`fr-router.map:159` `BatchAutorouter lib.rs`) and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING` | 0 |
-| `board/optimize crates/fr-router/src 'ViaOptimizer.java' scripts/audit-map/fr-router.map` | **one `ROSTERED` line** (`ViaOptimizer`, mapped at `fr-router.map:175`, its one public method rostered to Plan 7) | 0 |
 
-Before the Plan 6 final review, the second and third exited 0 with **no output at
+Before the Plan 6 final review, the second — and the third, which was
+`board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and
+folded it into the main `board/optimize` glob above — exited 0 with **no output at
 all**, which is why the `ROSTERED` line exists: a wholly-deferred class must be
 visible, not silently indistinguishable from a ported one. `audit-port.sh` does
 not recurse, so `src/lib.rs`'s roster is still the only *gate* on these packages,
@@ -2273,14 +2280,18 @@ afterwards would wipe those marks and end a pass early.
 `startMarkingChangedArea` re-creates the store; leaving this one in place makes
 the following sweep see a stale region.
 
-**The `ViaOptimizer` arm is stubbed.** `:160-165` answers `false` behind an
-`obligation:` marker naming Plan 7 Task 6, which discharges it. `p7t3` mode 4 is
-the measurement: it offers `traceCosts`, diverges today, and
-`opt_changed_area.rs`'s `mode_four_is_task_sixs_obligation` asserts that it
-*still* diverges, so the obligation cannot be quietly forgotten. Task 6's
-`opt_via_location` takes an `engine: Option<&mut AutorouteEngine>` the Java call
-site has no argument for; thread the one `TraceTightener::opt_changed_area`
-already carries.
+**The `ViaOptimizer` arm is live as of Task 6, and its residual gap is Task 7's.**
+`:160-165` calls `ViaOptimizer::opt_via_location` for real; what still answers
+`null` under it are the three `repositionVia` overloads, rostered
+`added in Task 7:` in `src/board_ext/via_optimizer.rs`. `p7t3` mode 4 is the
+measurement: it offers `traceCosts`, diverges today on exactly the vias Java
+moves through those overloads, and `opt_changed_area.rs`'s
+`mode_four_is_task_sevens_obligation` asserts that it *still* diverges, so the
+obligation cannot be quietly forgotten. No `engine` is threaded into
+`opt_via_location`: none of the three things it calls — `DrillItemMover::insert`,
+`DrillItemMover::check`, `PolylineTraceExt::pull_tight` — takes one, because Java's
+`DrillItemMover` has no such parameter and Java's three-argument `pullTight`
+reads `board.autorouteEngine` internally (the port fixed that as `None` in Task 5).
 
 **The budget is controller ruling AI's knob and nothing more.** `:147`'s
 `isStopRequested()` reads both the `Stoppable` and the `TimeLimit` that
@@ -2314,6 +2325,77 @@ Both transcripts are committed —
 `tests/data/p7t6-connection-to-pin.txt` — and replayed row by row by
 `tests/opt_changed_area.rs` and `tests/connection_to_pin.rs`.
 
+## `ViaOptimizer`'s entry half (Plan 7 Task 6)
+
+`board/optimize/ViaOptimizer.java` is 733 lines in three layers: an entry pair
+(`optViaLocation:33-158`, `optPlaneOrFanoutVia:161-296`), three `repositionVia`
+overloads (`:302-365`, `:367-429`, `:435-713`) and one predicate
+(`isWithinTolerance:719-732`). **Task 6 ported the entry pair and the predicate;
+the three overloads are Task 7's** and answer `None` until then. The class is
+`board_ext/via_optimizer.rs`, and `scripts/audit-map/fr-router.map`'s
+`ViaOptimizer` row moved from `lib.rs` to it here, as plan ruling 13 says it
+should.
+
+### The measured size of the Task 7 gap
+
+`scripts/differential/run.sh p7t4 <dsn> <mode>` drives both methods over **every
+via** of a board the `P6T1` machinery actually routed (12 connections), printing
+per via the descending contact ids, the dispatch class `:39-106` computes, the
+answer and the centre before and after, then the whole board. Mode 2 drives
+`isWithinTolerance` over 10 256 scripted triples with no board at all.
+
+| fixture | vias | mode 0 (`optViaLocation`) | mode 1 (`optPlaneOrFanoutVia`) | mode 2 | mode 3 (mode 0, `traceCosts = null`) |
+|---|---|---|---|---|---|
+| `Issue649-kicad_ecc83-pp_input_board_v1` | 0 | **MATCH** (380 lines) | **MATCH** | **MATCH** (10 769) | **MATCH** |
+| `Issue026-J2_reference` | 6, all `TWO_TRACES` | DIFF, 6 via rows | **MATCH** (124 lines) | **MATCH** | DIFF, 6 via rows |
+| `Issue143-rpi_splitter` | 6 (2 one-contact, 4 `TWO_TRACES`) | DIFF, 2 via rows | DIFF, 2 via rows | **MATCH** | DIFF, 2 via rows |
+
+Every diff is `repositionVia`, and the transcript says so without being asked:
+on `rpi` the two divergent rows are the `PLANE_OR_FANOUT_ONE_CONTACT` vias, and a
+direct reflection probe against the jar confirms overload A answers
+`(932812,1011224)` and `(1016000,3007058)` for them where the port answers `null`;
+on `j2` the *first* divergent row (via 264) has an identical `contacts=`,
+`class=` and `center=` and differs only in `result=`, and the five rows after it
+differ in their contact lists only because Java's move of 264 changed the board
+they are read from. `tests/via_optimizer.rs`'s
+`the_only_divergence_is_repositionvia` names the eight ids and fails if a
+different row moves; **when Task 7 lands, its two lists go empty and it becomes
+`the_matching_runs_match_the_jvm_row_for_row`.**
+
+### Two things the plan got wrong, and Java won
+
+**`RoutingBoard.moveDrillItem` is not in this task's path at all.** Scan ruling 3
+folded it in on the premise that "both `optViaLocation` and `optPlaneOrFanoutVia`
+move vias through it". They do not: both call `DrillItemMover.insert(via, delta,
+9, 9, null, board)` and `DrillItemMover.check(...)` **directly**
+(`ViaOptimizer.java:136`, `:244`, `:282`), and Plan 6 Task 10b landed both. A
+fresh `grep -rn moveDrillItem src/main/java src/test` finds two hits: the
+declaration, and `board/actions/MoveComponent.java:156`, whose own only caller is
+`gui/interactive/DragItemState.java:56-61` — a mouse drag. Under Plan 7's "No GUI"
+constraint it is therefore `not ported:` with that evidence, at
+`crates/fr-board/src/board/mod.rs`, rather than 44 lines nothing calls. The
+ruling's own escape hatch anticipated this ("if `DrillItemMover` already does the
+whole job, say so and skip the 44 lines"); the finding is one step stronger than
+the hatch, because the method has no headless caller either.
+
+**`isWithinTolerance` takes two `Point`s, not three `double`s.** The plan's
+interface block types it `(value: f64, target: f64, tolerance: f64) -> bool`;
+Java's is `(Point p1, Point p2, int tolerance)` with a null guard and a Manhattan
+distance. And `optViaLocation`'s two `int` parameters are
+`tracePullTightAccuracy` then `maxRecursionDepth` — the plan's
+`min_translate_dist` / `accuracy` pair had them the wrong way round. The port
+uses Java's names; `TraceTightener.optChangedArea:161-164` is the call site that
+feeds `minTranslateDist` into the *accuracy* slot and the literal `10` into the
+depth.
+
+### One quirk
+
+**#206** — `isWithinTolerance`'s javadoc and `optViaLocation:85-86` both claim it
+"matches the logic in `DrillItem.getNormalContacts()`", which matches trace ends
+**exactly** (`DrillItem.java:288-290`). So the tolerance never decides whether a
+contact is usable; it only gives the `firstCorner`-first test order a chance to
+pick the wrong end of a short trace. Reproduced, test order included.
+
 ## What Plan 7 inherits
 
 Everything above `route_connection`, and nothing below it. Each row names the
@@ -2327,8 +2409,9 @@ crates/` is the complete inventory.
 | the **pass loop** and the per-pass / per-item recovery boundaries | `AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`, `AutorouteBatchLoop.java:44-56` | `src/lib.rs` roster; the pass-level-recovery row of the obligation register |
 | the **fanout** pre-pass (and with it the only thing that sets `ctrl.isFanout`) | `BatchFanout.java`, `RoutingBoard.fanout` | `src/lib.rs` roster; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
 | the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
-| `ViaOptimizer.optViaLocation` | `board/optimize/ViaOptimizer.java` | `src/lib.rs` roster; `src/board_ext/tightener/mod.rs:13` |
+| ~~`ViaOptimizer.optViaLocation`~~ — **DONE in Plan 7 Task 6**, with `optPlaneOrFanoutVia` and `isWithinTolerance`; the three `repositionVia` overloads are Task 7's | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs`); the two `added in Task 7:` markers in the same file |
 | ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |
+| ~~`RoutingBoard.moveDrillItem`~~ — **rostered `not ported:` in Plan 7 Task 6**: the plan's scan ruling 3 said `ViaOptimizer` moves vias through it, and it does not (`ViaOptimizer.java:136`, `:244`, `:282` call `DrillItemMover` directly). Its only Java caller is `MoveComponent.insert:156`, whose only caller is `gui/interactive/DragItemState.java:56-61` | `RoutingBoard.java:252-295` | `crates/fr-board/src/board/mod.rs`'s `not ported:` marker, with the grep evidence |
 | the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |
 | ~~the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin`~~ — **DONE in Plan 7 Task 5** (all three; the plan's scan ruling 5 wrongly recorded `check` as landed in Plan 6) | `board/trace/PolylineTrace.java:1013-1313` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `PolylineTraceExt::{check,correct,swap}_connection_to_pin`; `src/board_ext/tightener/` module docs |
 | `RoutingFailureLog` — `fr-board`'s `failure_log: Vec<String>` becomes the real type | `autoroute/RoutingFailureLog.java` | `crates/fr-board/src/board/mod.rs`'s field; `src/lib.rs` roster |
