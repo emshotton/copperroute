@@ -300,5 +300,7 @@ pub mod prelude {
 // The other five files of `board/optimize` are this crate's (`TraceShover` and the four
 // `TraceTightener*`, controller ruling AB), and the `board/optimize` audit invocation names them.
 // `ViaOptimizer` is deliberately outside that glob: its one public method is called from
-// `RoutingBoard.optChangedArea` (`RoutingBoardOperations.java:52-79`), which is Plan 7's.
-// added in Plan 7: `ViaOptimizer.optViaLocation` (board/optimize/ViaOptimizer.java) — with `RoutingBoard.optChangedArea` and `RoutingBoard.removeItemsAndPullTight`, which reach it.
+// `TraceTightener.optChangedArea:160-165`, which Plan 7 Task 5 landed as
+// `board_ext::TraceTightener::opt_changed_area` with that one arm stubbed to `false` behind an
+// `obligation:` marker naming Task 6. `p7t3` mode 4 is the measurement of what the stub costs.
+// added in Task 6: `ViaOptimizer.optViaLocation` (board/optimize/ViaOptimizer.java) — reached from `TraceTightener.optChangedArea` (landed, Task 5) and `RoutingBoard.removeItemsAndPullTight` (still Plan 7's).

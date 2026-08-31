@@ -1177,17 +1177,19 @@ fn the_ninety_degree_regime_never_smoothens_an_end_corner() {
 
 /// Probe mode `pinedge`: the `angleRestriction != NINETY_DEGREE && getPinEdgeToTurnDist() > 0`
 /// branch of `PolylineTrace.pullTight:841-861`, which calls `swapConnectionToPin` and
-/// `correctConnectionToPin` — two `PolylineTrace` methods that keep their
-/// `// added in Plan 7:` markers in `crates/fr-board/src/items/trace.rs` (controller ruling AB
-/// moved the five `TraceTightener*` / `pullTight` names into Plan 6 and named nothing else).
+/// `correctConnectionToPin` — two `PolylineTrace` methods Plan 6 deferred (controller ruling AB
+/// moved the five `TraceTightener*` / `pullTight` names into Plan 6 and named nothing else) and
+/// **Plan 7 Task 5 has since landed**, together with `checkConnectionToPin`.
 ///
-/// **The port answers `false` at that branch.** This test is not a false green: with
-/// `pinEdgeToTurnDist = 500` the fixture *does* enter the branch — the net-2 trace in the
-/// 90-degree and any-angle regimes reaches `:841` with `newLines == lines` — and Java answers
-/// `false` there too, because none of its four `*ConnectionToPin` calls succeeds on this board.
-/// So every row matches, and the obligation is recorded rather than hidden. A fixture where one
-/// of the four answers `true` is Plan 7's to build; the transcript is the ground truth it starts
-/// from.
+/// **Both Java and the port answer `false` at that branch on this fixture, before and after
+/// Task 5.** With `pinEdgeToTurnDist = 500` the fixture *does* enter the branch — the net-2 trace
+/// in the 90-degree and any-angle regimes reaches `:841` with `newLines == lines` — and none of
+/// the four calls succeeds, so every row matches either way. That is not because the branch is
+/// inert: `P6T9Probe`'s pad is a **square** 100 x 100 on a two-pin package, so `Pin.java:274-276`
+/// doubles `padXyFactor` to 3.0 and `Padstack.getTraceExitDirections:182-193` answers all four
+/// directions — an exit-restriction set that refuses nothing. The fixture where the pair fires is
+/// `P7T6`'s 400 x 100 pad on a four-pin package; see `crates/fr-router/tests/connection_to_pin.rs`.
+/// This test therefore keeps its value as a **regression pin on the unchanged rows**.
 ///
 /// Plan 6 itself never reaches the branch at all: `FoundConnectionInserter.insertTrace:140-141`
 /// sets `pinEdgeToTurnDist` to `-1` for the whole insertion and restores it at `:447`.

@@ -1412,14 +1412,21 @@ callers and tests are unchanged. The call touches the engine's room/drill
 database and never the board's item list, so no probe row on either side can see
 it; it is threaded because `insertForcedTracePolyline` runs inside a live
 `autorouteConnection`, not because a fixture catches it.
-`PolylineTrace.{check,correct,swap}ConnectionToPin` also keep their
-`// added in Plan 7:` markers in `crates/fr-board/src/items/trace.rs`: ruling AB
-named neither, and `FoundConnectionInserter.insertTrace:140-141` sets
-`pinEdgeToTurnDist` to `-1` for the whole insertion, so no Plan-6 path reaches
-the branch at `PolylineTrace.pullTight:841-861` that calls them. Probe mode
-`pinedge` records the JVM's answers there for whoever does port them — the
-branch *is* entered on that fixture and Java answers `false` on every row, which
-is what the port answers too, so nothing is hidden behind a green test.
+`PolylineTrace.{check,correct,swap}ConnectionToPin` kept their
+`// added in Plan 7:` markers in `crates/fr-board/src/items/trace.rs` through
+Plan 6: ruling AB named none of the three, and
+`FoundConnectionInserter.insertTrace:140-141` sets `pinEdgeToTurnDist` to `-1`
+for the whole insertion, so no Plan-6 path reached the branch at
+`PolylineTrace.pullTight:841-861` that calls them. **Plan 7 Task 5 landed all
+three** and turned the markers into `renamed:` ones — see
+"[`optChangedArea` and the `ConnectionToPin` trio](#optchangedarea-and-the-connectiontopin-trio-plan-7-task-5)"
+below. Probe mode `pinedge` recorded the JVM's answers on the Plan 6 fixture and
+they are all `false`; that is *not* because the branch is inert but because
+`P6T9Probe`'s pad is a **square** 100 × 100 on a two-pin package, which
+`Pin.java:274-276` gives `padXyFactor = 3.0` and
+`Padstack.getTraceExitDirections:182-193` therefore answers all four directions
+for — an exit restriction set that refuses nothing. `p7t6`'s fixture uses a
+400 × 100 pad on a four-pin package for exactly that reason.
 
 **Where the numbers come from.** `scripts/differential/java/probes/P6T15aProbe.java`
 (compiled with `P6T9Probe.java`, whose board it reuses) and its committed stdout
@@ -2216,6 +2223,92 @@ output across `P7T10_HASH_MODE=0..4`. The `raw` runs diverge on 350 of 6 000 dec
 lines (`Issue143-rpi_splitter`) and 187 of 6 000 (`Issue026-J2_reference`), always
 with Java saying "not in the history" for a board it holds.
 
+## `optChangedArea` and the `ConnectionToPin` trio (Plan 7 Task 5)
+
+Plan 7 Task 5 lands the batch entry point above the tightener family and the two
+`PolylineTrace` methods `PolylineTrace.pullTight:841-861` drives.
+
+| Java | lines | Rust |
+|---|---|---|
+| `board/facade/RoutingBoard.optChangedArea` (both overloads) | `:151-161`, `:171-190` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}` |
+| `board/facade/RoutingBoardOperations.optChangedArea` | `:52-79` | the body of `opt_changed_area_with_keep_point` |
+| `board/optimize/TraceTightener.optChangedArea(ExpansionCostFactor[])` | `:121-169` | `TraceTightener::opt_changed_area` |
+| `board/trace/PolylineTrace.checkConnectionToPin` | `:1013-1076` | `PolylineTraceExt::check_connection_to_pin` |
+| `board/trace/PolylineTrace.correctConnectionToPin` | `:1082-1245` | `PolylineTraceExt::correct_connection_to_pin` |
+| `board/trace/PolylineTrace.swapConnectionToPin` | `:1252-1313` | `PolylineTraceExt::swap_connection_to_pin` |
+
+**`checkConnectionToPin` was not already ported.** The plan's scan ruling 5
+records it as landed in Plan 6 and tells Task 5 to reuse it; it had not landed. A
+workspace search for the name, for `TraceExitRestriction` anywhere in
+`fr-router`, and for the method's body found only the two `added in Plan 7:`
+markers in `crates/fr-board/src/items/trace.rs`. Java wins over plan text, so the
+64 lines are transcribed with the pair that needs them —
+`correctConnectionToPin`'s first statement is a call to it (`:1083`), and the
+method is unimplementable without it. It is a **trait method** on
+`PolylineTraceExt` rather than a private free function, because the pair's
+callers reach it through the trait.
+
+**One object per layer per outer iteration is not what the sweep does.** The two
+trace arms of `:150-159` both `break`, but not on the same condition: the
+`pullTight` arm breaks only when `splitTracesAtKeepPoint()` answers `true`
+(`:153-155`), while the `smoothenEndCornersAtTrace` arm breaks unconditionally
+(`:156-158`, "because items may be removed"). With no keep point — which is every
+router caller — the split is a no-op answering `false`, so a layer whose objects
+all merely *tighten* is walked to the end in one pass. The plan's prose folded the
+two arms into one unconditional break; the port follows the source, and
+`crates/fr-router/tests/opt_changed_area.rs`
+`the_item_loop_does_not_break_after_a_plain_pull_tight` pins it.
+
+**`:136` empties the layer before the work, not after.** The tightener that
+follows re-marks whatever it moves (through `PolylineTrace.change`), so the outer
+`while (somethingChanged)` sees the *new* region. A port that emptied the layer
+afterwards would wipe those marks and end a pass early.
+
+**`:78` nulls `board.changedArea`, and that is load-bearing.** The next
+`startMarkingChangedArea` re-creates the store; leaving this one in place makes
+the following sweep see a stale region.
+
+**The `ViaOptimizer` arm is stubbed.** `:160-165` answers `false` behind an
+`obligation:` marker naming Plan 7 Task 6, which discharges it. `p7t3` mode 4 is
+the measurement: it offers `traceCosts`, diverges today, and
+`opt_changed_area.rs`'s `mode_four_is_task_sixs_obligation` asserts that it
+*still* diverges, so the obligation cannot be quietly forgotten. Task 6's
+`opt_via_location` takes an `engine: Option<&mut AutorouteEngine>` the Java call
+site has no argument for; thread the one `TraceTightener::opt_changed_area`
+already carries.
+
+**The budget is controller ruling AI's knob and nothing more.** `:147`'s
+`isStopRequested()` reads both the `Stoppable` and the `TimeLimit` that
+`TraceTightener`'s constructor builds when `timeLimit > 0`
+(`TraceTightener.java:73-77`), and `RouterBudget::opt_changed_area_ms` — default
+1000, Java's own `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` — supplies it. A trip
+returns with the rest of the board untightened *and* with `changedArea` already
+emptied for every layer walked so far, so those regions are lost; that is Java's
+control flow, and it is why every parity run passes `RouterBudget::disabled()`
+(`0`, Java's own "no limit"). `the_budget_trips_the_sweep` is the Rust-only test
+that proves the knob works; `a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened`
+is the parity hazard, asserted as a fact.
+
+**Ruling AJ.** The two `additionalUpdateAfterChange` sites this task's methods
+reach *directly* — `correctConnectionToPin:1237`'s `change` and
+`swapConnectionToPin:1313`'s `combine()` — are threaded exactly as
+`pull_tight_with_engine` threads its own (Task 15b's contract). The sites
+**inside** `fr-board` that `insertTrace` and `combineTrace` reach are rostered
+`// not reachable:` per the ruling and are not wired.
+
+**Two quirks.** #204 (`optChangedArea`'s clip-shape guard is a reference
+comparison against the `IntOctagon.EMPTY` singleton — ruling 9's site) and #205
+(`check`/`correctConnectionToPin` accept `pinEdgeToTurnDist == 0` while their only
+caller demands `> 0`, so that band is dead acceptance).
+
+**Where the numbers come from.** `scripts/differential/java/P7T3.java` (board
+level: three real boards × modes 0-3, 0 diffs; mode 4 is the `ViaOptimizer`
+measurement) and `scripts/differential/java/P7T6.java` (five modes, 0 diffs,
+8 596 lines). Both transcripts are committed —
+`tests/data/p7t3-opt-changed-area.txt` and
+`tests/data/p7t6-connection-to-pin.txt` — and replayed row by row by
+`tests/opt_changed_area.rs` and `tests/connection_to_pin.rs`.
+
 ## What Plan 7 inherits
 
 Everything above `route_connection`, and nothing below it. Each row names the
@@ -2230,9 +2323,9 @@ crates/` is the complete inventory.
 | the **fanout** pre-pass (and with it the only thing that sets `ctrl.isFanout`) | `BatchFanout.java`, `RoutingBoard.fanout` | `src/lib.rs` roster; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
 | the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
 | `ViaOptimizer.optViaLocation` | `board/optimize/ViaOptimizer.java` | `src/lib.rs` roster; `src/board_ext/tightener/mod.rs:13` |
-| `RoutingBoard.optChangedArea` (both overloads) and `RoutingBoard.removeItemsAndPullTight` — the batch callers of the tightener family Plan 6 already ported | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `crates/fr-board/src/board/mod.rs`'s `added in Plan 7:` markers |
+| ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |
 | the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |
-| the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin` | `board/optimize/TraceTightener.java` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `src/board_ext/tightener/` module docs |
+| ~~the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin`~~ — **DONE in Plan 7 Task 5** (all three; the plan's scan ruling 5 wrongly recorded `check` as landed in Plan 6) | `board/trace/PolylineTrace.java:1013-1313` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `PolylineTraceExt::{check,correct,swap}_connection_to_pin`; `src/board_ext/tightener/` module docs |
 | `RoutingFailureLog` — `fr-board`'s `failure_log: Vec<String>` becomes the real type | `autoroute/RoutingFailureLog.java` | `crates/fr-board/src/board/mod.rs`'s field; `src/lib.rs` roster |
 | ~~**the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s~~ — **DONE in Plan 7 Task 0** (via-info half; the `NetClass.viaRule` half is Task 11's, ruling AN) | `rules/ViaRule.java:21`, `io/specctra/RulesReader.java:340-350` | `src/autoroute/maze/control.rs:385`; `crates/fr-board/src/rules/via.rs` `ViaRule`; obligation register |
 | the eight **re-marked** coverage obligations | see the marker table above | `grep -rn "obligation:" crates/fr-router/src` |

@@ -1495,10 +1495,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t3`, `p7t6`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t7` and `p7t10`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t3`, `p7t6`, `p7t7` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1521,7 +1521,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t3`/`p7t6`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -2028,6 +2028,79 @@ the driver expects, or none at all.
   appears only inside a log string at `BatchAutorouter.java:226`, and
   `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `private static final int` in four
   `autoroute/pipeline` classes.
+
+- `p7t3 <dsn> [mode] [accuracy] [routeK]` — `RoutingBoard.optChangedArea`
+  (RoutingBoard.java:151-161 → `:171-190` → `RoutingBoardOperations.java:52-79`) and
+  the `TraceTightener.optChangedArea(ExpansionCostFactor[])` sweep it drives
+  (TraceTightener.java:121-169), over a real board whose changed area was marked by
+  real routing (Plan 7 Task 5). Defaults `<dsn> 0 500 6`; `run.sh p7t3` with no
+  arguments uses `Issue143-rpi_splitter.dsn 0 500 6`.
+
+  Modes 0-2 are the three angle regimes with `traceCosts = null`; mode 3 widens
+  `pinEdgeToTurnDist` to 100000 so the `ConnectionToPin` pair inside the sweep fires
+  on nearly every routed stub; **mode 4 offers `traceCosts`, which opens
+  `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm and is expected
+  to DIFF until Plan 7 Task 6 lands `ViaOptimizer`.**
+
+  ```sh
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 0 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 1 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 2 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 3 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue026-J2_reference.dsn 0 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue026-J2_reference.dsn 1 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue026-J2_reference.dsn 2 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue026-J2_reference.dsn 3 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 0 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 1 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 2 500 12
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 3 500 12
+  # the ViaOptimizer measurement, expected to DIFF until Task 6:
+  ./scripts/differential/run.sh p7t3 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 4 500 12
+  ```
+
+  **Twelve fixture/mode pairs (three boards × modes 0-3), 0 diffs.** Mode 4 diffs on
+  `Issue143-rpi_splitter` and `Issue026-J2_reference` — the diff is vias moved by
+  `ViaOptimizer.optViaLocation` and the geometry that follows them — and *matches* on
+  `Issue649-kicad_ecc83-pp_input_board_v1`, whose changed area holds no via the
+  optimiser can improve. Modes 0-3 of the rpi-splitter run are committed as
+  `crates/fr-router/tests/data/p7t3-opt-changed-area.txt` and replayed by
+  `crates/fr-router/tests/opt_changed_area.rs`.
+
+  Like `p7t7` and `p7t10` it declares `package app.freerouting.autoroute.maze;` and
+  compiles `P6T1.java` alongside, for `loadBoard`/`pickConnections`/`route`. **The
+  budget is disabled on both sides** (controller ruling AI): at this entry point the
+  1000 ms `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a plain `timeLimit` *parameter*, not
+  a constant to be patched by reflection, so the Java half passes `0` and the Rust
+  half passes `RouterBudget::disabled().opt_changed_area_ms`, which is also `0`.
+  `TraceTightener`'s constructor builds a `TimeLimit` only when `timeLimit > 0`
+  (TraceTightener.java:73-77), so neither side reads a clock.
+
+- `p7t6 <mode>` — `PolylineTrace`'s `ConnectionToPin` trio, `checkConnectionToPin`
+  (`:1013-1076`), `correctConnectionToPin` (`:1082-1245`) and `swapConnectionToPin`
+  (`:1252-1313`), plus the four call sites of `pullTight:844-860` (Plan 7 Task 5).
+  Modes: `check`, `correct`, `swap`, `rand` (128 random traces per regime,
+  `java.util.Random(70605)`, all three methods on a fresh board each) and `edge` (the
+  two skips of `pullTight:841-842`, driven through `pullTight` itself). Default
+  `check`.
+
+  ```sh
+  ./scripts/differential/run.sh p7t6 check
+  ./scripts/differential/run.sh p7t6 correct
+  ./scripts/differential/run.sh p7t6 swap
+  ./scripts/differential/run.sh p7t6 rand
+  ./scripts/differential/run.sh p7t6 edge
+  ```
+
+  **All five modes, 0 diffs** (120 / 1518 / 990 / 5244 / 724 lines). The fixture is
+  hand-built and needs no DSN: a four-pin component with a 400 × 100 SMD pad per pin,
+  so `Pin.java:274-276` leaves `padXyFactor` at 1.5 and the pad answers only the long
+  side's two exit directions. `P6T15aProbe`'s square 100 × 100 pad on a *two*-pin
+  package answers all four and refuses nothing, which is why that probe's `pinedge`
+  transcript shows the whole branch answering `false` — it could not have caught a
+  wrong port of these three methods. The whole stdout is committed as
+  `crates/fr-router/tests/data/p7t6-connection-to-pin.txt` and replayed by
+  `crates/fr-router/tests/connection_to_pin.rs`.
 
 ## Deferred coverage and cleanups
 

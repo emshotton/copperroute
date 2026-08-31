@@ -1,0 +1,328 @@
+######## mode 0
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=NINETY_DEGREE pinEdgeToTurnDist=20320.0 traceCosts=null
+changedArea before=[(531001,601383,1461802,3306000,-2473422,860404,1468200,4322000),(531001,1038683,1170222,2968339,-2088004,9595,1752670,4138561)]
+changedArea after=null
+maxId=213
+item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)
+item id=186 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=8 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1073855,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=182 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(915999,802201),(916000,802200)->(932812,819012),(932812,819012)->(932812,1038683),(932812,1038683)->(932813,1038683)] corners=[(916000,802200),(932812,819012),(932812,1038683)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1884700)->(727900,1789557),(727900,1789557)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(977281,2968339)
+item id=83 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(977281,2968339)->(977280,2968338),(977281,2968339)->(977281,2968340)] corners=[(1016000,3306000),(1016000,3007058),(977281,2968339)]
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## mode 1
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=FORTYFIVE_DEGREE pinEdgeToTurnDist=20320.0 traceCosts=null
+changedArea before=[(531001,601383,1461802,3306000,-2473422,860404,1468200,4322000),(531001,1038683,1170222,2968339,-2088004,9595,1752670,4138561)]
+changedArea after=null
+maxId=226
+item id=226 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(727900,2204700)->(727900,2204699),(727900,2204700)->(727899,2204700),(552083,0)->(552083,-1)] corners=[(727900,2204700),(552083,2204700)]
+item id=224 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2269656)->(552083,2269657),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552083,2269671),(531001,2269671)]
+item id=223 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(727900,2204700)->(727899,2204700),(552083,-1)->(552083,0),(662929,2269671)->(531001,2269671)] corners=[(552083,2204700),(552083,2269671)]
+item id=222 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(1366000,1003017)->(1365999,1003016),(1366000,1003017)->(1256937,1112080),(1256937,1112080)->(913032,1112080),(913032,1112080)->(552083,1473029),(552083,2269656)->(552083,2269657),(662929,2269671)->(531001,2269671)] corners=[(1366000,1003017),(1256937,1112080),(913032,1112080),(552083,1473029),(552083,2269671)]
+item id=218 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1366000,802200)->(1365999,802200),(1366000,802200)->(1366000,802201),(0,1003017)->(-1,1003017)] corners=[(1366000,802200),(1366000,1003017)]
+item id=215 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)
+item id=182 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(916000,1003017)->(916001,1003018),(932812,819012)->(932812,1038683),(932812,1038683)->(932813,1038683)] corners=[(916000,1003017),(932812,1019829),(932812,1038683)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1884700)->(727900,1789557),(727900,1789557)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(977281,2968339)
+item id=83 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(977281,2968339)->(977280,2968338),(977281,2968339)->(977281,2968340)] corners=[(1016000,3306000),(1016000,3007058),(977281,2968339)]
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## mode 2
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=NONE pinEdgeToTurnDist=20320.0 traceCosts=null
+changedArea before=[(531001,601383,1461802,3306000,-2473422,860404,1468200,4322000),(531001,1038683,1170222,2968339,-2088004,9595,1752670,4138561)]
+changedArea after=null
+maxId=228
+item id=227 type=PolylineTrace nets=[5] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(666000,802200)->(665999,802200),(666000,802200)->(666000,802201),(0,1003017)->(-1,1003017)] corners=[(666000,802200),(666000,1003017)]
+item id=225 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(727900,2204700)->(727900,2204699),(727900,2204700)->(727899,2204700),(552083,0)->(552083,-1)] corners=[(727900,2204700),(552083,2204700)]
+item id=223 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=221 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1366000,802200)->(1365999,802200),(1366000,802200)->(1366000,802201),(0,1003017)->(-1,1003017)] corners=[(1366000,802200),(1366000,1003017)]
+item id=219 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2269656)->(727900,2204700),(552083,0)->(552083,-1),(727899,2204700)->(727900,2204700)] corners=[(552083,2269656),(552083,2204700)]
+item id=218 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=8 lines=[(1366000,1003017)->(1336874,951428),(1366000,1003017)->(592165,1439907),(1270183,1003017)->(572594,1452518),(955860,1069252)->(552083,1473029),(558029,1467874)->(556939,1469505),(555103,1473029)->(554396,1474736),(552083,1473029)->(552083,2269656),(552068,2269671)->(552067,2269672)] corners=[(1366000,1003017),~(592166.9908802392,1439905.8759933729),(572594,1452518),~(559622.696857671,1465489.303142329),~(555949.0301195879,1470986.3219036257),~(552083.0,1480320.5700141443),(552083,2269656)]
+item id=217 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2269656)->(552068,2248574),(552083,2269656)->(531001,2269671),(531001,2269671)->(530986,2248589)] corners=[(552083,2269656),(531001,2269671)]
+item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)
+item id=182 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(916000,1003017)->(898167,1011423),(916000,1003017)->(932812,1038683),(932812,1038683)->(914979,1047089)] corners=[(916000,1003017),(932812,1038683)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(531001,1221669)->(749653,1356668),(531001,1221669)->(666000,1003017),(666000,1003017)->(884652,1138016)] corners=[(531001,1221669),(666000,1003017)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(765863,1751594)->(1295788,1516732),(765863,1751594)->(531001,1221669),(531001,1221669)->(1060926,986807)] corners=[(765863,1751594),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(727900,1884700)->(861006,1922663),(727900,1884700)->(765863,1751594),(765863,1751594)->(898969,1789557)] corners=[(727900,1884700),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(977281,2968339)
+item id=83 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(977281,2968339)->(977280,2968338),(977281,2968339)->(977281,2968340)] corners=[(1016000,3306000),(1016000,3007058),(977281,2968339)]
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## mode 3
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=NONE pinEdgeToTurnDist=100000.0 traceCosts=null
+changedArea before=[(531001,601383,1461802,3306000,-2473422,860404,1468200,4322000),(531001,1038683,1170222,2968339,-2088004,9595,1752670,4138561)]
+changedArea after=null
+maxId=227
+item id=227 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2204700)->(487112,2183618),(552083,2204700)->(531001,2269671),(531001,2269671)->(466030,2248589)] corners=[(552083,2204700),(531001,2269671)]
+item id=226 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=8 lines=[(1366000,1072520)->(990165,284733),(1366000,1072520)->(578213,1448355),(1184533,999186)->(572594,1452518),(955860,1069252)->(552083,1473029),(558029,1467874)->(556939,1469505),(555103,1473029)->(554396,1474736),(552083,1473029)->(552083,2269656),(552083,2204700)->(552084,2204700)] corners=[(1366000,1072520),~(578214.4223245989,1448354.321441753),(572594,1452518),~(559622.696857671,1465489.303142329),~(555949.0301195879,1470986.3219036257),~(552083.0,1480320.5700141443),(552083,2204700)]
+item id=225 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2269656)->(552083,1473029),(552083,2204700)->(552084,2204700),(727900,2204700)->(792856,2380517)] corners=[(552083,2204700),(727900,2204700)]
+item id=221 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1366000,802200)->(1365999,802200),(1366000,802200)->(1366000,802201),(0,1072520)->(-1,1072520)] corners=[(1366000,802200),(1366000,1072520)]
+item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)
+item id=182 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(679517,819012),(916000,802200)->(932812,1038683),(932812,1038683)->(696329,1055495)] corners=[(916000,802200),(932812,1038683)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(531001,1221669)->(950470,1356668),(531001,1221669)->(666000,802200),(666000,802200)->(1085469,937199)] corners=[(531001,1221669),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(765863,1751594)->(1295788,1516732),(765863,1751594)->(531001,1221669),(531001,1221669)->(1060926,986807)] corners=[(765863,1751594),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(727900,1884700)->(861006,1922663),(727900,1884700)->(765863,1751594),(765863,1751594)->(898969,1789557)] corners=[(727900,1884700),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(977281,2968339)
+item id=83 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(977281,2968339)->(977280,2968338),(977281,2968339)->(977281,2968340)] corners=[(1016000,3306000),(1016000,3007058),(977281,2968339)]
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## mode 4
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=NONE pinEdgeToTurnDist=20320.0 traceCosts=2
+changedArea before=[(531001,601383,1461802,3306000,-2473422,860404,1468200,4322000),(531001,1038683,1170222,2968339,-2088004,9595,1752670,4138561)]
+changedArea after=null
+maxId=240
+item id=239 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,3305999),(0,3130183)->(1,3130183)] corners=[(856000,3306000),(856000,3130183)]
+item id=236 type=PolylineTrace nets=[5] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(666000,802200)->(665999,802200),(666000,802200)->(666000,802201),(0,1003017)->(-1,1003017)] corners=[(666000,802200),(666000,1003017)]
+item id=234 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(727900,2204700)->(727900,2204699),(727900,2204700)->(727899,2204700),(552083,0)->(552083,-1)] corners=[(727900,2204700),(552083,2204700)]
+item id=232 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=230 type=PolylineTrace nets=[3] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1366000,802200)->(1365999,802200),(1366000,802200)->(1366000,802201),(0,1003017)->(-1,1003017)] corners=[(1366000,802200),(1366000,1003017)]
+item id=227 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=222 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2269656)->(727900,2204700),(552083,0)->(552083,-1),(727899,2204700)->(727900,2204700)] corners=[(552083,2269656),(552083,2204700)]
+item id=221 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1366000,1003017)->(1342539,940268),(1366000,1003017)->(1365130,1003490),(765005,1338889)->(764759,1339034),(1189833,995227)->(570907,1454205),(955860,1069252)->(552083,1473029),(558557,1467416)->(557467,1469047),(555371,1473029)->(554664,1474736),(552630,1480968)->(552247,1482892),(552083,1473029)->(552083,2269656),(552068,2269671)->(552067,2269672)] corners=[(1366000,1003017),~(964427.9197303922,1221342.9700776143),~(576879.3775625944,1449776.0538757066),(570907,1454205),~(560291.7319778189,1464820.2680221812),~(556292.1356229497,1470804.985136669),~(553136.3315220238,1478424.4442601209),~(552083.0,1483715.8537859009),(552083,2269656)]
+item id=220 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552083,2269656)->(552068,2248574),(552083,2269656)->(531001,2269671),(531001,2269671)->(530986,2248589)] corners=[(552083,2269656),(531001,2269671)]
+item id=215 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(916000,1003017)->(907793,1019829),(916000,1003017)->(932812,1011224),(932812,1011224)->(924605,1028036)] corners=[(916000,1003017),(932812,1011224)]
+item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(531001,1221669)->(749653,1356668),(531001,1221669)->(666000,1003017),(666000,1003017)->(884652,1138016)] corners=[(531001,1221669),(666000,1003017)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(765863,1751594)->(1295788,1516732),(765863,1751594)->(531001,1221669),(531001,1221669)->(1060926,986807)] corners=[(765863,1751594),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(727900,1884700)->(861006,1922663),(727900,1884700)->(765863,1751594),(765863,1751594)->(898969,1789557)] corners=[(727900,1884700),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856000,3305999),(1,3130183)->(0,3130183),(855999,3130183)->(531001,2619005),(531001,2619005)->(786590,2456506)] corners=[(856000,3130183),(855999,3130183),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED

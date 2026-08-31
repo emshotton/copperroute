@@ -5,6 +5,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId, RoomId, TimeLimit};
 use fr_geometry::{IntOctagon, Point, Polyline, TileShape};
+use fr_settings::ExpansionCostFactor;
 
 use crate::autoroute::maze::engine::AutorouteEngine;
 use crate::board_ext::drill_item_mover::tree_by_id;
@@ -212,6 +213,57 @@ pub trait RoutingBoardExt {
         time_limit: Option<&TimeLimit>,
         stop: StopCheck<'_>,
     ) -> Result<Option<Point>, BoardError>;
+
+    /// Port of `RoutingBoard.optChangedArea(int[], IntOctagon, int, ExpansionCostFactor[],
+    /// Stoppable, int)` (RoutingBoard.java:151-161): "optimizes the route in the internally marked
+    /// area. If netNumber > 0, only traces with net number netNumber are optimized. If clipShape
+    /// != null the optimizing is restricted to clipShape. traceCosts is used for optimizing vias
+    /// and may be null. If stoppableThread != null, the algorithm can be requested to be stopped.
+    /// If timeLimit > 0; the algorithm will be stopped after timeLimit Milliseconds."
+    ///
+    /// The batch pull-tight + via-optimise sweep every routed connection, every tail removal and
+    /// every fanout pin runs. Java's overload passes `keepPoint = null` and `keepPointLayer = 0`
+    /// (`:159-160`); this is that call, and
+    /// [`Self::opt_changed_area_with_keep_point`] is the eight-argument one below it.
+    ///
+    /// `time_limit_ms` is controller ruling AI's knob: Java's callers all pass the literal
+    /// `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000`;
+    /// [`RouterBudget::opt_changed_area_ms`](crate::pipeline::RouterBudget::opt_changed_area_ms)
+    /// supplies it, and `0` is Java's own "no limit" (`TraceTightener.java:73-77` only builds a
+    /// `TimeLimit` when `timeLimit > 0`).
+    #[allow(clippy::too_many_arguments)]
+    fn opt_changed_area(
+        &mut self,
+        engine: Option<&mut AutorouteEngine>,
+        only_net_no_arr: &[i32],
+        clip_shape: Option<IntOctagon>,
+        accuracy: i32,
+        trace_costs: Option<&[ExpansionCostFactor]>,
+        stop: StopCheck<'_>,
+        time_limit_ms: i32,
+    ) -> Result<(), BoardError>;
+
+    /// Port of the `keepPoint` overload `RoutingBoard.optChangedArea(int[], IntOctagon, int,
+    /// ExpansionCostFactor[], Stoppable, int, Point, int)` (RoutingBoard.java:171-190) together
+    /// with the body it delegates to, `RoutingBoardOperations.optChangedArea` (`:52-79`): "if
+    /// keepPoint != null, traces on layer keepPointLayer containing keepPoint will also contain
+    /// this point after optimizing."
+    ///
+    /// `keep_point`/`keep_point_layer` are `null`/`0` from every router caller; only `RouteState`
+    /// (GUI) passes them.
+    #[allow(clippy::too_many_arguments)]
+    fn opt_changed_area_with_keep_point(
+        &mut self,
+        engine: Option<&mut AutorouteEngine>,
+        only_net_no_arr: &[i32],
+        clip_shape: Option<IntOctagon>,
+        accuracy: i32,
+        trace_costs: Option<&[ExpansionCostFactor]>,
+        stop: StopCheck<'_>,
+        time_limit_ms: i32,
+        keep_point: Option<Point>,
+        keep_point_layer: i32,
+    ) -> Result<(), BoardError>;
 }
 
 impl RoutingBoardExt for Board {
@@ -889,6 +941,85 @@ impl RoutingBoardExt for Board {
             ok_point
         };
         Ok(result)
+    }
+
+    fn opt_changed_area(
+        &mut self,
+        engine: Option<&mut AutorouteEngine>,
+        only_net_no_arr: &[i32],
+        clip_shape: Option<IntOctagon>,
+        accuracy: i32,
+        trace_costs: Option<&[ExpansionCostFactor]>,
+        stop: StopCheck<'_>,
+        time_limit_ms: i32,
+    ) -> Result<(), BoardError> {
+        // RoutingBoard.java:158-160 — `null`, `0`.
+        self.opt_changed_area_with_keep_point(
+            engine,
+            only_net_no_arr,
+            clip_shape,
+            accuracy,
+            trace_costs,
+            stop,
+            time_limit_ms,
+            None,
+            0,
+        )
+    }
+
+    fn opt_changed_area_with_keep_point(
+        &mut self,
+        engine: Option<&mut AutorouteEngine>,
+        only_net_no_arr: &[i32],
+        clip_shape: Option<IntOctagon>,
+        accuracy: i32,
+        trace_costs: Option<&[ExpansionCostFactor]>,
+        stop: StopCheck<'_>,
+        time_limit_ms: i32,
+        keep_point: Option<Point>,
+        keep_point_layer: i32,
+    ) -> Result<(), BoardError> {
+        // RoutingBoardOperations.java:61-63.
+        if self.changed_area.is_none() {
+            return Ok(());
+        }
+        // :64 — ruling 9. Java compares the **reference** `clipShape != IntOctagon.EMPTY`, so
+        // `null` **runs** the branch and `Option::None` therefore does too: a `null` clip shape is
+        // "no restriction", not "no work". Only the shared `IntOctagon.EMPTY` singleton skips it,
+        // and `Route.java:225` (`traceTidyWidth == 0`) and `RoutingBoardOperations:86` (the same
+        // width through `removeItemsAndPullTight`) are the two sites that pass it.
+        //
+        // Java bug (quirk #204): the guard reads as "restrict the optimizing to clipShape, and
+        // skip it when there is nothing to restrict it to", and the reference test makes it
+        // something else — a *hand-built* octagon with `EMPTY`'s eight coordinates is a different
+        // object, so Java optimizes the **whole** changed area against a clip shape that excludes
+        // every point, and `TightenerBase::{clip_is_outside, clip_contains}` then reject every
+        // candidate. Reproduced rather than fixed; the port folds it into the same value comparison
+        // [`IntOctagon::is_empty`] already uses for `IntOctagon.isEmpty()`'s own `this == EMPTY`
+        // (int_octagon.rs:92-99), which differs from Java only for that unreachable hand-built
+        // copy.
+        if !clip_shape.is_some_and(|shape| shape.is_empty()) {
+            // :65-75.
+            let mut pull_tight_algo = TraceTightener::get_instance(
+                self,
+                only_net_no_arr.to_vec(),
+                clip_shape,
+                accuracy,
+                Some(stop),
+                time_limit_ms,
+                keep_point,
+                keep_point_layer,
+            );
+            // :76.
+            pull_tight_algo.opt_changed_area(self, engine, trace_costs)?;
+        }
+        // not ported: `board.joinGraphicsUpdateBox(board.changedArea.surroundingBox())` (`:77`) —
+        // the GUI repaint box; `Board` has no `joinGraphicsUpdateBox`.
+        //
+        // :78. Load-bearing: the next `startMarkingChangedArea` re-creates the store, and leaving
+        // it in place would make the next sweep see this one's stale region.
+        self.changed_area = None;
+        Ok(())
     }
 }
 

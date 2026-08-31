@@ -136,8 +136,10 @@ TraceShover                       board_ext/trace_shover.rs
 # pull-tightens every polyline unconditionally, so ruling AB moved these four classes — and
 # `PolylineTrace.pullTight`, whose Rust home is `board_ext/tightener/mod.rs` because its argument
 # is a `TraceTightener` — into Plan 6. `ViaOptimizer` stays Plan 7's, and so do `optChangedArea`'s
-# batch callers and `removeItemsAndPullTight`; `optChangedArea` itself keeps its
-# `// added in Plan 7:` marker in `board_ext/tightener/mod.rs`.
+# batch callers and `removeItemsAndPullTight`. **Plan 7 Task 5** then landed
+# `TraceTightener.optChangedArea` itself (and `PolylineTrace`'s `check`/`correct`/`swapConnectionToPin`,
+# which live in the same file for the same reason `pullTight` does), so `board/optimize`'s marker
+# for it is gone; only `ViaOptimizer.optViaLocation` is still rostered, to Task 6.
 TraceTightener                    board_ext/tightener/mod.rs
 TraceTightener                    board_ext/tightener/base.rs
 TraceTightener90                  board_ext/tightener/tightener_90.rs

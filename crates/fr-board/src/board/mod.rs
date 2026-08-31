@@ -181,7 +181,7 @@ pub(crate) use item_ctx;
 // (`board/snapshot.rs`), empty until Plan 6 gives `Board` the `autoroute_engine` field it clears.
 // added in Plan 7: `RoutingBoard.autoroute` (RoutingBoard.java:911-971) — it builds an `AutorouteControl` and drives `AutorouteEngine.autorouteConnection` for one item, i.e. it is `AutoroutePassRunner`'s per-item step, which plan-6 ruling 2 puts above the seam. Plan 6 delivers what it calls (`fr_router::route_connection`).
 // added in Plan 7: `RoutingBoard.fanout` (RoutingBoard.java:978-1110) — the SMD fanout pass, which plan-6 ruling 2 puts above the seam with the rest of the batch loop.
-// added in Plan 7: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) — its body is `RoutingBoardOperations.optChangedArea` (:52-79), which runs the `TraceTightener`.
+// renamed: `RoutingBoard.optChangedArea` (both overloads, RoutingBoard.java:151-190) -> `fr_router::board_ext::RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}` (Rust has no overloading); its body is `RoutingBoardOperations.optChangedArea` (:52-79), which builds a `TraceTightener` — `fr-router`'s type — and runs its `optChangedArea` sweep. Landed in Plan 7 Task 5.
 // added in Plan 7: `RoutingBoard.removeItemsAndPullTight` (RoutingBoard.java:124-127) — the removal half is `Board::remove_items_marking_changed_area`; the `combineTraces` + `optChangedArea` tail is Plan 7's.
 // added in Plan 7: `RoutingBoard.moveDrillItem` (RoutingBoard.java:252-295) — `DrillItemMover`.
 // added in Plan 7: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — `ForcedViaInserter`.

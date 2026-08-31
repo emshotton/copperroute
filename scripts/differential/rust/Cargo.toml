@@ -123,6 +123,16 @@ path = "src/bin/p6t2.rs"
 name = "p7t7"
 path = "src/bin/p7t7.rs"
 
+# Plan 7 Task 5: `optChangedArea` end to end over a routed board.
+[[bin]]
+name = "p7t3"
+path = "src/bin/p7t3.rs"
+
+# Plan 7 Task 5: `PolylineTrace`'s `ConnectionToPin` trio and the four `pullTight:844-860` calls.
+[[bin]]
+name = "p7t6"
+path = "src/bin/p7t6.rs"
+
 # Plan 7 Task 3 (ruling AH): the three hash-equality decisions over a scripted mutation sequence.
 [[bin]]
 name = "p7t10"

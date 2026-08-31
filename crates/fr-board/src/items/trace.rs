@@ -88,17 +88,18 @@
 // enlarged surrounding octagon of each end corner (`BasicBoard.java:1066` is the non-router
 // caller).
 //
-// The six Plan 7 markers below deliberately keep each deferred Java name on the *same physical
-// line* as its `added in Plan 7:` prefix: `scripts/audit-port.sh`'s marker check is a per-line
-// `grep -E "added in (Task|Plan) [0-9]+:.*\bName\b"`, so a name that wraps onto a continuation
-// line does not count as covered.
+// The six markers below deliberately keep each Java name on the *same physical line* as its
+// `renamed:` prefix: `scripts/audit-port.sh`'s marker check is a per-line
+// `grep -E "renamed:.*\bName\b"` (and the same shape for `not ported:` and `added in
+// Task|Plan N:`), so a name that wraps onto a continuation line does not count as covered.
+// Plan 7 Task 5 landed all six and re-pointed them from deferral markers to `renamed:` ones.
 //
-// added in Plan 7: `Trace.checkConnectionToPin` (Trace.java:376) — abstract; the body is below.
-// added in Plan 7: `PolylineTrace.checkConnectionToPin` (PolylineTrace.java:1013-1076) — needs the start/end contacts, `board.rules.getPinEdgeToTurnDist()` and `board.clearanceValue`.
-// added in Plan 7: `PolylineTrace.correctConnectionToPin` (PolylineTrace.java:1082-1245) — the acid-trap correction; needs `board.checkPolylineTrace` and `board.insertTrace`.
-// added in Plan 7: `PolylineTrace.swapConnectionToPin` (PolylineTrace.java:1252-1313) — needs the start contacts and `Pin.calcNearestExitRestrictionDirection`.
+// renamed: `Trace.checkConnectionToPin` (Trace.java:376) — abstract; the concrete body is `PolylineTrace`'s, and both are `fr_router::board_ext::PolylineTraceExt::check_connection_to_pin` (plan-rulings.md #4): its only callers are `PolylineTrace.correctConnectionToPin` and `PolylineTrace.pullTight:841-861`, which take a `TraceTightener`. Landed in Plan 7 Task 5.
+// renamed: `PolylineTrace.checkConnectionToPin` (PolylineTrace.java:1013-1076) -> `fr_router::board_ext::PolylineTraceExt::check_connection_to_pin`; it needs the start/end contacts, `board.rules.getPinEdgeToTurnDist()` and `board.clearanceValue`, and it lives beside the pair it gates.
+// renamed: `PolylineTrace.correctConnectionToPin` (PolylineTrace.java:1082-1245) -> `fr_router::board_ext::PolylineTraceExt::correct_connection_to_pin` — the acid-trap correction; it needs `board.checkPolylineTrace`, `board.insertTrace` and an `AutorouteEngine` for the `PolylineTrace.change` at `:1237`, which is `fr-router`'s type.
+// renamed: `PolylineTrace.swapConnectionToPin` (PolylineTrace.java:1252-1313) -> `fr_router::board_ext::PolylineTraceExt::swap_connection_to_pin` — it needs the start contacts, `Pin.calcNearestExitRestrictionDirection` and an `AutorouteEngine` for the `combine()` at `:1313`.
 // renamed: `Trace.pullTight` (Trace.java:483) and `PolylineTrace.pullTight` (both overloads, PolylineTrace.java:809-863 and :869-890) -> `fr_router::board_ext::PolylineTraceExt::{pull_tight_with, pull_tight}` (plan-rulings.md #4): both take a `TraceTightener`, which is `fr-router`'s type. **Controller ruling AB** moved that class family out of Plan 7 into Plan 6 Task 15a, because `RoutingBoard.insertForcedTracePolyline:861` pull-tightens every inserted polyline unconditionally and plan-6 ruling 1's geometry parity is unreachable without it.
-// added in Plan 7: `PolylineTrace.smoothenEndCornersFork` (PolylineTrace.java:893-915) -> the `TraceTightener.smoothenEndCornersAtTrace` it drives landed in Plan 6 Task 15a (`fr_router::board_ext::TraceTightener::smoothen_end_corners_at_trace`); this wrapper has no Plan-6 caller, so it stays Plan 7's.
+// renamed: `PolylineTrace.smoothenEndCornersFork` (PolylineTrace.java:893-915) -> `fr_router::board_ext::TraceTightener::smoothen_end_corners_at_trace` (landed Plan 6 Task 15a), which is the whole of its body past the `TraceTightener.getInstance` at `:904-913`. It has **no caller anywhere in the Java tree** (`grep -rn smoothenEndCornersFork src` finds only the declaration), so the wrapper itself buys nothing; `optChangedArea` — the closest live analogue, ported in Plan 7 Task 5 — builds one tightener for the whole sweep rather than one per trace. Recorded as `renamed:` rather than `not ported:` because the body *is* ported, one factory call away.
 // not ported: `PolylineTrace.write(ObjectOutputStream)` (PolylineTrace.java:926-934) — Java
 // serialization, which `global-constraints.md` excludes.
 

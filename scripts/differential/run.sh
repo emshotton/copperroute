@@ -31,7 +31,8 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t7, p7t10" >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t6," >&2
+  echo "           p7t7, p7t10" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -285,6 +286,43 @@ case "$driver" in
       "-XX:hashCode=${P7T10_HASH_MODE:-2}"
     )
     run_timeout="${P7T10_TIMEOUT:-1800}"
+    ;;
+  p7t3)
+    # Plan 7 Task 5: `RoutingBoard.optChangedArea` and the `TraceTightener.optChangedArea` sweep,
+    # over a real DSN board whose changed area was marked by real routing. Declares `package
+    # app.freerouting.autoroute.maze` — not the brief's `board.optimize` — for the reason `P7T7`
+    # and `P7T10` do: it needs `P6T1.loadBoard`/`pickConnections`/`route`, which are
+    # package-private statics. `P6T1.java` is compiled alongside so the two cannot describe
+    # different boards.
+    #
+    # `<dsn> [mode] [accuracy] [routeK]`. Modes 0-2 are the three angle regimes with no vias
+    # offered to the optimiser, 3 widens `pinEdgeToTurnDist` so the `ConnectionToPin` pair fires
+    # hard, and **mode 4 offers vias and is expected to DIFF until Plan 7 Task 6 lands
+    # `ViaOptimizer`** — the port stubs that arm behind an `obligation:` marker naming Task 6.
+    #
+    # The budget is disabled on both sides by passing `timeLimit = 0` / `RouterBudget::disabled()`,
+    # which is Java's own "no limit" (`TraceTightener.java:73-77`): at this entry point the limit
+    # is a parameter, so there is no constant to patch by reflection.
+    javaclass=P7T3
+    javapkg="autoroute.maze"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 0 500 6)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P6T1.java")
+    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
+    run_timeout="${P7T3_TIMEOUT:-900}"
+    ;;
+  p7t6)
+    # Plan 7 Task 5: `PolylineTrace`'s `ConnectionToPin` trio — `check` (the regression oracle for
+    # the port's own new `check_connection_to_pin`), `correct` and `swap` — plus the two skips of
+    # `pullTight:841-861`. Declares `package app.freerouting.board.trace` (the brief's package) and
+    # compiles against the clone's HEAD jar; the fixture is hand-built, so no DSN is involved.
+    #
+    # `<mode>` is one of `check`, `correct`, `swap`, `rand`, `edge`; the default runs `check`.
+    javaclass=P7T6
+    javapkg="board.trace"
+    default_args=(check)
+    needs_jar=1
+    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
     ;;
   p6t3)
     # Plan 6 Tasks 4 and 5: the three neighbour sorters — the any-angle base class, its comparator
