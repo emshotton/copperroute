@@ -99,7 +99,8 @@
 //!
 //! `BasicBoard.getHash` (BasicBoard.java:164-166) delegates to `BoardSnapshotManager.getHash`
 //! (:58-72), which MD5-hashes `serialize(true)` (:26-43) — the Java-serialized bytes of
-//! `board.getTraces()`, `board.getVias()` **and `board.itemList`** (:29-35), in that order.
+//! `board.getTraces()`, `board.getVias()` **and `board.itemList`** — the three `writeObject` calls
+//! at :31-33 — in that order.
 //!
 //! Java bug: `BasicBoard.getHash`'s own javadoc (BasicBoard.java:163) says "an MD5 hash of the
 //! board **trace** state", and `BoardSnapshotManager.getHash`'s (:57) says "the board trace-state
@@ -117,9 +118,26 @@
 //!
 //! ## What `serialize(true)` can actually reach
 //!
-//! `Item.board` is `public transient BasicBoard board` (Item.java:45), so the stream does **not**
-//! drag in the board, its components, its rules or its library: the reachable set is every
-//! `Item`'s own non-`transient` fields, transitively. That is what the table below audits.
+//! The reachable set is every `Item`'s own non-`transient` fields, **transitively** — and the
+//! transitive closure escapes the item graph exactly once, so the two halves have to be stated
+//! separately:
+//!
+//! * **What is not reached.** `Item.board` is `public transient BasicBoard board` (Item.java:45),
+//!   so the stream does not drag in `BasicBoard` itself, and with it neither `board.components`
+//!   nor `board.rules` nor `board.library.packages`. Nothing else points at them either: a `Pin`
+//!   knows its component only as an `int` `componentId` (Item.java:50), and no item field is
+//!   typed `Component`, `BoardRules`, `Net` or `Package`.
+//! * **What *is* reached, and is not obvious.** `Via.padstack` is `private Padstack padstack`
+//!   (Via.java:48) — **not** `transient` — and `Padstack implements Serializable`
+//!   (Padstack.java:16) holding `private final Padstacks padstackList` (:33), which is itself
+//!   `Serializable` (Padstacks.java:10) and holds `public final LayerStructure boardLayerStructure`
+//!   (:13) and the `Vector<Padstack>` of **every** padstack on the board (:16);
+//!   `LayerStructure` is `Serializable` too (LayerStructure.java:6), as is each `Layer` (:6).
+//!   So on any board carrying one via, `serialize(true)` writes the whole padstack library and the
+//!   layer structure. That subgraph is audited in its own rows below, and it is where the fourth
+//!   skipped `#200`-shaped cache lives.
+//!
+//! With those two statements the closure is finite, and that is what the table below audits.
 //!
 //! ## The audit table (ruling AH's deliverable)
 //!
@@ -139,9 +157,11 @@
 //! | `Trace.layer` (Trace.java:31) | `getTraces()` | `PolylineTrace::layer` | yes | `the_trace_layer_reaches_the_hash` |
 //! | `Trace.halfWidth` (Trace.java:30) | `getTraces()` | `PolylineTrace::half_width` | yes | `the_trace_half_width_reaches_the_hash` |
 //! | `PolylineTrace.lines` → `Polyline.lines` → every `Line.a`, `Line.b` (Line.java:12-15) | `getTraces()` | `PolylineTrace::lines`, hashed **line by line** | yes | `two_polylines_with_equal_corners_but_different_lines_hash_differently` |
-//! | `Line.dir` (Line.java:17) | — | — | not serialized (`transient`) | — |
 //! | *`Line`'s identity token* (plan-6 ruling AE) | — | `Line::identity` | **must not be**, and is not: the fold goes through `Line`'s `Hash`, which is `a`/`b` only | `the_line_identity_token_does_not_reach_the_hash` |
-//! | `Via.padstack` (Via.java:48) | `getVias()` | `Via::padstack` (a [`crate::ids::PadstackId`]) | yes | `the_via_centre_and_padstack_reach_the_hash` |
+//! | `Via.padstack` (Via.java:48) | `getVias()` | `Via::padstack` (a [`crate::ids::PadstackId`]) | yes, and it is what covers the whole padstack subgraph below | `the_via_centre_and_padstack_reach_the_hash` |
+//! | `Padstack.{name, id, attachAllowed, placedAbsolute, shapes, holeOnly}` (Padstack.java:18, 19, 22, 28, 30, 41) | `Via.padstack` | [`crate::library::Padstack`]'s six | **covered by reduction** — see below | `the_via_centre_and_padstack_reach_the_hash` (the `smd`/`thru` pair) |
+//! | `Padstack.padstackList` (:33) → `Padstacks.{boardLayerStructure, padstacks}` (Padstacks.java:13, 16) → `LayerStructure.layers` (LayerStructure.java:8) → `Layer.{name, isSignal}` (Layer.java:9, 15) | `Via.padstack` | `Board::library.padstacks`, `BoardRules::layer_structure` | **covered by reduction** — see below | — |
+//! | `Padstack.cachedDrillRadius` (:44) | `Via.padstack` | — | **skipped** — quirk #200's shape again, and **global**, see below | — |
 //! | `Via.attachAllowed` (:32) | `getVias()` | `Via::attach_allowed` | yes | `the_via_attach_allowed_flag_reaches_the_hash` |
 //! | `Via.isEscapeVia` (:40), `Via.escapeViaSmdLayer` (:46) | `getVias()` | `Via::is_escape_via`, `Via::escape_via_smd_layer` | yes | `the_via_escape_flags_reach_the_hash` |
 //! | `DrillItem.center` (DrillItem.java:28) — **a via's** | `getVias()` | `DrillItemData::center` | yes (a via is constructed with it, Via.java:65) | `the_via_centre_and_padstack_reach_the_hash` |
@@ -155,7 +175,35 @@
 //! | `BoardOutline.shapes` (:30), `.keepoutOutsideOutline` (:43) | `itemList` | `BoardOutline::shapes`, `::keepout_outside_outline` | yes | `the_board_outline_shapes_and_keepout_flag_reach_the_hash` |
 //! | `BoardOutline.keepoutArea` (:36), `.keepoutLines` (:41) | `itemList` | the `OnceLock`/`Option` | **skipped** — lazy caches, pure functions of `shapes` + `keepoutOutsideOutline`, both covered | — |
 //! | `UndoableObjects.objects`' iteration order, `.stackLevel`, `.deletedObjectsStack`, `.redoPossible`, every `UndoableObjectNode.level`/`.undoObject`/`.redoObject` | `itemList` | — | **skipped** — the port has no undo stack, see below | — |
-//! | `ObstacleArea.precalculatedAbsoluteArea` (:38), `ConductionArea.cachedBoard*` (:42-43), `Via`/`Pin.precalculatedShapes`, `Item.searchTreesInfo` (:59), `Item.autorouteInfo` (:67), `Item.board` (:45) | — | — | not serialized (`transient`) | — |
+//! | `IntOctagon.precalculatedToSimplex` (IntOctagon.java:54) | every `relativeArea`/`shapes` row above, and `Padstack.shapes` | — | **skipped** — the one non-`transient` lazy cache in `geometry/planar`, see below | — |
+//! | `Item.board` (:45), `Item.searchTreesInfo` (:59), `Item.autorouteInfo` (:67), `Via.precalculatedShapes` (Via.java:49), `Via.autorouteDrillInfo` (:52), `Pin.precalculatedShapes` (Pin.java:45), `ObstacleArea.precalculatedAbsoluteArea` (:38), `ConductionArea.{cachedBoardRevision, cachedBoardFillArea}` (:42-43), `ComponentOutline.precalculatedAbsoluteArea` (:25), `Line.dir` (Line.java:17), `Polyline`'s three (Polyline.java:24-26), `Simplex`'s (Simplex.java:22-26), `PolygonShape`'s (PolygonShape.java:22-25), `PolylineArea`'s (PolylineArea.java:19) | — | — | not serialized (`transient`) — **this row is exhaustive**: it is every `transient` field the closure above can touch | — |
+//!
+//! ### The padstack subgraph: `covered by reduction`, argued
+//!
+//! The port stores a via's padstack as a [`crate::ids::PadstackId`] (the Plan 2 "no object
+//! references between model objects" rule) and keeps the `Padstacks` table in `Board::library`,
+//! which the fold does not walk. That is **not** a gap, for a reason that has to be stated rather
+//! than assumed: within one board the id **determines** the whole subgraph.
+//!
+//! * `Padstacks.padstacks` is append-only — `Padstacks.add` (Padstacks.java:54-59) is its only
+//!   writer, and nothing removes or rewrites an entry, so index *i* names the same padstack for
+//!   the life of the board.
+//! * Every `Padstack` field the digest reaches is `final` (`name`, `id`, `attachAllowed`,
+//!   `placedAbsolute`, `shapes`, `padstackList`) **except two**, and neither moves: `holeOnly`
+//!   (:41) has **no writer at all** in `src/main` — `ShapeSearchTree.java:1049` is its one reader
+//!   and nothing ever assigns it, so it is `false` on every board the jar builds, which is
+//!   exactly what `Padstack::new` hard-codes here; and `cachedDrillRadius` is the skipped row
+//!   below.
+//! * `Padstacks.boardLayerStructure`, `LayerStructure.layers` and each `Layer`'s two fields are
+//!   `final` and fixed when the board is built.
+//!
+//! So for the comparison ruling AH's three sites actually make — two boards **of one run**, which
+//! share one `Padstacks` object — "same padstack id" and "same serialized padstack subgraph" are
+//! the same statement, and hashing the id is hashing the subgraph. What the reduction gives up is
+//! only the cross-*library* case: two boards built from different DSNs whose padstack tables differ
+//! at the same index would collide in the port where the jar tells them apart. No reader can
+//! produce that pair (`BoardHistory` and `BatchFanout` both compare boards of one run), and
+//! `Board::diff_traces` is ruling AH's tie-break if one ever appears.
 //!
 //! ### One `covered` row with a caveat: `ComponentOutline`'s area
 //!
@@ -168,10 +216,24 @@
 //! Java's here: two boards that differ only in that flag would hash differently in the port and
 //! alike in the jar. Harmless, and deliberately not worked around: the flag is set once when the
 //! board is built and never changes, and every `getHash` comparison the pipeline makes is between
-//! two boards of one run. Filling the memo is likewise invisible — `ComponentOutline`'s
-//! `PartialEq` skips it, so `structural_hash` cannot change what `==` answers.
+//! two boards of one run.
 //!
-//! ### The three `skipped` rows, argued
+//! **[`Board::structural_hash`] is itself one of the fillers**, and that is worth stating rather
+//! than leaving implicit: the `ComponentOutline` arm calls `outline.get_area(&ctx)`, which is
+//! `self.absolute_area.get_or_init(..)` (`items/area.rs`), so taking a hash writes a
+//! [`std::sync::OnceLock`] through `&self`. It is the only such write in the fold, it is
+//! idempotent, and it is invisible — `ComponentOutline`'s `PartialEq` skips that field, so
+//! `structural_hash` cannot change what `==` answers.
+//!
+//! **The invariant that keeps all of this true, stated once so a later edit has to break it
+//! deliberately: every field this fold reads is also compared by the corresponding `PartialEq`,
+//! and `ComponentOutline`'s absolute area is the one recorded exception** (it hashes the derived
+//! form where `PartialEq` compares the relative one). So `a == b` implies equal hashes — the
+//! direction a `#[derive(Hash)]` or a `HashMap` key would depend on — while the converse is only
+//! what a hash is. Neither [`Board`] nor `ItemHeader` implements [`Hash`] today; if one ever
+//! does, this paragraph is the thing to re-check first.
+//!
+//! ### The five `skipped` rows, argued
 //!
 //! 1. **`DrillItem.center` for a pin, and the three `precalculated*` memos.** Java's fields are
 //!    **not** `transient` and are filled **on demand** — `Pin.getCenter` (Pin.java:92-140) calls
@@ -185,11 +247,35 @@
 //!    `componentId` and `pinIndex` (both covered) plus the component's placement, which
 //!    `serialize(true)` cannot reach anyway (`Item.board` is `transient`), and no headless caller
 //!    moves a pin. The layer/min-width memos are pure functions of the padstack, which is covered.
-//! 2. **`Item.smallestClearance`.** `public double`, not `transient`, so the digest sees it — but
+//! 2. **`Padstack.cachedDrillRadius`** (Padstack.java:44). `private Double`, **not** `transient`,
+//!    written lazily by `getDrillRadius` (:99, :110) and read at :73 — a third instance of exactly
+//!    the #200 shape, and in principle the **worst** of them, because a `Padstack` is *shared*:
+//!    filling it anywhere would move the digest of every board holding a via on that padstack, in
+//!    every history entry at once. Skipped, and it is a memo over a regex parse of the padstack's
+//!    own `final` `name`, which the reduction above already covers, so nothing is lost.
+//!
+//!    **It is also the one #200-shaped field that does not need neutralising in the differential
+//!    driver, and the reason is worth recording.** Its two headless readers,
+//!    `ShapeSearchTree.{drillHoleObstacle, drillHoleClearanceDelta}` (:1019, :1044) — plus
+//!    `ForcedViaInserter.java:368` — are all reached from `calculateTreeShapes(DrillItem)`, i.e.
+//!    from *inserting a drill item into the search tree*, and both are gated on
+//!    `board.rules.getHoleClearance() > 0`. So on any board the memo is either never filled (hole
+//!    clearance disabled) or filled while the DSN reader inserts the board's pins — in both cases
+//!    **before the first `getHash()` of the run**, and constant thereafter. That is why
+//!    `P7T10.normalizeByProducts` does not touch it and `p7t10` is still 0 diffs over
+//!    10 × 2 000 steps with hundreds of via insertions and 250 snapshot restores per run.
+//! 3. **`IntOctagon.precalculatedToSimplex`** (IntOctagon.java:54). `private Simplex`, **not**
+//!    `transient`, filled on the first `toSimplex()` (:560-568) — and the *only* non-`transient`
+//!    lazy cache in the whole of `geometry/planar` (every other `precalculated*` there is
+//!    `transient`; `Circle`'s is commented out). It is reachable from every `relativeArea`,
+//!    `BoardOutline.shapes` and `Padstack.shapes` row above. Skipped for the same reason as the
+//!    others and with a stronger one on top: it is a pure function of the octagon's eight `final`
+//!    `int` bounds, all of which the fold already hashes through `TileShape`'s derived `Hash`.
+//! 4. **`Item.smallestClearance`.** `public double`, not `transient`, so the digest sees it — but
 //!    `Item.clearanceViolations` (Item.java:451-453) only ever *lowers* it, guarded by
 //!    `smallestClearance < 0`, so its value records how many DRC checks have run over the item,
 //!    not what the item is. Same shape as #200, same answer.
-//! 3. **The undo bookkeeping.** `UndoableObjects` holds `stackLevel`, `redoPossible`, a
+//! 5. **The undo bookkeeping.** `UndoableObjects` holds `stackLevel`, `redoPossible`, a
 //!    `deletedObjectsStack` and a per-node `level`, all non-`transient`; this port has no undo
 //!    stack at all (`generateSnapshot`/`popSnapshot`/`undo`/`redo` are `not ported:` on
 //!    `board/mod.rs`; a `board.clone()` stands in). The one headless caller that moves them is
@@ -397,7 +483,7 @@ impl Board {
     /// (:58-72), which is an **MD5 hex string over `serialize(true)`** (:26-43).
     ///
     /// `serialize(true)` writes `board.getTraces()`, `board.getVias()` **and `board.itemList`**
-    /// (:29-35) through Java object serialization — i.e. the whole item graph, not just the traces
+    /// (the three `writeObject` calls at :31-33) through Java object serialization — i.e. the whole item graph, not just the traces
     /// the method's own comment claims (`Java bug:` on that comment, module doc and
     /// `docs/java-quirks.md` #201). Controller ruling AH: **do not** reproduce the bytes or the
     /// digest; cover the field set that serialization covers, and prove *decision* parity at the
@@ -425,7 +511,7 @@ impl Board {
             // The concrete class, which Java's stream carries as the object's class descriptor.
             item.kind().hash(&mut hasher);
             // -- `Item`'s own non-transient fields (Item.java:41-67); `smallestClearance` (:47)
-            // is deliberately absent, module doc's skipped row 2.
+            // is deliberately absent — the module doc's `smallestClearance` skipped row.
             item.net_nos().hash(&mut hasher);
             item.clearance_class().hash(&mut hasher);
             item.get_fixed_state().hash(&mut hasher);
@@ -443,7 +529,8 @@ impl Board {
                 }
                 Item::Via(via) => {
                     // A via is always constructed with its centre (Via.java:65), so this is real
-                    // state, not the lazily filled cache the module doc's skipped row 1 is about.
+                    // state, not the lazily filled cache the module doc's `DrillItem.center` skipped row
+                    // is about.
                     via.get_center().hash(&mut hasher);
                     // The padstack id stands in for Java's serialized `Padstack` object, and
                     // determines the layer span the three `precalculated*` memos hold.
@@ -455,8 +542,9 @@ impl Board {
                 Item::Pin(pin) => {
                     pin.get_pin_index().hash(&mut hasher);
                     pin.get_changed_to().hash(&mut hasher);
-                    // `DrillItem.center` is **not** hashed here: module doc's skipped row 1
-                    // (quirk #200). `component_id` above and `pin_index` here determine it.
+                    // `DrillItem.center` is **not** hashed here: the module doc's
+                    // `DrillItem.center` skipped row (quirk #200). `component_id` above and
+                    // `pin_index` here determine it.
                 }
                 Item::ObstacleArea(area) => hash_obstacle_area(&area.area, &mut hasher),
                 Item::ViaObstacleArea(area) => hash_obstacle_area(&area.area, &mut hasher),
@@ -491,7 +579,7 @@ impl Board {
                         .keepout_outside_outline_generated()
                         .hash(&mut hasher);
                     // `keepoutArea`/`keepoutLines` are lazy caches derived from those two —
-                    // module doc's skipped row list.
+                    // the module doc's skipped rows.
                 }
             }
         }

@@ -139,8 +139,12 @@ fn main() {
     let dy = (bbox.ur.y - bbox.ll.y) / 4;
     let area = IntBox::from_coords(bbox.ll.x + dx, bbox.ll.y + dy, bbox.ur.x - dx, bbox.ur.y - dy);
 
-    // `P7T10.warmCaches` has no twin: the port's hash does not observe a lazy cache (the module
-    // comment, and the audit table's skipped rows).
+    // `P7T10.normalizeByProducts` has no twin. It does two things on the Java side — it *fills*
+    // `DrillItem`'s four lazy caches and it *resets* `Item.smallestClearance`, an accumulator that
+    // never resets by itself and is the load-bearing half (the method is named for the pair; see
+    // `P7T10.java`). Neither has anything to do here: the port's hash reads none of those fields
+    // (the audit table's skipped rows in `crates/fr-board/src/board/snapshot.rs`), so there is no
+    // by-product to canonicalise.
 
     let stem = dsn
         .file_name()

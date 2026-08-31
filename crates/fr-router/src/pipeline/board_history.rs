@@ -302,6 +302,14 @@ impl BoardHistory {
     /// `BOARD_RANK_LIMIT` with `>`, and `-1 > 30` is the "not found, do not break" answer that
     /// falls out of the sentinel.
     // renamed: `BoardHistory.getRank` -> `BoardHistory::rank` (the plan's interface table names it that; Rust getters drop the `get_`).
+    //
+    // obligation: Task 10 (`AutorouteBatchLoop`) must pin `BoardHistory.getRank` **after** a
+    // `restoreBoard` reorder. Plan 7 Task 3's `p7t10` covers this method's decision only in
+    // insertion order: it takes exactly `HISTORY_CAP` adds and never calls `restore_board`, so
+    // the sorted arm of quirk #198 is unexercised there — deliberately, because a `p7t10` diff
+    // must have exactly one possible cause (the hash), not two (the hash or the sort). The sort
+    // itself is JVM-pinned by `P7T2Probe`'s `cap3` phase; what is unpinned is the *composition*,
+    // and `AutorouteBatchLoop.java:315-320` is its only caller and therefore its only home.
     pub fn rank(&self, board: &Board) -> i32 {
         // BoardHistory.java:174.
         let hash = board.structural_hash();

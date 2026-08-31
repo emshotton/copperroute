@@ -2128,21 +2128,36 @@ and the probe's comment now says so.
 
 `Board::structural_hash` is the port's stand-in for `BasicBoard.getHash()`, which is
 an **MD5 hex string over `serialize(true)`** — `board.getTraces()`,
-`board.getVias()` **and `board.itemList`** (`BoardSnapshotManager.java:29-35`), i.e.
-the whole item graph, not the traces its own javadoc claims (**quirk #201**). Ruling
-AH: do not reproduce the bytes or the digest; cover the field set serialization
-covers, and prove **decision** parity at the three sites where Java compares two
-hashes.
+`board.getVias()` **and `board.itemList`**, the three `writeObject` calls at
+`BoardSnapshotManager.java:31-33` — i.e. the whole item graph, not the traces its own
+javadoc claims (**quirk #201**). Ruling AH: do not reproduce the bytes or the digest;
+cover the field set serialization covers, and prove **decision** parity at the three
+sites where Java compares two hashes.
+
+**What that digest reaches, stated in two halves, because the obvious stopping rule
+is wrong.** `Item.board` is `transient` (Item.java:45), so the stream does not drag
+in `BasicBoard`, `board.components`, `board.rules` or `board.library.packages`, and
+no item field is typed `Component`, `BoardRules`, `Net` or `Package` either — a
+`Pin` knows its component only as an `int`. But the closure escapes the item graph
+**once**: `Via.padstack` is non-`transient` (Via.java:48), `Padstack` is
+`Serializable` (Padstack.java:16) and holds `padstackList` (:33), so on any board
+carrying a via the digest also writes the **whole padstack library** and the
+`LayerStructure` under it (Padstacks.java:10,13,16; LayerStructure.java:6,8). The
+audit table covers that subgraph *by reduction* to the port's `PadstackId`, with the
+argument spelled out there; it is also where the fourth skipped `#200`-shaped cache
+lives.
 
 **The audit table lives in `crates/fr-board/src/board/snapshot.rs`'s module doc**,
 one row per field `serialize(true)` reaches, each naming the port field that carries
 it and the test in `crates/fr-board/tests/snapshot.rs` that pins it. It is not
 duplicated here, because a second copy would rot; what belongs here is the summary
-and the three rows that are **skipped**, which are the only judgement calls in it:
+and the five rows that are **skipped**, which are the only judgement calls in it:
 
 | skipped Java field | why it is out |
 |---|---|
 | `DrillItem.center` for a **pin** (DrillItem.java:28), and `precalculatedMinWidth`/`…FirstLayer`/`…LastLayer` (:34-46) | non-`transient`, filled **on demand** — quirk #200. Reproducing them would make a membership test depend on how often the board has been measured. A pin's centre is a pure function of its `componentId` and `pinIndex`, both covered; the memos are pure functions of the padstack, also covered. A **via**'s centre *is* covered: `Via`'s constructor sets it (Via.java:65) |
+| `Padstack.cachedDrillRadius` (Padstack.java:44) | `private Double`, not `transient`, filled lazily by `getDrillRadius` (:99, :110) — the same shape again, and in principle the worst of them, because a `Padstack` is **shared**: filling it would move the digest of every board holding a via on it. It memoises a regex parse of the padstack's `final` `name`, which the reduction already covers. Unlike the others it needs no neutralising in `p7t10`: its headless readers all sit behind `calculateTreeShapes(DrillItem)` gated on `getHoleClearance() > 0`, so it is either never filled or filled while the DSN reader inserts the pins — before the run's first `getHash()`, and constant after |
+| `IntOctagon.precalculatedToSimplex` (IntOctagon.java:54) | `private Simplex`, not `transient`, filled on the first `toSimplex()` (:560-568) — the **only** non-`transient` lazy cache in `geometry/planar`. Reachable from every `relativeArea`, `BoardOutline.shapes` and `Padstack.shapes` row. It is a pure function of the octagon's eight `final` `int` bounds, all of which the fold already hashes through `TileShape`'s derived `Hash` |
 | `Item.smallestClearance` (Item.java:47) | `public double`, not `transient`, but `Item.clearanceViolations` (:451-453) only ever **lowers** it, so its value records how many DRC passes have run, not what the item is. `BoardHistory.add` runs one (`BoardHistory.java:198`) *after* taking the entry's hash at `:197`, so hashing it would make every board differ from the history entry it came from |
 | `UndoableObjects`' `stackLevel`, `deletedObjectsStack`, `redoPossible` and every `UndoableObjectNode.level` | this port has no undo stack (`generateSnapshot`/`popSnapshot`/`undo`/`redo` are `not ported:` on `fr-board`'s `board/mod.rs`; a `board.clone()` stands in). The one headless caller that moves them is `BatchOptimizer.optRouteItem`, which brackets one item with `generateSnapshot()` (`:444`) and either `popSnapshot()` (`:503`) or `undo(null)` (`:508`) — **balanced**, with no `getHash()` call inside the window — so they are 0 at every comparison the pipeline makes |
 
