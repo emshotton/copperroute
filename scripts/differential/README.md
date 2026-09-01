@@ -2359,6 +2359,63 @@ the driver expects, or none at all.
   **Acceptance: 0 diffs on all six corpus stems x passes 1-3 x `maxItems` in {2, all}**
   — 36 / 36 MATCH.
 
+- `p7t8 <dsn> [mode] [routePasses] [items|all]` — Plan 7 Task 13, **item** level:
+  `BatchOptimizer`'s protected inner class `ReadSortedRouteItems` (BatchOptimizer.java:563-659),
+  `optRouteItem` (`:395-514`), `containsOnlyUnfixedTraces` (`:85-92`), `getCurrentPosition`
+  (`:520-525`) and `BatchAutorouter.autoroutePassesForOptimizingItem`
+  (BatchAutorouter.java:245-281). Defaults `<dsn> sequence 1 5`; `run.sh p7t8` with no arguments
+  uses `Issue143-rpi_splitter.dsn sequence 1 5`.
+
+  Declares `package app.freerouting.autoroute.pipeline` for the reason `P7T5` does — but with
+  **no reflection at all**: `ReadSortedRouteItems` is a *protected inner class* and `optRouteItem`
+  is `protected`, so being in the package is what lets the driver write
+  `optimizer.new ReadSortedRouteItems()` and call the method directly. `P7T2.java` is compiled
+  alongside for `loadBoard`/`buildSettings`/`newRouter`/`boardShape` and `P7T9.java` for
+  `dumpBoard`.
+
+  **Every mode starts with a routing prologue** — the real `BatchAutorouter.runBatchLoop()`, i.e.
+  the call `p7t9` already pins byte for byte — because the optimizer means nothing on an unrouted
+  board. The `ROUTED` line prints that board before the optimizer touches it, so a prologue
+  divergence localises as a prologue divergence. `router.board` is read back after the call rather
+  than reusing the local, because the best-board policy may have replaced it (quirk #209).
+
+  * **`sequence`** walks a fresh `ReadSortedRouteItems` to exhaustion with *no* mutation between
+    calls — the pure ordering of `:573-654`. One `SEQ` line per returned item: its id, its class,
+    the `(x, y)` the comparison chain keyed on (`getCenter().toFloat()` for a via, `:617-622`'s
+    `compareCorner` for a trace), its layer and the cursor `getCurrentPosition()` reports
+    afterwards. The two `OPTPOS` lines pin `BatchOptimizer.getCurrentPosition` on both sides of
+    its `sortedRouteItems == null` test.
+  * **`item`** is `optRoutePass`' loop (`:327-331`) with the stop conditions removed: `next()`,
+    the real `optRouteItem(item, withPreferredDirections, false)`, then `next()` again **on the
+    board that call mutated** — plan-7 ruling 12's pin. The two fields `optRoutePass` seeds are
+    seeded the way it seeds them (`useIncreasedRipupCosts = true`,
+    `minCumulativeTraceLength = statsBefore.traces.totalWeightedLength`), the two ripped sets
+    (`:412-432`) and the ripup costs (`:453-463`) are **transcribed** beside each call because
+    both are locals of the real method, and the `RESULT`/`BOARD` lines are the method's own
+    answer — including `maxIdBefore`/`maxIdAfter`, which is what proves the clone-based snapshot
+    (plan-7 ruling 8) does not roll the id generator back the way a whole-board assignment would.
+    `items` defaults to 5 and bounds the walk, because one `optRouteItem` runs up to
+    `optimizer.maxAutoroutePasses` whole autoroute passes.
+
+  **The optimizer gets its own `StoppableThread`** on both sides, and that is load bearing:
+  `AutorouteBatchLoop.java:271` calls `requestStopAutoRouter()` when the pass loop reaches
+  `maxPasses`, and `autoroutePassesForOptimizingItem:268` is
+  `!job.thread.isStopAutoRouterRequested()` — reusing the prologue's flag runs **zero** autoroute
+  passes per item and the driver compares two untouched boards. (Measured: the first `item` run
+  of Task 13 did exactly that.) It is a real consequence of sharing one job rather than a driver
+  artefact, and Task 14/15 owns that seam.
+
+  Ruling AI: the port runs `RouterBudget::disabled()` against this side's live 1000 ms
+  `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`, which `javac` inlines and no reflection reaches, so a
+  MATCH proves the limit never trips. `BatchOptimizer.deadlineMs` is never set — `runBatchLoop`
+  is Task 14's and this driver does not call it.
+
+  **Acceptance: 0 diffs on all five corpus DSNs, both modes** — 10 / 10 MATCH (mode `sequence`
+  and mode `item`; `all` items on `rpi_splitter`, 5 on `j2_reference` / `ecc83_input` /
+  `tutorial_board`, 3 on `DAC2020_bm01`). The sixth corpus *stem*,
+  `router-dac2020-bm01-pass2`, is the same DSN at `ripupPassNo = 2`, which is a `p6t1` argument
+  this driver does not take.
+
 - `p7t9 <dsn> [maxPasses] [mode]` — Plan 7 Task 10, **whole-board** level:
   `AutorouteBatchLoop.run` (AutorouteBatchLoop.java:37-588), the pass loop with its
   best-board policy and its two stagnation detectors. This is the whole

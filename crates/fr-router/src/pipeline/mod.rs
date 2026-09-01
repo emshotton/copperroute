@@ -37,7 +37,13 @@
 //! with the oscillation detector and the hash stop of [`FanoutLoopState`] — and **discharged
 //! Task 10's loud stub**: `AutorouteBatchLoop::run`'s pre-pass now calls it, so
 //! [`BatchLoopResult::fanout`] carries a real summary and `p7t9 router+fanout` routes a board
-//! end to end. Tasks 13-15 add the optimizer.
+//! end to end.
+//!
+//! **Task 13 added the optimizer's item half** — [`BatchOptimizer`] with its field block and
+//! `createForHeadless` constructor, [`ReadSortedRouteItems`] (the visit order the whole optimizer
+//! stage hangs off), `BatchOptimizer::opt_route_item` with plan-7 ruling 8's clone-based snapshot,
+//! and [`BatchAutorouter::autoroute_passes_for_optimizing_item`], the optimizer's own autorouter.
+//! `scripts/differential/run.sh p7t8` is the evidence. Tasks 14-15 add the pass loop above it.
 //! `crates/fr-router/src/lib.rs`'s roster names every class still deferred and the task that
 //! owns it.
 
@@ -49,6 +55,7 @@ pub mod counters;
 pub mod failure_log;
 pub mod fanout;
 pub mod item_route_result;
+pub mod optimizer;
 pub mod pass_runner;
 pub mod stop;
 
@@ -64,6 +71,7 @@ pub use fanout::{
     parse_timespan_seconds,
 };
 pub use item_route_result::ItemRouteResult;
+pub use optimizer::{BatchOptimizer, ReadSortedRouteItems, optimizer_ripup_costs};
 pub use pass_runner::AutoroutePassRunner;
 pub use stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState};
 

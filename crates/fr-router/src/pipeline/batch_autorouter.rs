@@ -796,6 +796,123 @@ impl<'a> BatchAutorouter<'a> {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // autoroutePassesForOptimizingItem — BatchAutorouter.java:245-281
+    // ---------------------------------------------------------------------------------------------
+
+    /// Port of the static `autoroutePassesForOptimizingItem(RoutingJob, int, int, int, boolean,
+    /// RoutingBoard, RouterSettings)` (`:245-281`): "auto-routes ripup passes until the board is
+    /// completed or the auto-router is stopped by the user, or if `maxPassCount` is exceeded. Is
+    /// currently used in the optimize via batch pass. Returns the number of passes to complete the
+    /// board or `maxPassCount + 1`, if the board is not completed."
+    ///
+    /// This is the optimizer's **own** autorouter: a second [`BatchAutorouter`], built fresh per
+    /// optimized item, with three things the pass loop's router does not have.
+    ///
+    /// 1. **`removeUnconnectedVias = true`, unconditionally** (`:258`). The `RoutingJob`
+    ///    constructor derives it as `!settings.isFanoutEnabled()` (`:115`); here it is a literal,
+    ///    so the optimizer strips fanout vias even on a board whose routing stage kept them. That
+    ///    is what makes `removeTails(NONE)` at `:276` the *whole*-tail removal rather than
+    ///    `FanoutVia`'s partial one (`AutoroutePassRunner.java:298-302` picks between the two on
+    ///    exactly this flag).
+    /// 2. **`withPreferredDirections` is the caller's** (`:259`), i.e. `optRoutePass`' alternating
+    ///    `passNo % 2 != 0` — so every second optimizer pass routes with the direction costs
+    ///    flattened.
+    /// 3. **`isOptimizerAutorouter = true`** (`:263`), which `AutorouteBatchLoop.java:42, :374`
+    ///    read. Nothing in *this* loop reads it; it is set for a `AutorouteBatchLoop.run` that is
+    ///    never entered on this path, and the port sets it because the field exists and a reader
+    ///    comparing the two files must find `:263`.
+    ///
+    /// # Java bug (quirk #225): the empty `if` at `:271-273`
+    ///
+    /// `if (stillUnroutedItems && !isStopAutoRouterRequested() && updatedRoutingBoard == null) {}`
+    /// has an **empty body**, and its third conjunct cannot be true: `updatedRoutingBoard` is
+    /// dereferenced unconditionally at `:256`, inside the constructor call five lines above, so a
+    /// `null` board would have thrown a `NullPointerException` before the loop was entered. The
+    /// branch is dead twice over — no body to run, and a guard that cannot pass — and the port
+    /// omits it.
+    ///
+    // Java bug: `BatchAutorouter.autoroutePassesForOptimizingItem` (`:271-273`) — an empty `if` body whose `updatedRoutingBoard == null` conjunct is unreachable, because `:256` dereferences the same reference (quirk #225).
+    ///
+    /// # The failure log is local, and that is not observable
+    ///
+    /// Java's is `router.board.failureLog`, a `final` field of the board being optimized, so the
+    /// optimizer's passes write into the same logbook the routing stage filled. The port owns the
+    /// log at the caller (see [`RoutingFailureLog`]'s ownership note) and there is no caller-side
+    /// log to thread here, so this builds one per call. The difference is unobservable: the log is
+    /// write-only apart from `getFailureCount`, whose one reader is a dropped log-message guard
+    /// (`AutoroutePassRunner.java:273`).
+    ///
+    /// # `Result<i32, …>`, not `Result<(), …>`
+    ///
+    /// The brief's sketch returns nothing. Java returns the pass count (`:280`), and although
+    /// `optRouteItem:466` discards it, the number is what `p7t8 item` prints on both sides — so
+    /// the port answers it and the driver compares it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn autoroute_passes_for_optimizing_item(
+        board: &mut Board,
+        settings: &RouterSettings,
+        max_pass_count: i32,
+        ripup_costs: i32,
+        trace_pull_tight_accuracy: i32,
+        with_preferred_directions: bool,
+        stop: &RouterStop,
+        budget: RouterBudget,
+        progress: &mut dyn ProgressSink,
+    ) -> Result<i32, RouterError> {
+        // :253-261.
+        let mut router_instance = BatchAutorouter::new(
+            board,
+            settings,
+            // :258 — unconditional.
+            true,
+            // :259.
+            with_preferred_directions,
+            // :260.
+            ripup_costs,
+            // :261.
+            trace_pull_tight_accuracy,
+            budget,
+        );
+        // :262 — `routerInstance.job = job`; Plan 8's, see the field block's marker.
+        // :263.
+        router_instance.is_optimizer_autorouter = true;
+
+        // :265-266.
+        let mut still_unrouted_items = true;
+        let mut current_pass_no: i32 = 1;
+        let mut failure_log = RoutingFailureLog::new();
+
+        // :267-275.
+        while still_unrouted_items
+            && !stop.is_stop_auto_router_requested()
+            && current_pass_no <= max_pass_count
+        {
+            // :270.
+            still_unrouted_items = router_instance.autoroute_pass(
+                board,
+                &mut failure_log,
+                current_pass_no,
+                stop,
+                progress,
+            )?;
+            // :271-273 — the empty `if`; see the doc comment.
+            // :274.
+            current_pass_no += 1;
+        }
+
+        // :276 — `NONE`, not `FANOUT_VIA`: this router always removes unconnected vias.
+        router_instance.remove_tails(board, None, StopConnectionOption::None, &|| {
+            stop.is_stop_requested()
+        })?;
+        // :277-279.
+        if !still_unrouted_items {
+            current_pass_no -= 1;
+        }
+        // :280.
+        Ok(current_pass_no)
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // calculateIncompleteCount — BatchAutorouter.java:556-564
     // ---------------------------------------------------------------------------------------------
 
@@ -824,7 +941,6 @@ impl<'a> BatchAutorouter<'a> {
 
 // renamed: `BatchAutorouter.runBatchLoop` (`:479-481`) -> [`crate::pipeline::AutorouteBatchLoop::run`], Plan 7 Task 10. Java's method is `return batchLoop.run();` over a `BatchAutorouter` field the constructor built (`:104`); the port's `run` **builds the router itself** — as `RoutingPipeline`'s constructor does at `RoutingPipeline.java:34` — so there is no object for a wrapper to delegate through and the one-line method collapses into the loop it names. Task 15's `run_pipeline` calls `AutorouteBatchLoop::run` where Java calls `runBatchLoop`.
 // added in Plan 7: `BatchAutorouter.buildUnroutedConnectionsReport` (`:483-485`) — one delegation to `AutorouteUnroutedReport.build`. Plan 7 Task 10 landed the **stub** (`pipeline::batch_loop`'s `build_unrouted_report`, behind an `obligation:` marker) because both of its callers are the loop's stagnation arms; **Task 15** lands the real report and discharges that marker.
-// added in Plan 7: `BatchAutorouter.autoroutePassesForOptimizingItem` (`:245-281`) — the optimizer's own autorouter loop, **Task 13**'s; it builds a second `BatchAutorouter` through [`BatchAutorouter::new`] with `removeUnconnectedVias = true` and `isOptimizerAutorouter = true`, both of which this file already provides.
 // not ported: `BatchAutorouter.getAirLine` (`:516-527`) — the GUI airline accessor of the `not ported:` `airLine` field. Task 9 measured plan ruling 6's claim and confirms it: the field's only writers are `AutoroutePassRunner.java:45, 81, 142, 146, 164, 329, 333` (all `= null`) and `AutorouteConnectionRouter.java:70`, and this accessor is its only reader — nothing headless calls it, so [`crate::pipeline::calculate_airline`] is ported for the audit and has no caller.
 // not ported: `BatchAutorouter.autoroutePassMultiThread` (`:411-413`) — one delegation to `AutoroutePassRunner.runMultiThread`, the dead multithreaded path (quirk #216; `grep -rn autoroutePassMultiThread src/main` answers the declaration and nothing else).
 // not ported: `BatchAutorouter.setAirLine` (`:192-194`) — the writer of the `not ported:` `airLine` field.

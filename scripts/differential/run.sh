@@ -32,7 +32,7 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t5, p7t6, p7t7, p7t10, p7t1, p7t2, p7t9" >&2
+  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -376,6 +376,46 @@ case "$driver" in
     extra_jar_sources=("$DIFF_ROOT/java/P7T2.java")
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     run_timeout="${P7T9_TIMEOUT:-3600}"
+    ;;
+  p7t8)
+    # Plan 7 Task 13: `BatchOptimizer`'s item half — the protected inner class
+    # `ReadSortedRouteItems` (BatchOptimizer.java:563-659), `optRouteItem` (:395-514),
+    # `containsOnlyUnfixedTraces` (:85-92) and
+    # `BatchAutorouter.autoroutePassesForOptimizingItem` (BatchAutorouter.java:245-281).
+    # Declares `package app.freerouting.autoroute.pipeline` for the reason `P7T5` does:
+    # `ReadSortedRouteItems` is a **protected inner class** and `optRouteItem` is `protected`, so
+    # being in the package is what lets the driver write `optimizer.new ReadSortedRouteItems()`
+    # and call the method with no reflection at all. `P7T2.java` is compiled alongside for
+    # `loadBoard`/`buildSettings`/`newRouter`/`boardShape` and `P7T9.java` for `dumpBoard`.
+    #
+    # `<dsn> [mode] [routePasses] [items|all]`. Every mode starts with a routing prologue — the
+    # real `BatchAutorouter.runBatchLoop()`, i.e. the call `p7t9` already pins byte for byte — so
+    # the optimizer runs on a real routed board and a prologue divergence shows up on the
+    # `ROUTED` line rather than inside the optimizer. Mode `sequence` walks a fresh
+    # `ReadSortedRouteItems` to exhaustion with **no** mutation between calls, which is the pure
+    # ordering of `:573-654`; mode `item` is `optRoutePass`' loop (`:327-331`) with the stop
+    # conditions removed — `next()`, the real `optRouteItem`, then `next()` again on the board
+    # that call mutated, which is plan-7 ruling 12's pin. Beside each call the driver
+    # **transcribes** the two ripped sets (`:412-432`) and the ripup costs (`:453-463`), because
+    # both are locals of the real method; the `RESULT` and `BOARD` lines are the method's own
+    # answer. `items` defaults to 5 and bounds the walk, because one `optRouteItem` runs up to
+    # `optimizer.maxAutoroutePasses` whole autoroute passes.
+    #
+    # Ruling AI: the port runs `RouterBudget::disabled()` against this side's live 1000 ms
+    # `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`, which `javac` inlines and no reflection reaches, so a
+    # MATCH proves the limit never trips. `BatchOptimizer.deadlineMs` is never set — `runBatchLoop`
+    # is Task 14's and this driver does not call it.
+    #
+    # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4` sweeps
+    # this driver too: `boardShape` and `BoardStatistics` both reach `DesignRulesChecker`, which
+    # iterates `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3-4).
+    javaclass=P7T8
+    javapkg="autoroute.pipeline"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" sequence 1 5)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P7T2.java" "$DIFF_ROOT/java/P7T9.java")
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    run_timeout="${P7T8_TIMEOUT:-3600}"
     ;;
   p7t5)
     # Plan 7 Task 11: `BatchFanout`'s component/pin ordering (BatchFanout.java:35-78, :631-693,

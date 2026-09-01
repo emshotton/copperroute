@@ -187,7 +187,14 @@ AutorouteConnectionRouter         autoroute/maze/engine.rs
 # `ROSTERED`, which is correct: everything Task 11 ported is `private` in Java.
 BatchFanout                       lib.rs
 BatchFanout                       pipeline/fanout.rs
+# Plan 7 Task 13 added the second `BatchOptimizer` row, the `BatchFanout` shape: the type, its
+# `createForHeadless` constructor, `containsOnlyUnfixedTraces`, `optRouteItem`,
+# `getCurrentPosition`, `isTimedOut`, `calculateIncompleteCount` and the protected inner
+# `ReadSortedRouteItems` live in `pipeline/optimizer.rs`, and the class's still-deferred public
+# surface (`runBatchLoop`, `createForGui`, the five `NamedAlgorithm` identity overrides) is
+# rostered in `lib.rs` and lands in Task 14.
 BatchOptimizer                    lib.rs
+BatchOptimizer                    pipeline/optimizer.rs
 BatchOptimizerMultiThreaded       lib.rs
 OptimizeRouteTask                 lib.rs
 RoutingPipeline                   lib.rs

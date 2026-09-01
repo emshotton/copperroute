@@ -49,11 +49,16 @@
 //! [`RouterStop::poll_deadline`] requests `ALL`, which through `RoutingPipeline.java:117` *would*
 //! suppress the optimizer stage. Calling it at a per-stage site would therefore diverge.
 //!
-//! obligation: Task 13/14 (`BatchOptimizer.runBatchLoop`, `BatchOptimizer.optRoutePass`) must
-//! give their stage its own per-stage deadline. (The `BatchFanout.fanoutBoard`/`fanoutPass` half
-//! of this obligation was DISCHARGED in Task 12 — `fanout_board`/`fanout_pass` carry the
-//! stage-local `Option<Instant>` + `is_timed_out` described below and never call
-//! `poll_deadline`.) Each stage owes itself a
+//! obligation: Task 14 (`BatchOptimizer.runBatchLoop`, `BatchOptimizer.optRoutePass`) must
+//! give the optimizer stage its own per-stage deadline **at the two read sites** `:172` and
+//! `:308`. (The `BatchFanout.fanoutBoard`/`fanoutPass` half of this obligation was DISCHARGED in
+//! Task 12 — `fanout_board`/`fanout_pass` carry the stage-local `Option<Instant>` +
+//! `is_timed_out` described below and never call `poll_deadline`. **Task 13 discharged the
+//! `BatchOptimizer` declaration half**: `pipeline::BatchOptimizer` carries the same stage-local
+//! `deadline: Option<Instant>` + `is_timed_out` pair, with `BatchOptimizer.java:153-159`'s
+//! `settings.optimizer.timeoutString` derivation named on the field, and `is_timed_out()`
+//! (`:81-83`) reads it; Task 13 writes neither, because both writers are in `runBatchLoop` and
+//! `optRoutePass`.) Each stage owes itself a
 //! per-stage deadline — a plain `fr_board::TimeLimit` built from the stage's `timeoutString`,
 //! setting a stage-local `is_timed_out` — and must **not** call
 //! [`RouterStop::poll_deadline`] there. Only Task 10 (`AutorouteBatchLoop.run`) and Task 9

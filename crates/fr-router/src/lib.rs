@@ -299,7 +299,16 @@ pub mod prelude {
 // and the two progress publishers (`:508-576`)**. `EscapeStatistics.toString` (`:602-605`) and
 // `FanoutProgressListener` (`:578-583`) are `not ported:` there. The per-pin escape router the
 // loops call, `RoutingBoard.fanout`, is `board_ext::RoutingBoardExt::fanout` (Task 11).
-// added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.createForHeadless`, `BatchOptimizer.getCurrentPosition`, `BatchOptimizer.getId`, `BatchOptimizer.isTimedOut`.
+// `BatchOptimizer` is [`pipeline::BatchOptimizer`] from Plan 7 Task 13 for its **item half** —
+// the type and its field block (`:29-38`), `createForHeadless` (`:51-53`, `// renamed:` to `new`),
+// `isTimedOut` (`:81-83`), `containsOnlyUnfixedTraces` (`:85-92`), `optRouteItem` (`:395-514`),
+// `getCurrentPosition` (`:520-525`), the private `calculateIncompleteCount` (`:552-556`) and the
+// protected inner class `ReadSortedRouteItems` (`:563-659`), which is
+// [`pipeline::ReadSortedRouteItems`]. `scripts/audit-map/fr-router.map` gained a second row for
+// the class so both files are searched, and the three JMX samplers (`:94-122`) are `not ported:`
+// there. What is still owed is Task 14's, rostered **in `pipeline/optimizer.rs`** beside the code
+// with `// added in Task 14:` markers rather than here:
+// added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.getId`.
 // added in Plan 7: `BatchOptimizerMultiThreaded.getNumTasks`, `BatchOptimizerMultiThreaded.getNumTasksFinished`, `BatchOptimizerMultiThreaded.getWinningCandidateScore`, `BatchOptimizerMultiThreaded.isWinningCandidate` — behind quirk #143: `-mt` is not a threading policy on the headless path, so Plan 7 must not make one out of it.
 // added in Plan 7: `OptimizeRouteTask.run`, `OptimizeRouteTask.clean`, `OptimizeRouteTask.getItem`, `OptimizeRouteTask.getRouteResult`.
 // `AutorouteAirlineCalculator` landed in Plan 7 Task 9 as [`pipeline::calculate_airline`] — the
