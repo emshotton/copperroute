@@ -71,7 +71,10 @@ pub use fanout::{
     parse_timespan_seconds,
 };
 pub use item_route_result::ItemRouteResult;
-pub use optimizer::{BatchOptimizer, ReadSortedRouteItems, optimizer_ripup_costs};
+pub use optimizer::{
+    BatchOptimizer, OptimizerPassRecord, OptimizerResult, ReadSortedRouteItems,
+    optimizer_near_perfect_exit, optimizer_ripup_costs, optimizer_route_improved,
+};
 pub use pass_runner::AutoroutePassRunner;
 pub use stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState};
 

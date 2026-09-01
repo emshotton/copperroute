@@ -299,18 +299,31 @@ pub mod prelude {
 // and the two progress publishers (`:508-576`)**. `EscapeStatistics.toString` (`:602-605`) and
 // `FanoutProgressListener` (`:578-583`) are `not ported:` there. The per-pin escape router the
 // loops call, `RoutingBoard.fanout`, is `board_ext::RoutingBoardExt::fanout` (Task 11).
-// `BatchOptimizer` is [`pipeline::BatchOptimizer`] from Plan 7 Task 13 for its **item half** —
-// the type and its field block (`:29-38`), `createForHeadless` (`:51-53`, `// renamed:` to `new`),
-// `isTimedOut` (`:81-83`), `containsOnlyUnfixedTraces` (`:85-92`), `optRouteItem` (`:395-514`),
-// `getCurrentPosition` (`:520-525`), the private `calculateIncompleteCount` (`:552-556`) and the
-// protected inner class `ReadSortedRouteItems` (`:563-659`), which is
-// [`pipeline::ReadSortedRouteItems`]. `scripts/audit-map/fr-router.map` gained a second row for
-// the class so both files are searched, and the three JMX samplers (`:94-122`) are `not ported:`
-// there. What is still owed is Task 14's, rostered **in `pipeline/optimizer.rs`** beside the code
-// with `// added in Task 14:` markers rather than here:
-// added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.getId`.
-// added in Plan 7: `BatchOptimizerMultiThreaded.getNumTasks`, `BatchOptimizerMultiThreaded.getNumTasksFinished`, `BatchOptimizerMultiThreaded.getWinningCandidateScore`, `BatchOptimizerMultiThreaded.isWinningCandidate` — behind quirk #143: `-mt` is not a threading policy on the headless path, so Plan 7 must not make one out of it.
-// added in Plan 7: `OptimizeRouteTask.run`, `OptimizeRouteTask.clean`, `OptimizeRouteTask.getItem`, `OptimizeRouteTask.getRouteResult`.
+// `BatchOptimizer` is **wholly ported** as [`pipeline::BatchOptimizer`], and nothing of it is
+// owed: Plan 7 Task 13 landed the item half — the type and its field block (`:29-38`),
+// `createForHeadless` (`:51-53`, `// renamed:` to `new`), `isTimedOut` (`:81-83`),
+// `containsOnlyUnfixedTraces` (`:85-92`), `optRouteItem` (`:395-514`), `getCurrentPosition`
+// (`:520-525`), the private `calculateIncompleteCount` (`:552-556`) and the protected inner class
+// `ReadSortedRouteItems` (`:563-659`), which is [`pipeline::ReadSortedRouteItems`] — and **Task 14
+// landed the stage half**: `runBatchLoop` (`:125-272`), `optRoutePass` (`:279-385`),
+// `normalizeAlgorithm` (`:68-78`) and the five `NamedAlgorithm` identity overrides (`:527-550`),
+// which become five `renamed:` associated consts as `BatchAutorouter`'s did.
+// `scripts/audit-map/fr-router.map` gained a second row for the class so both files are searched;
+// the three JMX samplers (`:94-122`) and the GUI factory `createForGui` (`:56-66`) are
+// `not ported:` there, the latter with the three greps that make it the only door to the two
+// classes below.
+//
+// The two multithreaded classes are `not ported:` **here**, where the map points them, on the
+// evidence of three greps taken against the clone's HEAD at port time (Plan 7 Task 14; the
+// commit message carries their output verbatim). `BatchOptimizerMultiThreaded` is constructed at
+// exactly one line in `src/main`, `BatchOptimizer.java:59`, inside `createForGui`; `OptimizeRouteTask`
+// is constructed at exactly one line, `BatchOptimizerMultiThreaded.java:259`. Every other hit is
+// a javadoc `@see`, an import, or the one `instanceof` in `gui/workspace/progress/GuiRoutingJobWorker.java:305`
+// — i.e. GUI. `src/test`'s single hit is `NamedAlgorithmSealingTest.java:20`, a `getSuperclass()`
+// assertion. Controller ruling AM/General and quirk #143 both stand behind the line: `-mt` is not
+// a threading policy on the headless path, and Plan 7 must not make one out of it.
+// not ported: `BatchOptimizerMultiThreaded.getNumTasks` (`:80-83`), `BatchOptimizerMultiThreaded.getNumTasksFinished` (`:85-88`), `BatchOptimizerMultiThreaded.getWinningCandidateScore` (`:363-365`), `BatchOptimizerMultiThreaded.isWinningCandidate` (`:112-134`) — the 366-line multithreaded optimizer, reachable only from `BatchOptimizer.createForGui:59`, which the port does not have.
+// not ported: `OptimizeRouteTask.run` (`:38-84`), `OptimizeRouteTask.clean` (`:96-99`), `OptimizeRouteTask.getItem` (`:91-93`), `OptimizeRouteTask.getRouteResult` (`:86-88`) — the 100-line per-item task, constructed only at `BatchOptimizerMultiThreaded.java:259`; it is also the only caller that passes `optRouteItem`'s `disableSnapshots = true` (`OptimizeRouteTask.java:46`).
 // `AutorouteAirlineCalculator` landed in Plan 7 Task 9 as [`pipeline::calculate_airline`] — the
 // one method with a live caller (`AutorouteConnectionRouter.java:70`) — with its other five
 // members `not ported:` in `pipeline/airline.rs`; the map points the class there.

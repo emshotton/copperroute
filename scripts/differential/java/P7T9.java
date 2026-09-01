@@ -9,6 +9,7 @@ import static app.freerouting.autoroute.pipeline.BatchAutorouter.STOP_AT_PASS_MI
 import static app.freerouting.autoroute.pipeline.BatchAutorouter.STOP_AT_PASS_MODULO;
 
 import app.freerouting.autoroute.BoardHistory;
+import app.freerouting.autoroute.ItemRouteResult;
 import app.freerouting.board.facade.RoutingBoard;
 import app.freerouting.board.model.items.Item;
 import app.freerouting.board.model.items.Pin;
@@ -111,7 +112,7 @@ public final class P7T9 {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 1) {
-      System.err.println("usage: P7T9 <dsn> [maxPasses] [mode]");
+      System.err.println("usage: P7T9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]");
       System.exit(2);
     }
     PrintStream out =
@@ -121,23 +122,41 @@ public final class P7T9 {
     Path dsn = Paths.get(args[0]).toAbsolutePath().normalize();
     int maxPasses = args.length > 1 && !args[1].isBlank() ? Integer.parseInt(args[1]) : 1;
     String mode = args.length > 2 && !args[2].isBlank() ? args[2] : "router-only";
-    if (!"router-only".equals(mode) && !"router+fanout".equals(mode)) {
-      System.err.println("P7T9: mode must be 'router-only' or 'router+fanout', not: " + mode);
+    if (!"router-only".equals(mode)
+        && !"router+fanout".equals(mode)
+        && !"optimizer".equals(mode)
+        && !"optimizer+fanout".equals(mode)
+        && !"optimizer-shared".equals(mode)) {
+      System.err.println(
+          "P7T9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout' or"
+              + " 'optimizer-shared', not: "
+              + mode);
       System.exit(2);
     }
+    // `null` is Java's "no limit" for both settings (`:167-170`, `:318-320`), and `all` is how the
+    // command line spells it — a real arm of both gates, not a large number standing in for one.
+    Integer optPasses = args.length > 3 && !args[3].isBlank() ? boxedLimit(args[3]) : Integer.valueOf(2);
+    Integer optItems = args.length > 4 && !args[4].isBlank() ? boxedLimit(args[4]) : null;
 
     Path jar =
         Paths.get(RoutingBoard.class.getProtectionDomain().getCodeSource().getLocation().toURI())
             .toRealPath();
     out.printf(
-        "HEADER jar=%s bytes=%d mtime=%d fixture=%s maxPasses=%d mode=%s%n",
+        "HEADER jar=%s bytes=%d mtime=%d fixture=%s maxPasses=%d mode=%s%s%n",
         jar,
         Files.size(jar),
         Files.getLastModifiedTime(jar).toMillis(),
         dsn.getFileName(),
         maxPasses,
-        mode);
+        mode,
+        isOptimizerMode(mode) ? " optPasses=" + limitName(optPasses) + " optItems=" + limitName(optItems) : "");
     System.err.println("java-version " + System.getProperty("java.version"));
+
+    if (isOptimizerMode(mode)) {
+      runOptimizerMode(out, dsn, maxPasses, mode, optPasses, optItems);
+      out.flush();
+      return;
+    }
 
     // ---- half one: the transcription -----------------------------------------------------
     RoutingBoard board = P7T2.loadBoard(dsn);
@@ -194,16 +213,35 @@ public final class P7T9 {
     if (settings.fanout == null) {
       settings.fanout = new FanoutSettings();
     }
-    settings.fanout.enabled = "router+fanout".equals(mode) ? Boolean.TRUE : Boolean.FALSE;
+    settings.fanout.enabled =
+        (mode.endsWith("+fanout")) ? Boolean.TRUE : Boolean.FALSE;
     // Ruling AI: `fanoutPass:231-232`'s per-pin `TimeLimit` is built from this setting, so this
     // is where the fanout stage's wall clock is disabled — on both sides, with the same number.
     settings.fanout.maxMillisecondsPerPin = (long) Integer.MAX_VALUE;
     settings.setRunRouter(true);
-    settings.setRunOptimizer(false);
+    // `RoutingPipeline`'s constructor (`RoutingPipeline.java:36`) builds an optimizer only when
+    // this is set, which is what makes the optimizer modes a *pipeline* shape rather than a
+    // driver invention.
+    settings.setRunOptimizer(isOptimizerMode(mode));
     // `:408-410` — the snapshot event. Off, so `fireBoardSnapshotEvent` is not on this run's path;
     // the port's `RoutingEvent::BoardSnapshot` is pinned by a unit test instead.
     settings.saveIntermediateStages = Boolean.FALSE;
     return settings;
+  }
+
+  /** The three modes that drive {@code BatchOptimizer.runBatchLoop} (Plan 7 Task 14). */
+  static boolean isOptimizerMode(String mode) {
+    return mode.startsWith("optimizer");
+  }
+
+  /** {@code all} is Java's {@code null}, i.e. "no limit"; anything else is an {@code Integer}. */
+  static Integer boxedLimit(String arg) {
+    return "all".equals(arg) ? null : Integer.valueOf(Integer.parseInt(arg));
+  }
+
+  /** The inverse, for the {@code HEADER} line. */
+  static String limitName(Integer limit) {
+    return limit == null ? "all" : limit.toString();
   }
 
   // -----------------------------------------------------------------------------------------
@@ -579,6 +617,408 @@ public final class P7T9 {
 
     // :587.
     return !router.thread.isStopAutoRouterRequested();
+  }
+
+
+  // -----------------------------------------------------------------------------------------
+  // The optimizer stage — BatchOptimizer.java:125-272, :279-385 (Plan 7 Task 14)
+  // -----------------------------------------------------------------------------------------
+
+  /**
+   * Modes {@code optimizer}, {@code optimizer+fanout} and {@code optimizer-shared}: the whole
+   * {@code -dr}-equivalent run, router stage <b>and</b> optimizer stage, in this driver's two
+   * halves.
+   *
+   * <p>The routing prologue is the <i>real</i> {@code BatchAutorouter.runBatchLoop()} — the call
+   * the {@code router-only} mode already pins byte for byte on both sides — so a prologue
+   * divergence shows up on the {@code ROUTED} line rather than inside the optimizer.
+   * {@code router.board} is read back after it, because the best-board policy may have replaced it
+   * (quirk #209).
+   *
+   * <h2>The stop flag, and why there are two optimizer modes</h2>
+   *
+   * <p>{@code RoutingPipeline.run} ({@code :81-85}) hands both stages the one {@code job.thread},
+   * and <b>nothing in the tree ever lowers the flag</b>. Every ordinary exit from
+   * {@code AutorouteBatchLoop.run} raises {@code AUTO_ROUTER_ONLY} (quirk #214), the optimizer
+   * stage is gated on {@code isStopRequested()} — {@code ALL} — and so it runs; but
+   * {@code BatchAutorouter.autoroutePassesForOptimizingItem}'s loop head ({@code :268}) is
+   * {@code !isStopAutoRouterRequested()}, so every {@code optRouteItem} inside it routes
+   * <b>zero</b> passes, measures a worse board and restores its snapshot. That is the production
+   * shape, and mode {@code optimizer-shared} is it: the optimizer gets the prologue's own thread.
+   *
+   * <p>Modes {@code optimizer} and {@code optimizer+fanout} hand the stage a <b>fresh</b>
+   * {@code NeverStarted} on both sides, which is what makes the rest of {@code runBatchLoop}
+   * reachable at all. The {@code SEAM} line prints the flag the prologue left, so the difference
+   * between the two is measured rather than asserted.
+   *
+   * <h2>The progress throttle</h2>
+   *
+   * <p>{@code optRoutePass:335-338} computes {@code board.getStatistics()} <i>inside</i> a
+   * 1000 ms {@code ProgressThrottler} gate, so how often it runs depends on the wall clock — which
+   * ruling AI forbids a parity run from depending on. The transcription below therefore computes
+   * it <b>every</b> improved item, deterministically, and the port runs with
+   * {@code RouterBudget::disabled()}, whose {@code progress_throttle_ms = 0} does the same. The
+   * {@code [real]} half runs the jar's live gate, so {@code equalsTranscript} <b>measures</b> that
+   * the extra {@code BoardStatistics} constructions do not move the board — on the Java side
+   * alone, which is the only side that can settle it.
+   */
+  static void runOptimizerMode(
+      PrintStream out, Path dsn, int maxPasses, String mode, Integer optPasses, Integer optItems)
+      throws Exception {
+    boolean shared = "optimizer-shared".equals(mode);
+
+    // ---- half one: the transcription -----------------------------------------------------
+    RoutingBoard loaded = P7T2.loadBoard(dsn);
+    RouterSettings settings = buildSettings(loaded, maxPasses, mode);
+    applyOptimizerLimits(settings, optPasses, optItems);
+    BatchAutorouter router = P7T2.newRouter(loaded, settings);
+    out.println("[route]");
+    boolean routerReturned = router.runBatchLoop();
+    // `:552` — the loop writes its answer into `router.board` (quirk #209).
+    RoutingBoard board = router.board;
+    out.println("ROUTED returned=" + routerReturned + " " + P7T2.boardShape(board));
+    out.println(
+        "SEAM shared="
+            + shared
+            + " stopRequested="
+            + router.thread.isStopRequested()
+            + " stopAutoRouterRequested="
+            + router.thread.isStopAutoRouterRequested());
+
+    BatchOptimizer optimizer = newOptimizer(board, settings, shared ? router.thread : null);
+    out.println("[transcript]");
+    transcribeOptimizer(out, optimizer, board, settings);
+    String transcriptHash = board.getHash();
+
+    // ---- half two: the real method -------------------------------------------------------
+    RoutingBoard realLoaded = P7T2.loadBoard(dsn);
+    RouterSettings realSettings = buildSettings(realLoaded, maxPasses, mode);
+    applyOptimizerLimits(realSettings, optPasses, optItems);
+    BatchAutorouter realRouter = P7T2.newRouter(realLoaded, realSettings);
+    out.println("[real]");
+    boolean realRouterReturned = realRouter.runBatchLoop();
+    RoutingBoard realBoard = realRouter.board;
+    out.println("REAL-ROUTED returned=" + realRouterReturned + " " + P7T2.boardShape(realBoard));
+    BatchOptimizer realOptimizer =
+        newOptimizer(realBoard, realSettings, shared ? realRouter.thread : null);
+    realOptimizer.runBatchLoop();
+    out.println(
+        "OPT-REAL items="
+            + realOptimizer.totalItemsOptimized
+            + " timedOut="
+            + realOptimizer.isTimedOut()
+            + " useIncreasedRipupCosts="
+            + realOptimizer.useIncreasedRipupCosts
+            + " "
+            + P7T2.boardShape(realBoard)
+            + " equalsTranscript="
+            + realBoard.getHash().equals(transcriptHash));
+
+    // ---- the final board, in `P6T15aProbe`'s polyline format ------------------------------
+    out.println("[board]");
+    dumpBoard(out, board);
+  }
+
+  /**
+   * {@code BatchOptimizer.createForHeadless} ({@code :51-53}), which is what
+   * {@code RoutingPipeline}'s constructor calls for a headless job ({@code RoutingPipeline.java:46}).
+   * A {@code null} thread means "a fresh {@code NeverStarted}" — see the class comment's stop-flag
+   * section.
+   */
+  static BatchOptimizer newOptimizer(
+      RoutingBoard board, RouterSettings settings, app.freerouting.core.StoppableThread thread) {
+    RoutingJob job = new RoutingJob();
+    job.board = board;
+    job.routerSettings = settings;
+    job.thread = thread != null ? thread : new P7T2.NeverStarted();
+    return BatchOptimizer.createForHeadless(job);
+  }
+
+  /** The two {@code Integer} limits the optimizer modes drive, {@code null} being "no limit". */
+  static void applyOptimizerLimits(RouterSettings settings, Integer optPasses, Integer optItems) {
+    settings.optimizer.maxPasses = optPasses;
+    settings.optimizer.maxItems = optItems;
+    // Ruling AI: `:153-160` builds the stage's deadline from this string, and no corpus run sets
+    // it. Cleared explicitly so a settings source cannot make the run wall-clock dependent.
+    settings.optimizer.timeoutString = null;
+  }
+
+  /**
+   * {@code BatchOptimizer.runBatchLoop}'s body ({@code :125-272}), transcribed line for line, with
+   * one line per decision the loop takes and one {@code OPT-PASS} tuple per completed pass.
+   *
+   * <p>Everything it calls is the real thing — {@code BoardStatistics}, {@code getNormalizedScore}
+   * and, through {@link #transcribeOptRoutePass}, the real {@code optRouteItem}. The omissions are
+   * the ones the port also omits: every {@code job.log*} payload ({@code :126-130}, {@code :140-145},
+   * {@code :174}, {@code :184-191}, {@code :222-228}, {@code :256-271}), the {@code board.getHash()}
+   * reads those payloads and the event objects carry ({@code :142}, {@code :163}, {@code :195},
+   * {@code :198}, {@code :234}), the three JMX samplers ({@code :94-122}, used at {@code :149-151},
+   * {@code :202}, {@code :238-248}) and the three {@code fireTaskStateChangedEvent} calls, whose
+   * listener list is empty on the headless path.
+   */
+  static void transcribeOptimizer(
+      PrintStream out, BatchOptimizer optimizer, RoutingBoard board, RouterSettings settings) {
+    RoutingJob job = optimizer.job;
+    // :132.
+    optimizer.useIncreasedRipupCosts = true;
+    // :135-138.
+    BoardStatistics initialStats = board.getStatistics();
+    out.println(
+        "OPT-START score="
+            + Float.toString(initialStats.getNormalizedScore(settings.scoring))
+            + " incompletes="
+            + initialStats.connections.incompleteCount
+            + " violations="
+            + initialStats.clearanceViolations.totalCount
+            + " maxPasses="
+            + limitName(settings.optimizer.maxPasses)
+            + " maxItems="
+            + limitName(settings.optimizer.maxItems)
+            + " threshold="
+            + Float.toString(settings.optimizer.optimizationImprovementThreshold)
+            + " maxConsecutiveFailures="
+            + settings.optimizer.maxConsecutiveFailures);
+    // :153-160 — `timeoutString` is null on every corpus run (`applyOptimizerLimits` clears it),
+    // so `deadlineMs` stays null and neither `:172` nor `:308` can fire. Printed so that a
+    // settings change cannot make this run wall-clock dependent in silence.
+    out.println("OPT-DEADLINE timeoutString=" + settings.optimizer.timeoutString);
+    // :162-163.
+    out.println("OPT-STATE STARTED");
+
+    int currentPass = 0;
+    // :167-171 — `ALL` only.
+    while ((settings.optimizer.maxPasses == null || currentPass < settings.optimizer.maxPasses)
+        && (settings.optimizer.maxItems == null
+            || optimizer.totalItemsOptimized < settings.optimizer.maxItems)
+        && !job.thread.isStopRequested()) {
+      // :172-176 — the per-stage deadline; unreachable here, see `OPT-DEADLINE`.
+      // :177.
+      ++currentPass;
+      // :179.
+      float scoreBeforePass = board.getStatistics().getNormalizedScore(settings.scoring);
+      // :182-193.
+      if (scoreBeforePass * (1 + settings.optimizer.optimizationImprovementThreshold) >= 1000.0f) {
+        out.println(
+            "OPT-STOP reason=near-perfect pass="
+                + currentPass
+                + " score="
+                + Float.toString(scoreBeforePass));
+        break;
+      }
+      // :195-198.
+      out.println("OPT-STATE RUNNING pass=" + currentPass);
+      // :200.
+      boolean withPreferredDirections = currentPass % 2 != 0;
+      // :201 — the return value is discarded by Java; printed here because it is what `:365-368`
+      // decided.
+      float routeImproved =
+          transcribeOptRoutePass(
+              out, optimizer, board, settings, currentPass, withPreferredDirections);
+      // :204-206.
+      if (optimizer.isTimedOut()) {
+        out.println("OPT-STOP reason=timeout pass=" + currentPass);
+        break;
+      }
+      // :208.
+      BoardStatistics statisticsAfter = board.getStatistics();
+      float scoreAfterPass = statisticsAfter.getNormalizedScore(settings.scoring);
+      // :209-210.
+      double passImprovement =
+          scoreBeforePass > 0 ? (double) (scoreAfterPass - scoreBeforePass) / scoreBeforePass : 0;
+      double scoreImprovement;
+      // :212-218.
+      if (optimizer.useIncreasedRipupCosts && scoreAfterPass <= scoreBeforePass) {
+        optimizer.useIncreasedRipupCosts = false;
+        scoreImprovement = -1;
+      } else {
+        scoreImprovement = passImprovement;
+      }
+      out.println(
+          "OPT-PASS pass="
+              + currentPass
+              + " withPreferredDirections="
+              + withPreferredDirections
+              + " scoreBefore="
+              + Float.toString(scoreBeforePass)
+              + " scoreAfter="
+              + Float.toString(scoreAfterPass)
+              + " passImprovement="
+              + Double.toString(passImprovement)
+              + " scoreImprovement="
+              + Double.toString(scoreImprovement)
+              + " useIncreasedRipupCosts="
+              + optimizer.useIncreasedRipupCosts
+              + " routeImproved="
+              + Float.toString(routeImproved)
+              + " items="
+              + optimizer.totalItemsOptimized
+              + " "
+              + passRecord(currentPass, scoreAfterPass, statisticsAfter));
+      // :220-230.
+      if (scoreImprovement != -1
+          && scoreImprovement < settings.optimizer.optimizationImprovementThreshold) {
+        out.println(
+            "OPT-STOP reason=threshold pass="
+                + currentPass
+                + " scoreImprovement="
+                + Double.toString(scoreImprovement));
+        break;
+      }
+    }
+
+    // :233-234 — unconditional, whatever ended the loop.
+    out.println("OPT-STATE FINISHED pass=" + currentPass);
+    // :250-251.
+    BoardStatistics finalStats = new BoardStatistics(board);
+    // :252-255 — `completionStatus`, the only place Java tells the three endings apart.
+    String state =
+        optimizer.isTimedOut()
+            ? "TIMED_OUT"
+            : (job.thread.isStopRequested() ? "CANCELLED" : "FINISHED");
+    out.println(
+        "OPT-RESULT state="
+            + state
+            + " passesRun="
+            + currentPass
+            + " items="
+            + optimizer.totalItemsOptimized
+            + " timedOut="
+            + optimizer.isTimedOut()
+            + " useIncreasedRipupCosts="
+            + optimizer.useIncreasedRipupCosts
+            + " finalScore="
+            + Float.toString(finalStats.getNormalizedScore(settings.scoring))
+            + " "
+            + P7T2.boardShape(board));
+  }
+
+  /**
+   * {@code BatchOptimizer.optRoutePass}'s body ({@code :279-385}), transcribed, calling the
+   * <i>real</i> {@code optRouteItem} ({@code :395-514}) — the method {@code p7t8} already pins at
+   * 10/10 MATCH — once per item, with one {@code OPT-ITEM} line beside each call.
+   *
+   * <p>{@code :335-338}'s throttled {@code board.getStatistics()} is computed <b>unconditionally</b>
+   * here; see the class comment's progress-throttle section.
+   */
+  static float transcribeOptRoutePass(
+      PrintStream out,
+      BatchOptimizer optimizer,
+      RoutingBoard board,
+      RouterSettings settings,
+      int passNo,
+      boolean withPreferredDirections) {
+    RoutingJob job = optimizer.job;
+    // :281.
+    BoardStatistics boardStatisticsBefore = board.getStatistics();
+    // :284.
+    optimizer.progressThrottler.reset();
+    // :287.
+    optimizer.sortedRouteItems = optimizer.new ReadSortedRouteItems();
+    // :288.
+    optimizer.minCumulativeTraceLength = boardStatisticsBefore.traces.totalWeightedLength;
+    // :300-304.
+    int consecutiveFailures = 0;
+    int maxConsecutiveFailures =
+        settings.optimizer.maxConsecutiveFailures != null
+            ? settings.optimizer.maxConsecutiveFailures
+            : 50;
+    // :306.
+    float routeImproved = 0.0F;
+    int n = 0;
+    // :307.
+    while (true) {
+      // :308-313 — no deadline on this run.
+      // :314-317.
+      if (job.thread.isStopRequested()) {
+        out.println("OPT-PASS-STOP pass=" + passNo + " reason=stop n=" + n);
+        return routeImproved;
+      }
+      // :318-326.
+      if (settings.optimizer.maxItems != null
+          && settings.optimizer.maxItems > 0
+          && optimizer.totalItemsOptimized >= settings.optimizer.maxItems) {
+        out.println("OPT-PASS-STOP pass=" + passNo + " reason=max-items n=" + n);
+        break;
+      }
+      // :327-330.
+      Item currentItem = optimizer.sortedRouteItems.next();
+      if (currentItem == null) {
+        out.println("OPT-PASS-STOP pass=" + passNo + " reason=exhausted n=" + n);
+        break;
+      }
+      int itemId = currentItem.getId();
+      String kind = currentItem.getClass().getSimpleName();
+      // :331.
+      ItemRouteResult result = optimizer.optRouteItem(currentItem, withPreferredDirections, false);
+      // :332.
+      optimizer.totalItemsOptimized++;
+      boolean broke = false;
+      // :333-348.
+      if (result.improved()) {
+        consecutiveFailures = 0;
+        // :335-338, ungated — see the class comment.
+        board.getStatistics();
+        routeImproved =
+            (float)
+                (boardStatisticsBefore.items.viaCount != 0
+                        && boardStatisticsBefore.traces.totalLength != 0
+                    ? 1.0
+                        - ((((float) result.viaCount() / boardStatisticsBefore.items.viaCount)
+                                + (result.traceLength() / boardStatisticsBefore.traces.totalLength))
+                            / 2)
+                    : 0);
+      } else {
+        // :350-360.
+        consecutiveFailures++;
+        broke = consecutiveFailures >= maxConsecutiveFailures;
+      }
+      out.println(
+          "OPT-ITEM pass="
+              + passNo
+              + " n="
+              + n
+              + " id="
+              + itemId
+              + " kind="
+              + kind
+              + " improved="
+              + result.improved()
+              + " viaCount="
+              + result.viaCount()
+              + " traceLength="
+              + Double.toString(result.traceLength())
+              + " incompleteBefore="
+              + result.incompleteCountBefore()
+              + " incompleteAfter="
+              + result.incompleteCount()
+              + " improvementPercentage="
+              + Float.toString(result.improvementPercentage())
+              + " routeImproved="
+              + Float.toString(routeImproved)
+              + " consecutiveFailures="
+              + consecutiveFailures
+              + " items="
+              + optimizer.totalItemsOptimized
+              + " minCumulativeTraceLength="
+              + Double.toString(optimizer.minCumulativeTraceLength));
+      out.flush();
+      n++;
+      if (broke) {
+        out.println("OPT-PASS-STOP pass=" + passNo + " reason=consecutive-failures n=" + n);
+        break;
+      }
+    }
+    // :364.
+    optimizer.sortedRouteItems = null;
+    // :365-368.
+    if (optimizer.useIncreasedRipupCosts && (routeImproved == 0)) {
+      optimizer.useIncreasedRipupCosts = false;
+      routeImproved = -1;
+    }
+    // :371-372.
+    new BoardStatistics(board);
+    // :384.
+    return routeImproved;
   }
 
   /**

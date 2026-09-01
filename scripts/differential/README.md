@@ -2416,11 +2416,13 @@ the driver expects, or none at all.
   `router-dac2020-bm01-pass2`, is the same DSN at `ripupPassNo = 2`, which is a `p6t1` argument
   this driver does not take.
 
-- `p7t9 <dsn> [maxPasses] [mode]` — Plan 7 Task 10, **whole-board** level:
-  `AutorouteBatchLoop.run` (AutorouteBatchLoop.java:37-588), the pass loop with its
-  best-board policy and its two stagnation detectors. This is the whole
-  `-dr`-equivalent routing stage. Defaults `<dsn> 1 router-only`; `run.sh p7t9` with no
-  arguments uses `Issue143-rpi_splitter.dsn 1 router-only`.
+- `p7t9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]` — Plan 7 Task 10,
+  **whole-board** level: `AutorouteBatchLoop.run` (AutorouteBatchLoop.java:37-588), the
+  pass loop with its best-board policy and its two stagnation detectors — and, from Plan 7
+  Task 14, `BatchOptimizer.runBatchLoop` (BatchOptimizer.java:125-272) and `optRoutePass`
+  (`:279-385`) after it. This is the whole `-dr`-equivalent run. Defaults `<dsn> 1
+  router-only`; `run.sh p7t9` with no arguments uses `Issue143-rpi_splitter.dsn 1
+  router-only`.
 
   `mode` is `router-only` — `fanout.enabled = false`, `runOptimizer = false`, `runRouter
   = true` — or, from Plan 7 Task 12, **`router+fanout`**, which turns the SMD fanout
@@ -2468,6 +2470,57 @@ the driver expects, or none at all.
   `router+fanout`** at `maxPasses = 1` (`Issue730-DAC2020_bm11`, `Issue558-dev-board`,
   `Issue143-rpi_splitter`, `Issue026-J2_reference`,
   `Issue649-kicad_ecc83-pp_input_board_v1`).
+
+  ### The three optimizer modes (Plan 7 Task 14)
+
+  `optimizer`, `optimizer+fanout` and `optimizer-shared` run the router stage as above and
+  then the **optimizer stage** on its board, with `runOptimizer = true` so the shape is
+  `RoutingPipeline`'s (`RoutingPipeline.java:36`). `optPasses` and `optItems` go straight
+  into `settings.optimizer.maxPasses` and `settings.optimizer.maxItems`, where **`all` is
+  Java's `null`**, i.e. the "no limit" arm of `:167-170` and `:318-320` — not a large
+  number standing in for one. `settings.optimizer.timeoutString` is cleared explicitly, so
+  `:153-160` never builds a deadline and neither `:172` nor `:308` can fire (ruling AI).
+  Defaults: `optPasses = 2`, `optItems = all`.
+
+  The same two halves, one line per decision:
+
+  * `[route]` — the *real* `BatchAutorouter.runBatchLoop()` prologue, printed as `ROUTED`,
+    then `SEAM shared=… stopRequested=… stopAutoRouterRequested=…`, which is the flag the
+    router left behind.
+  * `[transcript]` — `runBatchLoop`'s body transcribed against `:125-272` and
+    `optRoutePass`' against `:279-385`, calling the *real* `optRouteItem` (the method
+    `p7t8` pins at 10 / 10) once per item: `OPT-START`, `OPT-DEADLINE`, `OPT-STATE`, one
+    `OPT-ITEM` per item, one `OPT-PASS-STOP` per pass (`exhausted` / `max-items` /
+    `consecutive-failures` / `stop`), one `OPT-PASS` tuple per completed pass, an
+    `OPT-STOP` naming the door the loop left by (`near-perfect` / `threshold` / `timeout`)
+    and `OPT-RESULT`.
+  * `[real]` — a freshly loaded board, the same prologue and then the real
+    `BatchOptimizer.runBatchLoop()`, with `OPT-REAL … equalsTranscript=<bool>`.
+
+  **`optimizer-shared` is the production shape, and it is a different program.**
+  `RoutingPipeline.run` (`:81-85`) hands both stages the one `job.thread` and nothing in
+  the tree ever lowers it, so after any ordinary router run the flag is
+  `AUTO_ROUTER_ONLY`: the optimizer stage runs (its loop head reads `ALL`) but
+  `BatchAutorouter.autoroutePassesForOptimizingItem:268` reads `!= NONE` and routes **zero**
+  passes per item, so every item is ripped, measured worse and restored. That is **quirk
+  #227**, and `optimizer-shared` measures it — six `OPT-ITEM improved=false` lines on
+  `Issue143-rpi_splitter` and an `OPT-RESULT` board identical to the `ROUTED` one. The
+  other two modes hand the stage a fresh flag on **both** sides, which is the only way the
+  rest of `runBatchLoop` is reachable at all.
+
+  **The progress throttle.** `optRoutePass:335-338` computes `board.getStatistics()`
+  *inside* a 1000 ms `ProgressThrottler` gate, so how often it runs depends on the wall
+  clock — which ruling AI forbids a parity run from depending on. The transcript half
+  computes it on **every** improved item, deterministically, and the port runs with
+  `RouterBudget::disabled()` (`progress_throttle_ms = 0`), which does the same; the
+  `[real]` half runs the jar's live gate, so `equalsTranscript=true` is the **measurement**
+  that the extra `BoardStatistics` constructions do not move the board. It reads `true` on
+  every stem.
+
+  **Acceptance: 15 / 15 MATCH** — `Issue143-rpi_splitter`, `Issue026-J2_reference` and
+  `Issue649-kicad_ecc83-pp_input_board_v1`, each at `optimizer` × `optPasses ∈ {1, 2,
+  all}` plus `optimizer+fanout` and `optimizer-shared` at `optPasses = 2`, all with
+  `optItems = all`.
 
   **Do not run a `p7t*` sweep while anything is editing `crates/**`.** `run.sh` rebuilds
   the Rust twin on every invocation, so a source edit that lands between two runs of a

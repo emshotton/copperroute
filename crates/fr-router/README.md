@@ -674,6 +674,7 @@ used in its header line — read it.
 | `java/P7T10.java` + `rust/src/bin/p7t10.rs` | **ruling AH's decision parity** — `getHash`'s three decision sites over 2 000 scripted board mutations (Plan 7 Task 3) | `P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 <dsn> <steps> [routeK] [warm\|raw]` |
 | `java/P7T5.java` + `rust/src/bin/p7t5.rs` | `BatchFanout`'s component/pin ordering for **all five** `pinSortingOrder` strings and `RoutingBoard.fanout` on every SMD pin (Plan 7 Task 11), plus one whole `fanoutPass` and the whole `fanoutBoard` (Task 12), each transcribed *and* called for real | `./scripts/differential/run.sh p7t5 <dsn> [passNo\|maxPasses] [sortingOrder] [order\|pin\|pass\|board]` |
 | `java/P7T8.java` + `rust/src/bin/p7t8.rs` | `BatchOptimizer`'s item half over a board routed by the real `runBatchLoop()` — `ReadSortedRouteItems`' whole visit sequence (mode `sequence`) and `optRouteItem` driven item by item with its two ripped sets and its ripup costs transcribed beside each call (mode `item`), Plan 7 Task 13. **No reflection**: the driver is in `app.freerouting.autoroute.pipeline`, which is what makes `optimizer.new ReadSortedRouteItems()` legal | `./scripts/differential/run.sh p7t8 <dsn> [sequence\|item] [routePasses] [items\|all]` |
+| `java/P7T9.java` + `rust/src/bin/p7t9.rs` | the whole `-dr`-equivalent run: `AutorouteBatchLoop.run` in modes `router-only` / `router+fanout` (Plan 7 Tasks 10 and 12) and, from **Plan 7 Task 14**, `BatchOptimizer.runBatchLoop` + `optRoutePass` in modes `optimizer` / `optimizer+fanout` / `optimizer-shared`, each transcribed *and* called for real. `optimizer-shared` is the production stop-flag shape, where quirk #227 makes every item reject | `./scripts/differential/run.sh p7t9 <dsn> [maxPasses] [mode] [optPasses\|all] [optItems\|all]` |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -2833,6 +2834,97 @@ a tie in the target sort, and two value-equal-but-distinct `ViaInfo`s — so a t
 that had to route a board to observe them would be a slow test of the router. The
 rest of `fanout` reads as Java does with two names substituted for two blocks.
 
+## The optimizer stage (Plan 7 Tasks 13 and 14)
+
+`src/pipeline/optimizer.rs` is the whole of `BatchOptimizer`. Task 13 landed the item
+half — the type, `createForHeadless` (`// renamed:` to `new`), `containsOnlyUnfixedTraces`,
+`optRouteItem`, `getCurrentPosition`, `calculateIncompleteCount` and the protected inner
+`ReadSortedRouteItems`. **Task 14 landed the stage half**: `runBatchLoop` (`:125-272`),
+`optRoutePass` (`:279-385`), `normalizeAlgorithm` (`:68-78`) and the five `NamedAlgorithm`
+identity overrides (`:527-550`) as five `renamed:` consts.
+
+`BatchOptimizer::run_batch_loop` answers an `OptimizerResult`: `:252-255`'s
+`completionStatus` as a `TaskState`, `currentPass`, `totalItemsOptimized`, `isTimedOut`
+and ruling 1(a)'s per-pass ladder as a `Vec<OptimizerPassRecord>`. **The record is a
+second type the plan's interface block did not name**, and it is here for the reason
+`BatchLoopResult::per_pass` is: this task's acceptance asks for "the per-pass
+score/incomplete tuple identical", and there is nowhere else to put it. Nothing in the
+loop reads it (ruling 11's shape).
+
+### The event says `FINISHED` even when the state does not
+
+`:233-234` fires `TaskState.FINISHED` **unconditionally**, whatever ended the loop —
+unlike `AutorouteBatchLoop`'s `:571-585`, which branches. The only place Java tells a
+timeout from a cancel from a clean finish is the `completionStatus` string at `:252-255`,
+a `job.logInfo` payload, and that is what `OptimizerResult::state` carries.
+`tests/optimizer.rs`'s `a_max_items_router_stop_disables_this_stage` asserts both halves
+at once: the recorded events are `STARTED` then `FINISHED` with nothing between them,
+and the state is `Cancelled`.
+
+### `useIncreasedRipupCosts` has two writers, on two different conditions
+
+`optRoutePass:365-368` clears it when **no item improved** in the pass, and
+`runBatchLoop:212-215` clears it when **the board score did not rise**. The first fires
+first, and when it does the second's guard is already false — so a pass that improves
+nothing costs the optimizer its increased ripup costs *and* takes `:220`'s threshold
+exit, ending the stage one pass earlier than `:214`'s comment ("keep the optimizer
+going to try with normal ripup costs") suggests. Pinned by
+`a_pass_that_improves_nothing_clears_the_increased_ripup_costs_and_ends_the_stage`.
+
+### Three arms lifted out, and why
+
+| lift-out | Java | the case the corpus cannot produce |
+|---|---|---|
+| `optimizer_near_perfect_exit` | `:182-183` | the arm is a `float` product against `1000.0f`; a threshold between half an `f32` ulp of 1 and a whole one makes `f32` and `f64` disagree, and no settings file lands there |
+| `BatchOptimizer::apply_pass_improvement` | `:209-218` | a second non-improving pass, which the corpus never reaches because the first one ends the stage |
+| `optimizer_route_improved` | `:340-348` | the `(float)`-cast twin of quirk #212's integer-truncating `ItemRouteResult.improvementPercentage`; both are ported, and `the_improvement_recomputation_disagrees_with_the_scorecard_field` asserts the two disagreeing values on one item |
+
+### Quirk #227: the stage runs and changes nothing after any ordinary router run
+
+`RoutingPipeline.run` (`:81-85`) hands both stages the one `job.thread`, and
+`grep -rn requestStop src/main` finds **no writer that lowers it**. Every ordinary exit
+from `AutorouteBatchLoop.run` raises `AUTO_ROUTER_ONLY` (quirk #214); `runBatchLoop:171`
+reads `ALL`, so the stage runs; but `BatchAutorouter.autoroutePassesForOptimizingItem:268`
+reads `!= NONE`, so every `optRouteItem` in it routes **zero** passes, measures a worse
+board and restores its snapshot. Measured on the JVM: `p7t9 <rpi> 1 optimizer-shared`
+prints six `OPT-ITEM improved=false` lines and an `OPT-RESULT` board identical to the
+`ROUTED` one. **Task 15's `run_pipeline` must reproduce that, not reset the flag** — the
+port's `run_batch_loop` takes the caller's `RouterStop` and does not clear it.
+
+### The stage's own clock, and ruling AI's obligation discharged
+
+`:153-160` builds `deadlineMs` from `settings.optimizer.timeoutString` and `:172` /
+`:308` read it; both write `isTimedOut` and **neither touches the stop flag**, because
+`RoutingPipeline.java:117` gates this very stage on that flag. `BatchOptimizer::
+is_deadline_reached` is the reader, and `pipeline/stop.rs`'s `obligation:` — declared in
+Task 4, half-discharged for `BatchFanout` in Task 12 and for the field in Task 13 — is
+**closed** here. `DefaultSettings` ships no `optimizer.timeout`, so no corpus run has a
+deadline at all; `the_stage_deadline_times_out_without_touching_the_stop_flag` builds one
+from `"0"` and asserts the flag stayed `NONE`.
+
+`scripts/differential/run.sh p7t9 <dsn> 1 [optimizer|optimizer+fanout|optimizer-shared]
+[optPasses|all] [optItems|all]` is the evidence: **15 runs, 15 MATCH** over
+`Issue143-rpi_splitter`, `Issue026-J2_reference` and
+`Issue649-kicad_ecc83-pp_input_board_v1`, plus `examples/tutorial_board` (both modes),
+`Issue143-rpi_splitter` at router `maxPasses = 2` and `Issue508-DAC2020_bm01`.
+
+### Two stems DIFF, and the cause is **not** in this file (ruling 1's row)
+
+| stem | rung reached | first difference | diagnosis |
+|---|---|---|---|
+| `Issue558-dev-board` (`optimizer`, `optimizer+fanout`) | (a) pass tuple ✅ through item 13, then (b) fails | `p7t8 <dev-board> item 1 20`: `BOARD n=6 maxIdAfter=14378` (Java) vs `14377` (port) | `optRouteItem`'s **failed** attempt on item 6 burns 188 ids in Java and 187 in the port. Every board number is identical there — items, traces, vias, incompletes, cumulative length. The shift then flips `ReadSortedRouteItems`' strict-`<` tie (`:628-632`) over the descending-id walk (quirk #63) between two geometrically equal traces, and the runs diverge for real from item 14 |
+| `Issue026-J2_reference` at router `maxPasses = 2` | same | `p7t8 <j2> item 2 30`: `BOARD n=4 maxIdAfter=5244` vs `5208` | the same shape, 36 ids |
+
+**It is pre-existing and it is not the optimizer stage's.** `p7t8 item` is Plan 7 Task 13's driver
+and runs `optRouteItem` with the stop conditions removed — no `runBatchLoop`, no `optRoutePass` on
+the path. `p7t8 <dev-board> sequence` MATCHes (614 lines), so the *reader* agrees on the unmutated
+board; `p7t9 <dev-board> 1 router-only` MATCHes including its `maxId=` line, so plain routing's id
+trail agrees. Both sides are deterministic — three consecutive Java runs and two port runs are
+byte-identical. The extra allocation is one item in ~188, somewhere under `route_connection_full`,
+and it leaves no trace on the board; localising it needs a `p7t8` mode that prints one line per
+**inserted** item, the way `p6t1` prints one per connection. Recorded here rather than left in a
+task report because **Task 16's SES parity on `Issue558-dev-board` will trip on it**.
+
 ## What Plan 7 inherits
 
 Everything above `route_connection`, and nothing below it. Each row names the
@@ -2845,7 +2937,7 @@ crates/` is the complete inventory.
 | `AutorouteConnectionRouter.route` **steps 6-8** — the necked retry, the strict-DRC rollback, the failure-log write | `autoroute/pipeline/AutorouteConnectionRouter.java:160-233` | `src/autoroute/maze/engine.rs:1818`; `src/lib.rs` roster; obligation register |
 | ~~the **pass loop** and the per-pass / per-item recovery boundaries~~ — **DONE, Plan 7 Tasks 9 and 10**: `AutoroutePassRunner.runSingleThread` and its whole-body catch (boundary 7), and `AutorouteBatchLoop.run` with `:44-56`'s propagating throw (boundary 9). What is left of the row is `BatchAutorouterThread.java:537` (boundary 8), on the dead multithreaded path | `AutoroutePassRunner.java:156, :331-335`, `AutorouteBatchLoop.java:44-56`; `BatchAutorouterThread.java:537` | `src/pipeline/pass_runner.rs`, `src/pipeline/batch_loop.rs`; `src/lib.rs` roster for the one that is left |
 | ~~the **fanout** pre-pass~~ — **DONE, both halves**: `RoutingBoard.fanout` and `BatchFanout`'s ordering in Plan 7 Task 11, and `fanoutBoard` / `fanoutPass` / `publishProgress` in **Task 12**, which also discharged `AutorouteBatchLoop`'s loud stub. With it `ctrl.isFanout` is set on a real run for the first time, so `locator.rs:267`'s fanout arm and `engine.rs:1374` are now on a live path | `BatchFanout.java:81-163`, `:166-576`, `RoutingBoard.java:978-1110`, `AutorouteBatchLoop.java:83-218` | `src/board_ext/routing_board_ext.rs`, `src/pipeline/fanout.rs`, `src/pipeline/batch_loop.rs` |
-| the **optimizer** — **half done in Plan 7 Task 13**: `BatchOptimizer`'s type, `createForHeadless`, `containsOnlyUnfixedTraces`, `optRouteItem`, `getCurrentPosition`, `isTimedOut` and the protected inner `ReadSortedRouteItems`, plus `BatchAutorouter.autoroutePassesForOptimizingItem`. `ItemRouteResult` landed in Task 9. What is left is Task 14's `runBatchLoop`/`optRoutePass` and the roster for `BatchOptimizerMultiThreaded` / `OptimizeRouteTask` / `createForGui` | `autoroute/pipeline/BatchOptimizer.java:395-514`, `:563-659`, `BatchAutorouter.java:245-281`; the rest in `autoroute/pipeline/**` | `src/pipeline/optimizer.rs`, `src/pipeline/batch_autorouter.rs`; `src/lib.rs` roster for what is left |
+| ~~the **optimizer**~~ — **DONE, both halves**: the item half in Plan 7 Task 13 (`BatchOptimizer`'s type, `createForHeadless`, `containsOnlyUnfixedTraces`, `optRouteItem`, `getCurrentPosition`, `isTimedOut`, the protected inner `ReadSortedRouteItems` and `BatchAutorouter.autoroutePassesForOptimizingItem`) and the **stage half in Task 14** (`runBatchLoop`, `optRoutePass`, `normalizeAlgorithm` and the five identity consts), with `BatchOptimizerMultiThreaded` / `OptimizeRouteTask` / `createForGui` rostered `not ported:`. `ItemRouteResult` landed in Task 9 | `autoroute/pipeline/BatchOptimizer.java:125-272`, `:279-385`, `:395-514`, `:563-659`, `BatchAutorouter.java:245-281` | `src/pipeline/optimizer.rs`, `src/pipeline/batch_autorouter.rs`; `src/lib.rs` for the two multithread classes |
 | ~~`ViaOptimizer`, whole~~ — **DONE**: `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` in Plan 7 Task 6, the three `repositionVia` overloads in Task 7 (which also deleted ruling B1's `unimplemented!` and its guard predicate) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:302-365`, `:367-429`, `:434-713`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs` in Task 6) |
 | ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |
 | ~~`RoutingBoard.moveDrillItem`~~ — **rostered `not ported:` in Plan 7 Task 6**: the plan's scan ruling 3 said `ViaOptimizer` moves vias through it, and it does not (`ViaOptimizer.java:136`, `:244`, `:282` call `DrillItemMover` directly). Its only Java caller is `MoveComponent.insert:156`, whose only caller is `gui/interactive/DragItemState.java:56-61` | `RoutingBoard.java:252-295` | `crates/fr-board/src/board/mod.rs`'s `not ported:` marker, with the grep evidence |

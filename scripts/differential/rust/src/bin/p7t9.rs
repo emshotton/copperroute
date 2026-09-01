@@ -28,10 +28,12 @@
 use std::io::{BufWriter, Write};
 
 use fr_board::prelude::*;
-use fr_dsn::java_float_to_string;
+use fr_dsn::{java_double_to_string, java_float_to_string};
 use fr_router::pipeline::{
-    AutorouteBatchLoop, BatchLoopResult, NoopProgressSink, RouterBudget, RouterStop, TaskState,
+    optimizer_route_improved, AutorouteBatchLoop, BatchLoopResult, BatchOptimizer, ItemRouteResult,
+    NoopProgressSink, ReadSortedRouteItems, RouterBudget, RouterStop, TaskState,
 };
+use fr_router::score::BoardStatistics;
 use fr_settings::RouterSettings;
 
 #[path = "../p7t_common.rs"]
@@ -53,10 +55,26 @@ fn main() {
         .get(2)
         .filter(|a| !a.is_empty())
         .map_or("router-only", String::as_str);
-    if mode != "router-only" && mode != "router+fanout" {
-        eprintln!("p7t9: mode must be 'router-only' or 'router+fanout', not: {mode}");
+    if !matches!(
+        mode,
+        "router-only" | "router+fanout" | "optimizer" | "optimizer+fanout" | "optimizer-shared"
+    ) {
+        eprintln!(
+            "p7t9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout' \
+             or 'optimizer-shared', not: {mode}"
+        );
         std::process::exit(2);
     }
+    // `None` is Java's `null`, i.e. "no limit" for both `optimizer.maxPasses` (`:167-168`) and
+    // `optimizer.maxItems` (`:169-170`, `:318-320`), and `all` is how the command line spells it.
+    let opt_passes: Option<i32> = args
+        .get(3)
+        .filter(|a| !a.is_empty())
+        .map_or(Some(2), |a| boxed_limit(a));
+    let opt_items: Option<i32> = args
+        .get(4)
+        .filter(|a| !a.is_empty())
+        .and_then(|a| boxed_limit(a));
 
     let stdout = std::io::stdout();
     let mut out = BufWriter::new(stdout.lock());
@@ -65,12 +83,27 @@ fn main() {
     writeln!(
         out,
         "HEADER jar={jar} bytes={bytes} mtime={mtime} fixture={} maxPasses={max_passes} \
-         mode={mode}",
+         mode={mode}{}",
         dsn.file_name().expect("a file name").to_string_lossy(),
+        if is_optimizer_mode(mode) {
+            format!(
+                " optPasses={} optItems={}",
+                limit_name(opt_passes),
+                limit_name(opt_items)
+            )
+        } else {
+            String::new()
+        },
     )
     .expect("write");
     if let Ok(exe) = std::env::current_exe() {
         eprintln!("rust-binary {}", exe.display());
+    }
+
+    if is_optimizer_mode(mode) {
+        run_optimizer_mode(&mut out, &dsn, max_passes, mode, opt_passes, opt_items);
+        out.flush().expect("flush");
+        return;
     }
 
     // ---- half one: the transcription ---------------------------------------------------------
@@ -130,14 +163,35 @@ fn build_settings(board: &Board, max_passes: i32, mode: &str) -> RouterSettings 
     // `RouterSettings.setFanoutEnabled(…)` (RouterSettings.java:583-591): the object must exist,
     // and `isFanoutEnabled` (`:578-580`) then answers the flag.
     let fanout = settings.fanout.get_or_insert_with(Default::default);
-    fanout.enabled = Some(mode == "router+fanout");
+    fanout.enabled = Some(mode.ends_with("+fanout"));
     // Ruling AI, and the same knob `P7T9.buildSettings` writes: `fanoutPass:231-232` builds its
     // per-pin `TimeLimit` from this setting, so this is where the fanout stage's clock goes off.
     fanout.max_milliseconds_per_pin = Some(i64::from(i32::MAX));
     settings.set_run_router(true);
-    settings.set_run_optimizer(false);
+    // `RoutingPipeline`'s constructor (`RoutingPipeline.java:36`) builds an optimizer only when
+    // this is set, which is what makes the optimizer modes a *pipeline* shape.
+    settings.set_run_optimizer(is_optimizer_mode(mode));
     settings.save_intermediate_stages = Some(false);
     settings
+}
+
+/// `P7T9.isOptimizerMode` — the three modes that drive `BatchOptimizer::run_batch_loop`.
+fn is_optimizer_mode(mode: &str) -> bool {
+    mode.starts_with("optimizer")
+}
+
+/// `P7T9.boxedLimit` — `all` is Java's `null`.
+fn boxed_limit(arg: &str) -> Option<i32> {
+    if arg == "all" {
+        None
+    } else {
+        Some(arg.parse().expect("an integer limit or `all`"))
+    }
+}
+
+/// `P7T9.limitName`, the inverse.
+fn limit_name(limit: Option<i32>) -> String {
+    limit.map_or_else(|| "all".to_string(), |value| value.to_string())
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -556,4 +610,421 @@ fn java_task_state(state: TaskState) -> &'static str {
 /// `BoardStatistics`' `Option<i32>` counters, as `AutorouteBatchLoop`'s own `stat` reads them.
 fn stat(value: Option<i32>) -> usize {
     usize::try_from(value.expect("the computing constructor fills every count")).unwrap_or(0)
+}
+
+// ------------------------------------------------------------------------------------------------
+// The optimizer stage — BatchOptimizer.java:125-272, :279-385 (Plan 7 Task 14)
+// ------------------------------------------------------------------------------------------------
+
+/// `P7T9.runOptimizerMode` — the whole `-dr`-equivalent run, router stage **and** optimizer stage,
+/// in this driver's two halves. See `P7T9.java`'s method comment for the stop-flag seam that makes
+/// `optimizer-shared` a different program from `optimizer`, and for why the transcription computes
+/// `:335-338`'s statistics unconditionally.
+fn run_optimizer_mode<W: Write>(
+    out: &mut W,
+    dsn: &std::path::Path,
+    max_passes: i32,
+    mode: &str,
+    opt_passes: Option<i32>,
+    opt_items: Option<i32>,
+) {
+    let shared = mode == "optimizer-shared";
+
+    // ---- half one: the transcription ---------------------------------------------------------
+    let mut board = p7t_common::load_board(dsn);
+    let mut settings = build_settings(&board, max_passes, mode);
+    apply_optimizer_limits(&mut settings, opt_passes, opt_items);
+    let stop = RouterStop::new();
+    let mut sink = NoopProgressSink;
+    writeln!(out, "[route]").expect("write");
+    let routed: BatchLoopResult = AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("the corpus stems all have a routable signal layer");
+    writeln!(
+        out,
+        "ROUTED returned={} {}",
+        routed.continue_routing,
+        p7t_common::board_shape(&mut board)
+    )
+    .expect("write");
+    writeln!(
+        out,
+        "SEAM shared={shared} stopRequested={} stopAutoRouterRequested={}",
+        stop.is_stop_requested(),
+        stop.is_stop_auto_router_requested()
+    )
+    .expect("write");
+
+    // `BatchOptimizer.createForHeadless` (`:51-53`). A fresh `RouterStop` is `P7T9.newOptimizer`'s
+    // fresh `NeverStarted`; the shared one is the prologue's own flag, i.e. what
+    // `RoutingPipeline.run` hands the stage.
+    let fresh = RouterStop::new();
+    let optimizer_stop: &RouterStop = if shared { &stop } else { &fresh };
+    let mut optimizer = BatchOptimizer::new(&settings);
+    writeln!(out, "[transcript]").expect("write");
+    transcribe_optimizer(out, &mut optimizer, &mut board, &settings, optimizer_stop);
+    let transcript_hash = board.structural_hash();
+
+    // ---- half two: the real method -------------------------------------------------------------
+    let mut real_board = p7t_common::load_board(dsn);
+    let mut real_settings = build_settings(&real_board, max_passes, mode);
+    apply_optimizer_limits(&mut real_settings, opt_passes, opt_items);
+    let real_stop = RouterStop::new();
+    let mut real_sink = NoopProgressSink;
+    writeln!(out, "[real]").expect("write");
+    let real_routed: BatchLoopResult = AutorouteBatchLoop::run(
+        &mut real_board,
+        &real_settings,
+        &real_stop,
+        RouterBudget::disabled(),
+        &mut real_sink,
+    )
+    .expect("the corpus stems all have a routable signal layer");
+    writeln!(
+        out,
+        "REAL-ROUTED returned={} {}",
+        real_routed.continue_routing,
+        p7t_common::board_shape(&mut real_board)
+    )
+    .expect("write");
+    let real_fresh = RouterStop::new();
+    let real_optimizer_stop: &RouterStop = if shared { &real_stop } else { &real_fresh };
+    let mut real_optimizer = BatchOptimizer::new(&real_settings);
+    let real_result = real_optimizer
+        .run_batch_loop(
+            &mut real_board,
+            real_optimizer_stop,
+            RouterBudget::disabled(),
+            &mut real_sink,
+        )
+        .expect("the optimizer stage cannot fail on the corpus");
+    writeln!(
+        out,
+        "OPT-REAL items={} timedOut={} useIncreasedRipupCosts={} {} equalsTranscript={}",
+        real_result.items_optimized,
+        real_result.timed_out,
+        real_optimizer.use_increased_ripup_costs,
+        p7t_common::board_shape(&mut real_board),
+        real_board.structural_hash() == transcript_hash
+    )
+    .expect("write");
+
+    // ---- the final board, in `P6T15aProbe`'s polyline format ------------------------------------
+    writeln!(out, "[board]").expect("write");
+    p7t_common::dump_board(out, &board);
+}
+
+/// `P7T9.applyOptimizerLimits`.
+fn apply_optimizer_limits(
+    settings: &mut RouterSettings,
+    opt_passes: Option<i32>,
+    opt_items: Option<i32>,
+) {
+    let optimizer = settings.optimizer.get_or_insert_with(Default::default);
+    optimizer.max_passes = opt_passes;
+    optimizer.max_items = opt_items;
+    // Ruling AI: `:153-160` builds the stage's deadline from this string, and no corpus run sets
+    // it. Cleared explicitly so a settings source cannot make the run wall-clock dependent.
+    optimizer.timeout_string = None;
+}
+
+/// `P7T9.transcribeOptimizer`: `runBatchLoop`'s body (`BatchOptimizer.java:125-272`) written out
+/// against the port's own primitives, calling the real `BoardStatistics`, the real
+/// `normalized_score` and — through [`transcribe_opt_route_pass`] — the real
+/// [`BatchOptimizer::opt_route_item`].
+fn transcribe_optimizer<W: Write>(
+    out: &mut W,
+    optimizer: &mut BatchOptimizer<'_>,
+    board: &mut Board,
+    settings: &RouterSettings,
+    stop: &RouterStop,
+) {
+    let scoring = settings.scoring.as_ref().expect("the scoring block");
+    let optimizer_settings = settings.optimizer.as_ref().expect("the optimizer block");
+    let threshold = optimizer_settings
+        .optimization_improvement_threshold
+        .expect("the threshold");
+    // :132.
+    optimizer.use_increased_ripup_costs = true;
+    // :135-138.
+    let initial_stats = BoardStatistics::new(board);
+    writeln!(
+        out,
+        "OPT-START score={} incompletes={} violations={} maxPasses={} maxItems={} threshold={} \
+         maxConsecutiveFailures={}",
+        java_float_to_string(initial_stats.normalized_score(scoring)),
+        stat(initial_stats.connections.incomplete_count),
+        stat(initial_stats.clearance_violations.total_count),
+        limit_name(optimizer_settings.max_passes),
+        limit_name(optimizer_settings.max_items),
+        java_float_to_string(threshold),
+        optimizer_settings
+            .max_consecutive_failures
+            .map_or_else(|| "null".to_string(), |value| value.to_string()),
+    )
+    .expect("write");
+    // :153-160 — `timeoutString` is `None` on every corpus run.
+    writeln!(
+        out,
+        "OPT-DEADLINE timeoutString={}",
+        optimizer_settings
+            .timeout_string
+            .as_deref()
+            .unwrap_or("null")
+    )
+    .expect("write");
+    // :162-163.
+    writeln!(out, "OPT-STATE STARTED").expect("write");
+
+    let mut current_pass = 0_i32;
+    // :167-171 — `ALL` only.
+    while optimizer_settings
+        .max_passes
+        .is_none_or(|max_passes| current_pass < max_passes)
+        && optimizer_settings
+            .max_items
+            .is_none_or(|max_items| optimizer.total_items_optimized < max_items)
+        && !stop.is_stop_requested()
+    {
+        // :172-176 — the per-stage deadline; unreachable here, see `OPT-DEADLINE`.
+        // :177.
+        current_pass += 1;
+        // :179.
+        let score_before_pass = BoardStatistics::new(board).normalized_score(scoring);
+        // :182-193.
+        if score_before_pass * (1.0 + threshold) >= 1000.0 {
+            writeln!(
+                out,
+                "OPT-STOP reason=near-perfect pass={current_pass} score={}",
+                java_float_to_string(score_before_pass)
+            )
+            .expect("write");
+            break;
+        }
+        // :195-198.
+        writeln!(out, "OPT-STATE RUNNING pass={current_pass}").expect("write");
+        // :200.
+        let with_preferred_directions = current_pass % 2 != 0;
+        // :201.
+        let route_improved = transcribe_opt_route_pass(
+            out,
+            optimizer,
+            board,
+            settings,
+            current_pass,
+            with_preferred_directions,
+            stop,
+        );
+        // :204-206.
+        if optimizer.is_timed_out() {
+            writeln!(out, "OPT-STOP reason=timeout pass={current_pass}").expect("write");
+            break;
+        }
+        // :208.
+        let statistics_after = BoardStatistics::new(board);
+        let score_after_pass = statistics_after.normalized_score(scoring);
+        // :209-218 — the port's own arm, so the transcription cannot drift from it.
+        let (pass_improvement, score_improvement) =
+            optimizer.apply_pass_improvement(score_before_pass, score_after_pass);
+        writeln!(
+            out,
+            "OPT-PASS pass={current_pass} withPreferredDirections={with_preferred_directions} \
+             scoreBefore={} scoreAfter={} passImprovement={} scoreImprovement={} \
+             useIncreasedRipupCosts={} routeImproved={} items={} pass={current_pass} score={} \
+             incompletes={} violations={} vias={} traces={}",
+            java_float_to_string(score_before_pass),
+            java_float_to_string(score_after_pass),
+            java_double_to_string(pass_improvement),
+            java_double_to_string(score_improvement),
+            optimizer.use_increased_ripup_costs,
+            java_float_to_string(route_improved),
+            optimizer.total_items_optimized,
+            java_float_to_string(score_after_pass),
+            stat(statistics_after.connections.incomplete_count),
+            stat(statistics_after.clearance_violations.total_count),
+            stat(statistics_after.items.via_count),
+            stat(statistics_after.items.trace_count),
+        )
+        .expect("write");
+        // :220-230.
+        if score_improvement != -1.0 && score_improvement < f64::from(threshold) {
+            writeln!(
+                out,
+                "OPT-STOP reason=threshold pass={current_pass} scoreImprovement={}",
+                java_double_to_string(score_improvement)
+            )
+            .expect("write");
+            break;
+        }
+    }
+
+    // :233-234 — unconditional, whatever ended the loop.
+    writeln!(out, "OPT-STATE FINISHED pass={current_pass}").expect("write");
+    // :250-251.
+    let final_stats = BoardStatistics::new(board);
+    // :252-255.
+    let state = if optimizer.is_timed_out() {
+        "TIMED_OUT"
+    } else if stop.is_stop_requested() {
+        "CANCELLED"
+    } else {
+        "FINISHED"
+    };
+    writeln!(
+        out,
+        "OPT-RESULT state={state} passesRun={current_pass} items={} timedOut={} \
+         useIncreasedRipupCosts={} finalScore={} {}",
+        optimizer.total_items_optimized,
+        optimizer.is_timed_out(),
+        optimizer.use_increased_ripup_costs,
+        java_float_to_string(final_stats.normalized_score(scoring)),
+        p7t_common::board_shape(board)
+    )
+    .expect("write");
+}
+
+/// `P7T9.transcribeOptRoutePass`: `optRoutePass`' body (`BatchOptimizer.java:279-385`), calling the
+/// real [`BatchOptimizer::opt_route_item`] once per item.
+#[allow(clippy::too_many_arguments)]
+fn transcribe_opt_route_pass<W: Write>(
+    out: &mut W,
+    optimizer: &mut BatchOptimizer<'_>,
+    board: &mut Board,
+    settings: &RouterSettings,
+    pass_no: i32,
+    with_preferred_directions: bool,
+    stop: &RouterStop,
+) -> f32 {
+    let optimizer_settings = settings.optimizer.as_ref().expect("the optimizer block");
+    // :281.
+    let board_statistics_before = BoardStatistics::new(board);
+    // :284.
+    optimizer.progress_throttler.reset();
+    // :287.
+    optimizer.sorted_route_items = Some(ReadSortedRouteItems::new());
+    // :288.
+    optimizer.min_cumulative_trace_length = f64::from(
+        board_statistics_before
+            .traces
+            .total_weighted_length
+            .unwrap_or(0.0),
+    );
+    // :300-304.
+    let mut consecutive_failures = 0_i32;
+    let max_consecutive_failures = optimizer_settings.max_consecutive_failures.unwrap_or(50);
+    // :306.
+    let mut route_improved = 0.0_f32;
+    let mut n = 0_i32;
+    let mut sink = NoopProgressSink;
+    // :307.
+    loop {
+        // :308-313 — no deadline on this run.
+        // :314-317.
+        if stop.is_stop_requested() {
+            writeln!(out, "OPT-PASS-STOP pass={pass_no} reason=stop n={n}").expect("write");
+            return route_improved;
+        }
+        // :318-326.
+        if optimizer_settings
+            .max_items
+            .is_some_and(|max_items| max_items > 0 && optimizer.total_items_optimized >= max_items)
+        {
+            writeln!(out, "OPT-PASS-STOP pass={pass_no} reason=max-items n={n}").expect("write");
+            break;
+        }
+        // :327-330.
+        let Some(current_item) = reader_next(optimizer, board) else {
+            writeln!(out, "OPT-PASS-STOP pass={pass_no} reason=exhausted n={n}").expect("write");
+            break;
+        };
+        let kind = p7t_common::java_class_name(
+            board
+                .get_item(current_item)
+                .expect("the reader returns live items"),
+        );
+        // :331.
+        let result: ItemRouteResult = optimizer
+            .opt_route_item(
+                board,
+                current_item,
+                with_preferred_directions,
+                false,
+                stop,
+                RouterBudget::disabled(),
+                &mut sink,
+            )
+            .expect("optRouteItem cannot fail on the corpus");
+        // :332.
+        optimizer.total_items_optimized += 1;
+        let mut broke = false;
+        // :333-348.
+        if result.improved() {
+            consecutive_failures = 0;
+            // :335-338, ungated — see `P7T9.java`'s progress-throttle section.
+            BoardStatistics::new(board);
+            route_improved = optimizer_route_improved(
+                &result,
+                board_statistics_before.items.via_count.unwrap_or(0),
+                board_statistics_before.traces.total_length.unwrap_or(0.0),
+            );
+        } else {
+            // :350-360.
+            consecutive_failures += 1;
+            broke = consecutive_failures >= max_consecutive_failures;
+        }
+        writeln!(
+            out,
+            "OPT-ITEM pass={pass_no} n={n} id={} kind={kind} improved={} viaCount={} \
+             traceLength={} incompleteBefore={} incompleteAfter={} improvementPercentage={} \
+             routeImproved={} consecutiveFailures={consecutive_failures} items={} \
+             minCumulativeTraceLength={}",
+            current_item.0,
+            result.improved(),
+            result.via_count(),
+            java_double_to_string(result.trace_length()),
+            result.incomplete_count_before(),
+            result.incomplete_count(),
+            java_float_to_string(result.improvement_percentage()),
+            java_float_to_string(route_improved),
+            optimizer.total_items_optimized,
+            java_double_to_string(optimizer.min_cumulative_trace_length),
+        )
+        .expect("write");
+        n += 1;
+        if broke {
+            writeln!(
+                out,
+                "OPT-PASS-STOP pass={pass_no} reason=consecutive-failures n={n}"
+            )
+            .expect("write");
+            break;
+        }
+    }
+    // :364.
+    optimizer.sorted_route_items = None;
+    // :365-368.
+    if optimizer.use_increased_ripup_costs && route_improved == 0.0 {
+        optimizer.use_increased_ripup_costs = false;
+        route_improved = -1.0;
+    }
+    // :371-372.
+    BoardStatistics::new(board);
+    // :384.
+    route_improved
+}
+
+/// `optimizer.sortedRouteItems`' aliasing, spelled out — `p7t8.rs`'s helper, for the same reason:
+/// the field is a `Copy` value here and a live inner-class instance in Java.
+fn reader_next(optimizer: &mut BatchOptimizer<'_>, board: &Board) -> Option<ItemId> {
+    let mut reader = optimizer
+        .sorted_route_items
+        .expect("optRoutePass:287 assigned it");
+    let result = reader.next(board);
+    optimizer.sorted_route_items = Some(reader);
+    result
 }

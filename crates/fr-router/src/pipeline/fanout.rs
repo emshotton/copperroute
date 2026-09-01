@@ -1607,7 +1607,7 @@ fn extra_vias(board: &Board, vias_before_pass: usize) -> i32 {
 ///   past**, because `Instant::now() >= fanout_start` holds by the first check. Answering `None`
 ///   there would turn "time out before pass 1" into "never time out", which is the opposite of
 ///   what Java does with the same string.
-fn instant_offset_ms(start: Instant, offset_ms: i64) -> Option<Instant> {
+pub(crate) fn instant_offset_ms(start: Instant, offset_ms: i64) -> Option<Instant> {
     let magnitude = Duration::from_millis(offset_ms.unsigned_abs());
     if offset_ms >= 0 {
         start.checked_add(magnitude)

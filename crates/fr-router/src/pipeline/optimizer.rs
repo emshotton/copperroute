@@ -5,9 +5,10 @@
 //! `createForHeadless` constructor (`:51-53`), `containsOnlyUnfixedTraces` (`:85-92`),
 //! `optRouteItem` (`:395-514`), `getCurrentPosition` (`:520-525`), `calculateIncompleteCount`
 //! (`:552-556`) and the protected inner class [`ReadSortedRouteItems`] (`:563-659`).
-//! **Task 14** adds `runBatchLoop` (`:125-272`) and `optRoutePass` (`:279-385`) as a second
-//! `impl` block and the five `NamedAlgorithm` identity constants; each is a marker at the foot of
-//! this file.
+//! **Task 14** added the stage half in a second `impl` block: `runBatchLoop` (`:125-272`),
+//! `optRoutePass` (`:279-385`), `normalizeAlgorithm` (`:68-78`) and the five `NamedAlgorithm`
+//! identity constants (`:527-550`), with [`OptimizerResult`] and [`OptimizerPassRecord`] as their
+//! answer. What is left of the class is one GUI factory, rostered at the foot of this file.
 //!
 //! # The snapshot is a clone (plan-7 ruling 8), and the clone is not free
 //!
@@ -35,8 +36,9 @@
 //! * the three JMX samplers (`:94-122`) — `sampleCurrentThreadCpuSeconds`,
 //!   `sampleCurrentThreadAllocatedMb`, `sampleHeapUsageMb`; every reader is a `job.logInfo`
 //!   string;
-//! * `createForGui` (`:56-66`) and `normalizeAlgorithm` (`:68-78`) — the GUI factory and its
-//!   warning; Task 14 owns the roster line;
+//! * `createForGui` (`:56-66`) — the GUI factory and the only path to
+//!   `BatchOptimizerMultiThreaded`; the roster line at the foot of this file carries its three
+//!   greps. (`normalizeAlgorithm` (`:68-78`), which it calls, **is** ported — Task 14.)
 //! * `RoutingJob` (`:35`) — Plan 8's, together with the CLI that builds it.
 
 use std::collections::BTreeSet;
@@ -49,10 +51,12 @@ use fr_settings::RouterSettings;
 
 use crate::error::RouterError;
 use crate::pipeline::batch_autorouter::BatchAutorouter;
+use crate::pipeline::batch_loop::stat;
 use crate::pipeline::counters::RouterCounters;
+use crate::pipeline::fanout::{instant_offset_ms, parse_timespan_seconds};
 use crate::pipeline::item_route_result::ItemRouteResult;
-use crate::pipeline::stop::{ProgressThrottler, RouterBudget, RouterStop};
-use crate::pipeline::{ProgressSink, RoutingEvent};
+use crate::pipeline::stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop};
+use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
 
 // =================================================================================================
@@ -348,9 +352,11 @@ pub struct BatchOptimizer<'a> {
     /// BatchOptimizer.java` is empty. So an optimizer timeout ends the optimizer stage and
     /// nothing else, and the port must **not** call
     /// [`RouterStop::poll_deadline`](crate::pipeline::RouterStop::poll_deadline) at those two
-    /// sites, which requests `ALL`. This field is the declaration half of `pipeline::stop`'s
-    /// `obligation:` marker for `BatchOptimizer`; **Task 14 owns the two reads** and discharges
-    /// the rest. `BatchFanout`'s half was discharged in Task 12.
+    /// sites, which requests `ALL`. Task 13 declared this field, and **Task 14 landed the two
+    /// reads** — [`BatchOptimizer::run_batch_loop`] at `:172-176` and
+    /// [`BatchOptimizer::opt_route_pass`] at `:308-313`, both through
+    /// [`BatchOptimizer::is_deadline_reached`] — which closes `pipeline::stop`'s `obligation:`
+    /// for `BatchOptimizer`. `BatchFanout`'s half was discharged in Task 12.
     ///
     /// A monotonic [`std::time::Instant`] rather than Java's epoch milliseconds, for the reason
     /// [`BatchFanout::deadline`](crate::pipeline::BatchFanout::deadline) records.
@@ -760,10 +766,711 @@ fn count_as_i32(value: usize) -> i32 {
 }
 
 // =================================================================================================
+// `runBatchLoop` and `optRoutePass` — BatchOptimizer.java:125-272, :279-385
+// =================================================================================================
+
+/// What [`BatchOptimizer::run_batch_loop`] (`BatchOptimizer.java:125-272`) leaves behind.
+///
+/// renamed: Java's `runBatchLoop` is `void` and writes its answer into three places the port has
+/// no equivalent for — the `TaskStateChangedEvent` at `:233-234`, the `job.logInfo` payload at
+/// `:256-271`, and the two fields `totalItemsOptimized`/`isTimedOut`. The record is the port's
+/// shape and every field names the Java site it is read from:
+///
+/// | field | Java source |
+/// |---|---|
+/// | [`Self::state`] | `:252-255`'s `completionStatus` ternary — see below |
+/// | [`Self::passes_run`] | `currentPass` as the loop left it, which is what `:234` carries |
+/// | [`Self::items_optimized`] | `totalItemsOptimized` (`:36`, incremented at `:332`) |
+/// | [`Self::timed_out`] | `isTimedOut` (`:38`), i.e. [`BatchOptimizer::is_timed_out`] |
+/// | [`Self::per_pass`] | ruling 1(a)'s per-pass ladder — see [`OptimizerPassRecord`] |
+///
+/// # `state` is the log line's three-way, **not** the event's
+///
+/// The `TaskStateChangedEvent` at `:233-234` is fired **unconditionally** with
+/// [`TaskState::Finished`], whatever ended the loop — a timeout and a user cancel both report
+/// `FINISHED` here, unlike `AutorouteBatchLoop`'s `:571-585`, which branches. The only place
+/// Java distinguishes the three cases is the `completionStatus` string at `:252-255`
+/// (`"completed with timeout:"` / `"interrupted:"` / `"completed:"`), which is a `job.logInfo`
+/// payload. [`Self::state`] carries that three-way, because a caller that cannot tell a timeout
+/// from a clean finish has lost the only thing `isTimedOut` exists to say; the *event* stays
+/// Java's unconditional `FINISHED`, and `the_finished_event_fires_whatever_ended_the_loop` pins
+/// both halves.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OptimizerResult {
+    /// `:252-255`'s `completionStatus`, as a [`TaskState`]: [`TaskState::TimedOut`] when
+    /// `isTimedOut`, else [`TaskState::Cancelled`] when the stop flag is `ALL`, else
+    /// [`TaskState::Finished`].
+    pub state: TaskState,
+    /// `currentPass` as the loop left it (`:166`, `:177`). **`++currentPass` happens before the
+    /// near-perfect exit** (`:177` then `:182-193`), so a run that stops there reports one pass
+    /// more than it ran and [`Self::per_pass`] is one entry shorter.
+    pub passes_run: i32,
+    /// `totalItemsOptimized` (`:36`), the count `optRoutePass:332` increments — **cumulative over
+    /// the whole stage**, which is what the loop head at `:169-170` compares against
+    /// `optimizer.maxItems`.
+    pub items_optimized: i32,
+    /// `isTimedOut` (`:38`) — the **per-stage** deadline of `:153-160`, never the job stop flag.
+    pub timed_out: bool,
+    /// Ruling 1(a)'s per-pass tuple, one entry per **completed** pass, in pass order.
+    pub per_pass: Vec<OptimizerPassRecord>,
+}
+
+/// Ruling 1(a)'s per-pass diagnostic for the optimizer stage — the shape
+/// [`BatchLoopResult::per_pass`](crate::pipeline::BatchLoopResult::per_pass) has for the routing
+/// stage, widened by the four locals that decide whether the optimizer goes round again.
+///
+/// renamed: not a Java type. Java scatters these across two `String.format` payloads (`:184-191`,
+/// `:222-228`) and `optRoutePass`' own (`:373-383`), all of which the Global Constraints drop.
+/// The record is what makes the termination condition testable without a board and what
+/// `p7t9 optimizer` prints per pass; **nothing in the loop reads it** (ruling 11's shape: a
+/// diagnostic, never an input).
+///
+/// The plan's interface block says this task "declares no type other than `OptimizerResult`".
+/// This is the deviation, and it is the same one Task 10 made for the same reason: ruling 1(a)
+/// asks acceptance to compare "the same `(normalized score, incomplete count,
+/// clearance-violation count, via count, trace count)` tuple" **per pass**, and this task's own
+/// acceptance line asks for "the per-pass score/incomplete tuple identical". There is nowhere
+/// else to put it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OptimizerPassRecord {
+    /// `currentPass` (`:177`), 1-based.
+    pub pass: i32,
+    /// `withPreferredDirections = currentPass % 2 != 0` (`:200`) — "to create more variations".
+    /// Odd passes route with the preferred directions, even passes without.
+    pub with_preferred_directions: bool,
+    /// `scoreBeforePass` (`:179`).
+    pub score_before: f32,
+    /// `scoreAfterPass` (`:208`).
+    pub score_after: f32,
+    /// `passImprovement` (`:209-210`) — `(after - before) / before`, or `0` when `before <= 0`.
+    pub pass_improvement: f64,
+    /// `scoreImprovement` (`:215`/`:217`) as the arm left it: `-1` when the increased ripup costs
+    /// were dropped this pass, else [`Self::pass_improvement`].
+    pub score_improvement: f64,
+    /// `useIncreasedRipupCosts` (`:32`) **after** the pass — cleared either by `optRoutePass`
+    /// (`:365-368`, no item improved) or by `:212-215` (the board score did not rise).
+    pub use_increased_ripup_costs: bool,
+    /// What `optRoutePass` returned (`:384`), which `:201` **discards**. `-1` is its
+    /// "keep the optimizer going with lower ripup costs" sentinel (`:367`).
+    pub route_improved: f32,
+    /// `totalItemsOptimized` (`:36`) after the pass, i.e. cumulative.
+    pub total_items_optimized: i32,
+    /// Ruling 1(a)'s tuple, read off the **same** `BoardStatistics` object `:208` builds for
+    /// `scoreAfterPass` — no extra construction, because the count of `BoardStatistics`
+    /// constructions is itself observable (see [`BoardStatistics::compute`]).
+    pub record: PassRecord,
+}
+
+/// `runBatchLoop`'s "already near-perfect" exit (`BatchOptimizer.java:182-193`), lifted out of
+/// the loop.
+///
+/// # Why this is a function
+///
+/// The same reason [`optimizer_ripup_costs`] is: a pure decision a test can reach without a
+/// board. Every arithmetic step is `float` — `optimizationImprovementThreshold` is a
+/// `Float` (`OptimizerSettings.java:37-38`), `1 + threshold` is a `float` add, the product is a
+/// `float` multiply and `1000.0f` is the literal it is compared against — so computing it in
+/// `f64` would answer differently at the boundary, and
+/// `the_near_perfect_exit_is_computed_in_f32` pins that.
+///
+/// `1000` is [`BoardStatistics::normalized_score`]'s ceiling (`BoardStatistics.java:634`, the
+/// `* 1000` at the end), so the test reads "the remaining headroom is smaller than the threshold
+/// asks for".
+#[must_use]
+pub fn optimizer_near_perfect_exit(score_before_pass: f32, improvement_threshold: f32) -> bool {
+    // :182-183.
+    score_before_pass * (1.0 + improvement_threshold) >= 1000.0
+}
+
+/// `optRoutePass`' per-item improvement recomputation (`BatchOptimizer.java:340-348`), lifted out
+/// of the loop.
+///
+/// # It is the **correct** twin of a bug the port also reproduces
+///
+/// `ItemRouteResult`'s constructor computes the same formula at `ItemRouteResult.java:59-65` and
+/// gets it wrong: `viaCountAfter / viaCountBefore` there is `int / int`, so the via term
+/// truncates to 0 or 1 (**quirk #212**). Here `:345` writes
+/// `(float) result.viaCount() / boardStatisticsBefore.items.viaCount`, and the cast binds to the
+/// numerator — so this one is a real division. The two therefore **disagree on the same item**,
+/// and `the_improvement_recomputation_disagrees_with_the_scorecard_field` asserts both values.
+///
+/// Neither number is read by any decision: `routeImproved` is compared against `0` at `:365` and
+/// returned at `:384` into a call site that discards it (`:201`), and
+/// `ItemRouteResult.improvementPercentage` has no reader at all on the headless path. They are
+/// reported side by side because the port must not quietly "fix" either.
+///
+/// # The denominators are the **pass**'s, not the item's
+///
+/// `boardStatisticsBefore` at `:342-346` is `optRoutePass:281`'s — the board as the pass found
+/// it — while `result` measures one item. So the term is "this item's via count against the
+/// whole board's", which is what makes the answer a small negative number on any real board.
+///
+/// # The widening order
+///
+/// `(float) viaCount / int` is a **`float`** division; `result.traceLength() / totalLength` is a
+/// `double` divided by a widened `float`; their sum promotes the first to `double`; `1.0 - …` is
+/// `double`; and the whole thing is narrowed by the `(float)` cast at `:341`. Computing the via
+/// term in `f64` would lose the `f32` rounding, so the port goes through [`f32`] first.
+#[must_use]
+pub fn optimizer_route_improved(
+    result: &ItemRouteResult,
+    before_via_count: i32,
+    before_total_length: f32,
+) -> f32 {
+    // :342-343 — the guard, on the **pass**'s statistics.
+    if before_via_count != 0 && before_total_length != 0.0 {
+        // :345 — `(float) result.viaCount() / boardStatisticsBefore.items.viaCount`.
+        let via_term = f64::from(result.via_count() as f32 / before_via_count as f32);
+        // :346 — `result.traceLength() / boardStatisticsBefore.traces.totalLength`.
+        let length_term = result.trace_length() / f64::from(before_total_length);
+        // :344, :347 — `1.0 - ((via + length) / 2)`, then `:341`'s `(float)`.
+        (1.0 - ((via_term + length_term) / 2.0)) as f32
+    } else {
+        // :348.
+        0.0
+    }
+}
+
+impl BatchOptimizer<'_> {
+    // ---------------------------------------------------------------------------------------------
+    // NamedAlgorithm's identity — BatchOptimizer.java:527-550
+    // ---------------------------------------------------------------------------------------------
+    //
+    // Five one-line `return "literal";` overrides of `NamedAlgorithm`'s abstract members, which
+    // become five associated constants for the reason [`BatchAutorouter`]'s did: the port has no
+    // `NamedAlgorithm` to override, because controller ruling AK replaces the class's other half
+    // — the three listener lists — with [`ProgressSink`].
+    //
+    // renamed: `BatchOptimizer.getId` (`:527-530`) -> `BatchOptimizer::ID`, an associated const.
+    // renamed: `BatchOptimizer.getName` (`:532-535`) -> `BatchOptimizer::NAME`.
+    // renamed: `BatchOptimizer.getVersion` (`:537-540`) -> `BatchOptimizer::VERSION`.
+    // renamed: `BatchOptimizer.getDescription` (`:542-545`) -> `BatchOptimizer::DESCRIPTION`.
+    // renamed: `BatchOptimizer.getType` (`:547-550`) -> `BatchOptimizer::TYPE`.
+
+    /// `getId()` (`:527-530`) — also the value [`BatchOptimizer::normalize_algorithm`] forces
+    /// into `settings.optimizer.algorithm`, and `DefaultSettings.java:131`'s default for it.
+    pub const ID: &'static str = "freerouting-optimizer";
+    /// `getName()` (`:532-535`).
+    pub const NAME: &'static str = "Freerouting Optimizer";
+    /// `getVersion()` (`:537-540`).
+    pub const VERSION: &'static str = "1.0";
+    /// `getDescription()` (`:542-545`).
+    pub const DESCRIPTION: &'static str = "Freerouting Optimizer v1.0";
+    /// `getType()` (`:547-550`).
+    pub const TYPE: NamedAlgorithmType = NamedAlgorithmType::Optimizer;
+
+    /// Port of the private `normalizeAlgorithm(RoutingJob, BatchOptimizer)` (`:68-78`): "the
+    /// algorithm '…' is not supported by the batch autorouter; the default algorithm '…' will be
+    /// used instead."
+    ///
+    // renamed: `BatchOptimizer.normalizeAlgorithm` (`:68-78`) — Java's two parameters are the job
+    // (for `logWarning` and for the settings object it mutates in place) and the optimizer (for
+    // `getId()`). The port has neither: `RoutingJob` is Plan 8's, `settings` is borrowed
+    // immutably, and the id is a `const`. What is left is the decision and its answer, so the
+    // method takes the configured name and returns the one to use.
+    ///
+    /// # It always answers [`BatchOptimizer::ID`]
+    ///
+    /// `:69` is `!optimizer.getId().equals(algorithm)`, and `:76` then assigns `getId()`. So the
+    /// post-state is `ID` whatever went in — a mismatched name is replaced and a matching one is
+    /// already it. The method is written as the decision rather than as `ID.to_string()` because
+    /// the *warning* is the point (`:70-75`), and a `BatchOptimizerMultiThreaded` would answer a
+    /// different `getId()` through the same call.
+    ///
+    /// Its only caller is `createForGui:64`, which the port rosters; it is ported because the
+    /// plan asks for it and because Plan 8's CLI will want the same normalisation for
+    /// `settings.optimizer.algorithm` that `RoutingPipeline.normalizeRouterAlgorithm` does for
+    /// `settings.algorithm`.
+    #[must_use]
+    pub fn normalize_algorithm(algorithm: &str) -> String {
+        // :69.
+        if BatchOptimizer::ID != algorithm {
+            // :70-75 — `job.logWarning`, dropped with the rest of the logging.
+            // :76.
+            return BatchOptimizer::ID.to_string();
+        }
+        algorithm.to_string()
+    }
+
+    /// `:172` and `:308` — `deadlineMs != null && System.currentTimeMillis() >= deadlineMs`,
+    /// **non-strict**, on the port's monotonic clock.
+    ///
+    /// The twin of [`BatchFanout::is_deadline_reached`](crate::pipeline::BatchFanout::is_deadline_reached),
+    /// and it is a **per-stage** clock: both readers write [`BatchOptimizer::is_timed_out`] and
+    /// leave, and neither touches [`RouterStop`]. See [`BatchOptimizer::deadline`].
+    #[must_use]
+    pub fn is_deadline_reached(&self) -> bool {
+        self.deadline
+            .is_some_and(|deadline| std::time::Instant::now() >= deadline)
+    }
+
+    /// Port of `runBatchLoop()` (`BatchOptimizer.java:125-272`) — "optimize the route on the
+    /// board", i.e. the optimizer stage's whole termination condition.
+    ///
+    /// # The four doors out of the loop, in the order they are tested
+    ///
+    /// | `:` | door |
+    /// |---|---|
+    /// | `:167-171` | the head: `currentPass < optimizer.maxPasses`, `totalItemsOptimized < optimizer.maxItems`, and `!thread.isStopRequested()` — **`ALL` only** |
+    /// | `:172-176` | the per-stage deadline; sets [`BatchOptimizer::is_timed_out`] |
+    /// | `:182-193` | the board is already near-perfect ([`optimizer_near_perfect_exit`]) |
+    /// | `:220-230` | the pass improved the score by less than the threshold |
+    /// | `:204-206` | plus one more: `optRoutePass` timed out mid-pass |
+    ///
+    /// # The stop flag the loop reads is `ALL`, and the one that matters is not
+    ///
+    /// `:171` is `isStopRequested()`, so an `AUTO_ROUTER_ONLY` stop does **not** end this loop —
+    /// which is one half of quirk #202. The other half is the half that bites: every ordinary
+    /// exit from `AutorouteBatchLoop.run` raises `AUTO_ROUTER_ONLY` (quirk #214), and
+    /// `BatchAutorouter.autoroutePassesForOptimizingItem`'s loop head (`BatchAutorouter.java:268`)
+    /// is `!isStopAutoRouterRequested()` — so on a shared flag every `optRouteItem` in this loop
+    /// rips its connections, routes **zero** passes, measures a worse board and restores the
+    /// snapshot. The stage runs and changes nothing. **Java has no reset**: `grep -rn requestStop`
+    /// over `src/main` answers no writer that lowers the flag, and `RoutingPipeline.run`
+    /// (`:81-85`) hands both stages the one `job.thread`. The port reproduces that — this method
+    /// takes the caller's [`RouterStop`] and does not clear it — and **quirk #227** records the
+    /// consequence with its measurement. `p7t9 optimizer-shared` is the pin; `p7t9 optimizer`
+    /// hands the stage a fresh stop on both sides so that the rest of this method is exercised at
+    /// all.
+    ///
+    /// # What is not here
+    ///
+    /// `:126-130`, `:140-145` and `:174`, `:184-191`, `:222-228`, `:256-271` are `job.log*`
+    /// payloads; `:142`, `:163`, `:195`, `:198`, `:234` are `board.getHash()` reads that only
+    /// those payloads and the event objects carry; `:148-151`, `:202`, `:237-248` are the wall
+    /// clock and the three JMX samplers rostered at the head of this file. The two
+    /// `BoardStatistics` constructions at `:135` and `:250` **are** reproduced although only the
+    /// log reads them: each builds two [`DesignRulesChecker`]s, and the construction count is
+    /// observable (see [`BoardStatistics::compute`]).
+    pub fn run_batch_loop(
+        &mut self,
+        board: &mut Board,
+        stop: &RouterStop,
+        budget: RouterBudget,
+        progress: &mut dyn ProgressSink,
+    ) -> Result<OptimizerResult, RouterError> {
+        // Copied out of the field so that the borrow lives for `'a` rather than for `&mut self`;
+        // `self.settings` is a shared reference and reading it does not borrow `self`.
+        //
+        // The three unboxings below are taken **here** rather than at Java's own `:167`, `:179`
+        // and `:182`, which moves the `NullPointerException` a few lines earlier — before `:135`'s
+        // statistics rather than after them. Unobservable: neither side produces output on that
+        // path, `:135`'s constructor mutates nothing a later run could read, and
+        // `DefaultSettings.java:130-142` fills all three on every settings ladder the port has.
+        let settings = self.settings;
+        // `:167` dereferences `this.settings.optimizer` with no null check — `:153`'s guard
+        // covers only the timeout read — so an absent block is Java's `NullPointerException`.
+        let optimizer = settings.optimizer.as_ref().expect(
+            "BatchOptimizer.runBatchLoop: settings.optimizer is dereferenced at :167 without a \
+             null check — Java throws a NullPointerException here too",
+        );
+        // `job.routerSettings.scoring`, read at `:136`, `:179`, `:208` and `:251`; Java
+        // dereferences it unguarded.
+        let scoring = settings
+            .scoring
+            .as_ref()
+            .expect("RouterSettings.scoring — BatchOptimizer.java:179 dereferences it");
+        let improvement_threshold = optimizer.optimization_improvement_threshold.expect(
+            "optimizer.optimizationImprovementThreshold is unboxed at :182 and :221 with no null \
+             fallback — Java throws a NullPointerException here too",
+        );
+
+        // `:29`'s `new ProgressThrottler(1000)` as ruling AI's knob, the substitution
+        // `BatchFanout::fanout_board` makes at its own `:28`. The field is set here rather than in
+        // `new` because `new` has no budget, and every reader of it is below this line.
+        self.progress_throttler = budget.progress_throttler();
+
+        // :132.
+        self.use_increased_ripup_costs = true;
+
+        // :135-138. `initialScore`/`initialIncomplete`/`initialViolations` are read only by the
+        // `:140-145` and `:256-271` log lines and are dropped with them; the statistics **object**
+        // is built, because `getNormalizedScore` is pure but the constructor is not.
+        let _initial_stats = BoardStatistics::new(board);
+
+        // :148.
+        let session_start = std::time::Instant::now();
+        // :153-160 — the per-stage deadline, from `settings.optimizer.timeoutString`. Ruling AI:
+        // this is **not** `RouterStop::poll_deadline`, which would request `ALL` and, through
+        // `RoutingPipeline.java:117`, suppress a stage Java leaves running.
+        if let Some(timeout_string) = optimizer.timeout_string.as_deref()
+            && let Some(timeout_seconds) = parse_timespan_seconds(timeout_string)
+        {
+            // :158 — `sessionStartMs + timeoutSeconds * 1000`, on the port's monotonic clock;
+            // `instant_offset_ms` is `BatchFanout.fanoutBoard:98`'s own conversion, shared rather
+            // than transcribed twice.
+            self.deadline = instant_offset_ms(session_start, timeout_seconds.saturating_mul(1000));
+        }
+
+        // :162-163. The event's pass number (`0`) and board hash are payload the port's
+        // `RoutingEvent` does not carry.
+        progress.on_event(&RoutingEvent::TaskStateChanged {
+            algorithm: BatchOptimizer::TYPE,
+            state: TaskState::Started,
+        });
+
+        // :165-166. `scoreImprovement`'s `-1` initialiser is a **dead store**: `:212-218`
+        // assigns it on every iteration before `:220` reads it, and nothing outside the loop
+        // reads it at all — so the port declares it inside the loop, where it belongs, and says
+        // so rather than carrying a variable Java only appears to carry.
+        let mut current_pass: i32 = 0;
+        let mut per_pass: Vec<OptimizerPassRecord> = Vec::new();
+
+        // :167-171 — `maxPasses`/`maxItems` are `Integer`s, and a `null` is "no limit".
+        // Java bug: `BatchOptimizer.runBatchLoop` (`:171`) — `isStopRequested()` is `ALL`, so an `AUTO_ROUTER_ONLY` stop (which every ordinary end of `AutorouteBatchLoop.run` leaves behind, quirk #214) lets this loop run while `BatchAutorouter.autoroutePassesForOptimizingItem:268` reads `!= NONE` and routes zero passes per item — the stage visits every item, rejects every one and changes nothing, at a whole-board deep copy each (quirk #227). Nothing in `src/main` lowers the flag, so the port must not either.
+        while optimizer
+            .max_passes
+            .is_none_or(|max_passes| current_pass < max_passes)
+            && optimizer
+                .max_items
+                .is_none_or(|max_items| self.total_items_optimized < max_items)
+            && !stop.is_stop_requested()
+        {
+            // :172-176 — the per-stage deadline. `:174` is the log line.
+            if self.is_deadline_reached() {
+                // :173.
+                self.is_timed_out = true;
+                break;
+            }
+            // :177.
+            current_pass += 1;
+
+            // :179.
+            let score_before_pass = BoardStatistics::new(board).normalized_score(scoring);
+
+            // :182-193 — "stop if potential improvement is less than threshold". Note that
+            // `:177` has already counted this pass, so `passes_run` is one more than the number
+            // of passes that ran.
+            if optimizer_near_perfect_exit(score_before_pass, improvement_threshold) {
+                break;
+            }
+
+            // :195-196 — `board.getHash()` for the event payload, and `job.setCurrentPass`.
+            // :197-198.
+            progress.on_event(&RoutingEvent::TaskStateChanged {
+                algorithm: BatchOptimizer::TYPE,
+                state: TaskState::Running,
+            });
+
+            // :200 — "to create more variations": odd passes route with the preferred directions.
+            let with_preferred_directions = current_pass % 2 != 0;
+            // :201 — the return value is **discarded** here; see [`OptimizerPassRecord::route_improved`].
+            let route_improved = self.opt_route_pass(
+                board,
+                current_pass,
+                with_preferred_directions,
+                stop,
+                budget,
+                progress,
+            )?;
+            // :202 — `sampleHeapUsageMb`, rostered.
+
+            // :204-206 — `optRoutePass` returned early on the deadline.
+            if self.is_timed_out {
+                break;
+            }
+
+            // :208.
+            let statistics_after = BoardStatistics::new(board);
+            let score_after_pass = statistics_after.normalized_score(scoring);
+            // :209-218.
+            let (pass_improvement, score_improvement) =
+                self.apply_pass_improvement(score_before_pass, score_after_pass);
+
+            per_pass.push(OptimizerPassRecord {
+                pass: current_pass,
+                with_preferred_directions,
+                score_before: score_before_pass,
+                score_after: score_after_pass,
+                pass_improvement,
+                score_improvement,
+                use_increased_ripup_costs: self.use_increased_ripup_costs,
+                route_improved,
+                total_items_optimized: self.total_items_optimized,
+                record: PassRecord {
+                    pass: current_pass,
+                    score: score_after_pass,
+                    incomplete_count: stat(statistics_after.connections.incomplete_count),
+                    clearance_violations: stat(statistics_after.clearance_violations.total_count),
+                    via_count: stat(statistics_after.items.via_count),
+                    trace_count: stat(statistics_after.items.trace_count),
+                },
+            });
+
+            // :220-230 — a `double` against a widened `float`.
+            // Java bug: `BatchOptimizer.runBatchLoop` (`:220`) — `!= -1` is a **sentinel** test against a value `:209-210` can also produce honestly: a pass that drives a positive score to exactly zero computes `passImprovement = -1.0`, `:217` assigns it, and the threshold exit is then skipped on the false reading "the increased ripup costs were just dropped" (quirk #228, latent — no corpus pass collapses a score, because every item restores its own snapshot on failure).
+            if score_improvement != -1.0 && score_improvement < f64::from(improvement_threshold) {
+                break;
+            }
+        }
+
+        // :233-234 — **unconditional** `FINISHED`, whatever ended the loop.
+        progress.on_event(&RoutingEvent::TaskStateChanged {
+            algorithm: BatchOptimizer::TYPE,
+            state: TaskState::Finished,
+        });
+
+        // :237-248 — the session summary's wall clock and its three JMX samplers, rostered.
+        // :250-251 — the final statistics. Built for the same reason `:135`'s is, and its score
+        // and two counts are dropped with the `:256-271` payload that reads them.
+        let _final_stats = BoardStatistics::new(board);
+
+        // :252-255 — `completionStatus`, the only place Java tells the three endings apart.
+        let state = if self.is_timed_out {
+            TaskState::TimedOut
+        } else if stop.is_stop_requested() {
+            TaskState::Cancelled
+        } else {
+            TaskState::Finished
+        };
+
+        Ok(OptimizerResult {
+            state,
+            passes_run: current_pass,
+            items_optimized: self.total_items_optimized,
+            timed_out: self.is_timed_out,
+            per_pass,
+        })
+    }
+
+    /// `runBatchLoop:209-218`, lifted out of the loop for the reason [`optimizer_ripup_costs`] is:
+    /// it is the arm that decides whether the optimizer goes round again, and a test cannot reach
+    /// it through a board.
+    ///
+    /// Answers `(passImprovement, scoreImprovement)` and updates
+    /// [`BatchOptimizer::use_increased_ripup_costs`] exactly as `:213` does.
+    ///
+    /// # `-1` means "keep going"
+    ///
+    /// `:214`'s comment is "keep the optimizer going to try with normal ripup costs": the first
+    /// pass that fails to raise the score spends the increased ripup costs rather than the
+    /// optimizer's budget, and `:220`'s `scoreImprovement != -1` is what buys that pass. It can
+    /// only ever fire **once**, because `:212`'s first conjunct is then false forever — and
+    /// `optRoutePass:365-368` can clear the same flag one step earlier, on the different
+    /// condition "no item improved", in which case this arm never fires at all.
+    /// `pub` for the reason [`BatchOptimizer::opt_route_pass`] is: this is the arm
+    /// `the_increased_ripup_costs_are_dropped_after_one_non_improving_pass` exercises, and
+    /// `crates/fr-router/tests/optimizer.rs` is a separate crate.
+    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, f64) {
+        // :209-210 — the subtraction is a `float`, the cast and the division are `double`.
+        let pass_improvement = if score_before > 0.0 {
+            f64::from(score_after - score_before) / f64::from(score_before)
+        } else {
+            0.0
+        };
+        // :212-218.
+        let score_improvement = if self.use_increased_ripup_costs && score_after <= score_before {
+            // :213.
+            self.use_increased_ripup_costs = false;
+            // :215.
+            -1.0
+        } else {
+            // :217.
+            pass_improvement
+        };
+        (pass_improvement, score_improvement)
+    }
+
+    /// Port of `optRoutePass(int, boolean)` (`BatchOptimizer.java:279-385`): "tries to reduce the
+    /// number of vias and the trace length of a completely routed board. Returns the amount of
+    /// improvements is made in percentage (expressed between 0.0 and 1.0). -1 if the routing must
+    /// go on no matter how much it improved."
+    ///
+    /// # The five doors out of the item loop
+    ///
+    /// | `:` | door | tail at `:364-384`? |
+    /// |---|---|---|
+    /// | `:308-313` | the per-stage deadline | **no** — an early `return` |
+    /// | `:314-317` | `thread.isStopRequested()` — `ALL` | **no** |
+    /// | `:318-326` | `optimizer.maxItems` reached | yes |
+    /// | `:327-330` | the reader is exhausted | yes |
+    /// | `:349-361` | `maxConsecutiveFailures` consecutive unimproved items | yes |
+    ///
+    /// The first two skip `:364`'s `sortedRouteItems = null` as well, so
+    /// [`BatchOptimizer::get_current_position`] keeps answering the cursor of a pass that ended —
+    /// Java's behaviour, transcribed.
+    ///
+    /// # `pub`, not the brief's private
+    ///
+    /// Java's modifier is `protected`, i.e. reachable from `P7T8`/`P7T9` in the same package, and
+    /// `crates/fr-router/tests/optimizer.rs` is a separate crate. Same argument as
+    /// [`BatchOptimizer::opt_route_item`]'s.
+    ///
+    /// # The return value
+    ///
+    /// `Result<f32, _>` rather than the brief's `Result<(), _>`: Java returns `routeImproved` at
+    /// `:384` and `:201` discards it, but the number is the pass's own answer and dropping a
+    /// value the method computes is a gratuitous divergence (Task 13 §2.4's precedent for
+    /// `autoroutePassesForOptimizingItem`). [`OptimizerPassRecord::route_improved`] carries it.
+    ///
+    /// # What is not here
+    ///
+    /// `:289-298` and `:370` are `FRLogger.traceEntry`/`traceExit` and the id string they key on;
+    /// `:309`, `:321-324`, `:352-358` and `:373-383` are `job.logInfo` payloads, and `:378`'s
+    /// `board.getHash()` is one of their arguments.
+    #[allow(clippy::too_many_arguments)]
+    pub fn opt_route_pass(
+        &mut self,
+        board: &mut Board,
+        pass_no: i32,
+        with_preferred_directions: bool,
+        stop: &RouterStop,
+        budget: RouterBudget,
+        progress: &mut dyn ProgressSink,
+    ) -> Result<f32, RouterError> {
+        let settings = self.settings;
+        let optimizer = settings.optimizer.as_ref().expect(
+            "BatchOptimizer.optRoutePass: settings.optimizer is dereferenced at :301 without a \
+             null check — Java throws a NullPointerException here too",
+        );
+
+        // :281.
+        let board_statistics_before = BoardStatistics::new(board);
+        // :282-283.
+        let router_counters = RouterCounters {
+            pass_count: Some(pass_no),
+            ..RouterCounters::default()
+        };
+        // :284.
+        self.progress_throttler.reset();
+        // :285 — **unthrottled**, unlike the two gates below.
+        progress.on_event(&RoutingEvent::BoardUpdated {
+            counters: router_counters.clone(),
+        });
+
+        // :287 — a fresh reader every pass; plan-7 ruling 12 forbids memoising it.
+        self.sorted_route_items = Some(ReadSortedRouteItems::new());
+        // :288 — the pass's floor for `ItemRouteResult`'s length rung, lowered per improved item
+        // at `optRouteItem:498-499`.
+        self.min_cumulative_trace_length = f64::from(
+            board_statistics_before
+                .traces
+                .total_weighted_length
+                .unwrap_or(0.0),
+        );
+
+        // :300-304 — `maxConsecutiveFailures` defaults to **50**, and that literal is the
+        // fallback for a `null` setting, not for a missing one: `DefaultSettings.java:142` sets
+        // the same 50.
+        let mut consecutive_failures: i32 = 0;
+        let max_consecutive_failures = optimizer.max_consecutive_failures.unwrap_or(50);
+
+        // :306.
+        let mut route_improved: f32 = 0.0;
+        // :307.
+        loop {
+            // :308-313 — the per-stage deadline, again. It returns **without** the `:364-384`
+            // tail, so `useIncreasedRipupCosts` is not cleared and no closing event fires.
+            if self.is_deadline_reached() {
+                // :310.
+                self.is_timed_out = true;
+                // :311-312.
+                return Ok(route_improved);
+            }
+            // :314-317 — the `ALL` stop, and the same early return.
+            if stop.is_stop_requested() {
+                return Ok(route_improved);
+            }
+            // :318-326 — the `maxItems` gate. Unlike the loop head at `:169-170` this one carries
+            // a `> 0` guard, so `maxItems = 0` stops the stage at the head and is ignored here.
+            if optimizer
+                .max_items
+                .is_some_and(|max_items| max_items > 0 && self.total_items_optimized >= max_items)
+            {
+                break;
+            }
+            // :327-330.
+            let Some(current_item) = self
+                .sorted_route_items
+                .as_mut()
+                .expect("optRoutePass:287 assigned it one line ago")
+                .next(board)
+            else {
+                break;
+            };
+            // :331 — `disableSnapshots = false`; the `true` caller is GUI-only.
+            let result = self.opt_route_item(
+                board,
+                current_item,
+                with_preferred_directions,
+                false,
+                stop,
+                budget,
+                progress,
+            )?;
+            // :332.
+            self.total_items_optimized += 1;
+            // :333.
+            if result.improved() {
+                // :334.
+                consecutive_failures = 0;
+                // :335-338 — the **throttled** board update. Java computes the statistics *inside*
+                // the gate, so how often `new BoardStatistics(board)` runs here depends on the
+                // wall clock; the port keeps the computation inside the gate for the same reason
+                // and lets [`RouterBudget::progress_throttle_ms`] decide. `p7t9 optimizer`'s
+                // `equalsTranscript` line is what measures that the difference is inert.
+                if self.progress_throttler.should_update() {
+                    // :336.
+                    let _board_statistics_after = BoardStatistics::new(board);
+                    // :337.
+                    progress.on_event(&RoutingEvent::BoardUpdated {
+                        counters: router_counters.clone(),
+                    });
+                }
+                // :340-348.
+                route_improved = optimizer_route_improved(
+                    &result,
+                    board_statistics_before.items.via_count.unwrap_or(0),
+                    board_statistics_before.traces.total_length.unwrap_or(0.0),
+                );
+            } else {
+                // :350.
+                consecutive_failures += 1;
+                // :351-360.
+                if consecutive_failures >= max_consecutive_failures {
+                    break;
+                }
+            }
+        }
+
+        // :364.
+        self.sorted_route_items = None;
+        // :365-368 — the **second** writer of `useIncreasedRipupCosts`, on a different condition
+        // from `runBatchLoop:212-215`: "no item improved in this pass", not "the board score did
+        // not rise". It fires first, and when it does `:212`'s first conjunct is already false —
+        // so a pass that improves nothing costs the optimizer its increased ripup costs *and*
+        // takes `:220`'s threshold exit, ending the stage one pass earlier than `:214`'s comment
+        // suggests.
+        if self.use_increased_ripup_costs && route_improved == 0.0 {
+            self.use_increased_ripup_costs = false;
+            // :367 — returned to a call site that discards it (`:201`).
+            route_improved = -1.0;
+        }
+
+        // :371 — built for the `:372` event and the `:373-383` log line; the port keeps the
+        // construction because the count of `BoardStatistics` constructions is observable.
+        let _board_statistics_after = BoardStatistics::new(board);
+        // :372 — unthrottled.
+        progress.on_event(&RoutingEvent::BoardUpdated {
+            counters: router_counters,
+        });
+
+        // :384.
+        Ok(route_improved)
+    }
+}
+
+// =================================================================================================
 // The deferral roster for `autoroute/pipeline/BatchOptimizer.java`
 // =================================================================================================
 
-// added in Task 14: `BatchOptimizer.runBatchLoop` (`:125-272`) — the optimizer stage's pass loop and its whole termination condition, including the two per-stage deadline reads at `:172` and `:308` that discharge `pipeline::stop`'s `obligation:` marker.
-// added in Task 14: `BatchOptimizer.optRoutePass` (`:279-385`) — the per-pass walk over [`ReadSortedRouteItems`], calling this file's [`BatchOptimizer::opt_route_item`].
-// added in Task 14: `BatchOptimizer.createForGui` (`:56-66`), `BatchOptimizer.normalizeAlgorithm` (`:68-78`) — the GUI factory and the algorithm-name warning it fires; the only path to `BatchOptimizerMultiThreaded`.
-// added in Task 14: `BatchOptimizer.getId` (`:527-530`), `BatchOptimizer.getName` (`:532-535`), `BatchOptimizer.getVersion` (`:537-540`), `BatchOptimizer.getDescription` (`:542-545`), `BatchOptimizer.getType` (`:547-550`) — the five `NamedAlgorithm` identity overrides, which become five associated consts as `BatchAutorouter`'s did.
+// Task 14 closed this roster: `runBatchLoop` (`:125-272`) and `optRoutePass` (`:279-385`) are
+// [`BatchOptimizer::run_batch_loop`] and [`BatchOptimizer::opt_route_pass`] above, the five
+// `NamedAlgorithm` identity overrides (`:527-550`) are the five `renamed:` consts, and
+// `normalizeAlgorithm` (`:68-78`) is [`BatchOptimizer::normalize_algorithm`]. One member is left,
+// and it is the door to the two multithreaded classes:
+//
+// not ported: `BatchOptimizer.createForGui` (`:56-66`) — the GUI factory. It is the **only** construction site of `BatchOptimizerMultiThreaded` (`:59`) and the only reader of `Freerouting.globalSettings.featureFlags.multiThreading` (`:58`, `settings/FeatureFlagsSettings.java:11`) on this path; its one caller is `RoutingPipeline.createForGui` (`RoutingPipeline.java:40-42`), whose one caller is `gui/workspace/progress/GuiRoutingJobWorker.java:212`. The Global Constraints have no GUI, and `createForHeadless` (`:51-53`, this file's [`BatchOptimizer::new`]) **always** answers the single-threaded implementation, so the port has neither the factory nor the flag — and therefore no static mutable global, which is what makes `featureFlags.multiThreading` (the one such global in Plan 7's scope) a non-issue rather than an exception.
+//
+// The two classes behind that door are rostered where `scripts/audit-map/fr-router.map` points
+// them, `crates/fr-router/src/lib.rs`, with the same three greps.

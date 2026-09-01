@@ -707,7 +707,7 @@ pub fn final_best_board_swap(
 /// Java's fields are boxed `Integer`s that the computing constructor always fills; a `None` here
 /// is the `NullPointerException` Java would raise on `stats.connections.incompleteCount`, and it
 /// says so rather than reading as a zero.
-fn stat(value: Option<i32>) -> usize {
+pub(crate) fn stat(value: Option<i32>) -> usize {
     usize::try_from(
         value.expect("BoardStatistics' computing constructor fills every count Java unboxes"),
     )

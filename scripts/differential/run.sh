@@ -354,11 +354,22 @@ case "$driver" in
     # `P7T9` loads its board, builds its settings and builds its router through P7T2's four
     # shared statics, so the three drivers cannot describe different boards.
     #
-    # `<dsn> [maxPasses] [mode]`. `mode` is `router-only` (`fanout.enabled = false`,
-    # `runOptimizer = false`) or, from Plan 7 Task 12, `router+fanout`, which turns the SMD
-    # fanout pre-pass on and disables its per-pin clock on both sides through
-    # `settings.fanout.maxMillisecondsPerPin` (ruling AI). `maxPasses = 0` is Java's
-    # "unlimited" (quirk #140), so bound it with `P7T9_TIMEOUT` before using it on a big stem.
+    # `<dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]`. `mode` is `router-only`
+    # (`fanout.enabled = false`, `runOptimizer = false`) or, from Plan 7 Task 12,
+    # `router+fanout`, which turns the SMD fanout pre-pass on and disables its per-pin clock on
+    # both sides through `settings.fanout.maxMillisecondsPerPin` (ruling AI). `maxPasses = 0` is
+    # Java's "unlimited" (quirk #140), so bound it with `P7T9_TIMEOUT` before using it on a big
+    # stem.
+    #
+    # Plan 7 Task 14 adds three more modes — `optimizer`, `optimizer+fanout` and
+    # `optimizer-shared` — which run the router stage and then `BatchOptimizer.runBatchLoop`
+    # (BatchOptimizer.java:125-272) on its board, with `runOptimizer = true` so the shape is
+    # `RoutingPipeline`'s. `optPasses`/`optItems` are `settings.optimizer.maxPasses`/`maxItems`,
+    # where `all` is Java's `null` (the "no limit" arm of `:167-170` and `:318-320`), and
+    # `optimizer.timeoutString` is cleared so `:153-160` builds no deadline. `optimizer-shared`
+    # hands the stage the router's own stop flag, i.e. the production shape, where quirk #227
+    # makes every item reject; the other two hand it a fresh one on both sides, which is the
+    # only way the rest of the loop is reachable. See README.md for the line format.
     # The driver prints two halves — a line-for-line transcription of `run`'s body with the
     # per-pass `PassRecord` tuple and every decision arm, and then the **real**
     # `BatchAutorouter.runBatchLoop()` on a freshly loaded board, with the two boards compared by
