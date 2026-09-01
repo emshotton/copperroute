@@ -129,8 +129,8 @@ impl Board {
     /// `ignore_areas` is Java's parameter: with it set, conduction areas are dropped from the
     /// contact set before it is counted (:206-209). `combine` always passes `true`.
     ///
-    /// Java's `board.itemList.saveForUndo(this)` (:275) is dropped — Plan 2 replaces the
-    /// `UndoableObjects` stack with `Board::clone` (Task 12) — and its `FRLogger.trace`
+    /// Java's `board.itemList.saveForUndo(this)` (:275) is `Board::save_for_undo` — Plan 7
+    /// Task 14c gave the port the one undo level `optRouteItem` opens — and its `FRLogger.trace`
     /// net-49 debug block (:202-231,254-269) is diagnostic only.
     // not ported: the net-49 `FRLogger.trace` debug block (PolylineTrace.java:202-231,254-269).
     pub fn combine_trace_at_start(
@@ -271,8 +271,10 @@ impl Board {
         at: CombineEnd,
         corner: &Point,
     ) -> Result<bool, BoardError> {
-        // Java's `board.itemList.saveForUndo(this)` (:275 / :417) is dropped; see the doc
-        // comment.
+        // PolylineTrace.java:275 / :417 — `board.itemList.saveForUndo(this)`: this trace is
+        // about to be modified in place, so `Board::undo_from_snapshot` has to put the
+        // pre-attempt one back. See `Board::save_for_undo`.
+        self.save_for_undo(id);
         let (this_lines, layer) = match self.items.get(&id) {
             Some(Item::Trace(t)) => (t.polyline().lines().to_vec(), t.get_layer()),
             _ => return Ok(false),
@@ -1052,8 +1054,10 @@ impl Board {
     // `fr_router::board_ext::PolylineTraceExt::swap_connection_to_pin`, transcribes that loop
     // itself rather than calling `Board::combine_trace`, precisely so it can place `:188` where
     // Java places it; nothing here changed.
-    // not ported: `board.itemList.saveForUndo(this)` (:948) — no undo stack (Task 12) — the
-    // observer notification (:987-990) and the `FRLogger.error` in the catch (:1003).
+    // renamed: `board.itemList.saveForUndo(this)` (:948) -> `Board::save_for_undo`, called
+    // below at Java's line (Plan 7 Task 14c).
+    // not ported: the observer notification (:987-990) and the `FRLogger.error` in the catch
+    // (:1003).
     pub fn change_trace(&mut self, id: ItemId, new_polyline: Polyline) {
         let Some(item) = self.items.get(&id) else {
             return;
@@ -1071,6 +1075,9 @@ impl Board {
         let layer = trace.get_layer();
         let old_lines = trace.polyline().lines().to_vec();
         let new_lines = new_polyline.lines();
+        // PolylineTrace.java:948 — `board.itemList.saveForUndo(this)`, after the
+        // `!isOnTheBoard()` early return above. See `Board::save_for_undo`.
+        self.save_for_undo(id);
 
         // PolylineTrace.java:955-967: the first line of the new polyline that differs.
         let last_index = new_lines.len().min(old_lines.len());

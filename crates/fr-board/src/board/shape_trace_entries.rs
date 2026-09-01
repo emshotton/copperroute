@@ -858,10 +858,12 @@ impl ShapeTraceEntries {
     /// (ShapeTraceEntries.java:110-151): the performance path, which hands the old trace's tree
     /// leaves to the two new pieces instead of recomputing them.
     ///
-    /// Java's `board.itemList.saveForUndo(trace)` (:113) and its two observer notifications
-    /// (:147-150) are dropped. Note the two new traces go into `itemList` **directly**
-    /// (:126,141), not through `insertItem`, so no revision bump and no tree insert — the tree
-    /// entries arrive from `reuseEntriesAfterCutout` instead.
+    /// Java's `board.itemList.saveForUndo(trace)` (:113) is [`Board::save_for_undo`] (Plan 7
+    /// Task 14c); its two observer notifications (:147-150) are dropped. Note the two new traces
+    /// go into `itemList` **directly** (:126,141), not through `insertItem`, so no revision bump
+    /// and no tree insert — the tree entries arrive from `reuseEntriesAfterCutout` instead — but
+    /// their undo nodes are stamped exactly as `insertItem`'s are, so `Board::journal_insert`
+    /// still runs for both.
     fn fast_cutout_trace(
         board: &mut Board,
         trace_id: ItemId,
@@ -880,6 +882,10 @@ impl ShapeTraceEntries {
         // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
         // (ShapeTraceEntries.java:112) — see `Board::insert_item`'s marker for why controller
         // ruling AJ makes the whole family dead rather than deferred.
+        // ShapeTraceEntries.java:113 — `board.itemList.saveForUndo(trace)`. It is followed by a
+        // `board.removeItem(trace)` at `:145`, so what `undo` gets from it is the delete-list
+        // entry, not a cancel/restore pair; see `Board::journal_remove`'s second case.
+        board.save_for_undo(trace_id);
         let start_id = board.new_item_id();
         let mut start_trace = PolylineTrace::new(
             ItemHeader::new(
@@ -925,6 +931,10 @@ impl ShapeTraceEntries {
         board.items.insert(trace_id, from_item);
         board.items.insert(start_id, Item::Trace(start_trace));
         board.items.insert(end_id, Item::Trace(end_trace));
+        // ShapeTraceEntries.java:126 and :141 — the two pieces go into `itemList` **directly**,
+        // so their undo nodes are stamped with the current level exactly as `insertItem`'s are.
+        board.journal_insert(start_id);
+        board.journal_insert(end_id);
         // ShapeTraceEntries.java:145.
         board.remove_item(trace_id);
     }

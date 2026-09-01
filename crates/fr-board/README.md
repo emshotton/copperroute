@@ -25,7 +25,11 @@ plan is marked in place rather than ported — search for `// not ported:`,
 - **No undo/redo.** Java's `UndoableObjects` stack (`BasicBoard.itemList`) is
   replaced by a plain `BTreeMap<ItemId, Item>` plus whole-board
   `Board::clone`/`Board::deep_copy` (`board/snapshot.rs`) standing in for
-  `generateSnapshot`/`popSnapshot`/`undo`/`redo`.
+  `generateSnapshot`/`popSnapshot`/`undo`/`redo` — narrowed by Plan 7 Task 14c, which ports
+  the one undo level `BatchOptimizer.optRouteItem` opens (`Board::begin_undo_journal`,
+  `discard_undo_journal`, `undo_from_snapshot`, over `board::snapshot::UndoJournal`) because
+  `applyUndoRedoSideEffects` replays item changes through the **live** search trees and the
+  tree's shape is a function of that order (quirk #229).
 - **No observers, no GUI, no serialization.** `Communication.observers`,
   `BasicBoard.startNotifyObservers`/`endNotifyObservers`, the Swing
   repaint-region bookkeeping (`updateBox`), `ItemSelectionFilter`, and every

@@ -111,10 +111,12 @@ pub(crate) use item_ctx;
 /// `RoutingBoard` (`board/facade/RoutingBoard.java`): a board with geometric items, the search
 /// trees that index them and the rules they must satisfy.
 ///
-/// not ported: `BasicBoard.itemList`'s `UndoableObjects` undo stack (BasicBoard.java:70) — the
-/// port stores a plain `BTreeMap` (plan-rulings.md #1) and Task 12 replaces Java's
-/// snapshot/undo/redo with [`Board::clone`]/[`Board::deep_copy`] (`board/snapshot.rs`). See the
-/// markers below.
+/// not ported: `BasicBoard.itemList`'s `UndoableObjects` undo **stack** (BasicBoard.java:70) —
+/// the port stores a plain `BTreeMap` (plan-rulings.md #1); Task 12 replaced Java's
+/// snapshot/undo/redo with [`Board::clone`]/[`Board::deep_copy`] (`board/snapshot.rs`), and
+/// Plan 7 Task 14c gave the **one** level `BatchOptimizer.optRouteItem` opens back to Java
+/// ([`Board::begin_undo_journal`]/[`Board::undo_from_snapshot`], over
+/// [`crate::board::snapshot::UndoJournal`]). See the markers below.
 ///
 /// `BasicBoard.updateBox` (BasicBoard.java:103) is the rectangle a Swing renderer has to
 /// repaint; `fr-board` is headless, so its three accessors go:
@@ -159,18 +161,28 @@ pub(crate) use item_ctx;
 // `normalizeSuppressedNetNos`, the search tree, `changedArea`, `shoveFailingObstacle`,
 // `shoveFailingLayer`); `deepCopy` additionally clears autoroute scratch and calls
 // `finishAutoroute`. The derived `impl Clone for Board` is not this method — it is Task 12's
-// substitute for `generateSnapshot`/`popSnapshot`/`undo`/`redo` below, which clear nothing.
+// substitute for the *state* half of `generateSnapshot`/`undo` below, which clears nothing.
 // renamed: `BasicBoard.getHash` (BasicBoard.java:164-166) -> `Board::structural_hash`.
 // ported: `BasicBoard.diffTraces` (BasicBoard.java:168-171) -> `Board::diff_traces`.
 // ported: `RoutingBoard.deepCopy` (RoutingBoard.java:1414-1420) -> `Board::deep_copy`.
-// not ported: `BasicBoard.generateSnapshot`/`popSnapshot` (:1289-1300) — the `UndoableObjects`
-// undo stack; a Plan-7 caller that wants to try-and-revert a board mutation takes
-// `let snap = board.clone();` before and `board = snap;` (or keeps `snap` and discards `board`)
-// instead of generating/popping a snapshot.
-// not ported: `BasicBoard.undo`/`redo` (:1233-1253) and `RoutingBoard`'s overrides — interactive
-// undo/redo, which `global-constraints.md` excludes along with the rest of the GUI.
-// not ported: the private `BasicBoard.applyUndoRedoSideEffects` (:1255-1287) — `undo`/`redo`'s
-// own helper.
+// **Plan 7 Task 14c (ruling BA) narrowed that substitution rather than replacing it.** The item
+// state still comes from a `Board::deep_copy`, but the *side effects* of `undo` do not: Java
+// replays the failed attempt's item changes through the **live** search trees, which re-pairs the
+// same leaves into a different `MinAreaTree` topology, and
+// `ShapeSearchTree45Degree.completeShape` reads that topology directly (quirk #229). So the three
+// entry points below are ported at the one level `BatchOptimizer.optRouteItem` opens, over
+// `crate::board::snapshot::UndoJournal`:
+// renamed: `BasicBoard.generateSnapshot` (:1289-1292) -> `Board::begin_undo_journal`, which the
+// caller pairs with its own `Board::deep_copy` (plan-7 ruling 8's substitute for the state half).
+// renamed: `BasicBoard.popSnapshot` (:1297-1300) -> `Board::discard_undo_journal`.
+// renamed: `BasicBoard.undo` (:1233-1240) -> `Board::undo_from_snapshot`, which takes the
+// pre-attempt board by value where Java reads the previous level off the `UndoableObjects` stack.
+// renamed: the private `BasicBoard.applyUndoRedoSideEffects` (:1255-1287) ->
+// `Board::undo_from_snapshot`'s second half.
+// not ported: `BasicBoard.redo` (:1246-1253) and `RoutingBoard`'s override — interactive redo,
+// which `global-constraints.md` excludes along with the rest of the GUI, and which no headless
+// caller reaches (`BatchOptimizer.java:509` is the only `undo` on that path, and nothing follows
+// it).
 //
 // The autoroute engine is Plan 6:
 // not ported: `BasicBoard.additionalUpdateAfterChange` (BasicBoard.java:1222-1226) — an empty stub whose whole body is the `RoutingBoard` override below.
@@ -256,6 +268,14 @@ pub struct Board {
     /// (ShapeSearchTree.java:916-920), resolved once from [`Self::communication`]; see
     /// [`ItemCtx::max_tree_shape_width`].
     max_tree_shape_width: f64,
+
+    /// The port's stand-in for the *one* undo level `BatchOptimizer.optRouteItem` opens: the top
+    /// entry of `UndoableObjects.deletedObjectsStack` (UndoableObjects.java:27) plus the
+    /// per-node `level`/`undoObject` bookkeeping (`UndoableObjectNode`, :328-340) that decides
+    /// which items `undo` cancels and which it restores. `None` means `stackLevel == 0`, where
+    /// Java's writers are no-ops by construction (`board/snapshot.rs`' module doc, "The undo
+    /// bookkeeping"). See [`Board::begin_undo_journal`] and [`Board::undo_from_snapshot`].
+    undo_journal: Option<crate::board::snapshot::UndoJournal>,
 }
 
 impl Board {
@@ -319,6 +339,7 @@ impl Board {
             max_trace_half_width: 1000,
             min_trace_half_width: 10000,
             max_tree_shape_width,
+            undo_journal: None,
         };
         board.insert_outline(outline_shapes, outline_clearance_class);
         board
@@ -424,6 +445,9 @@ impl Board {
         );
         // BoardItemRepository.java:160.
         self.items.insert(id, item);
+        // `itemList.insert`'s undo half (UndoableObjects.java:66-70) — see
+        // `Board::journal_insert`; a no-op outside `BatchOptimizer.optRouteItem`'s window.
+        self.journal_insert(id);
         // BoardItemRepository.java:161.
         let ctx = item_ctx!(self);
         let inserted = self
@@ -488,6 +512,9 @@ impl Board {
         self.trees.remove(item);
         // BoardItemRepository.java:194.
         self.items.remove(&id);
+        // `itemList.delete`'s undo half (UndoableObjects.java:76-125) — see
+        // `Board::journal_remove`; a no-op outside `BatchOptimizer.optRouteItem`'s window.
+        self.journal_remove(id);
         // BoardItemRepository.java:198.
         self.revision += 1;
         true
@@ -1177,6 +1204,9 @@ impl Board {
                 .expect("Board::delete_all_tracks_and_vias: present, just checked");
             self.trees.remove(item);
             self.items.remove(&id);
+            // BasicBoard.java:1412/:1416 — `itemList.delete(currentItem)`, whose undo half is
+            // `Board::journal_remove`.
+            self.journal_remove(id);
         }
     }
 
@@ -1323,8 +1353,8 @@ impl Board {
     /// Port of `Item.moveBy(Vector)` (Item.java:300-311): remove from the trees, translate,
     /// insert again.
     ///
-    /// Java's `board.itemList.saveForUndo(this)` (Item.java:301) and its observer notification
-    /// (:307-310) are both dropped — no undo stack (Task 12) and no observers.
+    /// Java's `board.itemList.saveForUndo(this)` (Item.java:301) is `Board::save_for_undo`
+    /// (Plan 7 Task 14c); its observer notification (:307-310) is dropped — no observers.
     ///
     /// `DrillItem` overrides this (DrillItem.java:95-145) to also draw a trace from the old
     /// centre to the new one on every layer where the drill item was contacting a trace; that
@@ -1363,6 +1393,8 @@ impl Board {
             .map(|(layer, (half_width, clearance_class))| (layer, half_width, clearance_class))
             .collect();
 
+        // Item.java:301 — `board.itemList.saveForUndo(this)`; see `Board::save_for_undo`.
+        self.save_for_undo(id);
         let mut item = self
             .items
             .remove(&id)

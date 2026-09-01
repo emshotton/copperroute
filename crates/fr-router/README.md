@@ -2908,9 +2908,12 @@ from `"0"` and asserts the flag stayed `NONE`.
 `Issue649-kicad_ecc83-pp_input_board_v1`, plus `examples/tutorial_board` (both modes),
 `Issue143-rpi_splitter` at router `maxPasses = 2` and `Issue508-DAC2020_bm01`.
 
-### Two stems DIFF, and the cause is **not** in this file (ruling 1's row; localised by Task 14b as quirk #229)
+### Two stems DIFF — **closed by Task 14c** (ruling 1's row; localised by Task 14b as quirk #229, fixed under ruling BA)
 
-| stem | rung reached | first difference | diagnosis |
+**Both rows are MATCH as of Task 14c.** The table below is kept as the record of what the two
+DIFFs were and how they were read, because the fix is exactly the statement it names.
+
+| stem | rung reached | first difference (before Task 14c) | diagnosis |
 |---|---|---|---|
 | `Issue558-dev-board` (`optimizer`, `optimizer+fanout`) | (a) pass tuple ✅ through item 13, then (b) fails | `p7t8 <dev-board> item 1 20`: `BOARD n=6 maxIdAfter=14378` (Java) vs `14377` (port) | `optRouteItem`'s **failed** attempt on item 6 burns 188 ids in Java and 187 in the port. Every board number is identical there — items, traces, vias, incompletes, cumulative length. The shift then flips `ReadSortedRouteItems`' strict-`<` tie (`:628-632`) over the descending-id walk (quirk #63) between two geometrically equal traces, and the runs diverge for real from item 14 |
 | `Issue026-J2_reference` at router `maxPasses = 2` | same | `p7t8 <j2> item 2 30`: `BOARD n=4 maxIdAfter=5244` vs `5208` | the same shape, 36 ids |
@@ -2936,10 +2939,24 @@ same statement — item `n=3` is `improved=false`, 84 Java-only tree ops, diverg
 The bisect, the committed ledgers (`P7T14B_MAT` / `_FP` / `_CS` / `_MAZE`, all off by default,
 with Java twins in level 8 of `scripts/differential/java/p6t17b-bisect.patch`) and what a fix
 re-opens are in `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-14b-report.md`.
-**Still open**, and **Task 16's SES parity on `Issue558-dev-board` will trip on it**: the fix is
-to port `generateSnapshot`/`undo` (all three rostered `// not ported:`) or to replay
-`applyUndoRedoSideEffects`' item-level tree ops onto the live trees, which re-opens every
-optimizer-stage reference and so belongs with the task that regenerates them.
+**Resolved by Task 14c (controller ruling BA), and the second of those two fixes is the one that
+landed.** `crates/fr-board/src/board/snapshot.rs`' `Board::undo_from_snapshot` is the port of
+`BasicBoard.undo` + `applyUndoRedoSideEffects`: it keeps the clone for the *item state* but takes
+only `components` and the item map's difference from it, cancels every item the attempt inserted
+or modified in place from the **live** trees in Java's descending-id order (`:1262`), re-inserts
+the pre-attempt ones in Java's order — the modified ones descending, then the delete list in
+*deletion* order (`:1276`) — and leaves every other field of the live board alone, including the
+id generator, `revision`, `changedArea`, `min`/`maxTraceHalfWidth`, `normalizeSuppressedNetNos`,
+`shoveFailingObstacle`/`shoveFailingLayer` and the autoroute scratch of every item the undo does
+not restore. The order comes from `crate::board::snapshot::UndoJournal`, the one-level port of
+`UndoableObjects`' `deletedObjectsStack` and `UndoableObjectNode.level`/`.undoObject`.
+
+The proof is the same instrument that found the bug: with `P7T8B_IDS=1 P7T14B_MAT=1 P7T14B_FP=1`
+on both sides, the `MAT`/`TREEFP`/`ITEMSEP` streams are now **byte-identical over the whole run** —
+134 910 lines on `Issue558-dev-board` (`p7t8 item 1 3`) and 89 629 on `Issue026-J2_reference`
+(`p7t8 item 2 6`), where Task 14b measured 54 and 84 Java-only ops. `p7t8 <dev-board> item 1 20`,
+`p7t8 <j2> item 2 30` and `p7t9 <dev-board> 1 optimizer` are MATCH, and every row that was already
+MATCH stayed MATCH. **Task 16's SES gate is clear.**
 
 ## What Plan 7 inherits
 

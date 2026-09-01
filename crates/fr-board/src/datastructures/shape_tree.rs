@@ -1006,10 +1006,13 @@ impl<O: Copy + Ord> ShapeTree<O> {
 // carry an extra `cls=` tag naming the tree's compensated clearance class; strip it before
 // diffing). Both write to **stderr**.
 //
-// This is the ledger that names quirk #229: after a failed `BatchOptimizer.optRouteItem`, Java's
+// This is the ledger that named quirk #229: after a failed `BatchOptimizer.optRouteItem`, Java's
 // `routingBoard.undo(null)` replays the attempt's item changes through `SearchTreeManager` and
-// these ops fire; the port restores a cloned board and none of them do, so the two sides carry
-// the same leaves in a different tree topology from there on.
+// these ops fire; the port used to restore a cloned board and perform none of them, so the two
+// sides carried the same leaves in a different tree topology from there on. **Task 14c fixed
+// that** (`Board::undo_from_snapshot`), and this ledger is what proves it: the streams are now
+// byte-identical over a whole `p7t8 item` run on both boards. It stays committed as the
+// regression witness — it is the only thing that can see the replay's *order*.
 fn p7t14b_mat_ledger() -> bool {
     static ON: std::sync::LazyLock<bool> =
         std::sync::LazyLock::new(|| std::env::var_os("P7T14B_MAT").is_some());

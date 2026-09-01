@@ -45,12 +45,24 @@
 //! renamed: `UndoableObjects.readObject` (:54) -> the same iteration; there are no undo levels
 //! to filter by (Java's `currentNode.level <= this.stackLevel` guard), since there is no undo
 //! stack in this port.
-//! not ported: interactive undo: `UndoableObjects.generateSnapshot` (:131).
-//! not ported: interactive undo: `UndoableObjects.undo` (:143).
-//! not ported: interactive undo: `UndoableObjects.redo` (:183).
-//! not ported: interactive undo: `UndoableObjects.popSnapshot` (:232).
-//! not ported: interactive undo: `UndoableObjects.saveForUndo` (:273) — the undo stack itself;
-//! see `Board`'s doc comment.
+//!
+//! Four of the five undo entry points are ported at **one level** — the only depth
+//! `BatchOptimizer.optRouteItem` (BatchOptimizer.java:442-445, :503, :509) ever reaches — as
+//! `crate::board::snapshot::UndoJournal` and its `Board` methods. Plan 7 Task 14c (ruling BA):
+//! the item *state* still comes from a `Board::deep_copy`, but *which* items `undo` touches and
+//! in *what order* cannot be reconstructed from a clone, and `applyUndoRedoSideEffects` replays
+//! them through the live search trees, where `MinAreaTree`'s insertion heuristic makes the tree
+//! shape a function of that order (quirk #229).
+//!
+//! renamed: `UndoableObjects.generateSnapshot` (:131) -> `Board::begin_undo_journal`.
+//! renamed: `UndoableObjects.undo` (:143) -> `Board::undo_from_snapshot`, together with
+//! `BasicBoard.undo` and `applyUndoRedoSideEffects`.
+//! renamed: `UndoableObjects.popSnapshot` (:232) -> `Board::discard_undo_journal`.
+//! renamed: `UndoableObjects.saveForUndo` (:273) -> `Board::save_for_undo`, called at each of
+//! Java's five call sites.
+//! not ported: interactive undo: `UndoableObjects.redo` (:183) — redo has no headless caller at
+//! all (`BatchOptimizer.java:509` is the only `undo`, and nothing follows it), and
+//! `global-constraints.md` excludes the GUI that would.
 
 pub mod delaunay;
 pub mod shape_tree;

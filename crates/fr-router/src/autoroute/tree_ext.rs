@@ -1468,10 +1468,12 @@ fn restrain_shape_90(
 // `TREEFP` is a structural fingerprint of the whole autoroute tree — pre-order, each node's
 // bounding box and its leaf flag, FNV-1a — taken once per `completeShape`. `CSO` is one line per
 // obstacle the walk actually restrains against, **in traversal order**, with the result rooms as
-// they stand. Together they are the evidence for quirk #229: the two sides reach the same
+// they stand. Together they were the evidence for quirk #229: the two sides reached the same
 // `completeShape` with the same node *count* and a different fingerprint, and the walk — whose
-// `bounding_shape` prune shrinks as obstacles are consumed — then restrains against a different
-// obstacle set, so the completed room comes out a different shape.
+// `bounding_shape` prune shrinks as obstacles are consumed — then restrained against a different
+// obstacle set, so the completed room came out a different shape. **Task 14c fixed the cause**
+// (`Board::undo_from_snapshot`); the ledgers stay as the regression witness, and the `TREEFP`
+// stream is now identical on both sides for the whole run.
 
 /// `P7T14B_FP` — the `TREEFP` fingerprint (and `fr-board`'s `TINS8`, which reads the same
 /// variable through its own gate).

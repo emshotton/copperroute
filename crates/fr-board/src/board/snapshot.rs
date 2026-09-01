@@ -14,9 +14,14 @@
 //! `global-constraints.md` forbids `Serializable` in this port, so [`Board`] derives [`Clone`]
 //! instead (`board/mod.rs`), but for a different job: a plain, field-for-field in-memory copy —
 //! `ShapeTree`'s arena clones by value, so every [`crate::LeafId`] stays valid — that this task
-//! substitutes for Java's `generateSnapshot`/`popSnapshot`/`undo`/`redo` (`board/mod.rs`'s
-//! `not ported:` notes on those four; a `board.clone()` is what a Plan-7 caller takes before a
-//! trial mutation it might have to revert). A derived `clone()` copies *every* field, including
+//! substitutes for the *state* half of Java's `generateSnapshot`/`undo` (a `board.clone()` is
+//! what a Plan-7 caller takes before a trial mutation it might have to revert). **Plan 7 Task 14c
+//! added the other half**: [`Board::begin_undo_journal`], [`Board::discard_undo_journal`] and
+//! [`Board::undo_from_snapshot`] port `BasicBoard.{generateSnapshot, popSnapshot, undo}` and
+//! `applyUndoRedoSideEffects` at the one level `BatchOptimizer.optRouteItem` opens, because the
+//! *side effects* of `undo` — which items leave and re-enter the live search trees, and in what
+//! order — cannot be reconstructed from a clone, and the tree's shape is a function of them
+//! (quirk #229). A derived `clone()` copies *every* field, including
 //! the ones `readObject` resets, exactly as they stood; it is not a port of `BasicBoard.clone()`
 //! at all.
 //!
@@ -276,19 +281,21 @@
 //!    `smallestClearance < 0`, so its value records how many DRC checks have run over the item,
 //!    not what the item is. Same shape as #200, same answer.
 //! 5. **The undo bookkeeping.** `UndoableObjects` holds `stackLevel`, `redoPossible`, a
-//!    `deletedObjectsStack` and a per-node `level`, all non-`transient`; this port has no undo
-//!    stack at all (`generateSnapshot`/`popSnapshot`/`undo`/`redo` are `not ported:` on
-//!    `board/mod.rs`; a `board.clone()` stands in). The one headless caller that moves them is
+//!    `deletedObjectsStack` and a per-node `level`, all non-`transient`; the port holds a
+//!    one-level [`UndoJournal`] of ids instead (Plan 7 Task 14c) and
+//!    [`Board::structural_hash`] does not read it. The one headless caller that moves them is
 //!    `BatchOptimizer.optRouteItem`, which brackets one item's re-route with
 //!    `generateSnapshot()` (BatchOptimizer.java:444) and either `popSnapshot()` (:503) or
-//!    `undo(null)` (:508) — **balanced**, and no `getHash()` call sits inside that window
+//!    `undo(null)` (:509) — **balanced**, and no `getHash()` call sits inside that window
 //!    (`BatchFanout`'s is in the fanout loop, which never snapshots; `BoardHistory`'s are
 //!    per-pass). So the counters are 0 at every hash comparison the pipeline makes. And at
 //!    `stackLevel == 0` the two writers are no-ops by construction: `UndoableObjects.saveForUndo`
 //!    only builds an undo node when `currentNode.level < this.stackLevel`, and
 //!    `UndoableObjects.insert` stamps the node with `stackLevel` itself — so outside the
 //!    optimizer's window every `UndoableObjectNode` carries `level = 0` and
-//!    `undoObject == redoObject == null`, and there is nothing for the port to be missing.
+//!    `undoObject == redoObject == null`, and there is nothing for the port to be missing —
+//!    which is exactly why [`Board::begin_undo_journal`] can be a one-level `Option` rather than
+//!    a stack, and why an absent journal is the faithful representation of `stackLevel == 0`.
 //!
 //! ## What the port's fold is
 //!
@@ -316,7 +323,36 @@ use fr_geometry::{Area, PolylineShapeRef, Shape, Vector};
 use crate::ids::ItemId;
 use crate::items::{Item, ObstacleAreaData};
 
-use super::Board;
+use super::{Board, item_ctx};
+
+/// The port's stand-in for the `UndoableObjects` bookkeeping of **one** undo level: the top
+/// entry of `deletedObjectsStack` (UndoableObjects.java:27) plus, per item, the two facts
+/// `UndoableObjectNode.level`/`.undoObject` (:330-333) encode — was this node stamped with the
+/// current `stackLevel`, and does it carry a previous state.
+///
+/// Three id sets is all `BasicBoard.undo` needs, because the *values* Java stores (the live
+/// `Item` and the `Item.clone()` `saveForUndo` takes) are both already in the caller's snapshot
+/// board: `saveForUndo` clones before the **first** modification after the snapshot, and a
+/// pre-snapshot item that is simply deleted is unchanged when it goes. See
+/// [`Board::undo_from_snapshot`], which is the only reader.
+///
+/// not ported: `UndoableObjects.redo` (UndoableObjects.java:183-229), `redoPossible`,
+/// `disableRedo` (:293-311) and `UndoableObjectNode.redoObject` — interactive redo, which
+/// `global-constraints.md` excludes with the rest of the GUI, and which no headless caller can
+/// reach (the only `undo` on that path is `BatchOptimizer.java:509`, and nothing follows it).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct UndoJournal {
+    /// Nodes stamped with `stackLevel` and carrying no undo object: the items inserted since
+    /// the snapshot. `undo` cancels each and restores nothing for it.
+    pub(crate) created: BTreeSet<ItemId>,
+    /// Nodes stamped with `stackLevel` that carry an undo object: pre-snapshot items modified
+    /// in place by one of Java's five `saveForUndo` call sites. `undo` cancels the live item
+    /// **and** restores the snapshot's.
+    pub(crate) saved: BTreeSet<ItemId>,
+    /// The delete list itself, in deletion order — a `LinkedList` in Java (:133), appended to by
+    /// `delete` (:117,:121). `undo` restores these after the `saved` ones, in this order.
+    pub(crate) deleted: Vec<ItemId>,
+}
 
 /// A [`std::fmt::Write`] that feeds everything written to it straight into a [`Hasher`].
 ///
@@ -451,6 +487,10 @@ impl Board {
 
         copy.clear_autoroute_scratch();
         copy.finish_autoroute();
+        // Port-only, and the same reason as the rest of this block: `UndoableObjects`' undo
+        // bookkeeping does not survive Java's serialization round trip either (the module doc's
+        // "The undo bookkeeping" row). A snapshot board never records.
+        copy.undo_journal = None;
         copy
     }
 
@@ -464,6 +504,222 @@ impl Board {
     // (this task's brief names it).
     fn clear_autoroute_scratch(&mut self) {
         for item in self.items.values_mut() {
+            item.clear_autoroute_info();
+        }
+    }
+
+    // =============================================================================================
+    // The one undo level `BatchOptimizer.optRouteItem` opens — Plan 7 Task 14c, ruling BA
+    // =============================================================================================
+
+    /// Port of `BasicBoard.generateSnapshot` (BasicBoard.java:1290-1292) ->
+    /// `BoardSnapshotManager.generateSnapshot` (:75-78) -> `UndoableObjects.generateSnapshot`
+    /// (UndoableObjects.java:131-136), narrowed to the `itemList` half.
+    ///
+    /// Java pushes an empty delete list and bumps `stackLevel`; this opens the journal that
+    /// [`Board::undo_from_snapshot`] reads. The **item state** still comes from the caller's
+    /// [`Board::deep_copy`] (plan-7 ruling 8): what the journal adds is the two things a clone
+    /// cannot reconstruct — *which* items `undo` touches, and in *what order* — because
+    /// `applyUndoRedoSideEffects` replays them through the live search trees and
+    /// `MinAreaTree`'s insertion heuristic makes the tree a function of that order (quirk #229).
+    ///
+    /// Re-entrancy is not modelled: Java's stack is a `Vector` and this is one level, because
+    /// `optRouteItem` is the only headless caller and it brackets one item's re-route with a
+    /// balanced `generateSnapshot`/`popSnapshot`-or-`undo` pair (`board/snapshot.rs`' module
+    /// doc, "The undo bookkeeping"). A second `begin_undo_journal` before the first is closed
+    /// therefore discards the first, which is what a one-level stack must do.
+    pub fn begin_undo_journal(&mut self) {
+        self.undo_journal = Some(UndoJournal::default());
+    }
+
+    /// Port of `BasicBoard.popSnapshot` (BasicBoard.java:1298-1300) ->
+    /// `UndoableObjects.popSnapshot` (UndoableObjects.java:232-270), narrowed the same way: at
+    /// one level, "the situation cannot be restored anymore" is exactly "drop the journal".
+    ///
+    /// Java's body also re-levels every node it kept and joins the two top delete lists; with a
+    /// single level there is no second list to join and every surviving node goes back to level
+    /// 0, which is what an absent journal means here.
+    pub fn discard_undo_journal(&mut self) {
+        self.undo_journal = None;
+    }
+
+    /// The open journal, or `None` at `stackLevel == 0`. Test-only: [`Board::undo_from_snapshot`]
+    /// reads the field directly, and the *order* the journal records — the whole point of the
+    /// type — is not observable from outside the crate, so the tests that pin it need this.
+    #[cfg(test)]
+    pub(crate) fn undo_journal(&self) -> Option<&UndoJournal> {
+        self.undo_journal.as_ref()
+    }
+
+    /// Port of `UndoableObjects.saveForUndo` (UndoableObjects.java:273-291): record that a
+    /// pre-snapshot item is about to be modified **in place**, so `undo` can put its previous
+    /// state back.
+    ///
+    /// Java stores a `clone()` of the item; the port stores only the id, because the previous
+    /// state is already in the caller's snapshot board — `saveForUndo` is called before the
+    /// *first* modification after the snapshot (`currentNode.level < this.stackLevel` guards the
+    /// second one), so Java's clone and `snapshot.items[id]` are the same board state.
+    ///
+    /// Java's guard has a second effect this reproduces: an item **created** since the snapshot
+    /// already carries `level == stackLevel`, so its `saveForUndo` builds no undo node at all
+    /// and `undo` simply cancels it.
+    ///
+    /// Called at each of Java's five call sites; see the `saveForUndo` markers in
+    /// `board/trace_normalize.rs`, `board/shape_trace_entries.rs`, `board/mod.rs` and
+    /// `items/header.rs`.
+    pub(crate) fn save_for_undo(&mut self, id: ItemId) {
+        if let Some(journal) = self.undo_journal.as_mut() {
+            // UndoableObjects.java:281 — `currentNode.level < this.stackLevel`.
+            if !journal.created.contains(&id) {
+                journal.saved.insert(id);
+            }
+        }
+    }
+
+    /// `UndoableObjects.insert`'s journal half (UndoableObjects.java:66-70): the new node is
+    /// stamped with `stackLevel`, which is what makes `undo` cancel it.
+    pub(crate) fn journal_insert(&mut self, id: ItemId) {
+        if let Some(journal) = self.undo_journal.as_mut() {
+            journal.created.insert(id);
+        }
+    }
+
+    /// `UndoableObjects.delete`'s journal half (UndoableObjects.java:114-124), in Java's three
+    /// cases and in Java's order — the delete list is a `LinkedList`, so it is *deletion* order,
+    /// and that is the order `applyUndoRedoSideEffects` re-inserts in.
+    ///
+    /// * the node's level is below `stackLevel` (a pre-snapshot item, untouched): the node
+    ///   itself joins the delete list (`:118`);
+    /// * the node is at `stackLevel` with an undo node (a pre-snapshot item already modified in
+    ///   place): the **undo** node joins it (`:121`) — same id, and the same board state the
+    ///   port's snapshot holds, so the port appends the same id and forgets the `saveForUndo`;
+    /// * the node is at `stackLevel` with no undo node (created since the snapshot): nothing
+    ///   joins the list, and the id also leaves `created`, so `undo` neither cancels nor
+    ///   restores it. Java gets that by `objects.remove` (`:125`) taking the node out of the map
+    ///   the cancel loop walks.
+    pub(crate) fn journal_remove(&mut self, id: ItemId) {
+        if let Some(journal) = self.undo_journal.as_mut() {
+            if journal.created.remove(&id) {
+                return;
+            }
+            journal.saved.remove(&id);
+            journal.deleted.push(id);
+        }
+    }
+
+    /// Port of `BasicBoard.undo(Set<Integer>)` (BasicBoard.java:1233-1240) — the
+    /// `changedNets == null` call `BatchOptimizer.java:509` makes — together with
+    /// `UndoableObjects.undo` (UndoableObjects.java:143-171) and the private
+    /// `BasicBoard.applyUndoRedoSideEffects` (BasicBoard.java:1255-1287).
+    ///
+    /// # What this restores, and what it deliberately leaves alone
+    ///
+    /// Java's `undo` touches exactly two things — `components` (`:1234`) and `itemList`
+    /// (`:1237`) — and then fixes the **live** search trees up item by item. Every other field
+    /// of the board keeps the value the failed attempt left it with: the id generator (so the
+    /// burned ids stay burned), `revision`, `changedArea`, `min`/`maxTraceHalfWidth`,
+    /// `normalizeSuppressedNetNos`, `shoveFailingObstacle`, `shoveFailingLayer`, and the
+    /// `autorouteInfo` of every item `undo` does *not* restore. Assigning a whole snapshot board
+    /// back rolls all of those back too — that is what Task 14b measured as quirk #229 and what
+    /// the Task 14b review's binding inventory added to it — so this takes only `components` and
+    /// the item map's difference from `snapshot` and leaves `self` alone otherwise.
+    ///
+    /// # The order is the divergence, so it is spelled out
+    ///
+    /// `UndoableObjects.undo` walks `objects.values()` — a `ConcurrentSkipListMap` keyed by
+    /// `Item.compareTo`, whose subtraction is reversed (Item.java:98, quirk #44) — so the
+    /// cancelled items and the undo objects of the modified ones come out in **descending item
+    /// id**, in one pass; the delete list is appended after them, in **deletion order**. Then
+    /// `applyUndoRedoSideEffects` runs `searchTreeManager.remove` over the cancelled list
+    /// (`:1262`) and `searchTreeManager.insert` over the restored list (`:1276`). Both are
+    /// leaf-level `MinAreaTree` operations whose result depends on the order they arrive in, and
+    /// `ShapeSearchTree45Degree.completeShape` (`:152-274`) reads the resulting topology
+    /// directly, so this order is load-bearing rather than cosmetic.
+    ///
+    /// # The state a restored item is in
+    ///
+    /// Java's restored object is either the original `Item` — whose `searchTreeManager.remove`
+    /// at `BoardItemRepository.java:193` already ran `clearSearchTreeEntries()` — or an
+    /// `Item.clone()` (Item.java:259-266), which copies `onTheBoard` and deliberately **not**
+    /// `searchTreesInfo` (`:263` is commented out). Either way it arrives at `:1276` with no
+    /// tree entries and no cached tree shapes, so this clears both on the item it takes out of
+    /// the snapshot before handing it to the trees, and clears `autorouteInfo` afterwards
+    /// exactly as `:1277` does.
+    ///
+    /// `changedNets` is Java's out-parameter and is always `null` on this path
+    /// (`BatchOptimizer.java:509`), so the two `changedNets != null` blocks (`:1265-1269`,
+    /// `:1280-1284`) have nothing to write to. The observer notifications (`:1263`, `:1278`) are
+    /// dropped with the rest of the observers (`global-constraints.md`).
+    // renamed: `BasicBoard.undo` (BasicBoard.java:1233-1240) -> `Board::undo_from_snapshot`, which
+    // takes the pre-attempt board by value where Java reads it off the `UndoableObjects` stack.
+    // renamed: the private `BasicBoard.applyUndoRedoSideEffects` (BasicBoard.java:1255-1287) ->
+    // this method's second half (Rust has no private-helper visibility to preserve here, and
+    // `redo` — its only other caller — is not ported).
+    pub fn undo_from_snapshot(&mut self, snapshot: Board) {
+        let journal = self.undo_journal.take().unwrap_or_default();
+        let mut snapshot_items = snapshot.items;
+
+        // BasicBoard.java:1234 — `this.components.undo(this.communication.observers)`. Nothing
+        // on the optimizer path moves a component, so this is the identity in practice; it is
+        // written because Java writes it, and `Components`' own undo stack is not ported.
+        self.components = snapshot.components;
+
+        // UndoableObjects.java:148-160, in one pass over `objects.values()`: descending item id
+        // (quirk #44). `cancelled` is every node at `stackLevel`; `restored`'s first segment is
+        // the undo object of each of those that has one, i.e. the items modified in place.
+        let cancelled: Vec<ItemId> = journal
+            .created
+            .iter()
+            .chain(journal.saved.iter())
+            .copied()
+            .collect::<BTreeSet<ItemId>>()
+            .into_iter()
+            .rev()
+            .collect();
+        // UndoableObjects.java:161-168: the delete list, appended after them in deletion order.
+        let restored: Vec<ItemId> = journal
+            .saved
+            .iter()
+            .rev()
+            .copied()
+            .chain(journal.deleted.iter().copied())
+            .collect();
+
+        // BasicBoard.java:1259-1270 — `searchTreeManager.remove(currentItem)` on the LIVE trees,
+        // in cancelled order. The item is still in the map here, exactly as Java's cancelled
+        // object is still the live `Item` its collection holds.
+        for id in &cancelled {
+            if let Some(item) = self.items.get_mut(id) {
+                self.trees.remove(item);
+            }
+        }
+
+        // `itemList.undo`'s effect on the map (UndoableObjects.java:148-168): the created nodes
+        // drop below the visible level (`readObject` skips `level > stackLevel`, :56-59), and
+        // every restored node goes back in under its own id.
+        for id in &journal.created {
+            self.items.remove(id);
+        }
+        for id in &restored {
+            if let Some(item) = snapshot_items.remove(id) {
+                self.items.insert(*id, item);
+            }
+        }
+
+        // BasicBoard.java:1272-1285 — `currentItem.board = this` (the port has no back-pointer),
+        // `searchTreeManager.insert(currentItem)` and `currentItem.clearAutorouteInfo()`, in
+        // restored order.
+        let ctx = item_ctx!(self);
+        for id in &restored {
+            let Some(item) = self.items.get_mut(id) else {
+                continue;
+            };
+            // The state Java's restored object arrives in — see the doc comment.
+            item.clear_tree_entries();
+            item.set_on_the_board(false);
+            // BasicBoard.java:1275.
+            self.trees.insert(item, &ctx);
+            // BasicBoard.java:1277.
             item.clear_autoroute_info();
         }
     }
@@ -800,5 +1056,197 @@ mod tests {
 
         insert_trace(&mut board_b, 3, 200, 300);
         assert_eq!(board_a.diff_traces(&board_b), 2);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Plan 7 Task 14c: the one undo level `BatchOptimizer.optRouteItem` opens (quirk #229)
+    // ---------------------------------------------------------------------------------------
+
+    #[test]
+    fn undo_from_snapshot_cancels_the_inserted_items_and_restores_the_removed_ones() {
+        let mut board = board();
+        let kept = insert_trace(&mut board, 1, 100, 200);
+        let removed = insert_trace(&mut board, 1, 300, 400);
+
+        let snapshot = board.deep_copy();
+        board.begin_undo_journal();
+        let inserted = insert_trace(&mut board, 1, 500, 600);
+        board.remove_item(removed);
+        assert!(board.get_item(inserted).is_some());
+        assert!(board.get_item(removed).is_none());
+
+        board.undo_from_snapshot(snapshot);
+
+        // `UndoableObjects.undo` (:148-168): the node stamped with `stackLevel` drops below the
+        // visible level, and the delete list goes back in.
+        assert!(board.get_item(inserted).is_none());
+        assert!(board.get_item(removed).is_some());
+        assert!(board.get_item(kept).is_some());
+        assert_eq!(board.undo_journal(), None);
+    }
+
+    #[test]
+    fn undo_from_snapshot_puts_the_restored_item_back_in_the_live_trees() {
+        let mut board = board();
+        let trace = insert_trace(&mut board, 1, 300, 400);
+        let ctx = board.ctx();
+        let shape = board
+            .get_item(trace)
+            .expect("the trace")
+            .get_tile_shape(board.default_tree_id(), 0, &ctx)
+            .expect("its tile shape");
+        let object = crate::ids::TreeObject::Item(trace);
+
+        let snapshot = board.deep_copy();
+        board.begin_undo_journal();
+        board.remove_item(trace);
+        assert!(!board.overlapping_objects(&shape, Some(0)).contains(&object));
+
+        board.undo_from_snapshot(snapshot);
+
+        // BasicBoard.java:1276 — `searchTreeManager.insert(currentItem)` on the **live** tree.
+        assert!(board.overlapping_objects(&shape, Some(0)).contains(&object));
+        assert!(board.get_item(trace).expect("the trace").is_on_the_board());
+        assert!(board.validate_item(trace));
+    }
+
+    #[test]
+    fn undo_from_snapshot_leaves_every_field_java_leaves_alone() {
+        let mut board = board();
+        let untouched = insert_trace(&mut board, 1, 100, 200);
+        let removed = insert_trace(&mut board, 1, 300, 400);
+
+        let snapshot = board.deep_copy();
+        board.begin_undo_journal();
+
+        // The attempt burns an id, fills scratch on an item the undo will *not* restore, and
+        // writes the three fields `Board::deep_copy` resets but `BasicBoard.undo` never touches.
+        let burned = board.new_item_id();
+        board
+            .get_item_mut(untouched)
+            .expect("the trace")
+            .get_autoroute_info();
+        board.normalize_suppressed_net_nos.insert(7);
+        board.shove_failing_obstacle = Some(removed);
+        board.shove_failing_layer = 3;
+        let revision_before_undo = board.revision();
+        board.remove_item(removed);
+
+        board.undo_from_snapshot(snapshot);
+
+        // The ids the failed attempt burned stay burned (BasicBoard.undo:1233-1240).
+        assert_eq!(board.new_item_id().0, burned.0 + 1);
+        // The three transient fields `deep_copy` resets and `undo` does not.
+        assert!(board.normalize_suppressed_net_nos.contains(&7));
+        assert_eq!(board.shove_failing_obstacle, Some(removed));
+        assert_eq!(board.shove_failing_layer, 3);
+        // `revision` keeps counting; the removal above bumped it and the undo does not undo that.
+        assert!(board.revision() > revision_before_undo);
+        // `clearAutorouteInfo` runs on the **restored** items only (BasicBoard.java:1277) — not,
+        // as `Board::deep_copy`'s `clearAllItemTemporaryAutorouteData` would, on every item.
+        assert!(
+            board
+                .get_item(untouched)
+                .expect("the trace")
+                .get_autoroute_info_pur()
+                .is_some()
+        );
+        assert!(
+            board
+                .get_item(removed)
+                .expect("the restored trace")
+                .get_autoroute_info_pur()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn the_journal_records_removals_in_deletion_order_and_insertions_as_a_set() {
+        let mut board = board();
+        let a = insert_trace(&mut board, 1, 100, 200);
+        let b = insert_trace(&mut board, 1, 300, 400);
+        let c = insert_trace(&mut board, 1, 500, 600);
+
+        board.begin_undo_journal();
+        let created = insert_trace(&mut board, 1, 700, 800);
+        // Deliberately not id order: `UndoableObjects`' delete list is a `LinkedList`, so
+        // `applyUndoRedoSideEffects` re-inserts in *deletion* order (:1276), and that order is
+        // what decides the resulting `MinAreaTree` topology — quirk #229's whole mechanism.
+        board.remove_item(c);
+        board.remove_item(a);
+        board.remove_item(b);
+        // An item created since the snapshot and then deleted leaves no trace at all: Java's
+        // `delete` adds nothing to the list and `objects.remove` takes its node out of the map
+        // the cancel loop walks.
+        board.remove_item(created);
+
+        let journal = board.undo_journal().expect("open");
+        assert_eq!(journal.deleted, vec![c, a, b]);
+        assert!(journal.created.is_empty());
+        assert!(journal.saved.is_empty());
+    }
+
+    #[test]
+    fn combining_two_traces_records_a_save_for_undo_and_the_undo_puts_the_short_one_back() {
+        let mut board = board();
+        // Two collinear traces that meet at (300, 100): `combine_trace` joins them, which is
+        // Java's `PolylineTrace.combine` -> `itemList.saveForUndo(this)` (:275/:417) plus a
+        // `removeItem` of the absorbed one.
+        let first = insert_trace(&mut board, 1, 100, 300);
+        let second = insert_trace(&mut board, 1, 300, 600);
+
+        let snapshot = board.deep_copy();
+        board.begin_undo_journal();
+        assert!(board.combine_trace(first).expect("combine"));
+
+        let journal = board.undo_journal().expect("open");
+        assert!(
+            journal.saved.contains(&first),
+            "the surviving trace was modified in place, so `undo` must cancel it and restore \
+             the pre-attempt one"
+        );
+        assert_eq!(journal.deleted, vec![second]);
+        let ctx = board.ctx();
+        let combined_len = board
+            .get_item(first)
+            .expect("the survivor")
+            .bounding_box(&ctx)
+            .width();
+
+        board.undo_from_snapshot(snapshot);
+
+        assert!(board.get_item(second).is_some());
+        let ctx = board.ctx();
+        assert!(
+            board
+                .get_item(first)
+                .expect("the survivor")
+                .bounding_box(&ctx)
+                .width()
+                < combined_len,
+            "the in-place modification is rolled back to the snapshot's geometry"
+        );
+        assert!(board.validate_item(first));
+        assert!(board.validate_item(second));
+    }
+
+    #[test]
+    fn discard_undo_journal_is_pop_snapshot_and_deep_copy_never_records() {
+        let mut board = board();
+        insert_trace(&mut board, 1, 100, 200);
+        board.begin_undo_journal();
+        assert!(board.undo_journal().is_some());
+
+        // `Board::deep_copy` is a `readObject` round trip: the copy starts at `stackLevel == 0`.
+        let copy = board.deep_copy();
+        assert_eq!(copy.undo_journal(), None);
+
+        board.discard_undo_journal();
+        assert_eq!(board.undo_journal(), None);
+        // With no journal open, the hooks are no-ops: `stackLevel == 0` is exactly where Java's
+        // `saveForUndo`/`delete` write nothing either.
+        let trace = insert_trace(&mut board, 1, 300, 400);
+        board.remove_item(trace);
+        assert_eq!(board.undo_journal(), None);
     }
 }

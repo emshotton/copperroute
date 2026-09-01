@@ -261,10 +261,12 @@ impl ItemHeader {
     // ("unexpected netCount > 1", Item.java:975-977) and then *overwrites only element 0*
     // (Item.java:978), leaving the other net numbers in place — so the item ends up on
     // `net_number` **plus** whatever it was on before. Reproduced; see docs/java-quirks.md.
-    // not ported: `board.itemList.saveForUndo(this)` (Item.java:969) — Task 12 replaces Java's
-    // `UndoableObjects` snapshot stack with `Board::clone`/`Board::deep_copy`
-    // (`board/snapshot.rs`), which take a whole-board copy rather than a per-item undo record, so
-    // there is nothing for this call site to do here.
+    // not ported: `board.itemList.saveForUndo(this)` (Item.java:969) — the one `saveForUndo`
+    // call site Plan 7 Task 14c leaves alone, and the reason is that it cannot be reached: this
+    // method is on `ItemHeader`, which has no board, and its only caller is `DrillItem::swap`
+    // (`items/drill.rs`), i.e. Java's `Pin.swap` — which `board/snapshot.rs`' module doc already
+    // records as having **no live headless caller**. The other four sites do call
+    // `Board::save_for_undo`.
     pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
         if !Nets::is_normal_net_number(net_number) {
             return;

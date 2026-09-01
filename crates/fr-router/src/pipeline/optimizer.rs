@@ -10,26 +10,32 @@
 //! identity constants (`:527-550`), with [`OptimizerResult`] and [`OptimizerPassRecord`] as their
 //! answer. What is left of the class is one GUI factory, rostered at the foot of this file.
 //!
-//! # The snapshot is a clone (plan-7 ruling 8), and the clone is not free
+//! # The snapshot is a clone (plan-7 ruling 8), and the restore is Java's `undo`
 //!
 //! `optRouteItem` makes the board restorable at `:442-445` with `routingBoard.generateSnapshot()`
 //! and either drops the snapshot (`:503`) or restores from it (`:509`) **inside the same call** —
-//! nothing else touches the stack. `fr-board` rosters `RoutingBoard.{generateSnapshot, popSnapshot,
-//! undo}` `// not ported:` and spec §6 replaces them with `Board: Clone`, so the port takes a
-//! [`Board::deep_copy`] before the removal and assigns it back on failure.
+//! nothing else touches the stack. Spec §6 replaced `RoutingBoard.{generateSnapshot, popSnapshot,
+//! undo}` with `Board: Clone`, so the port takes a [`Board::deep_copy`] before the removal.
 //!
-//! That substitution is **not** free, and the difference is named here rather than hidden.
+//! **Task 14c (ruling BA) kept the clone for the item state and gave the restore back to Java.**
 //! `BasicBoard.undo` (`BasicBoard.java:1233-1240`) restores exactly two things — `components` and
-//! `itemList`, with `applyUndoRedoSideEffects` fixing the search tree up to match — and leaves
-//! every other field of the live board alone. A whole-board assignment additionally rolls back:
+//! `itemList` — and then replays the attempt's item changes through the **live** search trees
+//! (`applyUndoRedoSideEffects`, `:1255-1287`), leaving every other field of the live board alone.
+//! A whole-board assignment did none of that replay and additionally rolled back the rows below;
+//! [`Board::undo_from_snapshot`] now does the replay and rolls none of them back. The table is
+//! kept as the record of what a clone-assignment restore silently changed, because that is what
+//! the fix had to enumerate — the last column reads *"was …, now …"*:
 //!
-//! | field | Java's `undo` | the clone | consequence |
+//! | field | Java's `undo` | the clone assignment | consequence |
 //! |---|---|---|---|
-//! | `communication.idGenerator` | untouched: the ids the failed attempt burned stay burned | rolled back | **compensated** — [`BatchOptimizer::opt_route_item`] carries the *live* `communication` onto the restored board, so the next inserted item gets the id Java gives it |
-//! | `searchTreeManager` | mutated item by item (`BasicBoard.java:1262`, `:1276`) | replaced wholesale | **NOT inert — quirk #229, open.** The contents agree and the *shape* does not, and the shape leaks. The Task 13 review's §4 insulation argument covers `MinAreaTree.overlaps` only, whose result really is funnelled through an identity-ordered set; it does **not** cover `ShapeSearchTree45Degree.completeShape` (ShapeSearchTree45Degree.java:152-274), which walks the tree with an `ArrayStack` and prunes each node against a `boundingShape` that shrinks as obstacles are consumed (`:157` against `:263-264`). There, topology decides which obstacles restrain a room **at all**, so an "undone" board whose trees Java re-paired and the port restored intact completes free-space rooms differently. Measured on `Issue558-dev-board` and `Issue026-J2_reference`: the first failed `optRouteItem` costs Java 54 (resp. 84) tree ops the port never performs, and a later item burns a different number of ids. See `docs/java-quirks.md` #229 and `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-14b-report.md`. |
-//! | `revision` | keeps counting | rolled back | inert — `Board::revision` has no reader outside tests |
-//! | `changedArea` | untouched | rolled back to the snapshot's `None` | inert — every consumer calls `startMarkingChangedArea()` first (`AutoroutePassRunner.java:223`, `BatchAutorouter.java:489`) |
-//! | `maxTraceHalfWidth` / `minTraceHalfWidth` | keeps the widened value of a trace that no longer exists | rolled back | private in the port, so "keep live" is not expressible; the rolled-back value is the one that describes the restored board |
+//! | `communication.idGenerator` | untouched: the ids the failed attempt burned stay burned | rolled back | **fixed** — the restore no longer assigns a board, so `communication` is simply never touched (it *was* compensated by copying the live one onto the restored board) |
+//! | `searchTreeManager` | mutated item by item (`BasicBoard.java:1262`, `:1276`) | replaced wholesale | **This was quirk #229, and it is the reason the whole restore was rewritten.** The contents agreed and the *shape* did not, and the shape leaks. The Task 13 review's §4 insulation argument covers `MinAreaTree.overlaps` only, whose result really is funnelled through an identity-ordered set; it does **not** cover `ShapeSearchTree45Degree.completeShape` (ShapeSearchTree45Degree.java:152-274), which walks the tree with an `ArrayStack` and prunes each node against a `boundingShape` that shrinks as obstacles are consumed (`:157` against `:263-264`). There, topology decides which obstacles restrain a room **at all**. Measured on `Issue558-dev-board` and `Issue026-J2_reference`: the first failed `optRouteItem` cost Java 54 (resp. 84) tree ops the port never performed, and a later item burned a different number of ids (188 vs 187). **Fixed in Task 14c**: [`Board::undo_from_snapshot`] replays them on the live trees in Java's order, and the level-8 `MAT`/`TREEFP`/`ITEMSEP` streams are now byte-identical over both boards' whole runs. |
+//! | `revision` | keeps counting | rolled back | **fixed** — kept live; it was inert either way (`Board::revision` has no reader outside tests) |
+//! | `changedArea` | untouched | rolled back to the snapshot's `None` | **fixed** — kept live; it was inert either way (every consumer calls `startMarkingChangedArea()` first: `AutoroutePassRunner.java:223`, `BatchAutorouter.java:489`) |
+//! | `maxTraceHalfWidth` / `minTraceHalfWidth` | keeps the widened value of a trace that no longer exists | rolled back | **fixed** — kept live. "Keep live" needed no accessor in the end, because the restore stopped assigning a board at all |
+//! | `normalizeSuppressedNetNos` | untouched | **cleared** by [`Board::deep_copy`] (it is `transient`, so Java's `readObject` clears it) | **fixed** — kept live. Reachable headless (`BatchOptimizer.java:450`'s `combineTraces` → `normalizeTraces`, behind a 2000-iteration oscillation valve), so a cleared set would have let the port re-attempt a normalisation Java has given up on. Task 14b review's binding inventory |
+//! | `shoveFailingObstacle` / `shoveFailingLayer` | untouched | reset to `None` / `0` by [`Board::deep_copy`] (both `transient`; `0` rather than the `-1` sentinel is Java's own bug, `board/snapshot.rs`) | **fixed** — kept live. Task 14b review's binding inventory |
+//! | every item's `autorouteInfo` | cleared on the **restored** items only (`BasicBoard.java:1277`) | cleared on **all** items, by [`Board::deep_copy`]'s `clearAllItemTemporaryAutorouteData` + `finishAutoroute` tail | **fixed** — [`Board::undo_from_snapshot`] clears it exactly where `:1277` does, and an item the undo does not restore keeps whatever scratch the attempt left on it. Task 14b review's binding inventory |
 //!
 //! # What is deliberately not here
 //!
@@ -607,12 +613,16 @@ impl<'a> BatchOptimizer<'a> {
             }
         }
 
-        // :442-445 — `routingBoard.generateSnapshot()`. Plan-7 ruling 8: the snapshot is a clone.
-        // See the module doc for what a clone rolls back that Java's `undo` does not.
+        // :442-445 — `routingBoard.generateSnapshot()`. Plan-7 ruling 8: the snapshot's *item
+        // state* is a clone. Its *side effects* are not: `Board::begin_undo_journal` opens the
+        // one undo level Java's `UndoableObjects` stack holds here, so the restore below can
+        // replay `applyUndoRedoSideEffects` on the live trees. See the module doc's table.
         let snapshot = if disable_snapshots {
             None
         } else {
-            Some(board.deep_copy())
+            let snapshot = board.deep_copy();
+            board.begin_undo_journal();
+            Some(snapshot)
         };
 
         // :448 — descending, which is the order the `TreeSet` hands `removeItems`.
@@ -690,24 +700,21 @@ impl<'a> BatchOptimizer<'a> {
                         .unwrap_or(0.0),
                 ),
             );
-            // :501-504 — `popSnapshot()`, i.e. drop the clone.
+            // :501-504 — `popSnapshot()`: drop the clone, and the undo level with it.
+            board.discard_undo_journal();
             drop(snapshot);
-        } else if let Some(mut restored) = snapshot {
-            // :506-510 — `routingBoard.undo(null)`. The clone carries the board back, but the id
-            // generator does **not** go back: Java's `undo` touches `components` and `itemList`
-            // only, so the ids the failed attempt burned stay burned and the next inserted item
-            // gets the id Java gives it. See the module doc's table.
-            restored.communication = board.communication.clone();
-            // Java bug in the *port*, not in Java: quirk #229. This assignment also replaces
-            // `board.trees`, so the search trees come back with the topology they had before the
-            // attempt; Java's `undo` instead replays the attempt's item changes through the live
-            // trees (`BasicBoard.java:1262`, `:1276`), which re-pairs the same leaves into a
-            // different `MinAreaTree` shape. `ShapeSearchTree45Degree.completeShape:152-274`
-            // reads that shape, so from the first failed item on, the two sides complete
-            // free-space rooms differently and eventually burn different numbers of item ids.
-            // Localised by Task 14b (ruling AZ); the fix is not a one-liner and re-opens every
-            // optimizer-stage reference. See the module doc's table and `docs/java-quirks.md`.
-            *board = restored;
+        } else if let Some(restored) = snapshot {
+            // :506-510 — `routingBoard.undo(null)`. `Board::undo_from_snapshot` takes
+            // `components` and the item map's difference from the clone and **leaves the rest of
+            // the live board alone**, which is what `BasicBoard.undo` does: the id generator does
+            // not go back (the ids the failed attempt burned stay burned), and neither do
+            // `revision`, `changedArea`, `min`/`maxTraceHalfWidth`, `normalizeSuppressedNetNos`,
+            // `shoveFailingObstacle`, `shoveFailingLayer` or the `autorouteInfo` of any item the
+            // undo does not restore. The cancelled items leave the **live** search trees and the
+            // restored ones re-enter them in Java's order (`BasicBoard.java:1262`, `:1276`), so
+            // the trees come back with Java's post-undo topology rather than the pre-attempt one
+            // — quirk #229, fixed here (Task 14c, ruling BA). See the module doc's table.
+            board.undo_from_snapshot(restored);
         }
 
         // :513.
