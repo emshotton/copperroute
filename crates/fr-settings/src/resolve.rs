@@ -42,6 +42,15 @@
 //! s.apply_board_specific_optimizations(board)          // RoutingJobScheduler.java:186
 //! ```
 //!
+//! **The two lines this file does not carry.** `applyRouterSettingsForLoadedBoard` has four
+//! steps, not two: after `:745` it calls `applyCopperToEdgeClearanceOverride` (`:746`) and
+//! `applyHoleClearanceOverride` (`:747`). Those mutate the **board**, not the settings, so they
+//! are not here — `resolve_headless` takes `&Board`. Plan 7 Task 15b ported them as
+//! `fr_board::Board::apply_*` and gave them a seam, `fr_router::pipeline::prepare_board`, which
+//! a caller runs on the loaded board after this function. Until then nothing in the port applied
+//! them at all (Plan 8 survey §5.7), and `applyCopperToEdgeClearanceOverride` mutates 15 of the
+//! 16 corpus boards at default settings (quirk #231).
+//!
 //! `parse` is `RulesReader.readRouterSettings` — the layer structure discovered from the file's
 //! own `(layer_rule …)` names — and `parse_against` is `RulesReader.read`, whose layer structure
 //! is the **board's**. They are two different readings of the same bytes and Java performs both,

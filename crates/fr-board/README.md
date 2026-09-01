@@ -97,6 +97,25 @@ are audited against the two files that hold them.
     scripts/audit-map/fr-drc.map
 ```
 
+Plan 7 Task 15b added an **eleventh**, for the same reason and with a sharper
+one behind it: `management/HeadlessBoardManager.java` owns the two
+board-mutating clearance overrides `board/clearance_override.rs` ports, and
+**no plan had ever audited `management/`**. That is how the gap survived six
+plans — `applyCopperToEdgeClearanceOverride` mutates 15 of the 16 corpus boards
+at *default* settings (quirk #231) and nothing in the port applied it.
+
+```sh
+./scripts/audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' \
+    scripts/audit-map/fr-board.map
+```
+
+It prints one `ROSTERED` line and exits 0: the class's three board-mutating
+methods are all **private**, so the script (which lists public methods) never
+names them, and its nine public methods — the load/save/diagnostic half — are
+each answered by an `added in Plan 8:` marker naming the reader that will own
+them. The glob restricts it to the one file; the rest of `management/` is Plan
+8's and has no `fr-board` home.
+
 **What that zero does and does not prove.** The script's *positive* match is
 crate-wide, not per class: for a Java `Foo.getBar`, it accepts any
 `fn get_bar…` anywhere under `crates/fr-board/src`, with no check that the

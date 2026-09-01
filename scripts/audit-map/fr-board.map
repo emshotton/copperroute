@@ -146,3 +146,23 @@ Signum                        datastructures/mod.rs
 Stoppable                     datastructures/time_limit.rs
 TimeLimit                     datastructures/time_limit.rs
 UndoableObjects               datastructures/mod.rs
+
+# --- management (Plan 7 Task 15b) ---------------------------------------------------------------
+# `management/HeadlessBoardManager.java` is the Java class that owns the two board-mutating
+# clearance overrides `board/clearance_override.rs` ports —
+# `applyCopperToEdgeClearanceOverride` (:466-552), `applyHoleClearanceOverride` (:346-396) and
+# `assignHoleKeepoutClearanceClass` (:404-464). All three are **private**, so `audit-port.sh`
+# (which lists public methods) never names them; the row exists so the class's nine *public*
+# methods are gated at all. Until Plan 7 Task 15b, `management/` had never been audited by any
+# plan — which is exactly why the override gap survived six plans (Plan 8 survey §5.7).
+#
+# The class therefore prints `ROSTERED`: every public method is answered by an
+# `added in Plan 8:` marker in `board/clearance_override.rs` naming the reader that will own it,
+# and none by a real `fn`. The invocation is
+#
+#   ./scripts/audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' \
+#       scripts/audit-map/fr-board.map
+#
+# i.e. restricted to the one file: the rest of `management/` (the scheduler, the session manager,
+# the analytics) is Plan 8's and has no `fr-board` home.
+HeadlessBoardManager          board/clearance_override.rs

@@ -20,8 +20,9 @@ pub mod searchtree;
 pub mod structure;
 
 pub use board::{
-    Board, ChangedArea, Communication, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS,
-    ShapeTraceEntries, StopConnectionOption, WriteResolution,
+    BOARD_EDGE_CLEARANCE_CLASS_NAME, Board, ChangedArea, Communication,
+    DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM, HOLE_EDGE_CLEARANCE_CLASS_NAME, MAX_NORMALIZATION_DEPTH,
+    MAX_NORMALIZE_ITERATIONS, ShapeTraceEntries, StopConnectionOption, WriteResolution,
 };
 pub use datastructures::{
     DelaunayCorner, DelaunayEdge, LeafId, Node, NodeId, PlanarDelaunayTriangulation, ShapeTree,

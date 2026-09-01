@@ -18,6 +18,8 @@ import app.freerouting.geometry.planar.Point;
 import app.freerouting.geometry.planar.Polyline;
 import app.freerouting.io.BoardReadResult;
 import app.freerouting.io.specctra.DsnReader;
+import app.freerouting.core.RoutingJob;
+import app.freerouting.management.HeadlessBoardManager;
 import app.freerouting.core.library.Padstack;
 import app.freerouting.rules.Net;
 import app.freerouting.settings.RouterSettings;
@@ -188,6 +190,39 @@ public final class P6T1 {
     settings.applyBoardSpecificOptimizations(board);
     // After the two board-dependent steps, so it cannot be overwritten by either of them.
     settings.neckWidthUm = neckWidthUm;
+
+    // Plan 7 Task 15b. Off unless `P7T15B_PREPARE` is set, so a run without the variable executes
+    // exactly the code it executed before this switch existed and every committed
+    // `tests/reference/*/router.meta.txt` stays byte-identical. With it, this driver applies
+    // `HeadlessBoardManager`'s two board-mutating clearance overrides —
+    // `applyCopperToEdgeClearanceOverride` (HeadlessBoardManager.java:466-552) and
+    // `applyHoleClearanceOverride` (:346-396), in that order, which is `:746-747`'s — to the
+    // already-loaded board, which is what a real `-de <dsn> -do <ses>` run does and what Plan 7
+    // Task 16's references encode. Both are **private**, and this driver loads through
+    // `DsnReader.readBoard` rather than through the manager, so the board is handed to a manager
+    // via the public `replaceRoutingBoard` and the two methods are invoked reflectively; that
+    // reaches the same code the CLI reaches, once, on the loaded board. The Rust twin's
+    // `fr_router::pipeline::prepare_board` is the same pair in the same order.
+    if (System.getenv("P7T15B_PREPARE") != null) {
+      RoutingJob overrideJob = new RoutingJob(java.util.UUID.randomUUID());
+      overrideJob.routerSettings = settings;
+      HeadlessBoardManager overrideManager = new HeadlessBoardManager(overrideJob);
+      overrideManager.replaceRoutingBoard(board);
+      for (String method :
+          new String[] {"applyCopperToEdgeClearanceOverride", "applyHoleClearanceOverride"}) {
+        java.lang.reflect.Method m =
+            HeadlessBoardManager.class.getDeclaredMethod(method);
+        m.setAccessible(true);
+        m.invoke(overrideManager);
+      }
+      System.err.println(
+          "p7t15b-prepare classes="
+              + board.rules.clearanceMatrix.getClassCount()
+              + " outlineClass="
+              + board.getOutline().clearanceClassIndex()
+              + " holeClearance="
+              + board.rules.getHoleClearance());
+    }
 
     // One router for the whole run, as `AutoroutePassRunner` has one per pass: the class holds no
     // per-connection state that `route` reads (`traceCosts`, `startRipupCosts`,

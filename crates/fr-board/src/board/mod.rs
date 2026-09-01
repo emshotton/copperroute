@@ -58,6 +58,7 @@
 
 pub mod changed_area;
 pub mod clearance;
+pub mod clearance_override;
 pub mod communication;
 pub mod connectivity;
 pub mod normalize;
@@ -72,6 +73,10 @@ use std::collections::BTreeMap;
 use fr_geometry::{Area, IntBox, Point, Polyline, PolylineShapeRef, TileShape, Vector};
 
 pub use changed_area::ChangedArea;
+pub use clearance_override::{
+    BOARD_EDGE_CLEARANCE_CLASS_NAME, DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM,
+    HOLE_EDGE_CLEARANCE_CLASS_NAME,
+};
 pub use communication::{Communication, WriteResolution};
 pub use connectivity::StopConnectionOption;
 pub use normalize::MAX_NORMALIZE_ITERATIONS;

@@ -110,6 +110,20 @@ fn main() {
     // `P6T1.main`: after the two board-dependent steps, so neither can overwrite it.
     settings.neck_width_um = Some(neck_width_um);
 
+    // Plan 7 Task 15b. Off unless `P7T15B_PREPARE` is set, so a run without the variable
+    // executes exactly the code it executed before this switch existed and every committed
+    // `tests/reference/*/router.meta.txt` stays byte-identical. With it, both sides apply
+    // `HeadlessBoardManager`'s two board-mutating clearance overrides to the loaded board —
+    // `prepare_board` here, `applyCopperToEdgeClearanceOverride`/`applyHoleClearanceOverride`
+    // through a `HeadlessBoardManager` on the Java side — before a single connection is routed.
+    // That is what a real `-de <dsn> -do <ses>` run does and what Plan 7 Task 16's references
+    // encode; `run.sh p6t1 fixtures/Issue026-J2_reference.dsn 45` under the variable is the
+    // whole-board evidence that the port's `board_edge` class routes the same as the jar's.
+    if std::env::var_os("P7T15B_PREPARE").is_some() {
+        let changed = fr_router::pipeline::prepare_board(&mut board, &settings);
+        eprintln!("p7t15b-prepare changed={changed}");
+    }
+
     for connection in pick_connections(&board, max_items) {
         let line = route_one(&mut board, &settings, &connection, ripup_pass_no, steps);
         writeln!(out, "{line}").expect("write");

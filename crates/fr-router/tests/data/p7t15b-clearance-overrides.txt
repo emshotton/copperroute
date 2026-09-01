@@ -1,0 +1,1717 @@
+# P7T15bProbe — HeadlessBoardManager's three clearance overrides, HEAD jar
+# management/HeadlessBoardManager.java:346-396, :404-464, :466-552; the sixteen-board parity corpus
+# no clock, no HashSet iteration: byte-stable across runs
+# DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM = 500.0
+# DEFAULT_HOLE_CLEARANCE_UM = 0.0
+
+[board] stem=router-rpi-splitter dsn=fixtures/Issue143-rpi_splitter.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=7 names=null,default,boundary,via,smd,pin,area
+  outline_class=2 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  mrow L0 0 null = 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480
+[variant] name=B copper=500.0 hole=- copper_units=50000 hole_units=-
+  layers=2 classes=7 names=null,default,boundary,via,smd,pin,area
+  outline_class=2 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  mrow L0 0 null = 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=7 names=null,default,boundary,via,smd,pin,area
+  outline_class=2 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  mrow L0 0 null = 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480
+[variant] name=D copper=500.0 hole=0.0 copper_units=50000 hole_units=0
+  layers=2 classes=7 names=null,default,boundary,via,smd,pin,area
+  outline_class=2 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  mrow L0 0 null = 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=10000
+  layers=2 classes=8 names=null,default,boundary,via,smd,pin,area,hole_edge
+  outline_class=2 default_area_class=6 hole_clearance=10000 items=33
+  keepouts=8 keepout_classes=7:8
+  matrix_sum=2448560
+  msum L0 = 1224280 rows=0,182880,182880,137160,162560,162560,198120,198120
+  msum L1 = 1224280 rows=0,182880,182880,137160,162560,162560,198120,198120
+  mrow L0 0 null = 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480 30480
+  mrow L0 7 hole_edge = 0 25400 25400 25400 30480 30480 30480 30480
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=50000
+  layers=2 classes=8 names=null,default,boundary,via,smd,pin,area,hole_edge
+  outline_class=2 default_area_class=6 hole_clearance=50000 items=33
+  keepouts=8 keepout_classes=7:8
+  matrix_sum=3017040
+  msum L0 = 1508520 rows=0,207480,207480,161760,182080,182080,217640,350000
+  msum L1 = 1508520 rows=0,207480,207480,161760,182080,182080,217640,350000
+  mrow L0 0 null = 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400 50000
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400 50000
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400 50000
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480 50000
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480 50000
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480 50000
+  mrow L0 7 hole_edge = 0 50000 50000 50000 50000 50000 50000 50000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-100
+  layers=2 classes=7 names=null,default,boundary,via,smd,pin,area
+  outline_class=2 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  mrow L0 0 null = 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480
+[variant] name=H copper=-1.0 hole=- copper_units=-100 hole_units=-
+  layers=2 classes=7 names=null,default,boundary,via,smd,pin,area
+  outline_class=2 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640
+  mrow L0 0 null = 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=8 names=null,default,boundary,via,smd,pin,area,board_edge
+  outline_class=7 default_area_class=6 hole_clearance=0 items=33
+  keepouts=8 keepout_classes=6:8
+  matrix_sum=1717040
+  msum L0 = 858520 rows=0,157480,157480,111760,132080,132080,167640,0
+  msum L1 = 858520 rows=0,157480,157480,111760,132080,132080,167640,0
+  mrow L0 0 null = 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 30480 25400 15240 30480 30480 25400 0
+  mrow L0 2 boundary = 0 25400 30480 25400 25400 25400 25400 0
+  mrow L0 3 via = 0 15240 25400 15240 15240 15240 25400 0
+  mrow L0 4 smd = 0 30480 25400 15240 15240 15240 30480 0
+  mrow L0 5 pin = 0 30480 25400 15240 15240 15240 30480 0
+  mrow L0 6 area = 0 25400 25400 25400 30480 30480 30480 0
+  mrow L0 7 board_edge = 0 0 0 0 0 0 0 0
+
+[board] stem=router-dac2020-bm01 dsn=fixtures/Issue508-DAC2020_bm01.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=320
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=router-j2-reference dsn=fixtures/Issue026-J2_reference.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=13012
+  msum L0 = 6506 rows=0,4004,2502
+  msum L1 = 6506 rows=0,4004,2502
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2002 2002
+  mrow L0 2 smd = 0 2002 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=63012
+  msum L0 = 31506 rows=0,9004,7502,15000
+  msum L1 = 31506 rows=0,9004,7502,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 5000
+  mrow L0 2 smd = 0 2002 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=13012
+  msum L0 = 6506 rows=0,4004,2502
+  msum L1 = 6506 rows=0,4004,2502
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2002 2002
+  mrow L0 2 smd = 0 2002 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=63012
+  msum L0 = 31506 rows=0,9004,7502,15000
+  msum L1 = 31506 rows=0,9004,7502,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 5000
+  mrow L0 2 smd = 0 2002 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=81
+  keepouts=4 keepout_classes=3:4
+  matrix_sum=33032
+  msum L0 = 16516 rows=0,6006,4504,6006
+  msum L1 = 16516 rows=0,6006,4504,6006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 2002
+  mrow L0 2 smd = 0 2002 500 2002
+  mrow L0 3 hole_edge = 0 2002 2002 2002
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=81
+  keepouts=4 keepout_classes=3:4
+  matrix_sum=63012
+  msum L0 = 31506 rows=0,9004,7502,15000
+  msum L1 = 31506 rows=0,9004,7502,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 5000
+  mrow L0 2 smd = 0 2002 500 5000
+  mrow L0 3 hole_edge = 0 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=13012
+  msum L0 = 6506 rows=0,4004,2502
+  msum L1 = 6506 rows=0,4004,2502
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2002 2002
+  mrow L0 2 smd = 0 2002 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=13012
+  msum L0 = 6506 rows=0,4004,2502
+  msum L1 = 6506 rows=0,4004,2502
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2002 2002
+  mrow L0 2 smd = 0 2002 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=81
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=13012
+  msum L0 = 6506 rows=0,4004,2502,0
+  msum L1 = 6506 rows=0,4004,2502,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 0
+  mrow L0 2 smd = 0 2002 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=router-tutorial-board dsn=examples/tutorial_board/tutorial_board.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=router-ecc83-input dsn=fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000
+  msum L1 = 13000 rows=0,8000,5000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 4000 4000
+  mrow L0 2 smd = 0 4000 1000
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=76000
+  msum L0 = 38000 rows=0,13000,10000,15000
+  msum L1 = 38000 rows=0,13000,10000,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 4000 4000 5000
+  mrow L0 2 smd = 0 4000 1000 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000
+  msum L1 = 13000 rows=0,8000,5000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 4000 4000
+  mrow L0 2 smd = 0 4000 1000
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=76000
+  msum L0 = 38000 rows=0,13000,10000,15000
+  msum L1 = 38000 rows=0,13000,10000,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 4000 4000 5000
+  mrow L0 2 smd = 0 4000 1000 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000
+  msum L1 = 13000 rows=0,8000,5000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 4000 4000
+  mrow L0 2 smd = 0 4000 1000
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000
+  msum L1 = 13000 rows=0,8000,5000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 4000 4000
+  mrow L0 2 smd = 0 4000 1000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000
+  msum L1 = 13000 rows=0,8000,5000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 4000 4000
+  mrow L0 2 smd = 0 4000 1000
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000
+  msum L1 = 13000 rows=0,8000,5000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 4000 4000
+  mrow L0 2 smd = 0 4000 1000
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=354
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 13000 rows=0,8000,5000,0
+  msum L1 = 13000 rows=0,8000,5000,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 4000 4000 0
+  mrow L0 2 smd = 0 4000 1000 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=drc-dev-board dsn=fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=4 names=null,default,smd,Power,Default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 Power,Default = 0 2000 2000 2000
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=5 names=null,default,smd,Power,Default,board_edge
+  outline_class=4 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=103000
+  msum L0 = 51500 rows=0,11000,9500,11000,20000
+  msum L1 = 51500 rows=0,11000,9500,11000,20000
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 2000 5000
+  mrow L0 3 Power,Default = 0 2000 2000 2000 5000
+  mrow L0 4 board_edge = 0 5000 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=4 names=null,default,smd,Power,Default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 Power,Default = 0 2000 2000 2000
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=5 names=null,default,smd,Power,Default,board_edge
+  outline_class=4 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=103000
+  msum L0 = 51500 rows=0,11000,9500,11000,20000
+  msum L1 = 51500 rows=0,11000,9500,11000,20000
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 2000 5000
+  mrow L0 3 Power,Default = 0 2000 2000 2000 5000
+  mrow L0 4 board_edge = 0 5000 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=5 names=null,default,smd,Power,Default,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=815
+  keepouts=4 keepout_classes=4:4
+  matrix_sum=61000
+  msum L0 = 30500 rows=0,8000,6500,8000,8000
+  msum L1 = 30500 rows=0,8000,6500,8000,8000
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000 2000
+  mrow L0 3 Power,Default = 0 2000 2000 2000 2000
+  mrow L0 4 hole_edge = 0 2000 2000 2000 2000
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=5 names=null,default,smd,Power,Default,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=815
+  keepouts=4 keepout_classes=4:4
+  matrix_sum=103000
+  msum L0 = 51500 rows=0,11000,9500,11000,20000
+  msum L1 = 51500 rows=0,11000,9500,11000,20000
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 2000 5000
+  mrow L0 3 Power,Default = 0 2000 2000 2000 5000
+  mrow L0 4 hole_edge = 0 5000 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=4 names=null,default,smd,Power,Default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 Power,Default = 0 2000 2000 2000
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=4 names=null,default,smd,Power,Default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 Power,Default = 0 2000 2000 2000
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=5 names=null,default,smd,Power,Default,board_edge
+  outline_class=4 default_area_class=1 hole_clearance=0 items=815
+  keepouts=4 keepout_classes=1:4
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000,0
+  msum L1 = 16500 rows=0,6000,4500,6000,0
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 2000 0
+  mrow L0 3 Power,Default = 0 2000 2000 2000 0
+  mrow L0 4 board_edge = 0 0 0 0 0
+
+[board] stem=drc-bbd-mars-64 dsn=fixtures/Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=1292
+  keepouts=8 keepout_classes=3:8
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 hole_edge = 0 2000 2000 2000
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=1292
+  keepouts=8 keepout_classes=3:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 hole_edge = 0 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=1292
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=drc-natural-tone-preamp dsn=fixtures/Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906
+  msum L1 = 4954 rows=0,3048,1906
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 1524 1524
+  mrow L0 2 smd = 0 1524 382
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=59908
+  msum L0 = 29954 rows=0,8048,6906,15000
+  msum L1 = 29954 rows=0,8048,6906,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 1524 1524 5000
+  mrow L0 2 smd = 0 1524 382 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906
+  msum L1 = 4954 rows=0,3048,1906
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 1524 1524
+  mrow L0 2 smd = 0 1524 382
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=59908
+  msum L0 = 29954 rows=0,8048,6906,15000
+  msum L1 = 29954 rows=0,8048,6906,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 1524 1524 5000
+  mrow L0 2 smd = 0 1524 382 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906
+  msum L1 = 4954 rows=0,3048,1906
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 1524 1524
+  mrow L0 2 smd = 0 1524 382
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906
+  msum L1 = 4954 rows=0,3048,1906
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 1524 1524
+  mrow L0 2 smd = 0 1524 382
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906
+  msum L1 = 4954 rows=0,3048,1906
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 1524 1524
+  mrow L0 2 smd = 0 1524 382
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906
+  msum L1 = 4954 rows=0,3048,1906
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 1524 1524
+  mrow L0 2 smd = 0 1524 382
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=2564
+  keepouts=0 keepout_classes=
+  matrix_sum=9908
+  msum L0 = 4954 rows=0,3048,1906,0
+  msum L1 = 4954 rows=0,3048,1906,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 1524 1524 0
+  mrow L0 2 smd = 0 1524 382 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=drc-issue593-rules dsn=fixtures/Issue593-BBD_Mars-64.dsn rules=fixtures/Issue593-BBD_Mars-64.rules
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=961
+  keepouts=8 keepout_classes=3:8
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 hole_edge = 0 2000 2000 2000
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=961
+  keepouts=8 keepout_classes=3:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 hole_edge = 0 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=drc-issue593-ses dsn=fixtures/Issue593-BBD_Mars-64.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=961
+  keepouts=8 keepout_classes=3:8
+  matrix_sum=33000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 hole_edge = 0 2000 2000 2000
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=961
+  keepouts=8 keepout_classes=3:8
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 hole_edge = 0 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=drc-issue753-cpu85 dsn=fixtures/Issue753-CPU-85_r104.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=4 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=126000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  msum L2 = 31500 rows=0,9000,7500,15000
+  msum L3 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=4 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=126000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  msum L2 = 31500 rows=0,9000,7500,15000
+  msum L3 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=4 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=2415
+  keepouts=12 keepout_classes=3:12
+  matrix_sum=66000
+  msum L0 = 16500 rows=0,6000,4500,6000
+  msum L1 = 16500 rows=0,6000,4500,6000
+  msum L2 = 16500 rows=0,6000,4500,6000
+  msum L3 = 16500 rows=0,6000,4500,6000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 2000
+  mrow L0 2 smd = 0 2000 500 2000
+  mrow L0 3 hole_edge = 0 2000 2000 2000
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=4 classes=4 names=null,default,smd,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=2415
+  keepouts=12 keepout_classes=3:12
+  matrix_sum=126000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  msum L2 = 31500 rows=0,9000,7500,15000
+  msum L3 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 hole_edge = 0 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=4 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=2415
+  keepouts=12 keepout_classes=1:12
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  msum L2 = 6500 rows=0,4000,2500,0
+  msum L3 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=drc-issue110-relay dsn=fixtures/Issue110-RelayModule.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=4 names=null,default,smd,HighVoltage
+  outline_class=1 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006
+  msum L1 = 106516 rows=0,24006,22504,60006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002
+  mrow L0 2 smd = 0 2002 500 20002
+  mrow L0 3 HighVoltage = 0 20002 20002 20002
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=5 names=null,default,smd,HighVoltage,board_edge
+  outline_class=4 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=283032
+  msum L0 = 141516 rows=0,29006,27504,65006,20000
+  msum L1 = 141516 rows=0,29006,27504,65006,20000
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002 5000
+  mrow L0 2 smd = 0 2002 500 20002 5000
+  mrow L0 3 HighVoltage = 0 20002 20002 20002 5000
+  mrow L0 4 board_edge = 0 5000 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=4 names=null,default,smd,HighVoltage
+  outline_class=1 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006
+  msum L1 = 106516 rows=0,24006,22504,60006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002
+  mrow L0 2 smd = 0 2002 500 20002
+  mrow L0 3 HighVoltage = 0 20002 20002 20002
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=5 names=null,default,smd,HighVoltage,board_edge
+  outline_class=4 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=283032
+  msum L0 = 141516 rows=0,29006,27504,65006,20000
+  msum L1 = 141516 rows=0,29006,27504,65006,20000
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002 5000
+  mrow L0 2 smd = 0 2002 500 20002 5000
+  mrow L0 3 HighVoltage = 0 20002 20002 20002 5000
+  mrow L0 4 board_edge = 0 5000 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=4 names=null,default,smd,HighVoltage
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006
+  msum L1 = 106516 rows=0,24006,22504,60006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002
+  mrow L0 2 smd = 0 2002 500 20002
+  mrow L0 3 HighVoltage = 0 20002 20002 20002
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=4 names=null,default,smd,HighVoltage
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006
+  msum L1 = 106516 rows=0,24006,22504,60006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002
+  mrow L0 2 smd = 0 2002 500 20002
+  mrow L0 3 HighVoltage = 0 20002 20002 20002
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=4 names=null,default,smd,HighVoltage
+  outline_class=1 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006
+  msum L1 = 106516 rows=0,24006,22504,60006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002
+  mrow L0 2 smd = 0 2002 500 20002
+  mrow L0 3 HighVoltage = 0 20002 20002 20002
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=4 names=null,default,smd,HighVoltage
+  outline_class=1 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006
+  msum L1 = 106516 rows=0,24006,22504,60006
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002
+  mrow L0 2 smd = 0 2002 500 20002
+  mrow L0 3 HighVoltage = 0 20002 20002 20002
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=5 names=null,default,smd,HighVoltage,board_edge
+  outline_class=4 default_area_class=1 hole_clearance=0 items=905
+  keepouts=0 keepout_classes=
+  matrix_sum=213032
+  msum L0 = 106516 rows=0,24006,22504,60006,0
+  msum L1 = 106516 rows=0,24006,22504,60006,0
+  mrow L0 0 null = 0 0 0 0 0
+  mrow L0 1 default = 0 2002 2002 20002 0
+  mrow L0 2 smd = 0 2002 500 20002 0
+  mrow L0 3 HighVoltage = 0 20002 20002 20002 0
+  mrow L0 4 board_edge = 0 0 0 0 0
+
+[board] stem=drc-tutorial-board dsn=examples/tutorial_board/tutorial_board.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=63000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=439
+  keepouts=0 keepout_classes=
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=batch-fanout-bm11 dsn=fixtures/Issue730-DAC2020_bm11.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=4 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=126000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  msum L2 = 31500 rows=0,9000,7500,15000
+  msum L3 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=4 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=126000
+  msum L0 = 31500 rows=0,9000,7500,15000
+  msum L1 = 31500 rows=0,9000,7500,15000
+  msum L2 = 31500 rows=0,9000,7500,15000
+  msum L3 = 31500 rows=0,9000,7500,15000
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 5000
+  mrow L0 2 smd = 0 2000 500 5000
+  mrow L0 3 board_edge = 0 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=4 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  msum L2 = 6500 rows=0,4000,2500
+  msum L3 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=4 classes=4 names=null,default,smd,board_edge
+  outline_class=3 default_area_class=1 hole_clearance=0 items=234
+  keepouts=0 keepout_classes=
+  matrix_sum=26000
+  msum L0 = 6500 rows=0,4000,2500,0
+  msum L1 = 6500 rows=0,4000,2500,0
+  msum L2 = 6500 rows=0,4000,2500,0
+  msum L3 = 6500 rows=0,4000,2500,0
+  mrow L0 0 null = 0 0 0 0
+  mrow L0 1 default = 0 2000 2000 0
+  mrow L0 2 smd = 0 2000 500 0
+  mrow L0 3 board_edge = 0 0 0 0
+
+[board] stem=batch-strict-drc-cnh dsn=fixtures/Issue555-CNH_Functional_Tester_1.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=4 classes=10 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=1772800
+  msum L0 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L1 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L2 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L3 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=4 classes=11 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR,board_edge
+  outline_class=10 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=2152800
+  msum L0 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  msum L1 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  msum L2 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  msum L3 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 10 board_edge = 0 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=4 classes=10 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=1772800
+  msum L0 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L1 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L2 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L3 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=4 classes=11 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR,board_edge
+  outline_class=10 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=2152800
+  msum L0 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  msum L1 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  msum L2 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  msum L3 = 538200 rows=0,46420,44704,62168,62168,62168,62168,49468,49468,49468,50000
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 5000
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 10 board_edge = 0 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=4 classes=11 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=2098
+  keepouts=40 keepout_classes=10:40
+  matrix_sum=2113312
+  msum L0 = 528328 rows=0,43708,41992,63520,63520,63520,63520,48280,48280,48280,43708
+  msum L1 = 528328 rows=0,43708,41992,63520,63520,63520,63520,48280,48280,48280,43708
+  msum L2 = 528328 rows=0,43708,41992,63520,63520,63520,63520,48280,48280,48280,43708
+  msum L3 = 528328 rows=0,43708,41992,63520,63520,63520,63520,48280,48280,48280,43708
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812 2288
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812 2288
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 3812
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 3812
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 3812
+  mrow L0 10 hole_edge = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812 2288
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=4 classes=11 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR,hole_edge
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=2098
+  keepouts=40 keepout_classes=10:40
+  matrix_sum=2196064
+  msum L0 = 549016 rows=0,46420,44704,63520,63520,63520,63520,49468,49468,49468,55408
+  msum L1 = 549016 rows=0,46420,44704,63520,63520,63520,63520,49468,49468,49468,55408
+  msum L2 = 549016 rows=0,46420,44704,63520,63520,63520,63520,49468,49468,49468,55408
+  msum L3 = 549016 rows=0,46420,44704,63520,63520,63520,63520,49468,49468,49468,55408
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 5000
+  mrow L0 10 hole_edge = 0 5000 5000 6352 6352 6352 6352 5000 5000 5000 5000
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=4 classes=10 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=1772800
+  msum L0 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L1 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L2 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L3 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=4 classes=10 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR
+  outline_class=1 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=1772800
+  msum L0 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L1 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L2 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  msum L3 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=4 classes=11 names=null,default,smd,+12V,+5V,+5VP,+9V,LOAD,UUT_LOAD,UUT_PWR,board_edge
+  outline_class=10 default_area_class=1 hole_clearance=0 items=2098
+  keepouts=40 keepout_classes=1:40
+  matrix_sum=1772800
+  msum L0 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468,0
+  msum L1 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468,0
+  msum L2 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468,0
+  msum L3 = 443200 rows=0,41420,39704,57168,57168,57168,57168,44468,44468,44468,0
+  mrow L0 0 null = 0 0 0 0 0 0 0 0 0 0 0
+  mrow L0 1 default = 0 2288 2288 6352 6352 6352 6352 3812 3812 3812 0
+  mrow L0 2 smd = 0 2288 572 6352 6352 6352 6352 3812 3812 3812 0
+  mrow L0 3 +12V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 0
+  mrow L0 4 +5V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 0
+  mrow L0 5 +5VP = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 0
+  mrow L0 6 +9V = 0 6352 6352 6352 6352 6352 6352 6352 6352 6352 0
+  mrow L0 7 LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 0
+  mrow L0 8 UUT_LOAD = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 0
+  mrow L0 9 UUT_PWR = 0 3812 3812 6352 6352 6352 6352 3812 3812 3812 0
+  mrow L0 10 board_edge = 0 0 0 0 0 0 0 0 0 0 0
+
+[board] stem=batch-empty-board dsn=fixtures/empty_board.dsn rules=-
+merged copper=500.0 hole=0.0
+[variant] name=A copper=- hole=- copper_units=- hole_units=-
+  layers=2 classes=2 names=null,default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0
+  msum L1 = 0 rows=0,0
+  mrow L0 0 null = 0 0
+  mrow L0 1 default = 0 0
+[variant] name=B copper=500.0 hole=- copper_units=5000 hole_units=-
+  layers=2 classes=3 names=null,default,board_edge
+  outline_class=2 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=30000
+  msum L0 = 15000 rows=0,5000,10000
+  msum L1 = 15000 rows=0,5000,10000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 0 5000
+  mrow L0 2 board_edge = 0 5000 5000
+[variant] name=C copper=- hole=0.0 copper_units=- hole_units=0
+  layers=2 classes=2 names=null,default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0
+  msum L1 = 0 rows=0,0
+  mrow L0 0 null = 0 0
+  mrow L0 1 default = 0 0
+[variant] name=D copper=500.0 hole=0.0 copper_units=5000 hole_units=0
+  layers=2 classes=3 names=null,default,board_edge
+  outline_class=2 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=30000
+  msum L0 = 15000 rows=0,5000,10000
+  msum L1 = 15000 rows=0,5000,10000
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 0 5000
+  mrow L0 2 board_edge = 0 5000 5000
+[variant] name=E copper=- hole=100.0 copper_units=- hole_units=1000
+  layers=2 classes=2 names=null,default
+  outline_class=1 default_area_class=1 hole_clearance=1000 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0
+  msum L1 = 0 rows=0,0
+  mrow L0 0 null = 0 0
+  mrow L0 1 default = 0 0
+[variant] name=F copper=- hole=500.0 copper_units=- hole_units=5000
+  layers=2 classes=2 names=null,default
+  outline_class=1 default_area_class=1 hole_clearance=5000 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0
+  msum L1 = 0 rows=0,0
+  mrow L0 0 null = 0 0
+  mrow L0 1 default = 0 0
+[variant] name=G copper=- hole=-1.0 copper_units=- hole_units=-10
+  layers=2 classes=2 names=null,default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0
+  msum L1 = 0 rows=0,0
+  mrow L0 0 null = 0 0
+  mrow L0 1 default = 0 0
+[variant] name=H copper=-1.0 hole=- copper_units=-10 hole_units=-
+  layers=2 classes=2 names=null,default
+  outline_class=1 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0
+  msum L1 = 0 rows=0,0
+  mrow L0 0 null = 0 0
+  mrow L0 1 default = 0 0
+[variant] name=I copper=0.0 hole=- copper_units=0 hole_units=-
+  layers=2 classes=3 names=null,default,board_edge
+  outline_class=2 default_area_class=1 hole_clearance=0 items=1
+  keepouts=0 keepout_classes=
+  matrix_sum=0
+  msum L0 = 0 rows=0,0,0
+  msum L1 = 0 rows=0,0,0
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 0 0
+  mrow L0 2 board_edge = 0 0 0

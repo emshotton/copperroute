@@ -1504,6 +1504,37 @@ methods with dozens of branches.
     rounded, so the comparison is exact and no `java_float_to_string` enters the
     test. Byte-stable across runs: no clock, no board, no hash iteration.
 
+  - `P7T15bProbe.java` — `management/HeadlessBoardManager.java`'s three
+    board-mutating clearance overrides:
+    `applyCopperToEdgeClearanceOverride` (`:466-552`),
+    `applyHoleClearanceOverride` (`:346-396`) and
+    `assignHoleKeepoutClearanceClass` (`:404-464`), Plan 7 Task 15b. `package
+    app.freerouting.management`; not a differential driver — no Rust twin and
+    `run.sh` does not know it, the `P7T2Probe`/`P7T4Probe`/`P7T9Probe` pattern.
+    Committed as
+    `crates/fr-router/tests/data/p7t15b-clearance-overrides.txt` (1 717 lines)
+    and replayed by `crates/fr-router/tests/clearance_override.rs`.
+
+    Why a load per variant, and nine of them: all three methods are **private**
+    and Java calls them from *inside* the load — `createBoard:342-343` on the
+    itemless board and `applyRouterSettingsForLoadedBoard:746-747` on the loaded
+    one — so the only way to observe both call sites without instrumenting
+    bytecode is to load the same DSN repeatedly with
+    `router.copper_to_edge_clearance_um` / `router.hole_clearance_um` set
+    differently and diff the board state. `null` disables an override at *both*
+    call sites, which is what makes variant **A** the pristine board and every
+    later diff attributable to the override alone. **B**/**D** are the real
+    merged 500 µm (the copper override, which fires on 15 of the 16 corpus
+    boards); **C** the real merged 0 µm; **E**/**F** the non-default hole path at
+    100 µm and 500 µm, where the µm → board-unit conversion is
+    board-resolution dependent (1 000 units on five boards, 10 000 on
+    `router-rpi-splitter`); **G**/**H** the two negative early returns; **I** a
+    non-default copper value, which the `:501-507` guard cannot stop and which
+    therefore mutates even the one board that early-returns at the default.
+
+    Byte-stable across runs: no clock, no wall-time budget, no `HashSet<Item>`
+    iteration — every collection printed is a `TreeMap` or an `itemList` walk.
+
 - `java/P6T17bProbe.java` — **the Plan 6 Task 17b bisect probe.** It sits beside
   the drivers rather than in `java/probes/` because it is compiled *with*
   `P6T1.java` and reuses its `loadBoard` / `pickConnections` / `routeOne`, so it
@@ -1923,6 +1954,33 @@ the driver expects, or none at all.
   ./scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue593-BBD_Mars-64.dsn 50 1 \
       crates/fr-router/tests/data/ruling-h-redeclare.rules
   ```
+
+  **`P7T15B_PREPARE=1`** (Plan 7 Task 15b) applies `HeadlessBoardManager`'s two
+  board-mutating clearance overrides — `applyCopperToEdgeClearanceOverride`
+  (`HeadlessBoardManager.java:466-552`) then `applyHoleClearanceOverride`
+  (`:346-396`), which is `:746-747`'s order — to the loaded board on **both**
+  sides before a connection is routed: reflectively through a
+  `HeadlessBoardManager` on the Java side (both methods are private, and this
+  driver loads through `DsnReader.readBoard`), and through
+  `fr_router::pipeline::prepare_board` on the Rust side. That is what a real
+  `-de <dsn> -do <ses>` run does and what Plan 7 Task 16's `batch.ses`
+  references encode. **Off unless the variable is set**, so every default run —
+  and every committed `tests/reference/*/router.meta.txt` — is unchanged in
+  every byte. Each side prints one `p7t15b-prepare …` line to **stderr**, which
+  the harness does not diff.
+
+  ```sh
+  P7T15B_PREPARE=1 ./scripts/differential/run.sh p6t1 \
+      ../freerouting/fixtures/Issue026-J2_reference.dsn 45 1
+  ```
+
+  Measured: **MATCH, 45 connections**, with a `board_edge` clearance class
+  (index 3) installed and the outline re-pointed at it on both sides — and the
+  transcript differs from the same run *without* the variable on 44 of its 45
+  rows, so the switch is routing a materially different board rather than a
+  no-op. The corresponding CLI measurement is `jar -de Issue026-J2_reference.dsn
+  -do x.ses -mp 3` writing **15 254 B** against **14 644 B** with
+  `--router.copper_to_edge_clearance_um=0` (quirk #231).
 
   Measured: MATCH on all five reference stems at `ripupPassNo` **1, 2 and 4**
   (369 connections per pass). `Issue508-DAC2020_bm01` used to diverge from

@@ -539,6 +539,23 @@ audit still exits 0.
 
 ### Every audit invocation in the workspace (Task 18 runs all of them to zero)
 
+*(**Plan 7 Task 15b** adds a **thirty-first** invocation — `management`
+restricted to `HeadlessBoardManager.java`, against `crates/fr-board/src` — and
+one `ROSTERED` line with it. It is the first time any plan has audited
+`management/` at all, which is how the two board-mutating clearance overrides
+went unported for six plans while `applyCopperToEdgeClearanceOverride` mutated
+15 of the 16 corpus boards at default settings; see quirk #231 and
+`crates/fr-board/src/board/clearance_override.rs`. **Measured on the committed
+tree at Task 15b: 31 invocations, 0 `MISSING`, 0 `UNMAPPED`, 21 `ROSTERED`
+across nine of them** — `board/state` 3, `datastructures` (fr-board) **4**,
+`io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3, `io/kicad` 3,
+`core/scoring` (fr-router) 2, `autoroute` 2, `management` 1. The paragraph below
+was written at Task 18 and says `datastructures` 5 for a total of twenty-one
+across eight of thirty; the `datastructures` figure has been 4 since some point
+in Plan 7 — so the pre-Task-15b total was **20**, not 21, and this task did not
+change any figure except by adding its own row. Task 17 owns this section's
+rewrite; the measured numbers here are the ones to trust.)*
+
 Task 18's acceptance is that **all twenty-nine** invocations below exit 0 with
 no `MISSING` line and no `UNMAPPED` line, on the committed tree. Both of those now
 *set* the exit code — an `UNMAPPED` class means the map rotted and the audit
@@ -569,6 +586,10 @@ for dir in board/model/items board/model/structure board/facade board/searchtree
   ./scripts/audit-port.sh "$dir" crates/fr-board/src '*.java' scripts/audit-map/fr-board.map
 done
 ./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' scripts/audit-map/fr-drc.map
+# fr-board's management slice (Plan 7 Task 15b): the clearance overrides' Java home.
+# One ROSTERED line (nine public methods, all `added in Plan 8:`); the three methods
+# this task ports are private and the script never names them.
+./scripts/audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' scripts/audit-map/fr-board.map
 
 # fr-dsn (Plan 3)
 ./scripts/audit-port.sh io/specctra        crates/fr-dsn/src '*.java' scripts/audit-map/fr-dsn.map
@@ -675,6 +696,7 @@ used in its header line — read it.
 | `java/P7T5.java` + `rust/src/bin/p7t5.rs` | `BatchFanout`'s component/pin ordering for **all five** `pinSortingOrder` strings and `RoutingBoard.fanout` on every SMD pin (Plan 7 Task 11), plus one whole `fanoutPass` and the whole `fanoutBoard` (Task 12), each transcribed *and* called for real | `./scripts/differential/run.sh p7t5 <dsn> [passNo\|maxPasses] [sortingOrder] [order\|pin\|pass\|board]` |
 | `java/P7T8.java` + `rust/src/bin/p7t8.rs` | `BatchOptimizer`'s item half over a board routed by the real `runBatchLoop()` — `ReadSortedRouteItems`' whole visit sequence (mode `sequence`) and `optRouteItem` driven item by item with its two ripped sets and its ripup costs transcribed beside each call (mode `item`), Plan 7 Task 13. **No reflection**: the driver is in `app.freerouting.autoroute.pipeline`, which is what makes `optimizer.new ReadSortedRouteItems()` legal | `./scripts/differential/run.sh p7t8 <dsn> [sequence\|item] [routePasses] [items\|all]` |
 | `java/P7T9.java` + `rust/src/bin/p7t9.rs` | the whole `-dr`-equivalent run: `AutorouteBatchLoop.run` in modes `router-only` / `router+fanout` (Plan 7 Tasks 10 and 12), `BatchOptimizer.runBatchLoop` + `optRoutePass` in modes `optimizer` / `optimizer+fanout` / `optimizer-shared` (**Plan 7 Task 14**), each transcribed *and* called for real, and — from **Plan 7 Task 15** — mode `full`, `RoutingPipeline.createForHeadless(job).run()` against `run_pipeline`, driven directly rather than transcribed (`run_pipeline` is short and delegates to the other two, both already pinned end to end). `optimizer-shared` is the production stop-flag shape, where quirk #227 makes every item reject | `./scripts/differential/run.sh p7t9 <dsn> [maxPasses] [mode] [optPasses\|all] [optItems\|all]` |
+| `probes/P7T15bProbe.java` | `HeadlessBoardManager`'s three clearance overrides — `applyCopperToEdgeClearanceOverride` (:466-552), `applyHoleClearanceOverride` (:346-396), `assignHoleKeepoutClearanceClass` (:404-464) — over **all sixteen** corpus boards × **nine** settings variants, through the real `loadFromSpecctraDsn` (Plan 7 Task 15b). Not a differential driver: no Rust twin, `run.sh` does not know it, the `P7T2Probe`/`P7T4Probe`/`P7T9Probe` pattern. Transcript committed as `tests/data/p7t15b-clearance-overrides.txt` (1 717 lines), replayed by `tests/clearance_override.rs` | committed transcript; regeneration command in the probe header |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -3042,6 +3064,64 @@ questions), and not a bug in Task 10's field (its own doc already recorded the
 `maxPasses ∈ {1, 2, 8}`: 9/9 MATCH.** Plus `tutorial_board`, `bm01` and
 `empty_board.dsn` (which routes nothing but exercises the same sequencing) —
 all MATCH.
+
+## `prepare_board` and the clearance overrides (Task 15b, ruling AW)
+
+`pipeline::prepare_board(&mut Board, &RouterSettings)` is the board half of
+`HeadlessBoardManager.applyRouterSettingsForLoadedBoard`
+(`management/HeadlessBoardManager.java:739-749`). That method has **four** steps;
+`fr_settings::resolve_headless` already carried the first two (`:741-744`'s
+`setLayerCount`, `:745`'s `applyBoardSpecificOptimizations`) because they mutate
+the *settings*. The last two mutate the **board**, and until this task nothing in
+the port applied them at all:
+
+```java
+  applyCopperToEdgeClearanceOverride();   // :746 -> :466-552
+  applyHoleClearanceOverride();           // :747 -> :346-396 (-> :404-464)
+```
+
+The three methods are ported as `fr_board::Board::{apply_copper_to_edge_clearance_override,
+apply_hole_clearance_override, assign_hole_keepout_clearance_class}`
+(`crates/fr-board/src/board/clearance_override.rs`); `prepare_board` is only the
+call pair, in Java's order. The order is load-bearing: both overrides append a
+clearance class when they fire, so copper-first is what gives `board_edge` the
+lower index.
+
+**This is not a rarely-taken path.** `DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM` is
+500.0 and the `:501-507` guard early-returns only when the configured value *is*
+the default **and** the outline carries an explicit, non-fallback DSN clearance
+class. On **15 of the 16** parity-corpus boards the reader gives the outline the
+fallback AREA class, so a plain `-de <dsn> -do <ses>` run appends a `board_edge`
+class, writes 500 µm into its whole row and column on every layer, and re-points
+the outline at it (quirk #231). Only `router-rpi-splitter` early-returns, through
+its explicit `boundary` class. Measured on the HEAD jar: `Issue026-J2_reference`
+routes to **15 254 B** of SES by default and **14 644 B** with
+`--router.copper_to_edge_clearance_um=0`, differing from char 741.
+
+**Nothing that existed before this task calls `prepare_board`.** Every driver,
+probe and parity test in the tree loads through `fr_dsn::read_board` directly, as
+`scripts/differential/java/P6T1.java:173` loads through `DsnReader.readBoard`, so
+all of them work on the pristine board and their committed references encode it.
+Adding this function changes none of them — asserted by re-running `p6t1`,
+`p6t3`, `p7t8` and `p7t9` and diffing. Task 16's `batch.ses` references, which
+come from the real CLI, are the first consumer; Plan 8's loader is the second.
+
+**One call, not two.** Java runs the pair at *two* sites per DSN load —
+`createBoard:342-343` on the itemless board and `:746-747` on the loaded one
+(Plan 8 survey ruling AD). The port has no `createBoard` hook, so it runs the
+pair once, after the load; `clearance_override.rs`'s module docs carry the
+argument for why that lands the same board (measured on all 16 boards × 9
+variants) and the one non-default case where it does not (quirk #232).
+
+**Evidence.** `probes/P7T15bProbe.java` → `tests/data/p7t15b-clearance-overrides.txt`,
+replayed by `tests/clearance_override.rs` (5 corpus stems in CI, all 16 under
+`FR_SLOW_PARITY=1`; 5.5 s debug, 0.8 s release for the full sixteen). The arms no
+corpus board reaches — a pre-declared `board_edge` class, an explicit outline
+class, an odd board-unit value meeting `ClearanceMatrix.setValue`'s
+round-up-to-even — are in `crates/fr-board/tests/clearance_override.rs`. And
+`P7T15B_PREPARE=1 ./scripts/differential/run.sh p6t1 <J2> 45 1` routes 45 whole
+connections with the override live on both sides: **MATCH**, and 44 of the 45
+rows differ from the same run without the switch.
 
 ## What Plan 8 inherits
 

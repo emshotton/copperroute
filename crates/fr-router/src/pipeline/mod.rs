@@ -61,6 +61,7 @@ pub mod airline;
 pub mod batch_autorouter;
 pub mod batch_loop;
 pub mod board_history;
+pub mod board_prep;
 pub mod counters;
 pub mod failure_log;
 pub mod fanout;
@@ -75,6 +76,7 @@ pub use airline::calculate_airline;
 pub use batch_autorouter::BatchAutorouter;
 pub use batch_loop::{AutorouteBatchLoop, BatchLoopResult};
 pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
+pub use board_prep::prepare_board;
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
 pub use fanout::{
