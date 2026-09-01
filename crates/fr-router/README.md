@@ -623,7 +623,7 @@ Two invocations are deliberately **absent**, and they do not behave the same way
 | absent invocation | what it prints today | exit |
 |---|---|---|
 | `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
-| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **seven `ROSTERED` lines** (eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did; **Plan 7 Task 12** then ported `fanoutBoard`, the last public method it lacked, so the class is now wholly ported rather than merely off the list) — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
+| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **five `ROSTERED` lines** as of **Plan 7 Task 15** (`AutoroutePassRunner`, `BatchAutorouterThread`, `BatchOptimizerMultiThreaded`, `NamedAlgorithm`, `OptimizeRouteTask`) — `RoutingPipeline` just dropped off the list: `run` is `run_pipeline` (a real `fn`), `createForHeadless` is a `renamed:` marker, and `createForGui`/`getAutorouter`/`getOptimizer`/`addStageListener`/`addBoardUpdatedEventListener`/`addTaskStateChangedEventListener` are all `not ported:` in `pipeline/run.rs`, so nothing of the class is `MISSING`. Six until Task 15 (Task 14's report §7); eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did; **Plan 7 Task 12** then ported `fanoutBoard`, the last public method it lacked, so the class is now wholly ported rather than merely off the list. Every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` either. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
 
 Before the Plan 6 final review, the second — and the third, which was
 `board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and
@@ -674,7 +674,7 @@ used in its header line — read it.
 | `java/P7T10.java` + `rust/src/bin/p7t10.rs` | **ruling AH's decision parity** — `getHash`'s three decision sites over 2 000 scripted board mutations (Plan 7 Task 3) | `P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 <dsn> <steps> [routeK] [warm\|raw]` |
 | `java/P7T5.java` + `rust/src/bin/p7t5.rs` | `BatchFanout`'s component/pin ordering for **all five** `pinSortingOrder` strings and `RoutingBoard.fanout` on every SMD pin (Plan 7 Task 11), plus one whole `fanoutPass` and the whole `fanoutBoard` (Task 12), each transcribed *and* called for real | `./scripts/differential/run.sh p7t5 <dsn> [passNo\|maxPasses] [sortingOrder] [order\|pin\|pass\|board]` |
 | `java/P7T8.java` + `rust/src/bin/p7t8.rs` | `BatchOptimizer`'s item half over a board routed by the real `runBatchLoop()` — `ReadSortedRouteItems`' whole visit sequence (mode `sequence`) and `optRouteItem` driven item by item with its two ripped sets and its ripup costs transcribed beside each call (mode `item`), Plan 7 Task 13. **No reflection**: the driver is in `app.freerouting.autoroute.pipeline`, which is what makes `optimizer.new ReadSortedRouteItems()` legal | `./scripts/differential/run.sh p7t8 <dsn> [sequence\|item] [routePasses] [items\|all]` |
-| `java/P7T9.java` + `rust/src/bin/p7t9.rs` | the whole `-dr`-equivalent run: `AutorouteBatchLoop.run` in modes `router-only` / `router+fanout` (Plan 7 Tasks 10 and 12) and, from **Plan 7 Task 14**, `BatchOptimizer.runBatchLoop` + `optRoutePass` in modes `optimizer` / `optimizer+fanout` / `optimizer-shared`, each transcribed *and* called for real. `optimizer-shared` is the production stop-flag shape, where quirk #227 makes every item reject | `./scripts/differential/run.sh p7t9 <dsn> [maxPasses] [mode] [optPasses\|all] [optItems\|all]` |
+| `java/P7T9.java` + `rust/src/bin/p7t9.rs` | the whole `-dr`-equivalent run: `AutorouteBatchLoop.run` in modes `router-only` / `router+fanout` (Plan 7 Tasks 10 and 12), `BatchOptimizer.runBatchLoop` + `optRoutePass` in modes `optimizer` / `optimizer+fanout` / `optimizer-shared` (**Plan 7 Task 14**), each transcribed *and* called for real, and — from **Plan 7 Task 15** — mode `full`, `RoutingPipeline.createForHeadless(job).run()` against `run_pipeline`, driven directly rather than transcribed (`run_pipeline` is short and delegates to the other two, both already pinned end to end). `optimizer-shared` is the production stop-flag shape, where quirk #227 makes every item reject | `./scripts/differential/run.sh p7t9 <dsn> [maxPasses] [mode] [optPasses\|all] [optItems\|all]` |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -2980,16 +2980,74 @@ crates/` is the complete inventory.
 | ~~**the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s~~ — **DONE, both halves**: the via-info half in Plan 7 Task 0 and the **via-rule** half in Plan 7 Task 11 (`NetClass` owns its `ViaRule`, controller ruling AN), measured on `Issue143-rpi_splitter.dsn` + `tests/data/ruling-h-viarule.rules` — DIFF on all eight connections before, MATCH after | `rules/ViaRule.java:21`, `rules/NetClass.java:28`, `io/specctra/RulesReader.java:340-357`, `io/specctra/parser/Network.java:413-417` | `src/autoroute/maze/control.rs:385`; `crates/fr-board/src/rules/{via.rs,net_class.rs}`; `tests/data/p7t11-ruling-h-viarule.txt`; obligation register |
 | the eight **re-marked** coverage obligations | see the marker table above | `grep -rn "obligation:" crates/fr-router/src` |
 | `max_passes == 0` means **unlimited** (quirk #140), and `-mt` is **not** a threading policy on the headless path (quirk #143) | `RouterSettings.validate`, `BatchOptimizer.createForHeadless:51-53` | House rules above; `docs/java-quirks.md` |
+| ~~`RoutingPipeline`, the pipeline sequencer, and `AutorouteUnroutedReport`~~ — **DONE in Plan 7 Task 15**: `run` is `run_pipeline`, sequencing the two stages with quirk #227's no-reset preserved and the fanout-only settings-clone contract; `build` is `build_unrouted_report`, which also discharges `fr-drc`'s `added in Plan 7:` marker and `batch_loop.rs`'s stagnation-report stub. `createForHeadless`, `createForGui`, `getAutorouter`, `getOptimizer` and the three `add*Listener` methods are all accounted for in `pipeline/run.rs` (a `renamed:` and six `not ported:` markers) — Plan 8 has no `RoutingPipeline` surface left to wrap, only `PipelineResult` | `autoroute/pipeline/RoutingPipeline.java:81-129`, `AutorouteUnroutedReport.java:19-79` | `src/pipeline/run.rs`, `src/pipeline/unrouted_report.rs` |
 
 **The one thing Plan 7 must not do** is re-implement steps 1-5. `route_connection`
 is what 369 connections of byte-identical evidence attach to; a second
 implementation above it would have none.
 
+## `run_pipeline` and `build_unrouted_report` (Task 15, ruling AK)
+
+`RoutingPipeline.run()` (`RoutingPipeline.java:81-129`) collapses into one
+function, [`pipeline::run_pipeline`]: `routerEnabled = getRunRouter() &&
+(maxPasses == null || maxPasses >= 0)` (`:88-91`) decides between the ordinary
+router run, the fanout-only mode (`maxPasses` forced to `0` on a **settings
+clone** — `run_pipeline` borrows `&RouterSettings`, so it cannot mutate and
+restore the caller's object the way Java's `finally` does) or neither; either
+way [`AutorouteBatchLoop::run`] does the real work, both stages hand the same
+`RouterStop` (**quirk #227's no-reset**, inherited unchanged from Task 14), and
+`:110`'s `job.board.finishAutoroute()` — the *only* caller of
+`RoutingBoard.finishAutoroute` in the whole Java tree — is a no-op this port
+cannot even reach: ruling AJ makes `retainAutorouteDatabase` permanently
+`false`, so no `AutorouteEngine` ever survives a lower-level call into this
+scope for `RoutingBoardExt::finish_autoroute` to consume. The optimizer stage
+is skipped only on `isStopRequested()` (`ALL`, quirk #202/#227's other half),
+never on an `AUTO_ROUTER_ONLY` stop — [`PipelineResult::optimizer_state`]
+tells "never configured" (`None`) apart from "configured but skipped"
+(`Some(TaskState::Idle)`) for exactly that reason.
+`AutorouteUnroutedReport.build` is [`pipeline::build_unrouted_report`] — a
+**consumer** of `fr-drc`, so it lives here rather than there (`fr-drc`'s own
+marker at `src/lib.rs:143` is now a `// renamed:`) — and discharges
+`batch_loop.rs`'s stagnation-report stub: both stagnation arms now build the
+real report rather than an empty string, at Java's own cost (a fresh
+`DesignRulesChecker`, `calculateAllIncompletes`, `getAllAirlines`) every time
+either fires. `RoutingPipeline.createForGui`, `getAutorouter`, `getOptimizer`
+and the three `add*Listener` methods are `not ported:` in `pipeline/run.rs`
+(controller ruling AK replaces the listener mechanism with `ProgressSink`,
+same as `NamedAlgorithm`'s); `createForHeadless` is `renamed:` into
+`run_pipeline`'s own setup. `RoutingPipeline` therefore drops off the
+`autoroute/pipeline` audit's `ROSTERED` list entirely (Audit section above),
+and Plan 8 has no `RoutingPipeline` surface left to wrap — only
+[`pipeline::PipelineResult`].
+
+### A finding: `PipelineResult::passes_run` is not `job.getCurrentPass()`
+
+`AutorouteBatchLoop.java:270-274`'s `maxPasses` cap check runs *before*
+`:276`'s `job.setCurrentPass(currentPass)`, so on a capped exit the job's own
+value is **one less** than the loop's local `currentPass` at the point its
+final `TaskStateChangedEvent` fires (`:572-584`): the local was already
+incremented past the cap by the completed prior iteration's `:521`, and the
+aborted final iteration breaks before `job.setCurrentPass` runs again for it.
+`p7t9 full`'s first run measured this directly — `job.getCurrentPass()` read
+`1` against the port's `passes_run = 2` at `maxPasses = 1` on
+`Issue143-rpi_splitter.dsn` — before the driver was corrected to read the
+router's own last `TaskStateChangedEvent.getPassNumber()` instead, which
+carries the same local `job.getCurrentPass()` does not. Not a quirk (both
+numbers are Java's own, and neither is wrong — they simply answer different
+questions), and not a bug in Task 10's field (its own doc already recorded the
+`+1` behaviour); it is a mistake the plan text made in describing
+`passes_run`'s source, corrected in `pipeline/run.rs`'s doc.
+
+**`p7t9` mode `full`, both stages, all three acceptance stems at
+`maxPasses ∈ {1, 2, 8}`: 9/9 MATCH.** Plus `tutorial_board`, `bm01` and
+`empty_board.dsn` (which routes nothing but exercises the same sequencing) —
+all MATCH.
+
 ## What Plan 8 inherits
 
 | what | Java | where it is recorded here |
 |---|---|---|
-| `RoutingPipeline.createForHeadless` and the rest of the pipeline wiring | `autoroute/pipeline/RoutingPipeline.java` | `src/lib.rs` roster (`added in Plan 8:`) |
+| ~~`RoutingPipeline.createForHeadless` and the rest of the pipeline wiring~~ — **moved to Plan 7 Task 15**: the whole class is ported/rostered there; Plan 8 wraps `PipelineResult` as its `RoutingResult` instead | `autoroute/pipeline/RoutingPipeline.java` | `src/pipeline/run.rs` |
 | `CancelToken` → this crate's `StopCheck` (six checked sites, ruling 6) | `datastructures/Stoppable`, spec §10 | `src/autoroute/maze/` stop-check sites |
 | `ProgressSink` replacing the dropped observers | `autoroute/events/**`, `NamedAlgorithm` | `src/lib.rs` roster (`not ported:` + `added in Plan 8:`) |
 | `BoardStatistics` — the metric block `tests/fixtures.rs` and `p6t1` stand in for | `core/scoring/BoardStatistics.java:271` | `tests/fixtures.rs` module docs |

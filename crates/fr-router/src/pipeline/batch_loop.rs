@@ -27,6 +27,7 @@ use crate::pipeline::board_history::BoardHistory;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::fanout::{BatchFanout, FanoutRunSummary};
 use crate::pipeline::stop::{PassRecord, RouterBudget, RouterStop};
+use crate::pipeline::unrouted_report::build_unrouted_report;
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
 
@@ -715,24 +716,19 @@ pub(crate) fn stat(value: Option<i32>) -> usize {
 }
 
 // =================================================================================================
-// The stagnation report — Task 15's, stubbed here
+// The stagnation report — Task 15's `AutorouteUnroutedReport::build`
 // =================================================================================================
 
-// obligation: `AutorouteBatchLoop`'s stagnation report (`:456-476`, `:486-507`) — **Task 15**.
-// Both arms call `buildUnroutedConnectionsReport()` (`:602-604` -> `BatchAutorouter.java:483-485`
-// -> `AutorouteUnroutedReport.build`), whose port is Task 15's `build_unrouted_report`. The stub
-// below returns the empty string.
+// discharged: `AutorouteBatchLoop`'s stagnation report (`:456-476`, `:486-507`) called
+// `buildUnroutedConnectionsReport()` (`:602-604` -> `BatchAutorouter.java:483-485` ->
+// `AutorouteUnroutedReport.build`), stubbed here as an empty-string placeholder until Task 15
+// landed the real port at `pipeline::unrouted_report::build_unrouted_report`, used below.
 //
-// It cannot change control flow, and that is the point of putting it here rather than deleting the
-// call: the report is a **log payload** — Java concatenates it into the `job.logInfo` string at
-// `:473` and `:504` and does nothing else with it — while the `requestStopAutoRouter()` + `break`
-// around it is this task's and is complete. Scan ruling 6 is the decision; ruling B1 is why the
-// stub is inert rather than a panic (both arms are live on a long corpus run).
-/// Placeholder for `AutorouteUnroutedReport.build` (Task 15). See the `obligation:` marker above.
-fn build_unrouted_report(board: &Board) -> String {
-    let _ = board;
-    String::new()
-}
+// The report is a **log payload** either way — Java concatenates it into the `job.logInfo` string
+// at `:473` and `:504` and does nothing else with it, so building the real string here still
+// cannot change control flow — but it does mean this loop pays `AutorouteUnroutedReport.build`'s
+// full cost (a fresh `DesignRulesChecker`, `calculateAllIncompletes`, `getAllAirlines`) on every
+// stagnation exit, exactly as Java's `job.logInfo` call site does.
 
 // =================================================================================================
 // The deferral roster for `autoroute/pipeline/AutorouteBatchLoop.java`

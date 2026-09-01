@@ -10,6 +10,8 @@ import static app.freerouting.autoroute.pipeline.BatchAutorouter.STOP_AT_PASS_MO
 
 import app.freerouting.autoroute.BoardHistory;
 import app.freerouting.autoroute.ItemRouteResult;
+import app.freerouting.autoroute.events.TaskStateChangedEvent;
+import app.freerouting.autoroute.events.TaskStateChangedEventListener;
 import app.freerouting.board.facade.RoutingBoard;
 import app.freerouting.board.model.items.Item;
 import app.freerouting.board.model.items.Pin;
@@ -126,10 +128,11 @@ public final class P7T9 {
         && !"router+fanout".equals(mode)
         && !"optimizer".equals(mode)
         && !"optimizer+fanout".equals(mode)
-        && !"optimizer-shared".equals(mode)) {
+        && !"optimizer-shared".equals(mode)
+        && !"full".equals(mode)) {
       System.err.println(
-          "P7T9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout' or"
-              + " 'optimizer-shared', not: "
+          "P7T9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout',"
+              + " 'optimizer-shared' or 'full', not: "
               + mode);
       System.exit(2);
     }
@@ -149,11 +152,19 @@ public final class P7T9 {
         dsn.getFileName(),
         maxPasses,
         mode,
-        isOptimizerMode(mode) ? " optPasses=" + limitName(optPasses) + " optItems=" + limitName(optItems) : "");
+        (isOptimizerMode(mode) || "full".equals(mode))
+            ? " optPasses=" + limitName(optPasses) + " optItems=" + limitName(optItems)
+            : "");
     System.err.println("java-version " + System.getProperty("java.version"));
 
     if (isOptimizerMode(mode)) {
       runOptimizerMode(out, dsn, maxPasses, mode, optPasses, optItems);
+      out.flush();
+      return;
+    }
+
+    if ("full".equals(mode)) {
+      runFullMode(out, dsn, maxPasses, optPasses, optItems);
       out.flush();
       return;
     }
@@ -619,6 +630,105 @@ public final class P7T9 {
     return !router.thread.isStopAutoRouterRequested();
   }
 
+  // -----------------------------------------------------------------------------------------
+  // Mode `full` — RoutingPipeline.run(), Plan 7 Task 15
+  // -----------------------------------------------------------------------------------------
+
+  /**
+   * Mode {@code full}: the actual {@code RoutingPipeline.createForHeadless(job).run()}
+   * ({@code RoutingPipeline.java:81-129}) — both stages, the fanout-only settings-clone contract
+   * ({@code :99-108}, unreachable from this driver's settings, which always sets
+   * {@code runRouter = true}), the one {@code finishAutoroute()} call ({@code :110}) and the
+   * optimizer-stage skip ({@code :117-119}) — driven through the jar's own class, not a
+   * transcription. Task 15's port collapses `RoutingPipeline` into one function
+   * ({@code run_pipeline}), so there is nothing here for a hand-written transcript to add over
+   * the real method; the two-half `[transcript]`/`[real]` shape the other modes use is Tasks
+   * 10/14's own instrument for methods hundreds of lines long; `RoutingPipeline.run` is 5 lines
+   * plus two 15-30 line private methods, and it delegates to {@code AutorouteBatchLoop.run} and
+   * {@code BatchOptimizer.runBatchLoop} — both already pinned end to end by the other four modes.
+   *
+   * <p>{@code job.getCurrentPass()} ({@code core/RoutingJob.java:250-251}) is
+   * {@code AutorouteBatchLoop.java:276}'s {@code job.setCurrentPass(currentPass)}, i.e. exactly
+   * the number {@code PipelineResult::passes_run} carries — the one number from inside the pass
+   * loop this driver can read back without a listener, because it is the only piece of per-pass
+   * state Java routes through the job object rather than only through an event.
+   *
+   * <p>{@code [events]} is every {@code TaskStateChangedEvent} both stages fire, in order, tagged
+   * by which {@code NamedAlgorithm} fired it (the source object's own {@code getType()}) — the
+   * pipeline-level counterpart of the {@code ProgressSink} recorder test
+   * {@code crates/fr-router/tests/pipeline.rs}'s
+   * {@code a_recording_sink_sees_the_stage_events_in_javas_order} pins on the port side.
+   */
+  static void runFullMode(
+      PrintStream out, Path dsn, int maxPasses, Integer optPasses, Integer optItems)
+      throws Exception {
+    RoutingBoard board = P7T2.loadBoard(dsn);
+    RouterSettings settings = buildFullModeSettings(board, maxPasses, optPasses, optItems);
+
+    RoutingJob job = new RoutingJob();
+    job.board = board;
+    job.routerSettings = settings;
+    job.thread = new P7T2.NeverStarted();
+
+    RoutingPipeline pipeline = RoutingPipeline.createForHeadless(job);
+    StringBuilder events = new StringBuilder();
+    // `AutorouteBatchLoop.java:270-274`'s cap check runs *before* `:276`'s `job.setCurrentPass`,
+    // so on a `maxPasses`-capped exit the job's own `getCurrentPass()` is one **less** than the
+    // loop's local `currentPass` at the point it fires its final event (`:572-584`) — the local
+    // was already incremented past the cap by `:521` on the completed prior iteration, and the
+    // aborted final iteration breaks before `job.setCurrentPass` runs again. `PipelineResult::
+    // passes_run` is the port's transcription of that local, not of `job.getCurrentPass()`
+    // (`crates/fr-router/src/pipeline/run.rs`'s doc corrects the plan text this drove); the
+    // router's own last `TaskStateChangedEvent.getPassNumber()` carries the same local, so that
+    // is what this driver reads back instead.
+    int[] routerPassesRun = {0};
+    TaskStateChangedEventListener listener =
+        event -> {
+          NamedAlgorithm source = (NamedAlgorithm) event.getSource();
+          events
+              .append("EVENT algorithm=")
+              .append(source.getType())
+              .append(" state=")
+              .append(event.getTaskState())
+              .append('\n');
+          if (source.getType() == NamedAlgorithmType.ROUTER) {
+            routerPassesRun[0] = event.getPassNumber();
+          }
+        };
+    pipeline.addTaskStateChangedEventListener(listener);
+
+    out.println("[pipeline]");
+    pipeline.run();
+
+    out.print(events);
+    out.println(
+        "RESULT passesRun="
+            + routerPassesRun[0]
+            + " optimizerPresent="
+            + (pipeline.getOptimizer() != null)
+            + " fanoutTimedOut="
+            + pipeline.getAutorouter().isFanoutTimedOut()
+            + " optimizerTimedOut="
+            + (pipeline.getOptimizer() != null && pipeline.getOptimizer().isTimedOut())
+            + " "
+            + P7T2.boardShape(job.board));
+
+    out.println("[board]");
+    dumpBoard(out, job.board);
+  }
+
+  /**
+   * {@code buildSettings} plus the optimizer knobs {@code applyOptimizerLimits} sets, both fanout
+   * and the router always on — the shape {@code RoutingPipeline.java:36} needs to build both
+   * stages ({@code job.routerSettings.getRunOptimizer()}).
+   */
+  static RouterSettings buildFullModeSettings(
+      RoutingBoard board, int maxPasses, Integer optPasses, Integer optItems) {
+    RouterSettings settings = buildSettings(board, maxPasses, "router-only");
+    settings.setRunOptimizer(true);
+    applyOptimizerLimits(settings, optPasses, optItems);
+    return settings;
+  }
 
   // -----------------------------------------------------------------------------------------
   // The optimizer stage — BatchOptimizer.java:125-272, :279-385 (Plan 7 Task 14)

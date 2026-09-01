@@ -140,7 +140,7 @@ pub mod prelude {
 
 // --- Consumers of this crate that belong to other plans --------------------------------------
 //
-// added in Plan 7: autoroute/pipeline/AutorouteUnroutedReport.build (autoroute/pipeline/AutorouteUnroutedReport.java:19-80) — the diagnostic report the autorouter emits when it stagnates. It is a *consumer* of this crate (`new DesignRulesChecker(board, null)`, `calculateAllIncompletes()`, `getAllAirlines()` at `:20-22`) and belongs to the router, not the DRC layer; it is package-private, so `audit-port.sh` would not see it either way.
+// renamed: autoroute/pipeline/AutorouteUnroutedReport.build (autoroute/pipeline/AutorouteUnroutedReport.java:19-80) -> `fr_router::pipeline::build_unrouted_report` (Plan 7 Task 15) — the diagnostic report the autorouter emits when it stagnates. It is a *consumer* of this crate (`new DesignRulesChecker(board, null)`, `calculateAllIncompletes()`, `getAllAirlines()` at `:20-22`) and belongs to the router, not the DRC layer; it is package-private, so `audit-port.sh` would not see it either way. `describeItem` (`:60-79`) is its private helper, `pipeline::unrouted_report::describe_item`.
 // added in Plan 8: board/state/BoardComparator.java (758 loc) — diffs two boards for the result-manifest/report layer (spec §10). Plan-5 ruling 13 established that nothing in `drc/**` or the `-drc` path references it, so it is **not** the DRC layer's. Its marker at `crates/fr-board/src/board/mod.rs:57` was re-pointed to Plan 8 by Plan 5 Task 12, per the ruling; this line records the decision at the crate the ruling was made in.
 
 // --- Dropped parameters and helpers ----------------------------------------------------------

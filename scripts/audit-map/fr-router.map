@@ -197,7 +197,10 @@ BatchOptimizer                    lib.rs
 BatchOptimizer                    pipeline/optimizer.rs
 BatchOptimizerMultiThreaded       lib.rs
 OptimizeRouteTask                 lib.rs
-RoutingPipeline                   lib.rs
+# Plan 7 Task 15: `run` is ported as `run_pipeline`; `createForHeadless` is `renamed:` into its
+# own setup; `createForGui`, `getAutorouter`, `getOptimizer`, `addStageListener`,
+# `addBoardUpdatedEventListener` and `addTaskStateChangedEventListener` are `not ported:` there.
+RoutingPipeline                   pipeline/run.rs
 NamedAlgorithm                    lib.rs
 # Plan 7 Task 4 (ruling AK): the two enums are ported, so they point at `pipeline/mod.rs` rather
 # than at `lib.rs`'s roster. `NamedAlgorithm` itself stays on the roster — its five identity
@@ -208,7 +211,9 @@ TaskState                         pipeline/mod.rs
 # Plan 7 Task 9: `calculateAirline` is ported; the other five members are `not ported:` there.
 AutorouteAirlineCalculator        pipeline/airline.rs
 AutorouteRuntimeMetrics           lib.rs
-AutorouteUnroutedReport           lib.rs
+# Plan 7 Task 15: `build` is ported (package-private in Java, so this row is informational — the
+# audit's "public" scan never reaches it either way).
+AutorouteUnroutedReport           pipeline/unrouted_report.rs
 # Plan 7 Task 6 re-pointed this row from `lib.rs` (plan ruling 13 says so explicitly, and says
 # it happens here rather than in Task 17): `optViaLocation`, `optPlaneOrFanoutVia` and
 # `isWithinTolerance` are ported, and the three `repositionVia` overloads are Task 7's, rostered

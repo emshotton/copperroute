@@ -22,9 +22,9 @@
 //! pass runner, with its best-board policy and its two stagnation detectors, answering a
 //! [`BatchLoopResult`]. That is the whole `-dr`-equivalent routing stage with fanout and the
 //! optimizer off, and `scripts/differential/run.sh p7t9` is its whole-board evidence. Two arms of
-//! it are still stubbed behind `obligation:` markers in `batch_loop.rs`: the fanout pre-pass
-//! (Task 12, and the stub is **loud** — `run` asserts fanout is disabled) and the stagnation
-//! report (Task 15, inert).
+//! it were stubbed behind `obligation:`/placeholder markers in `batch_loop.rs`: the fanout
+//! pre-pass (Task 12 discharged it) and the stagnation report (Task 15 discharged it — see
+//! below).
 //!
 //! **Task 11 added [`fanout`]** — `BatchFanout`'s type and constructor, the
 //! [`FanoutComponent`] / [`FanoutPin`] ordering it builds, and the three records
@@ -43,7 +43,17 @@
 //! `createForHeadless` constructor, [`ReadSortedRouteItems`] (the visit order the whole optimizer
 //! stage hangs off), `BatchOptimizer::opt_route_item` with plan-7 ruling 8's clone-based snapshot,
 //! and [`BatchAutorouter::autoroute_passes_for_optimizing_item`], the optimizer's own autorouter.
-//! `scripts/differential/run.sh p7t8` is the evidence. Tasks 14-15 add the pass loop above it.
+//! `scripts/differential/run.sh p7t8` is the evidence. **Task 14 added the pass loop above it** —
+//! [`BatchOptimizer::run_batch_loop`] and `optRoutePass`, with quirk #227 (the two stages share
+//! one stop flag Java never resets) as the finding that carries into Task 15.
+//!
+//! **Task 15 adds [`run_pipeline`]** — the port of `RoutingPipeline.run()`, sequencing the two
+//! stages exactly as `RoutingPipeline.runRoutingStage`/`runOptimizationStage` do, including quirk
+//! #227's no-reset and the fanout-only `maxPasses = 0` mode — and [`build_unrouted_report`], the
+//! port of `AutorouteUnroutedReport.build` that discharges `fr-drc`'s `added in Plan 7:` marker
+//! (now a `// renamed:`) and `batch_loop.rs`'s stagnation-report stub. `PipelineResult` is what
+//! Plan 8's `fr-core` wraps as its `RoutingResult`.
+//!
 //! `crates/fr-router/src/lib.rs`'s roster names every class still deferred and the task that
 //! owns it.
 
@@ -57,7 +67,9 @@ pub mod fanout;
 pub mod item_route_result;
 pub mod optimizer;
 pub mod pass_runner;
+pub mod run;
 pub mod stop;
+pub mod unrouted_report;
 
 pub use airline::calculate_airline;
 pub use batch_autorouter::BatchAutorouter;
@@ -76,7 +88,9 @@ pub use optimizer::{
     optimizer_near_perfect_exit, optimizer_ripup_costs, optimizer_route_improved,
 };
 pub use pass_runner::AutoroutePassRunner;
+pub use run::{PipelineResult, normalize_router_algorithm, run_pipeline};
 pub use stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState};
+pub use unrouted_report::build_unrouted_report;
 
 use fr_board::ItemId;
 

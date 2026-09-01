@@ -113,9 +113,10 @@ pub use error::RouterError;
 pub use java_tree_set::JavaTreeSet;
 pub use pipeline::{
     AutoroutePassRunner, BatchAutorouter, BoardHistory, BoardHistoryEntry, ItemFailureInfo,
-    ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PassRecord, ProgressSink,
-    ProgressThrottler, RouterBudget, RouterCounters, RouterStop, RoutingEvent, RoutingFailureLog,
-    StopRequestState, TaskState, calculate_airline,
+    ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PassRecord, PipelineResult,
+    ProgressSink, ProgressThrottler, RouterBudget, RouterCounters, RouterStop, RoutingEvent,
+    RoutingFailureLog, StopRequestState, TaskState, build_unrouted_report, calculate_airline,
+    normalize_router_algorithm, run_pipeline,
 };
 pub use score::{
     BoardStatistics, BoardStatisticsBends, BoardStatisticsBoard,
@@ -147,11 +148,12 @@ pub mod prelude {
         IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
         MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult, MazeRipupResolver,
         MazeSearchElement, MazeSearchEngine, NamedAlgorithmType, NoopProgressSink,
-        ObstacleExpansionRoom, PageId, PassRecord, ProgressSink, ProgressThrottler,
+        ObstacleExpansionRoom, PageId, PassRecord, PipelineResult, ProgressSink, ProgressThrottler,
         Rectangle2DFloat, ResultItem, RoomRef, RouterBudget, RouterCounters, RouterError,
         RouterStop, RoutingBoardExt, RoutingEvent, RoutingFailureLog, ShoveResult,
         SpringOverOutcome, StopRequestState, TargetDoorId, TargetItemExpansionDoor, TaskState,
-        TraceShover, ViaMask, route_connection, route_connection_full,
+        TraceShover, ViaMask, build_unrouted_report, normalize_router_algorithm, route_connection,
+        route_connection_full, run_pipeline,
     };
 }
 
@@ -279,8 +281,9 @@ pub mod prelude {
 // `alreadyRoutedBoardHashes` (`:249`, quirk #216), the per-pass `getHash()` at `:255` that only
 // log payloads read, the `PerformanceProfiler` block (`:67-81`, `:567-569`), the
 // `AutorouteRuntimeMetrics` CPU/heap report and the per-net incomplete breakdown (`:378-406`).
-// Two `obligation:` markers are open there — the fanout pre-pass (`:89-173`, Task 12, a **loud**
-// stub) and the stagnation report (`:456-476`, `:486-507`, Task 15, an inert one).
+// Two markers that stood there are discharged — the fanout pre-pass (`:89-173`, Task 12) and the
+// stagnation report (`:456-476`, `:486-507`, Task 15, which calls the real
+// [`pipeline::build_unrouted_report`]).
 // `BatchAutorouter` itself is [`pipeline::BatchAutorouter`] from Plan 7 Task 8 — the constants,
 // the field block, both constructors, the five accessors, the five `NamedAlgorithm` identity
 // members, `getImpactedPoints`, `enforceStrictDrc`, `isFanoutTimedOut`, `shouldFireBoardUpdate`,
@@ -328,8 +331,20 @@ pub mod prelude {
 // one method with a live caller (`AutorouteConnectionRouter.java:70`) — with its other five
 // members `not ported:` in `pipeline/airline.rs`; the map points the class there.
 // added in Plan 7: `AutorouteRuntimeMetrics` — package-private with no public members; the line records the class.
-// added in Plan 7: `AutorouteUnroutedReport.build` — the stagnation report; it is a consumer of `fr-drc`, whose `crates/fr-drc/src/lib.rs` carries the same line.
-// added in Plan 8: `RoutingPipeline.createForHeadless`, `RoutingPipeline.createForGui`, `RoutingPipeline.run`, `RoutingPipeline.getAutorouter`, `RoutingPipeline.getOptimizer`, `RoutingPipeline.addStageListener`, `RoutingPipeline.addBoardUpdatedEventListener`, `RoutingPipeline.addTaskStateChangedEventListener` — the wiring from the CLI/MCP surface into Plan 7's stages (spec §13); Plan 7 delivers the stages, Plan 8 the caller.
+// `AutorouteUnroutedReport.build` is **ported** — Plan 7 Task 15's
+// [`pipeline::build_unrouted_report`] — a consumer of `fr-drc` (`crates/fr-drc/src/lib.rs`'s own
+// marker records the same decision as a `// renamed:`, now that this discharges it);
+// `describeItem` (`:60-79`) is its private helper, `pipeline::unrouted_report::describe_item`.
+// Both are package-private in Java, so `audit-port.sh`'s "public" scan does not see either either
+// way.
+// `RoutingPipeline` is **wholly accounted for** by Plan 7 Task 15, not deferred to Plan 8: `run`
+// is [`pipeline::run_pipeline`] (`scripts/audit-map/fr-router.map` points the class at
+// `pipeline/run.rs`); `createForHeadless` collapses into `run_pipeline`'s own setup
+// (`// renamed:`); `createForGui`, `getAutorouter`, `getOptimizer`, `addStageListener`,
+// `addBoardUpdatedEventListener` and `addTaskStateChangedEventListener` are `not ported:` there,
+// each with the reasoning `pipeline/run.rs`'s module doc and per-method markers carry. Plan 8's
+// `fr-core` wraps [`pipeline::PipelineResult`] as its own `RoutingResult`; it has no
+// `RoutingPipeline` surface left to build.
 // not ported: `NamedAlgorithm.addBoardSnapshotEventListener`, `NamedAlgorithm.addBoardUpdatedEventListener`, `NamedAlgorithm.addTaskStateChangedEventListener`, `NamedAlgorithm.fireBoardSnapshotEvent`, `NamedAlgorithm.fireBoardUpdatedEvent`, `NamedAlgorithm.fireTaskStateChangedEvent` — the three listener lists (`NamedAlgorithm.java:26-31`) and their `add`/`fire` pairs; controller ruling AK replaces the whole mechanism with spec §10's [`pipeline::ProgressSink`], landed in Plan 7 Task 4.
 // The two enums `NamedAlgorithmType` and `TaskState` are **ported** — [`pipeline::NamedAlgorithmType`] and [`pipeline::TaskState`], Plan 7 Task 4 — because `ProgressSink`'s `RoutingEvent::TaskStateChanged` carries both and `PipelineResult` reports a `TaskState`. The `// not ported:` line that stood here ("bare enums with no methods") is deleted with them.
 

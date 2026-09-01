@@ -866,15 +866,15 @@ fn routing_with_fanout_enabled_runs_the_pre_pass() {
 /// This test pins the distinction rather than the string: it asserts the `obligation:` marker
 /// names Task 15, and that the stub sits beside the two `break`s it must not disturb.
 #[test]
-fn the_stagnation_report_stub_is_inert_and_names_task_15() {
+fn the_stagnation_report_is_discharged_and_names_task_15() {
     let source = include_str!("../src/pipeline/batch_loop.rs");
     assert!(
         source.contains(
-            "obligation: `AutorouteBatchLoop`'s stagnation report (`:456-476`, `:486-507`) — **Task 15**"
+            "discharged: `AutorouteBatchLoop`'s stagnation report (`:456-476`, `:486-507`) called"
         ),
-        "the stagnation report stub must carry its `obligation:` marker naming Task 15"
+        "the stagnation report site must carry its `discharged:` marker naming Task 15's landing"
     );
-    // The stub is the *report*, never the break. Java's loop leaves through five
+    // The call is the *report*, never the break. Java's loop leaves through five
     // `requestStopAutoRouter(); break;` pairs — `:271-272` (maxPasses), `:311-312` ("not able to
     // improve"), `:318-319` (the rank limit), `:474-475` (the pass-local stagnation window) and
     // `:505-506` (the global one) — and all five are this task's, including the two the stub sits

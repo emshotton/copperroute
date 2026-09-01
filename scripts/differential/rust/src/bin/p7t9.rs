@@ -30,8 +30,9 @@ use std::io::{BufWriter, Write};
 use fr_board::prelude::*;
 use fr_dsn::{java_double_to_string, java_float_to_string};
 use fr_router::pipeline::{
-    optimizer_route_improved, AutorouteBatchLoop, BatchLoopResult, BatchOptimizer, ItemRouteResult,
-    NoopProgressSink, ReadSortedRouteItems, RouterBudget, RouterStop, TaskState,
+    optimizer_route_improved, run_pipeline, AutorouteBatchLoop, BatchLoopResult, BatchOptimizer,
+    ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PipelineResult, ProgressSink,
+    ReadSortedRouteItems, RouterBudget, RouterStop, RoutingEvent, TaskState,
 };
 use fr_router::score::BoardStatistics;
 use fr_settings::RouterSettings;
@@ -57,11 +58,16 @@ fn main() {
         .map_or("router-only", String::as_str);
     if !matches!(
         mode,
-        "router-only" | "router+fanout" | "optimizer" | "optimizer+fanout" | "optimizer-shared"
+        "router-only"
+            | "router+fanout"
+            | "optimizer"
+            | "optimizer+fanout"
+            | "optimizer-shared"
+            | "full"
     ) {
         eprintln!(
-            "p7t9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout' \
-             or 'optimizer-shared', not: {mode}"
+            "p7t9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout', \
+             'optimizer-shared' or 'full', not: {mode}"
         );
         std::process::exit(2);
     }
@@ -85,7 +91,7 @@ fn main() {
         "HEADER jar={jar} bytes={bytes} mtime={mtime} fixture={} maxPasses={max_passes} \
          mode={mode}{}",
         dsn.file_name().expect("a file name").to_string_lossy(),
-        if is_optimizer_mode(mode) {
+        if is_optimizer_mode(mode) || mode == "full" {
             format!(
                 " optPasses={} optItems={}",
                 limit_name(opt_passes),
@@ -102,6 +108,12 @@ fn main() {
 
     if is_optimizer_mode(mode) {
         run_optimizer_mode(&mut out, &dsn, max_passes, mode, opt_passes, opt_items);
+        out.flush().expect("flush");
+        return;
+    }
+
+    if mode == "full" {
+        run_full_mode(&mut out, &dsn, max_passes, opt_passes, opt_items);
         out.flush().expect("flush");
         return;
     }
@@ -154,6 +166,109 @@ fn main() {
     writeln!(out, "[board]").expect("write");
     p7t_common::dump_board(&mut out, &board);
     out.flush().expect("flush");
+}
+
+// =================================================================================================
+// Mode `full` — `run_pipeline`, Plan 7 Task 15
+// =================================================================================================
+
+/// Mode `full`: the actual [`run_pipeline`] — both stages, the fanout-only settings-clone
+/// contract (unreachable from this driver's settings, which always sets `run_router = true`), the
+/// one `finish_autoroute` no-op site and the optimizer-stage skip — driven directly, not through
+/// a hand-written transcript. See `P7T9.runFullMode`'s doc for why: `run_pipeline` is short and
+/// delegates to [`AutorouteBatchLoop::run`]/`BatchOptimizer::run_batch_loop`, both already pinned
+/// end to end by the other four modes.
+fn run_full_mode<W: Write>(
+    out: &mut W,
+    dsn: &std::path::Path,
+    max_passes: i32,
+    opt_passes: Option<i32>,
+    opt_items: Option<i32>,
+) {
+    let mut board = p7t_common::load_board(dsn);
+    let mut settings = build_settings(&board, max_passes, "router-only");
+    settings.set_run_optimizer(true);
+    apply_optimizer_limits(&mut settings, opt_passes, opt_items);
+
+    let stop = RouterStop::new();
+    let mut sink = Recorder::default();
+
+    writeln!(out, "[pipeline]").expect("write");
+    let result: PipelineResult = run_pipeline(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("the corpus stems all have a routable signal layer");
+
+    for (algorithm, state) in sink.task_states() {
+        writeln!(
+            out,
+            "EVENT algorithm={} state={}",
+            java_algorithm_type(algorithm),
+            java_task_state(state)
+        )
+        .expect("write");
+    }
+
+    writeln!(
+        out,
+        "RESULT passesRun={} optimizerPresent={} fanoutTimedOut={} optimizerTimedOut={} {}",
+        result.passes_run,
+        result.optimizer_state.is_some(),
+        result
+            .fanout
+            .as_ref()
+            .is_some_and(|fanout| fanout.is_timed_out),
+        // `PipelineResult` carries no separate per-stage optimizer-timeout bit — `timed_out`
+        // folds it (and the fanout/router ones) into one flag; see `pipeline/run.rs`'s doc. This
+        // line reads the same information Java's driver reads off `pipeline.getOptimizer().
+        // isTimedOut()`, which on the port's side is exactly `result.timed_out` once the router
+        // and fanout deadlines are ruled out — both are disabled on every corpus run here
+        // (`RouterBudget::disabled()`, no `settings.optimizer.timeoutString`), so `timed_out`
+        // alone already answers the optimizer's own case.
+        result.timed_out,
+        p7t_common::board_shape(&mut board)
+    )
+    .expect("write");
+
+    writeln!(out, "[board]").expect("write");
+    p7t_common::dump_board(out, &board);
+}
+
+/// Records every [`RoutingEvent::TaskStateChanged`], tagged by algorithm — the driver's own
+/// `ProgressSink`, mirroring `P7T9.runFullMode`'s `TaskStateChangedEventListener`.
+#[derive(Default)]
+struct Recorder {
+    events: Vec<RoutingEvent>,
+}
+
+impl ProgressSink for Recorder {
+    fn on_event(&mut self, event: &RoutingEvent) {
+        self.events.push(event.clone());
+    }
+}
+
+impl Recorder {
+    fn task_states(&self) -> Vec<(NamedAlgorithmType, TaskState)> {
+        self.events
+            .iter()
+            .filter_map(|e| match e {
+                RoutingEvent::TaskStateChanged { algorithm, state } => Some((*algorithm, *state)),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+/// Java's `NamedAlgorithmType.toString()`, i.e. the enum constant's own name.
+fn java_algorithm_type(algorithm: NamedAlgorithmType) -> &'static str {
+    match algorithm {
+        NamedAlgorithmType::Router => "ROUTER",
+        NamedAlgorithmType::Optimizer => "OPTIMIZER",
+    }
 }
 
 /// `P7T9.buildSettings` — `p7t_common::build_settings` plus the driver's three knobs.
