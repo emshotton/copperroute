@@ -3133,3 +3133,5 @@ rows differ from the same run without the switch.
 | `BoardStatistics` — the metric block `tests/fixtures.rs` and `p6t1` stand in for | `core/scoring/BoardStatistics.java:271` | `tests/fixtures.rs` module docs |
 | `Wiring.readViaScope`'s unchecked `insert_via` (the ladder hang's last line) | `io/specctra/parser/Wiring.java:706` | `crates/fr-dsn/src/parser/wiring.rs:596`'s `obligation: Plan 8` |
 | the CLI/MCP surface: legacy-flag value normalisation wiring, MCP concurrency | `GlobalSettings.java:675-731`; spec §13 | `crates/freerouting/src/{legacy.rs,mcp/}`; obligation register |
+
+| quirk #232 boundary | `router.hole_clearance_um` > 0 + zero circular keepouts → Java's second override run does one extra `reinsertTreeItems` (tree-order shift, #229 class) | pin or reproduce before the CLI exposes the setting | see the `obligation:` at the #232 site |

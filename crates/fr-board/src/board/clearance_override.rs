@@ -57,6 +57,7 @@
 //! state that follows is identical — the shapes are recomputed from the same rules — but the
 //! search tree's entry counter advances further in the port. It is unreachable at the default
 //! `0.0 µm`, i.e. on every parity path Plans 7 and 8 have. Quirk #232.
+// obligation: Plan 8 (`HeadlessBoardManager.applyHoleClearanceOverride` second invocation) — before Plan 8 exposes `router.hole_clearance_um` on a real CLI path, pin the quirk-#232 boundary (non-default hole clearance > 0 with zero circular keepouts → Java's second run does one extra `reinsertTreeItems`, shifting internal tree order — the quirk-#229 divergence class) with a tree-op/order pin, or reproduce the second run.
 
 use fr_geometry::{Area, Shape, java_round};
 
