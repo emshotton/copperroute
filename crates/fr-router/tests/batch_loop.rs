@@ -813,31 +813,49 @@ fn the_dead_hash_set_is_javas_only_allocation() {
 // The two stubs, and the obligations they carry
 // =================================================================================================
 
-/// Ruling B1: a stubbed arm must be **inert or loud**. The fanout pre-pass (`:89-173`) is Task
-/// 12's, and a `run` that silently skipped it would answer a different board — so it is loud.
+/// Ruling B1's tripwire, discharged. Until Plan 7 Task 12 the fanout pre-pass (`:89-173`) was a
+/// **loud** stub — a `run` with `fanout.enabled = true` panicked, because silently skipping the
+/// stage would have answered a different board — and this test asserted the panic. Task 12 landed
+/// [`BatchFanout::fanout_board`], so the same call now routes and reports a summary, and the test
+/// asserts *that* instead: the stub is gone and the arm it stood in for is live.
 ///
-/// The test is what makes "loud" checkable, and it is also the tripwire that tells Task 12 the
-/// `assert!` has to go when the real pre-pass lands.
+/// The whole-board version is `scripts/differential/run.sh p7t9 <dsn> 1 router+fanout`;
+/// `crates/fr-router/tests/fanout.rs` owns the stage's own unit tests.
 #[test]
-#[should_panic(expected = "fanout pre-pass")]
-fn routing_with_fanout_enabled_is_loud_until_task_12() {
+#[cfg_attr(debug_assertions, ignore)]
+fn routing_with_fanout_enabled_runs_the_pre_pass() {
     if !parity::require_java_dir() {
-        // `should_panic` needs a panic even when the Java checkout is missing, and the message
-        // has to match; panicking here with the same phrase would assert nothing, so the test
-        // instead fails loudly rather than passing vacuously.
-        panic!("the fanout pre-pass test needs the Java checkout for its fixture");
+        return;
     }
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board, 1);
     settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    // Ruling AI: `fanoutPass:231-232`'s per-pin clock, off on this side as the drivers set it.
+    settings
+        .fanout
+        .get_or_insert_with(Default::default)
+        .max_milliseconds_per_pin = Some(i64::from(i32::MAX));
     let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
-    let _ = AutorouteBatchLoop::run(
+    let result = AutorouteBatchLoop::run(
         &mut board,
         &settings,
         &stop,
         RouterBudget::disabled(),
         &mut sink,
+    )
+    .expect("the fixture has a routable signal layer");
+    let summary = result
+        .fanout
+        .expect("`:123-172` ran, so `:173` had a summary to read");
+    assert!(!summary.is_timed_out);
+    assert!(
+        summary.completed_pass_count > 0,
+        "the stage ran at least one pass"
+    );
+    assert!(
+        board.get_vias().len() >= 9,
+        "the escape vias `p7t5 board` counts on this stem are on the board the loop answered"
     );
 }
 

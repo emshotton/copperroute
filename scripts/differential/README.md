@@ -2366,8 +2366,14 @@ the driver expects, or none at all.
   arguments uses `Issue143-rpi_splitter.dsn 1 router-only`.
 
   `mode` is `router-only` — `fanout.enabled = false`, `runOptimizer = false`, `runRouter
-  = true` — and is the only mode until Plan 7 Task 12 lands `BatchFanout.fanoutBoard` on
-  both sides and adds `router+fanout`. `maxPasses` goes straight into
+  = true` — or, from Plan 7 Task 12, **`router+fanout`**, which turns the SMD fanout
+  pre-pass (`:89-173`) on and makes the transcript call the real
+  `BatchFanout.fanoutBoard`, printing a `FANOUT-SUMMARY` line
+  (`completedPassCount`, `isTimedOut`, the escape statistics, `router.fanoutTimedOut` and
+  the board shape) before the routing stage starts. In that mode ruling AI's per-pin
+  fanout clock is disabled on **both** sides through
+  `settings.fanout.maxMillisecondsPerPin = Integer.MAX_VALUE`, which is where
+  `BatchFanout.fanoutPass:231-232` builds its `TimeLimit` from. `maxPasses` goes straight into
   `settings.maxPasses`, where **`0` means unlimited** (quirk #140), so bound a big stem
   with `P7T9_TIMEOUT` before using it.
 
@@ -2400,7 +2406,17 @@ the driver expects, or none at all.
   on every stem, because the method's whole body nulls a `transient` field.
 
   **Acceptance: 0 diffs on five corpus DSNs at `maxPasses in {1, 2}` and on the three
-  small stems at `maxPasses = 8`** — 13 / 13 MATCH.
+  small stems at `maxPasses = 8`** — 13 / 13 MATCH in `router-only`, re-run unchanged by
+  Plan 7 Task 12 when the fanout stub was discharged — **plus 5 / 5 MATCH in
+  `router+fanout`** at `maxPasses = 1` (`Issue730-DAC2020_bm11`, `Issue558-dev-board`,
+  `Issue143-rpi_splitter`, `Issue026-J2_reference`,
+  `Issue649-kicad_ecc83-pp_input_board_v1`).
+
+  **Do not run a `p7t*` sweep while anything is editing `crates/**`.** `run.sh` rebuilds
+  the Rust twin on every invocation, so a source edit that lands between two runs of a
+  sweep is compiled into the middle of it. Task 12 saw exactly one `DIFF` this way — a
+  `router+fanout` run that picked up a mutation-testing edit — and five clean re-runs
+  showed it was the harness, not the port.
 
   It found one real port divergence on the way, in `fr-board` rather than in Task 9's
   own code: `Board::cumulative_trace_length` used `.sum()`, and Rust's
@@ -2413,11 +2429,14 @@ the driver expects, or none at all.
   `crates/fr-board/tests/board.rs` as the pin.
 
 
-- `p7t5 <dsn> [passNo] [sortingOrder] [order|pin]` — Plan 7 Task 11, the fanout
-  pre-pass's **ordering** (`BatchFanout.java:35-78`, `:631-693`, `:695-778`) and the
-  per-pin escape router it drives, `RoutingBoard.fanout` (`RoutingBoard.java:978-1110`).
-  Defaults `<dsn> 0 outer_first order`; `run.sh p7t5` with no arguments uses
-  `Issue143-rpi_splitter.dsn 0 outer_first order`.
+- `p7t5 <dsn> [passNo|maxPasses] [sortingOrder] [order|pin|pass|board]` — Plan 7 Tasks
+  11 and 12, the whole fanout stage: its **ordering** (`BatchFanout.java:35-78`,
+  `:631-693`, `:695-778`), the per-pin escape router it drives, `RoutingBoard.fanout`
+  (`RoutingBoard.java:978-1110`), one whole `fanoutPass` (`:166-506`) and the whole
+  `fanoutBoard` (`:81-163`). Defaults `<dsn> 0 outer_first order`; `run.sh p7t5` with no
+  arguments uses `Issue143-rpi_splitter.dsn 0 outer_first order`. **In mode `board` the
+  second argument is `maxPasses`**, and `0` keeps whatever `settings.fanout.maxPasses`
+  holds (20).
 
   * **Mode `order`** builds a `BatchFanout` once per `pinSortingOrder` string — the four
     `Pin.compareTo:744-771` recognises plus one it does not — and prints the whole of
@@ -2433,6 +2452,39 @@ the driver expects, or none at all.
     `board.startMarkingChangedArea()` before each call). Per pin it prints the attempt
     state and details, the ids the call **removed**, the geometry it inserted and the id
     generator's high-water marks; then a `[final]` board shape.
+  * **Mode `pass`** (Task 12) runs one whole `fanoutPass` in two halves. `[transcript]`
+    is `:166-506` written out in the driver, calling the real `RoutingBoard.fanout`, and
+    prints mode `pin`'s JSON per pin *plus* the five counters, `pinsToGo`,
+    `totalItemsFanouted` and the running `extraViasThisPass`, then a `PASS-END` line;
+    `[real]` is a freshly loaded board and the **real** `fanoutPass(passNo, null)`,
+    reached with `Method.setAccessible(true)` on the Java side and through the port's
+    `pub fn fanout_pass` on the other, printing its return value, the four instance
+    fields it writes, the board shape and `EQUALS-TRANSCRIPT`.
+  * **Mode `board`** (Task 12) runs the whole `fanoutBoard` in the same two halves. The
+    transcript prints one `PASS` line per pass (`routedCount`, the via count, the packed
+    `boardState` of `:133`, `isTimedOut`, `totalItemsFanouted`, `extraViasTotal`), a
+    `STAGNATION` line when the oscillation detector counts a repeat, a `HASHEQ` line
+    carrying `:153-155`'s hash-equality **decision** whenever the loop gets that far, and
+    a `STOP <reason>` line naming which of the six doors ended it
+    (`MAXPASSES`, `DEADLINE`, `MAXITEMS`, `NOTHING-ROUTED`, `STAGNATED`, `TIMED-OUT`,
+    `UNCHANGED-HASH`). `[real]` calls the public `BatchFanout.fanoutBoard` on a fresh
+    board and prints the `FanoutRunSummary` tuple **minus** its wall-clock component;
+    then `ESCAPE`, `EQUALS-TRANSCRIPT` and `[board]`, the final board in `P6T15aProbe`'s
+    polyline format (`P7T9.java` is compiled alongside for `dumpBoard`).
+
+  **No mode compares progress events**, and deliberately: `core.ProgressThrottler`
+  (`ProgressThrottler.java:15-26`) is a wall clock, so how many ticks a pass publishes
+  depends on how fast the machine is. Both sides pass a null / no-op listener.
+
+  **`P7T5_HASH_MODE=warm|raw`** (default `warm`) is a **Java-side** knob for modes `pass`
+  and `board`, the same one `p7t10` carries and printed in both headers. `warm` calls
+  `normalizeByProducts` before every `getHash()` the transcript takes — it fills
+  `DrillItem`'s four lazy caches and resets `Item.smallestClearance` — so quirk #200
+  cannot move a hash between two boards that are the same. Controller ruling AH and the
+  Task 3 caveat define decision parity against `warm`: 3 of 350 raw `p7t10` steps are
+  `FANOUTSTOP false -> true`, i.e. live the jar keeps fanning out where the port stops.
+  The port's hash is warm by construction (`Board::structural_hash` skips every
+  by-product), so the knob moves this side only.
 
   The removed-id set stands in for `rippedItemList`, which is a local of `fanout`
   (`:1058`) and is never returned: the items it carries are deleted by
@@ -2451,14 +2503,24 @@ the driver expects, or none at all.
   `RouterBudget::disabled()` against Java's live limit, and a MATCH therefore *proves*
   the limit never trips on the corpus.
 
-  **Acceptance: 0 diffs on eight DSNs x both modes — 16 / 16 MATCH.** The eight are the
+  **The budget in modes `pass` and `board`** cannot be the `TimeLimit` argument, because
+  `fanoutPass:231-232` builds its own from `settings.fanout.maxMillisecondsPerPin` — so
+  the driver writes `Integer.MAX_VALUE` into **that setting**, on both sides, and the
+  `(int)` cast of `base * (passNo + 1)` saturates back to it. `settings.fanout.timeout`
+  is left `null`, which is what `DefaultSettings` ships, so neither side has a stage
+  clock either.
+
+  **Acceptance: 0 diffs on eight DSNs x four modes — 32 / 32 MATCH.** The eight are the
   brief's three (`Issue730-DAC2020_bm11`, `Issue558-dev-board`,
   `Issue508-DAC2020_bm06`) and the five corpus stems; `tutorial_board` and
-  `Issue649-kicad_ecc83-pp_input_board_v1` carry **no SMD pins at all**, so their three-
-  and six-line transcripts are the degenerate case rather than a measurement.
+  `Issue649-kicad_ecc83-pp_input_board_v1` carry **no SMD pins at all**, so their
+  `order`/`pin`/`pass` transcripts are the degenerate case rather than a measurement —
+  mode `board` still dumps their whole board, which is why those two rows are long.
 
   **The driver bites**, measured: swapping the `outer_first` branch's two signs in the
-  port makes `p7t5 <rpi> 0 outer_first order` DIFF on eight lines.
+  port makes `p7t5 <rpi> 0 outer_first order` DIFF on eight lines, and swapping
+  `fanoutPass`' `ROUTED` and `FAILED` counter arms makes `p7t5 <rpi> 0 outer_first pass`
+  DIFF on its `REAL` line.
 
 ## Deferred coverage and cleanups
 

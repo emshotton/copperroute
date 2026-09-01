@@ -548,3 +548,101 @@ pub fn quote(value: &str) -> String {
     sb.push('"');
     sb
 }
+
+// ------------------------------------------------------------------------------------------------
+// The final board — `P6T15aProbe`'s polyline format
+// ------------------------------------------------------------------------------------------------
+
+/// `P7T9.dumpBoard` — one line per item in `getItems()` order (descending id, quirk #63).
+pub fn dump_board<W: Write>(out: &mut W, board: &Board) {
+    let ctx = board.ctx();
+    writeln!(
+        out,
+        "maxId={}",
+        board.communication.id_gen.max_generated_id().0
+    )
+    .expect("write");
+    // `board.getItems()` order, i.e. **descending** item id (quirk #63), which is what
+    // `items_in_board_order` already answers.
+    for id in board.items_in_board_order() {
+        let Some(item) = board.get_item(id) else {
+            continue;
+        };
+        let nets: Vec<String> = (0..item.net_count())
+            .map(|i| item.get_net_number(i).to_string())
+            .collect();
+        let mut sb = format!(
+            "item id={} type={} nets=[{}] cl={}",
+            id.0,
+            java_class_name(item),
+            nets.join(","),
+            item.clearance_class()
+        );
+        match item {
+            Item::Trace(trace) => {
+                sb.push_str(&format!(
+                    " layer={} hw={} {}",
+                    trace.get_layer(),
+                    trace.get_half_width(),
+                    poly(trace.polyline())
+                ));
+            }
+            Item::Via(via) => {
+                let padstack = via
+                    .get_padstack(&ctx)
+                    .expect("a via always resolves its padstack");
+                sb.push_str(&format!(
+                    " center={} padstack={} firstLayer={} lastLayer={}",
+                    point_of(&via.get_center()),
+                    padstack.name,
+                    via.first_layer(&ctx),
+                    via.last_layer(&ctx)
+                ));
+            }
+            Item::Pin(pin) => {
+                sb.push_str(&format!(" center={}", point_of(&pin.get_center(&ctx))));
+            }
+            _ => {}
+        }
+        writeln!(out, "{sb}").expect("write");
+    }
+}
+
+/// `P6T15aProbe.ln`.
+pub fn ln(l: &fr_geometry::Line) -> String {
+    format!("({},{})->({},{})", l.a.x, l.a.y, l.b.x, l.b.y)
+}
+
+/// `P6T15aProbe.pt` — one corner of a polyline. Named apart from [`pt`], which is `P6T1`'s
+/// point renderer and takes a `Point`.
+pub fn poly_corner(p: &fr_geometry::Polyline, no: usize) -> String {
+    match p.corner(no) {
+        Some(fr_geometry::Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
+        _ => {
+            let f = p.corner_approx(no).expect("a corner of a valid polyline");
+            format!(
+                "~({},{})",
+                java_double_to_string(f.x),
+                java_double_to_string(f.y)
+            )
+        }
+    }
+}
+
+/// `P6T15aProbe.poly` — the line array and the corners.
+pub fn poly(p: &fr_geometry::Polyline) -> String {
+    let lines: Vec<String> = p.lines().iter().map(ln).collect();
+    let corners: Vec<String> = (0..p.corner_count()).map(|i| poly_corner(p, i)).collect();
+    format!(
+        "n={} lines=[{}] corners=[{}]",
+        lines.len(),
+        lines.join(","),
+        corners.join(",")
+    )
+}
+
+/// `P6T15aProbe.pointOf` — `p.toFloat().round().toFloat()`, then an `(int)` truncation.
+pub fn point_of(p: &fr_geometry::Point) -> String {
+    let f = p.to_float().round().to_float();
+    format!("({},{})", f.x as i64, f.y as i64)
+}

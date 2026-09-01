@@ -39,8 +39,11 @@ import java.nio.file.Paths;
  *
  * <p>Usage: {@code P7T9 <dsn> <maxPasses> <mode>}. {@code maxPasses} is an integer written straight
  * into {@code settings.maxPasses} ({@code 0} is Java's "unlimited", quirk #140); {@code mode} is
- * {@code router-only} today — {@code fanout.enabled = false} and {@code runOptimizer = false} —
- * and Plan 7 Task 12 adds {@code router+fanout} when the fanout pre-pass exists on both sides.
+ * {@code router-only} ({@code fanout.enabled = false}, {@code runOptimizer = false}) or, from
+ * Plan 7 Task 12, {@code router+fanout}, which turns the SMD fanout pre-pass ({@code :89-173})
+ * on. In the second mode the per-pin fanout clock is disabled on <b>both</b> sides through
+ * {@code settings.fanout.maxMillisecondsPerPin = Integer.MAX_VALUE} (ruling AI), which is where
+ * {@code BatchFanout.fanoutPass:231-232} builds its {@code TimeLimit} from.
  *
  * <h2>The shape of the run, and why there are two halves</h2>
  *
@@ -118,8 +121,8 @@ public final class P7T9 {
     Path dsn = Paths.get(args[0]).toAbsolutePath().normalize();
     int maxPasses = args.length > 1 && !args[1].isBlank() ? Integer.parseInt(args[1]) : 1;
     String mode = args.length > 2 && !args[2].isBlank() ? args[2] : "router-only";
-    if (!"router-only".equals(mode)) {
-      System.err.println("P7T9: only mode 'router-only' exists until Plan 7 Task 12: " + mode);
+    if (!"router-only".equals(mode) && !"router+fanout".equals(mode)) {
+      System.err.println("P7T9: mode must be 'router-only' or 'router+fanout', not: " + mode);
       System.exit(2);
     }
 
@@ -138,7 +141,7 @@ public final class P7T9 {
 
     // ---- half one: the transcription -----------------------------------------------------
     RoutingBoard board = P7T2.loadBoard(dsn);
-    RouterSettings settings = buildSettings(board, maxPasses);
+    RouterSettings settings = buildSettings(board, maxPasses, mode);
     BatchAutorouter router = P7T2.newRouter(board, settings);
     out.println("[transcript]");
     boolean transcriptReturned = transcribeRun(out, router, settings);
@@ -152,7 +155,7 @@ public final class P7T9 {
 
     // ---- half two: the real method -------------------------------------------------------
     RoutingBoard realBoard = P7T2.loadBoard(dsn);
-    RouterSettings realSettings = buildSettings(realBoard, maxPasses);
+    RouterSettings realSettings = buildSettings(realBoard, maxPasses, mode);
     BatchAutorouter realRouter = P7T2.newRouter(realBoard, realSettings);
     out.println("[real]");
     boolean realReturned = realRouter.runBatchLoop();
@@ -185,13 +188,16 @@ public final class P7T9 {
    * {@code FanoutSettings} object exists and its {@code enabled} is not {@code TRUE}
    * (RouterSettings.java:578-580). Both are set before the router is built.
    */
-  static RouterSettings buildSettings(RoutingBoard board, int maxPasses) {
+  static RouterSettings buildSettings(RoutingBoard board, int maxPasses, String mode) {
     RouterSettings settings = P7T2.buildSettings(board);
     settings.maxPasses = maxPasses;
     if (settings.fanout == null) {
       settings.fanout = new FanoutSettings();
     }
-    settings.fanout.enabled = Boolean.FALSE;
+    settings.fanout.enabled = "router+fanout".equals(mode) ? Boolean.TRUE : Boolean.FALSE;
+    // Ruling AI: `fanoutPass:231-232`'s per-pin `TimeLimit` is built from this setting, so this
+    // is where the fanout stage's wall clock is disabled — on both sides, with the same number.
+    settings.fanout.maxMillisecondsPerPin = (long) Integer.MAX_VALUE;
     settings.setRunRouter(true);
     settings.setRunOptimizer(false);
     // `:408-410` — the snapshot event. Off, so `fireBoardSnapshotEvent` is not on this run's path;
@@ -217,9 +223,11 @@ public final class P7T9 {
    * empty exactly as the headless CLI does — the port's {@code ProgressSink} equivalents are
    * pinned by unit tests, not here.
    *
-   * <p>The fanout pre-pass ({@code :89-218}) is not transcribed: {@code mode router-only} sets
-   * {@code fanout.enabled = false}, so {@code :89}'s guard is false and the block is not on this
-   * run's path in Java either. Task 12 adds it to both sides together.
+   * <p>The fanout pre-pass ({@code :89-218}) is transcribed from Plan 7 Task 12 on: in
+   * {@code mode router-only} {@code :89}'s guard is false and the block is not on the run's path
+   * in Java either, and in {@code mode router+fanout} it calls the real
+   * {@code BatchFanout.fanoutBoard} and prints its summary. Everything else in the block is
+   * {@code AutorouteRuntimeMetrics} and {@code job.log*}, which neither side carries.
    */
   static boolean transcribeRun(PrintStream out, BatchAutorouter router, RouterSettings settings) {
     RoutingBoard board = router.board;
@@ -253,7 +261,35 @@ public final class P7T9 {
     BoardHistory bh = new BoardHistory(job.routerSettings.scoring);
 
     // :89-218 — the fanout pre-pass; see the javadoc.
-    out.println("FANOUT enabled=" + settings.isFanoutEnabled());
+    out.println(
+        "FANOUT enabled="
+            + settings.isFanoutEnabled()
+            + " smdPins="
+            + router.board.getSmdPins().size());
+    if (settings.isFanoutEnabled() && !router.board.getSmdPins().isEmpty()) {
+      // :123-172.
+      BatchFanout.FanoutRunSummary fanoutSummary =
+          BatchFanout.fanoutBoard(router.board, router.settings, router.thread);
+      // :173.
+      router.fanoutTimedOut = fanoutSummary.isTimedOut();
+      BatchFanout.EscapeStatistics finalEscape = fanoutSummary.escapeStatistics();
+      out.println(
+          "FANOUT-SUMMARY completedPassCount="
+              + fanoutSummary.completedPassCount()
+              + " isTimedOut="
+              + fanoutSummary.isTimedOut()
+              + " escapeTotalSmdPins="
+              + finalEscape.totalSmdPins()
+              + " escapedCount="
+              + finalEscape.escapedCount()
+              + " escapedPercentage="
+              + Double.toString(finalEscape.escapedPercentage())
+              + " fanoutTimedOut="
+              + router.fanoutTimedOut
+              + " "
+              + P7T2.boardShape(router.board));
+      board = router.board;
+    }
 
     // :220.
     int currentUnrouted = router.calculateIncompleteCount(board);

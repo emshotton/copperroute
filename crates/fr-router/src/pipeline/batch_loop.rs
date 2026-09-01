@@ -25,6 +25,7 @@ use crate::error::RouterError;
 use crate::pipeline::batch_autorouter::BatchAutorouter;
 use crate::pipeline::board_history::BoardHistory;
 use crate::pipeline::failure_log::RoutingFailureLog;
+use crate::pipeline::fanout::{BatchFanout, FanoutRunSummary};
 use crate::pipeline::stop::{PassRecord, RouterBudget, RouterStop};
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
@@ -86,13 +87,6 @@ pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_TH
 ///
 /// The board itself is **not** in here: Java's `:552` writes `job.board`, and the port's `board`
 /// argument is that field.
-///
-// added in Plan 7: a `fanout: Option<FanoutRunSummary>` field for `:123-173`'s
-// `BatchFanout.fanoutBoard` summary and `:173`'s `router.fanoutTimedOut = summary.isTimedOut()`.
-// The plan's §Interfaces table lists `FanoutRunSummary` as "Task 11 (the type only, behind Task
-// 10's stub)" — but Task 11 has not run, the type does not exist at this commit, and a field
-// cannot name a type that is not there. **Task 12 adds the field** when it discharges the fanout
-// `obligation:` below; nothing between here and there reads it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchLoopResult {
     /// The state `:571-585` reports. **A normal end of routing is `Cancelled`** — see quirk #214
@@ -103,6 +97,14 @@ pub struct BatchLoopResult {
     /// `currentPass` as the loop left it (`:520-522`). Because `:521` increments only when the
     /// loop is going round again, a run that stopped at `maxPasses = n` leaves this at `n + 1`.
     pub passes_run: i32,
+    /// What `BatchFanout.fanoutBoard` answered (`:123-172`), or `None` when the fanout stage did
+    /// not run — `settings.fanout.enabled` off (`:89`) or a board with no SMD pins at all
+    /// (`:90-91`). Java keeps no such field: the summary is a local, read twice, at `:173`
+    /// (`router.fanoutTimedOut`) and by the `:198-216` `job.logInfo` payload. The port hands it back
+    /// because it is the only evidence that the pre-pass ran, and `p7t9 router+fanout` prints it.
+    ///
+    /// Its `total_duration_millis` is wall clock and must never be compared.
+    pub fanout: Option<FanoutRunSummary>,
     /// Ruling 1(a)'s per-pass tuple, one entry per **completed** pass, in pass order.
     ///
     /// Filled where Java writes its `"Auto-routing pass #%d … completed … with score %s"` line
@@ -220,30 +222,35 @@ impl AutorouteBatchLoop {
 
         // :68-81 — `PerformanceProfiler.recordConfiguration`; see the roster.
 
-        // :83-218 — the SMD fanout pre-pass.
+        // :83-218 — the SMD fanout pre-pass. **Task 12 discharged Task 10's loud `assert!`**;
+        // `:83-87` is the `job.logDebug` payload that opens the block.
         //
-        // obligation: `AutorouteBatchLoop`'s fanout pre-pass (`:89-173`) — **Task 12**. When
-        // `BatchFanout::fanout_board` exists, this arm calls it behind `settings.is_fanout_enabled()`
-        // with `:90-91`'s empty-SMD-pin skip and `:100-110`'s two counters, and wires
-        // `:173`'s `router.fanoutTimedOut = summary.isTimedOut()` plus the
-        // `BatchLoopResult::fanout` field. `:93-96` and `:175-216` are `AutorouteRuntimeMetrics`
-        // — CPU/heap reporting, rostered at the foot of this file.
-        //
-        // **Ruling B1: a stubbed arm must be inert or loud, never silently different — and this
-        // one is loud.** Skipping `:89-173` on a board whose SMD pins Java would have fanned out
-        // answers a *different board*, which no amount of care at the call site would reveal. It
-        // is a real `assert!`, not a `debug_assert!`, because the parity runs are release builds
-        // and that is exactly where a silent skip would be believed. `DefaultSettings` turns
-        // fanout **on** (`crates/fr-settings/src/sources/default_settings.rs:105`), so this fires
-        // for any caller that has not deliberately disabled it — which is the tripwire that tells
-        // Task 12 to remove it. `p7t9` runs in mode `router-only` (`fanout.enabled = false`),
-        // where `:89`'s guard is false in Java too, so nothing this task drives is affected.
-        assert!(
-            !settings.is_fanout_enabled(),
-            "AutorouteBatchLoop's fanout pre-pass (AutorouteBatchLoop.java:89-173) is Plan 7 \
-             Task 12's and is not ported yet; routing with settings.fanout.enabled = true would \
-             silently skip it and answer a different board"
-        );
+        // `:93-96` and `:175-216` are `AutorouteRuntimeMetrics` — the CPU/heap report and the two
+        // `job.logInfo` summaries built from it, rostered at the foot of this file. `:100-110`'s
+        // two counters (`netConnectedSmdPins`, `alreadyConnectedAtStart`) and `:111` feed only
+        // the `:111-122` `job.logInfo` line, and `BatchFanout`'s own constructor recomputes both as
+        // [`BatchFanout::total_smd_pin_count`] and
+        // [`BatchFanout::already_connected_pin_count`], so the port reads them off the summary's
+        // escape statistics instead of counting the same pins twice.
+        let mut fanout_summary: Option<FanoutRunSummary> = None;
+        // :89.
+        if settings.is_fanout_enabled() {
+            // :90-92 — "the fanout stage is enabled but skipped because the board has no SMD
+            // pins". Note the test is `getSmdPins()`, the **unfiltered** list, while
+            // `BatchFanout`'s constructor filters to the net-carrying ones (`BatchFanout.java:43-51`):
+            // a board whose every SMD pin is netless still enters the stage and runs
+            // `maxPasses` empty passes.
+            if !board.get_smd_pins().is_empty() {
+                // :123-172. The listener Java passes (`:126-171`) fires a
+                // `fireBoardUpdatedEvent` per tick and a `job.logInfo` per completed pass; ruling
+                // AK makes both one `RoutingEvent::FanoutProgress`, which
+                // [`BatchFanout::fanout_board`] fires directly.
+                let summary = BatchFanout::fanout_board(board, settings, stop, budget, progress)?;
+                // :173.
+                router.fanout_timed_out = summary.is_timed_out;
+                fanout_summary = Some(summary);
+            }
+        }
 
         // :220.
         let _current_unrouted = BatchAutorouter::calculate_incomplete_count(board);
@@ -419,14 +426,15 @@ impl AutorouteBatchLoop {
                     // :429.
                     consecutive_no_improvement_passes += 1;
 
-                    // :435-454 — the one-shot fanout recovery. Unreachable while
-                    // `is_fanout_enabled()` is false, which is every path this task drives; Task
-                    // 12's `p7t9 router+fanout` is what first exercises it.
-                    if settings.is_fanout_enabled()
-                        && !fanout_recovery_applied
-                        && stat(board_statistics_after.connections.incomplete_count) > 0
-                        && consecutive_no_improvement_passes >= FANOUT_RECOVERY_STAGNATION_PASSES
-                    {
+                    // :435-454 — the one-shot fanout recovery. Task 10 could not reach it at
+                    // all (`is_fanout_enabled()` was asserted `false`); Task 12 removed that
+                    // stub, so `p7t9 router+fanout` is now on a path that can fire it.
+                    if fanout_recovery_fires(
+                        settings,
+                        fanout_recovery_applied,
+                        stat(board_statistics_after.connections.incomplete_count),
+                        consecutive_no_improvement_passes,
+                    ) {
                         // :440 — `removeTails(NONE)`, i.e. fanout vias included.
                         router.remove_tails(board, None, StopConnectionOption::None, &|| {
                             stop.is_stop_requested()
@@ -541,6 +549,7 @@ impl AutorouteBatchLoop {
             state,
             continue_routing: !stop.is_stop_auto_router_requested(),
             passes_run: current_pass,
+            fanout: fanout_summary,
             per_pass,
         })
     }
@@ -623,6 +632,37 @@ pub fn rank_limit_exceeded(rank: i32) -> bool {
 // opposite of the comment at `:511-514` (quirk #215).
 pub fn stagnation_guard(current_pass: i32, continue_autorouting: bool) -> bool {
     current_pass >= STOP_AT_PASS_MINIMUM && continue_autorouting
+}
+
+/// `:435-439` — the one-shot fanout recovery's four-term guard.
+///
+/// ```java
+/// if (settings.isFanoutEnabled()
+///     && !fanoutRecoveryApplied
+///     && boardStatisticsAfter.connections.incompleteCount > 0
+///     && consecutiveNoImprovementPasses >= FANOUT_RECOVERY_STAGNATION_PASSES) {
+/// ```
+///
+/// Lifted out because the arm needs **eight real passes of a stagnating board with fanout on**
+/// to fire, which no unit test can afford and which none of Plan 7's fixtures produces: the
+/// guard's four terms are the decision, and this is where they can be checked one at a time.
+/// The body it guards — `removeTails(NONE)`, the two recomputed statistics and the two counter
+/// resets — stays inline, because it mutates five of `run`'s locals.
+///
+/// `FANOUT_RECOVERY_STAGNATION_PASSES` is **3** and `STAGNATION_PASS_LIMIT` is **10**
+/// (`BatchAutorouter.java:52-55`), so the recovery fires on the third pass without improvement
+/// and the loop still has seven more before `:456`'s local stagnation break ends it — which is
+/// what makes "one shot" meaningful rather than academic.
+pub fn fanout_recovery_fires(
+    settings: &RouterSettings,
+    fanout_recovery_applied: bool,
+    incomplete_count: usize,
+    consecutive_no_improvement_passes: i32,
+) -> bool {
+    settings.is_fanout_enabled()
+        && !fanout_recovery_applied
+        && incomplete_count > 0
+        && consecutive_no_improvement_passes >= FANOUT_RECOVERY_STAGNATION_PASSES
 }
 
 /// `:525-550` — the final best-board swap: **the last thing that can change which board reaches

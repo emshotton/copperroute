@@ -29,10 +29,15 @@
 //! **Task 11 added [`fanout`]** — `BatchFanout`'s type and constructor, the
 //! [`FanoutComponent`] / [`FanoutPin`] ordering it builds, and the three records
 //! [`EscapeStatistics`], [`FanoutPassStatus`] and [`FanoutRunSummary`]. The per-pin escape
-//! router the deferred `fanoutBoard`/`fanoutPass` loops call is
+//! router those loops call is
 //! [`RoutingBoardExt::fanout`](crate::board_ext::RoutingBoardExt::fanout), landed in the same
-//! task; `scripts/differential/run.sh p7t5` is the evidence for both. Tasks 12-15 add the rest
-//! of the fanout and the optimizer.
+//! task; `scripts/differential/run.sh p7t5` is the evidence for both.
+//!
+//! **Task 12 added the fanout stage itself** — [`BatchFanout::fanout_board`] and its pass loop,
+//! with the oscillation detector and the hash stop of [`FanoutLoopState`] — and **discharged
+//! Task 10's loud stub**: `AutorouteBatchLoop::run`'s pre-pass now calls it, so
+//! [`BatchLoopResult::fanout`] carries a real summary and `p7t9 router+fanout` routes a board
+//! end to end. Tasks 13-15 add the optimizer.
 //! `crates/fr-router/src/lib.rs`'s roster names every class still deferred and the task that
 //! owns it.
 
@@ -54,7 +59,9 @@ pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
 pub use fanout::{
-    BatchFanout, EscapeStatistics, FanoutComponent, FanoutPassStatus, FanoutPin, FanoutRunSummary,
+    BatchFanout, EscapeStatistics, FanoutComponent, FanoutLoopState, FanoutPassStatus, FanoutPin,
+    FanoutRunSummary, FanoutStop, fanout_pin_can_use_vias, fanout_ripup_costs,
+    parse_timespan_seconds,
 };
 pub use item_route_result::ItemRouteResult;
 pub use pass_runner::AutoroutePassRunner;

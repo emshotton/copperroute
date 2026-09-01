@@ -623,7 +623,7 @@ Two invocations are deliberately **absent**, and they do not behave the same way
 | absent invocation | what it prints today | exit |
 |---|---|---|
 | `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
-| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **seven `ROSTERED` lines** (eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did — every *public* method it still lacks is `fanoutBoard`, Task 12's) — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
+| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **seven `ROSTERED` lines** (eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did; **Plan 7 Task 12** then ported `fanoutBoard`, the last public method it lacked, so the class is now wholly ported rather than merely off the list) — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
 
 Before the Plan 6 final review, the second — and the third, which was
 `board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and
@@ -672,7 +672,7 @@ used in its header line — read it.
 | `probes/P7T4Probe.java` | the three-state stop's full 3x2 transition table, the two queries in every state, `StopRequestState`/`TaskState`/`NamedAlgorithmType`'s variant lists and `RouterCounters`' nine reflected fields (Plan 7 Task 4). **Carries no clock**, deliberately — ruling AI's deadline is asserted against Java's monitor-thread *code*, not against a timing measurement, so the transcript is byte-stable across runs | ditto |
 | `java/P7T7.java` + `rust/src/bin/p7t7.rs` | `BoardStatistics`' score subset over a board optionally routed by `P6T1` (Plan 7 Task 1) | `./scripts/differential/run.sh p7t7 <dsn> [routeK] [ripupPassNo]` |
 | `java/P7T10.java` + `rust/src/bin/p7t10.rs` | **ruling AH's decision parity** — `getHash`'s three decision sites over 2 000 scripted board mutations (Plan 7 Task 3) | `P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 <dsn> <steps> [routeK] [warm\|raw]` |
-| `java/P7T5.java` + `rust/src/bin/p7t5.rs` | `BatchFanout`'s component/pin ordering for **all five** `pinSortingOrder` strings, and `RoutingBoard.fanout` on every SMD pin of the board (Plan 7 Task 11) | `./scripts/differential/run.sh p7t5 <dsn> [passNo] [sortingOrder] [order\|pin]` |
+| `java/P7T5.java` + `rust/src/bin/p7t5.rs` | `BatchFanout`'s component/pin ordering for **all five** `pinSortingOrder` strings and `RoutingBoard.fanout` on every SMD pin (Plan 7 Task 11), plus one whole `fanoutPass` and the whole `fanoutBoard` (Task 12), each transcribed *and* called for real | `./scripts/differential/run.sh p7t5 <dsn> [passNo\|maxPasses] [sortingOrder] [order\|pin\|pass\|board]` |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -2707,34 +2707,77 @@ eight passes to observe a boolean would be a slow test of the router rather than
 of the loop. Nothing else moved: `run` reads as Java does with four names substituted
 for four expressions.
 
-### Two stubs, one loud and one inert (ruling B1)
+### Two stubs, one loud and one inert (ruling B1) — the loud one is discharged
 
-The **fanout pre-pass** (`:89-173`) is Task 12's, and skipping it on a board with SMD
-pins would answer a different board — so `run` **asserts** `!settings.is_fanout_enabled()`,
-as a real `assert!` rather than a `debug_assert!`, because the parity runs are release
-builds. `DefaultSettings` turns fanout on, so every caller must disable it until Task 12
-lands. The **stagnation report** (`:456-476`, `:486-507`) is Task 15's and is **inert**:
+The **fanout pre-pass** (`:89-173`) was Task 12's, and skipping it on a board with SMD
+pins would have answered a different board — so Task 10's `run` **asserted**
+`!settings.is_fanout_enabled()`, as a real `assert!` rather than a `debug_assert!`,
+because the parity runs are release builds. **Plan 7 Task 12 removed it** and put
+`BatchFanout::fanout_board` in its place, with `:90-91`'s empty-SMD-pin skip, `:173`'s
+`router.fanoutTimedOut = summary.isTimedOut()` and the new `BatchLoopResult::fanout`
+field; `p7t9 <dsn> 1 router+fanout` is the whole-board evidence and
+`tests/batch_loop.rs`'s `routing_with_fanout_enabled_runs_the_pre_pass` is the unit one
+— the same test that used to assert the panic.
+
+The **stagnation report** (`:456-476`, `:486-507`) is Task 15's and is still **inert**:
 it is a log payload, both arms are live on a long run, and the
 `requestStopAutoRouter(); break;` around it is complete here.
 
-## The fanout pre-pass's ordering and `RoutingBoard.fanout` (Plan 7 Task 11)
+The one-shot **fanout recovery** (`:435-454`) changes status with the same commit: it was
+unreachable while `is_fanout_enabled()` was asserted false, and it is now on a live path.
+Its four-term guard is lifted out as `fanout_recovery_fires` and pinned term by term
+(`tests/fanout.rs`), because firing it for real needs eight passes of a stagnating board
+with fanout on, which no Plan 7 fixture produces.
 
-`src/pipeline/fanout.rs` holds `BatchFanout`'s type, its constructor and the
-`FanoutComponent` / `FanoutPin` pair it builds; `RoutingBoardExt::fanout` is the
-per-pin escape router those loops call. `fanoutBoard` / `fanoutPass` are **Task
-12's** — scan ruling 7 makes the earliest task that writes methods on a struct
-declare it, and everything Task 11 ported is `private` in Java, which is why
-`audit-port.sh` still reports the class `ROSTERED`.
+## The fanout stage (Plan 7 Tasks 11 and 12)
 
-`scripts/differential/run.sh p7t5 <dsn> [passNo] [sortingOrder] [order|pin]` is the
-evidence: mode `order` prints `sortedComponents × smdPins` for **all five**
-`pinSortingOrder` strings with every `double` rendered by `Double.toString`, and
-mode `pin` walks that order calling the real `RoutingBoard.fanout` on every SMD
-pin. **16 runs, 16 MATCH** — eight DSNs (`Issue730-DAC2020_bm11`,
-`Issue558-dev-board`, `Issue508-DAC2020_bm06`, `Issue143-rpi_splitter`,
-`Issue508-DAC2020_bm01`, `Issue026-J2_reference`, `tutorial_board`,
-`Issue649-kicad_ecc83-pp_input_board_v1`) × two modes, 0 diffs. The last two carry
-no SMD pins at all and are therefore the degenerate case rather than a measurement.
+`src/pipeline/fanout.rs` is the whole of `BatchFanout`. Task 11 landed the type, its
+constructor and the `FanoutComponent` / `FanoutPin` pair it builds, plus
+`RoutingBoardExt::fanout`, the per-pin escape router the loops call. **Task 12 landed
+the loops**: `BatchFanout::fanout_board` (`:81-163`, both overloads collapsed into one),
+`fanout_pass` (`:166-506`) and the two progress publishers (`:508-576`), and discharged
+`AutorouteBatchLoop`'s loud stub.
+
+Three arms of the loop are **lifted out** of the two methods, for the reason Task 11
+lifted `sorted_unconnected_targets` out — each is a pure function of data a test can
+build, and each has a case no corpus board reaches:
+
+| lift-out | Java | the case the corpus cannot produce |
+|---|---|---|
+| `FanoutLoopState::{board_state, after_pass}` + `FanoutStop` | `:105-109`, `:125-156` | four passes with an identical `(routedCount, viaCount)` pair (quirk #222), and a pass that routes something without moving the board's hash (ruling AH's first decision site) |
+| `fanout_ripup_costs` | `:173`, `:179-183` | `fanout.ripupAllowed = false`, which `DefaultSettings` never sets |
+| `fanout_pin_can_use_vias` | `:238-259` | an SMD pin whose net number names no net — the `net == null` fall-through of quirk #223 |
+
+Two more things are `pub` where Java is `private`, and for one reason: the differential
+driver is a separate crate and cannot use reflection. `BatchFanout::fanout_pass` is
+called by `p7t5 pass`'s `[real]` half, exactly where `P7T5.java` uses
+`Method.setAccessible(true)`; `parse_timespan_seconds` — the port of
+`TextManager.parseTimespanString` for `:94-99`, which `fr-settings` rosters
+`added in Plan 8:` because the settings path never parses a timeout — is called by the
+test that pins quirk #224.
+
+`scripts/differential/run.sh p7t5 <dsn> [passNo|maxPasses] [sortingOrder]
+[order|pin|pass|board]` is the evidence. Modes `order` and `pin` are Task 11's; modes
+`pass` and `board` are Task 12's and each has a transcribed half and a **real** half,
+compared by a `getHash()` / `structural_hash` *decision* (`EQUALS-TRANSCRIPT`).
+**32 runs, 32 MATCH** — eight DSNs (`Issue730-DAC2020_bm11`, `Issue558-dev-board`,
+`Issue508-DAC2020_bm06`, `Issue143-rpi_splitter`, `Issue508-DAC2020_bm01`,
+`Issue026-J2_reference`, `tutorial_board`, `Issue649-kicad_ecc83-pp_input_board_v1`)
+× four modes, 0 diffs. Two of the eight carry no SMD pins at all and are therefore the
+degenerate case rather than a measurement.
+
+### The three clocks the stage carries, and what each parity run does with them
+
+| clock | Java | how a parity run neutralises it |
+|---|---|---|
+| the per-pin `TimeLimit` (`:231-232`) | `settings.fanout.maxMillisecondsPerPin * (passNo + 1)`, narrowed with an `(int)` cast | both sides write `Integer.MAX_VALUE` into that **setting**; the port folds it into `RouterBudget::fanout_ms_per_pin`, which ruling AI already made the knob |
+| the stage deadline (`:94-99`, read at `:111-112` and `:396`) | `fanoutStart + parseTimespanString(settings.fanout.timeout) * 1000` | `DefaultSettings` ships no `fanout.timeout`, so `deadlineMs` is never set. It is **not** `RouterStop`'s: `:113` writes `isTimedOut` and never the stop flag, which is Task 4's documented split, and `tests/fanout.rs`'s `the_stage_deadline_never_touches_the_stop_flag` is the pin |
+| `ProgressThrottler(1000)` (`:28`, gating `:520`) | wall clock, per pin | no mode compares progress events at all. The port routes the throttler through `RouterBudget::progress_throttle_ms` so a caller *can* pin it, and ruling 11 makes the sink an observer no decision reads |
+
+The 1000 ms `timeLimitToPreventEndlessLoop` inside `RoutingBoard.fanout` (`:1100`) is a
+fourth, and it is the one neither side can disable on the Java half: it is a `javac`-
+inlined local. The port runs `RouterBudget::disabled()` against Java's live limit, so a
+MATCH *proves* it never trips on the corpus.
 
 ### Ruling 5's container decisions, confirmed against Java
 
@@ -2800,7 +2843,7 @@ crates/` is the complete inventory.
 |---|---|---|
 | `AutorouteConnectionRouter.route` **steps 6-8** — the necked retry, the strict-DRC rollback, the failure-log write | `autoroute/pipeline/AutorouteConnectionRouter.java:160-233` | `src/autoroute/maze/engine.rs:1818`; `src/lib.rs` roster; obligation register |
 | ~~the **pass loop** and the per-pass / per-item recovery boundaries~~ — **DONE, Plan 7 Tasks 9 and 10**: `AutoroutePassRunner.runSingleThread` and its whole-body catch (boundary 7), and `AutorouteBatchLoop.run` with `:44-56`'s propagating throw (boundary 9). What is left of the row is `BatchAutorouterThread.java:537` (boundary 8), on the dead multithreaded path | `AutoroutePassRunner.java:156, :331-335`, `AutorouteBatchLoop.java:44-56`; `BatchAutorouterThread.java:537` | `src/pipeline/pass_runner.rs`, `src/pipeline/batch_loop.rs`; `src/lib.rs` roster for the one that is left |
-| the **fanout** pre-pass — ~~`RoutingBoard.fanout` and `BatchFanout`'s ordering~~ **DONE in Plan 7 Task 11** (`RoutingBoardExt::fanout`, `pipeline::fanout`'s `BatchFanout`/`FanoutComponent`/`FanoutPin` and the three records); what is left is `fanoutBoard`/`fanoutPass`, Task 12's, and with them the only thing that sets `ctrl.isFanout` on a real run | `BatchFanout.java:81-163`, `RoutingBoard.java:978-1110` | `src/board_ext/routing_board_ext.rs`, `src/pipeline/fanout.rs`; `src/lib.rs` roster for `fanoutBoard`; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
+| ~~the **fanout** pre-pass~~ — **DONE, both halves**: `RoutingBoard.fanout` and `BatchFanout`'s ordering in Plan 7 Task 11, and `fanoutBoard` / `fanoutPass` / `publishProgress` in **Task 12**, which also discharged `AutorouteBatchLoop`'s loud stub. With it `ctrl.isFanout` is set on a real run for the first time, so `locator.rs:267`'s fanout arm and `engine.rs:1374` are now on a live path | `BatchFanout.java:81-163`, `:166-576`, `RoutingBoard.java:978-1110`, `AutorouteBatchLoop.java:83-218` | `src/board_ext/routing_board_ext.rs`, `src/pipeline/fanout.rs`, `src/pipeline/batch_loop.rs` |
 | the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
 | ~~`ViaOptimizer`, whole~~ — **DONE**: `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` in Plan 7 Task 6, the three `repositionVia` overloads in Task 7 (which also deleted ruling B1's `unimplemented!` and its guard predicate) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:302-365`, `:367-429`, `:434-713`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs` in Task 6) |
 | ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |

@@ -28,7 +28,7 @@
 use std::io::{BufWriter, Write};
 
 use fr_board::prelude::*;
-use fr_dsn::{java_double_to_string, java_float_to_string};
+use fr_dsn::java_float_to_string;
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchLoopResult, NoopProgressSink, RouterBudget, RouterStop, TaskState,
 };
@@ -53,8 +53,8 @@ fn main() {
         .get(2)
         .filter(|a| !a.is_empty())
         .map_or("router-only", String::as_str);
-    if mode != "router-only" {
-        eprintln!("p7t9: only mode 'router-only' exists until Plan 7 Task 12: {mode}");
+    if mode != "router-only" && mode != "router+fanout" {
+        eprintln!("p7t9: mode must be 'router-only' or 'router+fanout', not: {mode}");
         std::process::exit(2);
     }
 
@@ -75,7 +75,7 @@ fn main() {
 
     // ---- half one: the transcription ---------------------------------------------------------
     let mut board = p7t_common::load_board(&dsn);
-    let settings = build_settings(&board, max_passes);
+    let settings = build_settings(&board, max_passes, mode);
     writeln!(out, "[transcript]").expect("write");
     let transcript_returned = transcribe_run(&mut out, &mut board, &settings);
     writeln!(
@@ -88,7 +88,7 @@ fn main() {
 
     // ---- half two: the real method -------------------------------------------------------------
     let mut real_board = p7t_common::load_board(&dsn);
-    let real_settings = build_settings(&real_board, max_passes);
+    let real_settings = build_settings(&real_board, max_passes, mode);
     let real_stop = RouterStop::new();
     let mut real_sink = NoopProgressSink;
     writeln!(out, "[real]").expect("write");
@@ -119,17 +119,21 @@ fn main() {
 
     // ---- the final board, in `P6T15aProbe`'s polyline format ------------------------------------
     writeln!(out, "[board]").expect("write");
-    dump_board(&mut out, &board);
+    p7t_common::dump_board(&mut out, &board);
     out.flush().expect("flush");
 }
 
 /// `P7T9.buildSettings` — `p7t_common::build_settings` plus the driver's three knobs.
-fn build_settings(board: &Board, max_passes: i32) -> RouterSettings {
+fn build_settings(board: &Board, max_passes: i32, mode: &str) -> RouterSettings {
     let mut settings = p7t_common::build_settings(board);
     settings.max_passes = Some(max_passes);
-    // `RouterSettings.setFanoutEnabled(FALSE)` (RouterSettings.java:583-591): the object must
-    // exist, and `isFanoutEnabled` (`:578-580`) then answers false.
-    settings.fanout.get_or_insert_with(Default::default).enabled = Some(false);
+    // `RouterSettings.setFanoutEnabled(…)` (RouterSettings.java:583-591): the object must exist,
+    // and `isFanoutEnabled` (`:578-580`) then answers the flag.
+    let fanout = settings.fanout.get_or_insert_with(Default::default);
+    fanout.enabled = Some(mode == "router+fanout");
+    // Ruling AI, and the same knob `P7T9.buildSettings` writes: `fanoutPass:231-232` builds its
+    // per-pin `TimeLimit` from this setting, so this is where the fanout stage's clock goes off.
+    fanout.max_milliseconds_per_pin = Some(i64::from(i32::MAX));
     settings.set_run_router(true);
     settings.set_run_optimizer(false);
     settings.save_intermediate_stages = Some(false);
@@ -153,7 +157,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
         STAGNATION_PASS_LIMIT, STAGNATION_SCORE_THRESHOLD, STOP_AT_PASS_MINIMUM,
         STOP_AT_PASS_MODULO,
     };
-    use fr_router::pipeline::{BatchAutorouter, BoardHistory, RoutingFailureLog};
+    use fr_router::pipeline::{BatchAutorouter, BatchFanout, BoardHistory, RoutingFailureLog};
     use fr_router::score::BoardStatistics;
 
     let stop = RouterStop::new();
@@ -187,8 +191,37 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
     // :65.
     let mut bh = BoardHistory::new(scoring);
 
-    // :89-218 — the fanout pre-pass; off in mode `router-only`.
-    writeln!(out, "FANOUT enabled={}", settings.is_fanout_enabled()).expect("write");
+    // :89-218 — the fanout pre-pass; off in mode `router-only`, and from Plan 7 Task 12 the real
+    // `BatchFanout::fanout_board` in mode `router+fanout`.
+    writeln!(
+        out,
+        "FANOUT enabled={} smdPins={}",
+        settings.is_fanout_enabled(),
+        board.get_smd_pins().len()
+    )
+    .expect("write");
+    if settings.is_fanout_enabled() && !board.get_smd_pins().is_empty() {
+        // :123-172.
+        let fanout_summary =
+            BatchFanout::fanout_board(board, settings, &stop, RouterBudget::disabled(), &mut sink)
+                .expect("fanout_board answers Ok on every path");
+        // :173.
+        router.fanout_timed_out = fanout_summary.is_timed_out;
+        let final_escape = fanout_summary.escape_statistics;
+        writeln!(
+            out,
+            "FANOUT-SUMMARY completedPassCount={} isTimedOut={} escapeTotalSmdPins={} \
+             escapedCount={} escapedPercentage={} fanoutTimedOut={} {}",
+            fanout_summary.completed_pass_count,
+            fanout_summary.is_timed_out,
+            final_escape.total_smd_pins,
+            final_escape.escaped_count,
+            fr_dsn::java_double_to_string(final_escape.escaped_percentage),
+            router.fanout_timed_out,
+            p7t_common::board_shape(board),
+        )
+        .expect("write");
+    }
 
     // :220.
     let current_unrouted = BatchAutorouter::calculate_incomplete_count(board);
@@ -523,101 +556,4 @@ fn java_task_state(state: TaskState) -> &'static str {
 /// `BoardStatistics`' `Option<i32>` counters, as `AutorouteBatchLoop`'s own `stat` reads them.
 fn stat(value: Option<i32>) -> usize {
     usize::try_from(value.expect("the computing constructor fills every count")).unwrap_or(0)
-}
-
-// ------------------------------------------------------------------------------------------------
-// The final board — `P6T15aProbe`'s polyline format
-// ------------------------------------------------------------------------------------------------
-
-/// `P7T9.dumpBoard` — one line per item in `getItems()` order (descending id, quirk #63).
-fn dump_board<W: Write>(out: &mut W, board: &Board) {
-    let ctx = board.ctx();
-    writeln!(
-        out,
-        "maxId={}",
-        board.communication.id_gen.max_generated_id().0
-    )
-    .expect("write");
-    // `board.getItems()` order, i.e. **descending** item id (quirk #63), which is what
-    // `items_in_board_order` already answers.
-    for id in board.items_in_board_order() {
-        let Some(item) = board.get_item(id) else {
-            continue;
-        };
-        let nets: Vec<String> = (0..item.net_count())
-            .map(|i| item.get_net_number(i).to_string())
-            .collect();
-        let mut sb = format!(
-            "item id={} type={} nets=[{}] cl={}",
-            id.0,
-            p7t_common::java_class_name(item),
-            nets.join(","),
-            item.clearance_class()
-        );
-        match item {
-            Item::Trace(trace) => {
-                sb.push_str(&format!(
-                    " layer={} hw={} {}",
-                    trace.get_layer(),
-                    trace.get_half_width(),
-                    poly(trace.polyline())
-                ));
-            }
-            Item::Via(via) => {
-                let padstack = via
-                    .get_padstack(&ctx)
-                    .expect("a via always resolves its padstack");
-                sb.push_str(&format!(
-                    " center={} padstack={} firstLayer={} lastLayer={}",
-                    point_of(&via.get_center()),
-                    padstack.name,
-                    via.first_layer(&ctx),
-                    via.last_layer(&ctx)
-                ));
-            }
-            Item::Pin(pin) => {
-                sb.push_str(&format!(" center={}", point_of(&pin.get_center(&ctx))));
-            }
-            _ => {}
-        }
-        writeln!(out, "{sb}").expect("write");
-    }
-}
-
-/// `P6T15aProbe.ln`.
-fn ln(l: &fr_geometry::Line) -> String {
-    format!("({},{})->({},{})", l.a.x, l.a.y, l.b.x, l.b.y)
-}
-
-/// `P6T15aProbe.pt`.
-fn pt(p: &fr_geometry::Polyline, no: usize) -> String {
-    match p.corner(no) {
-        Some(fr_geometry::Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
-        _ => {
-            let f = p.corner_approx(no).expect("a corner of a valid polyline");
-            format!(
-                "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
-            )
-        }
-    }
-}
-
-/// `P6T15aProbe.poly` — the line array and the corners.
-fn poly(p: &fr_geometry::Polyline) -> String {
-    let lines: Vec<String> = p.lines().iter().map(ln).collect();
-    let corners: Vec<String> = (0..p.corner_count()).map(|i| pt(p, i)).collect();
-    format!(
-        "n={} lines=[{}] corners=[{}]",
-        lines.len(),
-        lines.join(","),
-        corners.join(",")
-    )
-}
-
-/// `P6T15aProbe.pointOf` — `p.toFloat().round().toFloat()`, then an `(int)` truncation.
-fn point_of(p: &fr_geometry::Point) -> String {
-    let f = p.to_float().round().to_float();
-    format!("({},{})", f.x as i64, f.y as i64)
 }

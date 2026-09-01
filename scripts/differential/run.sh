@@ -355,7 +355,9 @@ case "$driver" in
     # shared statics, so the three drivers cannot describe different boards.
     #
     # `<dsn> [maxPasses] [mode]`. `mode` is `router-only` (`fanout.enabled = false`,
-    # `runOptimizer = false`); Task 12 adds `router+fanout`. `maxPasses = 0` is Java's
+    # `runOptimizer = false`) or, from Plan 7 Task 12, `router+fanout`, which turns the SMD
+    # fanout pre-pass on and disables its per-pin clock on both sides through
+    # `settings.fanout.maxMillisecondsPerPin` (ruling AI). `maxPasses = 0` is Java's
     # "unlimited" (quirk #140), so bound it with `P7T9_TIMEOUT` before using it on a big stem.
     # The driver prints two halves — a line-for-line transcription of `run`'s body with the
     # per-pass `PassRecord` tuple and every decision arm, and then the **real**
@@ -385,15 +387,28 @@ case "$driver" in
     # `P7T5` loads its board and builds its settings through P7T2's shared statics, so the four
     # `p7t*` drivers cannot describe different boards.
     #
-    # `<dsn> [passNo] [sortingOrder] [order|pin]`. Mode `order` prints `sortedComponents x
-    # smdPins` for **all five** `pinSortingOrder` strings (the four the comparator recognises plus
-    # one it does not) and ignores the `sortingOrder` argument; mode `pin` walks that order and
-    # calls the real `RoutingBoard.fanout` on every SMD pin. Acceptance is 0 diffs on the three
-    # brief-named DSNs and the six corpus stems, both modes.
+    # `<dsn> [passNo|maxPasses] [sortingOrder] [order|pin|pass|board]`. Mode `order` prints
+    # `sortedComponents x smdPins` for **all five** `pinSortingOrder` strings (the four the
+    # comparator recognises plus one it does not) and ignores the `sortingOrder` argument; mode
+    # `pin` walks that order and calls the real `RoutingBoard.fanout` on every SMD pin. Plan 7
+    # Task 12 adds `pass` (one whole `BatchFanout.fanoutPass`) and `board` (the whole
+    # `BatchFanout.fanoutBoard`), each in a transcribed half and a **real** half whose boards are
+    # compared by a `getHash()` / `structural_hash` **decision**; in mode `board` the second
+    # argument is `maxPasses` and `0` keeps the settings value. Acceptance is 0 diffs on the three
+    # brief-named DSNs and the six corpus stems, all four modes.
     #
-    # The per-pin `TimeLimit` is `Integer.MAX_VALUE` on both sides (ruling AI); the 1000 ms
+    # `P7T5_HASH_MODE=warm|raw` (default `warm`) is a **Java-side** knob for modes `pass`/`board`,
+    # the same one `p7t10` carries: `warm` canonicalises the by-product fields quirk #200 moves
+    # before every hash, and decision parity is defined against it (controller ruling AH, and the
+    # Task 3 caveat that 3 of 350 raw steps are `FANOUTSTOP false -> true`). Both sides print it.
+    #
+    # The per-pin `TimeLimit` is `Integer.MAX_VALUE` on both sides (ruling AI): mode `pin` passes
+    # it directly, modes `pass`/`board` write it into `settings.fanout.maxMillisecondsPerPin`,
+    # which is where `fanoutPass:231-232` builds its own from. The 1000 ms
     # `timeLimitToPreventEndlessLoop` inside `fanout` is a `javac`-inlined local, so the port runs
     # `RouterBudget::disabled()` against this side's live limit and a MATCH proves it never trips.
+    #
+    # `P7T9.java` is compiled alongside for its `dumpBoard`, which mode `board` ends with.
     #
     # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
     # sweeps this driver too: `boardShape` reaches `DesignRulesChecker`, which iterates
@@ -402,7 +417,7 @@ case "$driver" in
     javapkg="autoroute.pipeline"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 0 outer_first order)
     needs_jar=1
-    extra_jar_sources=("$DIFF_ROOT/java/P7T2.java")
+    extra_jar_sources=("$DIFF_ROOT/java/P7T2.java" "$DIFF_ROOT/java/P7T9.java")
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     run_timeout="${P7T5_TIMEOUT:-3600}"
     ;;
