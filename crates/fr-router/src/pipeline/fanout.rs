@@ -1597,8 +1597,12 @@ fn extra_vias(board: &Board, vias_before_pass: usize) -> i32 {
 /// The two ends saturate in **opposite** directions, and deliberately, because [`Instant`] is
 /// bounded at both while Java's epoch `long` is not:
 ///
-/// * a positive offset too large to represent answers `None`, i.e. *no* deadline — a deadline no
-///   run could reach and one that will not be reached is the same thing;
+/// * a positive offset too large to represent answers `None`, i.e. *no* deadline. NOTE (Task 12
+///   review SF3): this is a deliberate divergence at the unreachable extreme — Java's raw `long`
+///   `fanoutStart + timeoutSeconds * 1000` WRAPS near `i64::MAX`, which can land the deadline in
+///   the past (an IMMEDIATE pass-1 timeout), the OPPOSITE observable of the port's "no deadline".
+///   Unreachable by any human-typed `timeoutString` (~292-million-year threshold), so recorded
+///   here rather than as a register row; below that threshold the two behaviours agree;
 /// * a negative offset too large to represent answers `Some(start)`, i.e. a deadline **already
 ///   past**, because `Instant::now() >= fanout_start` holds by the first check. Answering `None`
 ///   there would turn "time out before pass 1" into "never time out", which is the opposite of

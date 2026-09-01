@@ -2465,7 +2465,7 @@ the driver expects, or none at all.
     `boardState` of `:133`, `isTimedOut`, `totalItemsFanouted`, `extraViasTotal`), a
     `STAGNATION` line when the oscillation detector counts a repeat, a `HASHEQ` line
     carrying `:153-155`'s hash-equality **decision** whenever the loop gets that far, and
-    a `STOP <reason>` line naming which of the six doors ended it
+    a `STOP <reason>` line naming which of the seven doors ended it
     (`MAXPASSES`, `DEADLINE`, `MAXITEMS`, `NOTHING-ROUTED`, `STAGNATED`, `TIMED-OUT`,
     `UNCHANGED-HASH`). `[real]` calls the public `BatchFanout.fanoutBoard` on a fresh
     board and prints the `FanoutRunSummary` tuple **minus** its wall-clock component;
