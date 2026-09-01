@@ -34,6 +34,7 @@ use fr_geometry::{FloatLine, Line, LineSegment, Side};
 
 use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, ExpansionRoomStore, RoomRef};
+use crate::autoroute::maze::queue::p7t14b_maze_ledger;
 use crate::autoroute::maze::{AutorouteControl, MazeListElement};
 use crate::board_ext::TraceShover;
 
@@ -87,6 +88,20 @@ impl MazeTraceShover {
         shove_to_the_left: bool,
         to_door_list: &mut Vec<DoorSection>,
     ) -> bool {
+        // Plan 7 Task 14b's level-8 `CSTL` ledger (quirk #229); see
+        // [`crate::autoroute::maze::queue::p7t14b_maze_ledger`].
+        if p7t14b_maze_ledger() {
+            let (item, index) = rooms.obstacle_room(obstacle_room).map_or((0, -1), |room| {
+                (
+                    room.get_item().0,
+                    i64::try_from(room.get_index_in_item()).unwrap_or(-1),
+                )
+            });
+            eprintln!(
+                "CSTL left={shove_to_the_left} item={item} idx={index} sec={} adj={:?}",
+                list_element.section_no_of_door, list_element.adjustment
+            );
+        }
         let obstacle_room_ref = RoomRef::Obstacle(obstacle_room);
         // :39-41. Only an `ExpansionDoor` can be shoved from; a target door, a drill or a page
         // answers "nothing to do here".

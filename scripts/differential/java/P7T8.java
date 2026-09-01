@@ -153,6 +153,20 @@ public final class P7T8 {
     RoutingBoard board = router.board;
     out.println("ROUTED returned=" + routerReturned + " " + P7T2.boardShape(board));
 
+    // ---- Plan 7 Task 14b: the `ID` ledger, off unless `P7T8B_IDS` is set ------------------
+    //
+    // Installed **after** the routing prologue, so the ledger carries the optimizer's
+    // allocations only. The port's half is `Board::new_item_id`'s `#[track_caller]`
+    // `eprintln!` under the same variable (`crates/fr-board/src/board/mod.rs`). Both write to
+    // stderr, and both are silent when the variable is unset — the reflective swap below is the
+    // only thing this block does, and it does not run at all without the variable.
+    if (System.getenv("P7T8B_IDS") != null) {
+      java.lang.reflect.Field idField =
+          app.freerouting.board.state.Communication.class.getDeclaredField("idGenerator");
+      idField.setAccessible(true);
+      idField.set(board.communication, new IdTracer(board.communication.idGenerator));
+    }
+
     // The optimizer, built the way `RoutingPipeline` builds it for a headless job (`:51-53`), on
     // a **fresh** `StoppableThread` — see the class comment's "the optimizer's own stop flag".
     RoutingJob job = new RoutingJob();
@@ -357,6 +371,11 @@ public final class P7T8 {
               + optimizer.settings.tracePullTightAccuracy);
 
       int maxIdBefore = board.communication.idGenerator.maxGeneratedId();
+      // Plan 7 Task 14b: the `ID` ledger says nothing about which item it belongs to, so both
+      // sides print the same separator to stderr under the same variable.
+      if (System.getenv("P7T8B_IDS") != null) {
+        System.err.println("ITEMSEP n=" + n + " id=" + currentItem.getId());
+      }
       ItemRouteResult result = optimizer.optRouteItem(currentItem, withPreferredDirections, false);
 
       out.println(
@@ -413,6 +432,69 @@ public final class P7T8 {
       sb.append(rendered.get(i));
     }
     return sb.append(']').toString();
+  }
+
+  /**
+   * Plan 7 Task 14b: a decorating {@link app.freerouting.datastructures.IdGenerator} that prints
+   * every allocation and its call site to stderr. The Java half of the {@code ID} ledger; the
+   * port's half is {@code Board::new_item_id}'s {@code #[track_caller]} {@code eprintln!}, under
+   * the same {@code P7T8B_IDS} variable. A copy of {@code P6T1.IdTracer} — {@code P6T1} lives in
+   * {@code app.freerouting.autoroute.maze} and is not on this driver's compile path.
+   *
+   * <p>{@code P7T8B_IDS_STACK} sets how many {@code app.freerouting.*} frames each line carries
+   * (default 6); {@code 1} makes the ledger line up column for column with the port's, which
+   * prints the immediate caller only.
+   */
+  static final class IdTracer implements app.freerouting.datastructures.IdGenerator {
+
+    private static final int FRAMES =
+        System.getenv("P7T8B_IDS_STACK") != null
+            ? Integer.parseInt(System.getenv("P7T8B_IDS_STACK"))
+            : 6;
+
+    private final app.freerouting.datastructures.IdGenerator delegate;
+    private int ordinal;
+
+    IdTracer(app.freerouting.datastructures.IdGenerator delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public int newId() {
+      int id = delegate.newId();
+      List<StackWalker.StackFrame> frames =
+          StackWalker.getInstance()
+              .walk(
+                  stream ->
+                      stream
+                          .filter(f -> f.getClassName().startsWith("app.freerouting."))
+                          .filter(f -> !f.getMethodName().equals("<init>"))
+                          .filter(f -> !f.getClassName().endsWith("P7T8$IdTracer"))
+                          .limit(FRAMES)
+                          .toList());
+      StringBuilder sb = new StringBuilder();
+      sb.append("ID ").append(id).append(' ').append(++ordinal).append(' ');
+      boolean first = true;
+      for (StackWalker.StackFrame f : frames) {
+        if (!first) {
+          sb.append('|');
+        }
+        first = false;
+        String c = f.getClassName();
+        sb.append(c.substring(c.lastIndexOf('.') + 1))
+            .append('.')
+            .append(f.getMethodName())
+            .append(':')
+            .append(f.getLineNumber());
+      }
+      System.err.println(sb);
+      return id;
+    }
+
+    @Override
+    public int maxGeneratedId() {
+      return delegate.maxGeneratedId();
+    }
   }
 
   static String netList(Item item) {

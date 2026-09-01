@@ -1521,7 +1521,8 @@ methods with dozens of branches.
   regeneration command in the header. That was level 1 of the bisect: the port
   used to make six more.
 
-- `java/p6t17b-bisect.patch` — **levels 2-6 of the same bisect**, as a patch
+- `java/p6t17b-bisect.patch` — **levels 2-8 of the same bisect** (levels 2-6 Plan 6
+  Task 17b, level 7 Plan 7 Task 8b, level 8 Plan 7 Task 14b), as a patch
   against the Java clone's read-only sources. Apply it into a scratch copy and
   put the compiled classes *in front of* the jar; never into the clone. Its
   header carries the exact commands, the environment switches (`P6T17B_DEEP`,
@@ -1539,6 +1540,23 @@ methods with dozens of branches.
   `P6T17B_CHANGE=1 … P6T17bProbe …DAC2020_bm01.dsn 267 2` prints 2 358 `CHANGE`
   lines, of which **1 403** disagree between Java's reference comparison and a
   value one — the port agrees with the first on all 2 358 (quirk #74).
+
+  **Level 8** (Plan 7 Task 14b, quirk #229) follows level 7's convention: `static final
+  boolean` initialisers that read the **environment**, one per file, so the driver is the
+  plain `p7t8` and no probe is involved. Its four switches are `P7T14B_MAT` (`MAT ins|rem`
+  — every `MinAreaTree` leaf insertion and removal, on every tree; this is the ledger that
+  names the statement), `P7T14B_FP` (`TREEFP`, a structural fingerprint of the whole
+  autoroute tree once per `completeShape`, and `TINS8`, the fill order of a freshly built
+  compensated tree), `P7T14B_CS` (`CSHAPE`/`CROOM8`/`CSO` — `completeShape`'s inputs and
+  outputs corner by corner, and the obstacles the 45-degree walk restrains against in
+  traversal order) and `P7T14B_MAZE` (`ADD`/`POPQ`/`OCC`/`EXPROOM`/`SHOVEROOM`/`CSTL` — the
+  maze expansion list and the shove entries). **Every one of them has a committed port-side
+  twin behind a `LazyLock<bool>` read of the same variable**, so the two ledgers diff line
+  for line; the Java `MAT` lines carry an extra `cls=` tag naming the tree's compensated
+  clearance class, which has to be stripped before diffing. `p7t8`'s two halves also print an
+  `ITEMSEP n=<n> id=<id>` separator before every `optRouteItem` under `P7T8B_IDS`, because the
+  ledgers say nothing about which item they belong to. The patch header carries the full
+  recipe for the `Issue558-dev-board` 188-vs-187 row.
 
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over

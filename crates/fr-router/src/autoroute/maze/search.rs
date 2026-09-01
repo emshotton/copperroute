@@ -45,6 +45,7 @@ use fr_geometry::{FloatLine, FloatPoint, JavaRandom, Point};
 use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, RoomRef};
 use crate::autoroute::item_info;
+use crate::autoroute::maze::queue::p7t14b_maze_ledger;
 use crate::autoroute::maze::{
     AutorouteControl, AutorouteEngine, DestinationDistance, MazeAdjustment, MazeExpansionEngine,
     MazeListElement, MazeQueue,
@@ -521,10 +522,56 @@ impl<'a> MazeSearchEngine<'a> {
                     )
                 })
                 .is_occupied;
+            // Plan 7 Task 14b's level-8 `POPQ` ledger (quirk #229); see
+            // [`crate::autoroute::maze::queue::p7t14b_maze_ledger`].
+            if p7t14b_maze_ledger() {
+                eprintln!(
+                    "POPQ occ={is_occupied} sec={} sort={:.6} exp={:.6} adj={:?}",
+                    popped.section_no_of_door,
+                    popped.sorting_value,
+                    popped.expansion_value,
+                    popped.adjustment
+                );
+            }
             // :334-337.
             if !is_occupied {
                 list_element = Some(popped);
                 break;
+            }
+        }
+        // Plan 7 Task 14b's level-8 `OCC` ledger — the element this call actually expands.
+        if p7t14b_maze_ledger() {
+            match &list_element {
+                None => eprintln!("OCC found=false"),
+                Some(element) => {
+                    let room = match element.next_room {
+                        None => "null".to_string(),
+                        Some(RoomRef::Obstacle(id)) => {
+                            self.engine.rooms.obstacle_room(id).map_or_else(
+                                || "obst?".to_string(),
+                                |room| {
+                                    format!(
+                                        "obst{}:{}",
+                                        room.get_item().0,
+                                        room.get_index_in_item()
+                                    )
+                                },
+                            )
+                        }
+                        Some(_) => "free".to_string(),
+                    };
+                    eprintln!(
+                        "OCC found=true sec={} exp={:.6} sort={:.6} adj={:?} chk={} rip={} \
+                         cost={} room={room}",
+                        element.section_no_of_door,
+                        element.expansion_value,
+                        element.sorting_value,
+                        element.adjustment,
+                        element.already_checked,
+                        element.room_ripped,
+                        element.ripup_cost
+                    );
+                }
             }
         }
         // :339-341.

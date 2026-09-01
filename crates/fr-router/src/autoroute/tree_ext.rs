@@ -697,6 +697,9 @@ fn complete_shape_45(
             .intersection(&start_shape);
     }
 
+    if p7t14b_fp_ledger() {
+        p7t14b_treefp(tree, root);
+    }
     // :142-150.
     let mut bounding_shape = start_shape;
     let room_layer = room.get_layer();
@@ -754,6 +757,26 @@ fn complete_shape_45(
                          bounding octagon — Java NPEs at ShapeSearchTree45Degree.java:191"
                     )
                 });
+        if p7t14b_cs_ledger() {
+            let kind = match current_object {
+                TreeObject::Room(_) => "CompleteFreeSpaceExpansionRoom",
+                TreeObject::Item(_) => "Item",
+            };
+            let mut line = format!(
+                "CSO obj={kind} idx={shape_index} oct={} rooms={}",
+                p7t14b_oct(&current_object_shape),
+                result.len()
+            );
+            for room in &result {
+                let octagon = room
+                    .get_shape()
+                    .and_then(TileShape::bounding_octagon)
+                    .unwrap_or(IntOctagon::EMPTY);
+                line.push(' ');
+                line.push_str(&p7t14b_oct(&octagon));
+            }
+            eprintln!("{line}");
+        }
         // :186-247.
         let mut new_result: Vec<IncompleteFreeSpaceExpansionRoom> = Vec::new();
         let mut new_bounding_shape = IntOctagon::EMPTY;
@@ -1431,4 +1454,84 @@ fn restrain_shape_90(
         }
     }
     result
+}
+
+// =================================================================================================
+// Plan 7 Task 14b: the level-8 `TREEFP` / `CSO` ledgers (quirk #229)
+// =================================================================================================
+//
+// Instrumentation, not behaviour. Both gates are `false` unless their variable is set in the
+// environment, both are read once into a `LazyLock`, and everything they print goes to **stderr**.
+// The Java halves are level 8 of `scripts/differential/java/p6t17b-bisect.patch`, which puts the
+// same two ledgers into `ShapeSearchTree45Degree.completeShape` under the same variables.
+//
+// `TREEFP` is a structural fingerprint of the whole autoroute tree — pre-order, each node's
+// bounding box and its leaf flag, FNV-1a — taken once per `completeShape`. `CSO` is one line per
+// obstacle the walk actually restrains against, **in traversal order**, with the result rooms as
+// they stand. Together they are the evidence for quirk #229: the two sides reach the same
+// `completeShape` with the same node *count* and a different fingerprint, and the walk — whose
+// `bounding_shape` prune shrinks as obstacles are consumed — then restrains against a different
+// obstacle set, so the completed room comes out a different shape.
+
+/// `P7T14B_FP` — the `TREEFP` fingerprint (and `fr-board`'s `TINS8`, which reads the same
+/// variable through its own gate).
+fn p7t14b_fp_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T14B_FP").is_some());
+    *ON
+}
+
+/// `P7T14B_CS` — the `CSO` obstacle ledger here, and `CSHAPE` / `CROOM8` in
+/// [`crate::autoroute::maze::AutorouteEngine`].
+pub(crate) fn p7t14b_cs_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T14B_CS").is_some());
+    *ON
+}
+
+fn p7t14b_oct(octagon: &IntOctagon) -> String {
+    format!(
+        "({},{},{},{},{},{},{},{})",
+        octagon.left_x,
+        octagon.bottom_y,
+        octagon.right_x,
+        octagon.top_y,
+        octagon.upper_left_diagonal_x,
+        octagon.lower_right_diagonal_x,
+        octagon.lower_left_diagonal_x,
+        octagon.upper_right_diagonal_x
+    )
+}
+
+/// The whole-tree fingerprint. The traversal order is Java's `ArrayStack` order exactly — push
+/// `firstChild` then `secondChild`, pop — so the two hashes are comparable.
+fn p7t14b_treefp(tree: &ShapeSearchTree, root: NodeId) {
+    let mut hash: u64 = 1469598103934665603;
+    let mut node_count: u64 = 0;
+    let mut stack = vec![root];
+    while let Some(id) = stack.pop() {
+        let node = *tree.tree().node(id);
+        node_count += 1;
+        let bounds = node_bounds(&node).bounding_box();
+        let is_leaf = u64::from(matches!(node, Node::Leaf { .. }));
+        for field in [
+            i64::from(bounds.ll.x) as u64,
+            i64::from(bounds.ll.y) as u64,
+            i64::from(bounds.ur.x) as u64,
+            i64::from(bounds.ur.y) as u64,
+            is_leaf,
+        ] {
+            hash = (hash ^ field).wrapping_mul(1099511628211);
+        }
+        if let Node::Inner {
+            first_child,
+            second_child,
+            ..
+        } = node
+        {
+            stack.push(first_child);
+            stack.push(second_child);
+        }
+    }
+    eprintln!("TREEFP n={node_count} h={hash:x}");
 }

@@ -50,6 +50,7 @@ use fr_geometry::{FloatLine, FloatPoint, Point, Polyline, java_min};
 use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, RoomRef};
 use crate::autoroute::maze::expansion_engine::via_autoroute_drill_info;
+use crate::autoroute::maze::queue::p7t14b_maze_ledger;
 use crate::autoroute::maze::search::segment_projection;
 use crate::autoroute::maze::trace_shover::{DoorSection, MazeTraceShover};
 use crate::autoroute::maze::{
@@ -73,6 +74,18 @@ impl MazeSearchEngine<'_> {
     /// Every `FRLogger.trace` payload (`:421-438`, `:560-588`) is dropped, and with it the
     /// `doorCountBeforeCompletion` / `doorCountAfterCompletion` pair that exists only to fill one
     /// in.
+    /// Plan 7 Task 14b's level-8 room label: `obst<item id>:<index in item>` for an obstacle
+    /// room, `free` for anything else — Java's `p7t14bRoom`. Instrumentation only.
+    fn p7t14b_room(&self, room: RoomRef) -> String {
+        match room {
+            RoomRef::Obstacle(id) => self.engine.rooms.obstacle_room(id).map_or_else(
+                || "obst?".to_string(),
+                |room| format!("obst{}:{}", room.get_item().0, room.get_index_in_item()),
+            ),
+            _ => "free".to_string(),
+        }
+    }
+
     pub fn expand_to_room_doors(
         &mut self,
         board: &mut Board,
@@ -320,6 +333,27 @@ impl MazeSearchEngine<'_> {
         // `completeNeighbourRooms` (`:419`) has already rewritten the list — it guards the
         // iteration below, not the completion above.
         let room_doors_snapshot = self.engine.rooms.room_doors(next_room).to_vec();
+        // Plan 7 Task 14b's level-8 `EXPROOM` ledger (quirk #229) — the room's door list in
+        // iteration order; see [`crate::autoroute::maze::queue::p7t14b_maze_ledger`].
+        if p7t14b_maze_ledger() {
+            let mut line = format!(
+                "EXPROOM room={} n={}",
+                self.p7t14b_room(next_room),
+                room_doors_snapshot.len()
+            );
+            for door in &room_doors_snapshot {
+                let dimension = self.engine.rooms.door(*door).map_or(-1, |d| d.dimension);
+                let bounds = self.engine.rooms.door_shape(*door).map_or_else(
+                    || "null".to_string(),
+                    |shape| {
+                        let b = shape.bounding_box();
+                        format!("{},{},{},{}", b.ll.x, b.ll.y, b.ur.x, b.ur.y)
+                    },
+                );
+                line.push_str(&format!(" [dim={dimension} bb={bounds}]"));
+            }
+            eprintln!("{line}");
+        }
 
         // :590-598.
         for to_door in room_doors_snapshot {
@@ -859,6 +893,21 @@ impl MazeSearchEngine<'_> {
         list_element: &MazeListElement,
         obstacle_room: ObstacleRoomId,
     ) -> bool {
+        // Plan 7 Task 14b's level-8 `SHOVEROOM` ledger (quirk #229).
+        if p7t14b_maze_ledger() {
+            eprintln!(
+                "SHOVEROOM item={} sec={} cnt={} adj={:?}",
+                self.engine
+                    .rooms
+                    .obstacle_room(obstacle_room)
+                    .map_or(0, |room| room.get_item().0),
+                list_element.section_no_of_door,
+                self.engine
+                    .maze_search_element_count(list_element.door)
+                    .map_or(-1, |count| i64::try_from(count).unwrap_or(-1)),
+                list_element.adjustment
+            );
+        }
         // :1131-1137. "No delay of occupation necessary because inner sections of a door are
         // currently not shoved."
         // `listElement.door.mazeSearchElementCount()` (`:1132`). `None` is the still-null

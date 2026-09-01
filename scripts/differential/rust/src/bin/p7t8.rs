@@ -379,6 +379,12 @@ fn dump_items<W: Write>(
         .expect("write");
 
         let max_id_before = board.communication.id_gen.max_generated_id();
+        // Plan 7 Task 14b: the `ID` ledger (`Board::new_item_id`, `P7T8B_IDS`) says nothing about
+        // which item it belongs to, so both sides print the same separator to stderr under the
+        // same variable. The Java half is `P7T8.dumpItems`' `ITEMSEP`.
+        if std::env::var_os("P7T8B_IDS").is_some() {
+            eprintln!("ITEMSEP n={n} id={}", current_item.0);
+        }
         let result = optimizer
             .opt_route_item(
                 board,

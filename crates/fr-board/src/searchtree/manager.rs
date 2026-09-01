@@ -274,6 +274,14 @@ impl SearchTreeManager {
         self.next_tree_id += 1;
         // SearchTreeManager.java:163-170: fill the new tree from the board's item list.
         for item in items.iter_mut() {
+            // Plan 7 Task 14b's level-8 `TINS8` ledger — off unless `P7T14B_FP` is set; stderr
+            // only. Java's half is `SearchTreeManager.getAutorouteTree`'s copy, added by level 8
+            // of `scripts/differential/java/p6t17b-bisect.patch`. Quirk #229: it is what shows
+            // that a *freshly built* compensated tree is filled identically on both sides, so a
+            // later topology difference belongs to the incremental maintenance, not the build.
+            if p7t14b_fp_ledger() {
+                eprintln!("TINS8 id={}", item.id().0);
+            }
             tree.insert_item(item, ctx);
         }
         self.compensated.push(tree);
@@ -393,4 +401,17 @@ impl Default for SearchTreeManager {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// ---- Plan 7 Task 14b: the level-8 `TINS8` ledger -----------------------------------------------
+//
+// Instrumentation, not behaviour: `false` unless `P7T14B_FP` is set in the environment, read once
+// into a `LazyLock`. Its only caller is the `eprintln!` in
+// [`SearchTreeManager::get_autoroute_tree`]. The Java side of the pair is level 8 of
+// `scripts/differential/java/p6t17b-bisect.patch`, under the same variable; both write to stderr.
+// Quirk #229.
+fn p7t14b_fp_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T14B_FP").is_some());
+    *ON
 }

@@ -1,5 +1,5 @@
-# Plan 6 Task 17b / Plan 7 Task 8b — the bisect markers, as a patch against the Java clone's
-# read-only sources.
+# Plan 6 Task 17b / Plan 7 Task 8b / Plan 7 Task 14b — the bisect markers, as a patch against
+# the Java clone's read-only sources.
 #
 # WHAT THIS IS
 #   The `router-dac2020-bm01` `ripupPassNo >= 2` divergence (quirk #74) was bisected in six
@@ -27,6 +27,7 @@
 #         app/freerouting/board/optimize/TraceTightener.java \
 #         app/freerouting/board/optimize/TraceTightener45.java \
 #         app/freerouting/datastructures/MinAreaTree.java \
+#         app/freerouting/autoroute/maze/MazeTraceShover.java \
 #       | cpio -pdm "$SCRATCH" )
 #     ( cd "$SCRATCH" && patch -p1 < <abs path>/scripts/differential/java/p6t17b-bisect.patch )
 #     "$J25/bin/javac" -nowarn -cp "$JAR" -d "$SCRATCH/classes" $(find "$SCRATCH" -name '*.java')
@@ -122,9 +123,70 @@
 #   keeps the *last* matching contact, so with two matches the two sides pick different ones.
 #   Quirk #210.
 #
+#
+# LEVEL 8 — Plan 7 Task 14b: the failed-attempt id-burn ledger (quirk #229).
+#
+#   Level 8 follows level 7's convention exactly — `static final boolean` initialisers that read
+#   the **environment**, one per file, so no probe and no reflection is needed and the driver is
+#   the plain `P7T8`. Every marker goes to **stderr**, and every one of them has a committed
+#   port-side twin behind a `LazyLock<bool>` read of the same variable, so the two ledgers diff
+#   line for line.
+#
+#     P7T14B_MAT=1  — `MAT ins|rem cls=<n> n=<leafCount before> bb=(...)`, one line per
+#                     `MinAreaTree` leaf insertion or removal, on every tree. **This is the
+#                     ledger that names the statement.** Port twin: `ShapeTree::insert_leaf` /
+#                     `ShapeTree::remove_leaf` in `crates/fr-board/src/datastructures/shape_tree.rs`
+#                     (which prints no `cls=`; strip it from the Java lines before diffing).
+#     P7T14B_FP=1   — `TREEFP n=<nodes> h=<fnv1a>`: a structural fingerprint of the whole
+#                     autoroute tree, taken once per `ShapeSearchTree45Degree.completeShape`,
+#                     plus `TINS8 id=<n>` for every item a freshly built compensated tree is
+#                     filled with. Port twins: `complete_shape_45` and
+#                     `SearchTreeManager::get_autoroute_tree`.
+#     P7T14B_CS=1   — `CSHAPE` (one `completeShape` call: its inputs corner by corner and every
+#                     candidate it answers), `CROOM8` (each completed free-space room) and `CSO`
+#                     (each obstacle the 45-degree walk restrains against, in traversal order,
+#                     with the current result rooms). Port twins:
+#                     `AutorouteEngine::complete_expansion_room` / `add_complete_room` and
+#                     `complete_shape_45`.
+#     P7T14B_MAZE=1 — `ADD` / `POPQ` / `OCC` (the maze expansion list), `EXPROOM` (a room's door
+#                     list in iteration order), `SHOVEROOM` and `CSTL` (the shove entries). Port
+#                     twins: `MazeQueue::push`, `MazeSearchEngine::occupy_next_element`,
+#                     `MazeExpansionEngine::expand_to_room_doors` / `shove_trace_room` and
+#                     `MazeTraceShover::check_shove_trace_line`.
+#     P7T8B_IDS=1   — reused from level 7. `scripts/differential/java/P7T8.java` carries its own
+#                     copy of `P6T1.IdTracer` (`P6T1` is in a different package and is not on
+#                     `p7t8`'s compile path) and prints an `ITEMSEP n=<n> id=<id>` separator
+#                     before every `optRouteItem`; `p7t8.rs` prints the same separator.
+#                     `P7T8B_IDS_STACK` sets how many `app.freerouting.*` frames each `ID` line
+#                     carries (default 6; `1` lines the Java ledger up with the port's, which
+#                     prints the immediate caller only).
+#
+#   Reproducing the whole chain (`Issue558-dev-board`, the 188-vs-187 row):
+#
+#     P7T8B_IDS=1 P7T14B_MAT=1 P7T14B_FP=1 "$J25/bin/java" -Djava.awt.headless=true \
+#         -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 \
+#         -cp scripts/differential/build/classes-p7t8:"$SCRATCH/classes":"$JAR" \
+#         app.freerouting.autoroute.pipeline.P7T8 \
+#         ../freerouting/fixtures/Issue558-dev-board.dsn item 1 7 >/dev/null 2>j.err
+#
+#     FREEROUTING_JAR=$JAR P7T8B_IDS=1 P7T14B_MAT=1 P7T14B_FP=1 \
+#         ./scripts/differential/rust/target/release/p7t8 \
+#         ../freerouting/fixtures/Issue558-dev-board.dsn item 1 7 >/dev/null 2>r.err
+#
+#     # strip `cls=` from the Java lines, then diff the two `MAT`/`TREEFP`/`ITEMSEP` streams:
+#     # the first difference is 55 Java-only `MAT` ops at the tail of item n=1 — Java's
+#     # `BasicBoard.undo` — followed by the same tree with a different `TREEFP` hash.
+#
+#   What it found (Task 14b): `BatchOptimizer.optRouteItem:509`'s `routingBoard.undo(null)`
+#   replays the failed attempt's item changes through `SearchTreeManager`, so Java's search trees
+#   come back with the same leaves in a **different topology**; the port restores a clone, which
+#   puts the topology back exactly. `ShapeSearchTree45Degree.completeShape`'s traversal prune
+#   shrinks as obstacles are consumed, so topology decides which obstacles restrain a room —
+#   and one differently-shaped room later costs one substitute-trace-piece id. Quirk #229.
+#
 --- a/app/freerouting/autoroute/maze/AutorouteEngine.java
 +++ b/app/freerouting/autoroute/maze/AutorouteEngine.java
-@@ -446,8 +446,24 @@ public class AutorouteEngine {
+@@ -446,8 +446,41 @@
                + describeShapeBounds(fromDoorShape)
                + ", ignoreObject="
                + (ignoreObject == null ? "null" : ignoreObject.getClass().getSimpleName()));
@@ -138,6 +200,23 @@
 +      }
        Collection<IncompleteFreeSpaceExpansionRoom> completedShapes =
            this.autorouteSearchTree.completeShape(room, this.netNumber, ignoreObject, fromDoorShape);
++      if (P7T14B_CS) {
++        StringBuilder shapeLine = new StringBuilder("CSHAPE in=");
++        shapeLine
++            .append(p7t14bShape(room.getShape()))
++            .append(" contained=")
++            .append(p7t14bShape(room.getContainedShape()))
++            .append(" fromDoor=")
++            .append(p7t14bShape(fromDoorShape))
++            .append(" ignore=")
++            .append(ignoreObject == null ? "null" : ignoreObject.getClass().getSimpleName())
++            .append(" out=")
++            .append(completedShapes.size());
++        for (IncompleteFreeSpaceExpansionRoom candidate : completedShapes) {
++          shapeLine.append(' ').append(p7t14bShape(candidate.getShape()));
++        }
++        System.err.println(shapeLine);
++      }
 +      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
 +        for (IncompleteFreeSpaceExpansionRoom c : completedShapes) {
 +          System.err.println(
@@ -149,10 +228,19 @@
        int initialCandidateIndex = 0;
        for (IncompleteFreeSpaceExpansionRoom initialCandidate : completedShapes) {
          FRLogger.trace(
-@@ -532,6 +548,12 @@ public class AutorouteEngine {
+@@ -532,6 +565,21 @@
        completeExpansionRooms = new ArrayList<>();
      }
      completeExpansionRooms.add(completedRoom);
++    if (P7T14B_CS) {
++      System.err.println(
++          "CROOM8 layer="
++              + completedRoom.getLayer()
++              + " bb="
++              + describeShapeBounds(completedRoom.getShape())
++              + " doors="
++              + (completedRoom.getDoors() == null ? -1 : completedRoom.getDoors().size()));
++    }
 +    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
 +      System.err.println(
 +          "ROOM layer=" + completedRoom.getLayer()
@@ -162,7 +250,7 @@
      this.autorouteSearchTree.insert(completedRoom);
      FRLogger.trace(
          "COMPLETE_ROOM added"
-@@ -544,6 +566,18 @@ public class AutorouteEngine {
+@@ -544,6 +592,41 @@
      return completedRoom;
    }
  
@@ -178,12 +266,35 @@
 +  }
 +  // ---- end P6T17b ------------------------------------------------------------------------------
 +
++  /**
++   * Plan 7 Task 14b, level 8: `CSHAPE` (one line per `completeShape` call — its inputs, corner
++   * by corner, and every completed candidate it answers) and `CROOM8` (one line per completed
++   * free-space room that reaches the tree). Off unless `P7T14B_CS` is set. This is the level at
++   * which quirk #229 first becomes *observable*: identical inputs, different output shape.
++   */
++  static final boolean P7T14B_CS = System.getenv("P7T14B_CS") != null;
++
++  static String p7t14bShape(TileShape shape) {
++    if (shape == null) {
++      return "null";
++    }
++    StringBuilder rendered = new StringBuilder("{");
++    for (int i = 0; i < shape.borderLineCount(); i++) {
++      if (i > 0) {
++        rendered.append(';');
++      }
++      app.freerouting.geometry.planar.FloatPoint corner = shape.cornerApprox(i);
++      rendered.append(String.format(java.util.Locale.ROOT, "%.3f,%.3f", corner.x, corner.y));
++    }
++    return rendered.append('}').toString();
++  }
++
    private static String describeShapeBounds(TileShape shape) {
      if (shape == null) {
        return "null";
 --- a/app/freerouting/autoroute/maze/MazeSearchEngine.java
 +++ b/app/freerouting/autoroute/maze/MazeSearchEngine.java
-@@ -85,6 +85,7 @@ public class MazeSearchEngine {
+@@ -85,6 +85,7 @@
          new TreeSet<>() {
            @Override
            public boolean add(MazeListElement element) {
@@ -191,7 +302,34 @@
              if (ctrl.isFanout && ctrl.fanoutStartPinCenter != null) {
                app.freerouting.geometry.planar.FloatPoint pinCenterFloat =
                    ctrl.fanoutStartPinCenter.toFloat();
-@@ -311,6 +312,47 @@ public class MazeSearchEngine {
+@@ -120,7 +121,25 @@
+                 }
+               }
+             }
+-            return super.add(element);
++            boolean added = super.add(element);
++            if (P7T14B_MAZE) {
++              System.err.println(
++                  "ADD ok="
++                      + added
++                      + " sec="
++                      + element.sectionNoOfDoor
++                      + " sort="
++                      + String.format(java.util.Locale.ROOT, "%.6f", element.sortingValue)
++                      + " exp="
++                      + String.format(java.util.Locale.ROOT, "%.6f", element.expansionValue)
++                      + " door="
++                      + element.door.getId()
++                      + " adj="
++                      + element.adjustment
++                      + " size="
++                      + size());
++            }
++            return added;
+           }
+         };
+     destinationDistance =
+@@ -311,6 +330,47 @@
     * Expands the next element in the maze expansion list. Returns false, if the expansion list is
     * exhausted or the destination is reached.
     */
@@ -239,7 +377,31 @@
    public boolean occupyNextElement() {
      if (this.destinationDoor != null) {
        return false; // destination already reached
-@@ -339,6 +381,19 @@ public class MazeSearchEngine {
+@@ -331,14 +391,43 @@
+       int currentSectionNo = listElement.sectionNoOfDoor;
+       currentDoorSection = listElement.door.getMazeSearchElement(currentSectionNo);
+ 
++      if (P7T14B_MAZE) {
++        System.err.println(
++            "POPQ occ="
++                + currentDoorSection.isOccupied
++                + " sec="
++                + listElement.sectionNoOfDoor
++                + " sort="
++                + String.format(java.util.Locale.ROOT, "%.6f", listElement.sortingValue)
++                + " exp="
++                + String.format(java.util.Locale.ROOT, "%.6f", listElement.expansionValue)
++                + " adj="
++                + listElement.adjustment);
++      }
+       if (!currentDoorSection.isOccupied) {
+         nextElementFound = true;
+         break;
+       }
+     }
++    if (P7T14B_MAZE) {
++      System.err.println("OCC found=" + nextElementFound + p7t14bElement(listElement));
++    }
      if (!nextElementFound) {
        return false;
      }
@@ -259,7 +421,7 @@
      currentDoorSection.backtrackDoor = listElement.backtrackDoor;
      currentDoorSection.sectionNoOfBacktrackDoor = listElement.sectionNoOfBacktrackDoor;
      currentDoorSection.roomRipped = listElement.roomRipped;
-@@ -369,10 +424,12 @@ public class MazeSearchEngine {
+@@ -369,10 +458,12 @@
      if (ctrl.viasAllowed
          && listElement.door instanceof ExpansionDrill
          && !(listElement.backtrackDoor instanceof ExpansionDrill)) {
@@ -272,7 +434,37 @@
        if (!expandToRoomDoors(listElement)) {
          return true; // occupation by ripup is delayed or nothing was expanded
          // In case nothing was expanded allow the section to be occupied from
-@@ -752,6 +809,15 @@ public class MazeSearchEngine {
+@@ -587,6 +678,29 @@
+               + ctrl.netNumber);
+     }
+ 
++    if (P7T14B_MAZE) {
++      StringBuilder roomLine = new StringBuilder("EXPROOM room=");
++      roomLine.append(p7t14bRoom(listElement.nextRoom)).append(" n=").append(roomDoorsSnapshot.size());
++      for (ExpansionDoor ledgerDoor : roomDoorsSnapshot) {
++        TileShape doorShape = ledgerDoor.getShape();
++        roomLine.append(" [dim=").append(ledgerDoor.dimension).append(" bb=");
++        if (doorShape == null) {
++          roomLine.append("null");
++        } else {
++          IntBox doorBox = doorShape.boundingBox();
++          roomLine
++              .append(doorBox.ll.x)
++              .append(',')
++              .append(doorBox.ll.y)
++              .append(',')
++              .append(doorBox.ur.x)
++              .append(',')
++              .append(doorBox.ur.y);
++        }
++        roomLine.append(']');
++      }
++      System.err.println(roomLine);
++    }
+     for (ExpansionDoor toDoor : roomDoorsSnapshot) {
+       if (toDoor == listElement.door) {
+         continue;
+@@ -752,6 +866,15 @@
          }
        }
  
@@ -288,9 +480,101 @@
        if (expandToDoorSection(toDoor, i, newShapeEntry, listElement, addCosts, adjustment)) {
          somethingExpanded = true;
        }
+@@ -1126,8 +1249,56 @@
+    * Shoves a trace room and expands the corresponding doors. Return false, if no door was expanded.
+    * In this case occupation of the door_section by ripup can be delayed to allow shoving the room
+    * from a different door section
++   */
++  /**
++   * Plan 7 Task 14b, level 8: `ADD` / `POPQ` / `OCC` (the maze expansion list), `EXPROOM` (a
++   * room's door list in iteration order) and `SHOVEROOM` (each `shoveTraceRoom` entry). Off
++   * unless `P7T14B_MAZE` is set. These are the levels between quirk #229's completed-room
++   * divergence and the extra item id it costs.
+    */
++  static final boolean P7T14B_MAZE = System.getenv("P7T14B_MAZE") != null;
++
++  private static String p7t14bRoom(CompleteExpansionRoom room) {
++    if (room instanceof ObstacleExpansionRoom obstacleRoom) {
++      return "obst" + obstacleRoom.getItem().getId() + ":" + obstacleRoom.getIndexInItem();
++    }
++    return "free";
++  }
++
++  private static String p7t14bElement(MazeListElement element) {
++    if (element == null) {
++      return "";
++    }
++    return " sec="
++        + element.sectionNoOfDoor
++        + " exp="
++        + String.format(java.util.Locale.ROOT, "%.6f", element.expansionValue)
++        + " sort="
++        + String.format(java.util.Locale.ROOT, "%.6f", element.sortingValue)
++        + " adj="
++        + element.adjustment
++        + " chk="
++        + element.alreadyChecked
++        + " rip="
++        + element.roomRipped
++        + " cost="
++        + element.ripupCost
++        + " room="
++        + (element.nextRoom == null ? "null" : p7t14bRoom(element.nextRoom));
++  }
++
+   private boolean shoveTraceRoom(MazeListElement listElement, ObstacleExpansionRoom obstacleRoom) {
++    if (P7T14B_MAZE) {
++      System.err.println(
++          "SHOVEROOM item="
++              + obstacleRoom.getItem().getId()
++              + " sec="
++              + listElement.sectionNoOfDoor
++              + " cnt="
++              + listElement.door.mazeSearchElementCount()
++              + " adj="
++              + listElement.adjustment);
++    }
+     if (listElement.sectionNoOfDoor != 0
+         && listElement.sectionNoOfDoor != listElement.door.mazeSearchElementCount() - 1) {
+       // No delay of occupation necessary because inner sections of a door are
+--- a/app/freerouting/autoroute/maze/MazeTraceShover.java
++++ b/app/freerouting/autoroute/maze/MazeTraceShover.java
+@@ -29,6 +29,12 @@
+    * Returns false, if the algorithm did not succeed and trying to shove from another door section
+    * may be more successful.
+    */
++  /**
++   * Plan 7 Task 14b, level 8: `CSTL` — one line per `checkShoveTraceLine` entry. Off unless
++   * `P7T14B_MAZE` is set.
++   */
++  static final boolean P7T14B_MAZE = System.getenv("P7T14B_MAZE") != null;
++
+   public static boolean checkShoveTraceLine(
+       MazeListElement listElement,
+       ObstacleExpansionRoom obstacleRoom,
+@@ -36,6 +42,19 @@
+       AutorouteControl ctrl,
+       boolean shoveToTheLeft,
+       Collection<DoorSection> toDoorList) {
++    if (P7T14B_MAZE) {
++      System.err.println(
++          "CSTL left="
++              + shoveToTheLeft
++              + " item="
++              + obstacleRoom.getItem().getId()
++              + " idx="
++              + obstacleRoom.getIndexInItem()
++              + " sec="
++              + listElement.sectionNoOfDoor
++              + " adj="
++              + listElement.adjustment);
++    }
+     if (!(listElement.door instanceof ExpansionDoor fromDoor)) {
+       return true;
+     }
 --- a/app/freerouting/board/optimize/TraceTightener.java
 +++ b/app/freerouting/board/optimize/TraceTightener.java
-@@ -30,6 +30,14 @@ import java.util.Set;
+@@ -30,6 +30,14 @@
  /** Class with functionality for optimising traces and vias. */
  public abstract class TraceTightener {
  
@@ -305,7 +589,7 @@
    protected static final double c_max_cos_angle = 0.999;
    // with angles to close to 180 degree the algorithm becomes numerically
    // unstable
-@@ -143,23 +151,59 @@ public abstract class TraceTightener {
+@@ -143,23 +151,59 @@
          // search in the ShapeSearchTree for all overlapping traces
          // with clipShape on layer i
          Collection<SearchTreeObject> items = board.overlappingObjects(changedRegion, i);
@@ -371,7 +655,7 @@
                somethingChanged = true;
              }
            }
-@@ -423,9 +467,15 @@ public abstract class TraceTightener {
+@@ -423,9 +467,15 @@
      boolean result = false;
      boolean connectionToTraceImproved = true;
      PolylineTrace currentTrace = trace;
@@ -387,7 +671,7 @@
        if (adjustedPolyline != null) {
          int traceLayer = currentTrace.getLayer();
          int currentClClass = currentTrace.clearanceClassIndex();
-@@ -445,7 +495,17 @@ public abstract class TraceTightener {
+@@ -445,7 +495,17 @@
            board.removeItem(currentTrace);
            currentTrace = adjInsTrace;
            for (int currentNetNumber : currentTrace.netNumbers) {
@@ -407,10 +691,11 @@
              try {
 --- a/app/freerouting/board/optimize/TraceTightener45.java
 +++ b/app/freerouting/board/optimize/TraceTightener45.java
-@@ -20,6 +20,15 @@ import java.util.Collection;
+@@ -19,7 +19,16 @@
+ import java.util.Collection;
  
  class TraceTightener45 extends TraceTightener {
- 
++
 +  // ---- Plan 7 Task 8b, level 7: the `smoothenStartCornerAtTrace` ledger -----------------------
 +  static final boolean P7T8B_OCA = TraceTightener.P7T8B_OCA;
 +
@@ -418,12 +703,12 @@
 +    return l == null ? "null" : (l.a + "-" + l.b);
 +  }
 +  // ---- end Plan 7 Task 8b ---------------------------------------------------------------------
-+
+ 
 +
    /** Creates a new instance of PullTight90. */
    public TraceTightener45(
        RoutingBoard board,
-@@ -478,6 +487,22 @@ class TraceTightener45 extends TraceTightener {
+@@ -478,6 +487,22 @@
      Direction prevLineDirection = tracePolyline.lines[2].direction();
  
      Collection<Item> contactList = trace.getStartContacts();
@@ -446,7 +731,7 @@
      for (Item currentContact : contactList) {
        if (currentContact instanceof PolylineTrace contactTrace && !currentContact.isShoveFixed()) {
          Polyline contactTracePolyline = contactTrace.polyline();
-@@ -508,6 +533,17 @@ class TraceTightener45 extends TraceTightener {
+@@ -508,6 +533,17 @@
              otherTraceFound = true;
            }
          }
@@ -464,7 +749,7 @@
          if (otherTraceFound) {
            otherTraceCornerApprox = currentOtherTraceCornerApprox;
            otherTraceLine = currentOtherTraceLine;
-@@ -515,10 +551,18 @@ class TraceTightener45 extends TraceTightener {
+@@ -515,10 +551,18 @@
            otherPrevTraceLine = currentOtherPrevTraceLine;
          }
        } else {
@@ -483,7 +768,7 @@
      if (acuteAngle) {
        Direction newLineDir;
        if (prevCornerSide == Side.ON_THE_LEFT) {
-@@ -533,6 +577,14 @@ class TraceTightener45 extends TraceTightener {
+@@ -533,6 +577,14 @@
        double otherDist = Math.abs(translateLine.signedDistance(otherTraceCornerApprox));
        translateDist = Math.min(translateDist, prevCornerDist);
        translateDist = Math.min(translateDist, otherDist);
@@ -498,7 +783,7 @@
        if (translateDist >= 0.99) {
  
          translateDist = Math.max(translateDist - 1, 1);
-@@ -540,6 +592,11 @@ class TraceTightener45 extends TraceTightener {
+@@ -540,6 +592,11 @@
            translateDist = -translateDist;
          }
          Line addLine = translateLine.translate(translateDist);
@@ -512,7 +797,7 @@
          newLines[0] = otherTraceLine;
 --- a/app/freerouting/board/searchtree/SearchTreeManager.java
 +++ b/app/freerouting/board/searchtree/SearchTreeManager.java
-@@ -37,6 +37,11 @@ public class SearchTreeManager {
+@@ -37,6 +37,11 @@
  
    /** Inserts the tree shapes of item into all active search trees. */
    public void insert(Item item) {
@@ -524,7 +809,7 @@
      for (ShapeSearchTree currentTree : compensatedSearchTrees) {
        currentTree.insert(item);
      }
-@@ -48,9 +53,23 @@ public class SearchTreeManager {
+@@ -48,9 +53,23 @@
      if (!item.isOnTheBoard()) {
        return;
      }
@@ -548,11 +833,63 @@
        {
          if (currentTreeEntries != null) {
            currentTree.remove(currentTreeEntries);
+@@ -137,6 +156,14 @@
+    * Returns the tree compensated for the clearance class with number clearanceClassIndex.
+    * Initialized the tree, if it is not yet allocated.
+    */
++  /**
++   * Plan 7 Task 14b, level 8: `TINS8` — the id of every item the freshly built compensated tree
++   * is filled with, in `board.itemList` order. Off unless `P7T14B_FP` is set. It is what shows
++   * that the two sides fill a *new* autoroute tree identically, so a later topology difference
++   * cannot be blamed on the build.
++   */
++  static final boolean P7T14B_FP = System.getenv("P7T14B_FP") != null;
++
+   public ShapeSearchTree getAutorouteTree(int clearanceClassIndex) {
+     for (ShapeSearchTree currentTree : compensatedSearchTrees) {
+       if (currentTree.compensatedClearanceClassNo == clearanceClassIndex) {
+@@ -166,6 +193,9 @@
+       if (currentItem == null) {
+         break;
+       }
++      if (P7T14B_FP) {
++        System.err.println("TINS8 id=" + currentItem.getId());
++      }
+       currentAutorouteTree.insert(currentItem);
+     }
+     return currentAutorouteTree;
 --- a/app/freerouting/board/searchtree/ShapeSearchTree45Degree.java
 +++ b/app/freerouting/board/searchtree/ShapeSearchTree45Degree.java
-@@ -140,6 +140,10 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+@@ -139,7 +139,37 @@
+       startShape = room.getShape().boundingOctagon().intersection(startShape);
      }
  
++    if (P7T14B_FP) {
++      long hash = 1469598103934665603L;
++      int nodeCount = 0;
++      ArrayStack<TreeNode> fingerprintStack = new ArrayStack<>(10000);
++      fingerprintStack.push(this.root);
++      for (; ; ) {
++        TreeNode fingerprintNode = fingerprintStack.pop();
++        if (fingerprintNode == null) {
++          break;
++        }
++        ++nodeCount;
++        IntBox nodeBox = fingerprintNode.boundingShape.boundingBox();
++        long[] fields = {
++          nodeBox.ll.x, nodeBox.ll.y, nodeBox.ur.x, nodeBox.ur.y,
++          (fingerprintNode instanceof Leaf) ? 1 : 0
++        };
++        for (long field : fields) {
++          hash = (hash ^ field) * 1099511628211L;
++        }
++        if (!(fingerprintNode instanceof Leaf)) {
++          fingerprintStack.push(((InnerNode) fingerprintNode).firstChild);
++          fingerprintStack.push(((InnerNode) fingerprintNode).secondChild);
++        }
++      }
++      System.err.println("TREEFP n=" + nodeCount + " h=" + Long.toHexString(hash));
++    }
      IntOctagon boundingShape = startShape;
 +    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K != p6t17bLastDump) {
 +      p6t17bLastDump = app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K;
@@ -561,7 +898,7 @@
      int roomLayer = room.getLayer();
      boolean debugAnchor = isCompleteShapeDebugAnchor(netNumber, roomLayer, startShape);
      int debugStep = 0;
-@@ -154,6 +158,12 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+@@ -154,6 +184,12 @@
        if (currentNode == null) {
          break;
        }
@@ -574,7 +911,7 @@
        if (currentNode.boundingShape.intersects(boundingShape)) {
          if (currentNode instanceof Leaf currentLeaf) {
            SearchTreeObject currentObject = (SearchTreeObject) currentLeaf.object;
-@@ -175,6 +185,15 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+@@ -175,10 +211,34 @@
                  ignoredObject,
                  currentObject);
            }
@@ -590,7 +927,26 @@
            if (isObstacle && sameLayer && !ignoredObject) {
  
              IntOctagon currentObjectShape =
-@@ -189,6 +208,10 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+                 currentObject.getTreeShape(this, shapeIndex).boundingOctagon();
++            if (P7T14B_CS) {
++              StringBuilder csoLine = new StringBuilder("CSO obj=");
++              csoLine
++                  .append(currentObject.getClass().getSimpleName())
++                  .append(" idx=")
++                  .append(shapeIndex)
++                  .append(" oct=")
++                  .append(p7t14bOct(currentObjectShape))
++                  .append(" rooms=")
++                  .append(result.size());
++              for (IncompleteFreeSpaceExpansionRoom currentResultRoom : result) {
++                csoLine.append(' ').append(p7t14bOct(currentResultRoom.getShape().boundingOctagon()));
++              }
++              System.err.println(csoLine);
++            }
+             if (debugAnchor) {
+               traceCompleteShapeCandidate(
+                   debugStep, netNumber, roomLayer, currentObject, currentObjectShape);
+@@ -189,6 +249,10 @@
              for (IncompleteFreeSpaceExpansionRoom currentRoom : result) {
                IntOctagon currentShape = (IntOctagon) currentRoom.getShape();
                boolean overlaps = currentShape.overlaps(currentObjectShape);
@@ -601,10 +957,11 @@
                if (overlaps) {
                  if (currentObject instanceof CompleteFreeSpaceExpansionRoom
                      && ignoreShape != null) {
-@@ -302,6 +325,39 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+@@ -301,7 +365,75 @@
+    * Restrains the shape of incompleteRoom to an octagon shape, which does not intersect with the
     * interior of obstacleShape. incompleteRoom.getContainedShape() must be contained in the shape of
     * the result room.
-    */
++   */
 +  // ---- P6T17b bisect markers -----------------------------------------------------------------
 +  static String p6t17bOct(IntOctagon o) {
 +    if (o == null) return "null";
@@ -638,10 +995,45 @@
 +  }
 +  // ---- end P6T17b ------------------------------------------------------------------------------
 +
++  /**
++   * Plan 7 Task 14b, level 8. `P7T14B_FP` prints `TREEFP`, a structural fingerprint of the whole
++   * tree (pre-order, node bounding box + leaf flag) once per `completeShape`; `P7T14B_CS` prints
++   * `CSO`, one line per obstacle this walk actually restrains against, in traversal order,
++   * together with the current result rooms. The pair is what makes quirk #229 visible: the two
++   * sides reach a `completeShape` with the same leaf **count** and a different fingerprint, and
++   * the walk then restrains against a different obstacle set in a different order.
+    */
++  static final boolean P7T14B_FP = System.getenv("P7T14B_FP") != null;
++
++  static final boolean P7T14B_CS = System.getenv("P7T14B_CS") != null;
++
++  static String p7t14bOct(IntOctagon octagon) {
++    if (octagon == null) {
++      return "null";
++    }
++    return "("
++        + octagon.leftX
++        + ","
++        + octagon.bottomY
++        + ","
++        + octagon.rightX
++        + ","
++        + octagon.topY
++        + ","
++        + octagon.upperLeftDiagonalX
++        + ","
++        + octagon.lowerRightDiagonalX
++        + ","
++        + octagon.lowerLeftDiagonalX
++        + ","
++        + octagon.upperRightDiagonalX
++        + ")";
++  }
++
    private Collection<IncompleteFreeSpaceExpansionRoom> restrainShape(
        IncompleteFreeSpaceExpansionRoom incompleteRoom, IntOctagon obstacleShape) {
      // Search the edge line of obstacleShape, so that shapeToBeContained
-@@ -350,9 +406,23 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+@@ -350,15 +482,33 @@
      double cutLineDistance = -1;
      int restrainingLineNo = -1;
  
@@ -665,20 +1057,19 @@
        if (currentDistance > cutLineDistance) {
          if (obstacleSegmentTouchesInside(obstacleShape, obstacleLineNo, roomShape)) {
            cutLineDistance = currentDistance;
-@@ -360,6 +430,10 @@ public class ShapeSearchTree45Degree extends ShapeSearchTree {
+           restrainingLineNo = obstacleLineNo;
          }
        }
-     }
++    }
 +    if (p6t17bSb != null) {
 +      p6t17bSb.append(" pick=").append(restrainingLineNo);
 +      System.err.println(p6t17bSb);
-+    }
+     }
      if (cutLineDistance >= 0) {
        IntOctagon restrainedShape =
-           calcOutsideRestrainedShape(obstacleShape, restrainingLineNo, roomShape);
 --- a/app/freerouting/board/trace/PolylineTrace.java
 +++ b/app/freerouting/board/trace/PolylineTrace.java
-@@ -37,6 +37,17 @@ import java.util.LinkedList;
+@@ -37,6 +37,17 @@
  
  /** Objects of class Trace, whose geometry is described by a Polyline. */
  public class PolylineTrace extends Trace implements Serializable {
@@ -696,7 +1087,7 @@
  
    // primary data
    private Polyline lines;
-@@ -963,6 +974,61 @@ public class PolylineTrace extends Trace implements Serializable {
+@@ -963,6 +974,61 @@
          break;
        }
      }
@@ -758,7 +1149,7 @@
      if (indexOfFirstDifferentLine == lastIndex) {
        return; // both polylines are equal, no change necessary
      }
-@@ -980,6 +1046,31 @@ public class PolylineTrace extends Trace implements Serializable {
+@@ -980,6 +1046,31 @@
      }
      int keepAtStartCount = Math.max(indexOfFirstDifferentLine - 2, 0);
      int keepAtEndCount = Math.max(newPolyline.lines.length - indexOfLastDifferentLine - 3, 0);
@@ -792,7 +1183,7 @@
      lines = newPolyline;
 --- a/app/freerouting/datastructures/MinAreaTree.java
 +++ b/app/freerouting/datastructures/MinAreaTree.java
-@@ -47,8 +47,40 @@ public class MinAreaTree extends ShapeTree {
+@@ -47,8 +47,80 @@
      return foundOverlaps;
    }
  
@@ -825,17 +1216,61 @@
 +  }
 +  // ---- end P6T17b ------------------------------------------------------------------------------
 +
++  /**
++   * Plan 7 Task 14b, level 8: `MAT` — one line per leaf insertion or removal, with the tree's
++   * compensated clearance class, the leaf count *before* the change and the leaf's bounding box.
++   * This is the ledger that names the statement: after a failed `optRouteItem`, Java's
++   * `BasicBoard.undo` replays these ops onto the live trees and the port's clone restore does
++   * not, so the two trees end up with the same leaves in a different topology (quirk #229).
++   */
++  static final boolean P7T14B_MAT = System.getenv("P7T14B_MAT") != null;
++
++  private String p7t14bTag() {
++    int cls = -1;
++    if (this instanceof app.freerouting.board.searchtree.ShapeSearchTree searchTree) {
++      cls = searchTree.compensatedClearanceClassNo;
++    }
++    return "cls=" + cls;
++  }
++
++  private void p7t14bMat(String op, Leaf leaf) {
++    app.freerouting.geometry.planar.IntBox b = leaf.boundingShape.boundingBox();
++    System.err.println(
++        "MAT "
++            + op
++            + " "
++            + p7t14bTag()
++            + " n="
++            + this.leafCount
++            + " bb=("
++            + b.ll.x
++            + ","
++            + b.ll.y
++            + ","
++            + b.ur.x
++            + ","
++            + b.ur.y
++            + ")");
++  }
++
    @Override
    void insert(Leaf leaf) {
++    if (P7T14B_MAT) {
++      p7t14bMat("ins", leaf);
++    }
 +    if (p6t17bOn()) {
 +      System.err.println("TINS n=" + this.leafCount + " " + p6t17bBounds(leaf.boundingShape));
 +    }
      ++this.leafCount;
  
      // Tree is empty - just insert the new leaf
-@@ -122,6 +154,10 @@ public class MinAreaTree extends ShapeTree {
+@@ -121,7 +193,14 @@
+     if (leaf == null) {
        return;
      }
++    if (P7T14B_MAT) {
++      p7t14bMat("rem", leaf);
++    }
      // remove the leaf node
 +    if (p6t17bOn()) {
 +      System.err.println("TREM n=" + this.leafCount + " " + p6t17bBounds(leaf.boundingShape)

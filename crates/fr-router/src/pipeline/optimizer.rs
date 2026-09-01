@@ -26,7 +26,7 @@
 //! | field | Java's `undo` | the clone | consequence |
 //! |---|---|---|---|
 //! | `communication.idGenerator` | untouched: the ids the failed attempt burned stay burned | rolled back | **compensated** — [`BatchOptimizer::opt_route_item`] carries the *live* `communication` onto the restored board, so the next inserted item gets the id Java gives it |
-//! | `searchTreeManager` | mutated item by item (`:1254`, `:1273`) | replaced wholesale | the *contents* agree, and the SHAPE difference is provably inert for every downstream consumer: both Java's `MinAreaTree.overlaps` and the port's mirror funnel traversal results through an identity-ordered set (`Leaf.compareTo` / `TreeEntry`'s `Ord`), so tree topology cannot leak into any query's order or membership — only traversal COST, which is parity-irrelevant with budgets disabled (ruling AI). (Task 13 review §4; supersedes the earlier "measured inert, not proved" framing. The k=175/quirk-#210 analogy does not apply: that was `TreeSet<Item>` ITERATION order, which has no such re-sorting insulation.) |
+//! | `searchTreeManager` | mutated item by item (`BasicBoard.java:1262`, `:1276`) | replaced wholesale | **NOT inert — quirk #229, open.** The contents agree and the *shape* does not, and the shape leaks. The Task 13 review's §4 insulation argument covers `MinAreaTree.overlaps` only, whose result really is funnelled through an identity-ordered set; it does **not** cover `ShapeSearchTree45Degree.completeShape` (ShapeSearchTree45Degree.java:152-274), which walks the tree with an `ArrayStack` and prunes each node against a `boundingShape` that shrinks as obstacles are consumed (`:157` against `:263-264`). There, topology decides which obstacles restrain a room **at all**, so an "undone" board whose trees Java re-paired and the port restored intact completes free-space rooms differently. Measured on `Issue558-dev-board` and `Issue026-J2_reference`: the first failed `optRouteItem` costs Java 54 (resp. 84) tree ops the port never performs, and a later item burns a different number of ids. See `docs/java-quirks.md` #229 and `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-14b-report.md`. |
 //! | `revision` | keeps counting | rolled back | inert — `Board::revision` has no reader outside tests |
 //! | `changedArea` | untouched | rolled back to the snapshot's `None` | inert — every consumer calls `startMarkingChangedArea()` first (`AutoroutePassRunner.java:223`, `BatchAutorouter.java:489`) |
 //! | `maxTraceHalfWidth` / `minTraceHalfWidth` | keeps the widened value of a trace that no longer exists | rolled back | private in the port, so "keep live" is not expressible; the rolled-back value is the one that describes the restored board |
@@ -698,6 +698,15 @@ impl<'a> BatchOptimizer<'a> {
             // only, so the ids the failed attempt burned stay burned and the next inserted item
             // gets the id Java gives it. See the module doc's table.
             restored.communication = board.communication.clone();
+            // Java bug in the *port*, not in Java: quirk #229. This assignment also replaces
+            // `board.trees`, so the search trees come back with the topology they had before the
+            // attempt; Java's `undo` instead replays the attempt's item changes through the live
+            // trees (`BasicBoard.java:1262`, `:1276`), which re-pairs the same leaves into a
+            // different `MinAreaTree` shape. `ShapeSearchTree45Degree.completeShape:152-274`
+            // reads that shape, so from the first failed item on, the two sides complete
+            // free-space rooms differently and eventually burn different numbers of item ids.
+            // Localised by Task 14b (ruling AZ); the fix is not a one-liner and re-opens every
+            // optimizer-stage reference. See the module doc's table and `docs/java-quirks.md`.
             *board = restored;
         }
 

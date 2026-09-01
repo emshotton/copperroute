@@ -126,6 +126,26 @@ impl MazeQueue {
         }
         // :123 — `super.add(element)`, i.e. `TreeMap.put`.
         let door_id = |door: ExpandableRef| engine.expandable_id_no(door);
+        // Plan 7 Task 14b's level-8 `ADD` ledger (quirk #229) — off unless `P7T14B_MAZE` is set;
+        // stderr only. Java's half is in `MazeSearchEngine`'s anonymous `TreeSet` override, level
+        // 8 of `scripts/differential/java/p6t17b-bisect.patch`. The fields are read out before
+        // the move so the `false` arm below stays exactly the statement it was.
+        if p7t14b_maze_ledger() {
+            let (section, sorting, expansion, id, adjustment) = (
+                element.section_no_of_door,
+                element.sorting_value,
+                element.expansion_value,
+                door_id(element.door),
+                element.adjustment,
+            );
+            let added = self.set.add_by(element, |a, b| a.compare_to(b, door_id));
+            eprintln!(
+                "ADD ok={added} sec={section} sort={sorting:.6} exp={expansion:.6} door={id} \
+                 adj={adjustment:?} size={}",
+                self.set.len()
+            );
+            return added;
+        }
         self.set.add_by(element, |a, b| a.compare_to(b, door_id))
     }
 
@@ -150,4 +170,16 @@ impl MazeQueue {
     pub fn iter(&self) -> impl Iterator<Item = &MazeListElement> {
         self.set.iter()
     }
+}
+
+// ---- Plan 7 Task 14b: the level-8 `ADD` / `POPQ` / `OCC` / `EXPROOM` / `SHOVEROOM` / `CSTL` gate
+//
+// Instrumentation, not behaviour: `false` unless `P7T14B_MAZE` is set in the environment, read
+// once into a `LazyLock`. Every marker it gates writes to **stderr** and has a Java twin in level
+// 8 of `scripts/differential/java/p6t17b-bisect.patch` under the same variable. These are the
+// levels between quirk #229's completed-room divergence and the extra item id it costs.
+pub(crate) fn p7t14b_maze_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T14B_MAZE").is_some());
+    *ON
 }

@@ -420,6 +420,12 @@ case "$driver" in
     # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4` sweeps
     # this driver too: `boardShape` and `BoardStatistics` both reach `DesignRulesChecker`, which
     # iterates `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3-4).
+    #
+    # Plan 7 Task 14b: with `P7T8B_IDS=1` both halves decorate the id generator and print one `ID`
+    # line per allocation plus an `ITEMSEP n=<n> id=<id>` separator before every `optRouteItem`.
+    # That, with level 8 of `java/p6t17b-bisect.patch` (`P7T14B_MAT` / `_FP` / `_CS` / `_MAZE`),
+    # is the bisect for quirk #229 — the `Issue558-dev-board` 188-vs-187 id burn. All of it is
+    # stderr-only and off by default, so `run.sh p7t8` is unaffected.
     javaclass=P7T8
     javapkg="autoroute.pipeline"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" sequence 1 5)

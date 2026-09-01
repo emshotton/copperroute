@@ -62,7 +62,7 @@ use crate::autoroute::expansion::{
 use crate::autoroute::item_info;
 use crate::autoroute::maze::{AutorouteControl, MazeResult, MazeSearchElement, MazeSearchEngine};
 use crate::autoroute::path::{Connection, FoundConnectionInserter, FoundConnectionLocator};
-use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
+use crate::autoroute::tree_ext::{AutorouteSearchTreeExt, p7t14b_cs_ledger};
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
 use crate::pipeline::{BatchAutorouter, RouterBudget};
@@ -830,6 +830,30 @@ impl AutorouteEngine {
 
         // :449-450.
         let completed_shapes = self.complete_shape(board, room, ignore_object, &from_door_shape);
+        // Plan 7 Task 14b's level-8 `CSHAPE` ledger (quirk #229) — off unless `P7T14B_CS` is set;
+        // stderr only. Java's half is in `AutorouteEngine.completeExpansionRoom`, level 8 of
+        // `scripts/differential/java/p6t17b-bisect.patch`. This is the level at which the tree's
+        // topology first becomes *observable*: identical inputs, a different completed shape.
+        if p7t14b_cs_ledger() {
+            let incomplete = self.rooms.incomplete_room(room);
+            let mut line = format!(
+                "CSHAPE in={} contained={} fromDoor={} ignore={} out={}",
+                p7t14b_shape(incomplete.and_then(|room| room.get_shape())),
+                p7t14b_shape(incomplete.and_then(|room| room.get_contained_shape())),
+                p7t14b_shape(from_door_shape.as_ref()),
+                match ignore_object {
+                    None => "null",
+                    Some(TreeObject::Room(_)) => "CompleteFreeSpaceExpansionRoom",
+                    Some(TreeObject::Item(_)) => "Item",
+                },
+                completed_shapes.len()
+            );
+            for candidate in &completed_shapes {
+                line.push(' ');
+                line.push_str(&p7t14b_shape(candidate.get_shape()));
+            }
+            eprintln!("{line}");
+        }
 
         // :469. Note the order: `completeShape` above has already read the room's doors.
         self.remove_incomplete_expansion_room(room);
@@ -969,7 +993,24 @@ impl AutorouteEngine {
             let tree = tree_mut(board, self.tree);
             self.rooms.insert_complete_room(tree, completed_room);
         }
-        // :536-543 is an `FRLogger.trace`; dropped.
+        // :536-543 is an `FRLogger.trace`; dropped. Plan 7 Task 14b's level-8 `CROOM8` ledger
+        // stands in its place — off unless `P7T14B_CS` is set; stderr only. Quirk #229.
+        if p7t14b_cs_ledger() {
+            let room = self.rooms.complete_room(completed_room);
+            let layer = room.map_or(usize::MAX, |room| room.get_layer());
+            let bounds = room.and_then(|room| room.get_shape()).map_or_else(
+                || "null".to_string(),
+                |shape| {
+                    let b = shape.bounding_box();
+                    format!("[({},{})..({},{})]", b.ll.x, b.ll.y, b.ur.x, b.ur.y)
+                },
+            );
+            let doors = self
+                .rooms
+                .room_doors(RoomRef::Complete(completed_room))
+                .len();
+            eprintln!("CROOM8 layer={layer} bb={bounds} doors={doors}");
+        }
         Some(completed_room)
     }
 
@@ -2349,3 +2390,21 @@ fn apply_strict_drc_after_route(
 // point. Steps 1-5 are `route_connection`; **Plan 7 Task 8 closed the class** — `route_connection_full`
 // is `route` in full, with `retry_connection_necked` (`:162-241`) and
 // `apply_strict_drc_after_route` (`:243-254`) beside it.
+
+/// Plan 7 Task 14b's level-8 shape rendering: every corner of a tile shape, to three decimals, in
+/// the order `TileShape::corner_approx_arr` answers — which is Java's `cornerApprox(i)` order.
+/// `None` is Java's `null`. Instrumentation only; see [`crate::autoroute::tree_ext`] for the gate.
+fn p7t14b_shape(shape: Option<&TileShape>) -> String {
+    let Some(shape) = shape else {
+        return "null".to_string();
+    };
+    let mut rendered = String::from("{");
+    for (index, corner) in shape.corner_approx_arr().into_iter().enumerate() {
+        if index > 0 {
+            rendered.push(';');
+        }
+        rendered.push_str(&format!("{:.3},{:.3}", corner.x, corner.y));
+    }
+    rendered.push('}');
+    rendered
+}

@@ -611,6 +611,9 @@ impl<O: Copy + Ord> ShapeTree<O> {
             generation,
         });
 
+        if p7t14b_mat_ledger() {
+            p7t14b_mat("ins", self.leaf_count, &bounds);
+        }
         // MinAreaTree.java:52.
         self.leaf_count += 1;
 
@@ -768,6 +771,9 @@ impl<O: Copy + Ord> ShapeTree<O> {
 
         // MinAreaTree.java:125-129: read the parent, then clear the leaf. The port frees the
         // arena slot where Java nulls the leaf's fields and lets the GC take it.
+        if p7t14b_mat_ledger() {
+            p7t14b_mat("rem", self.leaf_count, &self.bounds_of(leaf));
+        }
         let parent = self.parent_of(leaf);
         self.free(leaf);
         self.leaf_count -= 1;
@@ -988,6 +994,34 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
         result
     }
+}
+
+// ---- Plan 7 Task 14b: the level-8 `MAT` ledger ------------------------------------------------
+//
+// Instrumentation, not behaviour: `false` unless `P7T14B_MAT` is set in the environment, read
+// once into a `LazyLock`, and its only callers are the two `eprintln!` sites in
+// [`ShapeTree::insert_leaf`] and [`ShapeTree::remove_leaf`]. The Java side of the pair is level 8
+// of `scripts/differential/java/p6t17b-bisect.patch`, which adds the same two lines to
+// `MinAreaTree.insert(Leaf)` / `MinAreaTree.removeLeaf(Leaf)` under the same variable (its lines
+// carry an extra `cls=` tag naming the tree's compensated clearance class; strip it before
+// diffing). Both write to **stderr**.
+//
+// This is the ledger that names quirk #229: after a failed `BatchOptimizer.optRouteItem`, Java's
+// `routingBoard.undo(null)` replays the attempt's item changes through `SearchTreeManager` and
+// these ops fire; the port restores a cloned board and none of them do, so the two sides carry
+// the same leaves in a different tree topology from there on.
+fn p7t14b_mat_ledger() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("P7T14B_MAT").is_some());
+    *ON
+}
+
+fn p7t14b_mat(op: &str, leaf_count: usize, bounds: &RegularTileShape) {
+    let b = bounds.bounding_box();
+    eprintln!(
+        "MAT {op} n={leaf_count} bb=({},{},{},{})",
+        b.ll.x, b.ll.y, b.ur.x, b.ur.y
+    );
 }
 
 #[cfg(test)]

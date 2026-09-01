@@ -2908,7 +2908,7 @@ from `"0"` and asserts the flag stayed `NONE`.
 `Issue649-kicad_ecc83-pp_input_board_v1`, plus `examples/tutorial_board` (both modes),
 `Issue143-rpi_splitter` at router `maxPasses = 2` and `Issue508-DAC2020_bm01`.
 
-### Two stems DIFF, and the cause is **not** in this file (ruling 1's row)
+### Two stems DIFF, and the cause is **not** in this file (ruling 1's row; localised by Task 14b as quirk #229)
 
 | stem | rung reached | first difference | diagnosis |
 |---|---|---|---|
@@ -2920,10 +2920,26 @@ and runs `optRouteItem` with the stop conditions removed — no `runBatchLoop`, 
 the path. `p7t8 <dev-board> sequence` MATCHes (614 lines), so the *reader* agrees on the unmutated
 board; `p7t9 <dev-board> 1 router-only` MATCHes including its `maxId=` line, so plain routing's id
 trail agrees. Both sides are deterministic — three consecutive Java runs and two port runs are
-byte-identical. The extra allocation is one item in ~188, somewhere under `route_connection_full`,
-and it leaves no trace on the board; localising it needs a `p7t8` mode that prints one line per
-**inserted** item, the way `p6t1` prints one per connection. Recorded here rather than left in a
-task report because **Task 16's SES parity on `Issue558-dev-board` will trip on it**.
+byte-identical.
+
+**Localised by Task 14b (ruling AZ): it is the snapshot restore, and it is quirk #229.** The
+statement is `BatchOptimizer.optRouteItem:509`'s `routingBoard.undo(null)` against the port's
+whole-board clone assignment (`crates/fr-router/src/pipeline/optimizer.rs:695-710`). Java's `undo`
+replays the failed attempt's item changes **through the live search trees** — on `dev-board`, 54
+`MinAreaTree` remove/insert ops at the tail of item `n=1`, which is the first `improved=false`
+item — so Java's trees come back with the same leaves in a different topology; the port's clone
+restores the topology exactly. `ShapeSearchTree45Degree.completeShape:152-274` then reads that
+difference: its traversal prune shrinks as obstacles are consumed (`:157` against `:263-264`), so
+topology decides *which* obstacles restrain a room, and one differently-shaped free-space room at
+item `n=6` costs one extra `ShapeTraceEntries.nextSubstituteTracePiece` id. `J2_reference` is the
+same statement — item `n=3` is `improved=false`, 84 Java-only tree ops, divergence at `n=4`.
+The bisect, the committed ledgers (`P7T14B_MAT` / `_FP` / `_CS` / `_MAZE`, all off by default,
+with Java twins in level 8 of `scripts/differential/java/p6t17b-bisect.patch`) and what a fix
+re-opens are in `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-14b-report.md`.
+**Still open**, and **Task 16's SES parity on `Issue558-dev-board` will trip on it**: the fix is
+to port `generateSnapshot`/`undo` (all three rostered `// not ported:`) or to replay
+`applyUndoRedoSideEffects`' item-level tree ops onto the live trees, which re-opens every
+optimizer-stage reference and so belongs with the task that regenerates them.
 
 ## What Plan 7 inherits
 
