@@ -24,6 +24,16 @@ pub enum RouterError {
     #[error("a ported geometry operation panicked: {0}")]
     Panicked(String),
 
+    /// `AutorouteBatchLoop.run`'s `anyRoutable` check (`AutorouteBatchLoop.java:44-56`) found no
+    /// layer that is both active in the settings and a signal layer, and Java throws
+    /// `IllegalArgumentException("Cannot start autorouter: all layers are disabled.")` at `:55`.
+    ///
+    /// Plan-7 ruling 7's **sole** new recovery boundary, and the only one that **propagates**:
+    /// `RoutingPipeline.run` does not catch it, so it escapes to the job scheduler. The event at
+    /// `:53-54` — a `TaskState.CANCELLED` — is fired before the throw and the port fires it too.
+    #[error("cannot start autorouter: all layers are disabled")]
+    NoRoutableLayer,
+
     /// The router was asked to stop: the `TimeLimit` expired or the caller's `StopCheck` fired
     /// (`AutorouteEngine.isStopRequested`, AutorouteEngine.java:294-304).
     #[error("the routing run was stopped")]

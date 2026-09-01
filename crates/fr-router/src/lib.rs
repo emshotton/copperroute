@@ -269,7 +269,18 @@ pub mod prelude {
 // and six private `log*`/`updateProgress` helpers. The line also claimed the
 // `catch (Exception)` boundary is at `:144`: `:144` closes **`runMultiThread`**, and
 // `runSingleThread` has its own `try` at `:156` and `catch` at `:331-335`, which Task 9 ports.
-// added in Plan 7: `AutorouteBatchLoop.run` — the pass loop, and the `IllegalArgumentException` `RoutableLayersSafetyCheckTest` asserts (`AutorouteBatchLoop.java:52-55`).
+// `AutorouteBatchLoop` itself is [`pipeline::AutorouteBatchLoop`] from Plan 7 Task 10 — `run`
+// (`:37-588`) and, by inlining, all five of its private one-line delegates (`:590-608`), each of
+// which forwards to a `BatchAutorouter` member the port's `run` calls directly. The
+// `IllegalArgumentException` `RoutableLayersSafetyCheckTest` asserts (`AutorouteBatchLoop.java:52-55`)
+// is [`RouterError::NoRoutableLayer`], plan-7 ruling 7's sole new — and only propagating —
+// recovery boundary. `scripts/audit-map/fr-router.map` points the class at
+// `pipeline/batch_loop.rs`, where the five `not ported:` lines sit beside the code: the dead
+// `alreadyRoutedBoardHashes` (`:249`, quirk #216), the per-pass `getHash()` at `:255` that only
+// log payloads read, the `PerformanceProfiler` block (`:67-81`, `:567-569`), the
+// `AutorouteRuntimeMetrics` CPU/heap report and the per-net incomplete breakdown (`:378-406`).
+// Two `obligation:` markers are open there — the fanout pre-pass (`:89-173`, Task 12, a **loud**
+// stub) and the stagnation report (`:456-476`, `:486-507`, Task 15, an inert one).
 // `BatchAutorouter` itself is [`pipeline::BatchAutorouter`] from Plan 7 Task 8 — the constants,
 // the field block, both constructors, the five accessors, the five `NamedAlgorithm` identity
 // members, `getImpactedPoints`, `enforceStrictDrc`, `isFanoutTimedOut`, `shouldFireBoardUpdate`,

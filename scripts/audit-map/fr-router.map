@@ -176,7 +176,9 @@ BatchAutorouterThread             lib.rs
 # Plan 7 Task 9: `runSingleThread` is ported and `runMultiThread` plus the five `log*` helpers
 # are rostered `not ported:` in the same file.
 AutoroutePassRunner               pipeline/pass_runner.rs
-AutorouteBatchLoop                lib.rs
+# Plan 7 Task 10: `run` is ported and the profiler / metrics / per-net-trace blocks are
+# rostered `not ported:` in the same file.
+AutorouteBatchLoop                pipeline/batch_loop.rs
 AutorouteConnectionRouter         autoroute/maze/engine.rs
 BatchFanout                       lib.rs
 BatchOptimizer                    lib.rs

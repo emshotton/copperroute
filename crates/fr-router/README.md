@@ -384,7 +384,7 @@ The `StopCheck`s that plan-3 ruling F threads through `Board::insert_via_checked
 extra sites: they exist because `ForcedViaInserter.insert` reaches quirk #76's
 machinery from inside the router.
 
-## The six recovery boundaries (ruling 7)
+## The recovery boundaries (ruling 7) — six from Plan 6, three from Plan 7
 
 Java's `catch (Exception)` sites inside Plan 6's scope, and what each becomes:
 
@@ -409,10 +409,23 @@ around the whole of `AutoroutePassRunner::run_single_thread`'s body, degrading t
 **not** a per-item boundary, which is the thing ruling 9 was right to forbid: a Java
 exception inside the item loop ends the pass rather than skipping one item.
 
+Boundary **9 is Plan 7's other one, and it landed in Task 10** — and it is the
+**only one that propagates**. `AutorouteBatchLoop.run:44-56` is not a `catch` at
+all: when no layer is both active in the settings and a signal layer, it fires a
+`TaskState.CANCELLED` event (`:53-54`) and then **throws**
+`IllegalArgumentException` at `:55`, which `RoutingPipeline.run` does not catch,
+so it escapes to the job scheduler. Plan-7 ruling 7 makes it
+`RouterError::NoRoutableLayer`, which `AutorouteBatchLoop::run` returns and Task
+15's `run_pipeline` will pass on. The port fires the event first, as Java does —
+`crates/fr-router/tests/batch_loop.rs`'s
+`a_board_with_no_signal_layer_errors_and_reports_cancelled` asserts both halves,
+and is the port of `RoutableLayersSafetyCheckTest.testRoutingFailsWhenAllLayersDisabledCurrent`.
+
 Boundary **8** is `BatchAutorouterThread.java:537` (per item), on the dead
-multithreaded path, and is still Plan 7/8's. All eight catch `Exception`, not
-`Throwable`, so none recovers from a stack overflow — quirk #27 crashes both
-languages.
+multithreaded path, and is still Plan 7/8's. All eight `catch` sites catch
+`Exception`, not `Throwable`, so none recovers from a stack overflow — quirk #27
+crashes both languages; boundary 9 is a `throw` rather than a `catch` and does not
+recover from anything by design.
 
 Everything *below* `AutorouteEngine.java:260` deliberately panics rather than
 degrading, because Java has no handler there either and Plan 7's necked retry is
@@ -2632,6 +2645,77 @@ gets the right answer, so the *field* is wrong and the *used* value is right; bo
 ported (the second in Task 14). Pinned by `P7T9Probe`'s 500 scripted tuples.
 
 
+## The pass loop (Plan 7 Task 10)
+
+`AutorouteBatchLoop.run` (`:37-588`) — the 552-line method that decides how many
+passes run, which board survives them, and when to give up — plus its five private
+one-line delegates (`:590-608`), which the port takes by inlining because each
+forwards to a `BatchAutorouter` member `run` can call directly.
+
+It is `fr_router::pipeline::AutorouteBatchLoop::run`, and it answers a
+`BatchLoopResult`: the `TaskState` (`:571-585`), Java's own return value (`:587`),
+`currentPass` (`:520-522`) and ruling 1(a)'s per-pass `PassRecord` list. The board is
+**not** in the result — Java's `:552` writes `job.board`, and the port's `&mut Board`
+argument is that field. Two arms replace it wholesale with an older board out of
+`BoardHistory`: the mid-loop restore (`:322`) and the final swap (`:535`).
+
+`scripts/differential/run.sh p7t9 <dsn> <maxPasses> router-only` is the whole-board
+evidence — a line-for-line transcription of `run`'s body beside the real
+`runBatchLoop()`, with the final board in `P6T15aProbe`'s polyline format. **13 / 13
+MATCH**: five corpus DSNs at `maxPasses in {1, 2}` and the three small stems at 8.
+
+### Quirk #214: a normal end of routing reports `CANCELLED`
+
+`:571` reports `FINISHED` only when the stop flag is still `NONE`, and **every**
+ordinary exit raises it first — `maxPasses` (`:271`), "not able to improve" (`:311`),
+the rank limit (`:318`) and both stagnation windows (`:474`, `:505`). The only path
+that leaves it `NONE` is the `while` head's own `continueAutorouting == false`, i.e. a
+pass that routed and failed nothing. So the CLI's normal case — route until
+`--max-passes` — reports `CANCELLED`, and an API consumer cannot tell it from a user
+cancellation. Measured: `p7t9 <rpi> 1` prints `RESULT state=CANCELLED` on a board whose
+score is 799.98.
+
+### Quirk #215: the fully-routed counter reset is on the wrong arm
+
+`:509-517` is the `else` of `:422`'s `currentPass >= 8 && continueAutorouting`, so it
+fires on passes 1-7 and never afterwards. Its own comment (`:511-514`) describes the
+opposite rule. Since `:429`'s increment is itself inside the `>= 8` arm, the reset
+protects a counter that is always zero and stops protecting it exactly when it can
+start climbing — the counter first reaches 10 at pass 17, nine passes after the reset
+went out of reach. `p7t9 <ecc83> 8` prints `ROUTED-RESET pass=1` and `pass=2`, nothing
+later.
+
+### Quirk #217: the board-rank break cannot fire
+
+`:317` tests `boardToRestoreRank > BOARD_RANK_LIMIT`, and `BOARD_RANK_LIMIT` **is**
+`BoardHistory.MAX_HISTORY_SIZE` (`BatchAutorouter.java:40`). `getRank` answers a
+1-indexed position in a list `add` caps at that same number, so its range is
+`{-1} ∪ 1..=30` and the test has no solution. The declaration's comment says the limit
+"Must not exceed `BoardHistory.MAX_HISTORY_SIZE` so the check can actually fire" — for
+it to fire the limit must be *strictly less than* the cap. One of the loop's five stop
+reasons is therefore unreachable. Found while trying to write the brief's
+`the_rank_limit_breaks_the_loop`, which cannot be written.
+
+### Four arms lifted out of `run`, and why
+
+`restore_gate` (`:298-300`), `rank_limit_exceeded` (`:317`), `stagnation_guard`
+(`:422`) and `final_best_board_swap` (`:525-550`) are `pub fn`s called from exactly one
+place each. Every one of them is either unreachable on the corpus (the last two) or
+reachable only after eight real passes (the first two), so a test that had to route
+eight passes to observe a boolean would be a slow test of the router rather than a test
+of the loop. Nothing else moved: `run` reads as Java does with four names substituted
+for four expressions.
+
+### Two stubs, one loud and one inert (ruling B1)
+
+The **fanout pre-pass** (`:89-173`) is Task 12's, and skipping it on a board with SMD
+pins would answer a different board — so `run` **asserts** `!settings.is_fanout_enabled()`,
+as a real `assert!` rather than a `debug_assert!`, because the parity runs are release
+builds. `DefaultSettings` turns fanout on, so every caller must disable it until Task 12
+lands. The **stagnation report** (`:456-476`, `:486-507`) is Task 15's and is **inert**:
+it is a log payload, both arms are live on a long run, and the
+`requestStopAutoRouter(); break;` around it is complete here.
+
 ## What Plan 7 inherits
 
 Everything above `route_connection`, and nothing below it. Each row names the
@@ -2642,7 +2726,7 @@ crates/` is the complete inventory.
 | what | Java | where it is recorded here |
 |---|---|---|
 | `AutorouteConnectionRouter.route` **steps 6-8** — the necked retry, the strict-DRC rollback, the failure-log write | `autoroute/pipeline/AutorouteConnectionRouter.java:160-233` | `src/autoroute/maze/engine.rs:1818`; `src/lib.rs` roster; obligation register |
-| the **pass loop** and the per-pass / per-item recovery boundaries | `AutoroutePassRunner.java:144`, `BatchAutorouterThread.java:537`, `AutorouteBatchLoop.java:44-56` | `src/lib.rs` roster; the pass-level-recovery row of the obligation register |
+| ~~the **pass loop** and the per-pass / per-item recovery boundaries~~ — **DONE, Plan 7 Tasks 9 and 10**: `AutoroutePassRunner.runSingleThread` and its whole-body catch (boundary 7), and `AutorouteBatchLoop.run` with `:44-56`'s propagating throw (boundary 9). What is left of the row is `BatchAutorouterThread.java:537` (boundary 8), on the dead multithreaded path | `AutoroutePassRunner.java:156, :331-335`, `AutorouteBatchLoop.java:44-56`; `BatchAutorouterThread.java:537` | `src/pipeline/pass_runner.rs`, `src/pipeline/batch_loop.rs`; `src/lib.rs` roster for the one that is left |
 | the **fanout** pre-pass (and with it the only thing that sets `ctrl.isFanout`) | `BatchFanout.java`, `RoutingBoard.fanout` | `src/lib.rs` roster; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
 | the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
 | ~~`ViaOptimizer`, whole~~ — **DONE**: `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` in Plan 7 Task 6, the three `repositionVia` overloads in Task 7 (which also deleted ruling B1's `unimplemented!` and its guard predicate) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:302-365`, `:367-429`, `:434-713`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs` in Task 6) |

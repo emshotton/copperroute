@@ -32,7 +32,7 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t6, p7t7, p7t10, p7t1, p7t2" >&2
+  echo "           p7t6, p7t7, p7t10, p7t1, p7t2, p7t9" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -343,6 +343,37 @@ case "$driver" in
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     run_timeout="${P7T2_TIMEOUT:-3600}"
+    ;;
+  p7t9)
+    # Plan 7 Task 10, whole-board level: `AutorouteBatchLoop.run` (AutorouteBatchLoop.java:37-588)
+    # — the pass loop, its best-board policy and its two stagnation detectors, i.e. the whole
+    # `-dr`-equivalent routing stage. Same package and the same reason as `p7t1`/`p7t2` — `run`
+    # reads `router.board`, `router.thread`, `router.job`, `router.removeUnconnectedVias` and the
+    # seven package-private constants of `BatchAutorouter`, none of which is reachable from
+    # outside `app.freerouting.autoroute.pipeline`. `P7T2.java` is compiled alongside because
+    # `P7T9` loads its board, builds its settings and builds its router through P7T2's four
+    # shared statics, so the three drivers cannot describe different boards.
+    #
+    # `<dsn> [maxPasses] [mode]`. `mode` is `router-only` (`fanout.enabled = false`,
+    # `runOptimizer = false`); Task 12 adds `router+fanout`. `maxPasses = 0` is Java's
+    # "unlimited" (quirk #140), so bound it with `P7T9_TIMEOUT` before using it on a big stem.
+    # The driver prints two halves — a line-for-line transcription of `run`'s body with the
+    # per-pass `PassRecord` tuple and every decision arm, and then the **real**
+    # `BatchAutorouter.runBatchLoop()` on a freshly loaded board, with the two boards compared by
+    # `getHash()` / `structural_hash` (an equality *decision*, never a hash value — ruling AH) —
+    # then the final board in `P6T15aProbe`'s polyline format. See `P7T9.java`'s class comment
+    # for why the driver calls `runBatchLoop()` rather than `RoutingPipeline.run()`.
+    #
+    # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
+    # sweeps this driver too: a pass reaches `DesignRulesChecker` and `BoardStatistics`, both of
+    # which iterate `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3-4).
+    javaclass=P7T9
+    javapkg="autoroute.pipeline"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 1 router-only)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P7T2.java")
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    run_timeout="${P7T9_TIMEOUT:-3600}"
     ;;
   p7t3)
     # Plan 7 Task 5: `RoutingBoard.optChangedArea` and the `TraceTightener.optChangedArea` sweep,

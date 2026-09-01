@@ -303,13 +303,21 @@ impl BoardHistory {
     /// falls out of the sentinel.
     // renamed: `BoardHistory.getRank` -> `BoardHistory::rank` (the plan's interface table names it that; Rust getters drop the `get_`).
     //
-    // obligation: Task 10 (`AutorouteBatchLoop`) must pin `BoardHistory.getRank` **after** a
-    // `restoreBoard` reorder. Plan 7 Task 3's `p7t10` covers this method's decision only in
-    // insertion order: it takes exactly `HISTORY_CAP` adds and never calls `restore_board`, so
-    // the sorted arm of quirk #198 is unexercised there — deliberately, because a `p7t10` diff
-    // must have exactly one possible cause (the hash), not two (the hash or the sort). The sort
-    // itself is JVM-pinned by `P7T2Probe`'s `cap3` phase; what is unpinned is the *composition*,
-    // and `AutorouteBatchLoop.java:315-320` is its only caller and therefore its only home.
+    // **Task 3's `obligation:` is discharged** — by Plan 7 Task 10, in
+    // `crates/fr-router/tests/batch_loop.rs`'s
+    // `the_rank_the_loop_tests_is_read_after_restore_boards_reorder`. The obligation asked for a
+    // pin on `getRank` **after** a `restoreBoard` reorder, because `p7t10` covers this method's
+    // decision only in insertion order: it takes exactly `HISTORY_CAP` adds and never calls
+    // `restore_board`, deliberately, so that a `p7t10` diff has exactly one possible cause (the
+    // hash) rather than two (the hash or the sort). The sort itself is JVM-pinned by
+    // `P7T2Probe`'s `cap3` phase; what was unpinned was the *composition*, and
+    // `AutorouteBatchLoop.java:315-320` — this method's only caller — is where it now lives: three
+    // boards inserted in ascending score, `restore_board` reverses them, and every rank moves.
+    //
+    // That test also records what the composition is **for**: nothing. `:317`'s
+    // `boardToRestoreRank > BOARD_RANK_LIMIT` cannot be true, because the limit *is*
+    // `MAX_HISTORY_SIZE` and this method's answer is a 1-indexed position in a list [`Self::add`]
+    // caps at that same number — quirk #217.
     pub fn rank(&self, board: &Board) -> i32 {
         // BoardHistory.java:174.
         let hash = board.structural_hash();

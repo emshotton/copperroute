@@ -6,7 +6,7 @@
 //!
 //! # State
 //!
-//! **Task 9 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
+//! **Task 10 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
 //! loop's best-board memory (controller ruling AF) — and, from Task 4, the plumbing every later
 //! task threads through: the three-state stop [`RouterStop`] with ruling AI's deadline,
 //! [`RouterBudget`], [`ProgressThrottler`], [`RouterCounters`], [`PassRecord`],
@@ -16,12 +16,21 @@
 //! and **Task 9 the pass itself**: [`BatchAutorouter::autoroute_items`] and
 //! [`BatchAutorouter::autoroute_pass`], [`AutoroutePassRunner`] (`runSingleThread`),
 //! [`RoutingFailureLog`] with its [`ItemFailureInfo`], [`ItemRouteResult`] and
-//! [`calculate_airline`]. Tasks 10-15 add the batch loop, the fanout and the optimizer.
+//! [`calculate_airline`].
+//!
+//! **Task 10 added [`AutorouteBatchLoop`]** — `AutorouteBatchLoop.run`, the pass loop above the
+//! pass runner, with its best-board policy and its two stagnation detectors, answering a
+//! [`BatchLoopResult`]. That is the whole `-dr`-equivalent routing stage with fanout and the
+//! optimizer off, and `scripts/differential/run.sh p7t9` is its whole-board evidence. Two arms of
+//! it are still stubbed behind `obligation:` markers in `batch_loop.rs`: the fanout pre-pass
+//! (Task 12, and the stub is **loud** — `run` asserts fanout is disabled) and the stagnation
+//! report (Task 15, inert). Tasks 11-15 add the fanout and the optimizer.
 //! `crates/fr-router/src/lib.rs`'s roster names every class still deferred and the task that
 //! owns it.
 
 pub mod airline;
 pub mod batch_autorouter;
+pub mod batch_loop;
 pub mod board_history;
 pub mod counters;
 pub mod failure_log;
@@ -31,6 +40,7 @@ pub mod stop;
 
 pub use airline::calculate_airline;
 pub use batch_autorouter::BatchAutorouter;
+pub use batch_loop::{AutorouteBatchLoop, BatchLoopResult};
 pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};

@@ -1578,10 +1578,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t10`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t9`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7` and `p7t10`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t9` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1604,7 +1604,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t6`/`p7t7`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t6`/`p7t7`/`p7t9`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -2358,6 +2358,49 @@ the driver expects, or none at all.
 
   **Acceptance: 0 diffs on all six corpus stems x passes 1-3 x `maxItems` in {2, all}**
   — 36 / 36 MATCH.
+
+- `p7t9 <dsn> [maxPasses] [mode]` — Plan 7 Task 10, **whole-board** level:
+  `AutorouteBatchLoop.run` (AutorouteBatchLoop.java:37-588), the pass loop with its
+  best-board policy and its two stagnation detectors. This is the whole
+  `-dr`-equivalent routing stage. Defaults `<dsn> 1 router-only`; `run.sh p7t9` with no
+  arguments uses `Issue143-rpi_splitter.dsn 1 router-only`.
+
+  `mode` is `router-only` — `fanout.enabled = false`, `runOptimizer = false`, `runRouter
+  = true` — and is the only mode until Plan 7 Task 12 lands `BatchFanout.fanoutBoard` on
+  both sides and adds `router+fanout`. `maxPasses` goes straight into
+  `settings.maxPasses`, where **`0` means unlimited** (quirk #140), so bound a big stem
+  with `P7T9_TIMEOUT` before using it.
+
+  Two halves, the `p7t2` shape and for the same reason — `run` returns one `boolean` and
+  writes its answer into `router.board` / `job.board`:
+
+  * `[transcript]` — `run`'s body transcribed line for line, calling the *real*
+    `autoroutePass`, `removeTails`, `calculateIncompleteCount`, `BoardStatistics` and
+    `BoardHistory`. One `PASS` line per completed pass carrying the port's `PassRecord`
+    tuple (`pass`, `score`, `incompletes`, `violations`, `vias`, `traces`), and one line
+    per decision the loop takes: `HIST-ADD`, `PASS-RET`, `RESTORE-GATE`,
+    `RESTORE-RANK` / `RESTORE-NULL-BREAK` / `RANK-BREAK` / `RESTORED`, `SNAPSHOT`,
+    `ROUTED-RESET`, `STAGNATION`, `STAGNATION-LOCAL-BREAK`, `STAGNATION-GLOBAL-BREAK`,
+    `MAXPASSES-BREAK`, `FINAL-SWAP`, `TAILS` and `RESULT`.
+  * `[real]` — a **freshly loaded** board and the real
+    `BatchAutorouter.runBatchLoop()` (`:479-481`), with the two boards compared as
+    `equalsTranscript=<bool>` (ruling AH again: a decision, never a hash value).
+
+  Then `[board]`: the final board in `P6T15aProbe`'s polyline format — one line per item
+  in `getItems()` order, every trace as its **line array** and its corners, every via as
+  centre / padstack / layer span.
+
+  **Why `runBatchLoop()` and not `RoutingPipeline.createForHeadless(job).run()`**, which
+  is what the plan's text names: under these settings the pipeline's routing stage *is*
+  this call (`RoutingPipeline.java:98`), plus `job.board.finishAutoroute()` at `:106`,
+  which the port's `AutorouteBatchLoop::run` does not make — so driving the pipeline
+  would compare the port's loop against a board Java mutated afterwards. The
+  `FINISH-AUTOROUTE moved=<bool>` line turns that argument into a measurement: the Java
+  side calls `finishAutoroute()` and prints whether the hash moved, and it reads `false`
+  on every stem, because the method's whole body nulls a `transient` field.
+
+  **Acceptance: 0 diffs on five corpus DSNs at `maxPasses in {1, 2}` and on the three
+  small stems at `maxPasses = 8`** — 13 / 13 MATCH.
 
   It found one real port divergence on the way, in `fr-board` rather than in Task 9's
   own code: `Board::cumulative_trace_length` used `.sum()`, and Rust's
