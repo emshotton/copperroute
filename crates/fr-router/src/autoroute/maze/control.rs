@@ -23,8 +23,8 @@
 //! disagree on signed zero. See `destination_distance.rs`' module docs for why the distinction is
 //! load-bearing in this package.
 
-use fr_board::ids::{ItemId, ViaRuleId};
-use fr_board::rules::PadstackLookup;
+use fr_board::ids::ItemId;
+use fr_board::rules::{PadstackLookup, ViaRule};
 use fr_board::{Board, Item};
 use fr_geometry::{Point, java_max};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
@@ -111,7 +111,16 @@ pub struct AutorouteControl {
     /// `ViaRule viaRule` (`:79`): "the possible (partial) vias, which can be used by the
     /// autorouter". `:211` or `:214`. `None` is Java's `null`, which
     /// [`rebuild_via_info`](Self::rebuild_via_info) then dereferences exactly as Java does.
-    pub via_rule: Option<ViaRuleId>,
+    ///
+    /// # An owned rule, not an index into `board.rules.via_rules`
+    ///
+    /// Java's field is an object reference, and `RoutingBoard.fanout:1025-1044` **assigns a rule
+    /// that is in no list at all** — a `new ViaRule(name + "_fallback")` built at run time from
+    /// the net class's vias plus `rules.viaRules.firstElement()`'s. A `ViaRuleId` cannot name
+    /// that rule, and pushing the synthetic rule onto `board.rules.via_rules` to get an index
+    /// would put it in the DSN writer's output. So the control block owns its rule, exactly as
+    /// [`fr_board::NetClass`] does since Plan 7 Task 11 (controller ruling AN).
+    pub via_rule: Option<ViaRule>,
     /// `int netNumber` (`:82`), `:205`.
     pub net_number: i32,
     /// `int viaClearanceClass` (`:85`), `:236-239`.
@@ -195,10 +204,10 @@ impl AutorouteControl {
     ///
     /// renamed: the two-constructor overload set becomes `new` (`:123`) and this
     /// (`:117`); Rust has no overloading. `RoutingBoard.java:1023` is the caller.
-    // pub seam: Plan 7 — `RoutingBoard.fanout` (RoutingBoard.java:978, the `new
-    // AutorouteControl(this, pinNetNo, routerSettings)` at `:1023`) is the only Java caller of
-    // this overload, and the fanout pre-pass is Plan 7's. Plan 6's engine builds its control
-    // through `new`, so this has no caller in this tree yet and that is correct.
+    // The seam marker that stood here is **closed** (Plan 7 Task 11): `RoutingBoard.fanout`
+    // (RoutingBoard.java:978, the `new AutorouteControl(this, pinNetNo, routerSettings)` at
+    // `:1023`) is the only Java caller of this overload, and Plan 7 Task 11 landed it as
+    // `fr_router::board_ext::RoutingBoardExt::fanout`, which calls this and nothing else does.
     pub fn from_settings(
         board: &Board,
         net_no: i32,
@@ -325,7 +334,8 @@ impl AutorouteControl {
                 let class = net.get_net_class();
                 let net_class = board.rules.net_classes.get(class);
                 self.trace_clearance_class_index = net_class.get_trace_clearance_class();
-                self.via_rule = net_class.get_via_rule();
+                // `:211` copies the reference; the port copies the rule the class owns.
+                self.via_rule = net_class.get_via_rule().cloned();
                 Some(class)
             }
             // :212-216
@@ -337,7 +347,7 @@ impl AutorouteControl {
                      Vector.firstElement() throws NoSuchElementException on an empty vector \
                      (AutorouteControl.java:214)"
                 );
-                self.via_rule = Some(ViaRuleId(0));
+                self.via_rule = Some(board.rules.via_rules[0].clone());
                 None
             }
         };
@@ -422,13 +432,19 @@ impl AutorouteControl {
     /// is unaffected.
     ///
     /// The *other* half of that register row — `Network.addViaRule` replacing a `ViaRule` while
-    /// `NetClass.viaRule` keeps the detached original — is **still open**; see
-    /// `BoardRules::replace_via_rule_renumbering_net_classes`.
+    /// `NetClass.viaRule` keeps the detached original — **closed in Plan 7 Task 11** (controller
+    /// ruling AN): [`fr_board::NetClass`] owns its rule, and so does
+    /// [`via_rule`](Self::via_rule) here, so `:211`'s read reaches the detached original exactly
+    /// as Java's does. Measured on `Issue143-rpi_splitter.dsn` plus
+    /// `crates/fr-router/tests/data/ruling-h-viarule.rules` — DIFF on all eight connections
+    /// before, MATCH after (`crates/fr-router/tests/data/p7t11-ruling-h-viarule.txt`).
+    /// **Nothing in ruling H is open.**
     pub fn rebuild_via_info(&mut self, board: &Board, via_costs: i32, net_number: i32) {
-        let rule_id = self
+        let via_rule = self
             .via_rule
+            .clone()
             .expect("AutorouteControl.rebuildViaInfo: viaRule is null — Java NPEs at :235");
-        let via_rule = &board.rules.via_rules[rule_id.0];
+        let via_rule = &via_rule;
 
         // :235-239
         self.via_clearance_class = if via_rule.via_count() > 0 {

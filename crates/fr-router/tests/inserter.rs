@@ -25,7 +25,7 @@
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
-use fr_board::ids::{ItemId, PadstackId, ViaInfoId, ViaRuleId};
+use fr_board::ids::{ItemId, PadstackId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
 use fr_dsn::format::double::java_double_to_string;
@@ -108,7 +108,7 @@ fn base_board(bounds: IntBox) -> Board {
     rules
         .net_classes
         .get_mut(default_class)
-        .set_via_rule(Some(ViaRuleId(0)));
+        .set_via_rule(Some(rules.via_rules[0].clone()));
 
     Board::new(
         Vec::new(),
@@ -739,7 +739,7 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
         false,
     );
     board.rules.via_rules.push(ViaRule::new("empty"));
-    located.ctrl.via_rule = Some(ViaRuleId(board.rules.via_rules.len() - 1));
+    located.ctrl.via_rule = board.rules.via_rules.last().cloned();
     rows.extend(t15_insert_and_dump(&mut board, &located));
 
     // (b) `blockedTrace`.
@@ -796,7 +796,7 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
     let mut huge_rule = ViaRule::new("huge");
     huge_rule.append_via(board.rules.via_infos.get(huge_info).clone());
     board.rules.via_rules.push(huge_rule);
-    located.ctrl.via_rule = Some(ViaRuleId(board.rules.via_rules.len() - 1));
+    located.ctrl.via_rule = board.rules.via_rules.last().cloned();
     rows.extend(t15_insert_and_dump(&mut board, &located));
 
     assert_rows_match("viafail", &rows);
@@ -832,7 +832,7 @@ fn a_null_last_corner_with_no_spanning_padstack_answers_none() {
     let mut board = simple_board();
     let mut ctrl = probe_control(&board, 1);
     board.rules.via_rules.push(ViaRule::new("empty"));
-    ctrl.via_rule = Some(ViaRuleId(board.rules.via_rules.len() - 1));
+    ctrl.via_rule = board.rules.via_rules.last().cloned();
     let before = t15_board_dump(&board);
     let counter = Counter::new();
     let result = FoundConnectionInserter::get_instance(
@@ -860,8 +860,8 @@ fn a_null_last_corner_panics_where_java_dereferences_it() {
     let mut board = simple_board();
     let ctrl = probe_control(&board, 1);
     assert_eq!(
-        ctrl.via_rule,
-        Some(ViaRuleId(0)),
+        ctrl.via_rule.as_ref(),
+        Some(&board.rules.via_rules[0]),
         "the fixture's spanning rule"
     );
     let counter = Counter::new();

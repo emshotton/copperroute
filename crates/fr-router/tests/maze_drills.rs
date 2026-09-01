@@ -25,7 +25,7 @@
 use std::cell::Cell;
 use std::collections::BTreeSet;
 
-use fr_board::ids::{ItemId, PadstackId, ViaInfoId, ViaRuleId};
+use fr_board::ids::{ItemId, PadstackId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
 use fr_geometry::{
@@ -116,7 +116,7 @@ fn base_board(bounds: IntBox) -> Board {
     rules
         .net_classes
         .get_mut(default_class)
-        .set_via_rule(Some(ViaRuleId(0)));
+        .set_via_rule(Some(rules.via_rules[0].clone()));
 
     Board::new(
         Vec::new(),
@@ -850,12 +850,21 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
         .get_mut(ViaInfoId(0))
         .set_attach_smd_allowed(true);
     // `P6T13Probe.attachSmd:1003-1004` mutates the `ViaInfo` **object** the rule also holds
-    // (`ViaRule.java:21`), so Java's rule sees the new flag. Since Plan 7 Task 0 (ruling H) the
-    // port's rule owns a copy taken when it was built, so the copy is refreshed here — Java's
-    // aliasing, spelled out.
+    // (`ViaRule.java:21`), and the net class holds that same rule object (`NetClass.java:28`), so
+    // on the JVM the new flag is visible all the way down to `AutorouteControl.initNet:210`. The
+    // port owns a copy at **both** levels since ruling H closed — the `ViaInfo` copy inside the
+    // rule (Plan 7 Task 0) and the `ViaRule` copy inside the net class (Plan 7 Task 11) — so both
+    // are refreshed here. Java's aliasing, spelled out; the two lines are the price of a model
+    // that can also express a *detached* rule, which is what ruling H is about.
     let mut via_rule = ViaRule::new("rule");
     via_rule.append_via(board.rules.via_infos.get(ViaInfoId(0)).clone());
-    board.rules.via_rules[0] = via_rule;
+    board.rules.via_rules[0] = via_rule.clone();
+    let default_class = board.rules.get_default_net_class();
+    board
+        .rules
+        .net_classes
+        .get_mut(default_class)
+        .set_via_rule(Some(via_rule));
     let mut engine = probe_engine(&mut board, 1);
     let base = probe_control(&board, 1);
     assert!(base.attach_smd_allowed);

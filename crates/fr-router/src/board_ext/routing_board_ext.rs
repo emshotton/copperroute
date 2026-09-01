@@ -1,16 +1,21 @@
 //! [`RoutingBoardExt`]: the `RoutingBoard` methods `fr-board` deliberately left out.
 
+use std::collections::BTreeSet;
+
 use fr_board::datastructures::StopCheck;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId, RoomId, TimeLimit};
 use fr_geometry::{IntOctagon, Point, Polyline, TileShape};
-use fr_settings::ExpansionCostFactor;
+use fr_settings::{ExpansionCostFactor, RouterSettings};
 
+use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
+use crate::autoroute::maze::control::AutorouteControl;
 use crate::autoroute::maze::engine::AutorouteEngine;
 use crate::board_ext::drill_item_mover::tree_by_id;
 use crate::board_ext::tightener::{PolylineTraceExt, TraceTightener};
 use crate::board_ext::trace_shover::TraceShover;
+use crate::pipeline::RouterBudget;
 
 /// The `RoutingBoard` methods `fr-board` deliberately left out (plan-2 ruling 4, because each one
 /// needs an `AutorouteEngine` and `fr-board` cannot name one).
@@ -316,6 +321,49 @@ pub trait RoutingBoardExt {
         tidy_width: i32,
         pull_tight_accuracy: i32,
     ) -> Result<bool, BoardError>;
+
+    /// Port of `RoutingBoard.fanout(Pin, RouterSettings, int, Stoppable, TimeLimit)`
+    /// (RoutingBoard.java:978-1110): "autoroutes from the input pin until the first via, in case
+    /// the pin and its connected set has only 1 layer. Ripup is allowed if `ripupCosts >= 0`."
+    ///
+    /// The per-pin escape router
+    /// [`BatchFanout`](crate::pipeline::BatchFanout) calls once per SMD pin per pass
+    /// (`BatchFanout.java:281-283`); Task 12 owns that loop.
+    ///
+    /// # The three parameters Java does not have
+    ///
+    /// `engine` is `RoutingBoard.autorouteEngine` (`:70`), threaded rather than held — see this
+    /// trait's "The engine is a value, not a field". `stop` is plan-6 ruling 6's per-call
+    /// [`StopCheck`] where Java passes the `Stoppable` into `initAutoroute` and reads it from the
+    /// engine. `budget` is controller ruling AI's knob for `:1099`'s literal
+    /// `timeLimitToPreventEndlessLoop = 1000`, which is a **local** here rather than one of the
+    /// four class constants (`RoutingBoard.java:1100`).
+    ///
+    /// # Two attempts share one ripped set (quirk #221)
+    ///
+    /// For four targets or fewer (`:1064-1085`) Java routes to the *closest* target alone and,
+    /// if that neither routed nor was already connected, retries against the **whole**
+    /// unconnected set — passing the **same** `rippedItemList`, declared once at `:1058`. So items
+    /// the abandoned first attempt ripped are still in the set when the retry runs, and
+    /// `AutorouteEngine.autorouteConnection:237-245` deletes each of their whole connections from
+    /// the board: a successful retry destroys connections only the *failed* attempt asked to rip.
+    /// The set is a local and is never returned, so the deletion is the only observable — it is
+    /// what `p7t5 pin`'s `"removed"` column prints. Java bug, reproduced.
+    ///
+    /// The `> 4` arm (`:1086-1092`) makes one attempt against the whole set: "for large nets
+    /// (e.g. power/ground/buses), route to the entire unconnected set at once to avoid CPU
+    /// thrashing".
+    #[allow(clippy::too_many_arguments)]
+    fn fanout(
+        &mut self,
+        engine: &mut Option<AutorouteEngine>,
+        pin: ItemId,
+        router_settings: &RouterSettings,
+        ripup_costs: i32,
+        stop: StopCheck<'_>,
+        time_limit: Option<TimeLimit>,
+        budget: RouterBudget,
+    ) -> AutorouteAttemptResult;
 }
 
 impl RoutingBoardExt for Board {
@@ -1173,6 +1221,224 @@ impl RoutingBoardExt for Board {
         // :117.
         Ok(result)
     }
+
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    fn fanout(
+        &mut self,
+        engine: &mut Option<AutorouteEngine>,
+        pin: ItemId,
+        router_settings: &RouterSettings,
+        ripup_costs: i32,
+        stop: StopCheck<'_>,
+        time_limit: Option<TimeLimit>,
+        budget: RouterBudget,
+    ) -> AutorouteAttemptResult {
+        let ctx = self.ctx();
+        let pin_item = self
+            .get_item(pin)
+            .expect("RoutingBoard.fanout takes a Pin off the board");
+        // `:984-987`. Java's message interpolates `pin.toString()` (Pin.java:675-692), which is
+        // `Display for Item`.
+        let already_connected = || {
+            AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::AlreadyConnected,
+                format!("The pin '{pin_item}' is already connected."),
+            )
+        };
+        if pin_item.first_layer(&ctx) != pin_item.last_layer(&ctx) || pin_item.net_count() != 1 {
+            return already_connected();
+        }
+        // :988-990.
+        let pin_net_no = pin_item.get_net_number(0);
+        let pin_layer = pin_item.first_layer(&ctx);
+        // `pin.getConnectedSet(pinNetNo)` is the `stopAtPlane = false` overload
+        // (Item.java:596-598), the same one `AutorouteConnectionRouter.route:55` takes.
+        let pin_connected_set = self.connected_set(pin, pin_net_no, false);
+        // :991-996 — quirk #44's descending id order, which cannot change the answer here (the
+        // loop returns on the first non-conforming item and the predicate is per item) but is the
+        // convention every `TreeSet<Item>` walk in this port keeps.
+        for current_item in pin_connected_set.iter().rev() {
+            let Some(item) = self.get_item(*current_item) else {
+                continue;
+            };
+            if item.first_layer(&ctx) != pin_layer || item.last_layer(&ctx) != pin_layer {
+                return already_connected();
+            }
+        }
+        // :997-1001.
+        let unconnected_set = self.unconnected_set(pin, pin_net_no);
+        if unconnected_set.is_empty() {
+            return AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::NoUnconnectedNets,
+                format!("The pin '{pin_item}' is already connected."),
+            );
+        }
+
+        // :1002-1021 — the targets, sorted by the **squared** distance from the pin centre to the
+        // midpoint of each item's bounding box.
+        //
+        // `sortedUnconnectedList` is `new ArrayList<>(unconnectedSet)`, i.e. the `TreeSet<Item>`'s
+        // **ascending** id order, and `List.sort` is TimSort, which is **stable** — so ties keep
+        // that ascending order. `sort_by` is Rust's stable sort, and the key is built the way
+        // Java builds it: `int` midpoint sums divided by `2.0`, then a `double` difference.
+        let pin_center = pin_center_of(self, pin).to_float();
+        let sorted_unconnected_list =
+            sorted_unconnected_targets(self, &pin_center, &unconnected_set);
+
+        // :1023-1024 — the three-argument constructor (AutorouteControl.java:117-120), which is
+        // `settings.getTraceCosts()` / `settings.getViaCosts()`.
+        //
+        // pub seam discharged: `AutorouteControl::from_settings`' marker names "Plan 7's fanout
+        // pre-pass", and this is that call site.
+        let mut ctrl_settings = AutorouteControl::from_settings(self, pin_net_no, router_settings);
+        ctrl_settings.is_fanout = true;
+
+        // :1025-1044 — the `fallbackToBoardVias` combined rule.
+        //
+        // This is the run-time-synthesised `ViaRule` that made Plan 7 Task 0 a prerequisite: it is
+        // in no list, so `AutorouteControl::via_rule` has to **own** its rule (see that field).
+        let fallback_to_board_vias = router_settings
+            .fanout
+            .as_ref()
+            .and_then(|f| f.fallback_to_board_vias)
+            .unwrap_or(false);
+        if fallback_to_board_vias && ctrl_settings.via_rule.is_some() {
+            let net_class_rule = ctrl_settings
+                .via_rule
+                .clone()
+                .expect("guarded by the `is_some` above");
+            // :1026-1041.
+            let combined_via_rule =
+                combined_fallback_via_rule(&net_class_rule, &self.rules.via_rules);
+            // :1042-1043.
+            ctrl_settings.via_rule = Some(combined_via_rule);
+            ctrl_settings.rebuild_via_info(self, router_settings.get_via_costs(), pin_net_no);
+        }
+
+        // :1045-1050.
+        //
+        // `this.components.get(pin.getComponentId())` runs **unconditionally** at `:1045`, before
+        // `:1046`'s two-part test, and `Components.get` is `elementAt(componentId - 1)` with no
+        // bounds check (Components.java:84-94) — so Java's `pinComponent != null` is dead: the
+        // lookup either answers an object or throws. The port keeps the shape and lets
+        // `Components::get` panic where Java throws; `getSmdPins()` only ever answers `Pin`s, and
+        // a `Pin` is created with a 1-based component number, so neither happens.
+        let component_name = self.components.get(pin_item.component_id()).name.clone();
+        let pin_name = match self.get_item(pin) {
+            Some(Item::Pin(p)) => p.name(&ctx).map(str::to_owned),
+            _ => None,
+        };
+        ctrl_settings.fanout_start_pin_name = match pin_name {
+            Some(name) => Some(format!("{component_name}-{name}")), // :1047
+            None => Some(format!("{pin_item}")),                    // :1049
+        };
+        ctrl_settings.fanout_start_pin_center = Some(pin_center_of(self, pin)); // :1051
+        ctrl_settings.fanout_start_pin_layer =
+            i32::try_from(pin_layer).expect("a board layer index"); // :1052
+        ctrl_settings.remove_unconnected_vias = false; // :1053
+        // :1054-1057. "Ripup is allowed if ripupCosts >= 0" — `BatchFanout.java:183` passes `-1`
+        // to switch it off.
+        if ripup_costs >= 0 {
+            ctrl_settings.ripup_allowed = true;
+            ctrl_settings.ripup_costs = ripup_costs;
+        }
+
+        // :1058-1061. `retainAutorouteDatabase = false` (ruling AJ's value anyway).
+        let mut ripped_item_list: BTreeSet<ItemId> = BTreeSet::new();
+        *engine = Some(self.init_autoroute(
+            engine.take(),
+            pin_net_no,
+            ctrl_settings.trace_clearance_class_index,
+            time_limit,
+            false,
+        ));
+        let autoroute_engine = engine
+            .as_mut()
+            .expect("initAutoroute always answers an engine");
+
+        // :1063-1092.
+        let mut result: Option<AutorouteAttemptResult> = None; // :1063
+        if sorted_unconnected_list.len() <= 4 {
+            // :1064-1085.
+            if let Some(closest_target) = sorted_unconnected_list.first().copied() {
+                // :1066-1074 — "try to route to the closest target first".
+                let mut single_target = BTreeSet::new();
+                single_target.insert(closest_target);
+                let first = autoroute_engine.autoroute_connection(
+                    self,
+                    &pin_connected_set,
+                    &single_target,
+                    &ctrl_settings,
+                    &mut ripped_item_list,
+                    // `null` — "costs not needed here" (`:1073`).
+                    None,
+                    stop,
+                );
+                // :1076-1085 — "if that fails and we have other targets, fall back to searching
+                // the entire unconnected set at once". Quirk #221: the **same** `rippedItemList`.
+                let retry = first.state != AutorouteAttemptState::Routed
+                    && first.state != AutorouteAttemptState::AlreadyConnected
+                    && sorted_unconnected_list.len() > 1;
+                result = Some(if retry {
+                    autoroute_engine.autoroute_connection(
+                        self,
+                        &pin_connected_set,
+                        &unconnected_set,
+                        &ctrl_settings,
+                        &mut ripped_item_list,
+                        None,
+                        stop,
+                    )
+                } else {
+                    first
+                });
+            }
+        } else {
+            // :1086-1092.
+            result = Some(autoroute_engine.autoroute_connection(
+                self,
+                &pin_connected_set,
+                &unconnected_set,
+                &ctrl_settings,
+                &mut ripped_item_list,
+                None,
+                stop,
+            ));
+        }
+
+        // :1093-1097. Reachable only through the `<= 4` arm's empty list, which
+        // `:997-1001` has already excluded — so this is Java's belt-and-braces, kept because the
+        // state it names has no other producer.
+        let result = result.unwrap_or_else(|| {
+            AutorouteAttemptResult::with_details(
+                AutorouteAttemptState::Failed,
+                "No target items to route connection.".to_string(),
+            )
+        });
+
+        // :1099-1108. Note the **net-filtered** `new int[]{pinNetNo}`, unlike
+        // `AutorouteConnectionRouter.route`'s step 6, which passes `new int[0]`.
+        if result.state == AutorouteAttemptState::Routed {
+            let trace_costs = ctrl_settings.trace_costs.clone();
+            self.opt_changed_area(
+                engine.as_mut(),
+                &[pin_net_no],
+                None,
+                router_settings
+                    .trace_pull_tight_accuracy
+                    .expect("RoutingBoard.fanout:1103 unboxes tracePullTightAccuracy; null NPEs"),
+                Some(&trace_costs),
+                stop,
+                budget.opt_changed_area_ms,
+            )
+            // The same reasoning as `route_connection_full`'s step 6: an `Err` here is Java
+            // throwing out of the tightener family, and `BatchFanout` has no `catch` of its own —
+            // `AutorouteBatchLoop.java:89-173` does not wrap the fanout in one either, so the
+            // throw escapes the stage exactly as this panic does.
+            .expect("optChangedArea throws out of RoutingBoard.fanout in Java too");
+        }
+        result // :1109
+    }
 }
 
 /// `RoutingBoardOperations.java:18` — the pull-tight budget `removeItemsAndPullTight` hands
@@ -1182,6 +1448,94 @@ const PULL_TIGHT_TIME_LIMIT: i32 = 2000;
 /// `RoutingBoard.insertForcedTracePolyline:536-542` and `:676-681`, which are the same four
 /// lines twice: with a picked trace to combine with, the new polyline is combined with that
 /// trace's own polyline; without one it is used as it is.
+/// `RoutingBoard.fanout:1002-1021` — the unconnected set as a list, sorted by the **squared**
+/// distance from `pin_center` to the midpoint of each item's bounding box.
+///
+/// Lifted out of [`RoutingBoardExt::fanout`] so that `crates/fr-router/tests/fanout_order.rs` can
+/// reach the sort without routing a board; `fanout` is its only production caller, and the body is
+/// Java's `Comparator` verbatim.
+///
+/// # Stability is load-bearing
+///
+/// `sortedUnconnectedList` starts as `new ArrayList<>(unconnectedSet)` (`:1003`), i.e. the
+/// `TreeSet<Item>`'s **ascending id** order, and `List.sort` is TimSort, which is **stable** — so
+/// two targets at the same squared distance keep ascending id order. `sort_by` is Rust's stable
+/// sort, and `sort_unstable_by` here would be a silent divergence on every symmetric board.
+pub fn sorted_unconnected_targets(
+    board: &Board,
+    pin_center: &fr_geometry::FloatPoint,
+    unconnected_set: &BTreeSet<ItemId>,
+) -> Vec<ItemId> {
+    let ctx = board.ctx();
+    let dist_sq = |id: ItemId| -> f64 {
+        // :1005-1013 / :1015-1017.
+        let bx = board
+            .get_item(id)
+            .expect("an unconnected-set item")
+            .bounding_box(&ctx);
+        // `(box.ll.x + box.ur.x) / 2.0` — Java adds two `int`s and *then* divides, so the sum is
+        // `int` arithmetic; board coordinates cannot overflow it.
+        let cx = f64::from(bx.ll.x + bx.ur.x) / 2.0;
+        let cy = f64::from(bx.ll.y + bx.ur.y) / 2.0;
+        let dx = cx - pin_center.x;
+        let dy = cy - pin_center.y;
+        dx * dx + dy * dy
+    };
+    let mut list: Vec<ItemId> = unconnected_set.iter().copied().collect();
+    // `Double.compare` (`:1019`). Both operands are finite and non-negative here, so `total_cmp`
+    // is that function; the two differ only for a **negative** NaN, which a sum of two squares
+    // cannot be.
+    list.sort_by(|item1, item2| dist_sq(*item1).total_cmp(&dist_sq(*item2)));
+    list
+}
+
+/// `RoutingBoard.fanout:1026-1041` — the `fallbackToBoardVias` rule: a fresh `ViaRule` named
+/// `<netClassRule.name>_fallback` holding the net class's vias, plus every via of
+/// `rules.viaRules.firstElement()` the merge does not already hold.
+///
+/// Lifted out of [`RoutingBoardExt::fanout`] for the same reason as
+/// [`sorted_unconnected_targets`], and because this is the site controller ruling AN names: `:1037`
+/// is [`ViaRule::contains`], which is Java's `==` — **object identity** — so a
+/// `.rules` file that re-declares a `(via …)` with identical values and then re-declares the
+/// `(via_rule …)` naming it makes Java append a duplicate here. Quirk **#218**.
+///
+/// `board_via_rules` is `this.rules.viaRules`; `:1034`'s `isEmpty()` guard is what keeps
+/// `Vector.firstElement()` from throwing, and the port's `first()` answers `None` in the same
+/// case.
+pub fn combined_fallback_via_rule(
+    net_class_rule: &ViaRule,
+    board_via_rules: &[ViaRule],
+) -> ViaRule {
+    // :1028-1032.
+    let mut combined_via_rule = ViaRule::new(format!("{}_fallback", net_class_rule.name));
+    for i in 0..net_class_rule.via_count() {
+        combined_via_rule.append_via(net_class_rule.get_via(i).clone());
+    }
+    // :1033-1040.
+    if let Some(default_via_rule) = board_via_rules.first() {
+        for i in 0..default_via_rule.via_count() {
+            let default_via = default_via_rule.get_via(i);
+            // :1037 — object identity, not value equality: a value comparison would drop a via
+            // the JVM appends.
+            if !combined_via_rule.contains(default_via) {
+                combined_via_rule.append_via(default_via.clone()); // :1038
+            }
+        }
+    }
+    combined_via_rule
+}
+
+/// `pin.getCenter()` (board/model/items/Pin.java:871-...) for a board item known to be a `Pin`.
+/// Not a Java helper — Java calls the method on the `Pin` the signature already gives it, while
+/// this port reaches the item through the board.
+fn pin_center_of(board: &Board, pin: ItemId) -> Point {
+    let ctx = board.ctx();
+    match board.get_item(pin) {
+        Some(Item::Pin(p)) => p.get_center(&ctx),
+        _ => panic!("RoutingBoard.fanout takes a Pin"),
+    }
+}
+
 fn combine_with_picked(new_polyline: &Polyline, picked: Option<&Polyline>) -> Polyline {
     let Some(combine_polyline) = picked else {
         return new_polyline.clone();

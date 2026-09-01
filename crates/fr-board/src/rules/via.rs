@@ -4,6 +4,7 @@
 
 use std::cmp::Ordering;
 use std::fmt;
+use std::num::NonZeroU64;
 
 use crate::ids::{PadstackId, ViaInfoId, ViaRuleId};
 
@@ -17,7 +18,15 @@ use super::PadstackLookup;
 ///
 /// not ported: `ViaInfo.printInfo` (ViaInfo.java:86-107) — `ItemInfoPrinter.Printable`, GUI
 /// only.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// # Object identity
+///
+/// `ViaInfo.java` declares neither `equals` nor `hashCode`, so **every `==` on a `ViaInfo` in
+/// Java is object identity**, and `ViaRule.contains` (ViaRule.java:55-62) is written as exactly
+/// that (`:57`). Plan 7 Task 0 made a [`ViaRule`] hold owned copies rather than indices, which is
+/// the port's spelling of a Java reference — but a copy alone cannot say *which* object it is a
+/// copy of. The private `serial` field does: see [`Self::is_same_object`].
+#[derive(Clone, Eq)]
 pub struct ViaInfo {
     /// `ViaInfo.name` (ViaInfo.java:16).
     name: String,
@@ -27,6 +36,27 @@ pub struct ViaInfo {
     clearance_class_index: usize,
     /// `ViaInfo.attachSmdAllowed` (ViaInfo.java:19).
     attach_smd_allowed: bool,
+    /// This port's spelling of **Java object identity**, and nothing else — see
+    /// [`Self::is_same_object`] and quirk #218.
+    ///
+    /// # Why it is not a process-wide counter
+    ///
+    /// `fr_geometry::Line` carries the same idea through a `static AtomicU64` (controller ruling
+    /// AE), and the plan's Global Constraints record that static as the *one* exception to "no
+    /// static mutable state". This field needs no second exception: **every `ViaInfo` that can
+    /// reach a [`ViaRule`] in production is first added to a [`ViaInfos`]**
+    /// (`Network.addViaRule` (Network.java:405-408), `BoardRules::create_default_via_rule` and
+    /// `Network.createViaRule` all fetch theirs out of `board.rules.viaInfos` by name), so
+    /// [`ViaInfos::add`] is the single place a `ViaInfo` becomes an object with a life of its
+    /// own, and the counter that stamps it lives on that container.
+    ///
+    /// A `ViaInfo` that has never been added to a `ViaInfos` carries `None` and is therefore
+    /// **not the same object as anything, itself included**. Java has no such value — the field
+    /// is the port's, not Java's — and the asymmetry is deliberate: answering "same object" for
+    /// two freshly built, never-registered values would be the *false positive* this field
+    /// exists to prevent. The serial takes no part in `PartialEq`/`Eq`/`Hash`, so no ordering,
+    /// no golden file and no writer can observe it.
+    serial: Option<NonZeroU64>,
 }
 
 impl ViaInfo {
@@ -43,7 +73,21 @@ impl ViaInfo {
             padstack,
             clearance_class_index,
             attach_smd_allowed: drill_to_smd_allowed,
+            // Stamped by [`ViaInfos::add`], the one place a `ViaInfo` becomes a registered
+            // object — see the `serial` field.
+            serial: None,
         }
+    }
+
+    /// Java's `viaInfo == currentInfo` — **reference** identity, not the structural `==` this
+    /// type derives for everything else. Read by [`ViaRule::contains`] (ViaRule.java:57), which
+    /// is the dedup guard `RoutingBoard.fanout:1037` merges two rules through.
+    ///
+    /// True exactly for two values copied from the same [`ViaInfos::add`]; `false` for two
+    /// value-equal via infos registered separately, which is the divergence quirk #218 records,
+    /// and `false` for any via info that was never registered (see the `serial` field).
+    pub fn is_same_object(&self, other: &ViaInfo) -> bool {
+        self.serial.is_some() && self.serial == other.serial
     }
 
     /// Port of `ViaInfo.getName` (ViaInfo.java:36-38).
@@ -99,6 +143,34 @@ impl ViaInfo {
     }
 }
 
+/// The identity serial is invisible in `Debug`, so no committed transcript, golden file or
+/// panic message can see a token — the `fr_geometry::Line` contract (controller ruling AE),
+/// applied to the same problem one crate over.
+impl fmt::Debug for ViaInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ViaInfo")
+            .field("name", &self.name)
+            .field("padstack", &self.padstack)
+            .field("clearance_class_index", &self.clearance_class_index)
+            .field("attach_smd_allowed", &self.attach_smd_allowed)
+            .finish()
+    }
+}
+
+/// Structural, as Java's `ViaInfo` has no `equals` at all: the port's `==` is the *value*
+/// comparison `BoardRules::create_default_via_rule` and the round-trip tests want, and
+/// [`ViaInfo::is_same_object`] is the reference comparison Java's own `==` performs. The
+/// identity serial is invisible here, so the `Eq`/`Hash` pair stays lawful and no committed
+/// transcript can see a token.
+impl PartialEq for ViaInfo {
+    fn eq(&self, other: &ViaInfo) -> bool {
+        self.name == other.name
+            && self.padstack == other.padstack
+            && self.clearance_class_index == other.clearance_class_index
+            && self.attach_smd_allowed == other.attach_smd_allowed
+    }
+}
+
 impl fmt::Display for ViaInfo {
     // renamed: ViaInfo.toString -> Display::fmt (ViaInfo.java:46-48 returns `name`).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -110,10 +182,35 @@ impl fmt::Display for ViaInfo {
 ///
 /// not ported: `ViaInfos.printInfo` (ViaInfos.java:67-87) — `ItemInfoPrinter.Printable`, GUI
 /// only.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct ViaInfos {
     /// `ViaInfos.list` (ViaInfos.java:16).
     list: Vec<ViaInfo>,
+    /// The identity counter behind [`ViaInfo::is_same_object`] — see that method and the
+    /// `ViaInfo::serial` field. Not a Java field: Java gets object identity from the allocator.
+    ///
+    /// It is deliberately **per container** rather than process-wide, so the port keeps its "no
+    /// static mutable state" constraint (the `fr_geometry::Line` counter is its one recorded
+    /// exception). Two different boards therefore mint the same serials; nothing compares via
+    /// infos across boards, and a [`Board`](crate::Board) clone keeps its own consistent.
+    next_serial: NonZeroU64,
+}
+
+impl Default for ViaInfos {
+    fn default() -> ViaInfos {
+        ViaInfos {
+            list: Vec::new(),
+            next_serial: NonZeroU64::MIN,
+        }
+    }
+}
+
+/// The counter is invisible here, exactly as the per-entry serial is: two via-info lists with
+/// the same entries are equal however many replacements each has been through.
+impl PartialEq for ViaInfos {
+    fn eq(&self, other: &ViaInfos) -> bool {
+        self.list == other.list
+    }
 }
 
 impl ViaInfos {
@@ -124,10 +221,27 @@ impl ViaInfos {
 
     /// Port of `ViaInfos.add` (ViaInfos.java:22-28): appends `via_info` unless its name is
     /// already taken, in which case it returns false and changes nothing.
-    pub fn add(&mut self, via_info: ViaInfo) -> bool {
+    ///
+    /// This is also the one place a `ViaInfo` acquires its identity serial — see
+    /// [`ViaInfo::is_same_object`]. Java gets that from `new ViaInfo(...)`; the port cannot stamp
+    /// in the constructor without a process-wide counter, and every via info a [`ViaRule`] can
+    /// hold in production passes through here first.
+    ///
+    /// Adding a via info that already carries a serial — one cloned back out of a list — gives it
+    /// a **fresh** one, i.e. treats it as a new object. No production path does that: the two
+    /// callers are the DSN/`.rules` readers with a freshly parsed `ViaInfo`, and
+    /// [`BoardRules::replace_via_info`](super::BoardRules::replace_via_info), whose replacement is
+    /// likewise fresh. A [`Board`](crate::Board) clone copies the list rather than re-adding, so
+    /// a cloned board's serials are its original's.
+    pub fn add(&mut self, mut via_info: ViaInfo) -> bool {
         if self.name_exists(via_info.get_name()) {
             return false;
         }
+        via_info.serial = Some(self.next_serial);
+        self.next_serial = self
+            .next_serial
+            .checked_add(1)
+            .expect("via-info serials cannot wrap");
         self.list.push(via_info);
         true
     }
@@ -242,31 +356,30 @@ impl super::BoardRules {
         ViaInfoId(self.via_infos.count() - 1)
     }
 
-    /// The same fix one level up: [`Self::via_rules`] is a `Vec` and [`crate::NetClass`] holds a
-    /// [`ViaRuleId`] index into it, so removing a rule from the middle shifts every later index.
+    /// Port of `Network.addViaRule`'s replacement half (Network.java:413-417):
+    /// `board.rules.viaRules.remove(existingRule); board.rules.viaRules.add(currentRule);` — a
+    /// remove-then-append that moves the rule to the **tail** of [`Self::via_rules`]. Reached
+    /// from `io/specctra/RulesReader.java:352-357` for every `(via_rule …)` in a `.rules` file.
     ///
-    /// Java's `Network.addViaRule` (Network.java:394-419) — reached from
-    /// `io/specctra/RulesReader.java:352-357` for every `(via_rule …)` in a `.rules` file —
-    /// "replaces an already existing via rule with the same name" by
-    /// `board.rules.viaRules.remove(existingRule); board.rules.viaRules.add(currentRule);`. Its
-    /// `Vector<ViaRule>` holds objects and `NetClass.viaRule` is an object reference
-    /// (NetClass.java:28), so no net class notices. This port's indices do, and the observable
-    /// symptom is a net class silently acquiring a *different* rule's vias — caught by
-    /// `rules_state_matches_java_issue107_bad`, where `1A_EXTERNAL_1oz`'s class would otherwise
-    /// end up on `Breiter`.
+    /// **No net class is rewritten. Java rewrites none either, and that is the whole point.**
+    /// `NetClass.viaRule` (NetClass.java:28) is an object reference, so a class that pointed at
+    /// the removed rule keeps holding it — a **detached original**, no longer in
+    /// [`Self::via_rules`] at all, and still the rule `AutorouteControl.initNet:210` reads.
+    /// Since Plan 7 Task 11 a [`crate::NetClass`] holds an **owned** [`ViaRule`], which is this
+    /// port's spelling of that aliasing, so this method is Java's two lines and nothing else.
     ///
-    /// The mapping is the one [`Self::replace_via_info`] used before Plan 7 Task 0, and so is the
-    /// divergence it carries: a net class that pointed at the *replaced* rule is re-pointed at the
-    /// replacement, where Java keeps the detached original. Both rules carry the same name (that
-    /// is what made them a replacement), so **no Plan 3 writer can distinguish them** —
-    /// `Network.writeNetClass` (Network.java:130) emits `viaRule.name`. But the **router-visible
-    /// content differs**: the two rules hold different via lists, which is precisely what the
-    /// router reads a net class's via rule for. Reachable whenever a `.rules` file re-declares a
-    /// `(via_rule …)` the `.dsn` already defined; **still open** — Plan 7 Task 0 closed ruling H's
-    /// *via-info* half (`ViaRule` owns its `ViaInfo`s) and left this, the *via-rule* half,
-    /// untouched, because `NetClass::via_rule` is a `ViaRuleId` into [`Self::via_rules`] and no
-    /// ruling has been taken on making it own its rule. See the "Via-info / via-rule re-pointing"
-    /// row in `docs/java-quirks.md`.
+    /// # Ruling H, closed — the via-rule half (Plan 7 Task 11, controller ruling AN)
+    ///
+    /// Until Task 11 this method was `replace_via_rule_renumbering_net_classes`, and it
+    /// **re-pointed** every net class at the replacement. The task built the repro the Task 0
+    /// review could not: `Issue143-rpi_splitter.dsn` is the one corpus stem whose net class holds
+    /// the *first* rule of its name (every other stem carries two rules named `default` and binds
+    /// the class to the second, so `BoardRules::get_via_rule` can only ever find the orphan), and
+    /// a one-line `.rules` file re-declaring `(via_rule default)` **empty** made
+    /// `scripts/differential/run.sh p6t1 …/Issue143-rpi_splitter.dsn 8 1 <rules>` DIFF on all
+    /// eight connections: the jar still placed vias (its class kept the original one-via rule)
+    /// while the port placed none. With the ownership change the same command MATCHes —
+    /// `crates/fr-router/tests/data/p7t11-ruling-h-viarule.txt` is the transcript.
     ///
     /// Returns the new tail id.
     ///
@@ -274,33 +387,19 @@ impl super::BoardRules {
     ///
     /// Panics if `old_id` is out of range for [`Self::via_rules`].
     //
-    // obligation: Network.addViaRule — the *renumbering* half is discharged here (the same
-    // index-model hazard `replace_via_info` carried before Plan 7 Task 0, discovered by Task 14's
-    // Issue107 golden); the re-pointing divergence above is still OPEN, see docs/java-quirks.md's
-    // obligation register row "Via-info / via-rule re-pointing" (via-rule half).
-    // added in Plan 3: Task 14
-    pub fn replace_via_rule_renumbering_net_classes(
-        &mut self,
-        old_id: ViaRuleId,
-        new_rule: ViaRule,
-    ) -> ViaRuleId {
+    // renamed: Network.addViaRule's replacement half -> BoardRules::replace_via_rule (was
+    // `replace_via_rule_renumbering_net_classes` before Plan 7 Task 11).
+    // added in Plan 3: Task 14; rewritten in Plan 7 Task 11 (controller ruling AN closes the
+    // via-rule half of ruling H).
+    pub fn replace_via_rule(&mut self, old_id: ViaRuleId, new_rule: ViaRule) -> ViaRuleId {
         assert!(
             old_id.0 < self.via_rules.len(),
-            "replace_via_rule_renumbering_net_classes: old_id {} out of range",
+            "replace_via_rule: old_id {} out of range",
             old_id.0
         );
         self.via_rules.remove(old_id.0);
         self.via_rules.push(new_rule);
-        let new_id = ViaRuleId(self.via_rules.len() - 1);
-        for i in 0..self.net_classes.count() {
-            let net_class = self.net_classes.get_mut(crate::ids::NetClassId(i));
-            match net_class.get_via_rule() {
-                Some(id) if id == old_id => net_class.set_via_rule(Some(new_id)),
-                Some(id) if id.0 > old_id.0 => net_class.set_via_rule(Some(ViaRuleId(id.0 - 1))),
-                _ => {}
-            }
-        }
-        new_id
+        ViaRuleId(self.via_rules.len() - 1)
     }
 }
 
@@ -422,9 +521,12 @@ impl ViaRule {
     }
 
     /// Port of `ViaRule.contains` (ViaRule.java:55-62). Java's loop body is a literal
-    /// `viaInfo == currentInfo` (`:57`) — object **identity**; the port compares by value.
+    /// `viaInfo == currentInfo` (`:57`) — object **identity**, because `ViaInfo.java` declares
+    /// no `equals` — and since Plan 7 Task 11 so is this: the comparison is
+    /// [`ViaInfo::is_same_object`], not `==`.
     ///
-    /// **This deviation is NOT covered by [`Self::remove_via`]'s guard, and it is live.**
+    /// # Why identity, and what it changes
+    ///
     /// `contains` has exactly one non-GUI Java caller, and it is a *dedup* guard across **two
     /// separately built rules**:
     ///
@@ -433,7 +535,7 @@ impl ViaRule {
     /// ViaRule combinedViaRule = new ViaRule(ctrlSettings.viaRule.name + "_fallback");
     /// for (int i = 0; i < ctrlSettings.viaRule.viaCount(); i++)     // :1030-1032
     ///   combinedViaRule.appendVia(ctrlSettings.viaRule.getVia(i));
-    /// ViaRule defaultViaRule = this.rules.viaRules.firstElement();  // :1034
+    /// ViaRule defaultViaRule = this.rules.viaRules.firstElement();  // :1035
     /// for (int i = 0; i < defaultViaRule.viaCount(); i++) {
     ///   ViaInfo defaultVia = defaultViaRule.getVia(i);
     ///   if (!combinedViaRule.contains(defaultVia))                  // :1037
@@ -441,27 +543,24 @@ impl ViaRule {
     /// }
     /// ```
     ///
-    /// Java's `==` dedups only *identical objects*, so two rules built at different moments can
-    /// hold value-equal-but-distinct `ViaInfo`s — a `.rules` file that re-declares a `(via …)`
-    /// with identical values and then a `(via_rule …)` rebuilt from the new list is the repro —
-    /// and there **Java appends a duplicate where this port silently skips it**. That changes
-    /// `combinedViaRule`'s length and order, which `:1042-1043` feeds straight into
+    /// Two rules built at different moments can hold value-equal-but-distinct `ViaInfo`s — a
+    /// `.rules` file that re-declares a `(via …)` with identical values (`RulesReader.applyViaInfo`
+    /// registers a **new** object) and then re-declares the `(via_rule …)` that names it — and
+    /// there Java **appends a duplicate** where a value comparison silently skips it. That
+    /// changes `combinedViaRule`'s length and order, which `:1042-1043` feeds straight into
     /// `AutorouteControl.rebuildViaInfo`. It is the same aliasing ruling H closed, one method
-    /// over.
+    /// over; quirk **#218** records it and
+    /// `crates/fr-router/tests/fanout_order.rs`'s
+    /// `the_combined_via_rule_appends_a_value_equal_via_from_a_second_rule` pins it.
     ///
-    /// Not reachable at Plan 7 Task 0: `RoutingBoard.fanout` is not ported yet. The fanout task
-    /// acquires this caller and owns making it reference-faithful — controller **ruling AN**.
+    /// A via info that was never registered with a [`ViaInfos`] has no identity and is contained
+    /// in nothing — see the `ViaInfo::serial` field for why that asymmetry is the safe one.
+    ///
     /// (`gui/windows/routing/WindowEditVias.java:191` and `WindowViaRule.java:148` are the other
     /// two callers, both out of scope.)
-    //
-    // obligation: RoutingBoard.fanout (board/facade/RoutingBoard.java:1037) — `ViaRule.contains`
-    // is Java's `==` and this port's value comparison; the fanout merge at :1028-1041 is the one
-    // non-GUI caller and the first place the difference is observable. Addressed to **Plan 7
-    // Task 11** (the fanout task) by controller ruling AN; see docs/java-quirks.md's via-info /
-    // via-rule re-pointing row.
-    // added in Plan 7: Task 0
+    // added in Plan 7: Task 0; made reference-faithful in Task 11 (controller ruling AN).
     pub fn contains(&self, via_info: &ViaInfo) -> bool {
-        self.vias.iter().any(|v| v == via_info)
+        self.vias.iter().any(|v| v.is_same_object(via_info))
     }
 
     /// Port of `ViaRule.containsPadstack` (ViaRule.java:65-72): true if any via in this rule uses
@@ -711,11 +810,13 @@ mod tests {
         }
     }
 
-    /// `Network.addViaRule` (Network.java:394-419) reached a second time, from
-    /// `RulesReader.applyViaRule`: the replaced rule moves to the tail and every
-    /// `NetClass::via_rule` index has to follow.
+    /// `Network.addViaRule`'s replacement half is Java's two lines and nothing else, since
+    /// Plan 7 Task 11: the replaced rule leaves [`BoardRules::via_rules`] and the replacement is
+    /// appended to the tail, and **no net class is touched** — a class that held the replaced
+    /// rule keeps its own copy of the detached original, which is exactly what
+    /// `NetClass.viaRule`'s object reference does in Java.
     #[test]
-    fn replace_via_rule_renumbers_every_net_class() {
+    fn replace_via_rule_leaves_every_net_class_holding_what_it_held() {
         let layer_structure = crate::structure::LayerStructure::new(vec![
             crate::structure::Layer::new("F.Cu", true),
             crate::structure::Layer::new("B.Cu", true),
@@ -723,33 +824,40 @@ mod tests {
         let clearance_matrix =
             crate::rules::ClearanceMatrix::new(2, &layer_structure, &["null", "default"]);
         let mut rules = super::super::BoardRules::new(layer_structure.clone(), clearance_matrix);
-        rules.via_rules.push(ViaRule::new("default"));
+        let mut original = ViaRule::new("default");
+        rules
+            .via_infos
+            .add(ViaInfo::new("A", PadstackId(0), 1, false));
+        original.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
+        rules.via_rules.push(original.clone());
         rules.via_rules.push(ViaRule::new("wide"));
         rules.via_rules.push(ViaRule::new("narrow"));
 
         let a = rules.net_classes.append("a", &layer_structure, false);
         let b = rules.net_classes.append("b", &layer_structure, false);
         let c = rules.net_classes.append("c", &layer_structure, false);
-        rules
-            .net_classes
-            .get_mut(a)
-            .set_via_rule(Some(ViaRuleId(0)));
+        rules.net_classes.get_mut(a).set_via_rule(Some(original));
         rules
             .net_classes
             .get_mut(b)
-            .set_via_rule(Some(ViaRuleId(2)));
+            .set_via_rule(Some(ViaRule::new("narrow")));
         rules.net_classes.get_mut(c).set_via_rule(None);
 
-        let new_id =
-            rules.replace_via_rule_renumbering_net_classes(ViaRuleId(0), ViaRule::new("default"));
+        let new_id = rules.replace_via_rule(ViaRuleId(0), ViaRule::new("default"));
 
         assert_eq!(new_id, ViaRuleId(2));
         let names: Vec<&str> = rules.via_rules.iter().map(|r| r.name.as_str()).collect();
         assert_eq!(names, ["wide", "narrow", "default"]);
-        // `a` pointed at the replaced rule -> the replacement; `b` pointed past it -> shifted
-        // down by one, still `narrow`; `c` had none.
-        assert_eq!(rules.net_classes.get(a).get_via_rule(), Some(ViaRuleId(2)));
-        assert_eq!(rules.net_classes.get(b).get_via_rule(), Some(ViaRuleId(1)));
+        // `a` held the replaced rule and still holds it, vias and all — the detached original
+        // Java's `NetClass.viaRule` keeps (NetClass.java:28). The replacement is empty.
+        let a_rule = rules.net_classes.get(a).get_via_rule().expect("a's rule");
+        assert_eq!(a_rule.name, "default");
+        assert_eq!(a_rule.via_count(), 1);
+        assert_eq!(rules.via_rules[2].via_count(), 0);
+        assert_eq!(
+            rules.net_classes.get(b).get_via_rule().map(|r| &r.name),
+            Some(&"narrow".to_string())
+        );
         assert_eq!(rules.net_classes.get(c).get_via_rule(), None);
     }
 

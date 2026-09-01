@@ -940,11 +940,12 @@ impl FoundConnectionInserter {
         // :701.
         let via_rule = ctrl
             .via_rule
+            .as_ref()
             .expect("FoundConnectionInserter.insertVia:701 dereferences ctrl.viaRule (NPE)");
-        let via_count = board.rules.via_rules[via_rule.0].via_count();
+        let via_count = via_rule.via_count();
         for i in 0..via_count {
             // :702-703.
-            let current_via_info = board.rules.via_rules[via_rule.0].get_via(i).clone();
+            let current_via_info = via_rule.get_via(i).clone();
             let current_via_padstack = current_via_info.get_padstack();
             // :704-706.
             let padstack_from = board
@@ -1033,7 +1034,7 @@ fn java_int(layer: usize) -> i32 {
 mod tests {
     use std::cell::Cell;
 
-    use fr_board::ids::{PadstackId, ViaInfoId, ViaRuleId};
+    use fr_board::ids::{PadstackId, ViaInfoId};
     use fr_board::prelude::*;
     use fr_board::rules::{ViaInfo, ViaRule};
     use fr_geometry::{IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
@@ -1141,7 +1142,7 @@ mod tests {
         rules
             .net_classes
             .get_mut(default_class)
-            .set_via_rule(Some(ViaRuleId(0)));
+            .set_via_rule(Some(rules.via_rules[0].clone()));
 
         let mut board = Board::new(
             Vec::new(),

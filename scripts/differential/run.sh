@@ -32,7 +32,7 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t6, p7t7, p7t10, p7t1, p7t2, p7t9" >&2
+  echo "           p7t5, p7t6, p7t7, p7t10, p7t1, p7t2, p7t9" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -374,6 +374,37 @@ case "$driver" in
     extra_jar_sources=("$DIFF_ROOT/java/P7T2.java")
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     run_timeout="${P7T9_TIMEOUT:-3600}"
+    ;;
+  p7t5)
+    # Plan 7 Task 11: `BatchFanout`'s component/pin ordering (BatchFanout.java:35-78, :631-693,
+    # :695-778) and `RoutingBoard.fanout` (RoutingBoard.java:978-1110). Declares
+    # `package app.freerouting.autoroute.pipeline` — `BatchFanout`'s constructor, its
+    # `sortedComponents` field and its two nested classes are all private, so the driver reads
+    # them with `setAccessible(true)` the way `P7T2` reads `reusableHandledItems`, and being in
+    # the package is what lets it see the class at all. `P7T2.java` is compiled alongside because
+    # `P7T5` loads its board and builds its settings through P7T2's shared statics, so the four
+    # `p7t*` drivers cannot describe different boards.
+    #
+    # `<dsn> [passNo] [sortingOrder] [order|pin]`. Mode `order` prints `sortedComponents x
+    # smdPins` for **all five** `pinSortingOrder` strings (the four the comparator recognises plus
+    # one it does not) and ignores the `sortingOrder` argument; mode `pin` walks that order and
+    # calls the real `RoutingBoard.fanout` on every SMD pin. Acceptance is 0 diffs on the three
+    # brief-named DSNs and the six corpus stems, both modes.
+    #
+    # The per-pin `TimeLimit` is `Integer.MAX_VALUE` on both sides (ruling AI); the 1000 ms
+    # `timeLimitToPreventEndlessLoop` inside `fanout` is a `javac`-inlined local, so the port runs
+    # `RouterBudget::disabled()` against this side's live limit and a MATCH proves it never trips.
+    #
+    # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
+    # sweeps this driver too: `boardShape` reaches `DesignRulesChecker`, which iterates
+    # `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3-4).
+    javaclass=P7T5
+    javapkg="autoroute.pipeline"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures/Issue143-rpi_splitter.dsn" 0 outer_first order)
+    needs_jar=1
+    extra_jar_sources=("$DIFF_ROOT/java/P7T2.java")
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    run_timeout="${P7T5_TIMEOUT:-3600}"
     ;;
   p7t3)
     # Plan 7 Task 5: `RoutingBoard.optChangedArea` and the `TraceTightener.optChangedArea` sweep,

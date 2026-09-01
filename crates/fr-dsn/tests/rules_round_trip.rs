@@ -376,7 +376,7 @@ fn dump_rules(board: &mut Board, ok: bool) -> Vec<String> {
         let net_class = board.rules.net_classes.get(fr_board::NetClassId(i));
         let via_rule = net_class
             .get_via_rule()
-            .map_or("null", |id| board.rules.via_rules[id.0].name.as_str());
+            .map_or("null", |rule| rule.name.as_str());
         let half_widths: Vec<String> = (0..net_class.layer_count())
             .map(|layer| net_class.get_trace_half_width(layer).to_string())
             .collect();

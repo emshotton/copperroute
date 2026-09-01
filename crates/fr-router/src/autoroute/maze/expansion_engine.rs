@@ -445,9 +445,11 @@ impl MazeExpansionEngine {
             let obstacle_padstack = via.get_padstack_id();
             let obstacle_clearance_class = via.hdr.clearance_class();
             // :255-258.
-            let via_rule_contains = search.ctrl.via_rule.is_some_and(|rule| {
-                board.rules.via_rules[rule.0].contains_padstack(obstacle_padstack)
-            });
+            let via_rule_contains = search
+                .ctrl
+                .via_rule
+                .as_ref()
+                .is_some_and(|rule| rule.contains_padstack(obstacle_padstack));
             if !via_rule_contains || obstacle_clearance_class != search.ctrl.via_clearance_class {
                 return;
             }
@@ -685,7 +687,7 @@ impl MazeExpansionEngine {
     ) -> CheckDrillResult {
         // :380.
         let mut drillable_with_attach_smd = false;
-        let Some(via_rule) = search.ctrl.via_rule else {
+        let Some(via_rule) = search.ctrl.via_rule.as_ref() else {
             // `:381` dereferences `ctrl.viaRule`; `AutorouteControl.rebuildViaInfo` has already
             // NPE'd on a null one long before this (see its `# Panics`).
             return CheckDrillResult::NotDrillable;
@@ -693,8 +695,7 @@ impl MazeExpansionEngine {
         // :381. The rule's via list is read once — `checkLayer` takes the board mutably and
         // nothing it reaches can change the rules. Java iterates the rule's own `ViaInfo`
         // objects; the port clones the rule's owned copies out for the same reason.
-        let vias: Vec<fr_board::ViaInfo> =
-            board.rules.via_rules[via_rule.0].iter().cloned().collect();
+        let vias: Vec<fr_board::ViaInfo> = via_rule.iter().cloned().collect();
         for via_info in &vias {
             // :382-383.
             let via_padstack = via_info.get_padstack();

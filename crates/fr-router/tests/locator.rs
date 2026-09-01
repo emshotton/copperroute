@@ -34,7 +34,7 @@
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
-use fr_board::ids::{ItemId, PadstackId, ViaInfoId, ViaRuleId};
+use fr_board::ids::{ItemId, PadstackId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
 use fr_dsn::format::double::java_double_to_string;
@@ -123,7 +123,7 @@ fn base_board(bounds: IntBox) -> Board {
     rules
         .net_classes
         .get_mut(default_class)
-        .set_via_rule(Some(ViaRuleId(0)));
+        .set_via_rule(Some(rules.via_rules[0].clone()));
 
     Board::new(
         Vec::new(),

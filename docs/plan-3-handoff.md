@@ -42,7 +42,10 @@ the KiCad/Eagle paths that were deferred out of it.
   the `*_checked` stop-check family (`normalize_all_traces_checked`,
   `normalize_traces_checked`, `normalize_trace_checked`, `split_trace_checked`,
   `connection_items_checked`), `BoardRules::replace_via_info_renumbering_rules`
-  / `replace_via_rule_renumbering_net_classes`, and the `SpecctraParserInfo` /
+  / `replace_via_rule_renumbering_net_classes` (both since renamed — Plan 7
+  Task 0 made the first `replace_via_info` and Task 11 made the second
+  `replace_via_rule`, when ruling H closed and the renumbering halves became
+  moot), and the `SpecctraParserInfo` /
   `WriteResolution` fields on `Communication`.
 - **257 tests in `fr-dsn`** (unit + fourteen integration suites; 2 `#[ignore]`d
   in debug), **1119 across the workspace** (3 ignored in total) — measured on

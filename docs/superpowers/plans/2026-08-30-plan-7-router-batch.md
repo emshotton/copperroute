@@ -33,7 +33,12 @@
 >   the *dead* `runMultiThread`; `runSingleThread` has none, so the port must **not** `catch_unwind`
 >   per item (ruling 9).
 > * **`FanoutPin` is a `JavaTreeSet`, not a `BTreeSet`** — its comparator is keyed at run time by a
->   settings string (ruling 8).
+>   settings string (ruling 8). *(**Amended by Task 11.** The container is right; the stated
+>   reason is not. `BatchFanout.java:773-775`'s `pinIndex` tie-break is **outside** the
+>   `if`/`else if` chain, so an unrecognised string gives pure `pinIndex` order and the
+>   comparator answers `0` only for two pins of one component sharing a `pinIndex` — which no
+>   reader produces. The `JavaTreeSet` stands because that is a property of the *input*, not of
+>   the comparator. Quirk #220; see the Task 11 report §2.1.)*
 >
 > Structural: `PassRecord` moves to Task 4 and `build_unrouted_report` gets a Task 10 stub (ruling 6);
 > each struct is declared by the **earliest** task that writes methods on it (ruling 7);
@@ -1293,9 +1298,17 @@ impl EscapeStatistics {
 
 **Ruling 5's recorded answer for both containers (scan ruling 8), so the implementer confirms rather than decides:**
 - `sortedComponents` — `Component.compareTo` (`:682-693`) is pin count **descending** then `boardComponent.id` **ascending**, both `final` and both total. **`BTreeSet<FanoutComponent>` is safe.**
-- `Component.smdPins` — `Pin.compareTo` (`:742-777`) selects its `double` key from `settings.fanout.pinSortingOrder` at run time and **falls through with `result = 0`** for an unrecognised string. A run-time-keyed comparator cannot be a static `Ord`, and a comparator that can return `0` for two distinct pins is **not** a total order over the element set — `std`'s `BTreeSet` would *drop* the second pin where `java.util.TreeSet` also drops it but may order the survivors differently, and neither is safe to assume. **Use `JavaTreeSet<FanoutPin>` with the comparator transcribed as Java's `<`/`>` chain, carrying the settings.** A test pins the drop: `an_unrecognised_sorting_order_collapses_pins_with_equal_pin_index`.
+- `Component.smdPins` — `Pin.compareTo` (`:742-777`) selects its `double` key from `settings.fanout.pinSortingOrder` at run time and ~~**falls through with `result = 0`** for an unrecognised string~~ **— corrected by Task 11: `:773-775`'s `pinIndex` tie-break is outside the chain, so an unrecognised string gives *pure `pinIndex`* order and `0` is reachable only for two pins of one component at the same `pinIndex`. The `JavaTreeSet` decision below stands; its reason does not. Quirk #220.** A run-time-keyed comparator cannot be a static `Ord`, and a comparator that can return `0` for two distinct pins is **not** a total order over the element set — `std`'s `BTreeSet` would *drop* the second pin where `java.util.TreeSet` also drops it but may order the survivors differently, and neither is safe to assume. **Use `JavaTreeSet<FanoutPin>` with the comparator transcribed as Java's `<`/`>` chain, carrying the settings.** A test pins the drop: `an_unrecognised_sorting_order_collapses_pins_with_equal_pin_index`.
 
 If the implementer's own reading of `:742-777` contradicts this, that is a **Java-wins report**, not a licence to switch back to `BTreeSet` quietly.
+
+> **Task 11's interface sketch above is corrected by HEAD in four more places** (report §2.2-§2.6):
+> `FanoutComponent.component` is an `i32` (there is no `ComponentId` type in this tree);
+> `FanoutPin` has **four** sort keys — `surroundingsDensity` (`:700`, `:725-738`) is an `int`
+> and one of the four `pinSortingOrder` branches (`:765-771`); `EscapeStatistics`' third
+> component is `escapedPercentage`, not `pinsToEscape` (which belongs to
+> `BoardStatistics.BoardStatisticsFanout`); and `FanoutRunSummary` has four components, the
+> sketch's three plus `totalDurationMillis`.
 
 **Tests (`crates/fr-router/tests/fanout_order.rs`):** `components_sort_by_pin_count_descending_then_id`; `pins_sort_by_the_selected_double_then_pin_index`; `an_unrecognised_sorting_order_falls_back_to_pin_index` and `an_unrecognised_sorting_order_collapses_pins_with_equal_pin_index` (the quirk and the `JavaTreeSet` drop, scan ruling 8); `a_net_with_one_pin_gets_double_max_value`; `the_four_target_strategy_carries_the_ripped_set_into_the_second_attempt` (quirk cand. Q); `the_combined_via_rule_holds_both_sources` (Task 0's payoff); `targets_are_sorted_by_squared_midpoint_distance_stably`.
 

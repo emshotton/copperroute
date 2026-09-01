@@ -1578,10 +1578,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t9`, `p7t10`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t5`, `p7t6`, `p7t7`, `p7t9`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t6`, `p7t7`, `p7t9` and `p7t10`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t5`, `p7t6`, `p7t7`, `p7t9` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1604,7 +1604,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t6`/`p7t7`/`p7t9`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t5`/`p7t6`/`p7t7`/`p7t9`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -2412,6 +2412,53 @@ the driver expects, or none at all.
   `f64` sum sites, with `an_empty_trace_sum_is_positive_zero_like_javas_accumulator` in
   `crates/fr-board/tests/board.rs` as the pin.
 
+
+- `p7t5 <dsn> [passNo] [sortingOrder] [order|pin]` — Plan 7 Task 11, the fanout
+  pre-pass's **ordering** (`BatchFanout.java:35-78`, `:631-693`, `:695-778`) and the
+  per-pin escape router it drives, `RoutingBoard.fanout` (`RoutingBoard.java:978-1110`).
+  Defaults `<dsn> 0 outer_first order`; `run.sh p7t5` with no arguments uses
+  `Issue143-rpi_splitter.dsn 0 outer_first order`.
+
+  * **Mode `order`** builds a `BatchFanout` once per `pinSortingOrder` string — the four
+    `Pin.compareTo:744-771` recognises plus one it does not — and prints the whole of
+    `sortedComponents` and, inside each component, the whole of `smdPins`, in iteration
+    order: `(componentId, name, smdPinCount, gravity)` per component and
+    `(pinId, pinIndex, name, distToCentre, distToClosestOnNet, surroundingsDensity)` per
+    pin, every `double` through `Double.toString`. The `sortingOrder` argument is
+    **ignored** here on purpose: comparing all five in one run is what stops a port that
+    got one branch right and another wrong from passing.
+  * **Mode `pin`** walks the order `sortingOrder` selects and calls the real
+    `RoutingBoard.fanout` on every SMD pin, with `fanoutPass`' own arguments
+    (`startRipupCosts * (passNo + 1)`, or `-1` when `fanout.ripupAllowed` is off, and
+    `board.startMarkingChangedArea()` before each call). Per pin it prints the attempt
+    state and details, the ids the call **removed**, the geometry it inserted and the id
+    generator's high-water marks; then a `[final]` board shape.
+
+  The removed-id set stands in for `rippedItemList`, which is a local of `fanout`
+  (`:1058`) and is never returned: the items it carries are deleted by
+  `AutorouteEngine.autorouteConnection:237-245`, and a delta of `board.getItems()` is
+  that deletion. It is therefore also where quirk #221's shared set would show.
+
+  The Java half reaches `BatchFanout`'s private constructor, its `sortedComponents` field
+  and its two private nested classes with `Field.setAccessible(true)` — the technique
+  `P7T2.reusableHandledItems` and the `P6T1x` probes use — so it reads the **real**
+  objects the real constructor built. `P7T2.java` is compiled alongside for the shared
+  board/settings ladder.
+
+  **The budget (ruling AI):** the per-pin `TimeLimit` is `Integer.MAX_VALUE` on both
+  sides. The 1000 ms `timeLimitToPreventEndlessLoop` inside `fanout` (`:1100`) is a
+  `javac`-inlined **local**, so it cannot be patched from the driver — the port runs
+  `RouterBudget::disabled()` against Java's live limit, and a MATCH therefore *proves*
+  the limit never trips on the corpus.
+
+  **Acceptance: 0 diffs on eight DSNs x both modes — 16 / 16 MATCH.** The eight are the
+  brief's three (`Issue730-DAC2020_bm11`, `Issue558-dev-board`,
+  `Issue508-DAC2020_bm06`) and the five corpus stems; `tutorial_board` and
+  `Issue649-kicad_ecc83-pp_input_board_v1` carry **no SMD pins at all**, so their three-
+  and six-line transcripts are the degenerate case rather than a measurement.
+
+  **The driver bites**, measured: swapping the `outer_first` branch's two signs in the
+  port makes `p7t5 <rpi> 0 outer_first order` DIFF on eight lines.
 
 ## Deferred coverage and cleanups
 

@@ -623,7 +623,7 @@ Two invocations are deliberately **absent**, and they do not behave the same way
 | absent invocation | what it prints today | exit |
 |---|---|---|
 | `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
-| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **eight `ROSTERED` lines** — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
+| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **seven `ROSTERED` lines** (eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did — every *public* method it still lacks is `fanoutBoard`, Task 12's) — every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` and nothing is `MISSING`. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
 
 Before the Plan 6 final review, the second — and the third, which was
 `board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and
@@ -672,6 +672,7 @@ used in its header line — read it.
 | `probes/P7T4Probe.java` | the three-state stop's full 3x2 transition table, the two queries in every state, `StopRequestState`/`TaskState`/`NamedAlgorithmType`'s variant lists and `RouterCounters`' nine reflected fields (Plan 7 Task 4). **Carries no clock**, deliberately — ruling AI's deadline is asserted against Java's monitor-thread *code*, not against a timing measurement, so the transcript is byte-stable across runs | ditto |
 | `java/P7T7.java` + `rust/src/bin/p7t7.rs` | `BoardStatistics`' score subset over a board optionally routed by `P6T1` (Plan 7 Task 1) | `./scripts/differential/run.sh p7t7 <dsn> [routeK] [ripupPassNo]` |
 | `java/P7T10.java` + `rust/src/bin/p7t10.rs` | **ruling AH's decision parity** — `getHash`'s three decision sites over 2 000 scripted board mutations (Plan 7 Task 3) | `P7T10_HASH_MODE=0 ./scripts/differential/run.sh p7t10 <dsn> <steps> [routeK] [warm\|raw]` |
+| `java/P7T5.java` + `rust/src/bin/p7t5.rs` | `BatchFanout`'s component/pin ordering for **all five** `pinSortingOrder` strings, and `RoutingBoard.fanout` on every SMD pin of the board (Plan 7 Task 11) | `./scripts/differential/run.sh p7t5 <dsn> [passNo] [sortingOrder] [order\|pin]` |
 
 **Regenerating the references.** `scripts/gen-router-reference.sh` writes
 `tests/reference/<stem>/{router.jsonl,router.meta.txt,java.log}` from the table in
@@ -2716,6 +2717,78 @@ lands. The **stagnation report** (`:456-476`, `:486-507`) is Task 15's and is **
 it is a log payload, both arms are live on a long run, and the
 `requestStopAutoRouter(); break;` around it is complete here.
 
+## The fanout pre-pass's ordering and `RoutingBoard.fanout` (Plan 7 Task 11)
+
+`src/pipeline/fanout.rs` holds `BatchFanout`'s type, its constructor and the
+`FanoutComponent` / `FanoutPin` pair it builds; `RoutingBoardExt::fanout` is the
+per-pin escape router those loops call. `fanoutBoard` / `fanoutPass` are **Task
+12's** — scan ruling 7 makes the earliest task that writes methods on a struct
+declare it, and everything Task 11 ported is `private` in Java, which is why
+`audit-port.sh` still reports the class `ROSTERED`.
+
+`scripts/differential/run.sh p7t5 <dsn> [passNo] [sortingOrder] [order|pin]` is the
+evidence: mode `order` prints `sortedComponents × smdPins` for **all five**
+`pinSortingOrder` strings with every `double` rendered by `Double.toString`, and
+mode `pin` walks that order calling the real `RoutingBoard.fanout` on every SMD
+pin. **16 runs, 16 MATCH** — eight DSNs (`Issue730-DAC2020_bm11`,
+`Issue558-dev-board`, `Issue508-DAC2020_bm06`, `Issue143-rpi_splitter`,
+`Issue508-DAC2020_bm01`, `Issue026-J2_reference`, `tutorial_board`,
+`Issue649-kicad_ecc83-pp_input_board_v1`) × two modes, 0 diffs. The last two carry
+no SMD pins at all and are therefore the degenerate case rather than a measurement.
+
+### Ruling 5's container decisions, confirmed against Java
+
+| container | Java | comparator | decision |
+|---|---|---|---|
+| `BatchFanout.sortedComponents` (`:25`, filled `:53-61`) | `TreeSet<Component>` | `Component.compareTo` (`:682-693`) — pin count **descending**, then `boardComponent.id` **ascending**; both keys `final`, ids unique | **`BTreeSet<FanoutComponent>`**, with an `Ord`-consistent `Eq` because Java's `Component` declares no `equals` and its set membership is `compareTo` alone |
+| `BatchFanout.Component.smdPins` (`:635`, filled `:673-677`) | `TreeSet<Pin>` | `Pin.compareTo` (`:742-777`) — a key chosen from `settings.fanout.pinSortingOrder` **at run time**, then `boardPin.pinIndex` | **`JavaTreeSet<FanoutPin>`** through `add_by`, carrying the order the way Java's inner class carries the outer field |
+
+### Java wins: scan ruling 8's reason is half wrong, and the container is still right
+
+The plan says an unrecognised `pinSortingOrder` "falls through with `result = 0`"
+and concludes the comparator "can return `0` for two distinct pins" and is not a
+total order. **`:773-775` is outside the `if`/`else if` chain**: the `pinIndex`
+tie-break runs on every branch, including the one that matched nothing, so an
+unrecognised string gives *pure `pinIndex`* order (quirk #220) and the comparator
+answers `0` only for two pins of one component that share a `pinIndex` — which no
+reader produces, `pinIndex` being "the index of the pin in its component"
+(`board/model/items/Pin.java:49`).
+
+The container stays a `JavaTreeSet` anyway, and deliberately: "no board duplicates
+a pin index" is a property of the *input*, and `JavaTreeSet` is `java.util.TreeSet`
+whether or not the input has it, while `BTreeSet` is defined only if it does.
+`tests/fanout_order.rs`'s `an_unrecognised_sorting_order_collapses_pins_with_equal_pin_index`
+and `equal_pin_index_and_an_equal_key_collapse_under_every_sorting_order` pin the
+drop from both sides.
+
+Three more places the plan's sketch disagreed with HEAD, all resolved for HEAD:
+`Component.Pin` carries **four** sort keys, not two — `surroundingsDensity`
+(`:700`, `:725-738`) is an `int` and one of the four `pinSortingOrder` branches;
+`EscapeStatistics`' third component is `escapedPercentage`, not `pinsToEscape`
+(which belongs to `BoardStatistics.BoardStatisticsFanout`); and `FanoutRunSummary`
+has four components, the sketch's three plus `totalDurationMillis`.
+
+### `AutorouteControl::via_rule` owns its rule, and so does `NetClass`
+
+`fanout:1025-1044` assigns `ctrlSettings.viaRule` a `ViaRule` **that is in no
+list** — a `new ViaRule(name + "_fallback")` merged at run time from the net
+class's vias and `rules.viaRules.firstElement()`'s. A `ViaRuleId` cannot name it,
+and pushing the synthetic rule onto `board.rules.via_rules` would put it in the DSN
+writer's output — so the control block owns a `ViaRule`, and so does
+`fr_board::NetClass` (which is also ruling H's via-rule half; see the obligation
+register). The merge's dedup, `ViaRule::contains`, is Java's `==` and therefore
+object identity — quirk **#218**, and the reason `ViaInfo` carries a per-`ViaInfos`
+identity serial.
+
+### Two arms lifted out of `fanout`, and why
+
+`sorted_unconnected_targets` (`:1002-1021`) and `combined_fallback_via_rule`
+(`:1026-1041`) are `pub fn`s called from exactly one place each. Both are pure
+functions of data a test can build, and both have a case no corpus board reaches —
+a tie in the target sort, and two value-equal-but-distinct `ViaInfo`s — so a test
+that had to route a board to observe them would be a slow test of the router. The
+rest of `fanout` reads as Java does with two names substituted for two blocks.
+
 ## What Plan 7 inherits
 
 Everything above `route_connection`, and nothing below it. Each row names the
@@ -2727,7 +2800,7 @@ crates/` is the complete inventory.
 |---|---|---|
 | `AutorouteConnectionRouter.route` **steps 6-8** — the necked retry, the strict-DRC rollback, the failure-log write | `autoroute/pipeline/AutorouteConnectionRouter.java:160-233` | `src/autoroute/maze/engine.rs:1818`; `src/lib.rs` roster; obligation register |
 | ~~the **pass loop** and the per-pass / per-item recovery boundaries~~ — **DONE, Plan 7 Tasks 9 and 10**: `AutoroutePassRunner.runSingleThread` and its whole-body catch (boundary 7), and `AutorouteBatchLoop.run` with `:44-56`'s propagating throw (boundary 9). What is left of the row is `BatchAutorouterThread.java:537` (boundary 8), on the dead multithreaded path | `AutoroutePassRunner.java:156, :331-335`, `AutorouteBatchLoop.java:44-56`; `BatchAutorouterThread.java:537` | `src/pipeline/pass_runner.rs`, `src/pipeline/batch_loop.rs`; `src/lib.rs` roster for the one that is left |
-| the **fanout** pre-pass (and with it the only thing that sets `ctrl.isFanout`) | `BatchFanout.java`, `RoutingBoard.fanout` | `src/lib.rs` roster; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
+| the **fanout** pre-pass — ~~`RoutingBoard.fanout` and `BatchFanout`'s ordering~~ **DONE in Plan 7 Task 11** (`RoutingBoardExt::fanout`, `pipeline::fanout`'s `BatchFanout`/`FanoutComponent`/`FanoutPin` and the three records); what is left is `fanoutBoard`/`fanoutPass`, Task 12's, and with them the only thing that sets `ctrl.isFanout` on a real run | `BatchFanout.java:81-163`, `RoutingBoard.java:978-1110` | `src/board_ext/routing_board_ext.rs`, `src/pipeline/fanout.rs`; `src/lib.rs` roster for `fanoutBoard`; re-marked obligations `locator.rs:267`, `engine.rs:1374` |
 | the **optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`, `OptimizeRouteTask`, `ItemRouteResult` | `autoroute/pipeline/**` | `src/lib.rs` roster |
 | ~~`ViaOptimizer`, whole~~ — **DONE**: `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` in Plan 7 Task 6, the three `repositionVia` overloads in Task 7 (which also deleted ruling B1's `unimplemented!` and its guard predicate) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:302-365`, `:367-429`, `:434-713`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs` in Task 6) |
 | ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |
@@ -2735,7 +2808,7 @@ crates/` is the complete inventory.
 | the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |
 | ~~the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin`~~ — **DONE in Plan 7 Task 5** (all three; the plan's scan ruling 5 wrongly recorded `check` as landed in Plan 6) | `board/trace/PolylineTrace.java:1013-1313` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `PolylineTraceExt::{check,correct,swap}_connection_to_pin`; `src/board_ext/tightener/` module docs |
 | `RoutingFailureLog` — `fr-board`'s `failure_log: Vec<String>` becomes the real type | `autoroute/RoutingFailureLog.java` | `crates/fr-board/src/board/mod.rs`'s field; `src/lib.rs` roster |
-| ~~**the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s~~ — **DONE in Plan 7 Task 0** (via-info half; the `NetClass.viaRule` half is Task 11's, ruling AN) | `rules/ViaRule.java:21`, `io/specctra/RulesReader.java:340-350` | `src/autoroute/maze/control.rs:385`; `crates/fr-board/src/rules/via.rs` `ViaRule`; obligation register |
+| ~~**the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s~~ — **DONE, both halves**: the via-info half in Plan 7 Task 0 and the **via-rule** half in Plan 7 Task 11 (`NetClass` owns its `ViaRule`, controller ruling AN), measured on `Issue143-rpi_splitter.dsn` + `tests/data/ruling-h-viarule.rules` — DIFF on all eight connections before, MATCH after | `rules/ViaRule.java:21`, `rules/NetClass.java:28`, `io/specctra/RulesReader.java:340-357`, `io/specctra/parser/Network.java:413-417` | `src/autoroute/maze/control.rs:385`; `crates/fr-board/src/rules/{via.rs,net_class.rs}`; `tests/data/p7t11-ruling-h-viarule.txt`; obligation register |
 | the eight **re-marked** coverage obligations | see the marker table above | `grep -rn "obligation:" crates/fr-router/src` |
 | `max_passes == 0` means **unlimited** (quirk #140), and `-mt` is **not** a threading policy on the headless path (quirk #143) | `RouterSettings.validate`, `BatchOptimizer.createForHeadless:51-53` | House rules above; `docs/java-quirks.md` |
 

@@ -241,7 +241,9 @@ impl BoardRules {
             .get(default_class)
             .get_trace_clearance_class();
         let trace_half_width = self.net_classes.get(default_class).get_trace_half_width(0);
-        let default_via_rule = self.get_default_via_rule();
+        // `getDefaultViaRule()` hands Java the object at `viaRules.firstElement()`; the port
+        // clones it, which is what copying that reference into `NetClass.viaRule` means here.
+        let default_via_rule = self.get_default_via_rule().cloned();
         let net_class = self.net_classes.get_mut(result);
         net_class.set_trace_clearance_class(trace_clearance_class);
         net_class.set_via_rule(default_via_rule);
@@ -260,7 +262,7 @@ impl BoardRules {
             .net_classes
             .append_with_generated_name(&self.layer_structure);
         let default_class = self.net_classes.get(NetClassId(0));
-        let via_rule = default_class.get_via_rule();
+        let via_rule = default_class.get_via_rule().cloned();
         let trace_half_width = default_class.get_trace_half_width(0);
         let trace_clearance_class = default_class.get_trace_clearance_class();
         let new = self.net_classes.get_mut(new_class);
@@ -281,7 +283,7 @@ impl BoardRules {
         let new_class = self.net_classes.append(name, &self.layer_structure, false);
         let default_class = self.net_classes.get(NetClassId(0));
         let default_item_clearance_classes = default_class.default_item_clearance_classes;
-        let via_rule = default_class.get_via_rule();
+        let via_rule = default_class.get_via_rule().cloned();
         let trace_half_width = default_class.get_trace_half_width(0);
         let trace_clearance_class = default_class.get_trace_clearance_class();
         let new = self.net_classes.get_mut(new_class);
@@ -346,16 +348,25 @@ impl BoardRules {
                 None => default_rule.append_via(info.clone()),
             }
         }
-        self.via_rules.push(default_rule);
-        let new_rule_id = ViaRuleId(self.via_rules.len() - 1);
+        // BoardRules.java:197-198 — `viaRules.add(defaultRule); netClass.setViaRule(defaultRule)`
+        // stores one object in two places. The port's net class owns a copy (Plan 7 Task 11); the
+        // two only ever diverge if something mutates one of them, and nothing outside the GUI
+        // does (see [`ViaRule`]'s clearance-renumbering note).
         self.net_classes
             .get_mut(net_class)
-            .set_via_rule(Some(new_rule_id));
+            .set_via_rule(Some(default_rule.clone()));
+        self.via_rules.push(default_rule);
     }
 
     /// Port of `BoardRules.getDefaultViaRule` (BoardRules.java:242-247): the first via rule, or
     /// `None` (Java: `null`) when there is none.
-    pub fn get_default_via_rule(&self) -> Option<ViaRuleId> {
+    pub fn get_default_via_rule(&self) -> Option<&ViaRule> {
+        self.via_rules.first()
+    }
+
+    /// The index form of [`Self::get_default_via_rule`], for the callers that need to name the
+    /// rule's slot in [`Self::via_rules`] rather than read it. Not a Java method.
+    pub fn get_default_via_rule_id(&self) -> Option<ViaRuleId> {
         if self.via_rules.is_empty() {
             None
         } else {
@@ -519,7 +530,6 @@ impl BoardRules {
         let Some(default_via_rule) = self.get_default_via_rule() else {
             return 0.0;
         };
-        let default_via_rule = &self.via_rules[default_via_rule.0];
         if default_via_rule.via_count() == 0 {
             return 0.0;
         }
@@ -785,9 +795,10 @@ mod tests {
         assert!(!rule.contains(rules.via_infos.get(ViaInfoId(0))));
         assert_eq!(
             rules.net_classes.get(default_class).get_via_rule(),
-            Some(ViaRuleId(0))
+            Some(&rules.via_rules[0])
         );
-        assert_eq!(rules.get_default_via_rule(), Some(ViaRuleId(0)));
+        assert_eq!(rules.get_default_via_rule(), Some(&rules.via_rules[0]));
+        assert_eq!(rules.get_default_via_rule_id(), Some(ViaRuleId(0)));
         assert_eq!(rules.get_via_rule("default"), Some(ViaRuleId(0)));
         assert_eq!(rules.get_via_rule("nope"), None);
     }

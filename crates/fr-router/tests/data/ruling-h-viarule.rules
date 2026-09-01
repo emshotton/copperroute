@@ -1,0 +1,3 @@
+(rules PCB Issue143-rpi_splitter
+  (via_rule default)
+)

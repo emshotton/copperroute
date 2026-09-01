@@ -31,7 +31,7 @@
 use std::cell::Cell;
 use std::collections::BTreeSet;
 
-use fr_board::ids::{ItemId, ObstacleRoomId, ViaRuleId};
+use fr_board::ids::{ItemId, ObstacleRoomId};
 use fr_board::prelude::*;
 use fr_board::rules::ViaRule;
 use fr_geometry::{
@@ -78,7 +78,7 @@ fn probe_board() -> Board {
     rules
         .net_classes
         .get_mut(default_class)
-        .set_via_rule(Some(ViaRuleId(0)));
+        .set_via_rule(Some(rules.via_rules[0].clone()));
     rules.nets.add("N1", 1, false, default_class);
     rules.nets.add("N2", 1, false, default_class);
 

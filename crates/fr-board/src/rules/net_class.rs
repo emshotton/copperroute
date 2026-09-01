@@ -5,7 +5,8 @@
 
 use std::fmt;
 
-use crate::ids::{NetClassId, ViaRuleId};
+use crate::ids::NetClassId;
+use crate::rules::ViaRule;
 use crate::structure::LayerStructure;
 
 /// Port of `DefaultItemClearanceClasses.ItemClass`
@@ -126,9 +127,20 @@ pub struct NetClass {
     pub default_item_clearance_classes: DefaultItemClearanceClasses,
     /// `NetClass.isIgnoredByAutorouter` (NetClass.java:26); public in Java too.
     pub is_ignored_by_autorouter: bool,
-    /// `NetClass.viaRule` (NetClass.java:28), as an index. Java's field starts out `null`, hence
+    /// `NetClass.viaRule` (NetClass.java:28), **owned**. Java's field starts out `null`, hence
     /// the `Option`.
-    via_rule: Option<ViaRuleId>,
+    ///
+    /// # Owned, not an index — ruling H's via-rule half (Plan 7 Task 11)
+    ///
+    /// Java's field is an object reference, and `Network.addViaRule` (Network.java:413-417)
+    /// *removes* a replaced rule from `board.rules.viaRules` without telling any net class. A
+    /// class that pointed at it therefore keeps the **detached original**, which is still what
+    /// `AutorouteControl.initNet:210` reads and `rebuildViaInfo:234-284` turns into the router's
+    /// via masks. A `ViaRuleId` into
+    /// [`BoardRules::via_rules`](crate::rules::BoardRules::via_rules) cannot express that, and
+    /// the divergence was **measured**, not argued — see
+    /// [`BoardRules::replace_via_rule`](crate::rules::BoardRules::replace_via_rule).
+    via_rule: Option<ViaRule>,
     /// `NetClass.traceClearanceClass` (NetClass.java:29).
     trace_clearance_class: usize,
     /// `NetClass.shoveFixed` (NetClass.java:32).
@@ -221,12 +233,15 @@ impl NetClass {
     }
 
     /// Port of `NetClass.getViaRule` (NetClass.java:113-115). `None` is Java's `null`.
-    pub fn get_via_rule(&self) -> Option<ViaRuleId> {
-        self.via_rule
+    ///
+    /// A borrow where Java hands back the reference itself; a caller that needs to keep the rule
+    /// past the borrow clones it, which is what Java's reference copy does.
+    pub fn get_via_rule(&self) -> Option<&ViaRule> {
+        self.via_rule.as_ref()
     }
 
     /// Port of `NetClass.setViaRule` (NetClass.java:118-120).
-    pub fn set_via_rule(&mut self, via_rule: Option<ViaRuleId>) {
+    pub fn set_via_rule(&mut self, via_rule: Option<ViaRule>) {
         self.via_rule = via_rule;
     }
 
@@ -447,17 +462,30 @@ impl NetClasses {
     /// Port of `NetClasses.find(int, int, ViaRule)` (NetClasses.java:60-77): the first class
     /// whose trace half width is `trace_half_width` on *every* layer and whose clearance class
     /// and via rule match.
+    ///
+    /// # `getViaRule() == viaRule` is a reference test in Java, and a value test here
+    ///
+    /// `NetClasses.java:63` (and `:87`) compares the two rules with `==`, i.e. by object
+    /// identity. Since Plan 7 Task 11 a [`NetClass`] owns its rule, so this port compares by
+    /// value — a deviation, and a caller-scoped one. The **only** caller in either language is
+    /// `Network.read_net_scope`'s `(rule (width …))` arm (Network.java:1442-1445), which passes
+    /// `getDefaultNetClass().getViaRule()`; and at that point in the read every net class holds
+    /// the rule `Network.insertViaRules` gave them all (Network.java:392-394,
+    /// `fr_dsn::parser::network::insert_via_rules`), which is one object.
+    /// So the two comparisons agree on every DSN, and they can only disagree on a board where a
+    /// non-default class holds a *distinct but value-equal* rule — which no reader builds.
+    /// Recorded rather than hidden: `docs/java-quirks.md`'s ruling-H row carries it.
     pub fn find(
         &self,
         trace_half_width: i32,
         trace_clearance_class: usize,
-        via_rule: Option<ViaRuleId>,
+        via_rule: Option<&ViaRule>,
     ) -> Option<NetClassId> {
         self.classes
             .iter()
             .position(|c| {
                 c.trace_clearance_class == trace_clearance_class
-                    && c.via_rule == via_rule
+                    && c.via_rule.as_ref() == via_rule
                     && (0..c.layer_count()).all(|i| c.get_trace_half_width(i) == trace_half_width)
             })
             .map(NetClassId)
@@ -470,13 +498,13 @@ impl NetClasses {
         &self,
         trace_half_width: &[i32],
         trace_clearance_class: usize,
-        via_rule: Option<ViaRuleId>,
+        via_rule: Option<&ViaRule>,
     ) -> Option<NetClassId> {
         self.classes
             .iter()
             .position(|c| {
                 c.trace_clearance_class == trace_clearance_class
-                    && c.via_rule == via_rule
+                    && c.via_rule.as_ref() == via_rule
                     && trace_half_width.len() == c.layer_count()
                     && (0..c.layer_count())
                         .all(|i| c.get_trace_half_width(i) == trace_half_width[i])
@@ -693,27 +721,30 @@ mod tests {
             .get_mut(id)
             .set_trace_half_width_on_all_layers(150);
         net_classes.get_mut(id).set_trace_clearance_class(1);
-        net_classes.get_mut(id).set_via_rule(Some(ViaRuleId(0)));
+        let rule = ViaRule::new("default");
+        let other = ViaRule::new("other");
+        net_classes.get_mut(id).set_via_rule(Some(rule.clone()));
 
-        assert_eq!(net_classes.find(150, 1, Some(ViaRuleId(0))), Some(id));
-        assert_eq!(net_classes.find(150, 2, Some(ViaRuleId(0))), None);
+        assert_eq!(net_classes.find(150, 1, Some(&rule)), Some(id));
+        assert_eq!(net_classes.find(150, 2, Some(&rule)), None);
         assert_eq!(net_classes.find(150, 1, None), None);
-        assert_eq!(net_classes.find(151, 1, Some(ViaRuleId(0))), None);
+        assert_eq!(net_classes.find(150, 1, Some(&other)), None);
+        assert_eq!(net_classes.find(151, 1, Some(&rule)), None);
 
         // NetClasses.java:88: the per-layer form also requires equal layer counts.
         assert_eq!(
-            net_classes.find_per_layer(&[150, 150, 150, 150], 1, Some(ViaRuleId(0))),
+            net_classes.find_per_layer(&[150, 150, 150, 150], 1, Some(&rule)),
             Some(id)
         );
         assert_eq!(
-            net_classes.find_per_layer(&[150, 150, 150], 1, Some(ViaRuleId(0))),
+            net_classes.find_per_layer(&[150, 150, 150], 1, Some(&rule)),
             None
         );
         net_classes.get_mut(id).set_trace_half_width(2, 90);
         assert_eq!(
-            net_classes.find_per_layer(&[150, 150, 90, 150], 1, Some(ViaRuleId(0))),
+            net_classes.find_per_layer(&[150, 150, 90, 150], 1, Some(&rule)),
             Some(id)
         );
-        assert_eq!(net_classes.find(150, 1, Some(ViaRuleId(0))), None);
+        assert_eq!(net_classes.find(150, 1, Some(&rule)), None);
     }
 }

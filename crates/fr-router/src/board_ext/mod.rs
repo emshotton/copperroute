@@ -74,7 +74,9 @@ mod via_optimizer;
 pub use drill_item_mover::DrillItemMover;
 pub use forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 pub use forced_via_inserter::ForcedViaInserter;
-pub use routing_board_ext::RoutingBoardExt;
+pub use routing_board_ext::{
+    RoutingBoardExt, combined_fallback_via_rule, sorted_unconnected_targets,
+};
 pub use tightener::{
     PolylineTraceExt, TraceTightener, TraceTightener45, TraceTightener90, TraceTightenerAnyAngle,
 };

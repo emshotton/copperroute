@@ -290,7 +290,14 @@ pub mod prelude {
 // owed is rostered **in `pipeline/batch_autorouter.rs`** beside the code, not here:
 // added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.getAirLine`.
 // added in Plan 7: `BatchAutorouterThread.getBoard`, `BatchAutorouterThread.getRoutedCount`, `BatchAutorouterThread.getFailedCount`, `BatchAutorouterThread.addBoardUpdatedEventListener`, `BatchAutorouterThread.fireBoardUpdatedEvent` — including the per-item `catch (Exception)` boundary at `BatchAutorouterThread.java:537`.
-// added in Plan 7: `BatchFanout.fanoutBoard`, `BatchFanout.compareTo`, `BatchFanout.fromBoardStatistics`, `BatchFanout.toString`, `BatchFanout.EscapeStatistics`, `BatchFanout.FanoutPassStatus`, `BatchFanout.FanoutRunSummary`.
+// added in Plan 7: `BatchFanout.fanoutBoard` — both overloads (BatchFanout.java:81-163), Task 12's,
+// together with `fanoutPass` and `publishProgress`. **Everything else of the class landed in Task 11**
+// as `fr_router::pipeline::fanout`: the type and its constructor (`:35-78`), `Component` /
+// `Component.Pin` and their two `compareTo`s (`:631-693`, `:695-778`) as `FanoutComponent` /
+// `FanoutPin`, and the three records `EscapeStatistics`, `FanoutPassStatus` and `FanoutRunSummary`
+// (`:591-629`) with `EscapeStatistics.fromBoardStatistics`. `EscapeStatistics.toString` (`:602-605`)
+// and `FanoutProgressListener` (`:578-583`) are `not ported:` there. The per-pin escape router the
+// deferred loops call, `RoutingBoard.fanout`, is `board_ext::RoutingBoardExt::fanout` (Task 11).
 // added in Plan 7: `BatchOptimizer.runBatchLoop`, `BatchOptimizer.createForGui`, `BatchOptimizer.createForHeadless`, `BatchOptimizer.getCurrentPosition`, `BatchOptimizer.getId`, `BatchOptimizer.isTimedOut`.
 // added in Plan 7: `BatchOptimizerMultiThreaded.getNumTasks`, `BatchOptimizerMultiThreaded.getNumTasksFinished`, `BatchOptimizerMultiThreaded.getWinningCandidateScore`, `BatchOptimizerMultiThreaded.isWinningCandidate` — behind quirk #143: `-mt` is not a threading policy on the headless path, so Plan 7 must not make one out of it.
 // added in Plan 7: `OptimizeRouteTask.run`, `OptimizeRouteTask.clean`, `OptimizeRouteTask.getItem`, `OptimizeRouteTask.getRouteResult`.

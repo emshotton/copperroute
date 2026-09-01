@@ -6,7 +6,7 @@
 //!
 //! # State
 //!
-//! **Task 10 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
+//! **Task 11 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
 //! loop's best-board memory (controller ruling AF) — and, from Task 4, the plumbing every later
 //! task threads through: the three-state stop [`RouterStop`] with ruling AI's deadline,
 //! [`RouterBudget`], [`ProgressThrottler`], [`RouterCounters`], [`PassRecord`],
@@ -24,7 +24,15 @@
 //! optimizer off, and `scripts/differential/run.sh p7t9` is its whole-board evidence. Two arms of
 //! it are still stubbed behind `obligation:` markers in `batch_loop.rs`: the fanout pre-pass
 //! (Task 12, and the stub is **loud** — `run` asserts fanout is disabled) and the stagnation
-//! report (Task 15, inert). Tasks 11-15 add the fanout and the optimizer.
+//! report (Task 15, inert).
+//!
+//! **Task 11 added [`fanout`]** — `BatchFanout`'s type and constructor, the
+//! [`FanoutComponent`] / [`FanoutPin`] ordering it builds, and the three records
+//! [`EscapeStatistics`], [`FanoutPassStatus`] and [`FanoutRunSummary`]. The per-pin escape
+//! router the deferred `fanoutBoard`/`fanoutPass` loops call is
+//! [`RoutingBoardExt::fanout`](crate::board_ext::RoutingBoardExt::fanout), landed in the same
+//! task; `scripts/differential/run.sh p7t5` is the evidence for both. Tasks 12-15 add the rest
+//! of the fanout and the optimizer.
 //! `crates/fr-router/src/lib.rs`'s roster names every class still deferred and the task that
 //! owns it.
 
@@ -34,6 +42,7 @@ pub mod batch_loop;
 pub mod board_history;
 pub mod counters;
 pub mod failure_log;
+pub mod fanout;
 pub mod item_route_result;
 pub mod pass_runner;
 pub mod stop;
@@ -44,6 +53,9 @@ pub use batch_loop::{AutorouteBatchLoop, BatchLoopResult};
 pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
+pub use fanout::{
+    BatchFanout, EscapeStatistics, FanoutComponent, FanoutPassStatus, FanoutPin, FanoutRunSummary,
+};
 pub use item_route_result::ItemRouteResult;
 pub use pass_runner::AutoroutePassRunner;
 pub use stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState};

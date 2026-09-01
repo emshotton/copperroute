@@ -30,7 +30,7 @@ use std::io::Write;
 
 use fr_board::{
     Board, BoardRules, FixedState, Item, ItemClass, ItemId, Keepout, NetClass, NetClassId,
-    PadstackId, PartPin, ViaInfo, ViaInfoId, ViaRule, ViaRuleId,
+    PadstackId, PartPin, ViaInfo, ViaInfoId, ViaRule,
 };
 use fr_geometry::{Area, Point, ShapeOps, Vector};
 
@@ -1048,15 +1048,21 @@ fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
                         .net_classes
                         .get(default_net_rule)
                         .get_trace_clearance_class();
-                    let default_via_rule =
-                        board.rules.net_classes.get(default_net_rule).get_via_rule();
+                    // Java passes `defaultNetRule.getViaRule()`, the object itself
+                    // (Network.java:1445); the port clones so the `&mut` borrow below can run.
+                    let default_via_rule = board
+                        .rules
+                        .net_classes
+                        .get(default_net_rule)
+                        .get_via_rule()
+                        .cloned();
                     let net_rule = board
                         .rules
                         .net_classes
                         .find(
                             trace_half_width,
                             default_trace_clearance_class,
-                            default_via_rule,
+                            default_via_rule.as_ref(),
                         )
                         // create a new net rule
                         .unwrap_or_else(|| board.rules.get_new_net_class());
@@ -1301,13 +1307,16 @@ fn insert_via_rules(via_rules: &[Vec<String>], board: &mut Board) {
             .rules
             .create_default_via_rule(default_net_class, "default", &board.library.padstacks);
     }
-    let default_via_rule = board.rules.get_default_via_rule();
+    // Network.java:392-394 — every net class is pointed at the *same* `getDefaultViaRule()`
+    // object. The port's net class owns a copy of it (Plan 7 Task 11); they start identical and
+    // nothing on the reader path mutates a rule afterwards.
+    let default_via_rule = board.rules.get_default_via_rule().cloned();
     for i in 0..board.rules.net_classes.count() {
         board
             .rules
             .net_classes
             .get_mut(NetClassId(i))
-            .set_via_rule(default_via_rule);
+            .set_via_rule(default_via_rule.clone());
     }
 }
 
@@ -1315,16 +1324,19 @@ fn insert_via_rules(via_rules: &[Vec<String>], board: &mut Board) {
 /// already existing via rule with the same" [name]. Returns false — and inserts nothing — when
 /// any of the named via infos is missing.
 ///
-/// Port hazard, not a Java one: removing the replaced rule shifts every later `ViaRuleId`, where
-/// Java's `Collection<ViaRule>` holds object references that survive the removal.
+/// ~~Port hazard, not a Java one: removing the replaced rule shifts every later `ViaRuleId`~~ —
+/// **gone since Plan 7 Task 11.** `io/specctra/RulesReader.java:352-357` calls this on a board
+/// whose net classes already have via rules, and a `NetClass` now **owns** its
+/// [`ViaRule`](fr_board::ViaRule) rather than indexing `board.rules.via_rules` (ruling H's
+/// via-rule half, controller ruling AN) — so the removal shifts nothing a net class can see, and
+/// [`BoardRules::replace_via_rule`] is `Network.addViaRule:413-417`'s two lines and nothing else.
+/// A class that held the replaced rule keeps the **detached original**, exactly as Java's object
+/// reference does.
 ///
-/// **Fixed in Plan 3 Task 14, which added the second caller the earlier note anticipated.**
-/// `io/specctra/RulesReader.java:352-357` calls this on a board whose net classes already hold
-/// via-rule indices, so the removal is routed through
-/// [`BoardRules::replace_via_rule_renumbering_net_classes`], which rewrites them — see that
-/// method for the mapping and for the one deliberate divergence the index model forces.
-/// (The original caller, [`insert_via_rules`], still runs before any net class has a via rule,
-/// so the renumbering is a no-op there.)
+/// (Plan 3 Task 14 had routed the removal through
+/// `BoardRules::replace_via_rule_renumbering_net_classes`, which re-pointed every net class at
+/// the replacement; `crates/fr-router/tests/data/p7t11-ruling-h-viarule.txt` is the measurement
+/// that closed it.)
 pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
     let mut it = name_list.iter();
     let rule_name = it
@@ -1347,9 +1359,7 @@ pub fn add_via_rule(name_list: &[String], board: &mut Board) -> bool {
         match existing_rule {
             // Replace already existing rule (Network.java:414-416).
             Some(existing) => {
-                board
-                    .rules
-                    .replace_via_rule_renumbering_net_classes(existing, current_rule);
+                board.rules.replace_via_rule(existing, current_rule);
             }
             None => board.rules.via_rules.push(current_rule),
         }
@@ -1403,6 +1413,7 @@ pub fn insert_net_class(
     if let Some(via_rule_name) = &net_class.via_rule {
         // "via rule not found" is an `FRLogger.warn` only (Network.java:461-465).
         if let Some(via_rule) = board.rules.get_via_rule(via_rule_name) {
+            let via_rule = board.rules.via_rules[via_rule.0].clone();
             board
                 .rules
                 .net_classes
@@ -1791,13 +1802,14 @@ fn create_via_rule(use_via: &[String], net_class: NetClassId, board: &mut Board)
             }
         }
     }
-    board.rules.via_rules.push(new_via_rule);
-    let new_rule = ViaRuleId(board.rules.via_rules.len() - 1);
+    // Network.java:702-704 — `viaRules.add(newViaRule); netClass.setViaRule(newViaRule)`, one
+    // object in two places; the port's net class owns a copy (Plan 7 Task 11).
     board
         .rules
         .net_classes
         .get_mut(net_class)
-        .set_via_rule(Some(new_rule));
+        .set_via_rule(Some(new_via_rule.clone()));
+    board.rules.via_rules.push(new_via_rule);
 }
 
 /// `Network.createActiveTraceLayers` (Network.java:710-727): only the named layers stay active,
@@ -2873,19 +2885,16 @@ pub fn write_net_class(
         clearance_class_name(&board.rules, net_class.get_trace_clearance_class()).to_string();
     write_item_clearance_class(&trace_clearance_name, &mut p.file, &p.identifier_type);
 
-    if let Some(via_rule_id) = net_class.get_via_rule() {
-        // write the via rule
-        // totalized: Java writes `netClass.getViaRule().name` (Network.java:130); a net class
-        // holding a via-rule index the rule list does not have would panic on the slice index
-        // here, so the port skips the line instead. `Network.insertNetClass` only ever stores an
-        // index it just looked up.
-        if let Some(via_rule) = board.rules.via_rules.get(via_rule_id.0) {
-            let via_rule_name = via_rule.name.clone();
-            p.file.new_line();
-            p.file.write("(via_rule ");
-            p.identifier_type.write(&via_rule_name, &mut p.file);
-            p.file.write(")");
-        }
+    if let Some(via_rule) = net_class.get_via_rule() {
+        // write the via rule — `netClass.getViaRule().name` (Network.java:130), read straight
+        // off the rule the class owns since Plan 7 Task 11. (Before that the port held an index
+        // and had to `totalized:` the out-of-range case; a net class cannot hold a dangling rule
+        // any more, so the guard is gone rather than relaxed.)
+        let via_rule_name = via_rule.name.clone();
+        p.file.new_line();
+        p.file.write("(via_rule ");
+        p.identifier_type.write(&via_rule_name, &mut p.file);
+        p.file.write(")");
     }
 
     // write the rules, if they are different from the default rule.

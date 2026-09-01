@@ -1,0 +1,33 @@
+# Plan 7 Task 11 — ruling H's via-rule half, closed and measured.
+#
+# `scripts/differential/run.sh p6t1 ../freerouting/fixtures/Issue143-rpi_splitter.dsn 8 1 \
+#     crates/fr-router/tests/data/ruling-h-viarule.rules`
+#
+# The `.rules` file re-declares `(via_rule default)` **empty**. `Network.addViaRule:413-417`
+# removes the board's one via rule and appends the empty replacement; `NetClass.viaRule`
+# (NetClass.java:28) is an object reference and is not rewritten, so the JVM's net class keeps the
+# detached original and still offers `Round1$13` to `AutorouteControl.rebuildViaInfo:234-284`.
+#
+# `Issue143-rpi_splitter.dsn` is the corpus board that shows this: it carries exactly one via rule
+# named `default` and binds its one net class to it. Every other corpus stem carries **two** rules
+# named `default` and binds the class to the second, so `BoardRules.getViaRule`'s first-match
+# lookup can only ever reach the orphan — which is why the Task 0 review's three `Issue593` repros
+# all MATCHed.
+#
+# Causality, measured against the same jar:
+#
+#   * with the port re-pointing the net class (the state before this task) the run **DIFFed on all
+#     eight connections** — the jar placed nine vias and the port none, because its class had been
+#     moved onto the empty replacement;
+#   * with `NetClass` owning its `ViaRule` (this task) it MATCHes, below.
+#
+# Regenerate with the command above; the first line's `mtime` follows the jar.
+HEADER jar=/Users/em/Development/freerouting/freerouting/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788015935494 fixture=Issue143-rpi_splitter.dsn maxItems=8 ripupPassNo=1 rules=ruling-h-viarule.rules
+{"k":1,"item":23,"net":3,"state":"ROUTED","details":"","ripped":[],"ripupCosts":[],"maxIdBefore":33,"maxIdAfter":48,"traces":[{"id":38,"layer":0,"halfWidth":20320,"corners":["(856000,3306000)","(823258,3273258)","(823258,2748766)"]},{"id":45,"layer":1,"halfWidth":20320,"corners":["(823258,2748766)","(593465,2518973)","(593465,2339545)"]},{"id":48,"layer":0,"halfWidth":20320,"corners":["(593465,2339545)","(727900,2205110)","(727900,2204700)"]}],"vias":[{"id":39,"center":"(823258,2748766)","padstack":"Round1$13","firstLayer":0,"lastLayer":1},{"id":46,"center":"(593465,2339545)","padstack":"Round1$13","firstLayer":0,"lastLayer":1}],"otherInserted":0,"metrics":{"incompletes":4,"vias":2,"traceLength":"1265730.3578552473","violations":0}}
+{"k":2,"item":22,"net":2,"state":"FAILED","details":"Failed to route connection between pin #1 of component #1 and pin #1 of component #3, because the new connection could not be inserted.","ripped":[],"ripupCosts":[],"maxIdBefore":48,"maxIdAfter":54,"traces":[{"id":52,"layer":0,"halfWidth":20320,"corners":["(1096000,3306000)","(1096000,2532169)","(1093015,2529184)"]}],"vias":[{"id":53,"center":"(1093015,2529184)","padstack":"Round1$13","firstLayer":0,"lastLayer":1}],"otherInserted":0,"metrics":{"incompletes":4,"vias":1,"traceLength":"2043782.7853389313","violations":0}}
+{"k":3,"item":21,"net":1,"state":"FAILED","details":"Failed to route connection between pin of component #1 and pin of component #3, because the new connection could not be inserted.","ripped":[],"ripupCosts":[],"maxIdBefore":54,"maxIdAfter":74,"traces":[{"id":65,"layer":0,"halfWidth":20320,"corners":["(1016000,3306000)","(1016000,2795798)","(1053051,2758747)"]},{"id":69,"layer":0,"halfWidth":20320,"corners":["(1093015,2529184)","(1096000,2532169)","(1096000,2697896)","(1126448,2728344)","(1126448,2789150)","(1096000,2819598)","(1096000,3306000)"]}],"vias":[{"id":70,"center":"(1053051,2758747)","padstack":"Round1$13","firstLayer":0,"lastLayer":1}],"otherInserted":0,"metrics":{"incompletes":4,"vias":1,"traceLength":"2631606.7611326887","violations":0}}
+{"k":4,"item":16,"net":5,"state":"ROUTED","details":"","ripped":[],"ripupCosts":[],"maxIdBefore":74,"maxIdAfter":84,"traces":[{"id":76,"layer":0,"halfWidth":20320,"corners":["(727900,1884700)","(743330,1869270)","(743330,1750666)"]},{"id":81,"layer":1,"halfWidth":20320,"corners":["(743330,1750666)","(743330,1511192)","(673393,1441255)"]},{"id":84,"layer":0,"halfWidth":20320,"corners":["(673393,1441255)","(666000,1433862)","(666000,802200)"]}],"vias":[{"id":77,"center":"(743330,1750666)","padstack":"Round1$13","firstLayer":0,"lastLayer":1},{"id":82,"center":"(673393,1441255)","padstack":"Round1$13","firstLayer":0,"lastLayer":1}],"otherInserted":0,"metrics":{"incompletes":3,"vias":2,"traceLength":"3752529.211178417","violations":0}}
+{"k":5,"item":10,"net":3,"state":"ROUTED","details":"","ripped":[],"ripupCosts":[],"maxIdBefore":84,"maxIdAfter":130,"traces":[{"id":127,"layer":1,"halfWidth":20320,"corners":["(593465,2339545)","(888310,2044700)","(1030475,2044700)","(1282844,1792331)","(1282844,1381369)"]},{"id":130,"layer":0,"halfWidth":20320,"corners":["(1282844,1381369)","(1366000,1298213)","(1366000,802200)"]}],"vias":[{"id":128,"center":"(1282844,1381369)","padstack":"Round1$13","firstLayer":0,"lastLayer":1}],"otherInserted":0,"metrics":{"incompletes":2,"vias":3,"traceLength":"5693147.014491545","violations":0}}
+{"k":6,"item":7,"net":5,"state":"NO_UNCONNECTED_NETS","details":"","ripped":[],"ripupCosts":[],"maxIdBefore":130,"maxIdAfter":130,"traces":[],"vias":[],"otherInserted":0,"metrics":{"incompletes":2,"vias":2,"traceLength":"5693147.014491545","violations":0}}
+{"k":7,"item":4,"net":3,"state":"NO_UNCONNECTED_NETS","details":"","ripped":[],"ripupCosts":[],"maxIdBefore":130,"maxIdAfter":130,"traces":[],"vias":[],"otherInserted":0,"metrics":{"incompletes":2,"vias":3,"traceLength":"5693147.014491545","violations":0}}
+{"k":8,"item":3,"net":2,"state":"ROUTED","details":"","ripped":[],"ripupCosts":[],"maxIdBefore":130,"maxIdAfter":564,"traces":[{"id":564,"layer":0,"halfWidth":20320,"corners":["(916000,802200)","(916000,784949)","(732055,601004)","(599677,601004)","(519747,680934)","(519747,2583814)","(596376,2660443)","(961756,2660443)","(1093015,2529184)"]}],"vias":[],"otherInserted":0,"metrics":{"incompletes":1,"vias":1,"traceLength":"8778209.647317363","violations":0}}

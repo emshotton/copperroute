@@ -365,6 +365,12 @@ resolved the items marked ✓ below — verified against the committed tree)
   `BoardRules::replace_via_rule_renumbering_net_classes`. See the
   `docs/java-quirks.md` obligation-register row for the mapping.
 
+  **Both methods have since been renamed, and the hazard has gone with them:**
+  Plan 7 Task 0 made `ViaRule` own its `ViaInfo`s (`replace_via_info`) and Plan 7
+  Task 11 made `NetClass` own its `ViaRule` (`replace_via_rule`), so neither
+  method renumbers anything any more — there is no index left to renumber, and
+  the "what it left open" paragraph below is **closed**.
+
   **What it left open, for Plans 6/7:** keeping every index resolvable also
   changes *which object* a rule reaches. Java's rule keeps the detached
   original after a replacement; the port's index necessarily reaches the

@@ -180,7 +180,13 @@ AutoroutePassRunner               pipeline/pass_runner.rs
 # rostered `not ported:` in the same file.
 AutorouteBatchLoop                pipeline/batch_loop.rs
 AutorouteConnectionRouter         autoroute/maze/engine.rs
+# Plan 7 Task 11 added the second `BatchFanout` row, the `BatchAutorouter` shape: the type, its
+# constructor and its `Component`/`Pin`/record family live in `pipeline/fanout.rs`, and the class's
+# still-deferred **public** surface (`fanoutBoard` x2, and the record accessors `audit-port.sh`
+# sees as public methods) is rostered in `lib.rs` and lands in Task 12. The class therefore stays
+# `ROSTERED`, which is correct: everything Task 11 ported is `private` in Java.
 BatchFanout                       lib.rs
+BatchFanout                       pipeline/fanout.rs
 BatchOptimizer                    lib.rs
 BatchOptimizerMultiThreaded       lib.rs
 OptimizeRouteTask                 lib.rs

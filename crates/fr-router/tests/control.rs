@@ -32,7 +32,7 @@
 
 use std::path::Path;
 
-use fr_board::ids::{ViaInfoId, ViaRuleId};
+use fr_board::ids::ViaInfoId;
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
@@ -121,8 +121,8 @@ fn dump_control(board: &Board, net_no: i32, settings: &RouterSettings) -> String
     s += &format!(" viaClearanceClass={}", c.via_clearance_class);
     s += &format!(
         " viaRule={}",
-        match c.via_rule {
-            Some(id) => board.rules.via_rules[id.0].name.clone(),
+        match &c.via_rule {
+            Some(rule) => rule.name.clone(),
             None => "null".to_string(),
         }
     );
@@ -380,7 +380,9 @@ fn a_null_net_uses_clearance_class_one_and_the_first_via_rule() {
 
     let zero = control(&board, 0, &settings);
     assert_eq!(zero.trace_clearance_class_index, 1);
-    assert_eq!(zero.via_rule, Some(fr_board::ids::ViaRuleId(0)));
+    // `:214` reads `board.rules.viaRules.firstElement()` — the object, which the port's control
+    // block now owns a copy of (Plan 7 Task 11).
+    assert_eq!(zero.via_rule.as_ref(), Some(&board.rules.via_rules[0]));
     assert!(board.rules.via_rules.len() > 1, "there is a second rule");
 }
 
@@ -431,7 +433,7 @@ fn plane_board() -> Board {
     rules
         .net_classes
         .get_mut(class)
-        .set_via_rule(Some(ViaRuleId(0)));
+        .set_via_rule(Some(rules.via_rules[0].clone()));
     rules.nets.add("n1", 1, false, class);
     Board::new(
         Vec::new(),

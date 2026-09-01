@@ -148,12 +148,15 @@ pub struct ViaInfoId(pub usize);
 /// `BoardRules.viaRules` is a `Vector<ViaRule>` (BoardRules.java:26); the port stores the
 /// vector index.
 ///
-/// **Removal hazard**, the same shape as [`ViaInfoId`]'s: `Network.addViaRule`
-/// (Network.java:414-416) removes a same-named rule from the middle of the vector before
-/// appending its replacement, which shifts every later index while Java's object references
-/// survive untouched. Go through
-/// [`BoardRules::replace_via_rule_renumbering_net_classes`](crate::rules::BoardRules::replace_via_rule_renumbering_net_classes),
-/// which rewrites every `NetClass::via_rule` — the only place a `ViaRuleId` is stored.
+/// ~~**Removal hazard**, the same shape as [`ViaInfoId`]'s~~ — **gone since Plan 7 Task 11.**
+/// `Network.addViaRule` (Network.java:413-417) removes a same-named rule from the middle of the
+/// vector before appending its replacement, which used to shift every later index while Java's
+/// object references survived untouched. `NetClass::via_rule` now **owns** a
+/// [`ViaRule`](crate::rules::ViaRule) rather than storing an index (ruling H's via-rule half),
+/// so nothing outside [`BoardRules::via_rules`](crate::rules::BoardRules::via_rules) holds a
+/// `ViaRuleId` across a removal and
+/// [`BoardRules::replace_via_rule`](crate::rules::BoardRules::replace_via_rule) is Java's two
+/// lines with no renumbering half.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViaRuleId(pub usize);
 
