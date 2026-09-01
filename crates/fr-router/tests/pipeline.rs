@@ -184,7 +184,7 @@ fn two_runs_of_the_same_board_are_identical() {
 
 /// `RoutingPipeline.java:110`'s `this.job.board.finishAutoroute()` is the **only** caller of
 /// `RoutingBoard.finishAutoroute` in the whole Java tree (`grep -rn "\.finishAutoroute()"
-/// src/main` finds exactly one hit, at that line). Ruling AJ (`BatchAutorouter::
+/// src/main` finds two hits — `RoutingPipeline.java:110` and `RoutingBoardUndoFacade.java:55` (via `RoutingBoard.deepCopy()`, whose four callers are all dead-on-headless or GUI-only; Task 15 review traced each) — so exactly one is reachable from `run_pipeline`, at that line). Ruling AJ (`BatchAutorouter::
 /// BENCHMARK_RETAIN_AUTOROUTE_DATABASE` permanently `false`) makes the call a no-op on every path
 /// this port can reach — no `AutorouteEngine` ever survives a lower-level call into
 /// `run_pipeline`'s scope for `RoutingBoardExt::finish_autoroute` (the trait method built to
