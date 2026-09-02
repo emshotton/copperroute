@@ -22,15 +22,16 @@
 //! therefore applies, and scan ruling R3 makes that addition an **additive-and-wrapped,
 //! driver-pinned** `fr-router` change.
 //!
-//! **The controller assigned that `fr-router` change to a later task.** This task builds the
-//! token, its three-state mapping and the two entry points the seam will call:
+//! **Controller ruling BB assigns that `fr-router` change to Task 11**, the seam's first consumer
+//! (Task 12 consumes it too, and each has a cancellation test that cannot pass without it). Task 0
+//! builds the token, its three-state mapping and the two entry points the seam will call:
 //!
 //! * [`CancelToken::apply_to`] — copy the token's current state into an existing `RouterStop`.
 //!   This is the one line an added poll site executes.
 //! * [`CancelToken::as_router_stop`] — mint a `RouterStop` already carrying the token's state and
 //!   its deadline, which is what a routing thread holds for a whole run.
 //!
-//! Until the seam lands, a cancel that arrives **after** `run_pipeline` has been entered is not
+//! Until Task 11 lands it, a cancel that arrives **after** `run_pipeline` has been entered is not
 //! observed by that run; one that arrives before is. That is the whole of the gap, it is recorded
 //! as an `obligation:` on [`CancelToken::apply_to`], and it is why
 //! `crates/fr-core/tests/cancel.rs` pins the mapping rather than a mid-pass abort.
@@ -39,8 +40,8 @@
 //!
 //! Every existing parity driver builds `RouterStop::new()` — state `None`, deadline `None`.
 //! [`CancelToken::default`]'s `as_router_stop` is byte-identical to that: no flag set, no
-//! deadline. That is what keeps `batch_parity`, `p6t1` and `sweep-p7t9.sh` unchanged when the
-//! seam is added, and [`crate::cancel`]'s tests assert it directly.
+//! deadline. That is what keeps `batch_parity`, `p6t1` and `sweep-p7t9.sh` unchanged when Task 11
+//! adds the seam, and [`crate::cancel`]'s tests assert it directly.
 
 // ── `core/StoppableThread` — the audit rows for this crate ──────────────────────────────────────
 //
@@ -248,14 +249,18 @@ impl CancelToken {
     /// difference from not calling this at all. That is the property every added poll site
     /// depends on, and `an_uncancelled_token_is_a_no_op` pins it.
     ///
-    // obligation: the `fr-router` poll seam. Scan ruling R3 makes the poll **addition** an
-    // additive-and-wrapped, driver-pinned `fr-router` change owned by a later Plan 8 task; this
-    // task builds the token and this mapping. Until that task lands, a cancel arriving after
-    // `run_pipeline` has been entered is not observed by that run. The seam's contract is: call
+    // obligation: the `fr-router` poll seam is **Task 11's** (controller ruling BB — the seam is
+    // owned by its first consumer; Task 12 consumes it too). Scan ruling R3 makes the poll
+    // **addition** an additive-and-wrapped, driver-pinned `fr-router` change; Task 0 builds the
+    // token and this mapping, and until Task 11 lands, a cancel arriving after `run_pipeline` has
+    // been entered is not observed by that run. The seam's contract is: call
     // `CancelToken::apply_to(&stop)` at `pipeline/batch_loop.rs:303`'s job-level poll and at the
     // per-stage sites plan-7 ruling AI enumerates (`fanout.rs:1142`, `optimizer.rs:1110`),
-    // keeping every existing signature and wrapping it, with `batch_parity` / `p6t1` /
-    // `sweep-p7t9.sh` byte-unchanged as the gate.
+    // keeping every existing signature and wrapping it, with `batch_parity` / `p6t1` (all six
+    // rows) / `sweep-p7t9.sh` byte-unchanged as the gate. Task 11's
+    // `a_cancelled_tool_stops_mid_flight` and Task 12's
+    // `cancelling_route_board_mid_run_returns_timed_out_false_and_a_partial_result` are the two
+    // tests that cannot pass without it.
     pub fn apply_to(&self, stop: &RouterStop) {
         if self.is_cancelled() {
             // StoppableThread.requestStop (:23-25).

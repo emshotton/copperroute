@@ -407,9 +407,29 @@ impl Board {
 // text predicted: `fr_core::Ctx` holds neither the board nor the job. There is no manager
 // *object* in the port at all — `fr_core::RoutingPipeline::run(board, ctx)` takes the board as
 // its `&mut Board` parameter, owned by whichever caller loaded it, and `RoutingJob` is passed
-// around that call rather than held in a field. So all three become `// renamed:` with the site
-// that replaced them, not `added in Plan N:` with a field that was never built. See
-// `crates/fr-core/src/ctx.rs`'s doc comment, which records the same three.
-// renamed: `HeadlessBoardManager.getRoutingBoard` (:255-257) -> the `&mut Board` parameter of `fr_core::RoutingPipeline::run` (`crates/fr-core/src/pipeline.rs`).
-// renamed: `HeadlessBoardManager.replaceRoutingBoard` (:276-278) -> the caller's own `Board` binding; a manager-less port has nothing to replace a field on.
-// renamed: `HeadlessBoardManager.getCurrentRoutingJob` (:570-572) -> `fr_core::RoutingJob` (Plan 8 Task 1), passed to the call rather than held.
+// around that call rather than held in a field. So none of the three is `added in Plan N:` with a
+// field that was never built; each names the site that replaced it, with the marker kind the tool
+// actually means (see the SF5 note below). `crates/fr-core/src/ctx.rs`'s doc comment records the
+// same three.
+//
+// **Marker kind, corrected in Task 0's review round (SF5).** `scripts/audit-port.sh`'s own header
+// defines `renamed: <Method>` as "ported under a different name" and counts it as **ported**. Only
+// the third of these has a Rust item to name; the first two have a *calling convention* and no
+// `fn` at all, so they are `not ported:` with the same prose. Their live non-GUI callers are
+// already accounted for elsewhere in the port, which is what makes that honest:
+//
+//   $ grep -rn "getRoutingBoard()" src/main/java | grep -v '^src/main/java/app/freerouting/gui/'
+//     io/specctra/parser/{PlaceControl:69, Wiring:345,435,658, Network:425,549,845,938,1237,1242,
+//     1249,1282,1317,1318}  — all `scopeParameter.boardHandling.getRoutingBoard()`
+//   $ grep -rn "replaceRoutingBoard(" src/main/java | grep -v '^src/main/java/app/freerouting/gui/'
+//     management/jobs/RoutingJobSchedulerActionThread.java:284  (`boardManager.replaceRoutingBoard(job.board)`)
+//
+// Every `getRoutingBoard` caller outside the GUI is the DSN parser reaching the board it is
+// building through `BoardParserCallback`, and `crates/fr-dsn/src/parser/scope_parameter.rs:82`
+// already rosters that interface `// not ported:` — `ReadScopeParameter::board` is a plain public
+// field, held directly rather than behind a callback. So the method is accounted for where it is
+// actually reached, and there is nothing in `fr-board` to rename it to.
+//
+// not ported: `HeadlessBoardManager.getRoutingBoard` (:255-257) — a one-line field read on a manager object the port does not have. Its non-GUI callers are the DSN parser's `BoardParserCallback`, rostered at `crates/fr-dsn/src/parser/scope_parameter.rs:82`; `fr_core::RoutingPipeline::run` takes the board as its `&mut Board` parameter, owned by whichever caller loaded it.
+// not ported: `HeadlessBoardManager.replaceRoutingBoard` (:276-278) — a `synchronized` field write with one non-GUI caller (`RoutingJobSchedulerActionThread.java:284`). Rust ownership does its job: the caller rebinds its own `Board`, so there is no field to replace and no `fn` to name.
+// renamed: `HeadlessBoardManager.getCurrentRoutingJob` (:570-572) -> `fr_core::RoutingJob` (Plan 8 Task 1), passed to the call rather than held in a manager field. This one really is a rename — the job is a named Rust type — which is why `HeadlessBoardManager` stays off the `ROSTERED` list (see `docs/plan-7-handoff.md` §6's dated status line).

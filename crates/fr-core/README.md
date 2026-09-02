@@ -64,10 +64,11 @@ keeps `batch_parity`, `p6t1` and `sweep-p7t9.sh` byte-identical once the poll se
 Scan ruling R3: the committed tree has **one** `poll_deadline` call site
 (`crates/fr-router/src/pipeline/batch_loop.rs:303`), not the six the plan drafted, and
 `run_pipeline` offers no closure hook. The *addition* of polls is an additive-and-wrapped,
-driver-pinned `fr-router` change that the controller assigned to a later Plan 8 task. Task 0
-builds the token and the two entry points that seam calls (`apply_to`, `as_router_stop`), and
-records the gap as an `obligation:` at `CancelToken::apply_to`: **until the seam lands, a cancel
-that arrives after `run_pipeline` is entered is not observed by that run.**
+driver-pinned `fr-router` change that **controller ruling BB assigns to Task 11** — the seam's
+first consumer, with Task 12 the second. Task 0 builds the token and the two entry points that
+seam calls (`apply_to`, `as_router_stop`), and records the gap as an `obligation:` at
+`CancelToken::apply_to`: **until Task 11 lands it, a cancel that arrives after `run_pipeline` is
+entered is not observed by that run.**
 
 ## The deadline, and Java's monitor thread
 

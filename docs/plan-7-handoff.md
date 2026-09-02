@@ -492,7 +492,7 @@ it is a real hole in the CLI's settings ladder, not a GUI class. Plan 8's Task 5
 | what | count / result |
 |---|---|
 | workspace tests | see §11's verification block |
-| `audit-port.sh` invocations | **33**, all exit 0, **0 `MISSING`, 0 `UNMAPPED`**, 26 `ROSTERED` across 10 |
+| `audit-port.sh` invocations | **33**, all exit 0, **0 `MISSING`, 0 `UNMAPPED`**, 26 `ROSTERED` across 10 *(as of Plan 7 Task 17; see the status line below)* |
 | differential drivers added | 10 (`p7t1`–`p7t10`), each a genuine Java-vs-Rust pair, budget disabled on both sides |
 | probes added | 5 (`P7T2Probe`, `P7T4Probe`, `P7T5Probe`, `P7T8Probe`, `P7T9Probe`) — Java-only, whose stdout a Rust test pins as literals |
 | `p6t1` extended | a fifth argument, `--steps=1-8`; **10/10** after ruling AY |
@@ -614,7 +614,7 @@ Commands run by Task 17 on the committed tree, from
 | 3 | `cargo nextest run --workspace` | **2 137 tests run, 2 137 passed, 54 skipped** (2 135 at the first commit; +2 are the two §10.3 standing assertions added in the fix round) | **0** |
 | 4 | `cargo test --workspace --doc` | 7 doc-test targets, all ok | **0** |
 | 5 | `cargo doc --workspace --no-deps` | 40 warnings, **all pre-existing** — the identical count on `git stash`ed HEAD, verified in the same session; none in a file this task touched | **0** |
-| 6 | the **33** `audit-port.sh` invocations (script below) | **0 `MISSING`, 0 `UNMAPPED`, 26 `ROSTERED` across 10**; every invocation exit 0 | **0** |
+| 6 | the **33** `audit-port.sh` invocations (script below) | **0 `MISSING`, 0 `UNMAPPED`, 26 `ROSTERED` across 10**; every invocation exit 0 *(as of Plan 7 Task 17; see the status line below)* | **0** |
 | 7 | `grep -rn "added in Plan 7" crates/*/src` | **nothing** | 1 (no match) |
 | 8 | `grep -rn "added in Plan 7" crates/*/tests` | **nothing** | 1 (no match) |
 | 9 | `grep -rn "item_tree_shape_ref\|item_tile_shape_ref" crates/fr-router/` | 3 hits, **all prose**, 0 call sites — plan-6 ruling 10 holds | 0 |
@@ -662,6 +662,24 @@ $A board/actions  crates/fr-router/src 'ForcedViaInserter.java ForcedPadRouter.j
 $A board/optimize crates/fr-router/src 'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java ViaOptimizer.java' scripts/audit-map/fr-router.map
 $A core           crates/fr-router/src 'StopRequestState.java StoppableThread.java RouterCounters.java ProgressThrottler.java' scripts/audit-map/fr-router.map   # +1, Task 17, BY FILE GLOB
 ```
+
+> **Status update — 2026-09-01, Plan 8 Task 0 (`b40b1cc`).** The 33 invocations above still exit
+> 0 at **0 `MISSING`, 0 `UNMAPPED`**, but the `ROSTERED` count is now **25 across 9**, not 26
+> across 10. The one that changed is
+> `audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' scripts/audit-map/fr-board.map`,
+> which printed *"ROSTERED HeadlessBoardManager (9 public methods, none ported: 0 'not ported:',
+> 9 'added in Task|Plan N:')"* and now prints none. **Cause:** Plan 8 Task 0 consumed three of
+> those nine deferral markers (`getRoutingBoard`, `replaceRoutingBoard`, `getCurrentRoutingJob` —
+> `crates/fr-board/src/board/clearance_override.rs`), and the third is a `renamed:`, which
+> `audit-port.sh` counts as **ported**, so the class is no longer *wholly* deferred. The first two
+> are `not ported:` (they have no Rust `fn`; their live non-GUI callers are rostered elsewhere —
+> see the SF5 note at that site). Nothing regressed: the drop is a class leaving the deferral
+> roster, which is what a plan consuming its own markers looks like. Plan 8 Task 3 takes
+> `HeadlessBoardManager` off the list permanently, and **Plan 8 Task 14's hand-off table must
+> carry the then-current number with this reason**, superseding the two rows above. Measured by
+> diffing the full `ROSTERED` line sets before and after, not by eye. `crates/fr-router/README.md`'s
+> §Audit note recording the old one-ROSTERED-line result for that invocation is stale for the same
+> reason.
 
 **The `core` invocation must stay file-globbed.** `core '*.java'` would pull
 `RoutingJob`, `Session`, `BoardFileDetails`, `RouterJobResourceUsage`,

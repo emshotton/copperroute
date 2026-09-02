@@ -16,9 +16,34 @@
 //! The plan draft said the method "returns a `Duration` and **throws**", caught at the call site.
 //! It does neither. It is `public static Long parseTimespanString(String)`, it answers the
 //! duration **in whole seconds as a `Long`**, it answers **`null`** for a `null`/blank input
-//! (`:84-86`) and for any `DateTimeParseException` (`:90-92`), and its one call site
-//! (`management/jobs/RoutingJobSchedulerActionThread.java:44`) has no `try`/`catch` — it
-//! null-checks at `:45`. `Duration` is an internal intermediate only.
+//! (`:84-86`) and for any `DateTimeParseException` (`:90-92`). `Duration` is an internal
+//! intermediate only.
+//!
+//! ## Four call sites, not one
+//!
+//! The plan draft called `RoutingJobSchedulerActionThread.java:44` "the one call site". Measured
+//! at HEAD, `grep -rn "parseTimespanString" src/main/java` answers **four** (plus the
+//! declaration):
+//!
+//! | call site | what it does with the answer |
+//! |---|---|
+//! | `management/jobs/RoutingJobSchedulerActionThread.java:44` | the **job** timeout — no `try`/`catch`, null-checked at `:45`, capped from above at `:47-49` ([`job_timeout_deadline_from`]) |
+//! | `autoroute/pipeline/BatchOptimizer.java:155` | the optimizer stage's own `TimeLimit` — **Plan 7 Task 13** |
+//! | `autoroute/pipeline/BatchFanout.java:96` | the fanout stage's own `TimeLimit` — **Plan 7 Task 12** |
+//! | `gui/windows/routing/WindowAutorouteParameterState.java:43` | the GUI spinner — not ported (spec §2) |
+//!
+//! The two Plan 7 sites are why [`parse_timespan_seconds`] already existed before this crate did;
+//! see its doc.
+//!
+//! ## "There is no lower clamp" is a statement about the **headless** path
+//!
+//! It is true and load-bearing at `RoutingJobSchedulerActionThread.java:47-49`, which caps only
+//! from above. It is **not** true of the GUI site: `WindowAutorouteParameterState.parseTimeout`
+//! substitutes `DEFAULT_TIMEOUT_SECONDS` for a `null` at `:44` and then applies
+//! `Math.clamp(totalSeconds, DEFAULT_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS)` at `:45`, with those
+//! two constants declared at `:14-15` as `0L` and `86400L`. So a GUI user cannot express a
+//! negative timeout and a headless user can — the divergence is Java's, not the port's, and the
+//! port reproduces the headless half because that is the only half spec §2 keeps.
 //!
 //! # …and the consequence the plan did not draw: `Long` is **signed**
 //!
@@ -181,6 +206,11 @@ pub fn parse_timespan(timespan_string: &str) -> Option<Duration> {
 /// Note what is **not** there: no lower clamp (a negative timeout survives, and is already
 /// expired), and no `GRACE_PERIOD` — `:47-49` caps from above and nothing else. The grace is the
 /// monitor thread's (`:77`) and lands on [`Deadline::timed_out_at`].
+///
+/// The missing lower clamp is specific to **this** call site. The GUI's
+/// `WindowAutorouteParameterState.parseTimeout:44-45` does clamp, to
+/// `[DEFAULT_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS]` = `[0, 86400]` (`:14-15`) — see the module
+/// doc's table. Only the headless ladder is ported.
 ///
 /// `None` — Java's `job.timeoutAt == null` — is "no job timeout", which is the CLI's default and
 /// what every parity run uses.

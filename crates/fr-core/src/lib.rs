@@ -295,7 +295,8 @@ pub enum Error {
 //   So the clamp at `RoutingJobPriority.java:15` is arithmetic on a number nothing consumes, and a
 //   single-shot CLI has no queue to order anyway (see the scheduler roster above).
 //
-// not ported: `core/RoutingStage` (8 lines) — **written three times and read zero times**. The plan
+// not ported: `core/RoutingStage` (8 lines) — **three assignments plus the field's initialiser,
+// and no control-flow reader**. The plan
 // said it "is initialised to IDLE and never reassigned in `main/`"; the file disagrees and wins:
 //     $ grep -rn "RoutingStage\." src/main/java | grep -v core/RoutingStage.java
 //     core/RoutingJob.java:77                      stage = RoutingStage.IDLE;         (the field)
@@ -303,7 +304,14 @@ pub enum Error {
 //     autoroute/pipeline/RoutingPipeline.java:94   this.job.stage = RoutingStage.ROUTING;
 //     autoroute/pipeline/RoutingPipeline.java:121  this.job.stage = RoutingStage.OPTIMIZATION;
 //     $ grep -rn "\.stage\b" src/main/java | grep -v core/RoutingStage.java
-//     (the same three writes, and nothing else — there is no reader)
+//     (the same three assignments, and nothing else — no comparison, no read)
+//   **Qualified, because Task 1 ports `RoutingJob` next.** "No reader" is a statement about
+//   hand-written control flow. The field is `@SerializedName("stage")` + `@Schema(...)` at
+//   `core/RoutingJob.java:75-77`, so it IS read **reflectively** — by Gson, into the job JSON, and
+//   by the OpenAPI schema generator. Both of those surfaces are `api/**`, which ruling AU rosters
+//   in full (§1), so nothing the port emits needs `stage`; but Task 1 must not read this line as
+//   "the field is unused" and drop it from a JSON surface it does port. The one other reader is a
+//   Java test's diagnostic string (`src/test/java/.../fixtures/RoutingFixtureTest.java:194`).
 //   The correction matters: it is *reassignment* that is absent from the port, not from Java, and
 //   `crates/fr-router/src/pipeline/run.rs` already carries the three `// not ported:` write markers.
 //

@@ -4,19 +4,21 @@
 //!
 //! The brief asks for `a_cancel_from_a_second_thread_stops_a_run_mid_pass`: cancel after the
 //! first `RoutingEvent::BoardSnapshot` and assert `passes_run` fell. **That test needs the
-//! `fr-router` poll seam, which the controller assigned to a later Plan 8 task** (scan ruling R3:
+//! `fr-router` poll seam, which controller ruling BB assigns to Task 11** — the seam's first
+//! consumer, whose own `a_cancelled_tool_stops_mid_flight` is this same assertion one layer up
+//! (Task 12's `cancelling_route_board_mid_run_…` is the second consumer). (Scan ruling R3:
 //! the committed tree has exactly one `poll_deadline` site, `RouterStop` is `Cell`-based with
 //! private fields, and `run_pipeline` offers no closure hook, so ruling AP's "add a poll, never a
 //! lock" escape applies and the *addition* is an additive-and-wrapped `fr-router` change).
-//! Until it lands, a cancel that arrives **after** `run_pipeline` is entered is not observed by
-//! that run.
+//! Until **Task 11** lands it, a cancel that arrives **after** `run_pipeline` is entered is not
+//! observed by that run.
 //!
 //! So this file pins everything that does not depend on the seam, and pins it against a **real
 //! routed board** rather than against a constructed `RouterStop`:
 //!
 //! * [`a_cancel_from_a_second_thread_stops_a_run`] — the token really is shared across a thread
 //!   boundary, and a run that starts with it cancelled really does route nothing. This is the
-//!   brief's test minus the word "mid-pass"; the mid-pass half is the seam task's.
+//!   brief's test minus the word "mid-pass"; **the mid-pass half is Task 11's** (ruling BB).
 //! * [`cancel_all_and_cancel_auto_router_are_distinct`] — plan ruling 2's whole point.
 //! * [`an_uncancelled_token_is_a_no_op`] — what keeps `batch_parity` byte-identical.
 
@@ -82,7 +84,7 @@ fn cancel_all_and_cancel_auto_router_are_distinct() {
 /// `RouterStop` indistinguishable from `RouterStop::new()`, and applying it to a live stop writes
 /// nothing.
 ///
-/// This is what makes the seam task's added polls invisible to `batch_parity`, `p6t1` and
+/// This is what makes Task 11's added polls invisible to `batch_parity`, `p6t1` and
 /// `sweep-p7t9.sh`.
 #[test]
 fn an_uncancelled_token_is_a_no_op() {
@@ -117,7 +119,7 @@ fn an_uncancelled_token_is_a_no_op() {
 /// **`passes_run == 0`, not "fewer passes"**: the cancel lands before `run_pipeline`'s first
 /// stage guard (`RoutingPipeline.java:97`'s `isStopAutoRouterRequested`), so the routing stage
 /// never starts — which is precisely Java's answer for a job cancelled before it began. The
-/// mid-pass case is the seam task's; see the module doc.
+/// mid-pass case is **Task 11's** (controller ruling BB); see the module doc.
 #[test]
 fn a_cancel_from_a_second_thread_stops_a_run() {
     if !parity::require_java_dir() {
@@ -179,7 +181,7 @@ fn an_expired_deadline_reaches_the_router_stop() {
     assert_eq!(live_stop.state(), StopRequestState::None);
 }
 
-/// The `SyncProgressSink` really is called during a run — the precondition of the seam task's
+/// The `SyncProgressSink` really is called during a run — the precondition of Task 11's
 /// mid-pass test, asserted here so that task inherits a working sink rather than debugging two
 /// things at once.
 #[test]

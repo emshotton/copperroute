@@ -4,13 +4,13 @@
 # globs, which the reader (`read -r cls path`) would only keep the first token of.
 #
 # CREATED AND SEEDED BY PLAN 8 TASK 0. Filled by every later task; **closed by Task 14**, which
-# must reach zero `MISSING` and zero `UNMAPPED` on all seven invocations below.
+# must reach zero `MISSING` and zero `UNMAPPED` on all eight invocations below.
 #
 # Three of these Java directories — `management/`, `core/` and `api/` — had **never been audited
 # by any plan** before Plan 8. That is the gap survey §5.7 exists because of, and it is why the
 # clearance overrides of `HeadlessBoardManager` survived six plans unrostered (plan-7 Task 15b).
 #
-# ── The seven invocations this map serves (plan §The audit, Task 14) ────────────────────────────
+# ── The eight invocations this map serves (plan §The audit, Task 14) ────────────────────────────
 #
 #   ./scripts/audit-port.sh core                crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
 #   ./scripts/audit-port.sh core/scoring        crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
