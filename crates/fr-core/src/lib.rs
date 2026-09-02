@@ -36,6 +36,8 @@ pub mod file_details;
 pub mod job;
 pub mod pipeline;
 pub mod progress;
+pub mod stats_from_bytes;
+pub mod stats_json;
 pub mod timespan;
 
 pub use cancel::{CancelToken, Deadline};
@@ -48,6 +50,8 @@ pub use job::{
 };
 pub use pipeline::RoutingPipeline;
 pub use progress::{SyncProgressSink, SyncProgressSinkView};
+pub use stats_from_bytes::{BoardStatisticsExt, count_occurrences};
+pub use stats_json::{GsonBoardStatistics, to_gson_json, to_gson_string};
 pub use timespan::{
     GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format,
     job_timeout_deadline, job_timeout_deadline_from, parse_timespan, parse_timespan_seconds,

@@ -32,7 +32,8 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe" >&2
+  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
+  echo "           p8t2probe" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -660,6 +661,34 @@ case "$driver" in
     javapkg="core"
     java_src_dir="$DIFF_ROOT/java/probes"
     default_args=("$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t1probe-scratch")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t2probe)
+    # Plan 8 Task 2: the **text-scraping** `BoardStatistics(byte[], FileFormat)`
+    # (`core/scoring/BoardStatistics.java:436-552`), its private `countOccurrences` (`:578-586`)
+    # and the Gson JSON surface `toString` (`:588-591`). Five tables, 244 rows: the fifty DTO
+    # fields and the byte-exact `toString()` for every corpus `.dsn`, every committed `.ses`,
+    # every `batch.ses`, thirty-eight synthetic edge cases and three hand-built statistics.
+    #
+    # Declares `package app.freerouting.core.scoring` because `countOccurrences` is `private
+    # static` and is reached by reflection.
+    #
+    # Two `XDIFF` rows carry both answers on both sides, so the diff still has to be empty:
+    # `(parser (hostCad))` throws `StringIndexOutOfBoundsException` out of the Java constructor
+    # (quirk #250, totalised here), and `(parser (hostCad  ))` scrapes an *empty* `hostCad` where
+    # the port spells Java's `null` the same way (quirk #251).
+    #
+    # NAME: `p8t2probe`, not `p8t2` — the plan reserves `p8t2` for Task 4's result-manifest
+    # driver, which is a different driver against the same jar.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t2-byte-statistics.txt`, which
+    # `crates/fr-core/tests/stats.rs` asserts against row by row; this driver regenerates and
+    # re-verifies it.
+    javaclass=P8T2Probe
+    javapkg="core.scoring"
+    java_src_dir="$DIFF_ROOT/java/probes"
+    default_args=("$FREEROUTING_JAVA_DIR" "$ROOT")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;
