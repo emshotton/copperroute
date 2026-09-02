@@ -6,11 +6,28 @@ The composition layer between `fr-router` and the `freerouting` binary — spec 
 If you want to **route a board**, this is the crate you call. Everything below it is the router,
 the design-rule checker, the readers and the settings ladder.
 
-> **State: Plan 8 Task 0.** The cancel/progress seams, `Ctx`/`RoutingResult`,
+> **State: Plan 8 Task 3.** The cancel/progress seams, `Ctx`/`RoutingResult`,
 > `RoutingPipeline::run`, the timeout ladder, `PARITY_VERSION` and the whole `// not ported:`
-> roster have landed. The job model (Task 1), the byte-scraping statistics twin (Task 2), the
-> load/save sequence (Task 3), the manifest (Task 4) and the board summary (Task 12) are still to
-> come. `scripts/audit-map/fr-core.map` records which task owes which rows.
+> roster (Task 0), the job model (Task 1), the byte-scraping statistics twin (Task 2) and the
+> **board load/save sequence** (Task 3, `load.rs` + `save.rs`) have landed; `management/`,
+> `management/jobs` and `management/sessions` are at 0 MISSING. The manifest (Task 4) and the
+> board summary (Task 12) are still to come. `scripts/audit-map/fr-core.map` records which task
+> owes which rows.
+
+## One Java fact this crate overturned
+
+Plan 8's survey (ruling AD) and quirk register row #232 both said the two clearance overrides run
+**twice** per DSN load — from `HeadlessBoardManager.createBoard:342-343` and again from
+`applyRouterSettingsForLoadedBoard:746-747`. Task 3 measured it and they run **once**:
+`HeadlessBoardManager.createBoard` is unreachable from the DSN parser, whose only
+`BoardParserCallback` is `ReadScopeParameter$MinimalBoardManager`, which builds the board without
+either override. So `fr_router::pipeline::prepare_board` is called once from
+`apply_router_settings_for_loaded_board`, and that one call **is** Java's one call — there is no
+divergence left to weigh. The evidence is `scripts/differential/java/probes/P8T3Probe.java`'s
+`[createboard]` rows (`headless_create_board_calls=0`, through a counting subclass of the real
+manager) and `tests/data/p8t3-clearance-overrides.txt`'s 54 stage blocks, which
+`tests/overrides.rs` replays cell for cell — search-tree leaf count and `ShapeTree.toArray()`
+order digest included. Quirk #253 records the dead method; quirk #232 is rewritten.
 
 ## What this crate is not
 

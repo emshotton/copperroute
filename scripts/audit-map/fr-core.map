@@ -37,6 +37,9 @@
 #   Task 2  — BoardStatistics(byte[], FileFormat) + the Gson surface
 #             (`stats_from_bytes.rs`, `stats_json.rs`).
 #   Task 3  — the load/save sequence and the `management/` audit (`load.rs`, `save.rs`).
+#             **Landed**: `management`, `management/jobs` and `management/sessions` are all at
+#             0 MISSING and 0 UNMAPPED. `HeadlessBoardManager.createBoard` is `not ported:` in
+#             `load.rs` and is **dead code in Java** (quirk #253), not a deferral.
 #   Task 4  — RoutingResultManifest and its DTOs (`manifest.rs`).
 #   Task 12 — the board-summary payload (`summary.rs`).
 #   Task 14 — closes every remaining row to zero.
@@ -108,7 +111,10 @@ ProgressThrottler                     progress.rs
 
 # ── management/ ─────────────────────────────────────────────────────────────────────────────────
 # Task 3's, except the halves Task 0 rostered (the deferred pass, the comparison pair, the power
-# plane validation) — those markers are in `lib.rs`.
+# plane validation) — those markers are in `lib.rs`. `BoardManager` is the interface
+# `HeadlessBoardManager` implements; its one method the audit can see (`createBoard`) is
+# `not ported:` in `load.rs` alongside the implementation's, because both are unreachable from the
+# DSN parser (quirk #253).
 BoardLoader                 load.rs
 BoardManager                load.rs
 HeadlessBoardManager        load.rs

@@ -712,13 +712,19 @@ would still surface as a `DIFF` on a mode nobody excused.
   (`board/actions/ForcedViaInserter.java:348`), and
   `crates/fr-router/tests/forced_via.rs`
   `insert_stops_when_the_stop_check_trips` pins that a tripping check on a
-  four-rung ladder answers `BoardError::Stopped` rather than hanging. **One line
-  of wiring remains and it is Plan 8's, by controller ruling** (accepted in Task
-  10b's review): `fr-dsn`'s `read_via_scope` still calls the unchecked wrapper,
-  and passing it the reader's own `normalize_time_limit`-backed check is a
-  DSN-reader behaviour change over the 105-file corpus, not a router one. Marker
-  at `parser/wiring.rs:596`, which says `Plan 8`, as does the obligation register
-  row in `docs/java-quirks.md`.
+  four-rung ladder answers `BoardError::Stopped` rather than hanging. **The last line of wiring landed in
+  Plan 8 Task 3**: `fr-dsn`'s `read_via_scope` now calls `insert_via_checked`
+  with a per-via `TimeLimit` stop built from
+  `DsnReadOptions::normalize_time_limit`, with the `limit_ms <= 0` test
+  inverted relative to the normalisation site — a stop there costs one warning
+  because Java has a `catch`, a stop here can only fail the read because Java
+  has none, so a non-positive budget means no bound at the via site. It was held back because it changes the
+  DSN reader's behaviour over the 105-file corpus, so it landed in the task that
+  already re-runs the whole sweep: `cargo test -p fr-dsn`,
+  `scripts/differential/sweep-p3t15.sh` (525 MATCH + 5 XDIFF),
+  `scripts/differential/run.sh p6t1` on the five Plan 6 stems and
+  `cargo test -p fr-router --test batch_parity`, all unchanged. Ruling F is now
+  closed end to end.
 - **Via-info / via-rule re-pointing (ruling H). DECIDED in Plan 6 (Tasks 8 and
   17): it closes AGAINST the re-pointing, and the fix is a `ViaRule` that owns
   its `ViaInfo`s — a Plan 7 `fr-board` change. — DONE in Plan 7 Task 0** for the

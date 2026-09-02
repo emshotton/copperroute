@@ -592,31 +592,43 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
                 .padstacks
                 .get(current_padstack)
                 .is_some_and(|padstack| padstack.attach_allowed);
-        let board = p.board.as_mut().expect("checked above");
-        // obligation: Plan 8 — BasicBoard.insertVia (Wiring.java:706) walks
+        // plan-6 §11.5, closed by Plan 8 Task 3 — `BasicBoard.insertVia` (Wiring.java:706) walks
         // `fromLayer..toLayer` calling `splitTraces` -> `PolylineTrace.split`, i.e. the same
-        // machinery quirk #76 does not terminate in, and it is **outside** the
-        // `try`/`catch` Java wraps `normalizeAllTraces` in (:346-352). Plan ruling 4's
-        // `StopCheck` therefore does not reach it: a DSN whose vias sit on a four-rung ladder can
-        // still wedge the reader. **The seam now exists**: plan-6 ruling 6 (Task 10b) added
-        // `Board::insert_via_checked`, for `ForcedViaInserter::insert`'s sake, and left
-        // `insert_via` as a `|| false` wrapper. What is left here is to pass this reader's own
-        // `normalize_time_limit`-backed check to it, which changes DSN-reader behaviour under the
-        // 105-file corpus and so was not folded into a router task — see docs/java-quirks.md's
-        // obligation register.
+        // machinery quirk #76 does not terminate in, and it is **outside** the `try`/`catch` Java
+        // wraps `normalizeAllTraces` in (:346-352). Plan ruling 4's `StopCheck` did not reach it,
+        // so a DSN whose vias sit on a four-rung ladder could still wedge the reader. The seam is
+        // plan-6 ruling 6's `Board::insert_via_checked` (Task 10b), and what this passes it is
+        // the reader's own `normalize_time_limit`.
+        //
+        // **The `limit_ms <= 0` test has the opposite polarity to :78-84's, on purpose.** There,
+        // a trip lands in the `catch (Exception)` Java already has, so it costs one warning and
+        // the read still succeeds — which is what lets `DsnReadOptions { normalize_time_limit:
+        // Duration::ZERO }` mean "skip normalisation, deterministically" rather than "race the
+        // clock". Here Java has **no** catch: a stop can only fail the whole read (the
+        // `totalized:` note below). Making the documented opt-out value refuse every via would
+        // be a failure mode with no Java counterpart, so a non-positive budget means **no bound
+        // at this site**, which is exactly Java. A positive budget bounds each via's insert
+        // separately; the budget is per via rather than shared across the wiring scope because
+        // Java has none at all, so a shared one would stop reading a large board's later vias for
+        // a reason Java has no counterpart for.
+        let limit_ms = p.options.normalize_time_limit_ms();
+        let deadline = TimeLimit::new(limit_ms);
+        let stop = move || limit_ms > 0 && deadline.is_exceeded();
+        let board = p.board.as_mut().expect("checked above");
         // totalized: Wiring.readViaScope — Java's `board.insertVia` (:706) cannot fail, and
         // `readViaScope`'s `catch` only covers `IOException`; the port's returns
         // `Result<ItemId, BoardError>` because `split_traces` can surface a `Polyline`
-        // normalisation failure (and, once the obligation above is closed, a stop). Propagated
-        // as `DsnError::Board`, which fails the read rather than inserting a corrupt via. See
-        // docs/java-quirks.md quirk #109.
-        board.insert_via(
+        // normalisation failure, and now also the stop above. Propagated as `DsnError::Board`,
+        // which fails the read rather than inserting a corrupt via. See docs/java-quirks.md quirk
+        // #109.
+        board.insert_via_checked(
             current_padstack,
             Point::Int(board_location),
             net_numbers,
             clearance_class_index as usize,
             fixed,
             attach_allowed,
+            &stop,
         )?;
     }
     Ok(true)

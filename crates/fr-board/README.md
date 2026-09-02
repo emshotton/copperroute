@@ -109,12 +109,16 @@ at *default* settings (quirk #231) and nothing in the port applied it.
     scripts/audit-map/fr-board.map
 ```
 
-It prints one `ROSTERED` line and exits 0: the class's three board-mutating
-methods are all **private**, so the script (which lists public methods) never
-names them, and its nine public methods — the load/save/diagnostic half — are
-each answered by an `added in Plan 8:` marker naming the reader that will own
-them. The glob restricts it to the one file; the rest of `management/` is Plan
-8's and has no `fr-board` home.
+It prints **nothing** and exits 0. The class's three board-mutating methods are
+all **private**, so the script (which lists public methods) never names them;
+its nine public methods — the load/save/diagnostic half — are each answered by a
+marker in this crate. Until Plan 8 Task 3 those nine were `added in Plan 8:` and
+the invocation printed one `ROSTERED` line (a wholly-deferred class). Task 3
+landed them in `fr-core`, so six are now `renamed:` (which the script counts as
+*ported*, hence no `ROSTERED`), one is `not ported:` — `createBoard`, which is
+**dead code in Java**, quirk #253 — and the three accessors were consumed by
+Task 0. The glob restricts it to the one file; the rest of `management/` is
+`fr-core`'s and has no `fr-board` home.
 
 **What that zero does and does not prove.** The script's *positive* match is
 crate-wide, not per class: for a Java `Foo.getBar`, it accepts any

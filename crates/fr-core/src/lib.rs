@@ -34,8 +34,10 @@ pub mod cancel;
 pub mod ctx;
 pub mod file_details;
 pub mod job;
+pub mod load;
 pub mod pipeline;
 pub mod progress;
+pub mod save;
 pub mod stats_from_bytes;
 pub mod stats_json;
 pub mod timespan;
@@ -48,8 +50,14 @@ pub use job::{
     FileFormat, JobId, RULES_FILE_EXTENSION, RoutingJob, RoutingJobState, RoutingStage,
     SES_FILE_EXTENSION, SessionId, Uuid128, validate_session_host,
 };
+pub use load::{
+    LoadedBoard, apply_immediate_post_load_processing, apply_parsed_board_result,
+    apply_router_settings_for_loaded_board, load_board_if_needed, load_from_kicad_json,
+    load_from_specctra_dsn,
+};
 pub use pipeline::RoutingPipeline;
 pub use progress::{SyncProgressSink, SyncProgressSinkView};
+pub use save::{calculate_crc32_for_board, save_as_specctra_session_ses};
 pub use stats_from_bytes::{BoardStatisticsExt, count_occurrences};
 pub use stats_json::{GsonBoardStatistics, to_gson_json, to_gson_string};
 pub use timespan::{
@@ -151,6 +159,15 @@ pub enum Error {
     /// An I/O operation failed — reading a design, writing a session or a report.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+
+    /// The board load or save sequence failed — `BoardLoader.loadBoardIfNeeded`'s three
+    /// `FRLogger.error` + `return false` exits (`management/BoardLoader.java:26`, `:32-35`,
+    /// `:52`) and `HeadlessBoardManager.applyParsedBoardResult`'s two error arms (`:720-732`).
+    /// **Java throws nothing here**: it logs and answers `false` or hands the failing
+    /// `BoardReadResult` back. The port carries Java's message text verbatim, because that text
+    /// is the only part of those exits a caller can observe.
+    #[error("{0}")]
+    Load(String),
 
     /// A job-model precondition failed. Today that is exactly one check: `core/Session.java:37`'s
     /// `host.split("/").length != 2`, ported by [`validate_session_host`]. The message is Java's,

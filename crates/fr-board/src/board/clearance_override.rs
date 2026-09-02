@@ -7,14 +7,16 @@
 //!
 //! # Why these live in `fr-board` and not in the loader
 //!
-//! Java runs all three from inside `HeadlessBoardManager`, at **two** call sites per DSN load:
-//! `createBoard:342-343` on the freshly constructed, still itemless board, and
-//! `applyRouterSettingsForLoadedBoard:746-747` on the fully loaded one (Plan 8 survey ruling
-//! AD). The port has no manager object — `fr_dsn::read_board` answers a `Board` directly — so
-//! the three methods are `Board` methods and the seam that sequences them is
-//! [`fr_router::pipeline::prepare_board`]. See the "one call, not two" section below for why a
-//! single call at the end produces the same board on the corpus, and for the one measured case
-//! where it does not.
+//! Java runs all three from inside `HeadlessBoardManager`, at **one** reachable call site per DSN
+//! load: `applyRouterSettingsForLoadedBoard:746-747`, on the fully loaded board. The port has no
+//! manager object — `fr_dsn::read_board` answers a `Board` directly — so the three methods are
+//! `Board` methods and the seam that sequences them is [`fr_router::pipeline::prepare_board`],
+//! which `fr_core::apply_router_settings_for_loaded_board` calls at exactly that point.
+//!
+//! The paragraph above **replaced** a claim of *two* call sites (Plan 8 survey ruling AD:
+//! `createBoard:342-343` plus `:746-747`). See "one call, and Java's is one too" below: Plan 8
+//! Task 3 measured `HeadlessBoardManager.createBoard` to be unreachable from the DSN parser, so
+//! the second call site never existed. Quirk #253.
 //!
 //! # Why this matters at *default* settings
 //!
@@ -32,32 +34,43 @@
 //! *effect* — `setHoleClearance(0)` over an existing 0 — but the method itself has no early
 //! return once the setting is non-null and non-negative, so it is ported whole.
 //!
-//! # One call, not two
+//! # One call, and Java's is one too
 //!
-//! Running the pair once, after the load, reproduces Java's two-call final state on every
-//! corpus board, because:
+//! Plan 7 Task 15b ran the pair once, after the load, and argued that this reproduced Java's
+//! *two*-call final state on the corpus with one measured exception. **Plan 8 Task 3 measured the
+//! premise and it is wrong**: Java also runs the pair exactly once.
 //!
-//! * **copper.** All clearance classes exist before `createBoard` (the Specctra reader builds
-//!   `BoardRules` and then calls `createBoard` at `Structure.java:1268`), and the outline is
-//!   inserted by the `RoutingBoard` constructor, so the first call already appends `board_edge`
-//!   and re-points the outline; the second call finds the class, rewrites the same row and
-//!   column with the same value and re-points the outline to the class it already has. The
-//!   second call alone therefore lands the same state — measured by `P7T15bProbe` variants
-//!   B/D on all 16 boards.
-//! * **hole.** The first call sets `rules.holeClearance` on the itemless board (so items are
-//!   later inserted with the drill inflation already in force) and reclassifies nothing; the
-//!   second call finds `changed == false` and reclassifies the keepouts. The port instead
-//!   loads with `holeClearance == 0` and then sets it, so its `changed` is `true` and it
-//!   re-inserts every item — which recomputes exactly the tree shapes Java's items were built
-//!   with.
+//! `Structure.java:1268` calls `scopeParameter.boardHandling.createBoard(...)`, and
+//! `ReadScopeParameter` has a single constructor that assigns its `final BoardParserCallback
+//! boardHandling` field `new MinimalBoardManager()` (`ReadScopeParameter.java:103`).
+//! `MinimalBoardManager.createBoard` (`:139-166`) constructs the `RoutingBoard` and returns; it
+//! calls neither override. `HeadlessBoardManager.createBoard` (`:310-344`) has no caller outside
+//! `GuiBoardManager.java:411`. Three independent measurements, all in
+//! `crates/fr-core/tests/data/p8t3-clearance-overrides.txt`:
 //!
-//! The one place the two shapes differ is a **non-default** `router.hole_clearance_um > 0` on a
-//! board with **no** circular component keepouts: Java's second call re-inserts nothing
-//! (`changed` false, `holeKeepouts` 0) while the port re-inserts every item once. The board
-//! state that follows is identical — the shapes are recomputed from the same rules — but the
-//! search tree's entry counter advances further in the port. It is unreachable at the default
-//! `0.0 µm`, i.e. on every parity path Plans 7 and 8 have. Quirk #232.
-// obligation: Plan 8 (`HeadlessBoardManager.applyHoleClearanceOverride` second invocation) — before Plan 8 exposes `router.hole_clearance_um` on a real CLI path, pin the quirk-#232 boundary (non-default hole clearance > 0 with zero circular keepouts → Java's second run does one extra `reinsertTreeItems`, shifting internal tree order — the quirk-#229 divergence class) with a tree-op/order pin, or reproduce the second run.
+//! * `[createboard] … headless_create_board_calls=0` on all three fixtures, through a counting
+//!   subclass of the real `HeadlessBoardManager` driving a real `loadFromSpecctraDsn`;
+//! * the `counterfactual_create_board` stage shows what `:342-343` *would* have changed on the
+//!   itemless board (a `board_edge` class at index 3, the outline re-pointed) — and the real
+//!   `after_parser` stage of the same load has none of it;
+//! * on `Issue555-CNH_Functional_Tester_1.dsn`, Plan 7's own transcript puts `board_edge` at index
+//!   **10**, after the seven `(class …)` clearance classes `Network.java:741` appends *later in
+//!   the parse* than `Structure.java:1268`.
+//!
+//! So the "one place the two shapes differ" that quirk #232 recorded — a **non-default**
+//! `router.hole_clearance_um > 0` on a board with no circular component keepouts, where Java's
+//! second call was said to re-insert nothing while the port re-inserts every item — is empty:
+//! there is no second call. Both sides run `changed == true` once and re-insert once, and
+//! `crates/fr-core/tests/overrides.rs` replays the whole load at hole ∈ {0, 100, 500} µm on three
+//! fixtures, matching the jar cell for cell **including the search tree's leaf count and its
+//! `ShapeTree.toArray()` order digest**. Quirk #232 is rewritten and quirk #253 records the
+//! dead-code finding.
+//!
+//! The Plan 8 obligation that used to sit on the next line — *"pin the quirk-#232 boundary with a
+//! tree-op/order pin, or reproduce the second run"* (Plan 7 §10 row 15b, scan ruling R8) — is
+//! **discharged**: the transcript's `after_second_hole_override` stage reproduces the second run
+//! and `crates/fr-core/tests/overrides.rs::the_second_hole_override_leaves_the_search_tree_alone`
+//! asserts it moves nothing, tree order digest included.
 
 use fr_geometry::{Area, Shape, java_round};
 
@@ -388,6 +401,7 @@ impl Board {
 // private. Its nine *public* methods are the load/save/diagnostic half, which Plan 8 Task 3 owns
 // (survey §6, row 3): they build or replace the board, read it back, serialise it and check it,
 // none of which `fr-board` can do — `fr-board` has no reader, no writer and no `RoutingJob`.
+// **Task 3 has landed**, so the six deferral markers below now name where each one went.
 // `scripts/audit-map/fr-board.map` points the class at this file so that the invocation
 //
 //   ./scripts/audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' \
@@ -396,12 +410,18 @@ impl Board {
 // gates them; before Plan 7 Task 15b no plan had ever audited `management/` at all, which is how
 // the override gap survived six plans.
 //
-// added in Plan 8: `HeadlessBoardManager.createBoard` (:309-344) — the `RoutingBoard` constructor call the Specctra parser makes at `Structure.java:1268`, plus the outline-clearance-class lookup in front of it; the reader is `fr-core`'s `load.rs` (spec §4), which is where the port's `Board::new` + `insert_outline` pair is assembled from `fr_dsn::read_board`'s output.
-// added in Plan 8: `HeadlessBoardManager.loadFromSpecctraDsn` (:673-705) — `fr-core`'s `load.rs`; the port's `fr_dsn::read_board` is the parse half, and this is the manager wrapper around it.
-// added in Plan 8: `HeadlessBoardManager.applyParsedBoardResult` (:711-737) — `fr-core`'s `load.rs`: the `BoardReadResult` dispatch plus `applyRouterSettingsForLoadedBoard` / `applyImmediatePostLoadProcessing`. Its board half is `fr_router::pipeline::prepare_board` (Task 15b) and its settings half `fr_settings::resolve_headless`; what is left for Plan 8 is the dispatch, `reduceNetsOfRouteItems` and `validatePowerPlanes`.
-// added in Plan 8: `HeadlessBoardManager.loadFromKiCadJson` (:794-823) — `fr-core`'s `load.rs`, over `fr_drc`'s KiCad JSON reader.
-// added in Plan 8: `HeadlessBoardManager.saveAsSpecctraSessionSes` (:862-877) — `fr-core`'s `save.rs`, over `fr_dsn`'s SES writer.
-// added in Plan 8: `HeadlessBoardManager.calculateCrc32` (:603-605) — `fr-core`'s `save.rs`: the DSN round-trip CRC32 the result manifest reports.
+// The six markers that stood here read `added in Plan 8:`; **Plan 8 Task 3 landed all six**, and
+// each is now the marker kind the tool means for what actually happened. They are repeated in
+// `crates/fr-core/src/{load.rs,save.rs}` at the ported code itself, which is what
+// `scripts/audit-port.sh management crates/fr-core/src` checks; these lines keep `fr-board`'s own
+// `management/` audit honest about where the rest of the class went.
+//
+// not ported: `HeadlessBoardManager.createBoard` (:310-344) — **dead code at the pinned jar.** Its only declared caller is the `BoardParserCallback` contract `Structure.java:1268` invokes, and the sole production implementation is `ReadScopeParameter$MinimalBoardManager` (`ReadScopeParameter.java:103`, a `final` field with one constructor), which builds the `RoutingBoard` itself and calls neither override. Measured: `P8T3Probe`'s `[createboard]` rows report `headless_create_board_calls=0` for a real `loadFromSpecctraDsn` on all three fixtures. The port's equivalent construction is `fr_dsn`'s `Structure::create_board`, inside `fr_dsn::read_board`; the outline-clearance-class lookup in front of it is `crates/fr-dsn/src/parser/structure.rs`'s. Quirk #253.
+// renamed: `HeadlessBoardManager.loadFromSpecctraDsn` (:673-705) -> `fr_core::load_from_specctra_dsn` (Plan 8 Task 3); `fr_dsn::read_board` is the parse half and that function is the manager wrapper around it.
+// renamed: `HeadlessBoardManager.applyParsedBoardResult` (:711-737) -> `fr_core::apply_parsed_board_result` (Plan 8 Task 3): the `BoardReadResult` dispatch, then `fr_core::apply_router_settings_for_loaded_board` (whose board half is `fr_router::pipeline::prepare_board`, Task 15b) and `fr_core::apply_immediate_post_load_processing`.
+// renamed: `HeadlessBoardManager.loadFromKiCadJson` (:794-823) -> `fr_core::load_from_kicad_json` (Plan 8 Task 3), over a KiCad JSON reader stub that Task 9 replaces.
+// renamed: `HeadlessBoardManager.saveAsSpecctraSessionSes` (:862-877) -> `fr_core::save_as_specctra_session_ses` (Plan 8 Task 3), over `fr_dsn::ses_writer::write`.
+// renamed: `HeadlessBoardManager.calculateCrc32` (:603-605) -> `fr_core::calculate_crc32_for_board` (Plan 8 Task 3): the public no-argument method is `calculateCrc32ForBoard(this.getRoutingBoard())` and the port has no `this.board`, so the two Java methods collapse into the one that takes the board.
 //
 // The three below were **consumed by Plan 8 Task 0**, and the reason is not the one the marker
 // text predicted: `fr_core::Ctx` holds neither the board nor the job. There is no manager
