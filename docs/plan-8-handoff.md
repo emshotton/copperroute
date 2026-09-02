@@ -40,7 +40,7 @@ warnings` clean; `cargo fmt --all --check` clean; `cargo test -p fr-router --tes
 
 Eight crates and **2 388** tests, against a Java tree of **130 497** lines of which **35 691**
 are the GUI that spec §2 excludes outright. The port's own size, by the command that answers it:
-`find crates/*/src -name '*.rs' | xargs cat | wc -l` → **138 778**. *(An earlier draft of this
+`find crates/*/src -name '*.rs' | xargs cat | wc -l` → **138 776**. *(An earlier draft of this
 paragraph also gave a test-source line count with no command beside it; it was not reproducible,
 and a number in this document that a reader cannot re-derive is worse than no number. The test
 **count** above is `cargo nextest run --workspace`'s own.)*
