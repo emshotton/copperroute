@@ -67,7 +67,8 @@ pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
 /// Ruling 4's code: the one thing that reaches it is a tool that **unwound**, rendered by
-/// [`RpcError::internal`] at [`super::server::handle`]'s single `catch_unwind` site.
+/// [`RpcError::internal`] at [`super::server::handle`]'s single `catch_unwind` site — the one
+/// boundary Plan 8 adds, and the only one in this crate.
 pub const INTERNAL_ERROR: i64 = -32603;
 
 impl Response {

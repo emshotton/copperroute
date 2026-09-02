@@ -285,9 +285,14 @@ pub fn handle(
     Some(resp)
 }
 
-/// **Ruling 4's boundary, and the only `catch_unwind` in the port.**
+/// **Plan-8 ruling 4's boundary: the single `catch_unwind` this plan adds, and the only one in
+/// this crate.**
 ///
-/// The convention this tree keeps is *no `catch_unwind`*: a panic is a bug, and swallowing it
+/// (`fr-router` has its own, and they are a different thing: plan-6 ruling 7's six sites and
+/// plan-7 Task 14's reproduce Java `catch` blocks that a Java `Exception` would have landed in,
+/// so each of those is a *port* of a Java recovery. This one ports nothing.)
+///
+/// The convention Plan 8 keeps is *no `catch_unwind`*: a panic is a bug, and swallowing it
 /// hides the bug. Ruling 4 makes exactly one exception, at exactly this site, for one reason —
 /// the alternative is worse. A tool runs on its own thread; without this, a panicking tool takes
 /// that thread down, the `tools/call` never answers, and the client waits forever on a request

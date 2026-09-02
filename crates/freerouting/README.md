@@ -88,7 +88,8 @@ that is Java's (`Freerouting.java:778-782`) and it is reproduced. So is skipping
 (`:739-741`) and so is one-object-per-line framing. And so is `tools/call`'s error split: a tool
 that runs and fails is an `isError: true` result, a protocol failure is a JSON-RPC `error`. The
 port adds a third case Java has no equivalent for — a tool that **panics** answers `-32603` and the
-server keeps serving (plan ruling 4's boundary, the one `catch_unwind` in the port).
+server keeps serving (plan ruling 4's boundary — the single `catch_unwind` Plan 8 adds, and the
+only one in this crate; `fr-router`'s are plan-6 ruling 7's ports of Java `catch` blocks).
 
 ---
 
