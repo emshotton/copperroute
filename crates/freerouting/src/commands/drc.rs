@@ -25,15 +25,30 @@
 //!
 //! # The load order is DSN → `.rules` → session, and it is load-bearing (quirk #273)
 //!
-//! Steps 6, 7 and 8 are three writes to the same board, and their order changes the answer. The
-//! `.rules` step installs a clearance matrix and a set of net rules; the session's wires and vias
-//! are created **after** it, so each imported item takes its clearance class from the rules the
-//! file installed and is then checked against it. Swapping steps 7 and 8 yields a different
-//! violation list from the same three files, which is what
-//! `crates/freerouting/tests/cli_e2e.rs::the_session_is_imported_after_the_rules` measures — it
-//! builds both boards and requires the counts to differ, then requires the binary to answer the
-//! rules-first one. `tests/reference/drc-issue593-rules` and `drc-issue593-ses` are the two
-//! committed references that exercise the two optional slots.
+//! Steps 6, 7 and 8 are three writes to the same board, and their order changes the answer.
+//! **The channel is `defaultItemClearanceClasses`, and it is narrower than "the rules change the
+//! clearances".** Most of what a `(rules …)` scope writes — the clearance matrix's values, the
+//! padstacks, the via rules, the snap angle — is read at *check* time and so is order-blind. What
+//! is not: `RulesReader`'s `(rule …)` arm reaches `Structure.setClearanceRule`, which calls
+//! `appendClearanceClass` for either half of a clearance-class **pair** that is not already in the
+//! matrix (`Structure.java:756`, `:765`), and `appendClearanceClass` (`:826-840`) writes the
+//! **default net class's `defaultItemClearanceClasses`** for the four names `via`, `pin`, `smd`,
+//! `area`. `SesReader.processViaScope` reads that field at **via-creation** time
+//! (`SesReader.java:395-400`), and `processWireScope` the `TRACE` slot (`:316-321`) — so a via made
+//! in step 8 takes the class step 7 installed, and one made before it would not.
+//!
+//! Measured, on `Issue593-BBD_Mars-64.dsn` + its `.ses` with a one-rule
+//! `(rule (clearance 400.0 (type smd_via)))`: **15** clearance violations rules-first, **0**
+//! session-first. The HEAD jar's own run on those three files reports 15, i.e. the rules-first
+//! board. A clearance with **no** `(type …)` is the control — `setClearanceRule` returns at
+//! `:684-707` after `setDefaultValue`, having touched no item class — and gives 463 either way.
+//!
+//! `crates/freerouting/tests/cli_e2e.rs::the_session_is_imported_after_the_rules` is that pair of
+//! measurements: it requires the two orders to **differ** on the typed file, to **agree** on the
+//! class-blind control, and then requires the binary's own report to carry the rules-first count
+//! and its log to show `:281` before `:309`. `tests/reference/drc-issue593-rules` and
+//! `drc-issue593-ses` are the two committed references that exercise the two optional slots
+//! singly; `p8t3 e2e`'s `rules-and-session` row is the only run that fills both at once.
 //!
 //! # `-drc` exits 0 whatever it finds (quirk #271)
 //!
@@ -335,7 +350,8 @@ pub fn load_rules_file(
 //   that silently checked the un-imported board is impossible. Task 10 replaces the arm with
 //   `fr_dsn::kicad::import_session` and removes this marker. `commands/route.rs`'s
 //   `import_session_file` carries the same obligation for `RoutingJobScheduler.java:199-211`,
-//   which is the *other* call site of the same Java method — both must be discharged.
+//   which is the *other* call site of the same Java method — both must be discharged, and that
+//   marker now names this one too.
 //
 //   Quirk label U rides on this arm too and is Task 10's to record: Java opens the file with
 //   `new FileReader(sessionFile)` (`:304`), i.e. the **platform default charset**, while every
@@ -594,7 +610,9 @@ fn write_report(drc: Option<&BoardFileDetails>, json: &str) -> ExitCode {
 /// 2. **`:ss` is omitted when second and nanosecond are both zero** — `10:15+01:00` is a legal
 ///    `ISO_OFFSET_DATE_TIME`, where `Instant.toString()` always prints seconds.
 ///
-/// **The divergence: the port renders UTC, so the offset is always `Z`.** Java uses the JVM's
+/// **The divergence: the port renders UTC, so the offset is always `Z`** — `docs/java-quirks.md`
+/// **#276**, registered because both normalisers drop `date` and therefore no gate can see it.
+/// Java uses the JVM's
 /// default zone, and there is no way to read the host's UTC offset from `std` — every route to it
 /// is a dependency (forbidden) or a `libc` call (`#![forbid(unsafe_code)]`). `Z` is a valid
 /// `ISO_OFFSET_DATE_TIME` offset id, so the field stays parseable by any consumer; what changes is

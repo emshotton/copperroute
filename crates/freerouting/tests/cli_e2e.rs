@@ -956,35 +956,37 @@ fn drc_exits_1_when_the_report_cannot_be_written() {
 }
 
 /// **Quirk #273** (label D): the session is imported **after** the `.rules` file
-/// (`Freerouting.java:277-294` then `:296-329`), so the session's wires and vias are created — and
-/// then checked — against whatever the rules file installed.
+/// (`Freerouting.java:277-294` then `:296-329`), so the session's wires and vias are **created** —
+/// and then checked — against the clearance classes the rules file installed. Swapping the two
+/// changes the violation list.
 ///
-/// # What is asserted, and the plan claim the measurement did *not* support
+/// # The mechanism, and why it takes a *typed* clearance pair to see it
 ///
-/// The plan's label **D** predicted that *"swapping the two changes the violation list"*. **On the
-/// committed corpus it does not**, and this test says so rather than asserting a difference that
-/// is not there. Measured, in process, on `Issue593-BBD_Mars-64` + its own `.rules` + its own
-/// `.ses` — the only three-file input the corpus has — and on three hand-written rules files
-/// (`(autoroute_settings (via_costs …))`, `(class default (clearance_class smd))`,
-/// `(rule (clearance …))`): the two orders produce boards with the **same
-/// `Board::structural_hash`**, the same clearance-violation list and the same report bytes.
+/// `RulesReader`'s `(rule …)` arm reaches `Structure.setClearanceRule`, which calls
+/// `appendClearanceClass` for either half of a clearance-class **pair** that is not already in the
+/// matrix (`Structure.java:756`, `:765`) — and `appendClearanceClass` (`:826-840`) writes the
+/// default net class's `defaultItemClearanceClasses` for the four names `via`, `pin`, `smd`,
+/// `area`. `SesReader.processViaScope` reads that field at **via-creation** time
+/// (`SesReader.java:395-400`), so a via made before the write takes the old class and one made
+/// after takes the new one.
 ///
-/// The mechanism explains it. Everything a `.rules` file writes into the board — the clearance
-/// matrix, the net classes, the padstacks, the via rules, the snap angle — is consulted at
-/// **check** time, so it reaches the same answer whenever it was written. The one field
-/// `SesReader` reads at **item-creation** time is
-/// `board.rules.getDefaultNetClass().defaultItemClearanceClasses`
-/// (`SesReader.java:316-321`, `:395-400`), and no `(rules …)` arm writes it: `(class …)`'s
-/// `(clearance_class X)` goes to `NetClass.traceClearanceClass` (`Network.java:449-455`), which is
-/// a different field. So the order is load-bearing **by construction** and inert **in fact**, and
-/// both halves are worth writing down.
+/// A clearance with **no** `(type …)` never gets there: `setClearanceRule` returns at `:684-707`
+/// after `setDefaultValue`, having touched only the matrix. That is why this test needs two rules
+/// files and asserts opposite things about them — the difference is the headline, and the
+/// class-blind file is the control that says *which* shape of rule causes it.
 ///
-/// What is therefore asserted here is the order itself, through the binary: the port emits
-/// `:281`'s `Loading RULES file for DRC:` **before** `:309`'s `Loading SES file for DRC:`. The jar
-/// emits the same two lines in the same order, and `p8t3 e2e`'s `rules-and-session` row is what
-/// compares them — it runs `-de <dsn> <ses> -dr <rules> -drc <report>` through both programs and
-/// requires the log *and the report bytes* to agree. That row exists because no fixture stem fills
-/// both optional slots at once.
+/// # What is asserted
+///
+/// 1. the two orders differ on the `(type smd_via)` file — **15** clearance violations rules-first,
+///    **0** session-first, with different `Board::structural_hash`es;
+/// 2. the two orders agree on the class-blind control — 463 either way;
+/// 3. the **binary** takes Java's order: its report on the same three files carries the
+///    rules-first count, not the session-first one;
+/// 4. and it says so in the log, `:281` before `:309`.
+///
+/// The numbers are the jar's, not just the port's: `java -jar <jar> -de <dsn> <ses> -dr <smd_via>
+/// -drc r.json` on the HEAD jar reports **15 `holeClearance`** entries (measured), which is the
+/// rules-first board. `p8t3 e2e`'s `rules-and-session` row is the standing comparison.
 #[test]
 fn the_session_is_imported_after_the_rules() {
     if !parity::require_java_dir() {
@@ -992,36 +994,27 @@ fn the_session_is_imported_after_the_rules() {
     }
     let dir = scratch("drc-load-order");
     let dsn = parity::fixture("Issue593-BBD_Mars-64.dsn");
-    let rules = parity::fixture("Issue593-BBD_Mars-64.rules");
     let ses = parity::fixture("Issue593-BBD_Mars-64.ses");
 
-    // Half one: the order, observed through the binary.
-    let out = dir.join("r.json");
-    let (_, stderr, code) = run(&[
-        "drc",
-        &dsn.to_string_lossy(),
-        "--rules",
-        &rules.to_string_lossy(),
-        "--ses",
-        &ses.to_string_lossy(),
-        "-o",
-        &out.to_string_lossy(),
-    ]);
-    assert_eq!(code, 0, "{stderr}");
-    let rules_at = stderr
-        .find("Loading RULES file for DRC:")
-        .unwrap_or_else(|| panic!("Freerouting.java:281 is missing:\n{stderr}"));
-    let session_at = stderr
-        .find("Loading SES file for DRC:")
-        .unwrap_or_else(|| panic!("Freerouting.java:309 is missing:\n{stderr}"));
-    assert!(
-        rules_at < session_at,
-        "quirk #273: `:277-294` runs before `:296-329`\n{stderr}"
-    );
+    /// A one-rule `.rules` file. `pair` is the `(type …)` argument, or `None` for the class-blind
+    /// form that `Structure.setClearanceRule:684-707` answers with an early return.
+    fn one_rule(dir: &Path, name: &str, clearance: f64, pair: Option<&str>) -> PathBuf {
+        let path = dir.join(name);
+        let rule = match pair {
+            Some(pair) => format!("(clearance {clearance} (type {pair}))"),
+            None => format!("(clearance {clearance})"),
+        };
+        std::fs::write(
+            &path,
+            format!("(rules PCB Issue593-BBD_Mars-64\n  (rule\n    {rule}\n  )\n)\n"),
+        )
+        .expect("the scratch file is writable");
+        path
+    }
 
-    // Half two: the recorded measurement. `commands::drc::{load_rules_file, load_session_file}`
-    // are the program's own functions, called in each order on two freshly loaded boards.
-    fn board_hash(dsn: &Path, rules: &Path, ses: &Path, rules_first: bool) -> (u64, usize) {
+    /// One board through the runner's own two loaders in the given order: its structural hash and
+    /// how many clearance violations the checker then finds.
+    fn build(dsn: &Path, rules: &Path, ses: &Path, rules_first: bool) -> (u64, usize) {
         let mut job = fr_core::RoutingJob::new(fr_core::SessionId::NIL);
         job.set_input(dsn).expect("the fixture reads");
         let loaded = fr_core::load_board_if_needed(&mut job).expect("the fixture loads");
@@ -1041,15 +1034,77 @@ fn the_session_is_imported_after_the_rules() {
         (hash, violations)
     }
 
-    assert_eq!(
-        board_hash(&dsn, &rules, &ses, true),
-        board_hash(&dsn, &rules, &ses, false),
-        "MEASURED, and recorded rather than assumed: on this corpus the two orders build the same \
-         board, because the only field `SesReader` reads at creation time \
-         (`defaultItemClearanceClasses`) is one no `(rules …)` arm writes. If this ever fails the \
-         order has become observable — which is the plan's label-D prediction coming true — and \
-         the assertion should be inverted, not deleted."
+    // 1. The difference. `smd_via` splits into `smd` and `via`; `via` is one of
+    //    `appendClearanceClass`'s four magic names, so the pair moves
+    //    `defaultItemClearanceClasses[VIA]` and every via `SesReader` makes afterwards takes the
+    //    new class.
+    let typed = one_rule(&dir, "smd_via.rules", 400.0, Some("smd_via"));
+    let (rules_first_hash, rules_first_violations) = build(&dsn, &typed, &ses, true);
+    let (session_first_hash, session_first_violations) = build(&dsn, &typed, &ses, false);
+    assert_ne!(
+        (rules_first_hash, rules_first_violations),
+        (session_first_hash, session_first_violations),
+        "quirk #273: a `via`/`pin`/`smd`/`area`-typed clearance pair makes the order observable"
     );
+    assert_eq!(
+        (rules_first_violations, session_first_violations),
+        (15, 0),
+        "the measured counts; the HEAD jar's own run on these three files reports 15 \
+         `holeClearance` entries, i.e. the rules-first board"
+    );
+
+    // 2. The control: the same clearance with no `(type …)` reaches only
+    //    `ClearanceMatrix.setDefaultValue` (`Structure.java:684-707`) and never an item class, so
+    //    the order cannot matter. Without this row the test above would not say *which* shape of
+    //    rule is responsible.
+    let class_blind = one_rule(&dir, "plain.rules", 400.0, None);
+    assert_eq!(
+        build(&dsn, &class_blind, &ses, true),
+        build(&dsn, &class_blind, &ses, false),
+        "a class-blind clearance is order-insensitive — it writes no `defaultItemClearanceClasses`"
+    );
+
+    // 3. The binary takes Java's order. `violations` in the report is the clearance list followed
+    //    by the dangling entries (`DesignRulesChecker.java:271-276`), so the clearance count is
+    //    recovered by dropping the two dangling kinds.
+    let out = dir.join("r.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "--rules",
+        &typed.to_string_lossy(),
+        "--ses",
+        &ses.to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    let clearance = report(&out)["violations"]
+        .as_array()
+        .expect("violations is an array")
+        .iter()
+        .filter(|violation| {
+            !matches!(
+                violation["type"].as_str(),
+                Some("track_dangling") | Some("via_dangling")
+            )
+        })
+        .count();
+    assert_eq!(
+        clearance, rules_first_violations,
+        "the CLI must build the rules-first board (Freerouting.java:277-294 then :296-329), and \
+         session-first would have answered {session_first_violations}"
+    );
+
+    // 4. And the log says so, which is the half `p8t3 e2e`'s `rules-and-session` row compares
+    //    against the jar's own two lines.
+    let rules_at = stderr
+        .find("Loading RULES file for DRC:")
+        .unwrap_or_else(|| panic!("Freerouting.java:281 is missing:\n{stderr}"));
+    let session_at = stderr
+        .find("Loading SES file for DRC:")
+        .unwrap_or_else(|| panic!("Freerouting.java:309 is missing:\n{stderr}"));
+    assert!(rules_at < session_at, "quirk #273's order:\n{stderr}");
 }
 
 /// **Quirk #272** (label C): the quality score uses a **different settings merge** from the
@@ -1173,6 +1228,95 @@ fn the_quality_score_is_an_f32_widened_to_f64() {
         f64::from(narrowed),
         score,
         "a score that does not survive f64 -> f32 -> f64 is one no jar could have written"
+    );
+}
+
+/// **All eight committed references' `quality_score`s, recomputed — with the clone alone.**
+///
+/// `the_quality_score_is_an_f32_widened_to_f64` pins one stem against one literal, and `p8t3 e2e`
+/// pins all eight — but only on a machine with a JDK and a built jar. This closes that gap the way
+/// the `route` reference lanes do: it reads the **committed** `tests/reference/drc-*/drc.json`
+/// (the HEAD jar's verbatim output) and requires the CLI's *computed* score to equal the jar's
+/// *recorded* one, stem for stem.
+///
+/// That is the whole of what Task 7 changed about the number. Plan 5 read `quality_score` out of
+/// the reference and fed it back in (`crates/fr-drc/tests/reference_parity.rs::port_json`), so the
+/// eight values asserted nothing about the port; `commands::drc::quality_score` now computes them
+/// from `fr_router::score::BoardStatistics::normalized_score` through the merge of quirk #272, and
+/// the same eight values became eight assertions.
+///
+/// The rows come from `tests/reference/drc-fixtures.txt`, so the tests and the generator cannot
+/// drift apart, and `drc-natural-tone-preamp` is included: its **document** is quirk #146's
+/// permanent `XDIFF`, and its **score** matches exactly, which is worth pinning precisely because
+/// the two facts are easy to confuse.
+#[test]
+fn every_committed_reference_score_is_recomputed() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-reference-scores");
+    let table = parity::workspace_root().join("tests/reference/drc-fixtures.txt");
+    let text = std::fs::read_to_string(&table)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", table.display()));
+
+    let mut checked = 0usize;
+    for line in text.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut fields = line.split('|');
+        let mut next = || fields.next().unwrap_or_default().trim().to_string();
+        let (stem, dsn, rules, ses) = (next(), next(), next(), next());
+
+        let reference_path = parity::reference(&stem, "drc.json");
+        if !parity::require_reference(&reference_path) {
+            continue;
+        }
+        // The reference is the **HEAD** key spelling; the CLI ships KiCad's (ruling W). Read the
+        // jar's value out of the committed document with `parity`'s HEAD-flavor projection.
+        let reference_text =
+            std::fs::read_to_string(&reference_path).expect("the reference is readable");
+        let expected = parity::parse_drc_json(&reference_text)
+            .unwrap_or_else(|e| panic!("{stem}: the reference does not parse: {e}"))
+            .quality_score
+            .unwrap_or_else(|| panic!("{stem}: the reference carries no qualityScore"));
+
+        let out = dir.join(format!("{stem}.json"));
+        let mut argv = vec![
+            "drc".to_string(),
+            parity::java_dir().join(&dsn).to_string_lossy().into_owned(),
+        ];
+        if !rules.is_empty() {
+            argv.push("--rules".to_string());
+            argv.push(
+                parity::java_dir()
+                    .join(&rules)
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+        if !ses.is_empty() {
+            argv.push("--ses".to_string());
+            argv.push(parity::java_dir().join(&ses).to_string_lossy().into_owned());
+        }
+        argv.push("-o".to_string());
+        argv.push(out.to_string_lossy().into_owned());
+        let argv_refs: Vec<&str> = argv.iter().map(String::as_str).collect();
+        let (_, stderr, code) = run(&argv_refs);
+        assert_eq!(code, 0, "{stem}: {stderr}");
+
+        let actual = report(&out)["quality_score"]
+            .as_f64()
+            .unwrap_or_else(|| panic!("{stem}: the report carries no quality_score"));
+        assert_eq!(
+            actual, expected,
+            "{stem}: the computed score must equal the jar's recorded one, bit for bit"
+        );
+        checked += 1;
+    }
+    assert_eq!(
+        checked, 8,
+        "all eight `drc-*` stems must be checked; `tests/reference/drc-fixtures.txt` has eight rows"
     );
 }
 

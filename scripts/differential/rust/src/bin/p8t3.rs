@@ -48,10 +48,16 @@
 //! own answer moves between `-XX:hashCode` modes (113-115 violations); `-XX:hashCode=2` pins it at
 //! 115, which is the committed reference, and the port's ascending-id representatives (plan-5
 //! ruling 3) give 112. **The jar does not match itself on this stem**, so no amount of porting
-//! makes it a MATCH — the three extra entries are pinned by uuid, here and in
-//! `crates/fr-drc/tests/reference_parity.rs`, and this driver reports the row as `XDIFF` with
-//! those uuids rather than deleting them from the jar's side to manufacture agreement. Its
-//! `quality_score` still matches exactly, and the driver says so.
+//! makes it a MATCH.
+//!
+//! The grant is **checked, not waived**, and it is `crates/fr-drc/tests/reference_parity.rs::
+//! natural_tone_preamp_is_the_reference_minus_three_dangling_tracks`' shape: delete exactly the
+//! three uuids — `1909`, `1696`, `1242`, pinned as literals in both places — from the **jar's**
+//! document, require all three to have been present, and then require everything that is left to
+//! be byte-identical to the port's. So the grant can absorb those three entries and nothing else:
+//! a **port**-side extra, a moved coordinate or a different `unconnectedItems` block all still
+//! land as a `DIFF`. The row's `quality_score` is compared on its own rung before any of this and
+//! matches exactly; the driver says so in the row detail.
 //!
 //! Like `p8t1`, the exit status is 0 iff every row is `MATCH` or `XDIFF`; a `DIFF` is a failure.
 //!
@@ -426,18 +432,21 @@ fn compare(row: &Row, scratch: &Path) -> Verdict {
     let jar_normalised = parity::normalize_drc_doc(&mut jar_doc).expect("the jar's doc re-renders");
     let port_normalised = parity::normalize_drc_json(&port_text).expect("the port's doc re-renders");
     if jar_normalised != port_normalised {
-        // Quirk #146's known, un-portable divergence — see the module docs.
+        // Quirk #146's known, un-portable divergence — see the module docs. The grant is
+        // **delete-then-compare**, not "the jar has three extras": `natural_tone_preamp_xdiff`
+        // removes exactly the three pinned uuids from the jar's own document and requires
+        // everything that is left to be byte-identical to the port's, so a port-side extra entry —
+        // or any other difference anywhere else in the document — still lands as a `DIFF`.
+        // A nested `if`, not a let-chain: the driver package is edition 2021 (see its
+        // `Cargo.toml`).
         if row.stem == "drc-natural-tone-preamp" {
-            let extra = extra_dangling(&jar_text, &port_text);
-            if extra == NATURAL_TONE_PREAMP_EXTRA_DANGLING {
+            if let Some(detail) =
+                natural_tone_preamp_xdiff(&jar_text, &port_normalised, jar_score)
+            {
                 return Verdict {
                     stem: row.stem.clone(),
                     verdict: "XDIFF",
-                    detail: format!(
-                        "quirk #146: the jar's -XX:hashCode=2 run has 3 more `track_dangling` \
-                         entries (uuids {}); quality_score {jar_score:?} MATCHES",
-                        extra.join(", ")
-                    ),
+                    detail,
                 };
             }
         }
@@ -522,23 +531,55 @@ fn native_head_argv(
     argv
 }
 
-/// The uuids of the `track_dangling` entries the jar's document has and the port's does not, in
-/// the jar's own order — the evidence for the quirk #146 row.
-fn extra_dangling(jar_text: &str, port_text: &str) -> Vec<String> {
-    let jar = parity::parse_drc_json(jar_text).expect("parsed above");
-    let port = parity::parse_drc_json(port_text).expect("parsed above");
-    let port_uuids: Vec<&str> = port
-        .violations
-        .iter()
-        .filter(|violation| violation.kind == "track_dangling" && violation.items.len() == 1)
-        .map(|violation| violation.items[0].uuid.as_str())
-        .collect();
-    jar.violations
-        .iter()
-        .filter(|violation| violation.kind == "track_dangling" && violation.items.len() == 1)
-        .map(|violation| violation.items[0].uuid.clone())
-        .filter(|uuid| !port_uuids.contains(&uuid.as_str()))
-        .collect()
+/// Quirk #146's grant, in `crates/fr-drc/tests/reference_parity.rs::natural_tone_preamp_is_the_
+/// reference_minus_three_dangling_tracks`' shape: **delete exactly the three pinned entries from
+/// the jar's document, then require the rest to be byte-identical.**
+///
+/// `Some(detail)` grants the `XDIFF`; `None` means the difference is not the one quirk #146
+/// authorises and the caller must report a `DIFF`.
+///
+/// The shape matters, and an earlier version of this function got it wrong. Computing only
+/// *jar-minus-port* `track_dangling` uuids and comparing that set to the trio would grant the
+/// `XDIFF` to a document that also carried a **port-side** extra entry, or a moved coordinate, or a
+/// different `unconnectedItems` block — the set would still be the trio and the rest would never be
+/// looked at. Deleting and re-comparing closes that: the three named entries are the *only*
+/// difference the grant can absorb, and each is required to be present, in the jar's own order.
+fn natural_tone_preamp_xdiff(
+    jar_text: &str,
+    port_normalised: &str,
+    jar_score: Option<f64>,
+) -> Option<String> {
+    let mut jar = parity::parse_drc_json(jar_text).expect("parsed above");
+
+    // Delete exactly the pinned trio, recording what was actually removed.
+    let mut removed: Vec<String> = Vec::new();
+    jar.violations.retain(|violation| {
+        let drop = violation.kind == "track_dangling"
+            && violation.items.len() == 1
+            && NATURAL_TONE_PREAMP_EXTRA_DANGLING.contains(&violation.items[0].uuid.as_str());
+        if drop {
+            removed.push(violation.items[0].uuid.clone());
+        }
+        !drop
+    });
+    // All three, in the jar's own order, and nothing else. A missing one means the jar run was not
+    // the `-XX:hashCode=2` one this grant is scoped to.
+    if removed != NATURAL_TONE_PREAMP_EXTRA_DANGLING {
+        return None;
+    }
+
+    // And everything that is left must be byte-identical.
+    let trimmed = parity::normalize_drc_doc(&mut jar).expect("the jar's doc re-renders");
+    if trimmed != *port_normalised {
+        return None;
+    }
+
+    Some(format!(
+        "quirk #146: the jar's -XX:hashCode=2 run has 3 more `track_dangling` entries (uuids {}); \
+         with exactly those deleted the documents are byte-identical, and quality_score \
+         {jar_score:?} MATCHES",
+        removed.join(", ")
+    ))
 }
 
 /// The five argv shapes that reach `initializeDrc`'s exit ladder — **quirk #271, measured rather

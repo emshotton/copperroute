@@ -480,7 +480,16 @@ fn read_scheduler_rules(job: &RoutingJob, cli_rules: Option<&Path>) -> Option<Ve
 // obligation: Task 9/10 (`io/kicad/KiCadJsonReader.importSession`, `RoutingJobScheduler.java
 //   :199-211`) — a `-di` whose name ends `.json` is a KiCad session import, which is not ported.
 //   Until then the arm logs Java's own `FRLogger.error("Failed to load session file", e)` text
-//   with the reason, rather than silently importing nothing.
+//   with the reason, rather than silently importing nothing (controller ruling B1: a stubbed arm
+//   must be inert or loud; this one is both).
+//
+//   **`importSession` has TWO call sites and this is only one of them.**
+//   `commands/drc.rs::load_session_file` carries the other (`Freerouting.java:304-306`, the
+//   `-drc` path's `.json` session arm) with the same stub and its own marker. **Both must be
+//   discharged**; removing one and leaving the other would leave a live `.json` session path
+//   silently checking an un-imported board. Quirk label **U** — Java opens the file with
+//   `new FileReader` (the platform default charset) where every other JSON path in the tree is
+//   explicit UTF-8 — rides on the DRC site and is Task 10's to record.
 fn import_session_file(
     session: Option<&Path>,
     board: &mut fr_board::Board,

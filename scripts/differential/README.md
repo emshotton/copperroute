@@ -1695,9 +1695,12 @@ methods with dozens of branches.
 
   The XDIFF is `drc-natural-tone-preamp` and no port can remove it: quirk **#146** is the case
   where *the jar does not match itself* (113-115 violations across `-XX:hashCode=0..4`; the
-  reference is mode 2's 115, the port's ascending-id representatives give 112). The three entries
-  that differ are pinned **by uuid** — `1909`, `1696`, `1242` — and the driver reports them rather
-  than deleting them from the jar's side to manufacture agreement. Its `quality_score` matches.
+  reference is mode 2's 115, the port's ascending-id representatives give 112). The grant is
+  **checked, not waived** — `reference_parity.rs`'s shape: delete exactly the three pinned uuids
+  (`1909`, `1696`, `1242`, literals in both places) from the jar's document, require all three to
+  have been there, then require the remainder to be byte-identical. A port-side extra entry, or
+  any other difference anywhere in the document, is still a `DIFF`. Its `quality_score` is
+  compared on its own rung and matches.
 
 - `sweep-p8t5.sh [row-label ...]` — the same driver, **row by row**, printing
   MATCH/XDIFF/SKIP per argv shape so that a regression is *a row that changed* rather than a

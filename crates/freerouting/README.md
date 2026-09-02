@@ -266,7 +266,10 @@ exit ladder are compared on the command line a user actually types.
 **All eight quality scores match the committed references exactly**, which is the acceptance the
 plan asked for: Plan 5 *injected* that number from the reference, and Task 7 *computes* it from
 `fr_router::score::BoardStatistics::normalized_score`, so the eight references became eight free
-assertions the moment the injection was removed.
+assertions the moment the injection was removed. They are available **without a JDK** too:
+`cli_e2e.rs::every_committed_reference_score_is_recomputed` walks the same eight rows, runs the
+binary, and compares its computed `quality_score` to the value the committed `drc.json` records —
+the `route` reference lanes' pattern.
 
 Plus six **argv rows**, which is where rungs (c) and (d) earn their keep — the stems all succeed,
 and three of the five things that can go wrong on this path do not move the exit code (quirk #271):
@@ -276,7 +279,7 @@ and three of the five things that can go wrong on this path do not move the exit
 | `missing-rules` | `-dr <missing>.rules` | MATCH | `Freerouting.java:289` warns; **exit 0**, report written |
 | `missing-session` | `<missing>.ses` in the `-de` slot list | MATCH | `:324` warns; **exit 0**, report written |
 | `rules-and-session` | `<dsn> <ses> -dr <rules>` | MATCH | quirk #273 — the only run that fills both optional slots; the six-line log shows `:281`/`:286` before `:309`/`:312` on both sides |
-| `missing-input` | `-de <missing>.dsn` | MATCH | `:266` + `:267`, **exit 1**, no report |
+| `missing-input` | `-de <missing>.dsn` | MATCH | `:266` + `:267`, **exit 1**, no report. The driver's row prints `Freerouting.java:105`, not `:266`: the two messages are byte-identical and `logging::MESSAGE_MAP` folds a line onto the **first** template that matches, so both programs resolve it to `initializeCli`'s site — which is what makes the row a comparison rather than a coincidence |
 | `ses-input` | session bytes under a `.dsn` name | MATCH | quirk #274 — the **loader** refuses (`BoardLoader.java:33`), `:272` + `:273`, **exit 1** |
 | `unwritable-report` | `-drc <missing-dir>/r.json` | MATCH | `:365` + `:366`, **exit 1** — the whole check ran and the run still fails |
 
@@ -297,8 +300,10 @@ the committed reference. The port's ascending-id representatives (plan-5 ruling 
 
 The three that differ are pinned **by uuid, never by count** — `1909`, `1696`, `1242` — here, in
 `p8t3`'s row detail, and in `crates/fr-drc/tests/reference_parity.rs::natural_tone_preamp_is_the_
-reference_minus_three_dangling_tracks`. The driver reports the row as `XDIFF` with those uuids
-rather than deleting them from the jar's side to manufacture a MATCH; everything else in the
-document, including the whole 44-entry `unconnectedItems` block **and the `quality_score`**, is
-identical.
+reference_minus_three_dangling_tracks`. **The grant is checked, not waived**, and it is that
+test's shape: `p8t3` deletes exactly those three entries from the **jar's** document, requires all
+three to have been present, and then requires everything left to be byte-identical to the port's —
+so a **port**-side extra entry, or any other difference anywhere in the document, is still a
+`DIFF`. Everything else, including the whole 44-entry `unconnectedItems` block **and the
+`quality_score`**, is identical.
 
