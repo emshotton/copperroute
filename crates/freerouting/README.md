@@ -166,7 +166,7 @@ who learns this CLI does not type them at the jar.
 | `--settings <file>` | name a `freerouting.json` for the priority-10 tier. **Native form only** (rulings R7/BG) | **none** — the jar only reads the file under its OS-standard user-data path, and warns at `--settings` as an unknown argument |
 | `--version` / `-V` | print the version (native form only) | **none**; the jar prints its version in the startup banner (`Freerouting.java:1120`) |
 | `--kicad-json <file>` | a KiCad board file in its own slot (native form only, ruling 14) | **none** — on the legacy form a `.json` takes Java's own slot |
-| `--set <section.field=value>` | a generic settings override | `--section.field=value`, which the legacy form still accepts |
+| `--set <section>.<field>=<value>` | the **native form's** generic settings override, repeatable (ruling BJ). `clap` has no arm for a free-form `--<section>.<field>=<value>`, so this is the only way in here | `--<section>.<field>=<value>`, which is what the **legacy** form takes — and the jar takes it too. Neither form accepts the other's spelling; see 'The dead legacy knobs' below |
 | `--schema <kicad\|freerouting>` | which spelling of the KiCad DRC schema `drc` writes; **default `kicad`**, native form only (ruling W, quirk #154) | **none** — each jar hard-codes one spelling, and HEAD's disagrees with the `$schema` it advertises |
 | `drc` with no `-o` | write the report to **stdout** (quirk #275, spec §12) | **none** — `Freerouting.java:368-371` is dead code, because a bare `-drc` is not DRC mode (quirk #263) |
 | `info <board>` | print the board summary — layers, nets and components by name, the file's own metadata, and `BoardStatistics`' whole document — as JSON on stdout, and exit 0. **The only subcommand with no Java counterpart at all**: `Freerouting.main`'s mode ladder (`:1455-1467`) is GUI, DRC and CLI, and `legacy::rewrite` can never produce this argv | **none** |
@@ -224,38 +224,49 @@ pedantry — it is observable, because the value decides how far the cursor move
 *other* arguments get warned about, and `p8t5` compares that. Wiring them up would make the port
 **more capable than the jar**, which is a product decision and not a parity fix.
 
-**The same knobs are reachable through `--set`.** Every one of them is a field of `RouterSettings`,
-so the supported spellings are the two generic ones, which go through `CliSettings` at priority 60
-— the parser that actually reaches the router:
+**Every one of them is reachable through a generic override — but the spelling depends on the
+form, and neither form takes the other's.** All seven are fields of `RouterSettings`, so both
+spellings go through `CliSettings` at priority 60, the parser that actually reaches the router.
+
+| form | spelling | why not the other one |
+|---|---|---|
+| **native** (`route`, `drc`, `info`, `mcp`) | `--set <section>.<field>=<value>` | `clap` owns this command line and has **no arm** for a free-form `--<section>.<field>=<value>`: it answers `error: unexpected argument '--router.optimizer.max_threads' found` and exits **2** |
+| **legacy** (`-de`/`-do`/…) | `--<section>.<field>=<value>` — Java's own | ruling AR makes this path bug-for-bug, and the jar ignores `--set` twice over: no `=` on the flag (`CliSettings.java:45`), and its payload does not start with `-` (`:58`). Honouring it here would route differently from the jar on the same argv |
 
 ```sh
-# Java's own `--section.field=value` — the LIVE spelling, accepted on both forms
+# native form — `--set`, repeatable (controller ruling BJ)
 freerouting route board.dsn -o board.ses \
-    --router.optimizer.optimization_improvement_threshold=0.005 \
-    --router.optimizer.board_update_strategy=GLOBAL_OPTIMAL \
-    --router.optimizer.item_selection_strategy=SEQUENTIAL \
-    --router.optimizer.hybrid_ratio=1:2 \
-    --router.optimizer.max_threads=4
+    --set router.optimizer.optimization_improvement_threshold=0.005 \
+    --set router.optimizer.board_update_strategy=GLOBAL_OPTIMAL \
+    --set router.optimizer.item_selection_strategy=SEQUENTIAL \
+    --set router.optimizer.hybrid_ratio=1:2 \
+    --set router.optimizer.max_threads=4
 
+# legacy form — Java's own `--section.field=value`, accepted unchanged
 freerouting -de board.dsn -do board.ses --router.optimizer.max_threads=4
-
-# the port's own `--set` spelling: accepted by clap, and NOT wired (see below)
-freerouting route board.dsn -o board.ses --set router.optimizer.max_threads=4
 ```
 
-Two warnings that are not hedges:
+Three notes that are not hedges:
 
-* **`--set` is declared and parsed by clap, and it is still not wired to the run path.** This is
-  the one accepted-but-inert flag the *port* adds, and it is recorded as such: `docs/plan-8-handoff.md`
-  §5 carries it as a closed-with-reason survivor, `src/cli.rs`'s help text says so in the sentence a
-  user actually reads, and the shipping surface for a generic override is Java's own
-  `--section.field=value`, which works on both forms and is what every `cli_e2e` case and every
-  reference argv uses. The block above shows both; only the second half of it runs.
-* **The two spellings are not equivalent to the dead flags.** `--router.optimizer.max_threads=4`
+* **Beyond the spelling, the two are one code path.** `fr_settings::CliSettings::new_with_set_alias`
+  splits the payload at its **first** `=` (`CliSettings.java:46`'s `split("=", 2)`), ignores a name
+  that does not start with `router.` (`:54-56`), arms the `-de`/`-do` forcing guard on
+  `router.enabled` (`:50-52`), and hands the rest to the same `apply_router_setting` the dotted
+  spelling reaches. `src/commands::cli_settings` is the one place that chooses between the two
+  constructors, on `legacy::is_legacy_form` — the same predicate `crate::run` dispatches on.
+* **It is pinned three ways, because Task 14 got this wrong once.** Its first draft wrote "works on
+  both forms" into `--help` and into `docs/plan-8-handoff.md`, and nothing in the tree contradicted
+  it. Now: `tests/cli_e2e.rs::the_generic_override_is_set_on_native_and_dotted_on_legacy` is a
+  five-row truth table through the binary (native `--set` → 77, native `--set=` → 77, native dotted
+  → **exit 2**, legacy `--set` → ignored, legacy dotted → 77), read out of the manifest's
+  `settings_snapshot`; `crates/fr-settings/tests/cli_source.rs` has the unit pair; and `p8t5`'s
+  `set-on-legacy` row runs both programs on the legacy argv against the live jar.
+* **Neither spelling is equivalent to the dead flags.** `--router.optimizer.max_threads=4`
   goes through `ReflectionUtil.setFieldValue` and therefore carries **no clamp**, where `-mt`
   clamps to `[0, 1024]` on the bridge (`GlobalSettings.java:692-697`). `-mt 99999` is 1024 there;
   `--router.optimizer.max_threads=99999` is 99999. Both are measured — `p8t5`'s `mt` and
-  `router-optimizer-max-threads` rows.
+  `router-optimizer-max-threads` rows. `--set router.optimizer.max_threads=99999` is the same
+  99999, because it is the same code path.
 
 ---
 
@@ -280,7 +291,7 @@ prefix, **last** occurrence wins), and an unrecognised name silently means `INFO
 | the parse rules, arm by arm, with the Java line for each | `src/legacy.rs`'s module docs |
 | the log level ladder, the stderr divergence, `MESSAGE_MAP`, and the `logger/**` roster | `src/logging.rs` |
 | the Java behaviours reproduced on purpose | `docs/java-quirks.md` #131, #143, #259-#264 |
-| the differential that pins all of it against the jar | `scripts/differential/{run.sh p8t5, sweep-p8t5.sh}`, 86 argv shapes |
+| the differential that pins all of it against the jar | `scripts/differential/{run.sh p8t5, sweep-p8t5.sh}`, 87 argv shapes |
 
 
 ---
@@ -439,8 +450,8 @@ one driver that does not exist, which is recorded rather than quietly dropped.)*
 | **`p8t1`** | the headline gate: SES **bytes**, exit code, `normalize_log`, two whole programs on one argv | `run.sh p8t1` (CI stems + the five argv rows), `p8t1 all` (adds the slow stems), `p8t1probe` | **15 rows: 14 MATCH, 1 XDIFF, 0 DIFF** — the XDIFF is `invalid-input-java-hangs` (quirk #244, plan ruling 7). `p8t1probe`: MATCH (162 lines) |
 | **`p8t2`** | the result manifest, field for field after `normalize_manifest`; the `settings_snapshot` inside it is also the **resolved settings** through the binary | `run.sh p8t2` (Task 4's shape mode), `p8t2 e2e [all]`, `p8t2probe` | shape mode MATCH (762 lines); `e2e all` **11 rows: 11 MATCH, 0 DIFF** |
 | **`p8t3`** | the DRC report bytes after `normalize_drc_json`, the computed `quality_score`, the exit code and the log — plus the DSN → `.rules` → SES **load order** | `run.sh p8t3` (the merge driver, Java vs Rust), `p8t3 e2e` | merge: MATCH (25 lines). `e2e`: **14 rows: 13 MATCH, 1 XDIFF, 0 DIFF** — the XDIFF is quirk #146, where the jar does not match itself |
-| **`p8t4`** | **does not exist, and this is the record of why.** The plan asked for "the resolved `RouterSettings` dumped as JSON from both sides — `p4t1`'s 64-case matrix re-run through the binary". Task 6 discharged that rung with the two artefacts that already existed rather than building a third: Plan 4's **`p4t1`** still runs the 64-case matrix against the JVM (MATCH, 5 728 lines), and the *through-the-binary* half is the manifest's `settings_snapshot`, which `p8t2 e2e` compares field for field on all eleven stems and which `cli_e2e.rs::a_settings_file_reaches_the_run` reads on three more runs. A separate `p8t4` would have re-derived `p4t1`'s matrix and compared the same numbers a second time | — | `p4t1` MATCH (5 728 lines); rung reached |
-| **`p8t5`** | the legacy surface: slot classification, `LegacyBridge` fields, warnings and the exit code — **not routing** | `run.sh p8t5`, `sweep-p8t5.sh` | `run.sh`: MATCH (2 096 lines). `sweep`: **86 rows: 86 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** |
+| **`p8t4`** | **does not exist, and this is the record of why.** The plan asked for "the resolved `RouterSettings` dumped as JSON from both sides — `p4t1`'s 64-case matrix re-run through the binary". Task 6 discharged that rung with the two artefacts that already existed rather than building a third: Plan 4's **`p4t1`** still runs the 64-case matrix against the JVM (MATCH, 5 728 lines), and the *through-the-binary* half is the manifest's `settings_snapshot`, which `p8t2 e2e` compares field for field on all eleven stems and which `cli_e2e.rs::a_settings_file_reaches_the_run` reads on five more runs (its cases are labelled A-E). A separate `p8t4` would have re-derived `p4t1`'s matrix and compared the same numbers a second time | — | `p4t1` MATCH (5 728 lines); rung reached |
+| **`p8t5`** | the legacy surface: slot classification, `LegacyBridge` fields, warnings and the exit code — **not routing** | `run.sh p8t5`, `sweep-p8t5.sh` | `run.sh`: MATCH (2 096 lines). `sweep`: **87 rows: 87 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** — 86 until ruling BJ added `set-on-legacy` |
 | **`p8t6`** | the **documented-delta** driver (ruling AO): the eleven-row MCP table above, asserted to be exactly itself | `run.sh p8t6` | **MATCH** — eighteen observations, thirteen required to differ (rows 1-10) and five required to agree. A `NEW` or `GONE` row fails it |
 | **`p8t7`** | spec §1's acceptance: KiCad DSN → route → SES → re-read by `fr_dsn::ses_reader::read`; `-de board.json -do out.ses`; and quirk #289 (label T)'s measurement | `run.sh p8t7` | **MATCH** |
 
@@ -483,8 +494,8 @@ scripts/differential/run.sh p8t3 e2e      # the DRC document, end to end
 scripts/differential/run.sh p8t5          # the legacy surface
 scripts/differential/run.sh p8t6          # the MCP delta table
 scripts/differential/run.sh p8t7          # spec §1's KiCad round trip
-scripts/differential/sweep-p8t5.sh        # the whole 86-shape argv matrix
-scripts/differential/sweep-p3t15.sh       # Plan 3's DSN corpus (525 MATCH + 5 XDIFF)
+scripts/differential/sweep-p8t5.sh        # the whole 87-shape argv matrix
+scripts/differential/sweep-p3t15.sh       # Plan 3's DSN corpus (106 fixtures, 530 pairs, 5 XDIFF)
 scripts/differential/sweep-p5t1.sh        # Plan 5's DRC corpus
 scripts/differential/sweep-p5t2.sh        # Plan 5's report corpus
 scripts/differential/sweep-p7t9.sh        # Plan 7's pipeline corpus

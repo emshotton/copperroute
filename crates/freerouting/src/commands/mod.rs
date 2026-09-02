@@ -7,7 +7,37 @@ pub mod drc;
 pub mod info;
 pub mod route;
 
+use fr_settings::sources::CliSettings;
 use std::path::PathBuf;
+
+/// The priority-60 source, built with ruling **BJ**'s `--set` alias **on the native form only**.
+///
+/// # The two command lines have two different generic overrides, and neither has both
+///
+/// | form | generic override | why |
+/// |---|---|---|
+/// | **legacy** | `--<section>.<field>=<value>` — Java's own | `crate::legacy::rewrite` passes an unknown `--name=value` straight through, and `CliSettings` reads it exactly as the jar does |
+/// | **native** | `--set <section>.<field>=<value>` | `clap` owns this command line and has **no arm** for a free-form `--<section>.<field>=<value>`: it answers `error: unexpected argument '--router.optimizer.max_threads' found` and exit 2, before any runner is reached |
+///
+/// So the two spellings are not interchangeable, and saying otherwise — which the first draft of
+/// Task 14's documentation did, in `--help` — sends a reader to a usage error. `--set` is declared
+/// on `route` only (`cli::RouteArgs::set`); on `drc`, `info` and `mcp` `clap` refuses it, so the
+/// alias constructor below can never fire for those runners even though they call this function.
+/// That is deliberate: one predicate, one place, no runner able to disagree about which command
+/// line the user typed — the shape [`json_settings_path`] already uses for ruling BG.
+///
+/// **Why the legacy form must not honour `--set`.** Ruling AR makes that path bug-for-bug, and
+/// the jar ignores `--set` twice over — `--set` has no `=` so `CliSettings.java:45` skips it, and
+/// `router.x=7` does not start with `-` so neither branch sees it. Honouring it here would make
+/// `freerouting -de a.dsn -do b.ses --set router.max_passes=7` route differently from the jar on
+/// the same argv. `p8t5`'s `set-on-legacy` row is that comparison, run against the live jar.
+pub(crate) fn cli_settings(settings_argv: &[String]) -> CliSettings {
+    if crate::legacy::is_legacy_form(settings_argv) {
+        CliSettings::new(settings_argv)
+    } else {
+        CliSettings::new_with_set_alias(settings_argv)
+    }
+}
 
 /// `--settings <file>`'s path, read back off the **raw** argv — **on the native form only**.
 ///

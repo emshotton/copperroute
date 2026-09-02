@@ -64,8 +64,8 @@ use super::super::server::{ProgressWriter, State};
 use crate::commands::route::{import_session_file, read_scheduler_rules, set_job_output};
 use fr_core::{CancelToken, Ctx, FileFormat, RoutingJobState, RoutingPipeline, SyncProgressSink};
 use fr_settings::sources::{
-    ApiSettings, CliSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource,
-    JsonFileSettings, RulesFileSettings,
+    ApiSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource, JsonFileSettings,
+    RulesFileSettings,
 };
 use fr_settings::{HostEnvironment, RouterSettings, SettingsMerger, SettingsSource};
 use serde_json::{Value, json};
@@ -305,7 +305,7 @@ fn prototype_merger(settings_argv: &[String], host: &HostEnvironment) -> Setting
     }
     // 60 and 55, in `:1411-1412`'s registration order (the merge sorts by priority, so the order
     // is cosmetic — kept as Java writes it).
-    sources.push(Box::new(CliSettings::new(settings_argv)));
+    sources.push(Box::new(crate::commands::cli_settings(settings_argv)));
     let environment: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     sources.push(Box::new(EnvironmentVariablesSource::new(&environment)));
     SettingsMerger::new(sources)

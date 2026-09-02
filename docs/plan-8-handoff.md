@@ -26,11 +26,11 @@ narrowing.** It returns **nine** lines on this tree: eight in the two plan docum
 paragraph, which is the sweep command printed above. Every one of the nine is a document
 **quoting the pattern in order to state the rule** — six of them are the checklist line that
 defines the grep itself. A document that records a gate necessarily contains
-the gate's pattern; a plan document is not edited after the fact; and none of the twelve is a
+the gate's pattern; a plan document is not edited after the fact; and none of the nine is a
 marker. The code-scoped form above is the check with an answer.
 
 **Status of the tree this describes.** Branch `plan-8-core-cli-mcp`, `cargo nextest run
---workspace` **2385 passed, 0 failed, 56 skipped**; `cargo clippy --workspace --all-targets -- -D
+--workspace` **2388 passed, 0 failed, 56 skipped**; `cargo clippy --workspace --all-targets -- -D
 warnings` clean; `cargo fmt --all --check` clean; `cargo test -p fr-router --test batch_parity`
 6 passed, 1 ignored. Quirk register contiguous **1..292**.
 
@@ -38,8 +38,12 @@ warnings` clean; `cargo fmt --all --check` clean; `cargo test -p fr-router --tes
 
 ## 1. What is ported
 
-Eight crates, **138 651** lines of `src` and **84 778** lines of tests, against a Java tree of
-**130 497** lines of which **35 691** are the GUI that spec §2 excludes outright.
+Eight crates and **2 388** tests, against a Java tree of **130 497** lines of which **35 691**
+are the GUI that spec §2 excludes outright. The port's own size, by the command that answers it:
+`find crates/*/src -name '*.rs' | xargs cat | wc -l` → **138 778**. *(An earlier draft of this
+paragraph also gave a test-source line count with no command beside it; it was not reproducible,
+and a number in this document that a reader cannot re-derive is worse than no number. The test
+**count** above is `cargo nextest run --workspace`'s own.)*
 
 | crate | Java it ports | public surface | plan |
 |---|---|---|---|
@@ -149,13 +153,13 @@ differential row or recorded as unassertable.
 | 4 | **The SES is serialised once.** Java re-serialises on every board-updated event (≤ every 250 ms) and again at the end, each time recomputing a CRC32 and a full text-scrape `BoardStatistics` | `RoutingJobSchedulerActionThread.java:100, 168` | plan ruling **9**, quirk **#270** | Not assumed: `p8t1` compares the two programs' SES bytes on **eleven** boards, all MATCH |
 | 5 | **argv is parsed once.** Java parses it **five** times and the passes disagree — `-dl` is `equals` in one and `startsWith` in another, `-ll` takes the first occurrence early and the last late, and `mcp_server.stdio=true` in `freerouting.json` is silently ignored because the stdout redirect must precede logging init | `Freerouting.java:901-920, 944-956, 1056-1065, 1191-1203` | plan ruling **10**, quirk **#262** | `p8t5` and `sweep-p8t5.sh` (86 rows, all MATCH) compare the *classification*, which is what one-parse-vs-five is observable through |
 | 6 | **The MCP server is a different program**, in eleven recorded ways | `api/mcp/**`, `Freerouting.java:681-788` | ruling **AO** | The eleven-row table in `crates/freerouting/README.md`, asserted **to be exactly itself** by `run.sh p8t6`: a new delta and a vanished delta both fail the driver |
-| 7 | **The seven dead legacy flags stay dead** — `-oit`, `-us`, `-is`, `-hr`, `-inc`, `-drc`'s router switch and `-mt` are parsed and write a bridge nothing reads | `GlobalSettings.java:51-53, 700-736` | ruling **AQ**, quirks **#131**/**#143** | A **product decision**, closed in both register rows. Wiring them would make the port more capable than the program it ports. `--router.<section>.<field>=<value>` is the live way in, on both forms |
+| 7 | **The seven dead legacy flags stay dead** — `-oit`, `-us`, `-is`, `-hr`, `-inc`, `-drc`'s router switch and `-mt` are parsed and write a bridge nothing reads | `GlobalSettings.java:51-53, 700-736` | ruling **AQ**, quirks **#131**/**#143** | A **product decision**, closed in both register rows. Wiring them would make the port more capable than the program it ports. Each has a live generic override behind it, but the spelling differs by form (row 22): `--set router.optimizer.optimization_improvement_threshold=0.005` on the native form, `--router.optimizer.optimization_improvement_threshold=0.005` on the legacy one |
 | 8 | **Exit codes 2 and 3 are port-only, native-form-only.** 2 is clap's usage error; **3 is reserved and unreachable** | — | ruling **AR**, controller answer **3** | `legacy::tests::no_command_runner_answers_not_implemented` walks the crate's own sources and fails if any runner produces it. `grep -rn "ExitCode::NotImplemented" crates/*/src/commands crates/*/src/mcp` is empty |
 | 9 | **`--kicad-json` exists only on the native form.** On the legacy form a `.json` takes Java's own slot — design input while no `.dsn` has been seen, session afterwards | `GlobalSettings.java:609-621` | plan ruling **14** | `p8t5`'s `de-json-first` and `de-json-after-dsn` rows, both MATCH |
 | 10 | **`-do out.json` writes the board as it was *before* routing** — reproduced, after the plan's hypothesis was refuted by measurement. `setJobOutput`'s first call re-sniffs the format to `KICAD_DESIGN_JSON`, so every later call is a no-op and the file keeps what the **first** event produced | `RoutingJobSchedulerActionThread.java:259-295`; `BoardFileDetails.java:113` | quirk **#289** (label T) | `cli_e2e.rs::do_out_json_writes_the_pre_routing_board`; quirk #270's own text was corrected in place around the measurement |
 | 11 | **The MCP bridge's `\r`/`\n` strip is not reproduced.** Java deletes every such byte from the response *body* to protect its line framing | `Freerouting.java:770` | quirk **#292** (label M) | `mcp::stdio::write_line` strips nothing: `serde_json::to_string` cannot emit a raw control character inside a string, so the framing is safe by construction |
 | 12 | **Tool input schemas are hand-written, not `schemars`-generated.** Spec §13 asked for the derive | — | ruling **AO**/General | Two tests replace it: a byte-for-byte golden (`tests/data/mcp-schemas.json`) and a **two-way** field-name comparison against `RouterSettings::FIELD_NAMES` and its four nested structs', so neither a settings field nor a schema property can outlive the other |
-| 13 | **No threads below `crates/freerouting`.** Exactly **two `std::thread` spawn sites**, both under `crates/freerouting/src/mcp/` | — | plan ruling **3**, scan note N9 | `grep -rn "std::thread\|rayon" crates/fr-*/src` returns nothing. One reader thread plus one thread per in-flight `tools/call` means N live threads from two spawn sites |
+| 13 | **No threads below `crates/freerouting`.** Exactly **two `std::thread` spawn sites**, both under `crates/freerouting/src/mcp/` | — | plan ruling **3**, scan note N9 | The two spawn sites are `crates/freerouting/src/mcp/stdio.rs:149` (the reader) and `:372` (one thread per in-flight `tools/call`, so N live threads from two sites). **The gate is a spawn-site grep, not a name grep**: `grep -rn "std::thread\|rayon" crates/fr-*/src` answers **8** lines, six of them prose saying the crate has neither, and two of them live code — `crates/fr-settings/src/host.rs:18,22` calls `std::thread::available_parallelism()` to read the processor count `DefaultSettings` needs. That is a *query*, not a thread. The check that answers the claim is `grep -rn "thread::spawn\|rayon::" crates/fr-*/src`, which returns nothing |
 | 14 | **`Ctx` has no rng seed and no `max_threads`**, though spec §10 mentions both | `ItemSelectionStrategy.RANDOM` is GUI-only | plan-6 ruling **5**, quirk **#143** | There is no randomness anywhere in the ported router, and `rand` is forbidden |
 | 15 | **`PARITY_VERSION` is one constant with three readers**, never `CARGO_PKG_VERSION` | `Constants.FREEROUTING_VERSION` | ruling **AT**/5 | The three are the DRC report's `freeroutingVersion` (`commands/drc.rs:191`), the MCP `check_drc` tool's (`mcp/tools/check_drc.rs:82`) and the manifest's `app_version` (`manifest.rs:332`). Read from the jar at port time (`2.3.1-SNAPSHOT`, `Build-Revision` recorded beside it), never guessed. **The SES/DSN correction**: `fr_dsn::kicad::reader.rs:466`'s host literals are *not* `PARITY_VERSION` (plan ruling 5) — they are the strings the jar writes into a board's metadata, and the port must write the same ones |
 | 16 | **Two hand-written cryptographic primitives**, because the dependency rule forbids a crate for either | `RoutingResultManifest.sha256Hex`; Gson's Base64 | scan ruling **R12** | **SHA-256** (`fr-core`, Task 4) and **Base64** (`crates/freerouting/src/mcp/tools/mod.rs`, Task 12). Both are transcriptions of the published algorithm with the standard vectors as tests — Base64 against RFC 4648 §10's, SHA-256 against the FIPS 180-4 examples plus the manifest's own jar-measured digests. They are *deliberate divergences from good practice*, listed here so a reader knows they exist and knows they are not a general-purpose crypto surface |
@@ -164,7 +168,7 @@ differential row or recorded as unassertable.
 | 19 | **The shipped `drc` default is KiCad's snake_case spelling**, not the jar's camelCase | `KiCadDrcReport`'s `@SerializedName`s | ruling **W**, quirk **#154** | The jar advertises `$schema: https://schemas.kicad.org/drc.v1.json` and then writes keys that schema does not have. `--schema freerouting` is the way back to the jar's bytes, and it is what `p8t3` runs the port with |
 | 20 | **The MCP protocol revision is `2025-06-18`**, not the jar's `2024-11-05` | `McpControllerV1.java:285` | ruling **AT** | The port answers `notifications/progress`, `notifications/cancelled` and `ping`, none of which the jar does; advertising the older revision would be a false claim. Delta row 1 |
 | 21 | **The MCP job id comes from `/dev/urandom`**, and there is no `Random` anywhere else | `UUID.randomUUID()` | ruling **BC** | Task 12; the only entropy source in the port, and it never touches routing |
-| 22 | **The port's `--set` flag is declared, parsed and NOT wired.** The live generic override is Java's own `--section.field=value` | — | — | §5 carries it as a closed-with-reason survivor. This is the one accepted-but-inert flag the *port* adds, as against the seven it inherits |
+| 22 | **The two command lines have two different generic settings overrides, and neither takes the other's.** Native: `--set <section>.<field>=<value>`. Legacy: Java's own `--<section>.<field>=<value>` | `settings/sources/CliSettings.java:43-57` | ruling **BJ** | `clap` owns the native command line and has **no arm** for a free-form `--<section>.<field>=<value>` — it answers `error: unexpected argument` and exit **2**. And ruling AR makes the legacy path bug-for-bug, where the jar ignores `--set` twice over (no `=` on the flag at `CliSettings.java:45`; the payload does not start with `-` at `:58`). So one spelling cannot serve both forms without either breaking `clap` or diverging from the jar. Beyond the spelling they are the same code path — `CliSettings::new_with_set_alias` splits at the first `=`, filters on `router.`, and calls the same `apply_router_setting` at priority 60. The five-row truth table is `cli_e2e.rs::the_generic_override_is_set_on_native_and_dotted_on_legacy`; the jar's half of it is `p8t5`'s `set-on-legacy` row |
 
 ---
 
@@ -190,7 +194,7 @@ That is the 56 skips in the summary above.
 
 ```sh
 # Always available
-cargo nextest run --workspace                              # 2385 passed, 56 skipped
+cargo nextest run --workspace                              # 2388 passed, 56 skipped
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 cargo test --workspace --doc
@@ -220,8 +224,8 @@ whole programs** (plan ruling 13).
 | `run.sh p8t5` | the legacy surface — slots, `LegacyBridge`, warnings, exit code | MATCH (2 096 lines) |
 | `run.sh p8t6` | the eleven-row MCP delta table, asserted to be exactly itself | MATCH — 18 observations, 13 must differ, 5 must agree |
 | `run.sh p8t7` | spec §1's KiCad DSN → route → SES → re-read, plus `-de board.json` and quirk #289 | MATCH |
-| `sweep-p8t5.sh` | the whole legacy argv matrix | **86 rows: 86 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** |
-| `sweep-p3t15.sh` | Plan 3's 105-fixture DSN corpus | 525 MATCH + 5 XDIFF |
+| `sweep-p8t5.sh` | the whole legacy argv matrix, `matrix/p8t5-argv.tsv` | **87 rows: 87 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** (86 until ruling BJ added `set-on-legacy`) |
+| `sweep-p3t15.sh` | Plan 3's DSN corpus — the sweep prints `fixtures: 106  pairs: 530` | **530 pairs, 5 XDIFF, 0 unexpected diffs** (= 525 MATCH + 5) |
 | `sweep-p5t1.sh`, `sweep-p5t2.sh` | Plan 5's DRC and report corpora | green |
 | `sweep-p7t9.sh` | Plan 7's pipeline corpus | byte-unchanged since Plan 7 |
 | `run.sh p4t1`, `p6t1`, `p7t*` | the earlier plans' drivers, all still green on this tree | `p6t1`: **five boards, six rows** (`router-dac2020-bm01-pass2` included) |
@@ -255,9 +259,17 @@ from a probe that reflected a constant to `0`; this one runs the bare jar.
 
 ## 5. The obligation register, CLOSED
 
-`grep -rn "obligation:" crates/*/src` answers **60 lines**. Eighteen of them say "discharged" or
-"closed" in their own text and are prose records of work already done. The rest are grouped below,
-and **every group is closed with a reason** — there is no later plan to inherit an open one.
+Measured on the committed tree, so that the arithmetic below is re-derivable years from now:
+
+| grep | answer |
+|---|---|
+| `grep -rn "obligation:" crates/*/src` | **62** lines — **2** struck (`~~obligation:~~`), 60 not |
+| the same, minus the struck two | **60**, of which **18** say "discharged" or "closed" in their own text and are prose records of work already done |
+| `grep -rn "obligation:" crates/*/tests` | **6** — every one a cross-reference from a test to the marker it discharges |
+| `grep -rn "obligation:" crates/` | **90** — the three above plus the crate READMEs' narrative |
+
+The 60 are grouped below, and **every group is closed with a reason** — there is no later plan to
+inherit an open one.
 
 ### 5.1 The six this plan was chartered to close — all six discharged
 
@@ -270,14 +282,18 @@ and **every group is closed with a reason** — there is no later plan to inheri
 | `mcp/server.rs:9-32` | the Plan 1 skeleton's `ToolHandler` saw only its arguments and could emit nothing | **Task 11**: `Box<dyn Fn(&State, Value, &ProgressWriter, &CancelToken) -> Result<Value, RpcError> + Send + Sync>`, with the four things the obligation asked for named in a table at the site |
 | `mcp/stdio.rs:18-28` | MCP concurrency — progress sink, cancel token, reader thread | **Task 11**, and the marker is gone |
 
-`grep -rn "obligation:" crates/freerouting/src` now answers **two** lines, both *cross-references*
-to `resolve.rs`'s discharged marker, and `crates/fr-settings/src/resolve.rs`'s is struck through
-with its two closers named.
+`grep -rn "obligation:" crates/freerouting/src` now answers **three** lines — `cli.rs:49`,
+`commands/drc.rs:469` and `mcp/tools/route_board.rs:17` — and every one is a *cross-reference* to a
+marker elsewhere that is discharged, not a marker of its own.
+`crates/fr-settings/src/resolve.rs`'s is struck through with its two closers named.
 
 ### 5.2 `fr-router`'s coverage obligations — CLOSED as coverage debt, not as unported code
 
-**~24 markers**, indexed by `crates/fr-router/README.md` §"The 27 `obligation:` markers" and by
-`grep -rn "obligation:" crates/fr-router/src`. Every one names a Java arm that **is transcribed**;
+**`grep -rn "obligation:" crates/fr-router/src` answers 36 lines.** That is not 36 obligations:
+`crates/fr-router/README.md` §"The 27 `obligation:` markers" is the crate's own index and counts
+**27**, because it excludes the prose lines that merely *reference* a marker and the ones whose own
+text records a discharge. **27 is the number to read**; 36 is what the grep prints, and the two are
+stated together here so a reader who runs the grep is not left wondering which is wrong. Every one names a Java arm that **is transcribed**;
 what is missing is a *fixture that reaches it*, so the transcription is unpinned rather than
 absent. Examples: `MazeRipupResolver.checkRipup`'s `roomWasShoved` and `ALREADY_RIPPED_COSTS` arms,
 `FoundConnectionInserter.insertTrace:151-162` and `tryNeckDown:553`, `FoundConnectionLocator`'s
@@ -293,10 +309,12 @@ Chasing them one at a time now would build five fixtures for five arms; building
 them for the arms **and** for the quality measurements. Two of the roadmap's own rows (#185, #181)
 say the same thing in their "Re-pinned by" column: *needs a new synthetic fixture*.
 
-### 5.3 `fr-board`'s `ShapeTree` caller contracts (5) — CLOSED: they are standing rules, not work
+### 5.3 `fr-board`'s `ShapeTree` caller contracts — CLOSED: they are standing rules, not work
 
-`shape_tree.rs:{34,534,542,550,725,928,1211}` read "obligation: Task 10 must …". Those name **Plan
-2 Task 10**, which landed years of commits ago; they are contracts *on the caller*
+`grep -c "obligation:" crates/fr-board/src/datastructures/shape_tree.rs` answers **7** lines:
+**four** are the contracts themselves (`:542`, `:550`, `:725`, `:928`, each opening
+"obligation: Task 10 …") and three are prose pointing at them (`:34`, `:534`, `:1211`). The four
+name **Plan 2 Task 10**, which landed years of commits ago; they are contracts *on the caller*
 (`ShapeSearchTree` must insert through `insert_tiles`, must not overwrite stored entries when
 `shapes` is `null`, must store entries as `Vec<Option<LeafId>>`, must re-key through this method).
 `ShapeSearchTree` is the only caller in the tree and honours all four — `p2t3r` at 2 898 938 lines
@@ -321,7 +339,7 @@ a gap**: `fr-dsn` must not depend on `fr-settings`, and Plan 4 Task 6 landed the
 | `fr-settings/src/router_settings.rs:471` — `AutorouteControl.ExpansionCostFactor` | **Discharged by Plan 6 Task 1** (ruling 8): `fr-router` re-exports the type and `crates/fr-router/tests/skeleton.rs` pins the two paths to one `TypeId`. The marker is the record of why the declaration lives in `fr-settings` |
 | `fr-settings/src/router_settings.rs:938` — `AutorouteControl.java`'s maze consumer | Same shape; Plan 6 landed the consumer |
 | `fr-board/src/items/area.rs:108`, `structure/board_outline.rs:75` — Plan 1's "memo cache for convex pieces" | Discharged in Plan 2; both lines say so |
-| **`--set` is declared and not wired** (`crates/freerouting/src/cli.rs`) | **CLOSED with reason, and it is the one row a user can trip over.** `clap` accepts `--set section.field=value` on the native form and the value reaches nothing: `crates/fr-settings/src/sources/cli.rs` has no `--set` arm. The live spelling is Java's own `--section.field=value`, which works on **both** forms and which every `cli_e2e` case and every reference argv uses. Task 14 did not wire it because this is a documentation and audit task and wiring it is a behaviour change; the help text, the README and `docs/cli-legacy-flags.md` now all say plainly that it is inert. **If one thing in this hand-off is picked up first, make it this**: either wire it (a `--set` arm in `CliSettings::new`, with a `p8t5` row) or delete the flag |
+| ~~**`--set` is declared and not wired**~~ (`crates/freerouting/src/cli.rs`) | **CLOSED by WIRING it — controller ruling BJ, in Task 14's review round.** Task 14's first pass found the flag declared, parsed by `clap` and read by nothing, wrote that down as a survivor, and named `--section.field=value` as the replacement. The review measured the replacement and it was **worse than the finding**: `clap` refuses a free-form `--<section>.<field>=<value>` on the native form (`error: unexpected argument`, exit 2), so before this the **native subcommand form had no generic settings override at all**. Ruling BJ therefore wired the alias rather than documenting the gap: `fr_settings::CliSettings::new_with_set_alias` gives `--set <section>.<field>=<value>` the very `apply_router_setting` path the dotted spelling reaches at priority 60, and `crates/freerouting/src/commands::cli_settings` picks that constructor on `legacy::is_legacy_form` so the legacy path stays bug-for-bug. Pinned three ways so the claim can never go unpinned again: `cli_e2e.rs::the_generic_override_is_set_on_native_and_dotted_on_legacy` (a five-row truth table through the binary, reading `settings_snapshot`), two unit tests in `crates/fr-settings/tests/cli_source.rs`, and `p8t5`'s `set-on-legacy` row against the live jar. **Nothing in this CLI is now accepted-but-inert except the seven flags the jar itself leaves dead** (row 7) |
 
 ---
 
@@ -423,9 +441,9 @@ Each of these has its status line written **into that hand-off**, not only here.
 which is where it was written and reviewed. The only edits made on import are the ones this
 document's structure requires or that ruling BI ordered, and each is marked where it appears:
 
-1. every heading is demoted one level so the imported document nests under this section — its own
-   section **numbers** are unchanged, so a citation of "§3.1" means the roadmap's §3.1, not this
-   hand-off's;
+1. every heading is demoted **two** levels (`#` → `###`, `##` → `####`) so the imported document
+   nests under this section — its own section **numbers** are unchanged, so a citation of "§3.1"
+   means the roadmap's §3.1, not this hand-off's;
 2. **controller ruling BI** adds one Tier-1 row (quirk **#105**, the jar-hang Task 13 discovered)
    to the imported §2.1, labelled as an addition;
 3. two paragraphs the draft wrote in the future tense — §6.5 and the register-hygiene note — carry

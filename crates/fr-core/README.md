@@ -68,9 +68,11 @@ the difference is load bearing.
 A single `AtomicBool` collapsing the two would change behaviour without changing a test — which is
 precisely what Plan 7's hand-off warned Plan 8 against. **Plan 7's hand-off asked that the CLI's
 help text say so, and Plan 8 Task 14 discharged it**: the port has no `--max-items` flag of its
-own, so the whole surface for it is Java's own `--router.max_items=N`, accepted on both command
-lines — and the paragraph explaining that the two limits take different arms of the stop flag is
-on that flag's help text in `crates/freerouting/src/cli.rs`, repeated in
+own, so the surface for it is the generic priority-60 override — `--set router.max_items=N` on the
+native form and `--router.max_items=N` on the legacy one (controller ruling **BJ**; neither form
+takes the other's spelling, because `clap` has no arm for the dotted one and the jar ignores
+`--set`). The paragraph explaining that the two limits take different arms of the stop flag is on
+`--set`'s help text in `crates/freerouting/src/cli.rs`, repeated in
 `crates/freerouting/README.md`.
 
 `apply_to()` writes `ALL` first and `AUTO_ROUTER_ONLY` second, because `request_stop_auto_router`

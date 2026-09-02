@@ -130,19 +130,41 @@ pub struct RouteArgs {
     pub hybrid_ratio: Option<String>,
     #[arg(long)]
     pub item_selection: Option<String>,
-    /// Generic settings override, `section.field=value` (repeatable).
+    /// Generic settings override, `section.field=value` (repeatable). **This is the native form's
+    /// only generic override**; on the legacy form the spelling is Java's own
+    /// `--section.field=value`, and neither command line takes the other's.
     ///
-    /// **Declared, parsed by clap, and NOT wired to the run path** — the one place in this CLI
-    /// where that is true, and it is recorded rather than hidden (`docs/plan-8-handoff.md` §5).
-    /// The live spelling is Java's own and works on **both** forms:
-    /// `--router.optimizer.max_threads=4`, which `fr_settings::CliSettings` reads at priority 60
-    /// and `ReflectionUtil.setFieldValue` applies. That is the spelling every `cli_e2e` case and
-    /// every `p8t1`/`p8t2` reference argv uses, and the spelling to reach a setting the five
-    /// **deliberately dead** legacy flags only pretend to write (quirk #131, ruling AQ):
-    /// `--router.optimizer.optimization_improvement_threshold=0.005` is what `-oit 5` looks like
-    /// it should do and does not.
+    /// # The two spellings, and why there are two (controller ruling BJ)
     ///
-    /// **`--router.max_items=N` also stops the optimizer; `--max-passes` does not**
+    /// | form | spelling | example |
+    /// |---|---|---|
+    /// | native (this one) | `--set <section>.<field>=<value>` | `freerouting route b.dsn -o b.ses --set router.max_passes=7` |
+    /// | legacy | `--<section>.<field>=<value>` — Java's own | `freerouting -de b.dsn -do b.ses --router.max_passes=7` |
+    ///
+    /// `clap` owns the native command line and has **no arm** for a free-form
+    /// `--<section>.<field>=<value>`: `freerouting route b.dsn -o b.ses
+    /// --router.optimizer.max_threads=4` answers `error: unexpected argument
+    /// '--router.optimizer.max_threads' found` and exits **2**. And the legacy path is
+    /// bug-for-bug (ruling AR), where the jar ignores `--set` twice over — no `=` on the flag,
+    /// and its payload does not start with `-`, so neither branch of
+    /// `CliSettings.java`'s loop sees either token. So the port cannot offer one spelling on both
+    /// forms without either breaking `clap` or diverging from the jar, and it offers each form the
+    /// one that fits it.
+    ///
+    /// Beyond the spelling the two are **the same code path**:
+    /// `fr_settings::CliSettings::new_with_set_alias` splits the payload at its first `=`, ignores
+    /// a name that does not start with `router.`, and hands the rest to the very
+    /// `apply_router_setting` the direct spelling reaches — priority 60, `ReflectionUtil
+    /// .setFieldValue`'s semantics, warn-and-skip on a bad value.
+    /// `crates/freerouting/src/commands::cli_settings` is the one place that chooses between the
+    /// two, on `legacy::is_legacy_form`.
+    ///
+    /// This is how to reach a setting the five **deliberately dead** legacy flags only pretend to
+    /// write (quirk #131, ruling AQ): `--set
+    /// router.optimizer.optimization_improvement_threshold=0.005` is what `-oit 5` looks like it
+    /// should do and does not.
+    ///
+    /// **`--set router.max_items=N` also stops the optimizer; `--max-passes` does not**
     /// (quirk #202). The two limits take different arms of Java's three-state stop flag:
     /// `AutoroutePassRunner.java:212-221` reaches `max_items` and calls `requestStop()`, which
     /// writes `ALL`, and `RoutingPipeline.runOptimizationStage` returns early on `ALL` — so the
@@ -151,8 +173,9 @@ pub struct RouteArgs {
     /// optimizer runs normally. Java says none of this: the message it logs is "Max items limit
     /// reached. Stopping auto-router.", and the optimizer is not the auto-router. The port
     /// reproduces the behaviour exactly and states it here, which is the discharge Plan 7's
-    /// hand-off asked for. The port has no `--max-items` flag of its own, so
-    /// `--router.max_items=N` is the whole surface for it.
+    /// hand-off asked for. The port has no `--max-items` flag of its own, so `--set
+    /// router.max_items=N` (native) and `--router.max_items=N` (legacy) are the whole surface
+    /// for it.
     #[arg(long = "set")]
     pub set: Vec<String>,
 }

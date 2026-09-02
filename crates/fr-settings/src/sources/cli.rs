@@ -61,9 +61,52 @@ impl CliSettings {
 
     /// `CliSettings(String[])` (`:25-28`) plus `parseArguments` (`:30-86`).
     ///
+    /// Java-exact: `--set` is not a shape this parser knows, exactly as `CliSettings.java` does
+    /// not know it. [`CliSettings::new_with_set_alias`] is the port-only variant.
+    ///
     /// renamed: CliSettings -> CliSettings::new (Rust has no constructors).
     #[must_use]
     pub fn new(args: &[String]) -> Self {
+        Self::parse(args, false)
+    }
+
+    /// [`CliSettings::new`] plus one **port-only** shape: `--set <section>.<field>=<value>`, an
+    /// exact alias for `--<section>.<field>=<value>`.
+    ///
+    /// # Why the alias exists, and why it is a second constructor rather than an arm of the first
+    ///
+    /// **Controller ruling BJ.** The port's native command line is `clap`'s, and `clap` has no arm
+    /// for a free-form `--<section>.<field>=<value>` — it answers
+    /// `error: unexpected argument '--router.optimizer.max_threads' found` and exit 2. So before
+    /// this alias existed the **native subcommand form had no generic settings override at all**,
+    /// while `crates/freerouting/src/cli.rs` declared a `--set` flag that `clap` parsed and
+    /// nothing read. The alias closes that: `freerouting route b.dsn -o b.ses --set
+    /// router.max_passes=7` now reaches this source at priority 60, through the very same
+    /// [`CliSettings::apply_router_setting`] the `--router.max_passes=7` spelling reaches on the
+    /// legacy form.
+    ///
+    /// **It must not be reachable from the legacy form**, which is why it is a separate
+    /// constructor. Ruling AR makes the legacy path bug-for-bug, and the jar ignores `--set`
+    /// twice over: `--set` has no `=`, so `CliSettings.java:45` skips it, and `router.x=7` does
+    /// not start with `-`, so neither branch of the loop sees it. A `--set` arm in
+    /// [`CliSettings::new`] would make `freerouting -de a.dsn -do b.ses --set router.max_passes=7`
+    /// route differently from the jar on the same argv. `crates/freerouting/src/commands::cli_settings`
+    /// is the one place that chooses between the two constructors, on
+    /// `crate::legacy::is_legacy_form` — the same predicate `crate::run` dispatches on.
+    ///
+    /// Everything else about the alias is *identical* to the direct spelling, deliberately: the
+    /// payload is split at its **first** `=`, a name that does not start with `router.` is
+    /// ignored, `router.enabled` arms the `-de`/`-do` forcing guard, and a failed conversion
+    /// warns and is skipped. Both spellings are accepted — `--set router.x=1` and
+    /// `--set=router.x=1` — because `clap` accepts both.
+    #[must_use]
+    pub fn new_with_set_alias(args: &[String]) -> Self {
+        Self::parse(args, true)
+    }
+
+    /// The body of both constructors. `set_alias` is ruling BJ's port-only arm; see
+    /// [`CliSettings::new_with_set_alias`].
+    fn parse(args: &[String], set_alias: bool) -> Self {
         let mut this = Self {
             settings: RouterSettings::new(),
             parsed_arguments: BTreeMap::new(),
@@ -79,9 +122,40 @@ impl CliSettings {
             let arg = args[i].as_str();
 
             if let Some(body) = arg.strip_prefix("--") {
+                // Ruling BJ's port-only alias, native form only. Tested **before** the `=` rule
+                // below, because `--set=router.x=1`'s own first `=` would otherwise make the
+                // property name `set`, which no `router.` test can rescue.
+                //
+                // `--settings=<file>` is not caught here: `"settings=…".starts_with("set=")` is
+                // false, and `--settings` on its own is `body == "settings"`, not `"set"`.
+                if set_alias && (body == "set" || body.starts_with("set=")) {
+                    // `--set=<payload>` carries the payload inline; `--set <payload>` takes the
+                    // next token unconditionally, because `clap` has already refused a `--set`
+                    // with no value by the time any of this runs.
+                    let payload = match body.strip_prefix("set=") {
+                        Some(rest) => Some(rest.to_string()),
+                        None => args.get(i + 1).map(|next| {
+                            i += 1;
+                            next.clone()
+                        }),
+                    };
+                    // From here the two spellings are one code path with the block below: split
+                    // at the FIRST `=`, arm the forcing guard on the name alone, apply only a
+                    // `router.` name.
+                    if let Some(payload) = payload
+                        && let Some((property_name, value)) = payload.split_once('=')
+                    {
+                        if property_name == "router.enabled" {
+                            has_explicit_router_enabled_argument = true;
+                        }
+                        if property_name.starts_with("router.") {
+                            this.apply_router_setting(property_name, value);
+                        }
+                    }
+                }
                 // :43-57 — the `--property=value` form. `contains("=")` first (:45), so a bare
                 // `--router.max_passes` is skipped rather than treated as an empty value.
-                if body.contains('=') {
+                else if body.contains('=') {
                     // `split("=", 2)` (:46): everything after the first `=` is the value.
                     let (property_name, value) = body.split_once('=').expect("contains checked");
 

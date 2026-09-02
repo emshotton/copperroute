@@ -682,6 +682,155 @@ fn the_rules_file_is_read_as_bytes_twice() {
     );
 }
 
+/// **Controller ruling BJ, and the blocking finding of the Task 14 review.** The two command
+/// lines have two different generic settings overrides, and **neither accepts the other's** —
+/// which is the exact claim this test exists to keep true, because Task 14's first draft wrote
+/// "works on both forms" into `--help` and into the project's terminal document and nothing
+/// contradicted it.
+///
+/// | # | form | argv | expected |
+/// |---|---|---|---|
+/// | 1 | native | `--set router.scoring.via_costs=77` | **77** — ruling BJ's alias, through `CliSettings::new_with_set_alias` at priority 60 |
+/// | 2 | native | `--set=router.scoring.via_costs=77` | **77** — `clap` accepts both spellings of its own flag, so the alias must too |
+/// | 3 | native | `--router.scoring.via_costs=77` | **exit 2** — `clap` owns this command line and has no arm for it |
+/// | 4 | legacy | `--set router.scoring.via_costs=77` | **50**, ignored — ruling AR: the jar's `CliSettings.java:45` skips a `--` token with no `=`, and the payload does not start with `-`, so neither branch sees either token |
+/// | 5 | legacy | `--router.scoring.via_costs=77` | **77** — Java's own spelling, and the control that proves rows 3 and 4 are about the *form*, not about the setting being unreachable |
+///
+/// Rows 3 and 5 are what make this a truth table rather than two assertions: without row 5 a
+/// reader cannot tell whether row 3 fails because `clap` refuses the spelling or because
+/// `via_costs` is unreachable, and without row 3 the `--set` alias looks like a convenience
+/// rather than the native form's only way in.
+///
+/// `scoring.via_costs` is the observable because `DefaultSettings.java:149` gives it a non-zero
+/// default (**50**), so "the override did nothing" and "the override wrote the default" are
+/// different answers. The `settings_snapshot` of `--result-json`'s manifest is the only surface
+/// the CLI has for a resolved setting.
+///
+/// The jar's half of row 4 is `p8t5`'s `set-on-legacy` row, which runs both programs on that argv
+/// and compares the classification and the warnings.
+#[test]
+fn the_generic_override_is_set_on_native_and_dotted_on_legacy() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("generic-override");
+    let dsn = small_dsn();
+    let dsn = dsn.to_string_lossy();
+
+    let via_costs = |manifest: &Path| settings_snapshot(manifest)["scoring"]["via_costs"].clone();
+    let fifty = serde_json::json!(50);
+    let seventy_seven = serde_json::json!(77);
+
+    // Row 1 — native, `--set <payload>`.
+    let m1 = dir.join("1.json");
+    let (_, stderr, code) = run(&[
+        "route",
+        &dsn,
+        "-o",
+        &dir.join("1.ses").to_string_lossy(),
+        "--max-passes",
+        "1",
+        "--set",
+        "router.scoring.via_costs=77",
+        "--result-json",
+        &m1.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        via_costs(&m1),
+        seventy_seven,
+        "ruling BJ: `--set` is the native form's generic override and must reach priority 60"
+    );
+
+    // Row 2 — native, `--set=<payload>`; `clap` accepts it, so the alias must read it.
+    let m2 = dir.join("2.json");
+    let (_, stderr, code) = run(&[
+        "route",
+        &dsn,
+        "-o",
+        &dir.join("2.ses").to_string_lossy(),
+        "--max-passes",
+        "1",
+        "--set=router.scoring.via_costs=77",
+        "--result-json",
+        &m2.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        via_costs(&m2),
+        seventy_seven,
+        "`--set=<payload>` must split at the payload's own first `=`, not at the flag's"
+    );
+
+    // Row 3 — native, Java's dotted spelling. `clap` refuses it: usage error, exit 2.
+    let (_, stderr, code) = run(&[
+        "route",
+        &dsn,
+        "-o",
+        &dir.join("3.ses").to_string_lossy(),
+        "--max-passes",
+        "1",
+        "--router.scoring.via_costs=77",
+    ]);
+    assert_eq!(
+        code, 2,
+        "the native form has NO arm for `--<section>.<field>=<value>`; stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("unexpected argument"),
+        "clap's own usage error is what row 3 pins: {stderr}"
+    );
+
+    // Row 4 — legacy, `--set`. Ruling AR: the jar ignores it, so the port must too.
+    let m4 = dir.join("4.json");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &dsn,
+        "-do",
+        &dir.join("4.ses").to_string_lossy(),
+        "-mp",
+        "1",
+        "--set",
+        "router.scoring.via_costs=77",
+        &format!("--router.result_json={}", m4.display()),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        via_costs(&m4),
+        fifty,
+        "ruling AR: the legacy path is bug-for-bug and the jar ignores `--set` twice over"
+    );
+    // ...and it says what the jar says while ignoring it: two `GlobalSettings.java:833` warnings,
+    // because `--set` is not a value-consuming arm there either.
+    assert!(
+        stderr.contains("Unknown command line argument: --set"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("Unknown command line argument: router.scoring.via_costs=77"),
+        "{stderr}"
+    );
+
+    // Row 5 — legacy, Java's own spelling. The control.
+    let m5 = dir.join("5.json");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &dsn,
+        "-do",
+        &dir.join("5.ses").to_string_lossy(),
+        "-mp",
+        "1",
+        "--router.scoring.via_costs=77",
+        &format!("--router.result_json={}", m5.display()),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        via_costs(&m5),
+        seventy_seven,
+        "the legacy form's generic override is Java's own dotted spelling, and it is live"
+    );
+}
+
 /// **The priority-10 `freerouting.json` tier, through the binary** (the review's B1, as amended by
 /// **controller ruling BG**).
 ///

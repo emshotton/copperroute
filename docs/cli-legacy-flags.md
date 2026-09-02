@@ -31,22 +31,34 @@ divergence" is gone (ruling 14), and the `-mp`/`-mt`/`-oit`/`-us`/`-is`/`-hr`/
   **Plan 8 ruling AQ closed it: they stay dead, and they stay parsed.** Keeping
   the parse is not pedantry — the value decides how far the cursor moves and
   therefore which *other* arguments get warned about, and `p8t5` compares that.
-  **The same knobs are reachable through Java's own `--section.field=value`**,
-  which goes through `CliSettings` at priority 60 — the parser that actually
-  reaches the router — and which both command lines accept unchanged:
+  **The same knobs are reachable through a generic override**, which goes
+  through `CliSettings` at priority 60 — the parser that actually reaches the
+  router. **The spelling depends on the form, and neither form takes the
+  other's** (controller ruling **BJ**):
 
   ```sh
+  # native form — `--set`, repeatable
   freerouting route board.dsn -o board.ses \
-      --router.optimizer.optimization_improvement_threshold=0.005 \
-      --router.optimizer.max_threads=4
+      --set router.optimizer.optimization_improvement_threshold=0.005 \
+      --set router.optimizer.max_threads=4
+
+  # legacy form — Java's own `--section.field=value`
   freerouting -de board.dsn -do board.ses --router.optimizer.max_threads=4
   ```
 
-  *(The port also declares a `--set section.field=value` flag on the native form.
-  It is parsed by clap and **not wired** — Plan 8 Task 14 verified that
-  `crates/fr-settings/src/sources/cli.rs` has no `--set` arm — and
-  `docs/plan-8-handoff.md` §5 carries it as a closed-with-reason survivor. Use
-  the spelling above.)*
+  `clap` owns the native command line and has **no arm** for a free-form
+  `--<section>.<field>=<value>`: `freerouting route b.dsn -o b.ses
+  --router.optimizer.max_threads=4` answers `error: unexpected argument` and
+  exits **2**. And this file's whole subject — the legacy path — is bug-for-bug
+  (ruling AR), where the jar ignores `--set` twice over: no `=` on the flag
+  (`CliSettings.java:45`), and its payload does not start with `-` (`:58`), so
+  neither branch of the loop sees either token. `p8t5`'s **`set-on-legacy`** row
+  is that comparison against the live jar, and
+  `crates/freerouting/tests/cli_e2e.rs
+  ::the_generic_override_is_set_on_native_and_dotted_on_legacy` is the five-row
+  truth table through the binary. Beyond the spelling the two are one code path:
+  `fr_settings::CliSettings::new_with_set_alias` splits at the payload's first
+  `=` and calls the same `apply_router_setting`.
 
   The two are **not** equivalent to the dead flags: the generic path goes through
   `ReflectionUtil.setFieldValue` and carries **no clamp**, where `-mt` clamps to
@@ -322,4 +334,6 @@ which subcommand the line names, which files fill Java's four slots, and which
   legacy path has no `--version` arm and clap's lives behind a subcommand
   (`freerouting route --version`).
 - **The port-only flag list lives in `crates/freerouting/README.md`**, one table,
-  with the exit ladder and the `--set` note beside it.
+  with the exit ladder beside it and, under "The dead legacy knobs", the
+  per-form table for the generic override (`--set` on the native form, Java's
+  own `--section.field=value` here) that controller ruling **BJ** settled.

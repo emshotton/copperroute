@@ -121,3 +121,26 @@ mcp-stdio	--mcp_server.stdio=true
 router-enabled-empty	-de	a.dsn	-do	b.ses	--router.enabled=
 router-max-passes	-de	a.dsn	-do	b.ses	--router.max_passes=12345
 router-optimizer-max-threads	-de	a.dsn	-do	b.ses	--router.optimizer.max_threads=99999
+
+# Controller ruling BJ — `--set` on the LEGACY form. The port's native command line accepts
+#    `--set <section>.<field>=<value>` as an alias for `--<section>.<field>=<value>` (clap has no
+#    arm for the dotted spelling), and this row is the proof that the alias stops at the form
+#    boundary. To the jar both tokens are unknown arguments: `--set` has no `=`, so
+#    `CliSettings.java:45` skips it, and `router.max_passes=7` does not start with `-`, so `:58`'s
+#    branch never sees it — two `GlobalSettings.java:833` warnings and nothing applied. Ruling AR
+#    makes the port's legacy path bug-for-bug, so it must answer the same. The other half of the
+#    truth table (native `--set` applies it, native `--router.…=` is a clap usage error) is
+#    `crates/freerouting/tests/cli_e2e.rs::the_generic_override_is_set_on_native_and_dotted_on_legacy`.
+#
+#    Only the space-separated spelling is here. A `set-equals-on-legacy` row
+#    (`--set=router.max_passes=7`) was measured and **removed**: it is one of the
+#    `--name=value`-names-an-unmodelled-section rows the header above declares deliberately
+#    absent. Java reaches `GlobalSettings.setValue("set", …)` and warns
+#    `Unknown settings property: set` (`:503`); the port has no `GlobalSettings` field table
+#    outside `router.*` and stays silent. That is a **pre-existing** divergence about the
+#    unmodelled-section surface, not about `--set`, and putting it here would make this row's
+#    verdict answer a question it is not asking. The `--set=` spelling is pinned instead by
+#    `crates/fr-settings/tests/cli_source.rs::the_java_exact_constructor_ignores_set_the_way_the_jar_does`
+#    (the legacy constructor leaves it unread, which is the behaviour that matters) and, on the
+#    native form where it is live, by row 2 of the `cli_e2e` truth table.
+set-on-legacy	-de	a.dsn	-do	b.ses	--set	router.max_passes=7

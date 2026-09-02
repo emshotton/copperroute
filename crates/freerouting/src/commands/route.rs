@@ -105,9 +105,7 @@ use fr_core::{
     BoardFileDetails, Ctx, FileFormat, RoutingJob, RoutingJobState, RoutingPipeline,
     RoutingResultManifest, SessionId, SyncProgressSink,
 };
-use fr_settings::sources::{
-    CliSettings, DsnFileSettings, EnvironmentVariablesSource, JsonFileSettings,
-};
+use fr_settings::sources::{DsnFileSettings, EnvironmentVariablesSource, JsonFileSettings};
 use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource};
 
 use crate::cli::RouteArgs;
@@ -233,7 +231,7 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
 
     let environment: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     let env_source = EnvironmentVariablesSource::new(&environment);
-    let cli_source = CliSettings::new(settings_argv);
+    let cli_source = super::cli_settings(settings_argv);
 
     // ── 7 + 9 + 10. ONE `resolve_headless` (Convention 10) ───────────────────────────────────
     let inputs = SettingsInputs {

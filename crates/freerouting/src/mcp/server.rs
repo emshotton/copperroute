@@ -620,4 +620,4 @@ mod tests {
 // not ported: McpContextListener.contextDestroyed (api/mcp/McpContextListener.java:67-69) — the matching teardown, an empty body in Java.
 
 // --- AgentCardController (133) — /.well-known/agent.json ----------------------------------------
-// not ported: AgentCardController.getAgentCard (api/AgentCardController.java:38-132) — the A2A agent card: a static JSON document advertising the server's URL, its skills and `"streamingToolCalls": false` (`:128`). It is discovered over HTTP by construction, and the honest MCP answer to "what can you do" is `tools/list`, which this server implements. Its `"streamingToolCalls": false` is the citation behind delta row 6.
+// not ported: AgentCardController.getAgentCard (api/mcp/AgentCardController.java:38-132) — the A2A agent card: a static JSON document advertising the server's URL, its skills and `"streamingToolCalls": false` (`:128`). It is discovered over HTTP by construction, and the honest MCP answer to "what can you do" is `tools/list`, which this server implements. Its `"streamingToolCalls": false` is the citation behind delta row 6.

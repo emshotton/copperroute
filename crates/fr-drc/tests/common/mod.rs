@@ -20,8 +20,13 @@
 /// **Plan 8 Task 14, controller sweep item N6: this is now an alias, not a second literal.**
 /// It used to carry its own `"2.3.1-SNAPSHOT"`, written when `fr-core` did not exist. Controller
 /// ruling AT/5 makes [`fr_core::PARITY_VERSION`] the single place the pinned jar's
-/// `Constants.FREEROUTING_VERSION` is written down, and this is one of the readers ruling AT
-/// asked to be named. `fr-core` is a **dev**-dependency here and only a dev-dependency: the
+/// `Constants.FREEROUTING_VERSION` is written down, and this now reads it rather than repeating
+/// it. **It is not a fourth of ruling AT's three readers.** Those three are FILE-FORMAT fields in
+/// shipping code — the DRC report's `freeroutingVersion` (`crates/freerouting/src/commands/drc.rs`),
+/// the MCP `check_drc` tool's (`mcp/tools/check_drc.rs`) and the manifest's `app_version`
+/// (`fr-core/src/manifest.rs`) — and this is a **test** constant that names the version the
+/// committed transcripts were taken with. It has to equal the same string, which is why it is now
+/// spelled as that string rather than as a copy of it. `fr-core` is a **dev**-dependency here and only a dev-dependency: the
 /// shipping `fr-drc` still depends on nothing above `fr-dsn`, so spec §4's direction
 /// (`fr-core -> fr-router -> fr-drc`) is unchanged and the edge exists solely for this test-only
 /// binary. Cargo permits the cycle for exactly that reason.

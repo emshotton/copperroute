@@ -86,7 +86,7 @@ use fr_core::{BoardFileDetails, BoardStatistics, FileFormat, RoutingJob, Session
 use fr_drc::DesignRulesChecker;
 use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
 use fr_settings::sources::{
-    CliSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource, JsonFileSettings,
+    DefaultSettings, DsnFileSettings, EnvironmentVariablesSource, JsonFileSettings,
 };
 use fr_settings::{HostEnvironment, RouterSettings, SettingsMerger, SettingsSource};
 
@@ -542,7 +542,7 @@ pub fn quality_score_settings(
     }
     // Priorities 60 and 55, in `Freerouting.java:1411-1412`'s registration order (the merge sorts
     // by priority, so the order here is cosmetic — kept as Java writes it).
-    sources.push(Box::new(CliSettings::new(settings_argv)));
+    sources.push(Box::new(super::cli_settings(settings_argv)));
     let environment: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     sources.push(Box::new(EnvironmentVariablesSource::new(&environment)));
     let mut merger = SettingsMerger::new(sources);
