@@ -1,0 +1,1181 @@
+(session "Issue733-kicad_complex_hierarchy_input_design"
+  (base_design "Issue733-kicad_complex_hierarchy_input_design")
+  (placement
+    (resolution mm 10000)
+    (component "complex_hierarchy:CP_Axial_L10.0mm_D4.5mm_P15.00mm_Horizontal"
+      (place C104 1266190 -607060 front -0
+       (lock_type position))
+      (place C105 1397000 -772160 front -0
+       (lock_type position))
+      (place C102 1173480 -734060 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:CP_Axial_L11.0mm_D6.0mm_P18.00mm_Horizontal"
+      (place C101 1217930 -605790 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:CP_Axial_L10.0mm_D4.5mm_P15.00mm_Horizontal::1"
+      (place C103 1600200 -783590 front 270
+       (lock_type position))
+    )
+    (component "complex_hierarchy:TO-92_HandSolder"
+      (place Q201 1314450 -1153160 front -0
+       (lock_type position))
+      (place Q203 1517650 -1238250 front 180
+       (lock_type position))
+      (place Q301 1314450 -886460 front -0
+       (lock_type position))
+      (place Q302 1504950 -899160 front -0
+       (lock_type position))
+      (place Q303 1510030 -1009650 front 180
+       (lock_type position))
+      (place Q304 1297940 -965200 front -0
+       (lock_type position))
+      (place Q202 1492250 -1150620 front -0
+       (lock_type position))
+      (place Q204 1305560 -1257300 front -0
+       (lock_type position))
+    )
+    (component "complex_hierarchy:Potentiometer_Bourns_3266W_Vertical"
+      (place RV201 933450 -1254760 front 180
+       (lock_type position))
+      (place RV301 933450 -1000760 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:TO-92_HandSolder::1"
+      (place U101 1242060 -708660 front 270
+       (lock_type position))
+    )
+    (component "complex_hierarchy:R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal"
+      (place R312 1261110 -949960 front 180
+       (lock_type position))
+      (place R202 1098550 -1102360 front 180
+       (lock_type position))
+      (place R308 1256030 -1013460 front 180
+       (lock_type position))
+      (place R302 1106170 -822960 front 180
+       (lock_type position))
+      (place R306 1733550 -911860 front 180
+       (lock_type position))
+      (place R305 1377950 -810260 front -0
+       (lock_type position))
+      (place R304 1454150 -861060 front 180
+       (lock_type position))
+      (place R211 1443990 -1268730 front 180
+       (lock_type position))
+      (place R212 1344930 -1201420 front 180
+       (lock_type position))
+      (place R208 1263650 -1280160 front 180
+       (lock_type position))
+      (place R203 1098550 -1127760 front 180
+       (lock_type position))
+      (place R303 1029970 -849630 front -0
+       (lock_type position))
+      (place R204 1466850 -1089660 front 180
+       (lock_type position))
+      (place R206 1733550 -1191260 front 180
+       (lock_type position))
+      (place R307 1733550 -975360 front 180
+       (lock_type position))
+      (place R207 1733550 -1229360 front 180
+       (lock_type position))
+      (place R301 1103630 -787400 front 180
+       (lock_type position))
+      (place R201 1098550 -1070610 front 180
+       (lock_type position))
+      (place R311 1416050 -1013460 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal::1"
+      (place R209 1562100 -1167130 front 90
+       (lock_type position))
+      (place R213 1028700 -1267460 front 270
+       (lock_type position))
+      (place R313 1022350 -1026160 front 270
+       (lock_type position))
+      (place R205 1225550 -1153160 front 90
+       (lock_type position))
+      (place R310 1612900 -899160 front 90
+       (lock_type position))
+      (place R210 1600200 -1165860 front 90
+       (lock_type position))
+      (place R309 1568450 -899160 front 90
+       (lock_type position))
+    )
+    (component "complex_hierarchy:DIP-8_W7.62mm_LongPads"
+      (place U301 1073150 -962660 front 270
+       (lock_type position))
+      (place U102 1454150 -721360 front 270
+       (lock_type position))
+      (place U201 1073150 -1242060 front 270
+       (lock_type position))
+    )
+    (component "complex_hierarchy:C_Disc_D5.0mm_W2.5mm_P5.00mm"
+      (place C304 1380490 -1041400 front -0
+       (lock_type position))
+      (place C303 1137920 -848360 front -0
+       (lock_type position))
+      (place C301 1187450 -814070 front 180
+       (lock_type position))
+      (place C204 1381760 -1300480 front -0
+       (lock_type position))
+      (place C202 1136650 -1060450 front -0
+       (lock_type position))
+      (place C302 1137920 -779780 front -0
+       (lock_type position))
+      (place C203 1136650 -1127760 front -0
+       (lock_type position))
+      (place C201 1186180 -1094740 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:D_DO-41_SOD81_P12.70mm_Horizontal"
+      (place D101 1160780 -683260 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:D_DO-35_SOD27_P7.62mm_Horizontal"
+      (place D301 1250950 -788670 front -0
+       (lock_type position))
+      (place D201 1276350 -1059180 front -0
+       (lock_type position))
+      (place D202 1276350 -1089660 front -0
+       (lock_type position))
+      (place D302 1327150 -822960 front 180
+       (lock_type position))
+    )
+    (component "complex_hierarchy:D_DO-35_SOD27_P7.62mm_Horizontal::1"
+      (place D203 1447800 -1235710 front 270
+       (lock_type position))
+      (place D304 1416050 -975360 front 270
+       (lock_type position))
+      (place D204 1409700 -1235710 front 270
+       (lock_type position))
+      (place D303 1454150 -975360 front 270
+       (lock_type position))
+    )
+    (component "complex_hierarchy:Altech_AK300_1x02_P5.00mm_45-Degree"
+      (place P101 949000 -569000 front 90
+       (lock_type position))
+      (place P102 948000 -694000 front 90
+       (lock_type position))
+      (place P201 946150 -1116330 front 90
+       (lock_type position))
+      (place P202 1811925 -1124575 front 270
+       (lock_type position))
+      (place P301 949000 -850000 front 90
+       (lock_type position))
+      (place P302 1812000 -863000 front 270
+       (lock_type position))
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution mm 10000)
+    (parser
+      (hostCad KiCad)
+      (hostVersion v10.0)
+    )
+    (library_out 
+      (padstack defaultVia
+        (shape
+          (polygon "top_copper" 0
+            -4000 -4000
+            4000 -4000
+            4000 4000
+            -4000 4000
+          )
+        )
+        (shape
+          (polygon "bottom_copper" 0
+            -4000 -4000
+            4000 -4000
+            4000 4000
+            -4000 4000
+          )
+        )
+      )
+      (padstack "via_power"
+        (shape
+          (polygon "top_copper" 0
+            -8255 -8255
+            8255 -8255
+            8255 8255
+            -8255 8255
+          )
+        )
+        (shape
+          (polygon "bottom_copper" 0
+            -8255 -8255
+            8255 -8255
+            8255 8255
+            -8255 8255
+          )
+        )
+      )
+    )
+    (network_out 
+      (net "-VAA"
+        (wire
+          (path "top_copper" 6000
+            1530350 -645160
+            1588630 -645160
+            1600200 -633590
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1149350 -1242060
+            1149350 -1259883
+            1182132 -1292665
+            1222205 -1292665
+            1350625 -1164245
+            1350625 -1111255
+            1339504 -1100134
+            1339504 -1053357
+            1352550 -1040311
+            1352550 -857710
+            1439467 -770793
+            1439467 -708852
+            1476457 -671862
+            1503648 -671862
+            1530350 -645160
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1149350 -1242060
+            1162433 -1228977
+            1162433 -975743
+            1149350 -962660
+          )
+        )
+      )
+      (net "/12Vext"
+        (wire
+          (path "top_copper" 6000
+            948000 -694000
+            1023040 -694000
+            1033780 -683260
+          )
+        )
+      )
+      (net "/ampli_ht_horizontal/PIEZO_IN"
+        (wire
+          (path "bottom_copper" 3000
+            949000 -850000
+            1011600 -787400
+            1027430 -787400
+          )
+        )
+      )
+      (net "/ampli_ht_horizontal/PIEZO_OUT"
+        (wire
+          (path "top_copper" 3000
+            1812000 -863000
+            1782410 -863000
+            1733550 -911860
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1733550 -911860
+            1733550 -975360
+          )
+        )
+      )
+      (net "/ampli_ht_horizontal/S_OUT+"
+        (wire
+          (path "top_copper" 3000
+            1568450 -899160
+            1612900 -899160
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1568450 -899160
+            1466850 -1000760
+            984250 -1000760
+          )
+        )
+      )
+      (net "/ampli_ht_horizontal/Vpil_0_3,3V"
+        (wire
+          (path "bottom_copper" 3000
+            1187450 -814070
+            1187450 -822960
+            1123950 -886460
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1123950 -886460
+            1123950 -962660
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1123950 -886460
+            1098550 -886460
+          )
+        )
+      )
+      (net "/ampli_ht_vertical/PIEZO_IN"
+        (wire
+          (path "top_copper" 3000
+            946150 -1116330
+            976630 -1116330
+            1022350 -1070610
+          )
+        )
+      )
+      (net "/ampli_ht_vertical/PIEZO_OUT"
+        (wire
+          (path "bottom_copper" 3000
+            1811925 -1124575
+            1800235 -1124575
+            1733550 -1191260
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1733550 -1191260
+            1733550 -1229360
+          )
+        )
+      )
+      (net "/ampli_ht_vertical/S_OUT+"
+        (wire
+          (path "top_copper" 3000
+            1600200 -1165860
+            1563370 -1165860
+            1562100 -1167130
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1562100 -1167130
+            1546559 -1182671
+            1334425 -1182671
+            1254185 -1262911
+            1051102 -1262911
+            1042951 -1254760
+            984250 -1254760
+          )
+        )
+      )
+      (net "/ampli_ht_vertical/Vpil_0_3,3V"
+        (wire
+          (path "top_copper" 3000
+            1186180 -1094740
+            1123950 -1156970
+            1123950 -1165860
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1123950 -1165860
+            1123950 -1242060
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1098550 -1165860
+            1123950 -1165860
+          )
+        )
+      )
+      (net GND
+        (wire
+          (path "bottom_copper" 6000
+            1812000 -813000
+            1791860 -833140
+            1791860 -1054510
+            1811925 -1074575
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1600200 -783590
+            1782590 -783590
+            1812000 -813000
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1454150 -810260
+            1573530 -810260
+            1600200 -783590
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1454150 -810260
+            1504950 -759460
+            1504950 -721360
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1484630 -1009650
+            1484630 -840740
+            1454150 -810260
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1492250 -1238250
+            1480748 -1226748
+            1480748 -1122631
+            1430490 -1072373
+            1430490 -1041400
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1430490 -1041400
+            1452880 -1041400
+            1484630 -1009650
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1187450 -1280160
+            1199507 -1292217
+            1370390 -1292217
+            1375633 -1286974
+            1418254 -1286974
+            1431760 -1300480
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1229360 -695960
+            1327290 -695960
+            1416190 -607060
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1187920 -779780
+            1201683 -766017
+            1201683 -723637
+            1229360 -695960
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1225550 -1229360
+            1187450 -1267460
+            1187450 -1280160
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1028700 -1191260
+            1187450 -1191260
+            1225550 -1229360
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1174270 -779780
+            1187920 -779780
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1023480 -734060
+            1128550 -734060
+            1174270 -779780
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1174270 -779780
+            1174270 -834710
+            1187920 -848360
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1186650 -1127760
+            1172735 -1113845
+            1172735 -1074365
+            1186650 -1060450
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1023480 -734060
+            1017680 -728260
+            1017680 -626040
+            1037930 -605790
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1037930 -605790
+            962210 -605790
+            949000 -619000
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1022350 -949960
+            1010237 -962073
+            1010237 -1172797
+            1028700 -1191260
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1028700 -1191260
+            971080 -1191260
+            946150 -1166330
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1023480 -734060
+            957940 -734060
+            948000 -744000
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            949000 -900000
+            972390 -900000
+            1022350 -949960
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            948000 -744000
+            928623 -763377
+            928623 -879623
+            949000 -900000
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1186650 -1060450
+            1179830 -1053630
+            1179830 -1013460
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1431760 -1300480
+            1492250 -1239990
+            1492250 -1238250
+          )
+        )
+        (wire
+          (path "bottom_copper" 6000
+            1186650 -1127760
+            1186650 -1190460
+            1225550 -1229360
+          )
+        )
+      )
+      (net HT
+        (wire
+          (path "bottom_copper" 6000
+            1352550 -1059180
+            1352550 -1054760
+            1356286 -1054760
+            1361567 -1049479
+            1361567 -946846
+            1371137 -937276
+            1371137 -924545
+            1399969 -895713
+            1399969 -895691
+            1434600 -861060
+            1454150 -861060
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1454150 -861060
+            1514161 -861060
+            1530350 -877249
+            1530350 -899160
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1517650 -1150620
+            1517650 -1128399
+            1478911 -1089660
+            1466850 -1089660
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1466850 -1089660
+            1436370 -1059180
+            1352550 -1059180
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1454150 -861060
+            1381760 -788670
+            1327150 -788670
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1144303 -669391
+            1207904 -605790
+            1217930 -605790
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1327150 -788670
+            1288542 -750062
+            1161716 -750062
+            1144303 -732649
+            1144303 -669391
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            949000 -569000
+            1043912 -569000
+            1144303 -669391
+          )
+        )
+      )
+      (net "Net-(U102-CAP+)"
+        (wire
+          (path "top_copper" 3000
+            1479550 -721360
+            1428750 -772160
+            1397000 -772160
+          )
+        )
+      )
+      (net "Net-(U102-CAP-)"
+        (wire
+          (path "bottom_copper" 3000
+            1530350 -721360
+            1547000 -738010
+            1547000 -772160
+          )
+        )
+      )
+      (net "Net-(C201-Pad2)"
+        (wire
+          (path "top_copper" 3000
+            1136180 -1094740
+            1106170 -1094740
+            1098550 -1102360
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1098550 -1102360
+            1073150 -1127760
+            1022350 -1127760
+          )
+        )
+      )
+      (net "Net-(C202-Pad1)"
+        (wire
+          (path "top_copper" 3000
+            1136650 -1060450
+            1108710 -1060450
+            1098550 -1070610
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1098550 -1070610
+            1066800 -1102360
+            1022350 -1102360
+          )
+        )
+      )
+      (net "Net-(U201B-+)"
+        (wire
+          (path "bottom_copper" 3000
+            1136650 -1127760
+            1149350 -1140460
+            1149350 -1165860
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1136650 -1127760
+            1098550 -1127760
+          )
+        )
+      )
+      (net "Net-(C204-Pad1)"
+        (wire
+          (path "bottom_copper" 3000
+            1381760 -1300480
+            1367790 -1286510
+            1367790 -1268730
+          )
+        )
+      )
+      (net "Net-(C301-Pad2)"
+        (wire
+          (path "top_copper" 3000
+            1137450 -814070
+            1115060 -814070
+            1106170 -822960
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1106170 -822960
+            1106170 -849630
+          )
+        )
+      )
+      (net "Net-(C302-Pad1)"
+        (wire
+          (path "top_copper" 3000
+            1137920 -779780
+            1111250 -779780
+            1103630 -787400
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1103630 -787400
+            1068070 -822960
+            1029970 -822960
+          )
+        )
+      )
+      (net "Net-(U301B-+)"
+        (wire
+          (path "top_copper" 3000
+            1137920 -860644
+            1040984 -860644
+            1029970 -849630
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1149350 -886460
+            1149350 -872074
+            1137920 -860644
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1137920 -848360
+            1137920 -860644
+          )
+        )
+      )
+      (net "Net-(C304-Pad1)"
+        (wire
+          (path "top_copper" 3000
+            1380490 -1041400
+            1367790 -1041400
+            1339850 -1013460
+          )
+        )
+      )
+      (net "Net-(D201-K)"
+        (wire
+          (path "top_copper" 3000
+            1352550 -1089660
+            1322070 -1059180
+            1276350 -1059180
+          )
+        )
+      )
+      (net "Net-(D202-K)"
+        (wire
+          (path "bottom_copper" 3000
+            1276350 -1089660
+            1327150 -1140460
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1276350 -1089660
+            1225550 -1140460
+            1225550 -1153160
+          )
+        )
+      )
+      (net "Net-(D203-K)"
+        (wire
+          (path "bottom_copper" 3000
+            1409700 -1159510
+            1447800 -1197610
+            1447800 -1235710
+          )
+        )
+      )
+      (net "Net-(D203-A)"
+        (wire
+          (path "top_copper" 3000
+            1504950 -1137920
+            1469390 -1137920
+            1447800 -1159510
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1447800 -1159510
+            1435788 -1171522
+            1358212 -1171522
+            1339850 -1153160
+          )
+        )
+      )
+      (net "Net-(D204-K)"
+        (wire
+          (path "top_copper" 3000
+            1443990 -1268730
+            1487170 -1268730
+            1504950 -1250950
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1409700 -1235710
+            1442720 -1268730
+            1443990 -1268730
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1330960 -1257300
+            1388110 -1257300
+            1409700 -1235710
+          )
+        )
+      )
+      (net "Net-(D301-K)"
+        (wire
+          (path "bottom_copper" 3000
+            1250950 -822960
+            1250950 -788670
+          )
+        )
+      )
+      (net "Net-(D302-K)"
+        (wire
+          (path "bottom_copper" 3000
+            1327150 -822960
+            1365250 -822960
+            1377950 -810260
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1327150 -822960
+            1327150 -873760
+          )
+        )
+      )
+      (net "Net-(D303-A)"
+        (wire
+          (path "top_copper" 3000
+            1454150 -886460
+            1517650 -886460
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1339850 -886460
+            1454150 -886460
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1454150 -899160
+            1454150 -886460
+          )
+        )
+      )
+      (net "Net-(D303-K)"
+        (wire
+          (path "bottom_copper" 3000
+            1454150 -975360
+            1416050 -937260
+            1416050 -899160
+          )
+        )
+      )
+      (net "Net-(D304-K)"
+        (wire
+          (path "bottom_copper" 3000
+            1416050 -1013460
+            1424940 -1022350
+            1497330 -1022350
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1416050 -975360
+            1416050 -1013460
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1416050 -975360
+            1405890 -965200
+            1323340 -965200
+          )
+        )
+      )
+      (net VCC
+        (wire
+          (path "top_copper" 6000
+            1242060 -708660
+            1390650 -708660
+            1454150 -645160
+          )
+        )
+        (wire
+          (path "top_copper" 6000
+            1173480 -734060
+            1216660 -734060
+            1242060 -708660
+          )
+        )
+      )
+      (net "Net-(Q201-E)"
+        (wire
+          (path "top_copper" 3000
+            1390650 -1089660
+            1364390 -1115920
+            1331906 -1115920
+            1314450 -1133376
+            1314450 -1153160
+          )
+        )
+      )
+      (net "Net-(Q202-E)"
+        (wire
+          (path "bottom_copper" 3000
+            1600200 -1242060
+            1651000 -1191260
+            1657350 -1191260
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1492250 -1150620
+            1583690 -1242060
+            1600200 -1242060
+          )
+        )
+      )
+      (net "Net-(Q203-E)"
+        (wire
+          (path "top_copper" 3000
+            1657350 -1229360
+            1576070 -1229360
+            1562100 -1243330
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1562100 -1243330
+            1522730 -1243330
+            1517650 -1238250
+          )
+        )
+      )
+      (net "Net-(Q204-E)"
+        (wire
+          (path "top_copper" 3000
+            1305560 -1257300
+            1305560 -1237175
+            1341315 -1201420
+            1344930 -1201420
+          )
+        )
+      )
+      (net "Net-(Q204-B)"
+        (wire
+          (path "bottom_copper" 3000
+            1318260 -1244600
+            1297884 -1244600
+            1263650 -1278834
+            1263650 -1280160
+          )
+        )
+      )
+      (net "Net-(Q301-E)"
+        (wire
+          (path "top_copper" 3000
+            1377950 -861060
+            1319504 -861060
+            1314450 -866114
+            1314450 -886460
+          )
+        )
+      )
+      (net +12V
+        (wire
+          (path "bottom_copper" 3000
+            1242060 -683260
+            1266190 -659130
+            1266190 -607060
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1160780 -683260
+            1242060 -683260
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1085251 -902353
+            1085251 -1153759
+            1073150 -1165860
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1073150 -886460
+            1085251 -898561
+            1085251 -902353
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1160780 -683260
+            1117502 -726538
+            1117502 -855078
+            1111250 -861330
+            1111250 -894743
+            1103640 -902353
+            1085251 -902353
+          )
+        )
+      )
+      (net "Net-(Q302-E)"
+        (wire
+          (path "bottom_copper" 3000
+            1612900 -949135
+            1554925 -949135
+            1504950 -899160
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1657350 -911860
+            1620075 -949135
+            1612900 -949135
+          )
+        )
+        (wire
+          (path "bottom_copper" 3000
+            1612900 -975360
+            1612900 -949135
+          )
+        )
+      )
+      (net "Net-(Q303-E)"
+        (wire
+          (path "top_copper" 3000
+            1568450 -975360
+            1579259 -964551
+            1646541 -964551
+            1657350 -975360
+          )
+        )
+        (wire
+          (path "top_copper" 3000
+            1568450 -975360
+            1544320 -975360
+            1510030 -1009650
+          )
+        )
+      )
+      (net "Net-(Q304-B)"
+        (wire
+          (path "bottom_copper" 3000
+            1256030 -1013460
+            1269209 -1013460
+            1310640 -972029
+            1310640 -952500
+          )
+        )
+      )
+      (net "Net-(Q304-E)"
+        (wire
+          (path "top_copper" 3000
+            1261110 -949960
+            1282700 -949960
+            1297940 -965200
+          )
+        )
+      )
+      (net "Net-(R212-Pad2)"
+        (wire
+          (path "top_copper" 3000
+            1268730 -1201420
+            1212363 -1257787
+            1088877 -1257787
+            1073150 -1242060
+          )
+        )
+      )
+      (net "Net-(R213-Pad1)"
+        (wire
+          (path "top_copper" 3000
+            1028700 -1267460
+            946150 -1267460
+            933450 -1254760
+          )
+        )
+      )
+      (net "Net-(R312-Pad2)"
+        (wire
+          (path "top_copper" 3000
+            1073150 -962660
+            1088871 -946939
+            1181889 -946939
+            1184910 -949960
+          )
+        )
+      )
+      (net "Net-(R313-Pad1)"
+        (wire
+          (path "top_copper" 3000
+            1022350 -1026160
+            958850 -1026160
+            933450 -1000760
+          )
+        )
+      )
+      (net "Net-(U201A--)"
+        (wire
+          (path "top_copper" 3000
+            1098550 -1242060
+            1082962 -1226472
+            961738 -1226472
+            958850 -1229360
+          )
+        )
+      )
+      (net "Net-(U301A--)"
+        (wire
+          (path "top_copper" 3000
+            1098550 -962660
+            1082936 -978274
+            961764 -978274
+            958850 -975360
+          )
+        )
+      )
+    )
+  )
+)

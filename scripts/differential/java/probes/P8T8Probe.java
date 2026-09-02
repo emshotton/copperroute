@@ -3,9 +3,11 @@ package app.freerouting.io.kicad;
 import app.freerouting.board.actions.ItemIdGenerator;
 import app.freerouting.board.facade.RoutingBoard;
 import app.freerouting.board.model.items.Item;
+import app.freerouting.board.model.structure.Component;
 import app.freerouting.board.model.structure.Layer;
 import app.freerouting.board.state.Communication;
 import app.freerouting.core.library.Padstack;
+import app.freerouting.geometry.planar.FloatPoint;
 import app.freerouting.geometry.planar.IntBox;
 import app.freerouting.geometry.planar.Point;
 import app.freerouting.geometry.planar.PolygonShape;
@@ -247,6 +249,520 @@ public final class P8T8Probe {
                 + "\"points\":[{\"x\":1.0,\"y\":1.0},{\"x\":2.0,\"y\":2.0}]}]}"));
   }
 
+  /**
+   * Plan 8 Task 9's extra inputs, measured only in **part B**. They are a separate list so that
+   * part A's committed transcript (`crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`) stays
+   * byte-identical: the default invocation still walks `CORPUS` alone and emits exactly the rows
+   * it emitted at commit `aebef57`.
+   *
+   * <p>Each one reaches an arm of sections 9-11 that no corpus fixture does: the four pad-shape
+   * arms and the fall-through, the package-dedup suffix ladder, the `catch (Exception)` at `:603`,
+   * the `%.0f` HALF_UP roundings in both generated names, the unguarded list dereferences, the
+   * out-of-range layer indices, and the two `null`-name crashes quirk #282 predicts.
+   */
+  private static final List<Row> CORPUS_B = new ArrayList<>();
+
+  static {
+    // --- section 9: components, packages, padstacks -----------------------------------------
+    CORPUS_B.add(
+        Row.json(
+            "comp-identical-packages",
+            board(
+                "\"components\":["
+                    + comp("U1", "SO8", "F.Cu", 10.0, 10.0, 0.0, pad("1", "GND", "rect", 1.0, 2.0))
+                    + ","
+                    + comp("U2", "SO8", "F.Cu", 20.0, 10.0, 0.0, pad("1", "GND", "rect", 1.0, 2.0))
+                    + "]")));
+    CORPUS_B.add(
+        Row.json(
+            "comp-differing-packages",
+            board(
+                "\"components\":["
+                    + comp("U1", "SO8", "F.Cu", 10.0, 10.0, 0.0, pad("1", "GND", "rect", 1.0, 2.0))
+                    + ","
+                    + comp("U2", "SO8", "F.Cu", 20.0, 10.0, 0.0, pad("1", "GND", "rect", 3.0, 4.0))
+                    + ","
+                    + comp("U3", "SO8", "F.Cu", 30.0, 10.0, 0.0, pad("1", "GND", "rect", 5.0, 6.0))
+                    + "]")));
+    CORPUS_B.add(
+        Row.json(
+            "comp-both-sides",
+            board(
+                "\"components\":["
+                    + comp("U1", "SO8", "F.Cu", 10.0, 10.0, 30.0, pad("1", "GND", "rect", 1.0, 2.0))
+                    + ","
+                    + comp("U2", "SO8", "B.Cu", 20.0, 10.0, -45.0, pad("1", "GND", "rect", 1.0, 2.0))
+                    + "]")));
+    CORPUS_B.add(
+        Row.json(
+            "pad-shape-arms",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"SHAPES\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":["
+                    + pad("1", "N1", "circle", 1.0, 2.0)
+                    + ","
+                    + pad("2", "N1", "CIRCLE", 2.0, 1.0)
+                    + ","
+                    + pad("3", "N1", "oval", 1.0, 2.0)
+                    + ","
+                    + pad("4", "N1", "OVAL", 3.0, 1.0)
+                    + ","
+                    + pad("5", "N1", "rect", 1.0, 2.0)
+                    + ","
+                    + pad("6", "N1", "rectangle", 1.0, 2.0)
+                    + ","
+                    + pad("7", "N1", "trapezoid", 1.0, 2.0)
+                    + ","
+                    + pad("8", "N1", "ROUND", 1.0, 2.0)
+                    + ","
+                    + "{\"name\":\"9\",\"netName\":\"N1\",\"shape\":null,"
+                    + "\"size\":{\"x\":1.0,\"y\":2.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                    + "\"drill\":0.0,\"layers\":[]}"
+                    + "]}]")));
+    // `:868`'s `pad.shape.substring(0, 1)` on an **empty** shape name.
+    CORPUS_B.add(
+        Row.json(
+            "pad-shape-empty",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":["
+                    + pad("1", "N", "", 1.0, 1.0)
+                    + "]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "pad-layer-selection",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"layers\":[{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"},"
+                + "{\"index\":1,\"name\":\"In1.Cu\",\"type\":\"signal\"},"
+                + "{\"index\":2,\"name\":\"B.Cu\",\"type\":\"signal\"}],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},"
+                + "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"LAYERS\","
+                + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                + "\"pads\":["
+                + "{\"name\":\"top\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                + "\"drill\":0.0,\"layers\":[\"f.cu\"]},"
+                + "{\"name\":\"bot\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                + "\"drill\":0.5,\"layers\":[\"B.Cu\"]},"
+                + "{\"name\":\"span\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                + "\"drill\":0.0,\"layers\":[\"B.Cu\",\"F.Cu\"]},"
+                + "{\"name\":\"mid\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                + "\"drill\":0.0,\"layers\":[\"In1.Cu\"]},"
+                + "{\"name\":\"none\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                + "\"drill\":0.0,\"layers\":[\"Nope.Cu\"]},"
+                + "{\"name\":\"null\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.5,\"y\":-0.25},"
+                + "\"drill\":0.0,\"layers\":null}"
+                + "]}]}"));
+    // `%.0f` is HALF_UP on the shortest round-trip digits; Rust's `{:.0}` is half-to-even.
+    // 0.0005 mm -> `0.5` -> Java "1"; 0.0025 -> `2.5` -> Java "3"; 0.0035 -> `3.5` -> Java "4".
+    CORPUS_B.add(
+        Row.json(
+            "pad-name-half-up",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"HALF\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":["
+                    + pad("1", "N", "circle", 0.0005, 0.0005)
+                    + ","
+                    + pad("2", "N", "rect", 0.0025, 0.0035)
+                    + ","
+                    + pad("3", "N", "rect", 0.0015, 0.0045)
+                    + "]}]")));
+    // Two components, one footprint, pads with **no** `name` key: `arePackagePinsIdentical:908`
+    // dereferences the existing package's null pin name and the `catch (Exception)` at `:603`
+    // falls back to a duplicate package.
+    CORPUS_B.add(
+        Row.json(
+            "pad-null-name-dedup",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"NONAME\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]},"
+                    + "{\"reference\":\"U2\",\"value\":\"v\",\"footprint\":\"NONAME\","
+                    + "\"position\":{\"x\":20.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]},"
+                    + "{\"reference\":\"U3\",\"value\":\"v\",\"footprint\":\"NONAME\","
+                    + "\"position\":{\"x\":30.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "comp-no-footprint",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":null,\"footprint\":\"\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":null,"
+                    + "\"pads\":["
+                    + pad("1", null, "rect", 1.0, 1.0)
+                    + "]},"
+                    + "{\"reference\":\"U2\",\"value\":\"v\",\"footprint\":null,"
+                    + "\"position\":{\"x\":20.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"b.cu\","
+                    + "\"pads\":["
+                    + pad("1", "", "rect", 1.0, 1.0)
+                    + "]}]")));
+    // `Components.add:51` hands the new component to `UndoableObjects.insert`, whose
+    // `ConcurrentSkipListMap.put` orders keys through `Component.compareTo` -> `this.name
+    // .compareToIgnoreCase(...)`. A `null` `reference` therefore dies inside the *container*, not
+    // in `readBoard` — one component is enough, and the second stem shows it is not a
+    // count-dependent effect.
+    CORPUS_B.add(
+        Row.json(
+            "comp-null-reference-single",
+            board(
+                "\"components\":[{\"reference\":null,\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":["
+                    + pad("1", "N", "rect", 1.0, 1.0)
+                    + "]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "comp-null-reference-second",
+            board(
+                "\"components\":["
+                    + comp("U1", "P", "F.Cu", 10.0, 10.0, 0.0, pad("1", "N", "rect", 1.0, 1.0))
+                    + ",{\"reference\":null,\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":20.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":["
+                    + pad("1", "N", "rect", 1.0, 1.0)
+                    + "]}]")));
+    // Quirk #282's claim, measured: a `null` layer name plus a pad whose `layers` list is
+    // non-empty is `boardLayers[li].name.equalsIgnoreCase(layerName)` at `:545`.
+    CORPUS_B.add(
+        Row.json(
+            "layer-null-name-with-pads",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"layers\":[{\"index\":0,\"name\":null,\"type\":\"signal\"},"
+                + "{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},"
+                + "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0,\"layers\":[\"B.Cu\"]}]}]}"));
+    // The same board with an **empty** pad `layers` list never reaches `:545`.
+    CORPUS_B.add(
+        Row.json(
+            "layer-null-name-no-pad-layers",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"layers\":[{\"index\":0,\"name\":null,\"type\":\"signal\"},"
+                + "{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},"
+                + "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0,\"layers\":[]}]}]}"));
+    // A declared net whose `name` is `null`: `Nets.get(name, 1)` reads `currentNet.name` first
+    // (Nets.java:44), so the crash is at `:491` — section 8's auto-registration loop — as soon as
+    // anything references a net at all.
+    CORPUS_B.add(
+        Row.json(
+            "net-null-name-with-pads",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"nets\":[{\"id\":1,\"name\":null,\"className\":null,\"containsPlane\":false}],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},"
+                + "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]}"));
+    // The same, with nothing referencing a net: the auto-registration loop never runs, and
+    // section 9's own `boardRules.nets.get(pad.netName, 1)` at `:639` is where it dies.
+    CORPUS_B.add(
+        Row.json(
+            "net-null-name-pad-without-net",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"nets\":[{\"id\":1,\"name\":null,\"className\":null,\"containsPlane\":false}],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},"
+                + "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                + "\"pads\":[{\"name\":\"1\",\"netName\":\"\",\"shape\":\"rect\","
+                + "\"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]}"));
+
+    // --- the unguarded dereferences ----------------------------------------------------------
+    CORPUS_B.add(Row.json("components-null", board("\"components\":null")));
+    CORPUS_B.add(Row.json("conductionareas-null", board("\"conductionAreas\":null")));
+    CORPUS_B.add(Row.json("traces-null", board("\"traces\":null")));
+    CORPUS_B.add(Row.json("vias-null", board("\"vias\":null")));
+    CORPUS_B.add(
+        Row.json(
+            "pads-null",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":null}]")));
+    CORPUS_B.add(
+        Row.json(
+            "pad-size-null",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":null,\"drill\":0.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "pad-offset-null",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":null,\"drill\":0.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "comp-position-null",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":null,\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":["
+                    + pad("1", "N", "rect", 1.0, 1.0)
+                    + "]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "zone-polygon-null",
+            board(
+                "\"conductionAreas\":[{\"id\":1,\"netName\":\"N\",\"layerIndex\":0,"
+                    + "\"isObstacle\":false,\"polygon\":null}]")));
+    CORPUS_B.add(
+        Row.json(
+            "trace-points-null",
+            board(
+                "\"traces\":[{\"id\":1,\"netName\":\"N\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":null}]")));
+    CORPUS_B.add(
+        Row.json(
+            "via-position-null",
+            board(
+                "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":null,\"diameter\":0.8,"
+                    + "\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1}]")));
+
+    // --- section 10: conduction areas ---------------------------------------------------------
+    CORPUS_B.add(
+        Row.json(
+            "zones",
+            board(
+                "\"conductionAreas\":["
+                    + "{\"id\":1,\"netName\":\"GND\",\"layerIndex\":0,\"isObstacle\":false,"
+                    + "\"polygon\":[{\"x\":1.0,\"y\":1.0},{\"x\":9.0,\"y\":1.0},"
+                    + "{\"x\":9.0,\"y\":9.0},{\"x\":1.0,\"y\":9.0}]},"
+                    + "{\"id\":2,\"netName\":\"\",\"layerIndex\":1,\"isObstacle\":true,"
+                    + "\"polygon\":[{\"x\":2.0,\"y\":2.0},{\"x\":8.0,\"y\":2.0},"
+                    + "{\"x\":8.0,\"y\":8.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "zone-empty-polygon",
+            board(
+                "\"conductionAreas\":[{\"id\":1,\"netName\":\"N\",\"layerIndex\":0,"
+                    + "\"isObstacle\":false,\"polygon\":[]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "zone-negative-layer",
+            board(
+                "\"conductionAreas\":[{\"id\":1,\"netName\":\"N\",\"layerIndex\":-3,"
+                    + "\"isObstacle\":false,\"polygon\":[{\"x\":1.0,\"y\":1.0},"
+                    + "{\"x\":9.0,\"y\":1.0},{\"x\":9.0,\"y\":9.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "zone-layer-out-of-range",
+            board(
+                "\"conductionAreas\":[{\"id\":1,\"netName\":\"N\",\"layerIndex\":7,"
+                    + "\"isObstacle\":false,\"polygon\":[{\"x\":1.0,\"y\":1.0},"
+                    + "{\"x\":9.0,\"y\":1.0},{\"x\":9.0,\"y\":9.0}]}]")));
+
+    // --- section 11: traces and vias ----------------------------------------------------------
+    CORPUS_B.add(
+        Row.json(
+            "traces",
+            board(
+                "\"traces\":["
+                    + "{\"id\":1,\"netName\":\"GND\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":[{\"x\":1.0,\"y\":1.0},{\"x\":5.0,\"y\":1.0},"
+                    + "{\"x\":5.0,\"y\":5.0}]},"
+                    + "{\"id\":2,\"netName\":\"nope\",\"width\":0.3,\"layerIndex\":1,"
+                    + "\"points\":[{\"x\":2.0,\"y\":2.0},{\"x\":6.0,\"y\":6.0}]},"
+                    + "{\"id\":3,\"netName\":\"GND\",\"width\":0.0,\"layerIndex\":0,"
+                    + "\"points\":[{\"x\":1.0,\"y\":2.0},{\"x\":1.0,\"y\":2.0}]},"
+                    + "{\"id\":4,\"netName\":\"GND\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":[{\"x\":3.0,\"y\":3.0}]},"
+                    + "{\"id\":5,\"netName\":\"GND\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":[]},"
+                    + "{\"id\":6,\"netName\":\"GND\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":[{\"x\":7.0,\"y\":7.0},{\"x\":8.0,\"y\":8.0},"
+                    + "{\"x\":8.0,\"y\":8.0},{\"x\":9.0,\"y\":7.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "trace-layer-out-of-range",
+            board(
+                "\"traces\":[{\"id\":1,\"netName\":\"N\",\"width\":0.25,\"layerIndex\":9,"
+                    + "\"points\":[{\"x\":1.0,\"y\":1.0},{\"x\":5.0,\"y\":1.0}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "vias",
+            board(
+                "\"vias\":["
+                    + "{\"id\":1,\"netName\":\"GND\",\"position\":{\"x\":3.0,\"y\":4.0},"
+                    + "\"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1},"
+                    + "{\"id\":2,\"netName\":\"GND\",\"position\":{\"x\":5.0,\"y\":6.0},"
+                    + "\"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1},"
+                    + "{\"id\":3,\"netName\":\"\",\"position\":{\"x\":7.0,\"y\":8.0},"
+                    + "\"diameter\":0.0005,\"drill\":0.0025,\"startLayerIndex\":0,"
+                    + "\"endLayerIndex\":1},"
+                    + "{\"id\":4,\"netName\":\"GND\",\"position\":{\"x\":9.0,\"y\":2.0},"
+                    + "\"diameter\":0.0035,\"drill\":0.0015,\"startLayerIndex\":0,"
+                    + "\"endLayerIndex\":0}]")));
+    // A pad whose `layers` list matches no board layer leaves `startLayer > endLayer`, so its
+    // padstack has a null shape on every layer. Given a size no other pad shares, that padstack
+    // is fresh — and `DrillItem.tileShapeCount` is then `toLayer - fromLayer + 1` = `-layerCount`.
+    CORPUS_B.add(
+        Row.json(
+            "pad-layers-unmatched-only",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":{\"x\":1.25,\"y\":3.75},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                    + "\"drill\":0.0,\"layers\":[\"Nope.Cu\"]}]}]")));
+    // A `null` **element** inside a JSON array: Gson stores it, `serde_json` needs the element
+    // type to be nullable. Measured so the DTO knows which shape it must have.
+    CORPUS_B.add(
+        Row.json(
+            "pad-layers-null-element",
+            board(
+                "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\","
+                    + "\"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\","
+                    + "\"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\","
+                    + "\"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},"
+                    + "\"drill\":0.0,\"layers\":[null,\"B.Cu\"]}]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "trace-point-null-element",
+            board(
+                "\"traces\":[{\"id\":1,\"netName\":\"N\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":[{\"x\":1.0,\"y\":1.0},null]}]")));
+    CORPUS_B.add(
+        Row.json(
+            "outline-corner-null-element",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"layers\":[{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"},"
+                + "{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "null,{\"x\":0.0,\"y\":40.0}]}}"));
+    CORPUS_B.add(
+        Row.json(
+            "netclass-null-element",
+            "{\"unit\":\"MM\",\"resolution\":1000.0,"
+                + "\"layers\":[{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"},"
+                + "{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],"
+                + "\"netClasses\":[null],"
+                + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+                + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]}}"));
+    CORPUS_B.add(
+        Row.json(
+            "trace-negative-layer",
+            board(
+                "\"traces\":[{\"id\":1,\"netName\":\"N\",\"width\":0.25,\"layerIndex\":-3,"
+                    + "\"points\":[{\"x\":1.0,\"y\":1.0},{\"x\":5.0,\"y\":1.0}]}]")));
+    // `startLayerIndex > endLayerIndex` leaves every entry of the `shapes` array null.
+    CORPUS_B.add(
+        Row.json(
+            "via-start-gt-end",
+            board(
+                "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},"
+                    + "\"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":1,"
+                    + "\"endLayerIndex\":0}]")));
+    CORPUS_B.add(
+        Row.json(
+            "via-layer-out-of-range",
+            board(
+                "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},"
+                    + "\"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,"
+                    + "\"endLayerIndex\":5}]")));
+    CORPUS_B.add(
+        Row.json(
+            "via-negative-layer",
+            board(
+                "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},"
+                    + "\"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":-1,"
+                    + "\"endLayerIndex\":1}]")));
+    // Everything at once, so the item ids interleave the way a real board's do.
+    CORPUS_B.add(
+        Row.json(
+            "mixed",
+            board(
+                "\"nets\":[{\"id\":1,\"name\":\"GND\",\"className\":\"Default\","
+                    + "\"containsPlane\":true}],"
+                    + "\"netClasses\":[{\"name\":\"Default\",\"clearance\":0.2,"
+                    + "\"traceWidth\":0.25,\"viaDiameter\":0.8,\"viaDrill\":0.4}],"
+                    + "\"components\":["
+                    + comp("U1", "SO8", "F.Cu", 10.0, 10.0, 90.0, pad("1", "GND", "circle", 1.0, 1.0))
+                    + "],"
+                    + "\"conductionAreas\":[{\"id\":1,\"netName\":\"GND\",\"layerIndex\":0,"
+                    + "\"isObstacle\":false,\"polygon\":[{\"x\":1.0,\"y\":1.0},"
+                    + "{\"x\":9.0,\"y\":1.0},{\"x\":9.0,\"y\":9.0}]}],"
+                    + "\"traces\":[{\"id\":1,\"netName\":\"GND\",\"width\":0.25,\"layerIndex\":0,"
+                    + "\"points\":[{\"x\":1.0,\"y\":1.0},{\"x\":5.0,\"y\":1.0}]}],"
+                    + "\"vias\":[{\"id\":1,\"netName\":\"GND\",\"position\":{\"x\":3.0,\"y\":4.0},"
+                    + "\"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,"
+                    + "\"endLayerIndex\":1}]")));
+  }
+
+  /** A two-layer 50x40 mm board at resolution 1000, plus whatever `body` adds. */
+  private static String board(String body) {
+    return "{\"unit\":\"MM\",\"resolution\":1000.0,"
+        + "\"layers\":[{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"},"
+        + "{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],"
+        + "\"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},"
+        + "{\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},"
+        + body
+        + "}";
+  }
+
+  private static String pad(String name, String netName, String shape, double sx, double sy) {
+    return "{\"name\":"
+        + quote(name)
+        + ",\"netName\":"
+        + quote(netName)
+        + ",\"shape\":"
+        + quote(shape)
+        + ",\"size\":{\"x\":"
+        + sx
+        + ",\"y\":"
+        + sy
+        + "},\"offset\":{\"x\":0.0,\"y\":0.0},\"drill\":0.0,\"layers\":[]}";
+  }
+
+  private static String comp(
+      String reference, String footprint, String layer, double x, double y, double rot, String pads) {
+    return "{\"reference\":"
+        + quote(reference)
+        + ",\"value\":\"v\",\"footprint\":"
+        + quote(footprint)
+        + ",\"position\":{\"x\":"
+        + x
+        + ",\"y\":"
+        + y
+        + "},\"rotation\":"
+        + rot
+        + ",\"layer\":"
+        + quote(layer)
+        + ",\"pads\":["
+        + pads
+        + "]}";
+  }
+
+  private static String quote(String text) {
+    return text == null ? "null" : "\"" + text + "\"";
+  }
+
   public static void main(String[] argv) throws Exception {
     PrintStream out =
         new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
@@ -256,14 +772,26 @@ public final class P8T8Probe {
     String javaDir =
         System.getenv()
             .getOrDefault("FREEROUTING_JAVA_DIR", "/Users/em/Development/freerouting/freerouting");
+    boolean partB = argv.length > 0 && argv[0].equals("b");
 
-    out.println("# P8T8Probe — KiCadJsonReader.readBoard, HEAD jar");
-    out.println("# io/kicad/KiCadJsonReader.java:61-755; Task 8 ports sections 1-8 (:63-497)");
-    out.println("# [s8] rows are section-1-to-8 state; [s9] rows are Task 9's surface");
-    out.println("# no clock, no identity hash: byte-stable across runs and -XX:hashCode settings");
+    if (partB) {
+      out.println("# P8T8Probe part B — KiCadJsonReader.readBoard sections 9-11, HEAD jar");
+      out.println("# io/kicad/KiCadJsonReader.java:498-755 plus the six private helpers");
+      out.println("# [s9] rows are the whole item graph: padstacks, packages, components, items");
+      out.println("# no clock, no identity hash: byte-stable across runs and -XX:hashCode settings");
+    } else {
+      out.println("# P8T8Probe — KiCadJsonReader.readBoard, HEAD jar");
+      out.println("# io/kicad/KiCadJsonReader.java:61-755; Task 8 ports sections 1-8 (:63-497)");
+      out.println("# [s8] rows are section-1-to-8 state; [s9] rows are Task 9's surface");
+      out.println("# no clock, no identity hash: byte-stable across runs and -XX:hashCode settings");
+    }
     out.println(header(javaDir));
 
-    for (Row row : CORPUS) {
+    List<Row> corpus = new ArrayList<>(CORPUS);
+    if (partB) {
+      corpus.addAll(CORPUS_B);
+    }
+    for (Row row : corpus) {
       String json;
       if (row.file() != null) {
         json = Files.readString(Path.of(javaDir, row.file()), StandardCharsets.UTF_8);
@@ -281,7 +809,11 @@ public final class P8T8Probe {
 
       BoardReadResult result =
           KiCadJsonReader.readBoard(new StringReader(json), null, new ItemIdGenerator());
-      emit(out, result);
+      if (partB) {
+        emitB(out, result);
+      } else {
+        emit(out, result);
+      }
     }
   }
 
@@ -494,6 +1026,171 @@ public final class P8T8Probe {
       }
     }
     out.println("[s9] items count=" + items);
+  }
+
+  // ===============================================================================================
+  // part B: the sections 9-11 item graph
+  // ===============================================================================================
+
+  /**
+   * Task 9's surface, in full: every padstack with its per-layer shape, every package with every
+   * pin, every component, and every item `board.getItems()` hands back — in Java's own iteration
+   * order, which is **descending item id** (quirk #63), so a port that numbers its items
+   * differently shows up immediately.
+   */
+  private static void emitB(PrintStream out, BoardReadResult result) {
+    RoutingBoard board;
+    switch (result) {
+      case BoardReadResult.ParseError e -> {
+        out.println("[s9] result=ParseError location=" + escape(e.location()) + " detail="
+            + escape(e.detail()));
+        return;
+      }
+      case BoardReadResult.IoError e -> {
+        out.println("[s9] result=IoError cause=" + escape(String.valueOf(e.cause())));
+        return;
+      }
+      case BoardReadResult.OutlineMissing o -> {
+        out.println("[s9] result=OutlineMissing");
+        board = (RoutingBoard) o.board();
+      }
+      case BoardReadResult.Success s -> {
+        out.println("[s9] result=Success");
+        board = (RoutingBoard) s.board();
+      }
+    }
+
+    int layerCount = board.layerStructure.layers.length;
+
+    // --- the library: padstacks (section 8's, then section 9's, then section 11's) -----------
+    out.println("[s9] padstacks count=" + board.library.padstacks.count());
+    for (int i = 1; i <= board.library.padstacks.count(); i++) {
+      Padstack p = board.library.padstacks.get(i);
+      StringBuilder shapes = new StringBuilder();
+      for (int layer = 0; layer < layerCount; layer++) {
+        if (layer > 0) {
+          shapes.append(';');
+        }
+        shapes.append(shapeOf(p.getShape(layer)));
+      }
+      out.println("[s9] padstack " + i + " name=" + escape(p.name)
+          + " fromLayer=" + p.fromLayer() + " toLayer=" + p.toLayer()
+          + " attachAllowed=" + p.attachAllowed
+          + " placedAbsolute=" + p.placedAbsolute
+          + " shapes=[" + shapes + "]");
+    }
+
+    // --- the library: packages and their pins ------------------------------------------------
+    out.println("[s9] packages count=" + board.library.packages.count());
+    for (int i = 1; i <= board.library.packages.count(); i++) {
+      app.freerouting.core.library.Package pkg = board.library.packages.get(i);
+      out.println("[s9] package " + i + " name=" + escape(pkg.name)
+          + " isFront=" + pkg.isFront + " pins=" + pkg.pinCount());
+      for (int j = 0; j < pkg.pinCount(); j++) {
+        app.freerouting.core.library.Package.Pin pin = pkg.getPin(j);
+        out.println("[s9] packagepin " + i + " " + j + " name=" + escape(pin.name)
+            + " padstack=" + pin.padstackId
+            + " rel=" + Double.toString(pin.relativeLocation.toFloat().x)
+            + "," + Double.toString(pin.relativeLocation.toFloat().y)
+            + " rot=" + Double.toString(pin.rotationInDegree));
+      }
+    }
+
+    // --- the components ----------------------------------------------------------------------
+    out.println("[s9] components count=" + board.components.count());
+    for (int i = 1; i <= board.components.count(); i++) {
+      Component c = board.components.get(i);
+      Point location = c.getLocation();
+      out.println("[s9] component " + i + " name=" + escape(c.name)
+          + " id=" + c.id
+          + " location=" + (location == null ? "<null>"
+              : Double.toString(location.toFloat().x) + "," + Double.toString(location.toFloat().y))
+          + " rotation=" + Double.toString(c.getRotationInDegree())
+          + " onFront=" + c.placedOnFront()
+          + " package=" + (c.getPackage() == null ? "<null>" : Integer.toString(c.getPackage().id))
+          + " positionFixed=" + c.positionFixed
+          + " partNumber=" + escape(c.getPartNumber()));
+    }
+
+    // --- every item, in `getItems()` order ----------------------------------------------------
+    List<Item> items = new ArrayList<>();
+    for (Item item : board.getItems()) {
+      items.add(item);
+    }
+    out.println("[s9] items count=" + items.size());
+    for (Item item : items) {
+      StringBuilder nets = new StringBuilder();
+      for (int n = 0; n < item.netCount(); n++) {
+        if (n > 0) {
+          nets.append(',');
+        }
+        nets.append(item.getNetNumber(n));
+      }
+      String head = "[s9] item " + item.getId() + " " + item.getClass().getSimpleName()
+          + " nets=[" + nets + "]"
+          + " cl=" + item.clearanceClassIndex()
+          + " comp=" + item.getComponentId()
+          + " fixed=" + item.getFixedState();
+      if (item instanceof app.freerouting.board.model.items.Pin pin) {
+        out.println(head + " pinIndex=" + pin.getPinIndex());
+      } else if (item instanceof app.freerouting.board.trace.PolylineTrace trace) {
+        StringBuilder corners = new StringBuilder();
+        for (int c = 0; c < trace.polyline().cornerCount(); c++) {
+          if (c > 0) {
+            corners.append(';');
+          }
+          FloatPoint corner = trace.polyline().cornerApprox(c);
+          corners.append(Double.toString(corner.x)).append(',').append(Double.toString(corner.y));
+        }
+        out.println(head + " layer=" + trace.getLayer()
+            + " halfWidth=" + trace.getHalfWidth()
+            + " corners=[" + corners + "]");
+      } else if (item instanceof app.freerouting.board.model.items.Via via) {
+        Point center = via.getCenter();
+        out.println(head + " padstack="
+            + (via.getPadstack() == null ? "<null>" : Integer.toString(via.getPadstack().id))
+            + " center=" + Double.toString(center.toFloat().x)
+            + "," + Double.toString(center.toFloat().y)
+            + " attachAllowed=" + via.attachAllowed);
+      } else if (item instanceof app.freerouting.board.model.items.ConductionArea zone) {
+        out.println(head + " layer=" + zone.getLayer()
+            + " isObstacle=" + zone.getIsObstacle()
+            + " area=" + areaOf(zone.getRelativeArea()));
+      } else if (item instanceof app.freerouting.board.model.structure.BoardOutline outline) {
+        out.println(head + " shapes=" + outline.shapeCount());
+      } else {
+        out.println(head);
+      }
+    }
+  }
+
+  /** One padstack layer's shape: the discriminator plus enough geometry to tell two apart. */
+  private static String shapeOf(app.freerouting.geometry.planar.ConvexShape shape) {
+    if (shape == null) {
+      return "<null>";
+    }
+    if (shape instanceof app.freerouting.geometry.planar.Circle circle) {
+      return "Circle(" + Double.toString(circle.center.toFloat().x)
+          + "," + Double.toString(circle.center.toFloat().y)
+          + ",r=" + circle.radius + ")";
+    }
+    return shape.getClass().getSimpleName() + areaOf(shape);
+  }
+
+  /** An `Area`'s corner list, approximated — the same list on both sides of the port. */
+  private static String areaOf(app.freerouting.geometry.planar.Area area) {
+    if (area == null) {
+      return "<null>";
+    }
+    StringBuilder sb = new StringBuilder("(");
+    app.freerouting.geometry.planar.FloatPoint[] corners = area.cornerApproxArr();
+    for (int i = 0; i < corners.length; i++) {
+      if (i > 0) {
+        sb.append(';');
+      }
+      sb.append(Double.toString(corners[i].x)).append(',').append(Double.toString(corners[i].y));
+    }
+    return sb.append(')').toString();
   }
 
   // ===============================================================================================

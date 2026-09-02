@@ -55,10 +55,14 @@ Plan 8 Task 8 added `src/kicad/`: `io/kicad/KiCadBoardJson.java`'s twelve DTOs
 (`dto.rs`) and `KiCadJsonReader.readBoard`'s **sections 1-8**
 (`KiCadJsonReader.java:63-497`, `reader.rs`) — units, layer structure,
 clearance matrix, board outline, communication, board construction, net
-classes and nets. Sections 9-11 (components, traces, vias) are Task 9's and
-extend the **same function body**; the `// obligation:` marker sits where
-section 9 begins, and no end-to-end path reaches the reader until it lands
-(`fr_core::load::kicad_read_board` is still Task 3's inert stub).
+classes and nets. **Task 9 completed the same function body** with sections
+9-11 (`:498-755`) — the library packages and padstacks, the components and
+their pins, the conduction areas, the traces and the vias — plus
+`getDescriptivePadstackName` and `arePackagePinsIdentical`, and pointed
+`fr_core::load::kicad_read_board` at it. `-de <board>.json -do out.ses` is
+therefore a live, byte-identical round trip against the jar; the permanent
+gate is `tests/reference/cli-kicad-ecc83-json/` (`ci`) and
+`cli-kicad-complex-hierarchy-json/` (`slow`).
 
 Three things about it are unlike the rest of the crate:
 
@@ -86,11 +90,20 @@ from the Rust board: 995 of 996 match, and the one that does not is an
 the JSON parser's own prose, Gson's on one side and `serde_json`'s on the
 other).
 
+Task 9 added the probe's **part B** (`P8T8Probe b`, transcript
+`tests/data/p8t8-kicad-read-b.txt`): the same 24 inputs plus 43 more that
+reach sections 9-11's own arms, and `[s9]` rows carrying the whole item graph
+— every padstack with its per-layer shape, every package with every pin,
+every component, and every item in `board.getItems()` order (descending id,
+quirk #63). 2 775 rows, 2 767 identical, 8 `XDIFF`, 0 unexplained. Part A's transcript is
+byte-identical across the change: the probe emits its part-A rows only when
+invoked with no argument.
+
 ## What is *not* here
 
 - **The rest of the KiCad JSON path.** `KiCadJsonReader.importSession` and
-  `io/kicad/KiCadJsonWriter.java` are Plan 8 Task 10's; `readBoard`'s
-  sections 9-11 are Task 9's.
+  `io/kicad/KiCadJsonWriter.java` are Plan 8 Task 10's. `readBoard` itself is
+  complete as of Task 9.
 - **`SessionToEagle`.** `io/specctra/parser/SessionToEagle.java` (627 lines)
   turns a session file into an Eagle CAD command script. Deferred to Plan 8;
   its one caller, `SesReader.saveSpecctraSessionSesAsEagleScriptScr`, carries

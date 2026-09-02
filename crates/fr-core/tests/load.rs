@@ -89,33 +89,54 @@ fn only_dsn_and_json_are_accepted() {
     );
 }
 
-/// A KiCad-design-JSON input passes `BoardLoader`'s format guard and then fails in the reader
-/// stub, which is Plan 8 Task 9's to replace. The stub is inert — it mutates nothing and answers
-/// the `ParseError` variant the reader already has.
+/// A KiCad-design-JSON input passes `BoardLoader`'s format guard and **loads a real board** —
+/// the discharge of Task 3's stub obligation, landed by Plan 8 Task 9.
+///
+/// This test read `the_kicad_json_reader_is_a_stub` until Task 9. It asserted the inert
+/// `ParseError("(kicad_json", "the KiCad JSON reader is not ported yet (Plan 8 Task 9)")` that
+/// [`fr_core::load::kicad_read_board`] used to answer; that body is now
+/// `fr_dsn::kicad::read_board(text, None)`, so the assertion is inverted rather than deleted —
+/// the obligation is discharged where it was pinned.
+///
+/// The counts come from the JVM: `crates/fr-dsn/tests/data/p8t8-kicad-read-b.txt`'s `ecc83-v1`
+/// case reports `components count=15`, `packages count=9`, `padstacks count=6` and
+/// `items count=34` for this exact fixture, and the whole item graph is compared row by row by
+/// `crates/fr-dsn/tests/kicad_reader.rs::the_whole_section_9_to_11_item_graph_matches_the_jvm`.
+/// What this test adds is that the **loader** reaches that reader.
 #[test]
-fn the_kicad_json_reader_is_a_stub() {
+fn a_kicad_json_input_loads_a_real_board() {
     let mut job = job_for("fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json");
     assert_eq!(
         job.get_input().expect("an input").format,
         FileFormat::KicadDesignJson,
         "the guard lets this format through"
     );
-    let error = load_board_if_needed(&mut job).expect_err("the KiCad JSON reader is not ported");
+    let loaded = load_board_if_needed(&mut job).expect("a KiCad JSON input loads");
+    assert_eq!(loaded.board.components.count(), 15);
+    assert_eq!(loaded.board.library.packages.count(), 9);
+    assert_eq!(loaded.board.library.padstacks.count(), 6);
+    assert_eq!(loaded.board.get_items().count(), 34);
     assert!(
-        error.to_string().contains("Plan 8 Task 9"),
-        "the stub names the task that discharges it, got {error}"
+        loaded.metadata.is_some(),
+        "`KiCadJsonReader.readBoard:729-736` builds a BoardMetadata, unlike DsnReader"
+    );
+    assert_eq!(
+        loaded.transform.scale_factor(),
+        10000.0,
+        "`readBoard:322` builds the CoordinateTransform the SES writer needs; this fixture's \
+         `\"resolution\": 1.0` in MM takes `:98-100`'s 0.1-micrometre default"
     );
 
-    // Straight through the loader, without the `BoardLoader` wrapper's message.
+    // Straight through the loader, without the `BoardLoader` wrapper. `{}` is a **Success** on
+    // both sides — Gson and `serde_json` both give every field its initializer, so section 3's
+    // empty-layer default builds `F.Cu`/`B.Cu` and section 5's missing outline generates the
+    // padded box. Measured: stem `empty-object` in both committed transcripts.
     let mut settings = default_settings();
     let mut job = RoutingJob::new(SessionId::default());
-    let error = load_from_kicad_json("{}", &mut job, &mut settings)
-        .expect_err("the KiCad JSON reader is not ported");
-    assert_eq!(
-        error.to_string(),
-        "There was a parse error while reading board file at '(kicad_json': \
-         the KiCad JSON reader is not ported yet (Plan 8 Task 9)"
-    );
+    let loaded = load_from_kicad_json("{}", &mut job, &mut settings)
+        .expect("an empty JSON object is a Success, as it is in the jar");
+    assert_eq!(loaded.board.get_items().count(), 1, "the generated outline");
+    assert_eq!(loaded.warnings.len(), 1, "the missing-outline warning");
 }
 
 /// `applyImmediatePostLoadProcessing:751-757` calls `board.reduceNetsOfRouteItems()`, and this

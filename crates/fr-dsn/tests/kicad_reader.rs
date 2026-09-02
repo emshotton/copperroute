@@ -1,6 +1,7 @@
-//! `fr_dsn::kicad` — the KiCad board-JSON DTO tree and `readBoard`'s sections 1-8.
+//! `fr_dsn::kicad` — the KiCad board-JSON DTO tree and the whole of `readBoard`.
 //!
-//! Java authority: `io/kicad/KiCadBoardJson.java` and `io/kicad/KiCadJsonReader.java:61-497`.
+//! Java authority: `io/kicad/KiCadBoardJson.java` and `io/kicad/KiCadJsonReader.java:61-755`
+//! plus the six private helpers at `:857-1009`.
 //!
 //! # The ground truth
 //!
@@ -16,11 +17,18 @@
 //! board, two `null` lists and the three malformed payloads).
 //!
 //! [`the_whole_section_1_to_8_surface_matches_the_jvm`] re-emits the same `[s8]` rows from the
-//! Rust board and requires **zero** differing lines. The probe's `[s9]` rows — padstacks beyond
-//! section 8's, packages, components and the item count — are Task 9's surface and are not
-//! compared; the file carries them so Task 9 has its target.
+//! Rust board and requires **zero** differing lines.
 //!
-//! The named tests after it pin the four behaviours the task brief calls out by name, as literals.
+//! `data/p8t8-kicad-read-b.txt` is the same probe's **part B** (`P8T8Probe b`), added by Task 9:
+//! **67 inputs** — the same seven fixtures plus sixty synthetic payloads — and the whole item
+//! graph rather than a count. Padstacks with their generated names and per-layer shapes, packages
+//! with every pin, components in `Components` order, and every item in `board.itemList` order with
+//! its net numbers, clearance class, fixed state and geometry.
+//! [`the_whole_section_9_to_11_item_graph_matches_the_jvm`] compares it row by row.
+//!
+//! The named tests after the two replays pin, as literals, the four behaviours each task brief
+//! calls out by name. Task 9's `:603` one is **not** named as its brief named it — see
+//! [`a_package_dedup_failure_falls_back_to_a_duplicate_package`].
 
 use std::fmt::Write as _;
 
@@ -504,6 +512,414 @@ fn the_whole_section_1_to_8_surface_matches_the_jvm() {
     );
 }
 
+// ============================================ the part-B transcript replay (sections 9-11)
+
+/// `data/p8t8-kicad-read-b.txt` is the byte-exact stdout of the **same** probe run with the
+/// argument `b`: `P8T8Probe b`. Part A's 24 inputs come first, unchanged, and then the
+/// **forty-three** section-9-to-11 inputs `CORPUS_B` adds — the pad-shape arms, the package-dedup
+/// ladder, both `%.0f` HALF_UP name generators, every unguarded list dereference, the
+/// out-of-range and inverted layer indices, and the four `null`-name crashes quirk #282 and its
+/// neighbours predict.
+///
+/// The rows are `[s9]` and cover the whole item graph: every padstack with its per-layer shape,
+/// every package with every pin, every component, and every item in `board.getItems()` order —
+/// Java's **descending item id** (quirk #63), so a port that numbers items differently fails
+/// immediately.
+const TRANSCRIPT_B: &str = include_str!("data/p8t8-kicad-read-b.txt");
+
+fn transcript_b_cases() -> Vec<Case> {
+    let mut cases: Vec<Case> = Vec::new();
+    for line in TRANSCRIPT_B.lines() {
+        if let Some(rest) = line.strip_prefix("[case] stem=") {
+            let (stem, rest) = rest.split_once(' ').expect("a [case] line has two fields");
+            let json = if let Some(path) = rest.strip_prefix("file=") {
+                let path = path.split(' ').next().expect("non-empty");
+                fixture(path)
+            } else {
+                unescape(rest.strip_prefix("json=").expect("file= or json="))
+            };
+            cases.push(Case {
+                stem: stem.to_string(),
+                json,
+                expected: Vec::new(),
+            });
+        } else if let Some(row) = line.strip_prefix("[s9] ") {
+            cases
+                .last_mut()
+                .expect("an [s9] row follows a [case] line")
+                .expected
+                .push(row.to_string());
+        }
+    }
+    assert_eq!(cases.len(), 67, "the part-B transcript measures 67 inputs");
+    cases
+}
+
+/// `P8T8Probe.shapeOf`: the discriminator plus enough geometry to tell two shapes apart.
+fn emit_shape(shape: Option<&fr_geometry::Shape>) -> String {
+    use fr_geometry::{Shape, ShapeOps, TileShape};
+    let Some(shape) = shape else {
+        return "<null>".to_string();
+    };
+    if let Shape::Circle(circle) = shape {
+        return format!(
+            "Circle({},{},r={})",
+            java_double_to_string(circle.center.to_float().x),
+            java_double_to_string(circle.center.to_float().y),
+            circle.radius
+        );
+    }
+    // Java's `getClass().getSimpleName()` over the concrete `ConvexShape`.
+    let name = match shape {
+        Shape::Tile(TileShape::Box(_)) => "IntBox",
+        Shape::Tile(TileShape::Octagon(_)) => "IntOctagon",
+        Shape::Tile(TileShape::Simplex(_)) => "Simplex",
+        Shape::Polygon(_) => "PolygonShape",
+        Shape::Circle(_) => unreachable!("handled above"),
+    };
+    format!("{name}{}", emit_corners(&shape.corner_approx_arr()))
+}
+
+/// `P8T8Probe.areaOf`: an area's corner list, approximated.
+fn emit_corners(corners: &[fr_geometry::FloatPoint]) -> String {
+    let mut out = String::from("(");
+    for (i, corner) in corners.iter().enumerate() {
+        if i > 0 {
+            out.push(';');
+        }
+        let _ = write!(
+            out,
+            "{},{}",
+            java_double_to_string(corner.x),
+            java_double_to_string(corner.y)
+        );
+    }
+    out.push(')');
+    out
+}
+
+/// `FixedState`'s Java constant names.
+fn java_fixed_state_name(state: fr_board::FixedState) -> &'static str {
+    match state {
+        fr_board::FixedState::Unfixed => "NOT_FIXED",
+        fr_board::FixedState::ShoveFixed => "SHOVE_FIXED",
+        fr_board::FixedState::UserFixed => "USER_FIXED",
+        fr_board::FixedState::SystemFixed => "SYSTEM_FIXED",
+    }
+}
+
+/// Re-emits the probe's `[s9]` rows (without the prefix) from a Rust `BoardReadResult`.
+fn emit_b(result: &BoardReadResult) -> Vec<String> {
+    use fr_geometry::{Area, ShapeOps};
+
+    let mut rows: Vec<String> = Vec::new();
+    let board = match result {
+        BoardReadResult::ParseError { location, detail } => {
+            rows.push(format!(
+                "result=ParseError location={} detail={}",
+                escape(Some(location)),
+                escape(Some(detail))
+            ));
+            return rows;
+        }
+        BoardReadResult::IoError(error) => {
+            rows.push(format!(
+                "result=IoError cause={}",
+                escape(Some(&error.to_string()))
+            ));
+            return rows;
+        }
+        BoardReadResult::OutlineMissing { board, .. } => {
+            rows.push("result=OutlineMissing".to_string());
+            board
+        }
+        BoardReadResult::Success { board, .. } => {
+            rows.push("result=Success".to_string());
+            board
+        }
+    };
+    let board = board
+        .as_ref()
+        .expect("a KiCad read that succeeds has a board");
+    let layer_count = board.layer_structure().layers.len();
+
+    // --- the library: padstacks ---------------------------------------------------------------
+    rows.push(format!(
+        "padstacks count={}",
+        board.library.padstacks.count()
+    ));
+    for i in 1..=board.library.padstacks.count() {
+        let padstack = board
+            .library
+            .padstacks
+            .get(fr_board::PadstackId(i))
+            .expect("1..=count");
+        let shapes: Vec<String> = (0..layer_count)
+            .map(|layer| {
+                emit_shape(padstack.get_shape(i32::try_from(layer).expect("layer fits an i32")))
+            })
+            .collect();
+        rows.push(format!(
+            "padstack {i} name={} fromLayer={} toLayer={} attachAllowed={} placedAbsolute={} \
+             shapes=[{}]",
+            escape(Some(&padstack.name)),
+            padstack.from_layer(),
+            padstack.to_layer(),
+            padstack.attach_allowed,
+            padstack.placed_absolute,
+            shapes.join(";")
+        ));
+    }
+
+    // --- the library: packages and their pins -------------------------------------------------
+    rows.push(format!("packages count={}", board.library.packages.count()));
+    for i in 1..=board.library.packages.count() {
+        let package = board.library.packages.get(i);
+        rows.push(format!(
+            "package {i} name={} isFront={} pins={}",
+            escape(Some(&package.name)),
+            package.is_front,
+            package.pin_count()
+        ));
+        for j in 0..package.pin_count() {
+            let pin = package
+                .get_pin(i32::try_from(j).expect("pin index fits an i32"))
+                .expect("j < pin_count()");
+            rows.push(format!(
+                "packagepin {i} {j} name={} padstack={} rel={},{} rot={}",
+                escape(Some(&pin.name)),
+                pin.padstack_no.0,
+                java_double_to_string(pin.relative_location.to_float().x),
+                java_double_to_string(pin.relative_location.to_float().y),
+                java_double_to_string(pin.rotation_in_degree)
+            ));
+        }
+    }
+
+    // --- the components -----------------------------------------------------------------------
+    rows.push(format!("components count={}", board.components.count()));
+    for i in 1..=board.components.count() {
+        let component = board
+            .components
+            .get(i32::try_from(i).expect("component id fits an i32"));
+        let location = component.get_location().map_or_else(
+            || "<null>".to_string(),
+            |location| {
+                format!(
+                    "{},{}",
+                    java_double_to_string(location.to_float().x),
+                    java_double_to_string(location.to_float().y)
+                )
+            },
+        );
+        rows.push(format!(
+            "component {i} name={} id={} location={location} rotation={} onFront={} package={} \
+             positionFixed={} partNumber={}",
+            escape(Some(&component.name)),
+            component.id,
+            java_double_to_string(component.get_rotation_in_degree()),
+            component.placed_on_front(),
+            component.get_package(),
+            component.position_fixed,
+            escape(component.get_part_number())
+        ));
+    }
+
+    // --- every item, in `getItems()` order (descending id, quirk #63) --------------------------
+    let items: Vec<&Item> = board.get_items().collect();
+    rows.push(format!("items count={}", items.len()));
+    for item in items {
+        let header = item.header();
+        let nets: Vec<String> = (0..header.net_count())
+            .map(|n| header.get_net_number(n).to_string())
+            .collect();
+        let kind = match item {
+            Item::Trace(_) => "PolylineTrace",
+            Item::Via(_) => "Via",
+            Item::Pin(_) => "Pin",
+            Item::ObstacleArea(_) => "ObstacleArea",
+            Item::ConductionArea(_) => "ConductionArea",
+            Item::ViaObstacleArea(_) => "ViaObstacleArea",
+            Item::ComponentObstacleArea(_) => "ComponentObstacleArea",
+            Item::ComponentOutline(_) => "ComponentOutline",
+            Item::BoardOutline(_) => "BoardOutline",
+        };
+        let head = format!(
+            "item {} {kind} nets=[{}] cl={} comp={} fixed={}",
+            header.id().0,
+            nets.join(","),
+            header.clearance_class(),
+            header.get_component_id(),
+            java_fixed_state_name(header.get_fixed_state())
+        );
+        rows.push(match item {
+            Item::Pin(pin) => format!("{head} pinIndex={}", pin.get_pin_index()),
+            Item::Trace(trace) => {
+                let corners: Vec<String> = (0..trace.polyline().corner_count())
+                    .map(|c| {
+                        let corner = trace
+                            .polyline()
+                            .corner_approx(c)
+                            .expect("c < corner_count()");
+                        format!(
+                            "{},{}",
+                            java_double_to_string(corner.x),
+                            java_double_to_string(corner.y)
+                        )
+                    })
+                    .collect();
+                format!(
+                    "{head} layer={} halfWidth={} corners=[{}]",
+                    trace.get_layer(),
+                    trace.get_half_width(),
+                    corners.join(";")
+                )
+            }
+            Item::Via(via) => format!(
+                "{head} padstack={} center={},{} attachAllowed={}",
+                via.get_padstack_id().0,
+                java_double_to_string(via.get_center().to_float().x),
+                java_double_to_string(via.get_center().to_float().y),
+                via.attach_allowed
+            ),
+            Item::ConductionArea(zone) => {
+                let area = match zone.get_relative_area() {
+                    Area::Shape(shape) => emit_corners(&shape.corner_approx_arr()),
+                    Area::Polyline(area) => emit_corners(&area.corner_approx_arr()),
+                };
+                format!(
+                    "{head} layer={} isObstacle={} area={area}",
+                    zone.get_layer(),
+                    zone.get_is_obstacle()
+                )
+            }
+            Item::BoardOutline(outline) => format!("{head} shapes={}", outline.shape_count()),
+            _ => head,
+        });
+    }
+    rows
+}
+
+/// The part-B rows the port is **not** expected to reproduce, each with its root cause.
+///
+/// There are three families and all three are totalizations, not disagreements about what the
+/// reader does:
+///
+/// 1. **quirk #277** — the `ParseError.detail` of a payload the *parser* rejects is the parser's
+///    own prose (Gson vs `serde_json`). Row 0 of `json-truncated`, exactly as in part A.
+/// 2. **quirk #283** — a `null` **element** inside a JSON array. Gson stores a `null` reference;
+///    `serde_json` needs the element type to be nullable. `PadJson.layers` was made
+///    `Option<Vec<Option<String>>>` because Java *loads* that input (stem
+///    `pad-layers-null-element`, which matches). The three lists where Java stores the `null` and
+///    then **throws** on it are left as they are: both sides reject the file, and only the prose
+///    differs.
+/// 3. **quirk #282's family** — a name Java keeps as `null` and `fr_board` keeps as a `String`.
+///    Two consequences reach a row: a package pin whose `name` the probe prints as `<null>`, and a
+///    conduction area whose `layerIndex` Java stores negative where `fr_board`'s layer is a
+///    `usize`.
+const XDIFF_B: &[(&str, usize, &str)] = &[
+    (
+        "json-truncated",
+        0,
+        "quirk #277: the ParseError detail on a syntactically invalid payload is the JSON \
+         parser's own message — Gson's `java.io.EOFException: End of input at line 1 column 2 \
+         path $.` against serde_json's `EOF while parsing an object at line 1 column 1`.",
+    ),
+    (
+        "trace-point-null-element",
+        0,
+        "quirk #283: `\"points\": [{...}, null]` is a `List<Point2D>` holding a null in Gson, and \
+         `:675`'s `pt.x` then throws `Cannot read field \"x\" because \"pt\" is null`. \
+         `serde_json` refuses the null against `Vec<Point2D>` first, so the port answers the same \
+         `location` with the deserializer's prose. Both reject the file.",
+    ),
+    (
+        "outline-corner-null-element",
+        0,
+        "quirk #283, as `trace-point-null-element` but through section 5's `outline.corners`.",
+    ),
+    (
+        "netclass-null-element",
+        0,
+        "quirk #283: `\"netClasses\": [null]` is a one-element list holding a null, and \
+         `isKiCadDefaultNetClassName(netClass.name)` then throws `Cannot read field \"name\" \
+         because \"netClass\" is null`. Same rejection, different prose.",
+    ),
+    (
+        "pad-null-name-dedup",
+        6,
+        "quirk #282's family: `Package.Pin.name` is a nullable Java `String` and \
+         `fr_board::PackagePin::name` is a `String`, so a pad with no `name` key is `<null>` to \
+         the probe and `` here. The behaviour it drives — `arePackagePinsIdentical:908`'s throw, \
+         and therefore the three duplicate packages this stem ends with — **is** reproduced; only \
+         the printed name differs.",
+    ),
+    ("pad-null-name-dedup", 8, "quirk #282's family, as row 6."),
+    ("pad-null-name-dedup", 10, "quirk #282's family, as row 6."),
+    (
+        "zone-negative-layer",
+        6,
+        "totalized: `ObstacleArea.layer` is a Java `int` that `:663` fills from `zone.layerIndex` \
+         verbatim, so Java keeps `-3`; `fr_board`'s layer is a `usize`. Nothing a KiCad export \
+         writes and nothing in the corpus reaches it — the stem exists so the divergence is \
+         measured rather than assumed.",
+    ),
+];
+
+/// **The part-B acceptance test**: zero *unexplained* differing `[s9]` rows on all 67 inputs.
+#[test]
+fn the_whole_section_9_to_11_item_graph_matches_the_jvm() {
+    let mut diffs: Vec<String> = Vec::new();
+    let mut compared = 0usize;
+    let mut xdiffs_seen = 0usize;
+    for case in transcript_b_cases() {
+        let result = read_board(&case.json, None);
+        let actual = emit_b(&result);
+        for (i, expected) in case.expected.iter().enumerate() {
+            compared += 1;
+            let excused = XDIFF_B
+                .iter()
+                .find(|(stem, row, _)| *stem == case.stem && *row == i);
+            match (actual.get(i), excused) {
+                (Some(row), None) if row == expected => {}
+                (Some(row), Some((_, _, reason))) => {
+                    assert_ne!(
+                        row, expected,
+                        "{}[{i}] now MATCHES the JVM — delete its XDIFF entry ({reason})",
+                        case.stem
+                    );
+                    xdiffs_seen += 1;
+                }
+                (Some(row), None) => diffs.push(format!(
+                    "{}[{i}]\n  java: {expected}\n  rust: {row}",
+                    case.stem
+                )),
+                (None, _) => diffs.push(format!("{}[{i}] missing\n  java: {expected}", case.stem)),
+            }
+        }
+        if actual.len() > case.expected.len() {
+            for row in &actual[case.expected.len()..] {
+                diffs.push(format!("{} extra\n  rust: {row}", case.stem));
+            }
+        }
+    }
+    assert!(
+        compared > 2700,
+        "the part-B transcript should carry well over 2700 [s9] rows, got {compared}"
+    );
+    assert_eq!(
+        xdiffs_seen,
+        XDIFF_B.len(),
+        "every XDIFF row must have been reached"
+    );
+    assert!(
+        diffs.is_empty(),
+        "{} of {compared} rows differ from the JVM with no XDIFF entry:\n{}",
+        diffs.len(),
+        diffs.join("\n")
+    );
+}
+
 // ============================================================== the four named behaviours
 
 /// Reads a board and unwraps it, for the literal tests below.
@@ -720,13 +1136,21 @@ fn an_unknown_unit_falls_through_to_the_documented_arm() {
 
 // ============================================================== the remaining brief behaviours
 
-/// The four **unguarded** list dereferences (`:105`, `:124`, `:156`, `:169`, `:446`) reach Java's
-/// `catch (Throwable)` and come back as `ParseError("json_payload", …)`; the four guarded ones
-/// (`components`, `traces`, `vias`, `conductionAreas`) do not. Quirk #277 covers the `detail`
-/// text, which is the JVM's helpful-NPE string on one side and the port's reconstruction on the
-/// other; the *shape* of the answer is what parity needs and what this pins.
+/// **Every** `null` list in `readBoard` reaches Java's `catch (Throwable)` and comes back as
+/// `ParseError("json_payload", …)`. Quirk #277 covers the `detail` text, which is the JVM's
+/// helpful-NPE string on one side and the port's reconstruction on the other; the *shape* of the
+/// answer is what parity needs and what this pins.
+///
+/// **This test read `components`, `traces`, `vias` and `conductionAreas` as "guarded and must
+/// load" until Task 9.** They *are* guarded — but only inside section 8's `referencedNets` sweep
+/// (`:457`, `:468`, `:475`, `:482`), which is where sections 1-8 stopped. Sections 9-11 then walk
+/// all four again **unguarded**, at `:503`, `:648`, `:667` and `:684`, so a `null` any of them is
+/// a `ParseError` on the finished reader. Measured on the four `*-null` stems of
+/// `data/p8t8-kicad-read-b.txt`; the "must load" assertion was true of a half-ported `readBoard`
+/// and of nothing else.
 #[test]
-fn a_null_list_is_a_parse_error_exactly_where_java_leaves_it_unguarded() {
+fn every_null_list_is_a_parse_error_somewhere_in_read_board() {
+    // Sections 1-8's five unguarded dereferences: `:105`, `:124`, `:156`, `:169` and `:446`.
     for key in ["layers", "netClasses", "clearanceRules", "nets"] {
         let json = format!("{{\"{key}\": null}}");
         match read_board(&json, None) {
@@ -740,12 +1164,28 @@ fn a_null_list_is_a_parse_error_exactly_where_java_leaves_it_unguarded() {
             other => panic!("expected a ParseError for {key}, got {other:?}"),
         }
     }
-    for key in ["components", "traces", "vias", "conductionAreas"] {
+    // Sections 9-11's four, guarded in section 8 and unguarded here.
+    for (key, receiver) in [
+        ("components", "boardJson.components"),
+        ("conductionAreas", "boardJson.conductionAreas"),
+        ("traces", "boardJson.traces"),
+        ("vias", "boardJson.vias"),
+    ] {
         let json = format!("{{\"{key}\": null}}");
-        assert!(
-            matches!(read_board(&json, None), BoardReadResult::Success { .. }),
-            "{key} is guarded and must load"
-        );
+        match read_board(&json, None) {
+            BoardReadResult::ParseError { location, detail } => {
+                assert_eq!(location, "json_payload", "for {key}");
+                assert_eq!(
+                    detail,
+                    format!(
+                        "Exception occurred: Cannot invoke \"java.util.List.iterator()\" \
+                         because \"{receiver}\" is null"
+                    ),
+                    "for {key}"
+                );
+            }
+            other => panic!("expected a ParseError for {key}, got {other:?}"),
+        }
     }
     // `outline.corners` is unguarded behind a guarded `outline`.
     assert!(matches!(
@@ -959,4 +1399,472 @@ fn a_missing_outline_generates_a_padded_box_and_one_warning() {
         r#"{"outline":{"corners":[{"x":0.0,"y":0.0},{"x":10.0,"y":0.0},{"x":5.0,"y":9.0}]}}"#;
     let (_, _, warnings) = board_of(json);
     assert!(warnings.is_empty());
+}
+
+// ================================================= Task 9's named behaviours (sections 9-11)
+
+/// A two-layer 50x40 mm board at resolution 1000, plus whatever `body` adds — the same helper
+/// `P8T8Probe.board` builds `CORPUS_B`'s synthetic stems with, so a literal here and a transcript
+/// row there describe the same input.
+fn kicad_board(body: &str) -> String {
+    format!(
+        "{{\"unit\":\"MM\",\"resolution\":1000.0,\
+           \"layers\":[{{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"}},\
+           {{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}}],\
+           \"outline\":{{\"corners\":[{{\"x\":0.0,\"y\":0.0}},{{\"x\":50.0,\"y\":0.0}},\
+           {{\"x\":50.0,\"y\":40.0}},{{\"x\":0.0,\"y\":40.0}}]}},{body}}}"
+    )
+}
+
+/// One component with one pad of the given shape and size, on `footprint`.
+fn kicad_component(reference: &str, footprint: &str, pad: &str) -> String {
+    format!(
+        "{{\"reference\":\"{reference}\",\"value\":\"v\",\"footprint\":\"{footprint}\",\
+          \"position\":{{\"x\":10.0,\"y\":10.0}},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+          \"pads\":[{pad}]}}"
+    )
+}
+
+/// **`:583-620`, the package-dedup ladder.** Two components with the same `footprint` and
+/// pin-identical pads share one library package; a third whose pads differ gets `"<base>::1"`.
+///
+/// This is `arePackagePinsIdentical` (`:892-924`) doing its job: get it wrong and the library
+/// either duplicates or merges packages, which is visible in the package count and in the SES.
+#[test]
+fn identical_packages_are_reused() {
+    let pad = |sx: f64, sy: f64| {
+        format!(
+            "{{\"name\":\"1\",\"netName\":\"GND\",\"shape\":\"rect\",\
+              \"size\":{{\"x\":{sx},\"y\":{sy}}},\"offset\":{{\"x\":0.0,\"y\":0.0}},\
+              \"drill\":0.0,\"layers\":[]}}"
+        )
+    };
+    let two_identical = kicad_board(&format!(
+        "\"components\":[{},{}]",
+        kicad_component("U1", "SO8", &pad(1.0, 2.0)),
+        kicad_component("U2", "SO8", &pad(1.0, 2.0))
+    ));
+    let (board, _, _) = board_of(&two_identical);
+    assert_eq!(board.components.count(), 2);
+    assert_eq!(
+        board.library.packages.count(),
+        1,
+        "pin-identical packages under one footprint are reused (`:599-601`)"
+    );
+    assert_eq!(board.library.packages.get(1).name, "SO8");
+
+    // A third component whose pad is a different size is **not** pin-identical, so the ladder
+    // moves to `SO8::1` — `Packages.get("SO8::1", …)` strips the suffix back to `SO8`
+    // (Packages.java:40), whose name then fails `:589`'s `equalsIgnoreCase`, so `:590` adds it.
+    let three = kicad_board(&format!(
+        "\"components\":[{},{},{}]",
+        kicad_component("U1", "SO8", &pad(1.0, 2.0)),
+        kicad_component("U2", "SO8", &pad(3.0, 4.0)),
+        kicad_component("U3", "SO8", &pad(5.0, 6.0))
+    ));
+    let (board, _, _) = board_of(&three);
+    assert_eq!(board.library.packages.count(), 3);
+    let names: Vec<&str> = (1..=3)
+        .map(|no| board.library.packages.get(no).name.as_str())
+        .collect();
+    assert_eq!(names, ["SO8", "SO8::1", "SO8::2"]);
+}
+
+/// **`:603`'s `catch (Exception e)` — recovery boundary 1, and the task brief's one factual
+/// error.**
+///
+/// The brief said this arm "skips one component and continues". It does not: it wraps *only* the
+/// package-dedup lookup, adds a **duplicate** package under the base name and lets the component
+/// through. Java wins; measured on the `pad-null-name-dedup` stem, which this test replays as a
+/// literal.
+///
+/// The throw it catches is `arePackagePinsIdentical:908`'s `pin1.name.equals(pin2.name)` over a
+/// `null` pin name — a pad with no `"name"` key. So three components sharing one footprint end
+/// with **three** packages all called `NONAME`, of which `Packages.get` can only ever reach the
+/// first (quirk #285).
+#[test]
+fn a_package_dedup_failure_falls_back_to_a_duplicate_package() {
+    let nameless_pad = "{\"netName\":\"N\",\"shape\":\"rect\",\
+                        \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}";
+    let json = kicad_board(&format!(
+        "\"components\":[{},{},{}]",
+        kicad_component("U1", "NONAME", nameless_pad),
+        kicad_component("U2", "NONAME", nameless_pad),
+        kicad_component("U3", "NONAME", nameless_pad)
+    ));
+    let (board, _, _) = board_of(&json);
+    assert_eq!(
+        board.components.count(),
+        3,
+        "the catch does NOT skip the component — every one of the three loads"
+    );
+    assert_eq!(
+        board.library.packages.count(),
+        3,
+        "each retry adds a duplicate package under the base name (`:605-617`)"
+    );
+    for no in 1..=3 {
+        assert_eq!(board.library.packages.get(no).name, "NONAME");
+    }
+    // `Packages.get` answers the first of the three, so the other two are unreachable by name.
+    assert_eq!(
+        board
+            .library
+            .packages
+            .get_by_name("NONAME", true)
+            .expect("one of the three")
+            .no,
+        1
+    );
+    // The same board with **named** pads takes the ordinary path and ends with one package.
+    let named_pad = "{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\
+                     \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}";
+    let json = kicad_board(&format!(
+        "\"components\":[{},{},{}]",
+        kicad_component("U1", "NONAME", named_pad),
+        kicad_component("U2", "NONAME", named_pad),
+        kicad_component("U3", "NONAME", named_pad)
+    ));
+    let (board, _, _) = board_of(&json);
+    assert_eq!(board.library.packages.count(), 1);
+}
+
+/// **`:746`'s `catch (Throwable e)` — recovery boundary 2.** Every point sections 9-11 can throw
+/// from comes back as `ParseError("json_payload", "Exception occurred: …")` with Java's own
+/// message, and the reader never panics.
+///
+/// The eleven inputs are the literals of `p8t8-kicad-read-b.txt`'s corresponding stems; the
+/// transcript replay compares the same rows, and this test is the one that reads as a list of
+/// what the boundary covers.
+#[test]
+fn a_malformed_document_answers_parse_error() {
+    let cases: &[(&str, &str)] = &[
+        // The four unguarded list dereferences sections 9-11 add.
+        (
+            r#"{"components": null}"#,
+            "Cannot invoke \"java.util.List.iterator()\" because \"boardJson.components\" is null",
+        ),
+        (
+            r#"{"conductionAreas": null}"#,
+            "Cannot invoke \"java.util.List.iterator()\" because \"boardJson.conductionAreas\" is null",
+        ),
+        (
+            r#"{"traces": null}"#,
+            "Cannot invoke \"java.util.List.iterator()\" because \"boardJson.traces\" is null",
+        ),
+        (
+            r#"{"vias": null}"#,
+            "Cannot invoke \"java.util.List.iterator()\" because \"boardJson.vias\" is null",
+        ),
+    ];
+    for (json, detail) in cases {
+        match read_board(json, None) {
+            BoardReadResult::ParseError {
+                location,
+                detail: d,
+            } => {
+                assert_eq!(location, "json_payload", "for {json}");
+                assert_eq!(d, format!("Exception occurred: {detail}"), "for {json}");
+            }
+            other => panic!("expected a ParseError for {json}, got {other:?}"),
+        }
+    }
+
+    // The four field reads on a `null` `Point2D`, the two string throws, and the three
+    // array-index throws — every one of them measured against the jar.
+    let bodies: &[(&str, &str)] = &[
+        (
+            "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+              \"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+              \"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\"size\":null,\
+              \"drill\":0.0}]}]",
+            "Cannot read field \"x\" because \"pad.size\" is null",
+        ),
+        (
+            "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+              \"position\":null,\"rotation\":0.0,\"layer\":\"F.Cu\",\
+              \"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\
+              \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]",
+            "Cannot read field \"x\" because \"comp.position\" is null",
+        ),
+        (
+            "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":null,\"diameter\":0.8,\
+              \"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1}]",
+            "Cannot read field \"x\" because \"vj.position\" is null",
+        ),
+        (
+            "\"conductionAreas\":[{\"id\":1,\"netName\":\"N\",\"layerIndex\":0,\
+              \"isObstacle\":false,\"polygon\":null}]",
+            "Cannot invoke \"java.util.List.size()\" because \"zone.polygon\" is null",
+        ),
+        (
+            "\"conductionAreas\":[{\"id\":1,\"netName\":\"N\",\"layerIndex\":0,\
+              \"isObstacle\":false,\"polygon\":[]}]",
+            // `new PolygonShape(new Point[0])` reads `corners[0]`.
+            "Index 0 out of bounds for length 0",
+        ),
+        (
+            "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},\
+              \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":5}]",
+            // `shapes[li] = viaShape` with `li == layerCount`.
+            "Index 2 out of bounds for length 2",
+        ),
+        (
+            "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},\
+              \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":1,\"endLayerIndex\":0}]",
+            // Quirk #286: every shape null, so `DrillItem.tileShapeCount` is `-layerCount`.
+            "-2",
+        ),
+        (
+            "\"components\":[{\"reference\":null,\"value\":\"v\",\"footprint\":\"P\",\
+              \"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+              \"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\
+              \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]",
+            // Quirk #287: `UndoableObjects.insert`'s skip list orders through `Component.compareTo`.
+            "Cannot invoke \"String.compareToIgnoreCase(String)\" because \"this.name\" is null",
+        ),
+        (
+            "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+              \"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+              \"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"\",\
+              \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]",
+            // `:868`'s `pad.shape.substring(0, 1)` on an empty shape name.
+            "Range [0, 1) out of bounds for length 0",
+        ),
+    ];
+    for (body, detail) in bodies {
+        let json = kicad_board(body);
+        match read_board(&json, None) {
+            BoardReadResult::ParseError {
+                location,
+                detail: d,
+            } => {
+                assert_eq!(location, "json_payload", "for {body}");
+                assert_eq!(d, format!("Exception occurred: {detail}"), "for {body}");
+            }
+            other => panic!("expected a ParseError for {body}, got {other:?}"),
+        }
+    }
+}
+
+/// **Quirk #282, verified.** Task 8 recorded that a `null` layer or net-class `name` is stored and
+/// "only crashes in section 9, at `:545`", and handed Task 9 the obligation of checking that claim
+/// while writing the line. It holds, and it is narrower and wider than the row said:
+///
+/// * **narrower** — `:545` fires only when a pad's `layers` list is *non-empty*. The same board
+///   with `"layers": []` loads, because `:539`'s guard skips the whole comparison loop;
+/// * **wider** — a `null` **net** name crashes earlier still, in `Nets.get`'s own
+///   `currentNet.name.equalsIgnoreCase(name)` (Nets.java:44), which section 8's auto-registration
+///   loop already reaches at `:491`. A board with no referenced nets at all defers that to
+///   section 9's `:639`, and both answer the same message.
+#[test]
+fn a_null_layer_name_crashes_in_section_9_exactly_where_quirk_282_says() {
+    let board_with_null_layer = |pad_layers: &str| {
+        format!(
+            "{{\"unit\":\"MM\",\"resolution\":1000.0,\
+               \"layers\":[{{\"index\":0,\"name\":null,\"type\":\"signal\"}},\
+               {{\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}}],\
+               \"outline\":{{\"corners\":[{{\"x\":0.0,\"y\":0.0}},{{\"x\":50.0,\"y\":0.0}},\
+               {{\"x\":50.0,\"y\":40.0}},{{\"x\":0.0,\"y\":40.0}}]}},\
+               \"components\":[{{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+               \"position\":{{\"x\":10.0,\"y\":10.0}},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+               \"pads\":[{{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\
+               \"size\":{{\"x\":1.0,\"y\":1.0}},\"drill\":0.0,\"layers\":{pad_layers}}}]}}]}}"
+        )
+    };
+    match read_board(&board_with_null_layer("[\"B.Cu\"]"), None) {
+        BoardReadResult::ParseError { location, detail } => {
+            assert_eq!(location, "json_payload");
+            assert_eq!(
+                detail,
+                "Exception occurred: Cannot invoke \"String.equalsIgnoreCase(String)\" \
+                 because \"boardLayers[li].name\" is null"
+            );
+        }
+        other => panic!("expected the `:545` crash, got {other:?}"),
+    }
+    // The narrow half: an empty pad `layers` list never enters `:540-550`.
+    let (board, _, _) = board_of(&board_with_null_layer("[]"));
+    assert_eq!(board.components.count(), 1);
+    assert_eq!(
+        board.layer_structure().layers[0].name,
+        "",
+        "totalized `null`"
+    );
+
+    // The wide half: a `null` **net** name dies in `Nets.get`, at `:491` when anything references
+    // a net and at `:639` when nothing does. Same message either way.
+    for pad_net in ["N", ""] {
+        let json = format!(
+            "{{\"unit\":\"MM\",\"resolution\":1000.0,\
+               \"nets\":[{{\"id\":1,\"name\":null,\"className\":null,\"containsPlane\":false}}],\
+               \"outline\":{{\"corners\":[{{\"x\":0.0,\"y\":0.0}},{{\"x\":50.0,\"y\":0.0}},\
+               {{\"x\":50.0,\"y\":40.0}},{{\"x\":0.0,\"y\":40.0}}]}},\
+               \"components\":[{{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+               \"position\":{{\"x\":10.0,\"y\":10.0}},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+               \"pads\":[{{\"name\":\"1\",\"netName\":\"{pad_net}\",\"shape\":\"rect\",\
+               \"size\":{{\"x\":1.0,\"y\":1.0}},\"drill\":0.0}}]}}]}}"
+        );
+        match read_board(&json, None) {
+            BoardReadResult::ParseError { detail, .. } => assert_eq!(
+                detail,
+                "Exception occurred: Cannot invoke \"String.equalsIgnoreCase(String)\" \
+                 because \"currentNet.name\" is null"
+            ),
+            other => panic!("expected the Nets.get crash, got {other:?}"),
+        }
+    }
+}
+
+/// **`getDescriptivePadstackName` (`:857-890`) — a name-generating function whose output reaches
+/// the SES.** Every literal below is the jar's, from `p8t8-kicad-read-b.txt`.
+///
+/// Three things it pins that nothing else does:
+///
+/// * the shape word: `Round` for `circle`/`round` *and* for a `null` shape, `Rect` for
+///   `rect`/`rectangle`, `Oval` for `oval`, and `Ucfirst`-then-lowercase for anything else;
+/// * the `[T]`/`[B]`/`[A]` layer discriminator, which is `T`/`B` only for a **single**-element
+///   `layers` list naming the first or last board layer;
+/// * the `%.0f`s, which are `java.util.Formatter`'s **HALF_UP** over the shortest round-trip
+///   digits, not Rust's half-to-even: `0.0005 mm` is `1`, `0.0025` is `3`, `0.0035` is `4`.
+#[test]
+fn the_generated_padstack_names_match_the_jar() {
+    let pad = |name: &str, shape: &str, sx: f64, sy: f64, layers: &str| {
+        format!(
+            "{{\"name\":\"{name}\",\"netName\":\"N\",\"shape\":{shape},\
+              \"size\":{{\"x\":{sx},\"y\":{sy}}},\"offset\":{{\"x\":0.0,\"y\":0.0}},\
+              \"drill\":0.0,\"layers\":{layers}}}"
+        )
+    };
+    let pads = [
+        pad("1", "\"circle\"", 1.0, 2.0, "[]"),
+        pad("2", "\"ROUND\"", 3.0, 2.0, "[]"),
+        pad("3", "\"oval\"", 1.0, 2.0, "[]"),
+        pad("4", "\"rect\"", 1.0, 2.0, "[]"),
+        pad("5", "\"rectangle\"", 4.0, 5.0, "[]"),
+        pad("6", "\"trapezoid\"", 1.0, 2.0, "[]"),
+        pad("7", "null", 6.0, 2.0, "[]"),
+        pad("8", "\"rect\"", 7.0, 7.0, "[\"f.cu\"]"),
+        pad("9", "\"rect\"", 8.0, 8.0, "[\"B.Cu\"]"),
+        pad("10", "\"rect\"", 9.0, 9.0, "[\"B.Cu\",\"F.Cu\"]"),
+        // HALF_UP, all three of them.
+        pad("11", "\"circle\"", 0.0005, 0.0005, "[]"),
+        pad("12", "\"rect\"", 0.0025, 0.0035, "[]"),
+    ];
+    let json = kicad_board(&format!(
+        "\"components\":[{{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+          \"position\":{{\"x\":10.0,\"y\":10.0}},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+          \"pads\":[{}]}}]",
+        pads.join(",")
+    ));
+    let (board, _, _) = board_of(&json);
+    // `defaultVia` is section 8's; every later padstack is section 9's, in pad order, deduplicated
+    // by name.
+    let names: Vec<&str> = (1..=board.library.padstacks.count())
+        .map(|no| {
+            board
+                .library
+                .padstacks
+                .get(fr_board::PadstackId(no))
+                .expect("1..=count")
+                .name
+                .as_str()
+        })
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "defaultVia",
+            "Round[A]Pad_1000_um",
+            "Round[A]Pad_3000_um",
+            "Oval[A]Pad_1000x2000_um",
+            "Rect[A]Pad_1000x2000_um",
+            "Rect[A]Pad_4000x5000_um",
+            "Trapezoid[A]Pad_1000x2000_um",
+            "Round[A]Pad_6000_um",
+            "Rect[T]Pad_7000x7000_um",
+            "Rect[B]Pad_8000x8000_um",
+            "Rect[A]Pad_9000x9000_um",
+            "Round[A]Pad_1_um",
+            "Rect[A]Pad_3x4_um",
+        ]
+    );
+
+    // The via names `:707-711` generates take the same `%.0f`.
+    let json = kicad_board(
+        "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},\
+          \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1},\
+          {\"id\":2,\"netName\":\"N\",\"position\":{\"x\":9.0,\"y\":2.0},\
+          \"diameter\":0.0035,\"drill\":0.0015,\"startLayerIndex\":0,\"endLayerIndex\":0}]",
+    );
+    let (board, _, _) = board_of(&json);
+    assert_eq!(
+        board
+            .library
+            .padstacks
+            .get(fr_board::PadstackId(2))
+            .expect("the first via padstack")
+            .name,
+        "Via[0-1]_800:400_um"
+    );
+    assert_eq!(
+        board
+            .library
+            .padstacks
+            .get(fr_board::PadstackId(3))
+            .expect("the second via padstack")
+            .name,
+        "Via[0-0]_4:2_um"
+    );
+}
+
+/// **Quirk #284**: the generated name encodes the pad's *shape word*, a single-layer T/B/A
+/// discriminator and its two dimensions — and neither the **layer span** nor the **drill flag**.
+/// So `Padstacks.get(name)` hands a later pad the earlier one's padstack, shapes and all.
+///
+/// The `mid` pad below lives on `In1.Cu` alone and ends up on the padstack the `span` pad built
+/// across all three layers; the `drilled` pad ends up on the undrilled one's.
+#[test]
+fn the_padstack_name_encodes_neither_the_layer_span_nor_the_drill() {
+    let pad = |name: &str, drill: f64, layers: &str| {
+        format!(
+            "{{\"name\":\"{name}\",\"netName\":\"N\",\"shape\":\"rect\",\
+              \"size\":{{\"x\":1.0,\"y\":1.0}},\"offset\":{{\"x\":0.0,\"y\":0.0}},\
+              \"drill\":{drill},\"layers\":{layers}}}"
+        )
+    };
+    let json = format!(
+        "{{\"unit\":\"MM\",\"resolution\":1000.0,\
+           \"layers\":[{{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"}},\
+           {{\"index\":1,\"name\":\"In1.Cu\",\"type\":\"signal\"}},\
+           {{\"index\":2,\"name\":\"B.Cu\",\"type\":\"signal\"}}],\
+           \"outline\":{{\"corners\":[{{\"x\":0.0,\"y\":0.0}},{{\"x\":50.0,\"y\":0.0}},\
+           {{\"x\":50.0,\"y\":40.0}},{{\"x\":0.0,\"y\":40.0}}]}},\
+           \"components\":[{{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
+           \"position\":{{\"x\":10.0,\"y\":10.0}},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+           \"pads\":[{},{},{}]}}]}}",
+        pad("span", 0.0, "[\"B.Cu\",\"F.Cu\"]"),
+        pad("mid", 0.0, "[\"In1.Cu\"]"),
+        pad("drilled", 0.5, "[\"B.Cu\",\"F.Cu\"]")
+    );
+    let (board, _, _) = board_of(&json);
+    let package = board.library.packages.get(1);
+    let span = package.get_pin(0).expect("span").padstack_no;
+    assert_eq!(
+        package.get_pin(1).expect("mid").padstack_no,
+        span,
+        "an In1.Cu-only pad silently inherits the all-layer padstack (quirk #284)"
+    );
+    assert_eq!(
+        package.get_pin(2).expect("drilled").padstack_no,
+        span,
+        "and so does a drilled pad of the same size"
+    );
+    let padstack = board.library.padstacks.get(span).expect("the shared one");
+    assert_eq!(padstack.name, "Rect[A]Pad_1000x1000_um");
+    assert_eq!((padstack.from_layer(), padstack.to_layer()), (0, 2));
+    assert!(
+        !padstack.attach_allowed,
+        "the first pad was undrilled, and the name carries no drill flag to distinguish them"
+    );
 }

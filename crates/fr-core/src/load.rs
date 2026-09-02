@@ -229,23 +229,26 @@ pub fn load_from_kicad_json(
 // not ported: `BoardManager.createBoard` (`management/BoardManager.java:142`) — the interface
 // method the above overrides, with the same two implementations and the same reachability.
 
-/// `io/kicad/KiCadJsonReader.readBoard` — **stubbed**.
+/// `io/kicad/KiCadJsonReader.readBoard` (`:814`) — **live since Plan 8 Task 9**.
 ///
-/// The KiCad JSON reader is Plan 8 Task 9's; nothing in the tree reads that format yet. The stub
-/// is inert: it answers the `ParseError` variant `BoardReadResult` already has, mutates nothing,
-/// and cannot be mistaken for a working reader by a caller that ignores the error.
+/// Task 3 landed this as an inert stub answering `ParseError("(kicad_json", …)`, with an
+/// `// obligation:` marker naming Task 9; Task 9's sections 9-11 completed
+/// [`fr_dsn::kicad::read_board`] and **the marker is discharged here**. `-de <board>.json` now
+/// loads a real board, which is what closes `docs/cli-legacy-flags.md`'s `--kicad-json` loader gap
+/// and makes the `-de board.json -do out.ses` round trip byte-identical to the jar's.
 ///
-/// The Plan 7 scan's ruling 6 precedent — *no unannounced forward references* — is why this is a
-/// named function with a marker rather than a `todo!()` inside [`load_from_kicad_json`].
-// obligation: Task 9 (`io/kicad/KiCadJsonReader`) replaces this body with the real reader, which
-// lands as `fr_dsn::kicad::read_board`. Until then `-de <board>.json` fails here, with the message
-// below, and `crates/fr-core/tests/load.rs::the_kicad_json_reader_is_a_stub` pins that.
+/// Java passes `boardObservers` and `idGenerator` straight through (`:814`); the port drops the
+/// first (global constraints forbid board observers, and Java's own `null` default is a
+/// `BoardObserverAdaptor`, i.e. none) and passes `None` for the second, which is
+/// `KiCadJsonReader.readBoard:72-74`'s `new ItemIdGenerator()` — exactly what
+/// `BoardLoader.loadBoardIfNeeded` hands `loadFromKiCadJson` (`:47`).
+///
+/// It stays a named function rather than an inline call because [`parse_board_if_needed`] reaches
+/// the same reader and the two must not drift.
+// renamed: `KiCadJsonReader.readBoard`'s call site -> `kicad_read_board` (Rust has no overloading
+// and `fr_dsn::read_board` is the DSN one).
 fn kicad_read_board(text: &str) -> BoardReadResult {
-    let _ = text;
-    BoardReadResult::ParseError {
-        location: "(kicad_json".to_string(),
-        detail: "the KiCad JSON reader is not ported yet (Plan 8 Task 9)".to_string(),
-    }
+    fr_dsn::kicad::read_board(text, None)
 }
 
 /// Port of `HeadlessBoardManager.applyParsedBoardResult` (HeadlessBoardManager.java:711-737): the
@@ -513,7 +516,7 @@ pub fn parse_board_if_needed(job: &RoutingJob) -> Result<ParsedBoard, Error> {
     let data = input.get_data().to_vec();
     // :40-50 — the two arms.
     let parsed = if format == FileFormat::KicadDesignJson {
-        // Task 9's stub, reached through the same `BoardReadResult` arm the real reader will use.
+        // Plan 8 Task 9's reader, reached through the same `BoardReadResult` arm the DSN one uses.
         parse_board_result(kicad_read_board(&String::from_utf8_lossy(&data)))
     } else {
         parse_from_specctra_dsn(&data, job)

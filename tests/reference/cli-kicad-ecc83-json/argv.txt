@@ -1,0 +1,8 @@
+-de
+<JAVA_DIR>/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json
+-do
+<OUT>/route.ses
+-mp
+3
+--router.fanout.enabled=true
+--router.optimizer.enabled=true

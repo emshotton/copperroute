@@ -36,6 +36,28 @@
 # user command line and `DefaultSettings.java:99`'s `maxPasses = 9999` with it. Measured: the bare
 # `Issue026-J2_reference` run answers the same 15 254 bytes as the `-mp 99` row, in 4.4 s.
 #
+# ## The two KiCad-JSON stems (Plan 8 Task 9)
+#
+# The `dsn` column is a **path**, not necessarily a `.dsn`: `-de <file>.json` is Java's own
+# KiCad-design-JSON input (`GlobalSettings.java:609-621`, `BoardLoader.loadBoardIfNeeded:40-50`),
+# and Task 9 is what made the port's loader answer it — `fr_core::load::kicad_read_board` was an
+# inert stub until then, so `-de board.json -do out.ses` failed in the port and routed in the jar.
+# These two rows are that gap's permanent gate: the whole program, on a KiCad export, from JSON in
+# to SES out.
+#
+# * `kicad-ecc83-json` is the `ci` one, on the smallest KiCad export in the corpus and with the
+#   same three flags `router-ecc83-input` carries so the two are readable side by side — that stem
+#   is the **DSN twin of the same board**, so a divergence between them is a reader divergence and
+#   nothing else. `-mp 3` rather than `-mp 8` because scan ruling R1's reason applies here too and
+#   three passes already reach the score the board converges to (`310.00`, unchanged from pass #1).
+# * `kicad-complex-hierarchy-json` is the `slow` one and runs **bare**, which is literally the
+#   command line the task brief names. 68 components, a non-default net class, 52 nets.
+#
+# Measured while choosing them: all **seven** board-JSON fixtures the checkout ships round-trip
+# byte-identically (after `parity::normalize_ses_head_tokens`, quirk #92, as every stem here does)
+# — the five KiCad exports and both `*_output_session.json` writer outputs. The Task 9 report has
+# the table.
+#
 # ## Scan ruling R21 — the roadmap's five board classes
 #
 # Searched for across all 106 corpus DSNs (`fixtures/*.dsn` + `examples/*/*.dsn`); the greps and
@@ -62,6 +84,8 @@
 # | tutorial_board | slow | Plan 3/5's round-trip board, bare argv |
 # | Issue026-J2_reference | slow | Plan 3/5's round-trip board, bare argv |
 # | large-outline | slow | scan ruling R21's one qualifying class — the corpus's widest *affordable* outline |
+# | kicad-ecc83-json | ci | Plan 8 Task 9's `-de board.json -do out.ses` round trip, on `router-ecc83-input`'s own board |
+# | kicad-complex-hierarchy-json | slow | the same round trip, bare argv, on a 68-component KiCad export |
 router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|-mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
 router-j2-reference|fixtures/Issue026-J2_reference.dsn|-mp 99 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
 router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|-mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
@@ -73,3 +97,5 @@ router-strict-drc-cnh|fixtures/Issue555-CNH_Functional_Tester_1.dsn|-mp 2 --rout
 tutorial_board|examples/tutorial_board/tutorial_board.dsn|-|slow
 Issue026-J2_reference|fixtures/Issue026-J2_reference.dsn|-|slow
 large-outline|fixtures/Issue035-ReadPlaceScope.dsn|-mp 2 --router.fanout.enabled=true --router.optimizer.enabled=false|slow
+kicad-ecc83-json|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json|-mp 3 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
+kicad-complex-hierarchy-json|fixtures/Issue733-kicad_complex_hierarchy_input_design.json|-|slow

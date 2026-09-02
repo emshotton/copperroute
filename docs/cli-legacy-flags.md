@@ -227,12 +227,31 @@ Until Plan 8 Task 5 it did not. This file used to say:
 > unimplemented-loader gaps, not silent misroutes; resolve them when the KiCad
 > JSON reader lands.~~
 
-The loader landed in Plan 8 Task 3 (`fr_core::load_board_if_needed` sniffs the
-format from the bytes), so the reason for the divergence expired, and **plan
-ruling 14 closed it**: on the legacy form a `.json` fills Java's slot, and both
-of those rows are `MATCH` in the `p8t5` differential (`de-json-first`,
+The **argument** half landed in Plan 8 Task 3 (`fr_core::load_board_if_needed`
+sniffs the format from the bytes), so the reason for the divergence expired, and
+**plan ruling 14 closed it**: on the legacy form a `.json` fills Java's slot, and
+both of those rows are `MATCH` in the `p8t5` differential (`de-json-first`,
 `de-json-after-dsn`). `--kicad-json` survives on the **native** subcommand form
 only, where it is the port's own spelling and nothing has to guess.
+
+**The loader half landed in Plan 8 Task 9**, and this is where the sentence above
+was overdrawn until then. Task 3's `fr_core::load::kicad_read_board` was an inert
+stub that answered `ParseError("(kicad_json", "the KiCad JSON reader is not
+ported yet (Plan 8 Task 9)")`, so a `.json` reached the right slot and *then*
+failed in the reader: `-de board.json -do out.ses` still routed in the jar and
+still failed in the port, one layer further in than the strikethrough above
+describes. Task 9 completed `fr_dsn::kicad::read_board`'s sections 9-11 and
+pointed the stub at it, and the gate is now permanent — two stems in
+`tests/reference/cli-fixtures.txt` run the whole program on a KiCad export:
+
+| stem | lane | argv | verdict |
+|---|---|---|---|
+| `kicad-ecc83-json` | ci | `-de fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json -do <out>.ses -mp 3 --router.fanout.enabled=true --router.optimizer.enabled=true` | `MATCH  exit 0, 3841 B SES, log 0 lines` |
+| `kicad-complex-hierarchy-json` | slow | `-de fixtures/Issue733-kicad_complex_hierarchy_input_design.json -do <out>.ses` (bare) | `MATCH  exit 0, 28409 B SES, log 0 lines` |
+
+Byte-identical SES, equal exit code, equal `parity::normalize_log`, on the same
+`scripts/differential/run.sh p8t1` rungs every DSN stem uses. There is no
+`--kicad-json` gap left on either form.
 
 ## What `legacy.rs` does and does not do, after Plan 8 Task 5
 

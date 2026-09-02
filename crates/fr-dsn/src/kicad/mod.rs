@@ -10,7 +10,7 @@
 //! | Java | here |
 //! |---|---|
 //! | `io/kicad/KiCadBoardJson.java` (142) | [`dto`] |
-//! | `io/kicad/KiCadJsonReader.readBoard` (`:61-755`) | [`reader::read_board`] — Plan 8 Task 8 lands sections 1-8, Task 9 sections 9-11 |
+//! | `io/kicad/KiCadJsonReader.readBoard` (`:61-755`) | [`reader::read_board`] — Plan 8 Task 8 landed sections 1-8, Task 9 sections 9-11 and the six private helpers; **complete** |
 //! | `io/kicad/KiCadJsonReader.importSession` (`:757-855`) | Plan 8 Task 10 |
 //! | `io/kicad/KiCadJsonWriter.java` (227) | Plan 8 Task 10 |
 //!
@@ -19,6 +19,10 @@
 //! close `readBoard`, `addPoint`, `boundingBox` and `KiCadBoardJson.Point2D` are in
 //! `crates/fr-drc/src/lib.rs` and point here. `scripts/audit-map/fr-dsn.map` records the same
 //! homes so the map does not have to be re-derived when Plan 8 Task 14 re-runs the sweep.
+//!
+//! Since Task 9 the reader is live on the end-to-end load path: `fr_core::load::kicad_read_board`
+//! calls [`reader::read_board`], so `-de <board>.json` loads a real board and `-do out.ses` writes
+//! the SES the jar writes, byte for byte.
 
 pub mod dto;
 pub mod reader;

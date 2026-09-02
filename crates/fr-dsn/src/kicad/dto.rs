@@ -232,8 +232,17 @@ pub struct PadJson {
     #[serde(default, deserialize_with = "nullable")]
     pub drill: f64,
     /// `PadJson.layers` (:84) — the layers this pad exists on.
+    ///
+    /// The **element** type is `Option<String>` because Gson stores a JSON `null` inside a
+    /// `List<String>` as a `null` reference and `readBoard:545` then calls
+    /// `boardLayers[li].name.equalsIgnoreCase(null)`, which is `false` rather than a throw — so
+    /// `{"layers": [null, "B.Cu"]}` **loads** in Java, on `B.Cu`. A `Vec<String>` would make
+    /// `serde_json` reject the whole file instead. Measured, stem `pad-layers-null-element` of
+    /// `crates/fr-dsn/tests/data/p8t8-kicad-read-b.txt`; quirk #283, which records the three
+    /// sibling lists where Java *also* stores the `null` but then throws on it, and where the port
+    /// therefore diverges only in the `ParseError`'s prose.
     #[serde(default = "empty")]
-    pub layers: Option<Vec<String>>,
+    pub layers: Option<Vec<Option<String>>>,
 }
 
 /// Port of `KiCadBoardJson.OutlineJson` (KiCadBoardJson.java:88-91).
