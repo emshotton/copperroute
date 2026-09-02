@@ -10,7 +10,7 @@
 //! | Java | here |
 //! |---|---|
 //! | `io/kicad/KiCadBoardJson.java` (142) | [`dto`] |
-//! | `io/kicad/KiCadJsonReader.readBoard` (`:61-755`) | [`reader::read_board`] — Plan 8 Task 8 landed sections 1-8, Task 9 sections 9-11 and the six private helpers; **complete** |
+//! | `io/kicad/KiCadJsonReader.readBoard` (`:61-755`) | [`reader::read_board`] — Plan 8 Task 8 landed sections 1-8 and the four private helpers they call, Task 9 sections 9-11 and the two only those call (`getDescriptivePadstackName`, `arePackagePinsIdentical`); **complete** |
 //! | `io/kicad/KiCadJsonReader.importSession` (`:757-855`) | Plan 8 Task 10 |
 //! | `io/kicad/KiCadJsonWriter.java` (227) | Plan 8 Task 10 |
 //!

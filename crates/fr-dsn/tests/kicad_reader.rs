@@ -1533,9 +1533,9 @@ fn a_package_dedup_failure_falls_back_to_a_duplicate_package() {
 /// from comes back as `ParseError("json_payload", "Exception occurred: …")` with Java's own
 /// message, and the reader never panics.
 ///
-/// The eleven inputs are the literals of `p8t8-kicad-read-b.txt`'s corresponding stems; the
-/// transcript replay compares the same rows, and this test is the one that reads as a list of
-/// what the boundary covers.
+/// The **13** inputs are the literals of `p8t8-kicad-read-b.txt`'s corresponding stems — four
+/// `null` lists plus nine bodies; the transcript replay compares the same rows, and this test is
+/// the one that reads as a list of what the boundary covers.
 #[test]
 fn a_malformed_document_answers_parse_error() {
     let cases: &[(&str, &str)] = &[
@@ -1570,8 +1570,11 @@ fn a_malformed_document_answers_parse_error() {
         }
     }
 
-    // The four field reads on a `null` `Point2D`, the two string throws, and the three
-    // array-index throws — every one of them measured against the jar.
+    // Nine bodies, every one measured against the jar: **three** field reads on a `null`
+    // `Point2D` (`pad.size`, `comp.position`, `vj.position`), **one** `List.size()` invoke on a
+    // `null` `zone.polygon`, **two** array-index throws (`Index 0`, `Index 2`), **one**
+    // `NegativeArraySizeException` (`-2`), **one** `String.compareToIgnoreCase` invoke on a
+    // `null` component name, and **one** `String.substring` range throw.
     let bodies: &[(&str, &str)] = &[
         (
             "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\

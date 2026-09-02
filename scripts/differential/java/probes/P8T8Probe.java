@@ -65,13 +65,27 @@ import java.util.List;
 // settings. That order is exactly what the `net` rows record, so the port has to reproduce
 // `java.util.HashSet`'s bucket layout to match them.
 //
+// TWO INVOCATIONS, TWO TRANSCRIPTS. `main` reads one optional argument: with no argument it
+// emits part A's `[s8]` rows over `CORPUS` (24 inputs, Plan 8 Task 8); with the literal argument
+// `b` it emits part B's `[s9]` item graph over `CORPUS + CORPUS_B` (67 inputs, Plan 8 Task 9).
+// **Run both, into different files** — running the recipe below without the `b` and redirecting
+// into `…-read-b.txt` would silently overwrite part B with part A's rows.
+//
 //   JAR=../freerouting/build/libs/freerouting-current-executable.jar
 //   JDK=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 //   cd scripts/differential
 //   "$JDK/bin/javac" -cp "$JAR" -d /tmp/p8t8 java/probes/P8T8Probe.java
+//   # part A — sections 1-8:
 //   "$JDK/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
 //       -cp "/tmp/p8t8:$JAR" app.freerouting.io.kicad.P8T8Probe \
 //     > ../../crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt
+//   # part B — sections 9-11, the whole item graph:
+//   "$JDK/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+//       -cp "/tmp/p8t8:$JAR" app.freerouting.io.kicad.P8T8Probe b \
+//     > ../../crates/fr-dsn/tests/data/p8t8-kicad-read-b.txt
+//
+// Both transcripts are byte-stable across runs, and part B additionally across `-XX:hashCode`
+// settings (it prints no identity hash and `board.getItems()` is ordered by item id).
 public final class P8T8Probe {
 
   private P8T8Probe() {}

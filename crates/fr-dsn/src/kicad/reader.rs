@@ -71,9 +71,13 @@ use crate::parser::network::is_kicad_default_net_class_name;
 ///
 /// Java wraps the whole body in `try { … } catch (Throwable e) { return ParseError("json_payload",
 /// "Exception occurred: " + e.getMessage()); }` (`:76`, `:746-750`). The port has no blanket
-/// catch: it returns that `ParseError` at **every** point Java can actually throw from — the five
-/// in sections 1-8 (the Gson parse and the four unguarded `null` lists) and the fifteen sections
-/// 9-11 add, each named at its own site — and only for a payload the *parser* rejects is the
+/// catch: it returns that `ParseError` at **every** point Java can actually throw from, each
+/// named at its own site. Sections 9-11's share is **24 early returns** covering **19 distinct
+/// Java throw sites** — three of the nineteen are reached from more than one place (`Nets.get`'s
+/// `currentNet.name` from `:639`, `:649`, `:668` and `:685`; `DrillItem.tileShapeCount` from
+/// `:642` and `:716`; `:706`'s `shapes[li]` store from both ends of its index range) — plus one
+/// port-only `Result` that Java has no counterpart for (`insert_via_checked`'s, the `totalized:`
+/// note at the via site). Only for a payload the *parser* rejects is the
 /// `detail` text not Java's (quirks #277 and #279). The second recovery boundary, `:603`'s
 /// `catch (Exception)`, is a package-dedup fallback rather than a method-level one; see the
 /// section-9 header comment in the body.
@@ -791,8 +795,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     //    performing it. Quirk #285.
     // 2. `:746`'s `catch (Throwable e)` is the method boundary and answers a `ParseError`. The
     //    port has no blanket catch: **every** point Java throws from inside sections 9-11 is an
-    //    explicit early return carrying Java's own message, and the transcript pins all fifteen of
-    //    them. `Throwable` also catches a `StackOverflowError` — the one place in this whole port
+    //    explicit early return carrying Java's own message: 24 returns over 19 distinct Java
+    //    throw sites, and the transcript pins every one of them. `Throwable` also catches a `StackOverflowError` — the one place in this whole port
     //    where Java recovers from a JVM `Error` (quirk #279) — but nothing on this path recurses,
     //    so no site below needs one.
     //
@@ -823,7 +827,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         let mut package_pins: Vec<PackagePin> = Vec::new();
         let mut package_pin_name_arr: Vec<Option<String>> = Vec::new();
         for pad in pads {
-            // `:508` — one slot per board layer, all null until `:558-560` fills a range.
+            // `:508` — one slot per board layer, all null until `:555-557` fills a range.
             let mut shapes: Vec<Option<Shape>> = vec![None; layer_count];
             // `:509-510` — `pad.size` is unguarded. Its Java field initializer is
             // `new Point2D()`, so only an explicit `"size": null` reaches this.
@@ -885,13 +889,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 ))
             };
 
-            // Standardize pad's layer mappings (`:536-556`).
+            // Standardize pad's layer mappings (`:536-553`).
             let mut start_layer = 0usize;
             let mut end_layer = layer_count - 1;
             if let Some(pad_layers) = pad.layers.as_ref()
                 && !pad_layers.is_empty()
             {
-                // `:540-542`. Note the seeds: `lowestIdx` starts at the **last** layer and
+                // `:541-542`. Note the seeds: `lowestIdx` starts at the **last** layer and
                 // `highestIdx` at the **first**, so a list that matches nothing leaves
                 // `startLayer > endLayer` and the fill loop below simply does not run — the
                 // padstack then has a null shape on every layer, which quirk #286 is about.
@@ -925,7 +929,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 end_layer = highest_idx;
             }
 
-            // `:558-560`. The guard is Java's loop condition: `startLayer > endLayer` — every
+            // `:555-557`. The guard is Java's loop condition: `startLayer > endLayer` — every
             // layer name unmatched — leaves the array all-null, which is quirk #286's input
             // condition.
             if start_layer <= end_layer {
@@ -934,9 +938,9 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 }
             }
 
-            // `:562`.
+            // `:559`.
             let is_drillable = pad.drill > 0.0;
-            // `:563`.
+            // `:560`.
             let padstack_name =
                 match get_descriptive_padstack_name(pad, &board_layer_names, layer_count) {
                     Ok(name) => name,
@@ -948,7 +952,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                         );
                     }
                 };
-            // `:564-567`. `Padstacks.get(String)` is case-**insensitive** (Padstacks.java:24-32),
+            // `:561-564`. `Padstacks.get(String)` is case-**insensitive**
+            // (core/library/Padstacks.java:25-32),
             // and the name encodes neither the layer span nor the drill flag — quirk #284, which
             // is why a second pad can silently inherit the first one's shapes.
             let existing_padstack = board
@@ -963,7 +968,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     .padstacks
                     .add(padstack_name, shapes, is_drillable, false),
             };
-            // `:568-571` — `pad.offset` is unguarded, and its Y is negated as every other
+            // `:565-568` — `pad.offset` is unguarded, and its Y is negated as every other
             // coordinate in this reader is.
             let Some(offset) = pad.offset.as_ref() else {
                 return npe_field("x", "pad.offset");
@@ -972,7 +977,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 java_round_to_int(offset.x * scale_factor),
                 java_round_to_int(-offset.y * scale_factor),
             ));
-            // `:572`. `Package.Pin.name` takes `pad.name` verbatim, `null` included; see
+            // `:569`. `Package.Pin.name` takes `pad.name` verbatim, `null` included; see
             // `package_pin_names` above for the bit this line drops.
             package_pins.push(PackagePin::new(
                 pad.name.clone().unwrap_or_default(),
@@ -983,30 +988,30 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             package_pin_name_arr.push(pad.name.clone());
         }
 
-        // `:576` — anything that is not `B.Cu` (case-insensitively) is the front, `null` layer
+        // `:572` — anything that is not `B.Cu` (case-insensitively) is the front, `null` layer
         // included.
         let is_front = !component
             .layer
             .as_deref()
             .is_some_and(|layer| equals_ignore_case("B.Cu", layer));
-        // `:577-581`.
+        // `:573-576`.
         let base_package_name = match component.footprint.as_deref() {
             Some(footprint) if !footprint.is_empty() => footprint.to_string(),
             _ => "Package".to_string(),
         };
 
-        // `:583-620` — the package-dedup ladder. `suffix == 0` tries the base name; every later
+        // `:580-619` — the package-dedup ladder. `suffix == 0` tries the base name; every later
         // round tries `"<base>::<suffix>"`, which `Packages.get` strips back to the base name
         // (Packages.java:40) unless a package with that exact name already exists.
         let mut suffix = 0usize;
         let component_package = loop {
-            // `:585`.
+            // `:581`.
             let test_name = if suffix == 0 {
                 base_package_name.clone()
             } else {
                 format!("{base_package_name}::{suffix}")
             };
-            // `:588-589`.
+            // `:583-584`.
             let existing = board
                 .library
                 .packages
@@ -1016,7 +1021,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 equals_ignore_case(&board.library.packages.get(no).name, &test_name)
             });
             if !names_match {
-                // `:590-600`. Java passes `null` for the outline, the outline widths and the
+                // `:585-596`. Java passes `null` for the outline, the outline widths and the
                 // closed flags, and three empty `Keepout[]`s.
                 let added = board.library.packages.add(
                     test_name,
@@ -1033,7 +1038,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 break added;
             }
             let existing_no = existing.expect("names_match implies a package was found");
-            // `:598` inside `:587`'s `try`.
+            // `:598` inside `:582`'s `try`.
             match are_package_pins_identical(
                 board.library.packages.get(existing_no),
                 &package_pin_names[existing_no - 1],
@@ -1043,7 +1048,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 // `:599-601`.
                 Ok(true) => break existing_no,
                 Ok(false) => {}
-                // `:603-618` — recovery boundary 1. not ported: `:604`'s `FRLogger.error`.
+                // `:603-617` — recovery boundary 1. not ported: `:604`'s `FRLogger.error`.
                 // The fallback name is `comp.footprint` *raw* — **not** `basePackageName`, so an
                 // empty-string footprint produces a package literally named `""` here where the
                 // ladder above would have called it `"Package"`.
@@ -1067,7 +1072,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     break added;
                 }
             }
-            // `:619`.
+            // `:618`.
             suffix += 1;
         };
         debug_assert_eq!(
@@ -1076,7 +1081,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             "the nullable-pin-name side table must stay indexed by Package.no - 1"
         );
 
-        // `:621-625` — `comp.position` is unguarded.
+        // `:620-623` — `comp.position` is unguarded.
         let Some(position) = component.position.as_ref() else {
             return npe_field("x", "comp.position");
         };
@@ -1085,7 +1090,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             java_round_to_int(-position.y * scale_factor),
         );
 
-        // `:627-636`. Note `-comp.rotation`: the JSON's rotation is negated, and `Component`'s
+        // `:625-634`. Note `-comp.rotation`: the JSON's rotation is negated, and `Component`'s
         // constructor then normalises it into `[0, 360)` (Component.java:65-70) — so `0.0` stays
         // `-0.0`, because `-0.0 < 0` is false in Java and in Rust alike.
         //
@@ -1117,7 +1122,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             )
             .id;
 
-        // Insert actual pin items mapped to nets (`:638-644`).
+        // Insert actual pin items mapped to nets (`:637-644`).
         for (pad_index, pad) in pads.iter().enumerate() {
             // `:639-641`.
             let target_net = match java_nets_get(
@@ -1210,9 +1215,18 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         }
         // `:662-663`. totalized: `zone.layerIndex` is a Java `int` that `ObstacleArea` stores
         // verbatim — a negative one is kept, as stem `zone-negative-layer` measures (`layer=-3`)
-        // — while `fr_board`'s layer is a `usize`. Nothing on the KiCad path produces one and no
-        // corpus fixture carries one; the transcript records the divergence as an XDIFF rather
-        // than pretending the two agree.
+        // — while `fr_board`'s layer is a `usize`.
+        //
+        // **The cast below is wrapping, and that is the deliberate choice**, not an oversight:
+        // `-3 as usize` is `18_446_744_073_709_551_613`, i.e. the *same 64 bits* Java's `int`
+        // holds sign-extended, so the port stores Java's value and only its **rendering**
+        // differs. Measured: the stem's Rust row prints that number where the jar prints `-3`,
+        // which is the one `XDIFF_B` entry it carries. `try_from(...).unwrap_or(0)` and a clamp
+        // were both rejected — each would silently move the zone to a *different* layer, which
+        // Java never does, and would turn a legible divergence into an invented one. Nothing on
+        // the KiCad path produces a negative `layerIndex` and no corpus fixture carries one; the
+        // stem exists so the divergence is measured rather than assumed.
+        #[allow(clippy::cast_sign_loss)] // deliberate: preserves Java's bits, see above.
         board.insert_conduction_area(
             Area::Shape(Shape::Polygon(PolygonShape::from_points(&zone_points))),
             zone.layerIndex as usize,
@@ -1264,7 +1278,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         // **Convention 7, decided at this line: neither `new_polyline` nor
         // `new_polyline_in_place`.** `:680` calls the `BasicBoard.insertTrace(Point[], …)`
         // overload (BasicBoard.java:248-262), whose polyline is `new Polyline(Point[])`
-        // (Polyline.java:54-57) — the *Polygon* constructor. It is handed no `Line[]`, so there is
+        // (Polyline.java:54-56) — the *Polygon* constructor. It is handed no `Line[]`, so there is
         // no caller array for the normaliser to write back through and the identity-token
         // contract [`fr_geometry::Polyline::from_lines_in_place`] exists for cannot arise.
         // [`fr_board::Board::insert_trace_at_points`] is the exact port of the overload Java
@@ -1318,13 +1332,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             java_round_to_int(-position.y * scale_factor),
         );
 
-        // Dynamically create via padstack (`:694-706`). The shape is the same
+        // Dynamically create via padstack (`:694-707`). The shape is the same
         // `new IntBox(round(-r), …).toSimplex()` section 8 builds, so it goes through the same
         // [`via_shape`] — the drill is not in it (quirk #281).
         let mut shapes: Vec<Option<Shape>> = vec![None; layer_count];
         let radius = via.diameter * scale_factor / 2.0;
         let shape = via_shape(radius);
-        // `:704-706`. Java writes `shapes[li]` with no bounds test, so an index outside
+        // `:705-707`. Java writes `shapes[li]` with no bounds test, so an index outside
         // `[0, layerCount)` is an `ArrayIndexOutOfBoundsException` — reported by the method's
         // `catch (Throwable)` as a parse error about the JSON file. The loop ascends, so the
         // **first** offending index is the one named; measured on `via-negative-layer`
@@ -1350,7 +1364,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             shapes[index] = Some(shape.clone());
             layer += 1;
         }
-        // `:707-711` — the second of the two generated names quirk #288 is about.
+        // `:708-711` — the second of the two generated names quirk #288 is about.
         let via_padstack_name = format!(
             "Via[{}-{}]_{}:{}_um",
             via.startLayerIndex,
@@ -1385,7 +1399,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         // `:716`. **The checked seam**, not the unchecked wrapper: `BasicBoard.insertVia` walks
         // `fromLayer..toLayer` calling `splitTraces` -> `PolylineTrace.split`, the machinery quirk
         // #76 does not terminate in, and Java has no catch around it. Task 3 gave the DSN reader
-        // the same seam at `crates/fr-dsn/src/parser/wiring.rs:596`, backed by
+        // the same seam at `crates/fr-dsn/src/parser/wiring.rs:624` — the call; the comment
+        // that argues the choice starts twenty-eight lines above it — backed by
         // `DsnReadOptions::normalize_time_limit`; this reader has no options struct of its own, so
         // it passes the same `|| false` the unchecked wrapper does and says so here rather than
         // silently taking the wrapper. A KiCad JSON is a fresh board with no pre-existing traces
@@ -1750,7 +1765,7 @@ fn get_descriptive_padstack_name(
 /// the comparison below is over `Option<&str>` rather than over the totalized `""`.
 ///
 /// not reachable: `:893-895`'s `pkg1 == null || p2 == null` guard — the one call site tested
-/// `existingPkg != null` at `:589` and built `p2` two lines earlier, and neither of the port's
+/// `existingPkg != null` at `:584` and built `p2` two lines earlier, and neither of the port's
 /// parameters can be null anyway.
 ///
 /// not reachable: `:902-907`'s `pin1 == null || pin2 == null` arm — `Package.getPin` answers
@@ -1883,10 +1898,15 @@ fn parse_error(location: &str, detail: &str) -> BoardReadResult {
     }
 }
 
-/// The `catch (Throwable)` arm (`:746-750`) reached by one of the four **unguarded** list
-/// dereferences: `boardJson.layers` (`:105`), `boardJson.netClasses` (`:124`, inside
-/// `nonDefaultNetClasses`), `boardJson.outline.corners` (`:169`), `boardJson.clearanceRules`
-/// (`:156`) and `boardJson.nets` (`:446`).
+/// The `catch (Throwable)` arm (`:746-750`) reached by one of the **five** unguarded list
+/// dereferences sections 1-8 make: `boardJson.layers` (`:105`), `boardJson.netClasses` (`:124`,
+/// dereferenced inside `nonDefaultNetClasses` at `:940`), `boardJson.clearanceRules` (`:156`),
+/// `boardJson.outline.corners` (`:169`) and `boardJson.nets` (`:446`). Sections 9-11 add **five**
+/// more of the same `iterator()` shape — `boardJson.components` (`:503`), `comp.pads` (`:506`),
+/// `boardJson.conductionAreas` (`:648`), `boardJson.traces` (`:667`) and `boardJson.vias`
+/// (`:684`) — so ten in the whole method, plus the two `List.size()` invokes sections 10 and 11
+/// make on `zone.polygon` (`:654`) and `tr.points` (`:673`), which throw the same way with a
+/// different verb.
 ///
 /// Quirk #277: Java's `detail` carries the JVM's **helpful** `NullPointerException` message
 /// (`Cannot invoke "java.util.List.isEmpty()" because "boardJson.layers" is null`) — a string the
@@ -1911,7 +1931,7 @@ fn npe_message(invoked: &str, receiver: &str) -> String {
 ///
 /// Sections 9-11 reach it four times, all on a `Point2D` whose Java field initializer is
 /// `new Point2D()` and which therefore only goes `null` for an explicit JSON `null`: `pad.size`
-/// (`:509`), `pad.offset` (`:568`), `comp.position` (`:622`) and `vj.position` (`:690`).
+/// (`:509`), `pad.offset` (`:567`), `comp.position` (`:622`) and `vj.position` (`:691`).
 fn npe_field(field: &str, receiver: &str) -> BoardReadResult {
     parse_error(
         "json_payload",
