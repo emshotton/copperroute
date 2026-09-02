@@ -8,15 +8,25 @@
 //! Quirk #260 is the reason that matters. Java's help text documents ten of its twenty-four
 //! accepted flags, and **there is no `-v`/`--verbose`** — the log-level flag is `-ll`. A reader
 //! who learns this CLI from `--help` and then types the same thing at the jar will be
-//! disappointed, so each port-only option is marked here and in `crates/freerouting/README.md`.
+//! disappointed, so each port-only option is marked here and in `crates/freerouting/README.md`,
+//! whose "Port-only spellings" table is the single list. `--version` is the sharpest case: the jar
+//! **refuses** it (`Unknown command line argument: --version`, then exit 1 — measured), so
+//! controller ruling BF confines it to the native form, and `crate::legacy` has no arm for it.
 
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
+/// `propagate_version` is load-bearing, not cosmetic: controller ruling BF put `--version` on the
+/// **native** subcommand form only, because on the legacy form the jar answers it with
+/// `Unknown command line argument: --version` and **exit 1** (measured — `p8t5`'s `version-long`
+/// and `version-short` rows, and the jar run recorded in the Task 5 report). `crate::legacy` has
+/// no `--version` arm at all, so the only way to reach clap's is behind a subcommand, and that
+/// only works with the version flag propagated: `freerouting route --version`.
 #[derive(Parser, Debug)]
 #[command(
     name = "freerouting",
     version,
+    propagate_version = true,
     about = "Headless PCB autorouter (Rust port of freerouting)"
 )]
 pub struct Cli {
@@ -29,10 +39,19 @@ pub struct Cli {
     /// as `Log4j2ConfigurationFactory.parseLevel` (:130-135) does.
     #[arg(long, global = true)]
     pub log_level: Option<String>,
-    /// A `freerouting.json` to read router settings from, at priority 10
-    /// (`settings/sources/JsonFileSettings.java`). Without it the working directory's
-    /// `freerouting.json` is used if it exists — the port's stand-in for Java's OS-standard
-    /// user-data path, which is not ported (spec §2). Port only: Java has no flag for this.
+    /// NOT YET WIRED (Plan 8 Task 6): names a `freerouting.json` for the priority-10 settings
+    /// tier. Accepted and validated as a path today, but no run path reads it yet. Port only:
+    /// Java has no flag for this.
+    ///
+    // obligation: Plan 8 Task 6 — `fr_settings::sources::JsonFileSettings::new` for a path given
+    //   here, `::from_working_directory` for the default, both handed to `resolve_headless`
+    //   through the `json_file` input that `crates/fr-settings/src/resolve.rs`'s own
+    //   `// obligation:` describes. Until then this field is parsed and unread, and the help text
+    //   above says so rather than promising priority-10 behaviour a user would not get. The
+    //   wording to restore once it is wired: "A `freerouting.json` to read router settings from,
+    //   at priority 10 (`settings/sources/JsonFileSettings.java`). Without it the working
+    //   directory's `freerouting.json` is used if it exists — the port's stand-in for Java's
+    //   OS-standard user-data path, which is not ported (spec §2)."
     #[arg(long, global = true, value_name = "FILE")]
     pub settings: Option<PathBuf>,
     #[command(subcommand)]

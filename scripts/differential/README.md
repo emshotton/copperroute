@@ -1591,7 +1591,7 @@ methods with dozens of branches.
 
 - `p8t5` — **Plan 8 Task 5: the legacy command line.**
   `GlobalSettings.applyCommandLineArguments` (`settings/GlobalSettings.java:521-838`) over the
-  84 argv shapes of `matrix/p8t5-argv.tsv`. Per row the two halves print the four filename
+  86 argv shapes of `matrix/p8t5-argv.tsv`. Per row the two halves print the four filename
   slots (`initialInputFile`, `initialOutputFile`, `initialRulesFile`,
   `designSessionFilename`), `drcReportFile.getFilename()`, `showHelpOption`,
   `logging.console.level`, every field of the `@Deprecated routerSettings` bridge this method
@@ -1614,12 +1614,12 @@ methods with dozens of branches.
     port does not have. Both branches are pinned at unit level in
     `crates/fr-settings/tests/cli_source.rs` instead, and the matrix header says so.
 
-  `./scripts/differential/run.sh p8t5` — 2052 lines, MATCH.
+  `./scripts/differential/run.sh p8t5` — 2096 lines, MATCH.
 
 - `sweep-p8t5.sh [row-label ...]` — the same driver, **row by row**, printing
   MATCH/XDIFF/SKIP per argv shape so that a regression is *a row that changed* rather than a
   wall of diff. Builds both sides once through `run.sh p8t5`, then splits the two transcripts
-  on their `[row] <label>` headers. **84 MATCH, 0 XDIFF, 0 SKIP**, about a second; the
+  on their `[row] <label>` headers. **86 MATCH, 0 XDIFF, 0 SKIP**, about a second; the
   `EXPECTED_XDIFF` table at the top of the script is empty and a row added to it must cite the
   ruling or `docs/java-quirks.md` id that authorises it.
 

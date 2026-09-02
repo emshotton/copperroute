@@ -21,7 +21,7 @@
 #
 #   MATCH   the row's block is byte-identical on both sides.
 #   XDIFF   the row's block differs **and** the row is named in EXPECTED_XDIFF below, with the
-#           ruling that authorises it. There are none today: the driver matches on every row.
+#           ruling that authorises it. There are none today: the driver matches on all 86 rows.
 #   SKIP    the row is in the matrix but absent from one side's transcript — which can only happen
 #           if the two halves disagree about how to read the table, and is therefore a failure of
 #           the harness rather than of the port. Acceptance is **zero SKIP**.

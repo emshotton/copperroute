@@ -35,7 +35,9 @@ import java.util.List;
  * stream on the very first line of {@code main}, before any freerouting class is touched, and the
  * transcript is written to the saved original. The in-memory ring {@code FRLogger.getLogEntries()}
  * is what the comparison reads, and it holds exactly the {@code info}/{@code warn}/{@code error}
- * calls (a {@code debug} returns before the {@code add}, {@code FRLogger.java:301-303}).
+ * calls, which end in {@code logEntries.add(...)} ({@code FRLogger.java:243}, {@code :273},
+ * {@code :338}); {@code debug} has no such call in its body and simply returns {@code null}
+ * ({@code FRLogger.java:303}).
  *
  * <p><b>What is deliberately not compared.</b> The rewritten native command line, because Java has
  * no counterpart — it never builds a second command line. The port's {@code legacy::rewrite} is a

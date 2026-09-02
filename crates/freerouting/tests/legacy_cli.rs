@@ -19,7 +19,7 @@
 //!    at unit level; this file is the same matrix one layer up.
 //!
 //! 2. **The `p8t5` table**, as literals: the eighteen argv shapes the task brief names, each with
-//!    the rule it pins. The differential driver runs **84** shapes against the jar
+//!    the rule it pins. The differential driver runs **86** shapes against the jar
 //!    (`scripts/differential/matrix/p8t5-argv.tsv`); these are the ones a reader must be able to
 //!    check without a JVM.
 //!
@@ -533,6 +533,43 @@ fn help_exits_zero_on_both_forms() {
         assert_eq!(output.status.code(), Some(0), "argv {argv:?}");
         assert!(!output.stdout.is_empty(), "argv {argv:?}");
     }
+}
+
+/// Controller ruling BF: `--version` is native-form only, because the jar **refuses** it.
+///
+/// Measured on the HEAD jar (`java -jar … --version`): `WARN Unknown command line argument:
+/// --version`, then `ERROR Both an input file and an output file must be specified …`, **exit 1**.
+/// Same for `-V`. `p8t5`'s `version-long`/`version-short` rows pin the parse half.
+#[test]
+fn version_is_javas_unknown_argument_on_the_legacy_form_and_clap_s_behind_a_subcommand() {
+    for flag in ["--version", "-V"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_freerouting"))
+            .arg(flag)
+            .output()
+            .expect("the binary runs");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(1), "{flag}: stderr:\n{stderr}");
+        assert!(
+            stderr.contains(&format!("Unknown command line argument: {flag}")),
+            "{flag}: stderr:\n{stderr}"
+        );
+        assert!(
+            stderr.contains("Both an input file and an output file"),
+            "{flag}: stderr:\n{stderr}"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "{flag}: nothing may reach stdout on a refusal"
+        );
+    }
+
+    // The native form keeps it, which is what `propagate_version` in `cli.rs` is for.
+    let output = Command::new(env!("CARGO_BIN_EXE_freerouting"))
+        .args(["route", "--version"])
+        .output()
+        .expect("the binary runs");
+    assert_eq!(output.status.code(), Some(0));
+    assert!(!output.stdout.is_empty());
 }
 
 #[test]

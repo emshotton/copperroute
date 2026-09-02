@@ -26,8 +26,29 @@ divergence" is gone (ruling 14), and the `-mp`/`-mt`/`-oit`/`-us`/`-is`/`-hr`/
   (`GlobalSettings.java:51-53`), which no routing path consults, so they are
   **parsed but dead** — in Java, and therefore here (plan 4 ruling 8,
   `docs/java-quirks.md` row 131). Making them live would make the port *more
-  capable than Java*; `docs/plan-4-handoff.md` §10 hands that decision to Plan 8
-  as a product decision, not a bug fix.
+  capable than Java*; `docs/plan-4-handoff.md` §10 handed that decision to Plan 8.
+
+  **Plan 8 ruling AQ closed it: they stay dead, and they stay parsed.** Keeping
+  the parse is not pedantry — the value decides how far the cursor moves and
+  therefore which *other* arguments get warned about, and `p8t5` compares that.
+  **The same knobs are reachable through `--set`**, which is the port's spelling
+  of Java's own `--section.field=value` and goes through `CliSettings` at
+  priority 60 — the parser that actually reaches the router:
+
+  ```sh
+  freerouting route board.dsn -o board.ses \
+      --set router.optimizer.optimization_improvement_threshold=0.005 \
+      --set router.optimizer.max_threads=4
+  freerouting -de board.dsn -do board.ses --router.optimizer.max_threads=4
+  ```
+
+  The two are **not** equivalent to the dead flags: the generic path goes through
+  `ReflectionUtil.setFieldValue` and carries **no clamp**, where `-mt` clamps to
+  `[0, 1024]` on the bridge (`GlobalSettings.java:692-697`). `-mt 99999` is 1024
+  there; `--router.optimizer.max_threads=99999` is 99999 (`p8t5` rows `mt` and
+  `router-optimizer-max-threads`). `crates/freerouting/README.md` carries the
+  whole table and the same warning; **`--set` is not wired to the run path until
+  Plan 8 Task 6** — the spelling and the decision are what is settled here.
 - **`CliSettings`** — the only two flags that actually reach the router, `-mp`
   and `-mt` (`CliSettings.mapFlagToProperty`, `:102-110`).
 - **`classify_de_arguments(&[String]) -> DeSlots`** — the `-de` rule below (plan 4
@@ -245,3 +266,13 @@ which subcommand the line names, which files fill Java's four slots, and which
 - **There is no `-v`.** Java's log-level flag is `-ll` (`docs/java-quirks.md`
   #260). `-v`/`--verbose` and `--log-level` exist on the **native** form only,
   and the help text says so.
+- **There is no `--version` either, and the port does not invent one on this
+  path.** The jar answers `--version` and `-V` with
+  `Unknown command line argument: …` and then `initializeCli`'s refusal — **exit
+  1**, measured on the HEAD jar and pinned by `p8t5`'s `version-long` and
+  `version-short` rows. Controller ruling BF applied ruling AR: a command line
+  the jar refuses must not come back with a code the jar cannot produce, so the
+  legacy path has no `--version` arm and clap's lives behind a subcommand
+  (`freerouting route --version`).
+- **The port-only flag list lives in `crates/freerouting/README.md`**, one table,
+  with the exit ladder and the `--set` note beside it.

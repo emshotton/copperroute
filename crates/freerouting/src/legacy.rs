@@ -44,7 +44,7 @@
 //!   (`args.length > i + 1 && !args[i + 1].startsWith("-")`). Otherwise the flag is a **silent
 //!   no-op** and `i` is not advanced — so `-mp -5` is not "minus five", it is a dead `-mp`
 //!   followed by an unknown argument `-5`, and `-mp -5` is *inexpressible*.
-//! * **Nothing here fails.** An unknown flag warns and continues (`:561`, `:833`); a parse
+//! * **Nothing here fails.** An unknown flag warns and continues (`:562`, `:833`); a parse
 //!   exception is caught and the loop continues (`:835-837`). Every failure on this path maps to
 //!   **exit 1**, which is why [`rewrite`] answers a `Vec<String>` and a diagnostics list rather
 //!   than a `Result`. `LegacyError` and its four variants are gone.
@@ -94,14 +94,15 @@ pub enum ExitCode {
     /// A subcommand that is not wired up yet. Port only, and **reserved**: by the end of Task 12
     /// no command runner may answer it.
     ///
-    /// # The gate, spelled out — because the obvious one is now vacuous
+    /// # The gate, in the form a reviewer must actually run
     ///
-    /// The plan's checklist reads `grep -rn "EXIT_NOT_IMPLEMENTED" crates/` returns nothing.
-    /// That identifier no longer exists: it was `commands::EXIT_NOT_IMPLEMENTED`, an `i32`
-    /// constant, and Task 5 replaced the whole `i32` exit surface with this enum (scan ruling R13
-    /// asked for exactly that rename, so that "the grep is empty" and "code 3 stays reserved and
-    /// documented" stop contradicting each other). So the grep passes today for the wrong
-    /// reason, and the check a reviewer must actually run is the one that names the **producers**:
+    /// Plan 8 Task 14's checklist was written against the **old** `i32` constant on
+    /// `crate::commands` — the screaming-snake spelling of this variant's name — and that
+    /// identifier no longer exists anywhere in the tree: Task 5 replaced the whole `i32` exit
+    /// surface with this enum, which is the rename scan ruling R13 asked for (so that "the grep
+    /// is empty" and "code 3 stays reserved and documented" stop contradicting each other). A
+    /// grep for the old spelling therefore passes for the wrong reason, and **the controller has
+    /// replaced it** with the one that names the *producers*:
     ///
     /// ```sh
     /// grep -rn "ExitCode::NotImplemented" crates/*/src/commands crates/*/src/mcp
@@ -222,8 +223,6 @@ pub struct LegacySlots {
     /// `Freerouting.java:903-909`'s stdio pre-scan, which is not a `GlobalSettings` field at all —
     /// it is a local in `main`. Kept here because it selects a mode exactly as the others do.
     pub stdio_mode: bool,
-    /// Port only: `--version`/`-V`, which Java has no flag for (it prints the banner at `:1120`).
-    pub show_version: bool,
 }
 
 /// The four subcommands the native form exposes. `rewrite` never emits anything else.
@@ -281,12 +280,14 @@ pub fn resolve_slots(argv: &[String]) -> (LegacySlots, Vec<Diagnostic>) {
             continue;
         }
 
-        // Port only — Java has no `--version`.
-        if arg == "--version" || arg == "-V" {
-            slots.show_version = true;
-            i += 1;
-            continue;
-        }
+        // **No `--version` arm.** Java has no such flag, and controller ruling BF says ruling AR
+        // wins: a command line the jar refuses must not come back with a code the jar cannot
+        // produce. So `--version` falls through to the `--name=value` arm below and warns at
+        // `:562`, `-V` falls through to the unknown-argument arm at `:833`, and both then reach
+        // `initializeCli`'s refusal and **exit 1** — measured on the HEAD jar by `p8t5`'s
+        // `version-long` and `version-short` rows, not assumed. `--version` survives on the
+        // **native** subcommand form only (`freerouting route --version`, clap's own, exit 0),
+        // which is where every port-only spelling lives.
 
         if let Some(body) = arg.strip_prefix("--") {
             // :530-537 — `--compare-boards=a,b`.
@@ -333,9 +334,11 @@ pub fn resolve_slots(argv: &[String]) -> (LegacySlots, Vec<Diagnostic>) {
                 // avoids the shapes where the two would differ, and says so.
                 Some(_) => {}
                 None if body == "user_data_path" => {}
-                // :561 — a `--name` with no `=` at all.
+                // :562 — a `--name` with no `=` at all. (`:561` is the `else if` that
+                // guards it; the convention throughout this file is to cite the `FRLogger`
+                // line, as `:833` and `:836` already do.)
                 None => diagnostics.push(Diagnostic::warn(
-                    "GlobalSettings.java:561",
+                    "GlobalSettings.java:562",
                     format!("{UNKNOWN_COMMAND_LINE_ARGUMENT_PREFIX}{arg}"),
                 )),
             }
@@ -517,14 +520,11 @@ pub fn rewrite(argv: &[String]) -> (Vec<String>, Vec<Diagnostic>) {
 
     let (slots, mut diagnostics) = resolve_slots(argv);
 
-    // :1394-1398 — help is checked first and exits 0.
+    // :1394-1398 — help is checked first and exits 0. There is no `--version` sibling: see
+    // `resolve_slots`.
     if slots.show_help_option {
         return (vec!["--help".to_string()], diagnostics);
     }
-    if slots.show_version {
-        return (vec!["--version".to_string()], diagnostics);
-    }
-
     // :1401-1405 / :1462 — DRC mode wins over every server.
     if let Some(report) = slots.drc_report_file {
         let Some(input) = slots.initial_input_file else {
@@ -746,6 +746,33 @@ mod tests {
         );
         assert_eq!(argv_of(&["--help"]), s(&["--help"]));
         assert_eq!(argv_of(&["-HELP"]), s(&["--help"]));
+    }
+
+    #[test]
+    fn version_is_an_unknown_argument_on_the_legacy_path() {
+        // Controller ruling BF, applying ruling AR. Measured on the HEAD jar: both spellings warn
+        // and then die in `initializeCli`, exit 1. `--version` takes the `--name=value` arm's
+        // no-`=` branch (:562); `-V` matches nothing and reaches :833.
+        let (out, diagnostics) = rewrite(&s(&["--version"]));
+        assert!(out.is_empty());
+        assert_eq!(
+            diagnostics
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "Unknown command line argument: --version",
+                BOTH_FILES_REQUIRED,
+            ]
+        );
+        let (out, diagnostics) = rewrite(&s(&["-V"]));
+        assert!(out.is_empty());
+        assert_eq!(diagnostics[0].message, "Unknown command line argument: -V");
+        // …and it does not derail a runnable line either.
+        assert_eq!(
+            argv_of(&["-de", "a.dsn", "-do", "b.ses", "--version"]),
+            s(&["route", "a.dsn", "-o", "b.ses"])
+        );
     }
 
     #[test]

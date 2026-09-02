@@ -734,7 +734,7 @@ case "$driver" in
     ;;
   p8t5)
     # Plan 8 Task 5: the legacy command line — `GlobalSettings.applyCommandLineArguments`
-    # (`settings/GlobalSettings.java:521-838`) over the ~82 argv shapes of
+    # (`settings/GlobalSettings.java:521-838`) over the 86 argv shapes of
     # `matrix/p8t5-argv.tsv`. Per row: the four filename slots plus `drcReportFile`,
     # `showHelpOption`, `logging.console.level`, every field of the `@Deprecated routerSettings`
     # bridge this method can write, `drcSettings.enabled`, and every `FRLogger` line the parse

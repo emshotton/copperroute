@@ -224,7 +224,7 @@ pub fn init(level: LogLevel) {
 pub const MESSAGE_MAP: &[(&str, &str)] = &[
     // ── settings/GlobalSettings.applyCommandLineArguments (:521-838) ────────────────────────────
     (
-        "GlobalSettings.java:561",
+        "GlobalSettings.java:562",
         "Unknown command line argument: {}",
     ),
     (
@@ -336,8 +336,10 @@ pub const MESSAGE_MAP: &[(&str, &str)] = &[
 //   equivalent, and [`init`] installs exactly one.
 // not ported: FRLogger.info (:233-255) — `tracing::info!` at the call site.
 // not ported: FRLogger.warn (:263-285) — `tracing::warn!`.
-// not ported: FRLogger.debug (:293-314) — `tracing::debug!`. Note it returns `null` and does
-//   **not** add to the ring (:310), which is why `p8t5`'s Java half sees only info/warn/error.
+// not ported: FRLogger.debug (:293-314) — `tracing::debug!`. Both overloads. Note that the
+//   two-argument body has **no `logEntries.add` call at all** and simply `return null` (:303),
+//   where `info`/`warn`/`error` end in `logEntries.add(...)` (:243, :273, :338) — which is why
+//   `p8t5`'s Java half sees only info/warn/error.
 // not ported: FRLogger.error (:324-350) — `tracing::error!`.
 // not ported: FRLogger.trace (:373-430) — `tracing::trace!`, plus the two `trace(TraceEvent…)`
 //   overloads that feed the listener bus below.

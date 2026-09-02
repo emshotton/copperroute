@@ -312,8 +312,13 @@ mod tests {
 
     #[test]
     fn a_router_object_the_reader_rejects_is_swallowed() {
-        // Quirk #141: Gson would coerce `"42"` into `max_passes`; `serde_json` refuses. Java's
-        // own `catch` at :58 is what makes the two agree on the *outcome* — an empty object.
+        // **This is the divergence, not an agreement.** Quirk #141's JVM-verified block D records
+        // `{"max_passes": "42"} -> 42`: `GsonProvider.GSON` coerces the quoted scalar and does
+        // **not** throw, so Java's answer here is `max_passes = 42` and the port's is an empty
+        // object. `:55-62`'s `catch` is what bounds the divergence rather than removing it — the
+        // port contributes *nothing* at priority 10 where Java contributes 42, never a *different*
+        // value. The register row (#141) and `crate::json`'s module docs carry the shape; this
+        // test pins the port's half of it.
         let scratch = Scratch::new("coercion");
         let path = write(
             &scratch.0,

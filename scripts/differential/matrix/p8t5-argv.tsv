@@ -108,6 +108,8 @@ help-prefix	-helpme
 unknown-flag	-de	a.dsn	-do	b.ses	-zz
 unknown-positional	a.dsn
 double-dash-no-eq	--foo
+version-long	--version
+version-short	-V
 user-data-path	--user_data_path=/tmp
 user-data-path-bare	--user_data_path
 mcp-stdio	--mcp_server.stdio=true
