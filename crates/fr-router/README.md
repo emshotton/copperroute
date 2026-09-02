@@ -58,7 +58,7 @@ ruling 1.
 | ruling 5's ordered-container decisions (comparator totality, key mutability, `JavaTreeSet` sites) | §"Ruling 5's container decisions, confirmed against Java" — and §"`SortedRoomNeighbours` (Task 4), and why the crate has a `JavaTreeSet`" for the maze's |
 | ruling AH's `structural_hash` audit | §"`p7t10` and the `structural_hash` audit (controller ruling AH)"; the row-per-field table itself is `crates/fr-board/src/board/snapshot.rs`'s module doc |
 | ruling AI's budget knob | §"The budget: what the plan asked for, and what is actually possible" |
-| the recovery boundaries | §"The recovery boundaries (ruling 7) — six from Plan 6, three from Plan 7" |
+| the recovery boundaries | §"The recovery boundaries (ruling 7) — six from Plan 6, two from Plan 7" |
 
 A sixth table Plan 8 needs is **not** here, deliberately: ruling AI's six deadline
 read sites, and why a seventh is a bug, live in
@@ -95,7 +95,8 @@ at these sites and must not flatten the split.
 ./scripts/differential/run.sh p7t6  [check|correct|swap|rand|edge]
 ./scripts/differential/run.sh p7t7  <dsn> [preset] [mode]
 ./scripts/differential/run.sh p7t8  <dsn> [mode] [routePasses] [items|all]
-./scripts/differential/run.sh p7t9  <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all] [--fanout on|off]
+./scripts/differential/run.sh p7t9  <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all] \
+                                    [--fanout on|off] [--optimizer on|off] [--ses <path>] [--passes <path>]
 ./scripts/differential/run.sh p7t10 <dsn> [steps] [routeK] [warm|raw]
 ./scripts/differential/sweep-p7t9.sh                 # every stem x every mode, MATCH/XDIFF/SKIP
 ```
@@ -475,7 +476,13 @@ The `StopCheck`s that plan-3 ruling F threads through `Board::insert_via_checked
 extra sites: they exist because `ForcedViaInserter.insert` reaches quirk #76's
 machinery from inside the router.
 
-## The recovery boundaries (ruling 7) — six from Plan 6, three from Plan 7
+## The recovery boundaries (ruling 7) — six from Plan 6, two from Plan 7
+
+*(The nine numbered slots below run 1-9 because that is how Plan 6 filed them.
+**Slot 8 is empty**: `BatchAutorouterThread.java:537` is on a class with zero live
+callers in the whole Java tree, so Plan 7 delivered slots 7 and 9 and nothing else —
+**two** boundaries, not three. The heading said "three" until Plan 7 Task 17's fix
+round; see the paragraph on slot 8 at the foot of this section.)*
 
 Java's `catch (Exception)` sites inside Plan 6's scope, and what each becomes:
 
@@ -2747,13 +2754,31 @@ with no reason.
 
 **Why `is_routed` stays open, measured.** `AutorouteAttemptResult` has no
 `isRouted()` in Java; `state` is a public field and every caller compares it
-directly. The port's pass loop does the same: `grep -rn "AutorouteAttemptState::Routed"
-crates/fr-router/src` answers **13 sites** across `pass_runner.rs`, `batch_loop.rs`,
-`fanout.rs` and `board_ext/`, all of them `match` arms transcribing Java's
-`result.state == ROUTED` chains. Routing them through a helper would be the port
-inventing a shape Java does not have. The accessor keeps its own-file unit test as
-its only caller and its marker now says so; Plan 8's manifest layer is free to use
-it.
+directly. The port does the same. Two greps, both reproducible on the committed
+tree — and both stated *outside* `autoroute/attempt.rs`, because the marker's own
+text mentions the strings it greps for:
+
+```sh
+grep -rno "AutorouteAttemptState::" crates/fr-router/src | grep -v autoroute/attempt.rs
+#   -> 30 hits in five files: autoroute/maze/engine.rs 15,
+#      board_ext/routing_board_ext.rs 6, pipeline/fanout.rs 4,
+#      pipeline/pass_runner.rs 4, pipeline/batch_autorouter.rs 1
+grep -rn "is_routed()" crates/fr-router/src crates/fr-router/tests | grep -v autoroute/attempt.rs
+#   -> nothing
+```
+
+Every one of the 30 is a `match` arm or an `==` against the enum, transcribing
+Java's `result.state == ROUTED` chains; and the accessor has **zero production
+callers**, in the crate or its tests. Routing those through a helper would be the
+port inventing a shape Java does not have, so the accessor keeps its own-file unit
+test as its only caller and its marker says so; Plan 8's manifest layer is free to
+use it.
+
+*(An earlier draft of both this paragraph and the marker said "13 sites" across a
+list that included `AutorouteBatchLoop`. Both halves were wrong — the narrower
+`::Routed` grep returns 14 including its own citation, and `pipeline/batch_loop.rs`
+does not name the enum at all, because the pass loop reads `BatchLoopResult`, not
+an attempt result. Corrected in Task 17's fix round.)*
 
 ### Two quirks
 

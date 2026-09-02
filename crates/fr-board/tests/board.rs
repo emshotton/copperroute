@@ -2468,3 +2468,68 @@ fn is_filled(board: &Board, id: u32) -> bool {
         other => panic!("item {id} is not a conduction area: {other}"),
     }
 }
+
+/// **plan-6 §10.3's second coverage obligation, as a standing assertion** (Plan 7 Task 17 fix
+/// round, review SF5).
+///
+/// Plan 6 filed `AutorouteEngine.autorouteConnection`'s `StopConnectionOption` choice
+/// (`:241-245`) as a coverage obligation it could discharge only halfway: 311 of its 369
+/// connections took the `FANOUT_VIA` arm, but no corpus board could show the two options
+/// **answering differently**, because that needs a real fanout via and `BatchFanout` was
+/// Plan 7's. Plan 7 Task 17 measured the difference firing with a temporary counter — once, in
+/// `crates/fr-router/tests/reference_parity.rs`'s `steps_one_to_eight_matches_the_jar` — and
+/// then removed the counter.
+///
+/// This is that statement without an instrument, and **directed rather than corpus-derived**.
+/// Directed is the more durable form here for a measured reason: Task 17 also ran the corpus
+/// version and found that a fanned-out `Issue143-rpi_splitter` produces **zero** disagreeing
+/// items, so "some board reaches it" is a property of one stem at one connection and a corpus
+/// assertion on it would be as brittle as the count. The standing guard that a *corpus* board
+/// still reaches the arm and gets the jar's answer there is the SES byte-parity ladder
+/// (`crates/fr-router/tests/batch_parity.rs`); what this test adds is that the arm cannot be
+/// deleted or made unreachable in the port without a red test.
+///
+/// **Why it is exact.** `Board::connection_items` branches on `stop_option` in exactly two
+/// places — the `Via` arm and the `FanoutVia` arm (Item.java:731-736) — and neither call below
+/// passes `Via`. So a difference between `None` and `FanoutVia` *is* the
+/// `isFanoutVia(result)` break at Item.java:735 and can be nothing else.
+///
+/// The fixture is `p2t11_board()`, whose via 6 is already established as a fanout via by
+/// [`the_via_is_a_fanout_via_because_a_short_trace_reaches_an_smd_pin`].
+#[test]
+fn the_fanout_via_break_changes_the_connection_set() {
+    let board = p2t11_board();
+
+    // The precondition, restated here so this test fails for a readable reason if the fixture
+    // ever stops carrying a fanout via.
+    assert!(
+        board.is_fanout_via(ItemId(6), None),
+        "the fixture's via 6 must be a fanout via for the arm to have anything to do"
+    );
+
+    // Walking from trace 5: `None` crosses via 6 and reaches trace 4 beyond it; `FanoutVia`
+    // stops at the via and never adds it, so the set is trace 5 alone.
+    assert_eq!(
+        descending(board.connection_items(ItemId(5), StopConnectionOption::None)),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(5), StopConnectionOption::FanoutVia)),
+        vec![5],
+        "Item.java:735's isFanoutVia break must cut the walk at via 6"
+    );
+
+    // And the difference is not an artefact of one start item.
+    let disagreeing = board
+        .items
+        .keys()
+        .filter(|id| {
+            board.connection_items(**id, StopConnectionOption::None)
+                != board.connection_items(**id, StopConnectionOption::FanoutVia)
+        })
+        .count();
+    assert!(
+        disagreeing >= 1,
+        "plan-6 §10.3: at least one item must make the two options disagree"
+    );
+}

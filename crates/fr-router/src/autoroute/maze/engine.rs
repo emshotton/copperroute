@@ -1453,7 +1453,16 @@ impl AutorouteEngine {
         // `crates/fr-router/tests/reference_parity.rs`'s `steps_one_to_eight_matches_the_jar`,
         // where the port is byte-identical to the HEAD jar. So a real board does reach the point
         // where the two options answer differently, and the port answers as the jar does there.
-        // The counter was removed after the measurement; re-deriving it is four lines.
+        //
+        // **Standing assertion**, added in Task 17's fix round:
+        // `the_fanout_via_break_changes_the_connection_set` in `crates/fr-board/tests/board.rs`,
+        // over the existing `p2t11_board()` fixture whose via 6 is already an established fanout
+        // via. It is *directed* for a measured reason — a fanned-out `Issue143-rpi_splitter`
+        // produces **zero** disagreeing items, so the corpus form would be a property of one
+        // stem at one connection — and exact, because `Board::connection_items` branches on
+        // `stop_option` only at the `Via` and `FanoutVia` arms and the test uses neither `Via`.
+        // The standing guard that a *corpus* board still reaches it, with the jar's answer, is
+        // the SES byte-parity ladder. RED-checked.
         let stop_connection_option = if ctrl.remove_unconnected_vias {
             StopConnectionOption::None
         } else {

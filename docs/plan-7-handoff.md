@@ -243,6 +243,34 @@ attach.
 | 13 | one audit map, extended, and the audit reaches zero for six more directories | **Held and exceeded**: 33 invocations, 0/0. |
 | 14 | four ported Java suites plus the fixture assertion family | **All four accounted for** — see §8. |
 
+### The seventeen pre-flight scan rulings
+
+All seventeen were ruled on before Task 1 dispatched and applied to the plan in
+place, each marked "(scan ruling N)" at its site
+(`.superpowers/sdd/2026-08-30-plan-7-router-batch/preflight-scan.md`, commit
+`a4b6331`). Listed here because five of them changed what a task built and three
+turned out to be wrong.
+
+| # | one line | outcome |
+|---|---|---|
+| **1** | quirk labels renumbered wholesale **#189–#212 → #194–#219** — the register was contiguous through #193, not #188, so all 24 plan labels collided with committed rows | **Applied.** Ids were still allocated in write order per ruling Z, so labels and ids diverge again; the complete map is §6. |
+| **2** | the marker gate is **two greps** (`crates/*/src`, `crates/*/tests`), not `crates/`, which sweeps README prose; plus an owner table for ~36 orphans | **Applied and green.** Both greps empty. |
+| **3** | Task 6 also ports `RoutingBoard.moveDrillItem:252-295`; reviewer sonnet → opus | **Premise false** (§5.4): the method is GUI-only and `ViaOptimizer` calls `DrillItemMover.{insert,check}` directly. Not ported. The reviewer upgrade stood. |
+| **4** | `AutorouteControl::from_settings` replaces the non-existent `new_for_net`; with `is_routed` that makes the `pub seam:` gate **six**, not eight | **Half right** (§7): `from_settings` closed, `is_routed` deliberately did not, and seven seams were added. 14, reconciled. |
+| **5** | Task 5 ports `correct` + `swap` only — `checkConnectionToPin` is "already ported in Plan 6"; ~400 → ~336 lines | **Wrong, and withdrawn** (§5.3). It had not landed; all three are Task 5's. The Task 5 review adjudicated for the implementer and the plan's amendment bullet was struck. |
+| **6** | `PassRecord` moves to Task 4; `build_unrouted_report` gets a Task 10 `obligation:` stub, because Task 10's stagnation exits need both before Task 15 produces them | **Applied.** Both landed where the ruling put them; Task 15 discharged the stub. |
+| **7** | a struct is declared by the **earliest** task that writes methods on it — `BatchFanout` + `FanoutRunSummary` → Task 11, `BatchOptimizer` → Task 13 | **Applied.** No type is declared twice; §3's inventory is the result. |
+| **8** | `FanoutPin` is a **`JavaTreeSet`**, not a `BTreeSet` (run-time-keyed comparator, ruling Y's case); ruling 5's "total-and-`final`-keyed" hypothesis recorded as failed | **Right answer, half-wrong reason** (§5.5). The `pinIndex` tie-break runs on every branch, so an unrecognised order is *pure `pinIndex`*, not arbitrary. `JavaTreeSet` anyway. |
+| **9** | ruling 7's second recovery boundary struck — `:144` is the dead `runMultiThread`'s catch, so there is no per-item `catch_unwind` | **Half wrong** (§5.2). `:144` really is the dead method's, but `runSingleThread` has its own `try` at `:156`/`:331-335`. Two boundaries, one propagating; the per-*item* prohibition was correct. |
+| **10** | `RouterBudget.progress_throttle_ms` conflated 250 and 1000 — `shouldFireBoardUpdate` is 250 ms and `ProgressThrottler` has no constant at all | **Applied.** Task 4 landed two gates: `RouterBudget::board_update_throttler()` (250) and `progress_throttler()` (1000), with `ProgressThrottler::board_update_gate`. |
+| **11** | controller answer 2's 19th task is **declined**: 18 tasks stand and Task 1 is not split | **Applied.** Task 1 landed whole (two commits, one task number). |
+| **12** | Task 16's generator snippet rewritten — its five `IFS='\|'` fields and its `-Dfreerouting.opt_changed_area_ms=0` flag do not exist; `P7T9.java` is what runs | **Applied**, and quirk #234 later explained *why* no such flag can exist. |
+| **13** | the stem set widens from ruling AM's five to **eight**, four in CI (`router-fanout-bm11`, `router-strict-drc-cnh`, `router-empty-board` added) | **Applied.** All eight reach rung (c); §1's table. |
+| **14** | `remove_items_and_pull_tight` is "consumed by nobody" — Task 8's text wins over the index's three call sites | **Applied.** The index row was corrected; the method exists for the audit and for Plan 8. |
+| **15** | `--verify-driver`'s "if it ever fails the driver is wrong" is struck; **controller answer 1 governs** | **Applied.** Trips are informational; a difference with **zero** trips is a failure. Result: 8/8 identical, 0 trips. |
+| **16** | `docs/plan-6-handoff.md` §10 items 2/3/4 gain status lines, and §10.3's two coverage obligations must be recorded as discharged or open by Task 17 | **Applied.** Both **discharged**, with numbers, and each now carries a **standing directed test** rather than a removed counter (Task 17 fix round): `crates/fr-router/tests/locator.rs`'s `the_fanout_arm_is_reachable_and_ends_on_a_drill` and `crates/fr-board/tests/board.rs`'s `the_fanout_via_break_changes_the_connection_set`. |
+| **17** | Task 0 is in flight and **blocks all dispatch** until it commits; the working tree did not compile | **Applied.** Task 0 committed (`bde59ef`) before Task 1 dispatched; the two relaxations (4 ∥ 1-3, 5-7 ∥ 1-3) were taken afterwards, with the ruling's own correction that **Task 5 depends on Task 4**. |
+
 ### Controller rulings made during execution (AN–BA)
 
 | ruling | one line | where |
@@ -351,7 +379,10 @@ The ones Plan 8 must read before writing a line of CLI:
   whole Java fixture suite routes a board no real `-de/-do` run produces. The parity
   references deliberately do **not** carry it.
 * **#234** — the inlined 1000 ms budget; see §1.
-* **#143 (extended)** and **#216**, **#235** — the dead multithread family; see §7.
+* **#143 (extended)** and **#235** — the dead multithread family; see §7. **Cite #143, not
+  #216**: the plan's *label* for this finding was #216, but the register spent that id on
+  `alreadyRoutedBoardHashes` (Task 10), so #216 is a different quirk. Every id in this
+  bullet list is a landed register id.
 
 ---
 
@@ -409,9 +440,15 @@ which say "discharged" in place; `crates/fr-router/README.md` §"The 27
 The plan expected **six**; the tree has **14**. One of scan ruling 4's two
 predicted closures happened (`AutorouteControl::from_settings`, Task 11) and one
 did not: `AutorouteAttemptResult::is_routed` stays open **on purpose**, because
-the pass loop `match`es on `AutorouteAttemptState` directly at 13 sites, exactly
-as Java's `result.state == ROUTED` chains do, and routing them through a helper
-would invent a shape Java does not have. Seven were added — two for ruling AP's
+the port reads the enum directly, exactly as Java's `result.state == ROUTED`
+chains do. Two greps, both reproducible on the committed tree:
+`grep -rno "AutorouteAttemptState::" crates/fr-router/src` minus
+`autoroute/attempt.rs` gives **30 hits across five files**
+(`autoroute/maze/engine.rs` 15, `board_ext/routing_board_ext.rs` 6,
+`pipeline/fanout.rs` 4, `pipeline/pass_runner.rs` 4,
+`pipeline/batch_autorouter.rs` 1), and `is_routed()` outside that file has
+**zero** hits in the crate or its tests. Routing those through a helper would
+invent a shape Java does not have. Seven were added — two for ruling AP's
 `CancelToken` seam and five for `ViaOptimizer`'s Java-private methods that an
 integration test and `p7t4.rs` both call from outside the crate. **8 − 1 + 7 = 14.**
 The row-by-row table is `crates/fr-router/README.md` §"The `pub seam:` gate,
@@ -419,7 +456,8 @@ reconciled".
 
 ### What Plan 8 builds (from the draft in the session scratchpad)
 
-A full 15-task plan is already drafted and cross-checked against these markers:
+A full 15-task plan (1 149 lines as of 2026-09-01; the ledger's 1 125 predates its
+controller answers) is already drafted and cross-checked against these markers:
 `2026-08-30-plan-8-core-cli-mcp.md` in the session scratchpad, with rulings
 AO–AV and the risk-2 ruling in `plan8-rulings.md`, the survey in
 `survey-plan8.md`, and banked evidence in `plan8-evidence/` (job 1: 15 of 16
@@ -473,6 +511,18 @@ The named tests behind the rulings, so a reviewer does not have to find them:
 | AK — the sink is an observer in the strict sense | `crates/fr-router/tests/stop_and_progress.rs`'s `a_recording_sink_changes_no_board_byte` and `tests/fanout.rs`'s `a_recording_sink_changes_no_fanout_byte` |
 | AM — the ladder's own guard rails | `tests/batch_parity.rs`'s `every_stem_reaches_rung_c`, `the_driver_matches_the_bare_jar`, `references_are_from_the_head_jar`, `the_stem_table_matches_the_fixture_file`, `the_ses_normaliser_touches_only_the_parser_keywords` |
 | H — closed, both halves | Task 0's transcript `crates/fr-router/tests/data/p7t0-ruling-h-match.txt` (50/50 MATCH, k=6 and k=8 included) and Task 11's `tests/fanout_order.rs` (`the_combined_via_rule_appends_a_value_equal_via_from_a_second_rule`) |
+| plan-6 §10.3 — the two discharged coverage obligations | `crates/fr-router/tests/locator.rs`'s `the_fanout_arm_is_reachable_and_ends_on_a_drill` and `crates/fr-board/tests/board.rs`'s `the_fanout_via_break_changes_the_connection_set` |
+
+**Both §10.3 tests are directed, not corpus-derived, and that is deliberate.** Task 17
+first measured each arm with a temporary counter (32 hits and 1 hit respectively) and
+then, in its fix round, replaced the counters with tests. The corpus form was tried for
+the second arm and **fails**: a fanned-out `Issue143-rpi_splitter` produces *zero*
+disagreeing items, so "some board reaches it" is a property of one stem at one
+connection and would be as brittle as the count. The directed form asserts what the
+obligation actually filed — the arm is reachable and its effect is real — and cannot go
+cold when the corpus changes. The standing guard that a *corpus* board still reaches
+each arm **and gets the jar's answer there** is the SES byte-parity ladder, which is
+strictly stronger than a hit counter and is already in CI.
 
 **The four Java suites of ruling 14, each with its Java file:line in a doc comment:**
 
@@ -561,7 +611,7 @@ Commands run by Task 17 on the committed tree, from
 |---|---|---|---|
 | 1 | `cargo fmt --all --check` | no diff | **0** |
 | 2 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings, 0 errors | **0** |
-| 3 | `cargo nextest run --workspace` | **2 135 tests run, 2 135 passed, 54 skipped** (the 54 are the `java_dir` / `FR_SLOW_PARITY` gated ones) | **0** |
+| 3 | `cargo nextest run --workspace` | **2 137 tests run, 2 137 passed, 54 skipped** (2 135 at the first commit; +2 are the two §10.3 standing assertions added in the fix round) | **0** |
 | 4 | `cargo test --workspace --doc` | 7 doc-test targets, all ok | **0** |
 | 5 | `cargo doc --workspace --no-deps` | 40 warnings, **all pre-existing** — the identical count on `git stash`ed HEAD, verified in the same session; none in a file this task touched | **0** |
 | 6 | the **33** `audit-port.sh` invocations (script below) | **0 `MISSING`, 0 `UNMAPPED`, 26 `ROSTERED` across 10**; every invocation exit 0 | **0** |
@@ -569,8 +619,10 @@ Commands run by Task 17 on the committed tree, from
 | 8 | `grep -rn "added in Plan 7" crates/*/tests` | **nothing** | 1 (no match) |
 | 9 | `grep -rn "item_tree_shape_ref\|item_tile_shape_ref" crates/fr-router/` | 3 hits, **all prose**, 0 call sites — plan-6 ruling 10 holds | 0 |
 | 10 | `grep -rn "pub seam:" crates/fr-router/src \| wc -l` | **14** — reconciled in §7, not edited to match the plan's 6 | 0 |
+| 10a | `grep -rno "AutorouteAttemptState::" crates/fr-router/src \| grep -vc autoroute/attempt.rs` | **30** across five files — the evidence for leaving `is_routed` open | 0 |
+| 10b | `grep -rn "is_routed()" crates/fr-router/src crates/fr-router/tests \| grep -vc autoroute/attempt.rs` | **0** — no production caller, in the crate or its tests | 1 |
 | 11 | `grep -o "^\| [0-9]\+ \|" docs/java-quirks.md \| ...` | **235 rows, contiguous 1..235**, no gap, no duplicate | 0 |
-| 12 | `#![forbid(unsafe_code)]` in every crate root | 6 libs + `crates/freerouting/src/main.rs`; `grep -rn unsafe crates/*/src` finds **0** outside the attribute | 0 |
+| 12 | `#![forbid(unsafe_code)]` in every crate root | 6 libs + `crates/freerouting/src/main.rs`. `grep -rn unsafe crates/*/src` minus the attribute returns **one** line, `fr-router/src/lib.rs:84` — a doc comment saying where the repository's last `unsafe` lives (`scripts/differential/rust/src/bin/p2t13.rs`, a driver, not a crate). **No `unsafe` code in any workspace crate**; the grep is self-referential, like the marker tables | 0 |
 | 13 | `(cd scripts/differential/rust && cargo fmt --check)` | **160 diffs across 14 files, unchanged** — deliberate, see §12.1. The crate is `exclude`d from the workspace (`Cargo.toml:6`) so this does not gate anything | 1 |
 
 Test tooling: `cargo nextest` (user-approved install) with `sccache` as the rustc

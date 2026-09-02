@@ -1502,3 +1502,93 @@ fn a_start_door_that_is_not_a_target_door_yields_an_all_default_locator() {
     assert_eq!(located.connection_items, Vec::new());
     assert!(ripped.is_empty());
 }
+
+// =================================================================================================
+// plan-6 §10.3's first coverage obligation, as a standing assertion (Task 17 fix round, SF5)
+// =================================================================================================
+
+/// **The `FoundConnectionLocator` fanout arm (`:124-129`), asserted rather than counted.**
+///
+/// Plan 6 filed this arm as a coverage obligation it could not discharge: it fires only when the
+/// maze search's *destination* door is an `ExpansionDrill`, which needs `ctrl.isFanout`, which
+/// only `BatchFanout` sets — `autoroute/pipeline`'s, i.e. Plan 7's. Plan 7 Tasks 11 and 12 built
+/// it, and Task 17 measured the arm entered **32 times** by `tests/batch_parity.rs`'s
+/// `the_ci_stems_climb_the_whole_ladder` with a temporary counter, then removed the counter.
+///
+/// This is the same statement without an instrument, and **directed rather than corpus-derived**,
+/// which is the more durable form: a corpus assertion goes cold when the corpus changes, and the
+/// SES byte-parity ladder is already the guard that a corpus board still reaches the arm *and*
+/// gets the jar's answer there. What this test adds is that the arm cannot be deleted or made
+/// unreachable in the port without a red test.
+///
+/// **Why it is exact, not inferential.** Two discriminants, both of them the arm's own:
+///
+/// * `MazeSearchEngine`'s "algorithm completed after the first drill" exit
+///   (`MazeSearchEngine.java:361-368`, `search.rs`) sets `destination_door` to an
+///   `ExpandableRef::Drill` **only** under `ctrl.is_fanout`. The `match` in
+///   `FoundConnectionLocator::get_instance` dispatches on exactly that value, so a `Drill`
+///   destination *is* the arm being taken.
+/// * The arm is the only path that leaves `target_item == None` with a **non-empty**
+///   `connection_items`: the other two `None` producers are the `:103-111` and `:130-135` warn
+///   branches, and both `return` early with an empty list (see the field's own doc).
+///
+/// The board is the same `probe_board()` the whole file uses, and the *only* change from
+/// [`a_layer_change_yields_two_traces_and_no_via_entry`] — whose backtrack array is
+/// `target, drill, drill, door, drill, drill, door, target`, i.e. two drill-after-drill pairs the
+/// non-fanout search walks straight past — is `ctrl.is_fanout = true`.
+#[test]
+fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {
+    let mut board = probe_board();
+    let mut engine = probe_engine(&mut board, 1);
+    let mut ctrl = probe_control(&board, 1);
+    // `RoutingBoardExt::fanout` (`RoutingBoard.java:1024`) is the only producer of this in the
+    // port; setting it here is what makes the search a fanout search.
+    ctrl.is_fanout = true;
+
+    let counter = Counter::new();
+    let result = {
+        let mut maze = MazeSearchEngine::get_instance(
+            &set_of(&[2]),
+            &set_of(&[3]),
+            &mut engine,
+            &mut board,
+            &ctrl,
+            &|| counter.check(),
+        )
+        .expect("MazeSearchEngine.getInstance answers a search engine");
+        maze.find_connection(&mut board, &|| counter.check())
+            .expect("findConnection answers a result")
+    };
+
+    // Discriminant 1: the search stopped on a drill, which only `is_fanout` allows.
+    assert!(
+        matches!(result.destination_door, ExpandableRef::Drill(_)),
+        "MazeSearchEngine.java:361-368 must end a fanout search on a drill; got {:?}",
+        result.destination_door
+    );
+
+    let mut ripped = BTreeSet::new();
+    let mut ripup_costs = BTreeMap::new();
+    let locator = FoundConnectionLocator::get_instance(
+        Some(&result),
+        &ctrl,
+        &mut engine,
+        &mut board,
+        AngleRestriction::NinetyDegree,
+        &mut ripped,
+        Some(&mut ripup_costs),
+    )
+    .expect("getInstance answers a locator for a non-null result");
+
+    // Discriminant 2: `target_item == None` with a non-empty `connection_items` is the fanout
+    // arm and nothing else.
+    assert!(
+        locator.target_item.is_none(),
+        "the fanout arm sets targetItem = null (:126)"
+    );
+    assert!(
+        !locator.connection_items.is_empty(),
+        "the two warn branches also leave targetItem null, but they return an EMPTY \
+         connectionItems; a non-empty list is what separates the fanout arm from them"
+    );
+}

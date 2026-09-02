@@ -606,7 +606,7 @@ design:
   > `crates/fr-router/tests/opt_changed_area.rs`'s
   > `the_changed_area_is_cleared_after_the_sweep`. Note also plan-6 §10's louder warning:
   > every `route_connection` caller must `start_marking_changed_area()` first (quirk #177).
- `Board::deep_copy` resets `changed_area` to `None`
+  `Board::deep_copy` resets `changed_area` to `None`
   because a stale non-`None` value surviving a copy would corrupt the next
   autoroute pass's bookkeeping (`board/snapshot.rs` module doc); Plan 7's
   `TraceShover`/`PolylineTrace.change` are the two dereferencing callers, and
@@ -625,7 +625,7 @@ design:
   > second boundary the plan did not anticipate: `RouterError::NoRoutableLayer`
   > (`AutorouteBatchLoop.java:44-56`, Task 10), the only *propagating* one. Table in
   > `crates/fr-router/README.md`.
- Java's `catch (Exception)`
+  Java's `catch (Exception)`
   recovers and continues routing where several ported panics (Java NPE
   equivalents: `PolygonShape.intersects` stack overflow, `Polyline`
   normalisation, `TileShape.rotateApprox`) would otherwise abort the whole

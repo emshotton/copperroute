@@ -276,6 +276,17 @@ impl FoundConnectionLocator {
             // in **ordinary CI** (the four `java_dir`-gated stems, no `FR_SLOW_PARITY` needed),
             // and every one of those runs is byte-identical to the HEAD jar's SES. It now has
             // ground truth.
+            //
+            // **Standing assertion**, added in Task 17's fix round so the discharge is a test
+            // rather than a removed counter: `the_fanout_arm_is_reachable_and_ends_on_a_drill`
+            // at the foot of `crates/fr-router/tests/locator.rs`. It is *directed* — the file's
+            // own `probe_board()` with `ctrl.is_fanout = true`, the single change from
+            // `a_layer_change_yields_two_traces_and_no_via_entry` — and exact on two
+            // discriminants: a `Drill` destination is only producible by
+            // `MazeSearchEngine.java:361-368`'s fanout exit, and `target_item == None` with a
+            // **non-empty** `connection_items` separates this arm from the two warn branches,
+            // which return early with an empty list. RED-checked with `is_fanout = false`
+            // (the destination is then a `TargetDoor`).
             ExpandableRef::Drill(drill) => {
                 let drill = engine
                     .rooms

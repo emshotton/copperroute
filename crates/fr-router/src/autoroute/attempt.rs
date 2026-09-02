@@ -132,11 +132,23 @@ impl AutorouteAttemptResult {
     /// Whether the attempt routed the connection.
     // pub seam: none in Java — `AutorouteAttemptResult` has no `isRouted()`; its `state` is a
     // public field every Java caller compares directly. Plan 6 predicted Plan 7's pass loop would
-    // become the caller, and **Plan 7 Task 17 measured that it did not**: `AutoroutePassRunner`,
-    // `AutorouteBatchLoop`, `BatchFanout` and `RoutingBoardExt::fanout` all `match` on
-    // `AutorouteAttemptState` directly (13 sites, `grep -rn "AutorouteAttemptState::Routed"
-    // crates/fr-router/src`), because that is what Java's `result.state == ROUTED` chains are and
-    // a helper would be the port inventing a shape Java does not have. The seam therefore
+    // become the caller, and **Plan 7 Task 17 measured that it did not**. Two greps, both run on
+    // the committed tree and both reproducible:
+    //
+    //   grep -rno "AutorouteAttemptState::" crates/fr-router/src | grep -v autoroute/attempt.rs
+    //       -> 30 hits in five files: autoroute/maze/engine.rs 15, board_ext/routing_board_ext.rs 6,
+    //          pipeline/fanout.rs 4, pipeline/pass_runner.rs 4, pipeline/batch_autorouter.rs 1.
+    //          Every one is a `match` arm or an `==` against the enum, which is what Java's
+    //          `result.state == ROUTED` chains are.
+    //   grep -rn "is_routed()" crates/fr-router/src crates/fr-router/tests | grep -v autoroute/attempt.rs
+    //       -> nothing. **Zero production callers**, in the crate or its tests.
+    //
+    // (The `Routed` variant alone is a narrower and less useful count, and `pipeline/batch_loop.rs`
+    // does not name the enum at all — the pass *loop* reads `BatchLoopResult`, not an attempt
+    // result. An earlier draft of this comment said "13 sites" across a list that included
+    // `AutorouteBatchLoop`; both halves were wrong and this is the measured replacement.)
+    //
+    // A helper would be the port inventing a shape Java does not have. The seam therefore
     // **stays open on purpose**, with its own-file unit test as its only caller; Plan 8's manifest
     // layer is free to use it. Plan 7 scan ruling 4's "closed by Tasks 9/10" is corrected here.
     pub fn is_routed(&self) -> bool {
