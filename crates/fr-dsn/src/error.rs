@@ -72,6 +72,19 @@ pub enum DsnError {
         /// The conduction area whose `Area::split_to_convex` returned `None`.
         item: ItemId,
     },
+
+    /// `KiCadJsonReader.importSession` (KiCadJsonReader.java:757-855) threw.
+    ///
+    /// That method declares `throws Exception` and carries **no** `catch` of its own — unlike
+    /// `readBoard`, whose `catch (Throwable)` at `:746` turns every failure into a
+    /// [`BoardReadResult::ParseError`]. The throwable therefore reaches the caller, which at both
+    /// call sites is a `catch (Exception e) { FRLogger.error(<message>, e); }` that does not stop
+    /// the run (`Freerouting.java:326-328`, `RoutingJobScheduler.java:232-234`). The payload is
+    /// the throwable's own `toString()`, i.e. the first line log4j prints for that call.
+    ///
+    /// Everything imported before the throw stays on the board, in Java and here alike.
+    #[error("{0}")]
+    KicadSession(String),
 }
 
 /// Supported board and routing file formats (`io/FileFormat.java`, verbatim).

@@ -101,9 +101,13 @@ invoked with no argument.
 
 ## What is *not* here
 
-- **The rest of the KiCad JSON path.** `KiCadJsonReader.importSession` and
-  `io/kicad/KiCadJsonWriter.java` are Plan 8 Task 10's. `readBoard` itself is
-  complete as of Task 9.
+- ~~**The rest of the KiCad JSON path.**~~ **Closed by Plan 8 Task 10**:
+  `KiCadJsonReader.importSession` is `kicad::reader::import_session` and
+  `io/kicad/KiCadJsonWriter.java` is `kicad::writer`. The whole `io/kicad`
+  board/session codec is here, pinned by
+  `tests/data/p8t10-kicad-writer.txt` — nine boards with `write`'s exact
+  output line for line, and twenty-four session documents with the item graph
+  `importSession` leaves behind.
 - **`SessionToEagle`.** `io/specctra/parser/SessionToEagle.java` (627 lines)
   turns a session file into an Eagle CAD command script. Deferred to Plan 8;
   its one caller, `SesReader.saveSpecctraSessionSesAsEagleScriptScr`, carries

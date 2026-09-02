@@ -342,20 +342,18 @@ pub fn load_rules_file(
 /// The extension test is `toLowerCase().endsWith(".json")` (`:301`), so the two arms are the KiCad
 /// JSON session reader and `SesReader`. As with the `.rules` block, a missing file warns
 /// (`:324`), a failure errors (`:327`) and neither stops the run (quirk #271).
-//
-// obligation: Task 10 (`io/kicad/KiCadJsonReader.importSession`, `Freerouting.java:304-306`) —
-//   a `--ses` whose name ends `.json` is a KiCad JSON session import, and the reader is not
-//   ported. Controller ruling B1 says a stubbed arm must be inert or loud: this one is **inert
-//   and loud** — it imports nothing and logs Java's own `:327` text with the reason, so a run
-//   that silently checked the un-imported board is impossible. Task 10 replaces the arm with
-//   `fr_dsn::kicad::import_session` and removes this marker. `commands/route.rs`'s
-//   `import_session_file` carries the same obligation for `RoutingJobScheduler.java:199-211`,
-//   which is the *other* call site of the same Java method — both must be discharged, and that
-//   marker now names this one too.
-//
-//   Quirk label U rides on this arm too and is Task 10's to record: Java opens the file with
-//   `new FileReader(sessionFile)` (`:304`), i.e. the **platform default charset**, while every
-//   other JSON path in the tree is explicit UTF-8.
+///
+/// # The `.json` arm, and quirk #290 (label U)
+///
+/// `:304` opens the file with `new java.io.FileReader(sessionFile)` — the one-argument
+/// constructor, i.e. `Charset.defaultCharset()` — while every other JSON path in the tree names
+/// UTF-8 explicitly. The port decodes UTF-8. **Measured** (docs/java-quirks.md #290): on JDK 18+
+/// the two agree, because JEP 400 made the default charset UTF-8 independently of the locale, so
+/// the divergence is reachable only under an older JVM or an explicit `-Dfile.encoding`. Pinned
+/// by `crates/freerouting/tests/cli_e2e.rs::a_non_ascii_session_file_is_read_as_utf8`.
+///
+/// Java's `FileReader` replaces an undecodable byte with `U+FFFD` rather than throwing, and so
+/// does [`String::from_utf8_lossy`] — so the two also agree on a file that is not valid UTF-8.
 pub fn load_session_file(
     session: Option<&Path>,
     board: &mut fr_board::Board,
@@ -378,11 +376,27 @@ pub fn load_session_file(
             "Loading KiCad JSON session file for DRC: {}",
             session.display()
         );
-        // `:327`'s text, with the reason — see the obligation above.
-        tracing::error!(
-            "Failed to load session file for DRC: the KiCad JSON session reader is not ported \
-             yet (Plan 8 Task 10)"
-        );
+        // `:304` — `new FileReader(sessionFile)`, quirk #290's charset. See the doc comment.
+        let bytes = match std::fs::read(session) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                // `:327` — the `catch (Exception e)`; `new FileReader` is what throws for an
+                // unreadable file that `exists()` accepted.
+                tracing::error!("Failed to load session file for DRC: {error}");
+                return;
+            }
+        };
+        // `:305` — `KiCadJsonReader.importSession(jsonReader, drcJob.board)`.
+        match fr_dsn::kicad::import_session(&String::from_utf8_lossy(&bytes), board) {
+            Ok(()) => {
+                // `:306`.
+                tracing::info!("KiCad JSON session file loaded for DRC successfully");
+            }
+            Err(error) => {
+                // `:327`.
+                tracing::error!("Failed to load session file for DRC: {error}");
+            }
+        }
         return;
     }
     // `:309`.

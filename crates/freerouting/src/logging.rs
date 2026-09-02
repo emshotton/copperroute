@@ -301,11 +301,10 @@ pub const MESSAGE_MAP: &[(&str, &str)] = &[
     // Task 7 added the three `:303`-`:312` rows, so `initializeDrc`'s message set is complete
     // rather than sampled: without them `p8t3`'s log rung compared 3 lines on
     // `drc-issue593-ses` where the jar emitted 4, and a message the port stopped emitting would
-    // have been invisible. `:306` is deliberately listed even though **the port cannot emit it**
-    // — the KiCad JSON session reader is Task 10's, and `commands::drc::load_session_file` logs
-    // `:327` instead — so that a `.json` session ever reaching a parity run is a loud diff rather
-    // than a silent one. That is the map's stated job: it enumerates the CLI's `FRLogger` calls,
-    // not the ones the port happens to make.
+    // have been invisible. `:306` was listed then even though the port could not yet emit it;
+    // **Plan 8 Task 10 discharged that stub**, so `commands::drc::load_session_file` now takes
+    // the `.json` arm through `fr_dsn::kicad::import_session` and emits `:306` on success and
+    // `:327` on failure, exactly as the jar does.
     (
         "Freerouting.java:303",
         "Loading KiCad JSON session file for DRC: {}",

@@ -60,11 +60,11 @@ BoardStatisticsClearanceViolations  statistics.rs
 # The last three are matched by the roster at the foot of `lib.rs` (plan-5 ruling 13 keeps the
 # KiCad board-JSON reader/writer out of *that* plan); Task 7 landed it, Task 11 folds it into the
 # crate's `not ported:` roster. **Plan 8 Task 8** turned four of its six lines from
-# `added in Plan 8:` into `renamed:`: the DTO tree and `readBoard`'s sections 1-8 now live in
-# `crates/fr-dsn/src/kicad/{dto,reader}.rs` (`scripts/audit-map/fr-dsn.map` records that), and
-# `importSession`/`KiCadJsonWriter.write` are Task 10's. The map lines stay pointed at `lib.rs`
-# because that is where those markers are; moving the `io/kicad` invocation to `fr-dsn` is Task
-# 14's call, not this map's.
+# `added in Plan 8:` into `renamed:` and **Task 10 turned the last two** — `importSession` and
+# `KiCadJsonWriter.write` — so all six are `renamed:` and the package is fully ported into
+# `crates/fr-dsn/src/kicad/{dto,reader,writer}.rs` (`scripts/audit-map/fr-dsn.map` records the
+# real homes). The map lines stay pointed at `lib.rs` because that is where those markers are;
+# moving the `io/kicad` invocation to `fr-dsn` is Task 14's call, not this map's.
 KiCadJsonReader          lib.rs
 KiCadJsonWriter          lib.rs
 KiCadBoardJson           lib.rs

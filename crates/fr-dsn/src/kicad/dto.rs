@@ -30,6 +30,22 @@
 //! empty list. Both are measured — `crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`, stems
 //! `layers-null` and `netclasses-null`.
 //!
+//! # The write side (Plan 8 Task 10)
+//!
+//! `KiCadJsonWriter.write` (KiCadJsonWriter.java:32-226) fills this same tree and hands it to
+//! `GsonProvider.GSON.toJson`, so [`crate::kicad::writer::write`] serialises these structs through
+//! [`crate::format::json::to_gson_string_pretty`] — the identical formatter, already JVM-verified.
+//! Two Gson behaviours the derive has to reproduce:
+//!
+//! * **Key order is declaration order.** Gson's `ReflectiveTypeAdapterFactory` walks
+//!   `getDeclaredFields()`, and serde's derive emits fields in declaration order too, so the
+//!   Java field order in each struct above *is* the wire order. Do not reorder a field.
+//! * **A `null` reference field is omitted**, because `GsonProvider` never calls
+//!   `serializeNulls()` — hence the `skip_serializing_if = "Option::is_none"` on every `Option`
+//!   field. On the write path only `hostCad`/`hostVersion` (which the writer never sets) and a
+//!   `netName` whose net lookup failed can be `None`; every list the writer touches is `Some`,
+//!   so it serialises as `[]` exactly as Java's `new ArrayList<>()` does.
+//!
 //! # Not ported
 //!
 // not ported: `KiCadBoardJson.Point2D()` and `Point2D(double, double)` — Java's two constructors
@@ -39,25 +55,29 @@
 // `crates/fr-drc/src/lib.rs`, where `scripts/audit-map/fr-drc.map` maps the class.
 #![allow(non_snake_case)] // see "The field names are the wire contract" above
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Port of `KiCadBoardJson` (KiCadBoardJson.java:7-32): the root DTO.
 ///
 /// Every list is `Option<Vec<_>>` and every nested object `Option<_>` because Gson can set them
 /// to Java `null` — see the module docs' three-way table.
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct KiCadBoardJson {
     /// `KiCadBoardJson.designName` (:8). Never read by `readBoard`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub designName: Option<String>,
     /// `KiCadBoardJson.hostCad` (:9) — `readBoard:314-315`, with the `"KiCad"` fallback.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hostCad: Option<String>,
     /// `KiCadBoardJson.hostVersion` (:10) — `readBoard:316-319`, with the `"v10.0"` fallback.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hostVersion: Option<String>,
     /// `KiCadBoardJson.unit` (:11), whose Java initializer is `UnitJson.MM`.
-    #[serde(default = "unit_default", deserialize_with = "gson_enum")]
+    #[serde(
+        default = "unit_default",
+        deserialize_with = "gson_enum",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub unit: Option<UnitJson>,
     /// `KiCadBoardJson.resolution` (:12), whose Java initializer is `1.0` — the one primitive in
     /// the tree that does not default to zero.
@@ -65,32 +85,32 @@ pub struct KiCadBoardJson {
     pub resolution: f64,
 
     /// `KiCadBoardJson.layers` (:14). **Unguarded** at `readBoard:105`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<LayerJson>>,
     /// `KiCadBoardJson.netClasses` (:15). **Unguarded** at `readBoard:124`/`:141`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub netClasses: Option<Vec<NetClassJson>>,
     /// `KiCadBoardJson.nets` (:16). **Unguarded** at `readBoard:446`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub nets: Option<Vec<NetJson>>,
     /// `KiCadBoardJson.clearanceRules` (:17). **Unguarded** at `readBoard:156`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub clearanceRules: Option<Vec<CustomClearanceRuleJson>>,
     /// `KiCadBoardJson.components` (:18). Guarded at `readBoard:182` and `:457`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub components: Option<Vec<ComponentJson>>,
     /// `KiCadBoardJson.outline` (:19), whose Java initializer is `new OutlineJson()`.
-    #[serde(default = "outline_default")]
+    #[serde(default = "outline_default", skip_serializing_if = "Option::is_none")]
     pub outline: Option<OutlineJson>,
 
     /// `KiCadBoardJson.traces` (:21). Guarded at `readBoard:216` and `:475`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub traces: Option<Vec<TraceJson>>,
     /// `KiCadBoardJson.vias` (:22). Guarded at `readBoard:204` and `:482`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub vias: Option<Vec<ViaJson>>,
     /// `KiCadBoardJson.conductionAreas` (:23). Guarded at `readBoard:230` and `:468`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub conductionAreas: Option<Vec<ConductionAreaJson>>,
 }
 
@@ -100,7 +120,7 @@ pub struct KiCadBoardJson {
 /// Deserialized by [`gson_enum`], which is Gson's `EnumTypeAdapter`: an exact, **case-sensitive**
 /// match against the three constant names, and `null` for anything else. `"mil"` is therefore not
 /// `MIL` — measured, stem `unit-lowercase`.
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum UnitJson {
     /// `UnitJson.MM` (:27).
     MM,
@@ -111,25 +131,25 @@ pub enum UnitJson {
 }
 
 /// Port of `KiCadBoardJson.LayerJson` (KiCadBoardJson.java:33-37).
-#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
 pub struct LayerJson {
     /// `LayerJson.index` (:34). Never read by `readBoard`, which uses the list position.
     #[serde(default, deserialize_with = "nullable")]
     pub index: i32,
     /// `LayerJson.name` (:35).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// `LayerJson.type` (:36) — `"signal"` or `"plane"`. `type` is a Rust keyword, so the field
     /// is spelled `r#type`; the JSON key is still `type`.
-    #[serde(default, rename = "type")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
 }
 
 /// Port of `KiCadBoardJson.NetClassJson` (KiCadBoardJson.java:40-47).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetClassJson {
     /// `NetClassJson.name` (:41).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// `NetClassJson.clearance` (:42).
     #[serde(default, deserialize_with = "nullable")]
@@ -145,21 +165,21 @@ pub struct NetClassJson {
     pub viaDrill: f64,
     /// `NetClassJson.netNames` (:46). Never read by `readBoard`: a net's class comes from
     /// `NetJson.className`, not from this list.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub netNames: Option<Vec<String>>,
 }
 
 /// Port of `KiCadBoardJson.NetJson` (KiCadBoardJson.java:50-55).
-#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
 pub struct NetJson {
     /// `NetJson.id` (:51). Never read by `readBoard`: net numbers come from `Nets.add`.
     #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
     /// `NetJson.name` (:52).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// `NetJson.className` (:53).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub className: Option<String>,
     /// `NetJson.containsPlane` (:54).
     #[serde(default, deserialize_with = "nullable")]
@@ -167,13 +187,13 @@ pub struct NetJson {
 }
 
 /// Port of `KiCadBoardJson.CustomClearanceRuleJson` (KiCadBoardJson.java:58-62).
-#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
 pub struct CustomClearanceRuleJson {
     /// `CustomClearanceRuleJson.classA` (:59).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub classA: Option<String>,
     /// `CustomClearanceRuleJson.classB` (:60).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub classB: Option<String>,
     /// `CustomClearanceRuleJson.clearance` (:61).
     #[serde(default, deserialize_with = "nullable")]
@@ -181,52 +201,52 @@ pub struct CustomClearanceRuleJson {
 }
 
 /// Port of `KiCadBoardJson.ComponentJson` (KiCadBoardJson.java:65-73).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentJson {
     /// `ComponentJson.reference` (:66), e.g. `"U1"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
     /// `ComponentJson.value` (:67), e.g. `"STM32F405"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
     /// `ComponentJson.footprint` (:68), e.g. `"Package_QFP:LQFP-64"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footprint: Option<String>,
     /// `ComponentJson.position` (:69), whose Java initializer is `new Point2D()`.
-    #[serde(default = "point_default")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub position: Option<Point2D>,
     /// `ComponentJson.rotation` (:70), in degrees.
     #[serde(default, deserialize_with = "nullable")]
     pub rotation: f64,
     /// `ComponentJson.layer` (:71), `"F.Cu"` or `"B.Cu"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layer: Option<String>,
     /// `ComponentJson.pads` (:72). Guarded at `readBoard:190` and `:459`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub pads: Option<Vec<PadJson>>,
 }
 
 /// Port of `KiCadBoardJson.PadJson` (KiCadBoardJson.java:76-85).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PadJson {
     /// `PadJson.name` (:77), e.g. `"1"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// `PadJson.netName` (:78), e.g. `"GND"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
     /// `PadJson.shape` (:79) — `"rect"`, `"circle"` or `"oval"`.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<String>,
     /// `PadJson.size` (:80), whose Java initializer is `new Point2D()`.
-    #[serde(default = "point_default")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub size: Option<Point2D>,
     /// `PadJson.offset` (:81), whose Java initializer is `new Point2D()`.
-    #[serde(default = "point_default")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub offset: Option<Point2D>,
     /// `PadJson.position` (:82) — the one `Point2D` field with **no** Java initializer, so an
     /// absent key leaves it `null` and `readBoard:192` guards it.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<Point2D>,
     /// `PadJson.drill` (:83).
     #[serde(default, deserialize_with = "nullable")]
@@ -241,16 +261,16 @@ pub struct PadJson {
     /// `crates/fr-dsn/tests/data/p8t8-kicad-read-b.txt`; quirk #283, which records the three
     /// sibling lists where Java *also* stores the `null` but then throws on it, and where the port
     /// therefore diverges only in the `ParseError`'s prose.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
 
 /// Port of `KiCadBoardJson.OutlineJson` (KiCadBoardJson.java:88-91).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct OutlineJson {
     /// `OutlineJson.corners` (:89). **Unguarded** at `readBoard:169`, which calls
     /// `boardJson.outline.corners.size()` after only a `boardJson.outline == null` test.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub corners: Option<Vec<Point2D>>,
     /// `OutlineJson.clearance` (:90), "outline/edge clearance class mapping". **Never read**:
     /// `readBoard:310` hard-codes `outlineClearanceNo = 1`.
@@ -259,13 +279,13 @@ pub struct OutlineJson {
 }
 
 /// Port of `KiCadBoardJson.TraceJson` (KiCadBoardJson.java:94-100).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct TraceJson {
     /// `TraceJson.id` (:95).
     #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
     /// `TraceJson.netName` (:96).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
     /// `TraceJson.width` (:97).
     #[serde(default, deserialize_with = "nullable")]
@@ -274,21 +294,21 @@ pub struct TraceJson {
     #[serde(default, deserialize_with = "nullable")]
     pub layerIndex: i32,
     /// `TraceJson.points` (:99). Guarded at `readBoard:218`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub points: Option<Vec<Point2D>>,
 }
 
 /// Port of `KiCadBoardJson.ViaJson` (KiCadBoardJson.java:103-111).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ViaJson {
     /// `ViaJson.id` (:104).
     #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
     /// `ViaJson.netName` (:105).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
     /// `ViaJson.position` (:106), whose Java initializer is `new Point2D()`.
-    #[serde(default = "point_default")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub position: Option<Point2D>,
     /// `ViaJson.diameter` (:107).
     #[serde(default, deserialize_with = "nullable")]
@@ -305,13 +325,13 @@ pub struct ViaJson {
 }
 
 /// Port of `KiCadBoardJson.ConductionAreaJson` (KiCadBoardJson.java:114-120).
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ConductionAreaJson {
     /// `ConductionAreaJson.id` (:115).
     #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
     /// `ConductionAreaJson.netName` (:116).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
     /// `ConductionAreaJson.layerIndex` (:117).
     #[serde(default, deserialize_with = "nullable")]
@@ -320,13 +340,13 @@ pub struct ConductionAreaJson {
     #[serde(default, deserialize_with = "nullable")]
     pub isObstacle: bool,
     /// `ConductionAreaJson.polygon` (:119). Guarded at `readBoard:232`.
-    #[serde(default = "empty")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub polygon: Option<Vec<Point2D>>,
 }
 
 /// Port of `KiCadBoardJson.Point2D` (KiCadBoardJson.java:124-140): "two-dimensional point in the
 /// JSON representation".
-#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq)]
 pub struct Point2D {
     /// `Point2D.x` (:125).
     #[serde(default, deserialize_with = "nullable")]

@@ -11,8 +11,8 @@
 //! |---|---|
 //! | `io/kicad/KiCadBoardJson.java` (142) | [`dto`] |
 //! | `io/kicad/KiCadJsonReader.readBoard` (`:61-755`) | [`reader::read_board`] — Plan 8 Task 8 landed sections 1-8 and the four private helpers they call, Task 9 sections 9-11 and the two only those call (`getDescriptivePadstackName`, `arePackagePinsIdentical`); **complete** |
-//! | `io/kicad/KiCadJsonReader.importSession` (`:757-855`) | Plan 8 Task 10 |
-//! | `io/kicad/KiCadJsonWriter.java` (227) | Plan 8 Task 10 |
+//! | `io/kicad/KiCadJsonReader.importSession` (`:757-855`) | [`reader::import_session`] — Plan 8 Task 10 |
+//! | `io/kicad/KiCadJsonWriter.java` (227) | [`writer`] — Plan 8 Task 10 |
 //!
 //! The audit for `io/kicad` runs against `crates/fr-drc/src` with
 //! `scripts/audit-map/fr-drc.map` (that is where plan 5 put it), so the `renamed:` markers that
@@ -26,9 +26,11 @@
 
 pub mod dto;
 pub mod reader;
+pub mod writer;
 
 pub use dto::{
     ComponentJson, ConductionAreaJson, CustomClearanceRuleJson, KiCadBoardJson, LayerJson,
     NetClassJson, NetJson, OutlineJson, PadJson, Point2D, TraceJson, UnitJson, ViaJson,
 };
-pub use reader::read_board;
+pub use reader::{import_session, read_board};
+pub use writer::{DEFAULT_DESIGN_NAME, write};

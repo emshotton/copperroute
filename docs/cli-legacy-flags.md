@@ -253,6 +253,29 @@ Byte-identical SES, equal exit code, equal `parity::normalize_log`, on the same
 `scripts/differential/run.sh p8t1` rungs every DSN stem uses. There is no
 `--kicad-json` gap left on either form.
 
+**The output half landed in Plan 8 Task 10.** `-do out.json` is accepted by
+`tryToSetOutputFile:384-388` (a `.json` extension classifies as
+`KICAD_DESIGN_JSON`, which `:391` rewrites to `KICAD_SESSION_JSON`), so unlike
+`-do out.dsn`/`out.scr` it really is serialised and the run exits 0. What it
+serialises is **quirk #289 (label T)**: `setJobOutput` is both a board-updated
+listener and a once-only call after the pipeline, and only the *first* of those
+calls ever writes, because `setData` re-sniffs the JSON back to
+`KICAD_DESIGN_JSON` and every later call then matches neither branch. Measured
+on three boards at the pinned jar — see the register row — the file therefore
+holds the board **as loaded, before any routing**. The port reproduces that
+exactly: `commands/route.rs` takes the `fr_dsn::kicad::write` snapshot before
+`RoutingPipeline::run`, and
+`crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_pre_routing_board`
+pins the jar's own 1 540 bytes as a literal.
+
+**The `.json` *session* slot landed with it.** A second `.json` on a `-de` line
+(`GlobalSettings.java:609-621`) is the previous session, and its `.json` arm now
+goes through `fr_dsn::kicad::import_session` on both the router path
+(`RoutingJobScheduler.java:197-207`) and the DRC path
+(`Freerouting.java:301-307`). Quirk **#290** (label U) records that Java opens
+it with the platform default charset; on JDK 18+ that is UTF-8 and the port
+agrees byte for byte.
+
 ## What `legacy.rs` does and does not do, after Plan 8 Task 5
 
 `crates/freerouting/src/legacy.rs` answers three questions and nothing else:

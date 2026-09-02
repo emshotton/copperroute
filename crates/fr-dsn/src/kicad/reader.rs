@@ -8,10 +8,11 @@
 //!
 //! not ported: the private `KiCadJsonReader()` constructor (KiCadJsonReader.java:55) — a
 //! utility-class no-op; this is a Rust module.
-// not ported: KiCadJsonReader.importSession (KiCadJsonReader.java:757-855) — Plan 8 Task 10's,
-// which lands it beside `KiCadJsonWriter.write`. The roster line naming it is
-// `crates/fr-drc/src/lib.rs:115`, where `scripts/audit-map/fr-drc.map` maps the class; this line
-// exists so a reader of *this* file knows the other half of the class has a home.
+//! **Plan 8 Task 10 added [`import_session`]** — `KiCadJsonReader.importSession` (`:757-855`),
+//! the *session* half of the same class, which imports traces, vias and conduction areas onto a
+//! board that already exists. It lives here rather than beside [`crate::kicad::writer`] because
+//! it is a reader and it shares this module's helpers (`java_nets_get`, `via_shape`,
+//! `java_drill_item_tile_shape_count`, `java_format_fixed`).
 
 use std::cmp::Ordering;
 
@@ -27,7 +28,7 @@ use fr_geometry::{
 };
 
 use crate::coordinate_transform::CoordinateTransform;
-use crate::error::{BoardMetadata, BoardReadResult};
+use crate::error::{BoardMetadata, BoardReadResult, DsnError};
 use crate::format::double::java_format_fixed;
 use crate::format::java_round_to_int;
 use crate::kicad::dto::{KiCadBoardJson, NetClassJson, PadJson, Point2D, UnitJson};
@@ -1461,6 +1462,368 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         warnings,
         coordinate_transform: Some(coordinate_transform),
     }
+}
+
+// ==================================================================== importSession (:757-855)
+
+/// Port of `KiCadJsonReader.importSession` (KiCadJsonReader.java:757-855): the traces, vias and
+/// conduction areas of a KiCad **session** JSON, imported onto an existing board.
+///
+/// # Where it is reached from — **two** call sites, both live
+///
+/// * `Freerouting.initializeDrc:301-307` — the `.json` arm of `-drc`'s optional session slot,
+///   ported at `crates/freerouting/src/commands/drc.rs`'s `load_session_file`.
+/// * `RoutingJobScheduler.java:199-211` — the `.json` arm of `-di`, ported at
+///   `crates/freerouting/src/commands/route.rs`'s `import_session_file`.
+///
+/// Both sites test `filename.toLowerCase().endsWith(".json")` and hand the *other* branch to
+/// `SesReader`.
+///
+/// # Quirk #290 (label U): Java opens the file with the **platform default charset**
+///
+/// `new java.io.FileReader(sessionFile)` (`Freerouting.java:304`, and the same at
+/// `RoutingJobScheduler.java:203`) is the one-argument constructor, i.e.
+/// `Charset.defaultCharset()` — while every other JSON path in the tree names UTF-8 explicitly
+/// (`RoutingJob.setInputFromFile`, `KiCadJsonWriter`'s caller at
+/// `RoutingJobSchedulerActionThread.java:278`, `GsonProvider`'s readers). The port takes a
+/// decoded `&str` and its callers decode UTF-8. See `docs/java-quirks.md` #290 for the
+/// measurement: on **JDK 18+ the two agree**, because JEP 400 made `Charset.defaultCharset()`
+/// UTF-8 regardless of the locale, and the divergence is reachable only under an older JVM or an
+/// explicit `-Dfile.encoding`.
+///
+/// # Signature
+///
+/// Java takes `(Reader, RoutingBoard)` and `throws Exception`; the port takes the decoded
+/// document and answers [`DsnError::KicadSession`], whose payload is the Java throwable's own
+/// `toString()` — which is the first line log4j prints for `FRLogger.error(msg, e)` at both call
+/// sites. Java's `void` return carries the same information: everything it inserted before the
+/// throw stays on the board, and the port's early returns leave it there too.
+///
+/// # It is **not** `readBoard`'s sections 10-11 a second time
+///
+/// The two look alike and differ in four places that are all behaviour:
+///
+/// | | `readBoard:647-717` | `importSession:776-854` |
+/// |---|---|---|
+/// | the three lists | dereferenced unguarded — a `"traces": null` is an NPE | each guarded by `!= null` (`:777`, `:797`, `:817`) |
+/// | the scale factor | `structure`'s, from section 6 | recomputed here from `unit`/`resolution` (`:763-774`), including the `1.0`-means-`10000` special case |
+/// | the via shape array | `shapes[li] = viaShape` **unbounded** (`:706`) — an out-of-range layer throws | `if (li >= 0 && li < layerCount)` (`:840`) — an out-of-range layer is silently skipped |
+/// | the trace layer | `insertTrace` clamps it (Trace.java:45-47) | the same clamp, reached through the same call |
+///
+/// The port therefore transcribes `:757-855` on its own rather than sharing a helper with the
+/// reader: a shared helper would have to carry the four differences as flags, and the third one
+/// is the difference between a refusal and a silent skip.
+///
+/// # Errors
+///
+/// [`DsnError::KicadSession`] for every point Java throws: an empty or unparseable payload
+/// (`:759-761`), a `null` `zone.polygon` / `tr.points` / `vj.position`, an empty zone polygon
+/// (`new PolygonShape(new Point[0])` reads `corners[0]`), and quirk #286's negative
+/// `DrillItem.tileShapeCount`. Plus the port-only `insert_via_checked` failure, which Java's
+/// `insertVia` cannot produce and which the caller's `catch (Exception)` would have caught.
+pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
+    // `:758` — `GsonProvider.GSON.fromJson(reader, KiCadBoardJson.class)`.
+    //
+    // Gson's `fromJson(Reader, Class)` answers **`null`** for a stream that holds no JSON value at
+    // all — `JsonReader.peek()` sees `END_DOCUMENT` and `Gson.fromJson` returns `null` rather than
+    // throwing. `serde_json` calls that an EOF error, so an empty (or whitespace-only) document is
+    // routed to the `null` arm here instead of to the syntax-error arm; measured, stem
+    // `json-empty-string`, which the jar answers with `IllegalArgumentException` and not with a
+    // `JsonSyntaxException`.
+    if json.trim().is_empty() {
+        return Err(DsnError::KicadSession(
+            "java.lang.IllegalArgumentException: JSON session file payload is empty or invalid"
+                .to_string(),
+        ));
+    }
+    let board_json: Option<KiCadBoardJson> = serde_json::from_str(json).map_err(|error| {
+        // Gson's own refusal. `Strictness.LENIENT` accepts more than `serde_json` does, so the
+        // *message* differs; quirk #277 already records that for `readBoard` and the same
+        // divergence-in-prose applies here. Both refuse, and both refuse before inserting
+        // anything.
+        DsnError::KicadSession(format!("com.google.gson.JsonSyntaxException: {error}"))
+    })?;
+    // `:759-761`. Gson answers `null` for the document `null` and for an empty stream; serde's
+    // `Option<T>` reproduces the first and its `Err` above the second.
+    let Some(board_json) = board_json else {
+        return Err(DsnError::KicadSession(
+            "java.lang.IllegalArgumentException: JSON session file payload is empty or invalid"
+                .to_string(),
+        ));
+    };
+
+    // `:763-768`.
+    let user_unit = match board_json.unit {
+        Some(UnitJson::MIL) => Unit::Mil,
+        Some(UnitJson::UM) => Unit::Um,
+        _ => Unit::Mm,
+    };
+
+    // `:770-774`. `(int) Math.max(1.0, …)` is a **narrowing** cast: it truncates toward zero and
+    // saturates at `Integer.MIN_VALUE`/`MAX_VALUE`, which is what [`java_double_to_int`]
+    // reproduces. The `== 1.0 && MM` special case then replaces the *default* resolution with
+    // `10000`, so a session document that omits `resolution` altogether (leaving
+    // `KiCadBoardJson.resolution`'s `= 1.0` initialiser) is read in tenths of a micrometre —
+    // the units `KiCadJsonWriter` writes.
+    let mut resolution = java_double_to_int(board_json.resolution.max(1.0));
+    if board_json.resolution == 1.0 && user_unit == Unit::Mm {
+        resolution = 10_000;
+    }
+    let scale_factor = f64::from(resolution);
+
+    // Every net on the board came from a reader that cannot store a `null` name (`readBoard`
+    // crashes on one long before this, and the DSN reader has no nullable name at all), so
+    // `java_nets_get`'s null-name side table is empty here — see its own docs.
+    let net_name_is_null: Vec<bool> = Vec::new();
+    let layer_count = board.get_layer_count();
+
+    // ── 1. Conduction Areas (`:776-794`) ────────────────────────────────────────────────────
+    if let Some(zones) = board_json.conductionAreas.as_ref() {
+        for zone in zones {
+            // `:779-781`.
+            let net_number = java_nets_get(
+                &board.rules.nets,
+                &net_name_is_null,
+                zone.netName.as_deref(),
+                1,
+            )
+            .map_err(session_npe)?
+            .unwrap_or(0);
+            let net_numbers = if net_number > 0 {
+                vec![net_number]
+            } else {
+                Vec::new()
+            };
+
+            // `:783-789` — `zone.polygon` is dereferenced unguarded.
+            let Some(polygon) = zone.polygon.as_ref() else {
+                return Err(session_npe(JavaNpe {
+                    invoked: "java.util.List.size()",
+                    receiver: "zone.polygon",
+                }));
+            };
+            let zone_points: Vec<Point> = polygon
+                .iter()
+                .map(|corner| {
+                    Point::Int(IntPoint::new(
+                        java_round_to_int(corner.x * scale_factor),
+                        java_round_to_int(-corner.y * scale_factor),
+                    ))
+                })
+                .collect();
+            // `:790` — `new PolygonShape(Point[])` reads `corners[0]`, so an empty polygon is an
+            // `ArrayIndexOutOfBoundsException`, as at `readBoard:661`.
+            if zone_points.is_empty() {
+                return Err(DsnError::KicadSession(
+                    "java.lang.ArrayIndexOutOfBoundsException: Index 0 out of bounds for length 0"
+                        .to_string(),
+                ));
+            }
+            // `:791-792`. The `as usize` is the same deliberate wrap `readBoard:662` documents:
+            // it preserves Java's bits for a negative `layerIndex` rather than inventing a
+            // different layer.
+            #[allow(clippy::cast_sign_loss)] // deliberate: preserves Java's bits, see readBoard.
+            board.insert_conduction_area(
+                Area::Shape(Shape::Polygon(PolygonShape::from_points(&zone_points))),
+                zone.layerIndex as usize,
+                net_numbers,
+                1,
+                zone.isObstacle,
+                FixedState::UserFixed,
+            );
+        }
+    }
+
+    // ── 2. Traces (`:796-814`) ──────────────────────────────────────────────────────────────
+    if let Some(traces) = board_json.traces.as_ref() {
+        for trace in traces {
+            // `:799-801`.
+            let net_number = java_nets_get(
+                &board.rules.nets,
+                &net_name_is_null,
+                trace.netName.as_deref(),
+                1,
+            )
+            .map_err(session_npe)?
+            .unwrap_or(0);
+            let net_numbers = if net_number > 0 {
+                vec![net_number]
+            } else {
+                Vec::new()
+            };
+            // `:802`.
+            let trace_half_width = java_round_to_int(trace.width * scale_factor / 2.0);
+
+            // `:804-810` — `tr.points` is dereferenced unguarded.
+            let Some(points) = trace.points.as_ref() else {
+                return Err(session_npe(JavaNpe {
+                    invoked: "java.util.List.size()",
+                    receiver: "tr.points",
+                }));
+            };
+            let trace_points: Vec<Point> = points
+                .iter()
+                .map(|point| {
+                    Point::Int(IntPoint::new(
+                        java_round_to_int(point.x * scale_factor),
+                        java_round_to_int(-point.y * scale_factor),
+                    ))
+                })
+                .collect();
+            // `:811-812` — the same `BasicBoard.insertTrace(Point[], …)` overload `readBoard:680`
+            // takes, so Convention 7's answer is the same one and for the same reason (see the
+            // reader's section 11). `Math.max(layer, 0)` is Trace.java:45's first clamp,
+            // reproduced at the call site because the port's parameter is a `usize`.
+            board.insert_trace_at_points(
+                &trace_points,
+                trace.layerIndex.max(0) as usize,
+                trace_half_width,
+                net_numbers,
+                1,
+                FixedState::UserFixed,
+            );
+        }
+    }
+
+    // ── 3. Vias (`:816-854`) ────────────────────────────────────────────────────────────────
+    if let Some(vias) = board_json.vias.as_ref() {
+        // `:818` — read once, outside the loop, exactly as Java does.
+        for via in vias {
+            // `:820-822`.
+            let net_number = java_nets_get(
+                &board.rules.nets,
+                &net_name_is_null,
+                via.netName.as_deref(),
+                1,
+            )
+            .map_err(session_npe)?
+            .unwrap_or(0);
+            let net_numbers = if net_number > 0 {
+                vec![net_number]
+            } else {
+                Vec::new()
+            };
+
+            // `:824-827` — `vj.position` is dereferenced unguarded.
+            let Some(position) = via.position.as_ref() else {
+                return Err(session_npe_field("x", "vj.position"));
+            };
+            let center = IntPoint::new(
+                java_round_to_int(position.x * scale_factor),
+                java_round_to_int(-position.y * scale_factor),
+            );
+
+            // `:829-837` — the same `new IntBox(round(-r), …).toSimplex()` shape section 8 and
+            // `readBoard:694-703` build, so it goes through the same [`via_shape`]; the drill is
+            // not in it (quirk #281).
+            let mut shapes: Vec<Option<Shape>> = vec![None; layer_count];
+            let shape = via_shape(via.diameter * scale_factor / 2.0);
+            // `:839-843`. **Unlike `readBoard:705-707`, this loop bounds-checks**: an index
+            // outside `[0, layerCount)` is skipped rather than thrown on. A via with
+            // `startLayerIndex > endLayerIndex` therefore leaves every shape `null` and reaches
+            // quirk #286 below; one with an out-of-range span silently loses those layers.
+            let mut layer = via.startLayerIndex;
+            while layer <= via.endLayerIndex {
+                if layer >= 0 && (layer as i64) < layer_count as i64 {
+                    shapes[layer as usize] = Some(shape.clone());
+                }
+                layer += 1;
+            }
+            // `:844-847` — the same generated name `readBoard:708-711` builds, and the same two
+            // `%.0f`s through [`java_format_fixed`] (quirk #288: Java's HALF_UP over the shortest
+            // round-trip digits, where Rust's `{:.0}` is half-to-even).
+            let via_padstack_name = format!(
+                "Via[{}-{}]_{}:{}_um",
+                via.startLayerIndex,
+                via.endLayerIndex,
+                java_format_fixed(via.diameter * 1000.0, 0),
+                java_format_fixed(via.drill * 1000.0, 0)
+            );
+            // `:848-851`.
+            let existing = board
+                .library
+                .padstacks
+                .get_by_name(&via_padstack_name)
+                .map(|padstack| PadstackId(padstack.no));
+            let via_padstack = match existing {
+                Some(id) => id,
+                None => board
+                    .library
+                    .padstacks
+                    .add(via_padstack_name, shapes, true, false),
+            };
+            // Quirk #286, as at `readBoard:716`: an all-`null` padstack makes
+            // `DrillItem.tileShapeCount` negative and `new TileShape[-n]` throws
+            // `NegativeArraySizeException`, whose `getMessage()` is the bare number. `fr_board`'s
+            // own `tile_shape_count` panics instead, so the span is tested before inserting.
+            if let Some(padstack) = board.library.padstacks.get(via_padstack) {
+                let span = java_drill_item_tile_shape_count(padstack);
+                if span < 0 {
+                    return Err(DsnError::KicadSession(format!(
+                        "java.lang.NegativeArraySizeException: {span}"
+                    )));
+                }
+            }
+            // `:852`. The **checked** seam, for the reason `readBoard:716` gives — and here the
+            // argument is stronger, not weaker: `importSession` runs onto a board that already
+            // carries wiring, so `splitTraces` really does walk pre-existing traces on the very
+            // first via.
+            let stop = || false;
+            board
+                .insert_via_checked(
+                    via_padstack,
+                    Point::Int(center),
+                    net_numbers,
+                    1,
+                    FixedState::UserFixed,
+                    true,
+                    &stop,
+                )
+                .map_err(|error| {
+                    // totalized: `:852`'s `board.insertVia` cannot fail in Java; the port's
+                    // answers a `Result` because `split_traces` can surface a `Polyline`
+                    // normalisation failure (quirk #109). Java would reach the caller's
+                    // `catch (Exception)` for the same condition, which is where this goes.
+                    DsnError::KicadSession(format!("java.lang.RuntimeException: {error}"))
+                })?;
+        }
+    }
+    Ok(())
+}
+
+/// [`JavaNpe`] as the [`DsnError`] `importSession`'s callers catch.
+///
+/// `readBoard` turns the same value into a `ParseError` because its own `catch (Throwable)` at
+/// `:746` does; `importSession` has no catch of its own, so the throwable reaches the caller and
+/// what it prints is `Throwable.toString()`.
+fn session_npe(error: JavaNpe) -> DsnError {
+    DsnError::KicadSession(format!(
+        "java.lang.NullPointerException: Cannot invoke \"{}\" because \"{}\" is null",
+        error.invoked, error.receiver
+    ))
+}
+
+/// [`session_npe`] for a **field read** rather than a method invocation: the JVM's helpful
+/// message is `Cannot read field "x"`, not `Cannot invoke …`.
+///
+/// `readBoard`'s pair is [`npe`]/[`npe_field`]; this is the same distinction on the
+/// `importSession` side. Measured, stem `via-null-position`.
+fn session_npe_field(field: &str, receiver: &str) -> DsnError {
+    DsnError::KicadSession(format!(
+        "java.lang.NullPointerException: Cannot read field \"{field}\" because \"{receiver}\" is null"
+    ))
+}
+
+/// Java's `(int)` narrowing cast on a `double` (JLS 5.1.3): truncate toward zero, saturate at
+/// `Integer.MIN_VALUE`/`MAX_VALUE`, and answer `0` for `NaN`.
+///
+/// `as i32` in Rust already saturates and already maps `NaN` to `0`, so this is a named wrapper
+/// rather than a reimplementation — named because `importSession:770` is the only place in this
+/// module that performs the cast and the reader of that line should not have to know that Rust's
+/// float-to-int cast happens to agree with Java's.
+#[allow(clippy::cast_possible_truncation)] // the saturation *is* the Java semantics.
+fn java_double_to_int(value: f64) -> i32 {
+    value as i32
 }
 
 // ===================================================================== the private helpers

@@ -24,6 +24,7 @@
 //! | 10 | the post-merge `RulesReader.read` `:173-184` | `resolve_headless` (settings half) + [`fr_dsn::rules_reader::read`] (board half) |
 //! | 11 | the session import `:189-234` | [`import_session_file`] |
 //! | 12 | `pipeline.run()` `RoutingJobSchedulerActionThread.java:99-167` | [`RoutingPipeline::run`] |
+//! | 12b | the **first** `setJobOutput` the `:100` listener fires, on the KiCad-JSON path only | the `pre_routing_json` snapshot — quirk #289 (label T) |
 //! | 13 | `setJobOutput` `:259-295` | [`set_job_output`] |
 //! | 14 | `writeCliOutputIfAvailable` `:196-213` | [`write_cli_output_if_available`] |
 //! | 15 | `computeCliExitCode` `:215-223` | [`compute_cli_exit_code`] |
@@ -89,8 +90,11 @@
 // not ported: RoutingPipeline.addBoardUpdatedEventListener(event -> setJobOutput(job)) (:100) —
 //   plan ruling 9 / quirk #270: the SES is written **once**, not once per board-updated event. Replaced by
 //   `fr_core::SyncProgressSink`. The final bytes are unaffected on this path, because `:168`'s
-//   unconditional `setJobOutput(job)` overwrites whatever the last event wrote; on the KiCad JSON
-//   path they are not (quirk label T, Task 10's).
+//   unconditional `setJobOutput(job)` overwrites whatever the last event wrote; **on the KiCad
+//   JSON path they are not**, and that is quirk #289 (label T), measured by Task 10 and
+//   reproduced at step 12b: there only the *first* call writes, so the file holds the board as
+//   loaded. The listener is still not ported — the port takes one snapshot at the instant the
+//   first event fires instead of running the write on every event.
 // not ported: RoutingJobSchedulerActionThread's three `StageListener` callbacks (:102-165) — one
 //   `FRLogger` line each plus analytics; controller ruling AK replaces the mechanism with
 //   `ProgressSink` and ruling 11 says nothing downstream reads it.
@@ -337,6 +341,46 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         // `scripts/gen-cli-reference.sh`'s header.
         budget: fr_core::RouterBudget::default(),
     };
+    // ── 12b. **quirk #289 (label T)**: the board `-do out.json` actually writes ───────────────
+    //
+    // `setJobOutput` is *both* a board-updated listener (`:100`) and a once-only call after
+    // `pipeline.run()` (`:168`). On the KiCad-session-JSON path only the **first** of those calls
+    // ever writes, because `output.setData` re-sniffs the bytes it is given
+    // (`BoardFileDetails.java:113` -> `RoutingJob.getFileFormat:155-164`) and a document starting
+    // `{` re-detects as `KICAD_DESIGN_JSON` — after which neither `:275`'s
+    // `== KICAD_SESSION_JSON` nor `:282`'s `== SES` matches and every later call is a no-op. The
+    // SES path escapes it because `(ses` re-detects as `SES`, so its *last* write wins and that
+    // last write is `:168`'s, on the final board — which is why writing once at the end is right
+    // there and wrong here.
+    //
+    // The first board-updated event fires from `BatchFanout.fanoutPass` (`:203-217`), before the
+    // first pin is processed, and `job.board` is still the object `BoardLoader` produced — the
+    // batch loop only reassigns it at `AutorouteBatchLoop.java:552`, after every pass. So what
+    // the jar writes is **the board as loaded, before any routing**.
+    //
+    // MEASURED at the pinned HEAD jar, JDK 25, standard flags:
+    //
+    //   -de fixtures/Issue143-rpi_splitter.dsn -do out.json -mp {1,2,8}
+    //       --router.fanout.enabled=true --router.optimizer.enabled=true
+    //     -> byte-identical out.json for all three pass counts (md5 a20cafbe…), and identical
+    //        again with the router disabled: "traces": [], "vias": [].
+    //     The same argv with -do out.ses answers 16 (wire …) and 9 (via …) scopes.
+    //   -de fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json -do out.json -mp 3 …
+    //     -> "traces": [] where the SES from the identical argv carries 9 wires.
+    //   -de fixtures/Issue733-kicad_complex_hierarchy_output_session.json -do out.json -mp 2 …
+    //     -> 172 traces in, 172 traces out: the pre-existing wiring is kept, so it is the
+    //        **initial** board and not an empty one.
+    //
+    // The brief's hypothesis — "the file keeps whatever the *last* mid-run board-updated event
+    // produced" — is **refuted** by the same measurement: `-mp 1` and `-mp 8` would then differ,
+    // and the fanout stage's nine vias would appear. Only the *first* call writes.
+    //
+    // The port reproduces it by taking the snapshot here, before the pipeline runs, which is the
+    // instant `pipeline.run()` hands the board on. [`resolved_output_format`] is shared with
+    // [`set_job_output`] so the two cannot disagree about whether the snapshot is needed.
+    let pre_routing_json = (resolved_output_format(&job) == FileFormat::KicadSessionJson)
+        .then(|| fr_dsn::kicad::write(&board, &job.name));
+
     let result = match RoutingPipeline::run(&mut board, &ctx) {
         Ok(result) => result,
         Err(error) => {
@@ -396,7 +440,7 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     };
 
     // ── 13. `setJobOutput` (`:259-295`) ───────────────────────────────────────────────────────
-    set_job_output(&mut job, &board, &transform);
+    set_job_output(&mut job, &board, &transform, pre_routing_json);
 
     // ── 14-16. ───────────────────────────────────────────────────────────────────────────────
     let output_written = write_cli_output_if_available(&job, &args.output);
@@ -476,20 +520,13 @@ fn read_scheduler_rules(job: &RoutingJob, cli_rules: Option<&Path>) -> Option<Ve
 /// `-di <file>` (`globalSettings.designSessionFilename`) is read onto the loaded board before the
 /// router runs, so an incremental run starts from the previous result. A missing file is a
 /// warning; a failure is an error; neither stops the run.
-//
-// obligation: Task 9/10 (`io/kicad/KiCadJsonReader.importSession`, `RoutingJobScheduler.java
-//   :199-211`) — a `-di` whose name ends `.json` is a KiCad session import, which is not ported.
-//   Until then the arm logs Java's own `FRLogger.error("Failed to load session file", e)` text
-//   with the reason, rather than silently importing nothing (controller ruling B1: a stubbed arm
-//   must be inert or loud; this one is both).
-//
-//   **`importSession` has TWO call sites and this is only one of them.**
-//   `commands/drc.rs::load_session_file` carries the other (`Freerouting.java:304-306`, the
-//   `-drc` path's `.json` session arm) with the same stub and its own marker. **Both must be
-//   discharged**; removing one and leaving the other would leave a live `.json` session path
-//   silently checking an un-imported board. Quirk label **U** — Java opens the file with
-//   `new FileReader` (the platform default charset) where every other JSON path in the tree is
-//   explicit UTF-8 — rides on the DRC site and is Task 10's to record.
+///
+/// **`importSession` has TWO call sites and this is one of them**;
+/// `commands/drc.rs::load_session_file` is the other (`Freerouting.java:304-306`, the `-drc`
+/// path's `.json` session arm). Both go through [`fr_dsn::kicad::import_session`], and quirk
+/// #290 (label U) — Java opens the file with `new FileReader`, i.e. the platform default charset,
+/// where every other JSON path in the tree names UTF-8 — rides on both. That doc lives on the
+/// DRC site.
 fn import_session_file(
     session: Option<&Path>,
     board: &mut fr_board::Board,
@@ -507,10 +544,20 @@ fn import_session_file(
     // `:197-201` — the extension test is `toLowerCase().endsWith(".json")`.
     if session.to_string_lossy().to_lowercase().ends_with(".json") {
         tracing::info!("Loading KiCad JSON session file: {}", session.display());
-        tracing::error!(
-            "Failed to load session file: the KiCad JSON session reader is not ported yet \
-             (Plan 8 Task 10)"
-        );
+        // `:201-202` — `new FileReader(sessionFile)`, quirk #290's charset (see `drc.rs`).
+        let bytes = match std::fs::read(session) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                tracing::error!("Failed to load session file: {error}");
+                return;
+            }
+        };
+        // `:203-204` — `KiCadJsonReader.importSession(jsonReader, job.board)`.
+        match fr_dsn::kicad::import_session(&String::from_utf8_lossy(&bytes), board) {
+            // `:205-206`.
+            Ok(()) => tracing::info!("KiCad JSON session file loaded successfully"),
+            Err(error) => tracing::error!("Failed to load session file: {error}"),
+        }
         return;
     }
     // `:213-227` — `SesReader.read(sesStream, job.board)`.
@@ -543,6 +590,27 @@ fn import_session_file(
     }
 }
 
+/// `setJobOutput:260-271`'s format resolution, hoisted out of it.
+///
+/// Java asks the question twice — once inside `setJobOutput`'s `job.output == null` arm and,
+/// implicitly, every time the `:275`/`:282` ladder re-reads `job.output.format`. The port asks it
+/// a third time, **before** the pipeline runs, because quirk #289 (label T) needs to know whether
+/// to take the pre-routing snapshot. One function, so the three answers cannot disagree.
+///
+/// `job.output.format` when there is one — `tryToSetOutputFile:391` set it from the *output*
+/// path's extension — and otherwise `:265-271`'s derivation from the **input** format.
+fn resolved_output_format(job: &RoutingJob) -> FileFormat {
+    if let Some(output) = job.output.as_ref() {
+        return output.format;
+    }
+    // `:265-271`.
+    if job.get_input().map(|input| input.format) == Some(FileFormat::KicadDesignJson) {
+        FileFormat::KicadSessionJson
+    } else {
+        FileFormat::Ses
+    }
+}
+
 /// `RoutingJobSchedulerActionThread.setJobOutput` (`:259-295`), the once-only call at `:168`.
 ///
 /// Java writes the bytes into `job.output.data`; the port answers them, because
@@ -553,10 +621,17 @@ fn import_session_file(
 /// Writes **nothing** for every format that is neither `SES` nor `KICAD_SESSION_JSON` — which is
 /// what leaves `-do out.dsn`/`out.scr` with an empty `output.getData()` and, one step later, a
 /// 0-byte file and exit 1 (quirk #268, label L).
+///
+/// `pre_routing_json` is quirk #289 (label T)'s snapshot: `KiCadJsonWriter.write` on the board as
+/// it stood **before** `RoutingPipeline::run`, which is the board the jar's `-do out.json`
+/// actually contains. The measurement and the mechanism are at the call site. It is `Some`
+/// exactly when [`resolved_output_format`] answered `KicadSessionJson` there, which is the same
+/// question the `match` below asks — so the `None` arm of the JSON branch is unreachable.
 fn set_job_output(
     job: &mut RoutingJob,
     board: &fr_board::Board,
     transform: &fr_dsn::CoordinateTransform,
+    pre_routing_json: Option<String>,
 ) {
     // `:260-272` — the `job.output == null` arm. `tryToSetOutputFile` and `setInputFromFile` have
     // both had their chance by now, so this is reachable only for an input that derives no
@@ -567,30 +642,36 @@ fn set_job_output(
             BoardFileDetails::get_filename_without_extension,
         );
         let mut output = BoardFileDetails::default();
-        if job.get_input().map(|input| input.format) == Some(FileFormat::KicadDesignJson) {
-            output.format = FileFormat::KicadSessionJson;
-            output.set_filename(Some(&format!("{base}.json")));
+        output.format = resolved_output_format(job);
+        // `:267` / `:270` — the extension follows the format.
+        let extension = if output.format == FileFormat::KicadSessionJson {
+            "json"
         } else {
-            output.format = FileFormat::Ses;
-            output.set_filename(Some(&format!("{base}.ses")));
-        }
+            "ses"
+        };
+        output.set_filename(Some(&format!("{base}.{extension}")));
         job.output = Some(output);
     }
 
     let format = job.output.as_ref().map(|output| output.format);
     let bytes = match format {
-        // `:274-281` — Task 10's `KiCadJsonWriter.write`.
+        // `:275-281` — `KiCadJsonWriter.write(job.board, job.name)`, then
+        // `output.setData(jsonStr.getBytes(UTF_8))`. **Quirk #289 (label T)**: the bytes are the
+        // *pre-routing* board's, not this one's — see the call site for the measurement and for
+        // why the SES arm below is the opposite.
         Some(FileFormat::KicadSessionJson) => {
-            // obligation: Task 10 (`io/kicad/KiCadJsonWriter`) replaces this arm with the real
-            //   writer. Until then a `-de <board>.json` run reaches here and Java's own
-            //   `FRLogger.error("Couldn't save the JSON output into the job object.", e)` text is
-            //   what the caller sees; the output stays empty, so the run exits 1 rather than
-            //   writing a file that is not a KiCad session.
-            tracing::error!(
-                "Couldn't save the JSON output into the job object.: the KiCad JSON writer is \
-                 not ported yet (Plan 8 Task 10)"
+            debug_assert!(
+                pre_routing_json.is_some(),
+                "quirk #289: `resolved_output_format` said KicadSessionJson before the pipeline \
+                 ran, so the snapshot must exist (route.rs's step 12b)"
             );
-            None
+            // A `None` here would leave the output empty, which is `writeCliOutputIfAvailable`'s
+            // 0-byte / exit-1 path — the same loud failure Java's `catch (Exception e)` at
+            // `:279-281` produces. It cannot arise: both sides ask `resolved_output_format`.
+            //
+            // `:278` — `jsonStr.getBytes(java.nio.charset.StandardCharsets.UTF_8)`, i.e. the
+            // **explicit** UTF-8 that quirk #290's `new FileReader` on the read side lacks.
+            pre_routing_json.map(String::into_bytes)
         }
         // `:282-292` — `boardManager.saveAsSpecctraSessionSes(baos, job.name)`. The design name
         // is `job.name`, which `setInputFromFile:457` set to the input's base name.

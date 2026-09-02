@@ -2,9 +2,12 @@
 //!
 //! Two halves:
 //!
-//! * **the behaviour tests** — eight named cases from the task brief, each pinning one quirk or
-//!   one ruling of `Freerouting.initializeCli`. They run the port only; the jar's answer for each
-//!   is either a committed reference or a measurement recorded in `docs/java-quirks.md`;
+//! * **the behaviour tests** — ten named cases, each pinning one quirk or one ruling of
+//!   `Freerouting.initializeCli`. They run the port only; the jar's answer for each is either a
+//!   committed reference or a measurement recorded in `docs/java-quirks.md`. Eight came from Task
+//!   6's brief; Plan 8 Task 10 added the two the `.json` paths need — quirk #289's `-do out.json`
+//!   (whose expected bytes are the jar's own, pasted in below) and quirk #290's non-ASCII
+//!   session file;
 //! * **the reference lanes** — every stem of `tests/reference/cli-fixtures.txt` run against the
 //!   committed `tests/reference/cli-<stem>/` outputs the **bare HEAD jar** wrote
 //!   (`scripts/gen-cli-reference.sh`). Four rungs per stem: byte-identical SES, equal exit code,
@@ -98,8 +101,100 @@ fn settings_snapshot(manifest: &Path) -> serde_json::Value {
         .unwrap_or_else(|| panic!("manifest has no settings_snapshot: {text}"))
 }
 
+const QUIRK_T_JAR_JSON: &str = r#"{
+  "designName": "Issue143-rpi_splitter",
+  "unit": "MIL",
+  "resolution": 254.0,
+  "layers": [
+    {
+      "index": 0,
+      "name": "1#Top",
+      "type": "signal"
+    },
+    {
+      "index": 1,
+      "name": "16#Bottom",
+      "type": "signal"
+    }
+  ],
+  "netClasses": [
+    {
+      "name": "default",
+      "clearance": 120.0,
+      "traceWidth": 160.0,
+      "viaDiameter": 297.79527559055117,
+      "viaDrill": 148.89763779527559,
+      "netNames": [
+        "D+",
+        "D-",
+        "N$5",
+        "VBUS",
+        "VCC"
+      ]
+    }
+  ],
+  "nets": [
+    {
+      "id": 1,
+      "name": "D+",
+      "className": "default",
+      "containsPlane": false
+    },
+    {
+      "id": 2,
+      "name": "D-",
+      "className": "default",
+      "containsPlane": false
+    },
+    {
+      "id": 3,
+      "name": "N$5",
+      "className": "default",
+      "containsPlane": false
+    },
+    {
+      "id": 4,
+      "name": "VBUS",
+      "className": "default",
+      "containsPlane": false
+    },
+    {
+      "id": 5,
+      "name": "VCC",
+      "className": "default",
+      "containsPlane": false
+    }
+  ],
+  "clearanceRules": [],
+  "components": [],
+  "outline": {
+    "corners": [
+      {
+        "x": 0.0,
+        "y": -0.0
+      },
+      {
+        "x": 8370.07874015748,
+        "y": -0.0
+      },
+      {
+        "x": 8370.07874015748,
+        "y": -16496.062992125986
+      },
+      {
+        "x": 0.0,
+        "y": -16496.062992125986
+      }
+    ],
+    "clearance": 120.0
+  },
+  "traces": [],
+  "vias": [],
+  "conductionAreas": []
+}"#;
+
 // =================================================================================================
-// The eight behaviour tests
+// The behaviour tests
 // =================================================================================================
 
 /// **Quirk #265** (`Freerouting.java:116-121`): the desired output file is deleted **before**
@@ -204,6 +299,174 @@ fn do_out_dsn_writes_zero_bytes_and_exits_1() {
     assert_eq!(code, 1, "`computeCliExitCode:222` — nothing was written");
     let meta = std::fs::metadata(&output).expect("the empty file is left behind");
     assert_eq!(meta.len(), 0, "`Files.write` wrote the empty array");
+}
+
+/// **Quirk #289** (label T), the `-do out.json` output path
+/// (`RoutingJobSchedulerActionThread.java:100`, `:168`, `:259-295`).
+///
+/// `setJobOutput` is registered as a **board-updated listener** at `:100` and called once more
+/// after `pipeline.run()` at `:168`. On the KiCad-session-JSON path only the **first** of those
+/// calls ever writes: `output.setData` re-sniffs the bytes (`BoardFileDetails.java:113` ->
+/// `RoutingJob.getFileFormat:155-164`) and a document starting `{` re-detects as
+/// `KICAD_DESIGN_JSON`, after which neither `:275`'s `== KICAD_SESSION_JSON` nor `:282`'s
+/// `== SES` matches. The SES path escapes it because `(ses` re-detects as `SES`, so *its* last
+/// write wins and that last write is `:168`'s, on the final board.
+///
+/// The first board-updated event fires from `BatchFanout.fanoutPass:203-217`, before the first
+/// pin is processed, and `job.board` is still the object `BoardLoader` produced
+/// (`AutorouteBatchLoop.java:552` reassigns it only after every pass). **So the jar's `out.json`
+/// is the board as loaded, before any routing.**
+///
+/// **MEASURED at the pinned HEAD jar**, JDK 25, `-Djava.awt.headless=true -Duser.language=en
+/// -Duser.country=US`, on `Issue143-rpi_splitter.dsn` with the argv below:
+///
+/// * `-mp 1`, `-mp 2` and `-mp 8` all produce the **same 1 540 bytes** (`md5 a20cafbe…`), and so
+///   does a run with the router disabled;
+/// * the same argv with `-do out.ses` produces 16 `(wire ` and 9 `(via ` scopes, so the board did
+///   change during the run;
+/// * `-de Issue649-kicad_ecc83-pp_input_board_v1.json -do out.json -mp 3 …` writes `"traces": []`
+///   where the SES from the identical argv carries 9 wires;
+/// * `-de Issue733-kicad_complex_hierarchy_output_session.json -do out.json -mp 2 …` writes the
+///   input's **172** pre-existing traces back out — so it is the initial board, not an empty one.
+///
+/// The task brief's hypothesis, that the file keeps whatever the *last* mid-run event produced,
+/// is refuted by the first bullet: `-mp 1` and `-mp 8` would then differ, and the fanout stage's
+/// nine vias would appear.
+///
+/// The port **reproduces** it (it does not totalize it): `commands/route.rs`'s step 12b takes the
+/// `KiCadJsonWriter.write` snapshot before `RoutingPipeline::run` and `set_job_output` writes
+/// that. The literal below is the jar's own 1 540 bytes, pasted in.
+#[test]
+fn do_out_json_writes_the_pre_routing_board() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("do-out-json");
+    let json = dir.join("out.json");
+    let ses = dir.join("out.ses");
+    let dsn = small_dsn().to_string_lossy().into_owned();
+    let run_to = |out: &Path| {
+        run(&[
+            "-de",
+            &dsn,
+            "-do",
+            &out.to_string_lossy(),
+            "-mp",
+            "8",
+            "--router.fanout.enabled=true",
+            "--router.optimizer.enabled=true",
+        ])
+    };
+
+    let (_, _, code) = run_to(&json);
+    assert_eq!(
+        code, 0,
+        "`-do out.json` is accepted by tryToSetOutputFile:384-388"
+    );
+    let written = std::fs::read_to_string(&json).expect("out.json was written");
+    assert_eq!(
+        written, QUIRK_T_JAR_JSON,
+        "byte for byte, the jar's own output"
+    );
+
+    // The board really did change during the run: the SES from the identical argv carries the
+    // routed wiring the JSON does not.
+    let (_, _, code) = run_to(&ses);
+    assert_eq!(code, 0);
+    let session = std::fs::read_to_string(&ses).expect("out.ses was written");
+    assert_eq!(session.matches("(wire").count(), 16);
+    assert_eq!(session.matches("(via ").count(), 9);
+    assert!(
+        written.contains("\"traces\": []"),
+        "and the JSON has none of it"
+    );
+    assert!(written.contains("\"vias\": []"));
+}
+
+/// **Quirk #290** (label U), end to end: the `.json` session arm's charset.
+///
+/// `Freerouting.java:304` and `RoutingJobScheduler.java:201-202` both open the session with
+/// `new java.io.FileReader(sessionFile)` — `Charset.defaultCharset()` — where every other JSON
+/// path in the tree names UTF-8. The port decodes UTF-8 unconditionally.
+///
+/// **MEASURED at the pinned HEAD jar**, on the board and session this test writes
+/// (`-de board.json session.json -do out.ses -mp 1`; the second `.json` becomes
+/// `designSessionFilename` at `GlobalSettings.java:609-621`):
+///
+/// * **default charset** — the JVM reports `file.encoding = UTF-8` (JEP 400 made that the default
+///   from JDK 18 regardless of locale), and the jar's SES carries
+///   `(net "GND_é中" (via …) (wire …))`. The port's SES is byte-identical to it after quirk
+///   #92's two `(parser …)` rewrites — **the divergence is unobservable here**;
+/// * **`-Dfile.encoding=ISO-8859-1`** — the same run loads the session "successfully" and the
+///   whole `(net "GND_é中" …)` scope is **gone** from the SES: the mis-decoded name matches no
+///   net, `Nets.get` answers `null`, `netNumbers` is empty and the imported wire and via are
+///   netless. Twelve lines of routed wiring silently dropped.
+///
+/// So the port's UTF-8 is Java's answer on every JVM the pinned jar supports (its class files are
+/// version 69, i.e. JDK 25), and the divergence is reachable only by forcing a legacy charset.
+/// This test pins the port's half; the register row carries the jar transcript.
+#[test]
+fn a_non_ascii_session_file_is_read_as_utf8() {
+    let dir = scratch("non-ascii-session");
+    let board = dir.join("board.json");
+    let session = dir.join("session.json");
+    std::fs::write(
+        &board,
+        "{\"unit\":\"MM\",\"resolution\":1000.0,\
+         \"layers\":[{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"},\
+         {\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],\
+         \"nets\":[{\"id\":1,\"name\":\"GND_é中\",\"className\":\"default\"},\
+         {\"id\":2,\"name\":\"VCC\",\"className\":\"default\"}],\
+         \"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},\
+         {\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]},\
+         \"components\":[{\"reference\":\"Ré1\",\"value\":\"1k\",\"footprint\":\"R_0603_é\",\
+         \"position\":{\"x\":10.0,\"y\":10.0},\"rotation\":0.0,\"layer\":\"F.Cu\",\
+         \"pads\":[{\"name\":\"1\",\"netName\":\"GND_é中\",\"shape\":\"rect\",\
+         \"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":0.0,\"y\":0.0},\"drill\":0.0,\
+         \"layers\":[\"F.Cu\"]},{\"name\":\"2\",\"netName\":\"VCC\",\"shape\":\"rect\",\
+         \"size\":{\"x\":1.0,\"y\":1.0},\"offset\":{\"x\":2.0,\"y\":0.0},\"drill\":0.0,\
+         \"layers\":[\"F.Cu\"]}]}]}",
+    )
+    .unwrap();
+    std::fs::write(
+        &session,
+        "{\"unit\":\"MM\",\"resolution\":1000.0,\
+         \"traces\":[{\"id\":1,\"netName\":\"GND_é中\",\"width\":0.25,\"layerIndex\":0,\
+         \"points\":[{\"x\":1.0,\"y\":1.0},{\"x\":9.0,\"y\":1.0}]}],\
+         \"vias\":[{\"id\":1,\"netName\":\"GND_é中\",\"position\":{\"x\":5.0,\"y\":5.0},\
+         \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1}]}",
+    )
+    .unwrap();
+
+    let out = dir.join("out.ses");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &board.to_string_lossy(),
+        &session.to_string_lossy(),
+        "-do",
+        &out.to_string_lossy(),
+        "-mp",
+        "1",
+    ]);
+    assert_eq!(code, 0, "stderr: {stderr}");
+    assert!(
+        stderr.contains("KiCad JSON session file loaded successfully"),
+        "`RoutingJobScheduler.java:205-206`'s line: {stderr}"
+    );
+    let session_out = std::fs::read_to_string(&out).expect("out.ses was written");
+    // The whole scope the ISO-8859-1 run loses.
+    assert!(
+        session_out.contains("(net \"GND_é中\""),
+        "the non-ASCII net survived the decode: {session_out}"
+    );
+    assert!(
+        session_out.contains("(via \"Via[0-1]_800:400_um\" 5000 -5000"),
+        "the session's via is on the net"
+    );
+    assert!(
+        session_out.contains("(path F.Cu 250"),
+        "and so is the session's wire"
+    );
 }
 
 /// **Plan ruling 7** (`Freerouting.java:189-194`, quirk #244, quirk label S): `RoutingJobState.INVALID` is
