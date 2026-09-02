@@ -492,11 +492,16 @@ is what comes after parity, and Plan 8 imports it rather than executing it.
 
 ### A gap the audit surfaced and nobody has claimed
 
-`settings/sources/JsonFileSettings.java` prints `ROSTERED` on the
+~~`settings/sources/JsonFileSettings.java` prints `ROSTERED` on the
 `settings/sources` invocation: **three public methods, all `not ported:`**. It is
 the JSON settings *file* source — `freerouting.json` / `--settings <file>` — and
 it is a real hole in the CLI's settings ladder, not a GUI class. Plan 8's Task 5
-(the CLI surface) is where it belongs; it is not in the draft's task bodies today.
+(the CLI surface) is where it belongs; it is not in the draft's task bodies today.~~
+
+**CLOSED by Plan 8 Task 5.** The audit was right and the gap was real: the class
+is now ported (`crates/fr-settings/src/sources/json_file.rs`, priority 10) and
+the `settings/sources` invocation prints only `ROSTERED GuiSettingsSource`. See
+§12 item 3 for the half that is still owed.
 
 ---
 
@@ -741,8 +746,16 @@ and `the_stem_table_matches_the_fixture_file`. The 54 skipped tests are the
    whole-board parity on that board at higher pass counts ever matters, the only
    route is a patched jar — which the constraint "HEAD is the authority" forbids —
    or a Java-side change upstream. Flagged, not worked around.
-3. **`JsonFileSettings` is unported and unclaimed** (§7). It is the
-   `--settings <file>` source. Plan 8's CLI task should take it.
+3. ~~**`JsonFileSettings` is unported and unclaimed** (§7). It is the
+   `--settings <file>` source. Plan 8's CLI task should take it.~~
+   **DISCHARGED — Plan 8 Task 5**, under the pre-flight scan's ruling R7 and a
+   controller decision. `crates/fr-settings/src/sources/json_file.rs` is the
+   priority-10 source; `crates/freerouting`'s `--settings <file>` names a file and
+   a working-directory `freerouting.json` is the default (Java's user-data path is
+   `static` mutable state and stays unported). **One half is still owed:**
+   `resolve_headless` does not take the source yet — Task 6 threads it through
+   `SettingsInputs`, and `crates/fr-settings/src/resolve.rs` carries the
+   `// obligation:` at the site.
 4. **Quirk #162 is still a live hang** in both languages (controller answer 5).
    Plan 8's `--job-timeout` will not interrupt it, because ruling AI's deadline is a
    poll and there is no poll site below `AutorouteEngine.java:265` — Java has none

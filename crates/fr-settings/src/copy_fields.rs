@@ -578,8 +578,12 @@ impl CopyFields for DesignRulesCheckerSettings {
         // Task 2's `obligation:` for this decision is **discharged by Task 7**, which is the only
         // task that touches `GlobalSettings`. The `copyFields(loadedSettings, defaultSettings)`
         // call it worried about is `GlobalSettings.load` (`GlobalSettings.java:351`), inside the
-        // `freerouting.json` read — out of scope by spec §2 (no persistent config file), which is
-        // also why `JsonFileSettings` is unported and priority 10 is only reserved. Task 7's own
+        // `freerouting.json` read — out of scope by spec §2 (no persistent config file). *(This
+        // sentence continued ~~"which is also why `JsonFileSettings` is unported and priority 10
+        // is only reserved"~~ until Plan 8 Task 5 ported that source under scan ruling R7.
+        // `GlobalSettings.load` is still out of scope: it reads the *whole* settings object and
+        // writes it back, where `JsonFileSettings` reads only `root["router"]` and writes
+        // nothing.)* Task 7's own
         // scope — `EnvironmentVariablesSource`, `CliSettings` and the dead `LegacyBridge` — merges
         // neither struct: the env and CLI sources go through `set_field_value` on a
         // `RouterSettings`, and `apply_command_line_arguments` only *records* `-drc`'s

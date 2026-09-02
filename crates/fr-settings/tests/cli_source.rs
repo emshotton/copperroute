@@ -311,6 +311,51 @@ fn legacy_bridge_is_dead() {
     assert!(cli.get_parsed_arguments().is_empty());
 }
 
+/// `--router.<path>=<value>` reaches the **bridge** as well as `CliSettings`.
+///
+/// `GlobalSettings.setValue` (`:498-509`) is `ReflectionUtil.setFieldValue(this, name, value)`,
+/// and `@SerializedName("router")` on the deprecated bridge (`:52`) is what makes a `router.`
+/// path resolve onto it — the field's own javadoc says as much. An earlier revision of
+/// `sources/cli.rs` claimed the `--name=value` arm wrote *"never the router bridge"*; the
+/// `p8t5` differential's `router-enabled-empty` row measured otherwise against the HEAD jar
+/// (`routerSettings.enabled = false`, not `null`, because `Boolean.parseBoolean("") == false`).
+///
+/// The two parsers still disagree about the same token, which is the point of ruling 8: the
+/// bridge's copy is dead and `CliSettings`' is live.
+#[test]
+fn a_router_long_option_writes_the_dead_bridge_too() {
+    // The measured row: an EMPTY value is `false`, not "absent".
+    let dead = bridge(&["--router.enabled="]);
+    assert_eq!(dead.router_enabled, Some(false));
+    assert_eq!(
+        cli(&["--router.enabled="]).get_settings().unwrap().enabled,
+        Some(false)
+    );
+
+    // A path that navigates into `optimizer` lands on the bridge's flattened field.
+    let dead = bridge(&["--router.optimizer.max_threads=7"]);
+    assert_eq!(dead.optimizer_max_threads, Some(7));
+    // …with **no** clamp, unlike `-mt` (`GlobalSettings.java:692-697`).
+    let dead = bridge(&["--router.optimizer.max_threads=99999"]);
+    assert_eq!(dead.optimizer_max_threads, Some(99999));
+    assert_eq!(bridge(&["-mt", "99999"]).optimizer_max_threads, Some(1024));
+
+    // `user_data_path` is excluded from the setter (`:558`), and a non-`router.` name never
+    // reaches the bridge at all.
+    assert_eq!(bridge(&["--user_data_path=/tmp"]), LegacyBridge::default());
+    assert_eq!(
+        bridge(&["--api_server.endpoints=http://x"]),
+        LegacyBridge::default()
+    );
+    // A path with no such field is `setValue`'s `NoSuchFieldException` arm: warn and carry on.
+    assert_eq!(
+        bridge(&["--router.no_such_field=1"]),
+        LegacyBridge::default()
+    );
+    // A `--name` with no `=` is skipped before the split (`:539`).
+    assert_eq!(bridge(&["--router.enabled"]), LegacyBridge::default());
+}
+
 /// One argv token, two fields, two clamps (plan ruling 8, `docs/cli-legacy-flags.md` quirk 2 /
 /// `docs/java-quirks.md` #132).
 /// `CProbe D11.mtClampHigh = 1024` (the dead bridge, `GlobalSettings.java:695-697`),

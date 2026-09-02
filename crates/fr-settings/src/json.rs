@@ -42,10 +42,15 @@
 //! whitespace-only or literal-`null` document (a `null` `RouterSettings`, where a *quoted*
 //! `"null"` is still a `JsonSyntaxException`). `serde_json` rejects every one of them. **The list
 //! is illustrative, not exhaustive** — the rule is "Gson's reader is more permissive", and no
-//! test enumerates the boundary. Nothing in this port feeds it non-strict JSON: `JsonFileSettings`
-//! — Gson's only reader of this type in headless Java — is out of scope (spec §2), and Plan 8's
-//! MCP `settings` input arrives as parsed JSON. The divergence is acceptance-only: where Gson
-//! reads a value the port reports an error, never a *different* value. Pinned by
+//! test enumerates the boundary. The port's readers are strict: Plan 8's MCP `settings` input
+//! arrives as parsed JSON, and [`crate::sources::JsonFileSettings`] — Gson's only reader of this
+//! type in headless Java — reads a real `freerouting.json` through `from_json_str`. *(This
+//! sentence read ~~"Nothing in this port feeds it non-strict JSON: `JsonFileSettings` … is out of
+//! scope (spec §2)"~~ until Plan 8 Task 5, when scan ruling R7 ruled that source back in.)* The
+//! divergence stays acceptance-only, for a reason that survives the change:
+//! `JsonFileSettings.loadSettings` swallows every exception into an **empty** `RouterSettings`
+//! (`JsonFileSettings.java:55-62`), so where Gson coerces a value and the port errors, the port
+//! contributes nothing at priority 10 — never a *different* value. Pinned by
 //! `tests/json.rs::{the_lenient_reader_shapes_are_not_ported,
 //! the_lenient_reader_coercions_are_not_ported}` and recorded as `docs/java-quirks.md` row 141.
 

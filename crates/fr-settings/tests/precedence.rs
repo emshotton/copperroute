@@ -84,7 +84,8 @@ fn two_merge_form(
 
     // --- merge #1: `Freerouting.java:125-146` -------------------------------------------------
     // The prototype merger (`Freerouting.java:1408-1413`) is `DefaultSettings`,
-    // `JsonFileSettings` (out of scope, spec §2), `CliSettings` and `EnvironmentVariablesSource`;
+    // `JsonFileSettings` (ported in Plan 8 Task 5, not yet fed into `resolve_headless` — see the
+    // `// obligation:` in `resolve.rs`), `CliSettings` and `EnvironmentVariablesSource`;
     // `:126-127` adds the DSN and `:129-136` the `-dr` rules. Ruling K: `SettingsMerger.clone` is
     // not ported, so the second merger is rebuilt from the same source list.
     let mut sources = vec![boxed(DefaultSettings::new(host))];

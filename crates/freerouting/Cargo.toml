@@ -4,12 +4,23 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+# The library half: `legacy::rewrite`, `logging` and the subcommand table, so that the `p8t5`
+# differential driver and the integration tests exercise the same code the binary runs.
+[lib]
+name = "freerouting"
+path = "src/lib.rs"
+
 [[bin]]
 name = "freerouting"
 path = "src/main.rs"
 
 [dependencies]
 fr-geometry = { path = "../fr-geometry" }
+# Plan 8 Task 5: `fr_settings::prelude::{classify_de_arguments_reporting,
+# apply_command_line_arguments}` (the legacy parse) and `JsonFileSettings` (`--settings <file>`).
+fr-settings = { path = "../fr-settings" }
+# Plan 8 Task 5: the composition layer Task 6 wires the route/drc/info runners to.
+fr-core = { path = "../fr-core" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

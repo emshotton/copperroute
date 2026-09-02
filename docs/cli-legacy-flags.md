@@ -1,14 +1,20 @@
 # Legacy CLI flags: Java's per-flag value normalisation
 
 `crates/freerouting/src/legacy.rs` rewrites Java-freerouting command lines into
-the port's subcommand form. **It forwards raw values.** Java, by contrast,
-normalises most flag values *while parsing* — clamping, dividing, lower-casing,
-or falling back to a default for an unrecognised word. Reproducing those rules
-is `fr-settings`' job — **Plan 4** Task 7 in the event, not the "Plan 5" this
-file guessed at when it was written (`fr-settings` is Plan **4** and `fr-drc` is
-Plan 5 in the Plan 3+ numbering; the cells below have been renumbered). This file
-records the rules once, from the Java, so the later plans do not re-derive them
-(and get them wrong).
+the port's subcommand form. Java normalises most flag values *while parsing* —
+clamping, dividing, lower-casing, or falling back to a default for an
+unrecognised word. Reproducing those rules is `fr-settings`' job — **Plan 4**
+Task 7 in the event, not the "Plan 5" this file guessed at when it was written
+(`fr-settings` is Plan **4** and `fr-drc` is Plan 5 in the Plan 3+ numbering; the
+cells below have been renumbered). This file records the rules once, from the
+Java, so the later plans do not re-derive them (and get them wrong).
+
+**Plan 8 Task 5 rewired the shim.** Where this file used to say ~~"It forwards
+raw values"~~, `legacy.rs` now forwards *nothing*: it is a mode and slot
+resolver, and every value goes to `fr-settings` off the **raw** argv. The
+consequences are recorded in place below — the `-de` section's "one deliberate
+divergence" is gone (ruling 14), and the `-mp`/`-mt`/`-oit`/`-us`/`-is`/`-hr`/
+`-inc` rows now say where the value actually lands.
 
 **Ported, and five of them are dead on purpose.**
 `crates/fr-settings/src/sources/cli.rs` carries all of this:
@@ -25,7 +31,36 @@ records the rules once, from the Java, so the later plans do not re-derive them
 - **`CliSettings`** — the only two flags that actually reach the router, `-mp`
   and `-mt` (`CliSettings.mapFlagToProperty`, `:102-110`).
 - **`classify_de_arguments(&[String]) -> DeSlots`** — the `-de` rule below (plan 4
-  ruling 10 — the binary still reproduces the rule itself; Plan 8 rewires it).
+  ruling 10). `crates/freerouting/src/legacy.rs` **calls it** since Plan 8 Task 5;
+  the binary's own copy of the rule is deleted.
+  `classify_de_arguments_reporting` is the same function with the five
+  `FRLogger.warn` lines the `-de` arm emits, which the CLI needs and this crate
+  may not log itself.
+- **`legacy_flag_value_is_consumed(&str, &str) -> bool`** — the half of the loop
+  that decides `i++`. `:686`, `:698`, `:708` and `:822` each run *after* an
+  assignment that can throw, so `-mp abc` logs at `:836`, consumes nothing, and
+  lets `abc` reach the unknown-argument warning at `:833`. It lives here so the
+  CLI can walk the same argv without re-deriving `Integer.decode`,
+  `Float.parseFloat` or `Integer.parseInt`.
+- **`JsonFileSettings`** (`crates/fr-settings/src/sources/json_file.rs`) — the
+  `freerouting.json` tier at **priority 10**, ported by Plan 8 Task 5 under scan
+  ruling R7. Plan 4 had rostered it `// not ported:` on spec §2 ("no persistent
+  config file") and reserved the number; the Plan 8 controller ruled it in,
+  because it is the only rung between `DefaultSettings` (0) and the DSN file (20)
+  and because the CLI is where `--settings <file>` belongs. Two notes:
+
+  - Java resolves the file under the OS-standard **user-data** directory
+    (`GlobalSettings.getUserDataPath().resolve("freerouting.json")`,
+    `JsonFileSettings.java:27-29`). That path is `static` mutable state and is
+    not ported, so the port looks for `freerouting.json` in the **working
+    directory**, and `--settings <file>` names one explicitly. `--settings` is a
+    **port-only** flag: Java has none.
+  - **Quirk label AJ still holds.** `mcp_server.stdio=true` read from
+    `freerouting.json` is silently ignored by Java — the stdout redirect has to
+    happen before logging is initialised, so the JSON setting arrives 250 lines
+    too late and only earns a warning (`Freerouting.java:1191-1203`). The port's
+    `mcp` **subcommand** is the supported spelling; the legacy
+    `--mcp_server.stdio=true` is accepted and rewritten to it.
 
 Baseline: freerouting **v2.3.0**. All line numbers in this file are re-derived
 against the Java clone's HEAD as of Plan 4 (plan ruling 7's convention), not
@@ -153,18 +188,60 @@ adopts one gets it right.
 - **Any other extension is warned about and dropped** (`:638-644`) — it does
   *not* fall back to the design-input slot.
 
-**One deliberate divergence.** Java has no dedicated KiCad-JSON slot: `.json`
-goes to `initialInputFile` (the design input) when no `.dsn` has been seen yet,
-and to `designSessionFilename` (the session) otherwise
-(`GlobalSettings.java:609-621`). The port gives it its own `--kicad-json`
-option on `route`/`drc` so a KiCad board file never silently poses as a SES
-session. Two consequences for Plan 8, which owns the loader:
+**The `.json` slot: ruling 14, and the divergence that is gone.** Java has no
+dedicated KiCad-JSON slot. A `.json` goes to `initialInputFile` (the design
+input) when no `.dsn` has been seen yet, and to `designSessionFilename` (the
+session) otherwise (`GlobalSettings.java:609-621`). **The port now follows that
+rule exactly**, on the legacy form.
 
-- `-de board.json -do out.ses` routes in Java but currently fails in the port
-  with `-de input must include a .dsn file`, because `--kicad-json` does not
-  yet feed the design-input slot.
-- `-de a.dsn prev.json` yields `--kicad-json prev.json` where Java would treat
-  `prev.json` as the previous session.
+Until Plan 8 Task 5 it did not. This file used to say:
 
-Both are unimplemented-loader gaps, not silent misroutes; resolve them when the
-KiCad JSON reader lands.
+> ~~**One deliberate divergence.** … The port gives it its own `--kicad-json`
+> option on `route`/`drc` so a KiCad board file never silently poses as a SES
+> session. Two consequences for Plan 8, which owns the loader: `-de board.json
+> -do out.ses` routes in Java but currently fails in the port with `-de input
+> must include a .dsn file`, because `--kicad-json` does not yet feed the
+> design-input slot. `-de a.dsn prev.json` yields `--kicad-json prev.json` where
+> Java would treat `prev.json` as the previous session. Both are
+> unimplemented-loader gaps, not silent misroutes; resolve them when the KiCad
+> JSON reader lands.~~
+
+The loader landed in Plan 8 Task 3 (`fr_core::load_board_if_needed` sniffs the
+format from the bytes), so the reason for the divergence expired, and **plan
+ruling 14 closed it**: on the legacy form a `.json` fills Java's slot, and both
+of those rows are `MATCH` in the `p8t5` differential (`de-json-first`,
+`de-json-after-dsn`). `--kicad-json` survives on the **native** subcommand form
+only, where it is the port's own spelling and nothing has to guess.
+
+## What `legacy.rs` does and does not do, after Plan 8 Task 5
+
+`crates/freerouting/src/legacy.rs` answers three questions and nothing else:
+which subcommand the line names, which files fill Java's four slots, and which
+`FRLogger` lines Java would have emitted. In particular:
+
+- **It forwards no values.** `-mp`, `-mt`, `-oit`, `-us`, `-is`, `-hr` and
+  `-inc` are consumed exactly the way Java consumes them and then dropped. The
+  settings that reach the router come from `fr_settings::CliSettings` over the
+  **raw** argv, because that is Java's *second* parser and it matches `-mp`/`-mt`
+  with an exact `switch` where the flag table matches by prefix (scan ruling
+  R19). Translating `-mpx 5` into `--max-passes 5` here would set `max_passes`,
+  which **no Java parser does**.
+- **Nothing fails.** An unknown flag warns and continues (`:561`, `:833`); a
+  malformed number logs at `:836` and leaves its own value token to be warned
+  about again; a missing value is a silent no-op. Every refusal on this path is
+  Java's own — `initializeCli`'s "Both an input file and an output file must be
+  specified…" (`Freerouting.java:80-86`) or `initializeDrc`'s "An input file
+  must be specified with -de argument in DRC mode." (`:247-250`) — and both are
+  **exit 1**. Exit **2** is clap's usage error on the *native* form and exit
+  **3** is the not-yet-wired subcommand; neither can be reached from a Java
+  command line (ruling AR).
+- **A bare `-drc` is not DRC mode.** `:660-663` sets two dead booleans before it
+  looks for a report path, but `main:1462` enters DRC mode on `drcReportFile !=
+  null` alone, so `-drc` with no path falls through to the CLI branch and dies
+  there (`docs/java-quirks.md` #263).
+- **`-di` is accepted, consumed and warned about.** It names a GUI input
+  directory; there is no GUI. Consuming it matters — Java consumes it, and the
+  rest of the line parses differently otherwise.
+- **There is no `-v`.** Java's log-level flag is `-ll` (`docs/java-quirks.md`
+  #260). `-v`/`--verbose` and `--log-level` exist on the **native** form only,
+  and the help text says so.

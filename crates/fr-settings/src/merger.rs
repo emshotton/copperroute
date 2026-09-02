@@ -14,14 +14,15 @@ use crate::{HostEnvironment, RouterSettings};
 /// The priority ladder (`SettingsSource.java:35-40`). Lower numbers are applied first; higher
 /// numbers override what came before.
 ///
-/// Two of these have no source in this crate: `JSON_FILE` (spec §2 — no persistent config file)
-/// and `GUI` (no GUI in this port). They are kept so the ladder reads the way Java *runs* it and
-/// so nobody reuses one of the numbers — note that `GUI` is **65**, not the 50 the interface's
-/// own javadoc claims (quirk #138).
+/// One of these has no source in this crate: `GUI` (no GUI in this port). It is kept so the
+/// ladder reads the way Java *runs* it and so nobody reuses the number — note that `GUI` is
+/// **65**, not the 50 the interface's own javadoc claims (quirk #138). `JSON_FILE` was reserved
+/// the same way until **Plan 8 Task 5** ported [`crate::sources::JsonFileSettings`] into it (scan
+/// ruling R7).
 pub mod priority {
     /// `sources/DefaultSettings.java:83`.
     pub const DEFAULT: i32 = 0;
-    /// `sources/JsonFileSettings.java` — not ported (spec §2), the number is reserved.
+    /// `sources/JsonFileSettings.java:22` — [`crate::sources::JsonFileSettings`] (Plan 8 Task 5).
     pub const JSON_FILE: i32 = 10;
     /// `sources/DsnFileSettings.java:16`.
     pub const DSN_FILE: i32 = 20;
@@ -59,7 +60,7 @@ pub mod priority {
 pub enum SourceKind {
     /// `sources/DefaultSettings.java`.
     Default,
-    /// `sources/JsonFileSettings.java` — reserved; not ported (spec §2).
+    /// `sources/JsonFileSettings.java` (Plan 8 Task 5).
     JsonFile,
     /// `sources/DsnFileSettings.java`.
     DsnFile,

@@ -33,7 +33,7 @@ usage() {
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
-  echo "           p8t2probe, p8t2" >&2
+  echo "           p8t2probe, p8t2, p8t5" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -729,6 +729,35 @@ case "$driver" in
     javaclass=P8T2
     javapkg="core.results"
     default_args=("shape" "$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t2-scratch")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t5)
+    # Plan 8 Task 5: the legacy command line — `GlobalSettings.applyCommandLineArguments`
+    # (`settings/GlobalSettings.java:521-838`) over the ~82 argv shapes of
+    # `matrix/p8t5-argv.tsv`. Per row: the four filename slots plus `drcReportFile`,
+    # `showHelpOption`, `logging.console.level`, every field of the `@Deprecated routerSettings`
+    # bridge this method can write, `drcSettings.enabled`, and every `FRLogger` line the parse
+    # emitted, read back out of `FRLogger.getLogEntries()`.
+    #
+    # Declares `package app.freerouting.settings` so it can read the package-private slot fields,
+    # and runs against the clone's HEAD jar (plan ruling 7).
+    #
+    # The Java half redirects `System.out`/`System.err` to a null stream on its first line, before
+    # any freerouting class is loaded, because log4j's Console appender targets SYSTEM_OUT and
+    # would otherwise interleave itself with the transcript. The transcript goes to the saved
+    # original stream.
+    #
+    # The Rust half links the **binary's own** library (`crates/freerouting`), so what is compared
+    # is `legacy::resolve_slots` as the program runs it, not a second copy written for the driver.
+    #
+    # No wall clock, no board, no filesystem: every row is a pure argv walk. The matrix
+    # deliberately holds no row whose answer depends on a file existing (`GlobalSettings.java
+    # :571-572`), because that would make the transcript depend on the working directory; that
+    # branch is pinned by `crates/fr-settings/tests/cli_source.rs` instead.
+    javaclass=P8T5
+    javapkg="settings"
+    default_args=("$ROOT/scripts/differential/matrix/p8t5-argv.tsv")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;

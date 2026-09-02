@@ -1589,6 +1589,40 @@ methods with dozens of branches.
   ledgers say nothing about which item they belong to. The patch header carries the full
   recipe for the `Issue558-dev-board` 188-vs-187 row.
 
+- `p8t5` — **Plan 8 Task 5: the legacy command line.**
+  `GlobalSettings.applyCommandLineArguments` (`settings/GlobalSettings.java:521-838`) over the
+  84 argv shapes of `matrix/p8t5-argv.tsv`. Per row the two halves print the four filename
+  slots (`initialInputFile`, `initialOutputFile`, `initialRulesFile`,
+  `designSessionFilename`), `drcReportFile.getFilename()`, `showHelpOption`,
+  `logging.console.level`, every field of the `@Deprecated routerSettings` bridge this method
+  can write, `drcSettings.enabled`, and **every `FRLogger` line the parse emitted**, in order.
+
+  Three things about it are worth knowing before changing it:
+
+  * The Java half redirects `System.out`/`System.err` to a null stream on its **first line**,
+    before any freerouting class is loaded, because log4j's Console appender targets
+    `SYSTEM_OUT` (`Log4j2ConfigurationFactory.java:58`) and would otherwise interleave itself
+    with the transcript. The messages are read back out of `FRLogger.getLogEntries()`, which
+    holds exactly the `info`/`warn`/`error` calls (a `debug` returns before the `add`).
+  * The Rust half links **`crates/freerouting` itself**, so what is compared is
+    `legacy::resolve_slots` as the binary runs it, not a second copy of the rule written for
+    the driver. That is why the CLI crate has a library target.
+  * The matrix deliberately holds **no** row whose answer depends on a file existing
+    (`GlobalSettings.java:571-572`, the `File.exists()` branch of `-de`) and **no**
+    `--name=value` outside `router.*`, because both would make the answer depend on state the
+    two sides do not share — the working directory, and a `GlobalSettings` field table the
+    port does not have. Both branches are pinned at unit level in
+    `crates/fr-settings/tests/cli_source.rs` instead, and the matrix header says so.
+
+  `./scripts/differential/run.sh p8t5` — 2052 lines, MATCH.
+
+- `sweep-p8t5.sh [row-label ...]` — the same driver, **row by row**, printing
+  MATCH/XDIFF/SKIP per argv shape so that a regression is *a row that changed* rather than a
+  wall of diff. Builds both sides once through `run.sh p8t5`, then splits the two transcripts
+  on their `[row] <label>` headers. **84 MATCH, 0 XDIFF, 0 SKIP**, about a second; the
+  `EXPECTED_XDIFF` table at the top of the script is empty and a row added to it must cite the
+  ruling or `docs/java-quirks.md` id that authorises it.
+
 - `sweep-p7t9.sh [stem ...] [--modes a,b,c]` — Plan 7 Task 16's whole-board sweep, the
   `sweep-p5t1.sh` shape: compile both sides once through `run.sh p7t9`, then loop the
   built artifacts over every **batch** stem of `tests/reference/router-fixtures.txt` ×

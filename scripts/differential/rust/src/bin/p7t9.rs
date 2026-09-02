@@ -461,7 +461,10 @@ fn run_batch_mode<W: Write>(
     let env_map: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     let env_source = EnvironmentVariablesSource::new(&env_map);
     let cli_source = CliSettings::new(&argv);
-    // `JsonFileSettings` (priority 10) has no port — spec §2 puts `freerouting.json` out of scope
+    // `JsonFileSettings` (priority 10) is not registered here. It was ported in Plan 8 Task 5
+    // (scan ruling R7), but `resolve_headless` does not take it yet and this driver runs with no
+    // `freerouting.json` in reach, so the tier is empty either way — which is the shape the Java
+    // side is in too. ~~"has no port — spec §2 puts `freerouting.json` out of scope"~~
     // — and `SettingsInputs` has no slot for it. The generator records the file's presence and
     // the emptiness of its `router` scope in `batch.meta.txt`, so a machine where it stopped
     // being empty would be visible rather than silent.

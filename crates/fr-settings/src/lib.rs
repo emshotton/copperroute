@@ -34,6 +34,9 @@
 //! JSON in and out `util/gson/{GsonProvider,RouterSettingsTypeAdapterFactory}.java` define.
 //! Task 11 adds this crate's `README.md` and the out-of-scope roster at the foot of this file.
 //!
+//! **Plan 8 Task 5** adds one source Plan 4 had rostered as out of scope:
+//! [`sources::JsonFileSettings`], the `freerouting.json` tier at priority 10 (scan ruling R7).
+//!
 //! `README.md` is the entry point for a reader: the API surface, the precedence Java actually
 //! runs, the ported-vs-deferred table, the tests and the `p4t1` differential.
 
@@ -72,12 +75,15 @@ pub use scoring_settings::ScoringSettings;
 /// Re-exports every public type of the crate, for `use fr_settings::prelude::*;`.
 pub mod prelude {
     pub use crate::sources::cli::{
-        DeSlots, LegacyBridge, apply_command_line_arguments, classify_de_arguments,
+        DeSlots, LegacyBridge, MULTIPLE_DSN_FILES, MULTIPLE_RULES_FILES, MULTIPLE_SES_FILES,
+        MULTIPLE_SESSION_FILES, UNKNOWN_COMMAND_LINE_ARGUMENT_PREFIX, UNKNOWN_FILE_TYPE_PREFIX,
+        UNKNOWN_FILE_TYPE_SUFFIX, UNKNOWN_SETTINGS_PROPERTY_PREFIX, apply_command_line_arguments,
+        classify_de_arguments, classify_de_arguments_reporting, legacy_flag_value_is_consumed,
     };
     pub use crate::sources::rules_file::apply_rules_file_against_board;
     pub use crate::sources::{
         ApiSettings, CliSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource,
-        RulesFileSettings, SesFileSettings,
+        JsonFileSettings, RulesFileSettings, SesFileSettings,
     };
     pub use crate::{
         BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings,
@@ -102,21 +108,36 @@ pub mod prelude {
 // The audit matches **per method**, so a class with public methods gets one line per method.
 //
 // -----------------------------------------------------------------------------------------------
-// `settings/sources/**` — the two tiers of the priority ladder that have no source here
+// `settings/sources/**` — the one tier of the priority ladder that has no source here (and the
+// one that used to be a second)
 // -----------------------------------------------------------------------------------------------
 //
 // `JsonFileSettings` (priority 10, `sources/JsonFileSettings.java:22`) reads `router` out of
-// `~/…/freerouting.json` through `GsonProvider.GSON` (`:40-62`). Spec §2 gives this port no
-// persistent configuration file, so the tier is reserved-and-empty: [`merger::priority::JSON_FILE`]
-// keeps the number so nobody reuses it, [`merger::SourceKind::JsonFile`] keeps the identity, and
-// `scripts/differential/java/P4T1.java` *proves* the tier contributes nothing by constructing the
-// real class on an empty temporary directory and aborting with `JSON_SOURCE_NOT_EMPTY` if any
-// leaf of its `getSettings()` is non-null. Its file-absent arm returns `new RouterSettings()`
-// (`:41-44`), which is exactly the no-op this port hard-codes.
-// not ported: JsonFileSettings.getSettings (:65-68) — spec §2, no persistent config file.
-// not ported: JsonFileSettings.getSourceName (:70-73) — same; the name would be "freerouting.json".
-// not ported: JsonFileSettings.getPriority (:75-78) — same; the number lives on as
-//   `priority::JSON_FILE == 10`.
+// `~/…/freerouting.json` through `GsonProvider.GSON` (`:41-63`). **Plan 8 Task 5 ported it** —
+// [`sources::JsonFileSettings`] — so the three lines that stood here as `// not ported:` are gone
+// and this paragraph records what changed and why, per the register's "quote the falsified claim"
+// rule. Plan 4 wrote:
+//
+//   ~~"Spec §2 gives this port no persistent configuration file, so the tier is
+//   reserved-and-empty … Its file-absent arm returns `new RouterSettings()` (`:41-44`), which is
+//   exactly the no-op this port hard-codes."~~
+//   ~~not ported: JsonFileSettings.getSettings (:65-68) — spec §2, no persistent config file.~~
+//   ~~not ported: JsonFileSettings.getSourceName (:70-73) — same; the name would be
+//   "freerouting.json".~~
+//   ~~not ported: JsonFileSettings.getPriority (:75-78) — same; the number lives on as
+//   `priority::JSON_FILE == 10`.~~
+//
+// That was right for Plan 4, whose binary had no `--settings` option — but it left the only rung
+// between `DefaultSettings` (0) and the DSN file (20) empty, which the Plan 8 pre-flight scan
+// raised as ruling **R7** and the controller ruled **in**. The class is now ported in full
+// (`loadSettings :41-63`, `getSettings :65-68`, `getSourceName :70-73`, `getPriority :75-78`) and
+// `crates/freerouting` wires it to `--settings <file>` and to `freerouting.json` **in the working
+// directory** — Java's `GlobalSettings.getUserDataPath()` (`:154-157`) stays unported, so the
+// working directory is the port's stand-in for the OS-standard user-data path.
+//
+// `scripts/differential/java/P4T1.java`'s `JSON_SOURCE_NOT_EMPTY` assertion still holds and is
+// still what proves the *default* (file-absent) tier contributes nothing; `p8t5` is what pins the
+// file-present behaviour against the jar.
 //
 // `GuiSettingsSource` (priority **65**, `sources/GuiSettingsSource.java:36` — not the 50 the
 // `SettingsSource` javadoc claims, quirk #138) is the Swing settings dialog's tier. There is no

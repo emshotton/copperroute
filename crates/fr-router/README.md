@@ -666,9 +666,11 @@ The 26 `ROSTERED` lines, by invocation: `board/state` 3 (`BoardComparator`,
 consumed all nine, so this line is now 25 and `management` prints nothing** —
 six `renamed:` into `fr-core`, one `not ported:` for the dead `createBoard`
 (quirk #253), three consumed by Task 0),
-`io/specctra/parser` 1 (`SessionToEagle`), `settings/sources` 2 (`GuiSettingsSource`,
-**`JsonFileSettings`** — see the hand-off, this is a real Plan 8 gap and not just a
-roster line), `util/gson` 3, `io/kicad` 3, `core/scoring` (fr-router) 2
+`io/specctra/parser` 1 (`SessionToEagle`), `settings/sources` **1**
+(`GuiSettingsSource`; ~~**`JsonFileSettings`** — see the hand-off, this is a real
+Plan 8 gap and not just a roster line~~ — **Plan 8 Task 5 closed that gap** under
+scan ruling R7: `crates/fr-settings/src/sources/json_file.rs`), `util/gson` 3,
+`io/kicad` 3, `core/scoring` (fr-router) 2
 (`BoardScoreBreakdown`, `ScoringWeightComparison` — ruling 4's Plan 8 rows),
 `autoroute` 2 (`BoardHistoryEntry`, `PerformanceProfiler`), `autoroute/pipeline`
 **5** (`AutoroutePassRunner`, `BatchAutorouterThread`, `BatchOptimizerMultiThreaded`,

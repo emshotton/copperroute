@@ -1,6 +1,16 @@
 use crate::cli::InfoArgs;
+use crate::legacy::ExitCode;
 
-pub fn run(args: &InfoArgs) -> i32 {
-    tracing::error!(input = %args.input.display(), "info: not implemented yet (Plan 8)");
-    super::EXIT_NOT_IMPLEMENTED
+/// # Obligation
+///
+// obligation: Plan 8 Task 6 wires this to `fr_core`'s load/pipeline/save sequence and to
+//   `fr_settings::resolve_headless` over `settings_argv`; until then the run answers
+//   [`ExitCode::NotImplemented`], which Task 12 must make unreachable.
+pub fn run(args: &InfoArgs, settings_argv: &[String]) -> ExitCode {
+    let _ = settings_argv;
+    tracing::error!(
+        "info: not implemented yet (Plan 8 Task 6): {}",
+        args.input.display()
+    );
+    ExitCode::NotImplemented
 }

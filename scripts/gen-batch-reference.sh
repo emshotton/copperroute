@@ -369,10 +369,12 @@ write_meta() {
   } > "$out/batch.meta.txt"
 }
 
-# `JsonFileSettings` is priority 10 of the merge and the one source the port has no counterpart for
-# (spec §2 puts `freerouting.json` out of scope). It is machine state, so the meta records whether
-# the file exists and whether its `router` scope is empty — the only shape in which the port's
-# omission is a no-op.
+# `JsonFileSettings` is priority 10 of the merge. Plan 8 Task 5 ported it (scan ruling R7), but
+# `fr_settings::resolve_headless` does not take it yet — see the `// obligation:` in `resolve.rs` —
+# so the reference generator's caveat still stands, with a narrower reason than the one it used to
+# give: ~~"the one source the port has no counterpart for (spec §2 puts `freerouting.json` out of
+# scope)"~~. It is machine state, so the meta records whether the file exists and whether its
+# `router` scope is empty — the only shape in which the omission is a no-op.
 json_source_note() {
   local json="$HOME/Library/Application Support/freerouting/freerouting.json"
   [[ -f "$json" ]] || json="$HOME/.freerouting/freerouting.json"

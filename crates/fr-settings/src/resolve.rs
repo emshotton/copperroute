@@ -244,8 +244,20 @@ fn resolve_headless_steps(
         .java_clone();
 
     // Every later source is `applyNewValuesFrom` (`SettingsMerger.java:171`), in ascending
-    // priority order. `JsonFileSettings(10)` is out of scope (spec §2) and is a no-op when the
-    // file is absent, which is the only shape the headless path has.
+    // priority order. `JsonFileSettings(10)` is absent from this chain, and the reason changed
+    // in Plan 8: Plan 4 wrote ~~"is out of scope (spec §2) and is a no-op when the file is
+    // absent, which is the only shape the headless path has"~~, and scan ruling R7 then ported
+    // the source ([`crate::sources::JsonFileSettings`]) and gave the CLI `--settings <file>` and
+    // a working-directory `freerouting.json`. A **present** file is therefore now reachable, and
+    // this chain would have to apply it between `DefaultSettings` and the DSN.
+    //
+    // obligation: Plan 8 Task 6 — add a `json_file: Option<&RouterSettings>` to
+    //   [`SettingsInputs`] and apply it here (and in merge #2's `fill_absent_from` chain below),
+    //   then pass the CLI's source into it. Task 5 stopped short deliberately: it wires no run
+    //   path at all, and the field would have had to be threaded through nineteen exhaustive
+    //   struct literals across four crates and two differential drivers for no observable effect
+    //   until the route command exists. `p4t1` still proves the *absent*-file tier contributes
+    //   nothing, which is the only shape reachable today.
     if let Some(dsn) = inputs.dsn {
         settings.apply_new_values_from(dsn); // 20
     }

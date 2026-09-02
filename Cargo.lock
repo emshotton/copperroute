@@ -208,7 +208,9 @@ name = "freerouting"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "fr-core",
  "fr-geometry",
+ "fr-settings",
  "serde",
  "serde_json",
  "thiserror",

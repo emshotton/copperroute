@@ -1,11 +1,12 @@
 //! `settings/sources/**`: the concrete [`crate::SettingsSource`] implementations, plus the
 //! `DsnRouterSettings` ⇄ [`RouterSettings`] conversion pair Plan 3 ruling 5 parked here.
 //!
-//! Seven of Java's nine source classes are in scope for this crate:
+//! Eight of Java's nine source classes are in scope for this crate:
 //!
 //! | Java | Rust | priority |
 //! |---|---|---|
 //! | `DefaultSettings` | [`DefaultSettings`] | 0 |
+//! | `JsonFileSettings` | [`JsonFileSettings`] | 10 |
 //! | `DsnFileSettings` | [`DsnFileSettings`] | 20 |
 //! | `SesFileSettings` | [`SesFileSettings`] | 30 |
 //! | `RulesFileSettings` | [`RulesFileSettings`] | 40 |
@@ -17,14 +18,22 @@
 //! that belong beside `CliSettings`: the dead [`cli::LegacyBridge`] (plan ruling 8) and the `-de`
 //! file classifier [`cli::classify_de_arguments`] (plan ruling 10).
 //!
-//! `JsonFileSettings` (10) and `GuiSettingsSource` (65) are out of scope — no persistent config
-//! file (spec §2) and no GUI — and Task 11 writes their `// not ported:` roster.
+//! `GuiSettingsSource` (65) is the one out-of-scope class — there is no GUI — and the crate-level
+//! roster in `crate`'s module docs carries its `// not ported:` lines.
+//!
+//! [`JsonFileSettings`] joined the list in **Plan 8 Task 5** (scan ruling R7). Plan 4 had rostered
+//! it `// not ported:` on spec §2 ("no persistent config file") and reserved priority 10; the
+//! Plan 8 controller ruled it back in, because `--settings <file>` and a working-directory
+//! `freerouting.json` are the CLI surface Plan 8 owns and the tier is the only rung between
+//! `DefaultSettings` and the DSN file. See that module's docs for what it does and does not
+//! reproduce.
 
 pub mod api;
 pub mod cli;
 pub mod default_settings;
 pub mod dsn_file;
 pub mod env;
+pub mod json_file;
 pub mod rules_file;
 pub mod ses_file;
 
@@ -33,6 +42,7 @@ pub use cli::CliSettings;
 pub use default_settings::DefaultSettings;
 pub use dsn_file::DsnFileSettings;
 pub use env::EnvironmentVariablesSource;
+pub use json_file::{CONFIGURATION_FILE_NAME, JsonFileSettings};
 pub use rules_file::RulesFileSettings;
 pub use ses_file::SesFileSettings;
 
