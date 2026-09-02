@@ -741,12 +741,24 @@ mod tests {
     /// `poll_deadline` runs no closure.
     #[test]
     fn the_cancel_poll_seam_and_the_deadline_poll_are_independent() {
-        let ran = std::cell::Cell::new(0_u32);
+        // `Rc<Cell<_>>` so the count is readable *after* the closure has been moved into the
+        // stop — a bare `Cell` moved in is a counter nothing can assert on.
+        let ran = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+        let counted = std::rc::Rc::clone(&ran);
         let stop = RouterStop::with_deadline(3_600_000)
-            .with_cancel_poll(Box::new(move |_| ran.set(ran.get() + 1)));
+            .with_cancel_poll(Box::new(move |_| counted.set(counted.get() + 1)));
+
         // An unexpired deadline neither fires nor reaches the closure.
         assert!(!stop.poll_deadline());
+        assert_eq!(
+            ran.get(),
+            0,
+            "poll_deadline must not run the cancel closure"
+        );
+
+        // And the cancel poll runs the closure exactly once, without touching the deadline.
         stop.poll_cancel();
+        assert_eq!(ran.get(), 1);
         assert!(!stop.is_timed_out());
         assert_eq!(stop.state(), StopRequestState::None);
     }

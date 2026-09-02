@@ -57,6 +57,15 @@ fn initialize_ping_and_list_over_pipes() {
 // wired up. Everything below drives `mcp::stdio::run_with` directly, because the six behaviours
 // Task 11 adds all need a *registered tool*, and the binary registers none until Task 12.
 //
+// No test here leaves a thread running when it returns. `Harness::finish` joins the server thread,
+// which joins everything it spawned; `a_dead_stdout_cancels_everything_and_exits_nonzero` is the
+// one that does not call `finish` (it must not — `run_with` returns there *without* joining the
+// reader), and it closes stdin by hand at the end for the same reason. `cargo nextest` reported a
+// `LEAK` verdict once during review on `a_long_running_tool_reports_progress` (0.213 s against a
+// 100 ms default leak-timeout, on a machine running eight invocations at once); it did not recur
+// in 30 consecutive runs here, `LEAK` is a timing verdict rather than an assertion, and there is
+// no detached thread for it to be about.
+//
 // The reader is scripted rather than a `Cursor`: a `Cursor` hands the transport every line at once
 // and then EOF, and EOF cancels every in-flight call — so a cancellation test over a `Cursor`
 // would pass even if `notifications/cancelled` did nothing at all. `Script` blocks until the test
@@ -104,13 +113,22 @@ impl Read for Script {
     }
 }
 
-/// The transport's stdout, captured.
+/// The transport's stdout, captured — and, when the second field is set, a stdout that starts
+/// failing once it has accepted that many bytes. A peer that stops reading is the third way the
+/// transport can learn that nobody is listening.
 #[derive(Clone)]
-struct Captured(Arc<Mutex<Vec<u8>>>);
+struct Captured(Arc<Mutex<Vec<u8>>>, Option<usize>);
 
 impl std::io::Write for Captured {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(buf);
+        let mut sink = self.0.lock().unwrap();
+        if self.1.is_some_and(|limit| sink.len() >= limit) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::BrokenPipe,
+                "the peer stopped reading",
+            ));
+        }
+        sink.extend_from_slice(buf);
         Ok(buf.len())
     }
     fn flush(&mut self) -> std::io::Result<()> {
@@ -126,17 +144,19 @@ struct Harness {
 
 impl Harness {
     fn start(state: State) -> Harness {
-        Harness::start_with(state, false)
+        Harness::start_with(state, false, None)
     }
 
-    fn start_with(state: State, fail: bool) -> Harness {
+    /// `fail_reads` makes the first `read` fail; `fail_writes_after` makes stdout fail once that
+    /// many bytes have been accepted, which is how the write-failure shutdown path is reached.
+    fn start_with(state: State, fail_reads: bool, fail_writes_after: Option<usize>) -> Harness {
         let (tx, rx) = channel::<String>();
-        let out = Captured(Arc::new(Mutex::new(Vec::new())));
+        let out = Captured(Arc::new(Mutex::new(Vec::new())), fail_writes_after);
         let reader = std::io::BufReader::new(Script {
             lines: rx,
             pending: Vec::new(),
             at: 0,
-            fail,
+            fail: fail_reads,
         });
         let writer = out.clone();
         let server = std::thread::spawn(move || run_with(state, reader, writer));
@@ -446,7 +466,7 @@ fn eof_exits_zero() {
     assert!(lines.is_empty(), "{lines:?}");
 
     // The other arm: `IOException` reading `System.in` ⇒ `System.exit(1)`.
-    let (code, lines) = Harness::start_with(State::new(), true).finish();
+    let (code, lines) = Harness::start_with(State::new(), true, None).finish();
     assert_eq!(code, 1);
     assert!(lines.is_empty(), "{lines:?}");
 }
@@ -487,4 +507,115 @@ fn a_notification_gets_no_response() {
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert_eq!(parsed(&lines)[0]["id"], 1);
     assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+/// **SF2 + SF1.** A stdout that stops taking lines is a peer that is gone, and it means what an
+/// EOF means: every in-flight tool is cancelled, and the run reports failure rather than success.
+/// Java cannot reach this case — `PrintStream.println` (`Freerouting.java:771`) swallows its
+/// errors, so the jar writes into the void and still exits `0`.
+///
+/// It also pins **SF1**: `run_with` returns without joining a reader thread that is still parked
+/// on a stdin nobody has closed. `finish()` is never called here — the test drops the sender only
+/// after the server thread has already ended — so a `join()` on that path would hang this test
+/// rather than passing it.
+#[test]
+fn a_dead_stdout_cancels_everything_and_exits_nonzero() {
+    let started = Arc::new(AtomicBool::new(false));
+    let cancelled = Arc::new(AtomicBool::new(false));
+
+    let mut state = State::new();
+    {
+        let started = Arc::clone(&started);
+        let cancelled = Arc::clone(&cancelled);
+        state.register_tool(
+            tool("spin"),
+            Box::new(move |_state, _args, _progress, cancel| {
+                started.store(true, Ordering::SeqCst);
+                let deadline = Instant::now() + Duration::from_secs(10);
+                while !cancel.is_cancelled() {
+                    assert!(Instant::now() < deadline, "the cancellation never arrived");
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                cancelled.store(true, Ordering::SeqCst);
+                Ok(json!({}))
+            }),
+        );
+    }
+
+    // Zero bytes of headroom: the very first write fails.
+    let mut h = Harness::start_with(state, false, Some(0));
+    h.send(json!({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+        "params": {"name": "spin", "arguments": {}},
+    }));
+    wait_for("the tool to start", || started.load(Ordering::SeqCst));
+    // A `ping`, whose response is what fails to write and so is what tells the loop the peer is
+    // gone. **stdin is left open** for the rest of the test.
+    h.send(json!({"jsonrpc": "2.0", "id": 2, "method": "ping"}));
+
+    let code = h.server.take().unwrap().join().unwrap();
+    assert_eq!(code, 1, "a peer that stopped reading is not a success");
+    assert!(
+        cancelled.load(Ordering::SeqCst),
+        "the in-flight tool was left running for nobody"
+    );
+    assert!(h.out.0.lock().unwrap().is_empty());
+    // Close stdin explicitly. `run_with` deliberately did **not** join its reader thread (that is
+    // the point of this test), so this is what lets that thread's `recv` fail and the thread end
+    // before the test process does — leaving no thread outliving the run for `nextest` to notice.
+    drop(h.lines.take());
+}
+
+/// **N3.** MCP requires a request id to be unique within a session, and this transport's whole
+/// cancellation machinery keys on it: a second `tools/call` under an id already in flight would
+/// silently displace the first's token. It is refused with `-32600` and never runs — the answer a
+/// client can act on — and the first call is untouched.
+#[test]
+fn a_reused_in_flight_id_is_refused_and_the_first_call_survives() {
+    let started = Arc::new(AtomicBool::new(false));
+    let calls = Arc::new(AtomicUsize::new(0));
+
+    let mut state = State::new();
+    {
+        let started = Arc::clone(&started);
+        let calls = Arc::clone(&calls);
+        state.register_tool(
+            tool("spin"),
+            Box::new(move |_state, _args, _progress, cancel| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                started.store(true, Ordering::SeqCst);
+                let deadline = Instant::now() + Duration::from_secs(10);
+                while !cancel.is_cancelled() {
+                    assert!(Instant::now() < deadline, "the cancellation never arrived");
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                Ok(json!({"first": true}))
+            }),
+        );
+    }
+
+    let h = Harness::start(state);
+    let call = json!({
+        "jsonrpc": "2.0", "id": 9, "method": "tools/call",
+        "params": {"name": "spin", "arguments": {}},
+    });
+    h.send(call.clone());
+    wait_for("the first call to start", || started.load(Ordering::SeqCst));
+    h.send(call);
+    wait_for("the refusal", || !h.out.0.lock().unwrap().is_empty());
+    // EOF cancels the first call, which then answers.
+    let (code, lines) = h.finish();
+
+    assert_eq!(code, 0);
+    let msgs = parsed(&lines);
+    assert_eq!(msgs.len(), 2, "{lines:?}");
+    assert_eq!(msgs[0]["id"], 9);
+    assert_eq!(msgs[0]["error"]["code"], -32600);
+    assert!(msgs[0].get("result").is_none());
+    // The first call ran once, was never displaced, and still answered.
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        msgs[1]["result"]["structuredContent"],
+        json!({"first": true})
+    );
 }

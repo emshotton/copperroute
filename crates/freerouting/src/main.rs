@@ -39,5 +39,5 @@ fn main() {
 //   reply with every `\r` and `\n` stripped from the body (`:770`, quirk label M — not
 //   reproduced). Controller ruling AO deleted the server it pumps to, so what the method became is
 //   a reader thread, a `Mutex`-guarded writer and an in-process dispatcher; the responsibility-by-
-//   responsibility table is on `mcp::stdio::run`, and the five behavioural differences are the
-//   Task 11 half of the delta table in `crates/freerouting/README.md`.
+//   responsibility table is on `mcp::stdio::run`, and the six behavioural differences are the
+//   Task 11 half of the delta table in `crates/freerouting/README.md` — rows 1-5 and row 11.

@@ -60,9 +60,9 @@ pub struct RpcError {
 }
 
 pub const PARSE_ERROR: i64 = -32700;
-// Reserved for stricter request validation: nothing rejects a malformed *envelope* today, because
-// `serde_json::from_str::<Request>` either produces a `Request` or fails as a `-32700`.
-#[allow(dead_code)]
+/// A well-formed envelope the server will not act on. One thing reaches it: a `tools/call` whose
+/// id is **already in flight**, which MCP's id-uniqueness rule forbids and this transport's
+/// cancellation map cannot represent — see [`super::stdio`]'s `dispatch_tool_call`.
 pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
@@ -104,8 +104,8 @@ impl Response {
 }
 
 impl RpcError {
-    /// Consumed by Task 12's tools; a tool that rejects its arguments answers this.
-    #[allow(dead_code)]
+    /// A tool that rejects its arguments answers this; Task 12's four are its production callers,
+    /// and `mcp::server`'s three-way-split test is its caller today.
     pub fn invalid_params(msg: impl Into<String>) -> Self {
         Self {
             code: INVALID_PARAMS,

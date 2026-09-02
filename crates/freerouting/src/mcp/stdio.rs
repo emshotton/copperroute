@@ -1,4 +1,4 @@
-use super::jsonrpc::{PARSE_ERROR, Request, Response};
+use super::jsonrpc::{INVALID_REQUEST, PARSE_ERROR, Request, Response};
 use super::server::{ProgressWriter, SharedWriter, State, handle, write_line};
 use fr_core::CancelToken;
 use serde_json::Value;
@@ -90,13 +90,27 @@ enum Event {
 /// the token carries two atomics; this paragraph is why a reader must not delete the arm the MCP
 /// happens not to use.
 ///
-/// # Shutdown
+/// # Shutdown — three ways the peer can vanish, one meaning
 ///
-/// EOF cancels every in-flight call and then **drains**: the loop keeps running until the last
-/// tool thread has reported, so a response already being written is not truncated. Java's
-/// `System.exit(0)` (`:779`) kills its daemon thread mid-write instead; the port's drain is a
+/// EOF on stdin, a read failure on stdin, and a **failed write to stdout** all mean the same
+/// thing: nobody is reading, so every running tool is working for no one. All three therefore
+/// cancel every in-flight token and then **drain** — the loop keeps running until the last tool
+/// thread has reported, so a response already being written is not truncated. Java's
+/// `System.exit(0)` (`:777-779`) kills its daemon thread mid-write instead; the port's drain is a
 /// deliberate improvement over a shutdown that can lose a line, and it is bounded by the tools
-/// observing the cancellation the drain begins with.
+/// observing the cancellation the drain begins with. It is row 11 of the delta table in
+/// `crates/freerouting/README.md`.
+///
+/// The **exit code** distinguishes them, because the peer's own behaviour does: EOF is a client
+/// that finished and is `0` (`:778-779`), while a read failure is `1` (`:780-782`) — both Java's
+/// — and a write failure joins the second, because a client that stopped reading mid-conversation
+/// did not finish. Java cannot reach that third case at all: `PrintStream.println` (`:771`)
+/// swallows its errors, so the jar writes into the void and still exits `0`.
+///
+/// One join is conditional and the reason is written at it: on the write-failure path the reader
+/// thread is still parked in `reader.lines()` on a stdin nobody has closed, so it is dropped
+/// rather than joined — the receiver is closed first, which makes it self-terminating on its next
+/// line. On the other two paths it has already returned and is joined.
 pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
     state: State,
     reader: R,
@@ -130,6 +144,10 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
     let mut tool_threads: Vec<JoinHandle<()>> = Vec::new();
     let mut exit_code = 0;
     let mut draining = false;
+    // Whether the reader thread has already returned. It has, on both `Eof` and `ReadFailed`, and
+    // it has not on the write-failure path — which is the whole of why the join below is
+    // conditional. See the shutdown section of this function's doc.
+    let mut reader_ended = false;
 
     while let Ok(event) = inbox.recv() {
         match event {
@@ -141,68 +159,79 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
                 if line.trim().is_empty() {
                     continue;
                 }
-                let req = match serde_json::from_str::<Request>(&line) {
-                    Ok(req) => req,
-                    Err(e) => {
-                        // `McpControllerV1.java:152` — `-32700`, with `id` **null**. Java's answer
-                        // has no `id` member at all (Gson drops a JSON-null) and arrives
-                        // pretty-printed; the port's carries `"id":null` and is compact. The
-                        // id-less `-32700` row of the delta table.
-                        if write_line(
-                            &writer,
-                            &Response::err(Value::Null, PARSE_ERROR, format!("parse error: {e}")),
-                        )
-                        .is_err()
+
+                // Every line resolves to at most one message written from *this* thread; a
+                // `tools/call` resolves to `None` here and writes from its own thread instead. One
+                // write site, so the three ways a line can be answered cannot drift apart in how
+                // they handle a stdout that has failed.
+                let outbound: Option<Response> = match serde_json::from_str::<Request>(&line) {
+                    // `McpControllerV1.java:152` — `-32700`, with `id` **null**. Java's answer has
+                    // no `id` member at all (Gson drops a JSON-null) and arrives pretty-printed;
+                    // the port's carries `"id":null` and is compact. The id-less `-32700` row of
+                    // the delta table.
+                    Err(e) => Some(Response::err(
+                        Value::Null,
+                        PARSE_ERROR,
+                        format!("parse error: {e}"),
+                    )),
+                    Ok(req) => {
+                        if req.method == "notifications/cancelled" {
+                            cancel_in_flight(&in_flight, req.params.as_ref());
+                            continue;
+                        }
+                        // A `tools/call` **with an id** is the only thing that gets a thread. A
+                        // `tools/call` sent as a notification is answered by nobody, so running it
+                        // would burn a thread for an outcome no one can read; `handle` returns
+                        // `None` for it below.
+                        if req.method == "tools/call"
+                            && let Some(id) = req.id.clone()
                         {
-                            draining = true;
+                            // A **reused** id is refused rather than run: see
+                            // [`spawn_tool_call`]'s "a reused id is refused" section.
+                            if in_flight.contains_key(&request_key(&id)) {
+                                Some(Response::err(id, INVALID_REQUEST, REUSED_ID))
+                            } else {
+                                let (key, thread) =
+                                    spawn_tool_call(req, &state, &writer, &events, &mut in_flight);
+                                tool_threads.push(thread);
+                                debug_assert!(in_flight.contains_key(&key));
+                                continue;
+                            }
+                        } else {
+                            // Everything else is answered on this thread: it is a map lookup and a
+                            // `json!`, and moving it to a thread would only make the ordering
+                            // harder to reason about.
+                            handle(
+                                &state,
+                                req,
+                                &ProgressWriter::disabled(),
+                                &CancelToken::new(),
+                            )
                         }
-                        if draining && in_flight.is_empty() {
-                            break;
-                        }
-                        continue;
                     }
                 };
 
-                if req.method == "notifications/cancelled" {
-                    cancel_in_flight(&in_flight, req.params.as_ref());
-                    continue;
-                }
-
-                // A `tools/call` **with an id** is the only thing that gets a thread. A `tools/call`
-                // sent as a notification is answered by nobody, so running it would burn a thread
-                // for an outcome no one can read; `handle` returns `None` for it below.
-                if req.method == "tools/call" && req.id.is_some() {
-                    let (key, thread) =
-                        spawn_tool_call(req, &state, &writer, &events, &mut in_flight);
-                    tool_threads.push(thread);
-                    debug_assert!(in_flight.contains_key(&key));
-                    continue;
-                }
-
-                // Everything else is answered on this thread: it is a map lookup and a `json!`,
-                // and moving it to a thread would only make the ordering harder to reason about.
-                if let Some(resp) = handle(
-                    &state,
-                    req,
-                    &ProgressWriter::disabled(),
-                    &CancelToken::new(),
-                ) && write_line(&writer, &resp).is_err()
+                if let Some(resp) = outbound
+                    && write_line(&writer, &resp).is_err()
                 {
+                    // A stdout that will not take a line is a peer that is gone, and it means
+                    // exactly what an EOF on stdin means. Same treatment, deliberately.
+                    exit_code = 1;
                     draining = true;
+                    cancel_every_in_flight(&in_flight);
                 }
                 if draining && in_flight.is_empty() {
                     break;
                 }
             }
             Event::Eof | Event::ReadFailed => {
+                reader_ended = true;
                 if matches!(event, Event::ReadFailed) {
                     exit_code = 1;
                 }
                 // The peer is gone: nothing can read another progress notification and nothing
                 // will send another line, so every running tool is working for no one.
-                for token in in_flight.values() {
-                    token.cancel();
-                }
+                cancel_every_in_flight(&in_flight);
                 draining = true;
                 if in_flight.is_empty() {
                     break;
@@ -217,18 +246,60 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
         }
     }
 
-    let _ = reader_thread.join();
+    // Closing the receiver first is what makes the reader thread self-terminating on the
+    // write-failure path: its next `events.send` answers `Err` and it returns. It is already
+    // blocked in `reader.lines()` at that moment, so "next" means "when the peer writes another
+    // line or closes stdin" — which is why the join below is **conditional**. Tool threads only
+    // ever `let _ = send`, so closing the channel under them is harmless.
+    drop(inbox);
     for thread in tool_threads {
         let _ = thread.join();
     }
+    // Joined **only** when it has already returned. On the write-failure path it is still parked
+    // in `reader.lines()` on a stdin nobody has closed, and joining it would hang the process for
+    // as long as the peer keeps that handle open. It owns nothing but its half of a closed
+    // channel, so the honest move is to let the process outlive it rather than to wait.
+    if reader_ended {
+        let _ = reader_thread.join();
+    } else {
+        drop(reader_thread);
+    }
     exit_code
 }
+
+/// `token.cancel()` for every call still in flight — the one meaning "the peer is gone", shared by
+/// the EOF, read-failure and write-failure paths so they cannot drift apart.
+fn cancel_every_in_flight(in_flight: &HashMap<String, CancelToken>) {
+    for token in in_flight.values() {
+        // `ALL`, never `AUTO_ROUTER_ONLY` — see [`run_with`]'s cancellation section.
+        token.cancel();
+    }
+}
+
+/// The `-32600` message a `tools/call` gets when its id is already in flight. A constant because
+/// the caller sends it and [`spawn_tool_call`]'s doc explains it.
+const REUSED_ID: &str =
+    "request id is already in flight; MCP requires an id to be unique within a session";
 
 /// Starts one `tools/call` on its own thread and records its [`CancelToken`] as in flight.
 ///
 /// Everything the thread needs is moved into it: an `Arc<State>`, the shared writer, the request's
 /// progress writer and its token. The parent keeps a *clone* of the token — two clones of one
 /// token are one token — which is what makes `notifications/cancelled` reach a running tool.
+///
+/// # A reused id is refused, deliberately
+///
+/// MCP is explicit that a request id **must not** have been used before by the same requestor
+/// within a session, and the whole of this transport's cancellation machinery keys on the id being
+/// unique: a second call arriving under an id already in the map would silently displace the
+/// first's token, making the first uncancellable, and the first `ToolDone` would then evict the
+/// *survivor's* entry. So the second call is refused with [`INVALID_REQUEST`] and never runs —
+/// which is the answer a client can act on, where overwriting is one it cannot even see.
+///
+/// The check covers what the map knows, which is precisely the set of calls that can be cancelled:
+/// a reused id on a method answered inline is not tracked, cannot displace anything, and is
+/// answered normally. It lives at the **call site**, because that is where the refusal has to be
+/// written from; this function is reached only once it has passed.
 fn spawn_tool_call(
     req: Request,
     state: &Arc<State>,
@@ -253,15 +324,42 @@ fn spawn_tool_call(
 
     let state = Arc::clone(state);
     let writer = Arc::clone(writer);
-    let events = events.clone();
-    let done_key = key.clone();
+    let done = ToolDoneGuard {
+        events: events.clone(),
+        key: Some(key.clone()),
+    };
     let thread = std::thread::spawn(move || {
+        // Bound to a name so it lives to the end of the closure rather than being dropped at the
+        // end of this statement.
+        let _done = done;
         if let Some(resp) = handle(&state, req, &progress, &cancel) {
             let _ = write_line(&writer, &resp);
         }
-        let _ = events.send(Event::ToolDone(done_key));
     });
     (key, thread)
+}
+
+/// Announces `ToolDone` from [`Drop`], so the main loop learns a call is over on **every** exit
+/// from its thread and not only on the ordinary one.
+///
+/// Ruling 4's `catch_unwind` covers the handler, which is where a panic is expected; this covers
+/// the rest of the thread — `write_line`'s `expect` on a value that will not serialize, say. Sent
+/// as the thread's last statement instead, a panic there would strand the key in the in-flight map
+/// and the EOF drain would then wait in `recv()` forever. Three lines buy the drain a termination
+/// argument that does not depend on the boundary being complete.
+struct ToolDoneGuard {
+    events: Sender<Event>,
+    /// `Option` only so [`Drop`] can move the key out; it is `Some` for the guard's whole life.
+    key: Option<String>,
+}
+
+impl Drop for ToolDoneGuard {
+    fn drop(&mut self) {
+        if let Some(key) = self.key.take() {
+            // The main loop may already have gone; that is the shutdown that does not need us.
+            let _ = self.events.send(Event::ToolDone(key));
+        }
+    }
 }
 
 /// `notifications/cancelled` (`{"requestId": …, "reason": …}`) — flip the named request's token.

@@ -240,8 +240,9 @@ pub enum Error {
 // endpoint and prints the response body with every `\r` and `\n` stripped (`:770` at the clone's
 // HEAD — the plan and the brief both write `:766`, which is four lines stale; quirk label M).
 // Spec §13 replaces the whole arrangement with a native stdio JSON-RPC server, so the *feature* is
-// ported and the *mechanism* is not. The ten behavioural differences that survive are the delta
-// table in `crates/freerouting/README.md`, which `p8t6` (Task 12) asserts is exactly itself.
+// ported and the *mechanism* is not. The behavioural differences that survive are the delta table
+// in `crates/freerouting/README.md`: ten message-shape rows, which `p8t6` (Task 12) asserts are
+// exactly themselves, plus an eleventh — shutdown timing — that no transcript line can carry.
 //
 // -------------------------------------------------------------------------------------------------
 // 3. Telemetry and version checking — spec §2.
