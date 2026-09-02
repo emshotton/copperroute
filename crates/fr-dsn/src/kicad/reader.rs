@@ -1473,8 +1473,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 ///
 /// * `Freerouting.initializeDrc:301-307` — the `.json` arm of `-drc`'s optional session slot,
 ///   ported at `crates/freerouting/src/commands/drc.rs`'s `load_session_file`.
-/// * `RoutingJobScheduler.java:199-211` — the `.json` arm of `-di`, ported at
-///   `crates/freerouting/src/commands/route.rs`'s `import_session_file`.
+/// * `RoutingJobScheduler.java:194-207` — the `.json` arm of `-di`, ported at
+///   `crates/freerouting/src/commands/route.rs`'s `import_session_file`. **Re-read against the
+///   clone for this citation**: `:194-197` is the `endsWith(".json")` test, `:198-200` the
+///   "Loading …" log, `:201-202` the `FileReader`, `:203-204` the call, `:205-206` the success
+///   log and `:207` the try-with-resources close; **`:208` opens the SES `else`**, so a span
+///   ending at `:211` names four lines of the wrong branch.
 ///
 /// Both sites test `filename.toLowerCase().endsWith(".json")` and hand the *other* branch to
 /// `SesReader`.
@@ -1530,6 +1534,15 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     // routed to the `null` arm here instead of to the syntax-error arm; measured, stem
     // `json-empty-string`, which the jar answers with `IllegalArgumentException` and not with a
     // `JsonSyntaxException`.
+    //
+    // `str::trim` uses Rust's **Unicode** `White_Space` set where Gson's `JsonReader` skips only
+    // the four ASCII characters ` `, `\t`, `\r`, `\n` (plus its comment syntax). So a document
+    // consisting of nothing but, say, `U+00A0` takes this arm here and Gson's
+    // `MalformedJsonException` there. **Checked: no probe stem reaches it** — the four
+    // empty-ish stems are `""`, `null`, `{}` and `{"unit":`, none of which contains a non-ASCII
+    // space — so the divergence is unmeasured, and narrowing the test to the four ASCII
+    // characters would trade one unmeasured prose divergence (quirk #277's) for another. Left as
+    // Rust's trim, said here so the next reader does not have to re-derive the difference.
     if json.trim().is_empty() {
         return Err(DsnError::KicadSession(
             "java.lang.IllegalArgumentException: JSON session file payload is empty or invalid"
@@ -1565,7 +1578,11 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     // `10000`, so a session document that omits `resolution` altogether (leaving
     // `KiCadBoardJson.resolution`'s `= 1.0` initialiser) is read in tenths of a micrometre —
     // the units `KiCadJsonWriter` writes.
-    let mut resolution = java_double_to_int(board_json.resolution.max(1.0));
+    // [`java_max`], not `f64::max`: Java's `Math.max` propagates NaN and Rust's `max` drops it.
+    // Unreachable — `serde_json` rejects the bare `NaN` token `Strictness.LENIENT` accepts, which
+    // is quirk #277's territory — but this module already carries the helper for exactly this
+    // difference and `read_board:129` uses it at the sibling site.
+    let mut resolution = java_double_to_int(java_max(1.0, board_json.resolution));
     if board_json.resolution == 1.0 && user_unit == Unit::Mm {
         resolution = 10_000;
     }
@@ -1686,8 +1703,14 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     }
 
     // ── 3. Vias (`:816-854`) ────────────────────────────────────────────────────────────────
+    //
+    // `:818` — `int layerCount = board.getLayerCount()`, which Java reads **inside** the
+    // `boardJson.vias != null` guard and this port hoists above section 1 (see its binding). The
+    // move is behaviour-neutral: nothing between the two points can change the layer count —
+    // sections 1-3 insert items and padstacks and never touch `LayerStructure` — and the read has
+    // no side effect. It is hoisted because sections 1 and 2 would otherwise borrow `board`
+    // mutably across it.
     if let Some(vias) = board_json.vias.as_ref() {
-        // `:818` — read once, outside the loop, exactly as Java does.
         for via in vias {
             // `:820-822`.
             let net_number = java_nets_get(
@@ -1722,12 +1745,32 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
             // outside `[0, layerCount)` is skipped rather than thrown on. A via with
             // `startLayerIndex > endLayerIndex` therefore leaves every shape `null` and reaches
             // quirk #286 below; one with an out-of-range span silently loses those layers.
+            //
+            // **`wrapping_add(1)`, deliberately: this loop does not terminate for
+            // `endLayerIndex == i32::MAX`, and neither does Java's.** `:839` is
+            // `for (int li = vj.startLayerIndex; li <= vj.endLayerIndex; li++)`; at
+            // `li == Integer.MAX_VALUE` the `li++` overflows to `Integer.MIN_VALUE`, which is
+            // still `<= end`, so the jar spins forever writing nothing (every index outside
+            // `[0, layerCount)` is skipped by `:840`'s guard). A plain `layer += 1` here would
+            // **panic** in a debug build and spin in a release one — the two profiles disagreeing
+            // with each other, which is worse than either. The wrap makes both profiles Java.
+            //
+            // Reproducing a Java non-termination is this port's established answer, not a new
+            // choice: quirk #76 is a `PolylineTrace.normalize` ladder that hangs on the JVM and
+            // that `Board::split_trace` hangs on identically. A `// totalized:` bound would be a
+            // divergence, and would need a controller ruling of the kind plan ruling 7 gave quirk
+            // #244. `readBoard:705-707`'s sibling loop cannot reach this: it returns a
+            // `ParseError` at the first out-of-range index, so it never walks past `layerCount`.
+            //
+            // Unreachable from any writer — `KiCadJsonWriter` emits `endLayerIndex` from
+            // `board.getLayerCount() - 1` downwards — so it takes a hand-edited
+            // `"endLayerIndex": 2147483647`.
             let mut layer = via.startLayerIndex;
             while layer <= via.endLayerIndex {
                 if layer >= 0 && (layer as i64) < layer_count as i64 {
                     shapes[layer as usize] = Some(shape.clone());
                 }
-                layer += 1;
+                layer = layer.wrapping_add(1);
             }
             // `:844-847` — the same generated name `readBoard:708-711` builds, and the same two
             // `%.0f`s through [`java_format_fixed`] (quirk #288: Java's HALF_UP over the shortest

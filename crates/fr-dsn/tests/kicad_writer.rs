@@ -25,6 +25,13 @@
 //! that starts matching fails the test rather than rotting.
 //!
 //! The named tests after the two replays pin, as literals, what the task brief calls out by name.
+//!
+//! **One of the brief's tests is not here.** The quirk-#289 (label T) decision test is
+//! `crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_pre_routing_board`: the quirk is a
+//! CLI-path behaviour — `setJobOutput` fires as a board-updated listener before the router runs —
+//! so the assertion has to be the **binary**'s output file, and the test pastes the jar's own
+//! 1 540 bytes as a literal. `fr-dsn` has no binary and no pipeline, so it cannot host it. What
+//! *this* file pins is the writer that quirk produces the bytes with.
 
 use std::fmt::Write as _;
 
@@ -215,6 +222,14 @@ const XDIFF: &[(&str, &str)] = &[
     // throwing, so the port refuses the via **before** inserting it and the board is one item
     // short. The refusal point, the message and the padstack registration are identical; the
     // divergence is exactly the one unusable item. See docs/java-quirks.md #286.
+    //
+    // Reachability, stated accurately rather than as "KiCad never writes it": **freerouting's own
+    // writer can spell `startLayerIndex > endLayerIndex`.** `KiCadJsonWriter.write:184-193` walks
+    // `firstLayer` up to `layerCount` and `lastLayer` down to `-1` when no layer has a shape, and
+    // emits both verbatim — so a board carrying an all-`null`-padstack via writes
+    // `"startLayerIndex": <layerCount>, "endLayerIndex": -1`. The only board that can carry such
+    // a via is the half-inserted one **this very quirk produces**, so the input is either that
+    // round trip or a hand-edited document; no KiCad export reaches it.
     ("via-start-gt-end", "[is] items count="),
     ("via-start-gt-end", "[is] item 2 Via"),
 ];
@@ -501,7 +516,8 @@ fn write_then_read_is_a_fixed_point() {
 }
 
 /// `importSession` inserts the session's wiring onto a board that already carries some
-/// (`RoutingJobScheduler.java:199-211`'s `-di`, and `Freerouting.java:301-307`'s `-drc`).
+/// (`RoutingJobScheduler.java:194-207`'s `-di`, and `Freerouting.java:301-307`'s `-drc`;
+/// `:208` opens the SES `else`, so the `.json` arm ends at `:207`).
 ///
 /// The literals are the transcript's `onto-existing-wiring` stem: one pre-existing trace on the
 /// base board, one via from the session, and the via's generated padstack registered beside the

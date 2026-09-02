@@ -31,12 +31,26 @@
 //!
 //! # Where this writer is reached from
 //!
-//! `RoutingJobSchedulerActionThread.setJobOutput:275-278` — the `-do out.json` arm — and two API
-//! resources. The CLI arm is **quirk #289 (label T)**: `setJobOutput` is registered as a
-//! board-updated listener at `:100` *and* called once more at `:168`, and `setData`'s re-sniff
-//! turns the format into `KICAD_DESIGN_JSON` after the first write, so only the **first** call
-//! ever reaches this function. `crates/freerouting/src/commands/route.rs`'s `set_job_output`
-//! carries the measurement and the port's reproduction.
+//! **Four call sites in the Java tree**, and all four pass a design name — which is why the
+//! one-argument overload's `"KiCad_Design"` is unreachable there:
+//!
+//! * `management/jobs/RoutingJobSchedulerActionThread.java:277` — `setJobOutput`'s
+//!   `-do out.json` arm, the only one this port reaches;
+//! * `api/v1/JobOutputResource.java:293` and `:518` — **one** resource class, two call sites (the
+//!   completed-job `GET …/output/json` and the in-progress snapshot);
+//! * `gui/board/BoardExportActions.java:124` — the GUI's "export KiCad JSON", which spec §2 drops
+//!   with the rest of the GUI. (It writes through `new java.io.FileWriter(outputFile)`, i.e. the
+//!   platform default charset — the same one-argument-constructor slip quirk #290 records on the
+//!   *read* side, here on the write side and on a path the port does not have.)
+//!
+//! The CLI arm is **quirk #289 (label T)**: `setJobOutput` is registered as a board-updated
+//! listener at `:100` *and* called once more at `:168`, and `setData`'s re-sniff turns the format
+//! into `KICAD_DESIGN_JSON` after the first write, so only the **first** call ever reaches this
+//! function. `crates/freerouting/src/commands/route.rs`'s `set_job_output` carries the
+//! measurement and the port's reproduction, and
+//! `crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_pre_routing_board` is the test —
+//! it lives there rather than beside this module's own tests because the quirk is a CLI-path
+//! behaviour and the assertion is the **binary**'s output file.
 //
 // not ported: KiCadJsonWriter's private constructor (KiCadJsonWriter.java:24), the
 // `private KiCadJsonWriter() {}` that makes the class non-instantiable. A Rust module needs no
@@ -312,8 +326,12 @@ pub fn write(board: &Board, design_name: &str) -> String {
     // ── 6. Vias (`:166-203`) ────────────────────────────────────────────────────────────────
     let layer_count = board.get_layer_count();
     let mut via_id = 1;
+    // Hoisted out of the loop: `Board::ctx` builds a borrow-only view (`&self.rules`,
+    // `&self.library`, `&self.components`) and nothing in this function is `&mut`, so every
+    // iteration would build the identical value. Checked rather than assumed: `write` takes
+    // `&Board` and the whole body is reads plus pushes into the local DTO.
+    let ctx = board.ctx();
     for id in board.get_vias() {
-        let ctx = board.ctx();
         let Some(Item::Via(via)) = board.get_item(id) else {
             continue;
         };
@@ -386,7 +404,6 @@ pub fn write(board: &Board, design_name: &str) -> String {
     // ── 7. Conduction Areas (`:205-223`) ────────────────────────────────────────────────────
     let mut area_id = 1;
     for id in board.get_conduction_areas() {
-        let ctx = board.ctx();
         let Some(Item::ConductionArea(area)) = board.get_item(id) else {
             continue;
         };

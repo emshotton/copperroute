@@ -271,7 +271,7 @@ pins the jar's own 1 540 bytes as a literal.
 **The `.json` *session* slot landed with it.** A second `.json` on a `-de` line
 (`GlobalSettings.java:609-621`) is the previous session, and its `.json` arm now
 goes through `fr_dsn::kicad::import_session` on both the router path
-(`RoutingJobScheduler.java:197-207`) and the DRC path
+(`RoutingJobScheduler.java:194-207`) and the DRC path
 (`Freerouting.java:301-307`). Quirk **#290** (label U) records that Java opens
 it with the platform default charset; on JDK 18+ that is UTF-8 and the port
 agrees byte for byte.

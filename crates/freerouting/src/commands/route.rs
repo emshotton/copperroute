@@ -515,7 +515,8 @@ fn read_scheduler_rules(job: &RoutingJob, cli_rules: Option<&Path>) -> Option<Ve
     }
 }
 
-/// `RoutingJobScheduler.java:189-234` — the optional session import.
+/// `RoutingJobScheduler.java:189-234` — the optional session import; its `.json` arm is
+/// `:194-207` and its SES arm `:208-225`.
 ///
 /// `-di <file>` (`globalSettings.designSessionFilename`) is read onto the loaded board before the
 /// router runs, so an incremental run starts from the previous result. A missing file is a
