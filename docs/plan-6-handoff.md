@@ -481,6 +481,17 @@ deliberately-wrong identity model does, not evidence about the right one.)
 
 ## 10. Obligations for Plan 7
 
+> **CLOSED, 2026-09-01 — Plan 7 Task 17's tick.** Every numbered item below carries a
+> status line naming the Plan 7 task and commit that discharged it, and every "Must know"
+> bullet carries one saying whether Plan 7 honoured it, widened it or found it wrong.
+> **Two items were found not to exist rather than built** — `BatchAutorouterThread`'s
+> per-item recovery boundary (item 2) and the multithreaded optimizer family (item 4) —
+> and both are recorded on quirk #143's extended row. The headline Plan 7 hands on:
+> **whole-board SES byte parity against the HEAD jar on eight stems**, all three rungs of
+> ruling 1's ladder green, hash-mode independent (five `-XX:hashCode` modes, one digest
+> each) and `--verify-driver`-clean against the bare jar. `docs/plan-7-handoff.md` is what
+> Plan 8 starts from. **This file is otherwise frozen**; only status lines were added.
+
 The register in `docs/java-quirks.md` is authoritative; this is the working list.
 The marker inventory, with the scope spelled out — **`crates/*/src` is the code,
 `crates/` additionally sweeps the READMEs' prose about the markers**, so the two
@@ -495,6 +506,29 @@ numbers differ and only the first is an inventory:
 
 `crates/fr-router/README.md` §"The 28 `obligation:` markers" tabulates the
 `obligation:` column class by class with the verdict and the evidence for each.
+
+> **Plan 7 Task 17's tick — the same greps, on the committed tree at the close of
+> Plan 7 (2026-09-01):**
+>
+> | grep | `crates/*/src` | `crates/*/tests` | `crates/` |
+> |---|---|---|---|
+> | `added in Plan 7` | **0** | **0** | 3, all past-tense prose |
+> | `added in Plan 8` | 32 (30 markers proper + 2 prose) | 0 | 40 |
+> | `obligation:` | 60 | 6 | 86 |
+> | `pub seam:` | **14** | 0 | 22 |
+> | `not reachable:` (new in Plan 7, ruling AJ) | 18 | 2 | 23 |
+>
+> The `pub seam:` count is the one that needs explaining: the plan expected six
+> (eight minus the two scan ruling 4 predicted would close). One closed
+> (`AutorouteControl::from_settings`, Task 11), one did **not** and deliberately so
+> (`AutorouteAttemptResult::is_routed` — the pass loop `match`es on
+> `AutorouteAttemptState` directly, 13 sites, as Java's `result.state == ROUTED`
+> chains do), and seven were **added**: two for ruling AP's `CancelToken` seam in
+> `pipeline/stop.rs` and five for `ViaOptimizer`'s Java-private methods, which an
+> integration test and a `scripts/differential` binary both call from outside the
+> crate. 8 − 1 + 7 = 14. The row-by-row reconciliation is in
+> `crates/fr-router/README.md` §"The `pub seam:` gate, reconciled".
+
 
 `// pub seam:` is new in the Plan 6 final fix wave (finding S7) and is the answer
 to a question Plan 7 will otherwise have to re-ask: **why is this `pub` item
@@ -560,6 +594,24 @@ see the README section that lists all eight.
    > **Status (2026-08-30): carried into Plan 7 Tasks 11-12.** Plan 7's pre-flight scan
    > found neither coverage obligation named anywhere in that plan; Plan 7 Task 17 now
    > records each as discharged or still open.
+   >
+   > **Status (2026-09-01): the fanout pre-pass is BUILT (Tasks 11 and 12) and BOTH
+   > coverage obligations are DISCHARGED — Plan 7 Task 17 measured each with a counter
+   > on the committed tree, then removed the counter.**
+   > * `locator.rs:267` — the `FoundConnectionLocator` fanout arm (`:124-129`, and the
+   >   `atFanoutEnd` short-circuit at `:142-144`). Plan 6 measured **zero** entries over
+   >   369 connections. Plan 7 measures **32**, all in
+   >   `crates/fr-router/tests/batch_parity.rs`'s `the_ci_stems_climb_the_whole_ladder`
+   >   — **ordinary CI**, the four `java_dir`-gated stems, no `FR_SLOW_PARITY` needed —
+   >   and every one of those runs is SES byte-identical to the HEAD jar.
+   > * `engine.rs:1374` (now `:1433`) — the `StopConnectionOption` choice. Plan 6
+   >   discharged the *choice* (311 of 369 connections take the `FanoutVia` arm) but not
+   >   the **difference** between the arms, which needs a real fanout via. Plan 7
+   >   measures the difference firing **once**, at the `break` in
+   >   `Board::connection_items` (Item.java:735), in
+   >   `crates/fr-router/tests/reference_parity.rs`'s `steps_one_to_eight_matches_the_jar`,
+   >   where the port is byte-identical to the jar. Both markers carry this text at the
+   >   code.
 4. **The optimizer**: `BatchOptimizer`, `BatchOptimizerMultiThreaded`,
    `OptimizeRouteTask`, `ItemRouteResult`, `RoutingFailureLog` (whose `fr-board`
    field is a `Vec<String>` hook today).
@@ -583,15 +635,47 @@ see the README section that lists all eight.
    of the tightener family this plan already ported. Quirk #34's `equals_geometric`
    at `TraceTightener*.repositionLine` was **discharged in Task 15a**; what is left
    is the callers.
+   > **Status (2026-09-01): ALL DONE — Plan 7 Task 17's tick.** `ViaOptimizer` is ported
+   > **whole**, not just `optViaLocation`: Task 6 landed `optViaLocation` (`:33-158`),
+   > `optPlaneOrFanoutVia` (`:161-296`) and `isWithinTolerance` (`:719-732`), Task 7 the
+   > three `repositionVia` overloads (`:302-365`, `:367-429`, `:434-713`), and the class
+   > dropped out of the "deliberately absent" audit invocation into the main
+   > `board/optimize` glob. `optChangedArea`'s two overloads are Task 5's
+   > (`RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`) and
+   > `removeItemsAndPullTight` is Task 8's. Evidence: `p7t3` 15/15 including mode 4 (the
+   > `ViaOptimizer` arm), `p7t4` 21/21 + 20/20. Two quirk rows came out of it, **#206**
+   > and **#207**, both latent on the corpus and recorded as measured rather than as
+   > cleared.
 6. **`RoutingBoardExt` gains** `opt_changed_area` and the pull-tight tail of
    `removeItemsAndPullTight`. The five `PolylineTrace.change` →
    `additionalUpdateAfterChange` call sites in `fr-board` carry `added in Plan 7:`
    markers; they are no-ops on every path Plan 6 runs, because `maintainDatabase`
    is `false` in every production and parity run
    (`BatchAutorouter.java:63-64,151-154`), and Task 16 measured that.
+   > **Status (2026-09-01): DONE, and the five markers CLOSED as dead rather than ported
+   > — Plan 7 Task 17's tick.** `RoutingBoardExt` gained `opt_changed_area` /
+   > `opt_changed_area_with_keep_point` (Task 5), `remove_items_and_pull_tight` (Task 8)
+   > and `fanout` (Task 11). The five `additionalUpdateAfterChange` sites were settled by
+   > **controller ruling AJ** in Task 8: `maintainDatabase` is not merely `false` in
+   > practice, it is reachable only through the Java benchmark-only system property
+   > `retainAutorouteDatabase`, so the hook is dead on **every** live path in both
+   > languages. All five became `// not reachable:` markers — a marker kind ruling AJ
+   > introduced for exactly this shape — with a grep and a behavioural test each, and
+   > **no `fr-board` signature changed**. `crates/fr-board/src/items/trace.rs`'s prose
+   > about the convention stays.
 7. **The `ConnectionToPin` trio** — `check`, `correct`, `swapConnectionToPin` in the
    tightener family. `pinEdgeToTurnDist` is `-1` throughout Plan 6, which is what
    keeps them out of reach here.
+   > **Status (2026-09-01): DONE in Plan 7 Task 5 — all three, and the plan's scan was
+   > wrong about one of them.** Plan 7's pre-flight scan ruling 5 recorded
+   > `checkConnectionToPin` as already ported in Plan 6 and told Task 5 to reuse it; a
+   > workspace search for the name, for `TraceExitRestriction` and for the method's body
+   > found nothing but the two deferral markers in `crates/fr-board/src/items/trace.rs`.
+   > Java won over plan text: all three landed as `PolylineTraceExt::{check,correct,
+   > swap}_connection_to_pin`, pinned by `p7t6` MATCH on all five modes. Two quirk rows
+   > came with them: **#205** (both methods accept `pinEdgeToTurnDist == 0`, which is
+   > `BoardRules`' own seed, but their only caller demands `> 0`) and the register's
+   > record of why `-1` kept them unreachable in Plan 6.
 8. ~~**The `fr-board` fix ruling H decided**: `ViaRule` owning its `ViaInfo`s (§5.2).
    Controller **ruling AL** makes this **Plan 7's Task 0** — it changes an ownership
    model every later task builds on, so it goes first, and its acceptance is the
@@ -617,7 +701,18 @@ see the README section that lists all eight.
   finds three-of-five is finding the right answer, not a gap. This is the single
   item most likely to make a Plan 7 pass runner diverge without failing.
 * **`max_passes == 0` means unlimited** (quirk #140). Not "zero passes".
-* **`-mt` is not a threading policy on the headless path** (quirk #143):
+  > **Honoured, Plan 7 Task 10** (`AutorouteBatchLoop::run`'s cap check reproduces
+  > `:270-274`'s `maxPasses != null && maxPasses > 0 && currentPass > maxPasses`) and
+  > **Task 15** (`run_pipeline`'s fanout-only mode is `maxPasses = 0` *with* the routing
+  > stage skipped, which is a different thing again and is documented at the call site).
+* **`-mt` is not a threading policy on the headless path** (quirk #143) — and Plan 7
+  Task 17 widened that to **anywhere**: `BatchAutorouter.autoroutePassMultiThread` has no
+  caller in `src/main` or `src/test`, so `RouterSettings.maxThreads` has no live reader at
+  all and `BatchAutorouterThread.java` (621 loc) has zero live callers. All five
+  multithread classes are `// not ported:` in `crates/fr-router/src/lib.rs` with the greps
+  beside them, the `autoroute/pipeline` audit prints them as five `ROSTERED` lines so the
+  deferral cannot go silent, and there is no `rayon` in Plan 7 (controller ruling AM). The
+  original text:
   `BatchOptimizer.createForHeadless` (`:51-53`) never reads the field, and the
   `> 1` gate at `:58` is inside the *GUI* factory. Do not invent one — a threaded
   maze would be non-deterministic and would dissolve every acceptance criterion in
@@ -625,27 +720,69 @@ see the README section that lists all eight.
 * **Quirk #76's hang is reachable, exactly as in Java** (ruling AC): the inserter
   is handed `&|| false` because Java checks no stop below `AutorouteEngine.java:265`.
   Plan 7 owns the wall clock, and it is the right place for it.
+  > **Status (2026-09-01): the wall clock EXISTS and does NOT close the hang — Plan 7
+  > Task 17's tick, and this needs saying plainly.** Controller ruling AI gave Plan 7
+  > `RouterStop`'s deadline and `RouterBudget`, and `pipeline/stop.rs` documents the six
+  > read sites. **None of them is below `AutorouteEngine.java:265`**, because Java has
+  > none there either, and inventing one would change the room set and break parity. So
+  > quirk **#162**'s non-terminating `calculateNewIncompleteRooms` is **still unguarded
+  > and still reachable**, in both languages, and Plan 7 confirmed controller answer 5:
+  > it stays unfixed. The only protection is the caller's wall clock —
+  > `scripts/gen-batch-reference.sh` and `gen-router-reference.sh` bound every stem with
+  > `timeout(1)`, and the slow tests carry their own bound. A hang row is an XDIFF-by-hang
+  > with the quirk cited, exactly as Plan 6 handled them. **Plan 8's CLI inherits this**:
+  > a `--job-timeout` that is not a watchdog cannot interrupt it.
 * **Quirk #82 (Delaunay in-circle degenerate on axis-aligned input) is still not
   fixed and must not be.** It now has three consumers.
 * **The eight re-marked coverage obligations** in `crates/fr-router/README.md`'s
   marker table are grouped there into "Plan 7's, not a fixture's", "a fixture the
   corpus does not have" and "deeper than 369 connections go". Four of them become
   reachable the moment Plan 7's fanout and item selection exist.
+  > **Status (2026-09-01): Plan 7 Task 16 discharged one (quirk #221, via the
+  > `router-fanout-bm11` stem) and re-marked four with the measured reason they are still
+  > out of reach; Task 17 discharged the two §10.3 ones above. The README's table is the
+  > running record.**
 
 ---
 
 ## 11. Obligations for Plan 8
 
-1. **`RoutingPipeline.createForHeadless`** and the rest of the pipeline wiring —
-   Plan 7 delivers the stages, Plan 8 the caller.
+> **Amended 2026-09-01 by Plan 7 Task 17.** Items 1-4 all moved or changed shape during
+> Plan 7; `docs/plan-7-handoff.md`'s obligation register supersedes this list, and each
+> item below says how.
+
+1. ~~**`RoutingPipeline.createForHeadless`** and the rest of the pipeline wiring —
+   Plan 7 delivers the stages, Plan 8 the caller.~~ — **MOVED INTO PLAN 7 (Task 15,
+   controller ruling AK).** The whole class is accounted for: `run` is
+   `fr_router::pipeline::run_pipeline`, `createForHeadless` collapses into its setup as a
+   `// renamed:`, and `createForGui`, `getAutorouter`, `getOptimizer` and the three
+   `add*Listener` methods are `// not ported:` in `pipeline/run.rs`. **Plan 8 has no
+   `RoutingPipeline` surface left to wrap** — only `PipelineResult`, which it wraps as
+   `fr-core`'s `RoutingResult`.
 2. **`CancelToken` → this crate's `StopCheck`.** Six checked sites (ruling 6), each
    with a test; the type is a borrowed `&dyn Fn() -> bool`, so a `CancelToken` drops
    straight in.
+   > **Amended by Plan 7 (rulings AI and AP).** There is now a *second* thing a
+   > `CancelToken` has to join: `fr_router::pipeline::RouterStop`, a **three-state** stop
+   > flag (`None`/`AutoRouterOnly`/`All`, quirk #202) plus ruling AI's deadline. The two
+   > `// pub seam:` lines in `pipeline/stop.rs` mark where. **The three states must not
+   > collapse to a bool** — `--max-items` writes `ALL` and `--max-passes` writes
+   > `AUTO_ROUTER_ONLY`, and `RoutingPipeline.java:117` tests only the first, which is why
+   > `--max-items` silently disables the optimizer stage and `--max-passes` does not
+   > (quirk #202/#214). And the deadline's six read sites are **two** mechanisms: one
+   > job-level flag and four per-stage clocks that end only their own stage. Both
+   > distinctions are load-bearing.
 3. **`ProgressSink` replacing the dropped observers.** `autoroute/events/**` (six
    files) and `NamedAlgorithm`'s six `add*Listener`/`fire*` methods are on the
    `not ported:` roster in `crates/fr-router/src/lib.rs`, by name.
-4. **`BoardStatistics`** — `tests/fixtures.rs` and `p6t1`'s metric block stand in
-   for it. `BoardStatistics.connections.incompleteCount` is
+4. ~~**`BoardStatistics`**~~ — **BUILT IN PLAN 7 Task 1** (controller ruling AG), as
+   `fr_router::score`: the computing constructor, the ten DTOs, `calculateScore`,
+   `getMaximumScore` and `getNormalizedScore`, pinned by `p7t7` against the HEAD jar under
+   four `ScoringSettings` presets. What is left for Plan 8 is ruling 4's surface — the
+   `byte[]`/`FileFormat` constructor, `countOccurrences`, the Gson `toString`,
+   `BoardScoreBreakdown` and `ScoringWeightComparison` — eight `// added in Plan 8:`
+   markers in `score/mod.rs`. The original text: `tests/fixtures.rs` and `p6t1`'s metric
+   block stand in for it. `BoardStatistics.connections.incompleteCount` is
    `DesignRulesChecker.getIncompleteCount()` (`BoardStatistics.java:271`), which the
    port already computes.
 5. **`crates/fr-dsn/src/parser/wiring.rs:596`** — `read_via_scope` still calls the

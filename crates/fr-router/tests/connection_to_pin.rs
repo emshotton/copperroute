@@ -18,8 +18,9 @@
 //!
 //! The plan's scan ruling 5 records `checkConnectionToPin` as landed in Plan 6 and tells Task 5
 //! to reuse it. It had not landed: a workspace search for the name, for `TraceExitRestriction` in
-//! `fr-router` and for the method's body found only the two `added in Plan 7:` markers in
-//! `crates/fr-board/src/items/trace.rs`. So the "regression test against `p7t6` mode 0" the brief
+//! `fr-router` and for the method's body found only two forward-deferral markers in
+//! `crates/fr-board/src/items/trace.rs` (both now `// renamed:` lines pointing at this crate).
+//! So the "regression test against `p7t6` mode 0" the brief
 //! asks for is, in fact, this port's **first** evidence for the method, and it is written as
 //! such.
 

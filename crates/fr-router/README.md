@@ -17,7 +17,98 @@ be a different algorithm.
 See `docs/superpowers/plans/2026-08-29-plan-6-router-maze.md` for the scope,
 the Plan 6 / Plan 7 seam and the seventeen rulings.
 
-## State: complete (Task 18 of 18)
+## State: complete (Plan 6 Task 18 of 18, then Plan 7 Task 17 — the last of its 18)
+
+**Plan 7 closed on 2026-09-01.** The crate is no longer a per-connection router:
+it routes, fans out and optimises a **whole board**, and `run_pipeline` sequences
+the two stages exactly as `RoutingPipeline.run` does. `docs/plan-7-handoff.md` is
+what Plan 8 starts from; the sections below are in task order, Plan 6's first and
+Plan 7's after them.
+
+### What this crate does now, and what it does not
+
+| in | out (Plan 8's) |
+|---|---|
+| the whole pipeline: `run_pipeline` → `BatchFanout::fanout_board`, `AutorouteBatchLoop::run`, `BatchOptimizer::run_batch_loop` | the **CLI** (`crates/freerouting`), which is untouched by Plan 7 |
+| the score: `fr_router::score::BoardStatistics` and the three score methods | the **result manifest** and its Gson-compatible JSON |
+| `ProgressSink` / `RoutingEvent` (spec §10's observer replacement, ruling AK) | the **MCP** surface |
+| `RouterStop` / `StopRequestState` / `RouterBudget` (the stop machine, ruling AI) | `CancelToken` — it maps *onto* `RouterStop`, and the mapping must keep the three-state distinction (quirk #202/#214; see the hand-off) |
+| SES byte parity against the HEAD jar on eight stems (ruling AM) | `BoardScoreBreakdown`, `ScoringWeightComparison` and `BoardStatistics(byte[], FileFormat)` (ruling 4) |
+
+### `-mt` is dead **everywhere**, and must not become a threading policy
+
+Quirk #143 said `-mt` is dead *headless*. Plan 7 Task 17 re-ran the greps and
+extended the row: `BatchAutorouter.autoroutePassMultiThread:411-413` has **no
+caller anywhere in `src/main` or `src/test`**, so `AutoroutePassRunner.runMultiThread`
+is unreachable, `BatchAutorouterThread.java` (621 loc) has zero live callers, and
+`RouterSettings.maxThreads` therefore has **no live reader at all** — its only
+three are `AutoroutePassRunner.java:50, 53, 91`, inside `runMultiThread`. The
+optimizer's twin (`BatchOptimizerMultiThreaded`, `OptimizeRouteTask`) is reachable
+only from `BatchOptimizer.createForGui:56-66`. That is why there is no `rayon` in
+this plan and why `src/lib.rs` rosters all five classes `// not ported:` with their
+greps: **Plan 8 must not read the silence as an invitation.** A threaded maze would
+also be non-deterministic, which would dissolve every acceptance criterion in
+ruling 1.
+
+### The five tables Plan 8 will want
+
+| table | where |
+|---|---|
+| the acceptance ladder, per stem × rung | §"The whole-board acceptance ladder (Task 16, ruling 1 / ruling AM)" |
+| ruling 5's ordered-container decisions (comparator totality, key mutability, `JavaTreeSet` sites) | §"Ruling 5's container decisions, confirmed against Java" — and §"`SortedRoomNeighbours` (Task 4), and why the crate has a `JavaTreeSet`" for the maze's |
+| ruling AH's `structural_hash` audit | §"`p7t10` and the `structural_hash` audit (controller ruling AH)"; the row-per-field table itself is `crates/fr-board/src/board/snapshot.rs`'s module doc |
+| ruling AI's budget knob | §"The budget: what the plan asked for, and what is actually possible" |
+| the recovery boundaries | §"The recovery boundaries (ruling 7) — six from Plan 6, three from Plan 7" |
+
+A sixth table Plan 8 needs is **not** here, deliberately: ruling AI's six deadline
+read sites, and why a seventh is a bug, live in
+`crates/fr-router/src/pipeline/stop.rs`'s module doc, next to the type that
+implements them. The short version: the six sites are **two** Java mechanisms —
+one job-level flag (`AutorouteBatchLoop:251`, `AutoroutePassRunner:203`) and four
+per-stage clocks (`BatchFanout:111, :396`; `BatchOptimizer:172, :308`) that write
+only their own `isTimedOut` and leave every other stage running. `poll_deadline`
+requests `ALL` and has exactly **one** production call site, the job-level one. A
+seventh read site is a bug unless it is job-level, and Plan 8's `CancelToken` joins
+at these sites and must not flatten the split.
+
+### Regenerating the references, and running the drivers
+
+```sh
+# the whole-board references (Task 16). Needs the clone + JDK 25; timeout(1) bounds
+# each stem, because quirk #162 still does not terminate on ~0.4 % of room completions.
+./scripts/gen-batch-reference.sh                     # tests/reference/<stem>/batch.{ses,passes.jsonl,meta.txt}
+./scripts/gen-batch-reference.sh --meta-only         # rewrite batch.meta.txt from existing outputs
+./scripts/gen-batch-reference.sh --verify-driver     # bare jar -de/-do vs P7T9.java, budget live on both
+./scripts/gen-batch-reference.sh --verify-hash-modes # five -XX:hashCode modes, one digest each
+
+# the per-connection references (Plan 6 Task 17, extended in Plan 7 Task 8)
+./scripts/gen-router-reference.sh
+./scripts/gen-router-reference.sh --steps=1-8
+
+# the ten Plan 7 drivers (each `run.sh` half prints the jar it used in its header)
+# (argument lists are run.sh's, not the plan's — several grew during execution)
+./scripts/differential/run.sh p7t1  <dsn> [passNo]
+./scripts/differential/run.sh p7t2  <dsn> [passNo] [maxItems|all]
+./scripts/differential/run.sh p7t3  <dsn> [mode] [accuracy] [routeK]
+./scripts/differential/run.sh p7t4  <dsn> [mode] [accuracy] [routeK]
+./scripts/differential/run.sh p7t5  <dsn> [passNo|maxPasses] [sortingOrder] [order|pin|pass|board]
+./scripts/differential/run.sh p7t6  [check|correct|swap|rand|edge]
+./scripts/differential/run.sh p7t7  <dsn> [preset] [mode]
+./scripts/differential/run.sh p7t8  <dsn> [mode] [routePasses] [items|all]
+./scripts/differential/run.sh p7t9  <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all] [--fanout on|off]
+./scripts/differential/run.sh p7t10 <dsn> [steps] [routeK] [warm|raw]
+./scripts/differential/sweep-p7t9.sh                 # every stem x every mode, MATCH/XDIFF/SKIP
+```
+
+**Every parity run disables ruling AI's budget on both sides** — the Rust half
+passes `RouterBudget::disabled()`, the Java half sets `fanout.maxMillisecondsPerPin`
+and `optimizer.timeoutString` out of reach. The 1 000 ms `optChangedArea` constants
+**cannot** be reflected away (quirk #234: `javac` inlines them, `javap -c -p` shows
+`sipush 1000` and no `getstatic`), so the Java half runs with that one live and a
+MATCH is the proof it never tripped. `--verify-driver` is what makes that claim
+against the *bare jar* rather than against the driver.
+
+### Plan 6's state, unchanged below this line
 
 What exists is the data-model floor the other nine tasks build on, the
 search-tree extension that turns a seed shape into expansion rooms, the three
@@ -422,7 +513,12 @@ so it escapes to the job scheduler. Plan-7 ruling 7 makes it
 and is the port of `RoutableLayersSafetyCheckTest.testRoutingFailsWhenAllLayersDisabledCurrent`.
 
 Boundary **8** is `BatchAutorouterThread.java:537` (per item), on the dead
-multithreaded path, and is still Plan 7/8's. All eight `catch` sites catch
+multithreaded path. **Plan 7 Task 17 closes it as non-existent rather than
+deferred**: the class has zero live callers in the whole Java tree (the greps are
+in `src/lib.rs`'s roster), so there is no live path for the boundary to sit on and
+nothing for Plan 8 to build. Plan 7 therefore delivered **two** recovery
+boundaries, not three — which is scan ruling 9's conclusion reached by a different
+route than scan ruling 9's argument. All eight `catch` sites catch
 `Exception`, not `Throwable`, so none recovers from a stack overflow — quirk #27
 crashes both languages; boundary 9 is a `throw` rather than a `catch` and does not
 recover from anything by design.
@@ -539,40 +635,71 @@ audit still exits 0.
 
 ### Every audit invocation in the workspace (Task 18 runs all of them to zero)
 
-*(**Plan 7 Task 15b** adds a **thirty-first** invocation — `management`
-restricted to `HeadlessBoardManager.java`, against `crates/fr-board/src` — and
-one `ROSTERED` line with it. It is the first time any plan has audited
-`management/` at all, which is how the two board-mutating clearance overrides
-went unported for six plans while `applyCopperToEdgeClearanceOverride` mutated
-15 of the 16 corpus boards at default settings; see quirk #231 and
-`crates/fr-board/src/board/clearance_override.rs`. **Measured on the committed
-tree at Task 15b: 31 invocations, 0 `MISSING`, 0 `UNMAPPED`, 21 `ROSTERED`
-across nine of them** — `board/state` 3, `datastructures` (fr-board) **4**,
-`io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3, `io/kicad` 3,
-`core/scoring` (fr-router) 2, `autoroute` 2, `management` 1. The paragraph below
-was written at Task 18 and says `datastructures` 5 for a total of twenty-one
-across eight of thirty; the `datastructures` figure has been 4 since some point
-in Plan 7 — so the pre-Task-15b total was **20**, not 21, and this task did not
-change any figure except by adding its own row. Task 17 owns this section's
-rewrite; the measured numbers here are the ones to trust.)*
+**Plan 7 Task 17 owns this section, and re-ran every invocation on the committed
+tree.** The result, measured, is the acceptance for the whole plan:
 
-Task 18's acceptance is that **all twenty-nine** invocations below exit 0 with
-no `MISSING` line and no `UNMAPPED` line, on the committed tree. Both of those now
-*set* the exit code — an `UNMAPPED` class means the map rotted and the audit
-silently fell back to the weaker crate-wide search, so it fails the run exactly as
-a `MISSING` method does. `ROSTERED` lines are informational and do not: they name
-a class whose every public method is answered by a `not ported:` /
-`added in Task|Plan N:` marker and none by a real `fn`. **Twenty-one** of them
-print across eight of the **thirty** invocations (`board/state` 3,
-`datastructures` 5, `io/specctra/parser` 1, `settings/sources` 2, `util/gson` 3,
-`io/kicad` 3, `core/scoring` (fr-router) 2, `autoroute` **2**). *(The count was
-twenty-two across seven of twenty-nine before Plan 7: Task 1 added the
-`core/scoring crates/fr-router/src` invocation and its two rows, and Task 2's
-`BoardHistory` took `autoroute` from five rows to four. **Plan 7 Task 9 took
-`autoroute` from four to two and the total from twenty-three to twenty-one**, by
-giving `RoutingFailureLog` and `ItemRouteResult` real `fn`s and re-pointing their
-map rows off `lib.rs`; the two that remain there are `BoardHistoryEntry` and
-`PerformanceProfiler`. Task 17 owns the rest of this section's rewrite.)*
+| | count |
+|---|---|
+| invocations | **33** |
+| exiting non-zero | **0** |
+| `MISSING` lines | **0** |
+| `UNMAPPED` lines | **0** |
+| `ROSTERED` lines | **26**, across 10 of the 33 |
+
+Both `MISSING` and `UNMAPPED` *set* the exit code — an `UNMAPPED` class means the
+map rotted and the audit silently fell back to the weaker crate-wide search, so it
+fails the run exactly as a `MISSING` method does. `ROSTERED` lines are
+informational and do not: they name a class whose every public method is answered
+by a `not ported:` / `added in Task|Plan N:` marker and none by a real `fn`.
+
+The 26 `ROSTERED` lines, by invocation: `board/state` 3 (`BoardComparator`,
+`BoardObserverAdaptor`, `CoordinateTransform`), `datastructures` (fr-board) 4
+(`ArrayStack`, `BigIntAux`, `IdentifierType`, `IndentFileWriter`), `management` 1
+(`HeadlessBoardManager` — nine methods, all `added in Plan 8:`),
+`io/specctra/parser` 1 (`SessionToEagle`), `settings/sources` 2 (`GuiSettingsSource`,
+**`JsonFileSettings`** — see the hand-off, this is a real Plan 8 gap and not just a
+roster line), `util/gson` 3, `io/kicad` 3, `core/scoring` (fr-router) 2
+(`BoardScoreBreakdown`, `ScoringWeightComparison` — ruling 4's Plan 8 rows),
+`autoroute` 2 (`BoardHistoryEntry`, `PerformanceProfiler`), `autoroute/pipeline`
+**5** (`AutoroutePassRunner`, `BatchAutorouterThread`, `BatchOptimizerMultiThreaded`,
+`NamedAlgorithm`, `OptimizeRouteTask`), `core` 0.
+
+**How the count got from 29 to 33.** Plan 6 Task 18 closed with **29**. Plan 7
+Task 1 added `core/scoring crates/fr-router/src` (ruling AG) → 30. Plan 7 Task 15b
+added `management crates/fr-board/src 'HeadlessBoardManager.java'` (ruling AW) → 31,
+the first time any plan audited `management/` at all, which is how the two
+board-mutating clearance overrides went unported for six plans while
+`applyCopperToEdgeClearanceOverride` mutated 15 of the 16 corpus boards at default
+settings (quirk #231). **Task 17 adds the last two**: `autoroute/pipeline`, promoted
+out of the "deliberately absent" table below now that it exits 0 with 0 `MISSING`
+and 0 `UNMAPPED` (its five `ROSTERED` lines are the multithread family and
+`NamedAlgorithm`), and `core`, **scoped by file glob to the four classes Plan 7
+Task 4 ports** — `StopRequestState.java StoppableThread.java RouterCounters.java
+ProgressThrottler.java`. The glob is not optional: `core '*.java'` would pull
+`RoutingJob`, `Session`, `BoardFileDetails`, `RouterJobResourceUsage`,
+`RoutingJobPriority`, `RoutingJobState` and `RoutingStage` — all **Plan 8's** — into
+this crate's roster, which is exactly the pollution the four map rows at the foot of
+`scripts/audit-map/fr-router.map` were written to avoid.
+
+*(Two figures in the older prose were wrong and are corrected here rather than
+left: `datastructures` (fr-board) has printed **4** `ROSTERED` lines, not 5, since
+some point in Plan 7, and the pre-Task-15b total was therefore **20**, not 21.)*
+
+**Two invocations named in the Task 17 brief are not in the list, and the reason is
+that the maps in the tree say they are `fr-board`'s.** The brief asked for
+`board/facade crates/fr-router/src 'RoutingBoardOperations.java'` and `board/trace
+crates/fr-router/src 'PolylineTrace.java' … fr-board.map`. Measured: the first
+prints `UNMAPPED RoutingBoardOperations` and exits 1 (`fr-router.map` has no row for
+the class — `fr-board.map:82` maps it to `board/*.rs`), and the second prints **24
+`MISSING`** and exits 1, because `fr-board.map:96-97` maps `PolylineTrace` to
+`items/*.rs` and `board/trace_normalize.rs` **relative to `fr-board/src`**, which do
+not exist under `fr-router/src`. Both classes are already covered, at 0/0, by the
+existing crate-wide `board/facade` and `board/trace` invocations against
+`crates/fr-board/src` in the nine-directory loop below — which is what the maps
+express, and what the brief's own "confirm that is what the maps in the tree
+actually express before running it" asked to be checked. Neither invocation is
+added.
+
 Copy-pasteable:
 
 ```sh
@@ -630,6 +757,15 @@ DebugSettings.java SettingsSource.java SettingsMerger.java GlobalSettings.java'
 ./scripts/audit-port.sh board/optimize crates/fr-router/src \
     'TraceShover.java TraceTightener.java TraceTightener90.java TraceTightener45.java TraceTightenerAnyAngle.java ViaOptimizer.java' \
     scripts/audit-map/fr-router.map
+
+# fr-router (Plan 7) — the pipeline package, promoted out of the "deliberately
+# absent" table by Task 17 (0 MISSING, 0 UNMAPPED, 5 ROSTERED), and the four
+# `core/**` classes Task 4 ports, scoped BY FILE GLOB so Plan 8's `core/` classes
+# stay out of this crate's roster.
+./scripts/audit-port.sh autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map
+./scripts/audit-port.sh core crates/fr-router/src \
+    'StopRequestState.java StoppableThread.java RouterCounters.java ProgressThrottler.java' \
+    scripts/audit-map/fr-router.map
 ```
 
 *(Plan 7 Task 6 added `ViaOptimizer.java` to that last glob. It used to be one of
@@ -638,13 +774,14 @@ line; now that `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` a
 real `fn`s in `board_ext/via_optimizer.rs` — where the map row points — it prints
 nothing and the invocation count is unchanged.)*
 
-Two invocations are deliberately **absent**, and they do not behave the same way
-— measured, not assumed:
+**One** invocation is deliberately **absent** — `autoroute/pipeline` was the second
+until Plan 7 Task 17 promoted it into the list above, and its row is kept here
+because the history is the argument for why the promotion is safe:
 
-| absent invocation | what it prints today | exit |
+| invocation | what it prints today | exit |
 |---|---|---|
-| `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines | **1** |
-| `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **five `ROSTERED` lines** as of **Plan 7 Task 15** (`AutoroutePassRunner`, `BatchAutorouterThread`, `BatchOptimizerMultiThreaded`, `NamedAlgorithm`, `OptimizeRouteTask`) — `RoutingPipeline` just dropped off the list: `run` is `run_pipeline` (a real `fn`), `createForHeadless` is a `renamed:` marker, and `createForGui`/`getAutorouter`/`getOptimizer`/`addStageListener`/`addBoardUpdatedEventListener`/`addTaskStateChangedEventListener` are all `not ported:` in `pipeline/run.rs`, so nothing of the class is `MISSING`. Six until Task 15 (Task 14's report §7); eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did; **Plan 7 Task 12** then ported `fanoutBoard`, the last public method it lacked, so the class is now wholly ported rather than merely off the list. Every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` either. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
+| **absent:** `autoroute/events crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **six `UNMAPPED` lines** (the three event classes and their three listener interfaces are not in `fr-router.map`) plus three `ROSTERED` lines. Deliberate: controller ruling AK replaces the whole observer mechanism with `pipeline::ProgressSink`, so mapping the six classes would assert a port that does not and must not exist | **1** |
+| **now in the list:** `autoroute/pipeline crates/fr-router/src '*.java' scripts/audit-map/fr-router.map` | **five `ROSTERED` lines** as of **Plan 7 Task 15** (`AutoroutePassRunner`, `BatchAutorouterThread`, `BatchOptimizerMultiThreaded`, `NamedAlgorithm`, `OptimizeRouteTask`) — `RoutingPipeline` just dropped off the list: `run` is `run_pipeline` (a real `fn`), `createForHeadless` is a `renamed:` marker, and `createForGui`/`getAutorouter`/`getOptimizer`/`addStageListener`/`addBoardUpdatedEventListener`/`addTaskStateChangedEventListener` are all `not ported:` in `pipeline/run.rs`, so nothing of the class is `MISSING`. Six until Task 15 (Task 14's report §7); eight until **Plan 7 Task 11**, which gave `BatchFanout` a second map row pointing at `pipeline/fanout.rs` and `renamed:` markers for its three records, so the class drops off the list the way `BatchAutorouter` did; **Plan 7 Task 12** then ported `fanoutBoard`, the last public method it lacked, so the class is now wholly ported rather than merely off the list. Every pipeline class *is* mapped and every method is answered by the Plan 7/8 roster, so nothing is `UNMAPPED` either. It was nine until **Plan 7 Task 8** ported half of `BatchAutorouter`: the class now has **two** map rows (`lib.rs` for what is still deferred, `pipeline/batch_autorouter.rs` for what landed) and drops off the `ROSTERED` list because seven of its twelve public methods are real `fn`s or `renamed:` markers. **Plan 7 Task 9** kept it at eight and at exit 0, but moved `AutoroutePassRunner` onto the list from nowhere: `runSingleThread` is ported, and the class's *only* line `audit-port.sh` sees as a public method is `onBoardUpdatedEvent`, which is not a method of the class at all — it is the single method of an anonymous `BoardUpdatedEventListener` at `:78-85`, inside the dead `runMultiThread`, that the script's line-based extraction attributes to the enclosing file. `ROSTERED` there therefore means "every *public* surface the script can see is rostered", not "nothing landed". | 0 |
 
 Before the Plan 6 final review, the second — and the third, which was
 `board/optimize … 'ViaOptimizer.java'` until Plan 7 Task 6 ported the class and
@@ -859,7 +996,9 @@ non-GUI caller of the `AutorouteEngine` constructor
 `DrillItemMover.{insert, shoveVias}` are one chain Plan 6 needs, so
 **controller ruling AA** put all five in a new **Task 10b** between Tasks 10
 and 11, where they now live. Only `TraceShover.springOverObstacles`, which
-nothing in Plan 6 reaches, is still an `// added in Plan 7:` marker.
+nothing in Plan 6 reached, was left deferred at that point — and controller
+ruling AB then pulled it back into Plan 6 Task 15b, so the class carries no
+deferral marker at all today.
 That the `check` half stays check-only is pinned by
 `trace_shover_check_does_not_mutate_the_board` and
 `check_forced_pad_does_not_mutate_the_board`: no `check` changes the board's
@@ -914,8 +1053,8 @@ Task 10's brief asked for `insert` and also declared `ForcedPadRouter.forcedPad`
 `// added in Plan 7:`. Those two cannot both hold: `insert`'s per-layer body is
 three `forcedPad` calls (`:297`, `:317`, `:333`) before `BasicBoard.insertVia`
 (`:348`), and `forcedPad` in turn reaches `DrillItemMover.shoveVias` (`:364`)
-and `TraceShover.insert` (`:416`) — already `// added in Plan 7:` markers from
-Task 9 under plan-6 ruling 2. `task-10-report.md` §2.1 raised it as a
+and `TraceShover.insert` (`:416`) — which Task 9 had deferred to Plan 7 under
+plan-6 ruling 2 (both landed in Task 10b in the end). `task-10-report.md` §2.1 raised it as a
 **NEEDS_CONTEXT** with three options, and **controller ruling AA** took option
 B: a new **Task 10b** between Tasks 10 and 11 ports all five.
 
@@ -1473,9 +1612,8 @@ callers and tests are unchanged. The call touches the engine's room/drill
 database and never the board's item list, so no probe row on either side can see
 it; it is threaded because `insertForcedTracePolyline` runs inside a live
 `autorouteConnection`, not because a fixture catches it.
-`PolylineTrace.{check,correct,swap}ConnectionToPin` kept their
-`// added in Plan 7:` markers in `crates/fr-board/src/items/trace.rs` through
-Plan 6: ruling AB named none of the three, and
+`PolylineTrace.{check,correct,swap}ConnectionToPin` stayed deferred to Plan 7 in
+`crates/fr-board/src/items/trace.rs` through the whole of Plan 6: ruling AB named none of the three, and
 `FoundConnectionInserter.insertTrace:140-141` sets `pinEdgeToTurnDist` to `-1`
 for the whole insertion, so no Plan-6 path reached the branch at
 `PolylineTrace.pullTight:841-861` that calls them. **Plan 7 Task 5 landed all
@@ -1523,8 +1661,9 @@ branch reached, and a marker on the rest" *if* the insertion tail called it. It
 does not: the tail (`:773-875`) builds its own `TraceTightener`, calls
 `splitTracesAtKeepPoint` and then a single `PolylineTrace.pullTight`. Java's
 `optChangedArea` callers are `forcedVia:348`, `insertTrace:293`, `autoroute:962`
-and `fanout:1101` — all Plan 7's — so the only `// added in Plan 7:` marker left
-in `board_ext/` is `TraceTightener.optChangedArea`'s.
+and `fanout:1101` — all Plan 7's — so the one deferral this module still carried
+when Plan 6 closed was `TraceTightener.optChangedArea`'s, **consumed by Plan 7
+Task 5**. `board_ext/` has no deferral marker left.
 
 **Java's `==` on the returned corner is value equality here, and that is
 measured.** `insertForcedTraceSegment:394-400` compares the polyline's answer
@@ -1635,9 +1774,10 @@ private, so an integration test — a different crate — cannot reach them.
 `AutorouteEngine::autoroute_connection` is
 `AutorouteEngine.java:130-280` transcribed in Java's order, and
 `route_connection` is `AutorouteConnectionRouter.java:36-90` — steps 1-5 of
-ruling 2's seam, with steps 6-8 (`optChangedArea`, the necked retry, the
-strict-DRC rollback) carrying `// added in Plan 7:` markers at the foot of the
-function.
+ruling 2's seam. Steps 6-8 (`optChangedArea`, the necked retry, the strict-DRC
+rollback) were deferred to Plan 7 by markers at the foot of the function;
+**Plan 7 Task 8 consumed all three** and added [`route_connection_full`] beside
+`route_connection` without changing its signature (plan-7 ruling 2).
 
 **Three of ruling 7's six recovery boundaries live here, and two of them are
 nested rather than sequential.** A `MazeSearchEngine` borrows the engine for its
@@ -2306,8 +2446,9 @@ Plan 7 Task 5 lands the batch entry point above the tightener family and the two
 **`checkConnectionToPin` was not already ported.** The plan's scan ruling 5
 records it as landed in Plan 6 and tells Task 5 to reuse it; it had not landed. A
 workspace search for the name, for `TraceExitRestriction` anywhere in
-`fr-router`, and for the method's body found only the two `added in Plan 7:`
-markers in `crates/fr-board/src/items/trace.rs`. Java wins over plan text, so the
+`fr-router`, and for the method's body found only the two forward-deferral
+markers in `crates/fr-board/src/items/trace.rs` (both now `// renamed:` lines
+pointing at this crate). Java wins over plan text, so the
 64 lines are transcribed with the pair that needs them —
 `correctConnectionToPin`'s first statement is a call to it (`:1083`), and the
 method is unimplementable without it. It is a **trait method** on
@@ -2575,10 +2716,44 @@ test and a `scripts/differential` binary are both *outside* the crate, so
 `pub(crate)` cannot reach them and the Java twin pays the same price with
 `setAccessible`. All five carry a `// pub seam:` line (Plan 6 finding S7).
 Task 6's sixth, `reaches_task_seven_guard`, is deleted. **This moves a counted
-Task 17 gate:** `docs/superpowers/plans/2026-08-30-plan-7-router-batch.md:1841`
-expects `grep -rn "pub seam:" crates/fr-router/src` to return **six**; the tree
-was at **ten** before Task 6, **thirteen** after it, and is at **fifteen** now.
-Task 17 owns the reconciliation; recorded here so the number is not a surprise.
+Task 17 gate**, and Task 17 reconciled it below rather than editing the number.
+
+### The `pub seam:` gate, reconciled (Plan 7 Task 17)
+
+The plan's checklist expects `grep -rn "pub seam:" crates/fr-router/src` to return
+**six**: Plan 6 closed with eight, and scan ruling 4 predicted Tasks 11 and 9/10
+would close two of them. **Measured on the committed tree it returns 14.** Here is
+every marker and why, so the number is a record rather than a surprise. (The
+whole-workspace `grep -rn "pub seam:" crates/` returns **19**; the other five are
+this README's own prose about the convention.)
+
+| # | site | what it is | Plan 6 → now |
+|---|---|---|---|
+| 1 | `autoroute/expansion/mod.rs:297` `incomplete_list_created` | the port's reader for `incompleteExpansionRooms == null` (quirk #169) | one of Plan 6's six pure-surface-fidelity seams — **unchanged** |
+| 2 | `autoroute/expansion/complete_room.rs:88` `tree_leaf` | read half of `setSearchTreeEntries` | ditto |
+| 3 | `autoroute/expansion/complete_room.rs:96` `room_id` | the arena index, not Java's `getId` | ditto |
+| 4 | `autoroute/expansion/complete_room.rs:144` `tree_shape_count` | Java's caller is `ShapeTree.insert`; the store short-circuits it | ditto |
+| 5 | `autoroute/drill/page_array.rs:234` `bounds` | a private Java field with no getter | ditto |
+| 6 | `board_ext/tightener/tightener_45.rs:29` `get_angle_restriction` | "none, in Java or here" | ditto |
+| 7 | `autoroute/attempt.rs:133` `is_routed` | scan ruling 4 said Tasks 9/10 would close it | **not closed, and deliberately so** — see below |
+| — | `autoroute/maze/control.rs` `AutorouteControl::from_settings` | scan ruling 4's other prediction | **closed by Task 11**: the fanout pre-pass is the caller, and the marker is gone |
+| 8-9 | `pipeline/stop.rs:70`, `:171` | **new, Task 4**: controller ruling AP puts Plan 8's `CancelToken` (`Arc<AtomicBool>`) at these poll sites. The module introduces no atomics — the state is a `Cell`, because the pipeline is single-threaded — so the seam is where the token joins, and it has to be written down or Plan 8 will fold it into `RouterStop` and lose the three-state distinction | added |
+| 10-14 | `board_ext/via_optimizer.rs:232, 453, 504, 613, 714` | **new, Tasks 6 and 7**: `optPlaneOrFanoutVia`, `isWithinTolerance` and the three `repositionVia` overloads are `private` in Java and `pub` here, because `crates/fr-router/tests/via_optimizer*.rs` and `scripts/differential/rust/src/bin/p7t4.rs` are both *outside* the crate and `pub(crate)` cannot reach them. The Java twin pays the same price with `setAccessible` | added |
+
+So: **8 − 1 + 7 = 14**, and the plan's "six" was arithmetic on a prediction that
+was half right. The two additions are both *good* news — a seam that is written
+down is a seam Plan 8 cannot mistake for an accident — and neither is a `pub` item
+with no reason.
+
+**Why `is_routed` stays open, measured.** `AutorouteAttemptResult` has no
+`isRouted()` in Java; `state` is a public field and every caller compares it
+directly. The port's pass loop does the same: `grep -rn "AutorouteAttemptState::Routed"
+crates/fr-router/src` answers **13 sites** across `pass_runner.rs`, `batch_loop.rs`,
+`fanout.rs` and `board_ext/`, all of them `match` arms transcribing Java's
+`result.state == ROUTED` chains. Routing them through a helper would be the port
+inventing a shape Java does not have. The accessor keeps its own-file unit test as
+its only caller and its marker now says so; Plan 8's manifest layer is free to use
+it.
 
 ### Two quirks
 
@@ -2982,10 +3157,15 @@ MATCH stayed MATCH. **Task 16's SES gate is clear.**
 
 ## What Plan 7 inherits
 
+*(Historical: this is the table as Plan 6 handed it over. Every row's status
+line below was written by the Plan 7 task that closed it, and the whole table is
+now discharged — Plan 7 Task 17's gate,
+`grep -rn "added in Plan 7" crates/*/src crates/*/tests`, returns nothing. The
+forward-looking table is "What Plan 8 inherits" at the foot of this file.)*
+
 Everything above `route_connection`, and nothing below it. Each row names the
-Java it starts from and the marker in this tree that records it; `src/lib.rs`'s
-roster carries the same list method by method, so `grep -rn "added in Plan 7"
-crates/` is the complete inventory.
+Java it starts from and where this tree records it; `src/lib.rs`'s roster
+carried the same list method by method while the deferrals were live.
 
 | what | Java | where it is recorded here |
 |---|---|---|
@@ -2994,15 +3174,15 @@ crates/` is the complete inventory.
 | ~~the **fanout** pre-pass~~ — **DONE, both halves**: `RoutingBoard.fanout` and `BatchFanout`'s ordering in Plan 7 Task 11, and `fanoutBoard` / `fanoutPass` / `publishProgress` in **Task 12**, which also discharged `AutorouteBatchLoop`'s loud stub. With it `ctrl.isFanout` is set on a real run for the first time, so `locator.rs:267`'s fanout arm and `engine.rs:1374` are now on a live path | `BatchFanout.java:81-163`, `:166-576`, `RoutingBoard.java:978-1110`, `AutorouteBatchLoop.java:83-218` | `src/board_ext/routing_board_ext.rs`, `src/pipeline/fanout.rs`, `src/pipeline/batch_loop.rs` |
 | ~~the **optimizer**~~ — **DONE, both halves**: the item half in Plan 7 Task 13 (`BatchOptimizer`'s type, `createForHeadless`, `containsOnlyUnfixedTraces`, `optRouteItem`, `getCurrentPosition`, `isTimedOut`, the protected inner `ReadSortedRouteItems` and `BatchAutorouter.autoroutePassesForOptimizingItem`) and the **stage half in Task 14** (`runBatchLoop`, `optRoutePass`, `normalizeAlgorithm` and the five identity consts), with `BatchOptimizerMultiThreaded` / `OptimizeRouteTask` / `createForGui` rostered `not ported:`. `ItemRouteResult` landed in Task 9 | `autoroute/pipeline/BatchOptimizer.java:125-272`, `:279-385`, `:395-514`, `:563-659`, `BatchAutorouter.java:245-281` | `src/pipeline/optimizer.rs`, `src/pipeline/batch_autorouter.rs`; `src/lib.rs` for the two multithread classes |
 | ~~`ViaOptimizer`, whole~~ — **DONE**: `optViaLocation`, `optPlaneOrFanoutVia` and `isWithinTolerance` in Plan 7 Task 6, the three `repositionVia` overloads in Task 7 (which also deleted ruling B1's `unimplemented!` and its guard predicate) | `board/optimize/ViaOptimizer.java:33-158`, `:161-296`, `:302-365`, `:367-429`, `:434-713`, `:719-732` | `src/board_ext/via_optimizer.rs` (and the audit-map row, re-pointed there from `lib.rs` in Task 6) |
-| ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s remaining `added in Plan 7:` marker |
+| ~~`RoutingBoard.optChangedArea` (both overloads)~~ — **DONE in Plan 7 Task 5**; `RoutingBoard.removeItemsAndPullTight` is still open | `RoutingBoard.java:151-190`, `:124-127`, `RoutingBoardOperations.java:52-79` | `RoutingBoardExt::{opt_changed_area, opt_changed_area_with_keep_point}`; `crates/fr-board/src/board/mod.rs`'s marker for it, now a `renamed:` onto `RoutingBoardExt::remove_items_and_pull_tight` (**DONE in Plan 7 Task 8**) |
 | ~~`RoutingBoard.moveDrillItem`~~ — **rostered `not ported:` in Plan 7 Task 6**: the plan's scan ruling 3 said `ViaOptimizer` moves vias through it, and it does not (`ViaOptimizer.java:136`, `:244`, `:282` call `DrillItemMover` directly). Its only Java caller is `MoveComponent.insert:156`, whose only caller is `gui/interactive/DragItemState.java:56-61` | `RoutingBoard.java:252-295` | `crates/fr-board/src/board/mod.rs`'s `not ported:` marker, with the grep evidence |
-| the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `added in Plan 7:` markers in `crates/fr-board/src/board/` |
+| ~~the five `PolylineTrace.change` → `additionalUpdateAfterChange` call sites~~ — **CLOSED in Plan 7 Task 8 under controller ruling AJ**: `retainAutorouteDatabase` is a Java benchmark-only system property, so the hook is dead on every live path in both languages | `PolylineTrace.java:188`, `BoardItemRepository.java`, `ShapeTraceEntries.java:880` | five `// not reachable:` markers in `crates/fr-board/src/board/` |
 | ~~the `ConnectionToPin` trio — `check`, `correct`, `swapConnectionToPin`~~ — **DONE in Plan 7 Task 5** (all three; the plan's scan ruling 5 wrongly recorded `check` as landed in Plan 6) | `board/trace/PolylineTrace.java:1013-1313` (`pinEdgeToTurnDist` is `-1` throughout Plan 6) | `PolylineTraceExt::{check,correct,swap}_connection_to_pin`; `src/board_ext/tightener/` module docs |
 | `RoutingFailureLog` — `fr-board`'s `failure_log: Vec<String>` becomes the real type | `autoroute/RoutingFailureLog.java` | `crates/fr-board/src/board/mod.rs`'s field; `src/lib.rs` roster |
 | ~~**the `fr-board` fix ruling H decided**: `ViaRule` must own its `ViaInfo`s~~ — **DONE, both halves**: the via-info half in Plan 7 Task 0 and the **via-rule** half in Plan 7 Task 11 (`NetClass` owns its `ViaRule`, controller ruling AN), measured on `Issue143-rpi_splitter.dsn` + `tests/data/ruling-h-viarule.rules` — DIFF on all eight connections before, MATCH after | `rules/ViaRule.java:21`, `rules/NetClass.java:28`, `io/specctra/RulesReader.java:340-357`, `io/specctra/parser/Network.java:413-417` | `src/autoroute/maze/control.rs:385`; `crates/fr-board/src/rules/{via.rs,net_class.rs}`; `tests/data/p7t11-ruling-h-viarule.txt`; obligation register |
 | the eight **re-marked** coverage obligations | see the marker table above | `grep -rn "obligation:" crates/fr-router/src` |
 | `max_passes == 0` means **unlimited** (quirk #140), and `-mt` is **not** a threading policy on the headless path (quirk #143) | `RouterSettings.validate`, `BatchOptimizer.createForHeadless:51-53` | House rules above; `docs/java-quirks.md` |
-| ~~`RoutingPipeline`, the pipeline sequencer, and `AutorouteUnroutedReport`~~ — **DONE in Plan 7 Task 15**: `run` is `run_pipeline`, sequencing the two stages with quirk #227's no-reset preserved and the fanout-only settings-clone contract; `build` is `build_unrouted_report`, which also discharges `fr-drc`'s `added in Plan 7:` marker and `batch_loop.rs`'s stagnation-report stub. `createForHeadless`, `createForGui`, `getAutorouter`, `getOptimizer` and the three `add*Listener` methods are all accounted for in `pipeline/run.rs` (a `renamed:` and six `not ported:` markers) — Plan 8 has no `RoutingPipeline` surface left to wrap, only `PipelineResult` | `autoroute/pipeline/RoutingPipeline.java:81-129`, `AutorouteUnroutedReport.java:19-79` | `src/pipeline/run.rs`, `src/pipeline/unrouted_report.rs` |
+| ~~`RoutingPipeline`, the pipeline sequencer, and `AutorouteUnroutedReport`~~ — **DONE in Plan 7 Task 15**: `run` is `run_pipeline`, sequencing the two stages with quirk #227's no-reset preserved and the fanout-only settings-clone contract; `build` is `build_unrouted_report`, which also discharges `fr-drc`'s forward marker (now a `renamed:`) and `batch_loop.rs`'s stagnation-report stub. `createForHeadless`, `createForGui`, `getAutorouter`, `getOptimizer` and the three `add*Listener` methods are all accounted for in `pipeline/run.rs` (a `renamed:` and six `not ported:` markers) — Plan 8 has no `RoutingPipeline` surface left to wrap, only `PipelineResult` | `autoroute/pipeline/RoutingPipeline.java:81-129`, `AutorouteUnroutedReport.java:19-79` | `src/pipeline/run.rs`, `src/pipeline/unrouted_report.rs` |
 
 **The one thing Plan 7 must not do** is re-implement steps 1-5. `route_connection`
 is what 369 connections of byte-identical evidence attach to; a second
@@ -3331,6 +3511,30 @@ fanout and the optimizer live.
 
 ## What Plan 8 inherits
 
+**`docs/plan-7-handoff.md` is the authority**; this table is the crate-local view.
+The marker inventory it rests on, measured on the committed tree at Plan 7 Task 17:
+
+| grep | `crates/*/src` | `crates/*/tests` | `crates/` (adds README prose) |
+|---|---|---|---|
+| `added in Plan 7` | **0** (the gate) | **0** (the gate) | 3 — all past-tense narrative |
+| `added in Plan 8` | 32, of which **30** are markers proper and 2 are prose | 0 | 40 |
+| `obligation:` | 60 | 6 | 86 |
+| `pub seam:` | 14 (all `fr-router`) | 0 | 22 |
+| `not reachable:` | 18 | 2 | 23 |
+| `item_tree_shape_ref` / `item_tile_shape_ref` in `crates/fr-router/` | **0 call sites**; 3 hits, all prose about the rule | | plan-6 ruling 10 still holds |
+
+*(These counts are measured on the tree Task 17 committed and include this table's
+own lines — the plan-6 hand-off's warning about `crates/` sweeping the READMEs
+applies to every row. The `crates/*/src` column is the inventory.)*
+
+The 30 `added in Plan 8:` markers cluster in five places: `HeadlessBoardManager`'s
+nine `fr-core` methods (`fr-board/src/board/clearance_override.rs:399-407`),
+`BoardComparator` (`fr-board/src/board/mod.rs:57`, `fr-drc/src/lib.rs:144`), the
+KiCad JSON family (`fr-drc/src/lib.rs:114-119`), `SessionToEagle`
+(`fr-dsn/src/lib.rs:12`), and ruling 4's score surface
+(`fr-router/src/score/mod.rs:51-58`) plus `NamedAlgorithm.job` ×2 and
+`TextManager.parseTimespanString`.
+
 | what | Java | where it is recorded here |
 |---|---|---|
 | ~~`RoutingPipeline.createForHeadless` and the rest of the pipeline wiring~~ — **moved to Plan 7 Task 15**: the whole class is ported/rostered there; Plan 8 wraps `PipelineResult` as its `RoutingResult` instead | `autoroute/pipeline/RoutingPipeline.java` | `src/pipeline/run.rs` |
@@ -3341,3 +3545,15 @@ fanout and the optimizer live.
 | the CLI/MCP surface: legacy-flag value normalisation wiring, MCP concurrency | `GlobalSettings.java:675-731`; spec §13 | `crates/freerouting/src/{legacy.rs,mcp/}`; obligation register |
 
 | quirk #232 boundary | `router.hole_clearance_um` > 0 + zero circular keepouts → Java's second override run does one extra `reinsertTreeItems` (tree-order shift, #229 class) | pin or reproduce before the CLI exposes the setting | see the `obligation:` at the #232 site |
+
+Six more, added by Plan 7 and stated here because a Plan 8 survey that misses one
+of them re-opens a closed parity hole:
+
+| what | why Plan 8 must not break it |
+|---|---|
+| **`fr_router::{score, pipeline}` are re-exported, not moved** (controller answer 3) | spec §4 assigns them to `fr-core`; moving the files is a `use` change in every crate. Plan 8 owns only the JSON/manifest surface and the CLI/MCP wrappers |
+| **`CancelToken` maps *onto* `RouterStop`, three-state** | `requestStop()` writes `ALL` and `requestStopAutoRouter()` writes `AUTO_ROUTER_ONLY` (quirk #202). Collapsing them to a bool makes `--max-items` stop the optimizer *and* `--max-passes` stop it, which is quirk #214's whole point. The CLI's `--max-items` must also **document** that it stops the optimizer |
+| **quirk #227: nothing resets the stop flag between stages** | `RoutingPipeline.run` hands both stages one `job.thread` and `StoppableThread` has no `clear`. `run_pipeline` reproduces that. A Plan 8 wrapper that "helpfully" resets it changes every board |
+| **the `Line` identity token (ruling AE, quirk #74)** | one reader, `Line::is_same_object`, one caller, `Board::change_trace`. Nothing else may use it to stand in for `==` |
+| **`JavaTreeSet`, not `BTreeSet`, where the comparator is not total** (ruling Y, scan ruling 8) | `SortedRoomNeighbour`, `MazeListElement` and `BatchFanout.Component.Pin`. The two containers drop *different* elements |
+| **`UndoJournal` (ruling BA, quirk #229)** | `Board::{begin_undo_journal, discard_undo_journal, undo_from_snapshot, journal_insert, journal_remove, save_for_undo}` in `fr-board/src/board/snapshot.rs` is `BasicBoard.{generateSnapshot, popSnapshot, undo}` + `applyUndoRedoSideEffects`. The optimizer's restore replays undo's **tree** side effects; a whole-board clone assignment is not equivalent, and that difference burned item ids on two stems |

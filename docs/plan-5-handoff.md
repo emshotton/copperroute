@@ -875,6 +875,23 @@ single-threaded and says so), and the rest stand unchanged for Plan 7.
   needs trace lengths, via counts and bend counts. The eight committed
   references pin the values it must produce — turning the injection into a
   computation gives Plan 8 eight free acceptance cases.
+  > **Status (2026-09-01): AMENDED by controller ruling AG — Plan 7 Task 17's tick.**
+  > The *computation* is no longer Plan 8's: `BoardStatistics`, `calculateScore`,
+  > `getMaximumScore` and `getNormalizedScore` all landed in **Plan 7 Task 1** as
+  > `fr_router::score` (ruling AG put the score in `fr-router` rather than opening a new
+  > crate), pinned against the HEAD jar by `p7t7` under four `ScoringSettings` presets,
+  > MATCH x11 plus a five-way hash-mode sweep. What is left for Plan 8 is only the
+  > **wiring**: read `fr_router::score::BoardStatistics::normalized_score` and widen the
+  > `f32` to the report's `double`. Two corrections to the text above, both measured:
+  > `getNormalizedScore` is at `BoardStatistics.java:619-635`, not `:600-624`, and it does
+  > **not** return `NaN` on a board with no connections — `:626-633` opens with
+  > `if (maximumScore <= 0f) { return 0f; }`, which the port reproduces and
+  > `crates/fr-router/tests/score.rs`'s `an_empty_board_scores_zero_not_nan` pins. The
+  > plan had pre-assigned a quirk row to that non-existent NaN; it was struck before it
+  > was written. Ruling 4 leaves `BoardScoreBreakdown`, `ScoringWeightComparison`, the
+  > `byte[]`/`FileFormat` constructor and the Gson JSON as Plan 8's — they are eight
+  > `// added in Plan 8:` markers in `crates/fr-router/src/score/mod.rs` and two
+  > `ROSTERED` lines on the `core/scoring crates/fr-router/src` audit.
 - **The KiCad JSON session/board reader is unported.**
   `KiCadJsonReader.importSession` (called at `Freerouting.java:302-307`),
   `KiCadJsonReader.readBoard` (1 011 loc), `KiCadJsonWriter.write` (227 loc) and

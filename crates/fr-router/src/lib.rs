@@ -291,8 +291,38 @@ pub mod prelude {
 // gained a second row for the class so both files are searched. `getInitialUnroutedCount` and
 // `getSessionStartTime` are ported there too, so they are **not** on the line below; what is still
 // owed is rostered **in `pipeline/batch_autorouter.rs`** beside the code, not here:
-// added in Plan 7: `BatchAutorouter.runBatchLoop`, `BatchAutorouter.autoroutePassesForOptimizingItem`, `BatchAutorouter.getAirLine`.
-// added in Plan 7: `BatchAutorouterThread.getBoard`, `BatchAutorouterThread.getRoutedCount`, `BatchAutorouterThread.getFailedCount`, `BatchAutorouterThread.addBoardUpdatedEventListener`, `BatchAutorouterThread.fireBoardUpdatedEvent` — including the per-item `catch (Exception)` boundary at `BatchAutorouterThread.java:537`.
+// **All three of that line's names are answered in `pipeline/batch_autorouter.rs`** (the class's
+// second map row), so nothing of `BatchAutorouter` is deferred any more: `runBatchLoop` is a
+// `// renamed:` onto [`pipeline::AutorouteBatchLoop::run`] (Task 10),
+// `autoroutePassesForOptimizingItem` is a real `fn` (`autoroute_passes_for_optimizing_item`,
+// Task 13) and `getAirLine` is `// not ported:` with the writer/reader grep that makes it GUI-only
+// (Task 9).
+//
+// `autoroute/pipeline/BatchAutorouterThread.java` (621 loc) is **not ported**, and permanently.
+// It is the first of the five multithread classes controller ruling AM's General clause drops, and
+// Plan 7 Task 17 re-ran the greps at the clone's HEAD rather than inheriting them:
+// `grep -rn BatchAutorouterThread src/main/java src/test` answers the file itself,
+// `AutoroutePassRunner.java:49, 50, 62, 87, 92, 127, 129` — every one inside `runMultiThread`
+// (`:40-149`) — and six `FRLogger.traceEntry/traceExit("BatchAutorouterThread.thread_action()…")`
+// *strings* in `gui/workspace/progress/GuiRoutingJobWorker.java`, which are log payloads, not
+// references. `runMultiThread`'s only caller is `BatchAutorouter.autoroutePassMultiThread:411-413`,
+// and `grep -rn autoroutePassMultiThread src/main src/test` answers **its declaration and nothing
+// else**. So the class has **zero live callers in the whole tree**, and with it
+// `RouterSettings.maxThreads` has **no live reader anywhere** — its only three are
+// `AutoroutePassRunner.java:50, 53, 91`, all inside `runMultiThread`. That extends quirk #143
+// ("`-mt` is dead *headless*") to "dead everywhere"; #143's row carries the extension, and
+// `README.md` repeats the warning so that Plan 8 does not read the silence as an invitation to
+// invent a threading policy. The class is also a line-for-line duplicate of
+// `AutoroutePassRunner.runSingleThread` + `AutorouteConnectionRouter.route` +
+// `AutorouteAirlineCalculator`, all three of which **are** ported, so nothing is lost.
+// The per-item `catch (Exception)` boundary at `BatchAutorouterThread.java:537` that
+// `docs/plan-6-handoff.md` §10.2 promised Plan 7 would build therefore **does not exist on any
+// live path** (plan-7 ruling 7 as amended by scan ruling 9).
+// not ported: `BatchAutorouterThread.getBoard` (`:608-610`) — an accessor on a class with zero live callers.
+// not ported: `BatchAutorouterThread.getRoutedCount` (`:613-615`) — likewise.
+// not ported: `BatchAutorouterThread.getFailedCount` (`:618-620`) — likewise.
+// not ported: `BatchAutorouterThread.addBoardUpdatedEventListener` (`:591-593`) — one of `NamedAlgorithm`'s three listener lists, which controller ruling AK replaces wholesale with [`pipeline::ProgressSink`].
+// not ported: `BatchAutorouterThread.fireBoardUpdatedEvent` (`:599-606`) — the same listener list's `fire` half.
 // `BatchFanout` is **wholly ported** as `fr_router::pipeline::fanout`, and nothing of it is owed:
 // Task 11 landed the type and its constructor (`:35-78`), `Component` / `Component.Pin` and their
 // two `compareTo`s (`:631-693`, `:695-778`) as `FanoutComponent` / `FanoutPin`, and the three
@@ -330,7 +360,7 @@ pub mod prelude {
 // `AutorouteAirlineCalculator` landed in Plan 7 Task 9 as [`pipeline::calculate_airline`] — the
 // one method with a live caller (`AutorouteConnectionRouter.java:70`) — with its other five
 // members `not ported:` in `pipeline/airline.rs`; the map points the class there.
-// added in Plan 7: `AutorouteRuntimeMetrics` — package-private with no public members; the line records the class.
+// not ported: `AutorouteRuntimeMetrics` — `autoroute/pipeline/AutorouteRuntimeMetrics.java` (66 loc), the JMX CPU/heap samplers. The class is package-private and declares no public members, so this line records the class; its three methods carry their own `not ported:` markers in `pipeline/batch_loop.rs`, where the block that would call them lives. Every reader of every sample is an `FRLogger` string (`AutorouteBatchLoop.java:93-96, 175-216`), so nothing a board can observe passes through it.
 // `AutorouteUnroutedReport.build` is **ported** — Plan 7 Task 15's
 // [`pipeline::build_unrouted_report`] — a consumer of `fr-drc` (`crates/fr-drc/src/lib.rs`'s own
 // marker records the same decision as a `// renamed:`, now that this discharges it);

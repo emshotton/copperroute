@@ -63,9 +63,19 @@
 //! Java leaves running. Only Task 10 (`AutorouteBatchLoop.run`) and Task 9
 //! (`AutoroutePassRunner.runPass`) read the job-level flag through this type.
 //!
-//! Unreachable today: no `poll_deadline` call site exists yet, and every parity run uses
-//! [`RouterStop::new`] (deadline `None`), so nothing can observe the difference until Tasks 11-14
-//! land.
+//! **Status at the close of Plan 7 (Task 17).** Tasks 11-14 have all landed and none of them
+//! flattened the distinction: `grep -rn "poll_deadline" crates/fr-router/src` finds **exactly one
+//! production call site**, `pipeline/batch_loop.rs:303` — the job-level row of the table above
+//! (`AutorouteBatchLoop:251`, quirk #203's dead arm) — and nothing else but doc comments in
+//! `fanout.rs` and `optimizer.rs` saying, at each of the four per-stage sites, that this method is
+//! deliberately *not* the one being called there.
+//! Every parity run uses [`RouterStop::new`] (deadline `None`) and
+//! [`RouterBudget::disabled`], so the deadline is invisible to the ladder by construction —
+//! which is the point: it is Plan 8's CLI `--job-timeout` that will first make it observable, and
+//! a **seventh** read site is a bug unless it is a job-level one.
+//!
+//! Plan 8's `CancelToken` joins at exactly these sites and must preserve the split: a token that
+//! ends the whole pipeline where Java ends one stage changes the board.
 //!
 //! # pub seam: Plan 8's `CancelToken`
 //!
@@ -476,7 +486,7 @@ impl RouterBudget {
 /// [`ProgressThrottler::should_update`] reads [`Instant::now`], the way Java reads
 /// `System.currentTimeMillis()`. [`ProgressThrottler::should_update_at`] takes the instant
 /// instead, so the gate's behaviour is unit-testable without a single sleep. Java has no such
-/// method; it is `// added in Plan 7:`-shaped rather than a port, and nothing but tests and
+/// method; it is a port-side seam rather than a transcription, and nothing but tests and
 /// [`ProgressThrottler::should_update`] calls it.
 ///
 /// Progress only (ruling 11): no port decision reads this.

@@ -10,11 +10,17 @@
 //! | `autoroute/expansion/SortedRoomNeighboursFactoryTest.java` | `:12-34` | [`sorted_room_neighbours_factory_test`] |
 //! | `autoroute/RoutableLayersSafetyCheckTest.java` | `:13-33` | [`routable_layers_safety_check_test`] |
 //!
-//! Spec §14.1's other three named suites are **not** here and are not this plan's:
-//! `StrictDrcEnforcementTest`, `BatchAutorouterDebugTest` and `autoroute/pipeline/*` all drive
-//! `autoroute/pipeline`, which plan-6 ruling 2 puts in Plan 7.
-//! added in Plan 7: `BatchAutorouter.runBatchLoop`, `AutorouteBatchLoop.run` — the pass loop the
-//! third suite below calls, and the only producer of its `IllegalArgumentException`.
+//! Spec §14.1's other three named suites are **not** here, because they drive
+//! `autoroute/pipeline`, which plan-6 ruling 2 puts in Plan 7. **All three landed there**, and
+//! this is where to find them: `StrictDrcEnforcementTest` is `tests/strict_drc.rs` (Plan 7
+//! Task 8), `RoutingPipelineComparisonTest` is `tests/pipeline.rs:104-105` (Plan 7 Task 15), and
+//! `BatchAutorouterDebugTest` is deliberately **not** ported — `tests/pass_runner.rs`'s module doc
+//! carries the grep that shows its 21 `@Test` methods drive `debug/DebugControl`, not the router.
+//! `BoardHistoryTest`, the fourth suite of plan-7 ruling 14, is `tests/board_history.rs:915-1060`.
+//!
+//! The pass loop those suites call — `BatchAutorouter.runBatchLoop` / `AutorouteBatchLoop.run`,
+//! the only producer of the `IllegalArgumentException` below — **landed in Plan 7 Task 10** as
+//! `fr_router::pipeline::AutorouteBatchLoop::run`.
 //!
 //! # Where the *extended* assertions live
 //!
@@ -210,7 +216,11 @@ mod routable_layers_safety_check_test {
     /// The board is the DSN this suite names, not a synthetic stand-in, so the assertion is over
     /// the same `layerStructure` (six layers, four of them signal) Java's loop walks.
     ///
-    /// added in Plan 7: `BatchAutorouter.runBatchLoop` — the `assertThrows` half.
+    /// The `assertThrows` half — `BatchAutorouter.runBatchLoop` — **landed in Plan 7 Task 10**:
+    /// `fr_router::pipeline::AutorouteBatchLoop::run` answers
+    /// `Err(fr_router::RouterError::NoRoutableLayer)` on this board, and
+    /// `crates/fr-router/tests/batch_loop.rs` asserts it there. This test keeps the Plan 6 half —
+    /// the predicate, over the same DSN — so the seam stays visible.
     ///
     /// Runs in a debug build: the DSN read is the whole cost (~40 ms), because nothing here
     /// builds a search tree or routes anything.

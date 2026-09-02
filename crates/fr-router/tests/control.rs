@@ -21,8 +21,11 @@
 //!   `settings.getLayerActive(i) && layers[i].isSignal`, which is exactly the negation of the
 //!   condition `:152` forces off. So the port carries the check at the level it owns —
 //!   [`a_power_plane_is_forced_inactive_however_the_settings_ask`] and
-//!   [`with_every_layer_disabled_no_layer_is_routable`] — and the exception itself is Plan 7's,
-//!   with an `added in Plan 7:` marker on `AutorouteBatchLoop` in the audit roster.
+//!   [`with_every_layer_disabled_no_layer_is_routable`] — and the exception itself is Plan 7's.
+//!   It **landed in Plan 7 Task 10** as [`fr_router::RouterError::NoRoutableLayer`], raised by
+//!   `fr_router::pipeline::AutorouteBatchLoop::run`; plan-7 ruling 7 makes it that plan's one new
+//!   recovery boundary, and the only one that propagates rather than degrading. The Java suite's
+//!   own `assertThrows` half is ported in `tests/java_ports.rs`.
 //! * The brief's `a_null_net_uses_clearance_class_one_and_the_first_via_rule` is only reachable
 //!   for `netNumber <= 0`. For any *positive* net number the board does not have, `initNet`'s
 //!   null-net arm (`:212-216`) does run — and `:219` then dereferences the same `null` through
@@ -468,7 +471,9 @@ fn a_power_plane_is_forced_inactive_however_the_settings_ask() {
 /// layers[i].isSignal` — expressed where this crate owns it. With every layer's setting off,
 /// no layer is routable, which is what makes Plan 7's `IllegalArgumentException` correct.
 ///
-/// added in Plan 7: `AutorouteBatchLoop.run` — the throw itself is `autoroute/pipeline`'s.
+/// The throw itself is `autoroute/pipeline`'s and **landed in Plan 7 Task 10**:
+/// `fr_router::pipeline::AutorouteBatchLoop::run` answers
+/// [`fr_router::RouterError::NoRoutableLayer`] on exactly this predicate.
 #[test]
 fn with_every_layer_disabled_no_layer_is_routable() {
     let board = plane_board();

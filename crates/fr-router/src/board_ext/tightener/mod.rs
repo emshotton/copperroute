@@ -1784,11 +1784,12 @@ impl PolylineTraceExt for Board {
         // (`RoutingBoard.additionalUpdateAfterChange:103-104` removes the complete free-space
         // rooms touching a shape of the item).
         //
-        // [`Board::combine_trace`] is this same loop with an empty body, and it keeps its own
-        // `added in Plan 7:` marker for `:188`: **Task 8** owns wiring an engine into `fr-board`'s
-        // other `combine` callers (plan line 871, ruling AJ's five). This is the one caller Task 5
-        // owns, so it drives the two halves itself instead of widening `fr-board`'s signature —
-        // additive, and Task 8's marker is left exactly where it was.
+        // [`Board::combine_trace`] is this same loop with an empty body, and its `:188` marker
+        // is now a `// not reachable:`: **Task 8** settled `fr-board`'s other `combine` callers
+        // under controller ruling AJ, which found `retainAutorouteDatabase` to be a Java
+        // benchmark-only system property, so `additionalUpdateAfterChange` is dead on every live
+        // path in both languages. This is the one caller Task 5 owns, so it drives the two halves
+        // itself instead of widening `fr-board`'s signature — additive, and correct either way.
         //
         // Java's observer notification at `:184-187` is dropped for the reason
         // `Board::combine_trace` already records: `global-constraints.md` forbids board observers.

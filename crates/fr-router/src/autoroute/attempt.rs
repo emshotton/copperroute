@@ -131,8 +131,14 @@ impl AutorouteAttemptResult {
 
     /// Whether the attempt routed the connection.
     // pub seam: none in Java — `AutorouteAttemptResult` has no `isRouted()`; its `state` is a
-    // public field every Java caller compares directly. Plan 7's pass loop
-    // (`AutoroutePassRunner`, `BatchAutorouter`) is what will read it. Own-file test only today.
+    // public field every Java caller compares directly. Plan 6 predicted Plan 7's pass loop would
+    // become the caller, and **Plan 7 Task 17 measured that it did not**: `AutoroutePassRunner`,
+    // `AutorouteBatchLoop`, `BatchFanout` and `RoutingBoardExt::fanout` all `match` on
+    // `AutorouteAttemptState` directly (13 sites, `grep -rn "AutorouteAttemptState::Routed"
+    // crates/fr-router/src`), because that is what Java's `result.state == ROUTED` chains are and
+    // a helper would be the port inventing a shape Java does not have. The seam therefore
+    // **stays open on purpose**, with its own-file unit test as its only caller; Plan 8's manifest
+    // layer is free to use it. Plan 7 scan ruling 4's "closed by Tasks 9/10" is corrected here.
     pub fn is_routed(&self) -> bool {
         self.state == AutorouteAttemptState::Routed
     }

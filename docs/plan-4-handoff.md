@@ -811,6 +811,18 @@ board). Ruling L cost nothing.
   a parameter). Its sibling `getRunFanout` is **not**
   ported (GUI only) and carries the opposite default — quirk #139 exists because
   the two share a javadoc and disagree.
+  > **Status (2026-09-01): CONSUMED — Plan 7 Task 17's tick.** `BatchFanout` landed in
+  > Plan 7 Tasks 11 and 12 and is the second reader: `pipeline::fanout` gates the whole
+  > stage on `is_fanout_enabled` exactly where `RoutingPipeline.run` does, and
+  > `run_pipeline` (Task 15) carries the fanout-only `maxPasses = 0` mode. Quirk #139's
+  > `getRunFanout` stays unported and GUI-only; nothing in the port reads it. The
+  > `obligation:` marker at `crates/fr-settings/src/router_settings.rs:472` is discharged.
+  > Quirk **#127** (board-derived trace costs, never the `.rules` file's) was **not**
+  > "fixed" while porting the router — `AutorouteControl::from_settings` reads
+  > `RouterSettings::get_trace_costs()` and nothing re-derives. Quirk **#140**
+  > (`max_passes == 0` is unlimited, not zero passes) is honoured by
+  > `AutorouteBatchLoop::run`'s cap check and by `run_pipeline`'s fanout-only mode.
+  > Quirk **#143** is **extended, not merely honoured** — see the `-mt` bullet below.
 - **Quirk #127 means the router sees board-derived trace costs, not the `.rules`
   file's.** `boardSpecificTraceCostsApplied` is `private transient`, cannot cross
   a merge, and `RoutingJobScheduler.java:186` therefore always re-derives both
@@ -842,11 +854,29 @@ board). Ruling L cost nothing.
   `TraceTightener` sites is **discharged** (Task 15a), `RoutingBoardExt` is
   **built** (ruling 3, Task 9), and pass-level recovery is **half done** — Plan 6
   built the five boundaries inside a connection, Plan 7 owns the two above it.
+  > **Status (2026-09-01): pass-level recovery is DONE, and one of "the two" never
+  > existed — Plan 7 Task 17's tick.** Task 9 landed the per-pass boundary
+  > (`AutoroutePassRunner::run_single_thread`, a `catch_unwind` degrading to
+  > `Ok(false)`; Java's own `try` is at `:156`/`:331-335`, **not** `:144`, which closes
+  > the dead `runMultiThread`), and Task 10 landed `RouterError::NoRoutableLayer`, the
+  > only propagating one. The per-item boundary at `BatchAutorouterThread.java:537` is
+  > on a class with zero live callers anywhere and does not exist on a live path.
   Still open and unchanged: quirk #106 (`Item.getConnectionItems` has no visited
   set; `connection_items_checked` exists and the router now calls it) and quirk
   #82, which must stay unfixed and now has three consumers.
 - **Both `-mt` fields survived Plan 6 untouched, and no headless threading policy
-  was invented from them.** The crate is single-threaded (plan-6 ruling 17) and
+  was invented from them.**
+  > **Status (2026-09-01): they survived Plan 7 too, and quirk #143 got WIDER — Plan 7
+  > Task 17's tick.** Controller ruling AM forbids `rayon` and any multithread port, and
+  > the re-run greps show why: `BatchAutorouter.autoroutePassMultiThread:411-413` has no
+  > caller anywhere in `src/main` or `src/test`, so `AutoroutePassRunner.runMultiThread`
+  > is unreachable, `BatchAutorouterThread.java` (621 loc) has zero live callers, and
+  > **`RouterSettings.maxThreads` has no live reader at all** — its only three are inside
+  > `runMultiThread`. `-mt` is dead *everywhere*, not just headless. All five multithread
+  > classes are `// not ported:` in `crates/fr-router/src/lib.rs` with their greps beside
+  > them, the `autoroute/pipeline` audit prints them as five `ROSTERED` lines so the
+  > deferral cannot go silent, and `crates/fr-router/README.md` repeats the warning for
+  > Plan 8. Quirk #143's row carries the extension. The crate is single-threaded (plan-6 ruling 17) and
   `crates/fr-router/README.md` restates this warning at the top of its house
   rules, because a threaded maze would be non-deterministic and would dissolve
   the per-connection acceptance ladder.

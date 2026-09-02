@@ -1045,12 +1045,15 @@ impl Board {
     // `PolylineTrace.correctConnectionToPin`'s `change` (HEAD's `:1237`; the `:1229` this marker
     // used to cite predates the same edit that moved `:942` to `:944`) — **discharged by Plan 7
     // Task 5** in `PolylineTraceExt::correct_connection_to_pin` — and `TraceShover`'s two
-    // `change` calls (`:385`, `:540`), which are still open.
+    // `change` calls (`:385`, `:540`), which **Plan 7 Task 8 closed the same way**: ruling AJ
+    // re-pointed all five sites to `// not reachable:`, so no caller has a hook left to make.
     //
     // `PolylineTrace.combine`'s own `additionalUpdateAfterChange` (`:188`) is **not** this
-    // marker's: it sits inside `combine`'s loop rather than before a `change`, so it is
-    // `Board::combine_trace`'s `added in Plan 7:` marker above, which **Task 8** owns (plan line
-    // 871). Task 5's one `combine` caller,
+    // marker's: it sits inside `combine`'s loop rather than before a `change`, so it belongs to
+    // [`Board::combine_trace`] above. **Plan 7 Task 8 closed it under controller ruling AJ**, as a
+    // `// not reachable:` rather than a port — `retainAutorouteDatabase` is a Java benchmark-only
+    // system property, so the whole `additionalUpdateAfterChange` family is dead on every live
+    // path in both languages. Task 5's one `combine` caller,
     // `fr_router::board_ext::PolylineTraceExt::swap_connection_to_pin`, transcribes that loop
     // itself rather than calling `Board::combine_trace`, precisely so it can place `:188` where
     // Java places it; nothing here changed.

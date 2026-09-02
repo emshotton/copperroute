@@ -30,9 +30,11 @@
 //! [`RoutingBoardExt::insert_forced_trace_polyline`], [`RoutingBoardExt::insert_forced_trace_segment`]
 //! and [`TraceShover::spring_over_obstacles`] — the three the autoroute path reaches at
 //! `FoundConnectionInserter:176` and at its five `tryNeckDown` / `insertFanoutMicroNeckdown` call
-//! sites. `board/optimize/TraceShover.java`'s deferral roster is empty as a result; the only
-//! `// added in Plan 7:` marker left in this module is `TraceTightener.optChangedArea`'s, and
-//! `insertForcedTracePolyline` does **not** reach it (see that method's doc).
+//! sites. `board/optimize/TraceShover.java`'s deferral roster is empty as a result. The one
+//! forward marker this module still carried when Plan 6 closed — `TraceTightener.optChangedArea`'s
+//! — was **consumed by Plan 7 Task 5** ([`TraceTightener::opt_changed_area`]); this module has no
+//! deferral left, and `insertForcedTracePolyline` does **not** reach that sweep (see that
+//! method's doc).
 //!
 //! # The two `normalize` catches, and what a `StopCheck` trip does to them
 //!

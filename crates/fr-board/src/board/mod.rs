@@ -216,7 +216,21 @@ pub(crate) use item_ctx;
 // assemble it without new machinery. **Not a quirk row** — this is a "no headless caller" ruling,
 // not a Java bug; the reasoning is `.superpowers/sdd/2026-08-30-plan-7-router-batch/task-6-report.md`
 // §2 and `crates/fr-router/README.md`'s Task 6 section.
-// added in Plan 7: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — `ForcedViaInserter`.
+// not ported: `RoutingBoard.forcedVia` (RoutingBoard.java:312-352) — **GUI only**, the same
+// answer `moveDrillItem` got two markers above, and measured the same way. Plan 7 Task 17 re-ran
+// the grep the plan's owner table asked for: `grep -rn forcedVia src/main/java src/test` at the
+// clone's HEAD finds exactly **two** hits — the declaration here, and
+// `gui/interactive/Route.java:294` inside the interactive route state. Nothing on the headless
+// path reaches it. The plan's table offered `// renamed:` -> Plan 6's `ForcedViaInserter` "if it
+// is the whole body": it is not. The body is `clearShoveFailingObstacle` + `startMarkingChangedArea`
+// + `ForcedViaInserter.insert` + a `tidyWidth`-clipped `optChangedArea` (`:334-350`), i.e. the
+// GUI's own wrapper around three methods the port already has
+// (`Board::clear_shove_failing_obstacle`, `Board::start_marking_changed_area`,
+// `fr_router::board_ext::ForcedViaInserter::insert`,
+// `fr_router::board_ext::RoutingBoardExt::opt_changed_area`). A `renamed:` would claim the
+// wrapper landed, which would be false; a Plan 8 deferral marker would claim Plan 8 owes it,
+// which is also false — Plan 8 is headless too. **Not a quirk row**: a "no headless caller" ruling, not a
+// Java bug.
 // renamed: `RoutingBoard.checkForcedTracePolyline` (RoutingBoard.java:405-448) -> `fr_router::board_ext::RoutingBoardExt::check_forced_trace_polyline`; it drives `TraceShover.check`, which lives in `fr-router` because the router is its only caller.
 // renamed: `RoutingBoard.insertForcedTraceSegment` (RoutingBoard.java:361-402) and `insertForcedTracePolyline` (:456-876) -> `fr_router::board_ext::RoutingBoardExt::{insert_forced_trace_segment, insert_forced_trace_polyline}` — the mutating half of the `TraceShover`, which lives in `fr-router` for the same reason `checkForcedTracePolyline` does, plus an `AutorouteEngine` for the `PolylineTrace.change` in its pull-tight tail. **Controller ruling AB** moved them out of Plan 7 into Plan 6 Task 15b, because `FoundConnectionInserter:176` and its five `tryNeckDown` / `insertFanoutMicroNeckdown` call sites are on the autoroute path.
 #[derive(Debug, Clone, PartialEq)]
@@ -2021,7 +2035,9 @@ impl Board {
     /// `combineTraces` + `optChangedArea` tail (:111-118) are Plan 7's, together with the
     /// `TraceTightener` they feed.
     // renamed: the removal half of `removeItemsAndPullTight` ->
-    // `remove_items_marking_changed_area`; the pull-tight half is `added in Plan 7:` above.
+    // `remove_items_marking_changed_area`; the pull-tight half **landed in Plan 7 Task 8** as
+    // `fr_router::board_ext::RoutingBoardExt::remove_items_and_pull_tight`, which is where the
+    // `renamed:` marker for the whole method now sits (module head, above).
     pub fn remove_items_marking_changed_area(
         &mut self,
         ids: impl IntoIterator<Item = ItemId>,

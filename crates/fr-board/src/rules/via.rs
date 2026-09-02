@@ -558,7 +558,9 @@ impl ViaRule {
     ///
     /// (`gui/windows/routing/WindowEditVias.java:191` and `WindowViaRule.java:148` are the other
     /// two callers, both out of scope.)
-    // added in Plan 7: Task 0; made reference-faithful in Task 11 (controller ruling AN).
+    // Landed in Plan 7 Task 0 and made reference-faithful in Plan 7 Task 11 (controller
+    // ruling AN). Not a deferral marker — the work is done; the note records which task owns
+    // the identity semantics this method depends on.
     pub fn contains(&self, via_info: &ViaInfo) -> bool {
         self.vias.iter().any(|v| v.is_same_object(via_info))
     }

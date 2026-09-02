@@ -139,7 +139,9 @@ pub trait RoutingBoardExt {
     ///
     /// # `optChangedArea` is **not** reached from here
     ///
-    /// `RoutingBoard`'s two `optChangedArea` overloads (`:151-190`) stay `// added in Plan 7:`.
+    /// `RoutingBoard`'s two `optChangedArea` overloads (`:151-190`) are **Plan 7 Task 5's**, and
+    /// landed there as [`RoutingBoardExt::opt_changed_area`] /
+    /// [`RoutingBoardExt::opt_changed_area_with_keep_point`]; they are not reached from here.
     /// The method that pull-tightens a whole changed area after a shove is `forcedVia`
     /// (`:312-352`, its tail at `:348`) and `insertTrace`/`autoroute`/`fanout` (`:293`, `:962`,
     /// `:1101`) — **not** this one, whose tail (`:773-875`) builds its own `TraceTightener` and

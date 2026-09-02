@@ -265,15 +265,17 @@ impl FoundConnectionLocator {
             // :124-129: "may happen only in case of fanout".
             //
             // obligation: `FoundConnectionLocator` — the fanout arm (`:124-129` here and the
-            // `atFanoutEnd` short-circuit at `:142-144`) is transcribed but still has **no ground
-            // truth** — **re-marked in Task 17**. It fires only when the maze search's
-            // destination door is an `ExpansionDrill`, which needs `ctrl.isFanout`. Measured over
-            // Task 17's acceptance corpus (369 connections, five boards) with a counter on this
-            // arm: **zero entries**. `ctrl.isFanout` is set by `BatchFanout`, which is
-            // `autoroute/pipeline`'s and therefore **Plan 7's** — `p6t1` drives
-            // `AutorouteConnectionRouter.route`, whose `AutorouteControl` never sets it. No board
-            // can discharge this obligation below the plan-6 seam; Plan 7's fanout pre-pass is
-            // where it closes.
+            // `atFanoutEnd` short-circuit at `:142-144`) — **DISCHARGED in Plan 7 Task 17**, and
+            // the prediction the marker made was right. Plan 6 measured **zero** entries over its
+            // whole 369-connection corpus, because the arm fires only when the maze search's
+            // destination door is an `ExpansionDrill`, which needs `ctrl.isFanout`, which only
+            // `BatchFanout` sets — `autoroute/pipeline`'s, i.e. Plan 7's. Plan 7 Tasks 11 and 12
+            // built it (`RoutingBoardExt::fanout` sets `ctrl.is_fanout = true`), and Task 17
+            // re-ran the same counter on the committed tree: the arm is entered **32 times** by
+            // `crates/fr-router/tests/batch_parity.rs`'s `the_ci_stems_climb_the_whole_ladder`,
+            // in **ordinary CI** (the four `java_dir`-gated stems, no `FR_SLOW_PARITY` needed),
+            // and every one of those runs is byte-identical to the HEAD jar's SES. It now has
+            // ground truth.
             ExpandableRef::Drill(drill) => {
                 let drill = engine
                     .rooms

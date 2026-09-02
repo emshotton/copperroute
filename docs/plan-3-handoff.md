@@ -726,8 +726,15 @@ would still surface as a `DIFF` on a mode nobody excused.
   MATCH on all 50 connections (`crates/fr-router/tests/data/p7t0-ruling-h-match.txt`),
   and the test named at the foot of this bullet is now
   `re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java`, with its
-  assertion inverted. The *via-rule* half (`Network.addViaRule` →
-  `NetClass.viaRule`) is untouched and still open. Plan 6 found the consumer
+  assertion inverted. **— The *via-rule* half is CLOSED TOO, in Plan 7 Task 11**
+  (`a19d4c5`, controller ruling AN): `NetClass` owns its `ViaRule` and
+  `AutorouteControl::via_rule` owns the rule it builds, `ViaRule::contains` is
+  reference-faithful (`ViaInfo::is_same_object`, the `fr-geometry` identity-token
+  model of ruling AE), and the `(via_rule …)` fixture the ruling asked for was built
+  and measured: the divergence is real and was **masked on 7 of the 8 corpus boards**
+  by a corpus quirk — every one of them declares two default rules, so the fallback
+  walk of `RoutingBoard.fanout:1028-1041` finds the same vias either way. **Ruling H
+  is fully closed; the register row says so.** The original open-half text follows. Plan 6 found the consumer
   (`AutorouteControl.rebuildViaInfo` reads `attachSmdAllowed`, `getPadstack` and
   `getClearanceClassIndex` **through `viaRule.getVia(i)`**, and
   `ctrl.viaInfos[i].attachSmdAllowed` is a routing gate at

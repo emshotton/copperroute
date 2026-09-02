@@ -2083,8 +2083,14 @@ fn changed_area_lifecycle_matches_the_characterization_test() {
             .surrounding_box(),
         IntBox::from_coords(0, 0, 1000, 1000)
     );
-    // added in Plan 7: `board.optChangedArea(...)`
-    // (BoardServiceCharacterizationTest.java:78), which clears `changedArea` afterwards.
+    // The Java test's next line is `board.optChangedArea(...)`
+    // (BoardServiceCharacterizationTest.java:78), which clears `changedArea` afterwards. That
+    // method **landed in Plan 7 Task 5** as `fr_router::board_ext::RoutingBoardExt::opt_changed_area`
+    // and cannot be called from here — it needs a `TraceTightener`, which is `fr-router`'s type,
+    // and `fr-board` must not depend on `fr-router`. The clearing half is asserted on the other
+    // side of the seam instead, by `crates/fr-router/tests/opt_changed_area.rs`'s
+    // `the_changed_area_is_cleared_after_the_sweep` and
+    // `an_empty_clip_shape_skips_the_tightener_but_still_clears_the_area`.
 }
 
 // not ported: `BoardServiceCharacterizationTest.snapshotUndoRedoPreservesItemsAndObserverNotifications`

@@ -1,13 +1,14 @@
 //! Port of `autoroute/pipeline/AutorouteUnroutedReport.java` (80 lines) — the diagnostic report
 //! `AutorouteBatchLoop`/`BatchAutorouter` emit when the routing stage stagnates
-//! (`BatchAutorouter.buildUnroutedConnectionsReport`, `BatchAutorouter.java:483-485`, itself
-//! `// not ported:` there — a one-line delegate with no headless caller — see the roster).
+//! (`BatchAutorouter.buildUnroutedConnectionsReport`, `BatchAutorouter.java:483-485`, a
+//! package-private one-line delegate whose two callers are `AutorouteBatchLoop.java:457` and
+//! `:487`; it carries a `// renamed:` marker pointing here, in `pipeline/batch_autorouter.rs`).
 //!
 //! It is a **consumer** of `fr-drc` (`new DesignRulesChecker(board, null)`,
 //! `calculateAllIncompletes()`, `getAllAirlines()` at `AutorouteUnroutedReport.java:20-22`), which
 //! is why it lives here rather than in `fr-drc` — `fr-drc`'s own marker at `src/lib.rs:143`
-//! records the same decision from the other side, as a `// renamed:` rather than an
-//! `// added in Plan 7:` now that this task discharges it.
+//! records the same decision from the other side, as a `// renamed:` rather than a forward
+//! marker, now that this task discharges it.
 
 use fr_board::items::Item;
 use fr_board::{Board, ItemId};

@@ -1445,6 +1445,15 @@ impl AutorouteEngine {
         // between the two arms, since `getConnectionItems`/`removeTraceTails` branch on the option
         // only for a fanout via (Item.java:735, RoutingBoard.java:1207-1216) and `BatchFanout` is
         // Plan 7's.
+        //
+        // **That last half is DISCHARGED in Plan 7 Task 17.** Task 17 put a counter inside the
+        // arm that actually *differs* — `stop_option == FanoutVia && is_fanout_via(...)`, the
+        // `break` in `Board::connection_items` (`crates/fr-board/src/board/connectivity.rs`,
+        // Item.java:735) — and ran the whole `fr-router` suite: it fires **once**, in
+        // `crates/fr-router/tests/reference_parity.rs`'s `steps_one_to_eight_matches_the_jar`,
+        // where the port is byte-identical to the HEAD jar. So a real board does reach the point
+        // where the two options answer differently, and the port answers as the jar does there.
+        // The counter was removed after the measurement; re-deriving it is four lines.
         let stop_connection_option = if ctrl.remove_unconnected_vias {
             StopConnectionOption::None
         } else {

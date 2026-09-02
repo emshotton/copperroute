@@ -301,6 +301,20 @@ resolved the items marked ✓ below — verified against the committed tree)
   restating since a naive reader might expect hash stability. Java's
   `BoardHistoryTest` was not ported as a standalone test file; it needs
   Plans 3/5/6 machinery (DSN import, DRC, autoroute) to be meaningful.
+  > **Status (2026-09-01): both halves COMPLETE — Plan 7 Task 17's tick.**
+  > (a) `BoardHistoryTest` **is** ported, by name, method for method:
+  > `crates/fr-router/tests/board_history.rs:915-1060` (Plan 7 Task 2, ruling AF).
+  > (b) The same-process reasoning was **re-audited rather than inherited**, under
+  > controller ruling AH: `Board::structural_hash` was widened in Plan 7 Task 3 to the
+  > field set `BasicBoard.serialize(true)` actually reaches — the whole item graph, not
+  > the traces its javadoc claims (quirk #201) — with a row-per-field audit table in
+  > `crates/fr-board/src/board/snapshot.rs`'s module doc and **no `?` cells**. The
+  > acceptance is *decision* parity, never digest parity: `p7t10` runs the three Java
+  > sites that compare two hashes (`BatchFanout:152-156`, `BoardHistory.contains`,
+  > `BoardHistory.getRank`) over 10 boards x 8 scripts x 2000 scripted mutations and
+  > reports **0 decision diffs**, hash-mode independent. Quirk #78's port column carries
+  > the widened description. The five deliberately-skipped fields are the only judgement
+  > calls and each is argued in the table.
 - **Task 13:** A report file-length figure, a `p2t13` README row's
   placement/JDK header, and a test helper misnamed `Lcg` are all cosmetic.
 - **Task 14:** "not ported: lives in fr-geometry" wording for
@@ -572,12 +586,27 @@ design:
   the maze search reaches `checkForcedTracePolyline` directly; controller rulings
   AA and AB then brought the mutating halves and the whole tightener family down
   with it. What is left for Plan 7 is `opt_changed_area` and the pull-tight tail
-  of `removeItemsAndPullTight` (`docs/plan-6-handoff.md` §10). The original text
+  of `removeItemsAndPullTight` (`docs/plan-6-handoff.md` §10).
+  > **Status (2026-09-01): COMPLETE — Plan 7 Task 17's tick.** `RoutingBoardExt` gained
+  > `opt_changed_area` and `opt_changed_area_with_keep_point` (Task 5, `ae8d003`),
+  > `remove_items_and_pull_tight` (Task 8, `b855b4c`) and `fanout` (Task 11, `a19d4c5`).
+  > Nothing of the trait is deferred: the `fr-board` markers that pointed here are all
+  > `// renamed:` lines now, and `grep -rn "added in Plan 7" crates/*/src` is empty.
+  The original text
   follows (plan ruling #4, `fr-router`): `Trace.pullTight`/`PolylineTrace.pullTight`
   and the `TraceShover` family are marked `// added in Plan 7:` in
   `items/trace.rs` and land there, not in `fr-board`.
 - **`changed_area`'s reset depends on `deep_copy`, not on being cleared
-  independently.** `Board::deep_copy` resets `changed_area` to `None`
+  independently.**
+  > **Status (2026-09-01): honoured — Plan 7 Task 17's tick.** Both dereferencing callers
+  > exist now (`TraceShover::insert`, `Board::change_trace`) and neither clears
+  > `changed_area` independently. Plan 7 Task 5 added a third class of caller,
+  > `RoutingBoardExt::opt_changed_area`, which *does* clear it — that is Java's own
+  > `RoutingBoardOperations.optChangedArea:78` (`board.changedArea = null`), pinned by
+  > `crates/fr-router/tests/opt_changed_area.rs`'s
+  > `the_changed_area_is_cleared_after_the_sweep`. Note also plan-6 §10's louder warning:
+  > every `route_connection` caller must `start_marking_changed_area()` first (quirk #177).
+ `Board::deep_copy` resets `changed_area` to `None`
   because a stale non-`None` value surviving a copy would corrupt the next
   autoroute pass's bookkeeping (`board/snapshot.rs` module doc); Plan 7's
   `TraceShover`/`PolylineTrace.change` are the two dereferencing callers, and
@@ -585,7 +614,18 @@ design:
   against, not a bug.
 - **`catch_unwind`/`Result` recovery boundaries** at
   `AutoroutePassRunner.java:144` (per pass) and
-  `BatchAutorouterThread.java:537` (per item) — Java's `catch (Exception)`
+  `BatchAutorouterThread.java:537` (per item) —
+  > **Status (2026-09-01): DISCHARGED, and both citations were wrong — Plan 7 Task 17's
+  > tick.** `:144` closes the **dead** `runMultiThread` (`:40-149`); `runSingleThread`
+  > (`:151-336`) has its own `try` at `:156` and `catch (Exception e) { … return false; }`
+  > at `:331-335`, which Plan 7 Task 9 ported as one `catch_unwind` around the whole body,
+  > degrading to `Ok(false)`. `BatchAutorouterThread.java:537` is on a class with **zero
+  > live callers in the entire Java tree** (quirk #143, extended by Task 17), so that
+  > boundary does not exist on any live path and there is nothing to build. Plan 7 added a
+  > second boundary the plan did not anticipate: `RouterError::NoRoutableLayer`
+  > (`AutorouteBatchLoop.java:44-56`, Task 10), the only *propagating* one. Table in
+  > `crates/fr-router/README.md`.
+ Java's `catch (Exception)`
   recovers and continues routing where several ported panics (Java NPE
   equivalents: `PolygonShape.intersects` stack overflow, `Polyline`
   normalisation, `TileShape.rotateApprox`) would otherwise abort the whole

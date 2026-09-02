@@ -50,7 +50,7 @@
 //! **Task 15 adds [`run_pipeline`]** — the port of `RoutingPipeline.run()`, sequencing the two
 //! stages exactly as `RoutingPipeline.runRoutingStage`/`runOptimizationStage` do, including quirk
 //! #227's no-reset and the fanout-only `maxPasses = 0` mode — and [`build_unrouted_report`], the
-//! port of `AutorouteUnroutedReport.build` that discharges `fr-drc`'s `added in Plan 7:` marker
+//! port of `AutorouteUnroutedReport.build` that discharges `fr-drc`'s forward marker
 //! (now a `// renamed:`) and `batch_loop.rs`'s stagnation-report stub. `PipelineResult` is what
 //! Plan 8's `fr-core` wraps as its `RoutingResult`.
 //!
