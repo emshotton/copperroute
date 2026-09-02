@@ -80,24 +80,32 @@ fn rows() -> Vec<Row> {
     text.lines()
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .map(|line| {
+        .filter_map(|line| {
             let mut fields = line.split('|');
             let mut next = || fields.next().unwrap_or_default().trim().to_string();
             let (stem, dsn, max_items, ripup_pass_no) = (next(), next(), next(), next());
-            Row {
+            // Plan 7 Task 16 appended `max_passes|fanout|optimizer` at fields 5-7 and made 3 and 4
+            // **mandatory-or-`-`**. A `-` in `max_items` is a batch-only row — one this file's
+            // generator (`gen-router-reference.sh`) skips and which has no `router.jsonl` — so it
+            // is dropped here for the same reason. A `-` in `ripup_pass_no` is the default 1,
+            // which is what the field's absence already meant.
+            if max_items == "-" {
+                return None;
+            }
+            Some(Row {
                 stem,
                 dsn,
                 max_items: max_items
                     .parse()
                     .unwrap_or_else(|e| panic!("max_items {max_items:?}: {e}")),
-                ripup_pass_no: if ripup_pass_no.is_empty() {
+                ripup_pass_no: if ripup_pass_no.is_empty() || ripup_pass_no == "-" {
                     1
                 } else {
                     ripup_pass_no
                         .parse()
                         .unwrap_or_else(|e| panic!("ripup_pass_no {ripup_pass_no:?}: {e}"))
                 },
-            }
+            })
         })
         .collect()
 }

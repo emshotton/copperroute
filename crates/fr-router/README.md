@@ -3123,6 +3123,177 @@ round-up-to-even — are in `crates/fr-board/tests/clearance_override.rs`. And
 connections with the override live on both sides: **MATCH**, and 44 of the 45
 rows differ from the same run without the switch.
 
+## The whole-board acceptance ladder (Task 16, ruling 1 / ruling AM)
+
+`tests/reference/<stem>/batch.ses` is the **HEAD jar's verbatim SES** for a
+whole-board `java -jar <jar> -de <dsn> -do <ses> -mp <n>` run and
+`batch.passes.jsonl` its per-pass `PassRecord` tuples;
+`scripts/gen-batch-reference.sh` writes both through
+`scripts/differential/java/P7T9.java` mode `batch`, and
+`crates/fr-router/tests/batch_parity.rs` climbs the ladder against them. The
+port's side is the jar's own flow: `fr_settings::resolve_headless` on the same
+`argv`, then `pipeline::prepare_board` (ruling AW), then `run_pipeline`, then
+`fr_dsn::ses_writer::write`.
+
+The rungs, per stem:
+
+* **(a)** the pass count and every `PassRecord` tuple identical;
+* **(b)** the item set after every pass identical;
+* **(c)** byte-identical SES.
+
+**Measured: all eight stems reach (a), (b) and (c).** Ruling AM's escape hatch —
+an `XDIFF` row carrying the first differing byte and a normalised digest — is
+unused, and `every_stem_reaches_rung_c` is what stops it being quietly re-entered.
+
+| stem | dsn | `-mp` | fanout | optimizer | lane | (a) | (b) | (c) | passes | final SES | last pass tuple |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `router-rpi-splitter` | `Issue143-rpi_splitter.dsn` | 8 | on | on | CI | ✅ | ✅ | ✅ | 3 | 3 654 B | score 999.9719, 0 incomplete, 0 violations, 9 vias, 16 traces |
+| `router-dac2020-bm01` | `Issue508-DAC2020_bm01.dsn` | 2 | on | on | slow | ✅ | ✅ | ✅ | 2 | 66 387 B | score 825.6266, 34 incomplete, 0 violations, 130 vias, 432 traces |
+| `router-j2-reference` | `Issue026-J2_reference.dsn` | 99 | on | on | CI | ✅ | ✅ | ✅ | 2 | 15 254 B | score 999.9879, 0 incomplete, 0 violations, 21 vias, 104 traces |
+| `router-tutorial-board` | `examples/tutorial_board/tutorial_board.dsn` | 8 | on | on | slow | ✅ | ✅ | ✅ | 1 | 462 B | score 0.0 — the board's 438 `@:no_net_N` nets leave nothing to route |
+| `router-ecc83-input` | `Issue649-kicad_ecc83-pp_input_board_v1.dsn` | 8 | on | on | CI | ✅ | ✅ | ✅ | 2 | 4 509 B | score 999.997, 0 incomplete, 0 violations, 0 vias, 18 traces |
+| `router-fanout-bm11` | `Issue730-DAC2020_bm11.dsn` | 2 | on | **off** | slow | ✅ | ✅ | ✅ | 2 | 56 155 B | score 987.4912, 2 incomplete, 0 violations, 53 vias, 335 traces |
+| `router-strict-drc-cnh` | `Issue555-CNH_Functional_Tester_1.dsn` | 2 | on | on | slow | ✅ | ✅ | ✅ | 2 | 40 915 B | score 930.0412, 11 incomplete, **16 violations**, 4 vias, 214 traces |
+| `router-empty-board` | `empty_board.dsn` | 1 | off | off | CI | ✅ | ✅ | ✅ | 1 | 212 B | score 0.0 — no items at all |
+
+`router-strict-drc-cnh`'s 16 violations are the board's **pre-existing** ones and
+the count does not move: the port adds none, which is what `StrictDrcRoutingTest`
+asserts and what `tests/fixtures.rs` pins independently.
+
+**The lane** is ruling AM as amended by scan ruling 13: eight stems, four in CI,
+four `#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`. The whole slow
+lane is ~2 min in release.
+
+### The one normalisation, and why it is not a tolerance
+
+`parity::normalize_ses_head_tokens` rewrites four `(parser …)` keyword literals on
+the **reference** side, and nothing else is touched. The clone's HEAD camelCased
+them — `(hostCad `, `(hostVersion `, `(stringQuote `, `(writeResolution ` — while
+leaving its own lexer recognising only the snake_case tokens, so HEAD writes
+Specctra it cannot read back; that is quirk **#92**, and Plan 3 ruling 1
+consequently pins this port's writer to the 2.3.0 spelling and
+`tests/reference/README.md` forbids regenerating the DSN/SES references from HEAD.
+`batch.ses` is the one file in the tree written by **HEAD's** `SesWriter`, so it
+carries HEAD's spelling of the two such keywords an SES contains. The set is
+closed and enumerated (every camelCase string literal in `SesWriter.java` and
+`parser/Parser.java` combined); everything else is compared byte for byte. The
+DRC family has the same shape of problem and the same shape of answer
+(`normalize_drc_json`, plan-5 ruling 3).
+
+### The budget: what the plan asked for, and what is actually possible
+
+The plan asks the driver to reflect `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` to `0`
+so that ruling AI's "budget disabled on both sides" holds. **It cannot be done.**
+All four declarations are `static final int … = 1000` with a constant initialiser
+(`AutorouteConnectionRouter.java:22`, `BatchAutorouter.java:43`,
+`BatchAutorouterThread.java:38`, `AutoroutePassRunner.java:32`), so `javac`
+inlines them: `javap -c -p` on the shipping jar shows `sipush 1000` immediately
+before every `optChangedArea` call and no `getstatic` anywhere, and the fields are
+dead. Writing them reflectively changes nothing.
+
+So the arrangement is every other `p7t*` driver's: **Java runs with the live
+1000 ms limit, the port with `RouterBudget::disabled()`**, and a byte-identical
+SES is *evidence* that the limit never changed the result rather than an
+assumption that it could not. The trips that **did** occur are counted from the jar's own logging: `TraceTightener.isStopRequested`
+(`board/optimize/TraceTightener.java:202-211`) calls
+`FRLogger.debug("TraceTightener.is_stop_requested: time limit exceeded")` on every
+exceeded check, and `Log4j2ConfigurationFactory` gives the root logger `Level.ALL`
+with a file appender at `-Dfreerouting.logging.file.level` (default `DEBUG`)
+writing to `-Dfreerouting.logging.file.location`. So the count is those two
+properties plus `-Dfreerouting.logging.console.enabled=false` and a `grep -c`, and
+`gen-batch-reference.sh --verify-driver` is what runs it — only after a comparison
+has already come back different, because turning `DEBUG` on costs wall-clock time
+and wall-clock time is what the budget measures.
+
+A programmatic Log4j2 counting appender was tried first and received **zero**
+events against this jar's `Log4j2ConfigurationFactory`, which is why the driver
+has no flag of its own; the `-D` route is verified working (a plain
+`router-rpi-splitter` run writes 113 `DEBUG` lines to the file, none of them a
+trip).
+
+**Measured for all eight stems, in their reference configuration, with the jar's
+DEBUG log on** — which makes the run 2-6× slower and so *more* likely to trip:
+
+| stem | budget trips | DEBUG lines | SES vs the committed `batch.ses` |
+|---|---|---|---|
+| `router-rpi-splitter` | 0 | 129 | identical |
+| `router-dac2020-bm01` | 0 | 634 | identical |
+| `router-j2-reference` | 0 | 111 | identical |
+| `router-tutorial-board` | 0 | 60 | identical |
+| `router-ecc83-input` | 0 | 92 | identical |
+| `router-fanout-bm11` | 0 | 215 | identical |
+| `router-strict-drc-cnh` | 0 | 421 | identical |
+| `router-empty-board` | 0 | 42 | identical |
+
+So the references sit on the side of the boundary where the limit never fires,
+and that is a measurement rather than an inference.
+
+**Where it does fire, and what that costs — quirk #234.** Push
+`router-dac2020-bm01` past its ruling-AM cap and the jar stops being
+reproducible: at `maxPasses = 3` pass 3 is `score=841.0115 incompletes=31
+traces=408` and at `maxPasses = 20` it is `835.88336 / 32 / 407`, three runs each,
+same board, same settings, same `-XX:hashCode=2` — and the `maxPasses = 20` run
+*with* the DEBUG log is back to `841.0115` and records **one** trip.
+`settings.maxPasses` is read nowhere on the routing path, so the clock is the only
+run-to-run input. The port is self-consistent (`841.0115` at every `maxPasses`),
+which is what a budget-free implementation must be. The ladder is unaffected: its
+`-mp 2` for that stem is below the pass where the trip appears.
+
+### What the ladder does not cover, and why it cannot be extended by raising `-mp`
+
+Beyond `-mp 2` on `Issue508-DAC2020_bm01.dsn` there is no stable reference to
+compare against. Measured: a `p7t9 … 3 batch-router` run of the **Java** driver
+records one budget trip and answers `maxId=211817` plain and `maxId=211829` with
+the DEBUG log on — its own id burn moves run to run — while the port answers
+`212483` every time. The pass tuples agree in all three runs (`score=841.0115
+incompletes=31 traces=408`), so the board's *metrics* are stable and its *item
+ids and geometry* are not.
+
+The port's 666-id gap is well outside Java's own 12-id spread, so a genuine
+divergence at pass 3 is likely as well as a budget-driven one — but it cannot be
+settled against a reference that is not reproducible. Anyone taking it further has
+to stabilise the Java side first (a recompiled jar with the constant at `0` is the
+only way, since nothing else reaches it), and only then reach for the level-8
+`MAT`/`TREEFP`/`ITEMSEP` ledgers of `p6t17b-bisect.patch`. Raising ruling AM's
+`-mp` column without that would turn a green ladder red for a reason that is not
+the port's.
+
+Everything below pass 3 on that board, and every pass of the other seven stems, is
+byte-parity with **0** measured trips.
+
+### `--verify-driver`: the driver **is** the jar
+
+`scripts/gen-batch-reference.sh --verify-driver` runs the bare jar
+(`java -jar <jar> -de … -do … -mp … --router.fanout.enabled=… --router.optimizer.enabled=…`)
+and `P7T9 … batch` on the same `argv` and compares the two SES files byte for
+byte. Its verdict is committed into each stem's `batch.meta.txt` and asserted by
+`the_driver_matches_the_bare_jar`.
+
+| stem | verdict |
+|---|---|
+| all eight | `bare-jar: identical` — 3 654 / 66 387 / 15 254 / 462 / 4 509 / 56 155 / 40 915 / 212 B |
+
+Controller answer 1's failure case — a bare-jar difference with **zero** recorded
+budget trips — did not arise on any stem, so no stem carries a trip count.
+
+### `--verify-hash-modes`: eight stems × five modes, one digest each
+
+`scripts/gen-batch-reference.sh --verify-hash-modes` regenerates each stem's SES
+under `-XX:hashCode=0..4` and requires five byte-identical files. Plan 6's survey
+verified the premise end to end on two boards; this extends it to all eight with
+fanout and the optimizer live.
+
+| stem | 5-mode digest (first 12) | bytes |
+|---|---|---|
+| `router-rpi-splitter` | `303d795592b5` | 3 654 |
+| `router-dac2020-bm01` | `9176b5522415` | 66 387 |
+| `router-j2-reference` | `53e3779af20a` | 15 254 |
+| `router-tutorial-board` | `ac29268158c1` | 462 |
+| `router-ecc83-input` | `6b3915069992` | 4 509 |
+| `router-fanout-bm11` | `2191d2e6d715` | 56 155 |
+| `router-strict-drc-cnh` | `b0e93e475914` | 40 915 |
+| `router-empty-board` | `4e4af63f7388` | 212 |
+
 ## What Plan 8 inherits
 
 | what | Java | where it is recorded here |

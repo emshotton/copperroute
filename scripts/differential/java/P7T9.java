@@ -24,8 +24,19 @@ import app.freerouting.geometry.planar.IntPoint;
 import app.freerouting.geometry.planar.Line;
 import app.freerouting.geometry.planar.Point;
 import app.freerouting.geometry.planar.Polyline;
+import app.freerouting.io.specctra.SesWriter;
+import app.freerouting.board.actions.ItemIdGenerator;
+import app.freerouting.management.HeadlessBoardManager;
 import app.freerouting.settings.FanoutSettings;
 import app.freerouting.settings.RouterSettings;
+import app.freerouting.settings.SettingsMerger;
+import app.freerouting.settings.sources.ApiSettings;
+import app.freerouting.settings.sources.CliSettings;
+import app.freerouting.settings.sources.DefaultSettings;
+import app.freerouting.settings.sources.DsnFileSettings;
+import app.freerouting.settings.sources.EnvironmentVariablesSource;
+import app.freerouting.settings.sources.JsonFileSettings;
+import java.io.ByteArrayInputStream;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -34,6 +45,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Plan 7 Task 10 differential driver, whole-board level: {@code AutorouteBatchLoop.run}
@@ -114,12 +127,32 @@ public final class P7T9 {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 1) {
-      System.err.println("usage: P7T9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]");
+      System.err.println(
+          "usage: P7T9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]"
+              + " [--fanout on|off] [--optimizer on|off] [--ses <path>] [--passes <path>]");
       System.exit(2);
     }
     PrintStream out =
         new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
     System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+
+    // Plan 7 Task 16's four trailing flags. They are parsed out first so the five positionals
+    // keep the meanings Tasks 10/14/15 gave them and no existing invocation changes.
+    List<String> positional = new ArrayList<>();
+    Path sesPath = null;
+    Path passesPath = null;
+    Boolean fanoutFlag = null;
+    Boolean optimizerFlag = null;
+    for (int i = 0; i < args.length; i++) {
+      switch (args[i]) {
+        case "--ses" -> sesPath = Paths.get(args[++i]).toAbsolutePath();
+        case "--passes" -> passesPath = Paths.get(args[++i]).toAbsolutePath();
+        case "--fanout" -> fanoutFlag = onOff(args[++i]);
+        case "--optimizer" -> optimizerFlag = onOff(args[++i]);
+        default -> positional.add(args[i]);
+      }
+    }
+    args = positional.toArray(new String[0]);
 
     Path dsn = Paths.get(args[0]).toAbsolutePath().normalize();
     int maxPasses = args.length > 1 && !args[1].isBlank() ? Integer.parseInt(args[1]) : 1;
@@ -129,10 +162,12 @@ public final class P7T9 {
         && !"optimizer".equals(mode)
         && !"optimizer+fanout".equals(mode)
         && !"optimizer-shared".equals(mode)
-        && !"full".equals(mode)) {
+        && !"full".equals(mode)
+        && !"batch".equals(mode)
+        && !"batch-router".equals(mode)) {
       System.err.println(
           "P7T9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout',"
-              + " 'optimizer-shared' or 'full', not: "
+              + " 'optimizer-shared', 'full', 'batch' or 'batch-router', not: "
               + mode);
       System.exit(2);
     }
@@ -152,10 +187,29 @@ public final class P7T9 {
         dsn.getFileName(),
         maxPasses,
         mode,
-        (isOptimizerMode(mode) || "full".equals(mode))
-            ? " optPasses=" + limitName(optPasses) + " optItems=" + limitName(optItems)
-            : "");
+        isBatchMode(mode)
+            ? " fanout="
+                + onOffName(fanoutFlag == null || fanoutFlag)
+                + " optimizer="
+                + onOffName(optimizerFlag == null || optimizerFlag)
+            : (isOptimizerMode(mode) || "full".equals(mode))
+                ? " optPasses=" + limitName(optPasses) + " optItems=" + limitName(optItems)
+                : "");
     System.err.println("java-version " + System.getProperty("java.version"));
+
+    if (isBatchMode(mode)) {
+      runBatchMode(
+          out,
+          dsn,
+          maxPasses,
+          mode,
+          fanoutFlag == null || fanoutFlag,
+          optimizerFlag == null || optimizerFlag,
+          sesPath,
+          passesPath);
+      out.flush();
+      return;
+    }
 
     if (isOptimizerMode(mode)) {
       runOptimizerMode(out, dsn, maxPasses, mode, optPasses, optItems);
@@ -243,6 +297,307 @@ public final class P7T9 {
   /** The three modes that drive {@code BatchOptimizer.runBatchLoop} (Plan 7 Task 14). */
   static boolean isOptimizerMode(String mode) {
     return mode.startsWith("optimizer");
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // Plan 7 Task 16 — the two batch modes, i.e. the jar's real `-de <dsn> -do <ses>` flow
+  // -----------------------------------------------------------------------------------------
+
+  /**
+   * Modes {@code batch} and {@code batch-router}: the whole-board run <b>as the CLI runs it</b>.
+   *
+   * <p>Every other mode of this driver builds its board with {@code DsnReader.readBoard} and its
+   * settings with {@code DefaultSettings} alone, which is the priority-0 ladder and exactly what
+   * the per-connection drivers need. That is <b>not</b> what {@code java -jar … -de x.dsn -do
+   * x.ses} does, and controller ruling AW makes the difference load-bearing for Task 16: the real
+   * flow loads through {@link HeadlessBoardManager#loadFromSpecctraDsn}, whose {@code
+   * applyRouterSettingsForLoadedBoard} ({@code HeadlessBoardManager.java:739-748}) runs
+   * {@code applyCopperToEdgeClearanceOverride} and {@code applyHoleClearanceOverride} — which
+   * <b>mutate the board</b> on 15 of the 16 corpus boards (Task 15b) — and resolves settings
+   * through the two-merge ladder of {@code Freerouting.java:125-146} and
+   * {@code RoutingJobScheduler.java:103-186}. A reference generated without those is not the
+   * jar's output.
+   *
+   * <p>So these two modes are the only ones that go through the manager, and their settings come
+   * from the <b>real</b> {@code SettingsMerger} with a <b>real</b> {@code CliSettings} built from
+   * the same {@code argv} the bare jar is given ({@code -de}, {@code -do}, {@code -mp} and the
+   * two {@code --router.*.enabled} switches). The port's twin calls
+   * {@code fr_settings::resolve_headless} with the same argv and {@code
+   * fr_router::pipeline::prepare_board}; the settings ladder itself is already byte-pinned by
+   * Plan 5's {@code p4t1}, so what these modes add is the board mutation and the whole pipeline
+   * on top of it.
+   *
+   * <ul>
+   *   <li>{@code batch} runs the real {@code RoutingPipeline.createForHeadless(job).run()} — both
+   *       stages — and, with {@code --ses}, writes the result through the real
+   *       {@code SesWriter.write}, using {@code job.name} as the design name exactly as
+   *       {@code RoutingJobSchedulerActionThread.setJobOutput:288} does. That file is
+   *       {@code tests/reference/<stem>/batch.ses}.
+   *   <li>{@code batch-router} runs the routing stage <b>transcribed</b>, on the same board and
+   *       the same settings with the optimizer switched off, so that each completed pass prints
+   *       its {@code PassRecord} tuple. With {@code --passes} those tuples are written as JSON
+   *       lines — {@code tests/reference/<stem>/batch.passes.jsonl}, ruling 1(a)'s rung.
+   * </ul>
+   *
+   * <h2>The budget, measured rather than assumed</h2>
+   *
+   * <p>The plan text asks this driver to reflect {@code TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP} to
+   * {@code 0}. <b>It cannot be done.</b> All four declarations are {@code static final int = 1000}
+   * with a constant initialiser, so {@code javac} inlines them: {@code javap -c} on the shipping
+   * jar shows {@code sipush 1000} immediately before every {@code optChangedArea} call site, and
+   * the fields are never read. Writing them reflectively changes nothing. The Java side therefore
+   * runs with the live 1000 ms limit and the port with {@code RouterBudget::disabled()}; a
+   * byte-identical SES is then <i>evidence</i> that the limit never changed the result, which is
+   * strictly stronger than configuring both sides the same.
+   *
+   * <p>The trips that <i>did</i> happen are counted by the jar's own logging, not by this driver:
+   * {@code TraceTightener.isStopRequested:202-211} calls
+   * {@code FRLogger.debug("TraceTightener.is_stop_requested: time limit exceeded")} on every
+   * exceeded check, and {@code Log4j2ConfigurationFactory} builds a root logger at
+   * {@code Level.ALL} with a file appender whose level is
+   * {@code -Dfreerouting.logging.file.level} (default {@code DEBUG}) and whose path is
+   * {@code -Dfreerouting.logging.file.location}. So
+   * {@code -Dfreerouting.logging.file.location=<path> -Dfreerouting.logging.console.enabled=false}
+   * plus {@code grep -c} is the whole measurement, and
+   * {@code scripts/gen-batch-reference.sh --verify-driver} is what runs it.
+   * <b>A programmatic Log4j2 appender was tried first and did not work</b>: a counting
+   * {@code AbstractAppender} added through {@code Configuration.addLogger} +
+   * {@code updateLoggers} received <b>zero</b> events against this jar's configuration factory,
+   * which is why the driver has no flag of its own.
+   */
+  static void runBatchMode(
+      PrintStream out,
+      Path dsn,
+      int maxPasses,
+      String mode,
+      boolean fanout,
+      boolean optimizer,
+      Path sesPath,
+      Path passesPath)
+      throws Exception {
+    boolean routerOnly = "batch-router".equals(mode);
+    RoutingJob job = new RoutingJob();
+    // `Freerouting.java:100` — `setInput(File)` reads the bytes, detects the format, sets
+    // `job.input.filename` to the absolute path and `job.name` to the base name without the
+    // extension. `job.name` is what the SES `(session …)`/`(base_design …)` header carries.
+    job.setInput(dsn.toFile());
+    byte[] dsnBytes = job.input.getData().readAllBytes();
+    String dsnFilename = job.input.getFilename();
+
+    String[] argv = batchArgv(dsn, maxPasses, fanout, optimizer && !routerOnly);
+    out.println("ARGV " + String.join(" ", argv));
+
+    // --- merge #1 (`Freerouting.java:125-146`), the P4T1 transcription ------------------------
+    SettingsMerger prototype =
+        new SettingsMerger(
+            new DefaultSettings(), //                                          :1410
+            new JsonFileSettings(), //                                         :1411
+            new CliSettings(argv), //                                          :1412
+            new EnvironmentVariablesSource()); //                              :1413
+    SettingsMerger merger1 = prototype.clone(); //                             :125
+    merger1.addOrReplaceSources( //                                            :126-127
+        new DsnFileSettings(new ByteArrayInputStream(dsnBytes), dsnFilename));
+    job.routerSettings = merger1.merge(); //                                   :146
+
+    // --- the load, through the manager (`RoutingJobScheduler.java:93-101`) --------------------
+    // This is the call that runs `applyRouterSettingsForLoadedBoard` (`:741-747`, i.e. the
+    // between-merges board pass **and** the two clearance overrides) and
+    // `applyImmediatePostLoadProcessing` (`:755-756`, `reduceNetsOfRouteItems` and the read-only
+    // `validatePowerPlanes`). Ruling AW: without it the board is not the one the jar routes.
+    HeadlessBoardManager manager = new HeadlessBoardManager(job);
+    manager.loadFromSpecctraDsn(
+        new ByteArrayInputStream(dsnBytes), null, new ItemIdGenerator()); //   :95-96
+    RoutingBoard board = manager.getRoutingBoard(); //                         :101
+    if (board == null) {
+      throw new IllegalStateException("board did not load: " + dsn);
+    }
+    job.board = board;
+
+    // --- merge #2 (`RoutingJobScheduler.java:103-170`) ----------------------------------------
+    SettingsMerger merger2 = prototype.clone(); //                             :103
+    merger2.addOrReplaceSources( //                                            :106-107
+        new DsnFileSettings(new ByteArrayInputStream(dsnBytes), dsnFilename));
+    // `:113-152` resolves `job.rules ?? -dr ?? adjacent <design>.rules`; no corpus stem has one,
+    // and the generator passes none, so `rulesData` is null and `:154-160`/`:173-184` are skipped
+    // — the same two steps `resolve_headless` skips for a `None` `scheduler_rules`.
+    merger2.addOrReplaceSources(new ApiSettings(job.routerSettings)); //       :163-166
+    job.routerSettings = merger2.merge(); //                                   :170
+    job.routerSettings.applyBoardSpecificOptimizations(board); //              :186
+
+    job.thread = new P7T2.NeverStarted();
+    RouterSettings settings = job.routerSettings;
+    out.println(
+        "SETTINGS maxPasses="
+            + settings.maxPasses
+            + " maxItems="
+            + settings.maxItems
+            + " runRouter="
+            + settings.getRunRouter()
+            + " runFanout="
+            + settings.isFanoutEnabled()
+            + " runOptimizer="
+            + settings.getRunOptimizer()
+            + " optMaxPasses="
+            + settings.optimizer.maxPasses
+            + " optMaxItems="
+            + settings.optimizer.maxItems
+            + " fanoutMsPerPin="
+            + settings.fanout.maxMillisecondsPerPin
+            + " tracePullTightAccuracy="
+            + settings.tracePullTightAccuracy);
+    out.println(
+        "BOARD-PREPARED classes="
+            + board.rules.clearanceMatrix.getClassCount()
+            + " outlineClass="
+            + board.getOutline().clearanceClassIndex()
+            + " holeClearance="
+            + board.rules.getHoleClearance());
+
+    if (routerOnly) {
+      BatchAutorouter router = new BatchAutorouter(job);
+      out.println("[transcript]");
+      List<String> tuples = new ArrayList<>();
+      passTuples = tuples;
+      boolean returned;
+      try {
+        returned = transcribeRun(out, router, settings);
+      } finally {
+        passTuples = null;
+      }
+      RoutingBoard finalBoard = router.board;
+      out.println("TRANSCRIPT returned=" + returned + " " + P7T2.boardShape(finalBoard));
+      out.println("[board]");
+      dumpBoard(out, finalBoard);
+      if (passesPath != null) {
+        writePasses(passesPath, tuples);
+      }
+      if (sesPath != null) {
+        writeSes(sesPath, finalBoard, job.name);
+      }
+      return;
+    }
+
+    RoutingPipeline pipeline = RoutingPipeline.createForHeadless(job);
+    StringBuilder events = new StringBuilder();
+    int[] routerPassesRun = {0};
+    pipeline.addTaskStateChangedEventListener(
+        event -> {
+          NamedAlgorithm source = (NamedAlgorithm) event.getSource();
+          events
+              .append("EVENT algorithm=")
+              .append(source.getType())
+              .append(" state=")
+              .append(event.getTaskState())
+              .append('\n');
+          if (source.getType() == NamedAlgorithmType.ROUTER) {
+            routerPassesRun[0] = event.getPassNumber();
+          }
+        });
+
+    out.println("[pipeline]");
+    pipeline.run();
+    out.print(events);
+    out.println(
+        "RESULT passesRun="
+            + routerPassesRun[0]
+            + " optimizerPresent="
+            + (pipeline.getOptimizer() != null)
+            + " fanoutTimedOut="
+            + pipeline.getAutorouter().isFanoutTimedOut()
+            + " optimizerTimedOut="
+            + (pipeline.getOptimizer() != null && pipeline.getOptimizer().isTimedOut())
+            + " "
+            + P7T2.boardShape(job.board));
+    out.println("[board]");
+    dumpBoard(out, job.board);
+    if (sesPath != null) {
+      writeSes(sesPath, job.board, job.name);
+    }
+  }
+
+  /** {@code batch} and {@code batch-router} — the two modes that go through the manager. */
+  static boolean isBatchMode(String mode) {
+    return mode.startsWith("batch");
+  }
+
+  /**
+   * The {@code argv} the bare jar is given for the same run, which is what makes
+   * {@code gen-batch-reference.sh --verify-driver} an apples-to-apples comparison: the same four
+   * switches reach the same {@code CliSettings} (priority 60) on both sides.
+   */
+  static String[] batchArgv(Path dsn, int maxPasses, boolean fanout, boolean optimizer) {
+    return new String[] {
+      "-de",
+      dsn.toString(),
+      "-do",
+      dsn.toString().replaceAll("\\.dsn$", ".ses"),
+      "-mp",
+      Integer.toString(maxPasses),
+      "--router.fanout.enabled=" + fanout,
+      "--router.optimizer.enabled=" + optimizer,
+    };
+  }
+
+  /** {@code on}/{@code off}, the two words the fixture table's columns 6 and 7 use. */
+  static boolean onOff(String arg) {
+    if ("on".equals(arg)) {
+      return true;
+    }
+    if ("off".equals(arg)) {
+      return false;
+    }
+    throw new IllegalArgumentException("expected 'on' or 'off', not: " + arg);
+  }
+
+  /** The inverse, for the {@code HEADER} line. */
+  static String onOffName(boolean value) {
+    return value ? "on" : "off";
+  }
+
+  /**
+   * Set by {@link #runBatchMode} around {@link #transcribeRun} so each completed pass's tuple is
+   * collected as well as printed. {@code null} — the value every other mode leaves it at — makes
+   * the collection a no-op, so no existing transcript changes by one byte.
+   */
+  static List<String> passTuples;
+
+  /**
+   * {@code batch.passes.jsonl} — one JSON object per completed pass, the six fields of the port's
+   * {@code PassRecord} in {@link #passRecord}'s order. Rendered by hand rather than through Gson:
+   * every value is an {@code int} or a {@code Float.toString}, so there is nothing to escape and
+   * nothing a serialiser could reorder.
+   */
+  static void writePasses(Path path, List<String> tuples) throws Exception {
+    Files.createDirectories(path.getParent());
+    StringBuilder sb = new StringBuilder();
+    for (String tuple : tuples) {
+      sb.append('{');
+      String[] fields = tuple.split(" ");
+      for (int i = 0; i < fields.length; i++) {
+        String[] kv = fields[i].split("=", 2);
+        if (i > 0) {
+          sb.append(',');
+        }
+        sb.append('"').append(kv[0]).append("\":").append(kv[1]);
+      }
+      sb.append("}\n");
+    }
+    Files.writeString(path, sb.toString(), StandardCharsets.UTF_8);
+  }
+
+  /**
+   * {@code batch.ses} — the real {@code SesWriter.write}, on the real final board, with
+   * {@code job.name} as the design name. That is
+   * {@code RoutingJobSchedulerActionThread.setJobOutput:283-290} minus the
+   * {@code ByteArrayOutputStream} it buffers through; {@code HeadlessBoardManager
+   * .saveAsSpecctraSessionSes:862-865} is a two-line delegate to the same call whose only extra
+   * work is recomputing {@code originalBoardChecksum}, which nothing here reads.
+   */
+  static void writeSes(Path path, RoutingBoard board, String designName) throws Exception {
+    Files.createDirectories(path.getParent());
+    try (OutputStream sink = Files.newOutputStream(path)) {
+      SesWriter.write(board, sink, designName);
+    }
   }
 
   /** {@code all} is Java's {@code null}, i.e. "no limit"; anything else is an {@code Integer}. */
@@ -465,7 +820,11 @@ public final class P7T9 {
       }
 
       // :353-376 — the pass-completed report, and the port's `PassRecord` for this pass.
-      out.println("PASS " + passRecord(currentPass, boardScoreAfter, boardStatisticsAfter));
+      String tuple = passRecord(currentPass, boardScoreAfter, boardStatisticsAfter);
+      out.println("PASS " + tuple);
+      if (passTuples != null) {
+        passTuples.add(tuple);
+      }
 
       // :408-410.
       if (Boolean.TRUE.equals(settings.saveIntermediateStages)) {
@@ -1258,4 +1617,5 @@ public final class P7T9 {
       out.println(sb);
     }
   }
+
 }

@@ -30,21 +30,46 @@ use std::io::{BufWriter, Write};
 use fr_board::prelude::*;
 use fr_dsn::{java_double_to_string, java_float_to_string};
 use fr_router::pipeline::{
-    optimizer_route_improved, run_pipeline, AutorouteBatchLoop, BatchLoopResult, BatchOptimizer,
-    ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PipelineResult, ProgressSink,
-    ReadSortedRouteItems, RouterBudget, RouterStop, RoutingEvent, TaskState,
+    optimizer_route_improved, prepare_board, run_pipeline, AutorouteBatchLoop, BatchLoopResult,
+    BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PipelineResult,
+    ProgressSink, ReadSortedRouteItems, RouterBudget, RouterStop, RoutingEvent, TaskState,
 };
 use fr_router::score::BoardStatistics;
-use fr_settings::RouterSettings;
+use fr_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
+use fr_settings::{
+    resolve_headless, HostEnvironment, RouterSettings, SettingsInputs, SettingsSource,
+};
 
 #[path = "../p7t_common.rs"]
 mod p7t_common;
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.is_empty() {
-        eprintln!("usage: p7t9 <dsn> [maxPasses] [mode]");
+    let raw: Vec<String> = std::env::args().skip(1).collect();
+    if raw.is_empty() {
+        eprintln!(
+            "usage: p7t9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all] \
+             [--fanout on|off] [--optimizer on|off] [--ses <path>] [--passes <path>]"
+        );
         std::process::exit(2);
+    }
+    // Plan 7 Task 16's trailing flags, parsed out first so the five positionals keep the meanings
+    // Tasks 10/14/15 gave them and no existing invocation changes. `P7T9.main`'s switch.
+    let mut args: Vec<String> = Vec::new();
+    let mut ses_path: Option<std::path::PathBuf> = None;
+    let mut passes_path: Option<std::path::PathBuf> = None;
+    let mut fanout_flag: Option<bool> = None;
+    let mut optimizer_flag: Option<bool> = None;
+    let mut it = raw.into_iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--ses" => ses_path = Some(it.next().expect("--ses needs a path").into()),
+            "--passes" => passes_path = Some(it.next().expect("--passes needs a path").into()),
+            "--fanout" => fanout_flag = Some(on_off(&it.next().expect("--fanout needs on|off"))),
+            "--optimizer" => {
+                optimizer_flag = Some(on_off(&it.next().expect("--optimizer needs on|off")));
+            }
+            _ => args.push(arg),
+        }
     }
     let dsn = std::fs::canonicalize(&args[0])
         .unwrap_or_else(|e| panic!("cannot resolve {}: {e}", args[0]));
@@ -64,10 +89,12 @@ fn main() {
             | "optimizer+fanout"
             | "optimizer-shared"
             | "full"
+            | "batch"
+            | "batch-router"
     ) {
         eprintln!(
             "p7t9: mode must be 'router-only', 'router+fanout', 'optimizer', 'optimizer+fanout', \
-             'optimizer-shared' or 'full', not: {mode}"
+             'optimizer-shared', 'full', 'batch' or 'batch-router', not: {mode}"
         );
         std::process::exit(2);
     }
@@ -91,7 +118,13 @@ fn main() {
         "HEADER jar={jar} bytes={bytes} mtime={mtime} fixture={} maxPasses={max_passes} \
          mode={mode}{}",
         dsn.file_name().expect("a file name").to_string_lossy(),
-        if is_optimizer_mode(mode) || mode == "full" {
+        if is_batch_mode(mode) {
+            format!(
+                " fanout={} optimizer={}",
+                on_off_name(fanout_flag.unwrap_or(true)),
+                on_off_name(optimizer_flag.unwrap_or(true))
+            )
+        } else if is_optimizer_mode(mode) || mode == "full" {
             format!(
                 " optPasses={} optItems={}",
                 limit_name(opt_passes),
@@ -104,6 +137,21 @@ fn main() {
     .expect("write");
     if let Ok(exe) = std::env::current_exe() {
         eprintln!("rust-binary {}", exe.display());
+    }
+
+    if is_batch_mode(mode) {
+        run_batch_mode(
+            &mut out,
+            &dsn,
+            max_passes,
+            mode,
+            fanout_flag.unwrap_or(true),
+            optimizer_flag.unwrap_or(true),
+            ses_path.as_deref(),
+            passes_path.as_deref(),
+        );
+        out.flush().expect("flush");
+        return;
     }
 
     if is_optimizer_mode(mode) {
@@ -293,6 +341,287 @@ fn build_settings(board: &Board, max_passes: i32, mode: &str) -> RouterSettings 
 /// `P7T9.isOptimizerMode` — the three modes that drive `BatchOptimizer::run_batch_loop`.
 fn is_optimizer_mode(mode: &str) -> bool {
     mode.starts_with("optimizer")
+}
+
+// ================================================================================================
+// Modes `batch` / `batch-router` — the jar's real `-de <dsn> -do <ses>` flow (Plan 7 Task 16)
+// ================================================================================================
+
+/// `P7T9.isBatchMode`.
+fn is_batch_mode(mode: &str) -> bool {
+    mode.starts_with("batch")
+}
+
+/// `P7T9.onOff` — the two words the fixture table's `fanout`/`optimizer` columns use.
+fn on_off(arg: &str) -> bool {
+    match arg {
+        "on" => true,
+        "off" => false,
+        other => panic!("expected 'on' or 'off', not: {other}"),
+    }
+}
+
+/// `P7T9.onOffName`, the inverse.
+fn on_off_name(value: bool) -> &'static str {
+    if value {
+        "on"
+    } else {
+        "off"
+    }
+}
+
+/// `P7T9.batchArgv` — the argv the bare jar is given for the same run.
+fn batch_argv(
+    dsn: &std::path::Path,
+    max_passes: i32,
+    fanout: bool,
+    optimizer: bool,
+) -> Vec<String> {
+    let input = dsn.to_string_lossy().into_owned();
+    let output = if let Some(stem) = input.strip_suffix(".dsn") {
+        format!("{stem}.ses")
+    } else {
+        input.clone()
+    };
+    vec![
+        "-de".to_string(),
+        input,
+        "-do".to_string(),
+        output,
+        "-mp".to_string(),
+        max_passes.to_string(),
+        format!("--router.fanout.enabled={fanout}"),
+        format!("--router.optimizer.enabled={optimizer}"),
+    ]
+}
+
+/// `P7T9.runBatchMode` — modes `batch` and `batch-router`, i.e. the whole-board run **as the CLI
+/// runs it** (controller ruling AW).
+///
+/// Every other mode of this driver loads with `fr_dsn::read_board` and builds its settings from
+/// `DefaultSettings` alone, matching `P7T2.loadBoard`/`buildSettings`. The jar's real
+/// `-de x.dsn -do x.ses` flow does neither: it loads through `HeadlessBoardManager
+/// .loadFromSpecctraDsn`, whose `applyRouterSettingsForLoadedBoard` (`:739-748`) **mutates the
+/// board** through `applyCopperToEdgeClearanceOverride`/`applyHoleClearanceOverride` on 15 of the
+/// 16 corpus boards (Task 15b), and it resolves settings through the two-merge ladder of
+/// `Freerouting.java:125-146` + `RoutingJobScheduler.java:103-186`. This side is
+/// [`resolve_headless`] — that ladder as one linear pass, already byte-pinned against the JVM by
+/// Plan 4's `p4t1` — followed by [`prepare_board`], which is `:746-747`.
+///
+/// # Ordering
+///
+/// `resolve_headless` is called on the **pristine** board and `prepare_board` after it, where
+/// Java's `:186` `applyBoardSpecificOptimizations` sees the already-mutated board. The two agree
+/// because `applyBoardSpecificOptimizations` reads only the board's layer count and bounding box
+/// (`RouterSettings.java:266-267`), and neither override touches either — they write the
+/// clearance matrix and the outline's clearance class index. The `SETTINGS`/`BOARD-PREPARED`
+/// lines below are what turn that argument into a measurement: both sides print them.
+///
+/// # The two modes
+///
+/// * `batch` runs the real [`run_pipeline`] and, with `--ses`, writes the result through
+///   [`fr_dsn::ses_writer::write`] using the design name Java's `job.name` carries — the file
+///   name without its extension. That is `tests/reference/<stem>/batch.ses`.
+/// * `batch-router` runs the routing stage transcribed, on the same board and settings with the
+///   optimizer off, so each completed pass prints its `PassRecord` tuple; `--passes` writes those
+///   as JSON lines (`tests/reference/<stem>/batch.passes.jsonl`, ruling 1(a)'s rung).
+#[allow(clippy::too_many_arguments)]
+fn run_batch_mode<W: Write>(
+    out: &mut W,
+    dsn: &std::path::Path,
+    max_passes: i32,
+    mode: &str,
+    fanout: bool,
+    optimizer: bool,
+    ses_path: Option<&std::path::Path>,
+    passes_path: Option<&std::path::Path>,
+) {
+    let router_only = mode == "batch-router";
+    let dsn_bytes = std::fs::read(dsn).unwrap_or_else(|e| panic!("cannot read {dsn:?}: {e}"));
+    // `RoutingJob.setInputFromFile:432` stores the absolute path and `:457` derives `job.name`
+    // from it — `BoardFileDetails.getFilename()` is the base name, `getFilenameWithoutExtension()`
+    // that name without its last suffix.
+    let file_name = dsn
+        .file_name()
+        .expect("a file name")
+        .to_string_lossy()
+        .into_owned();
+    let design_name = file_name
+        .rsplit_once('.')
+        .map_or(file_name.clone(), |(stem, _)| stem.to_string());
+
+    let argv = batch_argv(dsn, max_passes, fanout, optimizer && !router_only);
+    writeln!(out, "ARGV {}", argv.join(" ")).expect("write");
+
+    // The board, pristine — `DsnReader.readBoard` is what `loadFromSpecctraDsn:695` calls before
+    // any of the manager's own work.
+    let (mut board, transform) = p7t_common::load_board_with_transform(dsn);
+
+    let dsn_source = DsnFileSettings::new(&dsn_bytes[..], &file_name);
+    let env_map: std::collections::BTreeMap<String, String> = std::env::vars().collect();
+    let env_source = EnvironmentVariablesSource::new(&env_map);
+    let cli_source = CliSettings::new(&argv);
+    // `JsonFileSettings` (priority 10) has no port — spec §2 puts `freerouting.json` out of scope
+    // — and `SettingsInputs` has no slot for it. The generator records the file's presence and
+    // the emptiness of its `router` scope in `batch.meta.txt`, so a machine where it stopped
+    // being empty would be visible rather than silent.
+    let inputs = SettingsInputs {
+        dsn: dsn_source.get_settings(),
+        cli_rules: None,
+        // `RoutingJobScheduler.java:113-152` resolves `job.rules ?? -dr ?? adjacent
+        // <design>.rules`; the generator passes no `-dr` and no corpus stem has an adjacent
+        // `.rules`, so this is `None` and `:154-160`/`:173-184` are both skipped.
+        scheduler_rules: None,
+        env: env_source.get_settings(),
+        cli: cli_source.get_settings(),
+    };
+    let settings = resolve_headless(&inputs, Some(&board), &HostEnvironment::detect());
+
+    // `HeadlessBoardManager.java:746-747`, in Java's order.
+    let prepared = prepare_board(&mut board, &settings);
+
+    writeln!(
+        out,
+        "SETTINGS maxPasses={} maxItems={} runRouter={} runFanout={} runOptimizer={} \
+         optMaxPasses={} optMaxItems={} fanoutMsPerPin={} tracePullTightAccuracy={}",
+        java_boxed(settings.max_passes),
+        java_boxed(settings.max_items),
+        settings.get_run_router(),
+        settings.is_fanout_enabled(),
+        settings.get_run_optimizer(),
+        java_boxed(settings.optimizer.as_ref().and_then(|o| o.max_passes)),
+        java_boxed(settings.optimizer.as_ref().and_then(|o| o.max_items)),
+        java_boxed(
+            settings
+                .fanout
+                .as_ref()
+                .and_then(|f| f.max_milliseconds_per_pin)
+        ),
+        java_boxed(settings.trace_pull_tight_accuracy)
+    )
+    .expect("write");
+    let _ = prepared;
+    writeln!(
+        out,
+        "BOARD-PREPARED classes={} outlineClass={} holeClearance={}",
+        board.rules.clearance_matrix.get_class_count(),
+        board
+            .get_outline()
+            .and_then(|id| board.items.get(&id))
+            .map_or(-1, |item| i32::try_from(item.clearance_class())
+                .unwrap_or(-1)),
+        board.rules.get_hole_clearance()
+    )
+    .expect("write");
+
+    if router_only {
+        writeln!(out, "[transcript]").expect("write");
+        let mut buffer: Vec<u8> = Vec::new();
+        let returned = transcribe_run(&mut buffer, &mut board, &settings);
+        out.write_all(&buffer).expect("write");
+        writeln!(
+            out,
+            "TRANSCRIPT returned={returned} {}",
+            p7t_common::board_shape(&mut board)
+        )
+        .expect("write");
+        writeln!(out, "[board]").expect("write");
+        p7t_common::dump_board(out, &board);
+        if let Some(path) = passes_path {
+            write_passes(path, &buffer);
+        }
+        if let Some(path) = ses_path {
+            write_ses(path, &board, &transform, &design_name);
+        }
+        return;
+    }
+
+    let stop = RouterStop::new();
+    let mut sink = Recorder::default();
+    writeln!(out, "[pipeline]").expect("write");
+    let result: PipelineResult = run_pipeline(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("the corpus stems all have a routable signal layer");
+
+    for (algorithm, state) in sink.task_states() {
+        writeln!(
+            out,
+            "EVENT algorithm={} state={}",
+            java_algorithm_type(algorithm),
+            java_task_state(state)
+        )
+        .expect("write");
+    }
+    writeln!(
+        out,
+        "RESULT passesRun={} optimizerPresent={} fanoutTimedOut={} optimizerTimedOut={} {}",
+        result.passes_run,
+        result.optimizer_state.is_some(),
+        result
+            .fanout
+            .as_ref()
+            .is_some_and(|fanout| fanout.is_timed_out),
+        result.timed_out,
+        p7t_common::board_shape(&mut board)
+    )
+    .expect("write");
+    writeln!(out, "[board]").expect("write");
+    p7t_common::dump_board(out, &board);
+    if let Some(path) = ses_path {
+        write_ses(path, &board, &transform, &design_name);
+    }
+}
+
+/// Java prints a boxed `Integer`/`Long` field with `String.valueOf`, i.e. `null` for absent.
+fn java_boxed<T: std::fmt::Display>(value: Option<T>) -> String {
+    value.map_or_else(|| "null".to_string(), |v| v.to_string())
+}
+
+/// `P7T9.writePasses` — one JSON object per completed pass, scraped from the transcription's own
+/// `PASS` lines so the file and the transcript can never describe different passes.
+fn write_passes(path: &std::path::Path, transcript: &[u8]) {
+    let text = String::from_utf8_lossy(transcript);
+    let mut rendered = String::new();
+    for line in text.lines() {
+        let Some(tuple) = line.strip_prefix("PASS ") else {
+            continue;
+        };
+        rendered.push('{');
+        for (index, field) in tuple.split(' ').enumerate() {
+            let (key, value) = field.split_once('=').expect("a key=value field");
+            if index > 0 {
+                rendered.push(',');
+            }
+            rendered.push_str(&format!("\"{key}\":{value}"));
+        }
+        rendered.push_str("}\n");
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("create the reference directory");
+    }
+    std::fs::write(path, rendered).expect("write the passes file");
+}
+
+/// `P7T9.writeSes` — `SesWriter.write(board, out, job.name)`, this side's `fr_dsn::ses_writer`.
+fn write_ses(
+    path: &std::path::Path,
+    board: &Board,
+    transform: &fr_dsn::CoordinateTransform,
+    design_name: &str,
+) {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("create the reference directory");
+    }
+    let mut sink = std::io::BufWriter::new(
+        std::fs::File::create(path).unwrap_or_else(|e| panic!("cannot create {path:?}: {e}")),
+    );
+    fr_dsn::ses_writer::write(board, transform, &mut sink, design_name).expect("write the SES");
+    sink.flush().expect("flush the SES");
 }
 
 /// `P7T9.boxedLimit` — `all` is Java's `null`.

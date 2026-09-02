@@ -354,7 +354,9 @@ case "$driver" in
     # `P7T9` loads its board, builds its settings and builds its router through P7T2's four
     # shared statics, so the three drivers cannot describe different boards.
     #
-    # `<dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]`. `mode` is `router-only`
+    # `<dsn> [maxPasses] [mode] [optPasses|all] [optItems|all] [--fanout on|off]
+    # [--optimizer on|off] [--ses <path>] [--passes <path>]`.
+    # `mode` is `router-only`
     # (`fanout.enabled = false`, `runOptimizer = false`) or, from Plan 7 Task 12,
     # `router+fanout`, which turns the SMD fanout pre-pass on and disables its per-pin clock on
     # both sides through `settings.fanout.maxMillisecondsPerPin` (ruling AI). `maxPasses = 0` is
@@ -376,6 +378,31 @@ case "$driver" in
     # `getHash()` / `structural_hash` (an equality *decision*, never a hash value — ruling AH) —
     # then the final board in `P6T15aProbe`'s polyline format. See `P7T9.java`'s class comment
     # for why the driver calls `runBatchLoop()` rather than `RoutingPipeline.run()`.
+    #
+    # Plan 7 Task 15 adds mode `full` — the real `RoutingPipeline.createForHeadless(job).run()`,
+    # both stages, driven directly rather than transcribed.
+    #
+    # Plan 7 Task 16 adds modes `batch` and `batch-router`, which are the **only** two that go
+    # through the jar's real `-de <dsn> -do <ses>` flow: the board is loaded through
+    # `management/HeadlessBoardManager` (controller ruling AW — its two clearance overrides mutate
+    # 15 of the 16 corpus boards on load, so every other mode routes a board no CLI run produces)
+    # and the settings come from the real two-merge `SettingsMerger` ladder driven by the same
+    # `argv` the bare jar is given, which is what makes `gen-batch-reference.sh --verify-driver`
+    # an apples-to-apples comparison. `--fanout`/`--optimizer` are the fixture table's columns 6
+    # and 7; `--ses` writes the run's SES through the real `SesWriter.write` and `--passes` the
+    # per-pass `PassRecord` tuples as JSON lines — `tests/reference/<stem>/batch.{ses,passes.jsonl}`.
+    # `mode batch` is the whole pipeline; `mode batch-router` is the routing stage transcribed, so
+    # that each completed pass prints its tuple. `scripts/differential/sweep-p7t9.sh` runs every
+    # batch stem in every mode.
+    #
+    # `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `static final int = 1000` that `javac` inlines
+    # (`sipush 1000` at every call site, no `getstatic`), so **no flag and no reflection disables
+    # it**: the port runs `RouterBudget::disabled()` against a live limit and a MATCH is what
+    # proves the limit never trips. To count the trips a Java run took, add
+    # `-Dfreerouting.logging.file.location=<path> -Dfreerouting.logging.file.level=DEBUG
+    # -Dfreerouting.logging.console.enabled=false` and grep the file for
+    # `TraceTightener.is_stop_requested: time limit exceeded`;
+    # `gen-batch-reference.sh --verify-driver` does exactly that.
     #
     # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
     # sweeps this driver too: a pass reaches `DesignRulesChecker` and `BoardStatistics`, both of

@@ -1589,6 +1589,24 @@ methods with dozens of branches.
   ledgers say nothing about which item they belong to. The patch header carries the full
   recipe for the `Issue558-dev-board` 188-vs-187 row.
 
+- `sweep-p7t9.sh [stem ...] [--modes a,b,c]` — Plan 7 Task 16's whole-board sweep, the
+  `sweep-p5t1.sh` shape: compile both sides once through `run.sh p7t9`, then loop the
+  built artifacts over every **batch** stem of `tests/reference/router-fixtures.txt` ×
+  four modes (`router-only`, `router+fanout`, `optimizer`, `batch`), printing
+  MATCH/DIFF/SKIP and the wall clock per row so that a regression is *a row that changes*
+  rather than a wall of diff. 8 stems × 4 modes = **32 rows**, ~25 min.
+
+  `full` is deliberately not swept: `batch` is `full` on the board and the settings the
+  jar actually uses, so sweeping both would double the cost to re-measure the same
+  pipeline on a board no CLI run produces.
+
+  Every row writes `$SWEEP_OUT/<stem>.<mode>.result`, so `SWEEP_OUT=<dir> SWEEP_RESUME=1
+  sweep-p7t9.sh` picks up where an interrupted run stopped; every invocation is bounded by
+  `timeout(1)` (`P7T9_TIMEOUT`, default 3600 s) and a non-zero exit on either side is a
+  `SKIP` row rather than a silent MATCH. There is no expected-diff table: nothing here is
+  hash-dependent (`gen-batch-reference.sh --verify-hash-modes` is the evidence), so any
+  DIFF is a real finding.
+
 - `sweep-p5t1.sh` / `sweep-p5t2.sh` — the two Plan 5 corpus sweeps. Each
   compiles both sides once through `run.sh`, then loops the built artifacts over
   **112 rows**: every `.dsn` in `$FREEROUTING_JAVA_DIR/fixtures` whose reader
@@ -2492,7 +2510,8 @@ the driver expects, or none at all.
   `router-dac2020-bm01-pass2`, is the same DSN at `ripupPassNo = 2`, which is a `p6t1` argument
   this driver does not take.
 
-- `p7t9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all]` — Plan 7 Task 10,
+- `p7t9 <dsn> [maxPasses] [mode] [optPasses|all] [optItems|all] [--fanout on|off]
+  [--optimizer on|off] [--ses <path>] [--passes <path>]` — Plan 7 Task 10,
   **whole-board** level: `AutorouteBatchLoop.run` (AutorouteBatchLoop.java:37-588), the
   pass loop with its best-board policy and its two stagnation detectors — and, from Plan 7
   Task 14, `BatchOptimizer.runBatchLoop` (BatchOptimizer.java:125-272) and `optRoutePass`
@@ -2511,6 +2530,45 @@ the driver expects, or none at all.
   `BatchFanout.fanoutPass:231-232` builds its `TimeLimit` from. `maxPasses` goes straight into
   `settings.maxPasses`, where **`0` means unlimited** (quirk #140), so bound a big stem
   with `P7T9_TIMEOUT` before using it.
+
+  Plan 7 Task 15 adds **`full`** — the real `RoutingPipeline.createForHeadless(job).run()`,
+  both stages, driven directly rather than transcribed.
+
+  Plan 7 Task 16 adds **`batch`** and **`batch-router`**, the only two modes that go
+  through the jar's *real* `-de <dsn> -do <ses>` flow. Every other mode loads with
+  `DsnReader.readBoard` and builds settings from `DefaultSettings` alone; the CLI loads
+  through `management/HeadlessBoardManager`, whose two clearance overrides **mutate the
+  board** on 15 of the 16 corpus boards (quirk #231, controller ruling AW), and resolves
+  settings through the two-merge `SettingsMerger` ladder of `Freerouting.java:125-146` +
+  `RoutingJobScheduler.java:103-186`. So these two modes transcribe that ladder (the
+  `p4t1` shape, with the real `CliSettings` built from the same `argv` the bare jar is
+  given) and load through the manager, and they print an `ARGV`, a `SETTINGS` and a
+  `BOARD-PREPARED` line so a settings or board difference shows up before any routing
+  does. The port's twin calls `fr_settings::resolve_headless` and
+  `fr_router::pipeline::prepare_board`.
+
+  * `batch` runs the whole pipeline; `--ses <path>` writes its result through the real
+    `SesWriter.write` (design name = `job.name`, the file name without its extension).
+  * `batch-router` runs the routing stage transcribed with the optimizer off, so each
+    completed pass prints its tuple; `--passes <path>` writes those as JSON lines.
+
+  `--fanout`/`--optimizer` are `tests/reference/router-fixtures.txt`'s columns 6 and 7,
+  and the two files are `tests/reference/<stem>/batch.{ses,passes.jsonl}`.
+  `scripts/gen-batch-reference.sh` is what drives both, and
+  `scripts/differential/sweep-p7t9.sh` runs every batch stem in every mode.
+
+  **The budget cannot be disabled on the Java side at all**:
+  `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `static final int = 1000` in all four
+  declarations, so `javac` inlines it (`javap -c -p` shows `sipush 1000` immediately
+  before every `optChangedArea` call and no `getstatic`) and no reflection reaches it.
+  The port runs `RouterBudget::disabled()` against a live limit, and a MATCH is what
+  proves the limit never tripped. To *count* the trips a Java run took, add
+  `-Dfreerouting.logging.file.location=<path> -Dfreerouting.logging.file.level=DEBUG
+  -Dfreerouting.logging.console.enabled=false` and grep the file for
+  `TraceTightener.is_stop_requested: time limit exceeded` — the jar's own knobs, since a
+  programmatic Log4j2 appender receives zero events against its configuration factory.
+  `gen-batch-reference.sh --verify-driver` does exactly that when a comparison comes back
+  different.
 
   Two halves, the `p7t2` shape and for the same reason — `run` returns one `boolean` and
   writes its answer into `router.board` / `job.board`:

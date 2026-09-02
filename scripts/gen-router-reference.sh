@@ -225,13 +225,19 @@ write_meta() {
 }
 
 each_row() {
-  local body="$1" stem dsn max_items ripup_pass_no
-  # The fourth field is optional and defaults to 1 — the `ripupPassNo` every stem but
-  # `router-dac2020-bm01-pass2` uses (Plan 6 Task 17b).
-  while IFS='|' read -r stem dsn max_items ripup_pass_no || [[ -n "$stem" ]]; do
+  local body="$1" stem dsn max_items ripup_pass_no rest
+  # Fields 1-4 are this script's; Plan 7 Task 16 appended `max_passes|fanout|optimizer` at 5-7 for
+  # `gen-batch-reference.sh` and made fields 3 and 4 mandatory-or-`-` on every row. `-` in
+  # `max_items` is a batch-only row, which this script skips; `-` (or absent) in `ripup_pass_no`
+  # is the default 1 — the `ripupPassNo` every stem but `router-dac2020-bm01-pass2` uses (Plan 6
+  # Task 17b). `rest` swallows the batch columns so `read` cannot fold them into field 4.
+  while IFS='|' read -r stem dsn max_items ripup_pass_no rest || [[ -n "$stem" ]]; do
     [[ -z "$stem" || "$stem" == \#* ]] && continue
+    [[ "$max_items" == "-" ]] && continue
     wanted "$stem" || continue
-    "$body" "$stem" "$dsn" "$max_items" "${ripup_pass_no:-1}"
+    local ripup="${ripup_pass_no:-1}"
+    [[ "$ripup" == "-" ]] && ripup=1
+    "$body" "$stem" "$dsn" "$max_items" "$ripup"
   done < "$FIXTURES"
 }
 

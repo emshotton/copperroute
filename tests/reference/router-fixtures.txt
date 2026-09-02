@@ -1,6 +1,11 @@
 # Router reference fixtures for scripts/gen-router-reference.sh (Plan 6 Task 17).
 #
-#   stem|dsn|max_items[|ripup_pass_no]
+#   stem|dsn|max_items|ripup_pass_no[|max_passes|fanout|optimizer]
+#
+# Fields 1-4 are `scripts/gen-router-reference.sh`'s (Plan 6 Task 17); fields 5-7 are
+# `scripts/gen-batch-reference.sh`'s (Plan 7 Task 16). Each script reads only its own columns and
+# skips a row that carries `-` in the first of them, so the two reference families share one
+# table without either being able to describe the other's run.
 #
 # `dsn` is relative to the Java checkout ($FREEROUTING_JAVA_DIR, default ../freerouting).
 # `max_items` is the number of connections `P6T1` routes: it walks `board.getItems()` (descending
@@ -9,6 +14,12 @@
 # candidate count therefore means "every connection of the board"; that is deliberate for the two
 # stems where it is affordable, because ruling 1's acceptance is per connection and a truncated
 # board hides the congested connections — which are the only ones that rip.
+#
+# `max_items` and `ripup_pass_no` are **mandatory or `-`** on every row (Plan 7 Task 16 made them
+# so; `-` in `max_items` means "not a per-connection row" and `-` in `ripup_pass_no` means the
+# default 1). `max_passes|fanout|optimizer` are the batch columns: `settings.maxPasses` (`-mp`),
+# and `on`/`off` for `--router.fanout.enabled` / `--router.optimizer.enabled`. A row with no
+# `max_passes` is a per-connection-only row and `gen-batch-reference.sh` skips it.
 #
 # `ripup_pass_no` is `AutorouteConnectionRouter.route:45`'s multiplier — `ctrl.ripupCosts =
 # startRipupCosts * ripupPassNo`, i.e. which pass of `AutoroutePassRunner`'s loop the connection is
@@ -40,9 +51,28 @@
 # | pass2                 |             | regression pin. It diverged at connection 267 (six extra |
 # |                       |             | transient item ids) and at 270 (real geometry) until     |
 # |                       |             | quirk #74 was reproduced                                 |
-router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|8
-router-dac2020-bm01|fixtures/Issue508-DAC2020_bm01.dsn|100000
-router-j2-reference|fixtures/Issue026-J2_reference.dsn|100000
-router-tutorial-board|examples/tutorial_board/tutorial_board.dsn|8
-router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|100000
+#
+# The batch rows (Plan 7 Task 16, ruling AM as amended by scan ruling 13 — eight stems, four in
+# CI). `router-fanout-bm11` is the corpus's only fanout-trace board, `router-strict-drc-cnh` the
+# only board with pre-existing clearance violations, and `router-empty-board` ruling 7's
+# `NoRoutableLayer`/nothing-to-route path; all three carry `-` in the per-connection columns.
+#
+# | stem                  | CI lane                                                              |
+# |-----------------------|----------------------------------------------------------------------|
+# | router-rpi-splitter   | CI                                                                   |
+# | router-j2-reference   | CI                                                                   |
+# | router-ecc83-input    | CI                                                                   |
+# | router-empty-board    | CI                                                                   |
+# | router-dac2020-bm01   | `#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`          |
+# | router-tutorial-board | `#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`          |
+# | router-fanout-bm11    | `#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`          |
+# | router-strict-drc-cnh | `#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`          |
+router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|8|-|8|on|on
+router-dac2020-bm01|fixtures/Issue508-DAC2020_bm01.dsn|100000|-|2|on|on
+router-j2-reference|fixtures/Issue026-J2_reference.dsn|100000|-|99|on|on
+router-tutorial-board|examples/tutorial_board/tutorial_board.dsn|8|-|8|on|on
+router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|100000|-|8|on|on
 router-dac2020-bm01-pass2|fixtures/Issue508-DAC2020_bm01.dsn|100000|2
+router-fanout-bm11|fixtures/Issue730-DAC2020_bm11.dsn|-|-|2|on|off
+router-strict-drc-cnh|fixtures/Issue555-CNH_Functional_Tester_1.dsn|-|-|2|on|on
+router-empty-board|fixtures/empty_board.dsn|-|-|1|off|off

@@ -495,3 +495,111 @@ pub fn parse_router_jsonl(s: &str) -> Result<Vec<RouterConnectionDoc>, String> {
         })
         .collect()
 }
+
+// =================================================================================================
+// The whole-board batch reference (plan-7 Task 16)
+// =================================================================================================
+//
+// `tests/reference/<stem>/batch.ses` is the HEAD jar's **verbatim** SES for a whole-board
+// `-de <dsn> -do <ses>` run, and `batch.passes.jsonl` its per-pass `PassRecord` tuples. Both are
+// written by `scripts/gen-batch-reference.sh`. The types and the one normaliser below are what
+// `crates/fr-router/tests/batch_parity.rs` reads them with.
+
+/// One completed routing pass of a `batch.passes.jsonl` reference — the six fields of
+/// `fr_router::pipeline::PassRecord`, in `P7T9.passRecord`'s order.
+///
+/// `score` is `f32` because both sides render it through Java's `Float.toString`; the reference
+/// carries the rendered decimal, and `serde_json` parses it back to the same `f32` bit pattern
+/// (the rendering is round-trip exact by construction — that is what `Float.toString` guarantees).
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BatchPassDoc {
+    /// The 1-based pass number.
+    pub pass: i32,
+    /// `BoardStatistics.getNormalizedScore` after the pass.
+    pub score: f32,
+    /// Connections still in the ratsnest after the pass.
+    pub incompletes: usize,
+    /// Clearance violations on the board after the pass.
+    pub violations: usize,
+    /// Vias on the board after the pass.
+    pub vias: usize,
+    /// Traces on the board after the pass.
+    pub traces: usize,
+}
+
+/// Parses a whole `batch.passes.jsonl` reference.
+///
+/// # Errors
+///
+/// Any `serde_json` parse failure, with the 1-based line number prefixed.
+pub fn parse_batch_passes(s: &str) -> Result<Vec<BatchPassDoc>, String> {
+    s.lines()
+        .enumerate()
+        .filter(|(_, line)| !line.trim().is_empty())
+        .map(|(i, line)| {
+            serde_json::from_str::<BatchPassDoc>(line)
+                .map_err(|e| format!("batch.passes.jsonl line {}: {e}", i + 1))
+        })
+        .collect()
+}
+
+/// The four `(parser …)` scope keywords the clone's HEAD camelCased, rewritten to the Specctra
+/// spelling this port emits — **quirk #92**, and the *only* normalisation `batch.ses` needs.
+///
+/// # Why this exists and why it is not a tolerance
+///
+/// Plan 3 ruling 1 pins the port's DSN/SES **writer** literals to the 2.3.0 jar, because HEAD
+/// camelCased fifteen keyword literals in `Keyword.java` and the writers with them while leaving
+/// its own lexer recognising only the snake_case tokens — so HEAD writes Specctra it cannot read
+/// back (re-reading its own `tutorial_board` output drops `host_cad`, every via rule, every
+/// clearance rule and 26 wires). `tests/reference/README.md` §"Why the 2.3.0 jar" records the
+/// ruling and forbids regenerating those references from HEAD.
+///
+/// Plan 6 ruling and plan 7 pin the **router** to HEAD, because 2.3.0's `autoroute/**` is a
+/// different algorithm. `batch.ses` is therefore the one file in the tree written by HEAD's
+/// `SesWriter`, and it carries HEAD's spelling of the two `(parser …)` keywords an SES contains.
+///
+/// So the difference is not a routing difference, not a rounding difference and not a tolerance:
+/// it is a **closed, enumerated set of four keyword literals** — every camelCase string literal in
+/// `io/specctra/SesWriter.java` and `io/specctra/parser/Parser.java` combined, found with
+/// `grep -ohE '"\(?[a-z]+[A-Z][A-Za-z_]*'` over the two files — rewritten on the *reference* side
+/// only, line by line, and only where the line's first non-blank characters are the keyword's own
+/// `(name ` opening. Anything else that differs is a real diff and stays one. The DRC reference
+/// family has the same shape of problem and the same shape of answer
+/// (`normalize_drc_json`/`scripts/normalize-drc.py`, plan-5 ruling 3).
+///
+/// Only `hostCad` and `hostVersion` actually occur in an SES: `SesWriter.write` reaches
+/// `Parser.writeScope` with `reduced = true`, which skips `stringQuote`, and `writeResolution` is
+/// written only when the board carries one. The other two are listed anyway, because the set is
+/// the writers' and not this corpus's.
+#[must_use]
+pub fn normalize_ses_head_tokens(s: &str) -> String {
+    /// `(head, specctra)` — `io/specctra/parser/Parser.java:102-135` at the clone's HEAD against
+    /// the same method in `tools/freerouting-2.3.0.jar`.
+    const TOKENS: [(&str, &str); 4] = [
+        ("(hostCad ", "(host_cad "),
+        ("(hostVersion ", "(host_version "),
+        ("(stringQuote ", "(string_quote "),
+        ("(writeResolution ", "(write_resolution "),
+    ];
+    let mut out = String::with_capacity(s.len());
+    for line in s.split_inclusive('\n') {
+        let indent = line.len() - line.trim_start().len();
+        let (lead, rest) = line.split_at(indent);
+        let mut written = false;
+        for (head, specctra) in TOKENS {
+            if let Some(tail) = rest.strip_prefix(head) {
+                out.push_str(lead);
+                out.push_str(specctra);
+                out.push_str(tail);
+                written = true;
+                break;
+            }
+        }
+        if !written {
+            out.push_str(line);
+        }
+    }
+    out
+}

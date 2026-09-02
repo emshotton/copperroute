@@ -69,6 +69,37 @@ pub fn load_board(dsn: &std::path::Path) -> Board {
     }
 }
 
+/// [`load_board`] plus the DSN coordinate transform, which `fr_dsn::ses_writer::write` needs and
+/// Java reads off `board.communication.coordinateTransform` (Plan 3 ruling A keeps it in
+/// `fr-dsn`, so the port hands it back on the read result instead). Plan 7 Task 16's `p7t9
+/// batch`.
+pub fn load_board_with_transform(dsn: &std::path::Path) -> (Board, fr_dsn::CoordinateTransform) {
+    let file = std::fs::File::open(dsn).unwrap_or_else(|e| panic!("cannot open {dsn:?}: {e}"));
+    let design_name = dsn
+        .file_name()
+        .expect("a file name")
+        .to_string_lossy()
+        .into_owned();
+    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    match result {
+        BoardReadResult::Success {
+            board,
+            coordinate_transform,
+            ..
+        }
+        | BoardReadResult::OutlineMissing {
+            board,
+            coordinate_transform,
+            ..
+        } => (
+            *board.unwrap_or_else(|| panic!("{design_name} produced no board")),
+            coordinate_transform
+                .unwrap_or_else(|| panic!("{design_name} produced no coordinate transform")),
+        ),
+        other => panic!("{design_name} did not read: {other:?}"),
+    }
+}
+
 /// `P7T2.buildSettings` — the priority-0 source of the headless ladder, sized and tuned for this
 /// board exactly as `RouterSettings(RoutingBoard)` (`RouterSettings.java:127-131`) does it.
 pub fn build_settings(board: &Board) -> RouterSettings {
