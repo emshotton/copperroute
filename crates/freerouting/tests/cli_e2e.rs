@@ -1127,7 +1127,7 @@ fn a_stage_timeout_is_not_a_job_timeout() {
 /// no jar command line can reach it.
 ///
 /// The manifest's `final_state` **is** pinned end to end, on every path that writes one: by
-/// `p8t2 e2e` against the jar's own manifest on all eleven stems (`COMPLETED`), and by
+/// `p8t2 e2e` against the jar's own manifest on every stem of `cli-fixtures.txt` (`COMPLETED`), and by
 /// [`a_stage_timeout_is_not_a_job_timeout`] for the state ladder's one live decision.
 #[test]
 fn an_invalid_input_writes_no_manifest_because_java_never_reaches_the_writer() {

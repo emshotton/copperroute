@@ -532,6 +532,10 @@ fn java_min(a: usize, b: usize) -> usize {
 /// `P8T2Probe`'s `trim keeps NBSP` and `trim drops the control char` rows pin the first two.
 /// Java counts UTF-16 units where this counts chars, which cannot differ: no character above
 /// `U+FFFF` has a code unit `<= U+0020`.
+///
+/// **This crate has a second copy**, [`crate::manifest`]'s, differing only in its return type
+/// (`String`, because its caller stores rather than slices). See that one for why the duplication
+/// is left as it is and for the third, cross-crate copy in `fr-settings`.
 fn java_trim(text: &str) -> &str {
     text.trim_matches(|c: char| c <= '\u{20}')
 }

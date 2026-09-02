@@ -531,6 +531,15 @@ fn java_is_whitespace(c: char) -> bool {
 ///
 /// Java compares UTF-16 code units, but every code unit `<= U+0020` is also a whole code point,
 /// so scanning `char`s gives the same answer on every input.
+///
+/// **This crate has a second copy**, [`crate::stats_from_bytes`]'s, and the difference is the
+/// return type only: that one answers `&str` because its caller slices, this one answers `String`
+/// because `resultJsonPath`'s trimmed value is stored. Neither is the primary — Java's
+/// `String.trim()` is — and both are private, so the duplication is two three-line functions
+/// rather than a seam. `fr_settings::field_path::java_trim` is a **third**, cross-crate copy, and
+/// that one is justified by the dependency direction: `fr-settings` cannot depend on `fr-core`.
+/// A reader who changes one must change all three; the test that would catch it is
+/// `P8T2Probe`'s `trim` rows, which pin the behaviour against the JVM.
 fn java_trim(value: &str) -> String {
     value.trim_matches(|c: char| c <= '\u{20}').to_string()
 }

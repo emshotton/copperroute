@@ -101,9 +101,11 @@ enum Event {
 /// # Shutdown — three ways the peer can vanish, and **two** meanings (controller ruling BH)
 ///
 /// All three stop the loop taking new work and then **drain** — the loop keeps running until the
-/// last tool thread has reported, so a response already being written is not truncated. What they
-/// disagree about is whether the work still running is worth finishing, and the answer follows
-/// from *which pipe* broke:
+/// last tool thread has reported, so a response already being written is not truncated. "Takes no
+/// new work" is enforced, not merely intended: the `Event::Line` arm's first act is a `draining`
+/// guard, which matters only on the write-failure path (the other two have already lost the
+/// reader thread, so no further line can arrive). What the three disagree about is whether the
+/// work still running is worth finishing, and the answer follows from *which pipe* broke:
 ///
 /// | how the peer vanished | in-flight `tools/call`s | exit | Java |
 /// |---|---|---|---|
@@ -176,6 +178,29 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
     while let Ok(event) = inbox.recv() {
         match event {
             Event::Line(line) => {
+                // **The drain takes no new work.** This is the guard that makes the shutdown
+                // table above and delta row 11 true rather than aspirational, and it is
+                // reachable on exactly one of the three paths: a **failed write**. There the
+                // reader thread is still parked in `reader.lines()` on a stdin nobody has
+                // closed, so a peer that has stopped *reading* can keep *writing*, and a
+                // `tools/call` arriving after the failure used to be spawned — it would run a
+                // route for minutes for nobody, never be cancelled (the write-failure arm's
+                // `cancel_every_in_flight` has already run, and this call is inserted after it),
+                // and hold the drain open until its own budget expired. On the EOF and
+                // read-failure paths the claim holds vacuously: the reader thread has returned,
+                // so no further `Event::Line` can arrive at all.
+                //
+                // Dropping the line rather than answering it is deliberate. The answer would go
+                // down the same stdout that has just refused a write, so there is nothing to say
+                // and nowhere to say it; the loop's job from here is to finish what is already
+                // running and leave.
+                if draining {
+                    if in_flight.is_empty() {
+                        break;
+                    }
+                    continue;
+                }
+
                 // `Freerouting.java:739-741` — a blank line is skipped. Java skips it *before* the
                 // round trip and so answers nothing either, which is the one place the two
                 // programs agree about blank lines; what Java then does to a **notification** is

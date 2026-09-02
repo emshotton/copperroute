@@ -62,7 +62,7 @@ pub struct RpcError {
 pub const PARSE_ERROR: i64 = -32700;
 /// A well-formed envelope the server will not act on. One thing reaches it: a `tools/call` whose
 /// id is **already in flight**, which MCP's id-uniqueness rule forbids and this transport's
-/// cancellation map cannot represent — see [`super::stdio`]'s `dispatch_tool_call`.
+/// cancellation map cannot represent — see [`super::stdio`]'s `spawn_tool_call`.
 pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
@@ -113,7 +113,11 @@ impl RpcError {
             data: None,
         }
     }
-    /// Ruling 4's rendering of a panic payload, and the only in-tree caller is that boundary.
+    /// Ruling 4's rendering of a panic payload. ~~"and the only in-tree caller is that
+    /// boundary"~~ — true when Task 11 wrote it, and false since Task 12 gave the four tools
+    /// their bodies: `mcp/tools/route_board.rs` (×3), `check_drc.rs` (×2), `board_info.rs` and
+    /// `list_settings.rs` all answer a failure with it, which is the intended use — a tool that
+    /// cannot do its job reports `-32603` rather than panicking into the boundary.
     pub fn internal(msg: impl Into<String>) -> Self {
         Self {
             code: INTERNAL_ERROR,

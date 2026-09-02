@@ -49,7 +49,8 @@
 #
 # ## The `batch.ses` cross-check
 #
-# Eight of the eleven stems are Plan 7's batch stems run on **the same argv**
+# Eight of the stems (there are thirteen since Task 9's two KiCad-JSON boards; the file
+# `tests/reference/cli-fixtures.txt` is the list) are Plan 7's batch stems run on **the same argv**
 # `tests/reference/<stem>/batch.meta.txt`'s `bare jar` line records, and
 # `gen-batch-reference.sh --verify-driver` already proved that argv's bare-jar output is
 # byte-identical to `batch.ses` on all eight. So this generator asserts

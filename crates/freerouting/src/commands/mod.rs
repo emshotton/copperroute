@@ -1,4 +1,6 @@
-//! The four subcommand runners.
+//! Three of the four subcommand runners — `route`, `drc` and `info`. The fourth, `mcp`, is a
+//! server loop rather than a one-shot command and lives under `crate::mcp`; `crate::run`
+//! dispatches to all four side by side.
 //!
 //! Each takes its parsed arguments **and the raw argv**, because the settings ladder is built
 //! from the raw argv rather than the rewritten one (scan ruling R19 — see `crate::run`).

@@ -30,7 +30,7 @@ the gate's pattern; a plan document is not edited after the fact; and none of th
 marker. The code-scoped form above is the check with an answer.
 
 **Status of the tree this describes.** Branch `plan-8-core-cli-mcp`, `cargo nextest run
---workspace` **2388 passed, 0 failed, 56 skipped**; `cargo clippy --workspace --all-targets -- -D
+--workspace` **2389 passed, 0 failed, 56 skipped**; `cargo clippy --workspace --all-targets -- -D
 warnings` clean; `cargo fmt --all --check` clean; `cargo test -p fr-router --test batch_parity`
 6 passed, 1 ignored. Quirk register contiguous **1..292**.
 
@@ -38,7 +38,7 @@ warnings` clean; `cargo fmt --all --check` clean; `cargo test -p fr-router --tes
 
 ## 1. What is ported
 
-Eight crates and **2 388** tests, against a Java tree of **130 497** lines of which **35 691**
+Eight crates and **2 389** tests, against a Java tree of **130 497** lines of which **35 691**
 are the GUI that spec §2 excludes outright. The port's own size, by the command that answers it:
 `find crates/*/src -name '*.rs' | xargs cat | wc -l` → **138 776**. *(An earlier draft of this
 paragraph also gave a test-source line count with no command beside it; it was not reproducible,
@@ -150,7 +150,7 @@ differential row or recorded as unassertable.
 | 1 | **All logs go to stderr; there is no log file.** Java's Console appender targets `SYSTEM_OUT`, a second targets `SYSTEM_ERR` at `ERROR`, and the file appender takes both — so an `ERROR` is written three times and `INFO` pollutes stdout | `Log4j2ConfigurationFactory.java:54-113` | quirk **#261** (label AI) | `parity::normalize_log` merges the jar's two streams and dedupes the `ERROR`; every `p8t1`/`p8t3` row compares the two projections |
 | 2 | **`drc` with no `-o` writes the report to stdout.** Java's equivalent branch is dead code: DRC mode is entered only when `drcReportFile != null`, so `Freerouting.java:368-371` can never run, and a bare `-drc` is not DRC mode at all | `Freerouting.java:368-371`, `:1462` | plan ruling **6**, quirks **#263**/**#275** | `cli_e2e.rs`, and `p8t3 e2e` compares the *file* mode where the jar has one |
 | 3 | **`RoutingJobState.INVALID` is totalised: the port exits 1 where the jar spins for ever.** `isCliTerminalState` omits `INVALID`, which the scheduler assigns for a non-DSN/JSON input | `Freerouting.java:189-194`; `RoutingJobScheduler.java:83, 253` | plan ruling **7**, quirk **#244** | `p8t1`'s `invalid-input-java-hangs` row — the plan's one declared `XDIFF`, not run against the jar for the obvious reason |
-| 4 | **The SES is serialised once.** Java re-serialises on every board-updated event (≤ every 250 ms) and again at the end, each time recomputing a CRC32 and a full text-scrape `BoardStatistics` | `RoutingJobSchedulerActionThread.java:100, 168` | plan ruling **9**, quirk **#270** | Not assumed: `p8t1` compares the two programs' SES bytes on **eleven** boards, all MATCH |
+| 4 | **The SES is serialised once.** Java re-serialises on every board-updated event (≤ every 250 ms) and again at the end, each time recomputing a CRC32 and a full text-scrape `BoardStatistics` | `RoutingJobSchedulerActionThread.java:100, 168` | plan ruling **9**, quirk **#270** | Not assumed: `p8t1` compares the two programs' SES bytes on **every board in `tests/reference/cli-fixtures.txt`** — thirteen today — and all of them MATCH |
 | 5 | **argv is parsed once.** Java parses it **five** times and the passes disagree — `-dl` is `equals` in one and `startsWith` in another, `-ll` takes the first occurrence early and the last late, and `mcp_server.stdio=true` in `freerouting.json` is silently ignored because the stdout redirect must precede logging init | `Freerouting.java:901-920, 944-956, 1056-1065, 1191-1203` | plan ruling **10**, quirk **#262** | `p8t5` and `sweep-p8t5.sh` (86 rows, all MATCH) compare the *classification*, which is what one-parse-vs-five is observable through |
 | 6 | **The MCP server is a different program**, in eleven recorded ways | `api/mcp/**`, `Freerouting.java:681-788` | ruling **AO** | The eleven-row table in `crates/freerouting/README.md`, asserted **to be exactly itself** by `run.sh p8t6`: a new delta and a vanished delta both fail the driver |
 | 7 | **The seven dead legacy flags stay dead** — `-oit`, `-us`, `-is`, `-hr`, `-inc`, `-drc`'s router switch and `-mt` are parsed and write a bridge nothing reads | `GlobalSettings.java:51-53, 700-736` | ruling **AQ**, quirks **#131**/**#143** | A **product decision**, closed in both register rows. Wiring them would make the port more capable than the program it ports. Each has a live generic override behind it, but the spelling differs by form (row 22): `--set router.optimizer.optimization_improvement_threshold=0.005` on the native form, `--router.optimizer.optimization_improvement_threshold=0.005` on the legacy one |
@@ -194,7 +194,7 @@ That is the 56 skips in the summary above.
 
 ```sh
 # Always available
-cargo nextest run --workspace                              # 2388 passed, 56 skipped
+cargo nextest run --workspace                              # 2389 passed, 56 skipped
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 cargo test --workspace --doc
@@ -217,11 +217,11 @@ whole programs** (plan ruling 13).
 |---|---|---|
 | `run.sh p8t0` | `parseTimespanString` × 30 strings, the 24 h cap, `GRACE_PERIOD`, the round trip | MATCH (33 lines) |
 | `run.sh p8t1probe` | `getFileFormat`, `changeFileExtension`, `setFilename`, `calculateCrc32` — five tables | MATCH (162 lines) |
-| `run.sh p8t1 [all]` | **the headline gate** — SES bytes, exit code, `normalize_log` | 15 rows: **14 MATCH, 1 XDIFF, 0 DIFF** |
+| `run.sh p8t1 [all]` | **the headline gate** — SES bytes, exit code, `normalize_log` | `all`: **18 rows — 17 MATCH, 1 XDIFF, 0 DIFF**. `ci`: **10 rows — 9 MATCH, 1 XDIFF, 0 DIFF**. The **invariant**, which outlives the count: every board stem MATCHes, and the driver has exactly one XDIFF — `invalid-input-java-hangs`, quirk #244 |
 | `run.sh p8t2probe` | `BoardStatistics(byte[], FileFormat)` field for field plus `toString()`'s exact JSON | MATCH (289 lines) |
-| `run.sh p8t2 [e2e [all]]` | the result manifest, field for field after `normalize_manifest` | shape MATCH (762 lines); `e2e all` **11/11 MATCH** |
+| `run.sh p8t2 [e2e [all]]` | the result manifest, field for field after `normalize_manifest` | shape MATCH (762 lines); `e2e all` **13/13 MATCH, 0 DIFF** — one row per stem of `cli-fixtures.txt`, so the count follows that file and the invariant is that **all of them MATCH** |
 | `run.sh p8t3 [e2e]` | the DRC settings merge (Java vs Rust); then the document, score, exit code and log | merge MATCH (25 lines); `e2e` **14 rows: 13 MATCH, 1 XDIFF** |
-| `run.sh p8t5` | the legacy surface — slots, `LegacyBridge`, warnings, exit code | MATCH (2 096 lines) |
+| `run.sh p8t5` | the legacy surface — slots, `LegacyBridge`, warnings, exit code | MATCH (**2 124** lines; 2 096 before ruling BJ's row landed in `matrix/p8t5-argv.tsv`) |
 | `run.sh p8t6` | the eleven-row MCP delta table, asserted to be exactly itself | MATCH — 18 observations, 13 must differ, 5 must agree |
 | `run.sh p8t7` | spec §1's KiCad DSN → route → SES → re-read, plus `-de board.json` and quirk #289 | MATCH |
 | `sweep-p8t5.sh` | the whole legacy argv matrix, `matrix/p8t5-argv.tsv` | **87 rows: 87 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** (86 until ruling BJ added `set-on-legacy`) |
@@ -235,8 +235,8 @@ whole programs** (plan ruling 13).
 through the binary". Task 6 reached that rung with the two artefacts that already existed:
 Plan 4's **`p4t1`** still runs the 64-case matrix against the JVM (MATCH, 5 728 lines), and the
 *through-the-binary* half is the manifest's `settings_snapshot`, which `p8t2 e2e` compares field
-for field on all eleven stems and `cli_e2e.rs::a_settings_file_reaches_the_run` reads on five more
-runs across both command lines. A separate driver would have re-derived `p4t1`'s matrix to compare
+for field on **every** stem of `tests/reference/cli-fixtures.txt` — thirteen today — and
+`cli_e2e.rs::a_settings_file_reaches_the_run` reads on five more runs across both command lines. A separate driver would have re-derived `p4t1`'s matrix to compare
 the same numbers a second time.
 
 **Regenerating the committed references.** None of these is run by the test suite.

@@ -107,6 +107,12 @@ struct Script {
     /// When set, the first `read` fails instead — Java's `IOException` on `System.in`
     /// (`Freerouting.java:780-782`), whose answer is exit **1**.
     fail: bool,
+    /// Raised when `read` first answers `Ok(0)`, i.e. when the sender has been dropped and every
+    /// line already sent has been handed to `reader.lines()`. It is the ordering anchor
+    /// `the_drain_takes_no_new_work_after_a_write_failure` needs: the reader thread consumes
+    /// lines in order on one thread, so "EOF was reached" implies "every earlier line was read",
+    /// and `std::sync::mpsc` preserves that thread's own send order at the receiver.
+    eof: Arc<AtomicBool>,
 }
 
 impl Read for Script {
@@ -120,7 +126,10 @@ impl Read for Script {
                     self.pending = line.into_bytes();
                     self.at = 0;
                 }
-                Err(_) => return Ok(0),
+                Err(_) => {
+                    self.eof.store(true, Ordering::SeqCst);
+                    return Ok(0);
+                }
             }
         }
         let n = (self.pending.len() - self.at).min(out.len());
@@ -157,6 +166,8 @@ struct Harness {
     lines: Option<Sender<String>>,
     out: Captured,
     server: Option<std::thread::JoinHandle<i32>>,
+    /// [`Script::eof`], shared, so a test can wait on it.
+    stdin_eof: Arc<AtomicBool>,
 }
 
 impl Harness {
@@ -169,11 +180,13 @@ impl Harness {
     fn start_with(state: State, fail_reads: bool, fail_writes_after: Option<usize>) -> Harness {
         let (tx, rx) = channel::<String>();
         let out = Captured(Arc::new(Mutex::new(Vec::new())), fail_writes_after);
+        let stdin_eof = Arc::new(AtomicBool::new(false));
         let reader = std::io::BufReader::new(Script {
             lines: rx,
             pending: Vec::new(),
             at: 0,
             fail: fail_reads,
+            eof: Arc::clone(&stdin_eof),
         });
         let writer = out.clone();
         let server = std::thread::spawn(move || run_with(state, reader, writer));
@@ -181,6 +194,7 @@ impl Harness {
             lines: Some(tx),
             out,
             server: Some(server),
+            stdin_eof,
         }
     }
 
@@ -646,6 +660,134 @@ fn a_dead_stdout_cancels_everything_and_exits_nonzero() {
     // the point of this test), so this is what lets that thread's `recv` fail and the thread end
     // before the test process does — leaving no thread outliving the run for `nextest` to notice.
     drop(h.lines.take());
+}
+
+/// **Final-review S1, controller ruling: implement the guard.** `run_with`'s shutdown doc and
+/// delta row 11 both say all three shutdown paths "stop the loop taking new work and then drain".
+/// On the EOF and read-failure paths that is vacuous — the reader thread has returned, so no
+/// further line can arrive. On the **write-failure** path it is a real claim and it was false: the
+/// peer has stopped *reading*, but nothing stops it *writing*, and stdin is still open. A
+/// `tools/call` arriving after the failure used to be spawned, inserted into `in_flight` **after**
+/// the write-failure arm's `cancel_every_in_flight` had already run — so nothing would ever cancel
+/// it, it would route for minutes for a peer that is not listening, and it would hold the drain
+/// open until its own budget expired.
+///
+/// The sequence, and what each step is for:
+///
+/// 1. `spin` is called and starts. It ignores its cancel token until the test releases it, so the
+///    drain cannot finish while the rest of the test runs — which is what makes every event
+///    enqueued below **certain** to be processed: the loop breaks only when `draining &&
+///    in_flight.is_empty()`, and `spin` keeps `in_flight` non-empty.
+/// 2. A `ping`, whose response is the write that fails. That sets `draining` and cancels `spin`'s
+///    token; `spin_saw_cancel` is how the test knows the arm ran rather than guessing.
+/// 3. A second `tools/call`, for `second`. **This is the one under test.**
+/// 4. stdin is closed. The reader thread reads line 3, sends its `Event::Line`, then reads EOF and
+///    sends `Event::Eof` — two sends from **one** thread, and `std::sync::mpsc` preserves a single
+///    sender's order at the receiver. `stdin_eof` is raised by the `Script` at the moment it
+///    answers `Ok(0)`, which is strictly after it handed line 3 over. So waiting on `stdin_eof`
+///    before releasing `spin` is what removes the race: the loop cannot have broken yet (step 1),
+///    and line 3 is already in the channel ahead of anything the tool thread will send.
+/// 5. `spin` is released, reports, and the drain ends.
+///
+/// `second_calls == 0` is then the assertion. Without the guard it is 1 — and loudly so, because
+/// `second` spins uncancelled until its own 10 s deadline assert fires, which fails the test twice
+/// over rather than flaking. The exit code stays **1**: a write failure is not made a success by a
+/// later EOF.
+#[test]
+fn the_drain_takes_no_new_work_after_a_write_failure() {
+    let started = Arc::new(AtomicBool::new(false));
+    let spin_saw_cancel = Arc::new(AtomicBool::new(false));
+    let release = Arc::new(AtomicBool::new(false));
+    let second_calls = Arc::new(AtomicUsize::new(0));
+
+    let mut state = State::new();
+    {
+        let started = Arc::clone(&started);
+        let spin_saw_cancel = Arc::clone(&spin_saw_cancel);
+        let release = Arc::clone(&release);
+        state.register_tool(
+            tool("spin"),
+            Box::new(move |_state, _args, _progress, cancel| {
+                started.store(true, Ordering::SeqCst);
+                let deadline = Instant::now() + Duration::from_secs(10);
+                // Deliberately NOT `while !cancel.is_cancelled()`: this tool holds the drain open
+                // until the test says otherwise, which is what step 1 above buys.
+                while !release.load(Ordering::SeqCst) {
+                    if cancel.is_cancelled() {
+                        spin_saw_cancel.store(true, Ordering::SeqCst);
+                    }
+                    assert!(Instant::now() < deadline, "the test never released `spin`");
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                Ok(json!({}))
+            }),
+        );
+    }
+    {
+        let second_calls = Arc::clone(&second_calls);
+        state.register_tool(
+            tool("second"),
+            Box::new(move |_state, _args, _progress, cancel| {
+                second_calls.fetch_add(1, Ordering::SeqCst);
+                // If the guard is missing this call is never cancelled — it was inserted after
+                // `cancel_every_in_flight` — so it runs to this deadline and panics, which is the
+                // second, louder way a regression fails this test.
+                let deadline = Instant::now() + Duration::from_secs(10);
+                while !cancel.is_cancelled() {
+                    assert!(
+                        Instant::now() < deadline,
+                        "`second` was spawned during the drain and nothing ever cancelled it"
+                    );
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                Ok(json!({}))
+            }),
+        );
+    }
+
+    // Zero bytes of headroom: the very first write fails.
+    let mut h = Harness::start_with(state, false, Some(0));
+    h.send(json!({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+        "params": {"name": "spin", "arguments": {}},
+    }));
+    wait_for("`spin` to start", || started.load(Ordering::SeqCst));
+
+    // Step 2 — the failing write, and the proof that the write-failure arm ran.
+    h.send(json!({"jsonrpc": "2.0", "id": 2, "method": "ping"}));
+    wait_for("the write failure to cancel the in-flight call", || {
+        spin_saw_cancel.load(Ordering::SeqCst)
+    });
+
+    // Step 3 — the line under test, arriving while the loop is draining.
+    h.send(json!({
+        "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+        "params": {"name": "second", "arguments": {}},
+    }));
+
+    // Step 4 — close stdin and wait until the reader has actually reached EOF, which is strictly
+    // after it read line 3.
+    drop(h.lines.take());
+    wait_for("stdin to reach EOF", || h.stdin_eof.load(Ordering::SeqCst));
+
+    // Step 5.
+    release.store(true, Ordering::SeqCst);
+    let code = h.server.take().unwrap().join().unwrap();
+
+    assert_eq!(
+        second_calls.load(Ordering::SeqCst),
+        0,
+        "a `tools/call` arriving after a write failure must not be spawned: the drain takes no \
+         new work (run_with's shutdown table, README delta row 11)"
+    );
+    assert_eq!(
+        code, 1,
+        "a write failure exits 1, and a later EOF does not turn it into a success"
+    );
+    assert!(
+        h.out.0.lock().unwrap().is_empty(),
+        "the peer stopped reading before the first byte, so nothing was ever captured"
+    );
 }
 
 /// **N3.** MCP requires a request id to be unique within a session, and this transport's whole
