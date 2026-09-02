@@ -369,10 +369,12 @@ pub struct BatchOptimizer<'a> {
     pub deadline: Option<std::time::Instant>,
     /// `protected boolean isTimedOut` (`:38`) — the per-stage flag of the field above.
     pub is_timed_out: bool,
-    // added in Plan 8: `NamedAlgorithm.job` / `BatchOptimizer.job` (`BatchOptimizer.java:35`) —
-    // `core/RoutingJob`, the CLI/MCP job record; spec §13 puts it in Plan 8's `fr-core`. Its only
-    // readers on this task's path are `job.logWarning` (`:399`) and `job.logInfo`, which
-    // `global-constraints.md` drops with the rest of `FRLogger`.
+    // not ported: `NamedAlgorithm.job` / `BatchOptimizer.job` (`BatchOptimizer.java:35`) —
+    // **closed by Plan 8 Task 14**, on the same reasoning as the twin at
+    // `pipeline/batch_autorouter.rs`. Plan 8 Task 1 ported `core/RoutingJob` as
+    // `fr_core::RoutingJob`; `fr-core` composes `fr-router` (spec §4), so no field can point the
+    // other way. Its only readers on this task's path are `job.logWarning` (`:399`) and
+    // `job.logInfo`, which `global-constraints.md` drops with the rest of `FRLogger`.
     // not ported: the three listener lists of `NamedAlgorithm` (`:26-31`) — controller ruling AK
     // replaces them with `crate::pipeline::ProgressSink`.
     // not ported: `BatchOptimizer.sampleCurrentThreadCpuSeconds` (`:94-101`), `BatchOptimizer.sampleCurrentThreadAllocatedMb` (`:103-111`), `BatchOptimizer.sampleHeapUsageMb` (`:113-122`) — the three JMX samplers; every reader is a `job.logInfo` payload (`:255-272`), which the Global Constraints drop.

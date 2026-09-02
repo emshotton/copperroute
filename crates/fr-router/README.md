@@ -2982,9 +2982,10 @@ Two more things are `pub` where Java is `private`, and for one reason: the diffe
 driver is a separate crate and cannot use reflection. `BatchFanout::fanout_pass` is
 called by `p7t5 pass`'s `[real]` half, exactly where `P7T5.java` uses
 `Method.setAccessible(true)`; `parse_timespan_seconds` — the port of
-`TextManager.parseTimespanString` for `:94-99`, which `fr-settings` rosters
-`added in Plan 8:` because the settings path never parses a timeout — is called by the
-test that pins quirk #224.
+`TextManager.parseTimespanString` for `:94-99`, which `fr-settings` deferred to
+Plan 8 because the settings path never parses a timeout, and which Plan 8 Task 0
+landed as `fr_core::parse_timespan_seconds` (`crates/fr-settings/src/lib.rs:214`
+is now the `renamed:` row) — is called by the test that pins quirk #224.
 
 `scripts/differential/run.sh p7t5 <dsn> [passNo|maxPasses] [sortingOrder]
 [order|pin|pass|board]` is the evidence. Modes `order` and `pin` are Task 11's; modes
@@ -3557,6 +3558,15 @@ The marker inventory it rests on, measured on the committed tree at Plan 7 Task 
 *(These counts are measured on the tree Task 17 committed and include this table's
 own lines — the plan-6 hand-off's warning about `crates/` sweeping the READMEs
 applies to every row. The `crates/*/src` column is the inventory.)*
+
+> **Closed by Plan 8 Task 14.** `grep -rn "added in Plan 8" crates/*/src` and
+> `crates/*/tests` both answer **nothing** on the committed tree: Tasks 0-13 consumed
+> the markers incrementally and Task 14 consumed the last seven — the two
+> `BoardComparator` twins and the five ruling-AS score rows, all re-pointed to
+> `not ported:` — plus the five prose sentences that still quoted the marker text.
+> No marker anywhere defers to a ninth plan; there is none.
+> `docs/plan-8-handoff.md` §5 is where every surviving `obligation:` row is closed
+> with a reason.
 
 The 30 `added in Plan 8:` markers cluster in five places: `HeadlessBoardManager`'s
 nine `fr-core` methods (`fr-board/src/board/clearance_override.rs:399-407` —

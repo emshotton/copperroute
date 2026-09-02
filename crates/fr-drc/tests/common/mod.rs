@@ -16,5 +16,14 @@
 /// A rebuilt jar with a new `Constants.FREEROUTING_VERSION` needs **this constant and every
 /// `tests/data/*` transcript** regenerated together; `tests/data/README.md` carries the commands.
 /// Used by `tests/report.rs`, `tests/report_json.rs` and `tests/java_ports.rs`.
+///
+/// **Plan 8 Task 14, controller sweep item N6: this is now an alias, not a second literal.**
+/// It used to carry its own `"2.3.1-SNAPSHOT"`, written when `fr-core` did not exist. Controller
+/// ruling AT/5 makes [`fr_core::PARITY_VERSION`] the single place the pinned jar's
+/// `Constants.FREEROUTING_VERSION` is written down, and this is one of the readers ruling AT
+/// asked to be named. `fr-core` is a **dev**-dependency here and only a dev-dependency: the
+/// shipping `fr-drc` still depends on nothing above `fr-dsn`, so spec §4's direction
+/// (`fr-core -> fr-router -> fr-drc`) is unchanged and the edge exists solely for this test-only
+/// binary. Cargo permits the cycle for exactly that reason.
 #[allow(dead_code)] // not every suite that includes this module uses every constant
-pub const JAR_VERSION: &str = "2.3.1-SNAPSHOT";
+pub const JAR_VERSION: &str = fr_core::PARITY_VERSION;

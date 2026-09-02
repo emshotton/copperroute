@@ -155,8 +155,15 @@ pub struct BatchAutorouter<'a> {
     // `AutorouteConnectionRouter.java:26-28`, `AutoroutePassRunner.java:36-38` and
     // `AutorouteBatchLoop.java:33-35`). The port's counterparts are free functions and structs
     // that take `&mut BatchAutorouter`, so there is no field to hold.
-    // added in Plan 8: `NamedAlgorithm.job` (`BatchAutorouter.java:78`) — `core/RoutingJob`, the
-    // CLI/MCP job record; spec §13 puts it in Plan 8's `fr-core`.
+    // not ported: `NamedAlgorithm.job` (`BatchAutorouter.java:78`) — **closed by Plan 8 Task 14.**
+    // The field is a back-pointer to `core/RoutingJob`, the CLI/MCP job record. Plan 8 Task 1
+    // ported that record as `fr_core::RoutingJob`, and the dependency direction is why no field
+    // appears here: `fr-core` composes `fr-router` (spec §4), so the router cannot hold a job.
+    // Java's own readers of this field on the batch path are `job.logWarning`/`job.logInfo`, which
+    // `global-constraints.md` drops with the rest of `FRLogger`, and `job.thread`, which quirk Y's
+    // rostered monitor thread is the only consumer of. What a caller actually needs from the job
+    // — the settings, the budget, the stop token — arrives through
+    // [`BatchAutorouter::for_routing_job`]'s three arguments instead.
 }
 
 impl<'a> BatchAutorouter<'a> {
@@ -325,7 +332,7 @@ impl<'a> BatchAutorouter<'a> {
     /// | `:117` `startRipupCosts` | `settings.getStartRipupCosts()` |
     /// | `:118-120` `pullTightAccuracy` | `settings.tracePullTightAccuracy`, or **500** when it is `null` |
     ///
-    /// `:121`'s `this.job = job` is the `added in Plan 8:` marker on the field block.
+    /// `:121`'s `this.job = job` is the `// not ported:` row on the field block above.
     pub fn for_routing_job(
         board: &Board,
         settings: &'a RouterSettings,

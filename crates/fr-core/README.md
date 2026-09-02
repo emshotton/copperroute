@@ -66,8 +66,12 @@ the difference is load bearing.
 **Quirk #200 is the reason this matters.** `--max-items` reaches `requestStop()` and therefore
 *silently disables the optimizer*; `--max-passes` reaches `requestStopAutoRouter()` and does not.
 A single `AtomicBool` collapsing the two would change behaviour without changing a test — which is
-precisely what Plan 7's hand-off warned Plan 8 against. The CLI's help text must say so
-(plan-7 hand-off).
+precisely what Plan 7's hand-off warned Plan 8 against. **Plan 7's hand-off asked that the CLI's
+help text say so, and Plan 8 Task 14 discharged it**: the port has no `--max-items` flag of its
+own, so the whole surface for it is Java's own `--router.max_items=N`, accepted on both command
+lines — and the paragraph explaining that the two limits take different arms of the stop flag is
+on that flag's help text in `crates/freerouting/src/cli.rs`, repeated in
+`crates/freerouting/README.md`.
 
 `apply_to()` writes `ALL` first and `AUTO_ROUTER_ONLY` second, because `request_stop_auto_router`
 is a one-way upgrade from `None`: the order is the one Java's own two call sites can produce.
@@ -76,16 +80,65 @@ is a one-way upgrade from `None`: the order is the one Java's own two call sites
 indistinguishable from `RouterStop::new()`, and `apply_to` on it writes nothing. That is what
 keeps `batch_parity`, `p6t1` and `sweep-p7t9.sh` byte-identical once the poll seam is added.
 
-### The poll seam is a later task
+### The poll seam, and the four sites that close it
 
 Scan ruling R3: the committed tree has **one** `poll_deadline` call site
 (`crates/fr-router/src/pipeline/batch_loop.rs:303`), not the six the plan drafted, and
 `run_pipeline` offers no closure hook. The *addition* of polls is an additive-and-wrapped,
 driver-pinned `fr-router` change that **controller ruling BB assigns to Task 11** — the seam's
 first consumer, with Task 12 the second. Task 0 builds the token and the two entry points that
-seam calls (`apply_to`, `as_router_stop`), and records the gap as an `obligation:` at
-`CancelToken::apply_to`: **until Task 11 lands it, a cancel that arrives after `run_pipeline` is
-entered is not observed by that run.**
+seam calls (`apply_to`, `as_router_stop`), and recorded the gap as an `obligation:` at
+`CancelToken::apply_to`: *until Task 11 lands it, a cancel that arrives after `run_pipeline` is
+entered is not observed by that run.*
+
+**That obligation is CLOSED.** Task 11 landed ruling BB's three poll sites — the pass-loop heads
+in `pipeline::{batch_loop, fanout, optimizer}` — and Task 12 added ruling AI's sanctioned
+**fourth**, the item loop in `pipeline::pass_runner`, after measuring that one pass of
+`fixtures/Issue508-DAC2020_bm01.dsn` costs **135 s** in release and an operator's
+`notifications/cancelled` therefore took over two minutes to be observed. All four are additive
+and wrapped: `batch_parity`, `run.sh p6t1` (all six rows) and `sweep-p7t9.sh` are byte-unchanged,
+which is scan ruling R3's gate.
+
+## The load sequence — the four steps, and which two `resolve_headless` owns
+
+*(Survey §5.7's gap, closed. `management/` had never been audited by any plan, which is how it
+survived six of them; `scripts/audit-port.sh management crates/fr-core/src` is now one of Task
+14's twelve invocations, at zero `MISSING` and zero `UNMAPPED`.)*
+
+Loading a board is `HeadlessBoardManager.loadFromSpecctraDsn` (`:673-705`) →
+`applyParsedBoardResult` (`:711-737`) → **`applyRouterSettingsForLoadedBoard` (`:739-749`)** →
+`applyImmediatePostLoadProcessing` (`:751-757`), plus `BoardLoader.loadBoardIfNeeded` (`:19-56`)
+in front. The port carries all five as **free functions in `load.rs`** — there is no manager
+object, because the class's other ≈ 640 lines are diagnostics and are rostered.
+
+The third of those five is the one that matters, and it has four steps that split two and two:
+
+| Java | step | who owns it in the port |
+|---|---|---|
+| `:740-744` | if the board's layer count differs from the settings', write the board's into the settings | **settings** — `fr_core::apply_router_settings_for_loaded_board`, and `fr_settings::resolve_headless` |
+| `:745` | `routerSettings.applyBoardSpecificOptimizations(board)` | **settings** — the same two |
+| `:746` | `applyCopperToEdgeClearanceOverride()` | **board** — `fr_router::pipeline::prepare_board` → `fr_board::Board::apply_copper_to_edge_clearance_override` |
+| `:747` | `applyHoleClearanceOverride()` | **board** — the same, → `apply_hole_clearance_override` |
+
+**The two settings steps have two callers and one implementation each.** `resolve_headless` runs
+them at `crates/fr-settings/src/resolve.rs:274-284` because it models the whole scheduler flow
+(merge #1 → this pass → merge #2); `load.rs` runs them because it is the loader. They are **not**
+nested — `load.rs` does not call `resolve_headless`, whose signature needs a `SettingsInputs`
+ladder and a `HostEnvironment` that no loader has, and calling it there would re-run both merges.
+Task 6 settled the order at the one place the two meet, the CLI: parse the board, call
+`resolve_headless` **once** against the parsed board, then run `load.rs`'s two board passes with
+the resolved settings. `crates/fr-core/tests/load.rs::the_settings_pass_is_the_same_two_steps_resolve_headless_runs`
+asserts the two agree, so the duplication cannot drift.
+
+**The two board steps run ONCE per load, and the survey said twice.** Plan-8 survey label **AD**
+and register row **#232** both claimed `HeadlessBoardManager.createBoard:342-343` runs the
+overrides a first time, from the parser at `Structure.java:1268`. Measured at the pinned jar, that
+is false and cannot be true: `Structure.java:1268` calls `scopeParameter.boardHandling.createBoard`
+on a `final BoardParserCallback` field, `HeadlessBoardManager` implements `BoardManager` which does
+**not** extend `BoardParserCallback`, and the field's one assignment in the whole tree is
+`new MinimalBoardManager()` (`ReadScopeParameter.java:103`), whose `createBoard` calls neither
+override. `P8T3Probe`'s `[createboard]` rows measure `headless_create_board_calls=0` on all three
+fixtures. That is quirk **#253**, and #232's text was corrected in place around it.
 
 ## The deadline, and Java's monitor thread
 
@@ -105,6 +158,29 @@ The ladder that builds it, `threadAction:43-52`, is exactly: parse; clamp **from
 clamp**, so `--job-timeout -1` is a deadline in the past — measured, not reasoned
 (`tests/data/p8t0-timespans.txt`, row `"-1"`). `GRACE_PERIOD` (`:25` = `30`) is *not* applied
 there; it lands on `timed_out_at` and never on `stop_at`.
+
+### `Deadline::timed_out_at` vs Plan 7's `RouterStop::is_timed_out` — they are two flags
+
+*(Controller sweep item N5, reconciled by Plan 8 Task 14.)* Both spell "timed out" and neither is
+the other. Read them as **whose** deadline expired:
+
+| | `fr_core::Deadline::is_timed_out_at` | `fr_router::pipeline::RouterStop::is_timed_out` |
+|---|---|---|
+| whose deadline | the **job's** — `--router.job_timeout`, i.e. the monitor thread's `job.timeoutAt` | the **stage's** — a `RouterBudget`, the fanout per-pin budget, the optimizer's own deadline |
+| when it rises | `stop_at` + `GRACE_PERIOD` (30 s), because Java writes `job.state = TIMED_OUT` 30 s after `requestStop()` | the instant `RouterStop::poll_deadline` first observes expiry, because that one call collapses Java's two writes |
+| Java site | `RoutingJobSchedulerActionThread.java:75` then `:84` | `AutorouteBatchLoop.java:251-253`, `BatchFanout`, `BatchOptimizer` |
+
+Plan 7's collapse is right for `RouterStop`: a stage budget has no monitor thread behind it, so
+there is no second write to be 30 s late. The grace exists only on the job deadline, and only
+`Deadline` carries it.
+
+**What the CLI reports is the job flag alone.** `commands::route` reads `Deadline`, never
+`PipelineResult::timed_out` — which deliberately folds all three stage budgets together, since
+that is what a *router* caller wants to know. Reading the folded flag is exactly the bug
+`crates/freerouting/tests/cli_e2e.rs::a_stage_timeout_is_not_a_job_timeout` was written to catch:
+the port answered `"TIMED_OUT"` where the jar answers `"COMPLETED"` on a board whose optimizer
+stage ran out of budget. `crates/fr-core/tests/cancel.rs` pins the 30 s offset itself, and
+`tests/data/p8t0-timespans.txt`'s `GRACE_PERIOD	30` row is the jar's own value.
 
 ## `Ctx` has no rng seed and no `max_threads`
 

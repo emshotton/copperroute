@@ -31,24 +31,29 @@ divergence" is gone (ruling 14), and the `-mp`/`-mt`/`-oit`/`-us`/`-is`/`-hr`/
   **Plan 8 ruling AQ closed it: they stay dead, and they stay parsed.** Keeping
   the parse is not pedantry — the value decides how far the cursor moves and
   therefore which *other* arguments get warned about, and `p8t5` compares that.
-  **The same knobs are reachable through `--set`**, which is the port's spelling
-  of Java's own `--section.field=value` and goes through `CliSettings` at
-  priority 60 — the parser that actually reaches the router:
+  **The same knobs are reachable through Java's own `--section.field=value`**,
+  which goes through `CliSettings` at priority 60 — the parser that actually
+  reaches the router — and which both command lines accept unchanged:
 
   ```sh
   freerouting route board.dsn -o board.ses \
-      --set router.optimizer.optimization_improvement_threshold=0.005 \
-      --set router.optimizer.max_threads=4
+      --router.optimizer.optimization_improvement_threshold=0.005 \
+      --router.optimizer.max_threads=4
   freerouting -de board.dsn -do board.ses --router.optimizer.max_threads=4
   ```
+
+  *(The port also declares a `--set section.field=value` flag on the native form.
+  It is parsed by clap and **not wired** — Plan 8 Task 14 verified that
+  `crates/fr-settings/src/sources/cli.rs` has no `--set` arm — and
+  `docs/plan-8-handoff.md` §5 carries it as a closed-with-reason survivor. Use
+  the spelling above.)*
 
   The two are **not** equivalent to the dead flags: the generic path goes through
   `ReflectionUtil.setFieldValue` and carries **no clamp**, where `-mt` clamps to
   `[0, 1024]` on the bridge (`GlobalSettings.java:692-697`). `-mt 99999` is 1024
   there; `--router.optimizer.max_threads=99999` is 99999 (`p8t5` rows `mt` and
   `router-optimizer-max-threads`). `crates/freerouting/README.md` carries the
-  whole table and the same warning; **`--set` is not wired to the run path until
-  Plan 8 Task 6** — the spelling and the decision are what is settled here.
+  whole table and the same warning.
 - **`CliSettings`** — the only two flags that actually reach the router, `-mp`
   and `-mt` (`CliSettings.mapFlagToProperty`, `:102-110`).
 - **`classify_de_arguments(&[String]) -> DeSlots`** — the `-de` rule below (plan 4

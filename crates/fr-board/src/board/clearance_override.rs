@@ -410,7 +410,7 @@ impl Board {
 // gates them; before Plan 7 Task 15b no plan had ever audited `management/` at all, which is how
 // the override gap survived six plans.
 //
-// The six markers that stood here read `added in Plan 8:`; **Plan 8 Task 3 landed all six**, and
+// The six markers that stood here were Plan-8 deferrals; **Plan 8 Task 3 landed all six**, and
 // each is now the marker kind the tool means for what actually happened. They are repeated in
 // `crates/fr-core/src/{load.rs,save.rs}` at the ported code itself, which is what
 // `scripts/audit-port.sh management crates/fr-core/src` checks; these lines keep `fr-board`'s own

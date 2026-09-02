@@ -73,6 +73,20 @@ whole-branch review: **merge with fixes**; fix wave applied and re-reviewed clea
 - Plans 6/7: `catch_unwind`/`Result` boundaries at `AutoroutePassRunner.java:144` (per pass) and `BatchAutorouterThread.java:537` (per item); Java `catch (Exception)` does not catch `StackOverflowError`.
 - Plan 5: apply Java flag normalisation (`-oit /100`, `-mp`/`-mt` clamps, `-us`/`-is` folding) in `fr-settings`.
 - Plan 8: MCP handler shape (progress sink, cancel token, reader thread); `id: null`; bare `-drc`.
+
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> | item | status |
+> |---|---|
+> | MCP handler shape — progress sink, cancel token, reader thread | **DISCHARGED, Tasks 11 and 12.** `ToolHandler` is `Box<dyn Fn(&State, Value, &ProgressWriter, &CancelToken) -> Result<Value, RpcError> + Send + Sync>`; a `tools/call` runs on its own thread, `_meta.progressToken` turns on `notifications/progress`, and an inbound `notifications/cancelled` flips the token **while** the tool runs. The jar has none of the three (delta rows 6 and 7) |
+> | `id: null` on a parse error | **DISCHARGED, Task 11.** The port answers `{"jsonrpc":"2.0","id":null,"error":{…}}`, compact. Java's `-32700` reply has **no `id` member** at all (Gson drops the JSON-null) and is the one response Jersey pretty-prints — MCP delta row 9, `McpControllerV1.java:152` |
+> | bare `-drc` errors in the shim; Java accepts it and enters DRC-only mode | **DISCHARGED as a measurement, and Plan 1's reading was wrong.** Quirk **#263**: a bare `-drc` is *not* DRC mode in Java either. DRC mode is entered only when `drcReportFile != null` (`Freerouting.java:1462`), so a bare `-drc` sets two dead booleans and falls through to `initializeCli`, which dies with "Both an input file and an output file must be specified". The port reproduces that exactly, and `p8t5` compares it |
+> | the shim matches flags exactly where Java uses `startsWith` (`-mpx 5` ≡ `-mp 5`) | **DISCHARGED, Task 5, and the decision went the other way.** Ruling **AR** makes the legacy path bug-for-bug, so the port now matches by prefix exactly as Java does — quirk **#259**. `-decoy`/`-diff`/`-drcx` are accepted as `-de`/`-di`/`-drc`, and `-mp -5` is impossible to express, on both programs. `sweep-p8t5.sh`: 86 rows, 86 MATCH |
+
 - Before `fr-dsn` formats floats: `FloatPoint::Display` differs from Java `NumberFormat` above 2^53 and at 4th-digit ties.
 
 ## Open items for the user

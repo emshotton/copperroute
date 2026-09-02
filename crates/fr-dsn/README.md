@@ -109,12 +109,17 @@ invoked with no argument.
   output line for line, and twenty-four session documents with the item graph
   `importSession` leaves behind.
 - **`SessionToEagle`.** `io/specctra/parser/SessionToEagle.java` (627 lines)
-  turns a session file into an Eagle CAD command script. Deferred to Plan 8;
-  its one caller, `SesReader.saveSpecctraSessionSesAsEagleScriptScr`, carries
-  a `// not ported:` marker in `ses_reader.rs`, and
-  `scripts/audit-map/fr-dsn.map` maps the class to the `added in Plan 8:`
-  marker in `lib.rs` so the audit checks the deferral rather than skipping
-  it.
+  turns a session file into an Eagle CAD command script. It was deferred to
+  Plan 8, which **closed it as out of scope** (spec §2 keeps the Specctra SES
+  writer and drops every other export format): Plan 8 Task 0 re-worded the
+  `lib.rs` marker from a deferral to `// not ported:`, and
+  `crates/fr-core/src/lib.rs` §10 carries the decision. Note it is **not** dead
+  in Java — `SesReader.java:107` calls it — so the roster line is an
+  out-of-scope decision, not a reachability claim. Its one caller,
+  `SesReader.saveSpecctraSessionSesAsEagleScriptScr`, carries its own
+  `// not ported:` marker in `ses_reader.rs`, and
+  `scripts/audit-map/fr-dsn.map` maps the class to `lib.rs` so the audit checks
+  the roster line rather than skipping it.
 - **`RouterSettings`.** `AutorouteSettings.readScope` returns
   `settings.RouterSettings` in Java; Plan 4 owns `fr-settings`, so this crate
   defines a local `DsnRouterSettings` holding exactly the fields the DSN and

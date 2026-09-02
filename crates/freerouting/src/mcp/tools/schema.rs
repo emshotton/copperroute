@@ -304,3 +304,24 @@ fn layer_schema() -> Value {
         }
     })
 }
+
+// =================================================================================================
+// The `api/mcp/**` roster, part 3: the OpenAPI tool registry — ruling AO, Plan 8 Task 14
+// =================================================================================================
+//
+// `OpenApiMcpToolRegistry` (659 lines) is the jar's answer to the question this file answers, and
+// the two answers are structurally different, which is delta rows 9 and 10 in
+// `crates/freerouting/README.md`. Java walks its own JAX-RS `Application` at servlet-context
+// start, reads the Swagger annotations off every resource method, and *derives* 24 tools whose
+// arguments are the wrapped `{path, query, body}` shape an HTTP call has. The port hand-writes
+// four schemas for four tools whose arguments are flat, because there is no HTTP call underneath
+// to wrap. Measured on the pinned jar: **28 tools, 24 wrapped + 4 flat**
+// (`docs/plan-8-prep/evidence/job3-summary.md` §4).
+//
+// The anti-drift device the derivation bought is bought back by the two tests named in this
+// file's module docs, which is what ruling AO asked for in place of `schemars`.
+
+// not ported: OpenApiMcpToolRegistry.fromApplication (api/mcp/OpenApiMcpToolRegistry.java:54-310) — the derivation itself: reflects over the `Application`'s resource classes, reads `@Operation`/`@Parameter`/`@RequestBody`, and builds a `ToolOperation` per endpoint. Nothing to reflect over here; the port has no resource classes and no annotations.
+// not ported: OpenApiMcpToolRegistry.get (api/mcp/OpenApiMcpToolRegistry.java:312-319) — looks a derived tool up by name. The port's table is [`super::registry`]'s four entries, built in code.
+// not ported: OpenApiMcpToolRegistry.toMcpToolsArray (api/mcp/OpenApiMcpToolRegistry.java:321-400) — renders the derived set as `tools/list`'s array. The port renders its four from the literals in this file.
+// not ported: OpenApiMcpToolRegistry.ToolOperation (api/mcp/OpenApiMcpToolRegistry.java:31-52) — the record one derived tool becomes (name, description, HTTP method, path template, parameter list, request-body schema). Six of its fields describe an HTTP call; the port's equivalent is a name, a description and a schema.

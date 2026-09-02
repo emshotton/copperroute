@@ -565,3 +565,59 @@ mod tests {
         Arc::new(Mutex::new(Tee(buffer)))
     }
 }
+
+// =================================================================================================
+// The `api/mcp/**` roster — controller ruling AO, closed by Plan 8 Task 14
+// =================================================================================================
+//
+// `scripts/audit-port.sh api/mcp crates/freerouting/src '*.java' scripts/audit-map/freerouting.map`
+// is one of Task 14's twelve invocations, and this block plus the twin at the foot of
+// `mcp/stdio.rs` and `mcp/tools/schema.rs` is what takes it to zero `MISSING`.
+//
+// **What is rostered, and the evidence that it is a transport rather than a capability.** Java's
+// MCP is eleven classes / 2 105 lines of *Jetty*: a JAX-RS resource (`McpControllerV1`), an
+// OpenAPI-derived tool registry that turns 24 REST endpoints into wrapped tools
+// (`OpenApiMcpToolRegistry`), an SSE stream and a WebSocket endpoint (`McpRealtimeBridge`,
+// `McpWebSocketEndpoint`, `McpWebSocketConfigurator`), two JAX-RS filters, an API-key service, a
+// `jakarta.ws.rs.core.Application` and a servlet context listener. Spec §2 drops the REST API and
+// with it every one of those; spec §13 asks instead for **four tools over stdio JSON-RPC**, which
+// is what `mcp/{jsonrpc,server,stdio}.rs` and `mcp/tools/**` are. The one piece of *behaviour*
+// inside the eleven — dispatching a JSON-RPC method to a tool — is ported, and is the two
+// `renamed:` lines below; everything else is the HTTP plumbing the spec removed.
+//
+// Reachability evidence, run against the pinned clone
+// (`grep -rn "McpControllerV1\|OpenApiMcpToolRegistry\|McpRealtimeBridge" src/main/java`): every
+// caller is inside `api/**` or `Freerouting.initializeMCP` (`Freerouting.java:543-668`), itself
+// `// not ported:` in `crates/freerouting/src/main.rs:32`. Nothing in `core/**`, `management/**`,
+// `autoroute/**`, `board/**`, `drc/**`, `io/**` or `settings/**` names any of them, so removing
+// the package removes an HTTP server and nothing else.
+
+// --- McpControllerV1 (655 lines) — the JAX-RS resource ------------------------------------------
+// renamed: McpControllerV1.rpc (api/mcp/McpControllerV1.java:139-236) -> [`handle`] above. Java's `Response rpc(String requestBody)` is the HTTP POST entry: it parses the body, dispatches on `method`, and wraps the answer in a `jakarta.ws.rs.core.Response`. The port keeps the middle third — the dispatch — and drops the two HTTP thirds, because [`super::stdio::run_with`] reads a line and writes a line. The method table is the same four cases plus `ping`.
+// not ported: McpControllerV1.events (api/mcp/McpControllerV1.java:252-266) — `GET /v1/mcp/events`, the `SERVER_SENT_EVENTS` stream that registers the caller with `McpRealtimeBridge` and returns. Its whole purpose is to give an HTTP client a back-channel; a stdio peer already has one (the same pipe the responses go down), which is how `notifications/progress` reaches it without a second endpoint. Delta rows 6 and 7 in `crates/freerouting/README.md`.
+
+// --- McpApiKeyValidationFilter (104) and McpApiKeyValidationService (112) — auth ------------------
+// The port has no authentication at all, and that is delta row 3: a stdio server's peer is the
+// process that spawned it, so an API key would authenticate the caller to itself. Java's own
+// default is `authentication.enabled=true` (measured, `docs/plan-8-prep/evidence/job3-summary.md`
+// §2), which is why job 3's launch line has to pass `--authentication.enabled=false` twice.
+// not ported: McpApiKeyValidationFilter.filter (api/mcp/McpApiKeyValidationFilter.java:38-80) — reads `X-API-Key`, aborts the request with 401 when it fails, and otherwise installs a `SecurityContext`.
+// not ported: McpApiKeyValidationFilter.getUserPrincipal (api/mcp/McpApiKeyValidationFilter.java:84-86) — one of the four methods of the anonymous `SecurityContext` the line above installs.
+// not ported: McpApiKeyValidationFilter.isUserInRole (api/mcp/McpApiKeyValidationFilter.java:89-91) — the same `SecurityContext`; returns `false` for every role.
+// not ported: McpApiKeyValidationFilter.isSecure (api/mcp/McpApiKeyValidationFilter.java:94-96) — the same; reports whether the request arrived over TLS.
+// not ported: McpApiKeyValidationFilter.getAuthenticationScheme (api/mcp/McpApiKeyValidationFilter.java:99-101) — the same; the scheme name string.
+// not ported: McpApiKeyValidationService.getInstance (api/mcp/McpApiKeyValidationService.java:65-70) — the `synchronized` singleton accessor for the key store.
+// not ported: McpApiKeyValidationService.isAuthenticationEnabled (api/mcp/McpApiKeyValidationService.java:78-84) — reads `GlobalSettings.mcpServerSettings.authenticationEnabled`.
+// not ported: McpApiKeyValidationService.validateApiKey (api/mcp/McpApiKeyValidationService.java:88-110) — the constant-time comparison against the configured keys.
+// not ported: McpApiKeyValidationService.resetForTesting (api/mcp/McpApiKeyValidationService.java:73-75) — clears the singleton between JUnit cases; there is no singleton here to clear.
+
+// --- McpRateLimitFilter (94) — the token bucket -------------------------------------------------
+// not ported: McpRateLimitFilter.filter (api/mcp/McpRateLimitFilter.java:22-92) — a per-IP `FixedWindowRateLimiter` that aborts with 429. A stdio peer has no IP and cannot outrun the single reader thread it is talking to; rate limiting a pipe is back-pressure, which the pipe already provides.
+
+// --- McpApplication (45) and McpContextListener (70) — the servlet container --------------------
+// not ported: McpApplication.getClasses (api/mcp/McpApplication.java:27-43) — the JAX-RS `Application`'s resource/provider set. There is no container.
+// not ported: McpContextListener.contextInitialized (api/mcp/McpContextListener.java:17-64) — builds the tool registry when the servlet context starts.
+// not ported: McpContextListener.contextDestroyed (api/mcp/McpContextListener.java:67-69) — the matching teardown, an empty body in Java.
+
+// --- AgentCardController (133) — /.well-known/agent.json ----------------------------------------
+// not ported: AgentCardController.getAgentCard (api/AgentCardController.java:38-132) — the A2A agent card: a static JSON document advertising the server's URL, its skills and `"streamingToolCalls": false` (`:128`). It is discovered over HTTP by construction, and the honest MCP answer to "what can you do" is `tools/list`, which this server implements. Its `"streamingToolCalls": false` is the citation behind delta row 6.

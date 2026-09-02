@@ -13,4 +13,5 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+fr-core = { path = "../fr-core" }
 parity = { path = "../../tests/parity" }

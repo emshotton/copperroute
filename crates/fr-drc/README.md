@@ -361,9 +361,13 @@ Every expected value in this crate came out of a JUnit-free Java driver in
 `tests/data/README.md` says what each one probes and carries the exact command
 line, including the `-XX:+UnlockExperimentalVMOptions -XX:hashCode=0..4` sweeps
 that establish which outputs are hash-independent. A rebuilt jar with a new
-`Constants.FREEROUTING_VERSION` needs `JAR_VERSION` in
-`crates/fr-drc/tests/common/mod.rs` — one constant, shared by every suite —
-regenerated along with the transcripts.
+`Constants.FREEROUTING_VERSION` needs the version constant regenerated along
+with the transcripts. Since Plan 8 Task 14 (controller sweep item N6) that is
+**one place for the whole workspace**: `crates/fr-drc/tests/common/mod.rs`'s
+`JAR_VERSION` is an alias for [`fr_core::PARITY_VERSION`], which ruling AT/5
+makes the single written-down form of the pinned jar's version. `fr-core` is a
+dev-dependency of this crate and nothing more — the shipping `fr-drc` still
+depends on nothing above `fr-dsn`.
 
 ### The committed CLI references
 

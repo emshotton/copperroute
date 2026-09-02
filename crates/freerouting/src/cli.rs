@@ -102,6 +102,20 @@ pub struct RouteArgs {
     /// Routing timeout in seconds
     #[arg(long)]
     pub timeout: Option<u64>,
+    /// Accepted and **inert on every path** — controller ruling AQ and answer 4, quirk #143.
+    /// Java's `-mt` writes `optimizer.max_threads`, whose every reader is GUI-only or dead code:
+    /// the headless chain is `RoutingPipeline.createForHeadless:45-47` ->
+    /// `BatchOptimizer.createForHeadless:51-53`, which returns the single-threaded optimizer
+    /// unconditionally, and `BatchAutorouter.autoroutePassMultiThread:411-413` has no caller
+    /// anywhere in the tree. The port reproduces that: the value is parsed, merged and reported,
+    /// and nothing routes with it.
+    ///
+    /// **It does not control the MCP server's threads either**, and that is the deliberate part.
+    /// The port's only two `std::thread` spawn sites are both under `crates/freerouting/src/mcp/`
+    /// (ruling 3), and they are a *transport* — one reader for stdin, one per in-flight
+    /// `tools/call` so a long route can be cancelled — not a routing policy. Wiring `--threads`
+    /// to them would resurrect a flag the jar reads nowhere and would tie an operator's routing
+    /// knob to a protocol detail.
     #[arg(long)]
     pub threads: Option<u32>,
     #[arg(long)]
@@ -116,7 +130,29 @@ pub struct RouteArgs {
     pub hybrid_ratio: Option<String>,
     #[arg(long)]
     pub item_selection: Option<String>,
-    /// Generic settings override, `section.field=value` (repeatable)
+    /// Generic settings override, `section.field=value` (repeatable).
+    ///
+    /// **Declared, parsed by clap, and NOT wired to the run path** — the one place in this CLI
+    /// where that is true, and it is recorded rather than hidden (`docs/plan-8-handoff.md` §5).
+    /// The live spelling is Java's own and works on **both** forms:
+    /// `--router.optimizer.max_threads=4`, which `fr_settings::CliSettings` reads at priority 60
+    /// and `ReflectionUtil.setFieldValue` applies. That is the spelling every `cli_e2e` case and
+    /// every `p8t1`/`p8t2` reference argv uses, and the spelling to reach a setting the five
+    /// **deliberately dead** legacy flags only pretend to write (quirk #131, ruling AQ):
+    /// `--router.optimizer.optimization_improvement_threshold=0.005` is what `-oit 5` looks like
+    /// it should do and does not.
+    ///
+    /// **`--router.max_items=N` also stops the optimizer; `--max-passes` does not**
+    /// (quirk #202). The two limits take different arms of Java's three-state stop flag:
+    /// `AutoroutePassRunner.java:212-221` reaches `max_items` and calls `requestStop()`, which
+    /// writes `ALL`, and `RoutingPipeline.runOptimizationStage` returns early on `ALL` — so the
+    /// board that reaches the SES is **unoptimised**. `AutorouteBatchLoop.java:267-271` reaches
+    /// `max_passes` and calls `requestStopAutoRouter()`, which writes `AUTO_ROUTER_ONLY`, and the
+    /// optimizer runs normally. Java says none of this: the message it logs is "Max items limit
+    /// reached. Stopping auto-router.", and the optimizer is not the auto-router. The port
+    /// reproduces the behaviour exactly and states it here, which is the discharge Plan 7's
+    /// hand-off asked for. The port has no `--max-items` flag of its own, so
+    /// `--router.max_items=N` is the whole surface for it.
     #[arg(long = "set")]
     pub set: Vec<String>,
 }

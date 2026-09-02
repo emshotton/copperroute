@@ -212,7 +212,7 @@ impl AutoroutePassRunner {
 
         // :202.
         for current_item in autoroute_item_list {
-            // **Controller ruling AI's fourth poll site, added in Plan 8 Task 12 after a
+            // **Controller ruling AI's fourth poll site, added by Plan 8 Task 12 after a
             // measurement.** Ruling BB's three sites are the *pass* loop heads
             // (`batch_loop`, `fanout`, `optimizer`), and Task 11 recorded the residual latency as
             // "one pass". Task 12 measured what one pass costs on a real board:

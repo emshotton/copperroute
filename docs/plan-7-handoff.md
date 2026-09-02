@@ -401,6 +401,37 @@ The ones Plan 8 must read before writing a line of CLI:
 
 ## 7. The obligation register for Plan 8
 
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> **The whole register is closed.**
+>
+> * **The 30 `// added in Plan 8:` markers.** `grep -rn "added in Plan 8" crates/*/src` and
+>   `crates/*/tests` both return **nothing**. Tasks 0-13 consumed them incrementally; **Task 14
+>   consumed the last seven** — the two `BoardComparator` twins (`fr-board/src/board/mod.rs:57`,
+>   `fr-drc/src/lib.rs`) and the five ruling-**AS** score rows in
+>   `fr-router/src/score/mod.rs`, all re-pointed to `// not ported:` with their reachability
+>   evidence — plus the five prose sentences elsewhere that still quoted the marker text.
+> * **The `obligation:` markers naming Plan 8.** All six closed with evidence;
+>   `crates/fr-settings/src/resolve.rs`'s has **two** independent closers (Tasks 7 and 12) and the
+>   marker names both. `docs/plan-8-handoff.md` §5 is the closed register, and **no surviving row
+>   is open** — each is discharged or closed with a reason, because there is no successor plan.
+> * **Ruling AW's `prepare_board`.** `fr_core::apply_router_settings_for_loaded_board` calls
+>   `fr_router::pipeline::prepare_board`, so the CLI's load path runs both clearance overrides.
+>   `crates/fr-core/README.md`'s load-sequence section is the record, and
+>   `crates/fr-core/tests/load.rs::the_settings_pass_is_the_same_two_steps_resolve_headless_runs`
+>   keeps the two callers of the settings half from drifting.
+> * **The `--max-items` help text.** Written. The port has no `--max-items` flag of its own, so the
+>   paragraph is on `--router.max_items`'s help text in `crates/freerouting/src/cli.rs` and in
+>   `crates/freerouting/README.md`. Quirk **#202**.
+> * **Scan ruling R3's additive-and-wrapped gate held.** `batch_parity` (6 passed, 1 ignored),
+>   `run.sh p6t1` (all six rows) and `sweep-p7t9.sh` are byte-unchanged after four `CancelToken`
+>   poll sites and one `pub` on `score::unescape_unicode`.
+
+
 ### The marker inventory, measured on the committed tree
 
 | grep | `crates/*/src` | `crates/*/tests` | `crates/` (adds README prose) |

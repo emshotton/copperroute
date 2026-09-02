@@ -148,6 +148,7 @@ name = "fr-drc"
 version = "0.1.0"
 dependencies = [
  "fr-board",
+ "fr-core",
  "fr-dsn",
  "fr-geometry",
  "parity",

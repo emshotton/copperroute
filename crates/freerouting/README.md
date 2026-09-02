@@ -22,8 +22,10 @@ specified …` and **exit 1**, not a usage screen.
 > ladder** — spec §13's `route_board`, `check_drc`, `board_info` and `list_settings`, the sparse
 > priority-70 settings tier they configure, and the board summary `info` and `board_info` share.
 > **No subcommand answers exit 3 any more**, which
-> `legacy::tests::no_command_runner_answers_not_implemented` keeps true. Task 13 expands this file
-> into the full reference (every accepted flag, the `p8t1`-`p8t7` acceptance table).
+> `legacy::tests::no_command_runner_answers_not_implemented` keeps true. **Task 14 closed the
+> plan**: the `p8t1`-`p8t7` acceptance table below, the regeneration recipes, the `api/mcp/**`
+> roster that takes the audit to zero, and `docs/plan-8-handoff.md` — the project completion
+> report, because there is no Plan 9.
 
 ---
 
@@ -88,7 +90,9 @@ HTTP call into the REST API, which has its own `enabled` default of `false` (sca
 | 2 | `capabilities` | `{"tools": {}}` | `{"tools": {"listChanged": false}}` — the list is fixed at compile time, and saying so is free | `McpControllerV1.java:277-278` |
 | 3 | `tools/call` result body | **one text block** holding a pretty-printed `{status, contentType, body}` envelope, and **no `structuredContent`** — although all 28 tools declare an `outputSchema` | a text block **and** `structuredContent`, so a client reads the value instead of re-parsing prose | `McpControllerV1.java:333-356` |
 | 4 | `ping` | `-32601 "Unknown method: ping"` — the method table has four cases and a default | answered, `{}` (MCP §Ping) | `McpControllerV1.java:189-198`, `:197` |
-| 5 | response framing | the bridge prints `body.replace("\r","").replace("\n","")` — every newline stripped, **no re-escaping** (quirk label **M**). Survivable only because valid JSON has no raw newline inside a string; it visibly mangles the one pretty-printed response into collapsed, double-spaced JSON | compact JSON, one trailing `\n`, flushed. Nothing to strip | `Freerouting.java:770` |
+| 5 | response framing | the bridge prints `body.replace("\r","").replace("\n","")` — every newline stripped, **no re-escaping** (quirk **#292**, plan label **M** — the id was allocated by Task 14's
+label→id sweep, which found that Task 11 had recorded the divergence in code without claiming a
+register row). Survivable only because valid JSON has no raw newline inside a string; it visibly mangles the one pretty-printed response into collapsed, double-spaced JSON | compact JSON, one trailing `\n`, flushed. Nothing to strip | `Freerouting.java:770` |
 | 6 | `notifications/progress` and `notifications/cancelled` | **neither exists.** The bridge is one blocking `HttpClient.send` with no timeout per line, so nothing can reach stdout between a request and its response, and there is no way to reach a running job | both. A `tools/call` runs on its own thread with a `CancelToken`; `_meta.progressToken` turns on interim notifications, and an inbound `notifications/cancelled` flips the token **while** the tool runs | `Freerouting.java:749-776`; `McpControllerV1.java:359-382` |
 | 7 | authentication | **on by default**, and the stdio bridge never supplies an `Authorization` header — it only forwards one that arrived on the MCP request, which over stdio there is none. So every session/job tool answers HTTP 401 until `--api_server.authentication.enabled=false` is passed | none. There is no listener, no port and no credential; the server is a child process on a pipe | `ApiAuthenticationSettings.java:11` (`isEnabled = true`) |
 | 8 | a notification's reply | prints a **blank line**. A request with no `id` gets HTTP 204, and the bridge sees a non-null empty body and `println`s it — so a line-oriented client that expects silence desynchronises | nothing at all is written | `McpControllerV1.java:176-177`, `:224-225`; `Freerouting.java:769-772` |
@@ -225,22 +229,28 @@ so the supported spellings are the two generic ones, which go through `CliSettin
 — the parser that actually reaches the router:
 
 ```sh
-# native form
+# Java's own `--section.field=value` — the LIVE spelling, accepted on both forms
 freerouting route board.dsn -o board.ses \
-    --set router.optimizer.optimization_improvement_threshold=0.005 \
-    --set router.optimizer.board_update_strategy=GLOBAL_OPTIMAL \
-    --set router.optimizer.item_selection_strategy=SEQUENTIAL \
-    --set router.optimizer.hybrid_ratio=1:2 \
-    --set router.optimizer.max_threads=4
+    --router.optimizer.optimization_improvement_threshold=0.005 \
+    --router.optimizer.board_update_strategy=GLOBAL_OPTIMAL \
+    --router.optimizer.item_selection_strategy=SEQUENTIAL \
+    --router.optimizer.hybrid_ratio=1:2 \
+    --router.optimizer.max_threads=4
 
-# legacy form — Java's own `--section.field=value`, accepted unchanged
 freerouting -de board.dsn -do board.ses --router.optimizer.max_threads=4
+
+# the port's own `--set` spelling: accepted by clap, and NOT wired (see below)
+freerouting route board.dsn -o board.ses --set router.optimizer.max_threads=4
 ```
 
 Two warnings that are not hedges:
 
-* **`--set` is not wired to the run path yet** (Task 6). The spelling and the decision are settled;
-  the plumbing is not.
+* **`--set` is declared and parsed by clap, and it is still not wired to the run path.** This is
+  the one accepted-but-inert flag the *port* adds, and it is recorded as such: `docs/plan-8-handoff.md`
+  §5 carries it as a closed-with-reason survivor, `src/cli.rs`'s help text says so in the sentence a
+  user actually reads, and the shipping surface for a generic override is Java's own
+  `--section.field=value`, which works on both forms and is what every `cli_e2e` case and every
+  reference argv uses. The block above shows both; only the second half of it runs.
 * **The two spellings are not equivalent to the dead flags.** `--router.optimizer.max_threads=4`
   goes through `ReflectionUtil.setFieldValue` and therefore carries **no clamp**, where `-mt`
   clamps to `[0, 1024]` on the bridge (`GlobalSettings.java:692-697`). `-mt 99999` is 1024 there;
@@ -416,3 +426,111 @@ so a **port**-side extra entry, or any other difference anywhere in the document
 `DIFF`. Everything else, including the whole 44-entry `unconnectedItems` block **and the
 `quality_score`**, is identical.
 
+
+---
+
+## The seven drivers: `p8t1`-`p8t7`, and what each one actually is
+
+*(Plan 8 Task 14. This is the plan's acceptance ladder as it was actually built — including the
+one driver that does not exist, which is recorded rather than quietly dropped.)*
+
+| driver | what it pins | mode(s) | result on the committed tree |
+|---|---|---|---|
+| **`p8t1`** | the headline gate: SES **bytes**, exit code, `normalize_log`, two whole programs on one argv | `run.sh p8t1` (CI stems + the five argv rows), `p8t1 all` (adds the slow stems), `p8t1probe` | **15 rows: 14 MATCH, 1 XDIFF, 0 DIFF** — the XDIFF is `invalid-input-java-hangs` (quirk #244, plan ruling 7). `p8t1probe`: MATCH (162 lines) |
+| **`p8t2`** | the result manifest, field for field after `normalize_manifest`; the `settings_snapshot` inside it is also the **resolved settings** through the binary | `run.sh p8t2` (Task 4's shape mode), `p8t2 e2e [all]`, `p8t2probe` | shape mode MATCH (762 lines); `e2e all` **11 rows: 11 MATCH, 0 DIFF** |
+| **`p8t3`** | the DRC report bytes after `normalize_drc_json`, the computed `quality_score`, the exit code and the log — plus the DSN → `.rules` → SES **load order** | `run.sh p8t3` (the merge driver, Java vs Rust), `p8t3 e2e` | merge: MATCH (25 lines). `e2e`: **14 rows: 13 MATCH, 1 XDIFF, 0 DIFF** — the XDIFF is quirk #146, where the jar does not match itself |
+| **`p8t4`** | **does not exist, and this is the record of why.** The plan asked for "the resolved `RouterSettings` dumped as JSON from both sides — `p4t1`'s 64-case matrix re-run through the binary". Task 6 discharged that rung with the two artefacts that already existed rather than building a third: Plan 4's **`p4t1`** still runs the 64-case matrix against the JVM (MATCH, 5 728 lines), and the *through-the-binary* half is the manifest's `settings_snapshot`, which `p8t2 e2e` compares field for field on all eleven stems and which `cli_e2e.rs::a_settings_file_reaches_the_run` reads on three more runs. A separate `p8t4` would have re-derived `p4t1`'s matrix and compared the same numbers a second time | — | `p4t1` MATCH (5 728 lines); rung reached |
+| **`p8t5`** | the legacy surface: slot classification, `LegacyBridge` fields, warnings and the exit code — **not routing** | `run.sh p8t5`, `sweep-p8t5.sh` | `run.sh`: MATCH (2 096 lines). `sweep`: **86 rows: 86 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** |
+| **`p8t6`** | the **documented-delta** driver (ruling AO): the eleven-row MCP table above, asserted to be exactly itself | `run.sh p8t6` | **MATCH** — eighteen observations, thirteen required to differ (rows 1-10) and five required to agree. A `NEW` or `GONE` row fails it |
+| **`p8t7`** | spec §1's acceptance: KiCad DSN → route → SES → re-read by `fr_dsn::ses_reader::read`; `-de board.json -do out.ses`; and quirk #289 (label T)'s measurement | `run.sh p8t7` | **MATCH** |
+
+**One thing every `p8t*` header states, and it is not a tolerance.** Plan 7's drivers run the port
+with `RouterBudget::disabled()` against a jar whose four
+`TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000` constants are `static final int` with constant
+initialisers — javac inlines them, and **no flag or reflection can switch them off** (quirk #234).
+`p8t1` and `p8t3` are different: they run the port's CLI with `fr_core::RouterBudget::default()`,
+Java's own literals, because that is what a user gets and because the comparison is between two
+whole programs rather than two methods. The bound on the resulting machine-speed dependency is
+`scripts/gen-cli-reference.sh`'s `batch.ses` cross-check, which requires every CLI reference to be
+byte-identical to Plan 7's independently generated one and fails loudly if it is not.
+
+---
+
+## Running and regenerating everything
+
+**Prerequisites.** A sibling clone at `../freerouting` (or `FREEROUTING_JAVA_DIR`), its HEAD jar at
+`../freerouting/build/libs/freerouting-current-executable.jar` (or `FREEROUTING_JAR`), the pinned
+release jar at `tools/freerouting-2.3.0.jar`, and JDK 25 at `/opt/homebrew/opt/openjdk@25` (or
+`JAVA25_HOME`). Every Java half runs with
+`-Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2`.
+Without the clone, every jar-dependent test **skips cleanly** (`parity::require_java_dir`) — the
+committed references keep the same assertions alive on a machine with no JDK.
+
+```sh
+# the whole suite, no JDK needed
+cargo nextest run --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all --check
+
+# the slow lanes (release; the four slow p8t1 stems, the batch corpus)
+FR_SLOW_PARITY=1 cargo test --release
+
+# the drivers (JDK 25 + the clone's HEAD jar)
+scripts/differential/run.sh p8t1 all      # SES bytes, exit code, logs
+scripts/differential/run.sh p8t2 e2e all  # the result manifest
+scripts/differential/run.sh p8t3          # the DRC settings merge (Java vs Rust)
+scripts/differential/run.sh p8t3 e2e      # the DRC document, end to end
+scripts/differential/run.sh p8t5          # the legacy surface
+scripts/differential/run.sh p8t6          # the MCP delta table
+scripts/differential/run.sh p8t7          # spec §1's KiCad round trip
+scripts/differential/sweep-p8t5.sh        # the whole 86-shape argv matrix
+scripts/differential/sweep-p3t15.sh       # Plan 3's DSN corpus (525 MATCH + 5 XDIFF)
+scripts/differential/sweep-p5t1.sh        # Plan 5's DRC corpus
+scripts/differential/sweep-p5t2.sh        # Plan 5's report corpus
+scripts/differential/sweep-p7t9.sh        # Plan 7's pipeline corpus
+```
+
+**Regenerating the committed references.** Each generator drives a jar and rewrites a directory;
+none of them is run by the test suite, and each says which jar it pins against.
+
+| script | what it regenerates | against |
+|---|---|---|
+| `scripts/gen-cli-reference.sh` | `tests/reference/cli-<stem>/{argv.txt,route.ses,route.exit,route.log,manifest.json,drc.json,meta.txt}` for every row of `tests/reference/cli-fixtures.txt`, **driving the bare HEAD jar** | the clone's HEAD jar |
+| `scripts/gen-drc-reference.sh` | `tests/reference/drc-<stem>/*` — the eight `-drc` documents | the clone's HEAD jar |
+| `scripts/gen-batch-reference.sh` | Plan 7's batch stems (`batch.ses` and the pass transcripts) | the clone's HEAD jar |
+| `scripts/gen-router-reference.sh` | Plan 6's per-connection router references | the clone's HEAD jar |
+| `scripts/gen-reference.sh` | Plans 1-3's geometry/DSN references | **`tools/freerouting-2.3.0.jar`**, the pinned release (Plan 3 ruling 1: the port's SES writer follows 2.3.0's spelling, not HEAD's) |
+
+`gen-cli-reference.sh` has two extra modes: `--meta-only` rewrites `meta.txt` from the existing
+outputs without touching the jar, and **`--verify-hash-modes`** regenerates every stem under
+`-XX:hashCode=0..4` and requires **five byte-identical SES files and five identical DRC reports**
+— Plan 6's premise, re-checked through the CLI. It has **no `--verify-driver` mode and does not
+need one**: Plan 7's generator needed that because its reference came from a *probe* that
+reflected a constant to `0`, and this one runs the bare jar, so there is no driver to verify.
+
+---
+
+## The audit
+
+`scripts/audit-port.sh` proves no public Java method of this crate's packages is unaccounted for.
+Three invocations, all with the per-class map, all exit 0 with **zero `MISSING` and zero
+`UNMAPPED`**:
+
+```sh
+./scripts/audit-port.sh api/mcp crates/freerouting/src '*.java'           scripts/audit-map/freerouting.map
+./scripts/audit-port.sh logger  crates/freerouting/src '*.java'           scripts/audit-map/freerouting.map
+./scripts/audit-port.sh .       crates/freerouting/src 'Freerouting.java' scripts/audit-map/freerouting.map
+```
+
+`api/mcp` prints **10 `ROSTERED`** lines and `logger` prints **5**, which is the correct outcome
+and the point of the exercise: ruling AO drops the jar's HTTP/SSE/WebSocket MCP transport and its
+OpenAPI-derived registry (2 105 lines), spec §2 drops `FRLogger` and the log files, and a
+`ROSTERED` line is how a wholly-dropped class stays *visible* instead of passing in silence. The
+one class in `api/mcp/**` that is **not** rostered is `McpControllerV1`, because one of its two
+public methods is genuinely ported: `rpc` — the JSON-RPC dispatch — is `renamed:` to
+`mcp::server::handle`. Its other, `events`, is the SSE back-channel a stdio peer does not need.
+The reasoning blocks are at the foot of `src/mcp/server.rs`, `src/mcp/stdio.rs` and
+`src/mcp/tools/schema.rs`.
+
+The `.` invocation is the whole of `Freerouting.java` against this crate's five homes
+(`main.rs`, `legacy.rs`, `logging.rs`, `commands/*.rs`, `mcp/stdio.rs`) and prints nothing at all.

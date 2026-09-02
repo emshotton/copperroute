@@ -417,8 +417,9 @@ pub enum Error {
 // `management/HeadlessBoardManager.java:193-194` (the deferred comparison pass above).
 //     $ grep -rn "BoardComparator" src/main/java | grep -v board/state/BoardComparator.java
 //     Freerouting.java:848,849 · management/HeadlessBoardManager.java:193,194
-//   Cross-referenced by the Plan-8 deferral markers at `crates/fr-board/src/board/mod.rs:57`
-//   and `crates/fr-drc/src/lib.rs:144`, which Task 14 re-points.
+//   Cross-referenced by the markers at `crates/fr-board/src/board/mod.rs:57` and
+//   `crates/fr-drc/src/lib.rs`, which **Task 14 re-pointed** from Plan-8 deferrals to
+//   `not ported:` rows carrying the reachability grep above.
 //
 // not ported: `core/scoring/BoardScoreBreakdown` (192 lines) and
 // `core/scoring/ScoringWeightComparison` (232 lines) — ruling AS, on **two** independent grounds.
@@ -432,8 +433,8 @@ pub enum Error {
 //   `stats.traces.totalLength` — **raw board units** — while its own javadoc says millimetres and
 //   the live `BoardStatistics.calculateScore:608-609` prefers `totalLengthMm`. The two disagree by
 //   the DSN resolution factor on every board whose resolution is not 1.
-//   Cross-referenced by the five Plan-8 deferral markers at
-//   `crates/fr-router/src/score/mod.rs:54-58`, which Task 14 re-points.
+//   Cross-referenced by the five markers at `crates/fr-router/src/score/mod.rs`, which
+//   **Task 14 re-pointed** from Plan-8 deferrals to `not ported:` rows.
 //
 // -------------------------------------------------------------------------------------------------
 // 10. Out of scope by spec §2 — the GUI, the Eagle writer, the debug console.

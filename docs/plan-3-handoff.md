@@ -782,6 +782,25 @@ would still surface as a `DIFF` on a mode nobody excused.
 
 ### Plan 8 (`fr-core` + surfaces)
 
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> | item | status |
+> |---|---|
+> | wire this crate's seven entry points | **DISCHARGED**, Tasks 3, 6, 7, 8-10 and 12 — `read_board`, `read_metadata`, `dsn_writer::write`, `ses_reader::read`, `ses_writer::write`, `rules_reader::read`, `rules_writer::write` all have a live CLI or MCP caller |
+> | ruling **A** — whatever holds a `Board` between a read and a write must hold its `CoordinateTransform` | **DISCHARGED, Task 3**: `fr_core::LoadedBoard` is that holder, and `crates/fr-core/README.md`'s load-sequence section is the record |
+> | rename the SES/rules entry points to the crate root | **DECIDED: no.** `kicad::read_board` and `dsn_reader::read_board` are two readers of two formats with one name, and a root-level `pub use` of either would make `fr_dsn::read_board` ambiguous to read even where it resolves. `crates/fr-dsn/src/lib.rs` records the decision at the re-export |
+> | `io/kicad/**` (1 574 lines) | **DISCHARGED**, Tasks 8 (the DTO tree and `readBoard` sections 1-8), 9 (sections 9-11) and 10 (`importSession` and `KiCadJsonWriter.write`). Built on this crate's `BoardReadResult`/`BoardMetadata`/`CoordinateTransform`, as this hand-off asked |
+> | `SessionToEagle` (627 lines) | **CLOSED as out of scope** (spec §2 keeps the Specctra SES writer and drops every other export format). Task 0 re-worded the `lib.rs` marker from a deferral to `// not ported:`. **Not dead in Java** — `SesReader.java:107` calls it — so the roster line is a decision, not a reachability claim |
+> | the KiCad reader must not "fix" quirk #83 | **HONOURED.** `ClearanceMatrix`'s J-then-I indexing is untouched; `fr_dsn::kicad::reader` writes through the same accessor the Specctra reader does |
+> | MCP concurrency | **DISCHARGED**, Tasks 11 and 12 |
+> | the four zero-coverage paths | **CLOSED, Task 13** — see the table already struck through above |
+> | quirk **#113** (`(string_quote .)`) | **CLOSED WITH REASON, not attempted.** It needs a regex engine (forbidden by the dependency rule) or a hand-rolled single-character regex emulation, for an input no exporter writes. `docs/plan-8-handoff.md` §7 |
+
+
 - **Wire this crate's seven entry points** (above). Whatever holds a `Board`
   between a read and a write must also hold the `CoordinateTransform` (ruling A).
   Decide then whether the SES/rules entry points should be renamed to the crate

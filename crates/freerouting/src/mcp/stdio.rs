@@ -426,3 +426,28 @@ fn cancel_in_flight(in_flight: &HashMap<String, CancelToken>, params: Option<&Va
 fn request_key(id: &Value) -> String {
     id.to_string()
 }
+
+// =================================================================================================
+// The `api/mcp/**` roster, part 2: the two HTTP back-channels — ruling AO, Plan 8 Task 14
+// =================================================================================================
+//
+// `scripts/audit-map/freerouting.map` points these three classes at this file because this is the
+// port's transport, and a transport is what they are. The reasoning block is at the foot of
+// `mcp/server.rs`; the short form is that a stdio peer already owns both ends of one pipe, so an
+// SSE stream and a WebSocket are two ways to build a back-channel this server was born with.
+// [`run_with`]'s writer half is the whole of what all three exist to provide.
+
+// --- McpRealtimeBridge (71) — the SSE/WebSocket fan-out -----------------------------------------
+// not ported: McpRealtimeBridge.registerSseClient (api/mcp/McpRealtimeBridge.java:20-23) — adds an `SseEventSink` to the broadcast set.
+// not ported: McpRealtimeBridge.removeSseClient (api/mcp/McpRealtimeBridge.java:25-28) — removes one.
+// not ported: McpRealtimeBridge.registerWsClient (api/mcp/McpRealtimeBridge.java:30-33) — the WebSocket twin of the first.
+// not ported: McpRealtimeBridge.removeWsClient (api/mcp/McpRealtimeBridge.java:35-38) — the WebSocket twin of the second.
+// not ported: McpRealtimeBridge.broadcast (api/mcp/McpRealtimeBridge.java:40-70) — writes one named event to every registered client of both kinds. The port writes to exactly one peer, under the [`super::server::SharedWriter`] lock, so there is no set to walk and no partial-failure arm to reproduce.
+
+// --- McpWebSocketEndpoint (130) and McpWebSocketConfigurator (32) — the WS half -----------------
+// not ported: McpWebSocketEndpoint.onOpen (api/mcp/McpWebSocketEndpoint.java:28-54) — the handshake: reads the API key out of the stashed headers, closes with a policy violation when it fails, registers with the bridge otherwise.
+// not ported: McpWebSocketEndpoint.onMessage (api/mcp/McpWebSocketEndpoint.java:69-129) — the WebSocket's own copy of the JSON-RPC dispatch. The port has one dispatch, [`super::server::handle`], and one reader loop.
+// not ported: McpWebSocketEndpoint.onClose (api/mcp/McpWebSocketEndpoint.java:57-60) — deregisters the session.
+// not ported: McpWebSocketEndpoint.onError (api/mcp/McpWebSocketEndpoint.java:63-66) — the same, on a `Throwable`. The port's three ways for a peer to vanish are Task 11's, in [`run_with`].
+// not ported: McpWebSocketConfigurator.modifyHandshake (api/mcp/McpWebSocketConfigurator.java:18-22) — stashes the handshake headers in the endpoint config so `onOpen` can read the API key out of them.
+// not ported: McpWebSocketConfigurator.getHeaders (api/mcp/McpWebSocketConfigurator.java:25-31) — the unchecked cast that reads them back.
