@@ -419,43 +419,67 @@ fn the_rules_file_is_read_as_bytes_twice() {
     );
 }
 
-/// **The priority-10 `freerouting.json` tier, through the binary** (Plan 8 Task 6; the review's
-/// B1's second half).
+/// **The priority-10 `freerouting.json` tier, through the binary** (the review's B1, as amended by
+/// **controller ruling BG**).
 ///
-/// `--settings <file>` is `JsonFileSettings(Path)` (`settings/sources/JsonFileSettings.java:36-39`)
-/// at priority **10** — port-only as a *flag* (Java reads the file only from its OS-standard
-/// user-data path, which is `static` mutable state and stays unported), but the **tier** is
-/// Java's, on the prototype merger at `Freerouting.java:1410`. `commands::route` is the only
-/// caller in the tree that can supply one, so this is the only place the wiring is observable end
-/// to end.
+/// `--settings <file>` is `JsonFileSettings(Path)`
+/// (`settings/sources/JsonFileSettings.java:36-39`) at priority **10**. The *tier* is Java's, on
+/// the prototype merger at `Freerouting.java:1410`; the *flag* is port-only, and scan ruling R7
+/// scoped it to the **native** subcommand form.
 ///
-/// Three runs on the same board, read out of the manifest's `settings_snapshot` — the one surface
-/// the CLI has for a resolved setting:
+/// # What the jar actually does — measured, and the reason for every row below
 ///
-/// | run | `--settings` | `max_passes` | `scoring.via_costs` |
-/// |---|---|---|---|
-/// | **A** | absent | 1 (from `-mp 1`) | 50 — `DefaultSettings.java:149` |
-/// | **B** | present, `{"router": {"scoring": {"via_costs": 77}}}` | 1 | **77** |
-/// | **C** | the working directory's own `freerouting.json`, no flag | 1 | **77** |
+/// | jar input | `scoring.via_costs` in its manifest |
+/// |---|---|
+/// | `--settings s.json` on its (only) command line | **50** — two `Unknown command line argument` warnings, file ignored |
+/// | started **in** a directory holding `freerouting.json` | **50** — ignored |
+/// | `-Duser.home` at a home whose *user-data* `freerouting.json` sets `via_costs 77` | **77** — applied at priority 10 |
+/// | the same, with no such file (control) | 50 |
 ///
-/// Run C is the default-path half: without the flag, `JsonFileSettings::from_working_directory`
-/// stands in for Java's user-data path, so the run is made from a scratch directory holding the
-/// file. `-mp 1` is on every run so the routing is a second rather than a minute; the flag sits
-/// at priority 60 and cannot be reached by the tier under test.
+/// So the jar reads exactly one location — `GlobalSettings.getUserDataPath()
+/// .resolve("freerouting.json")`, `~/Library/Application Support/freerouting/freerouting.json` on
+/// macOS (`AppPaths.resolveConfigDirectory:39-42`) — which is `static` mutable state spec §2 does
+/// not port. It never reads the working directory, and it never honours a `--settings` it does
+/// not know.
+///
+/// # What the port therefore does, on both forms
+///
+/// | run | form | `--settings` | cwd holds `freerouting.json` | `via_costs` |
+/// |---|---|---|---|---|
+/// | **A** | legacy | no | no | 50 |
+/// | **B** | **native** | **yes** | no | **77** — the one way in |
+/// | **C** | legacy | yes | no | **50** — ruling AR: the jar warns and ignores, so the port must |
+/// | **D** | legacy | no | **yes** | **50** — ruling BG: the jar ignores a cwd file |
+/// | **E** | native | no | **yes** | **50** — same rule on both forms |
+///
+/// Round 1 of the review left the port applying the file in runs C and D and recorded that as
+/// accepted; ruling BG ruled it out. Run C also asserts the **warnings** are still Java's —
+/// `p8t1`'s `settings-on-legacy` row is what compares them against the jar live.
 #[test]
 fn a_settings_file_reaches_the_run() {
     if !parity::require_java_dir() {
         return;
     }
     let dir = scratch("settings-file");
-    let json = dir.join("freerouting.json");
+    let json = dir.join("s.json");
     std::fs::write(&json, r#"{"router": {"scoring": {"via_costs": 77}}}"#).unwrap();
+    // A separate directory whose *own* `freerouting.json` is what runs D and E are started in.
+    let cwd = dir.join("cwd");
+    std::fs::create_dir_all(&cwd).unwrap();
+    std::fs::write(
+        cwd.join("freerouting.json"),
+        r#"{"router": {"scoring": {"via_costs": 77}}}"#,
+    )
+    .unwrap();
     let dsn = small_dsn();
     let dsn = dsn.to_string_lossy();
 
-    // Run A — no `--settings`, and the working directory is the repository root, which holds no
-    // `freerouting.json`. `DefaultSettings`' 50 must survive.
-    let manifest_a = dir.join("a.json");
+    let via_costs = |manifest: &Path| settings_snapshot(manifest)["scoring"]["via_costs"].clone();
+    let fifty = serde_json::json!(50);
+    let seventy_seven = serde_json::json!(77);
+
+    // Run A — legacy, no flag, no cwd file.
+    let a = dir.join("a.json");
     let (_, stderr, code) = run(&[
         "-de",
         &dsn,
@@ -463,67 +487,122 @@ fn a_settings_file_reaches_the_run() {
         &dir.join("a.ses").to_string_lossy(),
         "-mp",
         "1",
-        &format!("--router.result_json={}", manifest_a.display()),
+        &format!("--router.result_json={}", a.display()),
     ]);
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(
-        settings_snapshot(&manifest_a)["scoring"]["via_costs"],
-        serde_json::json!(50),
-        "with no settings file the priority-10 tier must contribute nothing"
+        via_costs(&a),
+        fifty,
+        "no settings file: DefaultSettings' 50"
     );
 
-    // Run B — `--settings <file>`.
-    let manifest_b = dir.join("b.json");
+    // Run B — the **native** form with `--settings`, the one way into the tier.
+    let b = dir.join("b.json");
+    let (_, stderr, code) = run(&[
+        "route",
+        &dsn,
+        "-o",
+        &dir.join("b.ses").to_string_lossy(),
+        "--settings",
+        &json.to_string_lossy(),
+        "--max-passes",
+        "1",
+        "--result-json",
+        &b.display().to_string(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        via_costs(&b),
+        seventy_seven,
+        "`--settings` on the native form must reach `SettingsInputs::json_file`"
+    );
+
+    // Run C — the same flag on the **legacy** form. Ruling BG: warn like the jar, apply nothing.
+    let c = dir.join("c.json");
     let (_, stderr, code) = run(&[
         "-de",
         &dsn,
         "-do",
-        &dir.join("b.ses").to_string_lossy(),
+        &dir.join("c.ses").to_string_lossy(),
         "-mp",
         "1",
         "--settings",
         &json.to_string_lossy(),
-        &format!("--router.result_json={}", manifest_b.display()),
+        &format!("--router.result_json={}", c.display()),
     ]);
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(
-        settings_snapshot(&manifest_b)["scoring"]["via_costs"],
-        serde_json::json!(77),
-        "`--settings` must reach `SettingsInputs::json_file` and beat DefaultSettings"
+        via_costs(&c),
+        fifty,
+        "ruling BG: the legacy path is bug-for-bug, and the jar ignores --settings"
     );
-    assert_eq!(
-        settings_snapshot(&manifest_b)["max_passes"],
-        serde_json::json!(1),
-        "and priority 60 must still beat it"
+    // ...and it says what the jar says while ignoring it (`GlobalSettings.java:833`, twice — the
+    // flag is not a value-consuming arm, so its argument warns on its own).
+    assert!(
+        stderr.contains("Unknown command line argument: --settings"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains(&format!(
+            "Unknown command line argument: {}",
+            json.to_string_lossy()
+        )),
+        "{stderr}"
     );
 
-    // Run C — no flag, but a `freerouting.json` in the **working directory**.
-    let manifest_c = dir.join("c.json");
-    let output = std::process::Command::new(PORT)
-        .current_dir(&dir)
-        .args([
-            "-de",
-            &dsn,
-            "-do",
-            &dir.join("c.ses").to_string_lossy(),
-            "-mp",
-            "1",
-            &format!("--router.result_json={}", manifest_c.display()),
-        ])
-        .stdin(std::process::Stdio::null())
-        .output()
-        .expect("the port runs");
-    assert_eq!(
-        output.status.code(),
-        Some(0),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(
-        settings_snapshot(&manifest_c)["scoring"]["via_costs"],
-        serde_json::json!(77),
-        "the working directory's freerouting.json stands in for Java's user-data path"
-    );
+    // Runs D and E — a `freerouting.json` in the **working directory**, on both forms. The jar
+    // reads the OS user-data path and only that, so both must be 50.
+    for (name, argv) in [
+        (
+            "D-legacy",
+            vec![
+                "-de".to_string(),
+                dsn.to_string(),
+                "-do".to_string(),
+                dir.join("d.ses").to_string_lossy().into_owned(),
+                "-mp".to_string(),
+                "1".to_string(),
+                format!("--router.result_json={}", dir.join("d.json").display()),
+            ],
+        ),
+        (
+            "E-native",
+            vec![
+                "route".to_string(),
+                dsn.to_string(),
+                "-o".to_string(),
+                dir.join("e.ses").to_string_lossy().into_owned(),
+                "--max-passes".to_string(),
+                "1".to_string(),
+                "--result-json".to_string(),
+                dir.join("e.json").to_string_lossy().into_owned(),
+            ],
+        ),
+    ] {
+        let output = std::process::Command::new(PORT)
+            .current_dir(&cwd)
+            .args(&argv)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .expect("the port runs");
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "{name}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let manifest = dir.join(if name == "D-legacy" {
+            "d.json"
+        } else {
+            "e.json"
+        });
+        assert_eq!(
+            via_costs(&manifest),
+            fifty,
+            "{name}: ruling BG — the jar ignores a working-directory freerouting.json, \
+             so the port must too"
+        );
+    }
 }
 
 /// **A per-stage timeout is not a job timeout** (the review's S1).

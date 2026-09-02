@@ -750,9 +750,13 @@ and `the_stem_table_matches_the_fixture_file`. The 54 skipped tests are the
    `--settings <file>` source. Plan 8's CLI task should take it.~~
    **DISCHARGED — Plan 8 Task 5**, under the pre-flight scan's ruling R7 and a
    controller decision. `crates/fr-settings/src/sources/json_file.rs` is the
-   priority-10 source; `crates/freerouting`'s `--settings <file>` names a file and
-   a working-directory `freerouting.json` is the default (Java's user-data path is
-   `static` mutable state and stays unported). ~~**One half is still owed:**
+   priority-10 source; `crates/freerouting`'s `--settings <file>` names a file
+   ~~and a working-directory `freerouting.json` is the default~~ (Java's user-data
+   path is `static` mutable state and stays unported). **Controller ruling BG
+   (Plan 8 Task 6) removed the working-directory default**: measured at the pinned
+   jar, a `freerouting.json` in the working directory changes nothing, so the
+   stand-in stood in for no jar behaviour. `--settings <file>`, native form only,
+   is the whole surface. ~~**One half is still owed:**
    `resolve_headless` does not take the source yet — Task 6 threads it through
    `SettingsInputs`, and `crates/fr-settings/src/resolve.rs` carries the
    `// obligation:` at the site.~~ **That half is DISCHARGED — Plan 8 Task 6:**

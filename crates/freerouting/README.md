@@ -49,7 +49,7 @@ who learns this CLI does not type them at the jar.
 |---|---|---|
 | `-v` / `-vv` / `--verbose` | raise the log level | **none** — the jar's log-level flag is `-ll <level>` (quirk #260) |
 | `--log-level <level>` | set it outright | `-ll <level>`, or `--logging.console.level=<level>` |
-| `--settings <file>` | name a `freerouting.json` for the priority-10 tier | **none** — the jar only reads the file under its OS-standard user-data path |
+| `--settings <file>` | name a `freerouting.json` for the priority-10 tier. **Native form only** (rulings R7/BG) | **none** — the jar only reads the file under its OS-standard user-data path, and warns at `--settings` as an unknown argument |
 | `--version` / `-V` | print the version (native form only) | **none**; the jar prints its version in the startup banner (`Freerouting.java:1120`) |
 | `--kicad-json <file>` | a KiCad board file in its own slot (native form only, ruling 14) | **none** — on the legacy form a `.json` takes Java's own slot |
 | `--set <section.field=value>` | a generic settings override | `--section.field=value`, which the legacy form still accepts |
@@ -58,13 +58,28 @@ who learns this CLI does not type them at the jar.
 now carries the priority-10 tier into both of `resolve_headless`'s chains, and without the flag the
 working directory's `freerouting.json` stands in for Java's OS-standard user-data path.
 
-It is recovered from the **raw** argv, so it works on the legacy form too. Measured: both programs
-answer `-de a.dsn -do b.ses --settings s.json` with the same two `Unknown command line argument`
-warnings (`GlobalSettings.java:833`, once for the flag and once for its argument — it is not a
-value-consuming arm), and the port then applies the file where the jar ignores it. Exit codes are
-unaffected, no reference stem passes the flag, and honouring a port-only flag on both command
-lines was judged less surprising than refusing it on one; the reasoning is at
-`commands::route::json_settings_path`.
+**Native form only, and there is no default file** — controller ruling **BG**, on the measurement
+below. Round 1 of the Task 6 review left the flag working on the legacy form too and recorded that
+as accepted; ~~"honouring a port-only flag on both command lines was judged less surprising than
+refusing it on one"~~ was ruled out: scan ruling R7 scoped the flag to the native form and ruling
+AR makes the legacy path bug-for-bug, so the legacy form now warns exactly as the jar does and
+applies nothing.
+
+| jar input | `scoring.via_costs` in its manifest |
+|---|---|
+| `--settings s.json` | **50** — two `Unknown command line argument` warnings (`GlobalSettings.java:833`, once for the flag and once for its argument — it is not a value-consuming arm), file ignored |
+| started **in** a directory holding `freerouting.json` | **50** — ignored |
+| `-Duser.home` at a home whose *user-data* `freerouting.json` sets `via_costs 77` | **77** — applied at priority 10 |
+| the same, with no such file (control) | 50 |
+
+The jar reads exactly one location, `GlobalSettings.getUserDataPath().resolve("freerouting.json")`
+(macOS: `~/Library/Application Support/freerouting/freerouting.json`), which is `static` mutable
+state spec §2 does not port. Task 5 had made the **working directory** stand in for it; the middle
+two rows show it stood in for nothing the jar does, so ruling BG removed that default as well.
+`--settings <file>` on the native form is now the whole surface.
+
+Pinned by `cli_e2e.rs::a_settings_file_reaches_the_run` (five runs across both forms) and by
+`p8t1`'s `settings-on-legacy` row, which compares the two warnings against the **live jar**.
 
 ---
 
@@ -174,15 +189,16 @@ Four rungs per stem: byte-identical SES, equal exit code, equal `parity::normali
 | `Issue026-J2_reference` | slow | *(bare)* | MATCH | MATCH |
 | `large-outline` | slow | `-mp 2`, optimizer off | MATCH | MATCH |
 
-Plus four **refusal rows**, which is where the exit-code and log rungs earn their keep — every
-stem above succeeds and emits no message `logging::MESSAGE_MAP` names, so on the stems the log
-rung compares two empty projections.
+Plus five **argv rows**, which is where the exit-code and log rungs earn their keep — every stem
+above succeeds and emits no message `logging::MESSAGE_MAP` names, so on the stems the log rung
+compares two empty projections.
 
 | row | argv | `p8t1` | what it pins |
 |---|---|---|---|
 | `missing-input` | `-de <missing>.dsn -do a.ses` | MATCH | `Freerouting.java:105` + `:109`, and quirk #261's duplicated `ERROR` folding back into one |
 | `no-files` | `-mp 1` | MATCH | `Freerouting.java:81`'s refusal, exit 1 |
 | `do-out-dsn` | `-de <dsn> -do b.dsn -mp 1` | MATCH | quirk #268: a 0-byte file, exit 1 |
+| `settings-on-legacy` | `-de <dsn> -do d.ses -mp 1 --settings s.json` | MATCH | ruling BG — two `GlobalSettings.java:562` warnings on both sides, exit 0, and the file ignored on both |
 | `invalid-input-java-hangs` | session bytes under a `.dsn` name | **XDIFF** | quirk #244 / plan ruling 7 — **the jar hangs for ever**; the port exits 1. Not run against the jar, for the obvious reason |
 
 ### XDIFF rows

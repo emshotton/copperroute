@@ -204,13 +204,27 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // adjacent probe a user would otherwise have got.
     let scheduler_rules_bytes = read_scheduler_rules(&job, args.rules.as_deref());
 
-    // Priority 10 (scan ruling R7): `--settings <file>` is `JsonFileSettings(Path)`, and without
-    // it the working directory's `freerouting.json` stands in for Java's OS-standard user-data
-    // path (`JsonFileSettings.java:27-29`, which is `static` mutable state and stays unported).
-    let json_source = match json_settings_path(settings_argv) {
-        Some(path) => JsonFileSettings::new(&path),
-        None => JsonFileSettings::from_working_directory(),
-    };
+    // Priority 10 (scan ruling R7): `--settings <file>` is `JsonFileSettings(Path)`, on the
+    // **native** form only (ruling BG — see [`json_settings_path`]).
+    //
+    // **There is no default file, and that is measured rather than chosen.** Java's no-argument
+    // `JsonFileSettings()` (`JsonFileSettings.java:27-29`) resolves
+    // `GlobalSettings.getUserDataPath().resolve("freerouting.json")` — on macOS
+    // `~/Library/Application Support/freerouting/freerouting.json`
+    // (`AppPaths.resolveConfigDirectory:39-42`) — and that path is `static` mutable state
+    // (`GlobalSettings.java:29-30`, `:164-167`) which spec §2 does not port. Task 5 made the
+    // **working directory** stand in for it; ruling BG asked what the jar actually does with a
+    // `freerouting.json` in the working directory, and the answer is **nothing**:
+    //
+    //   jar, run from a directory holding `{"router":{"scoring":{"via_costs":77}}}`  -> 50
+    //   jar, `-Duser.home` at a home whose user-data file sets the same           -> 77
+    //   jar, `-Duser.home` at a home with no such file (control)                  -> 50
+    //
+    // So the cwd stand-in was not a stand-in for anything the jar does; it was a second,
+    // port-only default that a stray file in a build directory could use to change a routing
+    // result silently. The tier is therefore reachable **only** through `--settings <file>`, and
+    // `JsonFileSettings::from_working_directory` keeps no caller here — see its own doc.
+    let json_source = json_settings_path(settings_argv).map(|path| JsonFileSettings::new(&path));
 
     let environment: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     let env_source = EnvironmentVariablesSource::new(&environment);
@@ -218,7 +232,7 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
 
     // ── 7 + 9 + 10. ONE `resolve_headless` (Convention 10) ───────────────────────────────────
     let inputs = SettingsInputs {
-        json_file: json_source.get_settings(),
+        json_file: json_source.as_ref().and_then(SettingsSource::get_settings),
         dsn: dsn_source.get_settings(),
         // Convention 9 / quirk #142: **bytes**, because Java parses the same file twice with two
         // different layer structures and both results reach the answer.
@@ -428,30 +442,39 @@ fn delete_existing_output(output: &Path) {
     tracing::warn!("Couldn't delete the file '{}'", output.display());
 }
 
-/// `--settings <file>`'s path, read back off the **raw** argv.
+/// `--settings <file>`'s path, read back off the **raw** argv — **on the native form only**.
 ///
 /// The flag is `clap`'s and global (`cli::Cli::settings`), but the command runners are handed the
 /// raw argv rather than the parsed `Cli` (see [`crate::run`]), so the value is recovered here
 /// from the same slice `CliSettings` reads — which also keeps the whole runner testable in
 /// process, without a `std::env::args()` read no test could control.
 ///
-/// **Port only, and it works on the legacy form too — measured, not assumed.** Java has no flag
-/// for this tier at all, so `freerouting -de a.dsn -do b.ses --settings s.json` makes **both**
-/// programs warn `Unknown command line argument: --settings` and then
-/// `Unknown command line argument: s.json` (`GlobalSettings.java:833`, twice — the flag is not a
-/// value-consuming arm, so its argument warns on its own). The message sets are identical, which
-/// is why `p8t1`'s log rung is unaffected; what differs is that the port then **applies** the
-/// file and the jar does not. Measured on `Issue143-rpi_splitter.dsn` with
-/// `{"router": {"scoring": {"via_costs": 77}}}`: the port's manifest reports `via_costs 77`, the
-/// jar's `50`.
+/// # Controller ruling BG: the legacy form warns and applies nothing
 ///
-/// That divergence is accepted rather than removed. The alternative — scanning only when the
-/// native form was used — would make a port-only flag refuse itself on one of the two command
-/// lines that reach the same runner, which is more surprising than honouring it; ruling AR's
-/// constraint is about **exit codes** a user could not have got from the jar, and this changes
-/// none. No `tests/reference/cli-*` stem passes `--settings`, so no gate depends on it.
-/// `crates/freerouting/README.md`'s port-only table carries the same sentence.
+/// Scan ruling R7 scoped this flag to the **native** form, and ruling AR makes the legacy path
+/// bug-for-bug. Java has no flag for this tier at all, so
+/// `freerouting -de a.dsn -do b.ses --settings s.json` is, to the jar, two unknown arguments:
+/// it warns `Unknown command line argument: --settings` and then
+/// `Unknown command line argument: s.json` (`GlobalSettings.java:833` twice — the flag is not a
+/// value-consuming arm, so its argument warns on its own) and **ignores the file**. Measured on
+/// `Issue143-rpi_splitter.dsn` with `{"router": {"scoring": {"via_costs": 77}}}`: the jar's
+/// manifest reports `via_costs 50`.
+///
+/// Round 1 of the Task 6 review left the port applying the file on that argv — same warnings,
+/// different settings — and recorded it as accepted. **Ruling BG ruled it out**: the legacy path
+/// reproduces the jar, so it must warn identically *and* apply nothing. The
+/// [`crate::legacy::is_legacy_form`] guard below is that ruling.
+///
+/// The warnings themselves are `legacy::rewrite`'s, unchanged and already jar-compared — `p8t1`'s
+/// `settings-on-legacy` row runs the two programs on exactly this argv, and
+/// `crates/freerouting/tests/cli_e2e.rs::a_settings_file_reaches_the_run` asserts the settings
+/// answer on both forms.
 fn json_settings_path(settings_argv: &[String]) -> Option<PathBuf> {
+    // Ruling BG. `is_legacy_form` is the same predicate `crate::run` dispatches on, so the two
+    // can never disagree about which command line the user typed.
+    if crate::legacy::is_legacy_form(settings_argv) {
+        return None;
+    }
     let mut args = settings_argv.iter();
     while let Some(arg) = args.next() {
         if let Some(value) = arg.strip_prefix("--settings=") {

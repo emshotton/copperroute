@@ -16,12 +16,16 @@
 //! ported here, in full, and wired to two things by `crates/freerouting`:
 //!
 //! * `--settings <file>` on the native subcommand form — the port's spelling of Java's
-//!   `JsonFileSettings(Path)` constructor (`:36-39`);
-//! * `freerouting.json` **in the working directory** — the port's stand-in for Java's
-//!   `GlobalSettings.getUserDataPath().resolve("freerouting.json")` (`:27-29`). The user-data
-//!   path itself stays unported (`static` mutable path state, spec §2 — see the roster in
-//!   `crate::sources::cli`), so the port looks where the process already is instead of in an
-//!   OS-standard directory it does not otherwise use.
+//!   `JsonFileSettings(Path)` constructor (`:36-39`). **This is the whole surface**: it is how
+//!   `commands::route` builds a priority-10 source, and there is no default file;
+//! * ~~`freerouting.json` **in the working directory** — the port's stand-in for Java's
+//!   `GlobalSettings.getUserDataPath().resolve("freerouting.json")` (`:27-29`)~~ — **removed from
+//!   the CLI by controller ruling BG.** Task 5 chose the working directory because the user-data
+//!   path is `static` mutable state spec §2 does not port; measured at the pinned jar, a
+//!   `freerouting.json` in the working directory changes **nothing** (the jar reads the user-data
+//!   path and only that), so the stand-in stood in for no jar behaviour and was a port-only
+//!   default a stray file could have used to change a routing result silently. See
+//!   [`JsonFileSettings::from_working_directory`], which survives without a CLI caller.
 //!
 //! # The leniency this reproduces, and the one it does not
 //!
@@ -44,7 +48,9 @@ use std::path::{Path, PathBuf};
 use crate::{RouterSettings, SettingsError, SettingsSource, SourceKind, merger::priority};
 
 /// `GlobalSettings.getConfigurationFilePath` resolves this name under the user-data directory
-/// (`GlobalSettings.java:178-180`); the port resolves it against the working directory instead.
+/// (`GlobalSettings.java:178-180`), which spec §2 does not port. The only thing that resolves it
+/// against the working directory is [`JsonFileSettings::from_working_directory`], which ruling BG
+/// left without a CLI caller — the constant is the **name**, not a policy about where to look.
 pub const CONFIGURATION_FILE_NAME: &str = "freerouting.json";
 
 /// `settings/sources/JsonFileSettings.java`: the router settings a `freerouting.json` names,
@@ -81,11 +87,42 @@ impl JsonFileSettings {
         }
     }
 
-    /// `JsonFileSettings()` (`:27-29`), with the working directory standing in for the user-data
-    /// path — see the module docs.
+    /// `JsonFileSettings()` (`:27-29`) — the no-argument constructor, with the working directory
+    /// where Java has the OS user-data path.
     ///
-    /// renamed: JsonFileSettings() -> JsonFileSettings::from_working_directory — Rust has no
-    /// constructor overloads, and the name says which of Java's two the caller wants.
+    /// # It has no caller, and controller ruling BG is why
+    ///
+    /// Java's body is
+    /// `this(GlobalSettings.getUserDataPath().resolve("freerouting.json"))` — on macOS
+    /// `~/Library/Application Support/freerouting/freerouting.json`
+    /// (`AppPaths.resolveConfigDirectory:39-42`). That path is `static` mutable state
+    /// (`GlobalSettings.java:29-30`, `:164-167`) and spec §2 does not port it, so Task 5 made the
+    /// working directory stand in and `commands::route` used this constructor as its default.
+    ///
+    /// **Measured at the pinned jar, the working directory is not a stand-in for anything:**
+    ///
+    /// | run | `scoring.via_costs` in the manifest |
+    /// |---|---|
+    /// | jar, started **in** a directory holding `{"router":{"scoring":{"via_costs":77}}}` | **50** — ignored |
+    /// | jar, `-Duser.home` at a home whose *user-data* file sets the same | **77** — applied |
+    /// | jar, `-Duser.home` at a home with no such file (control) | 50 |
+    ///
+    /// So the cwd file was a second, **port-only** default that a stray `freerouting.json` in a
+    /// build directory could have used to change a routing result silently. Ruling BG removed it
+    /// from the CLI: `commands::route` now builds a priority-10 source only for an explicit
+    /// `--settings <file>`, and the tier has no default at all.
+    ///
+    /// This constructor is kept — not deleted — because it is the port of a real Java
+    /// constructor and `audit-port.sh` matches the overload set; a host that genuinely wants a
+    /// working-directory-relative source can still ask for one, with its eyes open. It is **not**
+    /// what the CLI does.
+    ///
+    // renamed: JsonFileSettings() -> JsonFileSettings::from_working_directory — Rust has no
+    // constructor overloads, and the name says which of Java's two the caller wants.
+    // not ported: GlobalSettings.getUserDataPath (settings/GlobalSettings.java:155-157) and
+    //   AppPaths.getDefaultUserDataPath (settings/AppPaths.java:39-42) — `static` mutable state
+    //   (spec §2). Their absence is what leaves this constructor without a faithful path, which
+    //   is why ruling BG gave the CLI no default rather than a different one.
     #[must_use]
     pub fn from_working_directory() -> Self {
         Self::new(Path::new(CONFIGURATION_FILE_NAME))

@@ -211,7 +211,7 @@ fn first_line(bytes: &[u8]) -> String {
 // The refusal rows
 // =================================================================================================
 
-/// Four argv shapes that make **both** programs fail, so that rungs (b) and (c) are not vacuous.
+/// Five argv shapes chosen so that rungs (b) and (c) are not vacuous.
 ///
 /// Every `cli-fixtures.txt` stem succeeds, and a successful run emits no message
 /// `freerouting::logging::MESSAGE_MAP` names — the jar's whole transcript is the startup banner
@@ -222,8 +222,16 @@ fn first_line(bytes: &[u8]) -> String {
 /// exercises quirk #261's duplicate — the jar writes its `ERROR` to stdout *and* stderr, and the
 /// normaliser has to fold the two back into one.
 ///
-/// They are argv shapes rather than fixture stems because none of them produces an SES, so
-/// nothing about them belongs in `tests/reference/cli-*`.
+/// They are argv shapes rather than fixture stems because what they pin is the *argv*, not a
+/// board; four of them produce no SES at all, so nothing about them belongs in
+/// `tests/reference/cli-*`. The fifth, `settings-on-legacy`, **succeeds** on both sides and is
+/// here for controller ruling BG: `--settings` is scoped to the native form (scan ruling R7) and
+/// the legacy path is bug-for-bug (ruling AR), so the jar's two `Unknown command line argument`
+/// warnings are what the port must emit — and this row is what compares them against the jar
+/// rather than against a transcribed expectation. That the port also *ignores* the file, as the
+/// jar does, is asserted by
+/// `crates/freerouting/tests/cli_e2e.rs::a_settings_file_reaches_the_run`, which can read the
+/// resolved setting out of the manifest; this row cannot.
 fn refusal_rows(scratch: &Path) -> Vec<Row> {
     let dir = scratch.join("refusals");
     std::fs::create_dir_all(&dir).expect("a scratch directory");
@@ -231,6 +239,14 @@ fn refusal_rows(scratch: &Path) -> Vec<Row> {
     let missing = dir.join("nosuch.dsn");
     let ses_bytes_named_dsn = dir.join("session.dsn");
     std::fs::write(&ses_bytes_named_dsn, b"(session previous)\n").expect("write the fixture");
+    // A settings document that would be visible in the answer if either side applied it —
+    // `DefaultSettings.java:149` seeds `scoring.viaCosts` at 50.
+    let settings_json = dir.join("s.json");
+    std::fs::write(
+        &settings_json,
+        br#"{"router": {"scoring": {"via_costs": 77}}}"#,
+    )
+    .expect("write the fixture");
 
     let cases: Vec<(&str, Vec<String>)> = vec![
         // `Freerouting.java:105` (`FRLogger.error`, duplicated to stderr) + `:109`
@@ -262,6 +278,23 @@ fn refusal_rows(scratch: &Path) -> Vec<Row> {
         // Plan ruling 7 / quirk #244: session bytes under a `.dsn` name reach
         // `RoutingJobState.INVALID`, where **the jar hangs for ever** — so this row is expected
         // to be an `XDIFF`, and the driver says so rather than waiting.
+        // Ruling BG: `--settings` on the **legacy** form is two unknown arguments to the jar
+        // (`GlobalSettings.java:833`, once for the flag and once for its argument — it is not a
+        // value-consuming arm), and the port must say the same two things. A successful run, so
+        // unlike its neighbours it also proves the warnings do not disturb the exit code.
+        (
+            "settings-on-legacy",
+            argv(&[
+                "-de",
+                &dsn.to_string_lossy(),
+                "-do",
+                &dir.join("d.ses").to_string_lossy(),
+                "-mp",
+                "1",
+                "--settings",
+                &settings_json.to_string_lossy(),
+            ]),
+        ),
         (
             "invalid-input-java-hangs",
             argv(&[

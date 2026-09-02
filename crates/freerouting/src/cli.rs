@@ -40,14 +40,24 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub log_level: Option<String>,
     /// A `freerouting.json` to read router settings from, at priority 10
-    /// (`settings/sources/JsonFileSettings.java`). Without it the working directory's
-    /// `freerouting.json` is used if it exists — the port's stand-in for Java's OS-standard
-    /// user-data path, which is not ported (spec §2). Port only: Java has no flag for this.
+    /// (`settings/sources/JsonFileSettings.java`). Without it there is **no** priority-10 source
+    /// at all. Port only, and **this subcommand form only**: Java has no flag for this, and on
+    /// the legacy command line the port warns exactly as the jar does and applies nothing
+    /// (rulings R7 and BG).
     ///
     /// **Wired in Plan 8 Task 6**, which added `SettingsInputs::json_file` and made
-    /// `commands::route` fill it — `JsonFileSettings::new` for a path given here,
-    /// `::from_working_directory` for the default. The Task 5 `// obligation:` that stood here,
-    /// and the ~~"NOT YET WIRED (Plan 8 Task 6)"~~ opening of this help text, are discharged.
+    /// `commands::route` fill it from `JsonFileSettings::new`. The Task 5 `// obligation:` that
+    /// stood here, and the ~~"NOT YET WIRED (Plan 8 Task 6)"~~ opening of this help text, are
+    /// discharged.
+    ///
+    /// The ~~"Without it the working directory's `freerouting.json` is used if it exists — the
+    /// port's stand-in for Java's OS-standard user-data path"~~ sentence stood here through Task 6
+    /// round 1 and **controller ruling BG removed it**: measured at the pinned jar, a
+    /// `freerouting.json` in the working directory changes nothing (the jar reads
+    /// `GlobalSettings.getUserDataPath()` and only that), so the stand-in stood in for no jar
+    /// behaviour and was a port-only default a stray file could have used to change a routing
+    /// result silently.
+    ///
     /// Note that `commands::route` recovers the value from the **raw** argv rather than from this
     /// field, because the runners are handed the raw argv and not the parsed `Cli` (see
     /// [`crate::run`]); this declaration is what puts the flag in `--help` and what makes clap
