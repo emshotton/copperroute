@@ -98,22 +98,38 @@ enum Event {
 /// the token carries two atomics; this paragraph is why a reader must not delete the arm the MCP
 /// happens not to use.
 ///
-/// # Shutdown — three ways the peer can vanish, one meaning
+/// # Shutdown — three ways the peer can vanish, and **two** meanings (controller ruling BH)
 ///
-/// EOF on stdin, a read failure on stdin, and a **failed write to stdout** all mean the same
-/// thing: nobody is reading, so every running tool is working for no one. All three therefore
-/// cancel every in-flight token and then **drain** — the loop keeps running until the last tool
-/// thread has reported, so a response already being written is not truncated. Java's
-/// `System.exit(0)` (`:777-779`) kills its daemon thread mid-write instead; the port's drain is a
-/// deliberate improvement over a shutdown that can lose a line, and it is bounded by the tools
-/// observing the cancellation the drain begins with. It is row 11 of the delta table in
-/// `crates/freerouting/README.md`.
+/// All three stop the loop taking new work and then **drain** — the loop keeps running until the
+/// last tool thread has reported, so a response already being written is not truncated. What they
+/// disagree about is whether the work still running is worth finishing, and the answer follows
+/// from *which pipe* broke:
 ///
-/// The **exit code** distinguishes them, because the peer's own behaviour does: EOF is a client
-/// that finished and is `0` (`:778-779`), while a read failure is `1` (`:780-782`) — both Java's
-/// — and a write failure joins the second, because a client that stopped reading mid-conversation
-/// did not finish. Java cannot reach that third case at all: `PrintStream.println` (`:771`)
-/// swallows its errors, so the jar writes into the void and still exits `0`.
+/// | how the peer vanished | in-flight `tools/call`s | exit | Java |
+/// |---|---|---|---|
+/// | **EOF on stdin** | **finished** — every one of them answers | `0` | `:778-779` |
+/// | a read failure on stdin | cancelled | `1` | `:780-782` |
+/// | a failed write to stdout | cancelled | `1` | unreachable |
+///
+/// **EOF on stdin does not mean nobody is reading.** It means the client has no more *requests*,
+/// which is exactly what a batch client does: write every line, close stdin, read every answer.
+/// Cancelling there turned `freerouting mcp < script.jsonl` into a program that answers **partial**
+/// results with `timed_out: false` and no error — measured before ruling BH, a `route_board` on
+/// `fixtures/Issue143-rpi_splitter.dsn` piped from a file answered **797 bytes and 0 wires** where
+/// the same request over a live pipe answered **3 656 bytes and 16 wires**. A quietly wrong answer
+/// is worse than a slow one, so EOF now drains without cancelling and the same piped script
+/// answers the full 3 656 bytes. What bounds the drain is what bounds any run: `--max-passes`, the
+/// job timeout, and the router's own budget.
+///
+/// A **read failure** and a **failed write** are the other thing. There the pipe the *answers* go
+/// down is gone (or the process cannot learn anything more about it), so every running tool really
+/// is working for no one, and both cancel every in-flight token before draining. Java cannot reach
+/// the third case at all: `PrintStream.println` (`:771`) swallows its errors, so the jar writes
+/// into the void and still exits `0`.
+///
+/// Java's own shutdown is neither: `System.exit(0)` (`:777-779`) kills its daemon thread mid-write.
+/// The drain is a deliberate improvement over a shutdown that can lose a line. It is row 11 of the
+/// delta table in `crates/freerouting/README.md`.
 ///
 /// One join is conditional and the reason is written at it: on the write-failure path the reader
 /// thread is still parked in `reader.lines()` on a stdin nobody has closed, so it is dropped
@@ -222,8 +238,10 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
                 if let Some(resp) = outbound
                     && write_line(&writer, &resp).is_err()
                 {
-                    // A stdout that will not take a line is a peer that is gone, and it means
-                    // exactly what an EOF on stdin means. Same treatment, deliberately.
+                    // A stdout that will not take a line is a peer that has stopped **reading**,
+                    // so every running tool is working for no one. Unchanged by ruling BH, which
+                    // moved only the EOF-on-stdin path: see `run_with`'s shutdown table for why
+                    // the two are not the same event.
                     exit_code = 1;
                     draining = true;
                     cancel_every_in_flight(&in_flight);
@@ -233,14 +251,25 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
                 }
             }
             Event::Eof | Event::ReadFailed => {
+                // Both paths: the reader thread has already returned, so the conditional join at
+                // the foot of this function may wait on it, and no further line can arrive, so the
+                // loop stops taking new work and runs only until the last tool thread reports.
                 reader_ended = true;
+                draining = true;
+                // **Controller ruling BH**: the two paths part company here, and only here.
+                //
+                // A **read failure** means the process can learn nothing more about the pipe, so
+                // the in-flight work is abandoned and the code is Java's `1` (`:780-782`).
+                //
+                // An **EOF** means the client has no more *requests* — not that it has stopped
+                // reading answers. Cancelling there made `freerouting mcp < script.jsonl` answer
+                // partial results with no error at all; see `run_with`'s shutdown table for the
+                // measurement. So EOF drains and every in-flight call finishes, and the code is
+                // Java's `0` (`:778-779`).
                 if matches!(event, Event::ReadFailed) {
                     exit_code = 1;
+                    cancel_every_in_flight(&in_flight);
                 }
-                // The peer is gone: nothing can read another progress notification and nothing
-                // will send another line, so every running tool is working for no one.
-                cancel_every_in_flight(&in_flight);
-                draining = true;
                 if in_flight.is_empty() {
                     break;
                 }
@@ -275,8 +304,12 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
     exit_code
 }
 
-/// `token.cancel()` for every call still in flight — the one meaning "the peer is gone", shared by
-/// the EOF, read-failure and write-failure paths so they cannot drift apart.
+/// `token.cancel()` for every call still in flight — the meaning "**nobody is reading the
+/// answers**", shared by the read-failure and write-failure paths so the two cannot drift apart.
+///
+/// **Not the EOF path** (controller ruling BH): a client that closed stdin has no more requests,
+/// which is not the same thing as a client that has stopped reading. See [`run_with`]'s shutdown
+/// table.
 fn cancel_every_in_flight(in_flight: &HashMap<String, CancelToken>) {
     for token in in_flight.values() {
         // `ALL`, never `AUTO_ROUTER_ONLY` — see [`run_with`]'s cancellation section.

@@ -76,8 +76,8 @@
 //!
 //! Plan 8's `CancelToken` joins at exactly these sites and must preserve the split: a token that
 //! ends the whole pipeline where Java ends one stage changes the board. It does preserve it —
-//! see the `pub seam` section above for the three sites [`RouterStop::poll_cancel`] landed at and
-//! why a *cancel* at a per-stage site is not a *deadline* at a per-stage site.
+//! see the `pub seam` section above for the four sites [`RouterStop::poll_cancel`] landed at and
+//! why a *cancel* at a per-stage — or per-item — site is not a *deadline* at one.
 //!
 //! # pub seam: Plan 8's `CancelToken` — **LANDED**, Plan 8 Task 11 (controller ruling BB)
 //!
@@ -90,13 +90,22 @@
 //! own escape — *"if a poll site turns out to be missed, add a poll, never a lock"* — as an
 //! **additive-and-wrapped, driver-pinned** change, which controller ruling BB assigned to Plan 8
 //! Task 11. What landed is [`RouterStop::with_cancel_poll`] (install one closure) and
-//! [`RouterStop::poll_cancel`] (run it), called from **three** sites and no others:
+//! [`RouterStop::poll_cancel`] (run it), called from **four** sites and no others — three pass
+//! loop heads from Task 11, and one per-**item** site Plan 8 Task 12 added under controller
+//! ruling AI after measuring what a pass costs:
 //!
 //! | site | Java loop | why a cancel may be polled there |
 //! |---|---|---|
 //! | `AutorouteBatchLoop::run`'s pass loop | `AutorouteBatchLoop.java:250-253` | the job-level flag's own loop |
 //! | `BatchFanout::fanout_board`'s pass loop | `BatchFanout.java:111-116` | a cancel is job-level even at a per-stage site — see below |
 //! | `BatchOptimizer::run_batch_loop`'s pass loop | `BatchOptimizer.java:172-176` | ditto |
+//! | `AutoroutePassRunner::run_single_thread`'s **item** loop (`pipeline/pass_runner.rs`) | `AutoroutePassRunner.java:202-205` | ruling AI's sanctioned fourth site, taken on a measurement: one auto-routing pass of `fixtures/Issue508-DAC2020_bm01.dsn` is **135 s** in a release build, so the three rows above alone put a two-minute floor under an operator's `notifications/cancelled`. With this row the same cancel is observed in ~0.03 s |
+//!
+//! **The fourth site is `poll_cancel`-only, and could not be `poll_deadline`.** It sits inside a
+//! stage, and `poll_deadline` requests `ALL` on a *stage* clock — exactly what the next section
+//! forbids at a per-stage site. `poll_cancel` carries no clock at all; what it copies in is an
+//! operator's `requestStop()`, which is `ALL` by definition, so the deeper site changes *when* the
+//! flag is seen and never *what* it means.
 //!
 //! The two per-stage rows are **not** a flattening of the distinction this module's next section
 //! draws. That distinction is about [`RouterStop::poll_deadline`], which requests `ALL` on a
@@ -194,7 +203,7 @@ pub struct PassRecord {
 // =================================================================================================
 
 /// **Controller ruling BB's poll seam** (Plan 8 Task 11): the closure a [`RouterStop`] may carry,
-/// which copies an *external* stop request in at the three loop heads listed on
+/// which copies an *external* stop request in at the four sites listed on
 /// [`RouterStop::poll_cancel`].
 ///
 /// The only implementation in the tree is `fr_core::CancelToken::apply_to`, and this crate
@@ -417,11 +426,15 @@ impl RouterStop {
     /// **Controller ruling BB's poll seam** (Plan 8 Task 11): run the closure
     /// [`RouterStop::with_cancel_poll`] installed, if any.
     ///
-    /// This is the *one line* an added poll site executes, and it is called from exactly three
+    /// This is the *one line* an added poll site executes, and it is called from exactly **four**
     /// places in this crate — the job-level loop head of `AutorouteBatchLoop::run`
-    /// (`pipeline/batch_loop.rs`, `AutorouteBatchLoop.java:250-253`) and the two per-stage loop
+    /// (`pipeline/batch_loop.rs`, `AutorouteBatchLoop.java:250-253`), the two per-stage loop
     /// heads ruling AI enumerates, `BatchFanout::fanout_board` (`BatchFanout.java:111-116`) and
-    /// `BatchOptimizer::run_batch_loop` (`BatchOptimizer.java:172-176`).
+    /// `BatchOptimizer::run_batch_loop` (`BatchOptimizer.java:172-176`), and — added by Plan 8
+    /// Task 12 under ruling AI, on a measurement — the per-**item** loop of
+    /// `AutoroutePassRunner::run_single_thread` (`pipeline/pass_runner.rs`,
+    /// `AutoroutePassRunner.java:202-205`). See the module doc's table for the 135-second pass
+    /// that made the fourth site necessary and for why it is `poll_cancel`-only.
     ///
     /// # It is not [`RouterStop::poll_deadline`], and the difference is the whole point
     ///

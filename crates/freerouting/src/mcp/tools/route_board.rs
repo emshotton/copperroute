@@ -52,9 +52,12 @@
 //! This is the only tool that can run for minutes, so it is the only one that reports
 //! (`notifications/progress`, through Task 11's [`ProgressWriter`]) and the only one whose
 //! cancellation can arrive mid-run. The token reaches the router through controller ruling BB's
-//! poll seam — [`fr_core::CancelToken::as_router_stop`] installs the closure, and the three loop
-//! heads `RouterStop::poll_cancel` sits at copy the flag in. **Java has neither** on any of its
-//! 28 tools (delta row 6).
+//! poll seam — [`fr_core::CancelToken::as_router_stop`] installs the closure, and the **four**
+//! sites `RouterStop::poll_cancel` sits at copy the flag in: the three pass loop heads Task 11
+//! landed, plus the per-**item** loop of `AutoroutePassRunner` that Task 12 added under ruling AI,
+//! because one pass of a real board is 135 seconds and a cancellation that takes that long is not
+//! one (`fr_router::pipeline::stop`'s module doc carries the table and the measurement).
+//! **Java has neither progress nor cancellation** on any of its 28 tools (delta row 6).
 
 use super::super::jsonrpc::RpcError;
 use super::super::server::{ProgressWriter, State};

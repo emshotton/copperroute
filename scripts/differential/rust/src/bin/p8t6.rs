@@ -365,7 +365,13 @@ fn observe(
         .get("isError")
         .map_or("absent", |_| "present")
         .to_string();
-    let _ = &notifications;
+    // Row 6 counts **every** `notifications/progress` this conversation produced, not only the
+    // long call's, so a program that reported progress for the short call too would still be
+    // counted. `notifications` here is that first call's share.
+    let mut call_progress_notifications = notifications
+        .iter()
+        .filter(|n| n["method"] == "notifications/progress")
+        .count();
 
     // 5b. the **longest-running tool each program has**, again with a progress token — delta row
     // 6. The two tools differ, and they have to: the tool sets are disjoint (that is delta row 10
@@ -382,7 +388,7 @@ fn observe(
     }));
     let (progress_answer, progress_notifications) = server.response(SLOW);
     assert!(progress_answer.is_some(), "the progress call is answered");
-    let call_progress_notifications = progress_notifications
+    call_progress_notifications += progress_notifications
         .iter()
         .filter(|n| n["method"] == "notifications/progress")
         .count();
@@ -475,30 +481,44 @@ fn observe(
     }
 }
 
-/// Row 7's own run: the jar with authentication left at its default, calling one stateful tool.
-/// `ApiAuthenticationSettings.isEnabled` is `true` (`:11`) and the stdio bridge never supplies an
-/// `Authorization` header, so the envelope comes back `401`.
-fn jar_authentication(scratch: &std::path::Path) -> String {
-    let mut server = Server::start(jar_command(scratch, false));
+/// Row 7's own run — **one probe, run against each program at its own default configuration**.
+///
+/// The jar's default is the launch line *without* the two `authentication.enabled=false` flags
+/// (job 3's run B): `ApiAuthenticationSettings.isEnabled` is `true` (`:11`) and the stdio bridge
+/// never supplies an `Authorization` header, so the envelope comes back `401`. The port's default
+/// is `freerouting mcp`, because it has no authentication flag to leave at anything.
+///
+/// **Both sides are observations**, which is what lets row 7 fail as `GONE`. A hard-coded
+/// `"no authentication"` on the port's side — which is what this driver shipped with at `add3a79`
+/// — would keep printing `DELTA` if the port ever grew authentication-on-by-default, and that is
+/// precisely the convergence the driver exists to catch. Should-fix 2 of the Task 12 review.
+///
+/// The classification is deliberately about *what a caller with no credential gets*, not about
+/// which flags exist: a `401` in the envelope, any other `isError`, or a plain result.
+fn authentication_probe(command: Command, tool: &str, arguments: serde_json::Value) -> String {
+    let mut server = Server::start(command);
     server.send(&initialize());
     let _ = server.response(SLOW);
+    // No `Authorization`, no API key, no profile header — the whole point of the row.
     server.send(&serde_json::json!({
         "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-        "params": {"name": "create_session", "arguments": {}},
+        "params": {"name": tool, "arguments": arguments},
     }));
     let (answer, _) = server.response(SLOW);
-    let answer = answer.expect("create_session is answered");
+    let answer = answer.expect("the probe call is answered");
     let _ = server.finish();
     let text = answer["result"]["content"][0]["text"]
         .as_str()
         .unwrap_or_default()
         .to_string();
     if text.contains("\"status\": 401") || text.contains("\"status\":401") {
-        "401 on a stateful tool".to_string()
+        "401 without a credential".to_string()
     } else if answer["result"]["isError"].as_bool() == Some(true) {
         format!("an isError result: {text}")
+    } else if answer.get("error").is_some() {
+        format!("a JSON-RPC error: {}", answer["error"]["message"])
     } else {
-        "no authentication".to_string()
+        "answered without a credential".to_string()
     }
 }
 
@@ -532,7 +552,16 @@ fn main() {
             }),
         ),
     );
-    let jar_auth = jar_authentication(&scratch);
+    // Row 7, both sides observed — see `authentication_probe`. The jar's stateful `create_session`
+    // is the tool its API key guards; the port has no stateful tool and no key, so the probe asks
+    // it for the same thing it asked the jar for, which is "what does a caller with no credential
+    // get".
+    let jar_auth = authentication_probe(
+        jar_command(&scratch, false),
+        "create_session",
+        serde_json::json!({}),
+    );
+    let port_auth = authentication_probe(port_command(), "list_settings", serde_json::json!({}));
 
     let rows = vec![
         Row {
@@ -596,7 +625,7 @@ fn main() {
             what: "authentication, at its default",
             kind: Kind::Delta,
             jar: jar_auth.clone(),
-            port: "no authentication".to_string(),
+            port: port_auth.clone(),
         },
         Row {
             number: "8",

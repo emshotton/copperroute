@@ -81,10 +81,13 @@ fn initialize_ping_and_list_over_pipes() {
 // no detached thread for it to be about.
 //
 // The reader is scripted rather than a `Cursor`: a `Cursor` hands the transport every line at once
-// and then EOF, and EOF cancels every in-flight call — so a cancellation test over a `Cursor`
-// would pass even if `notifications/cancelled` did nothing at all. `Script` blocks until the test
-// sends the next line, which is what makes `a_cancelled_tool_stops_mid_flight` a test of the
-// notification rather than of the shutdown.
+// and then EOF, so a test could never send a line *while* a tool is running — and ordering is
+// exactly what the cancellation tests are about. `Script` blocks until the test sends the next
+// line, which is what makes `a_cancelled_tool_stops_mid_flight` a test of the notification rather
+// than of the shutdown. *(This paragraph read "…and EOF cancels every in-flight call, so a
+// cancellation test over a `Cursor` would pass even if `notifications/cancelled` did nothing at
+// all" until controller ruling BH, after which EOF cancels nothing; the reason for `Script`
+// survives the ruling, but that particular argument for it does not.)*
 
 use freerouting::mcp::server::{State, ToolDef};
 use freerouting::mcp::stdio::run_with;
@@ -485,6 +488,71 @@ fn eof_exits_zero() {
     assert!(lines.is_empty(), "{lines:?}");
 }
 
+/// **Controller ruling BH.** EOF on stdin **drains without cancelling**: a client that closed
+/// stdin has no more *requests*, which is not the same thing as a client that has stopped reading
+/// answers. Every in-flight `tools/call` therefore runs to completion and answers, and the exit
+/// code is still Java's `0`.
+///
+/// The tool asserts the flag itself rather than only its own answer, because "it returned a full
+/// result" would also be true of a tool that saw the cancellation and ignored it. What must not
+/// happen is the flag being *set*.
+///
+/// This is the property the piped-script case rides on: before BH,
+/// `freerouting mcp < script.jsonl` answered partial results with `timed_out: false` and no error
+/// — a `route_board` on `Issue143-rpi_splitter.dsn` gave 797 bytes and 0 wires where a live pipe
+/// gave 3 656 bytes and 16 wires. It now gives 3 656 bytes either way.
+#[test]
+fn eof_drains_an_in_flight_call_without_cancelling_it() {
+    let started = Arc::new(AtomicBool::new(false));
+    let saw_cancel = Arc::new(AtomicBool::new(false));
+
+    let mut state = State::new();
+    {
+        let started = Arc::clone(&started);
+        let saw_cancel = Arc::clone(&saw_cancel);
+        state.register_tool(
+            tool("slow"),
+            Box::new(move |_state, _args, _progress, cancel| {
+                started.store(true, Ordering::SeqCst);
+                // Long enough that the EOF below lands while this is running, and short enough
+                // that the test is not the slowest thing in the suite.
+                let until = Instant::now() + Duration::from_millis(300);
+                while Instant::now() < until {
+                    if cancel.is_cancelled() {
+                        saw_cancel.store(true, Ordering::SeqCst);
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Ok(json!({"finished": true}))
+            }),
+        );
+    }
+
+    let h = Harness::start(state);
+    h.send(json!({
+        "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+        "params": {"name": "slow", "arguments": {}},
+    }));
+    wait_for("the call to start", || started.load(Ordering::SeqCst));
+    // `finish` closes stdin, which is the EOF under test.
+    let (code, lines) = h.finish();
+
+    assert_eq!(code, 0, "EOF is Java's 0 — Freerouting.java:778-779");
+    assert!(
+        !saw_cancel.load(Ordering::SeqCst),
+        "EOF must not cancel an in-flight call (ruling BH)"
+    );
+    let msgs = parsed(&lines);
+    assert_eq!(msgs.len(), 1, "{lines:?}");
+    assert_eq!(msgs[0]["id"], 4);
+    assert_eq!(
+        msgs[0]["result"]["structuredContent"],
+        json!({"finished": true}),
+        "the drained call answered in full"
+    );
+}
+
 /// A notification — no `id` — is answered by nothing at all. Java prints a **blank line** for one
 /// instead (`McpControllerV1.java:176-177` answers HTTP 204, and `Freerouting.java:769-772` prints
 /// the empty body), which desynchronises a line-oriented client. The blank-line row of the delta
@@ -617,7 +685,16 @@ fn a_reused_in_flight_id_is_refused_and_the_first_call_survives() {
     wait_for("the first call to start", || started.load(Ordering::SeqCst));
     h.send(call);
     wait_for("the refusal", || !h.out.0.lock().unwrap().is_empty());
-    // EOF cancels the first call, which then answers.
+    // An explicit `notifications/cancelled` releases the first call. **Controller ruling BH** is
+    // why it has to be explicit: EOF used to cancel every in-flight call, and this test relied on
+    // that, but EOF now drains *without* cancelling — a client that closed stdin has no more
+    // requests, not a client that stopped reading. Under BH, closing stdin here would leave `spin`
+    // looping until its own 10 s assert-deadline fired. `a_cancelled_tool_stops_mid_flight` forces
+    // the same ordering the same way.
+    h.send(json!({
+        "jsonrpc": "2.0", "method": "notifications/cancelled",
+        "params": {"requestId": 9, "reason": "the test is done with it"},
+    }));
     let (code, lines) = h.finish();
 
     assert_eq!(code, 0);
@@ -644,12 +721,16 @@ fn a_reused_in_flight_id_is_refused_and_the_first_call_survives() {
 // reader, which is right for the transport's own behaviours and wrong for a registry that only
 // `stdio::run` assembles.
 //
-// **The pipe must stay live.** A `freerouting mcp < script.jsonl` invocation closes stdin the
-// moment the last line is read, and EOF cancels every in-flight `tools/call` (delta row 11) — so
-// a routing tool driven that way answers a *partial* result. [`Pipes`] therefore writes one
-// request, reads its answer, and only closes stdin when the conversation is over. Measured while
-// writing these tests: `route_board` on `Issue143-rpi_splitter.dsn` answers 3 656 bytes and 16
-// wires over a live pipe and 797 bytes and 0 wires when the same request is piped from a file.
+// **[`Pipes`] keeps the pipe live** — one request written, its answer read, stdin closed only when
+// the conversation is over. That is not a workaround any more; it is what keeps the test honest
+// about *ordering*, which is the thing a `Cursor`-shaped harness cannot check.
+//
+// It **was** a workaround until controller ruling BH. Before it, EOF cancelled every in-flight
+// `tools/call`, so a `freerouting mcp < script.jsonl` invocation answered a *partial* result with
+// `timed_out: false` and no error: `route_board` on `Issue143-rpi_splitter.dsn` gave 797 bytes and
+// 0 wires piped from a file against 3 656 bytes and 16 wires over a live pipe. Under BH, EOF
+// drains without cancelling and **both** give 3 656 bytes and 16 wires — re-measured on the
+// release binary, and pinned in-process by `eof_drains_an_in_flight_call_without_cancelling_it`.
 
 use std::process::{Child, ChildStdin, ChildStdout};
 
@@ -933,27 +1014,18 @@ fn dsn(relative: &str) -> String {
     parity::java_dir().join(relative).display().to_string()
 }
 
-/// **The end-to-end conversation** the task brief asks for, over spawned pipes: `initialize` →
-/// `notifications/initialized` → `tools/list` → all four tools → the schema snapshot.
+/// The **protocol** half of the end-to-end conversation, in the default lane: `initialize` →
+/// `notifications/initialized` → `tools/list` → `list_settings` → EOF. No board is loaded, so it
+/// costs a process spawn and nothing else.
 ///
-/// Two rungs tie the tools to the two whole-program gates:
-///
-/// * `route_board`'s session is **byte-identical to `p8t1`'s** `cli-tutorial_board/route.ses`,
-///   after the same quirk #92 keyword rewrite `p8t1` and `cli_e2e.rs` apply to the jar side. That
-///   is the measurement that says ruling AU's sparse composition and `resolve_headless` agree on
-///   a real board — two different settings compositions, one SES.
-/// * `check_drc`'s report is **byte-identical to the one `freerouting drc` writes**, which is
-///   `p8t3 e2e`'s port lane, so the tool inherits that gate's comparison against the jar. Its
-///   `violations` array is additionally compared against the committed **jar** reference.
+/// It is the fast twin of [`the_four_tools_over_spawned_pipes`], which routes and checks two real
+/// boards and therefore lives in the `FR_SLOW_PARITY` lane. Splitting them keeps the thing that
+/// breaks most often — a schema edit, a renamed tool, a missing description — failing in every
+/// `cargo nextest run`, while the ~68 s board work runs where the other minute-per-board tests do.
 #[test]
-fn the_four_tools_over_spawned_pipes() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let board = dsn("examples/tutorial_board/tutorial_board.dsn");
+fn the_tool_list_and_schemas_over_spawned_pipes() {
     let mut pipes = Pipes::start();
 
-    // ── initialize ───────────────────────────────────────────────────────────────────────────
     let init = pipes.request(
         1,
         "initialize",
@@ -968,9 +1040,23 @@ fn the_four_tools_over_spawned_pipes() {
 
     pipes.write(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
 
-    // ── tools/list: four tools, flat schemas, matching the golden ────────────────────────────
     let list = pipes.request(2, "tools/list", json!({}));
-    let tools = list["result"]["tools"].as_array().expect("an array");
+    assert_tool_list(&list["result"]["tools"]);
+
+    let settings = pipes.call(3, "list_settings", json!({}));
+    assert_eq!(settings["schema"], all_schemas()["RouterSettings"]);
+    // The defaults are `DefaultSettings`' own, resolved at call time — not literals in the
+    // schema, which is why the golden is machine-independent and this is not.
+    assert_eq!(settings["defaults"]["max_passes"], 9999);
+    assert!(settings["defaults"]["max_threads"].is_number());
+
+    assert_eq!(pipes.finish(), 0, "EOF exits 0 — Freerouting.java:778-779");
+}
+
+/// The four names, their descriptions, their schemas and the absence of the jar's wrapper —
+/// shared by the fast lane above and the full conversation below so the two cannot drift.
+fn assert_tool_list(tools: &Value) {
+    let tools = tools.as_array().expect("an array");
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     // Delta row 10: **four**, not the jar's 28.
     assert_eq!(
@@ -995,6 +1081,57 @@ fn the_four_tools_over_spawned_pipes() {
         }
         assert_eq!(schema, &all_schemas()[tool["name"].as_str().unwrap()]);
     }
+}
+
+/// **The end-to-end conversation** the task brief asks for, over spawned pipes: `initialize` →
+/// `notifications/initialized` → `tools/list` → all four tools → the schema snapshot.
+///
+/// Two rungs tie the tools to the two whole-program gates:
+///
+/// * `route_board`'s session is **byte-identical to `p8t1`'s** `cli-tutorial_board/route.ses`,
+///   after the same quirk #92 keyword rewrite `p8t1` and `cli_e2e.rs` apply to the jar side. That
+///   is the measurement that says ruling AU's sparse composition and `resolve_headless` agree on
+///   a real board — two different settings compositions, one SES.
+/// * `check_drc`'s report is **byte-identical to the one `freerouting drc` writes**, which is
+///   `p8t3 e2e`'s port lane, so the tool inherits that gate's comparison against the jar. Its
+///   `violations` array is additionally compared against the committed **jar** reference.
+///
+/// **The slow lane**, on `cli_e2e.rs`'s own terms: ignored in a debug build and gated on
+/// `FR_SLOW_PARITY=1` otherwise, because it routes and DRC-checks `tutorial_board` (438 nets) and
+/// routes a second KiCad board, which is ~68 s in a debug binary and about one second in a release
+/// one. [`the_tool_list_and_schemas_over_spawned_pipes`] keeps the protocol half in the default
+/// lane, so a schema or tool-name regression still fails a plain `cargo nextest run`.
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn the_four_tools_over_spawned_pipes() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() {
+        eprintln!("SKIP: set FR_SLOW_PARITY=1 to run the MCP board lane");
+        return;
+    }
+    if !parity::require_java_dir() {
+        return;
+    }
+    let board = dsn("examples/tutorial_board/tutorial_board.dsn");
+    let mut pipes = Pipes::start();
+
+    // ── initialize ───────────────────────────────────────────────────────────────────────────
+    let init = pipes.request(
+        1,
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}),
+    );
+    let result = &init["result"];
+    assert_eq!(result["protocolVersion"], "2025-06-18");
+    assert_eq!(result["serverInfo"]["name"], "freerouting");
+    assert_eq!(result["capabilities"]["tools"]["listChanged"], false);
+    // Delta row 1: Java's two non-spec top-level keys are absent.
+    assert!(result.get("serverName").is_none() && result.get("serverVersion").is_none());
+
+    pipes.write(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    // ── tools/list: four tools, flat schemas, matching the golden ────────────────────────────
+    let list = pipes.request(2, "tools/list", json!({}));
+    assert_tool_list(&list["result"]["tools"]);
 
     // ── route_board: the SES is p8t1's, byte for byte ────────────────────────────────────────
     let routed = pipes.call(3, "route_board", json!({"dsn_path": board}));
@@ -1114,10 +1251,14 @@ fn an_output_path_answers_a_path_and_no_body() {
     if !parity::require_java_dir() {
         return;
     }
-    let dir = std::env::temp_dir().join("fr-mcp-route-out");
-    let _ = std::fs::create_dir_all(&dir);
+    // Removed and recreated, and named after this test rather than after the crate, so two
+    // concurrent runs (or two users on one box) cannot share it — `cli_e2e.rs::scratch`'s rule.
+    let dir = std::env::temp_dir()
+        .join("fr-mcp-stdio")
+        .join("an_output_path_answers_a_path_and_no_body");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
     let out = dir.join("routed.ses");
-    let _ = std::fs::remove_file(&out);
 
     let mut pipes = Pipes::start();
     let routed = pipes.call(

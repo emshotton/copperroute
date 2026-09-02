@@ -33,11 +33,16 @@
 //!
 //! **Task 11 landed it.** `fr_router::pipeline::RouterStop::{with_cancel_poll, poll_cancel}` is the
 //! additive half; [`CancelToken::as_router_stop`] installs `move |stop| token.apply_to(stop)` on
-//! the stop it mints, and three loop heads run it — `AutorouteBatchLoop::run`
-//! (`AutorouteBatchLoop.java:250-253`), `BatchFanout::fanout_board` (`BatchFanout.java:111-116`)
-//! and `BatchOptimizer::run_batch_loop` (`BatchOptimizer.java:172-176`). A cancel arriving after
-//! `run_pipeline` has been entered is therefore observed from the next loop head on; the residual
-//! latency is one *pass*, and the discharge note on [`CancelToken::apply_to`] carries the rest.
+//! the stop it mints, and **four** sites run it — the three pass loop heads Task 11 landed
+//! (`AutorouteBatchLoop::run`, `AutorouteBatchLoop.java:250-253`; `BatchFanout::fanout_board`,
+//! `BatchFanout.java:111-116`; `BatchOptimizer::run_batch_loop`, `BatchOptimizer.java:172-176`)
+//! plus the per-**item** loop of `AutoroutePassRunner::run_single_thread`
+//! (`AutoroutePassRunner.java:202-205`), which **Plan 8 Task 12** added under controller ruling AI.
+//!
+//! Task 11 recorded the residual latency as one *pass*. Task 12 measured what a pass costs — 135
+//! seconds for one auto-routing pass of `fixtures/Issue508-DAC2020_bm01.dsn` in a release build —
+//! and took ruling AI's sanctioned fourth site, after which the same cancellation is observed in
+//! about 0.03 s. The discharge note on [`CancelToken::apply_to`] carries the rest.
 //!
 //! # Why an uncancelled token is a no-op, and why that matters
 //!
@@ -272,22 +277,29 @@ impl CancelToken {
     // **DISCHARGED in Plan 8 Task 11** (controller ruling BB — the seam is owned by its first
     // consumer; Task 12 consumes it too). What landed, exactly as the obligation specified it:
     // `fr_router::pipeline::RouterStop::{with_cancel_poll, poll_cancel}` — an additive,
-    // constructor-defaulted `Option<Box<dyn Fn(&RouterStop)>>` — called from **three** loop heads
-    // and no others, `pipeline/batch_loop.rs`'s job-level pass loop
+    // constructor-defaulted `Option<Box<dyn Fn(&RouterStop)>>` — called from three loop heads,
+    // `pipeline/batch_loop.rs`'s job-level pass loop
     // (`AutorouteBatchLoop.java:250-253`) and the two per-stage sites plan-7 ruling AI enumerates,
     // `pipeline/fanout.rs` (`BatchFanout.java:111-116`) and `pipeline/optimizer.rs`
-    // (`BatchOptimizer.java:172-176`). Every existing signature is unchanged and the poll is
+    // (`BatchOptimizer.java:172-176`) — and, since **Task 12**, a **fourth**: see below. Every
+    // existing signature is unchanged and the poll is
     // wrapped: both `RouterStop` constructors leave the closure `None`, so the added line is a
     // `None` test on every run that does not install one. [`CancelToken::as_router_stop`] is the
     // only installer in the tree, and what it installs is this method. The gate was re-run and is
     // in the Task 11 report: `cargo test -p fr-router --test batch_parity`, `run.sh p6t1` (all six
     // rows) and `run.sh p8t1` all byte-unchanged.
     //
-    // The residual latency is one *pass*, not one *run*: a cancel arriving inside a pass is copied
-    // in at the next loop head, and every deeper reader of the flag
-    // (`AutoroutePassRunner.java:203`'s item loop among them) sees it from there on. Task 12 may
-    // add a fourth site if a whole pass turns out to be too coarse; ruling AI's own list allows
-    // `AutoroutePassRunner:203` as a job-level one.
+    // ~~The residual latency is one *pass*, not one *run*… Task 12 may add a fourth site if a
+    // whole pass turns out to be too coarse; ruling AI's own list allows `AutoroutePassRunner:203`
+    // as a job-level one.~~ **Task 12 measured it and did.** One auto-routing pass of
+    // `fixtures/Issue508-DAC2020_bm01.dsn` is **135 seconds** in a release build (`--max-passes 1`,
+    // fanout and optimizer off), so a whole pass is far too coarse: an operator's
+    // `notifications/cancelled` would have taken over two minutes. `pipeline/pass_runner.rs`'s
+    // per-item loop (`AutoroutePassRunner.java:202-205`) now carries the fourth `poll_cancel`, and
+    // the same cancellation is observed in about **0.03 s** —
+    // `crates/freerouting/tests/mcp_stdio.rs::cancelling_route_board_mid_run_…` bounds it at 60 s,
+    // so the site cannot be removed without that test taking minutes. `batch_parity` and `p8t1`
+    // were re-run byte-unchanged.
     pub fn apply_to(&self, stop: &RouterStop) {
         if self.is_cancelled() {
             // StoppableThread.requestStop (:23-25).

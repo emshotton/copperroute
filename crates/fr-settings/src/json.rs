@@ -42,9 +42,11 @@
 //! whitespace-only or literal-`null` document (a `null` `RouterSettings`, where a *quoted*
 //! `"null"` is still a `JsonSyntaxException`). `serde_json` rejects every one of them. **The list
 //! is illustrative, not exhaustive** — the rule is "Gson's reader is more permissive", and no
-//! test enumerates the boundary. The port's readers are strict: Plan 8's MCP `settings` input
-//! arrives as parsed JSON, and [`crate::sources::JsonFileSettings`] — Gson's only reader of this
-//! type in headless Java — reads a real `freerouting.json` through `from_json_str`. *(This
+//! test enumerates the boundary. The port's readers are strict: the MCP's `route_board
+//! { settings? }` argument arrives as JSON the transport has already parsed (so a `NaN` literal
+//! never reaches this reader — the whole line is a `-32700` first), and
+//! [`crate::sources::JsonFileSettings`] — Gson's only reader of this type in headless Java —
+//! reads a real `freerouting.json` through `from_json_str`. *(This
 //! sentence read ~~"Nothing in this port feeds it non-strict JSON: `JsonFileSettings` … is out of
 //! scope (spec §2)"~~ until Plan 8 Task 5, when scan ruling R7 ruled that source back in.)* The
 //! divergence stays acceptance-only, for a reason that survives the change:
@@ -88,8 +90,13 @@ impl RouterSettings {
     /// `RouterSettings()` allocates, see the module docs).
     ///
     /// This is what `JsonFileSettings.loadSettings` (`JsonFileSettings.java:48-54`) calls on
-    /// `root["router"]`, and what Plan 8's MCP `settings` input will call. The reader is strict
-    /// JSON, not Gson's lenient dialect — see the module docs' `not ported:` note.
+    /// `root["router"]`, and — since Plan 8 Task 12 — what the MCP's `route_board { settings? }`
+    /// argument calls, from
+    /// `crates/freerouting/src/mcp/tools/route_board.rs::settings_payload`. That call site
+    /// re-serialises the already-parsed argument to text and comes back through here rather than
+    /// reaching for `serde_json::from_value`, so this stays the **one** reader of this type and
+    /// quirk #141's divergence is recorded in one place. The reader is strict JSON, not Gson's
+    /// lenient dialect — see the module docs' `not ported:` note.
     ///
     /// # Errors
     ///

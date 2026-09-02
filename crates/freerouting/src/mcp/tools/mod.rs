@@ -205,6 +205,21 @@ fn type_name_of(value: &Value) -> &'static str {
 /// `statistics` is deliberately **not** among them even though `BoardFileDetails` carries one:
 /// `route_board`'s result already has spec §13's `stats`, and two statistics objects under two
 /// names in one result would be a place for a reader to pick the wrong one.
+///
+/// # `path` and `filename` are the payload's, not the file's — deliberately
+///
+/// `BoardFileDetails.directoryPath` (serialised as `path`) and `.filename` describe **the job's
+/// output object**, which is derived from the *input*'s path (`RoutingJob.java:438-454`). So on a
+/// `route_board` with no `output_path` they name a directory where nothing was written, and on one
+/// *with* an `output_path` they name a different directory from the file that was.
+///
+/// The alternative — rewriting them to point at `output_path` — was considered and **rejected**:
+/// ruling AO keeps these names so that an agent written against the jar's REST API is not
+/// gratuitously broken, and an agent that reads `path` from a `BoardFilePayload` expects the
+/// payload's own semantics, not a second field called `ses_path` wearing a third name. The result
+/// has exactly one member that says where a file went, and it is `ses_path`, which appears only
+/// when one was asked for. The README's tools section says so in a sentence, because that is where
+/// a reader of the *tool* looks.
 pub fn file_payload_fields(details: &fr_core::BoardFileDetails) -> Value {
     json!({
         "size": details.size,
