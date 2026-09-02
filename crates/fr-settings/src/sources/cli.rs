@@ -61,9 +61,52 @@ impl CliSettings {
 
     /// `CliSettings(String[])` (`:25-28`) plus `parseArguments` (`:30-86`).
     ///
+    /// Java-exact: `--set` is not a shape this parser knows, exactly as `CliSettings.java` does
+    /// not know it. [`CliSettings::new_with_set_alias`] is the port-only variant.
+    ///
     /// renamed: CliSettings -> CliSettings::new (Rust has no constructors).
     #[must_use]
     pub fn new(args: &[String]) -> Self {
+        Self::parse(args, false)
+    }
+
+    /// [`CliSettings::new`] plus one **port-only** shape: `--set <section>.<field>=<value>`, an
+    /// exact alias for `--<section>.<field>=<value>`.
+    ///
+    /// # Why the alias exists, and why it is a second constructor rather than an arm of the first
+    ///
+    /// **Controller ruling BJ.** The port's native command line is `clap`'s, and `clap` has no arm
+    /// for a free-form `--<section>.<field>=<value>` — it answers
+    /// `error: unexpected argument '--router.optimizer.max_threads' found` and exit 2. So before
+    /// this alias existed the **native subcommand form had no generic settings override at all**,
+    /// while `crates/freerouting/src/cli.rs` declared a `--set` flag that `clap` parsed and
+    /// nothing read. The alias closes that: `freerouting route b.dsn -o b.ses --set
+    /// router.max_passes=7` now reaches this source at priority 60, through the very same
+    /// [`CliSettings::apply_router_setting`] the `--router.max_passes=7` spelling reaches on the
+    /// legacy form.
+    ///
+    /// **It must not be reachable from the legacy form**, which is why it is a separate
+    /// constructor. Ruling AR makes the legacy path bug-for-bug, and the jar ignores `--set`
+    /// twice over: `--set` has no `=`, so `CliSettings.java:45` skips it, and `router.x=7` does
+    /// not start with `-`, so neither branch of the loop sees it. A `--set` arm in
+    /// [`CliSettings::new`] would make `freerouting -de a.dsn -do b.ses --set router.max_passes=7`
+    /// route differently from the jar on the same argv. `crates/freerouting/src/commands::cli_settings`
+    /// is the one place that chooses between the two constructors, on
+    /// `crate::legacy::is_legacy_form` — the same predicate `crate::run` dispatches on.
+    ///
+    /// Everything else about the alias is *identical* to the direct spelling, deliberately: the
+    /// payload is split at its **first** `=`, a name that does not start with `router.` is
+    /// ignored, `router.enabled` arms the `-de`/`-do` forcing guard, and a failed conversion
+    /// warns and is skipped. Both spellings are accepted — `--set router.x=1` and
+    /// `--set=router.x=1` — because `clap` accepts both.
+    #[must_use]
+    pub fn new_with_set_alias(args: &[String]) -> Self {
+        Self::parse(args, true)
+    }
+
+    /// The body of both constructors. `set_alias` is ruling BJ's port-only arm; see
+    /// [`CliSettings::new_with_set_alias`].
+    fn parse(args: &[String], set_alias: bool) -> Self {
         let mut this = Self {
             settings: RouterSettings::new(),
             parsed_arguments: BTreeMap::new(),
@@ -79,9 +122,40 @@ impl CliSettings {
             let arg = args[i].as_str();
 
             if let Some(body) = arg.strip_prefix("--") {
+                // Ruling BJ's port-only alias, native form only. Tested **before** the `=` rule
+                // below, because `--set=router.x=1`'s own first `=` would otherwise make the
+                // property name `set`, which no `router.` test can rescue.
+                //
+                // `--settings=<file>` is not caught here: `"settings=…".starts_with("set=")` is
+                // false, and `--settings` on its own is `body == "settings"`, not `"set"`.
+                if set_alias && (body == "set" || body.starts_with("set=")) {
+                    // `--set=<payload>` carries the payload inline; `--set <payload>` takes the
+                    // next token unconditionally, because `clap` has already refused a `--set`
+                    // with no value by the time any of this runs.
+                    let payload = match body.strip_prefix("set=") {
+                        Some(rest) => Some(rest.to_string()),
+                        None => args.get(i + 1).map(|next| {
+                            i += 1;
+                            next.clone()
+                        }),
+                    };
+                    // From here the two spellings are one code path with the block below: split
+                    // at the FIRST `=`, arm the forcing guard on the name alone, apply only a
+                    // `router.` name.
+                    if let Some(payload) = payload
+                        && let Some((property_name, value)) = payload.split_once('=')
+                    {
+                        if property_name == "router.enabled" {
+                            has_explicit_router_enabled_argument = true;
+                        }
+                        if property_name.starts_with("router.") {
+                            this.apply_router_setting(property_name, value);
+                        }
+                    }
+                }
                 // :43-57 — the `--property=value` form. `contains("=")` first (:45), so a bare
                 // `--router.max_passes` is skipped rather than treated as an empty value.
-                if body.contains('=') {
+                else if body.contains('=') {
                     // `split("=", 2)` (:46): everything after the first `=` is the value.
                     let (property_name, value) = body.split_once('=').expect("contains checked");
 
@@ -296,6 +370,50 @@ pub struct LegacyBridge {
     pub drc_enabled: Option<bool>,
 }
 
+impl LegacyBridge {
+    /// Lifts whatever a `--router.<path>=<value>` assignment landed on a scratch
+    /// [`RouterSettings`] onto the eight bridge fields this struct models.
+    ///
+    /// Java has no such method: `setValue` writes the bridge object *directly*
+    /// (`GlobalSettings.java:500`), because the bridge **is** a `RouterSettings`. This struct is
+    /// the nine-field subset plan-4 ruling 8 kept, so the assignment is replayed onto a fresh
+    /// `RouterSettings` — which is what `new GlobalSettings()` starts the bridge as
+    /// (`GlobalSettings.java:53`) — and the modelled fields are copied across. Only fields the
+    /// assignment actually set are copied, and `RouterSettings::new()` leaves every one of them
+    /// `None`, so "set" and "`Some`" are the same test.
+    ///
+    // added in Plan 4: (no Java counterpart — `setValue` writes the bridge in place)
+    fn absorb_router_settings(&mut self, scratch: &RouterSettings) {
+        if scratch.enabled.is_some() {
+            self.router_enabled = scratch.enabled;
+        }
+        if scratch.max_passes.is_some() {
+            self.max_passes = scratch.max_passes;
+        }
+        if scratch.ignore_net_classes.is_some() {
+            self.ignore_net_classes = scratch.ignore_net_classes.clone();
+        }
+        let Some(optimizer) = scratch.optimizer.as_ref() else {
+            return;
+        };
+        if optimizer.max_threads.is_some() {
+            self.optimizer_max_threads = optimizer.max_threads;
+        }
+        if optimizer.optimization_improvement_threshold.is_some() {
+            self.optimization_improvement_threshold = optimizer.optimization_improvement_threshold;
+        }
+        if optimizer.board_update_strategy.is_some() {
+            self.board_update_strategy = optimizer.board_update_strategy;
+        }
+        if optimizer.item_selection_strategy.is_some() {
+            self.item_selection_strategy = optimizer.item_selection_strategy;
+        }
+        if optimizer.hybrid_ratio.is_some() {
+            self.hybrid_ratio = optimizer.hybrid_ratio.clone();
+        }
+    }
+}
+
 /// `GlobalSettings.applyCommandLineArguments` (`GlobalSettings.java:521-838`), reduced to the
 /// fields plan ruling 8 keeps: the legacy flag table's effect on the dead bridge.
 ///
@@ -339,9 +457,37 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
             continue;
         }
 
-        // :530-537 `--compare-boards=`, :538-563 the `--name=value` setter (both out of scope —
-        // they write `GlobalSettings`' own non-router fields, never the router bridge).
-        if arg.starts_with("--") {
+        // :530-537 — `--compare-boards=` writes `GlobalSettings.compareFile1/2`, out of scope.
+        //
+        // :538-563 — the `--name=value` setter. An earlier revision of this comment said the arm
+        // wrote *"`GlobalSettings`' own non-router fields, **never the router bridge**"*, and
+        // that is **false**: `setValue` (`:498-509`) is `ReflectionUtil.setFieldValue(this, name,
+        // value)`, and `@SerializedName("router")` on the deprecated bridge (`:52`) is precisely
+        // what makes a `router.`-prefixed path resolve onto it — the field's own javadoc says so
+        // (`:45-48`, *"required so that `ReflectionUtil.setFieldValue` can resolve the
+        // `router.*` property path"*). Measured on the HEAD jar by `p8t5`'s
+        // `router-enabled-empty` row: `--router.enabled=` leaves `routerSettings.enabled` at
+        // `false`, not `null`, because `Boolean.parseBoolean("")` is `false`.
+        //
+        // So the `router.` arm is modelled, through the same [`set_field_value`] `CliSettings`
+        // uses, and the rest is not. `debug.*` (`:541-557`) writes `debugSettings`, which this
+        // crate does model — but through [`crate::DebugSettings`], not through the bridge, so it
+        // stays out of this function.
+        if let Some(body) = arg.strip_prefix("--") {
+            if let Some((property_name, value)) = body.split_once('=')
+                // :558 — `user_data_path` is excluded from the setter.
+                && property_name != "user_data_path"
+                && let Some(field_path) = property_name.strip_prefix("router.")
+            {
+                // Java assigns into the live bridge; the port assigns into a fresh
+                // `RouterSettings` — which is what `new GlobalSettings()` starts the bridge as —
+                // and lifts across whatever landed. A failure is `setValue`'s `catch` at
+                // `:502-508`, i.e. an `FRLogger` line and nothing else.
+                let mut scratch = RouterSettings::new();
+                if set_field_value(&mut scratch, field_path, value).is_ok() {
+                    bridge.absorb_router_settings(&scratch);
+                }
+            }
             i += 1;
             continue;
         }
@@ -482,6 +628,50 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
     bridge
 }
 
+/// Which legacy flags parse their value **before** the `i++` that consumes it — the half of
+/// `applyCommandLineArguments`' loop (`GlobalSettings.java:521-838`) that decides how far the
+/// cursor moves.
+///
+/// `:686`, `:698`, `:708` and `:822` each sit *after* an assignment that can throw
+/// (`Integer.decode`, `Integer.decode`, `Float.parseFloat`, `Integer.parseInt`), and the whole
+/// loop body is inside the per-iteration `try` at `:523`/`:835-837`. So `-mp abc` logs
+/// `"There was a problem parsing the '-mp' parameter"`, the `i++` **never runs**, and `abc` is
+/// then re-read as an argument of its own — where `:832-834` warns about it a second time.
+///
+/// Every other valued flag (`-de`, `-di`, `-do`, `-drc`, `-dr`, `-us`, `-is`, `-hr`, `-l`,
+/// `-host`, `-inc`, `-ll`) parses nothing and always advances.
+///
+/// `arg` is the raw argument, matched by **prefix** as everywhere else on this path; `value` is
+/// the token the blanket rule already accepted. This is the seam
+/// `crates/freerouting/src/legacy.rs` needs so that it can walk the same argv without
+/// re-deriving any of the three number parsers — the whole point of plan-4 ruling 10.
+///
+// added in Plan 4: (no Java counterpart — the decision is inlined in the loop)
+#[must_use]
+pub fn legacy_flag_value_is_consumed(arg: &str, value: &str) -> bool {
+    // The order is the loop's own; `-drc` before `-dr` (`:660` before `:670`).
+    if arg.starts_with("-de")
+        || arg.starts_with("-di")
+        || arg.starts_with("-do")
+        || arg.starts_with("-drc")
+        || arg.starts_with("-dr")
+    {
+        true
+    } else if arg.starts_with("-mp") || arg.starts_with("-mt") {
+        // :677, :690 — `Integer.decode`.
+        java_integer_decode(value).is_some()
+    } else if arg.starts_with("-oit") {
+        // :701-702 — `Float.parseFloat`.
+        java_parse_f32(value, "optimizer.optimization_improvement_threshold").is_ok()
+    } else if arg.starts_with("-dct") {
+        // :818 — `Integer.parseInt`, **not** `decode`, so `-dct 0x10` throws where `-mp 0x10`
+        // does not.
+        crate::field_path::java_parse_i32(value, "gui.dialog_confirmation_timeout").is_ok()
+    } else {
+        true
+    }
+}
+
 /// `Integer.decode(String)`: an optional sign, then `0x`/`0X`/`#` for hex, a leading `0` for
 /// octal, else decimal. **Not** `Integer.parseInt`, which is what the `CliSettings` path uses —
 /// `0x10` is 16 here and a parse failure there.
@@ -579,11 +769,30 @@ pub struct DeSlots {
 /// reset per `-de` occurrence while the slots themselves persist: `-de a.dsn -de b.dsn` keeps
 /// `b.dsn` without the "only the last one" warning.
 ///
-/// added in Plan 8: legacy.rs call site (`crates/freerouting/src/legacy.rs` still reproduces the
-/// rule itself; plan ruling 10 keeps the binary untouched)
+/// `crates/freerouting/src/legacy.rs` calls this — **Plan 8 Task 5** deleted the binary's own copy
+/// of the rule, which is what plan ruling 10 built this function for. Use
+/// [`classify_de_arguments_reporting`] when the five `FRLogger.warn` lines matter too.
 #[must_use]
 pub fn classify_de_arguments(args: &[String]) -> DeSlots {
+    classify_de_arguments_reporting(args).0
+}
+
+/// [`classify_de_arguments`] with the five `FRLogger.warn` lines it otherwise drops.
+///
+/// `fr-settings` must not depend on `tracing` (plan Global Constraints), so the `-de` arm's five
+/// warnings — `:602-605`, `:615-618`, `:623-626`, `:631-634` and `:638-644` — are returned rather
+/// than logged. `crates/freerouting` is the caller that has a logger; the `p8t5` differential is
+/// what pins the strings, in Java's own order, against the jar's `FRLogger.getLogEntries()`.
+///
+/// The messages are Java's, verbatim and fully interpolated. They are the reason the
+/// `hasSes`/`hasRules` flags exist at all: `hasDsn` changes where a `.json` lands, and the other
+/// two gate **only** these lines.
+///
+// added in Plan 4: (no Java counterpart — the warnings only reach FRLogger)
+#[must_use]
+pub fn classify_de_arguments_reporting(args: &[String]) -> (DeSlots, Vec<String>) {
     let mut slots = DeSlots::default();
+    let mut warnings: Vec<String> = Vec::new();
 
     let mut i = 0;
     while i < args.len() {
@@ -621,10 +830,11 @@ pub fn classify_de_arguments(args: &[String]) -> DeSlots {
         }
 
         // :589-644 — classify.
-        // Java's `hasSes`/`hasRules` gate only the "only the last one will be used" log lines
-        // (:614, :623, :631) this port drops; `hasDsn` is the one flag with an effect, on the
-        // `.json` arm.
+        // `hasDsn` is the one flag with an effect on a *slot*, on the `.json` arm; `hasSes` and
+        // `hasRules` gate only the "only the last one will be used" warnings.
         let mut has_dsn = false;
+        let mut has_ses = false;
+        let mut has_rules = false;
         for file in files {
             let file = java_trim(&file).to_string();
             if file.is_empty() {
@@ -632,6 +842,10 @@ pub fn classify_de_arguments(args: &[String]) -> DeSlots {
             }
             let lower = file.to_lowercase();
             if lower.ends_with(".dsn") {
+                // :601-605
+                if has_dsn {
+                    warnings.push(MULTIPLE_DSN_FILES.to_string());
+                }
                 slots.initial_input_file = Some(file);
                 has_dsn = true;
             } else if lower.ends_with(".json") {
@@ -639,25 +853,64 @@ pub fn classify_de_arguments(args: &[String]) -> DeSlots {
                 // a session afterwards. Note the `.dsn` arm above overwrites the slot a `.json`
                 // claimed, and does *not* move the `.json` to the session slot.
                 if has_dsn {
+                    if has_ses {
+                        warnings.push(MULTIPLE_SESSION_FILES.to_string());
+                    }
                     slots.design_session_filename = Some(file);
+                    has_ses = true;
                 } else {
                     slots.initial_input_file = Some(file);
                     has_dsn = true;
                 }
             } else if lower.ends_with(".ses") {
+                // :622-626
+                if has_ses {
+                    warnings.push(MULTIPLE_SES_FILES.to_string());
+                }
                 slots.design_session_filename = Some(file);
+                has_ses = true;
             } else if lower.ends_with(".rules") {
+                // :630-634
+                if has_rules {
+                    warnings.push(MULTIPLE_RULES_FILES.to_string());
+                }
                 slots.initial_rules_file = Some(file);
+                has_rules = true;
+            } else {
+                // :638-644 — any other extension is dropped, not guessed at.
+                warnings.push(format!(
+                    "{UNKNOWN_FILE_TYPE_PREFIX}{file}{UNKNOWN_FILE_TYPE_SUFFIX}"
+                ));
             }
-            // :638-644 — any other extension is dropped, not guessed at.
         }
 
         // :647 — skip the arguments the run consumed.
         i = j;
     }
 
-    slots
+    (slots, warnings)
 }
+
+/// `GlobalSettings.java:602-605`.
+pub const MULTIPLE_DSN_FILES: &str =
+    "Multiple DSN files provided in -de argument. Only the last one will be used.";
+/// `GlobalSettings.java:615-618`.
+pub const MULTIPLE_SESSION_FILES: &str =
+    "Multiple session files (SES/JSON) provided in -de argument. Only the last one will be used.";
+/// `GlobalSettings.java:623-626`.
+pub const MULTIPLE_SES_FILES: &str =
+    "Multiple SES files provided in -de argument. Only the last one will be used.";
+/// `GlobalSettings.java:631-634`.
+pub const MULTIPLE_RULES_FILES: &str =
+    "Multiple RULES files provided in -de argument. Only the last one will be used.";
+/// `GlobalSettings.java:638-644`, before the filename.
+pub const UNKNOWN_FILE_TYPE_PREFIX: &str = "Unknown file type in -de argument: ";
+/// `GlobalSettings.java:638-644`, after it.
+pub const UNKNOWN_FILE_TYPE_SUFFIX: &str = ". Expected .dsn, .json, .ses, or .rules";
+/// `GlobalSettings.java:561` and `:833` — the same string from two call sites.
+pub const UNKNOWN_COMMAND_LINE_ARGUMENT_PREFIX: &str = "Unknown command line argument: ";
+/// `GlobalSettings.java:503`, from `setValue`'s `NoSuchFieldException` arm.
+pub const UNKNOWN_SETTINGS_PROPERTY_PREFIX: &str = "Unknown settings property: ";
 
 // -------------------------------------------------------------------------------------------
 // The `GlobalSettings` roster (plan Task 11)
@@ -674,9 +927,14 @@ pub fn classify_de_arguments(args: &[String]) -> DeSlots {
 // No persistent configuration file and no user-data directory (spec §2). These five are also the
 // crate's `HostEnvironment` boundary: they are `static` mutable path state, which the plan's
 // Global Constraints forbid outright.
-// not ported: GlobalSettings.load (:267-369) — reads `freerouting.json` off disk through Gson.
-//   Spec §2 has no persistent config file; the tier it feeds (`JsonFileSettings`, priority 10)
-//   is reserved and empty, and `p4t1` asserts that on the JVM rather than assuming it.
+// not ported: GlobalSettings.load (:267-369) — reads the **whole** `freerouting.json` off disk
+//   through Gson and merges it into a `GlobalSettings`, then writes it back at `:383-454`. Spec §2
+//   has no persistent config file, and that stays true of the *round trip*. The `router` object
+//   inside that same file **is** read, since Plan 8 Task 5: [`super::JsonFileSettings`] at
+//   priority 10 (scan ruling R7). *(This line read ~~"the tier it feeds (`JsonFileSettings`,
+//   priority 10) is reserved and empty, and `p4t1` asserts that on the JVM rather than assuming
+//   it"~~ until then; `p4t1`'s `JSON_SOURCE_EMPTY` check still runs and still pins the
+//   file-absent arm.)*
 // not ported: GlobalSettings.saveAsJson (:383-454) — writes that same file back.
 // not ported: GlobalSettings.getConfigurationFilePath (:178-180) — resolves `freerouting.json`
 //   under the user-data directory; nothing to resolve without the file.

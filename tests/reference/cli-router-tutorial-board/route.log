@@ -1,0 +1,14 @@
+2026-09-02 02:36:31.029 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)
+2026-09-02 02:36:31.071 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-09-02 02:36:32.318 INFO   New version available: v2.3.0
+2026-09-02 02:36:32.747 INFO   [27FA42\7E587F] Loading board file 'tutorial_board.dsn'...
+2026-09-02 02:36:33.012 INFO   [27FA42\7E587F] Job '27FA42\7E587F' started at 2026-09-02T09:36:33.012598Z.
+2026-09-02 02:36:36.086 INFO   [27FA42\7E587F] Fanout stage is enabled but skipped because the board has no SMD pins.
+2026-09-02 02:36:39.178 INFO   [27FA42\7E587F] Auto-routing stage started on board '76a0f042be8c00a41d8ebcfdca537efa' for 0 unrouted items.
+2026-09-02 02:36:53.043 INFO   [27FA42\7E587F] Auto-routing pass #1 on board '76a0f042be8c00a41d8ebcfdca537efa' was completed in 0.79 seconds with score 0.00 (0 unrouted and 0 violations), using 19.03 CPU seconds and the job allocated 4.94 GB of memory so far.
+2026-09-02 02:37:00.663 INFO   [27FA42\7E587F] Auto-routing stage completed: started with 0 unrouted nets, completed in 20.95 seconds, final score: 0.00 (0 unrouted and 0 violations), using 26.92 total CPU seconds, 12.12 GB total allocated, and 419.6 MB peak heap usage.
+2026-09-02 02:37:04.343 INFO   [27FA42\7E587F] Optimization stage started on board '76a0f042be8c00a41d8ebcfdca537efa' with score 0.00 (0 unrouted and 0 violations).
+2026-09-02 02:37:14.951 INFO   [27FA42\7E587F] Optimizer pass #1 on board '76a0f042be8c00a41d8ebcfdca537efa' was completed in 0.00 seconds with the score of 0.00 (0 unrouted and 0 violations).
+2026-09-02 02:37:15.622 INFO   [27FA42\7E587F] Stopping optimizer because the improvement in this pass (0.0000%) is below the threshold (1.00%).
+2026-09-02 02:37:19.134 INFO   [27FA42\7E587F] Optimization stage completed: started with score 0.00 (0 unrouted and 0 violations), completed in 14.10 seconds, final score: 0.00 (0 unrouted and 0 violations), using 14.04 total CPU seconds, 7.77 GB total allocated, and 329.7 MB peak heap usage.
+2026-09-02 02:37:19.150 INFO   [27FA42\7E587F] Job '27FA42\7E587F' finished with state: COMPLETED (elapsed: 46.14 seconds, finished at UTC: 2026-09-02T09:37:19.149448Z).

@@ -32,7 +32,8 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9" >&2
+  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
+  echo "           p8t2probe, p8t2, p8t5, p8t1, p8t3, p8t6, p8t7" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -55,9 +56,23 @@ needs_jar=0
 needs_jdk25=0
 # Set by `p3t3`: use the pinned 2.3.0 jar rather than the clone's HEAD build (ruling 10).
 needs_jar_230=0
+# Set by `p8t1` and by `p8t2 e2e`: **there is no Java class to compile**, because what those two
+# drive is the jar *as a program* — `java -jar <jar> -de … -do …` against `freerouting -de … -do
+# …`. A `P8T1.java` could only re-implement `parity::normalize_log` a second time in a second
+# language, and two copies of a harness rule can agree with each other while both being wrong. So
+# the Rust binary owns the comparison, prints its own per-stem verdict table and exits non-zero on
+# any divergence; this script builds it, builds the port's own binary in release, and hands the
+# verdict through. See `scripts/differential/rust/src/bin/p8t1.rs`'s header and the Task 6 report.
+rust_only=0
 # Set by `p3t15`: extra driver sources to compile alongside `$javaclass.java` in jar mode (it
 # delegates its mode 4 to `P3T3.main`).
 extra_jar_sources=()
+# Set by `p8t0`: the directory `$javaclass.java` is compiled from. Every driver before Plan 8 kept
+# its Java half in `java/` and its probes in `java/probes/` as *extra* sources; `p8t0`'s Java half
+# **is** a probe (`P8T0Probe.java`), because what it drives is two static methods rather than a
+# board, so it needs the probe directory as its primary source dir. Defaults to `java/`, which is
+# what every other driver gets.
+java_src_dir="$DIFF_ROOT/java"
 # Set by `p4t1`: extra `java` flags, and extra environment both sides read. `p4t1` pins
 # `Runtime.getRuntime().availableProcessors()` with `-XX:ActiveProcessorCount`, because
 # `DefaultSettings.java:106,134` and `RouterSettings.validate` all consult it (plan ruling 6) —
@@ -601,6 +616,274 @@ case "$driver" in
     extra_jar_sources=("$DIFF_ROOT/java/P5T1.java")
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;
+  p8t0)
+    # Plan 8 Task 0: `TextManager.parseTimespanString` (`util/TextManager.java:83-93`), the
+    # grammar in `convertFromTimespanToDurationFormat` (`:101-118`), and
+    # `RoutingJobSchedulerActionThread.threadAction:43-52`'s `MAX_TIMEOUT` cap — thirty inputs,
+    # each printed with its `CONV`/`PARSE`/`CAPPED`/`OFFSET` columns.
+    #
+    # Declares `package app.freerouting.util` so it sits beside `TextManager`; both methods it
+    # drives are `public static`, so unlike `P7T2Probe` the package is convention rather than an
+    # access requirement. The two literals are read out of
+    # `management/jobs/RoutingJobSchedulerActionThread` by reflection (they are `private static
+    # final`), so the transcript records what the jar holds rather than what the plan says.
+    #
+    # No wall clock and no board: `-XX:hashCode=2` and the locale pair are the shared `p5t*` set,
+    # carried so a sweep across hash modes leaves this driver alone rather than skipping it.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t0-timespans.txt`, which
+    # `crates/fr-core/tests/timespan.rs` asserts against row by row; this driver is what
+    # regenerates and re-verifies it.
+    javaclass=P8T0Probe
+    javapkg="util"
+    java_src_dir="$DIFF_ROOT/java/probes"
+    default_args=()
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t1probe)
+    # Plan 8 Task 1: the job model — `RoutingJob.getFileFormat(byte[])` (`:151-227`) and
+    # `getFileFormat(Path)` (`:230-247`), `changeFileExtension` (`:352-374`), `tryToSetInput`
+    # (`:335-349`), `tryToSetOutputFile` (`:377-397`), `setInputFromFile`'s default-output
+    # derivation (`:425-461`), and `BoardFileDetails.setFilename` (`:149-197`) /
+    # `calculateCrc32` (`:75-87`). Eight tables, 154 rows.
+    #
+    # Declares `package app.freerouting.core` because `BoardFileDetails.filename` and
+    # `directoryPath` are `protected`; `changeFileExtension` is `private` and is reached by
+    # reflection, while `tryToSetInput`/`setInputFromFile` are driven through their public
+    # `setInput` overloads, which is how the CLI reaches them.
+    #
+    # Two rows Java cannot answer are printed as `XDIFF` on BOTH sides, so the diff still has to
+    # be empty: the shift-loop hang (`:181-187`, quirk #241 — the Java half runs every SNIFF row
+    # on a five-second watchdog) and `changeFileExtension`'s NPE on a bare filename (`:356`,
+    # quirk #242). Absolute paths are normalised to `<SCRATCH>`/`<FIXTURES>`/`<CWD>` so the
+    # transcript is portable.
+    #
+    # NAME: `p8t1probe`, not `p8t1` — the plan reserves `p8t1` for Task 6's end-to-end SES-byte
+    # gate, which is a different driver against the same jar.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t1-job-model.txt`, which
+    # `crates/fr-core/tests/job.rs` asserts against row by row; this driver regenerates and
+    # re-verifies it.
+    javaclass=P8T1Probe
+    javapkg="core"
+    java_src_dir="$DIFF_ROOT/java/probes"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t1probe-scratch")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t2probe)
+    # Plan 8 Task 2: the **text-scraping** `BoardStatistics(byte[], FileFormat)`
+    # (`core/scoring/BoardStatistics.java:436-552`), its private `countOccurrences` (`:578-586`)
+    # and the Gson JSON surface `toString` (`:589-591`). Five tables, 289 lines over 92 `BS`
+    # rows: the fifty DTO fields and the byte-exact `toString()` for every corpus `.dsn`, every
+    # committed `.ses`, every `batch.ses`, fifty-seven synthetic edge cases and three hand-built
+    # statistics.
+    #
+    # Declares `package app.freerouting.core.scoring` because `countOccurrences` is `private
+    # static` and is reached by reflection.
+    #
+    # Two `XDIFF` rows carry both answers on both sides, so the diff still has to be empty:
+    # `(parser (hostCad))` throws `StringIndexOutOfBoundsException` out of the Java constructor
+    # (quirk #250, totalised here), and `(parser (hostCad  ))` scrapes an *empty* `hostCad` where
+    # the port spells Java's `null` the same way (quirk #251).
+    #
+    # Row 31 (`router-dac2020-bm01/batch.ses AS DSN`) is the one row where the host scrape
+    # SUCCEEDS: a HEAD-written session file's parser scope is `reduced`, so it carries no
+    # `(stringQuote ")` to truncate it, and HEAD's own keyword is the camelCase one the scrape
+    # looks for (quirk #248's clause (b)).
+    #
+    # NAME: `p8t2probe`, not `p8t2` — the plan reserves `p8t2` for Task 4's result-manifest
+    # driver, which is a different driver against the same jar.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t2-byte-statistics.txt`, which
+    # `crates/fr-core/tests/stats.rs` asserts against row by row; this driver regenerates and
+    # re-verifies it.
+    javaclass=P8T2Probe
+    javapkg="core.scoring"
+    java_src_dir="$DIFF_ROOT/java/probes"
+    default_args=("$FREEROUTING_JAVA_DIR" "$ROOT")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t2)
+    # Plan 8 Task 4: `core.results.RoutingResultManifest` — the thirteen `@SerializedName` fields and
+    # their Gson key order (`:28-65`), `FixtureInfo`/`PhaseMetrics`/`PhaseDetail` (`:68-95`),
+    # `fromJob` (`:98-135`), `write` (`:138-144`), `resolveGitSha` (`:147-161`) and the private
+    # `sha256Hex` (`:163-171`), plus `core.RouterJobResourceUsage`, which `fromJob:114` copies
+    # whole. Six tables: `[man]` (every manifest shape the CLI can produce, printed line by line),
+    # `[dur]`, `[gitsha]`, `[sha256]`, `[write]` and `[norm]`.
+    #
+    # Declares `package app.freerouting.core.results` so it sits beside the class it drives;
+    # `sha256Hex` is `private static` and is reached by reflection.
+    #
+    # TASK SPLIT — say it plainly: the plan's `p8t2` is the **end-to-end** manifest gate (run the
+    # jar's `-de <dsn> -do <ses> --router.result_json=<f>`, run the port's equivalent, compare the
+    # two manifests byte-identically after `normalize_manifest`). The port's binary does not grow
+    # `--router.result_json` until **Task 6**. Task 4 therefore lands the whole Java half, the
+    # normaliser on **both** sides — pinned row for row by the `[norm]` table, which runs a
+    # *live* manifest (a real clock, a real git sha, a real duration, a real absolute path)
+    # through it — and a **fixed-clock unit run** of every manifest shape, which is the `[man]`
+    # table. Task 6 adds the `e2e` mode. This is not a gap; it is the split the brief asked for.
+    #
+    # The `[gitsha]` rows spawn a child process per row on both sides, because neither a JVM nor
+    # this port can modify its own environment. Two rows are `XDIFF` on both sides: Java's
+    # `Duration.between` can be negative where `std::time::Instant` is monotonic, and
+    # `resolveGitSha:156-159`'s system property renames onto `:148`'s environment variable.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t2-manifest-shape.txt`, which
+    # `crates/fr-core/tests/manifest.rs` asserts against row by row; this driver regenerates and
+    # re-verifies it.
+    #
+    # **Task 6 added the `e2e` mode**, which is the plan's own `p8t2`: `p8t1`'s argv plus
+    # `--router.result_json=<f>`, run through both whole programs, with the two manifests compared
+    # field for field after `parity::normalize_manifest`. That comparison has no Java half for the
+    # same reason `p8t1` has none, so `p8t2 e2e` switches this driver to `rust_only` while
+    # `p8t2 shape` stays the Java-vs-Rust pair Task 4 built.
+    javaclass=P8T2
+    javapkg="core.results"
+    default_args=("shape" "$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t2-scratch")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    # An `if`, not `&&`: a failing `[[ ]]` as the last statement of a `case` arm is a non-zero
+    # exit status, which `set -e` at the top of this script would treat as a failure.
+    if [[ "${1:-}" == "e2e" ]]; then rust_only=1; fi
+    ;;
+  p8t1)
+    # Plan 8 Task 6, controller ruling AV — **the plan's headline gate**. The HEAD jar and the
+    # port, run as two whole programs on the argv recorded in each
+    # `tests/reference/cli-<stem>/argv.txt`, compared on three rungs: byte-identical SES (after
+    # quirk #92's four `(parser …)` keyword literals are rewritten on the jar side, the same
+    # normalisation `batch_parity.rs` applies), equal exit code, equal `parity::normalize_log`.
+    # No tolerance: a divergence is an `XDIFF` row in `crates/freerouting/README.md` with the
+    # first differing byte and a one-line root cause.
+    #
+    # `rust_only=1` — see the flag's own comment above for why there is no `P8T1.java`.
+    #
+    # Default args are the four `ci` stems; `all` runs every stem of `cli-fixtures.txt` (the four
+    # slow ones take about a minute each on both sides), and a list of stem names runs those.
+    #
+    # The **budget** is live on both sides here, unlike every `p7t*` driver: the port's CLI runs
+    # `fr_core::RouterBudget::default()` because that is what a user gets, and the jar's
+    # `optChangedArea` limit is a javac-inlined constant nothing can switch off.
+    # `scripts/gen-cli-reference.sh`'s header states the difference and what bounds the risk.
+    rust_only=1
+    default_args=()
+    ;;
+  p8t3)
+    # Plan 8 Task 7. **Two modes**, the `p8t2` shape:
+    #
+    #   * `merge` (the default) — a genuine Java-vs-Rust pair. `Freerouting.initializeDrc`'s
+    #     quality-score block (`Freerouting.java:342-352`, quirk #272) over the eight rows of
+    #     `tests/reference/drc-fixtures.txt`: the prototype merger plus one `DsnFileSettings` and
+    #     nothing else, then `board.getStatistics().getNormalizedScore(scoring)`. Three lines per
+    #     stem — the seven scoring weights, the six board counters and the score in both
+    #     `Float.toString` and raw IEEE bits — so a divergence names a field instead of a float.
+    #     Declares `package app.freerouting.settings` so it sits beside `SettingsMerger`, and runs
+    #     against the clone's HEAD jar (plan ruling 7).
+    #
+    #   * `e2e` — the acceptance gate: `java -jar <jar> -de <dsn> [-dr <rules>] -drc <report>`
+    #     against the port on the same argv, comparing the report byte-identically after
+    #     `parity::normalize_drc_json`, plus the exit code, plus `parity::normalize_log`. That
+    #     comparison has no Java half for the reason `p8t1` has none — a `P8T3.java` could only
+    #     re-implement the normalisers a second time — so this mode switches the driver to
+    #     `rust_only`.
+    #
+    # The Rust half links the **binary's own** library (`crates/freerouting`), the `p8t5`
+    # convention: `commands::drc::{quality_score_settings, quality_score}` are what the program
+    # runs, not a second copy written for the driver.
+    #
+    # The `p5t*` flag set, which is **mandatory** here rather than hygienic: `-XX:hashCode=2` is
+    # quirk #144 (`getAllUnconnectedItems` iterates identity-hashed `HashSet<Item>`s, so the
+    # `unconnectedItems` order moves between runs without it) and `-Duser.language=en
+    # -Duser.country=US` is quirk #145 (every `%.4f` in a violation description goes through the
+    # default FORMAT locale). Both are the modes `tests/reference/drc-*` was generated under, and
+    # `parity::run_jar` carries the identical five flags for the `e2e` lane.
+    javaclass=P8T3
+    javapkg="settings"
+    default_args=("merge" "$ROOT/tests/reference/drc-fixtures.txt" "$FREEROUTING_JAVA_DIR")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    # An `if`, not `&&`: a failing `[[ ]]` as the last statement of a `case` arm is a non-zero
+    # exit status, which `set -e` at the top of this script would treat as a failure.
+    if [[ "${1:-}" == "e2e" ]]; then rust_only=1; fi
+    ;;
+  p8t5)
+    # Plan 8 Task 5: the legacy command line — `GlobalSettings.applyCommandLineArguments`
+    # (`settings/GlobalSettings.java:521-838`) over the 86 argv shapes of
+    # `matrix/p8t5-argv.tsv`. Per row: the four filename slots plus `drcReportFile`,
+    # `showHelpOption`, `logging.console.level`, every field of the `@Deprecated routerSettings`
+    # bridge this method can write, `drcSettings.enabled`, and every `FRLogger` line the parse
+    # emitted, read back out of `FRLogger.getLogEntries()`.
+    #
+    # Declares `package app.freerouting.settings` so it can read the package-private slot fields,
+    # and runs against the clone's HEAD jar (plan ruling 7).
+    #
+    # The Java half redirects `System.out`/`System.err` to a null stream on its first line, before
+    # any freerouting class is loaded, because log4j's Console appender targets SYSTEM_OUT and
+    # would otherwise interleave itself with the transcript. The transcript goes to the saved
+    # original stream.
+    #
+    # The Rust half links the **binary's own** library (`crates/freerouting`), so what is compared
+    # is `legacy::resolve_slots` as the program runs it, not a second copy written for the driver.
+    #
+    # No wall clock, no board, no filesystem: every row is a pure argv walk. The matrix
+    # deliberately holds no row whose answer depends on a file existing (`GlobalSettings.java
+    # :571-572`), because that would make the transcript depend on the working directory; that
+    # branch is pinned by `crates/fr-settings/tests/cli_source.rs` instead.
+    javaclass=P8T5
+    javapkg="settings"
+    default_args=("$ROOT/scripts/differential/matrix/p8t5-argv.tsv")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t6)
+    # Plan 8 Task 12, controller ruling AO — **the MCP delta table, asserted**.
+    #
+    # The jar's MCP server and the port's are different programs (ruling AO replaced the HTTP
+    # transport with a native one), so they are not expected to agree; *where* they disagree is the
+    # eleven-row table in `crates/freerouting/README.md`, and this driver turns rows 1-10 into an
+    # assertion. It makes two kinds of observation: **deltas**, which must differ, and
+    # **agreements** (the framing, the blank-line skip, the unknown-tool error, `isError`, the EOF
+    # exit code), which must be equal. A recorded delta that has vanished is a `GONE` row; a
+    # difference the table does not record is a `NEW` row. Either fails.
+    #
+    # `rust_only=1` — there is no `P8T6.java`, for the reason `p8t1` has no `P8T1.java`: what is
+    # under test is the **jar as a program**, and a Java class could only re-implement the delta
+    # table a second time in a second language. See the driver's header.
+    #
+    # **Scan ruling R18: a missing jar is a defect, not a `SKIP`.** The launch is job 3's, verbatim
+    # — `--mcp_server.stdio=true` alone does not start the bridge (`McpServerSettings.isEnabled`
+    # defaults to false) and `--api_server.enabled=true` is effectively mandatory because every
+    # generated tool is an HTTP call into the REST API. The driver builds the line itself so the
+    # five flags live in exactly one place; `docs/plan-8-prep/evidence/job3-summary.md` §1 is where
+    # they came from.
+    #
+    # Two jar launches, ~8 s each: the main run with authentication off (so the generated tools
+    # answer at all) and row 7's run with it at its default (so the 401 can be observed).
+    #
+    #   scripts/differential/run.sh p8t6            the table
+    #   scripts/differential/run.sh p8t6 verbose    ...and both raw transcripts
+    rust_only=1
+    default_args=()
+    ;;
+  p8t7)
+    # Plan 8 Task 12 — **the KiCad end-to-end acceptance of spec §1**, on three rungs:
+    #
+    #   (a) a KiCad-exported DSN -> `route` -> SES, byte-identical to the jar's, and the SES
+    #       **read back by `fr_dsn::ses_reader::read`** without error — a document the port writes
+    #       and cannot read would satisfy every byte comparison in the suite and still be broken;
+    #   (b) Task 9's `-de board.json -do out.ses` rung: the same board as a KiCad *design* JSON,
+    #       through the port's own JSON reader, against the jar on the same argv;
+    #   (c) Task 10's quirk-T measurement: `-do out.json` writes the board **as loaded**, before
+    #       any routing, so the file is byte-identical for `-mp 1` and `-mp 8` and carries no
+    #       trace the router produced.
+    #
+    # `rust_only=1`, for `p8t1`'s reason. The stems are `tests/reference/cli-fixtures.txt`'s two
+    # KiCad rows plus the DSN twin of the same board.
+    rust_only=1
+    default_args=()
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -612,6 +895,34 @@ fi
 
 if [[ "$needs_jar_230" -eq 1 ]]; then
   FREEROUTING_JAR="$FREEROUTING_JAR_230"
+fi
+
+if [[ "$rust_only" -eq 1 ]]; then
+  if [[ ! -f "$FREEROUTING_JAR" ]]; then
+    echo "error: freerouting jar not found at $FREEROUTING_JAR" >&2
+    echo "       build it in the sibling checkout (./gradlew build), or set FREEROUTING_JAR" >&2
+    exit 1
+  fi
+  # The **port's own binary**, in release: a debug build routes a whole board in minutes rather
+  # than seconds, and the driver runs it once per stem on both lanes.
+  echo "== building the port's binary (release) =="
+  (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+  echo "== building Rust driver ($driver) =="
+  (cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
+  echo "== running ($driver ${args[*]:-}) =="
+  export FREEROUTING_JAR FREEROUTING_JAVA_DIR
+  export FREEROUTING_BIN="$ROOT/target/release/freerouting"
+  export JAVA="$JAVA25_HOME/bin/java"
+  # The driver prints its own per-stem verdict table and exits non-zero on any divergence, so
+  # there is nothing to diff and its exit status is the verdict.
+  "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"}
+  status=$?
+  if [[ "$status" -eq 0 ]]; then
+    echo "MATCH: $driver"
+  else
+    echo "DIFF: $driver — see the table above"
+  fi
+  exit "$status"
 fi
 
 if [[ "$needs_jar" -eq 1 ]]; then
@@ -634,7 +945,7 @@ if [[ "$needs_jar" -eq 1 ]]; then
   echo "== compiling Java ($javaclass) against $FREEROUTING_JAR =="
   rm -rf "$jar_out"
   mkdir -p "$jar_out"
-  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$DIFF_ROOT/java/$javaclass.java" \
+  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$java_src_dir/$javaclass.java" \
     ${extra_jar_sources+"${extra_jar_sources[@]}"}
 
   j_out="$BUILD/$driver.j.out"

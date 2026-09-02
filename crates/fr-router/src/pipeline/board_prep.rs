@@ -23,12 +23,21 @@
 //!
 //! # Why it is not called from `fr_dsn::read_board`
 //!
-//! Java reaches the overrides from *inside* the load, at `createBoard:342-343` and again at
-//! `applyRouterSettingsForLoadedBoard:746-747` (survey ruling AD). The port's reader has no
-//! settings — `fr-dsn` does not depend on `fr-settings` — so the seam is here, above both, and
-//! every caller that wants Java's `-de`/`-dr` board must call it. `fr_board::board::clearance_override`'s
-//! module docs carry the argument that one call after the load lands the same board as Java's
-//! two, and the single measured case where it does not.
+//! Java reaches the overrides from *inside* the load, at `applyRouterSettingsForLoadedBoard`
+//! (`:746-747`). The port's reader has no settings — `fr-dsn` does not depend on `fr-settings` —
+//! so the seam is here, above it, and every caller that wants Java's `-de`/`-dr` board must call
+//! it. `fr_core::apply_router_settings_for_loaded_board` (Plan 8 Task 3) is that caller on the
+//! load path.
+//!
+//! **Correction, Plan 8 Task 3.** This comment used to say Java reached the overrides at *two*
+//! sites, `createBoard:342-343` and `:746-747` (survey ruling AD), and
+//! `fr_board::board::clearance_override`'s module docs carried an argument that one call lands
+//! the same board as Java's two, plus one measured case where it did not. The premise was never
+//! true: `HeadlessBoardManager.createBoard` is unreachable from the DSN parser, whose only
+//! `BoardParserCallback` is `ReadScopeParameter$MinimalBoardManager`. Measured at the pinned jar —
+//! `headless_create_board_calls=0` for a real `loadFromSpecctraDsn` — in
+//! `crates/fr-core/tests/data/p8t3-clearance-overrides.txt`. So this one call **is** Java's one
+//! call, and there is no divergence to weigh. Quirk #253; quirk #232 rewritten.
 //!
 //! **Nothing in the tree called this before Task 16.** Every existing driver, probe and parity
 //! test loads through `fr_dsn::read_board` directly and therefore works on the pristine board,
@@ -44,8 +53,8 @@ use fr_settings::RouterSettings;
 /// drill-hole clearance override, in that order.
 ///
 /// The order matters and is not cosmetic: both overrides append a clearance class when they
-/// fire, and `board_edge` therefore always takes the lower index. Java's two call sites
-/// (`:342-343` and `:746-747`) are both copper-then-hole.
+/// fire, and `board_edge` therefore always takes the lower index. Java's reachable call site
+/// (`:746-747`) is copper-then-hole, as is the unreachable one at `:342-343`.
 ///
 /// Each override is skipped when its setting is `None`, which is Java's
 /// `routerSettings.copperToEdgeClearanceUm == null` / `holeClearanceUm == null` guard

@@ -575,6 +575,8 @@ fn host_of(board: &Board) -> String {
     // `:113-117`. Java's `+` renders a null reference as the four characters `null`; the port's
     // `Communication` flattened `SpecctraParserInfo` onto itself (plan-2), so the two `Option`s
     // are the same two nullable fields.
+    //
+    // not reachable: `BoardStatistics.<init>` (core/scoring/BoardStatistics.java:118-120) — the `if ((host == null) || host.isEmpty()) this.host = "Freerouting," + Constants.FREEROUTING_VERSION;` fallback. The expression above is `hostCad + "," + hostVersion`, a Java string concatenation, so it is never `null` and is at minimum the six characters `null,null`: neither arm of the guard can hold. Ported as this comment rather than as code (quirk #249, plan-8 quirk label AK). Had it been reachable it would have written `fr_core::PARITY_VERSION` — ruling AT's third file-format reader, and the only one of the three that no file ever carries.
     let host = format!(
         "{},{}",
         board.communication.host_cad.as_deref().unwrap_or("null"),
@@ -590,10 +592,17 @@ fn host_of(board: &Board) -> String {
 
 /// Port of `TextManager.unescapeUnicode` (util/TextManager.java:177-186), transcribed inline.
 ///
+// pub seam: `TextManager.unescapeUnicode` is `public static` in Java (util/TextManager.java:177); it landed private here in Plan 7 because [`host_of`] was its only caller, and Plan 8 scan ruling R15 makes it `pub` (re-exported as `fr_router::score::unescape_unicode`) so that no second copy of the decoder — and of its `// totalized:` row below — can drift into `fr-core`. This is one of plan 8's two additive `fr-router` changes; `cargo test -p fr-router --test batch_parity` is the gate on both.
+//
+// **The byte-scraping constructor does NOT call it, and Plan 8 Task 2 measured that.** The plan's
+// task brief read `:121` as belonging to `BoardStatistics(byte[], FileFormat)`; it belongs to the
+// *computing* constructor above, and `:474-519`'s DSN scrape runs `TextManager.removeQuotes` and
+// nothing else. `P8T2Probe`'s `host is not unescaped` row drives `(hostCad "K\u0041D")` through
+// the jar and gets `K\u0041D` back, so the seam has no caller outside this crate today.
 // not ported: the rest of `util/TextManager.java` — a GUI resource-bundle façade (spec §2: no GUI). Only this one static string helper is on the scoring path.
 //
 // totalized: `TextManager.unescapeUnicode` (util/TextManager.java:181-182) — Java feeds the decoded character to `Matcher.appendReplacement`, which treats `$` and `\` in the *replacement* as metacharacters, so an input containing the escape `$` or `\` throws `IllegalArgumentException` ("Illegal group reference" / "character to be escaped is missing") instead of decoding. This port decodes them. Unreachable from a DSN `(host_cad …)` in the corpus, and a crash is not a value worth reproducing.
-fn unescape_unicode(text: &str) -> String {
+pub fn unescape_unicode(text: &str) -> String {
     let bytes: Vec<char> = text.chars().collect();
     let mut result = String::with_capacity(text.len());
     let mut i = 0;

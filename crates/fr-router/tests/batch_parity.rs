@@ -221,6 +221,7 @@ fn route_stem(stem: &Stem) -> BatchRun {
     let env_source = EnvironmentVariablesSource::new(&env_map);
     let cli_source = CliSettings::new(&argv);
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: dsn_source.get_settings(),
         // No `-dr`, and no corpus stem has an adjacent `<design>.rules`, so
         // `RoutingJobScheduler.java:154-160` and `:173-184` are both skipped on the Java side too.

@@ -371,10 +371,23 @@ The ones Plan 8 must read before writing a line of CLI:
   router run. `run_pipeline` reproduces that. Do not "helpfully" reset it.
 * **#230** — `job.getCurrentPass()` under-reports by one on a `maxPasses`-capped exit,
   disagreeing with the final `TaskStateChangedEvent`'s own `getPassNumber()`.
-* **#231/#232** — the clearance overrides run **twice** per DSN load and the copper
+* **#231/#232** — ~~the clearance overrides run **twice** per DSN load and the copper
   path is idempotent across the two while the hole path is not. #232's boundary
   (`router.hole_clearance_um > 0` + zero circular keepouts) is an open Plan 8
-  obligation with an `obligation:` marker at the site.
+  obligation with an `obligation:` marker at the site.~~ **#232's claim was FALSIFIED
+  by Plan 8 Task 3 (`7ef2f57`); #231 stands unchanged.** The overrides run **once**,
+  at `applyRouterSettingsForLoadedBoard:746-747`. `HeadlessBoardManager.createBoard`
+  cannot be on the load path at all: `Structure.java:1268` dispatches through
+  `ReadScopeParameter`'s `final BoardParserCallback boardHandling`, and
+  `HeadlessBoardManager implements BoardManager`, which does **not** extend
+  `BoardParserCallback` — a type-level impossibility, not a constructor accident. The
+  sole production implementation is `ReadScopeParameter$MinimalBoardManager`
+  (`:103`, `:139-166`), which calls neither override. Measured on the HEAD jar: a
+  counting subclass driving a real `loadFromSpecctraDsn` reports
+  `headless_create_board_calls=0` on all three probe fixtures
+  (`crates/fr-core/tests/data/p8t3-clearance-overrides.txt`). See quirk **#253** for
+  the dead method and the rewritten **#232**. So there was never a second run to be
+  idempotent across, and #232's boundary is empty; the obligation below is discharged.
 * **#233** — `TestingSettings`' constructor zeroes `copperToEdgeClearanceUm`, so the
   whole Java fixture suite routes a board no real `-de/-do` run produces. The parity
   references deliberately do **not** carry it.
@@ -387,6 +400,37 @@ The ones Plan 8 must read before writing a line of CLI:
 ---
 
 ## 7. The obligation register for Plan 8
+
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> **The whole register is closed.**
+>
+> * **The 30 `// added in Plan 8:` markers.** `grep -rn "added in Plan 8" crates/*/src` and
+>   `crates/*/tests` both return **nothing**. Tasks 0-13 consumed them incrementally; **Task 14
+>   consumed the last seven** — the two `BoardComparator` twins (`fr-board/src/board/mod.rs:57`,
+>   `fr-drc/src/lib.rs`) and the five ruling-**AS** score rows in
+>   `fr-router/src/score/mod.rs`, all re-pointed to `// not ported:` with their reachability
+>   evidence — plus the five prose sentences elsewhere that still quoted the marker text.
+> * **The `obligation:` markers naming Plan 8.** All six closed with evidence;
+>   `crates/fr-settings/src/resolve.rs`'s has **two** independent closers (Tasks 7 and 12) and the
+>   marker names both. `docs/plan-8-handoff.md` §5 is the closed register, and **no surviving row
+>   is open** — each is discharged or closed with a reason, because there is no successor plan.
+> * **Ruling AW's `prepare_board`.** `fr_core::apply_router_settings_for_loaded_board` calls
+>   `fr_router::pipeline::prepare_board`, so the CLI's load path runs both clearance overrides.
+>   `crates/fr-core/README.md`'s load-sequence section is the record, and
+>   `crates/fr-core/tests/load.rs::the_settings_pass_is_the_same_two_steps_resolve_headless_runs`
+>   keeps the two callers of the settings half from drifting.
+> * **The `--max-items` help text.** Written. The port has no `--max-items` flag of its own, so the
+>   paragraph is on `--router.max_items`'s help text in `crates/freerouting/src/cli.rs` and in
+>   `crates/freerouting/README.md`. Quirk **#202**.
+> * **Scan ruling R3's additive-and-wrapped gate held.** `batch_parity` (6 passed, 1 ignored),
+>   `run.sh p6t1` (all six rows) and `sweep-p7t9.sh` are byte-unchanged after four `CancelToken`
+>   poll sites and one `pub` on `score::unescape_unicode`.
+
 
 ### The marker inventory, measured on the committed tree
 
@@ -425,9 +469,9 @@ ruling 2, correcting plan-6 §10. Both are empty.
 
 | site | what |
 |---|---|
-| `fr-board/src/board/clearance_override.rs:60` | quirk #232's boundary — `applyHoleClearanceOverride`'s second invocation with `router.hole_clearance_um > 0` and zero circular keepouts does one extra `reinsertTreeItems` (a #229-class tree-order shift). Pin or reproduce **before** the CLI exposes the setting. |
+| ~~`fr-board/src/board/clearance_override.rs:60`~~ **DISCHARGED — Plan 8 Task 3 (`7ef2f57`); the marker is gone and the site carries a prose "discharged" paragraph** | ~~quirk #232's boundary — `applyHoleClearanceOverride`'s second invocation with `router.hole_clearance_um > 0` and zero circular keepouts does one extra `reinsertTreeItems` (a #229-class tree-order shift). Pin or reproduce **before** the CLI exposes the setting.~~ The premise was false (quirk #253): there is no second invocation, so there is no boundary. The obligation's "or reproduce the second run" arm was taken anyway — `P8T3Probe`'s `after_second_hole_override` stage invokes `applyHoleClearanceOverride` a second time on the loaded board and it moves nothing, tree leaf count, `lastGeneratedEntryId` and `ShapeTree.toArray()` order digest included. Asserted by `crates/fr-core/tests/overrides.rs::the_second_hole_override_leaves_the_search_tree_alone`. |
 | `fr-drc/src/report/json.rs:57` | `DrcJsonFlavor`'s CLI default (plan-5 ruling 2/ruling W) |
-| `fr-dsn/src/parser/wiring.rs:596` | `read_via_scope` still calls the unchecked `insert_via`; the last line of the ladder-hang obligation |
+| ~~`fr-dsn/src/parser/wiring.rs:596`~~ **CLOSED — Plan 8 Task 3 (`7ef2f57`)** | ~~`read_via_scope` still calls the unchecked `insert_via`; the last line of the ladder-hang obligation~~ `read_via_scope` now calls `Board::insert_via_checked` with a per-via `TimeLimit` stop from `DsnReadOptions::normalize_time_limit`. The `limit_ms <= 0` test is **inverted** relative to the normalisation site: there a trip lands in Java's own `catch (Exception)` (`Wiring.java:346-352`) and costs one warning, so `Duration::ZERO` is a deterministic opt-out; here Java's only `catch` is `IOException` (`:710`), so a stop can only fail the read and a non-positive budget must mean *no bound* — which is Java. Gates re-run unchanged: `sweep-p3t15.sh` 525 MATCH + 5 XDIFF, `p6t1` MATCH on all six rows, `batch_parity` green. |
 | `fr-settings/src/resolve.rs:193` | `RoutingJobScheduler.scheduleJob` — the API path composes the merge differently and must not call `resolve_headless` |
 | `freerouting/src/mcp/{server.rs, stdio.rs}` | MCP concurrency: the handler can emit one message and holds no connection reference |
 
@@ -479,11 +523,16 @@ is what comes after parity, and Plan 8 imports it rather than executing it.
 
 ### A gap the audit surfaced and nobody has claimed
 
-`settings/sources/JsonFileSettings.java` prints `ROSTERED` on the
+~~`settings/sources/JsonFileSettings.java` prints `ROSTERED` on the
 `settings/sources` invocation: **three public methods, all `not ported:`**. It is
 the JSON settings *file* source — `freerouting.json` / `--settings <file>` — and
 it is a real hole in the CLI's settings ladder, not a GUI class. Plan 8's Task 5
-(the CLI surface) is where it belongs; it is not in the draft's task bodies today.
+(the CLI surface) is where it belongs; it is not in the draft's task bodies today.~~
+
+**CLOSED by Plan 8 Task 5.** The audit was right and the gap was real: the class
+is now ported (`crates/fr-settings/src/sources/json_file.rs`, priority 10) and
+the `settings/sources` invocation prints only `ROSTERED GuiSettingsSource`. See
+§12 item 3 for the half that is still owed.
 
 ---
 
@@ -492,7 +541,7 @@ it is a real hole in the CLI's settings ladder, not a GUI class. Plan 8's Task 5
 | what | count / result |
 |---|---|
 | workspace tests | see §11's verification block |
-| `audit-port.sh` invocations | **33**, all exit 0, **0 `MISSING`, 0 `UNMAPPED`**, 26 `ROSTERED` across 10 |
+| `audit-port.sh` invocations | **33**, all exit 0, **0 `MISSING`, 0 `UNMAPPED`**, 26 `ROSTERED` across 10 *(as of Plan 7 Task 17; see the status line below)* |
 | differential drivers added | 10 (`p7t1`–`p7t10`), each a genuine Java-vs-Rust pair, budget disabled on both sides |
 | probes added | 5 (`P7T2Probe`, `P7T4Probe`, `P7T5Probe`, `P7T8Probe`, `P7T9Probe`) — Java-only, whose stdout a Rust test pins as literals |
 | `p6t1` extended | a fifth argument, `--steps=1-8`; **10/10** after ruling AY |
@@ -614,7 +663,7 @@ Commands run by Task 17 on the committed tree, from
 | 3 | `cargo nextest run --workspace` | **2 137 tests run, 2 137 passed, 54 skipped** (2 135 at the first commit; +2 are the two §10.3 standing assertions added in the fix round) | **0** |
 | 4 | `cargo test --workspace --doc` | 7 doc-test targets, all ok | **0** |
 | 5 | `cargo doc --workspace --no-deps` | 40 warnings, **all pre-existing** — the identical count on `git stash`ed HEAD, verified in the same session; none in a file this task touched | **0** |
-| 6 | the **33** `audit-port.sh` invocations (script below) | **0 `MISSING`, 0 `UNMAPPED`, 26 `ROSTERED` across 10**; every invocation exit 0 | **0** |
+| 6 | the **33** `audit-port.sh` invocations (script below) | **0 `MISSING`, 0 `UNMAPPED`, 26 `ROSTERED` across 10**; every invocation exit 0 *(as of Plan 7 Task 17; see the status line below)* | **0** |
 | 7 | `grep -rn "added in Plan 7" crates/*/src` | **nothing** | 1 (no match) |
 | 8 | `grep -rn "added in Plan 7" crates/*/tests` | **nothing** | 1 (no match) |
 | 9 | `grep -rn "item_tree_shape_ref\|item_tile_shape_ref" crates/fr-router/` | 3 hits, **all prose**, 0 call sites — plan-6 ruling 10 holds | 0 |
@@ -663,6 +712,24 @@ $A board/optimize crates/fr-router/src 'TraceShover.java TraceTightener.java Tra
 $A core           crates/fr-router/src 'StopRequestState.java StoppableThread.java RouterCounters.java ProgressThrottler.java' scripts/audit-map/fr-router.map   # +1, Task 17, BY FILE GLOB
 ```
 
+> **Status update — 2026-09-01, Plan 8 Task 0 (`b40b1cc`).** The 33 invocations above still exit
+> 0 at **0 `MISSING`, 0 `UNMAPPED`**, but the `ROSTERED` count is now **25 across 9**, not 26
+> across 10. The one that changed is
+> `audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' scripts/audit-map/fr-board.map`,
+> which printed *"ROSTERED HeadlessBoardManager (9 public methods, none ported: 0 'not ported:',
+> 9 'added in Task|Plan N:')"* and now prints none. **Cause:** Plan 8 Task 0 consumed three of
+> those nine deferral markers (`getRoutingBoard`, `replaceRoutingBoard`, `getCurrentRoutingJob` —
+> `crates/fr-board/src/board/clearance_override.rs`), and the third is a `renamed:`, which
+> `audit-port.sh` counts as **ported**, so the class is no longer *wholly* deferred. The first two
+> are `not ported:` (they have no Rust `fn`; their live non-GUI callers are rostered elsewhere —
+> see the SF5 note at that site). Nothing regressed: the drop is a class leaving the deferral
+> roster, which is what a plan consuming its own markers looks like. Plan 8 Task 3 takes
+> `HeadlessBoardManager` off the list permanently, and **Plan 8 Task 14's hand-off table must
+> carry the then-current number with this reason**, superseding the two rows above. Measured by
+> diffing the full `ROSTERED` line sets before and after, not by eye. `crates/fr-router/README.md`'s
+> §Audit note recording the old one-ROSTERED-line result for that invocation is stale for the same
+> reason.
+
 **The `core` invocation must stay file-globbed.** `core '*.java'` would pull
 `RoutingJob`, `Session`, `BoardFileDetails`, `RouterJobResourceUsage`,
 `RoutingJobPriority`, `RoutingJobState` and `RoutingStage` — all **Plan 8's** —
@@ -710,8 +777,24 @@ and `the_stem_table_matches_the_fixture_file`. The 54 skipped tests are the
    whole-board parity on that board at higher pass counts ever matters, the only
    route is a patched jar — which the constraint "HEAD is the authority" forbids —
    or a Java-side change upstream. Flagged, not worked around.
-3. **`JsonFileSettings` is unported and unclaimed** (§7). It is the
-   `--settings <file>` source. Plan 8's CLI task should take it.
+3. ~~**`JsonFileSettings` is unported and unclaimed** (§7). It is the
+   `--settings <file>` source. Plan 8's CLI task should take it.~~
+   **DISCHARGED — Plan 8 Task 5**, under the pre-flight scan's ruling R7 and a
+   controller decision. `crates/fr-settings/src/sources/json_file.rs` is the
+   priority-10 source; `crates/freerouting`'s `--settings <file>` names a file
+   ~~and a working-directory `freerouting.json` is the default~~ (Java's user-data
+   path is `static` mutable state and stays unported). **Controller ruling BG
+   (Plan 8 Task 6) removed the working-directory default**: measured at the pinned
+   jar, a `freerouting.json` in the working directory changes nothing, so the
+   stand-in stood in for no jar behaviour. `--settings <file>`, native form only,
+   is the whole surface. ~~**One half is still owed:**
+   `resolve_headless` does not take the source yet — Task 6 threads it through
+   `SettingsInputs`, and `crates/fr-settings/src/resolve.rs` carries the
+   `// obligation:` at the site.~~ **That half is DISCHARGED — Plan 8 Task 6:**
+   `SettingsInputs::json_file` feeds both of `resolve_headless`'s chains (merge #1's
+   `apply_new_values_from` between `DefaultSettings` and the DSN, merge #2's
+   `fill_absent_from`), `commands::route` fills it from `--settings <file>` or from
+   the working directory, and the `// obligation:` in `resolve.rs` is gone.
 4. **Quirk #162 is still a live hang** in both languages (controller answer 5).
    Plan 8's `--job-timeout` will not interrupt it, because ruling AI's deadline is a
    poll and there is no poll site below `AutorouteEngine.java:265` — Java has none

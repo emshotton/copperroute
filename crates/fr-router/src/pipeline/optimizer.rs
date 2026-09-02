@@ -369,10 +369,12 @@ pub struct BatchOptimizer<'a> {
     pub deadline: Option<std::time::Instant>,
     /// `protected boolean isTimedOut` (`:38`) — the per-stage flag of the field above.
     pub is_timed_out: bool,
-    // added in Plan 8: `NamedAlgorithm.job` / `BatchOptimizer.job` (`BatchOptimizer.java:35`) —
-    // `core/RoutingJob`, the CLI/MCP job record; spec §13 puts it in Plan 8's `fr-core`. Its only
-    // readers on this task's path are `job.logWarning` (`:399`) and `job.logInfo`, which
-    // `global-constraints.md` drops with the rest of `FRLogger`.
+    // not ported: `NamedAlgorithm.job` / `BatchOptimizer.job` (`BatchOptimizer.java:35`) —
+    // **closed by Plan 8 Task 14**, on the same reasoning as the twin at
+    // `pipeline/batch_autorouter.rs`. Plan 8 Task 1 ported `core/RoutingJob` as
+    // `fr_core::RoutingJob`; `fr-core` composes `fr-router` (spec §4), so no field can point the
+    // other way. Its only readers on this task's path are `job.logWarning` (`:399`) and
+    // `job.logInfo`, which `global-constraints.md` drops with the rest of `FRLogger`.
     // not ported: the three listener lists of `NamedAlgorithm` (`:26-31`) — controller ruling AK
     // replaces them with `crate::pipeline::ProgressSink`.
     // not ported: `BatchOptimizer.sampleCurrentThreadCpuSeconds` (`:94-101`), `BatchOptimizer.sampleCurrentThreadAllocatedMb` (`:103-111`), `BatchOptimizer.sampleHeapUsageMb` (`:113-122`) — the three JMX samplers; every reader is a `job.logInfo` payload (`:255-272`), which the Global Constraints drop.
@@ -821,6 +823,20 @@ pub struct OptimizerResult {
     /// near-perfect exit** (`:177` then `:182-193`), so a run that stops there reports one pass
     /// more than it ran and [`Self::per_pass`] is one entry shorter.
     pub passes_run: i32,
+    /// The value `:196`'s `job.setCurrentPass(currentPass)` last wrote — `0` when the loop broke
+    /// before ever reaching it (the deadline at `:172-176` or the near-perfect exit at
+    /// `:182-193`).
+    ///
+    /// **This is what a headless run's result manifest reports**, not the routing stage's number:
+    /// both loops write the same `job.currentPass` field and `RoutingResultManifest.fromJob:
+    /// 124-126` reads whatever was written last, so one completed optimizer pass overwrites a
+    /// three-pass routing stage with `1`. Measured on `router-dac2020-bm01` at `-mp 2`: two
+    /// routing passes, one optimizer pass, `passes_completed: 1`. Quirk #267.
+    ///
+    /// Not [`Self::passes_run`] and not `per_pass.len()`: `:177`'s increment precedes the
+    /// near-perfect exit, and `:204-206`'s deadline break happens *after* `:196` but *before* the
+    /// record is pushed.
+    pub last_reported_pass: i32,
     /// `totalItemsOptimized` (`:36`), the count `optRoutePass:332` increments — **cumulative over
     /// the whole stage**, which is what the loop head at `:169-170` compares against
     /// `optimizer.maxItems`.
@@ -1130,6 +1146,9 @@ impl BatchOptimizer<'_> {
         // reads it at all — so the port declares it inside the loop, where it belongs, and says
         // so rather than carrying a variable Java only appears to carry.
         let mut current_pass: i32 = 0;
+        // The value `:196` last published into `job.currentPass`; see
+        // [`OptimizerResult::last_reported_pass`].
+        let mut last_reported_pass: i32 = 0;
         let mut per_pass: Vec<OptimizerPassRecord> = Vec::new();
 
         // :167-171 — `maxPasses`/`maxItems` are `Integer`s, and a `null` is "no limit".
@@ -1142,6 +1161,10 @@ impl BatchOptimizer<'_> {
                 .is_none_or(|max_items| self.total_items_optimized < max_items)
             && !stop.is_stop_requested()
         {
+            // Controller ruling BB's poll seam (Plan 8 Task 11) — ruling AI's other **per-stage**
+            // site; see `BatchFanout::fanout_board`'s twin for why a cancel may be polled here and
+            // a stage *deadline* may not. A `None` test on every parity run.
+            stop.poll_cancel();
             // :172-176 — the per-stage deadline. `:174` is the log line.
             if self.is_deadline_reached() {
                 // :173.
@@ -1161,7 +1184,10 @@ impl BatchOptimizer<'_> {
                 break;
             }
 
-            // :195-196 — `board.getHash()` for the event payload, and `job.setCurrentPass`.
+            // :195-196 — `board.getHash()` for the event payload, and
+            // `job.setCurrentPass(currentPass)`. The port has no `RoutingJob` here, so the value
+            // is recorded and handed back as [`OptimizerResult::last_reported_pass`].
+            last_reported_pass = current_pass;
             // :197-198.
             progress.on_event(&RoutingEvent::TaskStateChanged {
                 algorithm: BatchOptimizer::TYPE,
@@ -1243,6 +1269,7 @@ impl BatchOptimizer<'_> {
         Ok(OptimizerResult {
             state,
             passes_run: current_pass,
+            last_reported_pass,
             items_optimized: self.total_items_optimized,
             timed_out: self.is_timed_out,
             per_pass,

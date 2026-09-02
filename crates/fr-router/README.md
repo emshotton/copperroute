@@ -662,10 +662,15 @@ by a `not ported:` / `added in Task|Plan N:` marker and none by a real `fn`.
 The 26 `ROSTERED` lines, by invocation: `board/state` 3 (`BoardComparator`,
 `BoardObserverAdaptor`, `CoordinateTransform`), `datastructures` (fr-board) 4
 (`ArrayStack`, `BigIntAux`, `IdentifierType`, `IndentFileWriter`), `management` 1
-(`HeadlessBoardManager` — nine methods, all `added in Plan 8:`),
-`io/specctra/parser` 1 (`SessionToEagle`), `settings/sources` 2 (`GuiSettingsSource`,
-**`JsonFileSettings`** — see the hand-off, this is a real Plan 8 gap and not just a
-roster line), `util/gson` 3, `io/kicad` 3, `core/scoring` (fr-router) 2
+(`HeadlessBoardManager` — nine methods, all `added in Plan 8:`; **Plan 8 Task 3
+consumed all nine, so this line is now 25 and `management` prints nothing** —
+six `renamed:` into `fr-core`, one `not ported:` for the dead `createBoard`
+(quirk #253), three consumed by Task 0),
+`io/specctra/parser` 1 (`SessionToEagle`), `settings/sources` **1**
+(`GuiSettingsSource`; ~~**`JsonFileSettings`** — see the hand-off, this is a real
+Plan 8 gap and not just a roster line~~ — **Plan 8 Task 5 closed that gap** under
+scan ruling R7: `crates/fr-settings/src/sources/json_file.rs`), `util/gson` 3,
+`io/kicad` 3, `core/scoring` (fr-router) 2
 (`BoardScoreBreakdown`, `ScoringWeightComparison` — ruling 4's Plan 8 rows),
 `autoroute` 2 (`BoardHistoryEntry`, `PerformanceProfiler`), `autoroute/pipeline`
 **5** (`AutoroutePassRunner`, `BatchAutorouterThread`, `BatchOptimizerMultiThreaded`,
@@ -721,8 +726,9 @@ for dir in board/model/items board/model/structure board/facade board/searchtree
 done
 ./scripts/audit-port.sh drc crates/fr-board/src 'ClearanceViolation.java' scripts/audit-map/fr-drc.map
 # fr-board's management slice (Plan 7 Task 15b): the clearance overrides' Java home.
-# One ROSTERED line (nine public methods, all `added in Plan 8:`); the three methods
-# this task ports are private and the script never names them.
+# Silent since Plan 8 Task 3 consumed the nine `added in Plan 8:` markers (six became
+# `renamed:` into fr-core, one `not ported:` for the dead `createBoard`); the three
+# methods Task 15b ports are private and the script never names them.
 ./scripts/audit-port.sh management crates/fr-board/src 'HeadlessBoardManager.java' scripts/audit-map/fr-board.map
 
 # fr-dsn (Plan 3)
@@ -2976,9 +2982,10 @@ Two more things are `pub` where Java is `private`, and for one reason: the diffe
 driver is a separate crate and cannot use reflection. `BatchFanout::fanout_pass` is
 called by `p7t5 pass`'s `[real]` half, exactly where `P7T5.java` uses
 `Method.setAccessible(true)`; `parse_timespan_seconds` — the port of
-`TextManager.parseTimespanString` for `:94-99`, which `fr-settings` rosters
-`added in Plan 8:` because the settings path never parses a timeout — is called by the
-test that pins quirk #224.
+`TextManager.parseTimespanString` for `:94-99`, which `fr-settings` deferred to
+Plan 8 because the settings path never parses a timeout, and which Plan 8 Task 0
+landed as `fr_core::parse_timespan_seconds` (`crates/fr-settings/src/lib.rs:214`
+is now the `renamed:` row) — is called by the test that pins quirk #224.
 
 `scripts/differential/run.sh p7t5 <dsn> [passNo|maxPasses] [sortingOrder]
 [order|pin|pass|board]` is the evidence. Modes `order` and `pin` are Task 11's; modes
@@ -3552,8 +3559,18 @@ The marker inventory it rests on, measured on the committed tree at Plan 7 Task 
 own lines — the plan-6 hand-off's warning about `crates/` sweeping the READMEs
 applies to every row. The `crates/*/src` column is the inventory.)*
 
+> **Closed by Plan 8 Task 14.** `grep -rn "added in Plan 8" crates/*/src` and
+> `crates/*/tests` both answer **nothing** on the committed tree: Tasks 0-13 consumed
+> the markers incrementally and Task 14 consumed the last seven — the two
+> `BoardComparator` twins and the five ruling-AS score rows, all re-pointed to
+> `not ported:` — plus the five prose sentences that still quoted the marker text.
+> No marker anywhere defers to a ninth plan; there is none.
+> `docs/plan-8-handoff.md` §5 is where every surviving `obligation:` row is closed
+> with a reason.
+
 The 30 `added in Plan 8:` markers cluster in five places: `HeadlessBoardManager`'s
-nine `fr-core` methods (`fr-board/src/board/clearance_override.rs:399-407`),
+nine `fr-core` methods (`fr-board/src/board/clearance_override.rs:399-407` —
+**all nine consumed by Plan 8 Tasks 0 and 3**, so a re-measurement today counts 21),
 `BoardComparator` (`fr-board/src/board/mod.rs:57`, `fr-drc/src/lib.rs:144`), the
 KiCad JSON family (`fr-drc/src/lib.rs:114-119`), `SessionToEagle`
 (`fr-dsn/src/lib.rs:12`), and ruling 4's score surface
@@ -3566,10 +3583,10 @@ KiCad JSON family (`fr-drc/src/lib.rs:114-119`), `SessionToEagle`
 | `CancelToken` → this crate's `StopCheck` (six checked sites, ruling 6) | `datastructures/Stoppable`, spec §10 | `src/autoroute/maze/` stop-check sites |
 | `ProgressSink` replacing the dropped observers | `autoroute/events/**`, `NamedAlgorithm` | `src/lib.rs` roster (`not ported:` + `added in Plan 8:`) |
 | `BoardStatistics` — the metric block `tests/fixtures.rs` and `p6t1` stand in for | `core/scoring/BoardStatistics.java:271` | `tests/fixtures.rs` module docs |
-| `Wiring.readViaScope`'s unchecked `insert_via` (the ladder hang's last line) | `io/specctra/parser/Wiring.java:706` | `crates/fr-dsn/src/parser/wiring.rs:596`'s `obligation: Plan 8` |
+| ~~`Wiring.readViaScope`'s unchecked `insert_via` (the ladder hang's last line)~~ — **CLOSED, Plan 8 Task 3**: `read_via_scope` calls `Board::insert_via_checked` with a per-via `TimeLimit` stop built from `DsnReadOptions::normalize_time_limit`, and the p3t15/p6t1/batch_parity gates are unchanged | `io/specctra/parser/Wiring.java:706` | `crates/fr-dsn/src/parser/wiring.rs`'s `insert_via_checked` call |
 | the CLI/MCP surface: legacy-flag value normalisation wiring, MCP concurrency | `GlobalSettings.java:675-731`; spec §13 | `crates/freerouting/src/{legacy.rs,mcp/}`; obligation register |
 
-| quirk #232 boundary | `router.hole_clearance_um` > 0 + zero circular keepouts → Java's second override run does one extra `reinsertTreeItems` (tree-order shift, #229 class) | pin or reproduce before the CLI exposes the setting | see the `obligation:` at the #232 site |
+| ~~quirk #232 boundary~~ — **CLOSED, Plan 8 Task 3, and the premise was false**: there is no second override run (quirk #253 — `HeadlessBoardManager.createBoard` is unreachable from the DSN parser), so there is no boundary. Reproduced anyway: the transcript's `after_second_hole_override` stage shows a second `applyHoleClearanceOverride` moving nothing, tree-order digest included | `management/HeadlessBoardManager.java:310-344` vs `:739-749` | `crates/fr-core/tests/overrides.rs::the_second_hole_override_leaves_the_search_tree_alone`; quirks #232 and #253 |
 
 Six more, added by Plan 7 and stated here because a Plan 8 survey that misses one
 of them re-opens a closed parity hole:

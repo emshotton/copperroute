@@ -1,0 +1,168 @@
+# Class -> Rust path glob (relative to `crates/fr-core/src`) map for scripts/audit-port.sh's
+# per-class matching. Blank lines and lines starting with `#` are ignored. A class whose Rust home
+# spans more than one file gets one map line per file — not one line with several space-separated
+# globs, which the reader (`read -r cls path`) would only keep the first token of.
+#
+# CREATED AND SEEDED BY PLAN 8 TASK 0. Filled by every later task; **closed by Task 14**, which
+# must reach zero `MISSING` and zero `UNMAPPED` on all eight invocations below.
+#
+# Three of these Java directories — `management/`, `core/` and `api/` — had **never been audited
+# by any plan** before Plan 8. That is the gap survey §5.7 exists because of, and it is why the
+# clearance overrides of `HeadlessBoardManager` survived six plans unrostered (plan-7 Task 15b).
+#
+# ── The eight invocations this map serves (plan §The audit, Task 14) ────────────────────────────
+#
+#   ./scripts/audit-port.sh core                crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh core/scoring        crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh core/results        crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh core/events         crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh management          crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh management/jobs     crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh management/sessions crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#   ./scripts/audit-port.sh api                 crates/fr-core/src '*.java' scripts/audit-map/fr-core.map
+#
+# (`api/mcp`, `logger` and `Freerouting.java` itself go to `scripts/audit-map/freerouting.map`;
+# `io/kicad` to `scripts/audit-map/fr-dsn.map`.)
+#
+# `api/**` will report **`ROSTERED`** for nearly every class. That is the correct outcome, not a
+# weakening: ruling AU drops 8 425 lines and `ROSTERED` is what makes them *visible* instead of
+# silent. Task 14 records the count in its commit message.
+#
+# ── Which task owes which rows ──────────────────────────────────────────────────────────────────
+#
+#   Task 0  — the roster (`lib.rs`), `RoutingPipeline`'s wrapper (`pipeline.rs`), the cancel and
+#             progress seams, the timeout ladder. **Landed.**
+#   Task 1  — RoutingJob, RoutingJobState, RoutingStage, Session (validation only), FileFormat,
+#             BoardFileDetails (`job.rs`, `file_details.rs`). **Landed**: `core` is at 0 MISSING.
+#   Task 2  — BoardStatistics(byte[], FileFormat) + the Gson surface
+#             (`stats_from_bytes.rs`, `stats_json.rs`).
+#   Task 3  — the load/save sequence and the `management/` audit (`load.rs`, `save.rs`).
+#             **Landed**: `management`, `management/jobs` and `management/sessions` are all at
+#             0 MISSING and 0 UNMAPPED. `HeadlessBoardManager.createBoard` is `not ported:` in
+#             `load.rs` and is **dead code in Java** (quirk #253), not a deferral.
+#   Task 4  — RoutingResultManifest and its DTOs, plus RouterJobResourceUsage
+#             (`manifest.rs`). **Landed**: `core/results` is at 0 MISSING and 0 UNMAPPED.
+#   Task 12 — the board-summary payload (`summary.rs`).
+#   Task 14 — closes every remaining row to zero.
+#
+# A class whose mapped file does not exist yet reports every public method `MISSING`, which is the
+# point: the map records the obligation and the invocation's glob records how much of it is due.
+# ================================================================================================
+
+# ── core/ ───────────────────────────────────────────────────────────────────────────────────────
+# The two stop classes are **fr-router's** port (`crates/fr-router/src/pipeline/stop.rs`,
+# plan 7 Task 4); `fr-core` re-exports them (plan-8 ruling 1) and `cancel.rs` is where the
+# `CancelToken` mapping onto them is documented, so that is their home for this crate's audit.
+StoppableThread             cancel.rs
+StopRequestState            cancel.rs
+# Task 1's. `io/FileFormat.java` is ported in `job.rs` too (scan ruling R17), but it is not a
+# `core/` class, so no invocation here reaches it — `scripts/audit-map/fr-dsn.map` keeps it MAPPED
+# for Plan 3's `io/` sweep, with a note pointing here.
+RoutingJob                  job.rs
+RoutingJobState             job.rs
+Session                     job.rs
+BoardFileDetails            file_details.rs
+# Rostered in `lib.rs` (Task 0): `RoutingJobPriority`'s `getValue()` has no caller anywhere and
+# `RoutingStage` is written three times and read never.
+RoutingJobPriority          lib.rs
+# `RoutingStage`'s reachability roster stays in `lib.rs` §6 (no control-flow reader); the enum
+# itself is in `job.rs`, because the field IS serialised (`RoutingJob.java:75-77`) and Tasks 4 and
+# 12 need a value to report. Neither file can report a method: the enum declares none.
+RoutingStage                lib.rs
+RoutingStage                job.rs
+
+# ── core/scoring/ ───────────────────────────────────────────────────────────────────────────────
+# The computing `BoardStatistics` and its twelve DTOs are **fr-router's** (plan 7 Task 1); this
+# crate adds the byte-scraping twin and the Gson surface in Task 2, and rosters ruling AS's pair.
+BoardStatistics             lib.rs
+BoardStatistics             stats_from_bytes.rs
+BoardStatistics             stats_json.rs
+BoardStatisticsBends        stats_json.rs
+BoardStatisticsBoard        stats_json.rs
+BoardStatisticsClearanceViolations stats_json.rs
+BoardStatisticsComponents   stats_json.rs
+BoardStatisticsConnections  stats_json.rs
+BoardStatisticsItems        stats_json.rs
+BoardStatisticsLayers       stats_json.rs
+BoardStatisticsNets         stats_json.rs
+BoardStatisticsPads         stats_json.rs
+BoardStatisticsTraces       stats_json.rs
+BoardStatisticsVias         stats_json.rs
+# Ruling AS, rostered by Task 0 with the reachability grep and quirk label X.
+BoardScoreBreakdown         lib.rs
+ScoringWeightComparison     lib.rs
+
+# ── core/results/ (and the two `core/` DTOs the manifest carries) ───────────────────────────────
+# Task 4's. `RoutingResultManifest`'s three nested DTOs (`FixtureInfo`, `PhaseMetrics`,
+# `PhaseDetail`) are inner classes of the same file and need no rows of their own.
+RoutingResultManifest       manifest.rs
+# `RouterJobResourceUsage` is a `core/` class, not a `core/results/` one, but its only reader is
+# `RoutingResultManifest.fromJob:114` and its only writer is a monitor thread this port rosters
+# (quirk #237), so `manifest.rs` is where it lives and where quirk #256's two dead fields are
+# recorded.
+RouterJobResourceUsage      manifest.rs
+# `core/RouterCounters.java` is **fr-router's** port (`crates/fr-router/src/pipeline/`), re-exported
+# by `lib.rs` under plan-8 ruling 1 — corrected here in Task 4, which found Task 0's seed pointing
+# it at `manifest.rs`; the manifest does not carry counters at all.
+RouterCounters              lib.rs
+
+# ── core/events/ ────────────────────────────────────────────────────────────────────────────────
+# Rostered by Task 0: ruling AK's `ProgressSink` replaces the mechanism, and the four registrations
+# that add a consumer are all in `api/v1/*`.
+BoardFileDetailsUpdatedEvent          lib.rs
+BoardFileDetailsUpdatedEventListener  lib.rs
+RoutingJobLogEntryAddedEvent          lib.rs
+RoutingJobLogEntryAddedEventListener  lib.rs
+RoutingJobUpdatedEvent                lib.rs
+RoutingJobUpdatedEventListener        lib.rs
+# `core/ProgressThrottler` is **fr-router's** port (`pipeline/stop.rs`, plan 7 Task 4), re-exported
+# here; it lives under `core/` in Java, so this crate's `core` invocation must name it.
+ProgressThrottler                     progress.rs
+
+# ── management/ ─────────────────────────────────────────────────────────────────────────────────
+# Task 3's, except the halves Task 0 rostered (the deferred pass, the comparison pair, the power
+# plane validation) — those markers are in `lib.rs`. `BoardManager` is the interface
+# `HeadlessBoardManager` implements; its one method the audit can see (`createBoard`) is
+# `not ported:` in `load.rs` alongside the implementation's, because both are unreachable from the
+# DSN parser (quirk #253).
+BoardLoader                 load.rs
+BoardManager                load.rs
+HeadlessBoardManager        load.rs
+HeadlessBoardManager        save.rs
+HeadlessBoardManager        lib.rs
+
+# ── management/jobs/ ────────────────────────────────────────────────────────────────────────────
+# The scheduler's queue half, the monitor thread and its MXBean sampler are rostered in `lib.rs`
+# (Task 0); the `.rules` discovery and settings merge of `RoutingJobScheduler:103-186` are Plan 4's
+# and live in `fr-settings`, so this crate carries only the roster for them.
+RoutingJobScheduler             lib.rs
+RoutingJobSchedulerActionThread lib.rs
+RoutingJobSchedulerActionThread pipeline.rs
+ThreadActionListener            lib.rs
+
+# ── management/sessions/ ────────────────────────────────────────────────────────────────────────
+# Rostered by Task 0 (quirk label AA — `enqueueJob:315-318` validates `session.userId` and never
+# uses it, which is the only line making this a hard dependency of the CLI).
+SessionManager              lib.rs
+
+# ── api/ ────────────────────────────────────────────────────────────────────────────────────────
+# Ruling AU: the whole package is rostered in `lib.rs`. Every row below is expected to report
+# `ROSTERED`, and Task 14 records the count. Listed one per class rather than left `UNMAPPED`, so
+# that a class ADDED to the Java tree later shows up as `UNMAPPED` instead of hiding in a glob.
+ApiAnalyticsFilter              lib.rs
+ApiExceptionMapper              lib.rs
+ApiRateLimitFilter              lib.rs
+ApiUsageFilter                  lib.rs
+ApiUsagePaths                   lib.rs
+AppContextListener              lib.rs
+BaseController                  lib.rs
+CorrelationIdFilter             lib.rs
+EnvironmentHostValidationFilter lib.rs
+FixedWindowRateLimiter          lib.rs
+FreeroutingApplication          lib.rs
+GsonMessageBodyHandler          lib.rs
+JsonStringMessageBodyWriter     lib.rs
+NotFoundExceptionMapper         lib.rs
+OpenApiConfig                   lib.rs
+OpenApiResource                 lib.rs
+SwaggerUIResource               lib.rs

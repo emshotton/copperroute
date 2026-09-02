@@ -7,5 +7,11 @@ publish = false
 
 [dependencies]
 similar.workspace = true
+# Plan 8 Task 6: `normalize_log` maps a jar line onto the port's through
+# `freerouting::logging::MESSAGE_MAP`, so the message set lives in exactly one place. This is a
+# **dependency cycle through dev-dependencies** — `crates/freerouting` dev-depends on this crate
+# for `crates/freerouting/tests/cli_e2e.rs` — which Cargo permits and resolves by building this
+# crate against `freerouting`'s library before compiling `freerouting`'s test targets.
+freerouting = { path = "../../crates/freerouting" }
 serde = { workspace = true }
 serde_json.workspace = true

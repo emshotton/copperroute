@@ -1,0 +1,125 @@
+# P8T13Probe via-net-numbers-control — Plan 8 Task 13, HEAD jar
+# fixture crates/fr-dsn/tests/data/p8t13-via-net-numbers-control.dsn (1107 bytes)
+HEADER jar=freerouting-current-executable.jar size=63288652
+
+[jar-cli] cmd=java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -jar <HEAD jar> -de crates/fr-dsn/tests/data/p8t13-via-net-numbers-control.dsn -do <out.ses>
+[jar-cli] exit=0
+[jar-cli] ses bytes=1995
+[jar-cli] ses|(session "p8t13-via-net-numbers-control"
+[jar-cli] ses|  (base_design "p8t13-via-net-numbers-control")
+[jar-cli] ses|  (placement
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (component "pad_footprint"
+[jar-cli] ses|      (place U1 500000 500000 front 0)
+[jar-cli] ses|      (place U2 1500000 500000 front 0)
+[jar-cli] ses|      (place U3 2500000 500000 front 0)
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|  (was_is
+[jar-cli] ses|  )
+[jar-cli] ses|  (routes 
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (parser
+[jar-cli] ses|    )
+[jar-cli] ses|    (library_out 
+[jar-cli] ses|      (padstack VIA1
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle F.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle B.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (attach off)
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|    (network_out 
+[jar-cli] ses|      (net NORDERED
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2000
+[jar-cli] ses|            1936875 1500000
+[jar-cli] ses|            1000000 1500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1455991 500000
+[jar-cli] ses|            626250 500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1500000 500000
+[jar-cli] ses|            1455991 500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2000
+[jar-cli] ses|            2000000 1500000
+[jar-cli] ses|            1936875 1500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            500000 500000
+[jar-cli] ses|            626250 500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (via VIA1 626250 500000
+[jar-cli] ses|        )
+[jar-cli] ses|      )
+[jar-cli] ses|      (net NORDERED
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2000
+[jar-cli] ses|            1936875 1500000
+[jar-cli] ses|            1000000 1500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2000
+[jar-cli] ses|            2000000 1500000
+[jar-cli] ses|            1936875 1500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1936875 500000
+[jar-cli] ses|            1500000 500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            2373750 500000
+[jar-cli] ses|            1936875 500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1936875 500000
+[jar-cli] ses|            1936875 1500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            2500000 500000
+[jar-cli] ses|            2373750 500000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (via VIA1 2373750 500000
+[jar-cli] ses|        )
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|)
+
+[read] Success warnings=0
+
+[net] 1 NORDERED subnet=1 class=default plane=false
+[net] 2 NORDERED subnet=2 class=default plane=false
+[item] 1 BoardOutline comp=0 cl=1 nets=[] fixed=SYSTEM_FIXED
+[item] 2 Pin comp=1 cl=1 nets=[1] fixed=UNFIXED
+[item] 3 Pin comp=2 cl=1 nets=[1,2] fixed=UNFIXED
+[item] 4 Pin comp=3 cl=1 nets=[2] fixed=UNFIXED
+[item] 5 Via comp=0 cl=1 nets=[1] fixed=UNFIXED
+[item] 6 PolylineTrace comp=0 cl=1 nets=[1,2] fixed=UNFIXED
+[itemcount] 6
+

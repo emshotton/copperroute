@@ -160,11 +160,30 @@ valid.** Concretely:
   reduce an existing requirement". The two are not symmetric; do not factor them together.
 - Both `appendClass` calls are `matrix.getNo(name) < 0` guarded, so a board that already declares a
   `board_edge`/`hole_edge` class in its DSN reuses it. No corpus board does.
-- Both run **twice** per DSN load — once at `createBoard:342-343` on the freshly built, itemless
+- ~~Both run **twice** per DSN load — once at `createBoard:342-343` on the freshly built, itemless
   board, and once at `applyRouterSettingsForLoadedBoard:746-747` on the fully loaded one. The
   second run is idempotent for the copper path (the class already exists, the outline already points
   at it) but re-runs the whole matrix write. A port that runs it once at the end produces the same
-  state on the corpus; whether that holds in general is unverified.
+  state on the corpus; whether that holds in general is unverified.~~
+  **FALSE — struck by Plan 8 Task 3 (`7ef2f57`). This line is the origin of survey ruling AD and of
+  quirk #232's falsified text; it was read from `HeadlessBoardManager.java` alone, without checking
+  that `createBoard` is reachable.** It is not, and the proof is at the *type* level rather than in
+  any constructor: `Structure.java:1268` dispatches through `ReadScopeParameter`'s
+  `final BoardParserCallback boardHandling` (`ReadScopeParameter.java:27`), while
+  `HeadlessBoardManager implements BoardManager` (`HeadlessBoardManager.java:82`) and
+  `public interface BoardManager` (`BoardManager.java:79`) has **no `extends`** — a
+  `HeadlessBoardManager` is not assignable to that field, so no code path can route the call site
+  into its `createBoard`. `BoardParserCallback.java:10-17`'s own javadoc says as much: *"The only
+  production implementation is the package-private `MinimalBoardManager` nested inside
+  `ReadScopeParameter`"* — and `MinimalBoardManager.createBoard` (`ReadScopeParameter.java:139-166`)
+  builds the `RoutingBoard` and returns, calling neither override, with
+  `getCurrentRoutingJob()` returning `null`. Measured on the HEAD jar: a counting subclass of the
+  real `HeadlessBoardManager` driving a real `loadFromSpecctraDsn` reports
+  `headless_create_board_calls=0 board_loaded=true` on all three probe fixtures
+  (`crates/fr-core/tests/data/p8t3-clearance-overrides.txt`'s `[createboard]` rows).
+  **So both overrides run exactly ONCE, at `applyRouterSettingsForLoadedBoard:746-747`**, and the
+  port's single `fr_router::pipeline::prepare_board` call is Java's single call — a second call
+  would be the divergence. See quirk **#253** (the dead method) and the rewritten **#232**.
 - The class index of `board_edge` is board-dependent (3, 4 or 10 across the corpus).
 
 ---

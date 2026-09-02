@@ -28,6 +28,17 @@ fr-settings = { path = "../../../crates/fr-settings" }
 fr-drc = { path = "../../../crates/fr-drc" }
 # Added for the Plan 6 Task 3 driver (`p6t2`): `AutorouteSearchTreeExt` under test.
 fr-router = { path = "../../../crates/fr-router" }
+# Added for the Plan 8 Task 0 driver (`p8t0`): the timespan grammar and the timeout ladder.
+fr-core = { path = "../../../crates/fr-core" }
+# Added for the Plan 8 Task 5 driver (`p8t5`): the CLI's own `legacy::resolve_slots` and
+# `logging::console_level_string`, so the driver compares the code the binary runs rather than a
+# second copy of the rule.
+freerouting = { path = "../../../crates/freerouting" }
+# Added for the Plan 8 Task 6 drivers (`p8t1`, `p8t2 e2e`): ruling 13's process runners and
+# normalisers, so the driver and `crates/freerouting/tests/cli_e2e.rs` compare through the same
+# code rather than through two copies of the rule.
+parity = { path = "../../../tests/parity" }
+serde_json = "1"
 
 [[bin]]
 name = "t14"
@@ -137,3 +148,61 @@ path = "src/bin/p7t6.rs"
 [[bin]]
 name = "p7t10"
 path = "src/bin/p7t10.rs"
+
+# Plan 8 Task 0: `TextManager.parseTimespanString` + `RoutingJobSchedulerActionThread`'s cap.
+[[bin]]
+name = "p8t0"
+path = "src/bin/p8t0.rs"
+
+# Plan 8 Task 1: the whole job model — `RoutingJob`, `BoardFileDetails`, `FileFormat`, `SessionId`.
+# Named `p8t1probe`, not `p8t1`: the plan reserves `p8t1` for Task 6's end-to-end SES-byte gate.
+[[bin]]
+name = "p8t1probe"
+path = "src/bin/p8t1probe.rs"
+
+# Plan 8 Task 2: the text-scraping `BoardStatistics(byte[], FileFormat)`, `countOccurrences` and
+# the Gson JSON surface. Named `p8t2probe`, not `p8t2`: the plan reserves `p8t2` for Task 4's
+# result-manifest driver.
+[[bin]]
+name = "p8t2probe"
+path = "src/bin/p8t2probe.rs"
+
+# Plan 8 Task 4: `RoutingResultManifest` — the twelve fields, `resolveGitSha` and `sha256Hex`.
+# The name the plan reserved (Task 2's probe is `p8t2probe`); Task 4 lands the `shape` mode and
+# Task 6 adds the end-to-end one.
+[[bin]]
+name = "p8t2"
+path = "src/bin/p8t2.rs"
+
+# Plan 8 Task 5: the legacy command line — the filename slots, the mode flags, the dead
+# `routerSettings` bridge and the `FRLogger` lines, against `GlobalSettings
+# .applyCommandLineArguments`.
+[[bin]]
+name = "p8t5"
+path = "src/bin/p8t5.rs"
+
+# Plan 8 Task 6: the headline gate — the HEAD jar and the port, run as two whole programs on the
+# argv of every `tests/reference/cli-fixtures.txt` stem. Rust-only; see the driver's header for
+# why there is no `P8T1.java`.
+[[bin]]
+name = "p8t1"
+path = "src/bin/p8t1.rs"
+
+# Plan 8 Task 7: `freerouting drc` — `merge` is the Java-vs-Rust pair over quirk #272's separate
+# settings merge; `e2e` is the whole-program gate over the eight `drc-*` stems. Rust-only in `e2e`
+# for the reason `p8t1` is; see the driver's header.
+[[bin]]
+name = "p8t3"
+path = "src/bin/p8t3.rs"
+
+# Plan 8 Task 12: the MCP delta table, asserted against both programs. Rust-only for the reason
+# `p8t1` is — see the driver's header.
+[[bin]]
+name = "p8t6"
+path = "src/bin/p8t6.rs"
+
+# Plan 8 Task 12: spec §1's KiCad end-to-end acceptance — a KiCad-exported DSN routed to a SES the
+# port's own `ses_reader` reads back, byte-identical to the jar's.
+[[bin]]
+name = "p8t7"
+path = "src/bin/p8t7.rs"

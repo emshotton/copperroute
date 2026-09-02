@@ -828,6 +828,24 @@ single-threaded and says so), and the rest stand unchanged for Plan 7.
 
 ### Plan 8 (`fr-core` + surfaces)
 
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> | item | status |
+> |---|---|
+> | the whole `-drc` command line (`Freerouting.initializeDrc`) | **DISCHARGED, Task 7** — thirteen steps, with report byte parity on seven of the eight committed stems |
+> | `DrcJsonFlavor`'s CLI default (obligation-register row) | **DISCHARGED, controller ruling W**: the shipped CLI writes **KiCad's** snake_case — the spelling `$schema` promises and the one freerouting 2.3.0 itself wrote — passed *explicitly* at the call site so a future change to the enum's `Default` cannot move it. `--schema freerouting` is the way back to the jar's bytes. Quirk #154 |
+> | `quality_score`'s computation (obligation-register row) | **DISCHARGED, Task 7**: computed from `fr_router::score::normalized_score`, not injected. **All eight committed references match exactly**, which is the acceptance this hand-off predicted — and `cli_e2e.rs::every_committed_reference_score_is_recomputed` re-checks them without a JDK |
+> | `coordinateUnit` hard-coded `"mm"` — may Plan 8 expose a unit flag? | **DECIDED: NO.** A recorded decision, carried on quirk **#151**: exposing one would make the port more capable than the jar, on neither the CLI nor the MCP tool |
+> | `io/kicad`'s board/session classes (`// added in Plan 8:` markers) | **DISCHARGED**, Tasks 8-10; the markers in `crates/fr-drc/src/lib.rs` are now `renamed:` rows pointing at `crates/fr-dsn/src/kicad/**` |
+> | the eight `// added in Plan 8:` score markers in `crates/fr-router/src/score/mod.rs` | **CONSUMED.** Three became `renamed:` rows in Task 2 (`BoardStatistics`' byte constructor, `countOccurrences`, `toString` — all in `fr-core`); the other five are ruling **AS**'s dead pair and **Task 14 re-pointed them to `not ported:`** with the reachability grep |
+> | `schematic_parity` — if Plan 8 fills it, the element type needs its own `Serialize` | **NOT FILLED.** Nothing in the Java tree ever adds to it either; it stays `Vec<serde_json::Value>` and always empty |
+> | the `-drc` **product decisions** restated for Plan 8 | **All closed** — ruling AQ (the dead flags and `-mt`), ruling W (the schema), plan ruling 6 (the stdout mode, quirk #275) |
+
+
 - **Port `Freerouting.initializeDrc` (`Freerouting.java:246-372`) and call this
   crate.** The whole surface Plan 8 needs is
   `DesignRulesChecker::new(&mut board)` then `generate_report` /

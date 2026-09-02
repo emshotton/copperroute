@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-02T09:16:03.930619Z",
+  "app_version": "2.3.1-SNAPSHOT",
+  "git_sha": "unknown",
+  "fixture": {
+    "filename": "empty_board.dsn",
+    "sha256": "074212672893271f00ec9ef64f5002c66fa6336b1d32a82d9e6bc487b07ddc12"
+  },
+  "settings_snapshot": {
+    "enabled": true,
+    "algorithm": "freerouting-router",
+    "fanout": {
+      "enabled": false,
+      "max_passes": 20,
+      "max_items": 2147483647,
+      "max_milliseconds_per_pin": 10000,
+      "ripup_allowed": true,
+      "min_escape_length_mm": 2.5,
+      "max_escape_length_mm": 4.5,
+      "start_via_diameter_mm": 0.25,
+      "end_via_diameter_mm": 0.25,
+      "pin_sorting_order": "outer_first",
+      "fallback_to_board_vias": true
+    },
+    "copper_to_edge_clearance_um": 500.0,
+    "hole_clearance_um": 0.0,
+    "neck_width_um": 0.0,
+    "strict_drc": false,
+    "job_timeout": "12:00:00",
+    "max_passes": 1,
+    "trace_pull_tight_accuracy": 500,
+    "allowed_via_types": true,
+    "automatic_neckdown": true,
+    "optimizer": {
+      "enabled": false,
+      "algorithm": "freerouting-optimizer",
+      "max_passes": 100,
+      "max_items": 2147483647,
+      "max_threads": 7,
+      "improvement_threshold": 0.01,
+      "max_consecutive_failures": 50,
+      "additional_ripup_cost_factor_at_start": 10,
+      "trace_ripup_cost_factor": 0.6,
+      "max_autoroute_passes": 6
+    },
+    "scoring": {
+      "default_preferred_direction_trace_cost": 1.0,
+      "default_undesired_direction_trace_cost": 1.0,
+      "via_costs": 50,
+      "plane_via_costs": 5,
+      "start_ripup_costs": 100,
+      "unrouted_net_penalty": 5000000.0,
+      "clearance_violation_penalty": 1000000.0,
+      "bend_penalty": 10.0,
+      "default_bend_cost": 0.0
+    },
+    "max_threads": 7,
+    "result_json": "<OUT>/router-empty-board.manifest.json"
+  },
+  "phases": {
+    "fanout": {},
+    "autorouter": {
+      "duration_seconds": 0.041,
+      "passes_completed": 1
+    },
+    "optimizer": {}
+  },
+  "board_statistics": {
+    "host": "null,null",
+    "unit": "mm",
+    "board": {
+      "bounding_box": {
+        "x": 1867.9,
+        "y": -570.5,
+        "width": 1294.4,
+        "height": -1080.5
+      },
+      "size": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 573.5,
+        "height": 510.0
+      }
+    },
+    "layers": {
+      "total_count": 2,
+      "signal_count": 2
+    },
+    "items": {
+      "total_count": 1,
+      "trace_count": 0,
+      "via_count": 0,
+      "conduction_area_count": 0,
+      "drill_item_count": 0,
+      "pin_count": 0,
+      "component_count": 0,
+      "other_count": 1
+    },
+    "components": {
+      "total_count": 0
+    },
+    "pads": {
+      "total_count": 0
+    },
+    "nets": {
+      "total_count": 0,
+      "class_count": 1
+    },
+    "connections": {
+      "maximum_count": 0,
+      "incomplete_count": 0
+    },
+    "traces": {
+      "total_count": 0,
+      "total_segment_count": 0,
+      "total_length": 0.0,
+      "total_length_mm": 0.0,
+      "total_weighted_length": 0.0,
+      "average_length": 0.0,
+      "total_vertical_length": 0.0,
+      "total_horizontal_length": 0.0,
+      "total_angled_length": 0.0
+    },
+    "bends": {
+      "total_count": 0,
+      "90_degree_count": 0,
+      "45_degree_count": 0,
+      "other_angle_count": 0
+    },
+    "vias": {
+      "total_count": 0,
+      "through_hole_count": 0,
+      "blind_count": 0,
+      "buried_count": 0
+    },
+    "clearance_violations": {
+      "total_count": 0,
+      "min_violation_um": 0.0,
+      "max_violation_um": 0.0,
+      "avg_violation_um": 0.0
+    },
+    "fanout": {
+      "total_smd_pins": 0,
+      "pins_to_escape": 0,
+      "escaped_count": 0
+    }
+  },
+  "normalized_score": 0.0,
+  "resource_usage": {
+    "cpu_time": 0.0,
+    "max_memory": 0.0,
+    "peak_memory": 0.0,
+    "io_read": 0.0,
+    "io_written": 0.0
+  },
+  "final_state": "COMPLETED",
+  "exit_code": 0,
+  "output_written": true
+}

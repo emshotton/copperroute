@@ -128,10 +128,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-core"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-drc",
+ "fr-dsn",
+ "fr-geometry",
+ "fr-router",
+ "fr-settings",
+ "parity",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "fr-drc"
 version = "0.1.0"
 dependencies = [
  "fr-board",
+ "fr-core",
  "fr-dsn",
  "fr-geometry",
  "parity",
@@ -192,7 +209,13 @@ name = "freerouting"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "fr-board",
+ "fr-core",
+ "fr-drc",
+ "fr-dsn",
  "fr-geometry",
+ "fr-settings",
+ "parity",
  "serde",
  "serde_json",
  "thiserror",
@@ -298,6 +321,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 name = "parity"
 version = "0.1.0"
 dependencies = [
+ "freerouting",
  "serde",
  "serde_json",
  "similar",

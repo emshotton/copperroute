@@ -26,7 +26,7 @@ ApiSettings                 sources/api.rs
 EnvironmentVariablesSource  sources/env.rs
 CliSettings                 sources/cli.rs
 GlobalSettings              sources/cli.rs
-JsonFileSettings            lib.rs
+JsonFileSettings            sources/json_file.rs
 GuiSettingsSource           lib.rs
 # Task 10: the Gson configuration `RouterSettings`'s JSON in/out reproduces. Task 11 added
 # `util/gson` as a fourth audit invocation (see `crates/fr-settings/README.md`), so every class in

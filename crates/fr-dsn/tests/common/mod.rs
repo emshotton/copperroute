@@ -337,3 +337,150 @@ pub fn assert_unique_library_padstacks(content: &str) {
         "library_out must declare at least one via padstack"
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// Plan 8 Task 13: the four directed fixtures for Plan 3's zero-coverage paths.
+//
+// Each fixture is `tests/data/p8t13-<path>.dsn` and its JVM ground truth is
+// `tests/data/p8t13-directed-<path>.txt` — the byte-exact stdout of
+// `scripts/differential/java/probes/P8T13Probe.java` against the pinned HEAD jar under JDK 25
+// (that probe's header comment carries the exact `javac`/`java` invocation, and its `[jar-cli]`
+// rows carry the task brief's `java -jar <HEAD jar> -de <fixture> -do <out.ses>` acceptance run).
+// The helpers below replay those transcripts; the four tests that use them live in the suites
+// that own each path, and `tests/plan_3_zero_coverage.rs` is the list assertion over all four.
+// ---------------------------------------------------------------------------------------------
+
+/// Reads one directed fixture exactly as `P8T13Probe.read` does:
+/// `DsnReader.readBoard(in, null, new ItemIdGenerator(), "<file>.dsn")` — the design name carries
+/// the `.dsn` suffix, as `File.getName()` hands it over.
+pub fn read_directed(path_name: &str) -> (Board, fr_dsn::CoordinateTransform) {
+    let name = format!("p8t13-{path_name}.dsn");
+    let text = test_data(&name);
+    let options = fr_dsn::parser::scope_parameter::DsnReadOptions::default();
+    match fr_dsn::read_board(text.as_bytes(), None, Some(&name), &options) {
+        fr_dsn::BoardReadResult::Success {
+            board,
+            coordinate_transform,
+            warnings,
+            ..
+        } => {
+            assert!(
+                warnings.is_empty(),
+                "{name}: the probe recorded `[read] Success warnings=0`, the port warned {warnings:?}"
+            );
+            (
+                *board.unwrap_or_else(|| panic!("{name} produced no board")),
+                coordinate_transform
+                    .unwrap_or_else(|| panic!("{name} produced no coordinate transform")),
+            )
+        }
+        other => panic!("{name}: expected Success, got {other:?}"),
+    }
+}
+
+/// `SesWriter.write(board, out, "<file>")` — the probe's `emitSes`, whose design name is
+/// `File.getName().replace(".dsn", "")`.
+pub fn write_directed_ses(
+    board: &Board,
+    ct: &fr_dsn::CoordinateTransform,
+    path_name: &str,
+) -> String {
+    let mut out: Vec<u8> = Vec::new();
+    fr_dsn::ses_writer::write(board, ct, &mut out, &format!("p8t13-{path_name}"))
+        .expect("writing into a Vec cannot fail");
+    String::from_utf8(out).expect("SES output must be valid UTF-8")
+}
+
+/// Every row of `p8t13-directed-<path>.txt` that starts with `prefix`, verbatim.
+pub fn directed_rows(path_name: &str, prefix: &str) -> Vec<String> {
+    let transcript = test_data(&format!("p8t13-directed-{path_name}.txt"));
+    let rows: Vec<String> = transcript
+        .lines()
+        .filter(|l| l.starts_with(prefix))
+        .map(ToString::to_string)
+        .collect();
+    assert!(
+        !rows.is_empty(),
+        "p8t13-directed-{path_name}.txt carries no `{prefix}` row — the transcript was \
+         regenerated with a different row set"
+    );
+    rows
+}
+
+/// The SES text a `[ses <label>]|` block of `p8t13-directed-<path>.txt` carries, plus the
+/// `[ses <label>] bytes=` length the probe recorded beside it.
+pub fn directed_ses(path_name: &str, label: &str) -> (String, usize) {
+    let head = format!("[ses {label}] bytes=");
+    let bytes: usize = directed_rows(path_name, &head)
+        .first()
+        .expect("directed_rows never returns empty")
+        .trim_start_matches(&head)
+        .parse()
+        .expect("the probe writes a decimal byte count");
+    let body = format!("[ses {label}]|");
+    let text = directed_rows(path_name, &body)
+        .iter()
+        .map(|l| l.trim_start_matches(&body).to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    (text, bytes)
+}
+
+/// `P8T13Probe.items`, in Rust: one `[item] …` row per item, id ascending, then `[itemcount] …`.
+pub fn directed_items(board: &Board) -> Vec<String> {
+    let mut ids: Vec<_> = board.items.keys().copied().collect();
+    ids.sort_unstable();
+    let mut out = Vec::new();
+    for id in ids {
+        let item = board.get_item(id).expect("id came from the item list");
+        let kind = match item {
+            Item::BoardOutline(_) => "BoardOutline",
+            Item::ObstacleArea(_) => "ObstacleArea",
+            Item::ViaObstacleArea(_) => "ViaObstacleArea",
+            Item::ComponentObstacleArea(_) => "ComponentObstacleArea",
+            Item::ComponentOutline(_) => "ComponentOutline",
+            Item::ConductionArea(_) => "ConductionArea",
+            Item::Pin(_) => "Pin",
+            Item::Via(_) => "Via",
+            Item::Trace(_) => "PolylineTrace",
+        };
+        let header = item.header();
+        let nets: Vec<String> = (0..header.net_count())
+            .map(|i| header.get_net_number(i).to_string())
+            .collect();
+        out.push(format!(
+            "[item] {} {kind} comp={} cl={} nets=[{}] fixed={}",
+            id.0,
+            header.get_component_id(),
+            header.clearance_class(),
+            nets.join(","),
+            fixed_state(item),
+        ));
+    }
+    out.push(format!("[itemcount] {}", board.items.len()));
+    out
+}
+
+/// `P8T13Probe.viaNetNumbers`' `[net] …` rows, in Rust.
+pub fn directed_nets(board: &Board) -> Vec<String> {
+    (1..=board.rules.nets.max_net_number())
+        .map(|i| {
+            let net = board.rules.nets.get(i).expect("net in range");
+            format!(
+                "[net] {i} {} subnet={} class={} plane={}",
+                net.name,
+                net.subnet_number,
+                board.rules.net_classes.get(net.get_net_class()).get_name(),
+                net.contains_plane(),
+            )
+        })
+        .collect()
+}
+
+/// Diffs two row lists line by line, naming the transcript.
+pub fn assert_rows_match(actual: &[String], expected: &[String], what: &str) {
+    for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
+        assert_eq!(a, e, "{what}: row {} differs", i + 1);
+    }
+    assert_eq!(actual.len(), expected.len(), "{what}: row count differs");
+}

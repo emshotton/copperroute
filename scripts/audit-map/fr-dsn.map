@@ -58,6 +58,10 @@ DsnReader                dsn_reader.rs
 DsnWriter                dsn_writer.rs
 BoardReadResult          error.rs
 BoardMetadata            error.rs
+# `io/FileFormat.java` is a bare nine-constant enum with no public methods, so this line only
+# keeps it MAPPED. Its **code** home moved to `crates/fr-core/src/job.rs` in Plan 8 Task 1, beside
+# its two producers (`RoutingJob.getFileFormat(byte[]/Path)`); scan ruling R17 is why (the plan
+# draft had it as a seven-value nested enum of `RoutingJob`). Task 14's `io/` sweep records it.
 FileFormat               error.rs
 SesWriter                ses_writer.rs
 # `SesWriter.formatPlacementRotation` is the package's only `String.format`; it lives with the
@@ -67,6 +71,31 @@ SesReader                ses_reader.rs
 SesImportSummary         ses_reader.rs
 RulesReader              rules_reader.rs
 RulesWriter              rules_writer.rs
+
+# --- io/kicad/ (Plan 8 Tasks 8-10: the whole board/session JSON codec) ------------------------
+#
+# The `io/kicad` **audit invocation** runs against `crates/fr-drc/src` with
+# `scripts/audit-map/fr-drc.map` (plan-5 ruling 13 put the package there, for the four DRC report
+# DTOs), so these three lines are not read by any of the four invocations the crate README lists.
+# They are here so that the class -> Rust-file map is recorded where the *code* is, and so Plan 8
+# Task 14 can move the invocation to this crate without re-deriving them. Task 8 landed the DTO
+# tree and `readBoard`'s sections 1-8, Task 9 sections 9-11, **Task 10 `importSession` (which
+# joins `readBoard` in `kicad/reader.rs`) and `KiCadJsonWriter.write` (`kicad/writer.rs`)**.
+KiCadJsonReader          kicad/reader.rs
+KiCadBoardJson           kicad/dto.rs
+KiCadJsonWriter          kicad/writer.rs
+# The four DRC report DTOs of the same Java package are ported in **`fr-drc`** (`report/mod.rs`,
+# plan-5 ruling 13), not here. Plan 8 Task 14 moved the `io/kicad` invocation onto this crate as
+# one of its twelve, so the package is now audited from both sides and all seven classes must be
+# named by *this* map too: without these four rows the invocation prints `UNMAPPED` for each of
+# them and degrades to the crate-wide search. They point at `kicad/mod.rs`, whose module docs
+# carry the two `renamed:` lines that name `fr-drc` as `addViolation`/`addUnconnectedItem`'s home.
+# The other three have no public method at all (fields and a constructor only), so they need the
+# map row and nothing else.
+KiCadDrcReport           kicad/mod.rs
+KiCadDrcViolation        kicad/mod.rs
+KiCadDrcViolationItem    kicad/mod.rs
+KiCadDrcPosition         kicad/mod.rs
 
 # `SessionToEagle` (io/specctra/parser/SessionToEagle.java, 627 lines) is **out of Plan 3's
 # scope** — the plan's Architecture paragraph puts it, with `io/kicad/**`, in Plan 8 ("fr-core +

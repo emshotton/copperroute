@@ -311,6 +311,51 @@ fn legacy_bridge_is_dead() {
     assert!(cli.get_parsed_arguments().is_empty());
 }
 
+/// `--router.<path>=<value>` reaches the **bridge** as well as `CliSettings`.
+///
+/// `GlobalSettings.setValue` (`:498-509`) is `ReflectionUtil.setFieldValue(this, name, value)`,
+/// and `@SerializedName("router")` on the deprecated bridge (`:52`) is what makes a `router.`
+/// path resolve onto it — the field's own javadoc says as much. An earlier revision of
+/// `sources/cli.rs` claimed the `--name=value` arm wrote *"never the router bridge"*; the
+/// `p8t5` differential's `router-enabled-empty` row measured otherwise against the HEAD jar
+/// (`routerSettings.enabled = false`, not `null`, because `Boolean.parseBoolean("") == false`).
+///
+/// The two parsers still disagree about the same token, which is the point of ruling 8: the
+/// bridge's copy is dead and `CliSettings`' is live.
+#[test]
+fn a_router_long_option_writes_the_dead_bridge_too() {
+    // The measured row: an EMPTY value is `false`, not "absent".
+    let dead = bridge(&["--router.enabled="]);
+    assert_eq!(dead.router_enabled, Some(false));
+    assert_eq!(
+        cli(&["--router.enabled="]).get_settings().unwrap().enabled,
+        Some(false)
+    );
+
+    // A path that navigates into `optimizer` lands on the bridge's flattened field.
+    let dead = bridge(&["--router.optimizer.max_threads=7"]);
+    assert_eq!(dead.optimizer_max_threads, Some(7));
+    // …with **no** clamp, unlike `-mt` (`GlobalSettings.java:692-697`).
+    let dead = bridge(&["--router.optimizer.max_threads=99999"]);
+    assert_eq!(dead.optimizer_max_threads, Some(99999));
+    assert_eq!(bridge(&["-mt", "99999"]).optimizer_max_threads, Some(1024));
+
+    // `user_data_path` is excluded from the setter (`:558`), and a non-`router.` name never
+    // reaches the bridge at all.
+    assert_eq!(bridge(&["--user_data_path=/tmp"]), LegacyBridge::default());
+    assert_eq!(
+        bridge(&["--api_server.endpoints=http://x"]),
+        LegacyBridge::default()
+    );
+    // A path with no such field is `setValue`'s `NoSuchFieldException` arm: warn and carry on.
+    assert_eq!(
+        bridge(&["--router.no_such_field=1"]),
+        LegacyBridge::default()
+    );
+    // A `--name` with no `=` is skipped before the split (`:539`).
+    assert_eq!(bridge(&["--router.enabled"]), LegacyBridge::default());
+}
+
 /// One argv token, two fields, two clamps (plan ruling 8, `docs/cli-legacy-flags.md` quirk 2 /
 /// `docs/java-quirks.md` #132).
 /// `CProbe D11.mtClampHigh = 1024` (the dead bridge, `GlobalSettings.java:695-697`),
@@ -722,4 +767,126 @@ fn de_is_prefix_matched_and_never_double_dashed() {
         slots(Some("b.dsn"), None, None)
     );
     assert_eq!(de(&[]), slots(None, None, None));
+}
+
+// -------------------------------------------------------------------------------------------------
+// Controller ruling BJ — the port-only `--set` alias, and the constructor that does NOT have it
+// -------------------------------------------------------------------------------------------------
+
+fn cli_native(args: &[&str]) -> CliSettings {
+    CliSettings::new_with_set_alias(&argv(args))
+}
+
+/// `settings.max_passes` off either constructor. `get_settings` borrows from the source, so each
+/// call site binds the source first; this hides that.
+fn max_passes(source: &CliSettings) -> Option<i32> {
+    source
+        .get_settings()
+        .expect("a source always answers")
+        .max_passes
+}
+
+/// `CliSettings::new` is Java-exact and **must not** grow a `--set` arm: the jar ignores that
+/// argv twice over — `CliSettings.java:45` skips a `--` token with no `=`, and the payload does
+/// not start with `-`, so `:58`'s branch never sees it either. Ruling AR makes the port's legacy
+/// path bug-for-bug, and `crates/freerouting/src/commands::cli_settings` is the one place that
+/// chooses between this constructor and the aliasing one, on `legacy::is_legacy_form`.
+#[test]
+fn the_java_exact_constructor_ignores_set_the_way_the_jar_does() {
+    for args in [
+        &["--set", "router.max_passes=7"][..],
+        &["--set=router.max_passes=7"][..],
+    ] {
+        let source = cli(args);
+        assert_eq!(
+            max_passes(&source),
+            None,
+            "`CliSettings::new` must leave `--set` unread, exactly as the jar does: {args:?}"
+        );
+    }
+}
+
+/// Ruling BJ: on the native form `--set <section>.<field>=<value>` is an **exact alias** for
+/// `--<section>.<field>=<value>`. "Exact" is the claim under test — both spellings of the flag,
+/// the first-`=` split, the `router.` filter, and the `router.enabled` forcing guard all have to
+/// behave identically, because the two go through the same `apply_router_setting`.
+#[test]
+fn the_set_alias_is_exactly_the_dotted_spelling() {
+    // Both `clap` spellings of the flag, against the dotted form as the oracle.
+    let dotted = cli(&["--router.max_passes=7"]);
+    assert_eq!(max_passes(&dotted), Some(7), "the oracle itself");
+    for args in [
+        &["--set", "router.max_passes=7"][..],
+        &["--set=router.max_passes=7"][..],
+    ] {
+        let source = cli_native(args);
+        assert_eq!(
+            max_passes(&source),
+            max_passes(&dotted),
+            "the alias must answer what the dotted spelling answers: {args:?}"
+        );
+    }
+
+    // Repeatable, and the last occurrence wins — `RouteArgs::set` is a `Vec<String>`, and the
+    // loop applies each in argv order.
+    let twice = cli_native(&[
+        "--set",
+        "router.max_passes=7",
+        "--set",
+        "router.max_passes=9",
+    ]);
+    assert_eq!(max_passes(&twice), Some(9));
+
+    // The value keeps every `=` after the first, because the payload is split with `split_once`
+    // exactly as `CliSettings.java:46`'s `split("=", 2)` does.
+    let ratio = cli_native(&["--set", "router.optimizer.hybrid_ratio=1:2"]);
+    assert_eq!(
+        ratio
+            .get_settings()
+            .expect("settings")
+            .optimizer
+            .as_ref()
+            .and_then(|o| o.hybrid_ratio.clone()),
+        Some("1:2".to_string())
+    );
+
+    // A name outside `router.` is ignored, as `:54-56` ignores it; and a payload with no `=` is
+    // skipped, as a bare `--router.max_passes` is skipped at `:45`. Both against the empty source.
+    let empty = cli_native(&[]);
+    for args in [
+        &["--set", "gui.theme=dark"][..],
+        &["--set", "router.max_passes"][..],
+        // `--settings <file>` is a different flag and must not be caught by the alias:
+        // `"settings=…".starts_with("set=")` is false, and a bare `--settings` is `"settings"`.
+        &["--settings", "s.json"][..],
+    ] {
+        let source = cli_native(args);
+        assert_eq!(
+            source.get_settings().expect("settings"),
+            empty.get_settings().expect("settings"),
+            "the alias must change nothing here: {args:?}"
+        );
+    }
+
+    // `:50-52`'s forcing guard: the *name* alone disarms the `-de`/`-do` `enabled = true`, and it
+    // must do so through the alias too, whatever the value is.
+    let forced = cli_native(&["-de", "a.dsn", "-do", "b.ses"]);
+    assert_eq!(
+        forced.get_settings().expect("settings").enabled,
+        Some(true),
+        "control: `-de` + `-do` with no explicit `router.enabled` forces it on (:77-83)"
+    );
+    let disarmed = cli_native(&[
+        "-de",
+        "a.dsn",
+        "-do",
+        "b.ses",
+        "--set",
+        "router.enabled=false",
+    ]);
+    assert_eq!(
+        disarmed.get_settings().expect("settings").enabled,
+        Some(false),
+        "the alias must arm `hasExplicitRouterEnabledArgument` exactly as the dotted spelling does"
+    );
 }

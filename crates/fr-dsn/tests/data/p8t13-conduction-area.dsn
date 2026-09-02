@@ -1,0 +1,53 @@
+(pcb p8t13-conduction-area.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary
+      (path pcb 0  0 0  300000 0  300000 300000  0 300000  0 0)
+    )
+    (via VIA1)
+  )
+  (placement
+    (component pad_footprint
+      (place P1 20000 20000 front 0)
+    )
+  )
+  (library
+    (image pad_footprint
+      (side front)
+      (pin PAD 1 0.0 0.0)
+    )
+    (padstack PAD
+      (shape (rect F.Cu -2500.0 -2500.0 2500.0 2500.0))
+      (attach off)
+    )
+    (padstack VIA1
+      (shape (circle F.Cu 6000))
+      (shape (circle B.Cu 6000))
+      (attach off)
+    )
+  )
+  (network
+    (net NPLANE
+      (pins P1-1)
+    )
+    (class kicad_default NPLANE
+      (rule (width 250) (clearance 200))
+    )
+  )
+  (wiring
+    (wire
+      (polygon F.Cu 0  100000 100000  200000 100000  200000 200000  100000 200000)
+      (window
+        (polygon F.Cu 0  130000.5 130000.5  170000.5 130000.5  170000.5 170000.5  130000.5 170000.5)
+      )
+      (net NPLANE)
+    )
+  )
+)

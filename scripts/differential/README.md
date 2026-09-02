@@ -1589,6 +1589,126 @@ methods with dozens of branches.
   ledgers say nothing about which item they belong to. The patch header carries the full
   recipe for the `Issue558-dev-board` 188-vs-187 row.
 
+- `p8t5` — **Plan 8 Task 5: the legacy command line.**
+  `GlobalSettings.applyCommandLineArguments` (`settings/GlobalSettings.java:521-838`) over the
+  86 argv shapes of `matrix/p8t5-argv.tsv`. Per row the two halves print the four filename
+  slots (`initialInputFile`, `initialOutputFile`, `initialRulesFile`,
+  `designSessionFilename`), `drcReportFile.getFilename()`, `showHelpOption`,
+  `logging.console.level`, every field of the `@Deprecated routerSettings` bridge this method
+  can write, `drcSettings.enabled`, and **every `FRLogger` line the parse emitted**, in order.
+
+  Three things about it are worth knowing before changing it:
+
+  * The Java half redirects `System.out`/`System.err` to a null stream on its **first line**,
+    before any freerouting class is loaded, because log4j's Console appender targets
+    `SYSTEM_OUT` (`Log4j2ConfigurationFactory.java:58`) and would otherwise interleave itself
+    with the transcript. The messages are read back out of `FRLogger.getLogEntries()`, which
+    holds exactly the `info`/`warn`/`error` calls (a `debug` returns before the `add`).
+  * The Rust half links **`crates/freerouting` itself**, so what is compared is
+    `legacy::resolve_slots` as the binary runs it, not a second copy of the rule written for
+    the driver. That is why the CLI crate has a library target.
+  * The matrix deliberately holds **no** row whose answer depends on a file existing
+    (`GlobalSettings.java:571-572`, the `File.exists()` branch of `-de`) and **no**
+    `--name=value` outside `router.*`, because both would make the answer depend on state the
+    two sides do not share — the working directory, and a `GlobalSettings` field table the
+    port does not have. Both branches are pinned at unit level in
+    `crates/fr-settings/tests/cli_source.rs` instead, and the matrix header says so.
+
+  `./scripts/differential/run.sh p8t5` — 2096 lines, MATCH.
+
+- `p8t1` — **Plan 8 Task 6: `freerouting route` end to end. The plan's headline gate
+  (controller ruling AV).** The HEAD jar and the port, run as **two whole programs** on the argv
+  recorded in each `tests/reference/cli-<stem>/argv.txt`, compared on three rungs: byte-identical
+  SES (after quirk #92's four `(parser …)` keyword literals are rewritten on the jar side — the
+  same closed set `crates/fr-router/tests/batch_parity.rs` rewrites), equal exit code, equal
+  `parity::normalize_log`. Plus four **refusal rows** with no fixture stem, because every stem
+  succeeds and a successful run emits no message `freerouting::logging::MESSAGE_MAP` names.
+
+  **It has no `P8T1.java`, and that is deliberate.** Every other driver here is a pair because the
+  thing under test is a Java *method* that has to be called from inside a JVM. Here it is the jar:
+  `java -jar <jar> -de … -do …` needs no class to drive it, and both runners and both normalisers
+  live in `tests/parity` (`run_jar`, `run_port`, `normalize_log`, `normalize_manifest`). A Java
+  half could only re-implement `normalize_log` a second time from the same rules, and two copies
+  of a harness rule can agree with each other while both are wrong. So `run.sh` grew a
+  `rust_only` mode: it builds the port's binary in **release**, builds the driver, runs it, and
+  takes its exit status as the verdict — the driver prints its own per-stem table.
+
+  **The budget is live on both sides**, unlike every `p7t*` driver: the port's CLI runs
+  `fr_core::RouterBudget::default()` (Java's own 1000 / 10000 / 250 / 1000 literals) because that
+  is what a user gets, and the jar's `optChangedArea` limit is a javac-inlined constant nothing
+  can switch off. `scripts/gen-cli-reference.sh`'s header states the difference and what bounds
+  the machine-speed risk it imports.
+
+  `./scripts/differential/run.sh p8t1` — the four `ci` stems plus the four refusal rows.
+  `run.sh p8t1 all` — **11 stems, 11 MATCH**, about four minutes. `run.sh p8t1 <stem> …` for one.
+
+- `p8t2 e2e` — **Plan 8 Task 6's manifest half.** The same argv plus
+  `--router.result_json=<f>`, through both whole programs, with the two manifests compared
+  **field for field** after `parity::normalize_manifest` (which drops `generated_at`, `git_sha`,
+  `resource_usage`, the phase durations, `settings_snapshot.result_json` and the two host-derived
+  `max_threads`). `rust_only`, for `p8t1`'s reason; `p8t2 shape` is still Task 4's Java-vs-Rust
+  pair and is unchanged. `run.sh p8t2 e2e all` — **11 stems, 11 MATCH**.
+
+  It earned its keep on the first run: `phases.autorouter.passes_completed` came back `jar 1,
+  port 2` on `router-dac2020-bm01` and `router-strict-drc-cnh`, because `job.currentPass` is
+  written by **both** stage loops and the manifest reports whichever wrote last (quirk #267).
+
+- `p8t3` — **Plan 8 Task 7: `freerouting drc` end to end.** Two modes, the `p8t2` shape.
+
+  **`merge` (the default) is a genuine Java-vs-Rust pair.** `P8T3.java` transcribes
+  `Freerouting.initializeDrc`'s quality-score block (`:342-352`, quirk #272) — the prototype
+  merger of `Freerouting.java:1408-1413` plus **one** `DsnFileSettings` and nothing else, then
+  `board.getStatistics().getNormalizedScore(routerSettings.scoring)` — over the eight rows of
+  `tests/reference/drc-fixtures.txt`; the Rust half calls
+  `freerouting::commands::drc::{quality_score_settings, quality_score}`, i.e. the binary's own
+  functions (the `p8t5` convention). Three lines per stem: the seven scoring weights, the six
+  board counters, and the score as `Float.toString`, as raw IEEE bits and as the `(double)`
+  widening `:349` puts in the report. Printing the weights is the point — the score is one
+  `float`, and a divergence in it could come from the merge, from `BoardStatistics` or from the
+  board the three loaders built.
+
+  This mode has a Java half where `p8t1` has none because what it drives is a Java *method
+  composition* whose answer is invisible in the report beyond a single number. `merge` also
+  prints, **on stderr**, the path `new JsonFileSettings()` resolves and whether it exists: that
+  priority-10 slot is the one place the two sides deliberately differ (controller ruling BG gave
+  the port no default file), and it is invisible only because the file the jar writes carries an
+  empty `"router"` block. A machine where it did not would DIFF, with the provenance beside it.
+
+  **`e2e` is the acceptance gate**, `rust_only` for `p8t1`'s reason: `java -jar <jar> -de <dsn>
+  [<ses>] [-dr <rules>] -drc <report>` against the port on the same argv, comparing the report
+  byte-identically after `parity::normalize_drc_json`, plus `quality_score` on its own (the value
+  Task 7 newly *computes* where Plan 5 injected it), plus the exit code, plus
+  `parity::normalize_log`. The byte rung needs the jar's key spelling, so the port is run a second
+  time on the **native** form with `--schema freerouting` — the shipped default is
+  `DrcJsonFlavor::KiCad` (ruling W, quirk #154) — and the legacy run is what rungs (b)-(e) use, so
+  the shim and the exit ladder are compared on the argv a user types.
+
+  Plus six **argv rows**, which are where the exit-code and log rungs earn their keep: the eight
+  stems all succeed, and quirk #271 is precisely that three of the five things which can go wrong
+  do **not** move the exit code. `missing-rules`, `missing-session` and `rules-and-session` exit 0
+  and write a report (the last is the only run that fills both optional slots, and is quirk #273's
+  gate); `missing-input`, `ses-input` and `unwritable-report` are the three `System.exit(1)` sites.
+
+  `./scripts/differential/run.sh p8t3` — **25 lines, MATCH**.
+  `./scripts/differential/run.sh p8t3 e2e` — **14 rows, 13 MATCH, 1 XDIFF**, about 40 s.
+  `run.sh p8t3 e2e <stem> …` runs the named stems and skips the argv rows.
+
+  The XDIFF is `drc-natural-tone-preamp` and no port can remove it: quirk **#146** is the case
+  where *the jar does not match itself* (113-115 violations across `-XX:hashCode=0..4`; the
+  reference is mode 2's 115, the port's ascending-id representatives give 112). The grant is
+  **checked, not waived** — `reference_parity.rs`'s shape: delete exactly the three pinned uuids
+  (`1909`, `1696`, `1242`, literals in both places) from the jar's document, require all three to
+  have been there, then require the remainder to be byte-identical. A port-side extra entry, or
+  any other difference anywhere in the document, is still a `DIFF`. Its `quality_score` is
+  compared on its own rung and matches.
+
+- `sweep-p8t5.sh [row-label ...]` — the same driver, **row by row**, printing
+  MATCH/XDIFF/SKIP per argv shape so that a regression is *a row that changed* rather than a
+  wall of diff. Builds both sides once through `run.sh p8t5`, then splits the two transcripts
+  on their `[row] <label>` headers. **86 MATCH, 0 XDIFF, 0 SKIP**, about a second; the
+  `EXPECTED_XDIFF` table at the top of the script is empty and a row added to it must cite the
+  ruling or `docs/java-quirks.md` id that authorises it.
+
 - `sweep-p7t9.sh [stem ...] [--modes a,b,c]` — Plan 7 Task 16's whole-board sweep, the
   `sweep-p5t1.sh` shape: compile both sides once through `run.sh p7t9`, then loop the
   built artifacts over every **batch** stem of `tests/reference/router-fixtures.txt` ×

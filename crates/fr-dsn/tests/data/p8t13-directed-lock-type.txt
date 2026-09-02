@@ -1,0 +1,60 @@
+# P8T13Probe lock-type — Plan 8 Task 13, HEAD jar
+# fixture crates/fr-dsn/tests/data/p8t13-lock-type.dsn (880 bytes)
+HEADER jar=freerouting-current-executable.jar size=63288652
+
+[jar-cli] cmd=java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -jar <HEAD jar> -de crates/fr-dsn/tests/data/p8t13-lock-type.dsn -do <out.ses>
+[jar-cli] exit=0
+[jar-cli] ses bytes=373
+[jar-cli] ses|(session "p8t13-lock-type"
+[jar-cli] ses|  (base_design "p8t13-lock-type")
+[jar-cli] ses|  (placement
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (component "pad_footprint"
+[jar-cli] ses|      (place LOCKED 1000000 1000000 front 0
+[jar-cli] ses|       (lock_type position))
+[jar-cli] ses|      (place FREE 2000000 1000000 front 0)
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|  (was_is
+[jar-cli] ses|  )
+[jar-cli] ses|  (routes 
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (parser
+[jar-cli] ses|    )
+[jar-cli] ses|    (library_out 
+[jar-cli] ses|    )
+[jar-cli] ses|    (network_out 
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|)
+
+[read] Success warnings=0
+
+[component] 1 LOCKED positionFixed=true placed=true front=true
+[component] 2 FREE positionFixed=false placed=true front=true
+[pin] 2 LOCKED-1 fixed=SYSTEM_FIXED nets=[1]
+[pin] 3 FREE-1 fixed=UNFIXED nets=[2]
+
+[ses ses] bytes=373
+[ses ses]|(session "p8t13-lock-type"
+[ses ses]|  (base_design "p8t13-lock-type")
+[ses ses]|  (placement
+[ses ses]|    (resolution um 10)
+[ses ses]|    (component "pad_footprint"
+[ses ses]|      (place LOCKED 1000000 1000000 front 0
+[ses ses]|       (lock_type position))
+[ses ses]|      (place FREE 2000000 1000000 front 0)
+[ses ses]|    )
+[ses ses]|  )
+[ses ses]|  (was_is
+[ses ses]|  )
+[ses ses]|  (routes 
+[ses ses]|    (resolution um 10)
+[ses ses]|    (parser
+[ses ses]|    )
+[ses ses]|    (library_out 
+[ses ses]|    )
+[ses ses]|    (network_out 
+[ses ses]|    )
+[ses ses]|  )
+[ses ses]|)

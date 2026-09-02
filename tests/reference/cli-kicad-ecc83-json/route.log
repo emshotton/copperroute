@@ -1,0 +1,18 @@
+2026-09-02 07:22:09.111 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)
+2026-09-02 07:22:09.165 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-09-02 07:22:10.240 WARN   Non-ansi character '{' found at position 0 just after ''.
+2026-09-02 07:22:10.256 WARN   Non-ansi character '{' found at position 0 just after ''.
+2026-09-02 07:22:10.401 INFO   New version available: v2.3.0
+2026-09-02 07:22:10.512 INFO   [97D869\CD4C81] Loading board file 'Issue649-kicad_ecc83-pp_input_board_v1.json'...
+2026-09-02 07:22:10.558 INFO   [97D869\CD4C81] Job '97D869\CD4C81' started at 2026-09-02T14:22:10.558652Z.
+2026-09-02 07:22:10.629 INFO   [97D869\CD4C81] Fanout stage is enabled but skipped because the board has no SMD pins.
+2026-09-02 07:22:10.632 INFO   [97D869\CD4C81] Auto-routing stage started on board '26bb989a20de7cd389c95917377b2ee8' for 20 unrouted items.
+2026-09-02 07:22:11.457 INFO   [97D869\CD4C81] Auto-routing pass #1 on board '26bb989a20de7cd389c95917377b2ee8' was completed in 0.77 seconds with score 310.00 (11 unrouted and 14 violations).
+2026-09-02 07:22:11.899 INFO   [97D869\CD4C81] Auto-routing pass #2 on board 'bedfc6cb2af6845a3f8b2b7e62d775cd' was completed in 0.43 seconds with score 310.00 (11 unrouted and 14 violations), using 0.84 CPU seconds and the job allocated 2.65 GB of memory so far.
+2026-09-02 07:22:12.206 INFO   [97D869\CD4C81] Auto-routing pass #3 on board 'bedfc6cb2af6845a3f8b2b7e62d775cd' was completed in 0.30 seconds with score 310.00 (11 unrouted and 14 violations), using 0.84 CPU seconds and the job allocated 2.65 GB of memory so far.
+2026-09-02 07:22:12.213 INFO   [97D869\CD4C81] Auto-routing stage completed: started with 20 unrouted nets, completed in 1.63 seconds, final score: 310.00 (11 unrouted and 14 violations), using 0.84 total CPU seconds, 2.65 GB total allocated, and 157.2 MB peak heap usage.
+2026-09-02 07:22:12.216 INFO   [97D869\CD4C81] Optimization stage started on board 'bedfc6cb2af6845a3f8b2b7e62d775cd' with score 310.00 (11 unrouted and 14 violations).
+2026-09-02 07:22:12.235 INFO   [97D869\CD4C81] Optimizer pass #1 on board '607cc784567c7d973656ccfa62d65ed4' was completed in 0.01 seconds with the score of 310.00 (11 unrouted and 14 violations).
+2026-09-02 07:22:12.236 INFO   [97D869\CD4C81] Stopping optimizer because the improvement in this pass (0.0000%) is below the threshold (1.00%).
+2026-09-02 07:22:12.237 INFO   [97D869\CD4C81] Optimization stage completed: started with score 310.00 (11 unrouted and 14 violations), completed in 0.02 seconds, final score: 310.00 (11 unrouted and 14 violations), using 0.02 total CPU seconds, 0.19 GB total allocated, and 281.3 MB peak heap usage.
+2026-09-02 07:22:12.239 INFO   [97D869\CD4C81] Job '97D869\CD4C81' finished with state: COMPLETED (elapsed: 1.68 seconds, finished at UTC: 2026-09-02T14:22:12.239095Z).

@@ -111,12 +111,20 @@ pub mod prelude {
 // JSON *output* entirely; the *input* path is Plan 8's. Listed by method, because that is the
 // granularity `audit-port.sh io/kicad` checks.
 //
-// added in Plan 8: KiCadJsonReader.readBoard (io/kicad/KiCadJsonReader.java) — the KiCad board JSON reader (1011 loc).
-// added in Plan 8: KiCadJsonReader.importSession (io/kicad/KiCadJsonReader.java) — the `.json` session branch of `Freerouting.initializeDrc` (Freerouting.java:296-329).
-// added in Plan 8: KiCadJsonReader.addPoint (io/kicad/KiCadJsonReader.java) — a helper of the above.
-// added in Plan 8: KiCadJsonReader.boundingBox (io/kicad/KiCadJsonReader.java) — a helper of the above.
-// added in Plan 8: KiCadJsonWriter.write (io/kicad/KiCadJsonWriter.java) — the KiCad board JSON writer (227 loc).
-// added in Plan 8: KiCadBoardJson.Point2D (io/kicad/KiCadBoardJson.java) — the DTO tree those two exchange (142 loc).
+// **Plan 8 Tasks 8-10 landed the whole package in `fr-dsn`**, so all six lines below are
+// `renamed:` and none is deferred: Task 8 the DTO tree and `readBoard`'s sections 1-8, Task 9
+// sections 9-11 and the two helpers only they call, **Task 10 `importSession` and
+// `KiCadJsonWriter.write`**. They stay *here* because `scripts/audit-map/fr-drc.map` maps the
+// three classes to this file and the `io/kicad` audit runs against `crates/fr-drc/src`;
+// `scripts/audit-map/fr-dsn.map` records the real Rust homes so Task 14's sweep can move the
+// invocation without re-deriving them.
+//
+// renamed: KiCadJsonReader.readBoard -> `fr_dsn::kicad::read_board` (crates/fr-dsn/src/kicad/reader.rs), Plan 8 Task 8. It lives in `fr-dsn` and not here because it is a board reader: everything it returns — `fr_board::Board`, `fr_dsn::BoardReadResult`, `fr_dsn::CoordinateTransform` — is that crate's, and `fr-core`'s load path then takes DSN and KiCad JSON through one signature. **Task 8 landed the signature and sections 1-8** (`KiCadJsonReader.java:63-497`); Task 9 extends the same fn body with sections 9-11 (`:498-755`), and the `// obligation:` marker sits where section 9 begins. `scripts/audit-map/fr-drc.map` still maps the class here, which is why this line is here and not there.
+// renamed: KiCadJsonReader.importSession -> `fr_dsn::kicad::import_session` (crates/fr-dsn/src/kicad/reader.rs), Plan 8 Task 10 — `KiCadJsonReader.java:757-855`, the traces, vias and conduction areas of a KiCad *session* JSON imported onto an existing board. It has **two** live call sites, both discharged: the `.json` arm of `Freerouting.initializeDrc:301-307` (`crates/freerouting/src/commands/drc.rs`'s `load_session_file`) and the `.json` arm of `RoutingJobScheduler.java:194-207` (`crates/freerouting/src/commands/route.rs`'s `import_session_file`). It lives beside `readBoard` because it is a reader and shares that module's helpers. Quirk #290 (label U) — Java opens the file with `new FileReader`, i.e. the platform default charset — is recorded at the DRC site.
+// renamed: KiCadJsonReader.addPoint -> `PointOutline::add_point` in `crates/fr-dsn/src/kicad/reader.rs`, Plan 8 Task 8 — the private `PointOutline` helper class (KiCadJsonReader.java:980-1010), whose two methods section 5 calls to build the outline's bounding box.
+// renamed: KiCadJsonReader.boundingBox -> `PointOutline::bounding_box` in `crates/fr-dsn/src/kicad/reader.rs`, Plan 8 Task 8 — see `addPoint` above.
+// renamed: KiCadJsonWriter.write -> `fr_dsn::kicad::write` (crates/fr-dsn/src/kicad/writer.rs), Plan 8 Task 10 — `KiCadJsonWriter.java:27-226`, both overloads (the one-argument one is `write(board, fr_dsn::kicad::DEFAULT_DESIGN_NAME)`; it has no caller in the Java tree). It lives in `fr-dsn` beside the reader it is the partial inverse of, and it serialises the same DTO tree through `fr_dsn::format::json::to_gson_string_pretty` — the `GsonProvider.GSON` port. Its CLI call site is `RoutingJobSchedulerActionThread.setJobOutput:275-278`, which is quirk #289 (label T): only the **first** of that method's calls ever writes, so `-do out.json` carries the *pre-routing* board. Byte-for-byte pinned by `crates/fr-dsn/tests/data/p8t10-kicad-writer.txt` over nine boards.
+// renamed: KiCadBoardJson.Point2D -> `fr_dsn::kicad::dto::Point2D`, and the other eleven DTOs with it, in `crates/fr-dsn/src/kicad/dto.rs` (Plan 8 Task 8). The audit reads `Point2D` as a method of `KiCadBoardJson` because it is a nested class with a public constructor; the whole 142-line tree moved, not just that one type. Field names are Java's verbatim — they are the JSON wire contract the writer (Task 10) has to write back.
 
 // --- The GUI façades over this crate's compute (spec §2: no GUI) -----------------------------
 //
@@ -141,7 +149,7 @@ pub mod prelude {
 // --- Consumers of this crate that belong to other plans --------------------------------------
 //
 // renamed: autoroute/pipeline/AutorouteUnroutedReport.build (autoroute/pipeline/AutorouteUnroutedReport.java:19-80) -> `fr_router::pipeline::build_unrouted_report` (Plan 7 Task 15) — the diagnostic report the autorouter emits when it stagnates. It is a *consumer* of this crate (`new DesignRulesChecker(board, null)`, `calculateAllIncompletes()`, `getAllAirlines()` at `:20-22`) and belongs to the router, not the DRC layer; it is package-private, so `audit-port.sh` would not see it either way. `describeItem` (`:60-79`) is its private helper, `pipeline::unrouted_report::describe_item`.
-// added in Plan 8: board/state/BoardComparator.java (758 loc) — diffs two boards for the result-manifest/report layer (spec §10). Plan-5 ruling 13 established that nothing in `drc/**` or the `-drc` path references it, so it is **not** the DRC layer's. Its marker at `crates/fr-board/src/board/mod.rs:57` was re-pointed to Plan 8 by Plan 5 Task 12, per the ruling; this line records the decision at the crate the ruling was made in.
+// not ported: board/state/BoardComparator.compare (BoardComparator.java, 758 loc) — **controller ruling AS, closed by Plan 8 Task 14.** It diffs two boards. Plan-5 ruling 13 established that nothing in `drc/**` or on the `-drc` path references it, so it is not the DRC layer's; this line records that decision at the crate the ruling was made in. Plan 8 then built the result-manifest/report layer the deferral was pointing at and found no reader there either — see the full evidence at `crates/fr-board/src/board/mod.rs:57`, where the class's own package lives.
 
 // --- Dropped parameters and helpers ----------------------------------------------------------
 //

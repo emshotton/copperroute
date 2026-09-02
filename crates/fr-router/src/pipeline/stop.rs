@@ -75,14 +75,50 @@
 //! a **seventh** read site is a bug unless it is a job-level one.
 //!
 //! Plan 8's `CancelToken` joins at exactly these sites and must preserve the split: a token that
-//! ends the whole pipeline where Java ends one stage changes the board.
+//! ends the whole pipeline where Java ends one stage changes the board. It does preserve it —
+//! see the `pub seam` section above for the four sites [`RouterStop::poll_cancel`] landed at and
+//! why a *cancel* at a per-stage — or per-item — site is not a *deadline* at one.
 //!
-//! # pub seam: Plan 8's `CancelToken`
+//! # pub seam: Plan 8's `CancelToken` — **LANDED**, Plan 8 Task 11 (controller ruling BB)
 //!
 //! Controller ruling AP puts Plan 8's `CancelToken` (spec §10) at these same poll sites as an
 //! `Arc<AtomicBool>` copied in. This module deliberately introduces **no atomics**: the state is
 //! a [`Cell`] because the pipeline is single-threaded (plan-7 §Tech Stack, "no threads"), and the
 //! token joins it at the call site rather than replacing it.
+//!
+//! Scan ruling R3 found that `run_pipeline` offers no hook to join *with*, and applied ruling AP's
+//! own escape — *"if a poll site turns out to be missed, add a poll, never a lock"* — as an
+//! **additive-and-wrapped, driver-pinned** change, which controller ruling BB assigned to Plan 8
+//! Task 11. What landed is [`RouterStop::with_cancel_poll`] (install one closure) and
+//! [`RouterStop::poll_cancel`] (run it), called from **four** sites and no others — three pass
+//! loop heads from Task 11, and one per-**item** site Plan 8 Task 12 added under controller
+//! ruling AI after measuring what a pass costs:
+//!
+//! | site | Java loop | why a cancel may be polled there |
+//! |---|---|---|
+//! | `AutorouteBatchLoop::run`'s pass loop | `AutorouteBatchLoop.java:250-253` | the job-level flag's own loop |
+//! | `BatchFanout::fanout_board`'s pass loop | `BatchFanout.java:111-116` | a cancel is job-level even at a per-stage site — see below |
+//! | `BatchOptimizer::run_batch_loop`'s pass loop | `BatchOptimizer.java:172-176` | ditto |
+//! | `AutoroutePassRunner::run_single_thread`'s **item** loop (`pipeline/pass_runner.rs`) | `AutoroutePassRunner.java:202-205` | ruling AI's sanctioned fourth site, taken on a measurement: one auto-routing pass of `fixtures/Issue508-DAC2020_bm01.dsn` is **135 s** in a release build, so the three rows above alone put a two-minute floor under an operator's `notifications/cancelled`. With this row the same cancel is observed in ~0.03 s |
+//!
+//! **The fourth site is `poll_cancel`-only, and could not be `poll_deadline`.** It sits inside a
+//! stage, and `poll_deadline` requests `ALL` on a *stage* clock — exactly what the next section
+//! forbids at a per-stage site. `poll_cancel` carries no clock at all; what it copies in is an
+//! operator's `requestStop()`, which is `ALL` by definition, so the deeper site changes *when* the
+//! flag is seen and never *what* it means.
+//!
+//! The two per-stage rows are **not** a flattening of the distinction this module's next section
+//! draws. That distinction is about [`RouterStop::poll_deadline`], which requests `ALL` on a
+//! *stage* clock and so must never be called where Java writes only a stage-local `isTimedOut`.
+//! [`RouterStop::poll_cancel`] carries no clock: it copies in an operator's
+//! `notifications/cancelled`, which is `requestStop()` — `ALL` — by definition
+//! (`core/StoppableThread.java:23-25`), and an operator cancelling a job means the job. Java has
+//! no counterpart at all, because Java's MCP cannot cancel a run (a documented delta,
+//! `crates/freerouting/README.md`).
+//!
+//! **The seam is invisible unless something installs a closure.** Both constructors leave it
+//! `None`, so `poll_cancel` is a `None` test; `fr_core::CancelToken::as_router_stop` is the only
+//! installer in the tree, and an uncancelled token's closure writes nothing either.
 
 use std::cell::Cell;
 use std::time::Instant;
@@ -166,6 +202,15 @@ pub struct PassRecord {
 // `RouterStop` — the pipeline's single `Stoppable`
 // =================================================================================================
 
+/// **Controller ruling BB's poll seam** (Plan 8 Task 11): the closure a [`RouterStop`] may carry,
+/// which copies an *external* stop request in at the four sites listed on
+/// [`RouterStop::poll_cancel`].
+///
+/// The only implementation in the tree is `fr_core::CancelToken::apply_to`, and this crate
+/// deliberately does not know that type — `fr-core` depends on `fr-router`, not the other way
+/// round, so the seam is a closure rather than a trait or an import.
+pub type CancelPoll = Box<dyn Fn(&RouterStop)>;
+
 /// The port's single `Stoppable`, shared by the whole pipeline exactly as Java shares one
 /// `StoppableThread` (`core/StoppableThread.java`, and survey Appendix B's six
 /// `AutorouteEngine.isStopRequested` sites).
@@ -195,7 +240,6 @@ pub struct PassRecord {
 /// let all: StopCheck<'_> = &|| stop.is_stop_requested();
 /// assert!(!auto() && !all());
 /// ```
-#[derive(Debug)]
 pub struct RouterStop {
     /// `StoppableThread.stopRequestState` (`StoppableThread.java:8`).
     state: Cell<StopRequestState>,
@@ -206,6 +250,25 @@ pub struct RouterStop {
     /// `AutorouteBatchLoop.java:251-253` reads and `:578-584` reports. Written by
     /// [`RouterStop::poll_deadline`] only.
     timed_out: Cell<bool>,
+    /// **Controller ruling BB's poll seam** (Plan 8 Task 11) — see
+    /// [`RouterStop::with_cancel_poll`] and [`RouterStop::poll_cancel`]. `None` on every stop
+    /// this crate builds and on every one a parity driver builds, which is what makes the seam
+    /// invisible to the ladder.
+    cancel_poll: Option<CancelPoll>,
+}
+
+/// Hand-written because [`RouterStop::cancel_poll`] is a closure and closures are not [`Debug`].
+/// The three fields Java has are printed exactly as the derive printed them; the seam prints only
+/// whether it is installed, which is the whole of what a reader can act on.
+impl std::fmt::Debug for RouterStop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RouterStop")
+            .field("state", &self.state)
+            .field("deadline", &self.deadline)
+            .field("timed_out", &self.timed_out)
+            .field("cancel_poll", &self.cancel_poll.is_some())
+            .finish()
+    }
 }
 
 // not ported: `StoppableThread.run` — `java.lang.Thread`'s entry point (`StoppableThread.java:16-19`),
@@ -228,6 +291,7 @@ impl RouterStop {
             state: Cell::new(StopRequestState::None),
             deadline: None,
             timed_out: Cell::new(false),
+            cancel_poll: None,
         }
     }
 
@@ -243,7 +307,37 @@ impl RouterStop {
             state: Cell::new(StopRequestState::None),
             deadline: Some(TimeLimit::new(limit_ms)),
             timed_out: Cell::new(false),
+            cancel_poll: None,
         }
+    }
+
+    /// **Controller ruling BB's poll seam** (Plan 8 Task 11): install the one closure the three
+    /// added poll sites call. `poll` is handed `&self` and is expected to copy an *external*
+    /// stop request in — `fr_core::CancelToken::apply_to` is the only implementation in the tree,
+    /// and this crate deliberately does not know that type (`fr-core` depends on `fr-router`, not
+    /// the other way round).
+    ///
+    /// # Why a seam at all, and why it is additive
+    ///
+    /// Controller ruling AP put Plan 8's `CancelToken` at these poll sites as an
+    /// `Arc<AtomicBool>` copied in; scan ruling R3 found that `run_pipeline` offers no hook to
+    /// copy it in *with*, and applied ruling AP's own escape — *"if a poll site turns out to be
+    /// missed, add a poll, never a lock"* — as an **additive-and-wrapped, driver-pinned**
+    /// `fr-router` change. This method and [`RouterStop::poll_cancel`] are that change, in full.
+    ///
+    /// **A stop with no closure installed behaves exactly as it did before the seam existed**:
+    /// [`RouterStop::poll_cancel`] is then a load of a `None` and nothing else, no state write and
+    /// no clock read. [`RouterStop::new`] and [`RouterStop::with_deadline`] both leave it `None`,
+    /// and those are the only two constructors, so every existing driver — `batch_parity`, `p6t1`,
+    /// `p8t1`, `sweep-p7t9.sh` — is byte-unchanged by construction rather than by measurement
+    /// (it was measured anyway; see the Task 11 report).
+    ///
+    /// The closure is **not** `Send`: a `RouterStop` is [`Cell`]-based and therefore `!Sync`
+    /// already, it belongs to one routing thread for a whole run, and the sharing lives entirely
+    /// on the token's side of the seam.
+    pub fn with_cancel_poll(mut self, poll: CancelPoll) -> RouterStop {
+        self.cancel_poll = Some(poll);
+        self
     }
 
     /// `StoppableThread.requestStop` (`:23-25`) — sets `ALL`, unconditionally, from any state.
@@ -327,6 +421,38 @@ impl RouterStop {
         // thread to wait out.
         self.timed_out.set(true);
         true
+    }
+
+    /// **Controller ruling BB's poll seam** (Plan 8 Task 11): run the closure
+    /// [`RouterStop::with_cancel_poll`] installed, if any.
+    ///
+    /// This is the *one line* an added poll site executes, and it is called from exactly **four**
+    /// places in this crate — the job-level loop head of `AutorouteBatchLoop::run`
+    /// (`pipeline/batch_loop.rs`, `AutorouteBatchLoop.java:250-253`), the two per-stage loop
+    /// heads ruling AI enumerates, `BatchFanout::fanout_board` (`BatchFanout.java:111-116`) and
+    /// `BatchOptimizer::run_batch_loop` (`BatchOptimizer.java:172-176`), and — added by Plan 8
+    /// Task 12 under ruling AI, on a measurement — the per-**item** loop of
+    /// `AutoroutePassRunner::run_single_thread` (`pipeline/pass_runner.rs`,
+    /// `AutoroutePassRunner.java:202-205`). See the module doc's table for the 135-second pass
+    /// that made the fourth site necessary and for why it is `poll_cancel`-only.
+    ///
+    /// # It is not [`RouterStop::poll_deadline`], and the difference is the whole point
+    ///
+    /// [`RouterStop::poll_deadline`] models Java's **job monitor thread** and may be called from
+    /// job-level sites only, because it requests `ALL` and would suppress a stage Java leaves
+    /// running (see its own doc and the module doc's table). This method models nothing of Java's
+    /// at all: Java's MCP has **no cancellation** (a documented delta —
+    /// `crates/freerouting/README.md`), so what it copies in is the port's own
+    /// `notifications/cancelled`, and *that* request is `requestStop()` — `ALL` — by definition
+    /// (`core/StoppableThread.java:23-25`). Placing it at a per-stage site is therefore correct
+    /// where placing `poll_deadline` there would not be: an operator cancelling a job means the
+    /// job, not the stage.
+    ///
+    /// With no closure installed this is a `None` test and nothing else.
+    pub fn poll_cancel(&self) {
+        if let Some(poll) = self.cancel_poll.as_ref() {
+            poll(self);
+        }
     }
 
     /// Java's `job.state == RoutingJobState.TIMED_OUT`, which `AutorouteBatchLoop.java:251-253`
@@ -598,6 +724,56 @@ mod tests {
         assert_eq!(StopRequestState::None.ordinal(), 0);
         assert_eq!(StopRequestState::AutoRouterOnly.ordinal(), 1);
         assert_eq!(StopRequestState::All.ordinal(), 2);
+    }
+
+    /// Controller ruling BB's seam, both halves: a stop with no closure installed is the stop it
+    /// always was — `poll_cancel` writes nothing — and a stop with one installed runs it and lets
+    /// it write. The **first** half is what keeps `batch_parity`, `p6t1`, `p8t1` and
+    /// `sweep-p7t9.sh` byte-unchanged, because every one of them builds `RouterStop::new()`.
+    #[test]
+    fn the_cancel_poll_seam_is_a_no_op_until_a_closure_is_installed() {
+        let bare = RouterStop::new();
+        bare.poll_cancel();
+        assert_eq!(bare.state(), StopRequestState::None);
+        assert!(!bare.is_timed_out());
+
+        // An installed closure that writes nothing — `fr_core::CancelToken::apply_to` on an
+        // uncancelled token — is equally invisible.
+        let quiet = RouterStop::new().with_cancel_poll(Box::new(|_| {}));
+        quiet.poll_cancel();
+        assert_eq!(quiet.state(), StopRequestState::None);
+
+        // And one that does write reaches the flag, in Java's own vocabulary.
+        let loud = RouterStop::new().with_cancel_poll(Box::new(RouterStop::request_stop));
+        assert_eq!(loud.state(), StopRequestState::None);
+        loud.poll_cancel();
+        assert_eq!(loud.state(), StopRequestState::All);
+    }
+
+    /// The seam does not disturb the deadline's own poll: `poll_cancel` reads no clock and
+    /// `poll_deadline` runs no closure.
+    #[test]
+    fn the_cancel_poll_seam_and_the_deadline_poll_are_independent() {
+        // `Rc<Cell<_>>` so the count is readable *after* the closure has been moved into the
+        // stop — a bare `Cell` moved in is a counter nothing can assert on.
+        let ran = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+        let counted = std::rc::Rc::clone(&ran);
+        let stop = RouterStop::with_deadline(3_600_000)
+            .with_cancel_poll(Box::new(move |_| counted.set(counted.get() + 1)));
+
+        // An unexpired deadline neither fires nor reaches the closure.
+        assert!(!stop.poll_deadline());
+        assert_eq!(
+            ran.get(),
+            0,
+            "poll_deadline must not run the cancel closure"
+        );
+
+        // And the cancel poll runs the closure exactly once, without touching the deadline.
+        stop.poll_cancel();
+        assert_eq!(ran.get(), 1);
+        assert!(!stop.is_timed_out());
+        assert_eq!(stop.state(), StopRequestState::None);
     }
 
     #[test]

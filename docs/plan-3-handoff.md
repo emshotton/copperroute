@@ -712,13 +712,19 @@ would still surface as a `DIFF` on a mode nobody excused.
   (`board/actions/ForcedViaInserter.java:348`), and
   `crates/fr-router/tests/forced_via.rs`
   `insert_stops_when_the_stop_check_trips` pins that a tripping check on a
-  four-rung ladder answers `BoardError::Stopped` rather than hanging. **One line
-  of wiring remains and it is Plan 8's, by controller ruling** (accepted in Task
-  10b's review): `fr-dsn`'s `read_via_scope` still calls the unchecked wrapper,
-  and passing it the reader's own `normalize_time_limit`-backed check is a
-  DSN-reader behaviour change over the 105-file corpus, not a router one. Marker
-  at `parser/wiring.rs:596`, which says `Plan 8`, as does the obligation register
-  row in `docs/java-quirks.md`.
+  four-rung ladder answers `BoardError::Stopped` rather than hanging. **The last line of wiring landed in
+  Plan 8 Task 3**: `fr-dsn`'s `read_via_scope` now calls `insert_via_checked`
+  with a per-via `TimeLimit` stop built from
+  `DsnReadOptions::normalize_time_limit`, with the `limit_ms <= 0` test
+  inverted relative to the normalisation site — a stop there costs one warning
+  because Java has a `catch`, a stop here can only fail the read because Java
+  has none, so a non-positive budget means no bound at the via site. It was held back because it changes the
+  DSN reader's behaviour over the 105-file corpus, so it landed in the task that
+  already re-runs the whole sweep: `cargo test -p fr-dsn`,
+  `scripts/differential/sweep-p3t15.sh` (525 MATCH + 5 XDIFF),
+  `scripts/differential/run.sh p6t1` on the five Plan 6 stems and
+  `cargo test -p fr-router --test batch_parity`, all unchanged. Ruling F is now
+  closed end to end.
 - **Via-info / via-rule re-pointing (ruling H). DECIDED in Plan 6 (Tasks 8 and
   17): it closes AGAINST the re-pointing, and the fix is a `ViaRule` that owns
   its `ViaInfo`s — a Plan 7 `fr-board` change. — DONE in Plan 7 Task 0** for the
@@ -776,6 +782,25 @@ would still surface as a `DIFF` on a mode nobody excused.
 
 ### Plan 8 (`fr-core` + surfaces)
 
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> | item | status |
+> |---|---|
+> | wire this crate's seven entry points | **DISCHARGED**, Tasks 3, 6, 7, 8-10 and 12 — `read_board`, `read_metadata`, `dsn_writer::write`, `ses_reader::read`, `ses_writer::write`, `rules_reader::read`, `rules_writer::write` all have a live CLI or MCP caller |
+> | ruling **A** — whatever holds a `Board` between a read and a write must hold its `CoordinateTransform` | **DISCHARGED, Task 3**: `fr_core::LoadedBoard` is that holder, and `crates/fr-core/README.md`'s load-sequence section is the record |
+> | rename the SES/rules entry points to the crate root | **DECIDED: no.** `kicad::read_board` and `dsn_reader::read_board` are two readers of two formats with one name, and a root-level `pub use` of either would make `fr_dsn::read_board` ambiguous to read even where it resolves. `crates/fr-dsn/src/lib.rs` records the decision at the re-export |
+> | `io/kicad/**` (1 574 lines) | **DISCHARGED**, Tasks 8 (the DTO tree and `readBoard` sections 1-8), 9 (sections 9-11) and 10 (`importSession` and `KiCadJsonWriter.write`). Built on this crate's `BoardReadResult`/`BoardMetadata`/`CoordinateTransform`, as this hand-off asked |
+> | `SessionToEagle` (627 lines) | **CLOSED as out of scope** (spec §2 keeps the Specctra SES writer and drops every other export format). Task 0 re-worded the `lib.rs` marker from a deferral to `// not ported:`. **Not dead in Java** — `SesReader.java:107` calls it — so the roster line is a decision, not a reachability claim |
+> | the KiCad reader must not "fix" quirk #83 | **HONOURED.** `ClearanceMatrix`'s J-then-I indexing is untouched; `fr_dsn::kicad::reader` writes through the same accessor the Specctra reader does |
+> | MCP concurrency | **DISCHARGED**, Tasks 11 and 12 |
+> | the four zero-coverage paths | **CLOSED, Task 13** — see the table already struck through above |
+> | quirk **#113** (`(string_quote .)`) | **CLOSED WITH REASON, not attempted.** It needs a regex engine (forbidden by the dependency rule) or a hand-rolled single-character regex emulation, for an input no exporter writes. `docs/plan-8-handoff.md` §7 |
+
+
 - **Wire this crate's seven entry points** (above). Whatever holds a `Board`
   between a read and a write must also hold the `CoordinateTransform` (ruling A).
   Decide then whether the SES/rules entry points should be renamed to the crate
@@ -794,12 +819,23 @@ would still surface as a `DIFF` on a mode nobody excused.
   "correct" it changes clearances on every KiCad-sourced board and breaks parity.
 - MCP concurrency (progress sink, cancel token, reader thread) — carried from
   Plan 1, untouched by this plan.
-- **The four zero-coverage Plan 3 paths** (register row): `SesWriter.writeWasIs`'s
-  swap body, `Component.readLockType`'s `(lock_type position)` arm,
-  `SesWriter.writeConductionArea` (quirk #110's mixed int/double output) and
-  quirk #105. Each needs a synthetic fixture plus JVM ground truth. If a wider
-  corpus ever arrives, these are the rows to check first. (The
-  `instanceof Path` → `PolylinePath` arm is **not** on this list: it is
+- ~~**The four zero-coverage Plan 3 paths** (register row)~~ — **ALL FOUR CLOSED in
+  Plan 8 Task 13.** Each now has a directed synthetic fixture under
+  `crates/fr-dsn/tests/data/`, JVM ground truth from
+  `scripts/differential/java/probes/P8T13Probe.java` against the pinned HEAD jar
+  under JDK 25 (committed as `p8t13-directed-<path>.txt`, whose `[jar-cli]` rows
+  carry the jar's own `-de <fixture> -do <out.ses>` acceptance run), and a named
+  test. **No port behaviour changed**: all four match the jar's bytes, line for
+  line, first time. The four status lines:
+
+  | path | Java site | fixture | test | status |
+  | --- | --- | --- | --- | --- |
+  | `SesWriter.writeWasIs`'s swap body | SesWriter.java:188-215 | `p8t13-was-is.dsn` | `parity_ses.rs::ses_writer_writes_a_pins_line_for_every_swapped_pin` | **CLOSED.** Unreachable from any `.dsn`: `Pin.changedTo` moves only through `Pin.swap` (Pin.java:437-461), which has **no caller in the Java tree**, so the jar's CLI writes an empty `(was_is )` (exit 0). The probe calls `Pin.swap` by hand and the test does the same; the port's SES is byte-identical, `(pins U2-B U1-A)` / `(pins U1-A U2-B)` in `getPins()` order and all. |
+  | `Component.readLockType`'s `(lock_type position)` arm | Component.java:352-364 | `p8t13-lock-type.dsn` | `placement_scope.rs::the_lock_type_position_arm_survives_a_whole_file_read` | **CLOSED.** The arm had a scope-level test since Task 8; what was missing was a whole-file `read_board` reaching it. The jar round-trips the fixture (exit 0) and writes `(lock_type position)` back into the SES placement scope; the port matches byte for byte, `positionFixed` and the pins' `SystemFixed` included. |
+  | `SesWriter.writeConductionArea` (quirk #110) | SesWriter.java:536-553 | `p8t13-conduction-area.dsn` | `parity_ses.rs::ses_writer_mixes_integer_boundary_and_double_hole_coordinates` | **CLOSED.** A `(wire (polygon F.Cu …) (window (polygon F.Cu …)) (net …))` in the `(wiring …)` scope makes a signal-layer conduction area with a hole. The jar (exit 0) writes boundary `1000000` beside hole `1300005.0` in one scope — quirk #110, now pinned in bytes on both sides. |
+  | quirk #105 — `Wiring.readViaScope`'s net-number loop | Wiring.java:684-687 | `p8t13-via-net-numbers.dsn` | `dsn_reader.rs::read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros` | **CLOSED, with a finding.** `(order U1-1 U2-1 U3-1)` splits `NORDERED` into two subnets; the via reads `nets=[2,0]` where the wire beside it reads `nets=[1,2]`. The port reproduces both exactly. **The jar does not survive its own file**: the padded `0` reaches `DesignRulesChecker.calculateAllIncompletes:558`, whose `nets.get(0)` is `Vector.get(-1)`, and the autorouter throws `ArrayIndexOutOfBoundsException` on every pass for ever — the run never terminates. The control is committed beside it — `p8t13-via-net-numbers-control.dsn` is the same file with `(net NORDERED 1)` on the via, its via reads `nets=[1]`, and its transcript's `[jar-cli] exit=0` shows the jar routing it and writing a 1 995-byte `.ses`; the test asserts both verdicts. Quirk #105's "the extra slots are inert for connectivity" is therefore true of the **reader** only; see `docs/java-quirks.md` #105. |
+
+  (The `instanceof Path` → `PolylinePath` arm was never on this list: it is
   unreachable in the port and documented as such — see Correction 3.)
 - **Quirk #113 is a live deviation, not a reproduction.**
   `Structure.setClearanceRule` splits at the string-quote character with

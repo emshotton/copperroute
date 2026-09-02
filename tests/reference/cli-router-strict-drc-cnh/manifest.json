@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-02T09:39:42.198844Z",
+  "app_version": "2.3.1-SNAPSHOT",
+  "git_sha": "unknown",
+  "fixture": {
+    "filename": "Issue555-CNH_Functional_Tester_1.dsn",
+    "sha256": "4ba02ac7147bbef2ba00e3348392cc1339deca7b762ca5c975ba20d99e053d9e"
+  },
+  "settings_snapshot": {
+    "enabled": true,
+    "algorithm": "freerouting-router",
+    "fanout": {
+      "enabled": true,
+      "max_passes": 20,
+      "max_items": 2147483647,
+      "max_milliseconds_per_pin": 10000,
+      "ripup_allowed": true,
+      "min_escape_length_mm": 2.5,
+      "max_escape_length_mm": 4.5,
+      "start_via_diameter_mm": 0.25,
+      "end_via_diameter_mm": 0.25,
+      "pin_sorting_order": "outer_first",
+      "fallback_to_board_vias": true
+    },
+    "copper_to_edge_clearance_um": 500.0,
+    "hole_clearance_um": 0.0,
+    "neck_width_um": 0.0,
+    "strict_drc": false,
+    "job_timeout": "12:00:00",
+    "max_passes": 2,
+    "trace_pull_tight_accuracy": 500,
+    "allowed_via_types": true,
+    "automatic_neckdown": true,
+    "optimizer": {
+      "enabled": true,
+      "algorithm": "freerouting-optimizer",
+      "max_passes": 100,
+      "max_items": 2147483647,
+      "max_threads": 7,
+      "improvement_threshold": 0.01,
+      "max_consecutive_failures": 50,
+      "additional_ripup_cost_factor_at_start": 10,
+      "trace_ripup_cost_factor": 0.6,
+      "max_autoroute_passes": 6
+    },
+    "scoring": {
+      "default_preferred_direction_trace_cost": 1.0,
+      "default_undesired_direction_trace_cost": 1.0,
+      "via_costs": 50,
+      "plane_via_costs": 5,
+      "start_ripup_costs": 100,
+      "unrouted_net_penalty": 5000000.0,
+      "clearance_violation_penalty": 1000000.0,
+      "bend_penalty": 10.0,
+      "default_bend_cost": 0.0
+    },
+    "max_threads": 7,
+    "result_json": "<OUT>/router-strict-drc-cnh.manifest.json"
+  },
+  "phases": {
+    "fanout": {},
+    "autorouter": {
+      "duration_seconds": 29.613,
+      "passes_completed": 1
+    },
+    "optimizer": {}
+  },
+  "board_statistics": {
+    "host": "KiCad's Pcbnew,7.0.4",
+    "unit": "mm",
+    "board": {
+      "bounding_box": {
+        "x": 2541.0,
+        "y": -456.2,
+        "width": 507.0,
+        "height": -2109.2
+      },
+      "size": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 2034.0,
+        "height": 1653.0
+      }
+    },
+    "layers": {
+      "total_count": 4,
+      "signal_count": 2
+    },
+    "items": {
+      "total_count": 2308,
+      "trace_count": 214,
+      "via_count": 4,
+      "conduction_area_count": 2,
+      "drill_item_count": 0,
+      "pin_count": 966,
+      "component_count": 1057,
+      "other_count": 65
+    },
+    "components": {
+      "total_count": 81
+    },
+    "pads": {
+      "total_count": 966
+    },
+    "nets": {
+      "total_count": 764,
+      "class_count": 8
+    },
+    "connections": {
+      "maximum_count": 203,
+      "incomplete_count": 11
+    },
+    "traces": {
+      "total_count": 214,
+      "total_segment_count": 508,
+      "total_length": 50382.73,
+      "total_length_mm": 5038.2734,
+      "total_weighted_length": 2.625064E8,
+      "average_length": 235.43333,
+      "total_vertical_length": 11106.27,
+      "total_horizontal_length": 15617.828,
+      "total_angled_length": 12767.608
+    },
+    "bends": {
+      "total_count": 294,
+      "90_degree_count": 1,
+      "45_degree_count": 293,
+      "other_angle_count": 0
+    },
+    "vias": {
+      "total_count": 4,
+      "through_hole_count": 4,
+      "blind_count": 0,
+      "buried_count": 0
+    },
+    "clearance_violations": {
+      "total_count": 16,
+      "min_violation_um": 0.10661621093750001,
+      "max_violation_um": 335.104443359375,
+      "avg_violation_um": 100.80683898925781
+    },
+    "fanout": {
+      "total_smd_pins": 4,
+      "pins_to_escape": 2,
+      "escaped_count": 3
+    }
+  },
+  "normalized_score": 930.0412,
+  "resource_usage": {
+    "cpu_time": 28.575626,
+    "max_memory": 90118.28,
+    "peak_memory": 546.82965,
+    "io_read": 0.0,
+    "io_written": 0.0
+  },
+  "final_state": "COMPLETED",
+  "exit_code": 0,
+  "output_written": true
+}

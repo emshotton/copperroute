@@ -17,7 +17,7 @@ use std::path::Path;
 
 mod common;
 
-use fr_board::Board;
+use fr_board::{Board, Item};
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::{BoardReadResult, CoordinateTransform, format_placement_rotation, ses_writer};
 
@@ -339,4 +339,110 @@ fn every_fixture_is_balanced_with_unique_library_padstacks() {
         common::assert_balanced_scopes(&content);
         common::assert_unique_library_padstacks(&content);
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Plan 8 Task 13: two of the four zero-coverage Plan 3 paths (docs/plan-3-handoff.md's register
+// row). Both are `SesWriter`'s, so both live here; the other two are
+// `tests/placement_scope.rs::the_lock_type_position_arm_survives_a_whole_file_read` and
+// `tests/dsn_reader.rs::read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros`, and
+// `tests/plan_3_zero_coverage.rs` is the list assertion over all four.
+// ---------------------------------------------------------------------------------------------
+
+/// **Zero-coverage path 1 of 4: `SesWriter.writeWasIs`'s swap body** (SesWriter.java:188-215),
+/// against `tests/data/p8t13-was-is.dsn` and the JVM transcript
+/// `tests/data/p8t13-directed-was-is.txt`.
+///
+/// Why no corpus fixture reaches it: the body runs only for a pin whose `changedTo` is not
+/// itself, and `Pin.changedTo` is moved by exactly one method — `Pin.swap(Pin)` (Pin.java:437-461)
+/// — which **has no caller anywhere in the Java tree**. No `.dsn` can therefore reach it, and the
+/// jar's own CLI writes `(was_is\n  )` for this fixture (the transcript's `[jar-cli] ses|` rows,
+/// exit 0). `P8T13Probe` calls `Pin.swap` by hand and this test does the same, so the swap body is
+/// executed on both sides and the bytes are compared.
+#[test]
+fn ses_writer_writes_a_pins_line_for_every_swapped_pin() {
+    let (mut board, ct) = common::read_directed("was-is");
+
+    // The `(pins …)` lines come out in `board.getPins()` order, which the probe pins verbatim.
+    let pins = board.get_pins();
+    let order: Vec<String> = pins.iter().map(|id| id.0.to_string()).collect();
+    common::assert_rows_match(
+        &[format!("[pinorder] getPins() {}", order.join(" "))],
+        &common::directed_rows("was-is", "[pinorder]"),
+        "was-is getPins() order",
+    );
+
+    // Nothing is swapped yet: Java's `(was_is )` is empty and so is the port's.
+    let (expected_before, before_bytes) = common::directed_ses("was-is", "before");
+    let actual_before = common::write_directed_ses(&board, &ct, "was-is");
+    assert_eq!(actual_before, expected_before, "SES before the swap");
+    assert_eq!(actual_before.len(), before_bytes, "SES byte count before");
+
+    // `[swap] U1-A <-> U2-B returned=true`. `Pin::swap` takes two `&mut Pin`, which one `&mut
+    // Board` cannot hand out at once, so the two pins are detached, swapped and put back — the
+    // method mutates nothing but the two pins themselves (their net arrays and `changed_to`).
+    let (first, last) = (pins[0], pins[pins.len() - 1]);
+    let Some(Item::Pin(a)) = board.get_item(first) else {
+        panic!("board.get_pins() must answer pins");
+    };
+    let Some(Item::Pin(b)) = board.get_item(last) else {
+        panic!("board.get_pins() must answer pins");
+    };
+    let (mut a, mut b) = (a.clone(), b.clone());
+    assert!(
+        a.swap(&mut b, &board.rules.nets),
+        "both pins are on one net each, so `Pin.swap` returns true"
+    );
+    *board.get_item_mut(first).expect("pin id is live") = Item::Pin(a);
+    *board.get_item_mut(last).expect("pin id is live") = Item::Pin(b);
+
+    let (expected_after, after_bytes) = common::directed_ses("was-is", "after");
+    let actual_after = common::write_directed_ses(&board, &ct, "was-is");
+    assert_eq!(actual_after, expected_after, "SES after the swap");
+    assert_eq!(actual_after.len(), after_bytes, "SES byte count after");
+    assert_eq!(
+        actual_after.matches("(pins ").count(),
+        2,
+        "one `(pins …)` line per swapped pin — the swap body ran twice"
+    );
+}
+
+/// **Zero-coverage path 2 of 4: `SesWriter.writeConductionArea`** (SesWriter.java:536-553), i.e.
+/// quirk #110's mixed integer/floating-point SES scope, against
+/// `tests/data/p8t13-conduction-area.dsn` and `tests/data/p8t13-directed-conduction-area.txt`.
+///
+/// Why no corpus fixture reaches it: the writer only runs for a conduction area whose **first
+/// layer is a signal layer** (SesWriter.java:509), and no fixture in `tests/reference` or in the
+/// 105-file corpus has one with holes — the corpus's conduction areas are `(plane …)` scopes on
+/// non-signal layers, which `Wiring.writeConductionAreaScope` writes into the `.dsn` instead.
+/// This fixture puts a `(wire (polygon F.Cu …) (window (polygon F.Cu …)) (net NPLANE))` in the
+/// `(wiring …)` scope, which `Wiring.readWireScope:475-487` turns into exactly that item.
+///
+/// The quirk itself is the two lines the transcript shows side by side: the boundary goes through
+/// `writeScopeInt` and comes out `1000000`, each hole goes through `writeHoleScope` -> `writeScope`
+/// and comes out `1300005.0`. The jar's own CLI writes the same bytes (`[jar-cli] ses|`, exit 0).
+#[test]
+fn ses_writer_mixes_integer_boundary_and_double_hole_coordinates() {
+    let (board, ct) = common::read_directed("conduction-area");
+    common::assert_rows_match(
+        &common::directed_items(&board),
+        &common::directed_rows("conduction-area", "[item"),
+        "conduction-area item graph",
+    );
+
+    let (expected, bytes) = common::directed_ses("conduction-area", "ses");
+    let actual = common::write_directed_ses(&board, &ct, "conduction-area");
+    assert_eq!(actual, expected, "conduction area SES");
+    assert_eq!(actual.len(), bytes, "conduction area SES byte count");
+
+    // Quirk #110 stated as an assertion rather than only as a byte comparison, so a reader who
+    // never opens the transcript still sees it.
+    assert!(
+        actual.contains("            1000000 1000000\n"),
+        "the boundary is written through `writeScopeInt`: plain integers"
+    );
+    assert!(
+        actual.contains("              1300005.0 1300005.0\n"),
+        "each hole is written through `writeHoleScope` -> `writeScope`: `Double.toString`"
+    );
 }

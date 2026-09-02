@@ -1,0 +1,146 @@
+# p8t5 — the legacy command line, Java vs the port.
+#
+# One row per argv shape. Fields are TAB-separated: the first is the row label, every field after
+# it is one argv token, verbatim (so a token may contain spaces, which is the point of two of the
+# rows). A row with only a label is the EMPTY argv.
+#
+# Blank lines and lines whose first character is `#` are ignored by both halves of the driver.
+#
+# Deliberately absent: any row whose behaviour depends on a file **existing**. The `-de` arm takes
+# an argument verbatim when `new java.io.File(rawArg).exists()` (GlobalSettings.java:571-572) and
+# splits it on `+` otherwise, so such a row's answer depends on the working directory the driver
+# happens to be launched from, and the transcript would not be portable. That branch is pinned at
+# unit level instead, by `crates/fr-settings/tests/cli_source.rs
+# ::de_takes_an_existing_path_verbatim_even_with_a_plus_in_it`.
+#
+# Also deliberately absent: any `--name=value` naming a section this port does not model, or a
+# `router.` path that does not resolve. Java reaches `GlobalSettings.setValue` (:560) and either
+# sets a field with no Rust counterpart or warns at :503; the port has no `GlobalSettings` field
+# table outside `router.*`, so it stays silent. The six `--…=` rows below are the ones where both
+# sides provably agree.
+
+# ── the -de classifier (GlobalSettings.java:564-648) ───────────────────────────────────────────
+empty
+de-dsn	-de	a.dsn
+de-dsn-do	-de	a.dsn	-do	b.ses
+de-two-files	-de	a.dsn	b.rules
+de-plus	-de	a.dsn+b.ses
+de-plus-three	-de	a.dsn+b.ses+c.rules
+de-order	-de	c.rules+a.dsn+b.ses
+de-spaces	-de	sonde xilinx.dsn
+de-paths	-de	/path/to/a.dsn+/path/to/b.ses
+de-case	-de	A.DSN+B.SES+C.RULES
+de-two-dsn	-de	a.dsn	b.dsn
+de-two-ses	-de	a.dsn	b.ses	c.ses
+de-two-rules	-de	a.dsn	b.rules	c.rules
+de-json-first	-de	board.json
+de-json-after-dsn	-de	a.dsn	prev.json
+de-json-then-dsn	-de	prev.json	a.dsn
+de-json-twice-after-dsn	-de	a.dsn	p1.json	p2.json
+de-unknown-ext	-de	a.txt
+de-unknown-and-dsn	-de	a.dsn	junk.bin
+de-empty	-de
+de-dash-next	-de	-do	b.ses
+de-twice	-de	a.dsn	-de	b.dsn
+de-prefix	-decoy	a.dsn
+de-double-dash	--de	a.dsn
+de-blank-parts	-de	a.dsn++b.ses
+de-trailing-space	-de	  a.dsn  	-do	b.ses
+
+# ── the other filename slots ────────────────────────────────────────────────────────────────────
+di	-di	dir	-de	a.dsn	-do	b.ses
+di-prefix	-diff	dir	-de	a.dsn	-do	b.ses
+do-missing-value	-de	a.dsn	-do
+do-prefix	-de	a.dsn	-dox	b.ses
+drc-bare	-de	a.dsn	-drc
+drc-report	-de	a.dsn	-drc	r.json
+drc-prefix	-de	a.dsn	-drcx	r.json
+drc-before-dr	-de	a.dsn	-drc	r.json	-dr	x.rules
+dr	-de	a.dsn	-dr	x.rules	-do	b.ses
+dr-overrides-de	-de	a.dsn	y.rules	-dr	x.rules	-do	b.ses
+
+# ── the numeric block (GlobalSettings.java:675-709) ─────────────────────────────────────────────
+mp	-de	a.dsn	-do	b.ses	-mp	5
+mp-hex	-de	a.dsn	-do	b.ses	-mp	0x10
+mp-octal	-de	a.dsn	-do	b.ses	-mp	010
+mp-zero	-de	a.dsn	-do	b.ses	-mp	0
+mp-huge	-de	a.dsn	-do	b.ses	-mp	100000
+mp-negative-token	-de	a.dsn	-do	b.ses	-mp	-5
+mp-no-value	-de	a.dsn	-do	b.ses	-mp
+mp-prefix	-de	a.dsn	-do	b.ses	-mpx	5
+mp-malformed	-de	a.dsn	-do	b.ses	-mp	abc
+mt	-de	a.dsn	-do	b.ses	-mt	2000
+mt-negative-token	-de	a.dsn	-do	b.ses	-mt	-1
+mt-prefix	-de	a.dsn	-do	b.ses	-mtx	2
+oit	-de	a.dsn	-do	b.ses	-oit	50
+oit-zero	-de	a.dsn	-do	b.ses	-oit	0
+oit-negative-token	-de	a.dsn	-do	b.ses	-oit	-5
+oit-malformed	-de	a.dsn	-do	b.ses	-oit	abc
+
+# ── the strategy block (GlobalSettings.java:710-736) ────────────────────────────────────────────
+us-global	-de	a.dsn	-do	b.ses	-us	GLOBAL
+us-typo	-de	a.dsn	-do	b.ses	-us	hybrd
+is-prefix	-de	a.dsn	-do	b.ses	-is	sequestered
+is-rand	-de	a.dsn	-do	b.ses	-is	RANDOMISED
+hr	-de	a.dsn	-do	b.ses	-hr	 2:3
+inc	-de	a.dsn	-do	b.ses	-inc	GND, VCC
+
+# ── the flags with no router effect ─────────────────────────────────────────────────────────────
+l-locale	-de	a.dsn	-do	b.ses	-l	de
+l-is-the-one-equals	-de	a.dsn	-do	b.ses	-locale	de
+ll-once	-de	a.dsn	-do	b.ses	-ll	debug
+ll-twice	-de	a.dsn	-do	b.ses	-ll	debug	-ll	error
+ll-prefix	-de	a.dsn	-do	b.ses	-lll	warn
+ll-no-value	-de	a.dsn	-do	b.ses	-ll
+dl	-de	a.dsn	-do	b.ses	-dl
+dlx	-de	a.dsn	-do	b.ses	-dlx
+da	-de	a.dsn	-do	b.ses	-da
+host	-de	a.dsn	-do	b.ses	-host	 kicad
+dct	-de	a.dsn	-do	b.ses	-dct	5
+dct-malformed	-de	a.dsn	-do	b.ses	-dct	0x10
+
+# ── help, and the unknown-argument arms ─────────────────────────────────────────────────────────
+help-lower	-help
+help-upper	-HELP
+help-long	--help
+help-h	-h
+help-prefix	-helpme
+unknown-flag	-de	a.dsn	-do	b.ses	-zz
+unknown-positional	a.dsn
+double-dash-no-eq	--foo
+version-long	--version
+version-short	-V
+user-data-path	--user_data_path=/tmp
+user-data-path-bare	--user_data_path
+mcp-stdio	--mcp_server.stdio=true
+
+# ── the `--router.<path>=<value>` setter, which reaches the DEAD bridge as well as `CliSettings`
+#    (GlobalSettings.java:538-563 -> setValue :498-509 -> the @SerializedName("router") field :52).
+#    Note the missing clamps: `-mt 99999` is 1024 on the bridge, `--router.optimizer
+#    .max_threads=99999` is 99999.
+router-enabled-empty	-de	a.dsn	-do	b.ses	--router.enabled=
+router-max-passes	-de	a.dsn	-do	b.ses	--router.max_passes=12345
+router-optimizer-max-threads	-de	a.dsn	-do	b.ses	--router.optimizer.max_threads=99999
+
+# Controller ruling BJ — `--set` on the LEGACY form. The port's native command line accepts
+#    `--set <section>.<field>=<value>` as an alias for `--<section>.<field>=<value>` (clap has no
+#    arm for the dotted spelling), and this row is the proof that the alias stops at the form
+#    boundary. To the jar both tokens are unknown arguments: `--set` has no `=`, so
+#    `CliSettings.java:45` skips it, and `router.max_passes=7` does not start with `-`, so `:58`'s
+#    branch never sees it — two `GlobalSettings.java:833` warnings and nothing applied. Ruling AR
+#    makes the port's legacy path bug-for-bug, so it must answer the same. The other half of the
+#    truth table (native `--set` applies it, native `--router.…=` is a clap usage error) is
+#    `crates/freerouting/tests/cli_e2e.rs::the_generic_override_is_set_on_native_and_dotted_on_legacy`.
+#
+#    Only the space-separated spelling is here. A `set-equals-on-legacy` row
+#    (`--set=router.max_passes=7`) was measured and **removed**: it is one of the
+#    `--name=value`-names-an-unmodelled-section rows the header above declares deliberately
+#    absent. Java reaches `GlobalSettings.setValue("set", …)` and warns
+#    `Unknown settings property: set` (`:503`); the port has no `GlobalSettings` field table
+#    outside `router.*` and stays silent. That is a **pre-existing** divergence about the
+#    unmodelled-section surface, not about `--set`, and putting it here would make this row's
+#    verdict answer a question it is not asking. The `--set=` spelling is pinned instead by
+#    `crates/fr-settings/tests/cli_source.rs::the_java_exact_constructor_ignores_set_the_way_the_jar_does`
+#    (the legacy constructor leaves it unread, which is the behaviour that matters) and, on the
+#    native form where it is live, by row 2 of the `cli_e2e` truth table.
+set-on-legacy	-de	a.dsn	-do	b.ses	--set	router.max_passes=7

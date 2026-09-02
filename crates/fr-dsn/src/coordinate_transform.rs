@@ -34,6 +34,30 @@ impl CoordinateTransform {
         }
     }
 
+    /// `CoordinateTransform.scaleFactor` (CoordinateTransform.java:22).
+    ///
+    /// **Not a Java accessor** — the three fields are `private final` with no getters, and Java's
+    /// own probes read them by reflection. The port exposes them because a `CoordinateTransform`
+    /// now *leaves* the reader on [`crate::BoardReadResult`] (plan-3 controller ruling A), so a
+    /// caller that has one has no other way to see what it scales by. Read-only: there is no
+    /// setter, exactly as in Java.
+    #[must_use]
+    pub fn scale_factor(&self) -> f64 {
+        self.scale_factor
+    }
+
+    /// `CoordinateTransform.baseX` (CoordinateTransform.java:23) — see [`Self::scale_factor`].
+    #[must_use]
+    pub fn base_x(&self) -> f64 {
+        self.base_x
+    }
+
+    /// `CoordinateTransform.baseY` (CoordinateTransform.java:24) — see [`Self::scale_factor`].
+    #[must_use]
+    pub fn base_y(&self) -> f64 {
+        self.base_y
+    }
+
     /// `boardToDsn(double)` (CoordinateTransform.java:34-36): "scales a value from the board to
     /// the external coordinate system".
     //

@@ -115,6 +115,17 @@ use crate::{HostEnvironment, RouterSettings, SettingsSource, sources::DefaultSet
 /// corresponding Java source was never registered.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SettingsInputs<'a> {
+    /// `JsonFileSettings`, priority 10 (`Freerouting.java:1410`) — the `--settings <file>` the
+    /// CLI names, else the working directory's `freerouting.json`
+    /// ([`crate::sources::JsonFileSettings`], scan ruling R7). `None` is "no such file", which is
+    /// what the source itself answers for a missing or unreadable document (`:55-62`).
+    ///
+    /// It feeds **both** chains, because Java registers it on the prototype merger
+    /// (`Freerouting.java:1408-1413`) that merge #1 and merge #2 are each cloned from: merge #1's
+    /// `applyNewValuesFrom` between `DefaultSettings` and the DSN, and merge #2's own `0..60`
+    /// chain, where it can only reach a field merge #1 left absent
+    /// ([`RouterSettings::fill_absent_from`]).
+    pub json_file: Option<&'a RouterSettings>,
     /// `DsnFileSettings`, priority 20 (`Freerouting.java:126-127`,
     /// `RoutingJobScheduler.java:111-115`). `None` is a non-DSN input, where the scheduler
     /// registers no DSN source at all.
@@ -190,10 +201,38 @@ impl Steps {
 /// `fill_absent_from` is not the same operation as "merge #2's sources, with a sparse override on
 /// top".
 ///
-// obligation: RoutingJobScheduler.scheduleJob — Plan 8 owns the API surface (plan ruling 10) and
+// ~~obligation: RoutingJobScheduler.scheduleJob — Plan 8 owns the API surface (plan ruling 10) and
 // must compose the API path separately: merge #2 alone, with `ApiSettings(job.routerSettings)`
-// as a sparse priority-70 source, rather than calling `resolve_headless`. `docs/java-quirks.md`
-// carries the same note.
+// as a sparse priority-70 source, rather than calling `resolve_headless`.~~
+//
+//   **DISCHARGED — both users, by Plan 8 Tasks 7 and 12.** The marker had two independent
+//   users, and each composes [`crate::SettingsMerger`] directly for the structural reason
+//   recorded above. Neither calls this function, and neither is a variant of the other:
+//
+//   1. **Task 12, ruling AU's MCP path** —
+//      `crates/freerouting/src/mcp/tools/route_board.rs`. `RoutingJobScheduler.scheduleJob`'s own
+//      order (`RoutingJobScheduler.java:91-186`): the caller's sparse `settings` object becomes
+//      `job.routerSettings` *before* the load (`api/v1/JobInputResource.java:203-211`), the load's
+//      `applyRouterSettingsForLoadedBoard` pass writes the board's layer count and board-tuned
+//      trace costs into it, and it is then registered as `ApiSettings` at priority 70 over a
+//      merger holding `DefaultSettings(0)`, `JsonFileSettings(10)`, `DsnFileSettings(20)`,
+//      `RulesFileSettings(40)`, `EnvironmentVariablesSource(55)` and `CliSettings(60)`.
+//      **Measured against this function**: `route_board` on
+//      `examples/tutorial_board/tutorial_board.dsn` answers a session byte-identical to `p8t1`'s
+//      `tests/reference/cli-tutorial_board/route.ses`, and on
+//      `fixtures/Issue143-rpi_splitter.dsn` byte-identical to what `freerouting route` writes —
+//      two different compositions, one SES
+//      (`crates/freerouting/tests/mcp_stdio.rs::the_four_tools_over_spawned_pipes`).
+//   2. **Task 7, the DRC quality score (quirk #272)** —
+//      `crates/freerouting/src/commands/drc.rs::quality_score_settings`.
+//      `Freerouting.initializeDrc:342-352`: the prototype merger plus one `DsnFileSettings`, with
+//      no `.rules` tier, no board pass and no merge #2. `p8t3 merge` pins it against the JVM
+//      field by field. **Untouched by Task 12** — the two are different compositions and the
+//      discharge of one is not the discharge of the other.
+//
+//   `docs/java-quirks.md` carries the same note. What survives the discharge is the *warning*
+//   this function's premise section states: `resolve_headless` models the CLI-started path and
+//   only that, and a future API-shaped caller must compose the merger rather than reach for it.
 ///
 /// `board` is `None` for "there is no board" — the merge alone. Java reaches that shape nowhere in
 /// the headless path, and each of its three board-facing sites answers it differently:
@@ -244,8 +283,20 @@ fn resolve_headless_steps(
         .java_clone();
 
     // Every later source is `applyNewValuesFrom` (`SettingsMerger.java:171`), in ascending
-    // priority order. `JsonFileSettings(10)` is out of scope (spec §2) and is a no-op when the
-    // file is absent, which is the only shape the headless path has.
+    // priority order. `JsonFileSettings(10)` sits here, between `DefaultSettings` and the DSN,
+    // and its history is worth keeping: Plan 4 wrote ~~"is out of scope (spec §2) and is a
+    // no-op when the file is absent, which is the only shape the headless path has"~~ and left it
+    // out of the chain; scan ruling R7 ported the source ([`crate::sources::JsonFileSettings`])
+    // in Task 5 and gave the CLI `--settings <file>` and a working-directory `freerouting.json`;
+    // **Task 6 threads it**, because `commands::route` is the first caller that can supply one.
+    // `p4t1` proves the *absent*-file tier contributes nothing;
+    // `tests/json.rs::a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn` proves a present
+    // one lands where Java puts it (above the defaults, below the DSN), and
+    // `crates/freerouting/tests/cli_e2e.rs::a_settings_file_reaches_the_run` proves it through
+    // the binary, which is the only caller that can supply one.
+    if let Some(json_file) = inputs.json_file {
+        settings.apply_new_values_from(json_file); // 10
+    }
     if let Some(dsn) = inputs.dsn {
         settings.apply_new_values_from(dsn); // 20
     }
@@ -304,6 +355,21 @@ fn resolve_headless_steps(
     // Since merge #1's result sits above all of them at priority 70, they can only reach a field
     // it left absent, which is `fill_absent_from` (plan ruling 1's Q1 channel: `layers[i]`'s
     // three nullable fields, `resultJsonPath` and the two `timeoutString`s).
+    // The priority-10 tier is on the prototype merger, so merge #2's clone carries it too
+    // (`Freerouting.java:1408-1413` → `RoutingJobScheduler.java:103`). It is applied before the
+    // rules, in the merger's own ascending-priority order.
+    //
+    // **This arm is fidelity, not an observable channel of its own**, and the test above says so
+    // rather than claiming otherwise: after merge #1 every field the document carries is
+    // non-null, so `fill_absent_from` finds nothing of the json's to fill. Its only reachable
+    // channel is a field the between-merges board pass *nulled* — `set_layer_count`'s
+    // `preferred_direction_horizontal`/`bend_cost` wipe — which is the same Q1 channel
+    // `adjacent_rules_reach_only_the_fields_merge_one_left_null` (below) pins for the `.rules`
+    // tier through the identical call. It is written out because Java writes it out, and because
+    // a future tier list in which merge #1 does *not* carry this source would need it.
+    if let Some(json_file) = inputs.json_file {
+        settings.fill_absent_from(json_file);
+    }
     // The priority-40 parse — `RulesFileSettings`, layer structure discovered from the file
     // itself. **Not** the board-structured one below; see [`SettingsInputs::scheduler_rules`].
     if let Some(scheduler_rules) = parse_rules_file(inputs.scheduler_rules) {
@@ -495,6 +561,7 @@ mod tests {
         let dsn = bare_dsn(2);
         let rules = rules_bytes();
         let inputs = SettingsInputs {
+            json_file: None,
             dsn: Some(&dsn),
             scheduler_rules: Some(&rules),
             ..SettingsInputs::default()
@@ -540,6 +607,7 @@ mod tests {
         let dsn = bare_dsn(2);
         let rules = rules_bytes();
         let inputs = SettingsInputs {
+            json_file: None,
             dsn: Some(&dsn),
             scheduler_rules: Some(&rules),
             ..SettingsInputs::default()
@@ -646,6 +714,7 @@ mod tests {
                 (Some(&dsn), Some(scheduler_rules)),
             ] {
                 let inputs = SettingsInputs {
+                    json_file: None,
                     dsn: dsn_input,
                     cli_rules,
                     scheduler_rules: Some(scheduler_rules),
@@ -725,6 +794,7 @@ mod tests {
         let host = host();
         let dsn = bare_dsn(2);
         let inputs = SettingsInputs {
+            json_file: None,
             dsn: Some(&dsn),
             scheduler_rules: Some(&bytes),
             ..SettingsInputs::default()

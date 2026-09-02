@@ -883,6 +883,22 @@ board). Ruling L cost nothing.
 
 ### Plan 8 (`fr-core` + surfaces)
 
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> | item | status |
+> |---|---|
+> | `RoutingJobScheduler.scheduleJob`'s API-path composition — merge #2 alone, with a sparse priority-70 source, **not** `resolve_headless` | **DISCHARGED TWICE, and the marker names both closers.** Task 12's `mcp/tools/route_board.rs` is ruling AU's MCP path (its session is byte-identical to `p8t1`'s reference for two boards); Task 7's `commands/drc.rs::quality_score_settings` is quirk #272's DRC quality score, pinned field-for-field by `p8t3 merge`. Neither is a variant of the other. `crates/fr-settings/src/resolve.rs`'s marker is struck through with both named |
+> | the legacy-CLI **wiring** half (`legacy.rs` forwards raw values) | **DISCHARGED, Task 5.** `legacy::rewrite` applies the normalisations `docs/cli-legacy-flags.md` tabulates; `p8t5` and `sweep-p8t5.sh` compare the result against the live jar on 86 argv shapes |
+> | the five dead legacy flags — make them live? | **DECIDED: NO**, controller ruling **AQ**. A product decision, not a parity fix: wiring them would make the port more capable than the program it ports and would silently change the result of every command line already carrying one. Quirk **#131**'s row carries the closing line and names `--section.field=value` as the live way in |
+> | `-mt` / `--threads` | **DECIDED: inert on every path**, ruling AQ and controller answer 4. Quirk **#143**'s row carries the closing line. The port's only two `std::thread` spawn sites are the MCP **transport**, not a routing policy, and `crates/freerouting/src/cli.rs` says so where the flag is declared |
+> | `classify_de_arguments` — "Plan 8 calls this" | **It does**, from `legacy::rewrite`; `p8t5`'s slot rows are the gate |
+> | `TextManager.parseTimespanString`'s `added in Plan 8:` marker | **CONSUMED, Task 0.** It was already ported by Plan 7 Task 12; `fr_core::parse_timespan_seconds` is a `pub use`, never a second implementation, and `crates/fr-settings/src/lib.rs` now carries a `renamed:` row |
+
+
 - **The API-job path needs a different composition** — the largest of the four.
   `resolve_headless` linearises the CLI-started two-merge path and its premise is
   that merge #1's result is *complete* when it is re-injected at priority 70. An

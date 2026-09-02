@@ -84,9 +84,11 @@ fn two_merge_form(
 
     // --- merge #1: `Freerouting.java:125-146` -------------------------------------------------
     // The prototype merger (`Freerouting.java:1408-1413`) is `DefaultSettings`,
-    // `JsonFileSettings` (out of scope, spec §2), `CliSettings` and `EnvironmentVariablesSource`;
-    // `:126-127` adds the DSN and `:129-136` the `-dr` rules. Ruling K: `SettingsMerger.clone` is
-    // not ported, so the second merger is rebuilt from the same source list.
+    // `JsonFileSettings` (ported in Plan 8 Task 5 and threaded into `resolve_headless` in Task 6
+    // as `SettingsInputs::json_file`; this matrix leaves it `None`, which is the absent-file
+    // shape `p4t1` pins), `CliSettings` and `EnvironmentVariablesSource`; `:126-127` adds the DSN
+    // and `:129-136` the `-dr` rules. Ruling K: `SettingsMerger.clone` is not ported, so the
+    // second merger is rebuilt from the same source list.
     let mut sources = vec![boxed(DefaultSettings::new(host))];
     if let Some(dsn) = dsn.clone() {
         sources.push(boxed(dsn));
@@ -158,6 +160,7 @@ fn linear_form(
     let cli = matrix::cli_source(case.cli);
 
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
         cli_rules: cli_rules.as_deref(),
         scheduler_rules: scheduler_rules.as_deref(),
@@ -341,6 +344,7 @@ fn rules_outrank_env_and_cli_for_autoroute_fields() {
     let rules = matrix_rules(matrix::PRIMARY_RULES);
 
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: Some(&dsn),
         scheduler_rules: Some(&rules),
         env: env.get_settings(),
@@ -451,6 +455,7 @@ fn the_second_validate_is_not_idempotent_for_max_passes_zero() {
     let dsn = dsn_settings(2, 10);
     let cli = cli_settings(&["--router.max_passes=0"]);
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: Some(&dsn),
         cli: cli.get_settings(),
         ..SettingsInputs::default()
@@ -485,6 +490,7 @@ fn the_second_validate_changes_nothing_else() {
     ] {
         let cli = cli_settings(&argv);
         let inputs = SettingsInputs {
+            json_file: None,
             dsn: Some(&dsn),
             cli: cli.get_settings(),
             ..SettingsInputs::default()

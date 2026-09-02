@@ -635,6 +635,24 @@ design:
   correctly fatal, not a gap.
 
 **Plan 8 (MCP/CLI polish, carried from Plan 1, unaffected by Plan 2):**
+
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> Both items **DISCHARGED**. MCP concurrency is Tasks 11 and 12 — the reader thread, the
+> `Mutex`-guarded writer, `notifications/progress`, `notifications/cancelled` and a `catch_unwind`
+> tool boundary, pinned by `run.sh p8t6` against the jar's own stdio bridge. Legacy-CLI value
+> normalisation is Task 5's `legacy::rewrite`, pinned by `run.sh p8t5` (MATCH, 2 096 lines) and
+> `sweep-p8t5.sh` (86 rows, 86 MATCH, 0 XDIFF, 0 SKIP). `docs/cli-legacy-flags.md` carries the
+> per-flag table.
+>
+> One item this hand-off filed under Plan 8 without naming it there also closed: the KiCad reader
+> **inherited** `board/searchtree`'s JVM-golden obligation and honours it — `P8T8Probe.java` and
+> `P8T10Probe.java` pin `readBoard` and `KiCadJsonWriter.write` against the HEAD jar.
+
 - MCP concurrency (progress sink, cancel token, reader thread) and legacy-CLI
   value normalisation — both already tabulated in `docs/java-quirks.md`'s
   candidate/obligation table and untouched by this plan.

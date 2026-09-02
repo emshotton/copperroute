@@ -747,6 +747,29 @@ see the README section that lists all eight.
 
 ## 11. Obligations for Plan 8
 
+> ## Plan 8 close-out — written by Plan 8 Task 14, the last task of the last plan
+>
+> **There is no Plan 9.** `docs/plan-8-handoff.md` is the project completion report; this block is
+> the status of *this* hand-off's Plan-8 items, written here so a reader of this file does not have
+> to go looking.
+>
+> **All six closed.** (1) The pipeline caller had already **moved into Plan 7** (Task 15) before
+> Plan 8 began, and `fr_core::RoutingPipeline::run` wraps `PipelineResult` as its `RoutingResult`.
+> (2) `ProgressSink`'s registration points: the `add*Listener` methods stay `// not ported:` in
+> `pipeline/run.rs`, and `fr_core::SyncProgressSink` is the replacement mechanism — the CLI reads
+> it, the MCP `route_board` tool turns it into `notifications/progress`. (3) Ruling 4's score
+> surface: `BoardScoreBreakdown` and `ScoringWeightComparison` are **rostered, not ported**
+> (controller ruling **AS**) — no caller exists in `src/main/java` at all, and quirk **#236** is the
+> unit divergence that would make a breakdown fail to add up to the score it explains. Task 14
+> re-pointed all five markers to `not ported:`. (4) The DSN reader's behaviour change
+> (`read_via_scope` → `insert_via_checked`) landed in **Task 3**, with `sweep-p3t15.sh` unchanged at
+> 525 MATCH + 5 XDIFF. (5) The CLI inherited the `// Java bug:` + quirk-row convention and used it
+> 25 times (rows #241-#292). (6) MCP concurrency is Tasks 11 and 12.
+>
+> The marker inventory in §"What Plan 8 inherits" is closed too: `grep -rn "added in Plan 8"
+> crates/*/src` and `crates/*/tests` both return **nothing** on the committed tree.
+
+
 > **Amended 2026-09-01 by Plan 7 Task 17.** Items 1-4 all moved or changed shape during
 > Plan 7; `docs/plan-7-handoff.md`'s obligation register supersedes this list, and each
 > item below says how.

@@ -369,10 +369,15 @@ write_meta() {
   } > "$out/batch.meta.txt"
 }
 
-# `JsonFileSettings` is priority 10 of the merge and the one source the port has no counterpart for
-# (spec §2 puts `freerouting.json` out of scope). It is machine state, so the meta records whether
-# the file exists and whether its `router` scope is empty — the only shape in which the port's
-# omission is a no-op.
+# `JsonFileSettings` is priority 10 of the merge. Plan 8 Task 5 ported it (scan ruling R7) and
+# Task 6 threaded it into `fr_settings::resolve_headless` as `SettingsInputs::json_file`, so the
+# port now has the tier. ~~"the one source the port has no counterpart for (spec §2 puts
+# `freerouting.json` out of scope)"~~ and ~~"`resolve_headless` does not take it yet"~~ are both
+# retired. The note stays because the tier is still **machine state on the Java side**: the jar
+# reads its OS-standard user-data path (`JsonFileSettings.java:27-29`), which the port does not
+# port, so a non-empty `(router …)` scope there would move the jar and not the port. The meta
+# records whether the file exists and whether its `router` scope is empty — the only shape in
+# which the two agree.
 json_source_note() {
   local json="$HOME/Library/Application Support/freerouting/freerouting.json"
   [[ -f "$json" ]] || json="$HOME/.freerouting/freerouting.json"

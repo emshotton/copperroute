@@ -398,6 +398,7 @@ fn run_job(dsn: &str, max_passes: i32, max_items: Option<i32>, strict_drc: bool)
     let dsn_source = DsnFileSettings::new(&bytes[..], &file_name);
     let cli_source = CliSettings::new(&argv);
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: dsn_source.get_settings(),
         cli_rules: None,
         scheduler_rules: None,

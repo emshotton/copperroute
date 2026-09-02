@@ -1,0 +1,171 @@
+(session "Issue143-rpi_splitter"
+  (base_design "Issue143-rpi_splitter")
+  (placement
+    (resolution mil 2540)
+    (component "USB-A-S-NOSILK-FEMALE$SparkFun-Connectors"
+      (place J1 1016000 127000 front 90)
+    )
+    (component "USB-MINIB$SparkFun-Connectors"
+      (place J2 977900 2044700 front 180)
+      (place J3 1016000 3556000 front 270)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution mil 2540)
+    (parser
+      (hostCad CadSoft)
+      (hostVersion "Eagle V 9.5 - Using eagle2freerouting.ulp, version 2022-09-01, on 9/20/2022 9:56 PM")
+    )
+    (library_out 
+      (padstack Round1$13
+        (shape
+          (circle "1#Top" 75640 0 0)
+        )
+        (shape
+          (circle "16#Bottom" 75640 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net D+
+        (wire
+          (path "16#Bottom" 40640
+            1116000 1007699
+            1170792 1062491
+            1170792 2922442
+            1016000 3077234
+          )
+        )
+        (wire
+          (path "1#Top" 40640
+            1016000 3077234
+            1016000 3306000
+          )
+        )
+        (via Round1$13 1016000 3077234
+        )
+        (wire
+          (path "1#Top" 40640
+            1116000 1007699
+            1116000 802200
+          )
+        )
+        (via Round1$13 1116000 1007699
+        )
+      )
+      (net "D-"
+        (wire
+          (path "1#Top" 40640
+            916000 802200
+            916000 1315185
+          )
+        )
+        (wire
+          (path "16#Bottom" 40640
+            916000 1315185
+            470236 1760949
+            470236 2840140
+            825385 3195289
+            1027079 3195289
+            1096000 3126368
+          )
+        )
+        (wire
+          (path "1#Top" 40640
+            1096000 3126368
+            1096000 3306000
+          )
+        )
+        (via Round1$13 1096000 3126368
+        )
+        (via Round1$13 916000 1315185
+        )
+      )
+      (net N$5
+        (wire
+          (path "1#Top" 40640
+            552083 2204700
+            543962 2212821
+            543962 2809540
+          )
+        )
+        (wire
+          (path "16#Bottom" 40640
+            1366000 1006773
+            1293474 934247
+            1084996 934247
+            1001010 1018233
+            1001010 1370750
+            543962 1827798
+            543962 2809540
+          )
+        )
+        (wire
+          (path "16#Bottom" 40640
+            856000 3121602
+            543962 2809564
+            543962 2809540
+          )
+        )
+        (wire
+          (path "1#Top" 40640
+            727900 2204700
+            552083 2204700
+          )
+        )
+        (via Round1$13 543962 2809540
+        )
+        (wire
+          (path "1#Top" 40640
+            856000 3121602
+            856000 3306000
+          )
+        )
+        (via Round1$13 856000 3121602
+        )
+        (wire
+          (path "1#Top" 40640
+            1366000 1006773
+            1366000 802200
+          )
+        )
+        (via Round1$13 1366000 1006773
+        )
+      )
+      (net VCC
+        (wire
+          (path "1#Top" 30480
+            557163 1884700
+            547821 1875358
+            547821 1555230
+          )
+        )
+        (wire
+          (path "16#Bottom" 40640
+            547821 1555230
+            666000 1437051
+          )
+        )
+        (wire
+          (path "1#Top" 40640
+            666000 802200
+            666000 1437051
+          )
+        )
+        (wire
+          (path "1#Top" 30480
+            727900 1884700
+            557163 1884700
+          )
+        )
+        (via Round1$13 547821 1555230
+        )
+        (via Round1$13 666000 1437051
+        )
+      )
+    )
+  )
+)

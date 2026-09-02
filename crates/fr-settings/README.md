@@ -211,7 +211,7 @@ processor count is observable in two different ways.
 | `autoroute/{BoardUpdateStrategy,ItemSelectionStrategy}` | `optimizer_settings.rs` |
 | `util/gson/{GsonProvider,RouterSettingsTypeAdapterFactory}` | `json.rs` (`create`/`read` not ported, per `lib.rs`'s roster); the write half (`JavaNumberFormatter`) moved to `fr_dsn::format::json` in Plan 5 (ruling 7) |
 | `Freerouting.java` + `RoutingJobScheduler`'s merge sequence | `resolve.rs` (`resolve_headless`) |
-| `JsonFileSettings` (priority 10) | **not ported** — spec §2, no persistent config file; the number and identity are reserved |
+| `JsonFileSettings` (priority 10) | `sources/json_file.rs` — **ported in Plan 8 Task 5** (scan ruling R7), wired to the CLI's `--settings <file>` **on the native form only** (controller ruling **BG**). *(This cell read ~~"**not ported** — spec §2, no persistent config file; the number and identity are reserved"~~ through Plan 4-7, and ~~"wired … and to a working-directory `freerouting.json` … so the working directory stands in"~~ through Task 6 round 1.)* Java resolves the file under the OS-standard user-data directory (`:27-29`); that path is `static` mutable state and stays unported — and, **measured at the pinned jar**, a `freerouting.json` in the *working* directory changes nothing (the jar reads the user-data path and only that), so ruling BG removed the stand-in rather than keeping a port-only default. There is no default file; `--settings` is the whole surface. **Fed into `resolve_headless` in Plan 8 Task 6** as `SettingsInputs::json_file`, which reaches both merge chains exactly as the prototype merger does. *(This sentence read ~~"Not yet fed into `resolve_headless` — see the `// obligation:` in `resolve.rs`"~~ in Task 5.)* |
 | `GuiSettingsSource` (priority **65**, not the javadoc's 50 — quirk #138) | **not ported** — no GUI; number and identity reserved |
 | `SesFileSettings` | ported, and it does nothing: Java's `getSettings()` returns a bare `new RouterSettings()` and it is never registered headless (quirk #130) |
 | the other fifteen `settings/**` classes (GUI, REST API, HTTP MCP, telemetry, paths, logging) | **not ported** — one `// not ported:` line each, with its reason, at the foot of `src/lib.rs` |
@@ -319,7 +319,12 @@ both sides print the jar's path, size and mtime in a header line, so running
 against the wrong build is a diff rather than a silent assumption. The second
 header line is `JSON_SOURCE_EMPTY`: the Java side builds a real
 `JsonFileSettings` on an empty temporary directory and aborts unless every leaf
-is null, which turns spec §2's "no persistent config file" into a check.
+is null. That check still holds and still means what it always meant — the
+*absent*-file tier contributes nothing — but its **reason** changed in Plan 8
+Task 5, which ported the source (scan ruling R7): it no longer turns spec §2's
+"no persistent config file" into a check, it pins the file-absent arm
+(`JsonFileSettings.java:42-45`). The file-**present** arm is `p8t5`'s and this
+crate's own `sources::json_file` unit tests'.
 
 `scripts/differential/README.md` has the case-table format, the transcription
 risk and how to re-check it, and the golden regeneration command.
