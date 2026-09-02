@@ -284,6 +284,12 @@ pub const MESSAGE_MAP: &[(&str, &str)] = &[
         "An input file must be specified with -de argument in DRC mode.",
     ),
     ("Freerouting.java:263", "Loading DSN file for DRC: {}"),
+    // `:266`'s `"Couldn't load the input file '" + … + "'"` is **byte-identical** to
+    // `initializeCli`'s `:105` and is deliberately not listed twice: `normalize_log` resolves a
+    // line to the *first* template that matches, so a second row would be unreachable and a
+    // reader would be told the two messages are distinguishable when they are not. `p8t3 e2e`'s
+    // `missing-input` row therefore reports `ERROR Freerouting.java:105` for a `-drc` run — on
+    // **both** sides, which is what makes it a comparison rather than a coincidence.
     ("Freerouting.java:272", "Failed to load board for DRC check"),
     ("Freerouting.java:281", "Loading RULES file for DRC: {}"),
     (
@@ -292,7 +298,27 @@ pub const MESSAGE_MAP: &[(&str, &str)] = &[
     ),
     ("Freerouting.java:289", "RULES file for DRC not found: {}"),
     ("Freerouting.java:292", "Failed to load RULES file for DRC"),
+    // Task 7 added the three `:303`-`:312` rows, so `initializeDrc`'s message set is complete
+    // rather than sampled: without them `p8t3`'s log rung compared 3 lines on
+    // `drc-issue593-ses` where the jar emitted 4, and a message the port stopped emitting would
+    // have been invisible. `:306` is deliberately listed even though **the port cannot emit it**
+    // — the KiCad JSON session reader is Task 10's, and `commands::drc::load_session_file` logs
+    // `:327` instead — so that a `.json` session ever reaching a parity run is a loud diff rather
+    // than a silent one. That is the map's stated job: it enumerates the CLI's `FRLogger` calls,
+    // not the ones the port happens to make.
+    (
+        "Freerouting.java:303",
+        "Loading KiCad JSON session file for DRC: {}",
+    ),
+    (
+        "Freerouting.java:306",
+        "KiCad JSON session file loaded for DRC successfully",
+    ),
     ("Freerouting.java:309", "Loading SES file for DRC: {}"),
+    (
+        "Freerouting.java:312",
+        "SES file loaded for DRC: {} wires, {} vias imported{}",
+    ),
     ("Freerouting.java:324", "Session file for DRC not found: {}"),
     (
         "Freerouting.java:327",

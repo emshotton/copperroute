@@ -130,12 +130,17 @@ key and a `type` value). `crates/fr-drc/tests/report_json.rs::flavors_differ_onl
 proves it mechanically: applying those seven substitutions to a HEAD document
 as *quoted tokens* yields the KiCad document byte for byte.
 
-**Which flavor the `-drc` CLI defaults to is Plan 8's to wire** (ruling 2,
-recorded as an `obligation:` marker on the enum), **and ruling W has decided
-which it is: `KiCad`, with HEAD's spelling behind a flag.** `Default` here is
-the *parity* choice, not a recommendation, and shipping `KiCad` re-baselines
-nothing in this crate: `head_flavor_is_the_jvms_gson_bytes` keeps pinning
-HEAD's spelling against the jar.
+~~**Which flavor the `-drc` CLI defaults to is Plan 8's to wire** (ruling 2,
+recorded as an `obligation:` marker on the enum)~~ — **Plan 8 Task 7 wired it,
+and the `obligation:` is closed.** `crates/freerouting/src/commands/drc.rs`
+passes `DrcJsonFlavor::KiCad` **by name**, never `Default::default()`, and
+`--schema freerouting` (native form only) is the way back to HEAD's bytes —
+which is what `scripts/differential/rust/src/bin/p8t3.rs` runs the port with
+for its byte comparison against the jar. `Default` here is the *parity* choice,
+not a recommendation, and shipping `KiCad` re-baselined nothing in this crate:
+`head_flavor_is_the_jvms_gson_bytes` keeps pinning HEAD's spelling against the
+jar, and `tests/reference/drc-*` are still the jar's verbatim camelCase
+documents.
 
 Everything below the key is `fr_dsn::format::json`'s
 (`to_gson_string_pretty`/`JavaNumberFormatter`, which Plan 5 ruling 7 moved down
@@ -451,10 +456,15 @@ the `AIRLINE_BUDGETS` ratchet and how to regenerate it. Both need a JDK 25
 
 ## Known limitations
 
-- **No quality score.** `getNormalizedScore` needs `BoardStatistics`' trace
-  lengths, via counts and bend counts, which spec §4 puts in `fr-core` —
-  Plan 8. Until then the score is injected, and the eight committed references
-  pin the values Plan 8's implementation has to produce.
+- ~~**No quality score.**~~ **Closed by Plan 8 Task 7.** `getNormalizedScore`
+  needs `BoardStatistics`' trace lengths, via counts and bend counts, which
+  spec §4 put in `fr-core`; this crate still *takes* the score as an injected
+  `Option<f32>` (ruling 5 — no `fr-router` dependency, no clock), and
+  `crates/freerouting/src/commands/drc.rs` is what now **computes** it, from a
+  settings merge of its own (quirk #272). The eight committed references
+  pinned the values that implementation had to produce, and it produces all
+  eight exactly — see `p8t3 e2e`'s table in
+  `crates/freerouting/README.md`.
 - **The airline endpoint list is not a parity surface** (ruling 4). The counts
   are, and mode 3 makes the endpoints one *given the same seed order* — with
   their direction and acceptance order, via the `ALD` block; two different seed

@@ -1653,6 +1653,52 @@ methods with dozens of branches.
   port 2` on `router-dac2020-bm01` and `router-strict-drc-cnh`, because `job.currentPass` is
   written by **both** stage loops and the manifest reports whichever wrote last (quirk #267).
 
+- `p8t3` — **Plan 8 Task 7: `freerouting drc` end to end.** Two modes, the `p8t2` shape.
+
+  **`merge` (the default) is a genuine Java-vs-Rust pair.** `P8T3.java` transcribes
+  `Freerouting.initializeDrc`'s quality-score block (`:342-352`, quirk #272) — the prototype
+  merger of `Freerouting.java:1408-1413` plus **one** `DsnFileSettings` and nothing else, then
+  `board.getStatistics().getNormalizedScore(routerSettings.scoring)` — over the eight rows of
+  `tests/reference/drc-fixtures.txt`; the Rust half calls
+  `freerouting::commands::drc::{quality_score_settings, quality_score}`, i.e. the binary's own
+  functions (the `p8t5` convention). Three lines per stem: the seven scoring weights, the six
+  board counters, and the score as `Float.toString`, as raw IEEE bits and as the `(double)`
+  widening `:349` puts in the report. Printing the weights is the point — the score is one
+  `float`, and a divergence in it could come from the merge, from `BoardStatistics` or from the
+  board the three loaders built.
+
+  This mode has a Java half where `p8t1` has none because what it drives is a Java *method
+  composition* whose answer is invisible in the report beyond a single number. `merge` also
+  prints, **on stderr**, the path `new JsonFileSettings()` resolves and whether it exists: that
+  priority-10 slot is the one place the two sides deliberately differ (controller ruling BG gave
+  the port no default file), and it is invisible only because the file the jar writes carries an
+  empty `"router"` block. A machine where it did not would DIFF, with the provenance beside it.
+
+  **`e2e` is the acceptance gate**, `rust_only` for `p8t1`'s reason: `java -jar <jar> -de <dsn>
+  [<ses>] [-dr <rules>] -drc <report>` against the port on the same argv, comparing the report
+  byte-identically after `parity::normalize_drc_json`, plus `quality_score` on its own (the value
+  Task 7 newly *computes* where Plan 5 injected it), plus the exit code, plus
+  `parity::normalize_log`. The byte rung needs the jar's key spelling, so the port is run a second
+  time on the **native** form with `--schema freerouting` — the shipped default is
+  `DrcJsonFlavor::KiCad` (ruling W, quirk #154) — and the legacy run is what rungs (b)-(e) use, so
+  the shim and the exit ladder are compared on the argv a user types.
+
+  Plus six **argv rows**, which are where the exit-code and log rungs earn their keep: the eight
+  stems all succeed, and quirk #271 is precisely that three of the five things which can go wrong
+  do **not** move the exit code. `missing-rules`, `missing-session` and `rules-and-session` exit 0
+  and write a report (the last is the only run that fills both optional slots, and is quirk #273's
+  gate); `missing-input`, `ses-input` and `unwritable-report` are the three `System.exit(1)` sites.
+
+  `./scripts/differential/run.sh p8t3` — **25 lines, MATCH**.
+  `./scripts/differential/run.sh p8t3 e2e` — **14 rows, 13 MATCH, 1 XDIFF**, about 40 s.
+  `run.sh p8t3 e2e <stem> …` runs the named stems and skips the argv rows.
+
+  The XDIFF is `drc-natural-tone-preamp` and no port can remove it: quirk **#146** is the case
+  where *the jar does not match itself* (113-115 violations across `-XX:hashCode=0..4`; the
+  reference is mode 2's 115, the port's ascending-id representatives give 112). The three entries
+  that differ are pinned **by uuid** — `1909`, `1696`, `1242` — and the driver reports them rather
+  than deleting them from the jar's side to manufacture agreement. Its `quality_score` matches.
+
 - `sweep-p8t5.sh [row-label ...]` — the same driver, **row by row**, printing
   MATCH/XDIFF/SKIP per argv shape so that a regression is *a row that changed* rather than a
   wall of diff. Builds both sides once through `run.sh p8t5`, then splits the two transcripts

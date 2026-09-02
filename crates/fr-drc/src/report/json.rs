@@ -54,11 +54,21 @@ pub enum DrcJsonFlavor {
     //
     // Java bug: the `@SerializedName`s of io/kicad/KiCadDrcReport.java:20-57 and KiCadDrcViolation.java:33 drifted away from the schema those very files name. `jsonSchema` is `https://schemas.kicad.org/drc.v1.json` (KiCadDrcReport.java:21) and KiCad 9.0.1 writes `coordinate_units`/`kicad_version`/`unconnected_items`/`schematic_parity` and the types `hole_clearance`/`unconnected_items` (`../freerouting/fixtures/*-kicad_drc.json`); freerouting 2.3.0 matched it (`javap -p app/freerouting/drc/DrcReport.class` on `tools/freerouting-2.3.0.jar`), and HEAD does not. Reproduced as the default because HEAD is what this port ports (ruling 1) and HEAD's own DesignRulesCheckerTest.java:88-96 asserts camelCase; [`DrcJsonFlavor::KiCad`] is the way out. Quirks row #154.
     //
-    // obligation: **Plan 8** wires the `-drc` CLI's flavor default. The product decision ruling 2
+    // ~~obligation: **Plan 8** wires the `-drc` CLI's flavor default. The product decision ruling 2
     // deferred is now made — **ruling W: the CLI defaults to `KiCad`** (the user's stated focus,
     // and what the document's own `$schema` promises), with HEAD's spelling behind a flag. This
     // enum's `Default` stays `FreeroutingHead`: it is the *parity* choice the crate's tests pin
-    // against the jar, not the CLI's.
+    // against the jar, not the CLI's.~~
+    //
+    // **Closed by Plan 8 Task 7.** `crates/freerouting/src/commands/drc.rs` passes
+    // `DrcJsonFlavor::KiCad` **explicitly** — never `DrcJsonFlavor::default()` — so this enum's
+    // `Default` stays `FreeroutingHead` for parity while the shipped `-drc` writes the spelling
+    // its own `$schema` promises, and HEAD's is behind `--schema freerouting` on the native form
+    // (`crates/freerouting/src/cli.rs`'s `DrcSchema`). Passing it by name is the point: a later
+    // change to this `Default` cannot move the CLI silently.
+    // `crates/freerouting/tests/cli_e2e.rs::the_cli_passes_kicad_flavor_explicitly` asserts both
+    // documents through the binary, and `p8t3 e2e` runs the port with `--schema freerouting` for
+    // its byte comparison against the jar.
     #[default]
     FreeroutingHead,
     /// KiCad's own spelling, which is also freerouting 2.3.0's.

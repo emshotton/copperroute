@@ -743,6 +743,550 @@ fn an_invalid_input_writes_no_manifest_because_java_never_reaches_the_writer() {
 }
 
 // =================================================================================================
+// `freerouting drc` — the nine behaviour tests (Plan 8 Task 7)
+//
+// `Freerouting.initializeDrc` (`Freerouting.java:246-374`). Every jar answer asserted below was
+// **measured on the pinned HEAD jar** and is re-measured on every run by `p8t3 e2e`'s five
+// refusal rows, which drive the same five argv shapes through both programs; these tests are what
+// makes the same facts available on a machine with no JDK.
+// =================================================================================================
+
+/// The DRC fixture with the largest score in the committed set (`902.078369140625`) and a small
+/// board — `tests/reference/drc-dev-board`'s.
+fn drc_dsn() -> PathBuf {
+    parity::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn")
+}
+
+/// The DRC report a run wrote, parsed. **KiCad spelling** by default (ruling W), so the reader is
+/// `serde_json::Value` rather than `parity::DrcReportDoc` (which is the HEAD-flavor projection).
+fn report(path: &Path) -> serde_json::Value {
+    let text = std::fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+    serde_json::from_str(&text).unwrap_or_else(|e| panic!("the report is not JSON: {e}"))
+}
+
+/// A `.rules` file carrying **only** an `(autoroute_settings …)` block, so it changes the router's
+/// settings and leaves the board alone.
+///
+/// `via_costs` is the field that makes it useful: it is a [`ScoringSettings`] member that
+/// `BoardStatistics.calculateScore` reads (`BoardStatistics.java:611-613`,
+/// `vias.totalCount * viaCosts`), and `RulesFileSettings` carries it at priority **40** — the one
+/// tier `Freerouting.java:344-347`'s sub-merge does not have. `DefaultSettings.java` puts it at
+/// 50, so a 999 that arrives is unmistakable.
+fn autoroute_settings_rules(dir: &Path, via_costs: i32) -> PathBuf {
+    let path = dir.join("scoring.rules");
+    std::fs::write(
+        &path,
+        format!("(rules PCB scoring\n  (autoroute_settings\n    (via_costs {via_costs})\n  )\n)\n"),
+    )
+    .expect("the scratch file is writable");
+    path
+}
+
+/// **Quirk #271** (label B, `Freerouting.java:289`): a `-dr` naming a file that does not exist is
+/// a `FRLogger.warn` and **nothing else** — `initializeDrc` runs to completion, writes the report
+/// and returns `true`, so the process exits **0**.
+///
+/// **Measured on the HEAD jar**: `-de <dsn> -dr <nonexistent>.rules -drc r.json` exits **0** and
+/// writes a 20 460-byte report, with `WARN RULES file for DRC not found: …` in the log. `p8t3
+/// e2e`'s `missing-rules` row re-measures it.
+///
+/// The sibling half — a missing **session** file (`:324`) — is the same shape and is asserted
+/// here too, because the two arms are what quirk #271 is *about*: three of the four things that
+/// can go wrong on this path do not move the exit code.
+#[test]
+fn drc_exits_0_when_the_rules_file_is_missing() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-missing-rules");
+    let dsn = drc_dsn();
+
+    let out = dir.join("rules.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "--rules",
+        &dir.join("nosuch.rules").to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(
+        code, 0,
+        "quirk #271: a missing .rules file only warns\n{stderr}"
+    );
+    assert!(stderr.contains("RULES file for DRC not found:"), "{stderr}");
+    assert!(out.is_file(), "the report is still written");
+
+    // `:324` — the same, for the session slot.
+    let out = dir.join("session.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "--ses",
+        &dir.join("nosuch.ses").to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(
+        code, 0,
+        "quirk #271: a missing session file only warns\n{stderr}"
+    );
+    assert!(
+        stderr.contains("Session file for DRC not found:"),
+        "{stderr}"
+    );
+    assert!(out.is_file(), "the report is still written");
+
+    // And the violations themselves never reach the code: this fixture has ten of them.
+    let (_, _, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "-o",
+        &dir.join("clean.json").to_string_lossy(),
+    ]);
+    assert_eq!(code, 0);
+    let violations = report(&dir.join("clean.json"))["violations"]
+        .as_array()
+        .expect("violations is an array")
+        .len();
+    assert_eq!(
+        violations, 10,
+        "the fixture's own violation count, and it does not reach the exit code (quirk #271)"
+    );
+}
+
+/// **`Freerouting.java:266-267`**, the first of the three `System.exit(1)` sites: `drcJob
+/// .setInput` threw, so the run stops before the loader.
+///
+/// **Measured on the HEAD jar**: exit **1**, `ERROR Couldn't load the input file '…'`, no report.
+/// Note what is *absent* — `initializeCli`'s second message (`:109`, "Couldn't read the input
+/// file '…', aborting.") has no counterpart here, because `System.exit` ends the process inside
+/// the `catch`.
+#[test]
+fn drc_exits_1_when_the_input_is_unreadable() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-unreadable-input");
+    let out = dir.join("r.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dir.join("nosuch.dsn").to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(code, 1, "{stderr}");
+    assert!(stderr.contains("Couldn't load the input file"), "{stderr}");
+    assert!(
+        !stderr.contains("aborting."),
+        "Freerouting.java:109 is initializeCli's, and initializeDrc has no counterpart:\n{stderr}"
+    );
+    assert!(!out.exists(), "no report is written");
+}
+
+/// **`Freerouting.java:272-273`** and **quirk #274** (label S): `-de prev.ses -drc r.json` is
+/// accepted by the argument parser, sniffed as `SES` by `RoutingJob.setInput`, and refused inside
+/// `BoardLoader` (`BoardLoader.java:31-37`) — not at the argument.
+///
+/// The three steps are three different classifiers and it matters which one refuses: the `-de`
+/// slot rule goes by **extension** (`GlobalSettings.java:564-648`), `setInput` goes by **bytes**
+/// (`RoutingJob.java:431`), and only the loader has an opinion about what it can read. So a file
+/// **named** `.dsn` that **contains** a session gets all the way to the loader.
+///
+/// **Measured on the HEAD jar**: exit **1**, and *two* errors — `Cannot load board: only DSN and
+/// JSON formats are supported, got SES` (`BoardLoader.java:33`, Task 3's text, reproduced
+/// verbatim) then `Failed to load board for DRC check` (`:272`). Both are asserted, because the
+/// second alone would not prove which classifier stopped the run.
+#[test]
+fn drc_exits_1_when_the_board_will_not_load() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-board-will-not-load");
+    let input = dir.join("session.dsn");
+    std::fs::write(&input, b"(session previous)\n").expect("the scratch file is writable");
+    let out = dir.join("r.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &input.to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(code, 1, "{stderr}");
+    assert!(
+        stderr.contains("only DSN and JSON formats are supported, got SES"),
+        "quirk #274: the loader refuses, not the argument\n{stderr}"
+    );
+    assert!(
+        stderr.contains("Failed to load board for DRC check"),
+        "{stderr}"
+    );
+    assert!(!out.exists(), "no report is written");
+}
+
+/// **`Freerouting.java:365-366`**, the third and last `System.exit(1)` site: the report itself
+/// could not be written.
+///
+/// The whole check ran — the board loaded, `generateReport` produced a document and the quality
+/// score was computed — and the run still exits 1, because `Files.write` threw. That is the only
+/// failure on this path that happens *after* the work.
+///
+/// **Measured on the HEAD jar**: `-drc <dir>/nodir/r.json` with `nodir` absent exits **1** with
+/// `ERROR Couldn't save the DRC report to '…'`.
+#[test]
+fn drc_exits_1_when_the_report_cannot_be_written() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-unwritable-report");
+    let out = dir.join("nodir").join("r.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &drc_dsn().to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(code, 1, "{stderr}");
+    assert!(
+        stderr.contains("Couldn't save the DRC report to"),
+        "{stderr}"
+    );
+    assert!(!out.exists());
+}
+
+/// **Quirk #273** (label D): the session is imported **after** the `.rules` file
+/// (`Freerouting.java:277-294` then `:296-329`), so the session's wires and vias are created — and
+/// then checked — against whatever the rules file installed.
+///
+/// # What is asserted, and the plan claim the measurement did *not* support
+///
+/// The plan's label **D** predicted that *"swapping the two changes the violation list"*. **On the
+/// committed corpus it does not**, and this test says so rather than asserting a difference that
+/// is not there. Measured, in process, on `Issue593-BBD_Mars-64` + its own `.rules` + its own
+/// `.ses` — the only three-file input the corpus has — and on three hand-written rules files
+/// (`(autoroute_settings (via_costs …))`, `(class default (clearance_class smd))`,
+/// `(rule (clearance …))`): the two orders produce boards with the **same
+/// `Board::structural_hash`**, the same clearance-violation list and the same report bytes.
+///
+/// The mechanism explains it. Everything a `.rules` file writes into the board — the clearance
+/// matrix, the net classes, the padstacks, the via rules, the snap angle — is consulted at
+/// **check** time, so it reaches the same answer whenever it was written. The one field
+/// `SesReader` reads at **item-creation** time is
+/// `board.rules.getDefaultNetClass().defaultItemClearanceClasses`
+/// (`SesReader.java:316-321`, `:395-400`), and no `(rules …)` arm writes it: `(class …)`'s
+/// `(clearance_class X)` goes to `NetClass.traceClearanceClass` (`Network.java:449-455`), which is
+/// a different field. So the order is load-bearing **by construction** and inert **in fact**, and
+/// both halves are worth writing down.
+///
+/// What is therefore asserted here is the order itself, through the binary: the port emits
+/// `:281`'s `Loading RULES file for DRC:` **before** `:309`'s `Loading SES file for DRC:`. The jar
+/// emits the same two lines in the same order, and `p8t3 e2e`'s `rules-and-session` row is what
+/// compares them — it runs `-de <dsn> <ses> -dr <rules> -drc <report>` through both programs and
+/// requires the log *and the report bytes* to agree. That row exists because no fixture stem fills
+/// both optional slots at once.
+#[test]
+fn the_session_is_imported_after_the_rules() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-load-order");
+    let dsn = parity::fixture("Issue593-BBD_Mars-64.dsn");
+    let rules = parity::fixture("Issue593-BBD_Mars-64.rules");
+    let ses = parity::fixture("Issue593-BBD_Mars-64.ses");
+
+    // Half one: the order, observed through the binary.
+    let out = dir.join("r.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "--rules",
+        &rules.to_string_lossy(),
+        "--ses",
+        &ses.to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    let rules_at = stderr
+        .find("Loading RULES file for DRC:")
+        .unwrap_or_else(|| panic!("Freerouting.java:281 is missing:\n{stderr}"));
+    let session_at = stderr
+        .find("Loading SES file for DRC:")
+        .unwrap_or_else(|| panic!("Freerouting.java:309 is missing:\n{stderr}"));
+    assert!(
+        rules_at < session_at,
+        "quirk #273: `:277-294` runs before `:296-329`\n{stderr}"
+    );
+
+    // Half two: the recorded measurement. `commands::drc::{load_rules_file, load_session_file}`
+    // are the program's own functions, called in each order on two freshly loaded boards.
+    fn board_hash(dsn: &Path, rules: &Path, ses: &Path, rules_first: bool) -> (u64, usize) {
+        let mut job = fr_core::RoutingJob::new(fr_core::SessionId::NIL);
+        job.set_input(dsn).expect("the fixture reads");
+        let loaded = fr_core::load_board_if_needed(&mut job).expect("the fixture loads");
+        let mut board = loaded.board;
+        let transform = loaded.transform;
+        if rules_first {
+            freerouting::commands::drc::load_rules_file(Some(rules), &job, &mut board, &transform);
+            freerouting::commands::drc::load_session_file(Some(ses), &mut board, &transform);
+        } else {
+            freerouting::commands::drc::load_session_file(Some(ses), &mut board, &transform);
+            freerouting::commands::drc::load_rules_file(Some(rules), &job, &mut board, &transform);
+        }
+        let hash = board.structural_hash();
+        let violations = fr_drc::DesignRulesChecker::new(&mut board)
+            .get_all_clearance_violations()
+            .len();
+        (hash, violations)
+    }
+
+    assert_eq!(
+        board_hash(&dsn, &rules, &ses, true),
+        board_hash(&dsn, &rules, &ses, false),
+        "MEASURED, and recorded rather than assumed: on this corpus the two orders build the same \
+         board, because the only field `SesReader` reads at creation time \
+         (`defaultItemClearanceClasses`) is one no `(rules …)` arm writes. If this ever fails the \
+         order has become observable — which is the plan's label-D prediction coming true — and \
+         the assertion should be inverted, not deleted."
+    );
+}
+
+/// **Quirk #272** (label C): the quality score uses a **different settings merge** from the
+/// router's — `Freerouting.java:344-347` is the prototype merger plus one `DsnFileSettings`, with
+/// **no `RulesFileSettings` at priority 40**, no board pass and no merge #2.
+///
+/// Both halves are asserted with the *same file*, which is what makes it a quirk rather than a
+/// detail:
+///
+/// * `freerouting route --rules <f>` reports `scoring.via_costs = 999` in its manifest — the tier
+///   reaches the router;
+/// * `freerouting drc --rules <f>` writes a report whose `quality_score` is **identical** to the
+///   run without `--rules` — the same tier does not reach the score.
+///
+/// The file carries only `(autoroute_settings (via_costs 999))`, so it changes no clearance, no
+/// net class and no padstack: the *whole document* is unchanged, not just the score, and that is
+/// what is asserted.
+#[test]
+fn the_quality_score_uses_a_dsn_only_merge() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-separate-merge");
+    let rules = autoroute_settings_rules(&dir, 999);
+    let dsn = drc_dsn();
+
+    // Half one: the same tier, on the router path, lands.
+    let manifest = dir.join("route.json");
+    let (_, stderr, code) = run(&[
+        "route",
+        &small_dsn().to_string_lossy(),
+        "-o",
+        &dir.join("out.ses").to_string_lossy(),
+        "--max-passes",
+        "1",
+        "--rules",
+        &rules.to_string_lossy(),
+        "--result-json",
+        &manifest.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        settings_snapshot(&manifest)["scoring"]["via_costs"].as_i64(),
+        Some(999),
+        "the `.rules` tier is priority 40 and the router path has it"
+    );
+
+    // Half two: the same tier, on the DRC path, does not.
+    let with_rules = dir.join("with-rules.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "--rules",
+        &rules.to_string_lossy(),
+        "-o",
+        &with_rules.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    let without_rules = dir.join("without-rules.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "-o",
+        &without_rules.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+
+    let mut with = report(&with_rules);
+    let mut without = report(&without_rules);
+    assert_eq!(
+        with["quality_score"], without["quality_score"],
+        "quirk #272: `-dr` never reaches Freerouting.java:344-347's merge"
+    );
+    // The `date` is the only field a second run may legitimately move.
+    with["date"] = serde_json::Value::Null;
+    without["date"] = serde_json::Value::Null;
+    assert_eq!(
+        with, without,
+        "an `(autoroute_settings …)`-only rules file changes nothing on the DRC path at all"
+    );
+}
+
+/// **`Freerouting.java:349`**: `report.qualityScore = (double) finalStats.getNormalizedScore(…)`.
+///
+/// `getNormalizedScore` returns a Java `float` (`BoardStatistics.java:623`) and
+/// `KiCadDrcReport.qualityScore` is a `Double` (`:56-57`), so every score a jar can put in a DRC
+/// document is a **widened `float`** — which is where `902.078369140625` comes from. A `f64`
+/// computation would write `902.0784`, and a `f64` value that is not an exact `f32` is a number
+/// no jar could ever produce.
+///
+/// The assertion is exactly that: the committed reference's value, its `Double.toString`
+/// rendering **as text in the file**, and the round trip `f64 -> f32 -> f64` being lossless.
+#[test]
+fn the_quality_score_is_an_f32_widened_to_f64() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-score-width");
+    let out = dir.join("r.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &drc_dsn().to_string_lossy(),
+        "-o",
+        &out.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+
+    // The literal `tests/reference/drc-dev-board/drc.json` carries — the jar's own bytes.
+    let text = std::fs::read_to_string(&out).expect("the report is readable");
+    assert!(
+        text.contains("\"quality_score\": 902.078369140625"),
+        "the score must be Double.toString of the widened float, verbatim:\n{text}"
+    );
+
+    let score = report(&out)["quality_score"]
+        .as_f64()
+        .expect("quality_score is a number");
+    #[allow(clippy::cast_possible_truncation)]
+    let narrowed = score as f32;
+    assert_eq!(
+        f64::from(narrowed),
+        score,
+        "a score that does not survive f64 -> f32 -> f64 is one no jar could have written"
+    );
+}
+
+/// **Ruling 6 / quirk #275, and this test is port-only.** `Freerouting.java:368-371`'s
+/// `IO.println(drcReportJson)` is **dead code in the jar**: `main:1462` enters DRC mode on
+/// `drcReportFile != null`, and the only assignment of that field is `GlobalSettings.java:664-668`
+/// — which runs only when `-drc` was followed by a value. So `drcJob.drc` is non-null on every
+/// reachable entry and the `else` can never run.
+///
+/// Spec §12 asks for the branch, so the port makes it live, reachable **only** from the native
+/// subcommand form (`legacy::rewrite` always emits `-o <report>`). There is therefore no jar
+/// answer to compare against and `p8t3` never exercises it — which is why this test exists and
+/// says so.
+///
+/// Two things are asserted beyond "it prints": the document is **complete and parseable** (so the
+/// branch is not a truncated echo), and **nothing else reaches stdout** — every log line goes to
+/// stderr (quirk #261), which is what makes `freerouting drc board.dsn | jq` work.
+#[test]
+fn drc_with_no_output_prints_to_stdout() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let (stdout, stderr, code) = run(&["drc", &drc_dsn().to_string_lossy()]);
+    assert_eq!(code, 0, "{stderr}");
+    let document: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout is not one JSON document: {e}\n{stdout}"));
+    assert_eq!(
+        document["$schema"].as_str(),
+        Some("https://schemas.kicad.org/drc.v1.json")
+    );
+    assert!(document["violations"].is_array());
+    assert!(
+        stdout.trim_start().starts_with('{'),
+        "nothing may precede the document on stdout"
+    );
+    assert!(
+        stderr.contains("Loading DSN file for DRC:"),
+        "the log stays on stderr (quirk #261)\n{stderr}"
+    );
+}
+
+/// **Ruling W** (quirk #154): the CLI writes the **KiCad** key spelling by default — the one the
+/// document's own `$schema` promises — while `fr_drc::DrcJsonFlavor`'s `Default` stays
+/// `FreeroutingHead`, which is the *parity* choice `crates/fr-drc/tests/report_json.rs` pins
+/// against the jar's Gson bytes.
+///
+/// The two are asserted to be genuinely different documents, and `--schema freerouting` is
+/// asserted to be the way back to the jar's — which is what `p8t3 e2e`'s byte rung runs the port
+/// with.
+#[test]
+fn the_cli_passes_kicad_flavor_explicitly() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("drc-flavor");
+    let dsn = drc_dsn();
+
+    let kicad = dir.join("kicad.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "-o",
+        &kicad.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    let kicad_text = std::fs::read_to_string(&kicad).expect("readable");
+    for key in [
+        "\"coordinate_units\"",
+        "\"kicad_version\"",
+        "\"freerouting_version\"",
+        "\"unconnected_items\"",
+        "\"schematic_parity\"",
+        "\"quality_score\"",
+        "\"type\": \"hole_clearance\"",
+    ] {
+        assert!(
+            kicad_text.contains(key),
+            "the default must be KiCad's spelling: {key} missing"
+        );
+    }
+    for key in [
+        "\"coordinateUnits\"",
+        "\"unconnectedItems\"",
+        "\"qualityScore\"",
+    ] {
+        assert!(
+            !kicad_text.contains(key),
+            "HEAD's spelling must not appear: {key}"
+        );
+    }
+
+    let head = dir.join("head.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &dsn.to_string_lossy(),
+        "-o",
+        &head.to_string_lossy(),
+        "--schema",
+        "freerouting",
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    let head_text = std::fs::read_to_string(&head).expect("readable");
+    assert!(head_text.contains("\"coordinateUnits\""));
+    assert!(head_text.contains("\"qualityScore\""));
+    assert!(!head_text.contains("\"quality_score\""));
+    // `--schema freerouting` is the HEAD-flavor projection `parity` can read; the default is not.
+    assert!(parity::parse_drc_json(&head_text).is_ok());
+    assert!(
+        parity::parse_drc_json(&kicad_text).is_err(),
+        "the two flavors must be genuinely different documents"
+    );
+}
+
+// =================================================================================================
 // The reference lanes
 // =================================================================================================
 

@@ -27,6 +27,10 @@ fr-settings = { path = "../fr-settings" }
 fr-core = { path = "../fr-core" }
 fr-dsn = { path = "../fr-dsn" }
 fr-board = { path = "../fr-board" }
+# Plan 8 Task 7: `commands::drc` drives `DesignRulesChecker::{new, generate_report}` and
+# `KiCadDrcReport::to_json` directly — `fr-core` deliberately does not re-export them, because the
+# DRC report is a CLI/MCP output surface rather than part of the routing composition.
+fr-drc = { path = "../fr-drc" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

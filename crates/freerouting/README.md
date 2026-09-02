@@ -14,9 +14,11 @@ specified …` and **exit 1**, not a usage screen.
 > **Status.** Plan 8 Task 5 landed the command line: the parse, the mode ladder, the exit ladder
 > and the log surface. **Task 6 landed `route`** — the sixteen steps of `Freerouting.initializeCli`
 > end to end, with SES byte parity against the HEAD jar on eleven boards (see the acceptance table
-> below). `drc` and `info` are still stubs that answer exit 3 until Tasks 7 and 12. Task 13 expands
-> this file into the full reference (every accepted flag, the `p8t1`-`p8t7` acceptance table, the
-> MCP delta table).
+> below). **Task 7 landed `drc`** — the thirteen steps of `Freerouting.initializeDrc`, with report
+> byte parity on seven of the eight committed `drc-*` stems and the eighth an `XDIFF` the jar
+> cannot win either (see its own table below). `info` is the last stub answering exit 3, until
+> Task 12. Task 13 expands this file into the full reference (every accepted flag, the
+> `p8t1`-`p8t7` acceptance table, the MCP delta table).
 
 ---
 
@@ -24,7 +26,7 @@ specified …` and **exit 1**, not a usage screen.
 
 | code | when | Java |
 |---|---|---|
-| **0** | a completed run; `--help`; `-drc` unconditionally (plan label **B** — `initializeDrc` returns `true` whatever happens; Task 7 lands the row) | `Freerouting.java:1495`, `:1397` |
+| **0** | a completed run; `--help`; `drc` **unless** the input is unreadable, the board will not load or the report cannot be written (quirk **#271** — `initializeDrc` returns `true` whatever else happens: a missing `.rules`, a missing session, a failed quality score and **any number of violations** all leave the code at 0) | `Freerouting.java:1495`, `:1397`, `:373` |
 | **1** | any failure — **including every refusal on the legacy path** | `Freerouting.java:1474` |
 | **2** | **port only:** a usage error on the *native* subcommand form (clap's own) | — |
 | **3** | **port only, reserved:** a subcommand not wired up yet | — |
@@ -53,6 +55,8 @@ who learns this CLI does not type them at the jar.
 | `--version` / `-V` | print the version (native form only) | **none**; the jar prints its version in the startup banner (`Freerouting.java:1120`) |
 | `--kicad-json <file>` | a KiCad board file in its own slot (native form only, ruling 14) | **none** — on the legacy form a `.json` takes Java's own slot |
 | `--set <section.field=value>` | a generic settings override | `--section.field=value`, which the legacy form still accepts |
+| `--schema <kicad\|freerouting>` | which spelling of the KiCad DRC schema `drc` writes; **default `kicad`**, native form only (ruling W, quirk #154) | **none** — each jar hard-codes one spelling, and HEAD's disagrees with the `$schema` it advertises |
+| `drc` with no `-o` | write the report to **stdout** (quirk #275, spec §12) | **none** — `Freerouting.java:368-371` is dead code, because a bare `-drc` is not DRC mode (quirk #263) |
 
 `--settings` was accepted and unread through Task 5; **Task 6 wired it** — `SettingsInputs::json_file`
 now carries the priority-10 tier into both of `resolve_headless`'s chains, and without the flag the
@@ -227,3 +231,74 @@ is what a user gets, and the comparison is between two whole programs. The cost 
 wall clock is a machine-speed dependency; the bound on it is
 `scripts/gen-cli-reference.sh`'s `batch.ses` cross-check, which requires each CLI reference to be
 byte-identical to Plan 7's independently generated one and fails loudly if it is not.
+
+---
+
+## `drc`: the acceptance table (Plan 8 Task 7)
+
+`freerouting drc` is measured the same way `route` is — two whole programs on the same argv —
+by `scripts/differential/run.sh p8t3 e2e`, over the eight rows of `tests/reference/drc-fixtures.txt`
+plus six argv rows. Rungs per stem:
+
+| rung | assertion |
+|---|---|
+| (a) | the two reports are byte-identical after `parity::normalize_drc_json` (which drops `date` and sorts each `unconnectedItems` entry's `items` by numeric uuid — plan-5 ruling 3, quirk #144) |
+| (b) | `quality_score` is equal — asserted *before* the document, because it is the value Task 7 newly **computes** where Plan 5 injected it |
+| (c) | the two exit codes are equal |
+| (d) | `parity::normalize_log` of both sides is equal |
+| (e) | the port's shipped default is the **KiCad** spelling: `quality_score`, not `qualityScore` (ruling W) |
+
+Rung (a) needs the jar's key spelling, so the port is run a second time on the native form with
+`--schema freerouting`; rungs (b)-(e) use the **legacy** argv, so the shim, the message set and the
+exit ladder are compared on the command line a user actually types.
+
+| stem | argv beyond `-de` | `p8t3 e2e` | `quality_score` |
+|---|---|---|---|
+| `drc-dev-board` | — | MATCH (20 374 B) | `902.078369140625` |
+| `drc-bbd-mars-64` | — | MATCH (62 393 B) | `828.276123046875` |
+| `drc-natural-tone-preamp` | — | **XDIFF** | `334.8545227050781` — **MATCH** |
+| `drc-issue593-rules` | `-dr <rules>` | MATCH (42 010 B) | `0.0` |
+| `drc-issue593-ses` | `<ses>` in the `-de` slot list | MATCH (44 501 B) | `556.5908203125` |
+| `drc-issue753-cpu85` | — | MATCH (189 817 B) | `331.1068115234375` |
+| `drc-issue110-relay` | — | MATCH (34 269 B) | `0.0` |
+| `drc-tutorial-board` | — | MATCH (290 B) | `0.0` |
+
+**All eight quality scores match the committed references exactly**, which is the acceptance the
+plan asked for: Plan 5 *injected* that number from the reference, and Task 7 *computes* it from
+`fr_router::score::BoardStatistics::normalized_score`, so the eight references became eight free
+assertions the moment the injection was removed.
+
+Plus six **argv rows**, which is where rungs (c) and (d) earn their keep — the stems all succeed,
+and three of the five things that can go wrong on this path do not move the exit code (quirk #271):
+
+| row | argv | `p8t3 e2e` | what it pins |
+|---|---|---|---|
+| `missing-rules` | `-dr <missing>.rules` | MATCH | `Freerouting.java:289` warns; **exit 0**, report written |
+| `missing-session` | `<missing>.ses` in the `-de` slot list | MATCH | `:324` warns; **exit 0**, report written |
+| `rules-and-session` | `<dsn> <ses> -dr <rules>` | MATCH | quirk #273 — the only run that fills both optional slots; the six-line log shows `:281`/`:286` before `:309`/`:312` on both sides |
+| `missing-input` | `-de <missing>.dsn` | MATCH | `:266` + `:267`, **exit 1**, no report |
+| `ses-input` | session bytes under a `.dsn` name | MATCH | quirk #274 — the **loader** refuses (`BoardLoader.java:33`), `:272` + `:273`, **exit 1** |
+| `unwritable-report` | `-drc <missing-dir>/r.json` | MATCH | `:365` + `:366`, **exit 1** — the whole check ran and the run still fails |
+
+`scripts/differential/run.sh p8t3` (no argument) is the **other** mode: a genuine Java-vs-Rust pair
+over quirk #272's separate settings merge (`P8T3.java` against
+`commands::drc::{quality_score_settings, quality_score}`), printing the seven scoring weights, the
+six board counters and the score in raw IEEE bits for each of the eight stems. 25 lines, MATCH.
+
+### The one XDIFF, and why no port can remove it
+
+`drc-natural-tone-preamp` is quirk **#146**, and it is the case where *the jar does not match
+itself*. `generateReport` folds `getAllUnconnectedItems`' `track_dangling` entries into
+`violations` (`DesignRulesChecker.java:271-276`), and that phase's dedup (`:160`) drops whichever
+dangling trace a net entry's **identity-hash-ordered** `firstItem` happens to be. Across
+`-XX:hashCode=0..4` the jar produces 113-115 violations on this board; `-XX:hashCode=2` — the only
+mode that reproduces run to run without being derived from an object address — gives 115, which is
+the committed reference. The port's ascending-id representatives (plan-5 ruling 3) give **112**.
+
+The three that differ are pinned **by uuid, never by count** — `1909`, `1696`, `1242` — here, in
+`p8t3`'s row detail, and in `crates/fr-drc/tests/reference_parity.rs::natural_tone_preamp_is_the_
+reference_minus_three_dangling_tracks`. The driver reports the row as `XDIFF` with those uuids
+rather than deleting them from the jar's side to manufacture a MATCH; everything else in the
+document, including the whole 44-entry `unconnectedItems` block **and the `quality_score`**, is
+identical.
+

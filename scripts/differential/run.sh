@@ -33,7 +33,7 @@ usage() {
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
-  echo "           p8t2probe, p8t2, p8t5, p8t1" >&2
+  echo "           p8t2probe, p8t2, p8t5, p8t1, p8t3" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -769,6 +769,44 @@ case "$driver" in
     # `scripts/gen-cli-reference.sh`'s header states the difference and what bounds the risk.
     rust_only=1
     default_args=()
+    ;;
+  p8t3)
+    # Plan 8 Task 7. **Two modes**, the `p8t2` shape:
+    #
+    #   * `merge` (the default) — a genuine Java-vs-Rust pair. `Freerouting.initializeDrc`'s
+    #     quality-score block (`Freerouting.java:342-352`, quirk #272) over the eight rows of
+    #     `tests/reference/drc-fixtures.txt`: the prototype merger plus one `DsnFileSettings` and
+    #     nothing else, then `board.getStatistics().getNormalizedScore(scoring)`. Three lines per
+    #     stem — the seven scoring weights, the six board counters and the score in both
+    #     `Float.toString` and raw IEEE bits — so a divergence names a field instead of a float.
+    #     Declares `package app.freerouting.settings` so it sits beside `SettingsMerger`, and runs
+    #     against the clone's HEAD jar (plan ruling 7).
+    #
+    #   * `e2e` — the acceptance gate: `java -jar <jar> -de <dsn> [-dr <rules>] -drc <report>`
+    #     against the port on the same argv, comparing the report byte-identically after
+    #     `parity::normalize_drc_json`, plus the exit code, plus `parity::normalize_log`. That
+    #     comparison has no Java half for the reason `p8t1` has none — a `P8T3.java` could only
+    #     re-implement the normalisers a second time — so this mode switches the driver to
+    #     `rust_only`.
+    #
+    # The Rust half links the **binary's own** library (`crates/freerouting`), the `p8t5`
+    # convention: `commands::drc::{quality_score_settings, quality_score}` are what the program
+    # runs, not a second copy written for the driver.
+    #
+    # The `p5t*` flag set, which is **mandatory** here rather than hygienic: `-XX:hashCode=2` is
+    # quirk #144 (`getAllUnconnectedItems` iterates identity-hashed `HashSet<Item>`s, so the
+    # `unconnectedItems` order moves between runs without it) and `-Duser.language=en
+    # -Duser.country=US` is quirk #145 (every `%.4f` in a violation description goes through the
+    # default FORMAT locale). Both are the modes `tests/reference/drc-*` was generated under, and
+    # `parity::run_jar` carries the identical five flags for the `e2e` lane.
+    javaclass=P8T3
+    javapkg="settings"
+    default_args=("merge" "$ROOT/tests/reference/drc-fixtures.txt" "$FREEROUTING_JAVA_DIR")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    # An `if`, not `&&`: a failing `[[ ]]` as the last statement of a `case` arm is a non-zero
+    # exit status, which `set -e` at the top of this script would treat as a failure.
+    if [[ "${1:-}" == "e2e" ]]; then rust_only=1; fi
     ;;
   p8t5)
     # Plan 8 Task 5: the legacy command line — `GlobalSettings.applyCommandLineArguments`

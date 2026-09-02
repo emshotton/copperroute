@@ -205,6 +205,15 @@ impl Steps {
 // must compose the API path separately: merge #2 alone, with `ApiSettings(job.routerSettings)`
 // as a sparse priority-70 source, rather than calling `resolve_headless`. `docs/java-quirks.md`
 // carries the same note.
+//
+//   **This obligation has TWO independent users, and Task 12 is only one of them.**
+//   Plan 8 Task 7 is the other: `Freerouting.initializeDrc:342-352` computes the DRC report's
+//   quality score from a merge that is *not* this function's — the prototype merger plus one
+//   `DsnFileSettings`, with no `.rules` tier, no board pass and no merge #2 (quirk #272). It
+//   composes [`crate::SettingsMerger`] directly for exactly the structural reason recorded above,
+//   and `crates/freerouting/src/commands/drc.rs::quality_score_settings` is that composition;
+//   `p8t3 merge` pins it against the JVM field by field. Said here so that Task 12 does not read
+//   the marker as its own and "discharge" it by wiring only the API path.
 ///
 /// `board` is `None` for "there is no board" — the merge alone. Java reaches that shape nowhere in
 /// the headless path, and each of its three board-facing sites answers it differently:

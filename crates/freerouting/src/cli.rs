@@ -134,6 +134,39 @@ pub struct DrcArgs {
     /// Report path; stdout when omitted
     #[arg(short, long)]
     pub output: Option<PathBuf>,
+    /// Which spelling of the KiCad DRC schema the report uses (see [`DrcSchema`]). Port only:
+    /// Java has one spelling per jar and no flag at all.
+    #[arg(long, value_enum, default_value_t = DrcSchema::Kicad)]
+    pub schema: DrcSchema,
+}
+
+/// The two `@SerializedName` spellings of the KiCad DRC report — quirk #154, and **ruling W's
+/// flag**.
+///
+/// The report's first key is `"$schema": "https://schemas.kicad.org/drc.v1.json"`, and that
+/// schema is snake_case: KiCad 9.0.1 and freerouting **2.3.0** both write `coordinate_units` /
+/// `unconnected_items` / `quality_score`, and the clone's HEAD writes `coordinateUnits` /
+/// `unconnectedItems` / `qualityScore` instead. So the jar advertises a schema it does not
+/// validate against, and a consumer written for KiCad breaks on it.
+///
+/// `fr_drc::DrcJsonFlavor`'s `Default` stays `FreeroutingHead`, because that is the **parity**
+/// choice `crates/fr-drc/tests/report_json.rs` pins against the jar's own Gson bytes. **The CLI's
+/// default is the other one** (ruling W): [`DrcSchema::Kicad`], the spelling `$schema` promises,
+/// passed *explicitly* at the call site in `commands::drc` so that a future change to the enum's
+/// `Default` cannot silently move the CLI. [`DrcSchema::Freerouting`] is the way back to HEAD's
+/// bytes, and it is what `scripts/differential/rust/src/bin/p8t3.rs` runs the port with — a
+/// byte-for-byte comparison against the jar needs the jar's spelling.
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DrcSchema {
+    /// KiCad's own spelling, which is also freerouting 2.3.0's — `coordinate_units`,
+    /// `unconnected_items`, `quality_score`, and the violation types `hole_clearance` /
+    /// `unconnected_items`. The CLI default (ruling W).
+    #[default]
+    Kicad,
+    /// The clone's HEAD spelling — camelCase keys and the violation types `holeClearance` /
+    /// `unconnectedItems`. Bug-compatible with the jar, which is why the differential driver
+    /// asks for it.
+    Freerouting,
 }
 
 #[derive(Args, Debug)]

@@ -108,8 +108,10 @@ pub enum ExitCode {
     /// grep -rn "ExitCode::NotImplemented" crates/*/src/commands crates/*/src/mcp
     /// ```
     ///
-    /// Three sites answer it today — `commands/{route,drc,info}.rs` — and Tasks 6, 7 and 12 are
-    /// what remove them. The variant itself stays, unused and documented, per controller answer 3.
+    /// ~~Three sites answer it today — `commands/{route,drc,info}.rs` — and Tasks 6, 7 and 12 are
+    /// what remove them.~~ Task 6 removed `route`'s and **Task 7 removed `drc`'s**; `info` is the
+    /// last one, and Task 12 is what removes it. The variant itself stays, unused and documented,
+    /// per controller answer 3.
     NotImplemented = 3,
 }
 

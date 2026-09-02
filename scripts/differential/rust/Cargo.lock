@@ -220,6 +220,7 @@ dependencies = [
  "clap",
  "fr-board",
  "fr-core",
+ "fr-drc",
  "fr-dsn",
  "fr-geometry",
  "fr-settings",
