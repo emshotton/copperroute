@@ -122,19 +122,29 @@ fn the_kicad_json_reader_is_a_stub() {
 /// task is the **first caller** `fr_board::Board::reduce_nets_of_route_items` has ever had
 /// (ported in Plan 2 at `crates/fr-board/src/board/query.rs:1096`, unreached by Plans 2-7).
 ///
-/// # Why "exactly once" is pinned by equality rather than by a counter
+/// # What this pins, and the count it deliberately does not
 ///
+/// The task brief named this test `reduce_nets_of_route_items_is_called_exactly_once`. **It was
+/// renamed in Task 3's review round 1, because no assertion here can establish a call count.**
 /// The pass is a **measured no-op on every corpus board**: `RoutingBoard.java:1296`'s
-/// `netNumbers.length <= 1` guard skips every item, because nothing `fr_dsn::read_board`
-/// produces carries more than one net number. The assertion below states that as a fact rather
-/// than assuming it — the day a reader hands back a multi-net route item, the second half of this
-/// test fails and the pin has to be rewritten around a real observable instead of quietly
-/// passing.
+/// `netNumbers.length <= 1` guard skips every item, because nothing `fr_dsn::read_board` produces
+/// carries more than one net number. So the board digest is identical after zero, one or two
+/// calls, and a name promising "exactly once" would be claiming evidence that does not exist.
+/// Building a multi-net route item to make the count observable would mean widening `fr-board`'s
+/// public surface for a test — `Item::assign_net_no` overwrites element 0 rather than appending
+/// (quirk-faithfully, `Item.java:975-978`), so there is no existing API for it.
 ///
-/// What is pinned positively is that the loader runs **exactly** `read → the settings pass → the
-/// post-load pass`, by rebuilding that sequence by hand and comparing the boards.
+/// What *is* pinned:
+///
+/// 1. the loader runs **exactly** `read → the settings pass → the post-load pass`, by rebuilding
+///    that sequence by hand and comparing the boards;
+/// 2. `apply_immediate_post_load_processing` answers Java's always-`false`
+///    (`RoutingBoard.java:1285,1355` computes `result` and never assigns it);
+/// 3. the no-op premise itself, asserted rather than assumed — the day a reader hands back a
+///    multi-net route item, assertion (c) below fails and this pin has to be rewritten around a
+///    real observable instead of quietly passing.
 #[test]
-fn reduce_nets_of_route_items_is_called_exactly_once() {
+fn the_loader_runs_read_then_the_settings_pass_then_the_post_load_pass() {
     let path =
         parity::java_dir().join("fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let bytes = std::fs::read(&path).expect("the fixture is readable");

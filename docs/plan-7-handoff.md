@@ -371,10 +371,23 @@ The ones Plan 8 must read before writing a line of CLI:
   router run. `run_pipeline` reproduces that. Do not "helpfully" reset it.
 * **#230** — `job.getCurrentPass()` under-reports by one on a `maxPasses`-capped exit,
   disagreeing with the final `TaskStateChangedEvent`'s own `getPassNumber()`.
-* **#231/#232** — the clearance overrides run **twice** per DSN load and the copper
+* **#231/#232** — ~~the clearance overrides run **twice** per DSN load and the copper
   path is idempotent across the two while the hole path is not. #232's boundary
   (`router.hole_clearance_um > 0` + zero circular keepouts) is an open Plan 8
-  obligation with an `obligation:` marker at the site.
+  obligation with an `obligation:` marker at the site.~~ **#232's claim was FALSIFIED
+  by Plan 8 Task 3 (`7ef2f57`); #231 stands unchanged.** The overrides run **once**,
+  at `applyRouterSettingsForLoadedBoard:746-747`. `HeadlessBoardManager.createBoard`
+  cannot be on the load path at all: `Structure.java:1268` dispatches through
+  `ReadScopeParameter`'s `final BoardParserCallback boardHandling`, and
+  `HeadlessBoardManager implements BoardManager`, which does **not** extend
+  `BoardParserCallback` — a type-level impossibility, not a constructor accident. The
+  sole production implementation is `ReadScopeParameter$MinimalBoardManager`
+  (`:103`, `:139-166`), which calls neither override. Measured on the HEAD jar: a
+  counting subclass driving a real `loadFromSpecctraDsn` reports
+  `headless_create_board_calls=0` on all three probe fixtures
+  (`crates/fr-core/tests/data/p8t3-clearance-overrides.txt`). See quirk **#253** for
+  the dead method and the rewritten **#232**. So there was never a second run to be
+  idempotent across, and #232's boundary is empty; the obligation below is discharged.
 * **#233** — `TestingSettings`' constructor zeroes `copperToEdgeClearanceUm`, so the
   whole Java fixture suite routes a board no real `-de/-do` run produces. The parity
   references deliberately do **not** carry it.
@@ -425,9 +438,9 @@ ruling 2, correcting plan-6 §10. Both are empty.
 
 | site | what |
 |---|---|
-| `fr-board/src/board/clearance_override.rs:60` | quirk #232's boundary — `applyHoleClearanceOverride`'s second invocation with `router.hole_clearance_um > 0` and zero circular keepouts does one extra `reinsertTreeItems` (a #229-class tree-order shift). Pin or reproduce **before** the CLI exposes the setting. |
+| ~~`fr-board/src/board/clearance_override.rs:60`~~ **DISCHARGED — Plan 8 Task 3 (`7ef2f57`); the marker is gone and the site carries a prose "discharged" paragraph** | ~~quirk #232's boundary — `applyHoleClearanceOverride`'s second invocation with `router.hole_clearance_um > 0` and zero circular keepouts does one extra `reinsertTreeItems` (a #229-class tree-order shift). Pin or reproduce **before** the CLI exposes the setting.~~ The premise was false (quirk #253): there is no second invocation, so there is no boundary. The obligation's "or reproduce the second run" arm was taken anyway — `P8T3Probe`'s `after_second_hole_override` stage invokes `applyHoleClearanceOverride` a second time on the loaded board and it moves nothing, tree leaf count, `lastGeneratedEntryId` and `ShapeTree.toArray()` order digest included. Asserted by `crates/fr-core/tests/overrides.rs::the_second_hole_override_leaves_the_search_tree_alone`. |
 | `fr-drc/src/report/json.rs:57` | `DrcJsonFlavor`'s CLI default (plan-5 ruling 2/ruling W) |
-| `fr-dsn/src/parser/wiring.rs:596` | `read_via_scope` still calls the unchecked `insert_via`; the last line of the ladder-hang obligation |
+| ~~`fr-dsn/src/parser/wiring.rs:596`~~ **CLOSED — Plan 8 Task 3 (`7ef2f57`)** | ~~`read_via_scope` still calls the unchecked `insert_via`; the last line of the ladder-hang obligation~~ `read_via_scope` now calls `Board::insert_via_checked` with a per-via `TimeLimit` stop from `DsnReadOptions::normalize_time_limit`. The `limit_ms <= 0` test is **inverted** relative to the normalisation site: there a trip lands in Java's own `catch (Exception)` (`Wiring.java:346-352`) and costs one warning, so `Duration::ZERO` is a deterministic opt-out; here Java's only `catch` is `IOException` (`:710`), so a stop can only fail the read and a non-positive budget must mean *no bound* — which is Java. Gates re-run unchanged: `sweep-p3t15.sh` 525 MATCH + 5 XDIFF, `p6t1` MATCH on all six rows, `batch_parity` green. |
 | `fr-settings/src/resolve.rs:193` | `RoutingJobScheduler.scheduleJob` — the API path composes the merge differently and must not call `resolve_headless` |
 | `freerouting/src/mcp/{server.rs, stdio.rs}` | MCP concurrency: the handler can emit one message and holds no connection reference |
 

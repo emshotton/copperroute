@@ -45,12 +45,19 @@
 //! `applyRouterSettingsForLoadedBoard:746-747`. **Measured at the pinned jar, that is false**, and
 //! this task's probe closes it three ways:
 //!
-//! * **Source.** `Structure.java:1268` calls `scopeParameter.boardHandling.createBoard(...)`.
-//!   `ReadScopeParameter` has one constructor and it assigns its `final BoardParserCallback
-//!   boardHandling` field `new MinimalBoardManager()` (`ReadScopeParameter.java:103`).
-//!   `MinimalBoardManager.createBoard` (`:139-166`) builds the `RoutingBoard` and returns —
-//!   it calls neither override, and its `getCurrentRoutingJob()` answers `null`.
-//!   `HeadlessBoardManager.createBoard` has no caller outside `GuiBoardManager.java:411`.
+//! * **Types.** `Structure.java:1268` calls `scopeParameter.boardHandling.createBoard(...)`, and
+//!   `boardHandling` is declared `final BoardParserCallback` (`ReadScopeParameter.java:27`).
+//!   `HeadlessBoardManager implements BoardManager` (`:82`), and `public interface BoardManager`
+//!   (`BoardManager.java:79`) does **not** extend `BoardParserCallback` — a
+//!   `HeadlessBoardManager` is not assignable to that field, so *no* code path can route that
+//!   call site into its `createBoard`, whatever any constructor does.
+//! * **Source.** Corroborating the above: `ReadScopeParameter` has one constructor and it assigns
+//!   `boardHandling` `new MinimalBoardManager()` (`ReadScopeParameter.java:103`), the only
+//!   assignment in the tree. `MinimalBoardManager.createBoard` (`:139-166`) builds the
+//!   `RoutingBoard` and returns — it calls neither override, and its `getCurrentRoutingJob()`
+//!   answers `null`. `BoardParserCallback.java:10-17`'s javadoc says it is the only production
+//!   implementation. `HeadlessBoardManager.createBoard` has no caller outside
+//!   `GuiBoardManager.java:411`.
 //! * **Runtime.** `P8T3Probe`'s `[createboard]` rows load each fixture through a counting
 //!   subclass of the real `HeadlessBoardManager`:
 //!   `headless_create_board_calls=0` on all three.
@@ -125,10 +132,15 @@ pub fn load_from_specctra_dsn(
 ) -> Result<LoadedBoard, Error> {
     // :677-683 — Java's `inputFilename`, used for the log line and handed to the reader as its
     // `designName`.
+    // `:677-683`. `DsnReader.java:113` tests the name with `isBlank()`, not `isEmpty()`, so a
+    // whitespace-only filename is "absent" there too — `trim()` reproduces that. The value is
+    // inert in the port either way (`fr_dsn::read_board` does `let _ = design_name;`, because
+    // Java uses it for one log line only); it is computed and passed so the call site matches
+    // Java's and so a host that wants the message can find where it would come from.
     let input_filename = job
         .get_input()
         .map(|input| input.get_filename().to_string())
-        .filter(|name| !name.is_empty());
+        .filter(|name| !name.trim().is_empty());
     // :697-698.
     let result = fr_dsn::read_board(
         bytes,
@@ -154,6 +166,11 @@ pub fn load_from_kicad_json(
     job: &mut RoutingJob,
     settings: &mut RouterSettings,
 ) -> Result<LoadedBoard, Error> {
+    // `job` is `&mut` and unread on purpose: both loaders take the shape Java's manager has (it
+    // owns a mutable `RoutingJob` and both methods reach `this.routingJob` — `:799-810` for the
+    // log lines and `:819-822` for the error), and the CLI (Tasks 5-6) calls the two through one
+    // signature. Java's own KiCad arm reads only `input.getFilename()`, and the port has no
+    // logger, so nothing is left to read here today.
     let _ = job;
     // :814 — `KiCadJsonReader.readBoard(reader, boardObservers, idGenerator)`.
     let result = kicad_read_board(text);
