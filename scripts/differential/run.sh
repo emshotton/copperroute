@@ -399,10 +399,12 @@ case "$driver" in
     # (`sipush 1000` at every call site, no `getstatic`), so **no flag and no reflection disables
     # it**: the port runs `RouterBudget::disabled()` against a live limit and a MATCH is what
     # proves the limit never trips. To count the trips a Java run took, add
-    # `-Dfreerouting.logging.file.location=<path> -Dfreerouting.logging.file.level=DEBUG
-    # -Dfreerouting.logging.console.enabled=false` and grep the file for
-    # `TraceTightener.is_stop_requested: time limit exceeded`;
-    # `gen-batch-reference.sh --verify-driver` does exactly that.
+    # `-Dfreerouting.logging.file.location=<path>.log -Dfreerouting.logging.file.level=DEBUG
+    # -Dfreerouting.logging.console.enabled=false` **to this driver** and grep the file for
+    # `TraceTightener.is_stop_requested: time limit exceeded`. A **bare-jar** run needs the
+    # program arguments `--logging.file.location=…` instead, because `Freerouting.main`
+    # (`Freerouting.java:1088-1098`) overwrites those system properties before logging
+    # initialises; `gen-batch-reference.sh --verify-driver` does both.
     #
     # The `p5t*` flag set rather than a hard-coded `-XX:hashCode=2`, so `P5T_HASH_MODE=0..4`
     # sweeps this driver too: a pass reaches `DesignRulesChecker` and `BoardStatistics`, both of

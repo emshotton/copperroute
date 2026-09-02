@@ -30,10 +30,29 @@
 //! Per stem, in order:
 //!
 //! * **(a)** the pass count and every `PassRecord` tuple identical — [`rung_a_pass_records`];
-//! * **(b)** the item set after every pass identical — [`rung_b_item_sets`], which compares the
-//!   per-pass via and trace counts the tuples carry *and* the final board's whole item set, since
-//!   that is what the SES enumerates item by item;
+//! * **(b)** the item set after every pass identical — [`rung_b_item_sets`];
 //! * **(c)** byte-identical SES — [`rung_c_ses_bytes`].
+//!
+//! **Rung (b)'s committed half is counts, not sets**, and `crates/fr-router/README.md`'s
+//! acceptance section says so beside the table: the reference carries no per-pass item *sets* to
+//! compare against, so [`rung_b_item_sets`] compares the per-pass via and trace counts and the
+//! final SES's scope count. The final item set is pinned exactly anyway — by rung (c), since a
+//! byte-identical SES enumerates the same items with the same geometry — and the full per-pass
+//! statement (every id, layer, half width, polyline and corner list after every pass) is
+//! `sweep-p7t9.sh`'s `batch-router` rows, which diff both sides' complete `[board]` dumps.
+//!
+//! # Two aggregate climbs, not one test per stem
+//!
+//! The plan asks for "one test per stem". Delivered instead:
+//! [`the_ci_stems_climb_the_whole_ladder`] over the four CI stems and
+//! [`the_slow_stems_climb_the_whole_ladder`] over all eight. **The cost is that a failure on the
+//! first stem of a lane masks the rest of that lane** until it is fixed. The shape was kept
+//! because ruling AM's lanes are a property of the *set* (`FR_SLOW_PARITY` gates one whole lane
+//! and [`parity::require_java_dir`] skips both), because a whole-board stem costs seconds to
+//! minutes and the eight are run as a ladder rather than individually, and because [`STEMS`] is
+//! the one table the fixture-file cross-check and the two provenance tests already iterate.
+//! Splitting [`climb_all`] into eight `#[test]`s is mechanical if per-stem reporting is later
+//! worth more. Recorded in `crates/fr-router/README.md` too, because it is a deviation.
 //!
 //! **Measured result: all eight stems reach (a), (b) and (c).** Ruling AM's escape hatch — a stem
 //! that reaches (a)+(b) but not (c) becomes an `XDIFF` README row carrying the first differing
@@ -294,14 +313,15 @@ fn rung_a_pass_records(stem: &Stem, run: &BatchRun, reference: &[BatchPassDoc]) 
     }
 }
 
-/// Rung (b): the item set after every pass.
+/// Rung (b): the item set after every pass — **at count strength**; see the module doc.
 ///
 /// The per-pass half is the via and trace counts the tuples carry, which rung (a) has already
 /// compared element by element; asserting them again here is deliberate, because the two rungs
 /// fail for different reasons and a reader of the failure needs to know which one broke. The
-/// final half is the whole item-id set of the board the pipeline finished with, compared against
-/// the ids the reference SES names — which is the strongest statement about "the item set" a
-/// committed SES can support, since a SES enumerates the routed items and nothing else.
+/// final half is the SES's own scope count on both sides. The collected [`BatchRun::items`] id
+/// set is **not** compared against anything, because the committed reference carries no item ids
+/// — a SES names no id — which is exactly why this rung is counts here and full item-by-item
+/// dumps in `sweep-p7t9.sh`. Rung (c) is what pins the final item set exactly.
 fn rung_b_item_sets(stem: &Stem, run: &BatchRun, reference: &[BatchPassDoc], reference_ses: &str) {
     for (actual, expected) in run.passes.iter().zip(reference) {
         assert_eq!(

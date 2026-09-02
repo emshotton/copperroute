@@ -2562,13 +2562,16 @@ the driver expects, or none at all.
   declarations, so `javac` inlines it (`javap -c -p` shows `sipush 1000` immediately
   before every `optChangedArea` call and no `getstatic`) and no reflection reaches it.
   The port runs `RouterBudget::disabled()` against a live limit, and a MATCH is what
-  proves the limit never tripped. To *count* the trips a Java run took, add
-  `-Dfreerouting.logging.file.location=<path> -Dfreerouting.logging.file.level=DEBUG
-  -Dfreerouting.logging.console.enabled=false` and grep the file for
-  `TraceTightener.is_stop_requested: time limit exceeded` — the jar's own knobs, since a
-  programmatic Log4j2 appender receives zero events against its configuration factory.
-  `gen-batch-reference.sh --verify-driver` does exactly that when a comparison comes back
-  different.
+  proves the limit never tripped. To *count* the trips a Java run took, turn the jar's own DEBUG
+  file appender on and grep it for `TraceTightener.is_stop_requested: time limit exceeded` — a
+  programmatic Log4j2 appender receives zero events against its configuration factory. **The
+  driver and the bare jar take different knobs**: `-Dfreerouting.logging.file.location=<path>.log
+  -Dfreerouting.logging.file.level=DEBUG -Dfreerouting.logging.console.enabled=false` for a `-cp`
+  run, and the program arguments `--logging.file.location=<path>.log --logging.file.level=DEBUG
+  --logging.console.enabled=false` for a `-jar` run, because `Freerouting.main`
+  (`Freerouting.java:1088-1098`) overwrites those system properties from its own parse before
+  logging initialises. `gen-batch-reference.sh --verify-driver` does both when a comparison comes
+  back different.
 
   Two halves, the `p7t2` shape and for the same reason — `run` returns one `boolean` and
   writes its answer into `router.board` / `job.board`:

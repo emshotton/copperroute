@@ -356,10 +356,12 @@ public final class P7T9 {
    * exceeded check, and {@code Log4j2ConfigurationFactory} builds a root logger at
    * {@code Level.ALL} with a file appender whose level is
    * {@code -Dfreerouting.logging.file.level} (default {@code DEBUG}) and whose path is
-   * {@code -Dfreerouting.logging.file.location}. So
-   * {@code -Dfreerouting.logging.file.location=<path> -Dfreerouting.logging.console.enabled=false}
-   * plus {@code grep -c} is the whole measurement, and
-   * {@code scripts/gen-batch-reference.sh --verify-driver} is what runs it.
+   * {@code -Dfreerouting.logging.file.location}. So those properties plus {@code grep -c} are the
+   * whole measurement <b>for this driver</b>, and
+   * {@code scripts/gen-batch-reference.sh --verify-driver} is what runs it. A <b>bare-jar</b> run
+   * needs the program arguments {@code --logging.file.location=…} instead, because
+   * {@code Freerouting.main} ({@code Freerouting.java:1088-1098}) overwrites all five of those
+   * system properties from its own argument/environment parse before logging initialises.
    * <b>A programmatic Log4j2 appender was tried first and did not work</b>: a counting
    * {@code AbstractAppender} added through {@code Configuration.addLogger} +
    * {@code updateLoggers} received <b>zero</b> events against this jar's configuration factory,

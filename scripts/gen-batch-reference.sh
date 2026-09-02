@@ -95,11 +95,27 @@
 # (`board/optimize/TraceTightener.java:202-211`) calls
 # `FRLogger.debug("TraceTightener.is_stop_requested: time limit exceeded")` on every exceeded
 # check, and `Log4j2ConfigurationFactory` builds a root logger at `Level.ALL` with a file appender
-# at `-Dfreerouting.logging.file.level` (default DEBUG) writing to
-# `-Dfreerouting.logging.file.location`. So the re-run adds those two properties plus
-# `-Dfreerouting.logging.console.enabled=false` and greps the file; the verdict becomes
-# `bare-jar: budget-tripped (n)`. **A difference with n = 0 is a failure**, because the driver is
-# then not the jar.
+# at DEBUG writing to a caller-chosen path. So the re-runs turn that appender on and grep the
+# file; the verdict becomes `bare-jar: budget-tripped (bare=<n> driver=<m>)`.
+#
+# The two sides need **different knobs**, and it is not cosmetic: the driver takes the JVM system
+# properties `-Dfreerouting.logging.file.{location,level}` /
+# `-Dfreerouting.logging.console.enabled`, which the configuration factory reads directly, while
+# the bare jar takes the program arguments `--logging.file.{location,level}` /
+# `--logging.console.enabled`, because `Freerouting.main` (`Freerouting.java:1088-1098`)
+# **overwrites** all five of those properties from its own argument/environment parse
+# (`:1033-1066`) before logging initialises — so a `-D` on a `-jar` run is silently discarded
+# (measured: no file at the requested path, on two boards). `resolveLogPath` (`:797-811`) also
+# only treats a path as a file when it ends in `.log`.
+#
+# **Both sides are counted, and the bare jar leads**, because the trip count belongs to the run
+# that differed and a difference *between* the two runs is explained by a trip on either of them.
+# Two of the three outcomes are failures, and each says which it is:
+#
+#   * `bare` and `driver` both `0` — the driver is not the jar. FAILURE.
+#   * either count `unmeasured` (the jar wrote no DEBUG log) — neither of answer 1's arms
+#     applies, so the difference is unexplained rather than informational. FAILURE.
+#   * any count > 0 — informational, exactly as answer 1 says.
 #
 # (A programmatic Log4j2 counting appender was tried first and received **zero** events against
 # this jar's configuration factory — see `P7T9.java`'s "The budget" section. The `-D` route is the
@@ -122,7 +138,11 @@ JAVAC_BIN="${JAVAC:-/opt/homebrew/opt/openjdk@25/bin/javac}"
 REF="$ROOT/tests/reference"
 FIXTURES="$REF/router-fixtures.txt"
 DRIVER="$ROOT/scripts/differential/java/P7T9.java"
-CLASSES="$ROOT/scripts/differential/build/classes-gen-batch"
+# **Per invocation**, not a fixed path. `compile_driver` starts with `rm -rf "$CLASSES"`, so two
+# concurrent invocations of this script sharing one directory delete each other's classes
+# mid-run — observed live during the Task 16 review, and a resumable per-stem script invites
+# exactly that. The directory is created after the preflight and removed by `cleanup`.
+CLASSES=""
 
 # `-XX:hashCode=2`, `gen-router-reference.sh`'s constant-hash mode and the same argument for it:
 # the router's own containers are `TreeSet`/`TreeMap`/`LinkedHashMap` throughout (plan-6 ruling 4),
@@ -175,6 +195,18 @@ else
   echo "warning: no timeout(1) on PATH; a quirk-#162 hang will not be bounded" >&2
 fi
 
+# One directory per invocation (see `CLASSES` above) and one scratch tree per invocation, both
+# removed by a single EXIT trap so the two cannot overwrite each other's `trap` registration.
+SCRATCH=""
+mkdir -p "$ROOT/scripts/differential/build"
+CLASSES="$(mktemp -d "$ROOT/scripts/differential/build/classes-gen-batch.XXXXXX")"
+cleanup() {
+  [[ -n "$CLASSES" ]] && rm -rf "$CLASSES"
+  [[ -n "$SCRATCH" ]] && rm -rf "$SCRATCH"
+  return 0
+}
+trap cleanup EXIT
+
 wanted() {
   [[ ${#WANTED[@]} -eq 0 ]] && return 0
   local stem="$1" w
@@ -195,9 +227,8 @@ portable() {
 # driver's argv. stdout and stderr are merged because the driver's stderr is one `java-version`
 # line plus anything the JVM said, and a batch log is read by a human, not diffed.
 #
-# `TRIP_LOG`, when set, adds the three properties that make the jar write its own DEBUG log to
-# that path — the budget-trip measurement; see the header. It is empty on every reference path,
-# because turning DEBUG on costs wall-clock time and wall-clock time is what the budget measures.
+# The path the jar's own DEBUG log goes to while a trip measurement is running; see
+# `set_trip_log` below. Empty on every reference path.
 TRIP_LOG=""
 # Make a driver log committable: truncate it at its `[board]` line — everything below is a
 # per-item dump of the board `batch.ses` already carries verbatim, and it is 99 % of the bytes on
@@ -214,16 +245,7 @@ commit_log() {
 run_driver() {
   local log="$1" hash="$2"
   shift 2
-  local trip_flags=()
-  if [[ -n "$TRIP_LOG" ]]; then
-    trip_flags=(
-      -Dfreerouting.logging.console.enabled=false
-      -Dfreerouting.logging.file.enabled=true
-      "-Dfreerouting.logging.file.location=$TRIP_LOG"
-      -Dfreerouting.logging.file.level=DEBUG
-    )
-  fi
-  "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" ${trip_flags+"${trip_flags[@]}"} \
+  "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" ${TRIP_FLAGS+"${TRIP_FLAGS[@]}"} \
       -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
       -cp "$CLASSES:$JAR" app.freerouting.autoroute.pipeline.P7T9 "$@" \
       > "$log" 2>&1
@@ -232,16 +254,73 @@ run_driver() {
 # The exact message `TraceTightener.isStopRequested:209` logs on an exceeded budget.
 TRIP_MESSAGE='TraceTightener.is_stop_requested: time limit exceeded'
 
-# The bare jar, with the argv `P7T9.batchArgv` builds. Same JVM flags, same hash mode.
+# The bare jar, with the argv `P7T9.batchArgv` builds. Same JVM flags, same hash mode — and the
+# same `TRIP_LOG` plumbing as `run_driver`, because answer 1's trip count belongs to the run that
+# actually differed, which is this one.
 run_bare_jar() {
   local log="$1" hash="$2" dsn="$3" max_passes="$4" fanout="$5" optimizer="$6" ses="$7"
+  # `TRIP_ARGS` go after the routing switches and are `--logging.*`, which `CliSettings` ignores
+  # (it reads `--router.*` only, `sources/CliSettings.java:53-55`), so they cannot move a setting.
   "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
       -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
       -jar "$JAR" \
       -de "$dsn" -do "$ses" -mp "$max_passes" \
       "--router.fanout.enabled=$fanout" \
       "--router.optimizer.enabled=$optimizer" \
+      ${TRIP_ARGS+"${TRIP_ARGS[@]}"} \
       > "$log" 2>&1
+}
+
+# What makes the jar write its own DEBUG log to `$1`; see the header. Both are empty on every
+# reference path, because turning DEBUG on costs wall-clock time and wall-clock time is what the
+# budget measures.
+#
+# **The driver and the bare jar need different knobs, and that is not cosmetic.**
+# `Log4j2ConfigurationFactory` reads *system properties*, so `-Dfreerouting.logging.*` is what
+# reaches it — for the driver, which never enters `Freerouting.main`. The bare jar *does*, and
+# `Freerouting.java:1088-1098` **overwrites all five of those properties** from its own
+# command-line/environment parse (`:1033-1066`) before logging initialises, so a `-D` on a
+# `-jar` run is silently discarded (measured: no file at the requested path, on two boards). The
+# jar's own spellings are the `--logging.*` program arguments at `:1035-1051`; `resolveLogPath`
+# (`:797-811`) treats a path as a file only when it ends in `.log`, which is why `set_trip_log`'s
+# argument must.
+TRIP_FLAGS=()
+TRIP_ARGS=()
+set_trip_log() {
+  TRIP_LOG="$1"
+  # `|| true`: an unwritable path must reach the `unmeasured` verdict below, not kill the script
+  # under `set -e` before anything is written. Found by the unmeasured-arm probe in the fix round.
+  rm -f "$TRIP_LOG" 2>/dev/null || true
+  # The driver: JVM system properties, read straight by `Log4j2ConfigurationFactory`.
+  TRIP_FLAGS=(
+    -Dfreerouting.logging.console.enabled=false
+    -Dfreerouting.logging.file.enabled=true
+    "-Dfreerouting.logging.file.location=$TRIP_LOG"
+    -Dfreerouting.logging.file.level=DEBUG
+  )
+  # The bare jar: program arguments, because `Freerouting.main` overwrites the properties.
+  TRIP_ARGS=(
+    --logging.console.enabled=false
+    --logging.file.enabled=true
+    "--logging.file.location=$TRIP_LOG"
+    --logging.file.level=DEBUG
+  )
+}
+clear_trip_log() {
+  TRIP_LOG=""
+  TRIP_FLAGS=()
+  TRIP_ARGS=()
+}
+
+# The trip count of the run that just wrote `$1`, or `unmeasured` when the jar left no log —
+# which `verify_driver_one` treats as a failure, not as a zero.
+count_trips() {
+  local log="$1"
+  if [[ -s "$log" ]]; then
+    grep -c "$TRIP_MESSAGE" "$log" || true
+  else
+    printf 'unmeasured'
+  fi
 }
 
 # `on`/`off` in the fixture table, `true`/`false` on the two command lines.
@@ -315,8 +394,6 @@ sys.exit(0 if all(not v for v in router.values()) and set(router) <= {"fanout", 
 # --- compile the driver once ---------------------------------------------------------------------
 compile_driver() {
   echo "== compiling $(portable "$DRIVER") against $(portable "$JAR")"
-  rm -rf "$CLASSES"
-  mkdir -p "$CLASSES"
   # `P7T2.java` carries the board/settings/router ladder every `p7t*` driver shares, so it is
   # compiled alongside exactly as `run.sh`'s `p7t9` case compiles it.
   "$JAVAC_BIN" -cp "$JAR" -d "$CLASSES" "$DRIVER" "$ROOT/scripts/differential/java/P7T2.java"
@@ -345,31 +422,37 @@ generate_one() {
   echo "== $stem  maxPasses=$max_passes fanout=$fanout optimizer=$optimizer"
   local started
   started="$(date +%s)"
-  # Into temporaries, moved only after the JVM exits 0 and left a non-empty SES behind, so a
-  # failed or timed-out run leaves the committed reference untouched.
+  # **Every** output goes to a temporary and is moved into place only after both JVMs have exited
+  # 0 and left their payload behind — the logs included. Writing the logs in place would let a
+  # failed or timed-out run replace the committed, machine-normalised ones with raw failure
+  # output, so a regeneration that aborted half way would show up as a `tests/reference/` diff
+  # that has nothing to do with the reference. The four files move together or not at all.
   local tmp_ses="$out/batch.ses.tmp" tmp_passes="$out/batch.passes.jsonl.tmp"
-  rm -f "$tmp_ses" "$tmp_passes"
-  if ! run_driver "$out/java.batch.log" "$HASH_MODE" \
+  local tmp_log="$out/java.batch.log.tmp" tmp_router_log="$out/java.batch-router.log.tmp"
+  rm -f "$tmp_ses" "$tmp_passes" "$tmp_log" "$tmp_router_log"
+  if ! run_driver "$tmp_log" "$HASH_MODE" \
       "$JAVA_DIR/$dsn" "$max_passes" batch --fanout "$fanout" --optimizer "$optimizer" \
       --ses "$tmp_ses" || [[ ! -s "$tmp_ses" ]]; then
-    echo "   the batch driver failed for $stem; see $(portable "$out/java.batch.log")" >&2
+    echo "   the batch driver failed for $stem; its log is $(portable "$tmp_log")" >&2
     rm -f "$tmp_ses"
     STATUS=1
     return 0
   fi
   # The pass tuples: the same board and settings with the optimizer off, routing stage only.
-  if ! run_driver "$out/java.batch-router.log" "$HASH_MODE" \
+  if ! run_driver "$tmp_router_log" "$HASH_MODE" \
       "$JAVA_DIR/$dsn" "$max_passes" batch-router --fanout "$fanout" --optimizer off \
       --passes "$tmp_passes" || [[ ! -f "$tmp_passes" ]]; then
-    echo "   the batch-router driver failed for $stem; see $(portable "$out/java.batch-router.log")" >&2
+    echo "   the batch-router driver failed for $stem; its log is $(portable "$tmp_router_log")" >&2
     rm -f "$tmp_ses" "$tmp_passes"
     STATUS=1
     return 0
   fi
+  commit_log "$tmp_log"
+  commit_log "$tmp_router_log"
   mv "$tmp_ses" "$out/batch.ses"
   mv "$tmp_passes" "$out/batch.passes.jsonl"
-  commit_log "$out/java.batch.log"
-  commit_log "$out/java.batch-router.log"
+  mv "$tmp_log" "$out/java.batch.log"
+  mv "$tmp_router_log" "$out/java.batch-router.log"
   write_meta "$stem" "$dsn" "$max_passes" "$fanout" "$optimizer"
   echo "   $(wc -c < "$out/batch.ses" | tr -d ' ') B SES, $(wc -l < "$out/batch.passes.jsonl" | tr -d ' ') passes, $(( $(date +%s) - started ))s"
 }
@@ -413,28 +496,55 @@ verify_driver_one() {
     echo "   bare-jar: identical ($(wc -c < "$bare" | tr -d ' ') B)"
   else
     # Controller answer 1: a difference is informational only if the budget actually fired.
-    local trips first
-    first="$(cmp "$bare" "$driver" 2>&1 | head -1)"
-    TRIP_LOG="$SCRATCH/$stem.jar.log"
-    rm -f "$TRIP_LOG"
-    run_driver "$SCRATCH/$stem.trips.log" "$HASH_MODE" \
+    #
+    # **Which run is counted.** The trip count belongs to the run that differed, so the bare jar
+    # is re-run first and is the number the verdict leads with. The driver is re-run too, because
+    # a difference *between* the two runs is explained by a trip on **either** side: reporting
+    # only one of them would answer "0 trips" — i.e. FAILURE — for a difference the other side's
+    # trip caused. Both are re-runs rather than the original runs, because the DEBUG log the
+    # measurement needs costs wall-clock time, and the original pair has to be measured with the
+    # clock the references were generated under.
+    local bare_trips driver_trips first
+    # `|| true`: `cmp` exits 1 on a difference, which is the only way this branch is reached, and
+    # `set -e` would otherwise kill the script here — before the verdict file is written and
+    # before anything is printed. Found by the forced-difference probe in the Task 16 fix round;
+    # the arm had never been executed.
+    first="$(cmp "$bare" "$driver" 2>&1 | head -1 || true)"
+
+    set_trip_log "$SCRATCH/$stem.bare-trips.jar.log"
+    run_bare_jar "$SCRATCH/$stem.bare-trips.log" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_passes" \
+        "$(bool_of "$fanout")" "$(bool_of "$optimizer")" "$SCRATCH/$stem.bare-trips.ses" || true
+    bare_trips="$(count_trips "$TRIP_LOG")"
+
+    set_trip_log "$SCRATCH/$stem.driver-trips.jar.log"
+    run_driver "$SCRATCH/$stem.driver-trips.log" "$HASH_MODE" \
         "$JAVA_DIR/$dsn" "$max_passes" batch --fanout "$fanout" --optimizer "$optimizer" \
-        --ses "$SCRATCH/$stem.trips.ses" || true
-    if [[ -s "$TRIP_LOG" ]]; then
-      trips="$(grep -c "$TRIP_MESSAGE" "$TRIP_LOG" || true)"
-    else
-      trips=unmeasured
-    fi
-    TRIP_LOG=""
+        --ses "$SCRATCH/$stem.driver-trips.ses" || true
+    driver_trips="$(count_trips "$TRIP_LOG")"
+    clear_trip_log
+
     {
-      echo "bare-jar     budget-tripped ($trips)"
+      echo "bare-jar     budget-tripped (bare=$bare_trips driver=$driver_trips)"
       echo "             $first"
-      if [[ "$trips" == "0" ]]; then
-        echo "             ZERO trips with a difference: the driver is NOT the jar. FAILURE."
+      if [[ "$bare_trips" == "unmeasured" || "$driver_trips" == "unmeasured" ]]; then
+        # `unmeasured` is **not** "recorded trips": a difference whose trip count could not be
+        # taken escapes both of answer 1's arms, so it is a failure of its own and says so.
+        echo "             UNMEASURED trip count with a difference: neither of controller"
+        echo "             answer 1's arms applies, because the jar wrote no DEBUG log. Rerun"
+        echo "             --verify-driver, or fix the log knobs (-Dfreerouting.logging.file.*"
+        echo "             for the driver, --logging.file.* for the bare jar). FAILURE."
+      elif [[ "$bare_trips" == "0" && "$driver_trips" == "0" ]]; then
+        echo "             ZERO trips on both sides with a difference: the driver is NOT the"
+        echo "             jar. FAILURE."
       fi
     } > "$out/batch.verify-driver.txt"
-    echo "   bare-jar: DIFFERS — $first; budget trips: $trips" >&2
-    [[ "$trips" == "0" ]] && STATUS=1
+    echo "   bare-jar: DIFFERS — $first; budget trips: bare=$bare_trips driver=$driver_trips" >&2
+    if [[ "$bare_trips" == "unmeasured" || "$driver_trips" == "unmeasured" ]]; then
+      echo "   trip count UNMEASURED — see $(portable "$out/batch.verify-driver.txt")" >&2
+      STATUS=1
+    elif [[ "$bare_trips" == "0" && "$driver_trips" == "0" ]]; then
+      STATUS=1
+    fi
   fi
   # Keep batch.meta.txt in step with the verdict just written, when there is one to describe.
   [[ -s "$out/batch.ses" ]] && write_meta "$stem" "$dsn" "$max_passes" "$fanout" "$optimizer"
@@ -476,13 +586,11 @@ compile_driver
 case "$MODE" in
   sweep)
     SCRATCH="$(mktemp -d)"
-    trap 'rm -rf "$SCRATCH"' EXIT
     each_row sweep_one
     [[ "$STATUS" -ne 0 ]] && echo "hash-mode sweep found a disagreement" >&2
     ;;
   verify-driver)
     SCRATCH="$(mktemp -d)"
-    trap 'rm -rf "$SCRATCH"' EXIT
     each_row verify_driver_one
     ;;
   meta)

@@ -3160,6 +3160,34 @@ unused, and `every_stem_reaches_rung_c` is what stops it being quietly re-entere
 the count does not move: the port adds none, which is what `StrictDrcRoutingTest`
 asserts and what `tests/fixtures.rs` pins independently.
 
+**What each ✅ in the table is worth.** Rungs (a) and (c) are exactly what they
+say: `batch_parity.rs` compares every `PassRecord` tuple against
+`batch.passes.jsonl` field by field, and the whole SES against `batch.ses` byte by
+byte. **Rung (b)'s committed half is counts, not sets** — `rung_b_item_sets`
+compares the per-pass via and trace counts the tuples carry and the final SES's
+`(wire`/`(via ` scope count, because the committed reference has no per-pass item
+*sets* to compare against. The final item set is nevertheless pinned exactly, by
+rung (c): a byte-identical SES enumerates the same items with the same geometry.
+The full-strength per-pass statement — every item's id, layer, half width,
+polyline and corner list after every pass — lives in `sweep-p7t9.sh`, whose
+`batch-router` rows diff both sides' complete `[board]` dumps and are 32/32 MATCH.
+So rung (b) is proven at full strength against the jar and pinned in CI at count
+strength; the sweep is where a regression in the per-pass item set would surface.
+
+**Two aggregate climbs, not one test per stem** — a deliberate deviation from the
+plan's "one test per stem", recorded here because it changes what a failure tells
+you. `the_ci_stems_climb_the_whole_ladder` walks the four CI stems and
+`the_slow_stems_climb_the_whole_ladder` all eight, so a failure on the first stem
+of a lane masks the rest of that lane's result until it is fixed; eight `#[test]`s
+would report all eight independently. The aggregate shape was kept because ruling
+AM's CI/slow lanes are a property of the *set* (`FR_SLOW_PARITY` gates one whole
+lane, and `require_java_dir` skips both), because a whole-board stem costs seconds
+to minutes and the eight are run for the ladder as a whole rather than
+individually, and because `STEMS` is the single table the fixture-file
+cross-check (`the_stem_table_matches_the_fixture_file`) and the two provenance
+tests already iterate. Splitting them is mechanical if per-stem failure reporting
+is later worth more than the shared table.
+
 **The lane** is ruling AM as amended by scan ruling 13: eight stems, four in CI,
 four `#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`. The whole slow
 lane is ~2 min in release.
@@ -3198,12 +3226,19 @@ assumption that it could not. The trips that **did** occur are counted from the 
 (`board/optimize/TraceTightener.java:202-211`) calls
 `FRLogger.debug("TraceTightener.is_stop_requested: time limit exceeded")` on every
 exceeded check, and `Log4j2ConfigurationFactory` gives the root logger `Level.ALL`
-with a file appender at `-Dfreerouting.logging.file.level` (default `DEBUG`)
-writing to `-Dfreerouting.logging.file.location`. So the count is those two
-properties plus `-Dfreerouting.logging.console.enabled=false` and a `grep -c`, and
-`gen-batch-reference.sh --verify-driver` is what runs it — only after a comparison
-has already come back different, because turning `DEBUG` on costs wall-clock time
-and wall-clock time is what the budget measures.
+with a file appender at `DEBUG` writing to a caller-chosen path. So the count is
+turning that appender on and running `grep -c`, and
+`gen-batch-reference.sh --verify-driver` is what does it — on **both** the bare jar
+and the driver (a difference between the two is explained by a trip on either),
+and only after a comparison has already come back different, because turning
+`DEBUG` on costs wall-clock time and wall-clock time is what the budget measures.
+
+The two sides need different knobs: the driver takes the JVM system properties
+`-Dfreerouting.logging.file.{location,level}`, the bare jar the program arguments
+`--logging.file.{location,level}`, because `Freerouting.main`
+(`Freerouting.java:1088-1098`) overwrites all five of those properties from its own
+argument/environment parse before logging initialises — a `-D` on a `-jar` run is
+silently discarded (measured on two boards).
 
 A programmatic Log4j2 counting appender was tried first and received **zero**
 events against this jar's `Log4j2ConfigurationFactory`, which is why the driver

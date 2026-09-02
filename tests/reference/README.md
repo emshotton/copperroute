@@ -380,12 +380,16 @@ never changed the result. The trips a run **did** take are counted from the jar'
 (`board/optimize/TraceTightener.java:202-211`) calls
 `FRLogger.debug("TraceTightener.is_stop_requested: time limit exceeded")` on every
 exceeded check, and `Log4j2ConfigurationFactory` gives the root logger `Level.ALL`
-with a file appender at `-Dfreerouting.logging.file.level` (default `DEBUG`)
-writing to `-Dfreerouting.logging.file.location`. So the count is those two
-properties plus `-Dfreerouting.logging.console.enabled=false` and a `grep -c`, and
-`gen-batch-reference.sh --verify-driver` is what runs it — only after a comparison
-has already come back different, because turning `DEBUG` on costs wall-clock time
-and wall-clock time is what the budget measures.
+with a file appender at `DEBUG` writing to a caller-chosen path. So the count is
+turning that appender on and running `grep -c`, and
+`gen-batch-reference.sh --verify-driver` is what does it — on **both** the bare jar
+and the driver — only after a comparison has already come back different, because
+turning `DEBUG` on costs wall-clock time and wall-clock time is what the budget
+measures. The driver takes the JVM system properties
+`-Dfreerouting.logging.file.{location,level}` and the bare jar the program
+arguments `--logging.file.{location,level}`, because `Freerouting.main`
+(`Freerouting.java:1088-1098`) overwrites those properties from its own parse
+before logging initialises.
 
 (A programmatic Log4j2 counting appender was tried first and received **zero**
 events against this jar's configuration factory, so the driver has no flag of its
