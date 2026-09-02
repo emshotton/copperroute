@@ -27,6 +27,7 @@
 
 use crate::Error;
 use crate::file_details::BoardFileDetails;
+use crate::manifest::RouterJobResourceUsage;
 use fr_settings::{DesignRulesCheckerSettings, RouterSettings};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -667,7 +668,10 @@ pub fn validate_session_host(host: Option<&str>) -> Result<String, Error> {
 ///   [`crate::RoutingPipeline::run`]'s stack frame and the board is its `&mut Board` parameter.
 /// * `timeoutAt` (`:117`) — [`crate::Deadline`] (Task 0) carries the monitor thread's two
 ///   observable instants instead.
-/// * `resourceUsage` (`:111-113`) — `core/results/RouterJobResourceUsage` is Task 4's.
+///
+/// (`resourceUsage` `:111-113` was on this list until Task 4; it is now the
+/// [`RoutingJob::resource_usage`] field below, because `RoutingResultManifest.fromJob:114` reads
+/// it off the job.)
 #[derive(Debug, Clone)]
 pub struct RoutingJob {
     /// `id` (`:37-39`). See [`Uuid128`] for why it is not random.
@@ -704,6 +708,12 @@ pub struct RoutingJob {
     pub router_settings: RouterSettings,
     /// `drcSettings` (`:107-109`).
     pub drc_settings: DesignRulesCheckerSettings,
+    /// `resourceUsage` (`:111-113`) — `new RouterJobResourceUsage()`, and never anything else on
+    /// this port: what fills it in Java is the monitor thread of
+    /// `RoutingJobSchedulerActionThread:55-90`, which is rostered rather than ported (quirk #237).
+    /// [`RoutingResultManifest::from_job`](crate::RoutingResultManifest::from_job) copies it into
+    /// the manifest's `resource_usage`, which `p8t2` normalises out (plan ruling 8).
+    pub resource_usage: RouterJobResourceUsage,
     /// `currentPass` (`:130-132`, private). Quirk #230 already records that this under-reports by
     /// one on a `maxPasses`-capped exit; `PipelineResult::passes_run` is the number the port's
     /// own surfaces use.
@@ -731,8 +741,14 @@ impl Default for RoutingJob {
             output: None,
             rules: None,
             drc: None,
-            router_settings: RouterSettings::default(),
+            // `:105` is `= new RouterSettings()`, **not** an all-null one: the no-arg
+            // constructor allocates `optimizer`, `scoring` and `fanout`
+            // (`RouterSettings.java:119-124`), and `RouterSettings::default()` does not. The
+            // difference is observable — it is `settings_snapshot` in the result manifest, and it
+            // is whether `fromJob:118`'s `routerSettings.scoring != null` guard passes at all.
+            router_settings: RouterSettings::new(),
             drc_settings: DesignRulesCheckerSettings::default(),
+            resource_usage: RouterJobResourceUsage::default(),
             current_pass: 0,
             is_cancelled_by_user: false,
         }

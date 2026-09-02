@@ -35,6 +35,7 @@ pub mod ctx;
 pub mod file_details;
 pub mod job;
 pub mod load;
+pub mod manifest;
 pub mod pipeline;
 pub mod progress;
 pub mod save;
@@ -54,6 +55,10 @@ pub use load::{
     LoadedBoard, apply_immediate_post_load_processing, apply_parsed_board_result,
     apply_router_settings_for_loaded_board, load_board_if_needed, load_from_kicad_json,
     load_from_specctra_dsn,
+};
+pub use manifest::{
+    FixtureInfo, PhaseDetail, PhaseMetrics, RouterJobResourceUsage, RoutingResultManifest,
+    SCHEMA_VERSION, resolve_git_sha, sha256_hex,
 };
 pub use pipeline::RoutingPipeline;
 pub use progress::{SyncProgressSink, SyncProgressSinkView};
@@ -287,7 +292,10 @@ pub enum Error {
 //
 // not ported: `management/jobs/RoutingJobSchedulerActionThread.monitorCpuAndMemoryUsage`
 // (`:208-257`, 50 lines) — it samples `com.sun.management.ThreadMXBean` and fills only the
-// manifest's `resource_usage`, which `p8t2` normalises out. Quirk label Y (row #237): the monitor
+// manifest's `resource_usage`, which `p8t2` normalises out (plan ruling 8, quirk label J; the
+// port therefore writes 0.0 for all five fields, and quirk #256 records that two of the five —
+// `io_read` and `io_written` — are 0.0 in **Java** too, because nothing anywhere assigns them).
+// Quirk label Y (row #237): the monitor
 // thread that calls it never exits, because its loop condition is
 // `while ((job != null) && (job.thread != null))` (`:58`) and `job.thread` is never nulled, and its
 // `catch (Throwable t) {}` at `:253-256` is completely silent.

@@ -54,7 +54,7 @@
 // not ported: `BoardObserverAdaptor.notifyChanged` — board observers.
 // not ported: `BoardObserverAdaptor.notifyMoved` — board observers.
 // added in Plan 3: `board/state/CoordinateTransform.java`'s `boardToUser` and `userToBoard` — the board-to-user unit transform the DSN reader and the SES writer need.
-// added in Plan 8: `board/state/BoardComparator.java` in full — its `compare` and its nested `ComparisonResult` — it diffs two boards for the **result-manifest/report** layer (spec §10), not for the DRC layer: plan-5 ruling 13 established that nothing in `drc/**` and nothing on the `-drc` path references it, so Plan 5 re-pointed this marker rather than porting it. `crates/fr-drc/src/lib.rs` carries the same line at the crate the ruling was made in.
+// added in Plan 8: `board/state/BoardComparator.java` in full — its `compare` and its nested `ComparisonResult` — it diffs two boards for the **result-manifest/report** layer (spec §10), not for the DRC layer: plan-5 ruling 13 established that nothing in `drc/**` and nothing on the `-drc` path references it, so Plan 5 re-pointed this marker rather than porting it. `crates/fr-drc/src/lib.rs` carries the same line at the crate the ruling was made in. **Plan 8 Task 4 landed the result manifest (`crates/fr-core/src/manifest.rs`) and it does not use this class**: `RoutingResultManifest` carries one board's statistics, never a diff of two — `grep -n BoardComparator` over `core/results/RoutingResultManifest.java` is empty. The marker stays open for the *report* half of spec §10 (Plan 8 Tasks 12-13), so nobody looks for it in `manifest.rs`.
 
 pub mod changed_area;
 pub mod clearance;

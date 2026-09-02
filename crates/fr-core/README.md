@@ -6,13 +6,13 @@ The composition layer between `fr-router` and the `freerouting` binary — spec 
 If you want to **route a board**, this is the crate you call. Everything below it is the router,
 the design-rule checker, the readers and the settings ladder.
 
-> **State: Plan 8 Task 3.** The cancel/progress seams, `Ctx`/`RoutingResult`,
+> **State: Plan 8 Task 4.** The cancel/progress seams, `Ctx`/`RoutingResult`,
 > `RoutingPipeline::run`, the timeout ladder, `PARITY_VERSION` and the whole `// not ported:`
-> roster (Task 0), the job model (Task 1), the byte-scraping statistics twin (Task 2) and the
-> **board load/save sequence** (Task 3, `load.rs` + `save.rs`) have landed; `management/`,
-> `management/jobs` and `management/sessions` are at 0 MISSING. The manifest (Task 4) and the
-> board summary (Task 12) are still to come. `scripts/audit-map/fr-core.map` records which task
-> owes which rows.
+> roster (Task 0), the job model (Task 1), the byte-scraping statistics twin (Task 2), the
+> **board load/save sequence** (Task 3, `load.rs` + `save.rs`) and the **result manifest**
+> (Task 4, `manifest.rs`) have landed; `core`, `core/results`, `management/`, `management/jobs`
+> and `management/sessions` are all at 0 MISSING and 0 UNMAPPED. The board summary (Task 12) is
+> still to come. `scripts/audit-map/fr-core.map` records which task owes which rows.
 
 ## One Java fact this crate overturned
 
@@ -191,6 +191,57 @@ what the tool reads.
 **Two counts in the plan were stale and the file wins:** `analytics/**` is **2 228** lines, not
 2 100, and `core/events/**` is **95**, not 130. And `api/**`'s 8 425 already *includes*
 `api/mcp/**`'s 2 105 — adding them double-counts.
+
+## The result manifest (`manifest.rs`)
+
+`RoutingResultManifest` is the `--router.result_json=<path>` document: thirteen keys in Java's
+field declaration order, written through the same `GsonProvider.GSON` the settings and the
+statistics go through, with no trailing newline. **The Rust field order is the JSON key order** —
+serde's derived `Serialize` streams a struct in declaration order — so reordering the struct
+changes the file.
+
+Three things about it are worth knowing before reading the code.
+
+**It is serde, and that is not a contradiction of Task 2's warning.** The warning is about
+`serde_json::Value`: its `Map` is a `BTreeMap` without `preserve_order` (keys come back
+alphabetised) and its `serialize_f32` widens to `f64` (`Float.toString`'s shorter text is lost).
+Neither loss is serde's — a derived `Serialize` fed straight into
+`fr_dsn::format::json::to_gson_string_pretty` keeps both. The one subtree serde could not carry
+alone, `board_statistics`, goes through Task 2's `GsonBoardStatistics` with `serialize_with`, so
+its key order and float widths stay Task 2's. `normalized_score: 572.4359` in the committed
+`p8t2` transcript is what proves the `f32` path end to end: an `f64` would have printed
+`572.4359130859375`.
+
+**The SHA-256 is hand-written, and the reason is in `Cargo.lock`.** `sha256Hex` needs one and the
+Global Constraint forbids adding a dependency; the lock carries no `sha2`, `ring`, `digest` or
+`openssl`, so the FIPS 180-4 core is sixty lines in `manifest.rs`, pinned against the three NIST
+example vectors, the empty message and the 55/56/63/64/65-byte padding boundaries.
+
+**`resolveGitSha`'s ladder loses one rung in translation.** Java walks env `FREEROUTING_GIT_SHA`,
+then system property `freerouting.git.sha`, then system property `FREEROUTING_GIT_SHA`. The port
+has no system properties, so both property arms become environment lookups **of the same names** —
+and the third one then collides with the first, which makes it unreachable *and* promotes it above
+the second. Two `p8t2` rows carry both answers as `XDIFF`s rather than hiding the rename. A third
+detail that is not cosmetic: `String.isBlank()` and `String.trim()` do not agree with Rust's
+`char::is_whitespace`/`str::trim` in either direction (`U+001C`-`U+001F` one way, the three
+non-breaking spaces the other), so `java_is_blank` and `java_trim` are written out — a git sha of
+one non-breaking space is returned unchanged by Java and would have become the empty string here.
+
+### Five quirks, one totalised
+
+| id | what |
+|---|---|
+| #254 | `phases.fanout` and `phases.optimizer` are allocated and never written, and `phases.autorouter.duration_seconds` is the **whole job's** duration |
+| #255 | `sha256Hex` swallows every failure into `null` and Gson drops the key |
+| #256 | `resource_usage.io_read`/`io_written` are never assigned by anything and are still always written as `0.0` |
+| #257 | `fromJob:107` NPEs on the filesystem root, out of a `try` that catches `IOException` only — **totalised** |
+| #258 | `new RouterSettings()` plus a board throws out of `getMaximumScore`, because `new ScoringSettings()` leaves every weight `null` |
+
+#258 also records a **port** defect the same measurement found: `RoutingJob::default` used
+`RouterSettings::default()` (every field `None`) where `RoutingJob.java:105` is
+`new RouterSettings()` (three nested objects allocated). It is `RouterSettings::new()` now, and
+the manifest's `settings_snapshot` is `{"fanout": {}, "optimizer": {}, "scoring": {}}` again
+rather than `{}`.
 
 ## The job model (`job.rs`, `file_details.rs`)
 

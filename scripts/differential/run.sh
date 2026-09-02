@@ -33,7 +33,7 @@ usage() {
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
-  echo "           p8t2probe" >&2
+  echo "           p8t2probe, p8t2" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -695,6 +695,40 @@ case "$driver" in
     javapkg="core.scoring"
     java_src_dir="$DIFF_ROOT/java/probes"
     default_args=("$FREEROUTING_JAVA_DIR" "$ROOT")
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t2)
+    # Plan 8 Task 4: `core.results.RoutingResultManifest` — the twelve `@SerializedName` fields and
+    # their Gson key order (`:28-65`), `FixtureInfo`/`PhaseMetrics`/`PhaseDetail` (`:68-95`),
+    # `fromJob` (`:98-135`), `write` (`:138-144`), `resolveGitSha` (`:147-161`) and the private
+    # `sha256Hex` (`:163-171`), plus `core.RouterJobResourceUsage`, which `fromJob:114` copies
+    # whole. Six tables: `[man]` (every manifest shape the CLI can produce, printed line by line),
+    # `[dur]`, `[gitsha]`, `[sha256]`, `[write]` and `[norm]`.
+    #
+    # Declares `package app.freerouting.core.results` so it sits beside the class it drives;
+    # `sha256Hex` is `private static` and is reached by reflection.
+    #
+    # TASK SPLIT — say it plainly: the plan's `p8t2` is the **end-to-end** manifest gate (run the
+    # jar's `-de <dsn> -do <ses> --router.result_json=<f>`, run the port's equivalent, compare the
+    # two manifests byte-identically after `normalize_manifest`). The port's binary does not grow
+    # `--router.result_json` until **Task 6**. Task 4 therefore lands the whole Java half, the
+    # normaliser on **both** sides — pinned row for row by the `[norm]` table, which runs a
+    # *live* manifest (a real clock, a real git sha, a real duration, a real absolute path)
+    # through it — and a **fixed-clock unit run** of every manifest shape, which is the `[man]`
+    # table. Task 6 adds the `e2e` mode. This is not a gap; it is the split the brief asked for.
+    #
+    # The `[gitsha]` rows spawn a child process per row on both sides, because neither a JVM nor
+    # this port can modify its own environment. Two rows are `XDIFF` on both sides: Java's
+    # `Duration.between` can be negative where `std::time::Instant` is monotonic, and
+    # `resolveGitSha:156-159`'s system property renames onto `:148`'s environment variable.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t2-manifest-shape.txt`, which
+    # `crates/fr-core/tests/manifest.rs` asserts against row by row; this driver regenerates and
+    # re-verifies it.
+    javaclass=P8T2
+    javapkg="core.results"
+    default_args=("shape" "$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t2-scratch")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;

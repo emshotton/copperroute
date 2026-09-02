@@ -40,7 +40,8 @@
 #             **Landed**: `management`, `management/jobs` and `management/sessions` are all at
 #             0 MISSING and 0 UNMAPPED. `HeadlessBoardManager.createBoard` is `not ported:` in
 #             `load.rs` and is **dead code in Java** (quirk #253), not a deferral.
-#   Task 4  — RoutingResultManifest and its DTOs (`manifest.rs`).
+#   Task 4  — RoutingResultManifest and its DTOs, plus RouterJobResourceUsage
+#             (`manifest.rs`). **Landed**: `core/results` is at 0 MISSING and 0 UNMAPPED.
 #   Task 12 — the board-summary payload (`summary.rs`).
 #   Task 14 — closes every remaining row to zero.
 #
@@ -91,10 +92,19 @@ BoardStatisticsVias         stats_json.rs
 BoardScoreBreakdown         lib.rs
 ScoringWeightComparison     lib.rs
 
-# ── core/results/ ───────────────────────────────────────────────────────────────────────────────
+# ── core/results/ (and the two `core/` DTOs the manifest carries) ───────────────────────────────
+# Task 4's. `RoutingResultManifest`'s three nested DTOs (`FixtureInfo`, `PhaseMetrics`,
+# `PhaseDetail`) are inner classes of the same file and need no rows of their own.
 RoutingResultManifest       manifest.rs
-RouterCounters              manifest.rs
+# `RouterJobResourceUsage` is a `core/` class, not a `core/results/` one, but its only reader is
+# `RoutingResultManifest.fromJob:114` and its only writer is a monitor thread this port rosters
+# (quirk #237), so `manifest.rs` is where it lives and where quirk #256's two dead fields are
+# recorded.
 RouterJobResourceUsage      manifest.rs
+# `core/RouterCounters.java` is **fr-router's** port (`crates/fr-router/src/pipeline/`), re-exported
+# by `lib.rs` under plan-8 ruling 1 — corrected here in Task 4, which found Task 0's seed pointing
+# it at `manifest.rs`; the manifest does not carry counters at all.
+RouterCounters              lib.rs
 
 # ── core/events/ ────────────────────────────────────────────────────────────────────────────────
 # Rostered by Task 0: ruling AK's `ProgressSink` replaces the mechanism, and the four registrations

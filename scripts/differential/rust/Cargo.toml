@@ -157,3 +157,10 @@ path = "src/bin/p8t1probe.rs"
 [[bin]]
 name = "p8t2probe"
 path = "src/bin/p8t2probe.rs"
+
+# Plan 8 Task 4: `RoutingResultManifest` — the twelve fields, `resolveGitSha` and `sha256Hex`.
+# The name the plan reserved (Task 2's probe is `p8t2probe`); Task 4 lands the `shape` mode and
+# Task 6 adds the end-to-end one.
+[[bin]]
+name = "p8t2"
+path = "src/bin/p8t2.rs"
