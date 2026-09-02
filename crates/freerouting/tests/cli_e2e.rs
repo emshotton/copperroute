@@ -70,6 +70,18 @@ fn run(argv: &[&str]) -> (String, String, i32) {
     )
 }
 
+/// `RoutingResultManifest.finalState` (`:111`) — `job.state.name()`, as the manifest carries it.
+fn final_state(manifest: &Path) -> String {
+    let text = std::fs::read_to_string(manifest)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", manifest.display()));
+    let value: serde_json::Value =
+        serde_json::from_str(&text).unwrap_or_else(|e| panic!("manifest is not JSON: {e}"));
+    value["final_state"]
+        .as_str()
+        .unwrap_or_else(|| panic!("manifest has no final_state: {text}"))
+        .to_string()
+}
+
 /// The `settings_snapshot` of the manifest a run wrote, as a `serde_json::Value`.
 ///
 /// This is how a test observes a **resolved setting through the binary**: nothing else the CLI
@@ -404,6 +416,250 @@ fn the_rules_file_is_read_as_bytes_twice() {
         scoring["scoring"]["plane_via_costs"],
         serde_json::json!(7),
         "the same, for the second field of the same scope"
+    );
+}
+
+/// **The priority-10 `freerouting.json` tier, through the binary** (Plan 8 Task 6; the review's
+/// B1's second half).
+///
+/// `--settings <file>` is `JsonFileSettings(Path)` (`settings/sources/JsonFileSettings.java:36-39`)
+/// at priority **10** — port-only as a *flag* (Java reads the file only from its OS-standard
+/// user-data path, which is `static` mutable state and stays unported), but the **tier** is
+/// Java's, on the prototype merger at `Freerouting.java:1410`. `commands::route` is the only
+/// caller in the tree that can supply one, so this is the only place the wiring is observable end
+/// to end.
+///
+/// Three runs on the same board, read out of the manifest's `settings_snapshot` — the one surface
+/// the CLI has for a resolved setting:
+///
+/// | run | `--settings` | `max_passes` | `scoring.via_costs` |
+/// |---|---|---|---|
+/// | **A** | absent | 1 (from `-mp 1`) | 50 — `DefaultSettings.java:149` |
+/// | **B** | present, `{"router": {"scoring": {"via_costs": 77}}}` | 1 | **77** |
+/// | **C** | the working directory's own `freerouting.json`, no flag | 1 | **77** |
+///
+/// Run C is the default-path half: without the flag, `JsonFileSettings::from_working_directory`
+/// stands in for Java's user-data path, so the run is made from a scratch directory holding the
+/// file. `-mp 1` is on every run so the routing is a second rather than a minute; the flag sits
+/// at priority 60 and cannot be reached by the tier under test.
+#[test]
+fn a_settings_file_reaches_the_run() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("settings-file");
+    let json = dir.join("freerouting.json");
+    std::fs::write(&json, r#"{"router": {"scoring": {"via_costs": 77}}}"#).unwrap();
+    let dsn = small_dsn();
+    let dsn = dsn.to_string_lossy();
+
+    // Run A — no `--settings`, and the working directory is the repository root, which holds no
+    // `freerouting.json`. `DefaultSettings`' 50 must survive.
+    let manifest_a = dir.join("a.json");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &dsn,
+        "-do",
+        &dir.join("a.ses").to_string_lossy(),
+        "-mp",
+        "1",
+        &format!("--router.result_json={}", manifest_a.display()),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        settings_snapshot(&manifest_a)["scoring"]["via_costs"],
+        serde_json::json!(50),
+        "with no settings file the priority-10 tier must contribute nothing"
+    );
+
+    // Run B — `--settings <file>`.
+    let manifest_b = dir.join("b.json");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &dsn,
+        "-do",
+        &dir.join("b.ses").to_string_lossy(),
+        "-mp",
+        "1",
+        "--settings",
+        &json.to_string_lossy(),
+        &format!("--router.result_json={}", manifest_b.display()),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        settings_snapshot(&manifest_b)["scoring"]["via_costs"],
+        serde_json::json!(77),
+        "`--settings` must reach `SettingsInputs::json_file` and beat DefaultSettings"
+    );
+    assert_eq!(
+        settings_snapshot(&manifest_b)["max_passes"],
+        serde_json::json!(1),
+        "and priority 60 must still beat it"
+    );
+
+    // Run C — no flag, but a `freerouting.json` in the **working directory**.
+    let manifest_c = dir.join("c.json");
+    let output = std::process::Command::new(PORT)
+        .current_dir(&dir)
+        .args([
+            "-de",
+            &dsn,
+            "-do",
+            &dir.join("c.ses").to_string_lossy(),
+            "-mp",
+            "1",
+            &format!("--router.result_json={}", manifest_c.display()),
+        ])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("the port runs");
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        settings_snapshot(&manifest_c)["scoring"]["via_costs"],
+        serde_json::json!(77),
+        "the working directory's freerouting.json stands in for Java's user-data path"
+    );
+}
+
+/// **A per-stage timeout is not a job timeout** (the review's S1).
+///
+/// `RoutingJobState.TIMED_OUT` has exactly one writer in Java: the monitor thread
+/// (`RoutingJobSchedulerActionThread.java:84`), which tests `job.timeoutAt` — the instant
+/// `:41-51` derives from `routerSettings.jobTimeoutString`. The finish ladder at `:175-184` then
+/// leaves that state alone, because neither its `RUNNING` nor its `STOPPING` arm matches.
+///
+/// A **stage** timeout never reaches the state at all. `isFanoutTimedOut()` and
+/// `getOptimizer().isTimedOut()` are read at `:170-172` and spent on the finish log's details
+/// string (`:175-177`), so the job finishes `COMPLETED` and its manifest says so.
+///
+/// # Measured on the HEAD jar
+///
+/// `-de Issue649-kicad_ecc83-pp_input_board_v1.dsn -do … -mp 8
+/// --router.optimizer.timeout=0:00:00` (`BatchOptimizer.java:153-159` parses the string through
+/// `TextManager.parseTimespanString`, so it must be a timespan the grammar accepts — `1ms` is
+/// not, and silently leaves `deadlineMs` null):
+///
+/// ```text
+/// INFO  Optimizer stage timed out before starting pass #1
+/// INFO  Optimization stage completed with timeout: …
+/// INFO  Job '…' finished with state: COMPLETED (optimizer stage timed out) …
+/// manifest: "final_state": "COMPLETED", "exit_code": 0
+/// ```
+///
+/// The port answered `"TIMED_OUT"` until this test existed, because it read
+/// `fr_router::pipeline::PipelineResult::timed_out` — which deliberately folds the job deadline,
+/// the fanout stage's per-pin budget **and** the optimizer's own deadline together, since that is
+/// what a *router* caller wants to know. `commands::route` now reads the job deadline alone.
+///
+/// # What this test cannot reach, and says so
+///
+/// The `TimedOut` arm itself is not reachable through the CLI on a corpus board: every stem
+/// finishes in under a second, and both programs give the job deadline a grace period before the
+/// state is written (Java's monitor sleeps 1 s before its first check and then waits
+/// `GRACE_PERIOD`; the port's `Deadline::is_timed_out_at` uses the same 30 s offset — Task 0's,
+/// pinned by `crates/fr-core/tests/cancel.rs`). Measured: `--router.job_timeout=0:00:00` and
+/// `=0:00:01` both answer `COMPLETED` **on both programs**, which is the second assertion below —
+/// the port must not report a timeout merely because a deadline string was set.
+#[test]
+fn a_stage_timeout_is_not_a_job_timeout() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("stage-timeout");
+    let dsn = small_dsn();
+    let dsn = dsn.to_string_lossy();
+
+    // The optimizer's own deadline, already elapsed.
+    let manifest = dir.join("stage.json");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &dsn,
+        "-do",
+        &dir.join("stage.ses").to_string_lossy(),
+        "-mp",
+        "1",
+        "--router.optimizer.timeout=0:00:00",
+        &format!("--router.result_json={}", manifest.display()),
+    ]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        final_state(&manifest),
+        "COMPLETED",
+        "a stage timeout reaches the finish log's details string, never job.state"
+    );
+
+    // The job deadline, on a board that finishes long before either program's grace period.
+    for timeout in ["0:00:00", "0:00:01"] {
+        let manifest = dir.join(format!("job-{}.json", timeout.replace(':', "")));
+        let (_, stderr, code) = run(&[
+            "-de",
+            &dsn,
+            "-do",
+            &dir.join("job.ses").to_string_lossy(),
+            "-mp",
+            "1",
+            &format!("--router.job_timeout={timeout}"),
+            &format!("--router.result_json={}", manifest.display()),
+        ]);
+        assert_eq!(code, 0, "{stderr}");
+        assert_eq!(
+            final_state(&manifest),
+            "COMPLETED",
+            "--router.job_timeout={timeout} on a sub-second board: the jar answers COMPLETED too"
+        );
+    }
+}
+
+/// Where the manifest **stops** being written, and why that is Java's answer too.
+///
+/// `Freerouting.java:161` calls `writeCliResultManifestIfRequested` unconditionally — but only
+/// *after* the wait loop at `:151-158` has seen a terminal state. Two of the CLI's exits never
+/// get there:
+///
+/// * **step 3's** `return false` at `:112` (the input could not be read) is before `:161`
+///   entirely, so Java writes no manifest;
+/// * **`INVALID`** — an input that is neither DSN nor KiCad JSON
+///   (`RoutingJobScheduler.java:253`) — is omitted from `isCliTerminalState` (`:189-194`), so the
+///   jar spins in `:151-158` for ever and writes no manifest either. Quirk #244; plan ruling 7
+///   totalises the *hang* into exit 1, and this test pins where that totalisation stops: it does
+///   **not** invent a manifest the jar never writes.
+///
+/// The port reaches the same answer through the same object: it bails before
+/// `job.router_settings` is assigned, so `routerSettings.resultJsonPath` is still null and
+/// `writeCliResultManifestIfRequested`'s own `:227-231` guard declines. The one asymmetry is the
+/// port-only native `--result-json`, which is not a settings tier and would still be honoured;
+/// no jar command line can reach it.
+///
+/// The manifest's `final_state` **is** pinned end to end, on every path that writes one: by
+/// `p8t2 e2e` against the jar's own manifest on all eleven stems (`COMPLETED`), and by
+/// [`a_stage_timeout_is_not_a_job_timeout`] for the state ladder's one live decision.
+#[test]
+fn an_invalid_input_writes_no_manifest_because_java_never_reaches_the_writer() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("final-state-invalid");
+    // Session bytes under a `.dsn` name — `BoardLoader.java:31-37` refuses them, which is
+    // `RoutingJobScheduler.java:253`'s `INVALID`.
+    let input = dir.join("board.dsn");
+    std::fs::write(&input, b"(session previous)\n").unwrap();
+    let manifest = dir.join("m.json");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &input.to_string_lossy(),
+        "-do",
+        &dir.join("out.ses").to_string_lossy(),
+        &format!("--router.result_json={}", manifest.display()),
+    ]);
+    assert_eq!(code, 1, "{stderr}");
+    assert!(
+        !manifest.exists(),
+        "the jar never reaches Freerouting.java:161 on this path, so neither may the port"
     );
 }
 

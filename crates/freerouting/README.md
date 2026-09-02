@@ -58,6 +58,14 @@ who learns this CLI does not type them at the jar.
 now carries the priority-10 tier into both of `resolve_headless`'s chains, and without the flag the
 working directory's `freerouting.json` stands in for Java's OS-standard user-data path.
 
+It is recovered from the **raw** argv, so it works on the legacy form too. Measured: both programs
+answer `-de a.dsn -do b.ses --settings s.json` with the same two `Unknown command line argument`
+warnings (`GlobalSettings.java:833`, once for the flag and once for its argument — it is not a
+value-consuming arm), and the port then applies the file where the jar ignores it. Exit codes are
+unaffected, no reference stem passes the flag, and honouring a port-only flag on both command
+lines was judged less surprising than refusing it on one; the reasoning is at
+`commands::route::json_settings_path`.
+
 ---
 
 ## The dead legacy knobs, and `--set` (plan ruling AQ)

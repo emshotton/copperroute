@@ -857,7 +857,7 @@ pub fn cli_argv(stem: &str, out_dir: &Path) -> Vec<String> {
 ///    print its own version, which is a different string that no normaliser could match without
 ///    erasing the comparison. Recorded as a divergence at `freerouting::run`'s
 ///    `// not ported:` marker rather than smoothed away silently.
-/// 5. **The message arguments.** A mapped line renders as `<LEVEL> <site>` and its interpolated
+/// 6. **The message arguments.** A mapped line renders as `<LEVEL> <site>` and its interpolated
 ///    values are discarded, because they are absolute paths (which differ by scratch directory)
 ///    and exception texts (`java.io.FileNotFoundException: … (No such file or directory)` against
 ///    `No such file or directory (os error 2)`) that the two runtimes cannot spell the same way.

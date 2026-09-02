@@ -261,9 +261,11 @@ fn resolve_headless_steps(
     // out of the chain; scan ruling R7 ported the source ([`crate::sources::JsonFileSettings`])
     // in Task 5 and gave the CLI `--settings <file>` and a working-directory `freerouting.json`;
     // **Task 6 threads it**, because `commands::route` is the first caller that can supply one.
-    // `p4t1` proves the *absent*-file tier contributes nothing, and
+    // `p4t1` proves the *absent*-file tier contributes nothing;
     // `tests/json.rs::a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn` proves a present
-    // one lands where Java puts it.
+    // one lands where Java puts it (above the defaults, below the DSN), and
+    // `crates/freerouting/tests/cli_e2e.rs::a_settings_file_reaches_the_run` proves it through
+    // the binary, which is the only caller that can supply one.
     if let Some(json_file) = inputs.json_file {
         settings.apply_new_values_from(json_file); // 10
     }
@@ -328,6 +330,15 @@ fn resolve_headless_steps(
     // The priority-10 tier is on the prototype merger, so merge #2's clone carries it too
     // (`Freerouting.java:1408-1413` → `RoutingJobScheduler.java:103`). It is applied before the
     // rules, in the merger's own ascending-priority order.
+    //
+    // **This arm is fidelity, not an observable channel of its own**, and the test above says so
+    // rather than claiming otherwise: after merge #1 every field the document carries is
+    // non-null, so `fill_absent_from` finds nothing of the json's to fill. Its only reachable
+    // channel is a field the between-merges board pass *nulled* — `set_layer_count`'s
+    // `preferred_direction_horizontal`/`bend_cost` wipe — which is the same Q1 channel
+    // `adjacent_rules_reach_only_the_fields_merge_one_left_null` (below) pins for the `.rules`
+    // tier through the identical call. It is written out because Java writes it out, and because
+    // a future tier list in which merge #1 does *not* carry this source would need it.
     if let Some(json_file) = inputs.json_file {
         settings.fill_absent_from(json_file);
     }

@@ -52,7 +52,8 @@
 //! therefore sees the *resolved* settings where Java's sees merge #1's. It reads exactly two
 //! fields, `copperToEdgeClearanceUm` and `holeClearanceUm`, and nothing between merge #1 and the
 //! resolved answer can write either — merge #2's own chain reaches only fields merge #1 left
-//! absent and `DefaultSettings.java:78,:81` fills both, `applyBoardSpecificOptimizations` writes
+//! absent and `DefaultSettings.getSettings` fills both (`:107-108`, the assignments; `:78`/`:81`
+//! are the constants they read), `applyBoardSpecificOptimizations` writes
 //! trace costs and preferred directions, and the `(autoroute_settings …)` grammar the post-merge
 //! re-apply parses has no member for either. The measurement is
 //! `crates/fr-router/tests/batch_parity.rs`, which routes eight boards in exactly this order and
@@ -299,6 +300,10 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         Some(deadline) => fr_core::CancelToken::with_deadline(deadline),
         None => fr_core::CancelToken::new(),
     };
+    // A handle on the **job** deadline, kept because the token itself is moved into the `Ctx`
+    // below and the state finalisation has to ask it a question no other value can answer — see
+    // the `:174-184` block.
+    let job_deadline = cancel.clone();
     //
     // not ported: RoutingJobSchedulerActionThread:92-94's `routerEnabled` local — `job
     // .routerSettings.getRunRouter() && (maxPasses == null || maxPasses >= 0)`. Its only readers
@@ -333,9 +338,8 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     };
 
     // `:174-184` — `finishedAt`, then the state finalisation. The port has no `STOPPING` arm to
-    // take, because nothing outside this stack can request a stop: `job.state` is `RUNNING` here
-    // unless the deadline tripped, which is `TIMED_OUT` (the monitor thread's `:84` in Java, the
-    // token's own poll here).
+    // take, because nothing outside this stack can request a stop, so the whole ladder reduces to
+    // `RUNNING -> COMPLETED` unless the **job deadline** already made the state `TIMED_OUT`.
     job.finished_at = Some(std::time::Instant::now());
     // `job.currentPass` is **not** the routing stage's pass count: both loops write the same
     // field at the top of their own iteration (`AutorouteBatchLoop.java:276`,
@@ -345,7 +349,32 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // Quirk #267; measured against the jar by `p8t2 e2e` on `router-dac2020-bm01` and
     // `router-strict-drc-cnh`, which were the two rows that caught it.
     job.set_current_pass(result.pipeline.last_reported_pass);
-    job.state = if result.timed_out {
+    // **`TIMED_OUT` comes from the job deadline and from nothing else.** In Java the only writer
+    // of that state is the monitor thread (`RoutingJobSchedulerActionThread.java:84`), which
+    // tests `job.timeoutAt` — the instant `:41-51` derives from `routerSettings.jobTimeoutString`
+    // — and `:175-184` then leaves it alone, because neither the `RUNNING` nor the `STOPPING` arm
+    // matches. A **per-stage** timeout does not reach the state at all: `isFanoutTimedOut()` and
+    // `getOptimizer().isTimedOut()` (`:170-172`) reach only the finish log's details string
+    // (`:175-177`), and the job finishes `COMPLETED`.
+    //
+    // So this is deliberately **not** `result.timed_out`, which
+    // `fr_router::pipeline::PipelineResult` folds from three sources — the job deadline, the
+    // fanout stage's per-pin budget and the optimizer stage's own `timeout` — because that is
+    // what a *router* caller wants to know. Using it here would report `"final_state":
+    // "TIMED_OUT"` where the jar reports `"COMPLETED"`.
+    //
+    // **Measured on the HEAD jar**, `Issue649-kicad_ecc83-pp_input_board_v1.dsn` with
+    // `-mp 8 --router.optimizer.timeout=0:00:00`: the log says
+    // `Optimizer stage timed out before starting pass #1`, then
+    // `Job '…' finished with state: COMPLETED (optimizer stage timed out)`, and the manifest says
+    // `"final_state": "COMPLETED"`. Pinned by
+    // `crates/freerouting/tests/cli_e2e.rs::a_stage_timeout_is_not_a_job_timeout`.
+    //
+    // The port has no monitor thread (quirk #237), so the question is asked once, here, instead
+    // of every second: a run that overran its deadline answers `true` either way, and a run that
+    // did not answers `false` either way. The stop the monitor raises at `:87` is
+    // `CancelToken::as_router_stop`'s deadline, which `RoutingPipeline::run` already installed.
+    job.state = if job_deadline.is_timed_out() {
         RoutingJobState::TimedOut
     } else {
         RoutingJobState::Completed
@@ -404,9 +433,24 @@ fn delete_existing_output(output: &Path) {
 /// The flag is `clap`'s and global (`cli::Cli::settings`), but the command runners are handed the
 /// raw argv rather than the parsed `Cli` (see [`crate::run`]), so the value is recovered here
 /// from the same slice `CliSettings` reads — which also keeps the whole runner testable in
-/// process, without a `std::env::args()` read no test could control. Port only: Java has no flag
-/// for this tier at all, and `legacy::rewrite` cannot produce one, so a legacy argv always
-/// answers `None` and falls through to the working directory.
+/// process, without a `std::env::args()` read no test could control.
+///
+/// **Port only, and it works on the legacy form too — measured, not assumed.** Java has no flag
+/// for this tier at all, so `freerouting -de a.dsn -do b.ses --settings s.json` makes **both**
+/// programs warn `Unknown command line argument: --settings` and then
+/// `Unknown command line argument: s.json` (`GlobalSettings.java:833`, twice — the flag is not a
+/// value-consuming arm, so its argument warns on its own). The message sets are identical, which
+/// is why `p8t1`'s log rung is unaffected; what differs is that the port then **applies** the
+/// file and the jar does not. Measured on `Issue143-rpi_splitter.dsn` with
+/// `{"router": {"scoring": {"via_costs": 77}}}`: the port's manifest reports `via_costs 77`, the
+/// jar's `50`.
+///
+/// That divergence is accepted rather than removed. The alternative — scanning only when the
+/// native form was used — would make a port-only flag refuse itself on one of the two command
+/// lines that reach the same runner, which is more surprising than honouring it; ruling AR's
+/// constraint is about **exit codes** a user could not have got from the jar, and this changes
+/// none. No `tests/reference/cli-*` stem passes `--settings`, so no gate depends on it.
+/// `crates/freerouting/README.md`'s port-only table carries the same sentence.
 fn json_settings_path(settings_argv: &[String]) -> Option<PathBuf> {
     let mut args = settings_argv.iter();
     while let Some(arg) = args.next() {

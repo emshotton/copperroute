@@ -717,3 +717,132 @@ fn split_cases(text: &str) -> Vec<(String, String)> {
     }
     cases
 }
+
+// =================================================================================================
+// The priority-10 tier, through `resolve_headless` (Plan 8 Task 6)
+// =================================================================================================
+
+/// Writes a `freerouting.json` into a fresh scratch directory and returns the loaded source.
+///
+/// The document shape is Java's: `GlobalSettings`' Gson tree, of which `JsonFileSettings`
+/// (`settings/sources/JsonFileSettings.java:41-63`) reads the `"router"` member and nothing else.
+fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
+    let dir = std::env::temp_dir()
+        .join("fr-settings-json-tier")
+        .join(name);
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let path = dir.join("freerouting.json");
+    std::fs::write(&path, body).expect("write freerouting.json");
+    JsonFileSettings::new(&path)
+}
+
+/// **The priority-10 tier, proven present rather than merely wired** (Plan 8 Task 6; the review's
+/// B1).
+///
+/// `JsonFileSettings` is priority **10** on Java's prototype merger
+/// (`Freerouting.java:1408-1413`), i.e. above `DefaultSettings(0)` and below
+/// `DsnFileSettings(20)`. `p4t1`'s 64-case matrix pins the *absent*-file shape — the tier
+/// contributes nothing — which was the only shape reachable before `commands::route` existed.
+/// This is the present-file shape.
+///
+/// # The three runs, and why the pair is what makes run B's answer readable
+///
+/// The document sets two fields:
+///
+/// * `scoring.via_costs = 77`, which `DefaultSettings.java:149` seeds at **50** and
+///   `Issue187-processor.Z80.dsn`'s `(autoroute_settings …)` block **also** carries as 50;
+/// * `max_passes = 11`, which `DefaultSettings` seeds at 9999 and that DSN block does **not**
+///   carry at all (`AutorouteSettings.readScope` has no such member).
+///
+/// | run | inputs | `via_costs` | `max_passes` |
+/// |---|---|---|---|
+/// | **A** | the json file alone | **77** — the tier beats `DefaultSettings` | **11** |
+/// | **B** | the json file **and** the DSN | **50** — the DSN at 20 beats the json at 10 | **11** — still the json's |
+/// | **C** | neither | 50 | 9999 |
+///
+/// Run B's `50` is readable only against run A: `apply_new_values_from` never resets a field to
+/// its default, so the base is `DefaultSettings`' 50, the json overwrites it to 77, and only a
+/// **later** source can put it back. If the DSN contributed nothing the answer would still be 77,
+/// as run A shows. `max_passes` staying 11 in run B is the other half of the argument — it proves
+/// the json tier is still live there, so run B's 50 is the DSN winning and not the json failing.
+///
+/// # What this does *not* claim about merge #2
+///
+/// `resolve_headless` applies the tier twice, because Java's merge #2 clones the same prototype
+/// merger (`RoutingJobScheduler.java:103`): `apply_new_values_from` in merge #1 and
+/// `fill_absent_from` in merge #2. The second is a **fidelity** arm, not an observable one: after
+/// merge #1 every field the document carries is non-null, so `fill_absent_from` finds nothing of
+/// its own to fill. Its only reachable channel is a field the between-merges board pass *nulled*
+/// — `set_layer_count`'s `preferred_direction_horizontal`/`bend_cost` wipe
+/// (`RouterSettings.java`'s `:741-744` counterpart) — which is exactly the Q1 channel
+/// `resolve.rs`'s own `adjacent_rules_reach_only_the_fields_merge_one_left_null` already pins for
+/// the `.rules` tier, with the same mechanism and the same `fill_absent_from` call.
+#[test]
+fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let host = HostEnvironment::with_processors(4);
+    // `dsn2-autoroute` — `Issue187-processor.Z80.dsn`, the matrix's one fixture with a real
+    // `(autoroute_settings …)` block, so priority 20 has something to say.
+    let dsn_case = &matrix::DSN_CASES[2];
+    assert_eq!(dsn_case.id, "dsn2-autoroute");
+    let board = matrix::board(dsn_case);
+    let dsn = matrix::dsn_source(dsn_case).expect("the fixture case has a source");
+
+    let json = json_file_source(
+        "beats-defaults",
+        r#"{"router": {"max_passes": 11, "scoring": {"via_costs": 77}}}"#,
+    );
+    let json_settings = json.get_settings().expect("the document parsed");
+
+    // Run A — the tier alone.
+    let a = resolve_headless(
+        &SettingsInputs {
+            json_file: Some(json_settings),
+            ..SettingsInputs::default()
+        },
+        Some(&board),
+        &host,
+    );
+    assert_eq!(
+        a.scoring.as_ref().and_then(|s| s.via_costs),
+        Some(77),
+        "priority 10 must beat DefaultSettings' 50"
+    );
+    assert_eq!(a.max_passes, Some(11));
+
+    // Run B — the tier under the DSN.
+    let b = resolve_headless(
+        &SettingsInputs {
+            json_file: Some(json_settings),
+            dsn: dsn.get_settings(),
+            ..SettingsInputs::default()
+        },
+        Some(&board),
+        &host,
+    );
+    assert_eq!(
+        b.scoring.as_ref().and_then(|s| s.via_costs),
+        Some(50),
+        "priority 20 must beat priority 10 — and run A shows 77 is what the json alone gives"
+    );
+    assert_eq!(
+        b.max_passes,
+        Some(11),
+        "the json tier is still live in run B, which is what makes its via_costs 50 the DSN's"
+    );
+
+    // Run C — the absent-file shape `p4t1` pins, restated here so the three answers sit together.
+    let c = resolve_headless(
+        &SettingsInputs {
+            dsn: dsn.get_settings(),
+            ..SettingsInputs::default()
+        },
+        Some(&board),
+        &host,
+    );
+    assert_eq!(c.scoring.as_ref().and_then(|s| s.via_costs), Some(50));
+    assert_eq!(c.max_passes, Some(9999));
+}
