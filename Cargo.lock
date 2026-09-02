@@ -128,6 +128,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fr-core"
+version = "0.1.0"
+dependencies = [
+ "fr-board",
+ "fr-drc",
+ "fr-dsn",
+ "fr-geometry",
+ "fr-router",
+ "fr-settings",
+ "parity",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "fr-drc"
 version = "0.1.0"
 dependencies = [

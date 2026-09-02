@@ -915,10 +915,15 @@ pub fn fanout_pin_can_use_vias(board: &Board, settings: &RouterSettings, net_num
 /// `convertFromTimespanToDurationFormat` (`:103-119`), for the one caller Plan 7 has:
 /// `fanoutBoard:94-99`.
 ///
-/// `fr-settings` rosters the method `added in Plan 8:` (`crates/fr-settings/src/lib.rs`) because
-/// the *settings* path never parses a timeout string — the only reader there is
-/// `RoutingJobSchedulerActionThread.threadAction:44`, which is Plan 8's. `BatchFanout` is a
-/// second reader, in Plan 7, so the function lands here rather than moving that roster line.
+/// `fr-settings` deferred the method to Plan 8 (`crates/fr-settings/src/lib.rs`) because the
+/// *settings* path never parses a timeout string — the only reader there is
+/// `RoutingJobSchedulerActionThread.threadAction:44`. `BatchFanout` is a second reader, in
+/// Plan 7, so the function landed here rather than moving that roster line. **Plan 8 Task 0
+/// consumed the `fr-settings` line by re-exporting this function** as
+/// `fr_core::parse_timespan_seconds` rather than porting the method a second time (plan-8
+/// ruling 1: `fr-core` re-exports, it does not move); `fr_core::job_timeout_deadline` is
+/// `threadAction:43-52`'s ladder on top of it, and `crates/fr-core/tests/data/p8t0-timespans.txt`
+/// pins both against the HEAD jar on thirty inputs.
 ///
 /// Java splits on `':'` and builds an ISO-8601 duration:
 /// `HH:mm:ss` → `PT<h>H<m>M<s>S`, `mm:ss` → `PT<m>M<s>S`, `ss` → `PT<s>S`; anything else leaves

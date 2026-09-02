@@ -9,7 +9,7 @@
 //! This crate must not depend on `tracing`: `FRLogger` calls from the Java source are dropped
 //! during porting, mirroring `fr-board`'s convention (plan Global Constraints).
 //
-// added in Plan 8: SessionToEagle.getInstance — `io/specctra/parser/SessionToEagle.java` (627
+// not ported: SessionToEagle.getInstance — `io/specctra/parser/SessionToEagle.java` (627
 // lines) converts a Specctra session file into an Eagle CAD command script. It is deliberately
 // outside Plan 3 (the plan's Architecture paragraph defers it, with `io/kicad/**`, to Plan 8
 // "fr-core + surfaces"): it neither reads the DSN grammar nor touches a `Board`, so nothing in
@@ -17,6 +17,12 @@
 // in the Java tree is `SesReader.saveSpecctraSessionSesAsEagleScriptScr` (SesReader.java:105-109),
 // a one-line delegate that `ses_reader.rs` already carries a `// not ported:` marker for, so the
 // deferral is closed on both sides. See `scripts/audit-map/fr-dsn.map`.
+//
+// **Closed by Plan 8 Task 0**, which re-worded this line from its Plan-8 deferral marker to
+// `not ported:`. Spec §2 keeps the Specctra SES writer and drops every other export format, so
+// this is an out-of-scope port decision and **not** a reachability claim: the class is live in
+// Java, reached from `io/specctra/SesReader.java:107`. The roster line at the foot of
+// `crates/fr-core/src/lib.rs` says the same, with the grep.
 
 pub mod coordinate_transform;
 pub mod dsn_reader;

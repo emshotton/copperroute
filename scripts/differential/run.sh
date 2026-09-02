@@ -32,7 +32,7 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9" >&2
+  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -58,6 +58,12 @@ needs_jar_230=0
 # Set by `p3t15`: extra driver sources to compile alongside `$javaclass.java` in jar mode (it
 # delegates its mode 4 to `P3T3.main`).
 extra_jar_sources=()
+# Set by `p8t0`: the directory `$javaclass.java` is compiled from. Every driver before Plan 8 kept
+# its Java half in `java/` and its probes in `java/probes/` as *extra* sources; `p8t0`'s Java half
+# **is** a probe (`P8T0Probe.java`), because what it drives is two static methods rather than a
+# board, so it needs the probe directory as its primary source dir. Defaults to `java/`, which is
+# what every other driver gets.
+java_src_dir="$DIFF_ROOT/java"
 # Set by `p4t1`: extra `java` flags, and extra environment both sides read. `p4t1` pins
 # `Runtime.getRuntime().availableProcessors()` with `-XX:ActiveProcessorCount`, because
 # `DefaultSettings.java:106,134` and `RouterSettings.validate` all consult it (plan ruling 6) —
@@ -601,6 +607,31 @@ case "$driver" in
     extra_jar_sources=("$DIFF_ROOT/java/P5T1.java")
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;
+  p8t0)
+    # Plan 8 Task 0: `TextManager.parseTimespanString` (`util/TextManager.java:83-93`), the
+    # grammar in `convertFromTimespanToDurationFormat` (`:101-118`), and
+    # `RoutingJobSchedulerActionThread.threadAction:43-52`'s `MAX_TIMEOUT` cap — thirty inputs,
+    # each printed with its `CONV`/`PARSE`/`CAPPED`/`OFFSET` columns.
+    #
+    # Declares `package app.freerouting.util` so it sits beside `TextManager`; both methods it
+    # drives are `public static`, so unlike `P7T2Probe` the package is convention rather than an
+    # access requirement. The two literals are read out of
+    # `management/jobs/RoutingJobSchedulerActionThread` by reflection (they are `private static
+    # final`), so the transcript records what the jar holds rather than what the plan says.
+    #
+    # No wall clock and no board: `-XX:hashCode=2` and the locale pair are the shared `p5t*` set,
+    # carried so a sweep across hash modes leaves this driver alone rather than skipping it.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t0-timespans.txt`, which
+    # `crates/fr-core/tests/timespan.rs` asserts against row by row; this driver is what
+    # regenerates and re-verifies it.
+    javaclass=P8T0Probe
+    javapkg="util"
+    java_src_dir="$DIFF_ROOT/java/probes"
+    default_args=()
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac
 
@@ -634,7 +665,7 @@ if [[ "$needs_jar" -eq 1 ]]; then
   echo "== compiling Java ($javaclass) against $FREEROUTING_JAR =="
   rm -rf "$jar_out"
   mkdir -p "$jar_out"
-  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$DIFF_ROOT/java/$javaclass.java" \
+  "$JAVAC" -cp "$FREEROUTING_JAR" -d "$jar_out" "$java_src_dir/$javaclass.java" \
     ${extra_jar_sources+"${extra_jar_sources[@]}"}
 
   j_out="$BUILD/$driver.j.out"

@@ -28,6 +28,8 @@ fr-settings = { path = "../../../crates/fr-settings" }
 fr-drc = { path = "../../../crates/fr-drc" }
 # Added for the Plan 6 Task 3 driver (`p6t2`): `AutorouteSearchTreeExt` under test.
 fr-router = { path = "../../../crates/fr-router" }
+# Added for the Plan 8 Task 0 driver (`p8t0`): the timespan grammar and the timeout ladder.
+fr-core = { path = "../../../crates/fr-core" }
 
 [[bin]]
 name = "t14"
@@ -137,3 +139,8 @@ path = "src/bin/p7t6.rs"
 [[bin]]
 name = "p7t10"
 path = "src/bin/p7t10.rs"
+
+# Plan 8 Task 0: `TextManager.parseTimespanString` + `RoutingJobSchedulerActionThread`'s cap.
+[[bin]]
+name = "p8t0"
+path = "src/bin/p8t0.rs"

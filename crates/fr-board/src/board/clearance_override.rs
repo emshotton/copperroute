@@ -402,6 +402,14 @@ impl Board {
 // added in Plan 8: `HeadlessBoardManager.loadFromKiCadJson` (:794-823) — `fr-core`'s `load.rs`, over `fr_drc`'s KiCad JSON reader.
 // added in Plan 8: `HeadlessBoardManager.saveAsSpecctraSessionSes` (:862-877) — `fr-core`'s `save.rs`, over `fr_dsn`'s SES writer.
 // added in Plan 8: `HeadlessBoardManager.calculateCrc32` (:603-605) — `fr-core`'s `save.rs`: the DSN round-trip CRC32 the result manifest reports.
-// added in Plan 8: `HeadlessBoardManager.getRoutingBoard` (:255-257) — there is no manager object in the port; `fr-core`'s `Ctx` holds the `Board` directly.
-// added in Plan 8: `HeadlessBoardManager.replaceRoutingBoard` (:276-278) — ditto; a field write on `fr-core`'s `Ctx`.
-// added in Plan 8: `HeadlessBoardManager.getCurrentRoutingJob` (:570-572) — ditto; `fr-core`'s `Ctx` holds the job.
+//
+// The three below were **consumed by Plan 8 Task 0**, and the reason is not the one the marker
+// text predicted: `fr_core::Ctx` holds neither the board nor the job. There is no manager
+// *object* in the port at all — `fr_core::RoutingPipeline::run(board, ctx)` takes the board as
+// its `&mut Board` parameter, owned by whichever caller loaded it, and `RoutingJob` is passed
+// around that call rather than held in a field. So all three become `// renamed:` with the site
+// that replaced them, not `added in Plan N:` with a field that was never built. See
+// `crates/fr-core/src/ctx.rs`'s doc comment, which records the same three.
+// renamed: `HeadlessBoardManager.getRoutingBoard` (:255-257) -> the `&mut Board` parameter of `fr_core::RoutingPipeline::run` (`crates/fr-core/src/pipeline.rs`).
+// renamed: `HeadlessBoardManager.replaceRoutingBoard` (:276-278) -> the caller's own `Board` binding; a manager-less port has nothing to replace a field on.
+// renamed: `HeadlessBoardManager.getCurrentRoutingJob` (:570-572) -> `fr_core::RoutingJob` (Plan 8 Task 1), passed to the call rather than held.

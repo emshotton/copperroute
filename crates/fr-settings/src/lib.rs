@@ -190,12 +190,18 @@ pub mod prelude {
 // `util/**` — the two timeout strings, and the four Gson adapters
 // -----------------------------------------------------------------------------------------------
 //
-// added in Plan 8: TextManager.parseTimespanString (util/TextManager.java:83) — `RouterSettings`
-//   carries three timeout values as **strings** (`jobTimeoutString`, `optimizer.timeoutString`,
-//   `fanout.timeoutString`) and Java parses them nowhere in the settings path. The only reader is
+// renamed: TextManager.parseTimespanString (util/TextManager.java:83-93) -> `fr_core::timespan`
+//   (`crates/fr-core/src/timespan.rs`, Plan 8 Task 0). `RouterSettings` carries three timeout
+//   values as **strings** (`jobTimeoutString`, `optimizer.timeoutString`, `fanout.timeoutString`)
+//   and Java parses them nowhere in the settings path; the only reader is
 //   `RoutingJobSchedulerActionThread.threadAction` (`:44`), which parses `jobTimeoutString` and
 //   then caps the result at `MAX_TIMEOUT` — 24 hours, `:24` — in `:45-52`. This crate therefore
-//   carries the strings verbatim, as Java does, and Plan 8 parses them where Java parses them.
+//   carries the strings verbatim, as Java does, and `fr-core` parses them where Java parses them:
+//   `fr_core::parse_timespan_seconds` is the method itself (`Option<i64>`, because Java's return
+//   type is a signed `Long` — scan ruling R11), `fr_core::convert_from_timespan_to_duration_format`
+//   is the grammar at `:101-118`, and `fr_core::job_timeout_deadline` is `:43-52`'s ladder. All
+//   three are pinned to the HEAD jar by `crates/fr-core/tests/data/p8t0-timespans.txt`
+//   (`scripts/differential/run.sh p8t0`, MATCH on all 30 rows).
 //
 // `util/gson/**` is the JSON configuration [`json`] reproduces. `GsonProvider` and
 // `RouterSettingsTypeAdapterFactory` are ported there; the factory's two methods and the three
