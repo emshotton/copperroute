@@ -4,8 +4,10 @@ A behavioral Rust port of freerouting's Specctra text-I/O layer (v2.3.0):
 `io/specctra/**` (the JFlex scanner, the thirty parser scope classes,
 `DsnReader`, `DsnWriter`, `SesReader`, `SesWriter`, `RulesReader`,
 `RulesWriter`), `io/{CoordinateTransform,BoardReadResult,BoardMetadata,
-FileFormat,KiCadNetClassNames}.java`, and
-`datastructures/{IdentifierType,IndentFileWriter}.java`. It reads a Specctra
+FileFormat,KiCadNetClassNames}.java`,
+`datastructures/{IdentifierType,IndentFileWriter}.java`, and — from Plan 8
+Task 8 — the KiCad board-JSON reader `io/kicad/{KiCadBoardJson,
+KiCadJsonReader}.java`. It reads a Specctra
 `.dsn` design into a `fr_board::Board` and writes `.dsn`, `.ses` and `.rules`
 back out **byte for byte** as Java writes them. Use `fr_dsn::prelude::*` to
 bring in every public type.
@@ -13,8 +15,9 @@ bring in every public type.
 The crate sits directly on `fr-board`: it builds a board through Plan 2's
 public insert API and reads one back out through `get_traces`/`get_vias`/
 `get_connectable_items`/`items_in_board_order`. It owns no board state of its
-own, and depends only on `fr-board`, `fr-geometry` and `thiserror` — no
-`serde`, no `regex`, no `tracing`.
+own, and depends only on `fr-board`, `fr-geometry`, `thiserror` and — since
+Plan 8 Task 8's KiCad board-JSON reader, and only there — `serde`/`serde_json`.
+No `regex`, no `tracing`.
 
 Diagnostic `FRLogger` calls from the Java source either push onto
 `ReadScopeParameter::warnings` exactly where Java does, or vanish
@@ -46,9 +49,48 @@ camelCase in `Keyword.java` *and in the writers' string literals*, without
 touching the DFA — so HEAD cannot read back its own output. This port emits
 the snake_case Specctra tokens.
 
+## The KiCad board-JSON reader (`kicad/`)
+
+Plan 8 Task 8 added `src/kicad/`: `io/kicad/KiCadBoardJson.java`'s twelve DTOs
+(`dto.rs`) and `KiCadJsonReader.readBoard`'s **sections 1-8**
+(`KiCadJsonReader.java:63-497`, `reader.rs`) — units, layer structure,
+clearance matrix, board outline, communication, board construction, net
+classes and nets. Sections 9-11 (components, traces, vias) are Task 9's and
+extend the **same function body**; the `// obligation:` marker sits where
+section 9 begins, and no end-to-end path reaches the reader until it lands
+(`fr_core::load::kicad_read_board` is still Task 3's inert stub).
+
+Three things about it are unlike the rest of the crate:
+
+- **It is the only module that uses `serde`.** The DTO field names are the
+  JSON wire contract — `hostCad`, `netClasses`, `containsPlane`,
+  `startLayerIndex` — so `dto.rs` keeps the Java spelling on the Rust fields
+  too, under a module-level `#![allow(non_snake_case)]`. It also reproduces
+  Gson's three-way distinction between an absent key (the Java field
+  initializer survives), an explicit `null` (a reference field is cleared, a
+  primitive is left alone) and a value.
+- **`java.util.HashSet` iteration order is a parity surface.** `readBoard`
+  numbers every auto-registered net in the order a `HashSet<String>` hands the
+  names back, so `reader.rs` rebuilds `HashMap`'s bucket layout. Quirk #280.
+- **The clearance matrix it builds is asymmetric on purpose.** Quirk #83's
+  J-then-I `setValue`/`getValue` indexing, plus the fact that `readBoard`
+  writes only one of each pair, means `getValue(1, 2, …)` and
+  `getValue(2, 1, …)` genuinely differ on a KiCad board. Do not "fix" it.
+
+Ground truth is `tests/data/p8t8-kicad-read-a.txt`, the byte-exact stdout of
+`scripts/differential/java/probes/P8T8Probe.java` on 24 inputs — the seven
+real KiCad board-JSON files under the Java checkout's `fixtures/` plus
+seventeen synthetic payloads. `tests/kicad_reader.rs` re-emits the same rows
+from the Rust board: 995 of 996 match, and the one that does not is an
+`XDIFF` entry naming quirk #277 (a malformed payload's `ParseError.detail` is
+the JSON parser's own prose, Gson's on one side and `serde_json`'s on the
+other).
+
 ## What is *not* here
 
-- **The KiCad JSON path.** `io/kicad/**` (1,574 lines) is Plan 8.
+- **The rest of the KiCad JSON path.** `KiCadJsonReader.importSession` and
+  `io/kicad/KiCadJsonWriter.java` are Plan 8 Task 10's; `readBoard`'s
+  sections 9-11 are Task 9's.
 - **`SessionToEagle`.** `io/specctra/parser/SessionToEagle.java` (627 lines)
   turns a session file into an Eagle CAD command script. Deferred to Plan 8;
   its one caller, `SesReader.saveSpecctraSessionSesAsEagleScriptScr`, carries
@@ -257,7 +299,18 @@ satisfies `Network.readScope`:
     'IdentifierType.java IndentFileWriter.java' scripts/audit-map/fr-dsn.map
 ```
 
-All four exit 0 with no `MISSING` and no `UNMAPPED` line. A class the map does
+All four exit 0 with no `MISSING` and no `UNMAPPED` line. **`io/kicad` is not
+one of them**: plan-5 ruling 13 put that package's audit on `fr-drc` (for the
+four DRC report DTOs), so
+
+```sh
+./scripts/audit-port.sh io/kicad           crates/fr-drc/src '*.java' scripts/audit-map/fr-drc.map
+```
+
+is what checks `src/kicad/`, through the `renamed:` markers Task 8 left at the
+foot of `crates/fr-drc/src/lib.rs`. `scripts/audit-map/fr-dsn.map` records the
+class → file mapping anyway, so Plan 8 Task 14 can move the invocation here
+without re-deriving it. A class the map does
 not mention still falls back to the crate-wide search *and* prints
 `UNMAPPED <Class>`, so the map cannot silently rot as new classes come into
 scope.

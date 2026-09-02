@@ -57,9 +57,14 @@ KiCadDrcPosition         report/mod.rs
 # line names its Rust home and keeps `from_violations` (the port of `BoardStatistics`' clearance
 # block) inside the audited path.
 BoardStatisticsClearanceViolations  statistics.rs
-# The last three are matched only by the `// added in Plan 8:` roster at the foot of `lib.rs`
-# (plan-5 ruling 13 keeps the KiCad board-JSON reader/writer out of this plan); Task 7 landed it,
-# Task 11 folds it into the crate's `not ported:` roster.
+# The last three are matched by the roster at the foot of `lib.rs` (plan-5 ruling 13 keeps the
+# KiCad board-JSON reader/writer out of *that* plan); Task 7 landed it, Task 11 folds it into the
+# crate's `not ported:` roster. **Plan 8 Task 8** turned four of its six lines from
+# `added in Plan 8:` into `renamed:`: the DTO tree and `readBoard`'s sections 1-8 now live in
+# `crates/fr-dsn/src/kicad/{dto,reader}.rs` (`scripts/audit-map/fr-dsn.map` records that), and
+# `importSession`/`KiCadJsonWriter.write` are Task 10's. The map lines stay pointed at `lib.rs`
+# because that is where those markers are; moving the `io/kicad` invocation to `fr-dsn` is Task
+# 14's call, not this map's.
 KiCadJsonReader          lib.rs
 KiCadJsonWriter          lib.rs
 KiCadBoardJson           lib.rs

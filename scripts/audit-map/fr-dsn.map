@@ -72,6 +72,17 @@ SesImportSummary         ses_reader.rs
 RulesReader              rules_reader.rs
 RulesWriter              rules_writer.rs
 
+# --- io/kicad/ (Plan 8 Task 8: the DTO tree and `readBoard`'s sections 1-8) -------------------
+#
+# The `io/kicad` **audit invocation** runs against `crates/fr-drc/src` with
+# `scripts/audit-map/fr-drc.map` (plan-5 ruling 13 put the package there, for the four DRC report
+# DTOs), so these two lines are not read by any of the four invocations the crate README lists.
+# They are here so that the class -> Rust-file map is recorded where the *code* is, and so Plan 8
+# Task 14 can move the invocation to this crate without re-deriving them. `KiCadJsonWriter` gets
+# its line from Task 10, which writes it.
+KiCadJsonReader          kicad/reader.rs
+KiCadBoardJson           kicad/dto.rs
+
 # `SessionToEagle` (io/specctra/parser/SessionToEagle.java, 627 lines) is **out of Plan 3's
 # scope** — the plan's Architecture paragraph puts it, with `io/kicad/**`, in Plan 8 ("fr-core +
 # surfaces"). It is a SES-to-Eagle-script converter: it reads a session file and emits an Eagle
