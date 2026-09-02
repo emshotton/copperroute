@@ -105,7 +105,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     // `:96-100`. "We maintain similar resolution scaling factors as DSN mapping (e.g. 1000 for
     // mm)". `(int)` on a `double` is Java's narrowing conversion — NaN to 0, out-of-range
     // saturating — which Rust's `as` reproduces exactly.
-    let mut resolution = 1.0_f64.max(board_json.resolution) as i32;
+    let mut resolution = java_max(1.0, board_json.resolution) as i32;
     if board_json.resolution == 1.0 && user_unit == Unit::Mm {
         resolution = 10000; // 0.1 micrometer resolution is default for mm if unspecified
     }
@@ -167,8 +167,9 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     clearance_class_names.push("null".to_string());
     clearance_class_names.push("default".to_string());
     for net_class in &additional_net_classes {
-        // totalized as `Layer::new` above: Java stores the `null` name in the matrix row and
-        // NPEs in `ClearanceMatrix.getNo` the next time a custom clearance rule is looked up.
+        // totalized: as `Layer::new` above — **quirk #282**. Java stores the `null` name in the
+        // matrix row and NPEs in `ClearanceMatrix.getNo` the next time a custom clearance rule is
+        // looked up, because `row[i].name.equalsIgnoreCase(...)` dereferences the *row's* name.
         clearance_class_names.push(net_class.name.clone().unwrap_or_default());
     }
 
@@ -387,6 +388,20 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             let cy = sum_y / count;
             // Java's `List.sort` is a **stable** TimSort and so is Rust's `sort_by`;
             // `Double.compare` is [`java_double_compare`], not `f64::partial_cmp`.
+            //
+            // **The one part of this line that is not exact.** `Math.atan2` is not required to be
+            // correctly rounded: `java.lang.Math`'s contract allows 2 ulp and lets the JIT
+            // substitute an intrinsic, and Rust's `f64::atan2` is the platform libm with no
+            // accuracy guarantee at all. Two corners at almost exactly the same polar angle around
+            // the centroid could therefore compare differently on the two sides and swap places —
+            // which changes the *polygon*, not just the corner list, because `PolygonShape`'s
+            // constructor then drops different collinear corners. Measured clean on all 24 inputs
+            // of `crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`, including `interf-u`'s 9-corner
+            // outline and the deliberately shuffled `outline-unsorted` stem: every corner of every
+            // outline matches the JVM. A residual risk, not an observed one, and a property of two
+            // libm implementations rather than of Java — which is why it is recorded here and not
+            // in `docs/java-quirks.md`. The input that would show it is two corners whose `atan2`
+            // differs only in the last ulp.
             corners.sort_by(|p1, p2| {
                 java_double_compare((p1.y - cy).atan2(p1.x - cx), (p2.y - cy).atan2(p2.x - cx))
             });
@@ -728,6 +743,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     //   a partial board. `crates/fr-dsn/tests/kicad_reader.rs` asserts only the section-1-to-8
     //   surface, and `crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`'s `[s9]` rows are the
     //   ground truth Task 9 finishes against.
+    //   **Task 9 also inherits quirk #282**, whose "Java crashes at `:545`" claim is about a line
+    //   section 9 is about to write: `boardLayers[li].name.equalsIgnoreCase(layerName)` is the
+    //   first unconditional dereference of a layer name, and this port stores the empty string
+    //   where Java stores `null`. Re-read that row before porting `:539-553`.
 
     // `:719-725`'s duration `FRLogger.debug` — not ported, as `:83-86`.
 
@@ -785,7 +804,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 
 /// Port of `KiCadJsonReader.findKiCadDefaultNetClass` (KiCadJsonReader.java:926-934).
 ///
-/// A `null` name is `false` (`KiCadNetClassNames.isKiCadDefaultNetClassName`, :26-28), so a
+/// A `null` name is `false` (`KiCadNetClassNames.isKiCadDefaultNetClassName`, :25-30), so a
 /// nameless class is never the default one.
 fn find_kicad_default_net_class(net_classes: &[NetClassJson]) -> Option<&NetClassJson> {
     net_classes.iter().find(|net_class| {
@@ -971,29 +990,40 @@ fn registered_via_info(rules: &BoardRules, name: &str) -> ViaInfo {
         .expect("ViaInfos::add was called with this name immediately above")
 }
 
-/// Java `Math.min(double, double)`: **NaN-propagating**, unlike Rust's `f64::min`, which returns
-/// the non-NaN operand. Only reachable with a NaN coordinate, which Gson's LENIENT reader accepts
-/// as the bare token `NaN` and `serde_json` rejects (quirk #277) — so it is unreachable through
-/// this port today and written this way so it stays correct if that ever changes.
+/// Java `Math.min(double, double)`, transcribed whole — **both** the ways it differs from Rust's
+/// `f64::min`:
+///
+/// * **NaN propagates.** Rust's `f64::min` returns the non-NaN operand; Java's returns NaN.
+/// * **Signed zero is ordered.** `Math.min(-0.0, 0.0)` is `-0.0` and `Math.max(-0.0, 0.0)` is
+///   `0.0`; `a <= b` alone cannot tell the two zeros apart, so Java tests the sign bit.
+///
+/// Neither difference is observable through this port today, and both halves are transcribed
+/// anyway rather than caveated, because the caveat is longer than the code. The NaN half is
+/// unreachable by construction: a NaN coordinate needs Gson's LENIENT bare `NaN` token, which
+/// `serde_json` rejects before section 2 (quirk #277). The signed-zero half is *reachable* — JSON
+/// has a `-0.0` literal — but not observable, and these are the consumers that make it so: section
+/// 5's `min_x`/`max_x`/`min_y`/`max_y` accumulators and [`PointOutline::bounding_box`]'s four, all
+/// eight of which end in [`java_round_to_int`], for which `-0.0` and `0.0` are both `0`.
 fn java_min(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() {
-        f64::NAN
-    } else if a < b {
-        a
-    } else {
-        b
+    if a.is_nan() {
+        return a;
     }
+    if a == 0.0 && b == 0.0 && b.is_sign_negative() {
+        return b;
+    }
+    if a <= b { a } else { b }
 }
 
-/// Java `Math.max(double, double)`; see [`java_min`].
+/// Java `Math.max(double, double)`; see [`java_min`]. Note the asymmetry against it: `min` tests
+/// **`b`**'s sign bit and `max` tests **`a`**'s.
 fn java_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() {
-        f64::NAN
-    } else if a > b {
-        a
-    } else {
-        b
+    if a.is_nan() {
+        return a;
     }
+    if a == 0.0 && b == 0.0 && a.is_sign_negative() {
+        return b;
+    }
+    if a >= b { a } else { b }
 }
 
 /// Java `Double.compare(double, double)`, the comparator `:293-296` sorts the outline corners
@@ -1062,10 +1092,24 @@ fn java_string_hash(text: &str) -> i32 {
 /// A bucket that reaches 8 entries **while the table is at capacity >= 64** is converted to a
 /// red-black tree (`TREEIFY_THRESHOLD`/`MIN_TREEIFY_CAPACITY`), and its iteration order becomes
 /// the tree's. Below capacity 64 Java resizes instead, which this function already models. The
-/// `debug_assert!` names the condition; it needs eight distinct strings agreeing on the low six
-/// bits of a spread `String.hashCode`, and the corpus does not come close — the two largest
-/// fixtures (`interf-u`, 173 nets; `complex-hierarchy`, 52) both peak at a bucket of 2, measured
-/// against the JVM transcript.
+/// `debug_assert!` below names the condition, conservatively: `HashMap.putVal` treeifies only when
+/// a bin that already holds 8 takes a 9th.
+///
+/// Peak bucket over the `referencedNets` set of every corpus fixture, measured with this same
+/// model — which `the_hash_iteration_order_matches_the_jvm` validates against the JVM:
+///
+/// | fixture | referenced nets | final capacity | peak bucket |
+/// |---|---|---|---|
+/// | `Issue733-kicad_interf_u_input_design.json` | 173 | 256 | **4** |
+/// | `Issue733-kicad_complex_hierarchy_input_design.json` | 52 | 128 | 3 |
+/// | `Issue733-kicad_complex_hierarchy_output_session.json` | 48 | 64 | 3 |
+/// | `Issue649-kicad_ecc83-pp_input_board_v{1,2}.json` | 13 | 32 | 2 |
+/// | `Issue368-CorneyIslandWireless_input_design.json` | 5 | 16 | 1 |
+///
+/// So the worst case the corpus reaches is **4 of the 9** an actual treeify needs — a two-step
+/// margin, not a hair's breadth, but not the "peak of 2" an earlier revision of this comment
+/// claimed either. The other consumer, `netClassIndexMap.entrySet()` (`:972`), holds one entry per
+/// non-default net class and cannot plausibly reach capacity 64 at all.
 fn java_hash_iteration_order(keys: &[String]) -> Vec<usize> {
     let mut capacity = 16_usize;
     let mut threshold = 12_usize;
@@ -1081,6 +1125,11 @@ fn java_hash_iteration_order(keys: &[String]) -> Vec<usize> {
         let spread = hash ^ (hash >> 16);
         buckets[(capacity - 1) & (spread as usize)].push(index);
     }
+    // `debug_assert!` and not `assert!`: this is a *diagnostic* for a case the corpus does not
+    // reach, on a function every KiCad read runs — so it is **silent in release**, which is what
+    // the CLI ships, and a board that did treeify would diverge quietly. Left as a debug assert
+    // because a wrong net *numbering* is caught downstream by any DSN/SES parity run; recorded
+    // here so Task 9 and Task 14's `io/` sweep can revisit the choice rather than rediscover it.
     debug_assert!(
         capacity < 64 || buckets.iter().all(|bucket| bucket.len() < 8),
         "java_hash_iteration_order: a bucket reached TREEIFY_THRESHOLD at capacity {capacity}, \
@@ -1208,7 +1257,26 @@ mod tests {
     fn java_min_and_max_propagate_nan_where_rusts_do_not() {
         assert!(java_min(f64::NAN, 1.0).is_nan());
         assert!(java_max(f64::NAN, 1.0).is_nan());
+        assert!(java_min(1.0, f64::NAN).is_nan());
+        assert!(java_max(1.0, f64::NAN).is_nan());
         assert_eq!(f64::min(f64::NAN, 1.0), 1.0); // the behaviour these two exist to avoid
+        assert_eq!(f64::max(1.0, f64::NAN), 1.0);
+    }
+
+    /// `Math.min(-0.0, 0.0)` is `-0.0` and `Math.max(-0.0, 0.0)` is `0.0`, in either argument
+    /// order. Unobservable through the reader — every consumer rounds to an `i32` — and pinned so
+    /// the primitives are the primitives they claim to be.
+    #[test]
+    fn java_min_and_max_order_signed_zero() {
+        assert!(java_min(-0.0, 0.0).is_sign_negative());
+        assert!(java_min(0.0, -0.0).is_sign_negative());
+        assert!(java_max(-0.0, 0.0).is_sign_positive());
+        assert!(java_max(0.0, -0.0).is_sign_positive());
+        // The ordinary cases are untouched.
+        assert_eq!(java_min(1.0, 2.0), 1.0);
+        assert_eq!(java_max(1.0, 2.0), 2.0);
+        assert_eq!(java_min(2.0, 1.0), 1.0);
+        assert_eq!(java_max(2.0, 1.0), 2.0);
     }
 
     /// The `referenced-nets-only` stem of `crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`: 17
