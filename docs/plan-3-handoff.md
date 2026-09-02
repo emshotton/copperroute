@@ -800,12 +800,23 @@ would still surface as a `DIFF` on a mode nobody excused.
   "correct" it changes clearances on every KiCad-sourced board and breaks parity.
 - MCP concurrency (progress sink, cancel token, reader thread) — carried from
   Plan 1, untouched by this plan.
-- **The four zero-coverage Plan 3 paths** (register row): `SesWriter.writeWasIs`'s
-  swap body, `Component.readLockType`'s `(lock_type position)` arm,
-  `SesWriter.writeConductionArea` (quirk #110's mixed int/double output) and
-  quirk #105. Each needs a synthetic fixture plus JVM ground truth. If a wider
-  corpus ever arrives, these are the rows to check first. (The
-  `instanceof Path` → `PolylinePath` arm is **not** on this list: it is
+- ~~**The four zero-coverage Plan 3 paths** (register row)~~ — **ALL FOUR CLOSED in
+  Plan 8 Task 13.** Each now has a directed synthetic fixture under
+  `crates/fr-dsn/tests/data/`, JVM ground truth from
+  `scripts/differential/java/probes/P8T13Probe.java` against the pinned HEAD jar
+  under JDK 25 (committed as `p8t13-directed-<path>.txt`, whose `[jar-cli]` rows
+  carry the jar's own `-de <fixture> -do <out.ses>` acceptance run), and a named
+  test. **No port behaviour changed**: all four match the jar's bytes, line for
+  line, first time. The four status lines:
+
+  | path | Java site | fixture | test | status |
+  | --- | --- | --- | --- | --- |
+  | `SesWriter.writeWasIs`'s swap body | SesWriter.java:188-215 | `p8t13-was-is.dsn` | `parity_ses.rs::ses_writer_writes_a_pins_line_for_every_swapped_pin` | **CLOSED.** Unreachable from any `.dsn`: `Pin.changedTo` moves only through `Pin.swap` (Pin.java:437-461), which has **no caller in the Java tree**, so the jar's CLI writes an empty `(was_is )` (exit 0). The probe calls `Pin.swap` by hand and the test does the same; the port's SES is byte-identical, `(pins U2-B U1-A)` / `(pins U1-A U2-B)` in `getPins()` order and all. |
+  | `Component.readLockType`'s `(lock_type position)` arm | Component.java:352-364 | `p8t13-lock-type.dsn` | `placement_scope.rs::the_lock_type_position_arm_survives_a_whole_file_read` | **CLOSED.** The arm had a scope-level test since Task 8; what was missing was a whole-file `read_board` reaching it. The jar round-trips the fixture (exit 0) and writes `(lock_type position)` back into the SES placement scope; the port matches byte for byte, `positionFixed` and the pins' `SystemFixed` included. |
+  | `SesWriter.writeConductionArea` (quirk #110) | SesWriter.java:536-553 | `p8t13-conduction-area.dsn` | `parity_ses.rs::ses_writer_mixes_integer_boundary_and_double_hole_coordinates` | **CLOSED.** A `(wire (polygon F.Cu …) (window (polygon F.Cu …)) (net …))` in the `(wiring …)` scope makes a signal-layer conduction area with a hole. The jar (exit 0) writes boundary `1000000` beside hole `1300005.0` in one scope — quirk #110, now pinned in bytes on both sides. |
+  | quirk #105 — `Wiring.readViaScope`'s net-number loop | Wiring.java:684-687 | `p8t13-via-net-numbers.dsn` | `dsn_reader.rs::read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros` | **CLOSED, with a finding.** `(order U1-1 U2-1 U3-1)` splits `NORDERED` into two subnets; the via reads `nets=[2,0]` where the wire beside it reads `nets=[1,2]`. The port reproduces both exactly. **The jar does not survive its own file**: the padded `0` reaches `DesignRulesChecker.calculateAllIncompletes:558`, whose `nets.get(0)` is `Vector.get(-1)`, and the autorouter throws `ArrayIndexOutOfBoundsException` on every pass for ever — the run never terminates. `(net NORDERED 1)` on the same via routes and exits 0. Quirk #105's "the extra slots are inert for connectivity" is therefore true of the **reader** only; see `docs/java-quirks.md` #105. |
+
+  (The `instanceof Path` → `PolylinePath` arm was never on this list: it is
   unreachable in the port and documented as such — see Correction 3.)
 - **Quirk #113 is a live deviation, not a reproduction.**
   `Structure.setClearanceRule` splits at the string-quote character with

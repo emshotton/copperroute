@@ -21,7 +21,9 @@
 //! The writer expectations are read straight out of `tests/reference/*/roundtrip.dsn`, which the
 //! pinned 2.3.0 jar produced.
 
-use fr_board::{FixedState, PackagePin};
+mod common;
+
+use fr_board::{FixedState, Item, PackagePin};
 use fr_dsn::CoordinateTransform;
 use fr_dsn::format::IndentFileWriter;
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
@@ -382,5 +384,101 @@ fn a_placed_component_writes_coordinates_side_rotation_and_pin_clearance_classes
             "\n  )",
             "\n)",
         )
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Plan 8 Task 13: one of the four zero-coverage Plan 3 paths (docs/plan-3-handoff.md's register
+// row). The other three are `tests/parity_ses.rs`'s two and
+// `tests/dsn_reader.rs::read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros`;
+// `tests/plan_3_zero_coverage.rs` is the list assertion over all four.
+// ---------------------------------------------------------------------------------------------
+
+/// **Zero-coverage path 3 of 4: `Component.readLockType`'s `(lock_type position)` arm**
+/// (Component.java:352-364, reached from `Component.readPlaceScope`), against
+/// `tests/data/p8t13-lock-type.dsn` and the JVM transcript
+/// `tests/data/p8t13-directed-lock-type.txt`.
+///
+/// Why no corpus fixture reaches it: not one `.dsn` in `tests/reference`, in the 105-file corpus
+/// or in the Java checkout's `fixtures/` writes a `(lock_type …)` scope — KiCad's exporter never
+/// emits one — so `readLockType` runs on no fixture and its `position` arm on none at all.
+/// [`a_place_scope_reads_lock_type_part_number_pins_and_keepouts`] above has pinned the arm at
+/// **scope level** since Plan 3 Task 8 (one `Component.readScope` call over a string); what was
+/// missing, and what this test adds, is the arm reached through a whole-file `read_board` and
+/// carried all the way back out: `positionFixed` on the component (Component.java:28), the pins'
+/// `FixedState::SystemFixed` (Network.java's placement tail), and `SesWriter`'s
+/// `(lock_type position)` line (SesWriter.java:201-204).
+///
+/// The jar's own CLI round-trips it: `[jar-cli] exit=0` and the `[jar-cli] ses|` rows carry the
+/// same `(place LOCKED 1000000 1000000 front 0\n       (lock_type position))`.
+#[test]
+fn the_lock_type_position_arm_survives_a_whole_file_read() {
+    let (board, ct) = common::read_directed("lock-type");
+
+    let components: Vec<String> = (1..=i32::try_from(board.components.count())
+        .expect("two components"))
+        .map(|i| {
+            let c = board.components.get(i);
+            format!(
+                "[component] {i} {} positionFixed={} placed={} front={}",
+                c.name,
+                c.position_fixed,
+                c.is_placed(),
+                c.placed_on_front(),
+            )
+        })
+        .collect();
+    common::assert_rows_match(
+        &components,
+        &common::directed_rows("lock-type", "[component]"),
+        "lock-type components",
+    );
+
+    let ctx = board.ctx();
+    let pins: Vec<String> = {
+        let mut ids = board.get_pins();
+        ids.sort_unstable();
+        ids.iter()
+            .map(|id| {
+                let item = board.get_item(*id).expect("pin id is live");
+                let Item::Pin(pin) = item else {
+                    panic!("get_pins answers pins");
+                };
+                let nets: Vec<String> = (0..item.header().net_count())
+                    .map(|i| item.header().get_net_number(i).to_string())
+                    .collect();
+                format!(
+                    "[pin] {} {}-{} fixed={} nets=[{}]",
+                    id.0,
+                    board
+                        .components
+                        .get(item.header().get_component_id())
+                        .name
+                        .clone(),
+                    pin.name(&ctx).unwrap_or("null"),
+                    match item.header().get_fixed_state() {
+                        FixedState::Unfixed => "UNFIXED",
+                        FixedState::ShoveFixed => "SHOVE_FIXED",
+                        FixedState::UserFixed => "USER_FIXED",
+                        FixedState::SystemFixed => "SYSTEM_FIXED",
+                    },
+                    nets.join(","),
+                )
+            })
+            .collect()
+    };
+    common::assert_rows_match(
+        &pins,
+        &common::directed_rows("lock-type", "[pin]"),
+        "lock-type pins",
+    );
+
+    let (expected, bytes) = common::directed_ses("lock-type", "ses");
+    let actual = common::write_directed_ses(&board, &ct, "lock-type");
+    assert_eq!(actual, expected, "lock-type SES");
+    assert_eq!(actual.len(), bytes, "lock-type SES byte count");
+    assert!(
+        actual.contains(" (lock_type position))"),
+        "the arm's whole observable effect on the SES side"
     );
 }

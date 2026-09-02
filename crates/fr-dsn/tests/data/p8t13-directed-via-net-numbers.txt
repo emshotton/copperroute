@@ -1,0 +1,30 @@
+# P8T13Probe via-net-numbers — Plan 8 Task 13, HEAD jar
+# fixture crates/fr-dsn/tests/data/p8t13-via-net-numbers.dsn (1097 bytes)
+HEADER jar=freerouting-current-executable.jar size=63288652
+
+[jar-cli] cmd=java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -jar <HEAD jar> -de crates/fr-dsn/tests/data/p8t13-via-net-numbers.dsn -do <out.ses>
+[jar-cli] exit=<none: still running after 60s, killed by the probe>
+[jar-cli] throwable java.lang.ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 2
+[jar-cli] frame at app.freerouting.drc.DesignRulesChecker.calculateAllIncompletes(DesignRulesChecker.java:558)
+[jar-cli] frame at app.freerouting.autoroute.pipeline.BatchAutorouter.calculateIncompleteCount(BatchAutorouter.java:559)
+[jar-cli] frame at app.freerouting.autoroute.pipeline.AutorouteBatchLoop.calculateIncompleteCount(AutorouteBatchLoop.java:591)
+[jar-cli] frame at app.freerouting.autoroute.pipeline.AutorouteBatchLoop.run(AutorouteBatchLoop.java:63)
+[jar-cli] frame at app.freerouting.autoroute.pipeline.BatchAutorouter.runBatchLoop(BatchAutorouter.java:480)
+[jar-cli] frame at app.freerouting.autoroute.pipeline.RoutingPipeline.runRoutingStage(RoutingPipeline.java:98)
+[jar-cli] frame at app.freerouting.autoroute.pipeline.RoutingPipeline.run(RoutingPipeline.java:82)
+[jar-cli] frame at app.freerouting.management.jobs.RoutingJobSchedulerActionThread.threadAction(RoutingJobSchedulerActionThread.java:167)
+[jar-cli] frame at app.freerouting.core.StoppableThread.run(StoppableThread.java:18)
+[jar-cli] ses <not written>
+
+[read] Success warnings=0
+
+[net] 1 NORDERED subnet=1 class=default plane=false
+[net] 2 NORDERED subnet=2 class=default plane=false
+[item] 1 BoardOutline comp=0 cl=1 nets=[] fixed=SYSTEM_FIXED
+[item] 2 Pin comp=1 cl=1 nets=[1] fixed=UNFIXED
+[item] 3 Pin comp=2 cl=1 nets=[1,2] fixed=UNFIXED
+[item] 4 Pin comp=3 cl=1 nets=[2] fixed=UNFIXED
+[item] 5 Via comp=0 cl=1 nets=[2,0] fixed=UNFIXED
+[item] 6 PolylineTrace comp=0 cl=1 nets=[1,2] fixed=UNFIXED
+[itemcount] 6
+

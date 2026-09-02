@@ -1,0 +1,124 @@
+# P8T13Probe conduction-area — Plan 8 Task 13, HEAD jar
+# fixture crates/fr-dsn/tests/data/p8t13-conduction-area.dsn (1131 bytes)
+HEADER jar=freerouting-current-executable.jar size=63288652
+
+[jar-cli] cmd=java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -jar <HEAD jar> -de crates/fr-dsn/tests/data/p8t13-conduction-area.dsn -do <out.ses>
+[jar-cli] exit=0
+[jar-cli] ses bytes=1141
+[jar-cli] ses|(session "p8t13-conduction-area"
+[jar-cli] ses|  (base_design "p8t13-conduction-area")
+[jar-cli] ses|  (placement
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (component "pad_footprint"
+[jar-cli] ses|      (place P1 200000 200000 front 0)
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|  (was_is
+[jar-cli] ses|  )
+[jar-cli] ses|  (routes 
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (parser
+[jar-cli] ses|    )
+[jar-cli] ses|    (library_out 
+[jar-cli] ses|      (padstack VIA1
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle F.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle B.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (attach off)
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|    (network_out 
+[jar-cli] ses|      (net NPLANE
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            200000 200000
+[jar-cli] ses|            326250 200000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1020645 1020645
+[jar-cli] ses|            326250 326250
+[jar-cli] ses|            326250 200000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire 
+[jar-cli] ses|          (polygon F.Cu 0
+[jar-cli] ses|            1000000 1000000
+[jar-cli] ses|            2000000 1000000
+[jar-cli] ses|            2000000 2000000
+[jar-cli] ses|            1000000 2000000
+[jar-cli] ses|          )
+[jar-cli] ses|          (window
+[jar-cli] ses|            (polygon F.Cu 0
+[jar-cli] ses|              1300005.0 1300005.0
+[jar-cli] ses|              1700005.0 1300005.0
+[jar-cli] ses|              1700005.0 1700005.0
+[jar-cli] ses|              1300005.0 1700005.0
+[jar-cli] ses|            )
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|)
+
+[read] Success warnings=0
+
+[item] 1 BoardOutline comp=0 cl=1 nets=[] fixed=SYSTEM_FIXED
+[item] 2 Pin comp=1 cl=1 nets=[1] fixed=UNFIXED
+[item] 3 ConductionArea comp=0 cl=1 nets=[1] fixed=UNFIXED
+[itemcount] 3
+
+
+[ses ses] bytes=885
+[ses ses]|(session "p8t13-conduction-area"
+[ses ses]|  (base_design "p8t13-conduction-area")
+[ses ses]|  (placement
+[ses ses]|    (resolution um 10)
+[ses ses]|    (component "pad_footprint"
+[ses ses]|      (place P1 200000 200000 front 0)
+[ses ses]|    )
+[ses ses]|  )
+[ses ses]|  (was_is
+[ses ses]|  )
+[ses ses]|  (routes 
+[ses ses]|    (resolution um 10)
+[ses ses]|    (parser
+[ses ses]|    )
+[ses ses]|    (library_out 
+[ses ses]|      (padstack VIA1
+[ses ses]|        (shape
+[ses ses]|          (circle F.Cu 60000 0 0)
+[ses ses]|        )
+[ses ses]|        (shape
+[ses ses]|          (circle B.Cu 60000 0 0)
+[ses ses]|        )
+[ses ses]|        (attach off)
+[ses ses]|      )
+[ses ses]|    )
+[ses ses]|    (network_out 
+[ses ses]|      (net NPLANE
+[ses ses]|        (wire 
+[ses ses]|          (polygon F.Cu 0
+[ses ses]|            1000000 1000000
+[ses ses]|            2000000 1000000
+[ses ses]|            2000000 2000000
+[ses ses]|            1000000 2000000
+[ses ses]|          )
+[ses ses]|          (window
+[ses ses]|            (polygon F.Cu 0
+[ses ses]|              1300005.0 1300005.0
+[ses ses]|              1700005.0 1300005.0
+[ses ses]|              1700005.0 1700005.0
+[ses ses]|              1300005.0 1700005.0
+[ses ses]|            )
+[ses ses]|          )
+[ses ses]|        )
+[ses ses]|      )
+[ses ses]|    )
+[ses ses]|  )
+[ses ses]|)

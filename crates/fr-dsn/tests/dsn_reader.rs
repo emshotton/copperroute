@@ -880,3 +880,51 @@ fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
     }
     assert_eq!(actual.len(), expected.len(), "corpus line count differs");
 }
+
+// ---------------------------------------------------------------------------------------------
+// Plan 8 Task 13: one of the four zero-coverage Plan 3 paths (docs/plan-3-handoff.md's register
+// row). The other three are `tests/parity_ses.rs`'s two and
+// `tests/placement_scope.rs::the_lock_type_position_arm_survives_a_whole_file_read`;
+// `tests/plan_3_zero_coverage.rs` is the list assertion over all four.
+// ---------------------------------------------------------------------------------------------
+
+/// **Zero-coverage path 4 of 4: quirk #105 — `Wiring.readViaScope`'s net-number loop that never
+/// increments** (Wiring.java:684-687), against `tests/data/p8t13-via-net-numbers.dsn` and the JVM
+/// transcript `tests/data/p8t13-directed-via-net-numbers.txt`.
+///
+/// Why no corpus fixture reaches it: the loop only pads when `getSubnets` answers **more than
+/// one** net, which needs a `(via … (net NAME))` with no subnet number on a name that carries
+/// several subnets — and several subnets only ever come from `Network.readNetScope`'s `(order …)`
+/// or `(fromto …)` arms (Network.java:1374-1386, :1401-1406). No `.dsn` in the 105-file corpus
+/// writes either, so every corpus via has exactly one found net and the missing `++currentIndex`
+/// is invisible. This fixture's `(order U1-1 U2-1 U3-1)` makes `createOrderedSubnets` split
+/// `NORDERED` into subnets 1 and 2, and the `(wiring …)` scope puts a via **and** a wire on the
+/// bare name, so the two loops stand side by side in one transcript:
+///
+/// ```text
+/// [item] 5 Via           … nets=[2,0]    <- readViaScope:684-687, no ++currentIndex
+/// [item] 6 PolylineTrace … nets=[1,2]    <- readWireScope:441-445, with it
+/// ```
+///
+/// **The jar does not survive its own file.** `[jar-cli] exit=<none: still running after 60s>`:
+/// the padded `0` reaches `DesignRulesChecker.calculateAllIncompletes:558`, which does
+/// `rules.nets.get(0)` — `Vector.get(-1)` — and throws
+/// `ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 2` on every autoroute pass,
+/// for ever. Changing the fixture's via to `(net NORDERED 1)` (one found net, no padding) makes
+/// the same file route and exit 0. That is a **jar**-side consequence of the quirk, not a port
+/// divergence: the port reproduces the reader exactly, as the rows above show. See the task-13
+/// report's XDIFF section.
+#[test]
+fn read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros() {
+    let (board, _) = common::read_directed("via-net-numbers");
+    common::assert_rows_match(
+        &common::directed_nets(&board),
+        &common::directed_rows("via-net-numbers", "[net]"),
+        "via-net-numbers nets",
+    );
+    common::assert_rows_match(
+        &common::directed_items(&board),
+        &common::directed_rows("via-net-numbers", "[item"),
+        "via-net-numbers item graph",
+    );
+}

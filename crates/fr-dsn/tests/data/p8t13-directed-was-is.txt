@@ -1,0 +1,165 @@
+# P8T13Probe was-is — Plan 8 Task 13, HEAD jar
+# fixture crates/fr-dsn/tests/data/p8t13-was-is.dsn (1001 bytes)
+HEADER jar=freerouting-current-executable.jar size=63288652
+
+[jar-cli] cmd=java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -jar <HEAD jar> -de crates/fr-dsn/tests/data/p8t13-was-is.dsn -do <out.ses>
+[jar-cli] exit=0
+[jar-cli] ses bytes=1367
+[jar-cli] ses|(session "p8t13-was-is"
+[jar-cli] ses|  (base_design "p8t13-was-is")
+[jar-cli] ses|  (placement
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (component "two_pad_footprint"
+[jar-cli] ses|      (place U1 1000000 1000000 front 0)
+[jar-cli] ses|      (place U2 2000000 1000000 front 0)
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|  (was_is
+[jar-cli] ses|  )
+[jar-cli] ses|  (routes 
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (parser
+[jar-cli] ses|    )
+[jar-cli] ses|    (library_out 
+[jar-cli] ses|      (padstack VIA1
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle F.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle B.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (attach off)
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|    (network_out 
+[jar-cli] ses|      (net NA
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1000000 1000000
+[jar-cli] ses|            1126250 1000000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1873750 1000000
+[jar-cli] ses|            1840186 966436
+[jar-cli] ses|            1159814 966436
+[jar-cli] ses|            1126250 1000000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            2000000 1000000
+[jar-cli] ses|            1873750 1000000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|      )
+[jar-cli] ses|      (net NB
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            2200000 1000000
+[jar-cli] ses|            2073750 1000000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            2073750 1000000
+[jar-cli] ses|            2045455 1028295
+[jar-cli] ses|            1354545 1028295
+[jar-cli] ses|            1326250 1000000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1200000 1000000
+[jar-cli] ses|            1326250 1000000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|)
+
+[read] Success warnings=0
+
+[pinorder] getPins() 5 4 3 2
+
+[pins] before the swap
+[pin] 2 U1-A pinIndex=0 nets=[1] changedTo=2
+[pin] 3 U1-B pinIndex=1 nets=[2] changedTo=3
+[pin] 4 U2-A pinIndex=0 nets=[1] changedTo=4
+[pin] 5 U2-B pinIndex=1 nets=[2] changedTo=5
+
+[ses before] bytes=505
+[ses before]|(session "p8t13-was-is"
+[ses before]|  (base_design "p8t13-was-is")
+[ses before]|  (placement
+[ses before]|    (resolution um 10)
+[ses before]|    (component "two_pad_footprint"
+[ses before]|      (place U1 1000000 1000000 front 0)
+[ses before]|      (place U2 2000000 1000000 front 0)
+[ses before]|    )
+[ses before]|  )
+[ses before]|  (was_is
+[ses before]|  )
+[ses before]|  (routes 
+[ses before]|    (resolution um 10)
+[ses before]|    (parser
+[ses before]|    )
+[ses before]|    (library_out 
+[ses before]|      (padstack VIA1
+[ses before]|        (shape
+[ses before]|          (circle F.Cu 60000 0 0)
+[ses before]|        )
+[ses before]|        (shape
+[ses before]|          (circle B.Cu 60000 0 0)
+[ses before]|        )
+[ses before]|        (attach off)
+[ses before]|      )
+[ses before]|    )
+[ses before]|    (network_out 
+[ses before]|    )
+[ses before]|  )
+[ses before]|)
+
+[swap] U1-A <-> U2-B returned=true
+
+[pins] after the swap
+[pin] 2 U1-A pinIndex=0 nets=[2] changedTo=5
+[pin] 3 U1-B pinIndex=1 nets=[2] changedTo=3
+[pin] 4 U2-A pinIndex=0 nets=[1] changedTo=4
+[pin] 5 U2-B pinIndex=1 nets=[1] changedTo=2
+
+[ses after] bytes=547
+[ses after]|(session "p8t13-was-is"
+[ses after]|  (base_design "p8t13-was-is")
+[ses after]|  (placement
+[ses after]|    (resolution um 10)
+[ses after]|    (component "two_pad_footprint"
+[ses after]|      (place U1 1000000 1000000 front 0)
+[ses after]|      (place U2 2000000 1000000 front 0)
+[ses after]|    )
+[ses after]|  )
+[ses after]|  (was_is
+[ses after]|    (pins U2-B U1-A)
+[ses after]|    (pins U1-A U2-B)
+[ses after]|  )
+[ses after]|  (routes 
+[ses after]|    (resolution um 10)
+[ses after]|    (parser
+[ses after]|    )
+[ses after]|    (library_out 
+[ses after]|      (padstack VIA1
+[ses after]|        (shape
+[ses after]|          (circle F.Cu 60000 0 0)
+[ses after]|        )
+[ses after]|        (shape
+[ses after]|          (circle B.Cu 60000 0 0)
+[ses after]|        )
+[ses after]|        (attach off)
+[ses after]|      )
+[ses after]|    )
+[ses after]|    (network_out 
+[ses after]|    )
+[ses after]|  )
+[ses after]|)

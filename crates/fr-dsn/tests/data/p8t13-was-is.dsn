@@ -1,0 +1,51 @@
+(pcb p8t13-was-is.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary
+      (path pcb 0  0 0  300000 0  300000 300000  0 300000  0 0)
+    )
+    (via VIA1)
+  )
+  (placement
+    (component two_pad_footprint
+      (place U1 100000 100000 front 0)
+      (place U2 200000 100000 front 0)
+    )
+  )
+  (library
+    (image two_pad_footprint
+      (side front)
+      (pin PAD A 0.0 0.0)
+      (pin PAD B 20000.0 0.0)
+    )
+    (padstack PAD
+      (shape (rect F.Cu -2500.0 -2500.0 2500.0 2500.0))
+      (attach off)
+    )
+    (padstack VIA1
+      (shape (circle F.Cu 6000))
+      (shape (circle B.Cu 6000))
+      (attach off)
+    )
+  )
+  (network
+    (net NA
+      (pins U1-A U2-A)
+    )
+    (net NB
+      (pins U1-B U2-B)
+    )
+    (class kicad_default NA NB
+      (rule (width 250) (clearance 200))
+    )
+  )
+  (wiring
+  )
+)
