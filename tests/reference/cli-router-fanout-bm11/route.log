@@ -1,0 +1,15 @@
+2026-09-02 02:38:09.803 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)
+2026-09-02 02:38:09.839 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-09-02 02:38:11.209 INFO   [6BF5CE\ED2378] Loading board file 'Issue730-DAC2020_bm11.dsn'...
+2026-09-02 02:38:11.217 INFO   New version available: v2.3.0
+2026-09-02 02:38:11.252 INFO   [6BF5CE\ED2378] Job '6BF5CE\ED2378' started at 2026-09-02T09:38:11.252864Z.
+2026-09-02 02:38:11.320 INFO   [6BF5CE\ED2378] Fanout stage started on board 'ee730ca03c079c9162ef2a925dc7e67a' with 157 of 193 SMD pins needing fanout (0 already connected, 36 netless).
+2026-09-02 02:38:12.916 INFO   [6BF5CE\ED2378] Fanout pass #1 on board 'c0e9ee02980db22d44f031261b6437f2' completed in 1.51 seconds with 147 SMD pins fanouted, 4 not routed, 0 insert errors, +53 extra vias (0 SMD pins still to check in pass, ripup costs=100).
+2026-09-02 02:38:13.266 INFO   [6BF5CE\ED2378] Fanout pass #2 on board 'f02619ddee6b7b7747b315fa316fd38c' completed in 0.24 seconds with 3 SMD pins fanouted, 3 not routed, 0 insert errors, +2 extra vias (0 SMD pins still to check in pass, ripup costs=200).
+2026-09-02 02:38:13.456 INFO   [6BF5CE\ED2378] Fanout pass #3 on board 'f02619ddee6b7b7747b315fa316fd38c' completed in 0.08 seconds with 0 SMD pins fanouted, 3 not routed, 0 insert errors, +0 extra vias (0 SMD pins still to check in pass, ripup costs=300).
+2026-09-02 02:38:13.474 INFO   [6BF5CE\ED2378] Fanout stage completed: started with 157 total SMD pins, completed in 2.14 seconds, escaped pins: 154/157 (98.1%), using 1.99 total CPU seconds, 12.97 GB total allocated, and 649.5 MB peak heap usage.
+2026-09-02 02:38:13.533 INFO   [6BF5CE\ED2378] Auto-routing stage started on board 'f02619ddee6b7b7747b315fa316fd38c' for 67 unrouted items.
+2026-09-02 02:38:19.221 INFO   [6BF5CE\ED2378] Auto-routing pass #1 on board 'f02619ddee6b7b7747b315fa316fd38c' was completed in 5.40 seconds with score 961.24 (6 unrouted and 1 violation), using 6.65 CPU seconds and the job allocated 49.90 GB of memory so far.
+2026-09-02 02:38:22.771 INFO   [6BF5CE\ED2378] Auto-routing pass #2 on board '3abb67ec67cca7fcb43f4cd9fff764a1' was completed in 3.13 seconds with score 987.49 (2 unrouted and 0 violations), using 10.54 CPU seconds and the job allocated 82.53 GB of memory so far.
+2026-09-02 02:38:23.089 INFO   [6BF5CE\ED2378] Auto-routing stage completed: started with 160 unrouted nets, completed in 11.69 seconds, final score: 987.49 (2 unrouted and 0 violations), using 10.54 total CPU seconds, 82.53 GB total allocated, and 562.6 MB peak heap usage.
+2026-09-02 02:38:23.095 INFO   [6BF5CE\ED2378] Job '6BF5CE\ED2378' finished with state: COMPLETED (elapsed: 11.84 seconds, finished at UTC: 2026-09-02T09:38:23.094652Z).

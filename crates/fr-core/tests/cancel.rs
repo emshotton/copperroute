@@ -249,6 +249,7 @@ fn route_with(token: &CancelToken, sink: &SyncProgressSink) -> Run {
     let env_source = EnvironmentVariablesSource::new(&env_map);
     let cli_source = CliSettings::new(&argv);
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: dsn_source.get_settings(),
         cli_rules: None,
         scheduler_rules: None,

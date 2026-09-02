@@ -33,7 +33,7 @@ usage() {
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
-  echo "           p8t2probe, p8t2, p8t5" >&2
+  echo "           p8t2probe, p8t2, p8t5, p8t1" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -56,6 +56,14 @@ needs_jar=0
 needs_jdk25=0
 # Set by `p3t3`: use the pinned 2.3.0 jar rather than the clone's HEAD build (ruling 10).
 needs_jar_230=0
+# Set by `p8t1` and by `p8t2 e2e`: **there is no Java class to compile**, because what those two
+# drive is the jar *as a program* — `java -jar <jar> -de … -do …` against `freerouting -de … -do
+# …`. A `P8T1.java` could only re-implement `parity::normalize_log` a second time in a second
+# language, and two copies of a harness rule can agree with each other while both being wrong. So
+# the Rust binary owns the comparison, prints its own per-stem verdict table and exits non-zero on
+# any divergence; this script builds it, builds the port's own binary in release, and hands the
+# verdict through. See `scripts/differential/rust/src/bin/p8t1.rs`'s header and the Task 6 report.
+rust_only=0
 # Set by `p3t15`: extra driver sources to compile alongside `$javaclass.java` in jar mode (it
 # delegates its mode 4 to `P3T3.main`).
 extra_jar_sources=()
@@ -726,11 +734,41 @@ case "$driver" in
     # The committed transcript is `crates/fr-core/tests/data/p8t2-manifest-shape.txt`, which
     # `crates/fr-core/tests/manifest.rs` asserts against row by row; this driver regenerates and
     # re-verifies it.
+    #
+    # **Task 6 added the `e2e` mode**, which is the plan's own `p8t2`: `p8t1`'s argv plus
+    # `--router.result_json=<f>`, run through both whole programs, with the two manifests compared
+    # field for field after `parity::normalize_manifest`. That comparison has no Java half for the
+    # same reason `p8t1` has none, so `p8t2 e2e` switches this driver to `rust_only` while
+    # `p8t2 shape` stays the Java-vs-Rust pair Task 4 built.
     javaclass=P8T2
     javapkg="core.results"
     default_args=("shape" "$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t2-scratch")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
+    # An `if`, not `&&`: a failing `[[ ]]` as the last statement of a `case` arm is a non-zero
+    # exit status, which `set -e` at the top of this script would treat as a failure.
+    if [[ "${1:-}" == "e2e" ]]; then rust_only=1; fi
+    ;;
+  p8t1)
+    # Plan 8 Task 6, controller ruling AV — **the plan's headline gate**. The HEAD jar and the
+    # port, run as two whole programs on the argv recorded in each
+    # `tests/reference/cli-<stem>/argv.txt`, compared on three rungs: byte-identical SES (after
+    # quirk #92's four `(parser …)` keyword literals are rewritten on the jar side, the same
+    # normalisation `batch_parity.rs` applies), equal exit code, equal `parity::normalize_log`.
+    # No tolerance: a divergence is an `XDIFF` row in `crates/freerouting/README.md` with the
+    # first differing byte and a one-line root cause.
+    #
+    # `rust_only=1` — see the flag's own comment above for why there is no `P8T1.java`.
+    #
+    # Default args are the four `ci` stems; `all` runs every stem of `cli-fixtures.txt` (the four
+    # slow ones take about a minute each on both sides), and a list of stem names runs those.
+    #
+    # The **budget** is live on both sides here, unlike every `p7t*` driver: the port's CLI runs
+    # `fr_core::RouterBudget::default()` because that is what a user gets, and the jar's
+    # `optChangedArea` limit is a javac-inlined constant nothing can switch off.
+    # `scripts/gen-cli-reference.sh`'s header states the difference and what bounds the risk.
+    rust_only=1
+    default_args=()
     ;;
   p8t5)
     # Plan 8 Task 5: the legacy command line — `GlobalSettings.applyCommandLineArguments`
@@ -772,6 +810,34 @@ fi
 
 if [[ "$needs_jar_230" -eq 1 ]]; then
   FREEROUTING_JAR="$FREEROUTING_JAR_230"
+fi
+
+if [[ "$rust_only" -eq 1 ]]; then
+  if [[ ! -f "$FREEROUTING_JAR" ]]; then
+    echo "error: freerouting jar not found at $FREEROUTING_JAR" >&2
+    echo "       build it in the sibling checkout (./gradlew build), or set FREEROUTING_JAR" >&2
+    exit 1
+  fi
+  # The **port's own binary**, in release: a debug build routes a whole board in minutes rather
+  # than seconds, and the driver runs it once per stem on both lanes.
+  echo "== building the port's binary (release) =="
+  (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+  echo "== building Rust driver ($driver) =="
+  (cd "$DIFF_ROOT/rust" && cargo build --release --bin "$driver" --quiet)
+  echo "== running ($driver ${args[*]:-}) =="
+  export FREEROUTING_JAR FREEROUTING_JAVA_DIR
+  export FREEROUTING_BIN="$ROOT/target/release/freerouting"
+  export JAVA="$JAVA25_HOME/bin/java"
+  # The driver prints its own per-stem verdict table and exits non-zero on any divergence, so
+  # there is nothing to diff and its exit status is the verdict.
+  "$DIFF_ROOT/rust/target/release/$driver" ${args+"${args[@]}"}
+  status=$?
+  if [[ "$status" -eq 0 ]]; then
+    echo "MATCH: $driver"
+  else
+    echo "DIFF: $driver — see the table above"
+  fi
+  exit "$status"
 fi
 
 if [[ "$needs_jar" -eq 1 ]]; then

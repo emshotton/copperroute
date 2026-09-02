@@ -39,19 +39,19 @@ pub struct Cli {
     /// as `Log4j2ConfigurationFactory.parseLevel` (:130-135) does.
     #[arg(long, global = true)]
     pub log_level: Option<String>,
-    /// NOT YET WIRED (Plan 8 Task 6): names a `freerouting.json` for the priority-10 settings
-    /// tier. Accepted and validated as a path today, but no run path reads it yet. Port only:
-    /// Java has no flag for this.
+    /// A `freerouting.json` to read router settings from, at priority 10
+    /// (`settings/sources/JsonFileSettings.java`). Without it the working directory's
+    /// `freerouting.json` is used if it exists — the port's stand-in for Java's OS-standard
+    /// user-data path, which is not ported (spec §2). Port only: Java has no flag for this.
     ///
-    // obligation: Plan 8 Task 6 — `fr_settings::sources::JsonFileSettings::new` for a path given
-    //   here, `::from_working_directory` for the default, both handed to `resolve_headless`
-    //   through the `json_file` input that `crates/fr-settings/src/resolve.rs`'s own
-    //   `// obligation:` describes. Until then this field is parsed and unread, and the help text
-    //   above says so rather than promising priority-10 behaviour a user would not get. The
-    //   wording to restore once it is wired: "A `freerouting.json` to read router settings from,
-    //   at priority 10 (`settings/sources/JsonFileSettings.java`). Without it the working
-    //   directory's `freerouting.json` is used if it exists — the port's stand-in for Java's
-    //   OS-standard user-data path, which is not ported (spec §2)."
+    /// **Wired in Plan 8 Task 6**, which added `SettingsInputs::json_file` and made
+    /// `commands::route` fill it — `JsonFileSettings::new` for a path given here,
+    /// `::from_working_directory` for the default. The Task 5 `// obligation:` that stood here,
+    /// and the ~~"NOT YET WIRED (Plan 8 Task 6)"~~ opening of this help text, are discharged.
+    /// Note that `commands::route` recovers the value from the **raw** argv rather than from this
+    /// field, because the runners are handed the raw argv and not the parsed `Cli` (see
+    /// [`crate::run`]); this declaration is what puts the flag in `--help` and what makes clap
+    /// accept it.
     #[arg(long, global = true, value_name = "FILE")]
     pub settings: Option<PathBuf>,
     #[command(subcommand)]

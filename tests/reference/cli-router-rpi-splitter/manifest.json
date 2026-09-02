@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-02T09:13:29.552018Z",
+  "app_version": "2.3.1-SNAPSHOT",
+  "git_sha": "unknown",
+  "fixture": {
+    "filename": "Issue143-rpi_splitter.dsn",
+    "sha256": "d079367aee3e3bf8c68d589d0cfba9fdbabf16693491a7873af459016e2680fe"
+  },
+  "settings_snapshot": {
+    "enabled": true,
+    "algorithm": "freerouting-router",
+    "fanout": {
+      "enabled": true,
+      "max_passes": 20,
+      "max_items": 2147483647,
+      "max_milliseconds_per_pin": 10000,
+      "ripup_allowed": true,
+      "min_escape_length_mm": 2.5,
+      "max_escape_length_mm": 4.5,
+      "start_via_diameter_mm": 0.25,
+      "end_via_diameter_mm": 0.25,
+      "pin_sorting_order": "outer_first",
+      "fallback_to_board_vias": true
+    },
+    "copper_to_edge_clearance_um": 500.0,
+    "hole_clearance_um": 0.0,
+    "neck_width_um": 0.0,
+    "strict_drc": false,
+    "job_timeout": "12:00:00",
+    "max_passes": 8,
+    "trace_pull_tight_accuracy": 500,
+    "allowed_via_types": true,
+    "automatic_neckdown": true,
+    "optimizer": {
+      "enabled": true,
+      "algorithm": "freerouting-optimizer",
+      "max_passes": 100,
+      "max_items": 2147483647,
+      "max_threads": 7,
+      "improvement_threshold": 0.01,
+      "max_consecutive_failures": 50,
+      "additional_ripup_cost_factor_at_start": 10,
+      "trace_ripup_cost_factor": 0.6,
+      "max_autoroute_passes": 6
+    },
+    "scoring": {
+      "default_preferred_direction_trace_cost": 1.0,
+      "default_undesired_direction_trace_cost": 1.0,
+      "via_costs": 50,
+      "plane_via_costs": 5,
+      "start_ripup_costs": 100,
+      "unrouted_net_penalty": 5000000.0,
+      "clearance_violation_penalty": 1000000.0,
+      "bend_penalty": 10.0,
+      "default_bend_cost": 0.0
+    },
+    "max_threads": 7,
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T//gen-cli-reference.d0GqRK/router-rpi-splitter.manifest.json"
+  },
+  "phases": {
+    "fanout": {},
+    "autorouter": {
+      "duration_seconds": 0.517,
+      "passes_completed": 3
+    },
+    "optimizer": {}
+  },
+  "board_statistics": {
+    "host": "CadSoft,Eagle V 9.5 - Using eagle2freerouting.ulp, version 2022-09-01, on 9/20/2022 9:56 PM",
+    "unit": "mm",
+    "board": {
+      "bounding_box": {
+        "x": 54025.8,
+        "y": 106451.4,
+        "width": -25.4,
+        "height": -25.4
+      },
+      "size": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 54051.2,
+        "height": 106476.8
+      }
+    },
+    "layers": {
+      "total_count": 2,
+      "signal_count": 2
+    },
+    "items": {
+      "total_count": 58,
+      "trace_count": 16,
+      "via_count": 9,
+      "conduction_area_count": 0,
+      "drill_item_count": 0,
+      "pin_count": 24,
+      "component_count": 0,
+      "other_count": 9
+    },
+    "components": {
+      "total_count": 3
+    },
+    "pads": {
+      "total_count": 24
+    },
+    "nets": {
+      "total_count": 5,
+      "class_count": 1
+    },
+    "connections": {
+      "maximum_count": 5,
+      "incomplete_count": 0
+    },
+    "traces": {
+      "total_count": 16,
+      "total_segment_count": 30,
+      "total_length": 282576.28,
+      "total_length_mm": 111.2505,
+      "total_weighted_length": 1.4081714E10,
+      "average_length": 17661.018,
+      "total_vertical_length": 218204.08,
+      "total_horizontal_length": 10418.852,
+      "total_angled_length": 65350.77
+    },
+    "bends": {
+      "total_count": 14,
+      "90_degree_count": 0,
+      "45_degree_count": 14,
+      "other_angle_count": 0
+    },
+    "vias": {
+      "total_count": 9,
+      "through_hole_count": 9,
+      "blind_count": 0,
+      "buried_count": 0
+    },
+    "clearance_violations": {
+      "total_count": 0,
+      "min_violation_um": 0.0,
+      "max_violation_um": 0.0,
+      "avg_violation_um": 0.0
+    },
+    "fanout": {
+      "total_smd_pins": 10,
+      "pins_to_escape": 0,
+      "escaped_count": 9
+    }
+  },
+  "normalized_score": 999.9719,
+  "resource_usage": {
+    "cpu_time": 0.0,
+    "max_memory": 0.0,
+    "peak_memory": 0.0,
+    "io_read": 0.0,
+    "io_written": 0.0
+  },
+  "final_state": "COMPLETED",
+  "exit_code": 0,
+  "output_written": true
+}

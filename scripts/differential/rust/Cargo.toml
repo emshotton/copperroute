@@ -34,6 +34,11 @@ fr-core = { path = "../../../crates/fr-core" }
 # `logging::console_level_string`, so the driver compares the code the binary runs rather than a
 # second copy of the rule.
 freerouting = { path = "../../../crates/freerouting" }
+# Added for the Plan 8 Task 6 drivers (`p8t1`, `p8t2 e2e`): ruling 13's process runners and
+# normalisers, so the driver and `crates/freerouting/tests/cli_e2e.rs` compare through the same
+# code rather than through two copies of the rule.
+parity = { path = "../../../tests/parity" }
+serde_json = "1"
 
 [[bin]]
 name = "t14"
@@ -175,3 +180,10 @@ path = "src/bin/p8t2.rs"
 [[bin]]
 name = "p8t5"
 path = "src/bin/p8t5.rs"
+
+# Plan 8 Task 6: the headline gate — the HEAD jar and the port, run as two whole programs on the
+# argv of every `tests/reference/cli-fixtures.txt` stem. Rust-only; see the driver's header for
+# why there is no `P8T1.java`.
+[[bin]]
+name = "p8t1"
+path = "src/bin/p8t1.rs"

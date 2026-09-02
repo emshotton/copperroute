@@ -12,10 +12,11 @@ command line, and it answers what the jar answers: `Both an input file and an ou
 specified …` and **exit 1**, not a usage screen.
 
 > **Status.** Plan 8 Task 5 landed the command line: the parse, the mode ladder, the exit ladder
-> and the log surface. It did **not** land the run path — `route`, `drc` and `info` are stubs that
-> answer exit 3 until Tasks 6, 7 and 12. Every "reaches the router" sentence below describes the
-> spelling and the decision, not a wired behaviour. Task 13 expands this file into the full
-> reference (every accepted flag, the `p8t1`–`p8t7` acceptance table, the MCP delta table).
+> and the log surface. **Task 6 landed `route`** — the sixteen steps of `Freerouting.initializeCli`
+> end to end, with SES byte parity against the HEAD jar on eleven boards (see the acceptance table
+> below). `drc` and `info` are still stubs that answer exit 3 until Tasks 7 and 12. Task 13 expands
+> this file into the full reference (every accepted flag, the `p8t1`-`p8t7` acceptance table, the
+> MCP delta table).
 
 ---
 
@@ -53,7 +54,9 @@ who learns this CLI does not type them at the jar.
 | `--kicad-json <file>` | a KiCad board file in its own slot (native form only, ruling 14) | **none** — on the legacy form a `.json` takes Java's own slot |
 | `--set <section.field=value>` | a generic settings override | `--section.field=value`, which the legacy form still accepts |
 
-`--settings` is accepted and unread today; see the `// obligation:` at `cli::Cli::settings`.
+`--settings` was accepted and unread through Task 5; **Task 6 wired it** — `SettingsInputs::json_file`
+now carries the priority-10 tier into both of `resolve_headless`'s chains, and without the flag the
+working directory's `freerouting.json` stands in for Java's OS-standard user-data path.
 
 ---
 
@@ -132,3 +135,71 @@ prefix, **last** occurrence wins), and an unrecognised name silently means `INFO
 | the log level ladder, the stderr divergence, `MESSAGE_MAP`, and the `logger/**` roster | `src/logging.rs` |
 | the Java behaviours reproduced on purpose | `docs/java-quirks.md` #131, #143, #259-#264 |
 | the differential that pins all of it against the jar | `scripts/differential/{run.sh p8t5, sweep-p8t5.sh}`, 86 argv shapes |
+
+
+---
+
+## `route`: the acceptance table (Plan 8 Task 6, controller ruling AV)
+
+`freerouting route` is measured against the **HEAD jar as a whole program**, not against a method.
+Two harnesses, one comparison:
+
+* `scripts/differential/run.sh p8t1 [all]` runs `java -jar <jar> <argv>` and `freerouting <argv>`
+  live, on the argv recorded in each `tests/reference/cli-<stem>/argv.txt`;
+* `crates/freerouting/tests/cli_e2e.rs` runs the port against the **committed** outputs of the
+  same jar runs (`scripts/gen-cli-reference.sh`), so a machine with no JDK checks the same thing.
+
+Four rungs per stem: byte-identical SES, equal exit code, equal `parity::normalize_log`, and —
+`p8t2 e2e`'s — equal `parity::normalize_manifest` for a second run with `--router.result_json=<f>`.
+
+| stem | lane | argv beyond `-de`/`-do` | `p8t1` | `p8t2 e2e` |
+|---|---|---|---|---|
+| `router-rpi-splitter` | ci | `-mp 8` | MATCH | MATCH |
+| `router-j2-reference` | ci | `-mp 99` | MATCH | MATCH |
+| `router-ecc83-input` | ci | `-mp 8` | MATCH | MATCH |
+| `router-empty-board` | ci | `-mp 1`, both stages off | MATCH | MATCH |
+| `router-dac2020-bm01` | slow | `-mp 2` | MATCH | MATCH |
+| `router-tutorial-board` | slow | `-mp 8` | MATCH | MATCH |
+| `router-fanout-bm11` | slow | `-mp 2`, optimizer off | MATCH | MATCH |
+| `router-strict-drc-cnh` | slow | `-mp 2` | MATCH | MATCH |
+| `tutorial_board` | slow | *(bare)* | MATCH | MATCH |
+| `Issue026-J2_reference` | slow | *(bare)* | MATCH | MATCH |
+| `large-outline` | slow | `-mp 2`, optimizer off | MATCH | MATCH |
+
+Plus four **refusal rows**, which is where the exit-code and log rungs earn their keep — every
+stem above succeeds and emits no message `logging::MESSAGE_MAP` names, so on the stems the log
+rung compares two empty projections.
+
+| row | argv | `p8t1` | what it pins |
+|---|---|---|---|
+| `missing-input` | `-de <missing>.dsn -do a.ses` | MATCH | `Freerouting.java:105` + `:109`, and quirk #261's duplicated `ERROR` folding back into one |
+| `no-files` | `-mp 1` | MATCH | `Freerouting.java:81`'s refusal, exit 1 |
+| `do-out-dsn` | `-de <dsn> -do b.dsn -mp 1` | MATCH | quirk #268: a 0-byte file, exit 1 |
+| `invalid-input-java-hangs` | session bytes under a `.dsn` name | **XDIFF** | quirk #244 / plan ruling 7 — **the jar hangs for ever**; the port exits 1. Not run against the jar, for the obvious reason |
+
+### XDIFF rows
+
+**One**, and it is the row above. `invalid-input-java-hangs` is a *totalisation* the plan asked
+for (ruling 7), not a defect: `Freerouting.isCliTerminalState` (`:189-194`) omits
+`RoutingJobState.INVALID`, which `RoutingJobScheduler.java:83`/`:253` assigns for an input that is
+neither DSN nor KiCad JSON, so the jar sits in `:151-158`'s `while (…) Thread.sleep(500)` at 0 %
+CPU with no output and no message. The port exits **1**. Pinned by
+`cli_e2e.rs::de_a_ses_exits_1_instead_of_hanging`.
+
+**No stem row is an XDIFF**, and there is no tolerance anywhere in the ladder. The one
+normalisation the SES comparison applies is quirk **#92**'s closed set of four `(parser …)`
+keyword literals, rewritten on the *jar* side — the same rewrite `crates/fr-router/tests/
+batch_parity.rs` applies to `batch.ses`, and for the same reason (Plan 3 ruling 1 pins the port's
+writer to the 2.3.0 spelling because HEAD writes Specctra its own lexer cannot read back).
+Measured on `router-rpi-splitter`: those two lines are the **only** difference between the jar's
+3 654 bytes and the port's 3 656.
+
+### The budget is live on both sides
+
+Every `p7t*` driver runs the port with `RouterBudget::disabled()` against a jar whose
+`optChangedArea` limit is a javac-inlined constant. **This gate does not**: the port's CLI runs
+`fr_core::RouterBudget::default()` — Java's own 1000 / 10000 / 250 / 1000 literals — because that
+is what a user gets, and the comparison is between two whole programs. The cost is that a live
+wall clock is a machine-speed dependency; the bound on it is
+`scripts/gen-cli-reference.sh`'s `batch.ses` cross-check, which requires each CLI reference to be
+byte-identical to Plan 7's independently generated one and fails loudly if it is not.

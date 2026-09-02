@@ -828,3 +828,179 @@ mod tests {
         assert!(!java_is_blank("abc"));
     }
 }
+
+// =================================================================================================
+// `Instant.now().toString()` — the `generated_at` producer (Plan 8 Task 6)
+// =================================================================================================
+
+/// `java.time.Instant.now().toString()` (`RoutingResultManifest.java:101`) — ISO-8601 UTC with a
+/// trailing `Z`, hand-rolled from [`SystemTime`] because this workspace has no date library and
+/// may not add one.
+///
+/// # Why it is hand-rolled, and what was measured
+///
+/// The Task 4 controller note left the choice open: format it here, or thread a string in from
+/// the CLI edge. Task 6 formats it here, because `commands/route.rs`, `commands/drc.rs` and the
+/// MCP tool all need the same rendering and a string threaded from three call sites is three
+/// chances to spell it differently. `p8t2`'s `normalize_manifest` strips the field, so the
+/// differential cannot catch a wrong format; [`crate::manifest`]'s unit tests pin it against
+/// **jar-measured** examples instead (JDK 25, `Instant.ofEpochSecond(1_756_800_000, nanos)`):
+///
+/// ```text
+/// nanos          Instant.toString()
+/// 0              2025-09-02T08:00:00Z
+/// 1              2025-09-02T08:00:00.000000001Z
+/// 1_000          2025-09-02T08:00:00.000001Z
+/// 1_000_000      2025-09-02T08:00:00.001Z
+/// 10_000_000     2025-09-02T08:00:00.010Z
+/// 100_000_000    2025-09-02T08:00:00.100Z
+/// 120_000_000    2025-09-02T08:00:00.120Z
+/// 123_000_000    2025-09-02T08:00:00.123Z
+/// 123_456_789    2025-09-02T08:00:00.123456789Z
+/// 500_000_000    2025-09-02T08:00:00.500Z
+/// 999_999_999    2025-09-02T08:00:00.999999999Z
+/// ```
+///
+/// The rule those rows encode is `DateTimeFormatter.ISO_INSTANT`'s: the fractional part is
+/// **omitted** when the nanosecond field is zero and is otherwise printed at the smallest of
+/// **3, 6 or 9** digits that represents it exactly. Seconds are always printed — `Instant
+/// .ofEpochSecond(0).toString()` is `1970-01-01T00:00:00Z`, measured, not assumed.
+///
+// renamed: Instant.now().toString() -> now_utc_iso8601 — Java's is a library call on a type this
+// port does not have; the name says what the string is rather than which class produced it.
+#[must_use]
+pub fn now_utc_iso8601() -> String {
+    format_utc_iso8601(std::time::SystemTime::now())
+}
+
+/// [`now_utc_iso8601`] with the instant supplied, so a test can pin the rendering.
+///
+/// A `SystemTime` before the Unix epoch renders with a negative year exactly as
+/// `Instant.toString()` would only for years `0000`-`9999`; outside that range Java prefixes a
+/// `+`/`-` and this port does not, which is unreachable from a real clock and is recorded here
+/// rather than branched on.
+#[must_use]
+pub fn format_utc_iso8601(time: std::time::SystemTime) -> String {
+    let (secs, nanos) = match time.duration_since(std::time::UNIX_EPOCH) {
+        Ok(delta) => (
+            i64::try_from(delta.as_secs()).unwrap_or(i64::MAX),
+            delta.subsec_nanos(),
+        ),
+        // Before the epoch: `Duration` is unsigned, so the error carries the magnitude. A
+        // non-zero sub-second part borrows a second, exactly as `Instant`'s own normalisation
+        // does.
+        Err(error) => {
+            let delta = error.duration();
+            let secs = i64::try_from(delta.as_secs()).unwrap_or(i64::MAX);
+            match delta.subsec_nanos() {
+                0 => (-secs, 0),
+                sub => (-secs - 1, 1_000_000_000 - sub),
+            }
+        }
+    };
+    let days = secs.div_euclid(86_400);
+    let seconds_of_day = secs.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    let (hour, minute, second) = (
+        seconds_of_day / 3600,
+        (seconds_of_day % 3600) / 60,
+        seconds_of_day % 60,
+    );
+    let mut out = format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}");
+    // `DateTimeFormatter.ISO_INSTANT`'s variable fraction: nothing, milli, micro or nano.
+    if nanos != 0 {
+        if nanos % 1_000_000 == 0 {
+            out.push_str(&format!(".{:03}", nanos / 1_000_000));
+        } else if nanos % 1_000 == 0 {
+            out.push_str(&format!(".{:06}", nanos / 1_000));
+        } else {
+            out.push_str(&format!(".{nanos:09}"));
+        }
+    }
+    out.push('Z');
+    out
+}
+
+/// Howard Hinnant's `civil_from_days`: a day number relative to 1970-01-01 to `(year, month,
+/// day)` in the proleptic Gregorian calendar, which is what `java.time` uses.
+///
+/// Not a port of any Java line — `java.time.LocalDate.ofEpochDay` is the JDK's own arithmetic and
+/// this is the same algorithm, written out because the workspace has no date library.
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = if m <= 2 { y + 1 } else { y };
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    (year, m as u32, d as u32)
+}
+
+#[cfg(test)]
+mod instant_tests {
+    use super::*;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    /// The eleven rows measured on JDK 25 — see [`now_utc_iso8601`]'s table.
+    #[test]
+    fn the_rendering_is_the_jvms_instant_to_string() {
+        let base = 1_756_800_000u64;
+        for (nanos, expected) in [
+            (0u32, "2025-09-02T08:00:00Z"),
+            (1, "2025-09-02T08:00:00.000000001Z"),
+            (1_000, "2025-09-02T08:00:00.000001Z"),
+            (1_000_000, "2025-09-02T08:00:00.001Z"),
+            (10_000_000, "2025-09-02T08:00:00.010Z"),
+            (100_000_000, "2025-09-02T08:00:00.100Z"),
+            (120_000_000, "2025-09-02T08:00:00.120Z"),
+            (123_000_000, "2025-09-02T08:00:00.123Z"),
+            (123_456_789, "2025-09-02T08:00:00.123456789Z"),
+            (500_000_000, "2025-09-02T08:00:00.500Z"),
+            (999_999_999, "2025-09-02T08:00:00.999999999Z"),
+        ] {
+            let time = UNIX_EPOCH + Duration::new(base, nanos);
+            assert_eq!(format_utc_iso8601(time), expected, "nanos {nanos}");
+        }
+        // `Instant.ofEpochSecond(0).toString()` — seconds are printed even when zero.
+        assert_eq!(format_utc_iso8601(UNIX_EPOCH), "1970-01-01T00:00:00Z");
+    }
+
+    /// A handful of calendar edges the day arithmetic has to get right: the leap day of a
+    /// century-divisible leap year, the day after it, and a year boundary.
+    #[test]
+    fn the_calendar_is_proleptic_gregorian() {
+        for (secs, expected) in [
+            (951_782_400u64, "2000-02-29T00:00:00Z"),
+            (951_868_800, "2000-03-01T00:00:00Z"),
+            (1_072_915_199, "2003-12-31T23:59:59Z"),
+            (1_072_915_200, "2004-01-01T00:00:00Z"),
+            (4_102_444_800, "2100-01-01T00:00:00Z"),
+        ] {
+            assert_eq!(
+                format_utc_iso8601(UNIX_EPOCH + Duration::from_secs(secs)),
+                expected,
+                "secs {secs}"
+            );
+        }
+    }
+
+    /// The clock read `RoutingResultManifest::from_job` gets: a well-formed instant in this
+    /// decade, ending in `Z`.
+    #[test]
+    fn now_is_well_formed() {
+        let now = now_utc_iso8601();
+        assert!(now.ends_with('Z'), "{now}");
+        assert_eq!(now.as_bytes()[4], b'-', "{now}");
+        assert_eq!(now.as_bytes()[10], b'T', "{now}");
+        assert!(now.starts_with("20"), "{now}");
+        // Two reads are ordered, which is what a wall clock has to be for the field to mean
+        // anything.
+        assert!(now_utc_iso8601() >= now);
+        let _ = SystemTime::now();
+    }
+}

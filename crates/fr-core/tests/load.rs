@@ -309,6 +309,7 @@ fn the_settings_pass_is_the_same_two_steps_resolve_headless_runs() {
 
     let through_ladder = fr_settings::resolve_headless(
         &SettingsInputs {
+            json_file: None,
             dsn: None,
             cli_rules: None,
             scheduler_rules: None,

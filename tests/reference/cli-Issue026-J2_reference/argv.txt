@@ -1,0 +1,4 @@
+-de
+<JAVA_DIR>/fixtures/Issue026-J2_reference.dsn
+-do
+<OUT>/route.ses

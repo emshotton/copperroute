@@ -84,6 +84,7 @@ pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_TH
 /// | [`Self::state`] | `:571-585` — the `TaskState` the last `fireTaskStateChangedEvent` carries (quirk #214) |
 /// | [`Self::continue_routing`] | `:587` — `return !thread.isStopAutoRouterRequested()` |
 /// | [`Self::passes_run`] | `:520-522` — `currentPass`, as `:574`/`:583` report it |
+/// | [`Self::last_reported_pass`] | `:276` — the value the loop last wrote into `job.currentPass` |
 /// | [`Self::per_pass`] | ruling 1(a) — the acceptance ladder's per-pass tuple |
 ///
 /// The board itself is **not** in here: Java's `:552` writes `job.board`, and the port's `board`
@@ -98,6 +99,15 @@ pub struct BatchLoopResult {
     /// `currentPass` as the loop left it (`:520-522`). Because `:521` increments only when the
     /// loop is going round again, a run that stopped at `maxPasses = n` leaves this at `n + 1`.
     pub passes_run: i32,
+    /// The value `:276`'s `job.setCurrentPass(currentPass)` last wrote — `0` when the loop never
+    /// reached it.
+    ///
+    /// **Not** [`Self::passes_run`], and the difference is quirk #230: `:270-274`'s cap check
+    /// runs *before* `:276`, so a `maxPasses`-capped exit leaves the job's field one behind the
+    /// local. Plan 8's CLI writes this into [`fr_core::RoutingJob::set_current_pass`], because
+    /// `RoutingResultManifest.fromJob:124-126` reports the **job's** field and not the loop's.
+    /// This crate has no `RoutingJob` to write, so it hands the value back instead.
+    pub last_reported_pass: i32,
     /// What `BatchFanout.fanoutBoard` answered (`:123-172`), or `None` when the fanout stage did
     /// not run — `settings.fanout.enabled` off (`:89`) or a board with no SMD pins at all
     /// (`:90-91`). Java keeps no such field: the summary is a local, read twice, at `:173`
@@ -266,6 +276,9 @@ impl AutorouteBatchLoop {
 
         // :236-242.
         let mut current_pass: i32 = 1;
+        // The value `:276` last published into `job.currentPass`; see
+        // [`BatchLoopResult::last_reported_pass`].
+        let mut last_reported_pass: i32 = 0;
         let mut consecutive_no_improvement_passes: i32 = 0;
         let mut fanout_recovery_applied = false;
         let mut last_best_score = f32::NEG_INFINITY;
@@ -324,7 +337,10 @@ impl AutorouteBatchLoop {
             }
 
             // :275-277 — `job.setCurrentPass(currentPass)`. The port has no `RoutingJob`
-            // (Plan 8's, spec §13); `PassRecord::pass` is the value it published.
+            // (Plan 8's, spec §13), so the value is recorded and handed back as
+            // [`BatchLoopResult::last_reported_pass`]; Plan 8 Task 6's `commands::route` writes
+            // it into the job, which is what the result manifest reads.
+            last_reported_pass = current_pass;
             // :279-280.
             progress.on_event(&RoutingEvent::TaskStateChanged {
                 algorithm: NamedAlgorithmType::Router,
@@ -550,6 +566,7 @@ impl AutorouteBatchLoop {
             state,
             continue_routing: !stop.is_stop_auto_router_requested(),
             passes_run: current_pass,
+            last_reported_pass,
             fanout: fanout_summary,
             per_pass,
         })

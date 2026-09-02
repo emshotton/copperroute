@@ -52,6 +52,20 @@ use legacy::{ExitCode, Level};
 /// `switch` where the rewrite matches by prefix (scan ruling R19). Feeding it the rewritten argv
 /// would make `-mpx 5` set `max_passes`, which no Java parser does. Each command runner therefore
 /// takes it as its second argument.
+//
+// not ported: Freerouting.main's startup version line (`Freerouting.java:1120`) —
+//   `FRLogger.info("Freerouting " + VERSION_NUMBER_STRING)`, i.e.
+//   `Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)`, printed before anything else on every
+//   run. The port does not print it, and the reason is controller ruling AT: `PARITY_VERSION` is
+//   for FILE-FORMAT fields, and a *banner* that claims to be the jar would be the port lying
+//   about what it is. Printing the crate's own version instead would be a different string, which
+//   is a divergence either way — so the divergence is taken in the honest direction and recorded
+//   here and in `parity::normalize_log`'s `SUPPRESSED_SITES`, which is the one place the `p8t1`
+//   comparison skips a `MESSAGE_MAP` site. `crate::logging::MESSAGE_MAP` still carries the entry,
+//   because its job is to enumerate the CLI's `FRLogger` calls, not to promise the port makes
+//   them.
+// not ported: Freerouting.main's `Couldn't initialize the GUI` arm (`:1450`) — spec §2 has no GUI,
+//   and `legacy::rewrite` never produces a GUI mode.
 #[must_use]
 pub fn run(raw: &[String]) -> ExitCode {
     logging::init(logging::level_from_argv(raw));

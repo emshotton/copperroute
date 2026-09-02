@@ -7,6 +7,13 @@
 //! means, why the git-sha rows re-exec a child process, and which half of the plan's `p8t2` gate
 //! lands in Task 4 (this one) versus Task 6 (the end-to-end `e2e` mode).
 //!
+//! **Task 6 added the `e2e` mode** ([`e2e`]), which is the plan's own `p8t2`: the same argv the
+//! `p8t1` gate uses, plus `--router.result_json=<f>`, run through **both whole programs**, with
+//! the two manifests compared field for field after `parity::normalize_manifest`. It is
+//! Rust-only, for exactly the reason `p8t1.rs`'s header gives — the thing under test is the jar,
+//! not a Java method — so `run.sh` runs it under `rust_only` and the driver prints its own
+//! verdict instead of being diffed against a Java transcript.
+//!
 //! The one asymmetry worth repeating here: **the port has no system properties**, so
 //! `resolveGitSha`'s two `System.getProperty` arms become environment lookups of the same names.
 //! A row whose input reads `prop:freerouting.git.sha="…"` sets a `-D` on the Java side and an
@@ -38,9 +45,13 @@ fn main() {
         println!("{}", resolve_git_sha());
         return;
     }
+    if mode == "e2e" {
+        e2e::run(&args[1..]);
+        return;
+    }
     assert_eq!(
         mode, "shape",
-        "usage: p8t2 [shape] <fixturesDir> <scratchDir>  (the e2e mode is Task 6's)"
+        "usage: p8t2 [shape] <fixturesDir> <scratchDir> | p8t2 e2e [all|<stem> …]"
     );
 
     let fixtures = PathBuf::from(&args[1]);
@@ -650,4 +661,159 @@ fn escape(text: &str) -> String {
         }
     }
     out
+}
+
+// =================================================================================================
+// The `e2e` mode — Plan 8 Task 6, the plan's own `p8t2`
+// =================================================================================================
+
+/// The manifest half of ruling AV's headline gate: `p8t1`'s argv plus
+/// `--router.result_json=<f>`, run through the HEAD jar and through the port, with the two
+/// manifests compared **field for field** after [`parity::normalize_manifest`].
+///
+/// The six removals that normaliser makes — `generated_at`, `git_sha`, `resource_usage`, the
+/// phase durations, `settings_snapshot.result_json` and the two host-derived `max_threads` — are
+/// listed with their Java lines on the function itself. Everything else is compared, including
+/// every `board_statistics` number, `normalized_score`, `final_state`, `exit_code`,
+/// `output_written` and `fixture.sha256`.
+///
+/// Usage: `p8t2 e2e` for the `ci` lane, `p8t2 e2e all` for every stem, `p8t2 e2e <stem> …` for
+/// the named ones.
+mod e2e {
+    use std::path::Path;
+
+    pub fn run(args: &[String]) {
+        let stems = select(args);
+        assert!(!stems.is_empty(), "p8t2 e2e: no stem selected");
+        let scratch = std::env::temp_dir().join("p8t2-e2e");
+        let _ = std::fs::remove_dir_all(&scratch);
+
+        println!(
+            "== p8t2 e2e: the result manifest, jar against port, {} stems",
+            stems.len()
+        );
+        println!("{:<26} {:<7} {}", "stem", "verdict", "detail");
+        let mut failed = 0usize;
+        for stem in &stems {
+            let (verdict, detail) = compare(&stem.name, &scratch);
+            if verdict != "MATCH" {
+                failed += 1;
+            }
+            println!("{:<26} {:<7} {}", stem.name, verdict, detail);
+        }
+        println!(
+            "rows: {}  MATCH: {}  DIFF: {}",
+            stems.len(),
+            stems.len() - failed,
+            failed
+        );
+        if failed > 0 {
+            std::process::exit(1);
+        }
+    }
+
+    fn select(args: &[String]) -> Vec<parity::CliStem> {
+        let all = parity::cli_stems();
+        if args.is_empty() {
+            return all.into_iter().filter(|s| s.ci).collect();
+        }
+        if args.len() == 1 && args[0] == "all" {
+            return all;
+        }
+        args.iter()
+            .map(|name| {
+                all.iter()
+                    .find(|s| &s.name == name)
+                    .unwrap_or_else(|| panic!("no such stem in cli-fixtures.txt: {name}"))
+                    .clone()
+            })
+            .collect()
+    }
+
+    fn compare(stem: &str, scratch: &Path) -> (&'static str, String) {
+        let jar_dir = scratch.join(format!("{stem}-jar"));
+        let port_dir = scratch.join(format!("{stem}-port"));
+        for dir in [&jar_dir, &port_dir] {
+            std::fs::create_dir_all(dir).expect("a scratch directory");
+        }
+
+        let jar_manifest = jar_dir.join("manifest.json");
+        let port_manifest = port_dir.join("manifest.json");
+        let mut jar_argv = parity::cli_argv(stem, &jar_dir);
+        jar_argv.push(format!("--router.result_json={}", jar_manifest.display()));
+        let mut port_argv = parity::cli_argv(stem, &port_dir);
+        port_argv.push(format!("--router.result_json={}", port_manifest.display()));
+
+        let jar_refs: Vec<&str> = jar_argv.iter().map(String::as_str).collect();
+        let port_refs: Vec<&str> = port_argv.iter().map(String::as_str).collect();
+        let (_, _, jar_code) = parity::run_jar(&jar_refs);
+        let (_, port_err, port_code) = parity::run_port(&port_refs);
+        if jar_code != port_code {
+            return (
+                "DIFF",
+                format!(
+                    "exit: jar {jar_code}, port {port_code}; port stderr: {}",
+                    String::from_utf8_lossy(&port_err).lines().next().unwrap_or("")
+                ),
+            );
+        }
+
+        let jar_text = match std::fs::read_to_string(&jar_manifest) {
+            Ok(text) => text,
+            Err(error) => return ("DIFF", format!("the jar wrote no manifest: {error}")),
+        };
+        let port_text = match std::fs::read_to_string(&port_manifest) {
+            Ok(text) => text,
+            Err(error) => return ("DIFF", format!("the port wrote no manifest: {error}")),
+        };
+        let jar = parity::normalize_manifest(&jar_text);
+        let port = parity::normalize_manifest(&port_text);
+        if jar == port {
+            return ("MATCH", format!("exit {jar_code}, {} fields", field_count(&jar)));
+        }
+        ("DIFF", first_difference(&jar, &port))
+    }
+
+    fn field_count(doc: &parity::ManifestDoc) -> usize {
+        doc.0.as_object().map_or(0, serde_json::Map::len)
+    }
+
+    /// The first path at which the two documents disagree, with both values — "field for field",
+    /// rather than a whole-document dump a reader has to diff by eye.
+    fn first_difference(jar: &parity::ManifestDoc, port: &parity::ManifestDoc) -> String {
+        let mut out = Vec::new();
+        walk("", &jar.0, &port.0, &mut out);
+        if out.is_empty() {
+            return "the documents differ but no leaf does — a key-set difference".to_string();
+        }
+        out.truncate(4);
+        out.join("; ")
+    }
+
+    fn walk(path: &str, jar: &serde_json::Value, port: &serde_json::Value, out: &mut Vec<String>) {
+        if jar == port {
+            return;
+        }
+        match (jar, port) {
+            (serde_json::Value::Object(a), serde_json::Value::Object(b)) => {
+                let mut keys: Vec<&String> = a.keys().chain(b.keys()).collect();
+                keys.sort_unstable();
+                keys.dedup();
+                for key in keys {
+                    let child = if path.is_empty() {
+                        key.clone()
+                    } else {
+                        format!("{path}.{key}")
+                    };
+                    match (a.get(key), b.get(key)) {
+                        (Some(x), Some(y)) => walk(&child, x, y, out),
+                        (Some(x), None) => out.push(format!("{child}: jar {x}, port absent")),
+                        (None, Some(y)) => out.push(format!("{child}: jar absent, port {y}")),
+                        (None, None) => {}
+                    }
+                }
+            }
+            _ => out.push(format!("{path}: jar {jar}, port {port}")),
+        }
+    }
 }

@@ -52,13 +52,13 @@ pub use job::{
     SES_FILE_EXTENSION, SessionId, Uuid128, validate_session_host,
 };
 pub use load::{
-    LoadedBoard, apply_immediate_post_load_processing, apply_parsed_board_result,
+    LoadedBoard, ParsedBoard, apply_immediate_post_load_processing, apply_parsed_board_result,
     apply_router_settings_for_loaded_board, load_board_if_needed, load_from_kicad_json,
-    load_from_specctra_dsn,
+    load_from_specctra_dsn, parse_board_if_needed, parse_board_result, parse_from_specctra_dsn,
 };
 pub use manifest::{
     FixtureInfo, PhaseDetail, PhaseMetrics, RouterJobResourceUsage, RoutingResultManifest,
-    SCHEMA_VERSION, resolve_git_sha, sha256_hex,
+    SCHEMA_VERSION, format_utc_iso8601, now_utc_iso8601, resolve_git_sha, sha256_hex,
 };
 pub use pipeline::RoutingPipeline;
 pub use progress::{SyncProgressSink, SyncProgressSinkView};

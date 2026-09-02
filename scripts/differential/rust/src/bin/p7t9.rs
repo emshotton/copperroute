@@ -469,6 +469,7 @@ fn run_batch_mode<W: Write>(
     // the emptiness of its `router` scope in `batch.meta.txt`, so a machine where it stopped
     // being empty would be visible rather than silent.
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: dsn_source.get_settings(),
         cli_rules: None,
         // `RoutingJobScheduler.java:113-152` resolves `job.rules ?? -dr ?? adjacent

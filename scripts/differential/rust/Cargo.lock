@@ -186,6 +186,8 @@ dependencies = [
  "fr-router",
  "fr-settings",
  "freerouting",
+ "parity",
+ "serde_json",
 ]
 
 [[package]]
@@ -216,7 +218,9 @@ name = "freerouting"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "fr-board",
  "fr-core",
+ "fr-dsn",
  "fr-geometry",
  "fr-settings",
  "serde",
@@ -321,6 +325,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
+name = "parity"
+version = "0.1.0"
+dependencies = [
+ "freerouting",
+ "serde",
+ "serde_json",
+ "similar",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -412,6 +426,12 @@ checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
 ]
+
+[[package]]
+name = "similar"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "smallvec"

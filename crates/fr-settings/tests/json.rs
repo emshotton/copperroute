@@ -670,6 +670,7 @@ fn p4t1_mode_1_parity() {
         let env = matrix::env_source(case.env);
         let cli = matrix::cli_source(case.cli);
         let inputs = SettingsInputs {
+            json_file: None,
             dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
             cli_rules: cli_rules.as_deref(),
             scheduler_rules: scheduler_rules.as_deref(),

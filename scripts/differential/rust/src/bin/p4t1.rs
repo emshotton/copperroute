@@ -244,6 +244,7 @@ fn resolve_case(
 
     // Both `.rules` slots go in unparsed — see the module docs.
     let inputs = SettingsInputs {
+        json_file: None,
         dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
         cli_rules: cli_rules_bytes.as_deref(),
         scheduler_rules: scheduler_rules_bytes.as_deref(),

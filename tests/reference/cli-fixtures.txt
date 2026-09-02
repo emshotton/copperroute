@@ -1,0 +1,75 @@
+# CLI end-to-end reference stems for `scripts/gen-cli-reference.sh` (Plan 8 Task 6).
+#
+#   stem|dsn|extra_args|lane
+#
+# `dsn` is relative to the Java checkout ($FREEROUTING_JAVA_DIR, default ../freerouting).
+# `extra_args` is everything the argv carries after `-de <dsn> -do <out>`, space separated, or `-`
+# for a bare run. `lane` is `ci` (runs under a plain `cargo test`) or `slow`
+# (`#[cfg_attr(debug_assertions, ignore)]` + `FR_SLOW_PARITY=1`), which is Plan 7's split carried
+# over unchanged.
+#
+# The generator writes, into tests/reference/cli-<stem>/:
+#
+#   argv.txt      the argv, one token per line, with `<JAVA_DIR>` and `<OUT>` placeholders
+#   route.ses     the **bare HEAD jar**'s SES, verbatim
+#   route.exit    its exit code
+#   route.log     its stdout followed by its stderr, machine-specific prefixes replaced
+#   manifest.json the manifest a second run with `--router.result_json=<f>` wrote
+#   meta.txt      the jar identity, `java -version`, the hash mode, the budget note, the argv and
+#                 the `batch.ses` cross-check verdict
+#
+# ## Scan ruling R1 — the `-mp` cap is transcribed, not invented
+#
+# The first eight rows are Plan 7's batch stems with **the same argv `batch.meta.txt`'s `bare jar`
+# line records**, cap included. A bare `-de/-do` would run `router-dac2020-bm01` at unlimited
+# passes, which quirk #234 proves unmeasurable (`-mp 3` scores 841.0115, `-mp 20` scores
+# 835.88336, and the same `-mp 20` under DEBUG logging scores 841.0115 again). Keeping Plan 7's
+# argv also buys a free cross-check the generator asserts: `cli-<stem>/route.ses` must be
+# byte-identical to `<stem>/batch.ses`, which `gen-batch-reference.sh --verify-driver` already
+# proved is the bare jar's output. Two independently generated references agreeing is worth more
+# than either alone.
+#
+# ## The two round-trip stems
+#
+# `tutorial_board` and `Issue026-J2_reference` are the Plan 3/5 DSN/SES round-trip boards, run
+# **bare** — no `-mp`, no enable flags — because nothing else in the table exercises the plain
+# user command line and `DefaultSettings.java:99`'s `maxPasses = 9999` with it. Measured: the bare
+# `Issue026-J2_reference` run answers the same 15 254 bytes as the `-mp 99` row, in 4.4 s.
+#
+# ## Scan ruling R21 — the roadmap's five board classes
+#
+# Searched for across all 106 corpus DSNs (`fixtures/*.dsn` + `examples/*/*.dsn`); the greps and
+# their counts are in the Task 6 report.
+#
+# | class | outcome |
+# |---|---|
+# | 90-degree snap angle | **no candidate** — all three `(snap_angle …)` scopes in the corpus say `fortyfive_degree`; `ninety_degree` appears in 0 files |
+# | per-layer trace width | **no candidate** — 0 files carry a `(rule (width …))` inside a `(layer …)` or a `(layer_rule …)`; the two `(layer_rule …)` boards carry direction and costs only |
+# | large / circular outline | **circular: no candidate** (every `(boundary …)` in the corpus is a `(path …)`; 0 circles, 0 polygons). **Large: `large-outline` below.** The corpus's widest outline is `Issue420-contribution-board.dsn` (316 000 × 52 000 DSN units) and it was **rejected on measurement**: 411 nets and 1 495 SMD pins, whose fanout stage alone runs 66-119 s *per pass* and had not finished 20 passes after 10 minutes, and whose per-pin budget (`fanout.max_milliseconds_per_pin`, live on both sides here) makes it a machine-speed dependency rather than a reference. The third-widest, `Issue035-ReadPlaceScope.dsn` (288 290 × 101 600), is the one taken — with the optimizer off, which removes most of the `optChangedArea` wall clock's exposure |
+# | multi-net SMD | **no candidate** — no pin appears in more than one `(net …)` scope anywhere in the corpus |
+# | signal-layer pour | **already covered** — `router-ecc83-input`'s `(plane …)` net pours on the signal layer `bottom_cu`, which is why `router-fixtures.txt` picked it; `router-strict-drc-cnh` carries two more |
+#
+# | stem | lane | why |
+# |---|---|---|
+# | router-rpi-splitter | ci | the smallest board that actually routes |
+# | router-j2-reference | ci | `J2ReferenceRoutingTest.java:29`'s board |
+# | router-ecc83-input | ci | a `(plane …)` net and a copper pour on a signal layer |
+# | router-empty-board | ci | ruling 7's nothing-to-route path |
+# | router-dac2020-bm01 | slow | spec §14.3's smoke board, and the KiCad-exported override-exercising stem |
+# | router-tutorial-board | slow | spec §14.4's CLI end-to-end board |
+# | router-fanout-bm11 | slow | the corpus's only fanout-trace board |
+# | router-strict-drc-cnh | slow | the only board with pre-existing clearance violations |
+# | tutorial_board | slow | Plan 3/5's round-trip board, bare argv |
+# | Issue026-J2_reference | slow | Plan 3/5's round-trip board, bare argv |
+# | large-outline | slow | scan ruling R21's one qualifying class — the corpus's widest *affordable* outline |
+router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|-mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
+router-j2-reference|fixtures/Issue026-J2_reference.dsn|-mp 99 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
+router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|-mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true|ci
+router-empty-board|fixtures/empty_board.dsn|-mp 1 --router.fanout.enabled=false --router.optimizer.enabled=false|ci
+router-dac2020-bm01|fixtures/Issue508-DAC2020_bm01.dsn|-mp 2 --router.fanout.enabled=true --router.optimizer.enabled=true|slow
+router-tutorial-board|examples/tutorial_board/tutorial_board.dsn|-mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true|slow
+router-fanout-bm11|fixtures/Issue730-DAC2020_bm11.dsn|-mp 2 --router.fanout.enabled=true --router.optimizer.enabled=false|slow
+router-strict-drc-cnh|fixtures/Issue555-CNH_Functional_Tester_1.dsn|-mp 2 --router.fanout.enabled=true --router.optimizer.enabled=true|slow
+tutorial_board|examples/tutorial_board/tutorial_board.dsn|-|slow
+Issue026-J2_reference|fixtures/Issue026-J2_reference.dsn|-|slow
+large-outline|fixtures/Issue035-ReadPlaceScope.dsn|-mp 2 --router.fanout.enabled=true --router.optimizer.enabled=false|slow

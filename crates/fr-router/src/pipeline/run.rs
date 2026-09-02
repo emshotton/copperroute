@@ -164,6 +164,10 @@ pub fn run_pipeline(
     // ---- runOptimizationStage (`:116-129`) -----------------------------------------------------
 
     let mut optimizer_timed_out = false;
+    // `BatchOptimizer.java:196`'s `job.setCurrentPass(currentPass)`, when the loop reached it.
+    // `0` means it did not, and the routing loop's own value then stands — see
+    // [`PipelineResult::last_reported_pass`].
+    let mut optimizer_last_reported_pass = 0;
     let optimizer_state = if settings.get_run_optimizer() {
         if stop.is_stop_requested() {
             // `:117-119` — `this.job.thread.isStopRequested()` is `ALL`, not `AUTO_ROUTER_ONLY`
@@ -179,6 +183,7 @@ pub fn run_pipeline(
             let mut optimizer = BatchOptimizer::new(settings);
             let result = optimizer.run_batch_loop(board, stop, budget, progress)?;
             optimizer_timed_out = result.timed_out;
+            optimizer_last_reported_pass = result.last_reported_pass;
             Some(result.state)
         }
     } else {
@@ -194,10 +199,12 @@ pub fn run_pipeline(
     // have to repeat it.
     let final_statistics = BoardStatistics::new(board);
 
-    let (router_state, passes_run, fanout, per_pass) = match router_loop {
+    let (router_state, passes_run, router_last_reported_pass, fanout, per_pass) = match router_loop
+    {
         Some(result) => (
             result.state,
             result.passes_run,
+            result.last_reported_pass,
             result.fanout,
             result.per_pass,
         ),
@@ -205,7 +212,14 @@ pub fn run_pipeline(
         // disabled, or the stop flag was already raised at entry. `TaskState::Idle` again means
         // "the stage never started", matching `router_state`'s type (`TaskState`, not
         // `Option<TaskState>` — the routing stage is not optional the way the optimizer is).
-        None => (TaskState::Idle, 0, None, Vec::new()),
+        None => (TaskState::Idle, 0, 0, None, Vec::new()),
+    };
+    // The optimizer's write is later than the routing loop's whenever it happened at all — see
+    // [`PipelineResult::last_reported_pass`].
+    let last_reported_pass = if optimizer_last_reported_pass > 0 {
+        optimizer_last_reported_pass
+    } else {
+        router_last_reported_pass
     };
 
     // Not a Java field: `RoutingJobSchedulerActionThread.java:170-172` composes exactly this pair
@@ -223,6 +237,7 @@ pub fn run_pipeline(
     Ok(PipelineResult {
         router_state,
         optimizer_state,
+        last_reported_pass,
         passes_run,
         fanout,
         per_pass,
@@ -245,6 +260,15 @@ pub struct PipelineResult {
     /// [`run_pipeline`]'s doc for the `TaskState::Idle` case, which **is** configured but never
     /// entered (`:117-119`).
     pub optimizer_state: Option<TaskState>,
+    /// The value `job.setCurrentPass` was **last** called with, by either stage — the routing
+    /// loop's `AutorouteBatchLoop.java:276` or, if the optimizer reached its own
+    /// `BatchOptimizer.java:196`, that one. `0` when neither did.
+    ///
+    /// **The two loops write the same field**, and `RoutingResultManifest.fromJob:124-126` reads
+    /// whatever was written last, so a single completed optimizer pass reports `1` after a
+    /// three-pass routing stage. Quirk #267. Plan 8's CLI writes this into
+    /// `fr_core::RoutingJob::set_current_pass`; nothing in this crate reads it.
+    pub last_reported_pass: i32,
     /// The routing stage's `currentPass` local as the loop left it (`AutorouteBatchLoop.java:
     /// 275-277`, `:521`) — `0` when the stage never ran.
     ///

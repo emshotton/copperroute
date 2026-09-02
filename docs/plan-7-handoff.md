@@ -752,10 +752,14 @@ and `the_stem_table_matches_the_fixture_file`. The 54 skipped tests are the
    controller decision. `crates/fr-settings/src/sources/json_file.rs` is the
    priority-10 source; `crates/freerouting`'s `--settings <file>` names a file and
    a working-directory `freerouting.json` is the default (Java's user-data path is
-   `static` mutable state and stays unported). **One half is still owed:**
+   `static` mutable state and stays unported). ~~**One half is still owed:**
    `resolve_headless` does not take the source yet — Task 6 threads it through
    `SettingsInputs`, and `crates/fr-settings/src/resolve.rs` carries the
-   `// obligation:` at the site.
+   `// obligation:` at the site.~~ **That half is DISCHARGED — Plan 8 Task 6:**
+   `SettingsInputs::json_file` feeds both of `resolve_headless`'s chains (merge #1's
+   `apply_new_values_from` between `DefaultSettings` and the DSN, merge #2's
+   `fill_absent_from`), `commands::route` fills it from `--settings <file>` or from
+   the working directory, and the `// obligation:` in `resolve.rs` is gone.
 4. **Quirk #162 is still a live hang** in both languages (controller answer 5).
    Plan 8's `--job-timeout` will not interrupt it, because ruling AI's deadline is a
    poll and there is no poll site below `AutorouteEngine.java:265` — Java has none

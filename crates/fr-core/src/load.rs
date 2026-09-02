@@ -31,9 +31,13 @@
 //! `crates/fr-settings/src/resolve.rs:274-284`, because it models the whole scheduler flow
 //! (merge #1 → this pass → merge #2). It is **not** called from here: its signature needs the
 //! `SettingsInputs` ladder and a `HostEnvironment`, neither of which a loader has, and running it
-//! here would re-run both merges. The CLI (Plan 8 Tasks 5-6) is where the two meet: it resolves
-//! the ladder against the loaded board and this loader performs Java's in-place pass on the
-//! merge-#1 object it is handed. Both cite the same four Java lines, and
+//! here would re-run both merges. The CLI (Plan 8 Tasks 5-6) is where the two meet, and Task 6
+//! settled the order: it parses the board ([`parse_board_if_needed`]), calls `resolve_headless`
+//! **once** against the parsed board, and then runs this module's two passes with the resolved
+//! settings. *(This paragraph read ~~"it resolves the ladder against the loaded board and this
+//! loader performs Java's in-place pass on the merge-#1 object it is handed"~~ before Task 6 had a
+//! caller; the loader cannot be handed merge #1's object, because `resolve_headless` is what
+//! produces merge #1 and it needs the board.)* Both cite the same four Java lines, and
 //! `crates/fr-core/tests/load.rs::the_settings_pass_is_the_same_two_steps_resolve_headless_runs`
 //! asserts they agree.
 //!
@@ -130,6 +134,38 @@ pub fn load_from_specctra_dsn(
     job: &mut RoutingJob,
     settings: &mut RouterSettings,
 ) -> Result<LoadedBoard, Error> {
+    // `&mut` rather than `&`: Java's manager owns a mutable `RoutingJob` and both loaders reach
+    // `this.routingJob` for their log lines. Nothing here writes it today — see
+    // [`parse_from_specctra_dsn`], which takes the shared reference the work actually needs.
+    // :697-700, then the two post-load passes.
+    let ParsedBoard {
+        mut board,
+        transform,
+        metadata,
+        warnings,
+    } = parse_from_specctra_dsn(bytes, job)?;
+    // :734.
+    apply_router_settings_for_loaded_board(&mut board, settings);
+    // :735.
+    apply_immediate_post_load_processing(&mut board);
+    Ok(LoadedBoard {
+        board,
+        transform,
+        metadata,
+        settings: settings.clone(),
+        warnings,
+    })
+}
+
+/// [`load_from_specctra_dsn`]'s **parse half** — `:677-698` plus [`parse_board_result`], stopping
+/// short of `applyParsedBoardResult`'s two post-load passes (`:734-735`).
+///
+/// See [`ParsedBoard`] for why the split exists.
+///
+/// # Errors
+///
+/// As [`parse_board_result`].
+pub fn parse_from_specctra_dsn(bytes: &[u8], job: &RoutingJob) -> Result<ParsedBoard, Error> {
     // :677-683 — Java's `inputFilename`, used for the log line and handed to the reader as its
     // `designName`.
     // `:677-683`. `DsnReader.java:113` tests the name with `isBlank()`, not `isEmpty()`, so a
@@ -148,8 +184,8 @@ pub fn load_from_specctra_dsn(
         input_filename.as_deref(),
         &DsnReadOptions::default(),
     );
-    // :700.
-    apply_parsed_board_result(result, settings)
+    // :700, dispatch only.
+    parse_board_result(result)
 }
 
 /// Port of `HeadlessBoardManager.loadFromKiCadJson` (HeadlessBoardManager.java:794-823).
@@ -225,6 +261,72 @@ pub fn apply_parsed_board_result(
     result: BoardReadResult,
     settings: &mut RouterSettings,
 ) -> Result<LoadedBoard, Error> {
+    let parsed = parse_board_result(result)?;
+    let ParsedBoard {
+        mut board,
+        transform,
+        metadata,
+        warnings,
+    } = parsed;
+
+    // :734.
+    apply_router_settings_for_loaded_board(&mut board, settings);
+    // :735.
+    apply_immediate_post_load_processing(&mut board);
+
+    Ok(LoadedBoard {
+        board,
+        transform,
+        metadata,
+        settings: settings.clone(),
+        warnings,
+    })
+}
+
+/// What the **parse** answers, before either post-load pass has run — [`LoadedBoard`] minus the
+/// `settings` field, which only [`apply_router_settings_for_loaded_board`] fills.
+///
+/// # Why this exists (Plan 8 Task 6)
+///
+/// Java runs merge #1 (`Freerouting.java:146`) *before* the board load, so
+/// `applyRouterSettingsForLoadedBoard` has real settings to read when it reaches
+/// `applyCopperToEdgeClearanceOverride`/`applyHoleClearanceOverride` (`:746-747`). The port's
+/// whole ladder — both merges, both board passes, the post-merge `.rules` re-apply — is one call
+/// to [`fr_settings::resolve_headless`], which needs the **board** as an argument. The two
+/// requirements are circular unless the parse is separable from the passes, and this type is that
+/// separation: `crates/freerouting/src/commands/route.rs` parses, resolves against the parsed
+/// board, then runs the two passes with the resolved settings.
+///
+/// Nothing between the parse and the passes reads or writes the board, so the split is a
+/// reordering of *settings* work only; the Task 6 report records the one consequence
+/// (`prepare_board` sees the final settings rather than merge #1's, and the two agree on the only
+/// two fields it reads).
+#[derive(Debug)]
+pub struct ParsedBoard {
+    /// The parsed board, before `applyRouterSettingsForLoadedBoard` and
+    /// `applyImmediatePostLoadProcessing`.
+    pub board: Board,
+    /// The transform `Structure.createBoard` built between DSN and board coordinates.
+    pub transform: CoordinateTransform,
+    /// `BoardReadResult.Success.metadata()` — always `None` on this path; see [`LoadedBoard`].
+    pub metadata: Option<BoardMetadata>,
+    /// `ReadScopeParameter.warnings`.
+    pub warnings: Vec<String>,
+}
+
+/// `HeadlessBoardManager.applyParsedBoardResult`'s **dispatch** (`:712-732`), without the two
+/// post-load passes at `:734-735`.
+///
+/// Split out of [`apply_parsed_board_result`] so that the error text of Java's two failure arms
+/// lives in exactly one place while a caller that has to resolve settings against the parsed
+/// board (the CLI — see [`ParsedBoard`]) can still get at it.
+///
+/// # Errors
+///
+/// [`Error::Load`] carrying Java's own message text for the `IoError` and `ParseError` variants,
+/// and for the two states a `LoadedBoard` cannot represent (a `Success` with a null board, and a
+/// board with no coordinate transform).
+pub fn parse_board_result(result: BoardReadResult) -> Result<ParsedBoard, Error> {
     // :712-715: `Success` and `OutlineMissing` both hand the board over; every other variant is
     // logged and returned unchanged. Java's `(RoutingBoard) success.board()` is an unguarded cast
     // of a possibly-null field — `BoardReadResult.Success(null, …)` is constructible and
@@ -263,7 +365,7 @@ pub fn apply_parsed_board_result(
                 .to_string(),
         ));
     };
-    let mut board = *board;
+    let board = *board;
     let Some(transform) = coordinate_transform else {
         // Not reachable: `Structure.createBoard` builds the transform in the same statement that
         // builds the board (Plan 3 ruling A), so a board without one cannot come out of the
@@ -273,16 +375,10 @@ pub fn apply_parsed_board_result(
         ));
     };
 
-    // :734.
-    apply_router_settings_for_loaded_board(&mut board, settings);
-    // :735.
-    apply_immediate_post_load_processing(&mut board);
-
-    Ok(LoadedBoard {
+    Ok(ParsedBoard {
         board,
         transform,
         metadata,
-        settings: settings.clone(),
         warnings,
     })
 }
@@ -385,4 +481,43 @@ pub fn load_board_if_needed(job: &mut RoutingJob) -> Result<LoadedBoard, Error> 
     // board is in the answer instead of in a field.
     job.router_settings = loaded.settings.clone();
     Ok(loaded)
+}
+
+/// [`load_board_if_needed`]'s **parse half**: `BoardLoader.loadBoardIfNeeded`'s guard (`:31-37`)
+/// and reader dispatch (`:40-50`), stopping before `applyParsedBoardResult`'s two post-load
+/// passes.
+///
+/// This is what `crates/freerouting/src/commands/route.rs` calls, because the CLI must resolve
+/// its settings **against the parsed board** before those passes can run — see [`ParsedBoard`]
+/// for the circularity that forces the split, and the Task 6 report for its one consequence.
+///
+/// # Errors
+///
+/// The same three [`Error::Load`] exits [`load_board_if_needed`] answers, with the same text.
+pub fn parse_board_if_needed(job: &RoutingJob) -> Result<ParsedBoard, Error> {
+    // :25-29.
+    let Some(input) = job.get_input() else {
+        return Err(Error::Load(
+            "Cannot load board: job has no input".to_string(),
+        ));
+    };
+    // :31-37 — quirk label S: `-de prev.ses` is accepted by the argument parser and sniffed as
+    // `SES` by `RoutingJob::set_input`; only here does the run stop.
+    let format = input.format;
+    if format != FileFormat::Dsn && format != FileFormat::KicadDesignJson {
+        return Err(Error::Load(format!(
+            "Cannot load board: only DSN and JSON formats are supported, got {}",
+            format.java_name()
+        )));
+    }
+    let data = input.get_data().to_vec();
+    // :40-50 — the two arms.
+    let parsed = if format == FileFormat::KicadDesignJson {
+        // Task 9's stub, reached through the same `BoardReadResult` arm the real reader will use.
+        parse_board_result(kicad_read_board(&String::from_utf8_lossy(&data)))
+    } else {
+        parse_from_specctra_dsn(&data, job)
+    };
+    // :51-54 — Java's `catch (Exception e) { FRLogger.error("Failed to load board", e); … }`.
+    parsed.map_err(|error| Error::Load(format!("Failed to load board: {error}")))
 }

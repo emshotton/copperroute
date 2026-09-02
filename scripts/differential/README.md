@@ -1616,6 +1616,43 @@ methods with dozens of branches.
 
   `./scripts/differential/run.sh p8t5` — 2096 lines, MATCH.
 
+- `p8t1` — **Plan 8 Task 6: `freerouting route` end to end. The plan's headline gate
+  (controller ruling AV).** The HEAD jar and the port, run as **two whole programs** on the argv
+  recorded in each `tests/reference/cli-<stem>/argv.txt`, compared on three rungs: byte-identical
+  SES (after quirk #92's four `(parser …)` keyword literals are rewritten on the jar side — the
+  same closed set `crates/fr-router/tests/batch_parity.rs` rewrites), equal exit code, equal
+  `parity::normalize_log`. Plus four **refusal rows** with no fixture stem, because every stem
+  succeeds and a successful run emits no message `freerouting::logging::MESSAGE_MAP` names.
+
+  **It has no `P8T1.java`, and that is deliberate.** Every other driver here is a pair because the
+  thing under test is a Java *method* that has to be called from inside a JVM. Here it is the jar:
+  `java -jar <jar> -de … -do …` needs no class to drive it, and both runners and both normalisers
+  live in `tests/parity` (`run_jar`, `run_port`, `normalize_log`, `normalize_manifest`). A Java
+  half could only re-implement `normalize_log` a second time from the same rules, and two copies
+  of a harness rule can agree with each other while both are wrong. So `run.sh` grew a
+  `rust_only` mode: it builds the port's binary in **release**, builds the driver, runs it, and
+  takes its exit status as the verdict — the driver prints its own per-stem table.
+
+  **The budget is live on both sides**, unlike every `p7t*` driver: the port's CLI runs
+  `fr_core::RouterBudget::default()` (Java's own 1000 / 10000 / 250 / 1000 literals) because that
+  is what a user gets, and the jar's `optChangedArea` limit is a javac-inlined constant nothing
+  can switch off. `scripts/gen-cli-reference.sh`'s header states the difference and what bounds
+  the machine-speed risk it imports.
+
+  `./scripts/differential/run.sh p8t1` — the four `ci` stems plus the four refusal rows.
+  `run.sh p8t1 all` — **11 stems, 11 MATCH**, about four minutes. `run.sh p8t1 <stem> …` for one.
+
+- `p8t2 e2e` — **Plan 8 Task 6's manifest half.** The same argv plus
+  `--router.result_json=<f>`, through both whole programs, with the two manifests compared
+  **field for field** after `parity::normalize_manifest` (which drops `generated_at`, `git_sha`,
+  `resource_usage`, the phase durations, `settings_snapshot.result_json` and the two host-derived
+  `max_threads`). `rust_only`, for `p8t1`'s reason; `p8t2 shape` is still Task 4's Java-vs-Rust
+  pair and is unchanged. `run.sh p8t2 e2e all` — **11 stems, 11 MATCH**.
+
+  It earned its keep on the first run: `phases.autorouter.passes_completed` came back `jar 1,
+  port 2` on `router-dac2020-bm01` and `router-strict-drc-cnh`, because `job.currentPass` is
+  written by **both** stage loops and the manifest reports whichever wrote last (quirk #267).
+
 - `sweep-p8t5.sh [row-label ...]` — the same driver, **row by row**, printing
   MATCH/XDIFF/SKIP per argv shape so that a regression is *a row that changed* rather than a
   wall of diff. Builds both sides once through `run.sh p8t5`, then splits the two transcripts

@@ -52,8 +52,18 @@ fn native(args: &[&str]) -> String {
     )
 }
 
-/// Every runnable row ends in the route stub, which is Task 6's to replace.
-const ROUTE_STUB_EXIT: i32 = 3;
+/// Every runnable row below names a DSN that **does not exist** — the Java test's own filenames,
+/// `myboard.dsn` and friends, kept verbatim because the case is about the argv and not about a
+/// board. Through Task 5 that reached `route`'s stub and answered exit 3; **Task 6 wired `route`**,
+/// so the same argv now reaches `RoutingJob::set_input`, fails to read the file, and answers
+/// `Freerouting.java:105`'s error, `:109`'s warning and **exit 1**.
+///
+/// That is the jar's own answer, measured on the HEAD jar rather than assumed:
+/// `java -jar <jar> -de myboard.dsn -do out.ses` prints
+/// `Couldn't load the input file 'myboard.dsn'` (with a `FileNotFoundException` stack trace),
+/// then `Couldn't read the input file 'myboard.dsn', aborting.`, and exits **1**. `p8t1`'s
+/// `missing-input` row compares the two programs on exactly that argv shape.
+const ROUTE_MISSING_INPUT_EXIT: i32 = 1;
 
 // =================================================================================================
 // 1. GlobalSettingsCommandLineTest.java:25-171, case for case
@@ -260,7 +270,7 @@ fn global_settings_command_line_test_matrix() {
             native(expected),
             "{name}: argv {argv:?}\nstderr:\n{stderr}"
         );
-        assert_eq!(code, ROUTE_STUB_EXIT, "{name}: stderr:\n{stderr}");
+        assert_eq!(code, ROUTE_MISSING_INPUT_EXIT, "{name}: stderr:\n{stderr}");
     }
 }
 
@@ -440,7 +450,7 @@ fn p8t5_table_the_silent_no_ops_and_the_warn_and_continue() {
     // An unknown flag warns and continues (:833); the run still happens.
     let (code, rewritten, stderr) = run(&["-de", "a.dsn", "-do", "o.ses", "-zz"]);
     assert_eq!(rewritten, native(&["route", "a.dsn", "-o", "o.ses"]));
-    assert_eq!(code, ROUTE_STUB_EXIT);
+    assert_eq!(code, ROUTE_MISSING_INPUT_EXIT);
     assert!(
         stderr.contains("Unknown command line argument: -zz"),
         "{stderr}"

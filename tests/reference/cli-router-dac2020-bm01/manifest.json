@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-02T09:36:29.906610Z",
+  "app_version": "2.3.1-SNAPSHOT",
+  "git_sha": "unknown",
+  "fixture": {
+    "filename": "Issue508-DAC2020_bm01.dsn",
+    "sha256": "8ec7bea5e6f2637f4d0ac37571996c95990210d16730d58beb62be879bd30c5f"
+  },
+  "settings_snapshot": {
+    "enabled": true,
+    "algorithm": "freerouting-router",
+    "fanout": {
+      "enabled": true,
+      "max_passes": 20,
+      "max_items": 2147483647,
+      "max_milliseconds_per_pin": 10000,
+      "ripup_allowed": true,
+      "min_escape_length_mm": 2.5,
+      "max_escape_length_mm": 4.5,
+      "start_via_diameter_mm": 0.25,
+      "end_via_diameter_mm": 0.25,
+      "pin_sorting_order": "outer_first",
+      "fallback_to_board_vias": true
+    },
+    "copper_to_edge_clearance_um": 500.0,
+    "hole_clearance_um": 0.0,
+    "neck_width_um": 0.0,
+    "strict_drc": false,
+    "job_timeout": "12:00:00",
+    "max_passes": 2,
+    "trace_pull_tight_accuracy": 500,
+    "allowed_via_types": true,
+    "automatic_neckdown": true,
+    "optimizer": {
+      "enabled": true,
+      "algorithm": "freerouting-optimizer",
+      "max_passes": 100,
+      "max_items": 2147483647,
+      "max_threads": 7,
+      "improvement_threshold": 0.01,
+      "max_consecutive_failures": 50,
+      "additional_ripup_cost_factor_at_start": 10,
+      "trace_ripup_cost_factor": 0.6,
+      "max_autoroute_passes": 6
+    },
+    "scoring": {
+      "default_preferred_direction_trace_cost": 1.0,
+      "default_undesired_direction_trace_cost": 1.0,
+      "via_costs": 50,
+      "plane_via_costs": 5,
+      "start_ripup_costs": 100,
+      "unrouted_net_penalty": 5000000.0,
+      "clearance_violation_penalty": 1000000.0,
+      "bend_penalty": 10.0,
+      "default_bend_cost": 0.0
+    },
+    "max_threads": 7,
+    "result_json": "<OUT>/router-dac2020-bm01.manifest.json"
+  },
+  "phases": {
+    "fanout": {},
+    "autorouter": {
+      "duration_seconds": 25.799,
+      "passes_completed": 1
+    },
+    "optimizer": {}
+  },
+  "board_statistics": {
+    "host": "KiCad's Pcbnew,9.0.6",
+    "unit": "mm",
+    "board": {
+      "bounding_box": {
+        "x": 1994.01,
+        "y": -782.336,
+        "width": 976.011,
+        "height": -1317.74
+      },
+      "size": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1017.999,
+        "height": 535.404
+      }
+    },
+    "layers": {
+      "total_count": 2,
+      "signal_count": 2
+    },
+    "items": {
+      "total_count": 768,
+      "trace_count": 367,
+      "via_count": 81,
+      "conduction_area_count": 0,
+      "drill_item_count": 0,
+      "pin_count": 319,
+      "component_count": 0,
+      "other_count": 1
+    },
+    "components": {
+      "total_count": 57
+    },
+    "pads": {
+      "total_count": 319
+    },
+    "nets": {
+      "total_count": 99,
+      "class_count": 1
+    },
+    "connections": {
+      "maximum_count": 195,
+      "incomplete_count": 34
+    },
+    "traces": {
+      "total_count": 367,
+      "total_segment_count": 780,
+      "total_length": 29722.33,
+      "total_length_mm": 2972.233,
+      "total_weighted_length": 8.76539E7,
+      "average_length": 80.987274,
+      "total_vertical_length": 4652.412,
+      "total_horizontal_length": 11210.627,
+      "total_angled_length": 9386.702
+    },
+    "bends": {
+      "total_count": 413,
+      "90_degree_count": 1,
+      "45_degree_count": 412,
+      "other_angle_count": 0
+    },
+    "vias": {
+      "total_count": 81,
+      "through_hole_count": 81,
+      "blind_count": 0,
+      "buried_count": 0
+    },
+    "clearance_violations": {
+      "total_count": 0,
+      "min_violation_um": 0.0,
+      "max_violation_um": 0.0,
+      "avg_violation_um": 0.0
+    },
+    "fanout": {
+      "total_smd_pins": 187,
+      "pins_to_escape": 88,
+      "escaped_count": 159
+    }
+  },
+  "normalized_score": 825.6295,
+  "resource_usage": {
+    "cpu_time": 24.36234,
+    "max_memory": 251160.58,
+    "peak_memory": 551.1004,
+    "io_read": 0.0,
+    "io_written": 0.0
+  },
+  "final_state": "COMPLETED",
+  "exit_code": 0,
+  "output_written": true
+}

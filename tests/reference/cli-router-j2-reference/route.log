@@ -1,0 +1,23 @@
+2026-09-02 02:33:05.985 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)
+2026-09-02 02:33:06.021 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-09-02 02:33:07.102 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:33:07.120 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:33:07.363 INFO   New version available: v2.3.0
+2026-09-02 02:33:07.372 INFO   [11EE3E\DC4160] Loading board file 'Issue026-J2_reference.dsn'...
+2026-09-02 02:33:07.377 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:33:07.398 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:33:07.400 INFO   [11EE3E\DC4160] Job '11EE3E\DC4160' started at 2026-09-02T09:33:07.400476Z.
+2026-09-02 02:33:07.446 INFO   [11EE3E\DC4160] Fanout stage started on board '70c2a4e881fe4f492b25a5c3552779f3' with 39 of 53 SMD pins needing fanout (12 already connected, 2 netless).
+2026-09-02 02:33:08.109 INFO   [11EE3E\DC4160] Fanout pass #1 on board '3e23ce6c7cdaaa1d07358c3c840df319' completed in 0.64 seconds with 39 SMD pins fanouted, 0 not routed, 0 insert errors, +20 extra vias (0 SMD pins still to check in pass, ripup costs=100).
+2026-09-02 02:33:08.199 INFO   [11EE3E\DC4160] Fanout pass #2 on board 'f8e13922d4ce438501c7a3b5fe6a74fd' completed in 0.07 seconds with 1 SMD pin fanouted, 0 not routed, 0 insert errors, +0 extra vias (0 SMD pins still to check in pass, ripup costs=200).
+2026-09-02 02:33:08.272 INFO   [11EE3E\DC4160] Fanout pass #3 on board 'a2e131539044aa5511f23d288826406f' completed in 0.05 seconds with 1 SMD pin fanouted, 0 not routed, 0 insert errors, +1 extra via (0 SMD pins still to check in pass, ripup costs=300).
+2026-09-02 02:33:08.318 INFO   [11EE3E\DC4160] Fanout pass #4 on board 'a2e131539044aa5511f23d288826406f' completed in 0.03 seconds with 0 SMD pins fanouted, 0 not routed, 0 insert errors, +0 extra vias (0 SMD pins still to check in pass, ripup costs=400).
+2026-09-02 02:33:08.325 INFO   [11EE3E\DC4160] Fanout stage completed: started with 51 total SMD pins, completed in 0.88 seconds, escaped pins: 39/51 (76.5%), using 0.79 total CPU seconds, 3.57 GB total allocated, and 390.9 MB peak heap usage.
+2026-09-02 02:33:08.335 INFO   [11EE3E\DC4160] Auto-routing stage started on board 'a2e131539044aa5511f23d288826406f' for 15 unrouted items.
+2026-09-02 02:33:08.741 INFO   [11EE3E\DC4160] Auto-routing pass #1 on board 'a2e131539044aa5511f23d288826406f' was completed in 0.34 seconds with score 999.99 (0 unrouted and 0 violations), using 0.90 CPU seconds and the job allocated 3.93 GB of memory so far.
+2026-09-02 02:33:08.821 INFO   [11EE3E\DC4160] Auto-routing pass #2 on board 'f83f332676c38decbd7cded44b6a91aa' was completed in 0.02 seconds with score 999.99 (0 unrouted and 0 violations), using 0.90 CPU seconds and the job allocated 3.93 GB of memory so far.
+2026-09-02 02:33:08.886 INFO   [11EE3E\DC4160] Auto-routing stage completed: started with 33 unrouted nets, completed in 1.45 seconds, final score: 999.99 (0 unrouted and 0 violations), using 0.90 total CPU seconds, 3.93 GB total allocated, and 304.9 MB peak heap usage.
+2026-09-02 02:33:08.902 INFO   [11EE3E\DC4160] Optimization stage started on board 'a4e192af0a34d39b11e9c36690088abc' with score 999.99 (0 unrouted and 0 violations).
+2026-09-02 02:33:08.916 INFO   [11EE3E\DC4160] Stopping optimizer because the current board score (999.99) is already close to the maximum score (1000). Remaining potential improvement is less than the threshold (1.00%).
+2026-09-02 02:33:08.930 INFO   [11EE3E\DC4160] Optimization stage completed: started with score 999.99 (0 unrouted and 0 violations), completed in 0.02 seconds, final score: 999.99 (0 unrouted and 0 violations), using 0.02 total CPU seconds, 0.13 GB total allocated, and 317.0 MB peak heap usage.
+2026-09-02 02:33:08.934 INFO   [11EE3E\DC4160] Job '11EE3E\DC4160' finished with state: COMPLETED (elapsed: 1.53 seconds, finished at UTC: 2026-09-02T09:33:08.933519Z).
