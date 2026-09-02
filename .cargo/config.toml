@@ -1,0 +1,6 @@
+# Build cache (2026-09-01): sccache across agents' repeated clean/forced rebuilds.
+# sccache does not support incremental compilation, so it is disabled; the win on
+# fresh builds (every subagent) outweighs the tiny-edit loop cost.
+[build]
+rustc-wrapper = "/Users/em/.cargo/bin/sccache"
+incremental = false
