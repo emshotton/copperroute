@@ -194,3 +194,15 @@ path = "src/bin/p8t1.rs"
 [[bin]]
 name = "p8t3"
 path = "src/bin/p8t3.rs"
+
+# Plan 8 Task 12: the MCP delta table, asserted against both programs. Rust-only for the reason
+# `p8t1` is — see the driver's header.
+[[bin]]
+name = "p8t6"
+path = "src/bin/p8t6.rs"
+
+# Plan 8 Task 12: spec §1's KiCad end-to-end acceptance — a KiCad-exported DSN routed to a SES the
+# port's own `ses_reader` reads back, byte-identical to the jar's.
+[[bin]]
+name = "p8t7"
+path = "src/bin/p8t7.rs"

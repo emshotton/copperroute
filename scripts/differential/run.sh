@@ -33,7 +33,7 @@ usage() {
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
-  echo "           p8t2probe, p8t2, p8t5, p8t1, p8t3" >&2
+  echo "           p8t2probe, p8t2, p8t5, p8t1, p8t3, p8t6, p8t7" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -836,6 +836,53 @@ case "$driver" in
     default_args=("$ROOT/scripts/differential/matrix/p8t5-argv.tsv")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t6)
+    # Plan 8 Task 12, controller ruling AO — **the MCP delta table, asserted**.
+    #
+    # The jar's MCP server and the port's are different programs (ruling AO replaced the HTTP
+    # transport with a native one), so they are not expected to agree; *where* they disagree is the
+    # eleven-row table in `crates/freerouting/README.md`, and this driver turns rows 1-10 into an
+    # assertion. It makes two kinds of observation: **deltas**, which must differ, and
+    # **agreements** (the framing, the blank-line skip, the unknown-tool error, `isError`, the EOF
+    # exit code), which must be equal. A recorded delta that has vanished is a `GONE` row; a
+    # difference the table does not record is a `NEW` row. Either fails.
+    #
+    # `rust_only=1` — there is no `P8T6.java`, for the reason `p8t1` has no `P8T1.java`: what is
+    # under test is the **jar as a program**, and a Java class could only re-implement the delta
+    # table a second time in a second language. See the driver's header.
+    #
+    # **Scan ruling R18: a missing jar is a defect, not a `SKIP`.** The launch is job 3's, verbatim
+    # — `--mcp_server.stdio=true` alone does not start the bridge (`McpServerSettings.isEnabled`
+    # defaults to false) and `--api_server.enabled=true` is effectively mandatory because every
+    # generated tool is an HTTP call into the REST API. The driver builds the line itself so the
+    # five flags live in exactly one place; `docs/plan-8-prep/evidence/job3-summary.md` §1 is where
+    # they came from.
+    #
+    # Two jar launches, ~8 s each: the main run with authentication off (so the generated tools
+    # answer at all) and row 7's run with it at its default (so the 401 can be observed).
+    #
+    #   scripts/differential/run.sh p8t6            the table
+    #   scripts/differential/run.sh p8t6 verbose    ...and both raw transcripts
+    rust_only=1
+    default_args=()
+    ;;
+  p8t7)
+    # Plan 8 Task 12 — **the KiCad end-to-end acceptance of spec §1**, on three rungs:
+    #
+    #   (a) a KiCad-exported DSN -> `route` -> SES, byte-identical to the jar's, and the SES
+    #       **read back by `fr_dsn::ses_reader::read`** without error — a document the port writes
+    #       and cannot read would satisfy every byte comparison in the suite and still be broken;
+    #   (b) Task 9's `-de board.json -do out.ses` rung: the same board as a KiCad *design* JSON,
+    #       through the port's own JSON reader, against the jar on the same argv;
+    #   (c) Task 10's quirk-T measurement: `-do out.json` writes the board **as loaded**, before
+    #       any routing, so the file is byte-identical for `-mp 1` and `-mp 8` and carries no
+    #       trace the router produced.
+    #
+    # `rust_only=1`, for `p8t1`'s reason. The stems are `tests/reference/cli-fixtures.txt`'s two
+    # KiCad rows plus the DSN twin of the same board.
+    rust_only=1
+    default_args=()
     ;;
   *) echo "unknown driver: $driver" >&2; usage ;;
 esac

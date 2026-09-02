@@ -1621,6 +1621,79 @@ fn drc_with_no_output_prints_to_stdout() {
     );
 }
 
+// =================================================================================================
+// `freerouting info` (Plan 8 Task 12)
+// =================================================================================================
+
+/// Spec §12's third subcommand, and the one CLI surface with **no Java counterpart at all** —
+/// `Freerouting.main`'s mode ladder has GUI, DRC and CLI and nothing else, and `legacy::rewrite`
+/// can never produce this argv. So there is nothing to compare against a jar; what is asserted is
+/// that the document is the **same** one `board_info` answers (both call `fr_core::summarise`),
+/// that it is complete and parseable, and that nothing but the document reaches stdout.
+#[test]
+fn info_writes_the_board_summary_to_stdout() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dsn = small_dsn();
+    let (stdout, stderr, code) = run(&["info", &dsn.to_string_lossy()]);
+    assert_eq!(code, 0, "{stderr}");
+    let document: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout is not one JSON document: {e}\n{stdout}"));
+    assert!(
+        stdout.trim_start().starts_with('{'),
+        "nothing may precede the document on stdout"
+    );
+
+    // The five members, in declaration order (Convention 8) — asserted on the **text**, because
+    // re-parsing into a `serde_json::Value` alphabetises and would hide the order this promises.
+    let order: Vec<usize> = ["layers", "nets", "components", "statistics", "metadata"]
+        .iter()
+        .map(|key| {
+            stdout
+                .find(&format!("\n  \"{key}\""))
+                .unwrap_or_else(|| panic!("no top-level `{key}` in\n{stdout}"))
+        })
+        .collect();
+    assert!(order.windows(2).all(|w| w[0] < w[1]), "{order:?}");
+
+    // Every count comes from `BoardStatistics` and the vectors carry only names.
+    assert_eq!(
+        document["statistics"]["nets"]["total_count"].as_u64(),
+        Some(document["nets"].as_array().expect("nets").len() as u64)
+    );
+    assert_eq!(document["metadata"]["unit"], "mil");
+    assert_eq!(
+        document["layers"]
+            .as_array()
+            .expect("layers")
+            .iter()
+            .map(|l| l["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["1#Top", "16#Bottom"]
+    );
+}
+
+/// The two failures are `drc`'s, because they are the same two calls: an unreadable input and a
+/// board the loader refuses (quirk #274, label S — a `.ses` is not a board). Both exit **1**, and
+/// nothing is written to stdout, so a caller piping into `jq` sees an empty stream rather than
+/// half a document.
+#[test]
+fn info_exits_1_on_an_unreadable_input_and_on_an_unloadable_board() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let (stdout, stderr, code) = run(&["info", "/nonexistent/board.dsn"]);
+    assert_eq!(code, 1, "{stderr}");
+    assert!(stdout.is_empty(), "{stdout}");
+    assert!(stderr.contains("Couldn't load the input file"), "{stderr}");
+
+    let ses = parity::fixture("Issue593-BBD_Mars-64.ses");
+    let (stdout, stderr, code) = run(&["info", &ses.to_string_lossy()]);
+    assert_eq!(code, 1, "{stderr}");
+    assert!(stdout.is_empty(), "{stdout}");
+}
+
 /// **Ruling W** (quirk #154): the CLI writes the **KiCad** key spelling by default — the one the
 /// document's own `$schema` promises — while `fr_drc::DrcJsonFlavor`'s `Default` stays
 /// `FreeroutingHead`, which is the *parity* choice `crates/fr-drc/tests/report_json.rs` pins

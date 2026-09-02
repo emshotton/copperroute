@@ -606,7 +606,15 @@ different observable outcomes, so the three methods now panic
   sibling, which also drives `insert_tiles`, `remove_opt` with `null` holes and in-place
   leaf re-keying.
 - **Quirk row numbering.** Rows are contiguous from 1; the **next free id is #291**
-  (Plan 8 Task 10 landed #289 and #290 and amended #286; Plan 8 Task 9 landed #283-#288; Plan 8 Task 8 landed #277-#282; Plan 8 Task 7 landed #271-#276, the last in its review round; Plan 8 Task 6 landed #265-#270; Plan 8 Task 5 landed #259-#264; Plan 8 Task 4 landed #254-#258; Plan 8 Task 3 landed #253 and rewrote #232, whose text the same measurement falsified;
+  (Plan 8 Task 12 landed **none**, deliberately: it built the four MCP tools, the sparse
+  priority-70 settings tier and `freerouting info`, and every Java behaviour it depended on was
+  already registered — #141 for the `settings` reader's strictness, #151 for the DRC report's
+  hard-coded `"mm"`, #154 for the report's key spelling, #272 for the quality score's separate
+  merge, #273 for the DRC load order, #289 for quirk T. What it *added* is not a Java quirk: two
+  hand-written primitives (Base64 beside Task 4's SHA-256, scan ruling R12), a `/dev/urandom` job
+  id (controller ruling BC) and a fourth cancellation poll site (ruling AI), all of which are
+  divergences the port chose rather than behaviours the jar has;
+  Plan 8 Task 10 landed #289 and #290 and amended #286; Plan 8 Task 9 landed #283-#288; Plan 8 Task 8 landed #277-#282; Plan 8 Task 7 landed #271-#276, the last in its review round; Plan 8 Task 6 landed #265-#270; Plan 8 Task 5 landed #259-#264; Plan 8 Task 4 landed #254-#258; Plan 8 Task 3 landed #253 and rewrote #232, whose text the same measurement falsified;
   a landed row is never renumbered, but a row that turns out to state a Java fact that is not
   true is corrected in place, **quoting the falsified claim verbatim inside the corrected row**
   and giving the measurement that overturned it — a reader who arrives from an older document
@@ -957,8 +965,18 @@ different observable outcomes, so the three methods now panic
   task that did it named, rather than deleted. Each such row names the file that
   carries the same note in a code comment, so `grep -rn "obligation:"` finds them
   from the source side.
-- **`obligation:` `RoutingJobScheduler.scheduleJob` — the API path composes the merge
-  differently.** `fr_settings::resolve_headless` linearises the **CLI-started** two-merge path
+- **~~`obligation:`~~ `RoutingJobScheduler.scheduleJob` — the API path composes the merge
+  differently. DISCHARGED by Plan 8 Tasks 7 and 12** — the marker had two independent users and
+  both are closed. Task 12 (`crates/freerouting/src/mcp/tools/route_board.rs`) composes ruling
+  AU's MCP path from `SettingsMerger` in `RoutingJobScheduler.scheduleJob`'s own order, with the
+  caller's sparse `settings` object as `ApiSettings` at priority 70, and it is *measured* against
+  the CLI: `route_board` answers a session byte-identical to `p8t1`'s
+  `tests/reference/cli-tutorial_board/route.ses` and to what `freerouting route` writes for
+  `fixtures/Issue143-rpi_splitter.dsn`. Task 7
+  (`crates/freerouting/src/commands/drc.rs::quality_score_settings`) is the other user, quirk
+  #272's DRC quality score, pinned by `p8t3 merge`. What survives is the *warning*:
+  `resolve_headless` models the CLI-started path and only that. Original text follows.
+  `fr_settings::resolve_headless` linearises the **CLI-started** two-merge path
   (`Freerouting.java:125-146` then `RoutingJobScheduler.java:103-186`), whose premise is that
   merge #1's result is complete when it is re-injected at priority 70. An API job never runs
   merge #1: `job.routerSettings` is `new RouterSettings()` (`core/RoutingJob.java:105`), the

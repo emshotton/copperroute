@@ -30,13 +30,21 @@ use std::thread::JoinHandle;
 ///
 /// not ported: Freerouting.stopMcpServer — the Jetty shutdown that pairs with `initializeMCP`,
 /// itself `not ported:` in `src/main.rs`.
-pub fn run() -> i32 {
+pub fn run(settings_argv: &[String]) -> i32 {
+    // The registry is built **once**, here, before the state is shared — see
+    // [`super::tools::register_all`] for the contrast with the jar, which rebuilds its own with a
+    // fresh OpenAPI scan on every `tools/list` *and* every `tools/call`.
+    //
+    // `settings_argv` is the server process's own raw argv, which is the command line every
+    // settings tier below priority 70 is built from; see [`State::settings_argv`].
+    let mut state = State::with_settings_argv(settings_argv);
+    super::tools::register_all(&mut state);
     // `stdin()`/`stdout()` rather than their `lock()`s: a `StdinLock`/`StdoutLock` borrows the
     // handle and is `!Send`, and the reader thread and the tool threads need owned, sendable
     // halves. Each handle carries its own internal lock, so the two are as exclusive as the
     // guards would have been.
     run_with(
-        State::new(),
+        state,
         std::io::BufReader::new(std::io::stdin()),
         std::io::stdout(),
     )

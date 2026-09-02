@@ -42,8 +42,9 @@ use legacy::{ExitCode, Level};
 /// 3. **The diagnostics**, at their Java levels.
 /// 4. **The exit ladder** (`Freerouting.java:1469-1495`): an empty rewrite is a refusal Java
 ///    answers with `System.exit(1)`; clap owns the native form and its usage errors; a subcommand
-///    that is not wired up yet answers [`ExitCode::NotImplemented`], which Task 12 must make
-///    unreachable.
+///    that is not wired up yet would answer the reserved code 3 — since Task 12 wired the last
+///    one (`info`), **no runner answers it**, which `legacy::tests
+///    ::no_command_runner_answers_not_implemented` keeps true.
 ///
 /// # The raw argv is the settings argv
 ///
@@ -116,7 +117,7 @@ pub fn run(raw: &[String]) -> ExitCode {
         // The MCP transport predates the exit ladder and answers a raw code, which is Java's own
         // pair: `Freerouting.java:778-779` exits **0** on EOF and `:780-782` exits **1** on an
         // `IOException` reading `System.in`. Task 11's `eof_exits_zero` pins both arms.
-        cli::Command::Mcp => match mcp::stdio::run() {
+        cli::Command::Mcp => match mcp::stdio::run(raw) {
             0 => ExitCode::Ok,
             _ => ExitCode::Failure,
         },

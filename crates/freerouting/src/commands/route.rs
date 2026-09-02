@@ -493,7 +493,7 @@ fn delete_existing_output(output: &Path) {
 /// exists, else the adjacent `<design>.rules`), including quirk #269 (label V)'s `else if` trap; this
 /// wrapper is the read, and Java's two `catch (IOException)` arms (`:122-130`, `:142-150`) warn
 /// and continue with no rules at all.
-fn read_scheduler_rules(job: &RoutingJob, cli_rules: Option<&Path>) -> Option<Vec<u8>> {
+pub(crate) fn read_scheduler_rules(job: &RoutingJob, cli_rules: Option<&Path>) -> Option<Vec<u8>> {
     // `:115-117` — the job's own bytes, already in hand; no `exists()` probe.
     if let Some(rules) = job.rules.as_ref() {
         let data = rules.get_data();
@@ -528,7 +528,7 @@ fn read_scheduler_rules(job: &RoutingJob, cli_rules: Option<&Path>) -> Option<Ve
 /// #290 (label U) — Java opens the file with `new FileReader`, i.e. the platform default charset,
 /// where every other JSON path in the tree names UTF-8 — rides on both. That doc lives on the
 /// DRC site.
-fn import_session_file(
+pub(crate) fn import_session_file(
     session: Option<&Path>,
     board: &mut fr_board::Board,
     transform: &fr_dsn::CoordinateTransform,
@@ -628,7 +628,7 @@ fn resolved_output_format(job: &RoutingJob) -> FileFormat {
 /// actually contains. The measurement and the mechanism are at the call site. It is `Some`
 /// exactly when [`resolved_output_format`] answered `KicadSessionJson` there, which is the same
 /// question the `match` below asks — so the `None` arm of the JSON branch is unreachable.
-fn set_job_output(
+pub(crate) fn set_job_output(
     job: &mut RoutingJob,
     board: &fr_board::Board,
     transform: &fr_dsn::CoordinateTransform,

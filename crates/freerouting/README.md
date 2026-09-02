@@ -18,8 +18,12 @@ specified …` and **exit 1**, not a usage screen.
 > byte parity on seven of the eight committed `drc-*` stems and the eighth an `XDIFF` the jar
 > cannot win either (see its own table below). **Task 11 landed the MCP transport** — the reader
 > thread, the guarded writer, progress, cancellation and a tool boundary — and with it the MCP
-> delta table below. `info` is the last stub answering exit 3, until Task 12. Task 13 expands this
-> file into the full reference (every accepted flag, the `p8t1`-`p8t7` acceptance table).
+> delta table below. **Task 12 landed the four tools, `freerouting info` and the last of the exit
+> ladder** — spec §13's `route_board`, `check_drc`, `board_info` and `list_settings`, the sparse
+> priority-70 settings tier they configure, and the board summary `info` and `board_info` share.
+> **No subcommand answers exit 3 any more**, which
+> `legacy::tests::no_command_runner_answers_not_implemented` keeps true. Task 13 expands this file
+> into the full reference (every accepted flag, the `p8t1`-`p8t7` acceptance table).
 
 ---
 
@@ -54,9 +58,14 @@ The jar has an MCP server too, and it is a different program: `--mcp_server.stdi
 (`Freerouting.java:681-788`) and prints the HTTP response body. Controller ruling AO replaced that
 arrangement with a native in-process server, so the two are not expected to agree byte for byte —
 but *where* they disagree is a contract, not an accident. The rows below are that contract.
-**A new delta is a defect, and a delta that disappears is a defect too**; `p8t6` (Plan 8 Task 12)
-drives both programs through `initialize`, `tools/list` and a `tools/call` and asserts the
-difference is exactly this list.
+**A new delta is a defect, and a delta that disappears is a defect too**; `p8t6`
+(`scripts/differential/run.sh p8t6`, Plan 8 Task 12) drives both programs through `initialize`, a
+notification, `ping`, `tools/list`, two `tools/call`s, a malformed line and a blank line, and
+asserts the difference is exactly this list. It makes **eighteen** observations — thirteen
+covering rows 1-10, which must *differ*, and five agreements (the framing, the blank-input-line
+skip, the unknown-tool error, `isError`, the EOF exit code) which must be *equal*. A recorded
+delta the two programs now agree on is a `GONE` row; a difference this table does not record is a
+`NEW` row. Either fails the driver.
 
 Rows **1-10** are message-shape deltas — differences a transcript of that conversation can show,
 and the ten scan ruling R18 fixed as the recorded set, so those are the ten `p8t6` asserts. Row
@@ -90,6 +99,34 @@ HTTP call into the REST API, which has its own `enabled` default of `false` (sca
 Rows 1-5 and row 11 landed with the transport in Task 11; rows 6-10 are Task 12's and scan ruling
 R18's, and are recorded here so that Task 12's driver has one list to check rather than two.
 
+### The four tools
+
+Spec §13's, with **flat** arguments — not the `{path, query, body}` wrapper 20 of the jar's 28
+tools publish (row 10). Every one of them calls `fr-core` directly; **no tool spawns a process**,
+and none of them needs a session, a job id or an API key.
+
+| tool | arguments | answers |
+|---|---|---|
+| `route_board` | `dsn_path` \| `dsn_text`, `ses_path?`, `rules_path?`, `output_path?`, `settings?` | `ses_path` when `output_path` was given, else `ses_text` **and** `data` (Base64); plus `stats`, `incompletes`, `unrouted_report`, `drc_violation_count`, `timed_out`, and `job_id`/`size`/`crc32`/`format`/`filename`/`path` under `api/dto/BoardFilePayload`'s own names (ruling AO). **Always a Specctra session**, whatever went in — a KiCad design JSON routes to a `.ses` here, where `route -de board.json -do out.json` reproduces quirk **#289** (label T) and writes the board *as loaded* |
+| `check_drc` | `dsn_path` \| `dsn_text`, `ses_path?`, `rules_path?` | the KiCad DRC report — the same document `freerouting drc` writes, coordinates in `mm` (quirk #151; there is no unit option, and that is a recorded decision) |
+| `board_info` | `dsn_path` \| `dsn_text` | the board summary — the same document `freerouting info` writes |
+| `list_settings` | `{}` | `{"schema": …, "defaults": …}` — the `RouterSettings` schema with a description on every field, and `DefaultSettings`' own table resolved at call time |
+
+`route_board` is the only one that reports `notifications/progress` and the only one whose
+`CancelToken` can be flipped mid-run; the other three are a load and a walk. **A cancelled route
+answers a result, not an error**: a partial board with `timed_out: false`, because only the job
+deadline sets that flag. Closing the server's stdin is a cancellation too (row 11), so a client
+that pipes a script from a file and closes it immediately gets partial answers — keep the pipe
+open until the last response has been read.
+
+The `settings` argument is the **priority-70** tier, above every other settings source, and it is
+*sparse*: naming one field of `scoring` overrides that field and leaves the other ten alone. It is
+read by `RouterSettings::from_json_str`, which is strict JSON where Gson's reader is lenient
+(quirk #141) — `NaN` and `Infinity` are refused, and a `transient` field (`max_items`,
+`save_intermediate_stages`, `ignore_net_classes`) is dropped, exactly as Gson drops it. Call
+`list_settings` for the names the reader actually accepts; several differ from the Java field
+names (`job_timeout`, `allowed_via_types`, `result_json`, `improvement_threshold`, `timeout`).
+
 **What is *not* a delta.** The two exit *codes* Java can produce are reproduced: EOF on stdin is
 **0** and a read failure on stdin is **1** (`Freerouting.java:778-782`). What happens on the way to
 them is row 11. So is skipping a blank input line
@@ -116,6 +153,7 @@ who learns this CLI does not type them at the jar.
 | `--set <section.field=value>` | a generic settings override | `--section.field=value`, which the legacy form still accepts |
 | `--schema <kicad\|freerouting>` | which spelling of the KiCad DRC schema `drc` writes; **default `kicad`**, native form only (ruling W, quirk #154) | **none** — each jar hard-codes one spelling, and HEAD's disagrees with the `$schema` it advertises |
 | `drc` with no `-o` | write the report to **stdout** (quirk #275, spec §12) | **none** — `Freerouting.java:368-371` is dead code, because a bare `-drc` is not DRC mode (quirk #263) |
+| `info <board>` | print the board summary — layers, nets and components by name, the file's own metadata, and `BoardStatistics`' whole document — as JSON on stdout, and exit 0. **The only subcommand with no Java counterpart at all**: `Freerouting.main`'s mode ladder (`:1455-1467`) is GUI, DRC and CLI, and `legacy::rewrite` can never produce this argv | **none** |
 
 `--settings` was accepted and unread through Task 5; **Task 6 wired it** — `SettingsInputs::json_file`
 now carries the priority-10 tier into both of `resolve_headless`'s chains, and without the flag the

@@ -41,6 +41,7 @@ pub mod progress;
 pub mod save;
 pub mod stats_from_bytes;
 pub mod stats_json;
+pub mod summary;
 pub mod timespan;
 
 pub use cancel::{CancelToken, Deadline};
@@ -65,6 +66,9 @@ pub use progress::{SyncProgressSink, SyncProgressSinkView};
 pub use save::{calculate_crc32_for_board, save_as_specctra_session_ses};
 pub use stats_from_bytes::{BoardStatisticsExt, count_occurrences};
 pub use stats_json::{GsonBoardStatistics, to_gson_json, to_gson_string};
+pub use summary::{
+    BoardSummary, ComponentSummary, LayerSummary, NetSummary, SummaryMetadata, summarise,
+};
 pub use timespan::{
     GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format,
     job_timeout_deadline, job_timeout_deadline_from, parse_timespan, parse_timespan_seconds,
@@ -203,8 +207,12 @@ pub enum Error {
 // `api/v1/*ControllerV1`, `api/v1/Job{Input,Output,Progress}Resource`, `api/dto/**`,
 // `api/security/**`, the filters and the exception mappers). Ruling AU: the port has no HTTP
 // server, and spec §2 puts one out of scope. **`ApiSettings`' priority-70 settings tier STAYS** —
-// the MCP's `route_board { settings? }` argument composes exactly that tier, per the `obligation:`
-// at `crates/fr-settings/src/resolve.rs:193`.
+// the MCP's `route_board { settings? }` argument composes exactly that tier, and **Task 12 did
+// so**: `crates/freerouting/src/mcp/tools/route_board.rs` rebuilds
+// `RoutingJobScheduler.scheduleJob`'s merger in Java's own order, which discharged the port's
+// half of the `obligation:` at `crates/fr-settings/src/resolve.rs` (Task 7's DRC quality score
+// was the other half). `api/dto/BoardFilePayload`'s field names survive with it — `job_id`,
+// `data`, `size`, `crc32`, `format`, `filename`, `path` — which is ruling AO.
 //   Evidence (the whole package is reachable only through a running Jetty):
 //     $ grep -rn "FreeroutingApplication" src/main/java | grep -v '^src/main/java/app/freerouting/api/'
 //     (nothing outside api/ but `Freerouting.initializeAPI`, itself rostered below)

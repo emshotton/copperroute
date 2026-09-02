@@ -265,7 +265,7 @@ fn report_file_details(path: &Path) -> BoardFileDetails {
 /// ends in a separator (`-de dir/`) answers `""` in Java and `Some("dir")` here — unreachable,
 /// because such an input never survives `set_input` (quirk #257 records the jar's own NPE on
 /// `-de /`).
-fn base_name(path: &Path) -> String {
+pub(crate) fn base_name(path: &Path) -> String {
     path.file_name().map_or_else(
         || path.display().to_string(),
         |name| name.to_string_lossy().into_owned(),
@@ -633,7 +633,7 @@ fn write_report(drc: Option<&BoardFileDetails>, json: &str) -> ExitCode {
 /// which wall clock it names. Nothing compares it: `parity::normalize_drc_json` and
 /// `scripts/normalize-drc.py` both **drop** `date` (plan-5 ruling 3), because a timestamp cannot be
 /// a parity surface, and `fr-drc` takes it as an injected string for the same reason.
-fn report_date(time: std::time::SystemTime) -> String {
+pub(crate) fn report_date(time: std::time::SystemTime) -> String {
     // `fr_core::format_utc_iso8601` is `ISO_INSTANT`: `YYYY-MM-DDTHH:MM:SS[.fff|.ffffff|.fffffffff]Z`.
     // Rules 1 and 2 above are the two edits that turn it into `ISO_OFFSET_DATE_TIME` at offset
     // zero. Re-deriving the calendar here instead would be a second copy of

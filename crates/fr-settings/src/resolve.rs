@@ -201,19 +201,38 @@ impl Steps {
 /// `fill_absent_from` is not the same operation as "merge #2's sources, with a sparse override on
 /// top".
 ///
-// obligation: RoutingJobScheduler.scheduleJob — Plan 8 owns the API surface (plan ruling 10) and
+// ~~obligation: RoutingJobScheduler.scheduleJob — Plan 8 owns the API surface (plan ruling 10) and
 // must compose the API path separately: merge #2 alone, with `ApiSettings(job.routerSettings)`
-// as a sparse priority-70 source, rather than calling `resolve_headless`. `docs/java-quirks.md`
-// carries the same note.
+// as a sparse priority-70 source, rather than calling `resolve_headless`.~~
 //
-//   **This obligation has TWO independent users, and Task 12 is only one of them.**
-//   Plan 8 Task 7 is the other: `Freerouting.initializeDrc:342-352` computes the DRC report's
-//   quality score from a merge that is *not* this function's — the prototype merger plus one
-//   `DsnFileSettings`, with no `.rules` tier, no board pass and no merge #2 (quirk #272). It
-//   composes [`crate::SettingsMerger`] directly for exactly the structural reason recorded above,
-//   and `crates/freerouting/src/commands/drc.rs::quality_score_settings` is that composition;
-//   `p8t3 merge` pins it against the JVM field by field. Said here so that Task 12 does not read
-//   the marker as its own and "discharge" it by wiring only the API path.
+//   **DISCHARGED — both users, by Plan 8 Tasks 7 and 12.** The marker had two independent
+//   users, and each composes [`crate::SettingsMerger`] directly for the structural reason
+//   recorded above. Neither calls this function, and neither is a variant of the other:
+//
+//   1. **Task 12, ruling AU's MCP path** —
+//      `crates/freerouting/src/mcp/tools/route_board.rs`. `RoutingJobScheduler.scheduleJob`'s own
+//      order (`RoutingJobScheduler.java:91-186`): the caller's sparse `settings` object becomes
+//      `job.routerSettings` *before* the load (`api/v1/JobInputResource.java:203-211`), the load's
+//      `applyRouterSettingsForLoadedBoard` pass writes the board's layer count and board-tuned
+//      trace costs into it, and it is then registered as `ApiSettings` at priority 70 over a
+//      merger holding `DefaultSettings(0)`, `JsonFileSettings(10)`, `DsnFileSettings(20)`,
+//      `RulesFileSettings(40)`, `EnvironmentVariablesSource(55)` and `CliSettings(60)`.
+//      **Measured against this function**: `route_board` on
+//      `examples/tutorial_board/tutorial_board.dsn` answers a session byte-identical to `p8t1`'s
+//      `tests/reference/cli-tutorial_board/route.ses`, and on
+//      `fixtures/Issue143-rpi_splitter.dsn` byte-identical to what `freerouting route` writes —
+//      two different compositions, one SES
+//      (`crates/freerouting/tests/mcp_stdio.rs::the_four_tools_over_spawned_pipes`).
+//   2. **Task 7, the DRC quality score (quirk #272)** —
+//      `crates/freerouting/src/commands/drc.rs::quality_score_settings`.
+//      `Freerouting.initializeDrc:342-352`: the prototype merger plus one `DsnFileSettings`, with
+//      no `.rules` tier, no board pass and no merge #2. `p8t3 merge` pins it against the JVM
+//      field by field. **Untouched by Task 12** — the two are different compositions and the
+//      discharge of one is not the discharge of the other.
+//
+//   `docs/java-quirks.md` carries the same note. What survives the discharge is the *warning*
+//   this function's premise section states: `resolve_headless` models the CLI-started path and
+//   only that, and a future API-shaped caller must compose the merger rather than reach for it.
 ///
 /// `board` is `None` for "there is no board" — the merge alone. Java reaches that shape nowhere in
 /// the headless path, and each of its three board-facing sites answers it differently:

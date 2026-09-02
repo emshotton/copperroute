@@ -197,6 +197,22 @@ impl CancelToken {
         }
     }
 
+    /// **This** token with a job deadline attached: the same two flags — so a cancellation that
+    /// has already been requested, or arrives later, still reaches the run — plus ruling AI's
+    /// `job.timeoutAt` (`RoutingJobSchedulerActionThread.java:44-52`).
+    ///
+    /// [`CancelToken::with_deadline`] mints a **fresh** token, which is right for the CLI (it
+    /// owns the only token there is) and wrong for a caller that was *handed* one: the MCP's
+    /// `route_board` receives the transport's token, whose `cancel_all` an inbound
+    /// `notifications/cancelled` sets, and must not swap it for a token nothing can reach.
+    #[must_use]
+    pub fn with_deadline_from(&self, deadline: Deadline) -> CancelToken {
+        CancelToken {
+            deadline: Some(deadline),
+            ..self.clone()
+        }
+    }
+
     /// The token's deadline, if any.
     pub fn deadline(&self) -> Option<Deadline> {
         self.deadline

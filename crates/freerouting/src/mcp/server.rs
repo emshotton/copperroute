@@ -62,11 +62,18 @@ pub type ToolHandler = Box<
 /// (`McpControllerV1.java:185-198`), so no interim message is expressible; a long route reports
 /// nothing until it is finished. The `notifications/progress` row of the delta table in
 /// `crates/freerouting/README.md`.
+///
+/// [`Clone`] because a tool that reports from *inside* a callback needs its own handle:
+/// `route_board` installs an `fr_core::SyncProgressSink`, whose closure is `'static`, so it moves
+/// a clone in. Two clones write through the same `Arc<Mutex<_>>` and carry the same token, which
+/// is the same guarantee two clones of a [`CancelToken`] give.
+#[derive(Clone)]
 pub struct ProgressWriter {
     /// `None` is the drop-everything writer.
     inner: Option<ProgressTarget>,
 }
 
+#[derive(Clone)]
 struct ProgressTarget {
     /// The request's `params._meta.progressToken`, echoed verbatim. MCP allows a string or an
     /// integer and the port does not care which: it is copied, never parsed.
@@ -165,6 +172,16 @@ pub struct State {
     /// which is Java's behaviour too (`McpControllerV1.java:189-198` has no such guard), so the
     /// leniency is not a delta.
     pub initialized: AtomicBool,
+    /// The **server process's own** raw argv, which is the command line every settings tier below
+    /// priority 70 is built from — `--settings <file>` at 10 and `--router.*` at 60 (scan ruling
+    /// R19: the *raw* argv, not a rewritten one).
+    ///
+    /// This is `globalSettings.settingsMergerProtype`'s content (`Freerouting.java:1408-1413`),
+    /// which in Java is a field of the running JVM and here is a field of the running server.
+    /// `freerouting mcp` carries no router flags, so the tier is usually empty — but it is the
+    /// tier an operator reaches to configure a server, and a tool that ignored it would answer a
+    /// different board from the CLI on the same machine.
+    pub settings_argv: Vec<String>,
 }
 
 impl Default for State {
@@ -178,11 +195,21 @@ impl State {
         Self {
             tools: BTreeMap::new(),
             initialized: AtomicBool::new(false),
+            settings_argv: Vec::new(),
         }
     }
+
+    /// [`State::new`] with the server's own argv recorded — see [`State::settings_argv`].
+    pub fn with_settings_argv(settings_argv: &[String]) -> Self {
+        Self {
+            settings_argv: settings_argv.to_vec(),
+            ..Self::new()
+        }
+    }
+
     /// Registration happens before the state is shared, so this is the one `&mut self` on the
-    /// type. Task 12 registers the four spec §13 tools here.
-    #[allow(dead_code)]
+    /// type. Task 12 registers the four spec §13 tools here
+    /// (`super::tools::register_all`).
     pub fn register_tool(&mut self, def: ToolDef, handler: ToolHandler) {
         self.tools.insert(def.name.clone(), (def, handler));
     }

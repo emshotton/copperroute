@@ -212,6 +212,26 @@ impl AutoroutePassRunner {
 
         // :202.
         for current_item in autoroute_item_list {
+            // **Controller ruling AI's fourth poll site, added in Plan 8 Task 12 after a
+            // measurement.** Ruling BB's three sites are the *pass* loop heads
+            // (`batch_loop`, `fanout`, `optimizer`), and Task 11 recorded the residual latency as
+            // "one pass". Task 12 measured what one pass costs on a real board:
+            // `fixtures/Issue508-DAC2020_bm01.dsn`, release build, `--max-passes 1` with fanout
+            // and optimizer off, is **135 seconds**. An operator's `notifications/cancelled`
+            // taking over two minutes to be observed is not a cancellation, so ruling AI's
+            // sanctioned fourth site is taken: this loop, which is Java's own
+            // `AutoroutePassRunner.java:202-205` guard, one turn per item.
+            //
+            // It is `poll_cancel`, **never** `poll_deadline`: the prohibition
+            // `pipeline::stop`'s module doc states is unchanged, and for the same reason —
+            // `poll_deadline` requests `ALL` on a *stage* clock and would suppress a stage Java
+            // leaves running, while `poll_cancel` carries no clock at all and copies in what an
+            // operator asked for, which is `requestStop()` by definition.
+            //
+            // Byte-invisible by construction: both `RouterStop` constructors leave
+            // `cancel_poll: None`, and a `None` poll is a load and nothing else. Every parity
+            // driver builds `RouterStop::new()`.
+            stop.poll_cancel();
             // :203-205.
             if stop.is_stop_auto_router_requested() {
                 break;

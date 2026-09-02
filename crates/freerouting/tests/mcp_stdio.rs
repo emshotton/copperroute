@@ -42,7 +42,21 @@ fn initialize_ping_and_list_over_pipes() {
         &mut stdout,
         r#"{"jsonrpc":"2.0","id":3,"method":"tools/list"}"#,
     );
-    assert!(list["result"]["tools"].as_array().unwrap().is_empty());
+    // Task 11 asserted this list was **empty**, because the binary registered no tool until
+    // Task 12. It now carries spec §13's four, in `BTreeMap` order — and **four** is delta row
+    // 10's whole point against the jar's 28 (`docs/plan-8-prep/evidence/job3-summary.md` §4).
+    // `the_four_tools_over_spawned_pipes` below is where the list is checked properly; this line
+    // keeps the transport's own smoke test honest about what a client sees.
+    let names: Vec<&str> = list["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        vec!["board_info", "check_drc", "list_settings", "route_board"]
+    );
 
     drop(stdin);
     let status = child.wait().unwrap();
@@ -618,4 +632,703 @@ fn a_reused_in_flight_id_is_refused_and_the_first_call_survives() {
         msgs[1]["result"]["structuredContent"],
         json!({"first": true})
     );
+}
+
+// =================================================================================================
+// Plan 8 Task 12 — the four tools, over spawned pipes
+// =================================================================================================
+//
+// Everything from here down drives the **binary**, because that is the only way to exercise the
+// thing a client actually talks to: the registry the `mcp` subcommand builds, over a real pipe
+// pair. `Harness` above cannot be reused — it drives `run_with` in-process with a scripted
+// reader, which is right for the transport's own behaviours and wrong for a registry that only
+// `stdio::run` assembles.
+//
+// **The pipe must stay live.** A `freerouting mcp < script.jsonl` invocation closes stdin the
+// moment the last line is read, and EOF cancels every in-flight `tools/call` (delta row 11) — so
+// a routing tool driven that way answers a *partial* result. [`Pipes`] therefore writes one
+// request, reads its answer, and only closes stdin when the conversation is over. Measured while
+// writing these tests: `route_board` on `Issue143-rpi_splitter.dsn` answers 3 656 bytes and 16
+// wires over a live pipe and 797 bytes and 0 wires when the same request is piped from a file.
+
+use std::process::{Child, ChildStdin, ChildStdout};
+
+/// A live conversation with the `freerouting mcp` binary.
+struct Pipes {
+    child: Child,
+    stdin: ChildStdin,
+    stdout: BufReader<ChildStdout>,
+}
+
+impl Pipes {
+    fn start() -> Pipes {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_freerouting"))
+            .arg("mcp")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("the freerouting binary starts");
+        let stdin = child.stdin.take().expect("piped stdin");
+        let stdout = BufReader::new(child.stdout.take().expect("piped stdout"));
+        Pipes {
+            child,
+            stdin,
+            stdout,
+        }
+    }
+
+    /// Writes one message. Returns nothing — a notification has no answer.
+    fn write(&mut self, message: &Value) {
+        writeln!(self.stdin, "{message}").expect("the server is still reading");
+        self.stdin.flush().expect("the server is still reading");
+    }
+
+    /// The next line, parsed.
+    fn read(&mut self) -> Value {
+        let mut line = String::new();
+        let read = self
+            .stdout
+            .read_line(&mut line)
+            .expect("stdout is readable");
+        assert!(read > 0, "the server closed stdout before answering");
+        serde_json::from_str(&line).unwrap_or_else(|e| panic!("not JSON: {line:?} ({e})"))
+    }
+
+    /// The next line that is a **response** — skipping any `notifications/progress` that arrive
+    /// first, which is exactly what a client does.
+    fn read_response(&mut self) -> Value {
+        loop {
+            let message = self.read();
+            if message.get("id").is_some() {
+                return message;
+            }
+        }
+    }
+
+    /// One request, its response.
+    fn request(&mut self, id: i64, method: &str, params: Value) -> Value {
+        self.write(&json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
+        let answer = self.read_response();
+        assert_eq!(answer["id"], id, "responses are paired by id");
+        answer
+    }
+
+    /// One `tools/call`, its `structuredContent`. Panics with the tool's own message on
+    /// `isError`, so a failing tool names itself rather than failing an `is_object` assertion.
+    fn call(&mut self, id: i64, name: &str, arguments: Value) -> Value {
+        let answer = self.request(
+            id,
+            "tools/call",
+            json!({"name": name, "arguments": arguments}),
+        );
+        let result = answer["result"].clone();
+        assert!(
+            !result["isError"].as_bool().unwrap_or(false),
+            "{name} failed: {}",
+            result["content"][0]["text"]
+        );
+        result["structuredContent"].clone()
+    }
+
+    /// Closes stdin and waits. The exit code is Java's EOF code, 0.
+    fn finish(mut self) -> i32 {
+        drop(self.stdin);
+        self.child
+            .wait()
+            .expect("the server exits")
+            .code()
+            .unwrap_or(-1)
+    }
+}
+
+/// The committed schema golden — see [`the_schemas_match_the_committed_golden`].
+fn golden_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join("mcp-schemas.json")
+}
+
+/// Every schema this crate publishes, in one document.
+fn all_schemas() -> Value {
+    use freerouting::mcp::tools::schema;
+    json!({
+        "board_info": schema::board_info_schema(),
+        "check_drc": schema::check_drc_schema(),
+        "list_settings": schema::list_settings_schema(),
+        "route_board": schema::route_board_schema(),
+        "RouterSettings": schema::router_settings_schema(),
+    })
+}
+
+/// **Anti-drift device 1 of 2** (see `mcp::tools::schema`'s module docs for why `schemars` is
+/// refused and what these two tests buy back).
+///
+/// A schema cannot change without a reviewer seeing the diff. Set `FR_UPDATE_GOLDEN=1` to
+/// rewrite the file after a deliberate change.
+#[test]
+fn the_schemas_match_the_committed_golden() {
+    let rendered = serde_json::to_string_pretty(&all_schemas()).expect("the schemas serialize");
+    let path = golden_path();
+    if std::env::var_os("FR_UPDATE_GOLDEN").is_some() {
+        std::fs::write(&path, format!("{rendered}\n")).expect("the golden is writable");
+        return;
+    }
+    let golden = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("{}: {e}\nrun with FR_UPDATE_GOLDEN=1", path.display()));
+    assert_eq!(
+        rendered.trim_end(),
+        golden.trim_end(),
+        "the tool schemas changed; review the diff and re-run with FR_UPDATE_GOLDEN=1"
+    );
+}
+
+/// **Anti-drift device 2 of 2**, and the one that is strictly stronger than `schemars` for the
+/// failure that actually happens: a settings field added later that nobody exposes.
+///
+/// Three checks, in both directions:
+///
+/// 1. every property the `RouterSettings` schema publishes is a key the **reader** accepts —
+///    proved by feeding the reader `{"<property>": <a value of that type>}` and requiring the
+///    result to differ from `RouterSettings::new()`, so a renamed or invented property fails;
+/// 2. every key the **writer** emits for a fully-resolved settings object is in the schema — so a
+///    new field with a `serde` name nobody added to the schema fails;
+/// 3. the counts line up against each struct's own `FIELD_NAMES` minus its `transient` list — so
+///    a new field that is neither in the schema nor declared `transient` fails even if it is
+///    `#[serde(skip)]` and therefore invisible to (1) and (2).
+#[test]
+fn every_settings_field_is_in_the_schema_and_vice_versa() {
+    use fr_settings::sources::DefaultSettings;
+    use fr_settings::{
+        FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, RouterSettings,
+        ScoringSettings, SettingsSource,
+    };
+    use freerouting::mcp::tools::schema;
+
+    let root = schema::router_settings_schema();
+    let properties = |node: &Value| -> Vec<String> {
+        node["properties"]
+            .as_object()
+            .expect("a schema object has properties")
+            .keys()
+            .cloned()
+            .collect()
+    };
+
+    // ── 1. every published property is a key the reader accepts ──────────────────────────────
+    let sample = |node: &Value| -> Value {
+        match node["type"].as_str() {
+            Some("boolean") => json!(true),
+            Some("integer") => json!(3),
+            Some("number") => json!(1.5),
+            Some("string") => json!("x"),
+            Some("array") => json!([]),
+            Some("object") => json!({}),
+            other => panic!("a schema property with no usable type: {other:?}"),
+        }
+    };
+    let blank = RouterSettings::new();
+    for name in properties(&root) {
+        let node = &root["properties"][&name];
+        // A nested object needs a field of its own to carry, or the reader's answer is
+        // indistinguishable from the constructor's three allocated objects.
+        let value = if node["type"] == "object" {
+            let inner = properties(node)
+                .into_iter()
+                .next()
+                .expect("a nested schema object publishes at least one property");
+            json!({ inner.clone(): sample(&node["properties"][&inner]) })
+        } else if node["type"] == "array" && node.get("items").is_some() {
+            json!([{}])
+        } else {
+            sample(node)
+        };
+        let document = json!({ name.clone(): value }).to_string();
+        let parsed = RouterSettings::from_json_str(&document)
+            .unwrap_or_else(|e| panic!("the reader refuses the schema's own `{name}`: {e}"));
+        assert_ne!(
+            parsed, blank,
+            "`{name}` is published by the schema but the reader ignores it"
+        );
+    }
+
+    // ── 2. every key the writer emits is published ───────────────────────────────────────────
+    let resolved = DefaultSettings::new(&HostEnvironment::detect())
+        .get_settings()
+        .cloned()
+        .expect("DefaultSettings always answers a table");
+    let emitted = serde_json::to_value(&resolved).expect("the settings serialize");
+    let published: std::collections::BTreeSet<String> = properties(&root).into_iter().collect();
+    for key in emitted.as_object().expect("an object").keys() {
+        assert!(
+            published.contains(key),
+            "`{key}` is written by RouterSettings but missing from the schema"
+        );
+    }
+    for (nested, node) in [
+        ("fanout", &root["properties"]["fanout"]),
+        ("optimizer", &root["properties"]["optimizer"]),
+        ("scoring", &root["properties"]["scoring"]),
+    ] {
+        let published: std::collections::BTreeSet<String> = properties(node).into_iter().collect();
+        for key in emitted[nested].as_object().expect("an object").keys() {
+            assert!(
+                published.contains(key),
+                "`{nested}.{key}` is written by RouterSettings but missing from the schema"
+            );
+        }
+    }
+
+    // ── 3. the counts, against each struct's own FIELD_NAMES ─────────────────────────────────
+    for (label, fields, transient, node) in [
+        (
+            "RouterSettings",
+            RouterSettings::FIELD_NAMES,
+            schema::TRANSIENT_ROUTER_SETTINGS_FIELDS,
+            &root,
+        ),
+        (
+            "FanoutSettings",
+            FanoutSettings::FIELD_NAMES,
+            schema::TRANSIENT_FANOUT_FIELDS,
+            &root["properties"]["fanout"],
+        ),
+        (
+            "OptimizerSettings",
+            OptimizerSettings::FIELD_NAMES,
+            schema::TRANSIENT_OPTIMIZER_FIELDS,
+            &root["properties"]["optimizer"],
+        ),
+        (
+            "ScoringSettings",
+            ScoringSettings::FIELD_NAMES,
+            schema::TRANSIENT_SCORING_FIELDS,
+            &root["properties"]["scoring"],
+        ),
+        (
+            "LayerSettings",
+            LayerSettings::FIELD_NAMES,
+            schema::TRANSIENT_LAYER_FIELDS,
+            &root["properties"]["layers"]["items"],
+        ),
+    ] {
+        for name in transient {
+            assert!(
+                fields.contains(name),
+                "{label}'s transient list names `{name}`, which is not one of its fields"
+            );
+        }
+        assert_eq!(
+            properties(node).len(),
+            fields.len() - transient.len(),
+            "{label}: the schema publishes {:?} for fields {fields:?} minus transient {transient:?}",
+            properties(node)
+        );
+    }
+}
+
+/// A JVM checkout is needed for every board-driven test below.
+fn dsn(relative: &str) -> String {
+    parity::java_dir().join(relative).display().to_string()
+}
+
+/// **The end-to-end conversation** the task brief asks for, over spawned pipes: `initialize` →
+/// `notifications/initialized` → `tools/list` → all four tools → the schema snapshot.
+///
+/// Two rungs tie the tools to the two whole-program gates:
+///
+/// * `route_board`'s session is **byte-identical to `p8t1`'s** `cli-tutorial_board/route.ses`,
+///   after the same quirk #92 keyword rewrite `p8t1` and `cli_e2e.rs` apply to the jar side. That
+///   is the measurement that says ruling AU's sparse composition and `resolve_headless` agree on
+///   a real board — two different settings compositions, one SES.
+/// * `check_drc`'s report is **byte-identical to the one `freerouting drc` writes**, which is
+///   `p8t3 e2e`'s port lane, so the tool inherits that gate's comparison against the jar. Its
+///   `violations` array is additionally compared against the committed **jar** reference.
+#[test]
+fn the_four_tools_over_spawned_pipes() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let board = dsn("examples/tutorial_board/tutorial_board.dsn");
+    let mut pipes = Pipes::start();
+
+    // ── initialize ───────────────────────────────────────────────────────────────────────────
+    let init = pipes.request(
+        1,
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}),
+    );
+    let result = &init["result"];
+    assert_eq!(result["protocolVersion"], "2025-06-18");
+    assert_eq!(result["serverInfo"]["name"], "freerouting");
+    assert_eq!(result["capabilities"]["tools"]["listChanged"], false);
+    // Delta row 1: Java's two non-spec top-level keys are absent.
+    assert!(result.get("serverName").is_none() && result.get("serverVersion").is_none());
+
+    pipes.write(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    // ── tools/list: four tools, flat schemas, matching the golden ────────────────────────────
+    let list = pipes.request(2, "tools/list", json!({}));
+    let tools = list["result"]["tools"].as_array().expect("an array");
+    let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
+    // Delta row 10: **four**, not the jar's 28.
+    assert_eq!(
+        names,
+        vec!["board_info", "check_drc", "list_settings", "route_board"]
+    );
+    for tool in tools {
+        assert!(
+            !tool["description"].as_str().unwrap_or_default().is_empty(),
+            "{} has no description",
+            tool["name"]
+        );
+        let schema = &tool["inputSchema"];
+        assert_eq!(schema["type"], "object");
+        // Ruling AO: **flat**. The jar's 24 generated tools publish `{path, query, body}`.
+        for wrapper in ["path", "query", "body"] {
+            assert!(
+                schema["properties"].get(wrapper).is_none(),
+                "{} publishes the jar's {wrapper} wrapper",
+                tool["name"]
+            );
+        }
+        assert_eq!(schema, &all_schemas()[tool["name"].as_str().unwrap()]);
+    }
+
+    // ── route_board: the SES is p8t1's, byte for byte ────────────────────────────────────────
+    let routed = pipes.call(3, "route_board", json!({"dsn_path": board}));
+    let expected = std::fs::read_to_string(parity::cli_reference("tutorial_board", "route.ses"))
+        .expect("the p8t1 reference");
+    let expected = parity::normalize_ses_head_tokens(&expected);
+    let actual = routed["ses_text"].as_str().expect("ses_text");
+    assert_eq!(
+        actual, expected,
+        "route_board's session differs from p8t1's cli-tutorial_board/route.ses"
+    );
+    // The `BoardFilePayload` members, under Java's own names (ruling AO).
+    assert_eq!(routed["size"].as_u64(), Some(actual.len() as u64));
+    assert_eq!(routed["format"], "SES");
+    assert_eq!(routed["filename"], "tutorial_board.ses");
+    assert!(routed["crc32"].is_number() && routed["path"].is_string());
+    // `data` is offered only when the caller asked for text, and it is that text's Base64.
+    assert_eq!(
+        routed["data"].as_str().expect("data"),
+        base64_reference(actual.as_bytes())
+    );
+    assert!(routed.get("ses_path").is_none(), "no output_path was given");
+    // A real job id, from std-only entropy (ruling BC).
+    let job_id = routed["job_id"].as_str().expect("job_id");
+    assert_eq!(job_id.len(), 36);
+    assert_ne!(job_id, "00000000-0000-0000-0000-000000000000");
+    // Spec §13's own four members.
+    assert_eq!(routed["incompletes"], 0);
+    assert_eq!(routed["drc_violation_count"], 0);
+    assert_eq!(routed["timed_out"], false);
+    assert!(routed["stats"]["nets"]["total_count"].is_number());
+
+    // …and the same tool on a KiCad **design JSON** answers `p8t1`'s `kicad-ecc83-json` session,
+    // also byte for byte. The two inputs matter separately: the DSN path proves the sparse
+    // composition, and the JSON path proves the **output format is pinned to SES** — left to the
+    // input's own extension it would take the KiCad-session-JSON arm and hand back the board as
+    // loaded, before any routing (quirk #289, label T). See `route_board`'s step 14.
+    let kicad = pipes.call(
+        7,
+        "route_board",
+        json!({"dsn_path": dsn("fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json")}),
+    );
+    let expected = std::fs::read_to_string(parity::cli_reference("kicad-ecc83-json", "route.ses"))
+        .expect("the p8t1 reference");
+    assert_eq!(
+        kicad["ses_text"].as_str().expect("ses_text"),
+        parity::normalize_ses_head_tokens(&expected),
+        "route_board on a KiCad design JSON differs from p8t1's cli-kicad-ecc83-json/route.ses"
+    );
+    assert_eq!(kicad["format"], "SES");
+    assert!(
+        kicad["filename"]
+            .as_str()
+            .is_some_and(|name| name.ends_with(".ses")),
+        "the session is named as a session: {}",
+        kicad["filename"]
+    );
+
+    // ── check_drc: the report is the one `freerouting drc` writes ────────────────────────────
+    let mut report = pipes.call(4, "check_drc", json!({"dsn_path": board}));
+    let cli_report = drc_through_the_binary(&board);
+    let mut cli_report = cli_report;
+    // The one field that cannot be equal: `date` is a wall clock, which both parity normalisers
+    // drop for the same reason (plan-5 ruling 3).
+    report.as_object_mut().expect("an object").remove("date");
+    cli_report
+        .as_object_mut()
+        .expect("an object")
+        .remove("date");
+    assert_eq!(
+        report, cli_report,
+        "check_drc's report differs from the one `freerouting drc` writes"
+    );
+    // …and its violations are the jar's, from the committed p8t3 reference (`violations` is
+    // spelled the same in both flavors — `fr_drc::report::json`'s `FlavorKeys`).
+    let jar: Value = serde_json::from_str(
+        &std::fs::read_to_string(parity::reference("drc-tutorial-board", "drc.json"))
+            .expect("the drc reference"),
+    )
+    .expect("the reference is JSON");
+    assert_eq!(report["violations"], jar["violations"]);
+
+    // ── board_info ───────────────────────────────────────────────────────────────────────────
+    let info = pipes.call(5, "board_info", json!({"dsn_path": board}));
+    assert_eq!(
+        info["layers"]
+            .as_array()
+            .expect("layers")
+            .iter()
+            .map(|l| l["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["F.Cu", "B.Cu"]
+    );
+    assert_eq!(info["metadata"]["host_cad"], "KiCad's Pcbnew");
+    assert_eq!(info["metadata"]["unit"], "um");
+    // The counts come from `BoardStatistics` and nowhere else.
+    assert_eq!(
+        info["statistics"]["nets"]["total_count"].as_u64(),
+        Some(info["nets"].as_array().expect("nets").len() as u64)
+    );
+
+    // ── list_settings ────────────────────────────────────────────────────────────────────────
+    let settings = pipes.call(6, "list_settings", json!({}));
+    assert_eq!(settings["schema"], all_schemas()["RouterSettings"]);
+    // The defaults are `DefaultSettings`' own, resolved at call time — not literals in the
+    // schema, which is why the golden above is machine-independent and this is not.
+    assert_eq!(settings["defaults"]["max_passes"], 9999);
+    assert!(settings["defaults"]["max_threads"].is_number());
+
+    assert_eq!(pipes.finish(), 0, "EOF exits 0 — Freerouting.java:778-779");
+}
+
+/// `output_path` writes the session to disk and answers a path instead of the bytes — spec §13's
+/// "keeping large SES bodies out of the model context unless text is requested".
+#[test]
+fn an_output_path_answers_a_path_and_no_body() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = std::env::temp_dir().join("fr-mcp-route-out");
+    let _ = std::fs::create_dir_all(&dir);
+    let out = dir.join("routed.ses");
+    let _ = std::fs::remove_file(&out);
+
+    let mut pipes = Pipes::start();
+    let routed = pipes.call(
+        1,
+        "route_board",
+        json!({
+            "dsn_path": dsn("fixtures/Issue143-rpi_splitter.dsn"),
+            "output_path": out.display().to_string(),
+        }),
+    );
+    assert_eq!(pipes.finish(), 0);
+
+    assert_eq!(routed["ses_path"], out.display().to_string());
+    assert!(routed.get("ses_text").is_none());
+    assert!(
+        routed.get("data").is_none(),
+        "no Base64 unless text is asked for"
+    );
+    let written = std::fs::read(&out).expect("the file was written");
+    assert_eq!(routed["size"].as_u64(), Some(written.len() as u64));
+    assert!(written.starts_with(b"(session "));
+}
+
+/// **Ruling AU's sparse tier, observed through the tool.**
+///
+/// Three independent observations that the `settings` argument lands at priority 70 and that a
+/// nested object is merged *field by field* rather than replacing the tier:
+///
+/// 1. `{"enabled": false}` outranks `DefaultSettings`' `true` — the auto-routing stage is skipped
+///    and only the fanout pre-pass's traces survive;
+/// 2. `{"max_passes": 1}` outranks `DefaultSettings`' `9999` — a different, smaller board;
+/// 3. `{"scoring": {"via_costs": 500}}` names **one** of `ScoringSettings`' eleven fields and the
+///    run still completes with the full ratsnest routed. Had the sparse object replaced the tier,
+///    `unrouted_net_penalty` and the rest would be `null` and the score the router steers by
+///    could not be computed.
+#[test]
+fn a_sparse_settings_payload_composes_at_priority_70() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let board = dsn("fixtures/Issue143-rpi_splitter.dsn");
+    let mut pipes = Pipes::start();
+    let route = |pipes: &mut Pipes, id: i64, settings: Value| -> Value {
+        let mut arguments = json!({"dsn_path": board});
+        if !settings.is_null() {
+            arguments["settings"] = settings;
+        }
+        pipes.call(id, "route_board", arguments)
+    };
+
+    let bare = route(&mut pipes, 1, Value::Null);
+    let router_off = route(&mut pipes, 2, json!({"enabled": false}));
+    let one_pass = route(&mut pipes, 3, json!({"max_passes": 1}));
+    let via_costs = route(&mut pipes, 4, json!({"scoring": {"via_costs": 500}}));
+    assert_eq!(pipes.finish(), 0);
+
+    let wires = |v: &Value| v["ses_text"].as_str().unwrap().matches("(wire").count();
+    // 1. The bare run routes the board; the override stops the auto-routing stage.
+    assert_eq!(bare["incompletes"], 0);
+    assert!(wires(&bare) > wires(&router_off));
+    assert!(
+        wires(&router_off) > 0,
+        "the fanout pre-pass still ran; only the auto-router was disabled"
+    );
+    // 2. One pass leaves the board incomplete where the default 9999 does not.
+    assert_ne!(one_pass["ses_text"], bare["ses_text"]);
+    assert_ne!(one_pass["incompletes"], bare["incompletes"]);
+    // 3. Naming one nested field did not null out the other ten.
+    assert_eq!(via_costs["incompletes"], 0);
+    assert_eq!(via_costs["timed_out"], false);
+}
+
+/// **Quirk #141**: Gson's reader is `Strictness.LENIENT` and accepts `NaN`/`Infinity` as number
+/// literals; `serde_json` does not, so the whole line fails to parse and the port answers
+/// `-32700` where the jar would have coerced a value into `RouterSettings`.
+///
+/// The refusal is at the **line**, not at the tool, and that is the honest place for it: the
+/// transport parses whole lines, so a non-finite literal never reaches an argument. The port also
+/// refuses to *write* one (`to_gson_string_pretty`, Gson's own `IllegalArgumentException`), which
+/// is the "both ways" of the quirk.
+///
+/// A `settings` argument that is well-formed JSON but not a settings object is a *tool*-level
+/// refusal instead — `isError`, with a message naming `list_settings`.
+#[test]
+fn a_non_finite_float_in_settings_is_refused() {
+    let mut pipes = Pipes::start();
+
+    // Gson reads this; `serde_json` does not, and the line never becomes a request. Written as
+    // raw bytes because `serde_json` will not *produce* a non-finite literal either — the
+    // "both ways" half of the quirk.
+    pipes.stdin
+        .write_all(
+            br#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"route_board","arguments":{"dsn_text":"(pcb x)","settings":{"scoring":{"via_costs":NaN}}}}}
+"#,
+        )
+        .expect("the server is still reading");
+    pipes.stdin.flush().expect("the server is still reading");
+    let refusal = pipes.read_response();
+    assert_eq!(refusal["error"]["code"], -32700);
+    // Delta row 9: the port's `-32700` carries `"id":null`; Java's has no `id` member at all.
+    assert_eq!(refusal["id"], Value::Null);
+
+    // …and a `settings` that is not an object is refused by the tool, not by the parser.
+    let answer = pipes.request(
+        2,
+        "tools/call",
+        json!({"name": "route_board", "arguments": {"dsn_text": "(pcb x)", "settings": 7}}),
+    );
+    assert_eq!(answer["result"]["isError"], true);
+    let message = answer["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(message.contains("list_settings"), "{message}");
+
+    assert_eq!(pipes.finish(), 0);
+}
+
+/// **Controller ruling BB's seam, and ruling AI's fourth site, end to end.**
+///
+/// The board is `Issue508-DAC2020_bm01.dsn`, whose **single** auto-routing pass takes 135 seconds
+/// in a release build (measured, `--max-passes 1` with fanout and optimizer off). With ruling
+/// BB's three pass-loop-head polls alone, a cancellation would wait that long; with ruling AI's
+/// fourth site — the per-item loop, `AutoroutePassRunner.java:202-205` — it is observed in
+/// milliseconds. This test is therefore also the measurement: it cannot pass in a reasonable time
+/// unless the fourth site is there.
+///
+/// The cancellation is sent **after** the first `notifications/progress`, which is what makes
+/// "mid-run" a fact rather than a hope: the tool cannot have reported progress before it started.
+///
+/// A cancelled run answers a **result**, not an error: it is a partial board, with `timed_out`
+/// **false** — the job deadline is the only thing that sets that flag (`commands::route`'s step
+/// 12 carries the measurement), and an operator's cancel is not a timeout.
+#[test]
+fn cancelling_route_board_mid_run_returns_timed_out_false_and_a_partial_result() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut pipes = Pipes::start();
+    pipes.write(&json!({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+        "params": {
+            "name": "route_board",
+            "arguments": {"dsn_path": dsn("fixtures/Issue508-DAC2020_bm01.dsn")},
+            "_meta": {"progressToken": "tok"},
+        },
+    }));
+
+    // The first progress notification proves the tool is running.
+    let first = pipes.read();
+    assert_eq!(
+        first["method"], "notifications/progress",
+        "the call answered before reporting any progress: {first}"
+    );
+    assert_eq!(first["params"]["progressToken"], "tok");
+    assert!(first.get("id").is_none(), "a notification has no id");
+
+    let cancelled_at = Instant::now();
+    pipes.write(&json!({
+        "jsonrpc": "2.0", "method": "notifications/cancelled",
+        "params": {"requestId": 1, "reason": "the test asked"},
+    }));
+    let answer = pipes.read_response();
+    let latency = cancelled_at.elapsed();
+    assert_eq!(pipes.finish(), 0);
+
+    // Ruling AI's site is what makes this bound hold: one pass of this board is 135 s.
+    assert!(
+        latency < Duration::from_secs(60),
+        "the cancellation took {latency:?}; the per-item poll site is missing or ineffective"
+    );
+    let result = &answer["result"];
+    assert_eq!(result["isError"], false, "a cancelled run is not an error");
+    let content = &result["structuredContent"];
+    assert_eq!(content["timed_out"], false, "a cancel is not a timeout");
+    assert!(
+        content["incompletes"].as_i64().unwrap_or(0) > 0,
+        "the board is only partly routed"
+    );
+    assert!(
+        content["ses_text"]
+            .as_str()
+            .unwrap()
+            .starts_with("(session ")
+    );
+}
+
+/// `freerouting drc <dsn>` to stdout, parsed — the document `p8t3 e2e` compares against the jar.
+fn drc_through_the_binary(board: &str) -> Value {
+    let output = Command::new(env!("CARGO_BIN_EXE_freerouting"))
+        .args(["drc", board])
+        .output()
+        .expect("the freerouting binary starts");
+    assert!(output.status.success(), "drc exited {:?}", output.status);
+    serde_json::from_slice(&output.stdout).expect("the DRC report is JSON")
+}
+
+/// A second, independent Base64 encoder, so the tool's answer is checked against something other
+/// than the function that produced it. Deliberately the slow, obvious implementation: build the
+/// whole bit string, take it six bits at a time, pad to a multiple of four.
+fn base64_reference(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let bits: String = bytes.iter().map(|b| format!("{b:08b}")).collect();
+    let mut out = String::new();
+    for chunk in bits.as_bytes().chunks(6) {
+        let mut six = String::from_utf8(chunk.to_vec()).expect("ascii");
+        while six.len() < 6 {
+            six.push('0');
+        }
+        let index = usize::from_str_radix(&six, 2).expect("six bits");
+        out.push(ALPHABET[index] as char);
+    }
+    while !out.len().is_multiple_of(4) {
+        out.push('=');
+    }
+    out
 }

@@ -77,7 +77,7 @@ use fr_settings::prelude::{
 /// | `Ok` | a completed run, `--help`, and `-drc` unconditionally (quirk label B) | `Freerouting.java:1495` `System.exit(0)`, `:1397` for help |
 /// | `Failure` | `computeCliExitCode` (`:194-201`), **and every failure on the legacy path** | `Freerouting.java:1474` `System.exit(1)` |
 /// | `UsageError` | **port only** — clap's own usage error, so the *native* subcommand form only | — |
-/// | `NotImplemented` | **port only**, and **reserved**: by the end of Plan 8 Task 12 it must be unreachable | — |
+/// | `NotImplemented` | **port only**, and **reserved**: unreachable since Plan 8 Task 12 — no runner answers it | — |
 ///
 /// Ruling AR is why 2 and 3 are native-form-only: a Java command line that Java accepts must
 /// never come back with a code Java cannot produce. `rewrite` therefore never fails — it warns —
@@ -109,9 +109,10 @@ pub enum ExitCode {
     /// ```
     ///
     /// ~~Three sites answer it today — `commands/{route,drc,info}.rs` — and Tasks 6, 7 and 12 are
-    /// what remove them.~~ Task 6 removed `route`'s and **Task 7 removed `drc`'s**; `info` is the
-    /// last one, and Task 12 is what removes it. The variant itself stays, unused and documented,
-    /// per controller answer 3.
+    /// what remove them.~~ Task 6 removed `route`'s, **Task 7 removed `drc`'s**, and **Task 12
+    /// removed `info`'s — the grep above now answers nothing at all.** The variant itself stays,
+    /// unused and documented, per controller answer 3; `no_command_runner_answers_not_implemented`
+    /// below is the gate in executable form, so the property survives a future subcommand.
     NotImplemented = 3,
 }
 
@@ -841,5 +842,46 @@ mod tests {
         assert_eq!(ExitCode::Failure.code(), 1);
         assert_eq!(ExitCode::UsageError.code(), 2);
         assert_eq!(ExitCode::NotImplemented.code(), 3);
+    }
+
+    /// Task 14's gate, in executable form: **no command runner produces
+    /// [`ExitCode::NotImplemented`]**. The variant stays reserved (controller answer 3), but
+    /// nothing may answer it, and a grep is a gate a future subcommand can silently break —
+    /// this cannot be broken silently, because a new runner that returns it fails here.
+    ///
+    /// The check reads the runners' own sources rather than calling them: three of the four take
+    /// a filesystem path and the fourth is a server loop, so "run them all and look at the code"
+    /// is not a test. `CARGO_MANIFEST_DIR` makes it independent of the working directory.
+    #[test]
+    fn no_command_runner_answers_not_implemented() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut offenders = Vec::new();
+        let mut stack = vec![src];
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).expect("the crate's own src/ is readable") {
+                let path = entry.expect("a readable directory entry").path();
+                if path.is_dir() {
+                    stack.push(path);
+                    continue;
+                }
+                if path.extension().is_some_and(|e| e == "rs") {
+                    let text = std::fs::read_to_string(&path).expect("a readable source file");
+                    // This file is where the variant is *declared*, documented and tested; every
+                    // other mention would be a producer.
+                    if path.file_name().is_some_and(|n| n == "legacy.rs") {
+                        continue;
+                    }
+                    for (n, line) in text.lines().enumerate() {
+                        if line.contains("ExitCode::NotImplemented") {
+                            offenders.push(format!("{}:{}", path.display(), n + 1));
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            offenders.is_empty(),
+            "ExitCode::NotImplemented is reserved and unreachable; these sites answer it: {offenders:?}"
+        );
     }
 }
