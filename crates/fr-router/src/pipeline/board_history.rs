@@ -272,9 +272,9 @@ impl BoardHistory {
                 // `Item.autorouteInfo` is `transient` (Item.java:67), so a deserialized board's scratch is
                 // already null. The PORT's `deep_copy` is a structural clone, not serialization, so
                 // `clear_autoroute_scratch` is LOAD-BEARING here — it is what makes the copy match
-                // Java's deserialized board (pinned by fr-board's clearance/round-trip tests). A
-                // is already null, and the port's `finish_autoroute` is empty (plan-6 ruling 3
-                // puts the engine outside `Board`).
+                // Java's deserialized board (pinned by fr-board's clearance/round-trip tests); the
+                // port's `finish_autoroute` is empty because plan-6 ruling 3 puts the engine
+                // outside `Board`.
                 return Some(entry.board.deep_copy());
             }
         }

@@ -6,7 +6,7 @@
 //!
 //! # State
 //!
-//! **Task 11 of 18.** The module holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
+//! The pipeline module (Plan 7, Tasks 2–16). It holds [`BoardHistory`] — `autoroute/BoardHistory.java`, the pass
 //! loop's best-board memory (controller ruling AF) — and, from Task 4, the plumbing every later
 //! task threads through: the three-state stop [`RouterStop`] with ruling AI's deadline,
 //! [`RouterBudget`], [`ProgressThrottler`], [`RouterCounters`], [`PassRecord`],
