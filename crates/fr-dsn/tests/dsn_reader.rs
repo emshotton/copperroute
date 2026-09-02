@@ -910,10 +910,20 @@ fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
 /// the padded `0` reaches `DesignRulesChecker.calculateAllIncompletes:558`, which does
 /// `rules.nets.get(0)` — `Vector.get(-1)` — and throws
 /// `ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 2` on every autoroute pass,
-/// for ever. Changing the fixture's via to `(net NORDERED 1)` (one found net, no padding) makes
-/// the same file route and exit 0. That is a **jar**-side consequence of the quirk, not a port
-/// divergence: the port reproduces the reader exactly, as the rows above show. See the task-13
-/// report's XDIFF section.
+/// for ever. That is a **jar**-side consequence of the quirk, not a port divergence: the port
+/// reproduces the reader exactly, as the rows above show. See the task-13 report's §4.
+///
+/// # The control
+///
+/// `tests/data/p8t13-via-net-numbers-control.dsn` is the **same file**, byte for byte, except that
+/// its via reads `(net NORDERED 1)` instead of `(net NORDERED)`. A subnet number `> 0` sends
+/// `Wiring.getSubnets` (Wiring.java:226-230) down its single-net branch, so `foundNets.size() == 1`
+/// and the loop pads nothing. Its transcript
+/// (`tests/data/p8t13-directed-via-net-numbers-control.txt`) records the difference twice over:
+/// the via reads `nets=[1]` rather than `nets=[2,0]`, and `[jar-cli] exit=0` — the jar routes the
+/// file and writes a 1 995-byte `.ses`. That is what makes the hang attributable to the padded
+/// zero and to nothing else about the fixture, and this test asserts both halves so the claim
+/// cannot rot into prose.
 #[test]
 fn read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros() {
     let (board, _) = common::read_directed("via-net-numbers");
@@ -926,5 +936,57 @@ fn read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros() {
         &common::directed_items(&board),
         &common::directed_rows("via-net-numbers", "[item"),
         "via-net-numbers item graph",
+    );
+
+    // The control: one changed token, no padding, and a jar run that terminates.
+    let (control, _) = common::read_directed("via-net-numbers-control");
+    common::assert_rows_match(
+        &common::directed_nets(&control),
+        &common::directed_rows("via-net-numbers-control", "[net]"),
+        "via-net-numbers-control nets",
+    );
+    common::assert_rows_match(
+        &common::directed_items(&control),
+        &common::directed_rows("via-net-numbers-control", "[item"),
+        "via-net-numbers-control item graph",
+    );
+
+    // Stated as an assertion rather than left to the byte comparison above: the two fixtures
+    // differ in exactly one via, and only the padded one has a zero in its net array.
+    let via_row = |path: &str| -> String {
+        common::directed_rows(path, "[item] 5 Via")
+            .first()
+            .expect("both fixtures put the via at id 5")
+            .clone()
+    };
+    assert!(
+        via_row("via-net-numbers").contains("nets=[2,0]"),
+        "the bare `(net NORDERED)` via is padded — quirk #105"
+    );
+    assert!(
+        via_row("via-net-numbers-control").contains("nets=[1]"),
+        "the `(net NORDERED 1)` via takes getSubnets' single-net branch and is not padded"
+    );
+
+    // And the jar's own verdict on each, which is the whole point of keeping the control.
+    let hang = common::test_data("p8t13-directed-via-net-numbers.txt");
+    let ok = common::test_data("p8t13-directed-via-net-numbers-control.txt");
+    assert!(
+        hang.contains("[jar-cli] exit=<none: still running after"),
+        "the padded fixture must still hang the HEAD jar"
+    );
+    assert!(
+        hang.contains(
+            "[jar-cli] throwable java.lang.ArrayIndexOutOfBoundsException: Index -1 out of bounds"
+        ),
+        "and it must still hang for the `nets.get(0)` reason, not some other one"
+    );
+    assert!(
+        ok.contains("[jar-cli] exit=0"),
+        "the control must still route and exit 0"
+    );
+    assert!(
+        !ok.contains("[jar-cli] throwable "),
+        "the control must reach no throwable at all"
     );
 }

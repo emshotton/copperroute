@@ -29,6 +29,11 @@ struct Row {
     suite: &'static str,
     /// The source of that suite, so the check needs no filesystem walk.
     source: &'static str,
+    /// A companion fixture that isolates the row's finding by changing one token, when the row has
+    /// one. Only quirk #105 does: `p8t13-via-net-numbers-control.dsn` is the hang fixture with
+    /// `(net NORDERED 1)` on the via, and its transcript's `[jar-cli] exit=0` is what makes the
+    /// hang attributable to the padded zero rather than to anything else about the file.
+    control: Option<&'static str>,
 }
 
 /// The four rows of `docs/plan-3-handoff.md`'s zero-coverage list, taken verbatim from it.
@@ -44,6 +49,7 @@ const ROWS: [Row; 4] = [
         test: "ses_writer_writes_a_pins_line_for_every_swapped_pin",
         suite: "tests/parity_ses.rs",
         source: include_str!("parity_ses.rs"),
+        control: None,
     },
     Row {
         path: "conduction-area",
@@ -51,6 +57,7 @@ const ROWS: [Row; 4] = [
         test: "ses_writer_mixes_integer_boundary_and_double_hole_coordinates",
         suite: "tests/parity_ses.rs",
         source: include_str!("parity_ses.rs"),
+        control: None,
     },
     Row {
         path: "lock-type",
@@ -58,6 +65,7 @@ const ROWS: [Row; 4] = [
         test: "the_lock_type_position_arm_survives_a_whole_file_read",
         suite: "tests/placement_scope.rs",
         source: include_str!("placement_scope.rs"),
+        control: None,
     },
     Row {
         path: "via-net-numbers",
@@ -65,6 +73,7 @@ const ROWS: [Row; 4] = [
         test: "read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros",
         suite: "tests/dsn_reader.rs",
         source: include_str!("dsn_reader.rs"),
+        control: Some("via-net-numbers-control"),
     },
 ];
 
@@ -110,6 +119,31 @@ fn every_plan_3_zero_coverage_path_has_a_directed_test() {
             row.java,
             row.suite,
             row.path
+        );
+
+        let Some(control) = row.control else {
+            continue;
+        };
+        let control_fixture = format!("{data}/p8t13-{control}.dsn");
+        assert!(
+            std::path::Path::new(&control_fixture).is_file(),
+            "{}: the control fixture {control_fixture} is missing — without it the row's finding \
+             is prose, not evidence",
+            row.java
+        );
+        let control_transcript =
+            std::fs::read_to_string(format!("{data}/p8t13-directed-{control}.txt"))
+                .unwrap_or_else(|e| panic!("{}: p8t13-directed-{control}.txt: {e}", row.java));
+        assert!(
+            control_transcript.contains("[jar-cli] exit=0"),
+            "{}: the control's whole job is to show the jar terminating on the same file",
+            row.java
+        );
+        assert!(
+            row.source.contains(&format!("p8t13-{control}.dsn")),
+            "{}: {} must name the control fixture `p8t13-{control}.dsn` in the test's doc comment",
+            row.java,
+            row.suite
         );
     }
 }

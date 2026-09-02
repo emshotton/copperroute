@@ -52,6 +52,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //                    (Wiring.java:684-687), beside `readWireScope`'s identical loop that does
 //                    (:441-445). The `[item]` rows print every item's net array, so the via's
 //                    `[<n>, 0]` and the wire's `[<n1>, <n2>]` stand next to each other.
+//   via-net-numbers-control
+//                    the SAME file with `(net NORDERED 1)` on the via. A subnet number > 0 sends
+//                    `getSubnets` (Wiring.java:226-230) down its single-net branch, so
+//                    `foundNets.size() == 1`, the loop pads nothing, and the via reads `[1]`. It
+//                    is the control that isolates the hang below to the padded zero and to
+//                    nothing else about the fixture: this one routes and exits 0.
 //
 // No clock, no identity hash, no `System.identityHashCode`: `board.getItems()` and
 // `board.getPins()` are both views of one insertion-ordered item list, so every row is byte-stable
@@ -65,7 +71,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //   cd scripts/differential
 //   "$JDK/bin/javac" -cp "$JAR" -d /tmp/p8t13 java/probes/P8T13Probe.java
 //   cd ..                                    # the repo root: the probe resolves paths from it
-//   for p in was-is lock-type conduction-area via-net-numbers; do \
+//   for p in was-is lock-type conduction-area via-net-numbers via-net-numbers-control; do \
 //     "$JDK/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
 //         -cp "/tmp/p8t13:$JAR" P8T13Probe "$p" \
 //       > crates/fr-dsn/tests/data/p8t13-directed-"$p".txt; done
@@ -77,9 +83,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // -de <fixture> -do <out.ses>` — is run by the probe itself, as a subprocess, and transcribed as
 // the `[jar-cli]` rows: the exit status, the `.ses` it produced and the distinct throwables and
 // `app.freerouting` frames its log carried. Nothing timestamped, job-id-tagged or network-derived
-// is transcribed, so those rows are byte-stable too. `via-net-numbers` never terminates (quirk
-// #105's padded zero net number NPEs the autorouter's incomplete count on every pass), so the run
-// is killed after CLI_TIMEOUT_SECONDS and the transcript says so.
+// is transcribed. `via-net-numbers` never terminates (quirk #105's padded zero net number NPEs the
+// autorouter's incomplete count on every pass), so the run is killed after CLI_TIMEOUT_SECONDS and
+// the transcript says so, while `via-net-numbers-control` — the same file with the padding removed
+// — exits 0 in seconds.
+//
+// ONE CAVEAT ON THE `[jar-cli] ses|` ROWS. Where the CLI actually routes something, those rows
+// carry the **router's** output, which this task does not pin. **No Rust test compares them**: the
+// four directed tests replay the `[ses …]`, `[item]`, `[net]`, `[pin]` and `[pinorder]` rows, all
+// of which come from the reader and the writer alone, and `tests/plan_3_zero_coverage.rs` only
+// checks that a `[jar-cli] cmd=` line and a `[read] Success` line are present. The `[jar-cli] ses|`
+// rows are committed as evidence that the jar accepted the fixture, not as a parity gate.
 public final class P8T13Probe {
 
   private static final String DATA = "crates/fr-dsn/tests/data";
@@ -121,7 +135,7 @@ public final class P8T13Probe {
       case "was-is" -> wasIs(board, dsn, out);
       case "lock-type" -> lockType(board, dsn, out);
       case "conduction-area" -> conductionArea(board, dsn, out);
-      case "via-net-numbers" -> viaNetNumbers(board, out);
+      case "via-net-numbers", "via-net-numbers-control" -> viaNetNumbers(board, out);
       default -> out.println("UNKNOWN PATH " + path);
     }
   }
@@ -260,10 +274,11 @@ public final class P8T13Probe {
    * `en`/`US`. Killed after {@link #CLI_TIMEOUT_SECONDS} — `via-net-numbers` never terminates (see
    * that transcript's `[jar-cli]` rows), so the deadline is part of the evidence, not a shortcut.
    *
-   * <p>Only three things are printed, all of them byte-stable: the exit status, the `.ses` the run
-   * produced, and the **distinct** throwable and `app.freerouting` stack frames the log carried, in
-   * first-seen order. Everything else the CLI logs is timestamped or carries a random job id, and
-   * the "New version available" line depends on the network, so none of it is transcribed.
+   * <p>Only three things are printed: the exit status, the `.ses` the run produced, and the
+   * **distinct** throwable and `app.freerouting` stack frames the log carried, in first-seen order.
+   * Everything else the CLI logs is timestamped or carries a random job id, and the "New version
+   * available" line depends on the network, so none of it is transcribed. See the caveat in the
+   * class comment: a routed `.ses` is the router's output and no test compares it.
    */
   private static void jarCli(File jar, File dsn, PrintStream out) throws Exception {
     File ses = File.createTempFile("p8t13-", ".ses");
