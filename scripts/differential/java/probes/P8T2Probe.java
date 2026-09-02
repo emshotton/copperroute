@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Plan 8 Task 2's JVM-pinned evidence: the <b>text-scraping</b> {@code BoardStatistics(byte[],
  * FileFormat)} constructor (BoardStatistics.java:436-552), its private helper {@code
- * countOccurrences} (:578-586), and the Gson JSON surface — {@code toString} (:588-591) is
+ * countOccurrences} (:578-586), and the Gson JSON surface — {@code toString} (:589-591) is
  * {@code GsonProvider.GSON.toJson(this)}.
  *
  * <p>Declares {@code package app.freerouting.core.scoring} because {@code countOccurrences} is
@@ -28,7 +28,7 @@ import java.util.List;
  *   COUNT  &lt;idx&gt; &lt;haystack&gt; &lt;needle&gt; &lt;n&gt;  countOccurrences                       :578-586
  *   BS     &lt;idx&gt; &lt;label&gt; &lt;format&gt; &lt;src&gt;   the constructor's input                :436-552
  *   FLD    &lt;idx&gt; &lt;50 values&gt;              every DTO field of the result
- *   JSON   &lt;idx&gt; &lt;escaped toString()&gt;     the byte-exact Gson output            :588-591
+ *   JSON   &lt;idx&gt; &lt;escaped toString()&gt;     the byte-exact Gson output            :589-591
  * </pre>
  *
  * <p>A {@code BS} row's {@code src} column is one of {@code null} (a null {@code byte[]}),
@@ -218,6 +218,15 @@ public final class P8T2Probe {
     emitFile("Issue143-rpi_splitter/unrouted.ses AS DSN", FileFormat.DSN,
         "ref:Issue143-rpi_splitter/unrouted.ses",
         repoRoot.resolve("tests/reference/Issue143-rpi_splitter/unrouted.ses"));
+    // The ONE shape in this repository where the host scrape succeeds on a real, jar-written
+    // file: `Parser.writeScope(..., reduced = true)` (Parser.java:98-107) skips `(stringQuote ")`,
+    // so the first `)` after `(parser` closes `(hostCad …)` instead of truncating in front of it,
+    // and HEAD's own keyword IS the camelCase one the scrape looks for (Keyword.java:40-41).
+    // Reachable only by handing a `.ses` to the DSN branch, which no Freerouting code path does.
+    // The 2.3.0-written `unrouted.ses` above is snake_case and scrapes nothing.
+    emitFile("router-dac2020-bm01/batch.ses AS DSN", FileFormat.DSN,
+        "ref:router-dac2020-bm01/batch.ses",
+        repoRoot.resolve("tests/reference/router-dac2020-bm01/batch.ses"));
 
     // ---- the guards and the formats with no branch -------------------------------------------
     emitNull("null data", FileFormat.DSN);
@@ -272,6 +281,8 @@ public final class P8T2Probe {
     emitBytes("camelCase, version only", "s:(parser (hostVersion \"8.0\" ))", FileFormat.DSN);
     emitBytes("camelCase, two spaces", "s:(parser (hostCad  \"KiCad\" ))", FileFormat.DSN);
     emitBytes("camelCase, no space", "s:(parser (hostCad\"KiCad\" ))", FileFormat.DSN);
+    emitBytes("trim keeps NBSP", "s:(parser (hostCad K\u00a0 ))", FileFormat.DSN);
+    emitBytes("trim drops the control char", "s:(parser (hostCad K\u0001 ))", FileFormat.DSN);
     emitBytes(
         "camelCase, unquoted", "s:(parser (hostCad KiCad (hostVersion 8.0 ))", FileFormat.DSN);
     emitBytes("no parser scope", "s:(pcb x (structure))", FileFormat.DSN);
@@ -305,6 +316,28 @@ public final class P8T2Probe {
         "s:{\"layers\":[1,2],\"components\":7,\"nets\":[1]}",
         FileFormat.KICAD_DESIGN_JSON);
     emitBytes("kicad numeric designName", "s:{\"designName\":42}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName 1e5", "s:{\"designName\":1e5}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName 1.50", "s:{\"designName\":1.50}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName big integer",
+        "s:{\"designName\":123456789012345678901234567890}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName one-element array",
+        "s:{\"designName\":[\"foo\"]}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName nested one-element array",
+        "s:{\"designName\":[[\"deep\"]]}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName one-element numeric array",
+        "s:{\"designName\":[1e5]}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName two-element array",
+        "s:{\"designName\":[\"a\",\"b\"]}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName empty array",
+        "s:{\"designName\":[]}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName boolean",
+        "s:{\"designName\":true}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName null",
+        "s:{\"designName\":null}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName object",
+        "s:{\"designName\":{\"a\":1}}", FileFormat.KICAD_DESIGN_JSON);
+    emitBytes("kicad designName duplicated",
+        "s:{\"designName\":\"first\",\"designName\":\"last\"}", FileFormat.KICAD_DESIGN_JSON);
 
     // ---- the Gson surface on the fields the scraper never writes --------------------------------
     emitSynth("empty", new BoardStatistics());

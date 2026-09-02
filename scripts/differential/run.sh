@@ -667,9 +667,10 @@ case "$driver" in
   p8t2probe)
     # Plan 8 Task 2: the **text-scraping** `BoardStatistics(byte[], FileFormat)`
     # (`core/scoring/BoardStatistics.java:436-552`), its private `countOccurrences` (`:578-586`)
-    # and the Gson JSON surface `toString` (`:588-591`). Five tables, 244 rows: the fifty DTO
-    # fields and the byte-exact `toString()` for every corpus `.dsn`, every committed `.ses`,
-    # every `batch.ses`, thirty-eight synthetic edge cases and three hand-built statistics.
+    # and the Gson JSON surface `toString` (`:589-591`). Five tables, 289 lines over 92 `BS`
+    # rows: the fifty DTO fields and the byte-exact `toString()` for every corpus `.dsn`, every
+    # committed `.ses`, every `batch.ses`, fifty-seven synthetic edge cases and three hand-built
+    # statistics.
     #
     # Declares `package app.freerouting.core.scoring` because `countOccurrences` is `private
     # static` and is reached by reflection.
@@ -678,6 +679,11 @@ case "$driver" in
     # `(parser (hostCad))` throws `StringIndexOutOfBoundsException` out of the Java constructor
     # (quirk #250, totalised here), and `(parser (hostCad  ))` scrapes an *empty* `hostCad` where
     # the port spells Java's `null` the same way (quirk #251).
+    #
+    # Row 31 (`router-dac2020-bm01/batch.ses AS DSN`) is the one row where the host scrape
+    # SUCCEEDS: a HEAD-written session file's parser scope is `reduced`, so it carries no
+    # `(stringQuote ")` to truncate it, and HEAD's own keyword is the camelCase one the scrape
+    # looks for (quirk #248's clause (b)).
     #
     # NAME: `p8t2probe`, not `p8t2` — the plan reserves `p8t2` for Task 4's result-manifest
     # driver, which is a different driver against the same jar.

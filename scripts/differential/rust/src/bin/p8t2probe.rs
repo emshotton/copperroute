@@ -212,6 +212,16 @@ fn main() {
         "ref:Issue143-rpi_splitter/unrouted.ses",
         &repo_root.join("tests/reference/Issue143-rpi_splitter/unrouted.ses"),
     ));
+    // The ONE shape in this repository where the host scrape succeeds on a real, jar-written
+    // file: `Parser.writeScope(..., reduced = true)` skips `(stringQuote ")`, so the first `)`
+    // after `(parser` closes `(hostCad …)` instead of truncating in front of it, and HEAD's own
+    // keyword IS the camelCase one the scrape looks for.
+    rows.push(file_row(
+        "router-dac2020-bm01/batch.ses AS DSN",
+        FileFormat::Dsn,
+        "ref:router-dac2020-bm01/batch.ses",
+        &repo_root.join("tests/reference/router-dac2020-bm01/batch.ses"),
+    ));
 
     // ---- the guards and the formats with no branch --------------------------------------------
     rows.push(Row {
@@ -333,6 +343,16 @@ fn main() {
         Some(FileFormat::Dsn),
     ));
     rows.push(bytes_row(
+        "trim keeps NBSP",
+        "s:(parser (hostCad K\u{a0} ))",
+        Some(FileFormat::Dsn),
+    ));
+    rows.push(bytes_row(
+        "trim drops the control char",
+        "s:(parser (hostCad K\u{1} ))",
+        Some(FileFormat::Dsn),
+    ));
+    rows.push(bytes_row(
         "camelCase, unquoted",
         "s:(parser (hostCad KiCad (hostVersion 8.0 ))",
         Some(FileFormat::Dsn),
@@ -408,6 +428,31 @@ fn main() {
         "s:{\"designName\":42}",
         Some(FileFormat::KicadDesignJson),
     ));
+    for (label, spec) in [
+        ("kicad designName 1e5", "s:{\"designName\":1e5}"),
+        ("kicad designName 1.50", "s:{\"designName\":1.50}"),
+        (
+            "kicad designName big integer",
+            "s:{\"designName\":123456789012345678901234567890}",
+        ),
+        ("kicad designName one-element array", "s:{\"designName\":[\"foo\"]}"),
+        (
+            "kicad designName nested one-element array",
+            "s:{\"designName\":[[\"deep\"]]}",
+        ),
+        ("kicad designName one-element numeric array", "s:{\"designName\":[1e5]}"),
+        ("kicad designName two-element array", "s:{\"designName\":[\"a\",\"b\"]}"),
+        ("kicad designName empty array", "s:{\"designName\":[]}"),
+        ("kicad designName boolean", "s:{\"designName\":true}"),
+        ("kicad designName null", "s:{\"designName\":null}"),
+        ("kicad designName object", "s:{\"designName\":{\"a\":1}}"),
+        (
+            "kicad designName duplicated",
+            "s:{\"designName\":\"first\",\"designName\":\"last\"}",
+        ),
+    ] {
+        rows.push(bytes_row(label, spec, Some(FileFormat::KicadDesignJson)));
+    }
 
     let mut index = 0;
     for row in &rows {
@@ -425,6 +470,13 @@ fn main() {
         };
         match row.divergence {
             Divergence::JavaThrows => {
+                // The `rust=` half is a hard-coded literal, so assert that the port still says
+                // it: without this, `slice_totalized`'s clamp is only exercised, never checked.
+                assert!(
+                    stats.host.is_empty(),
+                    "the clamp should leave `host` at Java's null, not {:?}",
+                    stats.host
+                );
                 out.push_str(&format!(
                     "XDIFF\t{index}\tjava=StringIndexOutOfBoundsException\trust=host=<omitted>\n"
                 ));

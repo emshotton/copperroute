@@ -1,10 +1,10 @@
-//! `BoardStatistics.toString` (core/scoring/BoardStatistics.java:588-591) —
+//! `BoardStatistics.toString` (core/scoring/BoardStatistics.java:589-591) —
 //! `GsonProvider.GSON.toJson(this)`, i.e. the Gson-compatible JSON surface of the whole
 //! `core/scoring` family (controller ruling AG).
 //!
 //! # What Gson does, and where each half of it lives
 //!
-//! `GsonProvider.GSON` (util/gson/GsonProvider.java:13-20) is
+//! `GsonProvider.GSON` (util/gson/GsonProvider.java:13-21) is
 //! `new GsonBuilder().setPrettyPrinting().disableHtmlEscaping()…setStrictness(LENIENT).create()`.
 //! Plan 4 solved the *formatting* half once — two-space indent, `": "` after every key, no
 //! trailing newline, `Float.toString`/`Double.toString` numbers, `U+2028`/`U+2029` escaped and
@@ -272,7 +272,7 @@ impl Serialize for GsonBoardStatistics<'_> {
     }
 }
 
-/// renamed: BoardStatistics.toString (core/scoring/BoardStatistics.java:588-591) — `to_gson_string`, because `Display`/`ToString` on a foreign type is not this crate's to implement and a name that says *which* JSON dialect is written is worth more than the Java spelling.
+/// renamed: BoardStatistics.toString (core/scoring/BoardStatistics.java:589-591) — `to_gson_string`, because `Display`/`ToString` on a foreign type is not this crate's to implement and a name that says *which* JSON dialect is written is worth more than the Java spelling.
 ///
 /// # Panics
 ///

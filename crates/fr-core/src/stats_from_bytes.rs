@@ -187,19 +187,19 @@ fn dsn_branch(content: &str, stats: &mut BoardStatistics) {
         }
         let parser_scope = &content[parser_index..search_limit];
 
-        // Java bug: BoardStatistics.<init> (core/scoring/BoardStatistics.java:489, :497) searches for the **camelCase** keywords `(hostCad` and `(hostVersion`. The Specctra grammar — and every file `io/specctra/parser/Parser.readScopeParameter` writes — spells them `(host_cad` and `(host_version`, so even a `parserScope` wide enough to contain them would not match. Quirk #248, second of three.
+        // Java bug: BoardStatistics.<init> (core/scoring/BoardStatistics.java:489, :497) searches for the **camelCase** keywords `(hostCad` and `(hostVersion`, which is HEAD's own spelling (`io/specctra/parser/Keyword.java:40-41`, written by `Parser.writeScope` at `:110` and `:117`) but not the Specctra standard's: every CAD-exported DSN — every one of the seven corpus boards — writes `(host_cad` and `(host_version`, so even a `parserScope` wide enough to hold them would not match. Quirk #248, second of three; see the quirk row for the one file shape in this repository where it DOES match.
         if let Some(hc_idx) = parser_scope.find("(hostCad")
             && let Some(hc_end) = parser_scope[hc_idx..].find(')').map(|o| hc_idx + o)
         {
             // Java bug: BoardStatistics.<init> (core/scoring/BoardStatistics.java:493) hard-codes `hcIdx + 9`, i.e. `"(hostCad"` plus **exactly one** character, so `(hostCad  "K")` keeps a leading space (which `trim()` then removes, harmlessly) while `(hostCad"K")` keeps the opening quote — and `removeQuotes` then refuses to strip the closing one. `hostVersion` does the same with `hvIdx + 13`. Quirk #248, third of three.
             let value = slice_totalized(parser_scope, hc_idx + 9, hc_end);
-            host_cad = Some(remove_quotes(value.trim()).to_string());
+            host_cad = Some(remove_quotes(java_trim(value)).to_string());
         }
         if let Some(hv_idx) = parser_scope.find("(hostVersion")
             && let Some(hv_end) = parser_scope[hv_idx..].find(')').map(|o| hv_idx + o)
         {
             let value = slice_totalized(parser_scope, hv_idx + 13, hv_end);
-            host_version = Some(remove_quotes(value.trim()).to_string());
+            host_version = Some(remove_quotes(java_trim(value)).to_string());
         }
     }
 
@@ -238,7 +238,7 @@ fn dsn_branch(content: &str, stats: &mut BoardStatistics) {
 
 /// `:520-551` — the KiCad design-JSON branch.
 ///
-/// not ported: Gson's `Strictness.LENIENT` dialect (`util/gson/GsonProvider.java:19`) on the read side — unquoted keys, single-quoted strings, `NaN`, trailing commas. `serde_json` is strict, and `crates/fr-settings/src/json.rs` made the same call for `RouterSettings.fromJson` (quirk #141). A file this port rejects and Java accepts leaves every field null on this side and populates them on Java's; no corpus file reaches it, and the two rows `P8T2Probe` does measure (`kicad malformed`, `kicad array`) agree because both readers refuse them.
+/// not ported: Gson's `Strictness.LENIENT` dialect (`util/gson/GsonProvider.java:20`) on the read side — unquoted keys, single-quoted strings, `NaN`, trailing commas. `serde_json` is strict, and `crates/fr-settings/src/json.rs` made the same call for `RouterSettings.fromJson` (quirk #141). A file this port rejects and Java accepts leaves every field null on this side and populates them on Java's; no corpus file reaches it, and the two rows `P8T2Probe` does measure (`kicad malformed`, `kicad array`) agree because both readers refuse them.
 fn kicad_design_json_branch(content: &str, stats: &mut BoardStatistics) {
     // `:523-525` plus `:548-550`'s `catch (Exception)`: a parse failure, a top-level value that
     // is not an object, and a wrongly-typed member all land in the same place — the fields
@@ -281,10 +281,17 @@ fn kicad_design_json_branch(content: &str, stats: &mut BoardStatistics) {
         }
     }
 
-    // `:544-546`. `JsonElement.getAsString()` accepts any primitive — a number prints as its own
-    // `toString` — and throws for an object or an array.
-    if let Some(member) = object.get("designName") {
-        let Some(text) = json_primitive_as_string(member) else {
+    // `:544-546`. `json.has("designName")` is this `contains_key`; the value itself is read from
+    // the **raw source text** rather than from the parsed `Value` — [`get_as_string`] gives the
+    // two reasons.
+    if object.contains_key("designName") {
+        let Some(raw) = raw_member(content, "designName") else {
+            // Unreachable: `serde_json` accepted the document above, so a member it reports is a
+            // member [`raw_member`] can find. Returning rather than panicking keeps the branch's
+            // "a failure leaves the earlier fields set" shape either way.
+            return;
+        };
+        let Some(text) = get_as_string(raw) else {
             return;
         };
         stats.host = format!("KiCad JSON,{text}");
@@ -302,21 +309,170 @@ enum ArrayField {
     Vias,
 }
 
-/// `com.google.gson.JsonElement.getAsString()` as far as `:545` uses it: a string member answers
-/// itself, any other primitive answers its own `toString`, an object or an array throws (which
-/// `:547` catches) and is `None` here.
-fn json_primitive_as_string(value: &serde_json::Value) -> Option<String> {
-    match value {
-        serde_json::Value::String(s) => Some(s.clone()),
-        serde_json::Value::Bool(b) => Some(b.to_string()),
-        // `JsonPrimitive.getAsString()` on a lazily-parsed number returns the **source text**,
-        // which is what `serde_json::Number`'s `Display` also produces.
-        serde_json::Value::Number(n) => Some(n.to_string()),
+/// `com.google.gson.JsonElement.getAsString()` as `:545` reaches it, over the **raw source
+/// slice** of the value rather than over a parsed `serde_json::Value`.
+///
+/// Two behaviours make the raw slice necessary, both measured against the HEAD jar:
+///
+/// 1. **A number answers its own source text.** `JsonPrimitive.getAsString()` on a number
+///    produced by Gson's lazy reader returns `LazilyParsedNumber.toString()`, which is the
+///    characters that were in the file: `1e5` stays `1e5`, `1.50` stays `1.50`, and a
+///    thirty-digit integer keeps all thirty digits. `serde_json` without the
+///    `arbitrary_precision` feature parses into `i64`/`u64`/`f64` and **re-renders** on
+///    `Display` — `1e5` would come back as `100000.0` and `1.50` as `1.5`. Enabling that feature
+///    is a `Cargo.toml` edit plan 8 does not permit without a ruling, and reading the token out
+///    of the text `serde_json` has already validated costs less than one.
+/// 2. **A one-element array delegates to its element.** `JsonArray.getAsString()` is
+///    *overridden*: `size() == 1` forwards to `get(0).getAsString()`, recursively, so `["foo"]`
+///    answers `foo`, `[["deep"]]` answers `deep` and `[1e5]` answers `1e5`. Any other size
+///    throws `IllegalStateException`, which `:548` catches.
+///
+/// An object and `null` throw (`UnsupportedOperationException`) and are `None` here; a boolean
+/// answers `true`/`false`. All of it is pinned by `P8T2Probe`'s twelve `kicad designName …` rows.
+fn get_as_string(raw: &str) -> Option<String> {
+    let raw = raw.trim();
+    let first = *raw.as_bytes().first()?;
+    match first {
+        // A JSON string: `serde_json` is the unescaper, and its answer is the parsed value
+        // `JsonPrimitive.getAsString()` also returns for a string.
+        b'"' => serde_json::from_str::<String>(raw).ok(),
+        // `JsonArray.getAsString()`'s `size() == 1` delegation.
+        b'[' => match raw_array_elements(raw)?.as_slice() {
+            [only] => get_as_string(only),
+            _ => None,
+        },
+        // `JsonObject` does not override `getAsString()`, so `JsonElement`'s throws.
+        b'{' => None,
         // `JsonNull.getAsString()` throws `UnsupportedOperationException`, caught at `:548`.
-        serde_json::Value::Null | serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+        _ if raw == "null" => None,
+        // A number, `true` or `false` — all three answer the source token verbatim, which for
+        // the two literals is also what `Boolean.toString` produces.
+        _ => Some(raw.to_string()),
+    }
+}
+
+/// The raw source slice of top-level member `key`'s value, or `None` if there is none.
+///
+/// `content` has already been accepted by `serde_json`, so this walks a **valid** JSON object and
+/// never has to diagnose anything. A duplicated key answers the **last** occurrence, which is
+/// what `LinkedTreeMap.put` (Gson) and `serde_json::Map::insert` both do.
+fn raw_member<'a>(content: &'a str, key: &str) -> Option<&'a str> {
+    let bytes = content.as_bytes();
+    let mut i = skip_whitespace(bytes, 0);
+    if bytes.get(i) != Some(&b'{') {
+        return None;
+    }
+    i += 1;
+    let mut found = None;
+    loop {
+        i = skip_whitespace(bytes, i);
+        match bytes.get(i) {
+            Some(b',') => {
+                i += 1;
+                continue;
+            }
+            Some(b'"') => {}
+            // `}`, or anything else a valid object cannot hold here.
+            _ => return found,
+        }
+        let key_end = scan_value_end(bytes, i)?;
+        let name = serde_json::from_str::<String>(&content[i..key_end]).ok()?;
+        i = skip_whitespace(bytes, key_end);
+        if bytes.get(i) != Some(&b':') {
+            return found;
+        }
+        i = skip_whitespace(bytes, i + 1);
+        let value_end = scan_value_end(bytes, i)?;
+        if name == key {
+            found = Some(&content[i..value_end]);
+        }
+        i = value_end;
+    }
+}
+
+/// The raw source slices of the elements of the array `raw` starts with.
+fn raw_array_elements(raw: &str) -> Option<Vec<&str>> {
+    let bytes = raw.as_bytes();
+    let mut i = skip_whitespace(bytes, 0);
+    if bytes.get(i) != Some(&b'[') {
+        return None;
+    }
+    i += 1;
+    let mut elements = Vec::new();
+    loop {
+        i = skip_whitespace(bytes, i);
+        match bytes.get(i) {
+            Some(b',') => {
+                i += 1;
+                continue;
+            }
+            // `]`, or the end of the slice.
+            Some(b']') | None => return Some(elements),
+            Some(_) => {}
+        }
+        let end = scan_value_end(bytes, i)?;
+        elements.push(&raw[i..end]);
+        i = end;
+    }
+}
+
+/// The index just past the JSON value starting at `start`, for a document `serde_json` has
+/// already accepted: a string (honouring `\` escapes), a bracketed array or object (by depth,
+/// ignoring brackets inside strings), or a bare literal or number token.
+fn scan_value_end(bytes: &[u8], start: usize) -> Option<usize> {
+    let mut i = start;
+    match *bytes.get(i)? {
+        b'"' => {
+            i += 1;
+            while let Some(&b) = bytes.get(i) {
+                match b {
+                    b'\\' => i += 2,
+                    b'"' => return Some(i + 1),
+                    _ => i += 1,
+                }
+            }
             None
         }
+        open @ (b'[' | b'{') => {
+            let close = if open == b'[' { b']' } else { b'}' };
+            let mut depth = 0_usize;
+            while let Some(&b) = bytes.get(i) {
+                if b == b'"' {
+                    i = scan_value_end(bytes, i)?;
+                } else if b == open {
+                    depth += 1;
+                    i += 1;
+                } else if b == close {
+                    depth -= 1;
+                    i += 1;
+                    if depth == 0 {
+                        return Some(i);
+                    }
+                } else {
+                    i += 1;
+                }
+            }
+            None
+        }
+        // A number, `true`, `false` or `null`: everything up to the next structural character.
+        _ => {
+            while let Some(&b) = bytes.get(i) {
+                if b.is_ascii_whitespace() || matches!(b, b',' | b']' | b'}' | b':') {
+                    break;
+                }
+                i += 1;
+            }
+            (i > start).then_some(i)
+        }
     }
+}
+
+/// JSON's four insignificant characters (RFC 8259 §2) — the same four `serde_json` skips.
+fn skip_whitespace(bytes: &[u8], mut i: usize) -> usize {
+    while matches!(bytes.get(i), Some(b' ' | b'\t' | b'\n' | b'\r')) {
+        i += 1;
+    }
+    i
 }
 
 /// Port of `TextManager.removeQuotes` (util/TextManager.java:142-149).
@@ -358,4 +514,24 @@ fn slice_totalized(text: &str, begin: usize, end: usize) -> &str {
 /// `Math.min(int, int)`.
 fn java_min(a: usize, b: usize) -> usize {
     if a < b { a } else { b }
+}
+
+/// `java.lang.String.trim()`, which is **not** [`str::trim`].
+///
+/// Java strips every code unit `<= U+0020`; Rust strips Unicode `White_Space`. The two sets
+/// differ in *both* directions, and `:493`/`:501` are the only `trim()` calls this constructor
+/// makes. Measured against the HEAD jar:
+///
+/// | input | Java `trim()` | Rust `str::trim()` |
+/// |---|---|---|
+/// | `"X\u{a0}"` (NBSP) | **kept** — length stays 2 | stripped |
+/// | `"X\u{1}"` (SOH) | **stripped** — length 1 | kept |
+/// | `"X\u{b}"` (VT) | stripped | stripped |
+/// | `"X\u{2028}"`, `"X\u{3000}"`, `"X\u{85}"` | **kept** | stripped |
+///
+/// `P8T2Probe`'s `trim keeps NBSP` and `trim drops the control char` rows pin the first two.
+/// Java counts UTF-16 units where this counts chars, which cannot differ: no character above
+/// `U+FFFF` has a code unit `<= U+0020`.
+fn java_trim(text: &str) -> &str {
+    text.trim_matches(|c: char| c <= '\u{20}')
 }

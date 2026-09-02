@@ -599,7 +599,6 @@ fn host_of(board: &Board) -> String {
 // *computing* constructor above, and `:474-519`'s DSN scrape runs `TextManager.removeQuotes` and
 // nothing else. `P8T2Probe`'s `host is not unescaped` row drives `(hostCad "K\u0041D")` through
 // the jar and gets `K\u0041D` back, so the seam has no caller outside this crate today.
-///
 // not ported: the rest of `util/TextManager.java` — a GUI resource-bundle façade (spec §2: no GUI). Only this one static string helper is on the scoring path.
 //
 // totalized: `TextManager.unescapeUnicode` (util/TextManager.java:181-182) — Java feeds the decoded character to `Matcher.appendReplacement`, which treats `$` and `\` in the *replacement* as metacharacters, so an input containing the escape `$` or `\` throws `IllegalArgumentException` ("Illegal group reference" / "character to be escaped is missing") instead of decoding. This port decodes them. Unreachable from a DSN `(host_cad …)` in the corpus, and a crash is not a value worth reproducing.
