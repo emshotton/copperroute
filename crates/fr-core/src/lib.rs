@@ -32,12 +32,20 @@
 
 pub mod cancel;
 pub mod ctx;
+pub mod file_details;
+pub mod job;
 pub mod pipeline;
 pub mod progress;
 pub mod timespan;
 
 pub use cancel::{CancelToken, Deadline};
 pub use ctx::{Ctx, RoutingResult};
+pub use file_details::BoardFileDetails;
+pub use job::{
+    BINARY_FILE_EXTENSION, DSN_FILE_EXTENSION, EAGLE_SCRIPT_FILE_EXTENSION, FILE_SEPARATOR,
+    FileFormat, JobId, RULES_FILE_EXTENSION, RoutingJob, RoutingJobState, RoutingStage,
+    SES_FILE_EXTENSION, SessionId, Uuid128, validate_session_host,
+};
 pub use pipeline::RoutingPipeline;
 pub use progress::{SyncProgressSink, SyncProgressSinkView};
 pub use timespan::{
@@ -139,6 +147,12 @@ pub enum Error {
     /// An I/O operation failed — reading a design, writing a session or a report.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+
+    /// A job-model precondition failed. Today that is exactly one check: `core/Session.java:37`'s
+    /// `host.split("/").length != 2`, ported by [`validate_session_host`]. The message is Java's,
+    /// verbatim, because it is the only thing a caller can observe of it.
+    #[error("{0}")]
+    Session(String),
 }
 
 // =================================================================================================

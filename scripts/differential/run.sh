@@ -32,7 +32,7 @@ usage() {
   echo "usage: $0 <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
-  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0" >&2
+  echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
@@ -629,6 +629,37 @@ case "$driver" in
     javapkg="util"
     java_src_dir="$DIFF_ROOT/java/probes"
     default_args=()
+    needs_jar=1
+    java_flags=("${P5T_JAVA_FLAGS[@]}")
+    ;;
+  p8t1probe)
+    # Plan 8 Task 1: the job model — `RoutingJob.getFileFormat(byte[])` (`:151-227`) and
+    # `getFileFormat(Path)` (`:230-247`), `changeFileExtension` (`:352-374`), `tryToSetInput`
+    # (`:335-349`), `tryToSetOutputFile` (`:377-397`), `setInputFromFile`'s default-output
+    # derivation (`:425-461`), and `BoardFileDetails.setFilename` (`:149-197`) /
+    # `calculateCrc32` (`:75-87`). Eight tables, 152 rows.
+    #
+    # Declares `package app.freerouting.core` because `BoardFileDetails.filename` and
+    # `directoryPath` are `protected`; `changeFileExtension` is `private` and is reached by
+    # reflection, while `tryToSetInput`/`setInputFromFile` are driven through their public
+    # `setInput` overloads, which is how the CLI reaches them.
+    #
+    # Two rows Java cannot answer are printed as `XDIFF` on BOTH sides, so the diff still has to
+    # be empty: the shift-loop hang (`:181-187`, quirk #241 — the Java half runs every SNIFF row
+    # on a five-second watchdog) and `changeFileExtension`'s NPE on a bare filename (`:356`,
+    # quirk #242). Absolute paths are normalised to `<SCRATCH>`/`<FIXTURES>`/`<CWD>` so the
+    # transcript is portable.
+    #
+    # NAME: `p8t1probe`, not `p8t1` — the plan reserves `p8t1` for Task 6's end-to-end SES-byte
+    # gate, which is a different driver against the same jar.
+    #
+    # The committed transcript is `crates/fr-core/tests/data/p8t1-job-model.txt`, which
+    # `crates/fr-core/tests/job.rs` asserts against row by row; this driver regenerates and
+    # re-verifies it.
+    javaclass=P8T1Probe
+    javapkg="core"
+    java_src_dir="$DIFF_ROOT/java/probes"
+    default_args=("$FREEROUTING_JAVA_DIR/fixtures" "$BUILD/p8t1probe-scratch")
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;

@@ -1,0 +1,161 @@
+SNIFF-ROWS	46
+EXT-ROWS	24
+CFE-ROWS	19
+SETFN-ROWS	24
+CRC-ROWS	13
+TSI-ROWS	8
+TSOF-ROWS	11
+SIF-ROWS	8
+SNIFF	0	-	UNKNOWN
+SNIFF	1	28	UNKNOWN
+SNIFF	2	28706362	UNKNOWN
+SNIFF	3	2870636220	UNKNOWN
+SNIFF	4	287063622078	DSN
+SNIFF	5	285043422078	DSN
+SNIFF	6	285063622078	UNKNOWN
+SNIFF	7	287365732078	SES
+SNIFF	8	285345532078	SES
+SNIFF	9	285365732078	UNKNOWN
+SNIFF	10	2872756c6573	RULES
+SNIFF	11	2852554c4553	RULES
+SNIFF	12	2852754c6573	RULES
+SNIFF	13	2872556c4573	RULES
+SNIFF	14	2872756c782020	RULES
+SNIFF	15	aced00050000	FRB
+SNIFF	16	aced0005	UNKNOWN
+SNIFF	17	aced00060000	UNKNOWN
+SNIFF	18	aced00057b7b	FRB
+SNIFF	19	7b	KICAD_DESIGN_JSON
+SNIFF	20	2020207b	KICAD_DESIGN_JSON
+SNIFF	21	090d0a207b	KICAD_DESIGN_JSON
+SNIFF	22	0a0a0a0a0a0a7b	KICAD_DESIGN_JSON
+SNIFF	23	0a0a0a0a0a0a2020207b	KICAD_DESIGN_JSON
+SNIFF	24	5b312c325d	UNKNOWN
+SNIFF	25	efbbbf7b	UNKNOWN
+SNIFF	26	efbbbf2870636220	UNKNOWN
+SNIFF	27	fffe28007000	UNKNOWN
+SNIFF	28	0a2870636220	DSN
+SNIFF	29	0d0a28706362	DSN
+SNIFF	30	0a0a287063622020	DSN
+SNIFF	31	0a0a0a2870636220	UNKNOWN
+SNIFF	32	0a0a0a0a28706362	UNKNOWN
+SNIFF	33	0a0a0a0a0a28706362	UNKNOWN
+SNIFF	34	0a0a0a0a0a	UNKNOWN
+SNIFF	35	0a0a0a0a0a0a28706362	XDIFF	java=HANG(>5000ms)	rust=UNKNOWN
+SNIFF	36	0d0a0d0a0d0a	XDIFF	java=HANG(>5000ms)	rust=UNKNOWN
+SNIFF	37	0d0d0d0d0d0d58	XDIFF	java=HANG(>5000ms)	rust=UNKNOWN
+SNIFF	38	202870636220	UNKNOWN
+SNIFF	39	092870636220	UNKNOWN
+SNIFF	40	287063620a0a	DSN
+SNIFF	41	287365737820	SES
+SNIFF	42	286e65742028	UNKNOWN
+SNIFF	43	000000000000	UNKNOWN
+SNIFF	44	2852756c6573	RULES
+SNIFF	45	2852754c6553	RULES
+EXT	0	"board.dsn"	DSN
+EXT	1	"board.DSN"	DSN
+EXT	2	"board.frb"	FRB
+EXT	3	"board.ses"	SES
+EXT	4	"board.rules"	RULES
+EXT	5	"board.scr"	SCR
+EXT	6	"board.json"	KICAD_DESIGN_JSON
+EXT	7	"board.JSON"	KICAD_DESIGN_JSON
+EXT	8	"board.txt"	UNKNOWN
+EXT	9	"board.drc"	UNKNOWN
+EXT	10	"board"	UNKNOWN
+EXT	11	"board."	UNKNOWN
+EXT	12	".dsn"	DSN
+EXT	13	"a.b.dsn"	DSN
+EXT	14	"board.ses."	SES
+EXT	15	"board..dsn"	DSN
+EXT	16	"dir.dsn/board"	UNKNOWN
+EXT	17	"dir.dsn/board.ses"	SES
+EXT	18	"/tmp/x.DsN"	DSN
+EXT	19	"board.scr "	UNKNOWN
+EXT	20	""	UNKNOWN
+EXT	21	".."	UNKNOWN
+EXT	22	"x.SCR"	SCR
+EXT	23	"x.Rules"	RULES
+CFE	0	"out.ses"	"ses"	XDIFF	java=NullPointerException	rust=out.ses
+CFE	1	"out.dsn"	"ses"	XDIFF	java=NullPointerException	rust=out.ses
+CFE	2	"out"	"ses"	XDIFF	java=NullPointerException	rust=out.ses
+CFE	3	""	"ses"	XDIFF	java=NullPointerException	rust=.ses
+CFE	4	"/"	"ses"	XDIFF	java=NullPointerException	rust=.ses
+CFE	5	"dir/out.dsn"	"ses"	<CWD>/dir/out.ses
+CFE	6	"dir/out.ses"	"ses"	dir/out.ses
+CFE	7	"./out.dsn"	"ses"	<CWD>/./out.ses
+CFE	8	"/tmp/out.dsn"	"ses"	/tmp/out.ses
+CFE	9	"/tmp/out.SES"	"ses"	/tmp/out.SES
+CFE	10	"/tmp/out.DSN"	"ses"	/tmp/out.ses
+CFE	11	"/tmp/out.ses"	"SES"	/tmp/out.SES
+CFE	12	"/tmp/out.dsn"	"dsn"	/tmp/out.dsn
+CFE	13	"/tmp/archive.tar.gz"	"ses"	/tmp/archive.tar.ses
+CFE	14	"/tmp/out."	"ses"	/tmp/out..ses
+CFE	15	"/tmp/.hidden"	"ses"	/tmp/.ses
+CFE	16	"/a.b/out"	"ses"	/a.b/out.ses
+CFE	17	"/tmp/dir.d/"	"ses"	/tmp/dir.ses
+CFE	18	"/board.dsn"	"ses"	/board.ses
+SETFN	0	-	"<null>"	dir=""	name=""	format=UNKNOWN	abs=""	stem=""
+SETFN	1	-	"board.dsn"	dir=""	name="board.dsn"	format=DSN	abs="board.dsn"	stem="board"
+SETFN	2	-	"board"	dir=""	name="board"	format=UNKNOWN	abs="board"	stem="board"
+SETFN	3	-	"/tmp/board.dsn"	dir="/tmp"	name="board.dsn"	format=DSN	abs="/tmp/board.dsn"	stem="board"
+SETFN	4	-	"/tmp/board"	dir="/tmp"	name="board"	format=UNKNOWN	abs="/tmp/board"	stem="board"
+SETFN	5	-	"/tmp/board.DSN"	dir="/tmp"	name="board.DSN"	format=DSN	abs="/tmp/board.DSN"	stem="board"
+SETFN	6	-	"/tmp/"	dir=""	name="tmp"	format=UNKNOWN	abs="tmp"	stem="tmp"
+SETFN	7	-	"/board.dsn"	dir=""	name="board.dsn"	format=DSN	abs="board.dsn"	stem="board"
+SETFN	8	-	"/"	XDIFF	java=NullPointerException	rust=dir=""	name=""	format=UNKNOWN	abs=""	stem=""
+SETFN	9	-	"dir/board.ses"	dir="<CWD>/dir"	name="board.ses"	format=SES	abs="<CWD>/dir/board.ses"	stem="board"
+SETFN	10	-	"/tmp/dir\\x/board.dsn"	dir="/tmp/dir"	name="board.dsn"	format=DSN	abs="/tmp/dir/board.dsn"	stem="board"
+SETFN	11	-	"/tmp/a\\.\\b/board.dsn"	dir="/tmp/a"	name="board.dsn"	format=DSN	abs="/tmp/a/board.dsn"	stem="board"
+SETFN	12	-	"/tmp/dir\\/board.dsn"	dir="/tmp/dir"	name="board.dsn"	format=DSN	abs="/tmp/dir/board.dsn"	stem="board"
+SETFN	13	-	"/tmp/b.dsn/x"	dir="/tmp/b.dsn"	name="x"	format=UNKNOWN	abs="/tmp/b.dsn/x"	stem="x"
+SETFN	14	-	""	dir=""	name="<CWD-BASENAME>"	format=UNKNOWN	abs="<CWD-BASENAME>"	stem="<CWD-BASENAME>"
+SETFN	15	SES	"/tmp/board"	dir="/tmp"	name="board.ses"	format=SES	abs="/tmp/board.ses"	stem="board"
+SETFN	16	DSN	"/tmp/board"	dir="/tmp"	name="board.dsn"	format=DSN	abs="/tmp/board.dsn"	stem="board"
+SETFN	17	FRB	"/tmp/board"	dir="/tmp"	name="board.frb"	format=FRB	abs="/tmp/board.frb"	stem="board"
+SETFN	18	RULES	"/tmp/board"	dir="/tmp"	name="board.rules"	format=RULES	abs="/tmp/board.rules"	stem="board"
+SETFN	19	SCR	"/tmp/board"	dir="/tmp"	name="board.scr"	format=SCR	abs="/tmp/board.scr"	stem="board"
+SETFN	20	DRC_JSON	"/tmp/board"	dir="/tmp"	name="board"	format=DRC_JSON	abs="/tmp/board"	stem="board"
+SETFN	21	KICAD_SESSION_JSON	"/tmp/board"	dir="/tmp"	name="board"	format=KICAD_SESSION_JSON	abs="/tmp/board"	stem="board"
+SETFN	22	DSN	"/tmp/board.txt"	dir="/tmp"	name="board.txt"	format=DSN	abs="/tmp/board.txt"	stem="board"
+SETFN	23	SES	"board"	dir=""	name="board.ses"	format=SES	abs="board.ses"	stem="board"
+CRC	0	bytes	-	len=0	0
+CRC	1	bytes	61	len=1	3904355907
+CRC	2	bytes	313233343536373839	len=9	3421780262
+CRC	3	bytes	54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67	len=43	1095738169
+CRC	4	bytes	00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000+8127	len=8191	4141366926
+CRC	5	bytes	00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000+8128	len=8192	3639908756
+CRC	6	bytes	00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000+8129	len=8193	632835145
+CRC	7	file	empty_board.dsn	len=442	3474467974
+CRC	8	file	Issue026-J2_reference.dsn	len=7925	2979694418
+CRC	9	file	Issue026-J2_reference.ses	len=14421	3753402078
+CRC	10	file	Issue029-hw48na.rules	len=22807	3477915108
+CRC	11	file	Issue034-Green14SegLED.dsn	len=33706	3720379131
+CRC	12	file	Issue107-freq_teiler_200kHz_kicad.dsn	len=69307	221053834
+TSI	0	<null>	ok=false	format=UNKNOWN	size=0	crc32=0
+TSI	1	-	ok=false	format=UNKNOWN	size=0	crc32=0
+TSI	2	28706362205829	ok=true	format=DSN	size=7	crc32=758947457
+TSI	3	28736573205829	ok=true	format=SES	size=7	crc32=3427608949
+TSI	4	2872756c6573205829	ok=true	format=RULES	size=9	crc32=3505810634
+TSI	5	aced00050005	ok=true	format=FRB	size=6	crc32=2046379324
+TSI	6	7b2261223a317d	ok=true	format=KICAD_DESIGN_JSON	size=7	crc32=1444654255
+TSI	7	68656c6c6f21	ok=false	format=UNKNOWN	size=0	crc32=0
+TSOF	0	"!<null>"	ok=false	output=<null>
+TSOF	1	"out.ses"	ok=true	format=SES	dir="<SCRATCH>"	name="out.ses"	size=0	crc32=0
+TSOF	2	"out.dsn"	ok=true	format=DSN	dir="<SCRATCH>"	name="out.dsn"	size=0	crc32=0
+TSOF	3	"out.frb"	ok=true	format=FRB	dir="<SCRATCH>"	name="out.frb"	size=0	crc32=0
+TSOF	4	"out.scr"	ok=true	format=SCR	dir="<SCRATCH>"	name="out.scr"	size=0	crc32=0
+TSOF	5	"out.json"	ok=true	format=KICAD_SESSION_JSON	dir="<SCRATCH>"	name="out.json"	size=0	crc32=0
+TSOF	6	"out.rules"	ok=false	output=<null>
+TSOF	7	"out.txt"	ok=false	output=<null>
+TSOF	8	"out"	ok=false	output=<null>
+TSOF	9	"a.dsn"	ok=true	format=DSN	dir="<SCRATCH>"	name="a.dsn"	size=8	crc32=3149009220
+TSOF	10	"!out.ses"	ok=true	format=SES	dir="<CWD>"	name="out.ses"	size=0	crc32=0
+SIF	0	a.dsn	in.format=DSN	in.dir="<SCRATCH>"	in.name="a.dsn"	in.size=8	in.crc32=3149009220	out.format=SES	out.dir="<SCRATCH>"	out.name="a.ses"	job.name="a"
+SIF	1	b.frb	in.format=FRB	in.dir="<SCRATCH>"	in.name="b.frb"	in.size=6	in.crc32=2046379324	out.format=FRB	out.dir="<SCRATCH>"	out.name="b.frb"	job.name="b"
+SIF	2	c.json	in.format=KICAD_DESIGN_JSON	in.dir="<SCRATCH>"	in.name="c.json"	in.size=8	in.crc32=1961403206	out.format=KICAD_DESIGN_JSON	out.dir="<SCRATCH>"	out.name="c.json"	job.name="c"
+SIF	3	d.txt	in.format=DSN	in.dir="<SCRATCH>"	in.name="d.txt"	in.size=8	in.crc32=3178877871	out.format=SES	out.dir="<SCRATCH>"	out.name="d.ses"	job.name="d"
+SIF	4	e.dsn	in.format=DSN	in.dir="<SCRATCH>"	in.name="e.dsn"	in.size=0	in.crc32=0	out.format=SES	out.dir="<SCRATCH>"	out.name="e.ses"	job.name="e"
+SIF	5	f.txt	in.format=UNKNOWN	in.dir="<SCRATCH>"	in.name="f.txt"	in.size=0	in.crc32=0	out=<null>	job.name="<ID-DERIVED>"
+SIF	6	g.ses	in.format=SES	in.dir="<SCRATCH>"	in.name="g.ses"	in.size=8	in.crc32=84814404	out=<null>	job.name="g"
+SIF	7	h.missing	throws=FileNotFoundException	input=<null>

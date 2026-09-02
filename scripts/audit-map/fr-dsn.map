@@ -58,6 +58,10 @@ DsnReader                dsn_reader.rs
 DsnWriter                dsn_writer.rs
 BoardReadResult          error.rs
 BoardMetadata            error.rs
+# `io/FileFormat.java` is a bare nine-constant enum with no public methods, so this line only
+# keeps it MAPPED. Its **code** home moved to `crates/fr-core/src/job.rs` in Plan 8 Task 1, beside
+# its two producers (`RoutingJob.getFileFormat(byte[]/Path)`); scan ruling R17 is why (the plan
+# draft had it as a seven-value nested enum of `RoutingJob`). Task 14's `io/` sweep records it.
 FileFormat               error.rs
 SesWriter                ses_writer.rs
 # `SesWriter.formatPlacementRotation` is the package's only `String.format`; it lives with the

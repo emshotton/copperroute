@@ -175,6 +175,45 @@ what the tool reads.
 2 100, and `core/events/**` is **95**, not 130. And `api/**`'s 8 425 already *includes*
 `api/mcp/**`'s 2 105 — adding them double-counts.
 
+## The job model (`job.rs`, `file_details.rs`)
+
+`RoutingJob` in Java is three objects wearing one name. This crate ports **one** of them:
+
+| half | where it went |
+|---|---|
+| the **file** object — input, rules, derived output, format detection | `job.rs` / `file_details.rs` (Task 1) |
+| the **queue** object — `priority`, `compareTo`, the scheduler, the daemon | rostered, `src/lib.rs` §4/§6 (quirks #238, #239) |
+| the **event** object — four listener lists, four `fire*` methods | replaced by spec §10's `ProgressSink` |
+
+`FileFormat` is **`io/FileFormat.java`** and it has **nine** values, not the plan draft's seven
+(scan ruling R17): `SCR` and `FRB` were missing and both are reachable from a `-de`/`-do` argv.
+Its audit home stays `scripts/audit-map/fr-dsn.map` (`io/` is Plan 3's surface); its code home is
+`job.rs`, beside its two producers.
+
+`Session` collapses to `SessionId` (a 128-bit newtype) plus `validate_session_host`: the class
+exists so `enqueueJob:315-318` can validate a `userId` it never uses (quirk #238), so the port
+keeps the **validation** and drops the object.
+
+### Six quirks, four of them totalised
+
+| # | what | the port |
+|---|---|---|
+| **#241** | `getFileFormat(byte[])`'s shift loop never refills `buffer[5]`; six leading CR/LF bytes spin for ever | the loop is bounded at **five** iterations (exact) and answers `UNKNOWN`; `FileFormat::java_shift_loop_hangs` says which inputs, and the driver measures both sides |
+| **#242** | `changeFileExtension` NPEs on every bare filename, and returns a *relative* string when the extension already matches | both nulls totalised to `""`; the asymmetry **reproduced**, because `setInputFromFile` depends on it |
+| **#243** | `tryToSetOutputFile:390` registers the **input** listener on the **output** details | `// not reachable:` — the port has no events |
+| **#244** | `isCliTerminalState` omits `INVALID`, so `-de x.ses` hangs the CLI for ever | `INVALID` is terminal (plan ruling 7); Task 6 maps it to exit 1 |
+| **#245** | `Session`'s constructor assigns before it validates | the port validates first; the difference is **unobservable** and the row says so |
+| **#246** | `setFilename`'s Windows-only surgery runs unconditionally, and `\\.$` strips a backslash **and the character after it** | reproduced verbatim, with `FILE_SEPARATOR` pinned to `'/'`; the `setFilename("/")` NPE is totalised |
+
+### There is no random id
+
+Java mints `UUID.randomUUID()` for `RoutingJob.id` and `Session.id`. Plan 6 ruling 5 forbids
+`rand` and the Global Constraints forbid static mutable state, so `RoutingJob::new` uses
+`Uuid128::NIL` and `RoutingJob::with_id` takes one from a caller that has one (the MCP's
+`job_id`, ruling AO). Nothing on a decision path reads an id: `RoutingResultManifest.fromJob`
+never touches `job.id`, and the four `FRLogger` calls that do are rostered.
+
+
 ## Evidence
 
 * `tests/data/p8t0-timespans.txt` — 30 timespan inputs through the HEAD jar, with
@@ -187,3 +226,15 @@ what the tool reads.
   the **whole** pipeline, comparing SES bytes rather than a hash.
 * `tests/cancel.rs` pins the three-state mapping, the no-op property and a real cross-thread
   cancel on `Issue143-rpi_splitter.dsn`.
+* `tests/data/p8t1-job-model.txt` — 153 rows in eight tables through the **real** `RoutingJob`
+  and `BoardFileDetails` on the HEAD jar (`P8T1Probe.java` declares `package
+  app.freerouting.core` so it can read their `protected` fields, and reaches the private
+  `changeFileExtension` by reflection). Regenerate and re-verify with
+  `scripts/differential/run.sh p8t1probe` (**MATCH on all 161 lines**) — the driver is
+  `p8t1probe`, not `p8t1`, because the plan reserves `p8t1` for Task 6's end-to-end SES-byte
+  gate. The six rows Java cannot answer print `XDIFF java=… rust=…` on **both** sides, so the
+  divergence is recorded without weakening the diff.
+* `tests/job.rs` carries that transcript as literals, re-reads the committed file to check they
+  still agree, re-derives every row from the port, and adds 35 named assertions for the branches
+  that teach something (the ≥ 6 CR/LF bound, the leading space the loop does not strip, the UTF-8
+  BOM, the per-character `(rul` fold, the backslash regex, the relative-return asymmetry).
