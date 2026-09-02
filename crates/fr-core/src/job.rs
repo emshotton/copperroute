@@ -46,8 +46,20 @@ pub const EAGLE_SCRIPT_FILE_EXTENSION: &str = "scr";
 ///
 /// Pinned rather than `std::path::MAIN_SEPARATOR` on purpose: `setFilename`'s behaviour
 /// *branches* on it (`BoardFileDetails.java:158`), so a port that read the host separator would
-/// disagree with every committed transcript when built on Windows. Quirk #246 records that the
-/// branch is platform-dependent in Java too.
+/// disagree with every committed transcript when built on Windows. The transcript, not the
+/// constant, is the contract. Quirk #246 records that the branch is platform-dependent in Java
+/// too.
+///
+/// **The pin is wider than this constant, and wider than `setFilename`.** The whole [`java_path`]
+/// module below hardcodes `/` as *the* separator and `starts_with('/')` as *the* definition of an
+/// absolute path, so every caller of it is POSIX-only as well:
+/// [`RoutingJob::change_file_extension`] (which every derived output name goes through),
+/// [`RoutingJob::set_input`]'s absolutisation, [`crate::BoardFileDetails::get_absolute_path`],
+/// [`crate::BoardFileDetails::get_file`] and [`crate::BoardFileDetails::from_file`].
+/// **Windows support is a rewrite of `java_path`, not an unpinning of this constant** — and it
+/// would have to regenerate `crates/fr-core/tests/data/p8t1-job-model.txt` against a jar running
+/// on Windows, because half its rows would legitimately change. Said plainly here so that whoever
+/// revisits it does not mistake the scope.
 pub const FILE_SEPARATOR: char = '/';
 
 // =================================================================================================
@@ -64,6 +76,12 @@ pub const FILE_SEPARATOR: char = '/';
 /// | `Path.of("out.ses").getParent()` | `null` | `Some("")` |
 /// | `Path.of("a//b/").toString()` | `"a/b"` | `"a//b/"` (no normalisation) |
 /// | `Path.of("").getFileName()` | the empty path | `None` |
+///
+/// **This module is POSIX-only.** `/` is hardcoded as the separator and `starts_with('/')` as the
+/// definition of an absolute path, exactly as [`FILE_SEPARATOR`] is — and for the same reason: the
+/// parity surface is the HEAD jar as it runs on this project's host, and the committed transcript
+/// is the contract. Windows support is a rewrite of this module (and a regenerated transcript),
+/// not a change to one constant.
 pub(crate) mod java_path {
     /// `Path.of(s).toString()` — repeated separators collapsed, a trailing separator dropped,
     /// `.` and `..` components **kept** (Java's `Path.of` does not normalise those).
@@ -266,6 +284,23 @@ impl FileFormat {
         FileFormat::sniff_bytes_inner(content).0
     }
 
+    /// `RoutingJob.getFileFormat(byte[])`'s **first** branch (`:152-154`):
+    /// `if (content == null) { return FileFormat.UNKNOWN; }`.
+    ///
+    /// Rust has no null slice, so the branch is modelled where a null can actually arrive — at
+    /// [`RoutingJob::set_input_bytes`], whose parameter is an `Option<&[u8]>`. This wrapper is
+    /// that branch as a function, so `scripts/differential/run.sh p8t1probe` can drive it against
+    /// the jar's own `getFileFormat(null)` like every other branch of `:151-227`
+    /// (transcript row `SNIFF 46`). Note that the jar's *other* null guard,
+    /// `tryToSetInput:336-338`, returns before `getFileFormat` is reached — which is why
+    /// `TSI 0` does not cover this line and a `SNIFF` row is needed.
+    pub fn sniff_bytes_opt(content: Option<&[u8]>) -> FileFormat {
+        match content {
+            None => FileFormat::Unknown, // `:152-154`
+            Some(content) => FileFormat::sniff_bytes(content),
+        }
+    }
+
     /// Whether Java's `getFileFormat(byte[])` **spins for ever** on these bytes.
     ///
     /// `// totalized: RoutingJob.getFileFormat` — quirk #241. Java's shift loop (`:181-187`)
@@ -282,8 +317,9 @@ impl FileFormat {
 
     /// `(format, java_would_hang)`.
     fn sniff_bytes_inner(content: &[u8]) -> (FileFormat, bool) {
-        // `:152-154` — `content == null` answers UNKNOWN. Rust has no null slice; the caller that
-        // can produce one is `RoutingJob::set_input_bytes`, which takes an `Option`.
+        // `:152-154` — `content == null` answers UNKNOWN. Rust has no null slice; that branch is
+        // `FileFormat::sniff_bytes_opt`, and the caller that can produce a null is
+        // `RoutingJob::set_input_bytes`, which takes an `Option`.
 
         // `:156-164` — the first non-whitespace byte decides, and only `'{'` decides anything.
         for &b in content {

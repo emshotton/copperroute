@@ -205,6 +205,14 @@ keeps the **validation** and drops the object.
 | **#245** | `Session`'s constructor assigns before it validates | the port validates first; the difference is **unobservable** and the row says so |
 | **#246** | `setFilename`'s Windows-only surgery runs unconditionally, and `\\.$` strips a backslash **and the character after it** | reproduced verbatim, with `FILE_SEPARATOR` pinned to `'/'`; the `setFilename("/")` NPE is totalised |
 
+`FILE_SEPARATOR` is pinned, and **so is the whole `java_path` module**: it hardcodes `/` as the
+separator and `starts_with('/')` as the definition of an absolute path, so `change_file_extension`
+(which every derived output name goes through), `set_input`'s absolutisation, `get_absolute_path`,
+`get_file` and `from_file` are POSIX-only as well. That is the right call for a parity surface —
+the reference is the HEAD jar as it runs on this project's POSIX host, and the committed transcript
+is the contract — but **Windows support is a rewrite of `java_path` and a regenerated transcript,
+not an unpinning of one constant**.
+
 ### There is no random id
 
 Java mints `UUID.randomUUID()` for `RoutingJob.id` and `Session.id`. Plan 6 ruling 5 forbids
@@ -226,15 +234,15 @@ never touches `job.id`, and the four `FRLogger` calls that do are rostered.
   the **whole** pipeline, comparing SES bytes rather than a hash.
 * `tests/cancel.rs` pins the three-state mapping, the no-op property and a real cross-thread
   cancel on `Issue143-rpi_splitter.dsn`.
-* `tests/data/p8t1-job-model.txt` — 153 rows in eight tables through the **real** `RoutingJob`
+* `tests/data/p8t1-job-model.txt` — 154 rows in eight tables through the **real** `RoutingJob`
   and `BoardFileDetails` on the HEAD jar (`P8T1Probe.java` declares `package
   app.freerouting.core` so it can read their `protected` fields, and reaches the private
   `changeFileExtension` by reflection). Regenerate and re-verify with
-  `scripts/differential/run.sh p8t1probe` (**MATCH on all 161 lines**) — the driver is
+  `scripts/differential/run.sh p8t1probe` (**MATCH on all 162 lines**) — the driver is
   `p8t1probe`, not `p8t1`, because the plan reserves `p8t1` for Task 6's end-to-end SES-byte
   gate. The six rows Java cannot answer print `XDIFF java=… rust=…` on **both** sides, so the
   divergence is recorded without weakening the diff.
 * `tests/job.rs` carries that transcript as literals, re-reads the committed file to check they
-  still agree, re-derives every row from the port, and adds 35 named assertions for the branches
+  still agree, re-derives every row from the port, and adds 36 named assertions for the branches
   that teach something (the ≥ 6 CR/LF bound, the leading space the loop does not strip, the UTF-8
   BOM, the per-character `(rul` fold, the backslash regex, the relative-return asymmetry).

@@ -5,13 +5,13 @@
 //!
 //! `scripts/differential/java/probes/P8T1Probe.java` drives the **real** `RoutingJob` and
 //! `BoardFileDetails` — it declares `package app.freerouting.core` so it can read their
-//! `protected` fields, and reaches the private `changeFileExtension` by reflection — over 153
+//! `protected` fields, and reaches the private `changeFileExtension` by reflection — over 154
 //! rows in eight tables, against
 //! `../freerouting/build/libs/freerouting-current-executable.jar` (JDK 25,
 //! `-Djava.awt.headless=true -Duser.language=en -Duser.country=US
 //! -XX:+UnlockExperimentalVMOptions -XX:hashCode=2`). Its output is committed verbatim as
 //! `tests/data/p8t1-job-model.txt`, and `scripts/differential/run.sh p8t1probe` diffs it live
-//! against `scripts/differential/rust/src/bin/p8t1probe.rs` — **MATCH on all 161 lines**.
+//! against `scripts/differential/rust/src/bin/p8t1probe.rs` — **MATCH on all 162 lines**.
 //!
 //! # Why the transcript is BOTH a literal and a file
 //!
@@ -56,7 +56,7 @@ use std::path::{Path, PathBuf};
 /// The committed transcript, line for line. Regenerate with
 /// `scripts/differential/run.sh p8t1probe`.
 const TRANSCRIPT: &[&str] = &[
-    "SNIFF-ROWS\t46",
+    "SNIFF-ROWS\t47",
     "EXT-ROWS\t24",
     "CFE-ROWS\t19",
     "SETFN-ROWS\t24",
@@ -110,6 +110,7 @@ const TRANSCRIPT: &[&str] = &[
     "SNIFF\t43\t000000000000\tUNKNOWN",
     "SNIFF\t44\t2852756c6573\tRULES",
     "SNIFF\t45\t2852754c6553\tRULES",
+    "SNIFF\t46\t<null>\tUNKNOWN",
     "EXT\t0\t\"board.dsn\"\tDSN",
     "EXT\t1\t\"board.DSN\"\tDSN",
     "EXT\t2\t\"board.frb\"\tFRB",
@@ -322,6 +323,20 @@ fn six_leading_crlf_bytes_hang_java_and_the_port_bounds_the_loop() {
         // totalized: the bound is five iterations, and the converged buffer sniffs as UNKNOWN.
         assert_eq!(FileFormat::sniff_bytes(&content), FileFormat::Unknown);
     }
+}
+
+#[test]
+fn a_null_content_is_unknown_before_anything_else_runs() {
+    // `RoutingJob.java:152-154` is the sniffer's FIRST branch, and the jar's other null guard
+    // (`tryToSetInput:336-338`) returns before `getFileFormat` is reached — so `TSI 0` does not
+    // cover this line and transcript row `SNIFF 46` does.
+    assert_eq!(FileFormat::sniff_bytes_opt(None), FileFormat::Unknown);
+    // The wrapper is transparent for every non-null input.
+    assert_eq!(
+        FileFormat::sniff_bytes_opt(Some(b"(pcb x")),
+        FileFormat::Dsn
+    );
+    assert_eq!(FileFormat::sniff_bytes_opt(Some(b"")), FileFormat::Unknown);
 }
 
 #[test]
@@ -919,14 +934,21 @@ impl Ctx {
         let f: Vec<&str> = line.split('\t').collect();
         match f[0] {
             "SNIFF" => {
-                let content = from_hex(f[2]);
-                let answer = if FileFormat::java_shift_loop_hangs(&content) {
-                    format!(
-                        "XDIFF\tjava=HANG(>5000ms)\trust={}",
-                        FileFormat::sniff_bytes(&content).java_name()
-                    )
+                // `<null>` is Java's `content == null` (`:152-154`); the port models it as
+                // `Option::None` at `FileFormat::sniff_bytes_opt`.
+                let content = if f[2] == "<null>" {
+                    None
                 } else {
-                    FileFormat::sniff_bytes(&content).java_name().to_string()
+                    Some(from_hex(f[2]))
+                };
+                let hangs = content
+                    .as_deref()
+                    .is_some_and(FileFormat::java_shift_loop_hangs);
+                let format = FileFormat::sniff_bytes_opt(content.as_deref()).java_name();
+                let answer = if hangs {
+                    format!("XDIFF\tjava=HANG(>5000ms)\trust={format}")
+                } else {
+                    format.to_string()
                 };
                 Some(format!("SNIFF\t{}\t{}\t{answer}", f[1], f[2]))
             }

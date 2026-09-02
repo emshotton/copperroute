@@ -62,6 +62,8 @@ const SNIFF_INPUTS: &[&str] = &[
     "h:000000000000",
     "s:(Rules",
     "s:(RuLeS",
+    // `content == null` (`RoutingJob.java:152-154`), appended so rows 0-45 keep their indices.
+    "n:",
 ];
 
 const EXT_INPUTS: &[&str] = &[
@@ -234,16 +236,26 @@ fn main() {
 
 fn sniff_table() {
     for (i, spec) in SNIFF_INPUTS.iter().enumerate() {
-        let content = decode(spec);
-        let answer = if FileFormat::java_shift_loop_hangs(&content) {
-            format!(
-                "XDIFF\t{JAVA_HANG_MARKER}\trust={}",
-                FileFormat::sniff_bytes(&content).java_name()
-            )
+        // `n:` is Java's `content == null`; the port models it as `Option::None` at
+        // `FileFormat::sniff_bytes_opt`, which is `:152-154` as a function.
+        let content = if spec.starts_with("n:") {
+            None
         } else {
-            FileFormat::sniff_bytes(&content).java_name().to_string()
+            Some(decode(spec))
         };
-        println!("SNIFF\t{i}\t{}\t{answer}", hex(&content));
+        let hangs = content
+            .as_deref()
+            .is_some_and(FileFormat::java_shift_loop_hangs);
+        let format = FileFormat::sniff_bytes_opt(content.as_deref()).java_name();
+        let answer = if hangs {
+            format!("XDIFF\t{JAVA_HANG_MARKER}\trust={format}")
+        } else {
+            format.to_string()
+        };
+        println!(
+            "SNIFF\t{i}\t{}\t{answer}",
+            content.as_ref().map_or("<null>".to_string(), |c| hex(c))
+        );
     }
 }
 

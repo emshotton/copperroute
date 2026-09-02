@@ -637,7 +637,7 @@ case "$driver" in
     # `getFileFormat(Path)` (`:230-247`), `changeFileExtension` (`:352-374`), `tryToSetInput`
     # (`:335-349`), `tryToSetOutputFile` (`:377-397`), `setInputFromFile`'s default-output
     # derivation (`:425-461`), and `BoardFileDetails.setFilename` (`:149-197`) /
-    # `calculateCrc32` (`:75-87`). Eight tables, 152 rows.
+    # `calculateCrc32` (`:75-87`). Eight tables, 154 rows.
     #
     # Declares `package app.freerouting.core` because `BoardFileDetails.filename` and
     # `directoryPath` are `protected`; `changeFileExtension` is `private` and is reached by

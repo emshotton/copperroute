@@ -26,7 +26,7 @@ import java.util.zip.CRC32;
  * <h2>Eight tables</h2>
  *
  * <pre>
- *   SNIFF  &lt;idx&gt; &lt;hex&gt;            getFileFormat(byte[])   :151-227
+ *   SNIFF  &lt;idx&gt; &lt;hex|&lt;null&gt;&gt;   getFileFormat(byte[])   :151-227
  *   EXT    &lt;idx&gt; &lt;quoted path&gt;    getFileFormat(Path)    :230-247
  *   CFE    &lt;idx&gt; &lt;path&gt; &lt;ext&gt;     changeFileExtension    :352-374   (reflective)
  *   SETFN  &lt;idx&gt; &lt;preset&gt; &lt;name&gt;  BoardFileDetails.setFilename       :149-197
@@ -144,6 +144,12 @@ public final class P8T1Probe {
     "h:000000000000", //                         six zero bytes
     "s:(Rules", //                               RULES
     "s:(RuLeS", //                               RULES
+    "n:", //                                     `content == null` — the FIRST branch, `:152-154`.
+    //                                           Appended rather than inserted, so rows 0-45 keep
+    //                                           the indices the review's branch table cites.
+    //                                           `tryToSetInput`'s own null guard (`:336-338`,
+    //                                           table TSI row 0) returns BEFORE `getFileFormat` is
+    //                                           called, so this line has no other coverage.
   };
 
   // ── Table 2: getFileFormat(Path) ───────────────────────────────────────────────────────────
@@ -330,9 +336,10 @@ public final class P8T1Probe {
 
   private static void sniffTable() {
     for (int i = 0; i < SNIFF_INPUTS.length; i++) {
-      byte[] content = decode(SNIFF_INPUTS[i]);
+      byte[] content = SNIFF_INPUTS[i].startsWith("n:") ? null : decode(SNIFF_INPUTS[i]);
       String answer = sniffWithWatchdog(content);
-      System.out.println("SNIFF\t" + i + "\t" + hex(content) + "\t" + answer);
+      System.out.println(
+          "SNIFF\t" + i + "\t" + (content == null ? "<null>" : hex(content)) + "\t" + answer);
     }
   }
 
