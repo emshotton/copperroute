@@ -3,17 +3,14 @@ package app.freerouting.core.results;
 import app.freerouting.board.facade.RoutingBoard;
 import app.freerouting.core.RoutingJob;
 import app.freerouting.core.RoutingJobState;
-import app.freerouting.core.scoring.BoardStatistics;
 import app.freerouting.io.BoardReadResult;
 import app.freerouting.io.specctra.DsnReader;
-import app.freerouting.settings.RouterSettings;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -25,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Plan 8 Task 4 differential driver: {@code core.results.RoutingResultManifest} — the twelve
+ * Plan 8 Task 4 differential driver: {@code core.results.RoutingResultManifest} — the thirteen
  * {@code @SerializedName} fields and their Gson key order ({@code :28-65}), the three nested DTOs
  * ({@code :68-95}), {@code fromJob} ({@code :98-135}), {@code write} ({@code :138-144}), {@code
  * resolveGitSha} ({@code :147-161}) and the private {@code sha256Hex} ({@code :163-171}) — plus
@@ -52,7 +49,7 @@ import java.util.Map;
  * <h2>What "fixed clock" means here</h2>
  *
  * <p>{@code fromJob:101} is {@code Instant.now().toString()} and {@code :103} reads the
- * environment, so two of the twelve fields are not reproducible. Every {@code [man]} row therefore
+ * environment, so two of the thirteen fields are not reproducible. Every {@code [man]} row therefore
  * overwrites {@code generatedAt} with {@code 1970-01-01T00:00:00Z} and {@code gitSha} with {@code
  * 0000000} <em>after</em> {@code fromJob} has run — the same two fields {@link #normalizeManifest}
  * strips, and the same two the Rust twin injects. Everything else, including {@code
@@ -362,6 +359,11 @@ public final class P8T2 {
     gitSha(out, "file_separators_only", "\u001c\u001d\u001e\u001f", null, null);
     gitSha(out, "file_separators_around", "\u001cdeadbeef\u001f", null, null);
     gitSha(out, "nbsp_only", "\u00a0", null, null);
+    // `U+0085` NEL — the fourth member of the "Rust calls it whitespace, Java does not" half.
+    // `Character.isWhitespace(0x85)` is false and `trim()` strips only code units <= U+0020, so
+    // the jar hands the NEL straight back. Task review SF1.
+    gitSha(out, "nel_only", "\u0085", null, null);
+    gitSha(out, "nel_around", "\u0085deadbeef\u0085", null, null);
     gitSha(out, "figure_space_only", "\u2007", null, null);
     gitSha(out, "narrow_nbsp_only", "\u202f", null, null);
     gitSha(out, "ideographic_space_only", "\u3000", null, null);
@@ -671,10 +673,4 @@ public final class P8T2 {
       }
     }
   }
-
-  /** Silences the unused-import warning for the two types only the javadoc names. */
-  @SuppressWarnings("unused")
-  private static final Class<?>[] REFERENCED = {
-    BoardStatistics.class, RouterSettings.class, Field.class, OutputStream.class
-  };
 }

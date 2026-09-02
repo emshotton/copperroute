@@ -49,7 +49,8 @@
 //! already covers. Nothing was portable, and the transcript is what stands in its place.
 
 use fr_core::{
-    BoardFileDetails, Error, FileFormat, RoutingJob, RoutingJobState, validate_session_host,
+    BoardFileDetails, Error, FileFormat, RoutingJob, RoutingJobState, SessionId,
+    validate_session_host,
 };
 use std::path::{Path, PathBuf};
 
@@ -801,6 +802,52 @@ fn a_missing_rules_file_is_silently_ignored() {
     std::fs::write(dir.join("y.rules"), b"(rules X)\n").unwrap();
     job.set_rules(&dir.join("y.rules")).unwrap();
     assert_eq!(job.rules.as_ref().unwrap().format, FileFormat::Rules);
+}
+
+/// `RoutingJob.java:105` is `public RouterSettings routerSettings = new RouterSettings();` — the
+/// **no-arg constructor**, which allocates `optimizer`, `scoring` and `fanout`
+/// (`RouterSettings.java:119-124`), not an all-null object.
+///
+/// The distinction is not academic: `fr_settings::RouterSettings::{new, default}` are documented
+/// as having to disagree on exactly those three fields, and Task 1 wrote `default()` here. Two
+/// things went wrong downstream and neither was visible from this file — the result manifest's
+/// `settings_snapshot` serialised as `{}` instead of `{"fanout": {}, "optimizer": {}, "scoring":
+/// {}}`, and `RoutingResultManifest.fromJob:118`'s `routerSettings.scoring != null` guard could
+/// never pass, so `normalized_score` would never have been written at all. Plan 8 Task 4 found it
+/// and fixed it; this is the pin at the file the next reader of the job model will open (task
+/// review N2). `drcSettings` (`:107-109`) is `new DesignRulesCheckerSettings()`, whose Java
+/// constructor allocates nothing, so `default()` is right for that one.
+#[test]
+fn a_defaulted_job_carries_javas_new_router_settings_not_an_empty_one() {
+    let job = RoutingJob::default();
+    assert!(
+        job.router_settings.fanout.is_some(),
+        "RouterSettings.java:122"
+    );
+    assert!(
+        job.router_settings.optimizer.is_some(),
+        "RouterSettings.java:120"
+    );
+    assert!(
+        job.router_settings.scoring.is_some(),
+        "RouterSettings.java:121"
+    );
+    assert_eq!(job.router_settings, fr_settings::RouterSettings::new());
+    assert_ne!(
+        job.router_settings,
+        fr_settings::RouterSettings::default(),
+        "`new RouterSettings()` and an all-null one must not be the same object"
+    );
+    // `RoutingJob(UUID)` delegates to the no-arg constructor (`:141-142`), so the same holds.
+    assert_eq!(
+        RoutingJob::new(SessionId::NIL).router_settings,
+        fr_settings::RouterSettings::new()
+    );
+    // `:111-113` — `resourceUsage = new RouterJobResourceUsage()`, all five floats zero.
+    assert_eq!(
+        job.resource_usage,
+        fr_core::RouterJobResourceUsage::default()
+    );
 }
 
 #[test]

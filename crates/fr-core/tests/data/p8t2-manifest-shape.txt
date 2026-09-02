@@ -703,6 +703,8 @@ GITSHA legacy_prop_only in=prop:FREEROUTING_GIT_SHA="0badc0de" out=0badc0de
 GITSHA file_separators_only in=env:FREEROUTING_GIT_SHA="\u001c\u001d\u001e\u001f" out=unknown
 GITSHA file_separators_around in=env:FREEROUTING_GIT_SHA="\u001cdeadbeef\u001f" out=deadbeef
 GITSHA nbsp_only in=env:FREEROUTING_GIT_SHA="\u00a0" out=\u00a0
+GITSHA nel_only in=env:FREEROUTING_GIT_SHA="\u0085" out=\u0085
+GITSHA nel_around in=env:FREEROUTING_GIT_SHA="\u0085deadbeef\u0085" out=\u0085deadbeef\u0085
 GITSHA figure_space_only in=env:FREEROUTING_GIT_SHA="\u2007" out=\u2007
 GITSHA narrow_nbsp_only in=env:FREEROUTING_GIT_SHA="\u202f" out=\u202f
 GITSHA ideographic_space_only in=env:FREEROUTING_GIT_SHA="\u3000" out=unknown

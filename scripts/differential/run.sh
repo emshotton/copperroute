@@ -699,7 +699,7 @@ case "$driver" in
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;
   p8t2)
-    # Plan 8 Task 4: `core.results.RoutingResultManifest` — the twelve `@SerializedName` fields and
+    # Plan 8 Task 4: `core.results.RoutingResultManifest` — the thirteen `@SerializedName` fields and
     # their Gson key order (`:28-65`), `FixtureInfo`/`PhaseMetrics`/`PhaseDetail` (`:68-95`),
     # `fromJob` (`:98-135`), `write` (`:138-144`), `resolveGitSha` (`:147-161`) and the private
     # `sha256Hex` (`:163-171`), plus `core.RouterJobResourceUsage`, which `fromJob:114` copies

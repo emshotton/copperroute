@@ -19,8 +19,7 @@ use std::time::{Duration, Instant};
 
 use fr_board::Board;
 use fr_core::{
-    FixtureInfo, PhaseDetail, PhaseMetrics, RoutingJob, RoutingJobState, RoutingResultManifest,
-    SessionId, resolve_git_sha, sha256_hex,
+    RoutingJob, RoutingJobState, RoutingResultManifest, SessionId, resolve_git_sha, sha256_hex,
 };
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::score::BoardStatistics;
@@ -340,6 +339,10 @@ fn git_sha_table() {
     git_sha("file_separators_only", Some("\u{1c}\u{1d}\u{1e}\u{1f}"), None, None);
     git_sha("file_separators_around", Some("\u{1c}deadbeef\u{1f}"), None, None);
     git_sha("nbsp_only", Some("\u{a0}"), None, None);
+    // `U+0085` NEL — Rust's `char::is_whitespace` says yes, `Character.isWhitespace` says no, and
+    // Java's `trim()` strips only code units <= U+0020. Task review SF1.
+    git_sha("nel_only", Some("\u{85}"), None, None);
+    git_sha("nel_around", Some("\u{85}deadbeef\u{85}"), None, None);
     git_sha("figure_space_only", Some("\u{2007}"), None, None);
     git_sha("narrow_nbsp_only", Some("\u{202f}"), None, None);
     git_sha("ideographic_space_only", Some("\u{3000}"), None, None);
@@ -632,24 +635,19 @@ fn count(text: &str, wanted: char) -> i32 {
 
 /// `P8T2.escape`.
 fn escape(text: &str) -> String {
+    use std::fmt::Write;
     let mut out = String::with_capacity(text.len());
+    let mut buffer = [0u16; 2];
     for c in text.chars() {
         if (' '..'\u{7f}').contains(&c) {
             out.push(c);
         } else {
             // Java escapes UTF-16 code units, so a supplementary code point becomes two
             // `\uXXXX` escapes on that side; nothing in this driver's data is outside the BMP.
-            for unit in [c].iter().flat_map(|c| {
-                let mut buffer = [0u16; 2];
-                c.encode_utf16(&mut buffer).to_vec()
-            }) {
-                out.push_str(&format!("\\u{unit:04x}"));
+            for unit in c.encode_utf16(&mut buffer) {
+                write!(out, "\\u{unit:04x}").expect("writing to a String cannot fail");
             }
         }
     }
     out
 }
-
-/// The types the module docs name but the code reaches only through `fr_core`'s re-exports.
-#[allow(dead_code)]
-fn referenced(_: FixtureInfo, _: PhaseMetrics, _: PhaseDetail) {}

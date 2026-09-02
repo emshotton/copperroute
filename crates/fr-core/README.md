@@ -223,9 +223,14 @@ has no system properties, so both property arms become environment lookups **of 
 and the third one then collides with the first, which makes it unreachable *and* promotes it above
 the second. Two `p8t2` rows carry both answers as `XDIFF`s rather than hiding the rename. A third
 detail that is not cosmetic: `String.isBlank()` and `String.trim()` do not agree with Rust's
-`char::is_whitespace`/`str::trim` in either direction (`U+001C`-`U+001F` one way, the three
-non-breaking spaces the other), so `java_is_blank` and `java_trim` are written out — a git sha of
-one non-breaking space is returned unchanged by Java and would have become the empty string here.
+`char::is_whitespace`/`str::trim` in either direction, so `java_is_blank` and `java_trim` are
+written out. The difference is **eight characters and no more** — `U+001C`-`U+001F` one way,
+`U+0085` and the three non-breaking spaces the other — and that list is a JVM sweep rather than a
+guess: `whitespace_sets_are_the_measured_ones` asserts the predicate against
+`Character.isWhitespace` at every code point. A git sha of one non-breaking space (or one
+`U+0085`) is returned **unchanged** by Java and would have become the empty string here. The
+`U+0085` half was missed in the first version and caught in review — which is why the pin is now
+the whole set rather than the four cases somebody thought of.
 
 ### Five quirks, one totalised
 

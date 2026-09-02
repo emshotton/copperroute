@@ -459,18 +459,30 @@ impl RoutingResultManifest {
 /// **`isBlank()` and `trim()` do not use the same character set, in either language, and the two
 /// languages do not agree on either.** `String.isBlank()` is "empty or every code point
 /// `Character.isWhitespace`"; `String.trim()` strips code units `<= U+0020` and nothing else.
-/// Rust's `str::trim` and `char::is_whitespace` are both the Unicode `White_Space` property. The
-/// three-way difference:
+/// Rust's `str::trim` and `char::is_whitespace` are both the Unicode `White_Space` property.
+///
+/// The three-way difference is **eight characters, and that is the complete list** — it was swept
+/// on the JVM rather than reasoned about (JDK 25, `Character.isWhitespace(cp)` and
+/// `!s.trim().equals(s)` over every code point):
+///
+/// ```text
+/// Character.isWhitespace : 0009-000D 001C-0020 1680 2000-2006 2008-200A 2028 2029 205F 3000
+/// String.trim strips     : 0000-0020
+/// char::is_whitespace    : 0009-000D 0020 0085 00A0 1680 2000-200A 2028 2029 202F 205F 3000
+/// ```
 ///
 /// | character | `Character.isWhitespace` | `String.trim` | Rust `is_whitespace`/`trim` |
 /// |---|---|---|---|
-/// | `U+001C`-`U+001F` | yes | yes | **no** |
-/// | `U+00A0`, `U+2007`, `U+202F` | **no** | no | **yes** |
+/// | `U+001C`-`U+001F` (the four separators) | yes | yes | **no** |
+/// | `U+0085` (NEL) | **no** | no | **yes** |
+/// | `U+00A0`, `U+2007`, `U+202F` (the non-breaking spaces) | **no** | no | **yes** |
 ///
-/// So a git sha of one non-breaking space is *not blank* to Java and is returned **unchanged**,
-/// where `value.trim()` in Rust would answer the empty string. [`java_is_blank`] and
-/// [`java_trim`] are written out for that reason; the `GITSHA nbsp` and `GITSHA sep` rows of the
-/// `p8t2` transcript measure both directions rather than leaving them to the argument.
+/// So a git sha of one non-breaking space — or one `U+0085` — is *not blank* to Java and is
+/// returned **unchanged**, where `value.trim()` in Rust would answer the empty string.
+/// [`java_is_blank`] and [`java_trim`] are written out for that reason; `whitespace_sets_are_the_
+/// measured_ones` asserts the whole symmetric difference above rather than the four rows anybody
+/// happened to think of, and the `GITSHA nbsp_only`/`nel_only`/`file_separators_only` rows of the
+/// `p8t2` transcript carry the jar's own answers for three of them.
 pub fn resolve_git_sha() -> String {
     // :148-151.
     if let Ok(value) = std::env::var("FREEROUTING_GIT_SHA")
@@ -497,11 +509,20 @@ fn java_is_blank(value: &str) -> bool {
 ///
 /// A Unicode space/line/paragraph separator that is **not** a non-breaking space, or one of the
 /// five control characters `U+0009`-`U+000D`, or one of `U+001C`-`U+001F`.
+///
+/// The four `=> false` characters are the whole of what Rust calls whitespace and Java does not
+/// (see [`resolve_git_sha`]'s swept table): the three non-breaking spaces, which
+/// `Character.isWhitespace`'s javadoc excludes by name, and `U+0085` NEL, which it excludes by
+/// silence — NEL is category `Cc`, not a separator, and it is not in the explicit
+/// `U+0009`-`U+000D` / `U+001C`-`U+001F` list either. Measured, not inferred: the JVM answers
+/// `Character.isWhitespace(0x85) == false`, `"\u0085".isBlank() == false` and
+/// `"\u0085".trim().length() == 1`.
 fn java_is_whitespace(c: char) -> bool {
     match c {
         '\u{9}'..='\u{D}' | '\u{1C}'..='\u{1F}' => true,
-        // The three non-breaking spaces Java excludes by name.
-        '\u{A0}' | '\u{2007}' | '\u{202F}' => false,
+        // The three non-breaking spaces Java excludes by name, and NEL, which it excludes by
+        // being a control character rather than a separator.
+        '\u{85}' | '\u{A0}' | '\u{2007}' | '\u{202F}' => false,
         _ => c.is_whitespace(),
     }
 }
@@ -704,6 +725,76 @@ mod tests {
         assert_eq!(hex_lower(&[0x00, 0x0f, 0xa0, 0xff]), "000fa0ff");
     }
 
+    /// [`java_is_whitespace`] against the JVM's own answer, every code point, plus the complete
+    /// symmetric difference with Rust's `char::is_whitespace`.
+    ///
+    /// This is the test that would have caught `U+0085` (task review SF1): the first version of
+    /// the predicate special-cased the three non-breaking spaces by hand and let NEL fall through
+    /// to `char::is_whitespace`, which says `true` where Java says `false`. Asserting the *whole*
+    /// set against a swept JVM answer is what makes [`resolve_git_sha`]'s table a measurement
+    /// rather than a list of the cases somebody thought of.
+    #[test]
+    fn whitespace_sets_are_the_measured_ones() {
+        // Swept on the JVM at port time (JDK 25, `/opt/homebrew/opt/openjdk@25/bin/java`) with
+        // `for (cp in 0..=0x10FFFF) if (Character.isWhitespace(cp))`. The ranges below are that
+        // run's output, verbatim:
+        //   0009 000A 000B 000C 000D 001C 001D 001E 001F 0020 1680 2000 2001 2002 2003 2004 2005
+        //   2006 2008 2009 200A 2028 2029 205F 3000
+        fn jvm_is_whitespace(c: char) -> bool {
+            matches!(
+                c as u32,
+                0x09..=0x0D
+                    | 0x1C..=0x20
+                    | 0x1680
+                    | 0x2000..=0x2006
+                    | 0x2008..=0x200A
+                    | 0x2028
+                    | 0x2029
+                    | 0x205F
+                    | 0x3000
+            )
+        }
+
+        let mut java_only: Vec<u32> = Vec::new();
+        let mut rust_only: Vec<u32> = Vec::new();
+        for cp in 0..=0x10FFFF_u32 {
+            let Some(c) = char::from_u32(cp) else {
+                continue;
+            };
+            assert_eq!(
+                java_is_whitespace(c),
+                jvm_is_whitespace(c),
+                "java_is_whitespace disagrees with the JVM at U+{cp:04X}"
+            );
+            match (jvm_is_whitespace(c), c.is_whitespace()) {
+                (true, false) => java_only.push(cp),
+                (false, true) => rust_only.push(cp),
+                _ => {}
+            }
+        }
+        assert_eq!(
+            java_only,
+            [0x1C, 0x1D, 0x1E, 0x1F],
+            "the four separators Java calls whitespace and Rust does not"
+        );
+        assert_eq!(
+            rust_only,
+            [0x85, 0xA0, 0x2007, 0x202F],
+            "NEL and the three non-breaking spaces — Rust calls them whitespace, Java does not"
+        );
+
+        // `String.trim()` strips code units <= U+0020 and nothing else — the same sweep's second
+        // half printed exactly `0000`..`0020`.
+        for cp in 0..=0xFFFF_u32 {
+            let Some(c) = char::from_u32(cp) else {
+                continue;
+            };
+            let text = c.to_string();
+            let stripped = java_trim(&text).is_empty();
+            assert_eq!(stripped, cp <= 0x20, "java_trim at U+{cp:04X}");
+        }
+    }
+
     /// `String.isBlank()`'s and `String.trim()`'s character sets, where they differ from Rust's.
     #[test]
     fn java_blankness_and_trimming_are_not_rusts() {
@@ -723,6 +814,15 @@ mod tests {
         assert!(!java_is_blank("\u{a0}"));
         assert!(!java_is_blank("\u{2007}"));
         assert!(!java_is_blank("\u{202f}"));
+        // `U+0085` NEL, the fourth member of that half of the difference — measured on the JVM as
+        // `isWhitespace=false isBlank=false trimLen=1` (task review SF1).
+        assert!(!java_is_blank("\u{85}"));
+        assert_eq!(
+            java_trim("\u{85}"),
+            "\u{85}",
+            "Java's trim keeps anything > U+0020"
+        );
+        assert_eq!("\u{85}".trim(), "", "Rust's does not");
         assert_eq!("\u{a0}".trim(), "", "Rust trims the non-breaking space");
         assert_eq!(java_trim("\u{a0}"), "\u{a0}", "Java does not");
         assert!(!java_is_blank("abc"));

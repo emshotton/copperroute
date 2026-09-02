@@ -669,10 +669,14 @@ different observable outcomes, so the three methods now panic
   it is #237 (the monitor thread) plus the new #256. Said here so Task 14's label→id sweep does not
   allocate one for it.
 
-  **The register is contiguous 1..252** — checked by
-  `grep -o "^| [0-9]\+ |" docs/java-quirks.md`, 252 rows, no gap and no duplicate. #250 and #252
-  carry a row in the `pinned` table *and* a line in the `totalized` table, exactly as #241, #242,
-  #244 and #246 do.). Task 8 also **rewrote**
+  **The register is contiguous 1..258, and the next free id is #259** — checked by
+  `grep -o "^| [0-9]\+ |" docs/java-quirks.md | grep -o "[0-9]\+" | sort -n`, which must print
+  1..258 with no gap and no duplicate (258 rows). *(This sentence read "contiguous 1..252 … 252
+  rows" until Plan 8 Task 4's review round: Tasks 3 and 4 landed #253-#258 and left the register's
+  own self-check stating the count from two tasks earlier. It is the one line a reader trusts for
+  "is the register intact", so re-run the recipe rather than reading the number.)* #250, #252 and
+  #257 carry a row in the `pinned` table *and* a line in the `totalized` table, exactly as #241,
+  #242, #244 and #246 do.). Task 8 also **rewrote**
   the port column of **#184**, whose "reachable only with a non-null
   `currentClipShape`" is no longer a prediction: `RoutingBoardExt::
   remove_items_and_pull_tight` is that caller and the row now records what the

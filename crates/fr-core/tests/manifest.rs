@@ -13,13 +13,15 @@ use std::time::{Duration, Instant};
 
 use fr_board::Board;
 use fr_core::{
-    PhaseDetail, PhaseMetrics, RoutingJob, RoutingJobState, RoutingResultManifest, SessionId,
-    resolve_git_sha, sha256_hex,
+    Ctx, PhaseDetail, PhaseMetrics, RoutingJob, RoutingJobState, RoutingPipeline,
+    RoutingResultManifest, SessionId, SyncProgressSink, resolve_git_sha, sha256_hex,
 };
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::score::BoardStatistics;
-use fr_settings::sources::DefaultSettings;
-use fr_settings::{HostEnvironment, SettingsSource};
+use fr_settings::sources::{
+    CliSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource,
+};
+use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
 
 /// `P8T2.FIXED_INSTANT`.
 const FIXED_INSTANT: &str = "1970-01-01T00:00:00Z";
@@ -756,23 +758,89 @@ fn the_parent_directory_is_created() {
     assert_eq!(transcript.writes["nested_parent"], "parent=<SCRATCH>/a/b/c");
 }
 
-/// The brief's requirement on `from_job`'s `stats` parameter: Task 6 hands it
-/// `PipelineResult::final_statistics` rather than paying for `fromJob:117`'s recompute, so the two
-/// must be the same object.
+/// The brief's requirement on `from_job`'s `stats` parameter, asserted against the **pipeline**.
 ///
-/// `BoardStatistics::new` is `fromJob:117` exactly (`new BoardStatistics(job.board)`), and running
-/// it twice over the same board is what the pipeline's cached value would have to equal.
+/// The brief: *"Task 6 supplies the already-computed `PipelineResult::final_statistics` … assert
+/// it equals a fresh recompute in a test, then use the cached one."* So this runs the real
+/// pipeline over a real stem and compares `result.pipeline.final_statistics` — the object Task 6
+/// will hand `from_job` — with a fresh `BoardStatistics::new(&mut board)`, which is
+/// `fromJob:117`'s `new BoardStatistics(job.board)` exactly.
+///
+/// **The recompute happens after `RoutingPipeline::run` has returned**, which is the version of
+/// the claim that matters: the wrapper runs `build_unrouted_report` and `DesignRulesChecker::new`
+/// after `run_pipeline`, both taking `&mut Board`, so a fresh constructor here sees the board in
+/// the state Java's `fromJob` would see it in — after the SES has been produced, not before.
+///
+/// The last assertion is the contract in the form the manifest cares about: the **document** is
+/// byte-identical either way, so substituting the cached statistics for Java's recompute cannot
+/// move a byte of `board_statistics` or of `normalized_score`.
+///
+/// (The first version of this test asserted only that `BoardStatistics::new` gives the same
+/// answer twice — constructor purity, not the equivalence the brief named. Task review SF2.)
 #[test]
-fn the_cached_statistics_equal_a_fresh_recompute() {
-    let dsn = fixtures().join("Issue103-Board-Routed.dsn");
+fn the_pipelines_cached_statistics_equal_a_fresh_recompute() {
+    let dsn = fixtures().join("Issue143-rpi_splitter.dsn");
+    let bytes = std::fs::read(&dsn).expect("the stem is readable");
+    let file_name = dsn
+        .file_name()
+        .expect("a file name")
+        .to_string_lossy()
+        .into_owned();
     let mut board = load_board(&dsn);
-    let cached = BoardStatistics::new(&mut board);
+
+    // `batch_parity::route_stem`'s load-and-resolve sequence (controller ruling AW), with two
+    // passes rather than eight: this test is about the statistics object's identity, not about
+    // the SES bytes, which `tests/pipeline.rs` already pins against the jar.
+    let argv = [
+        "-de".to_string(),
+        dsn.display().to_string(),
+        "-mp".to_string(),
+        "2".to_string(),
+        "--router.fanout.enabled=true".to_string(),
+        "--router.optimizer.enabled=true".to_string(),
+    ];
+    let dsn_source = DsnFileSettings::new(&bytes[..], &file_name);
+    let env_map: std::collections::BTreeMap<String, String> = std::env::vars().collect();
+    let env_source = EnvironmentVariablesSource::new(&env_map);
+    let cli_source = CliSettings::new(&argv);
+    let inputs = SettingsInputs {
+        dsn: dsn_source.get_settings(),
+        cli_rules: None,
+        scheduler_rules: None,
+        env: env_source.get_settings(),
+        cli: cli_source.get_settings(),
+    };
+    let settings = resolve_headless(&inputs, Some(&board), &HostEnvironment::detect());
+    fr_core::prepare_board(&mut board, &settings);
+
+    let sink = SyncProgressSink::noop();
+    let ctx = Ctx::with_disabled_budget(&settings, &sink);
+    let result = RoutingPipeline::run(&mut board, &ctx).expect("the stem has a routable layer");
+    assert!(
+        result.pipeline.passes_run > 0,
+        "the router must actually have run, or the comparison is about an unrouted board"
+    );
+
+    // What Task 6 hands `from_job`…
+    let cached = result.pipeline.final_statistics.clone();
+    // …and what `fromJob:117` would have computed instead.
     let fresh = BoardStatistics::new(&mut board);
     assert_eq!(
         cached, fresh,
-        "the computing constructor is a pure read of the board — two `DesignRulesChecker` runs \
-         and all — so `PipelineResult::final_statistics` may stand in for `fromJob:117`"
+        "PipelineResult::final_statistics is not what `new BoardStatistics(job.board)` would          answer for the same board — `from_job`'s cached `stats` would change the manifest"
     );
+
+    // The same claim as the manifest sees it: the document does not move.
+    let job = with_weights(fresh_job());
+    assert_eq!(
+        json_of(&from_job(&job, Some(&dsn), true, 0, Some(&cached))),
+        json_of(&from_job(&job, Some(&dsn), true, 0, Some(&fresh))),
+        "the manifest built from the cached statistics differs from the recomputed one"
+    );
+    // And it is a manifest with something in it, not an empty one that would agree vacuously.
+    let json = json_of(&from_job(&job, Some(&dsn), true, 0, Some(&cached)));
+    assert!(json.contains("\"board_statistics\""), "{json}");
+    assert!(json.contains("\"normalized_score\""), "{json}");
 }
 
 /// `normalize_manifest`'s five rules, as the transcript's `[norm]` table recorded them.
