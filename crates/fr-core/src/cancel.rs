@@ -24,24 +24,28 @@
 //!
 //! **Controller ruling BB assigns that `fr-router` change to Task 11**, the seam's first consumer
 //! (Task 12 consumes it too, and each has a cancellation test that cannot pass without it). Task 0
-//! builds the token, its three-state mapping and the two entry points the seam will call:
+//! builds the token, its three-state mapping and the two entry points the seam calls:
 //!
 //! * [`CancelToken::apply_to`] — copy the token's current state into an existing `RouterStop`.
 //!   This is the one line an added poll site executes.
 //! * [`CancelToken::as_router_stop`] — mint a `RouterStop` already carrying the token's state and
 //!   its deadline, which is what a routing thread holds for a whole run.
 //!
-//! Until Task 11 lands it, a cancel that arrives **after** `run_pipeline` has been entered is not
-//! observed by that run; one that arrives before is. That is the whole of the gap, it is recorded
-//! as an `obligation:` on [`CancelToken::apply_to`], and it is why
-//! `crates/fr-core/tests/cancel.rs` pins the mapping rather than a mid-pass abort.
+//! **Task 11 landed it.** `fr_router::pipeline::RouterStop::{with_cancel_poll, poll_cancel}` is the
+//! additive half; [`CancelToken::as_router_stop`] installs `move |stop| token.apply_to(stop)` on
+//! the stop it mints, and three loop heads run it — `AutorouteBatchLoop::run`
+//! (`AutorouteBatchLoop.java:250-253`), `BatchFanout::fanout_board` (`BatchFanout.java:111-116`)
+//! and `BatchOptimizer::run_batch_loop` (`BatchOptimizer.java:172-176`). A cancel arriving after
+//! `run_pipeline` has been entered is therefore observed from the next loop head on; the residual
+//! latency is one *pass*, and the discharge note on [`CancelToken::apply_to`] carries the rest.
 //!
 //! # Why an uncancelled token is a no-op, and why that matters
 //!
 //! Every existing parity driver builds `RouterStop::new()` — state `None`, deadline `None`.
 //! [`CancelToken::default`]'s `as_router_stop` is byte-identical to that: no flag set, no
-//! deadline. That is what keeps `batch_parity`, `p6t1` and `sweep-p7t9.sh` unchanged when Task 11
-//! adds the seam, and [`crate::cancel`]'s tests assert it directly.
+//! deadline, and a closure that writes nothing when it runs. That is what kept `batch_parity`,
+//! `p6t1` and `sweep-p7t9.sh` unchanged when Task 11 added the seam, and [`crate::cancel`]'s tests
+//! assert it directly.
 
 // ── `core/StoppableThread` — the audit rows for this crate ──────────────────────────────────────
 //
@@ -249,18 +253,25 @@ impl CancelToken {
     /// difference from not calling this at all. That is the property every added poll site
     /// depends on, and `an_uncancelled_token_is_a_no_op` pins it.
     ///
-    // obligation: the `fr-router` poll seam is **Task 11's** (controller ruling BB — the seam is
-    // owned by its first consumer; Task 12 consumes it too). Scan ruling R3 makes the poll
-    // **addition** an additive-and-wrapped, driver-pinned `fr-router` change; Task 0 builds the
-    // token and this mapping, and until Task 11 lands, a cancel arriving after `run_pipeline` has
-    // been entered is not observed by that run. The seam's contract is: call
-    // `CancelToken::apply_to(&stop)` at `pipeline/batch_loop.rs:303`'s job-level poll and at the
-    // per-stage sites plan-7 ruling AI enumerates (`fanout.rs:1142`, `optimizer.rs:1110`),
-    // keeping every existing signature and wrapping it, with `batch_parity` / `p6t1` (all six
-    // rows) / `sweep-p7t9.sh` byte-unchanged as the gate. Task 11's
-    // `a_cancelled_tool_stops_mid_flight` and Task 12's
-    // `cancelling_route_board_mid_run_returns_timed_out_false_and_a_partial_result` are the two
-    // tests that cannot pass without it.
+    // **DISCHARGED in Plan 8 Task 11** (controller ruling BB — the seam is owned by its first
+    // consumer; Task 12 consumes it too). What landed, exactly as the obligation specified it:
+    // `fr_router::pipeline::RouterStop::{with_cancel_poll, poll_cancel}` — an additive,
+    // constructor-defaulted `Option<Box<dyn Fn(&RouterStop)>>` — called from **three** loop heads
+    // and no others, `pipeline/batch_loop.rs`'s job-level pass loop
+    // (`AutorouteBatchLoop.java:250-253`) and the two per-stage sites plan-7 ruling AI enumerates,
+    // `pipeline/fanout.rs` (`BatchFanout.java:111-116`) and `pipeline/optimizer.rs`
+    // (`BatchOptimizer.java:172-176`). Every existing signature is unchanged and the poll is
+    // wrapped: both `RouterStop` constructors leave the closure `None`, so the added line is a
+    // `None` test on every run that does not install one. [`CancelToken::as_router_stop`] is the
+    // only installer in the tree, and what it installs is this method. The gate was re-run and is
+    // in the Task 11 report: `cargo test -p fr-router --test batch_parity`, `run.sh p6t1` (all six
+    // rows) and `run.sh p8t1` all byte-unchanged.
+    //
+    // The residual latency is one *pass*, not one *run*: a cancel arriving inside a pass is copied
+    // in at the next loop head, and every deeper reader of the flag
+    // (`AutoroutePassRunner.java:203`'s item loop among them) sees it from there on. Task 12 may
+    // add a fourth site if a whole pass turns out to be too coarse; ruling AI's own list allows
+    // `AutoroutePassRunner:203` as a job-level one.
     pub fn apply_to(&self, stop: &RouterStop) {
         if self.is_cancelled() {
             // StoppableThread.requestStop (:23-25).
@@ -298,6 +309,14 @@ impl CancelToken {
                 RouterStop::with_deadline(limit_ms.clamp(i32::MIN as i64, i32::MAX as i64) as i32)
             }
         };
+        // Controller ruling BB's seam, installed: the routing thread now re-reads this token at
+        // every loop head rather than only here. `self.clone()` shares the two `Arc<AtomicBool>`s
+        // — two clones of one token are one token — so the closure sees a `cancel()` that arrives
+        // after this line, which is the whole of what the seam buys.
+        let token = self.clone();
+        let stop = stop.with_cancel_poll(Box::new(move |stop| token.apply_to(stop)));
+        // The state as of *now*, so a token already cancelled before the run starts is observed
+        // without waiting for a loop head — the pre-seam behaviour, kept.
         self.apply_to(&stop);
         stop
     }

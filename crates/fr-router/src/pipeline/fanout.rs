@@ -1144,6 +1144,13 @@ impl<'a> BatchFanout<'a> {
         // :110.
         let mut i = 0_i32;
         while i < max_passes {
+            // Controller ruling BB's poll seam (Plan 8 Task 11) — one of ruling AI's two
+            // **per-stage** sites. This one *is* allowed here where `RouterStop::poll_deadline` is
+            // not: `poll_deadline` requests `ALL` on a *stage* clock, which would suppress a stage
+            // Java leaves running, whereas what this copies in is an operator's
+            // `notifications/cancelled` — a job-level `requestStop()` by definition
+            // (`core/StoppableThread.java:23-25`). A `None` test on every parity run.
+            stop.poll_cancel();
             // :111-116 — the per-stage deadline. **Not** `RouterStop::poll_deadline`.
             if fanout_instance.is_deadline_reached() {
                 fanout_instance.is_timed_out = true; // :113

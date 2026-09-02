@@ -301,6 +301,15 @@ impl AutorouteBatchLoop {
 
         // :250.
         while continue_autorouting && !stop.is_stop_auto_router_requested() {
+            // Controller ruling BB's poll seam (Plan 8 Task 11) — the **job-level** site. No Java
+            // counterpart: Java's MCP cannot cancel a run at all (a documented delta,
+            // `crates/freerouting/README.md`). `RouterStop::poll_cancel` is a `None` test on every
+            // stop this crate or any parity driver builds, which is why this line moves no byte of
+            // `batch_parity`, `p6t1`, `p8t1` or `sweep-p7t9.sh`. It sits **above** the
+            // `poll_deadline` call because an external `requestStop()` and the monitor thread's
+            // are the same `ALL`, and quirk #203's dead arm below must stay dead either way.
+            stop.poll_cancel();
+
             // :251-253. Java reads `job.state == RoutingJobState.TIMED_OUT`; ruling AI's model of
             // the writer is `RouterStop::poll_deadline`, and this is one of its two permitted
             // sites (the other is `AutoroutePassRunner`'s item loop).

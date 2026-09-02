@@ -1159,6 +1159,10 @@ impl BatchOptimizer<'_> {
                 .is_none_or(|max_items| self.total_items_optimized < max_items)
             && !stop.is_stop_requested()
         {
+            // Controller ruling BB's poll seam (Plan 8 Task 11) — ruling AI's other **per-stage**
+            // site; see `BatchFanout::fanout_board`'s twin for why a cancel may be polled here and
+            // a stage *deadline* may not. A `None` test on every parity run.
+            stop.poll_cancel();
             // :172-176 — the per-stage deadline. `:174` is the log line.
             if self.is_deadline_reached() {
                 // :173.

@@ -16,9 +16,10 @@ specified …` and **exit 1**, not a usage screen.
 > end to end, with SES byte parity against the HEAD jar on eleven boards (see the acceptance table
 > below). **Task 7 landed `drc`** — the thirteen steps of `Freerouting.initializeDrc`, with report
 > byte parity on seven of the eight committed `drc-*` stems and the eighth an `XDIFF` the jar
-> cannot win either (see its own table below). `info` is the last stub answering exit 3, until
-> Task 12. Task 13 expands this file into the full reference (every accepted flag, the
-> `p8t1`-`p8t7` acceptance table, the MCP delta table).
+> cannot win either (see its own table below). **Task 11 landed the MCP transport** — the reader
+> thread, the guarded writer, progress, cancellation and a tool boundary — and with it the MCP
+> delta table below. `info` is the last stub answering exit 3, until Task 12. Task 13 expands this
+> file into the full reference (every accepted flag, the `p8t1`-`p8t7` acceptance table).
 
 ---
 
@@ -39,6 +40,55 @@ The same rule decided `--version`: the jar **refuses** `--version` and `-V`
 (`Unknown command line argument: --version`, then `initializeCli`'s refusal, **exit 1** — measured
 on the HEAD jar, and pinned by `p8t5`'s `version-long`/`version-short` rows). So the legacy path has
 no `--version` arm, and clap's lives behind a subcommand: `freerouting route --version`.
+
+---
+
+## The MCP server, and the ten ways it differs from the jar's
+
+`freerouting mcp` speaks newline-delimited JSON-RPC 2.0 on stdin/stdout — **one JSON object per
+line, no `Content-Length` framing**, which is the one transport decision kept from Java. Stdout
+carries the protocol and nothing else; every log line goes to stderr.
+
+The jar has an MCP server too, and it is a different program: `--mcp_server.stdio=true` starts a
+**daemon thread that POSTs each stdin line to a Jetty server in the same JVM**
+(`Freerouting.java:681-788`) and prints the HTTP response body. Controller ruling AO replaced that
+arrangement with a native in-process server, so the two are not expected to agree byte for byte —
+but *where* they disagree is a contract, not an accident. The ten rows below are that contract.
+**A new delta is a defect, and a delta that disappears is a defect too**; `p8t6` (Plan 8 Task 12)
+drives both programs through `initialize`, `tools/list` and a `tools/call` and asserts the
+difference is exactly this list.
+
+Java's side of every row was **measured**, not read: the jar was driven headlessly with
+`--api_server.enabled=true --api_server.authentication.enabled=false
+--mcp_server.authentication.enabled=false --mcp_server.enabled=true --mcp_server.stdio=true
+--user_data_path=<scratch>` on JDK 25, and the transcript is
+`docs/plan-8-prep/evidence/job3-mcp.jsonl` (30 records) with its reading at
+`docs/plan-8-prep/evidence/job3-summary.md`. `--mcp_server.stdio=true` **alone does not start the
+bridge**: `McpServerSettings.isEnabled` defaults to `false`, and every OpenAPI-derived tool is an
+HTTP call into the REST API, which has its own `enabled` default of `false` (scan ruling R18).
+
+| # | what | the jar | this port | Java |
+|---|---|---|---|---|
+| 1 | `initialize` result identity | `protocolVersion` `"2024-11-05"`; `serverInfo` `{name: "Freerouting MCP", version: <Constants.FREEROUTING_VERSION>}`; **plus non-spec top-level `serverName`/`serverVersion`**, duplicates of the two `serverInfo` members | `protocolVersion` `"2025-06-18"`; `serverInfo` `{name: "freerouting", version: <crate version>}`; **no top-level duplicates** | `McpControllerV1.java:285`, `:281-282`, `:286-287` |
+| 2 | `capabilities` | `{"tools": {}}` | `{"tools": {"listChanged": false}}` — the list is fixed at compile time, and saying so is free | `McpControllerV1.java:277-278` |
+| 3 | `tools/call` result body | **one text block** holding a pretty-printed `{status, contentType, body}` envelope, and **no `structuredContent`** — although all 28 tools declare an `outputSchema` | a text block **and** `structuredContent`, so a client reads the value instead of re-parsing prose | `McpControllerV1.java:333-356` |
+| 4 | `ping` | `-32601 "Unknown method: ping"` — the method table has four cases and a default | answered, `{}` (MCP §Ping) | `McpControllerV1.java:189-198`, `:197` |
+| 5 | response framing | the bridge prints `body.replace("\r","").replace("\n","")` — every newline stripped, **no re-escaping** (quirk label **M**). Survivable only because valid JSON has no raw newline inside a string; it visibly mangles the one pretty-printed response into collapsed, double-spaced JSON | compact JSON, one trailing `\n`, flushed. Nothing to strip | `Freerouting.java:770` |
+| 6 | `notifications/progress` and `notifications/cancelled` | **neither exists.** The bridge is one blocking `HttpClient.send` with no timeout per line, so nothing can reach stdout between a request and its response, and there is no way to reach a running job | both. A `tools/call` runs on its own thread with a `CancelToken`; `_meta.progressToken` turns on interim notifications, and an inbound `notifications/cancelled` flips the token **while** the tool runs | `Freerouting.java:749-776`; `McpControllerV1.java:359-382` |
+| 7 | authentication | **on by default**, and the stdio bridge never supplies an `Authorization` header — it only forwards one that arrived on the MCP request, which over stdio there is none. So every session/job tool answers HTTP 401 until `--api_server.authentication.enabled=false` is passed | none. There is no listener, no port and no credential; the server is a child process on a pipe | `ApiAuthenticationSettings.java:11` (`isEnabled = true`) |
+| 8 | a notification's reply | prints a **blank line**. A request with no `id` gets HTTP 204, and the bridge sees a non-null empty body and `println`s it — so a line-oriented client that expects silence desynchronises | nothing at all is written | `McpControllerV1.java:176-177`, `:224-225`; `Freerouting.java:769-772` |
+| 9 | the `-32700` reply | has **no `id` member** (Gson drops the JSON-null) and is the one response Jersey pretty-prints, because the branch returns the `JsonObject` rather than its `toString()` — so it arrives double-spaced after row 5's stripping | `{"jsonrpc":"2.0","id":null,"error":{…}}`, compact, like every other response | `McpControllerV1.java:152` |
+| 10 | the tool set | **28**: 24 generated by a Swagger scan of `/v1/*`, wrapped as `{path, query, body}`, plus 4 hand-written "custom" tools with **flat** arguments — two conventions in one list. The registry is rebuilt by a fresh OpenAPI scan on **every** `tools/list` *and* every `tools/call` | **4**, spec §13's, flat arguments, registered once at start-up | `McpControllerV1.java:294-301` (`OpenApiMcpToolRegistry.fromApplication`, re-scanned at `:315` for every `tools/call` too); measured, `job3-summary.md` §4 |
+
+Rows 1-5 landed with the transport in Task 11; rows 6-10 are Task 12's and scan ruling R18's, and
+are recorded here so that Task 12's driver has one list to check rather than two.
+
+**What is *not* a delta.** EOF on stdin is exit **0** and a read failure on stdin is exit **1** —
+that is Java's (`Freerouting.java:778-782`) and it is reproduced. So is skipping a blank input line
+(`:739-741`) and so is one-object-per-line framing. And so is `tools/call`'s error split: a tool
+that runs and fails is an `isError: true` result, a protocol failure is a JSON-RPC `error`. The
+port adds a third case Java has no equivalent for — a tool that **panics** answers `-32603` and the
+server keeps serving (plan ruling 4's boundary, the one `catch_unwind` in the port).
 
 ---
 

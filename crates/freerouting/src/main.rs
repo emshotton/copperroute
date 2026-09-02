@@ -33,8 +33,11 @@ fn main() {
 //   the same Jetty stack again, plus the WebSocket endpoint and the OpenAPI-derived tool
 //   registry. Controller ruling AO replaces it with spec §13's four tools over a native stdio
 //   JSON-RPC server (`crate::mcp`), which needs no listener, no port and no authentication.
-// added in Task 11: Freerouting.startMcpStdioBridge (Freerouting.java:740-800) — the pump that
-//   forwards stdin to the HTTP MCP server and prints its replies, stripping every `\r` and `\n`
-//   from the body on the way (quirk label M). Task 11 rewires `crate::mcp::stdio` and carries the
-//   `// renamed:` that names where each of its responsibilities went; until then this is a
-//   recorded obligation rather than a silence.
+// renamed: Freerouting.startMcpStdioBridge -> `freerouting::mcp::stdio::run_with`
+//   (Freerouting.java:681-788) — **landed in Plan 8 Task 11**. Java's is a pump: a daemon thread
+//   forwarding each stdin line to the HTTP MCP server over `HttpClient.send` and printing the
+//   reply with every `\r` and `\n` stripped from the body (`:770`, quirk label M — not
+//   reproduced). Controller ruling AO deleted the server it pumps to, so what the method became is
+//   a reader thread, a `Mutex`-guarded writer and an in-process dispatcher; the responsibility-by-
+//   responsibility table is on `mcp::stdio::run`, and the five behavioural differences are the
+//   Task 11 half of the delta table in `crates/freerouting/README.md`.

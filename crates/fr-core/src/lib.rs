@@ -235,11 +235,13 @@ pub enum Error {
 // gratuitously broken — and never for transport. `p8t6` is the documented-delta driver.
 //
 // renamed: `Freerouting.startMcpStdioBridge` (`Freerouting.java:681-788`, 108 lines) ->
-// `crates/freerouting/src/mcp` (Plan 8 Task 11). Java's "stdio bridge" is a daemon thread that
-// pipes stdin lines into an **HTTP** POST against its own locally-bound Jetty MCP endpoint and
-// prints the response body with every `\r` and `\n` stripped (`:766`, quirk label M). Spec §13
-// replaces the whole arrangement with a native stdio JSON-RPC server, so the *feature* is ported
-// and the *mechanism* is not.
+// `crates/freerouting/src/mcp` (**landed in Plan 8 Task 11**). Java's "stdio bridge" is a daemon
+// thread that pipes stdin lines into an **HTTP** POST against its own locally-bound Jetty MCP
+// endpoint and prints the response body with every `\r` and `\n` stripped (`:770` at the clone's
+// HEAD — the plan and the brief both write `:766`, which is four lines stale; quirk label M).
+// Spec §13 replaces the whole arrangement with a native stdio JSON-RPC server, so the *feature* is
+// ported and the *mechanism* is not. The ten behavioural differences that survive are the delta
+// table in `crates/freerouting/README.md`, which `p8t6` (Task 12) asserts is exactly itself.
 //
 // -------------------------------------------------------------------------------------------------
 // 3. Telemetry and version checking — spec §2.

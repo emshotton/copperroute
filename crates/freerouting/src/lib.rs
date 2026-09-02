@@ -113,8 +113,9 @@ pub fn run(raw: &[String]) -> ExitCode {
         cli::Command::Route(args) => commands::route::run(args, raw),
         cli::Command::Drc(args) => commands::drc::run(args, raw),
         cli::Command::Info(args) => commands::info::run(args, raw),
-        // The MCP transport predates the exit ladder and answers a raw code; it can only ever be
-        // 0 today (`mcp::stdio::run_with` returns 0 on EOF and on a broken pipe alike).
+        // The MCP transport predates the exit ladder and answers a raw code, which is Java's own
+        // pair: `Freerouting.java:778-779` exits **0** on EOF and `:780-782` exits **1** on an
+        // `IOException` reading `System.in`. Task 11's `eof_exits_zero` pins both arms.
         cli::Command::Mcp => match mcp::stdio::run() {
             0 => ExitCode::Ok,
             _ => ExitCode::Failure,
