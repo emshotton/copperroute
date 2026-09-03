@@ -54,9 +54,11 @@ const MARKER_BASELINE: usize = 165;
 /// fix could delete by accident; the other 12 are README prose about the convention.
 const CODE_MARKER_BASELINE: usize = 153;
 
-/// The register's row count at Plan 9 Task 0: 292 rows from Plans 1-8, plus #293-#296 (ruling
-/// BL6 — R1/R2/I1/I2 out of `benchmark/reports/java-regressions-2026-09.md`).
-const REGISTER_ROWS: usize = 296;
+/// The register's row count: 292 rows from Plans 1-8, plus #293-#296 (Plan 9 Task 0, ruling
+/// BL6 — R1/R2/I1/I2 out of `benchmark/reports/java-regressions-2026-09.md`), plus #297 (Plan 9
+/// Task 17's review, ruling BY — the `reduceTraceShapesAtTiePins` no-op investigation owned by
+/// Task 10).
+const REGISTER_ROWS: usize = 297;
 
 fn workspace_root() -> PathBuf {
     parity::workspace_root()
