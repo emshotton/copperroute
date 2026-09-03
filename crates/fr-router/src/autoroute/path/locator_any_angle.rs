@@ -248,7 +248,7 @@ fn left_right_tangential_point(
 /// `:332-354` and the four diagnostic `FRLogger.trace` calls of `:125-135`, `:181-182`
 /// (plan-6 ruling 14 and the global no-logger constraint).
 ///
-/// # Panics
+/// # The `:287` null corner, and what it used to cost
 ///
 /// Java bug: `FoundConnectionLocatorAnyAngle.calculateNextTraceCorners` — `:287` builds
 /// `new FloatLine(this.currentFromPoint, resultCorner)` with **no null check**, although the
@@ -257,10 +257,16 @@ fn left_right_tangential_point(
 /// `FloatLine.intersection`, FloatLine.java:53-55) return `null` for two parallel lines and
 /// `:329` guards for exactly that. The `FloatLine` constructor stores the null happily; the very
 /// next `checkLine.segmentDistance(...)` at `:293` throws a `NullPointerException`, which
-/// `AutorouteEngine.autorouteConnection:189-194` catches into a `FAILED` attempt. The port
-/// panics at the same point (and only when the loop at `:291` would actually iterate, exactly as
-/// Java does), which plan-6 ruling 7's `catch_unwind` around `getInstance` turns back into that
-/// same `FAILED`. See `docs/java-quirks.md` #181.
+/// `AutorouteEngine.autorouteConnection:189-194` catches into a `FAILED` attempt — the whole
+/// connection, for one corner that does not exist.
+///
+/// fixed: T6 (#181) — `:329`'s test is now at `:287` and the `:284-326` correction block is
+/// skipped when there is no corner to correct, so this function no longer panics there. The
+/// fixture that produces the null is `crates/fr-router/tests/data/t6-parallel-lines.txt` and
+/// `crates/fr-router/tests/locator_any_angle.rs` executes its arithmetic. See
+/// `docs/java-quirks.md` #181, whose "not reachable from any fixture" sentence still stands: the
+/// two parallel lines are producible, but no board here steers a maze backtrack's door corners
+/// into them.
 #[allow(clippy::too_many_lines)]
 pub(crate) fn calculate_next_trace_corners(
     walk: &mut LocatorWalk<'_>,
@@ -596,15 +602,17 @@ pub(crate) fn calculate_next_trace_corners(
         .max(walk.current_from_door_index + 1);
     let mut corrected_result: Option<FloatPoint> = None;
     let mut corrected_door_ind: i32 = 0;
-    if check_from_door_index < new_door_ind {
-        // :287. See this function's `# Panics`: Java has no guard here and NPEs at `:293`.
-        let result_point = result_corner
-            .expect(
-                "FoundConnectionLocatorAnyAngle.calculateNextTraceCorners: resultCorner is null \
-                 at :287 — Java throws a NullPointerException at :293 (docs/java-quirks.md #181)",
-            )
-            .point;
-        let check_line = FloatLine::new(walk.current_from_point, result_point);
+    // fixed: T6 (#181) — `:329`'s `resultCorner != null` test, hoisted to `:287`. The correction
+    // loop cannot improve a corner that does not exist: with no `resultCorner` there is no
+    // `checkLine` to measure the previous doors against, `correctedResult` stays null and
+    // `:323-326` would not have fired anyway, so skipping the whole `:284-326` block leaves
+    // `:328-331` to run exactly as it does for any other null corner. See this function's
+    // `# Panics` for what the throw cost: a FAILED for the whole connection.
+    if check_from_door_index < new_door_ind
+        && let Some(result_corner_value) = result_corner
+    {
+        // :287.
+        let check_line = FloatLine::new(walk.current_from_point, result_corner_value.point);
         for i in check_from_door_index..new_door_ind {
             let index = usize::try_from(i).expect("the door index is non-negative");
             let element = backtrack_array[index];

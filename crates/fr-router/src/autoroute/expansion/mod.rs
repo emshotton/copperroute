@@ -255,8 +255,10 @@ impl ExpansionRoomStore {
     /// [`incomplete_list_created`](Self::incomplete_list_created) flag, and it is not decoration
     /// — see [`remove_incomplete_expansion_room`](Self::remove_incomplete_expansion_room).
     ///
-    /// Use [`new_unlisted_incomplete_room`](Self::new_unlisted_incomplete_room) where Java calls
-    /// the **constructor** directly instead of this method.
+    /// **This is the one to call.** Java has a second construction site that skips the append
+    /// ([`new_unlisted_incomplete_room`](Self::new_unlisted_incomplete_room)), and reproducing it
+    /// is what quirk #169 was: Plan 9 Task 6 moved `ExpansionDrill::calculate_expansion_rooms`
+    /// onto this method, so nothing in the port builds an unlisted room any more.
     pub fn new_incomplete_room(
         &mut self,
         shape: Option<TileShape>,
@@ -272,11 +274,20 @@ impl ExpansionRoomStore {
     /// (IncompleteFreeSpaceExpansionRoom.java:18-22) — the bare constructor, **without**
     /// `addIncompleteExpansionRoom`'s list append.
     ///
-    /// Its one Java caller is `ExpansionDrill.calculateExpansionRooms` (ExpansionDrill.java:
+    /// Its one Java caller was `ExpansionDrill.calculateExpansionRooms` (ExpansionDrill.java:
     /// 76-77), which builds a room it hands straight to `completeExpansionRoom` and never puts
     /// in the engine's list. The port cannot express "in the heap but not in the list" for
     /// incomplete rooms — the arena is both — so what this preserves is the part that *is*
     /// observable: the list's null-ness, which `removeIncompleteExpansionRoom` reads.
+    ///
+    /// **That caller is gone as of Plan 9 Task 6 (quirk #169)**, which is the whole point of the
+    /// fix: `ExpansionDrill::calculate_expansion_rooms` now goes through
+    /// [`new_incomplete_room`](Self::new_incomplete_room), so the room is in the database it is
+    /// about to be completed out of. This method is therefore reached only *through* that one —
+    /// it is still the faithful port of Java's constructor and still the only thing that can
+    /// build a room without setting the flag, so the divergence stays expressible and a future
+    /// port of another bare-constructor site has something to call. Do **not** reach for it to
+    /// reproduce #169; that row is fixed.
     pub fn new_unlisted_incomplete_room(
         &mut self,
         shape: Option<TileShape>,
@@ -296,7 +307,9 @@ impl ExpansionRoomStore {
     /// Whether `AutorouteEngine.incompleteExpansionRooms` (`:71`) is non-null — see the field.
     // pub seam: none in Java — this is the port's reader for `incompleteExpansionRooms == null`
     // (AutorouteEngine.java:71, tested at `:345` and `:357`), which quirk #169 makes
-    // observable. Kept `pub` so an out-of-crate test can pin the null-ness. No caller today.
+    // observable. Kept `pub` so an out-of-crate test can pin the null-ness, which is exactly what
+    // `crates/fr-router/tests/drill.rs`'s `a_virgin_engine_yields_thirteen_drills` does either
+    // side of the first drill — false before, true after.
     pub fn incomplete_list_created(&self) -> bool {
         self.incomplete_list_created
     }
@@ -762,7 +775,7 @@ impl ExpansionRoomStore {
     /// first element `equals` it — `IncompleteFreeSpaceExpansionRoom` has no `equals` override,
     /// so that is reference identity, which is what removing the arena slot is.
     ///
-    /// # Panics
+    /// # The null list, and the thirteen drills it cost
     ///
     /// Java bug: `AutorouteEngine.removeIncompleteExpansionRoom` — `:370` dereferences
     /// `incompleteExpansionRooms` with no null guard, although every other reader of the field
@@ -772,18 +785,27 @@ impl ExpansionRoomStore {
     /// an incomplete room added. It is reachable: `ExpansionDrill.calculateExpansionRooms:79`
     /// reaches it through `completeExpansionRoom:469` for a room it built with the bare
     /// constructor, and `completeExpansionRoom`'s own `catch` then turns the throw into an empty
-    /// room list, so **every drill on a virgin engine is silently dropped**. See
-    /// `docs/java-quirks.md` #169; `crates/fr-router/tests/drill.rs`'s
-    /// `a_virgin_engine_yields_no_drills_at_all` is the probe's mode 8 verbatim.
+    /// room list, so **every drill on a virgin engine is silently dropped** — JVM-verified as
+    /// 0 drills against 13 on the same page, with 28 swallowed `NullPointerException`s in the log.
+    ///
+    /// fixed: T6 (#169) — both halves of the register's suggested fix, because either alone
+    /// leaves the engine wrong:
+    ///
+    /// * the field guard the three sibling readers already have, which is this method's missing
+    ///   `assert!`. The arena removal stays unconditional: the arena is the list's *contents*
+    ///   rather than the list, so leaving the room in it would be worse than Java's post-fix
+    ///   behaviour, not the same as it — Java's caller drops its own reference on the next line
+    ///   and `getFirstIncompleteExpansionRoom` would find the port's leftover;
+    /// * `ExpansionDrill.calculateExpansionRooms` now calls
+    ///   [`new_incomplete_room`](Self::new_incomplete_room) instead of
+    ///   [`new_unlisted_incomplete_room`](Self::new_unlisted_incomplete_room), so the room is in
+    ///   the database it is about to be completed out of and the guard above is a safety net
+    ///   rather than the fix.
+    ///
+    /// See `docs/java-quirks.md` #169; `crates/fr-router/tests/drill.rs`'s
+    /// `a_virgin_engine_yields_thirteen_drills` is the inversion of the probe's mode 8.
     pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
         self.remove_all_doors(RoomRef::Incomplete(room));
-        assert!(
-            self.incomplete_list_created,
-            "AutorouteEngine.removeIncompleteExpansionRoom: incompleteExpansionRooms is null — \
-             Java throws a NullPointerException here too (AutorouteEngine.java:370), and the \
-             lazily created list (`:343-345`) does not exist until the first \
-             addIncompleteExpansionRoom"
-        );
         self.incomplete_rooms.remove(room.0);
     }
 

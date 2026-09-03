@@ -23,7 +23,7 @@
 //! disagree on signed zero. See `destination_distance.rs`' module docs for why the distinction is
 //! load-bearing in this package.
 
-use fr_board::ids::ItemId;
+use fr_board::ids::{ItemId, NetClassId};
 use fr_board::rules::{PadstackLookup, ViaRule};
 use fr_board::{Board, Item};
 use fr_geometry::{Point, java_max};
@@ -352,11 +352,43 @@ impl AutorouteControl {
             }
         };
         for i in 0..self.layer_count {
-            // :218-222
-            self.trace_half_width[i] = if net_number > 0 {
-                board.rules.get_trace_half_width(net_number, i)
-            } else {
-                board.rules.get_trace_half_width(1, i)
+            // :218-222.
+            //
+            // Java bug: `AutorouteControl.initNet`'s null-net arm (`:212-216`) completes only for
+            // `netNumber <= 0`. `:218-222` calls `board.rules.getTraceHalfWidth(netNumber, i)` for
+            // every `netNumber > 0`, and that is `nets.get(netNumber).getNetClass()` with no null
+            // guard (BoardRules.java:74-77) — so a **positive unknown** net takes the arm and then
+            // throws two lines later. `RoutingBoard.java:1023` builds a control from a pin's net
+            // number, which makes a stale net number the reachable path; the probe's
+            // `ctrl net=1094 threw java.lang.NullPointerException` is that. See
+            // `docs/java-quirks.md` #173.
+            //
+            // fixed: T6 (#173) — the null-net arm gets its **own** half-width fallback, which is
+            // the register's second option and the better one. Moving the `netNumber > 0` test
+            // above the null lookup would keep the arm reading **net 1's** widths, and net 1 is
+            // arbitrary: it is whichever net happens to have been declared first, it need not
+            // exist, and nothing ties its class to a net the board does not have. The default net
+            // class is the honest answer — it is where a net with no class of its own belongs, and
+            // it is already the arm's choice for the clearance class (`:213`'s literal 1 is
+            // `BoardRules.defaultClearanceClass`).
+            self.trace_half_width[i] = match current_net_class {
+                // A net the board has: unchanged, `:219`'s own lookup.
+                Some(_) => board.rules.get_trace_half_width(net_number, i),
+                // The null-net arm, for `netNumber <= 0` **and** for a positive unknown net,
+                // which is the case Java never reached. `NetClassId(0)` is the slot
+                // `BoardRules.createDefaultNetClass` (BoardRules.java:202-209) fills and
+                // `getDefaultNetClass` (`:137-143`) hands back; it is read here rather than
+                // through `get_default_net_class`, which takes `&mut self` to create the class
+                // lazily and cannot be called on the `&Board` this method has. A board with no
+                // net class at all cannot reach this line — `:214`'s `viaRules.firstElement()`
+                // asserts above it, and a board with a via rule has rules — but the `None` arm
+                // keeps the read total rather than resting on that.
+                None if board.rules.net_classes.count() == 0 => 0,
+                None => board
+                    .rules
+                    .net_classes
+                    .get(NetClassId(0))
+                    .get_trace_half_width(i),
             };
             // :223-225
             self.compensated_trace_half_width[i] = self.trace_half_width[i]

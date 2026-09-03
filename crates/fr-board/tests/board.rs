@@ -2410,16 +2410,32 @@ fn a_changed_area_knows_how_many_layers_it_was_made_for() {
     assert_eq!(area.layer_count(), 4);
 }
 
+/// Quirk #67, inverted. Communication.java:79's `Integer.parseInt` was unguarded, so a
+/// `host_version` whose first digit run overflows an int threw `NumberFormatException` out of a
+/// predicate every board load calls — and this one is reached only for KiCad, where a long digit
+/// run in a version string is exactly the input to expect.
 #[test]
-#[should_panic(expected = "NumberFormatException")]
-fn host_is_old_kicad_panics_on_a_version_that_overflows_an_int() {
-    // quirk #67: Communication.java:79's `Integer.parseInt` is unguarded.
-    let communication = Communication {
-        host_cad: Some("kicad".to_string()),
-        host_version: Some("99999999999".to_string()),
-        ..Communication::default()
+fn host_is_old_kicad_is_guarded_on_a_version_that_overflows_an_int() {
+    let of = |version: &str| {
+        Communication {
+            host_cad: Some("kicad".to_string()),
+            host_version: Some(version.to_string()),
+            ..Communication::default()
+        }
+        .host_is_old_kicad()
     };
-    communication.host_is_old_kicad();
+
+    // The row that used to throw. Eleven digits overflow an `int` but not an `i64`, so the widened
+    // parse answers truthfully: 99 999 999 999 is not <= 5.
+    assert!(!of("99999999999"));
+    // Past `i64` too, where the parse genuinely fails — "catch and answer false". An overflowing
+    // version number is emphatically not an old KiCad.
+    assert!(!of("999999999999999999999999999999"));
+    // And the widening did not move the answers that already worked (Communication.java:75-82).
+    assert!(of("5.1.9"));
+    assert!(of("0"));
+    assert!(!of("6.0.0"));
+    assert!(!of("unknown"));
 }
 
 // ---------------------------------------------------------------------------------------------

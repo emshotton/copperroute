@@ -34,8 +34,8 @@ use fr_board::board::{MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS};
 use fr_board::error::BoardError;
 use fr_board::prelude::*;
 use fr_geometry::{
-    Area, IntBox, IntVector, Line, Point, PolygonShape, Polyline, PolylineError, PolylineShapeRef,
-    Shape, TileShape, Vector,
+    Area, IntBox, IntVector, Line, Point, PolygonShape, Polyline, PolylineShapeRef, Shape,
+    TileShape, Vector,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -846,17 +846,22 @@ fn normalize_depth_cap_returns_false_not_error() {
     assert_eq!(trace_ids(&board), vec![4]);
 }
 
+/// Quirk #22, inverted — the register's "row with blast radius", because it changes what a
+/// degenerate line array **normalises to** and not only whether it crashes.
+///
+/// Mode 8 scenario S14 on the jar reads `S14 combine=threw ArrayIndexOutOfBoundsException` with
+/// the board unchanged, and that row is kept verbatim: it is still what the jar does. The joined
+/// line array `combineAtStart` builds here is `[D, C, B, C, D, X, Y]`, on which
+/// `Polyline.removeOverlaps` cancels its way down to `newLength == 0` and then read `tmpArr[-1]`
+/// (Polyline.java:148) — an exception the pass-level `catch (Exception)` turned into an aborted
+/// routing pass.
+///
+/// Task 6 gave that loop the `newLength >= 1` guard the trailing access at `:160` already had, so
+/// the array normalises to the empty polyline and the combine completes. The test name is left
+/// alone deliberately: what it is *about* — that this input reaches `combine_trace` at all, and
+/// what the board looks like afterwards — has not changed, only the answer.
 #[test]
 fn from_lines_err_propagates_as_board_error_normalization() {
-    // Mode 8 scenario S14, which the JVM prints as
-    // `S14 combine=threw ArrayIndexOutOfBoundsException` with the board unchanged.
-    //
-    // The joined line array `combineAtStart` builds here is `[D, C, B, C, D, X, Y]`, on which
-    // `Polyline.removeOverlaps` cancels its way down to `newLength == 0` and then reads
-    // `tmpArr[-1]` (Polyline.java:148, quirk #22). `global-constraints.md` requires that this
-    // reach the caller as `BoardError::Normalization` and never be swallowed into an empty
-    // trace — `combineAtEnd` itself tests `joinedPolyline.lines.length != newLineCount` right
-    // after the constructor (PolylineTrace.java:303), so the two outcomes are distinguishable.
     let (mut board, _) = trace_board(1);
     let line_a = Line::from_coords(0, 0, 1000, 0);
     let line_b = Line::from_coords(0, 0, 0, 1000);
@@ -887,28 +892,34 @@ fn from_lines_err_propagates_as_board_error_normalization() {
         .expect("insertTraceWithoutCleaning");
     let before = item_ids(&board);
 
+    // fixed: T6 (#22). The jar's S14 row still reads
+    // `S14 combine=threw ArrayIndexOutOfBoundsException` with the board unchanged — that is still
+    // what the jar does, and it is not re-cut. What the port answers has moved, because the
+    // `tmpArr[-1]` read is guarded: `removeOverlaps` cancels `[D, C, B, C, D, X, Y]` down to
+    // nothing, the constructor takes its own "fewer than three lines" exit, and `combineAtEnd`'s
+    // `joinedPolyline.lines.length != newLineCount` test (PolylineTrace.java:303) sees the
+    // difference and completes the combine instead of aborting the pass.
     assert_eq!(
         board.combine_trace(six),
-        Err(BoardError::Normalization(
-            PolylineError::NormalizationIndexUnderflow
-        ))
-    );
-    // Java throws before it touches anything (the constructor is at PolylineTrace.java:303, the
-    // first mutation at :312), and so does the port.
-    assert_eq!(item_ids(&board), before);
-    assert_eq!(
-        corners(&board, six),
-        vec![(0, 0), (0, 0), (2000, 2000), (4000, 2000), (4000, 5000)]
+        Ok(true),
+        "the combine completes where Java threw out to the pass-level catch"
     );
 
-    // `combineTraces`, which is `combine` in a loop, threads it out as well
-    // (BasicBoard.java:683-706 has no catch).
+    // And it is a real combine, not a no-op that merely stopped throwing: the three-line trace is
+    // absorbed and `six` keeps only the tail the join could normalise.
+    assert_eq!(before, vec![3, 2, 1]);
+    assert_eq!(item_ids(&board), vec![2, 1], "the joined trace is gone");
     assert_eq!(
-        board.combine_traces(1),
-        Err(BoardError::Normalization(
-            PolylineError::NormalizationIndexUnderflow
-        ))
+        corners(&board, six),
+        vec![(4000, 2000), (4000, 5000)],
+        "the degenerate head cancelled; pre-fix this was the untouched five-corner polyline \
+         [(0,0), (0,0), (2000,2000), (4000,2000), (4000,5000)]"
     );
+
+    // `combineTraces`, which is `combine` in a loop (BasicBoard.java:683-706, no catch), used to
+    // thread the same error out. It now runs to completion and finds nothing left to do.
+    assert_eq!(board.combine_traces(1), Ok(false));
+    assert_eq!(item_ids(&board), vec![2, 1]);
 
     // Mode 8 scenario S15: `normalize` does **not** propagate it on this board, because its
     // `split` runs first and removes both traces before any `combine` can build the fatal line

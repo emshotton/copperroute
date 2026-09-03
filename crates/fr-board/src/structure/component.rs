@@ -215,14 +215,19 @@ impl Component {
     // Java bug: unlike `translateBy`, `turn90Degree` and `rotate`, this one has **no**
     // `location != null` guard (Component.java:155), so changing the side of a component that
     // has not been placed yet throws a `NullPointerException` — after already flipping
-    // `onFront`. Reproduced by the `expect` below; see docs/java-quirks.md.
+    // `onFront`, which leaves the component half-mutated. See docs/java-quirks.md.
+    //
+    // fixed: T6 (#47) — the same `if (location != null)` guard the three sibling mutators have,
+    // **and** the flip moved below it. Both halves matter and the second is the one a reader
+    // could miss: `:152`'s `onFront = !onFront` ran before the throw, so a caught exception left
+    // a component whose side had changed and whose location had not. An unplaced component is now
+    // left alone exactly as `translateBy` (`:105`) leaves it.
     pub fn change_side(&mut self, pole: &IntPoint) {
-        self.on_front = !self.on_front;
-        let location = self.location.as_ref().expect(
-            "Component.changeSide: location is null — Java throws a NullPointerException here \
-             too (Component.java:155)",
-        );
-        self.location = Some(location.mirror_vertical(&Point::Int(*pole)));
+        if let Some(location) = &self.location {
+            let mirrored = location.mirror_vertical(&Point::Int(*pole));
+            self.on_front = !self.on_front;
+            self.location = Some(mirrored);
+        }
     }
 
     /// Port of `Component.compareTo` (Component.java:158-167): by name, ignoring case.
@@ -662,11 +667,22 @@ mod tests {
         assert_eq!(c.get(1).get_package(), 2); // now the back package
     }
 
+    /// Quirk #47, inverted. Component.java:155 had no null guard, unlike its three sibling
+    /// mutators, so changing the side of an unplaced component threw — **after** `:152` had
+    /// already flipped `onFront`, leaving it half-mutated.
     #[test]
-    #[should_panic(expected = "NullPointerException")]
-    fn change_side_on_an_unplaced_component_panics_like_java() {
-        // Java bug (Component.java:155): no null guard, unlike its three sibling mutators.
-        components().change_side(2, &IntPoint::new(0, 0));
+    fn change_side_on_an_unplaced_component_is_guarded() {
+        let mut c = components();
+        let before_side = c.get(2).placed_on_front();
+        assert_eq!(c.get(2).get_location(), None, "component 2 is unplaced");
+
+        c.change_side(2, &IntPoint::new(0, 0));
+
+        // Left alone, exactly as `translateBy` (Component.java:105) leaves it — and in
+        // particular `onFront` did **not** flip, which is the half-mutation the throw used to
+        // leave behind.
+        assert_eq!(c.get(2).get_location(), None);
+        assert_eq!(c.get(2).placed_on_front(), before_side);
     }
 
     #[test]

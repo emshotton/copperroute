@@ -1176,26 +1176,33 @@ impl Pin {
     //
     // Java bug: `getPadstackLayer` (Pin.java:267) and `getPadstack` (Pin.java:280) both
     // dereference the component *before* the `component == null` guard at Pin.java:285-287, so
-    // that guard is dead code and a pin with no component NPEs instead. The order is kept, so
-    // the two `.expect(...)` calls below panic exactly where Java throws. See quirk #52 in
+    // that guard was dead code and a pin with no component NPEd instead. See quirk #52 in
     // docs/java-quirks.md.
+    //
+    // fixed: T6 (#52) — the `component == null` check moved to the top of the method, which is
+    // the register's own suggested fix and makes `:285-287` live for the first time. Nothing else
+    // reorders: every line below runs in Java's order, and for a pin that *has* a component the
+    // method is unchanged, because `:285-287` would have returned the same empty list anyway. The
+    // two `.expect(...)`s that used to fire on the missing component are simply no longer reached
+    // with one.
     pub fn get_trace_exit_restrictions(
         &self,
         layer: usize,
         ctx: &ItemCtx<'_>,
     ) -> Vec<TraceExitRestriction> {
         let mut result = Vec::new();
+        // Pin.java:285-287, hoisted above `:267`'s and `:280`'s dereferences of the same value.
+        let Some(component) = self.component(ctx) else {
+            return result;
+        };
         let first_layer = first_layer_of(self, ctx) as i32;
         let padstack_layer = self.get_padstack_layer(layer as i32 - first_layer, ctx);
         let mut pad_xy_factor = 1.5;
 
         // Pin.java:272-277.
-        let component = self.component(ctx);
-        if let Some(component) = component {
-            let package = ctx.library.get_package(component.get_package());
-            if package.pin_count() <= 3 {
-                pad_xy_factor *= 2.0;
-            }
+        let package = ctx.library.get_package(component.get_package());
+        if package.pin_count() <= 3 {
+            pad_xy_factor *= 2.0;
         }
 
         // Pin.java:279-283.
@@ -1207,10 +1214,6 @@ impl Pin {
         if padstack_exit_directions.is_empty() {
             return result;
         }
-        // Pin.java:285-287.
-        let Some(component) = component else {
-            return result;
-        };
         // Pin.java:288-291: only a tile-shaped pad has border lines to measure against.
         let shape_index = layer as i32 - first_layer;
         let current_shape = usize::try_from(shape_index)

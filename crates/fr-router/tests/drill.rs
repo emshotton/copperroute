@@ -15,14 +15,18 @@
 //!
 //! # The seeded incomplete-room list
 //!
-//! Every drill test calls [`seed_incomplete_list`] first, and that is not decoration:
+//! Every drill test calls [`seed_incomplete_list`] first, and on the jar that is not decoration:
 //! `AutorouteEngine.removeIncompleteExpansionRoom` (`:368-371`) dereferences
 //! `incompleteExpansionRooms` with no null guard, and the list is created lazily by
 //! `addIncompleteExpansionRoom` (`:344`) — so on an engine that has never had an incomplete room,
 //! **every** drill dies with a `NullPointerException` that `completeExpansionRoom`'s catch turns
-//! into an empty room list. `a_virgin_engine_yields_no_drills_at_all` pins that (quirk #169); the
-//! rest of the file pins the state a real routing run is in by the time the maze reaches a drill
-//! page.
+//! into an empty room list.
+//!
+//! Plan 9 Task 6 fixed that (quirk #169), so in this port the seeding is now genuinely
+//! decoration — kept because it is the state a real routing run is in by the time the maze
+//! reaches a drill page, and because the rest of the file's literals were read off the jar in
+//! exactly that state. [`a_virgin_engine_yields_thirteen_drills`] is what changed: it replaces
+//! `a_virgin_engine_yields_no_drills_at_all`, and the count it asserts is mode 2's **13**.
 
 use fr_board::prelude::*;
 use fr_geometry::{
@@ -595,7 +599,9 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
     assert_eq!(page.get_id(), -29_759_998);
 }
 
-/// Probe mode 6, verbatim:
+/// Quirk #168, inverted — the probe's mode 6 is what the fix deletes.
+///
+/// Mode 6 on the HEAD jar reads, verbatim:
 ///
 /// ```text
 /// threw java.lang.NullPointerException
@@ -607,39 +613,55 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
 /// This is ruling 6's sixth and last cancellation site: `:103` passes
 /// `autorouteEngine.stoppableThread` — the raw flag, **not** `isStopRequested()`, so the time
 /// limit is not consulted here — to `PolylineArea.splitToConvex`, which returns `null` when the
-/// flag trips (PolylineArea.java:189-191). `:108` then dereferences `drillShapes.length` with no
-/// null check and throws.
+/// flag trips (PolylineArea.java:189-191). `:108` then dereferenced `drillShapes.length` with no
+/// null check and threw.
 ///
-/// The damage outlives the throw, which is quirk #168: `:65-66` has already written the new net
-/// number and installed a **fresh empty** `drills` list, so the memo now says "this page has no
-/// drills on net 1" and `:64`'s guard sends every later call straight past the recomputation.
+/// The damage outlived the throw, and that is the half worth fixing: `:65-66` had already written
+/// the new net number and installed a **fresh empty** `drills` list, so the memo said "this page
+/// has no drills on net 1" and `:64`'s guard sent every later call straight past the
+/// recomputation. **A page interrupted once answered "no drills here" for the rest of the
+/// connection**, silently removing every via candidate on it — the third line above is that, and
+/// note it is measured with the stop flag already *cleared*.
+///
+/// Task 6 installs the list only after the split succeeds. The three lines above become: no
+/// throw, the page untouched, and a second call that recomputes and finds all thirteen.
 #[test]
-fn split_to_convex_stops_when_the_stop_check_trips() {
+fn a_stopped_split_does_not_memoise_an_empty_page() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = engine_on(&mut board, 1);
     let mut page = component_page(&board);
 
-    let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        page.get_drills(&mut engine, &mut board, false, ALWAYS)
-    }));
-    let payload = caught.expect_err("Java throws a NullPointerException at DrillPage.java:108");
-    let message = payload
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| payload.downcast_ref::<&str>().copied())
-        .unwrap_or("");
+    // A page that has never been computed, so there is a memo to protect.
+    assert_eq!(page.drills(), None);
+    let before = page.net_number();
+
+    // `ALWAYS` trips `:103`'s raw stop flag, which is what makes `splitToConvex` answer null.
+    let cancelled = page.get_drills(&mut engine, &mut board, false, ALWAYS);
     assert!(
-        message.contains("DrillPage.java:108"),
-        "the panic must name Java's throw site, got {message:?}"
+        cancelled.is_empty(),
+        "a cancelled page has no drills to report"
     );
 
-    // The page is left memoised as empty on the new net, and the next call trusts the memo.
-    assert_eq!(page.net_number(), 1);
-    assert_eq!(page.drills(), Some(&[][..]));
-    assert!(
-        page.get_drills(&mut engine, &mut board, false, NEVER)
-            .is_empty()
+    // The page is left exactly as it was — this is the whole fix. `drills` is still `None`, not
+    // `Some([])`, so `:64` cannot mistake it for a computed answer.
+    assert_eq!(
+        page.drills(),
+        None,
+        "`:65-66`'s writes are deferred past `:103`, so a cancelled split memoises nothing"
     );
+    assert_eq!(
+        page.net_number(),
+        before,
+        "the net number is written with the list, not before the work"
+    );
+
+    // And the recomputation the memo used to suppress now happens, with the flag cleared.
+    assert_eq!(
+        page.get_drills(&mut engine, &mut board, false, NEVER).len(),
+        13,
+        "the page recomputes instead of answering the memo — mode 2's count"
+    );
+    assert_eq!(page.net_number(), 1);
 }
 
 // =================================================================================================
@@ -747,7 +769,9 @@ fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
     assert_eq!(drill_room_ids(&engine, &again), vec![Some(6), Some(7)]);
 }
 
-/// Probe mode 8, verbatim:
+/// Quirk #169, inverted — the probe's mode 8 is what the fix deletes.
+///
+/// Mode 8 on the HEAD jar reads, verbatim:
 ///
 /// ```text
 /// virgin drills n=0
@@ -755,46 +779,107 @@ fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
 /// seeded calculateExpansionRooms=false
 /// ```
 ///
-/// Quirk #169. `AutorouteEngine.removeIncompleteExpansionRoom` (`:368-371`) is
+/// `AutorouteEngine.removeIncompleteExpansionRoom` (`:368-371`) is
 /// `removeAllDoors(room); incompleteExpansionRooms.remove(room);` with **no null guard**, and
 /// `incompleteExpansionRooms` is created lazily by `addIncompleteExpansionRoom` (`:342-345`). So
 /// on an engine that has never had an incomplete room added, `completeExpansionRoom`'s `:469`
 /// throws a `NullPointerException`, its own `catch` at `:518-521` turns that into an empty room
 /// collection, and `ExpansionDrill.calculateExpansionRooms:80-83` reads the empty collection as
-/// "blocked" and drops the drill. Every drill on the page dies the same way and the page memoises
+/// "blocked" and drops the drill. Every drill on the page died the same way and the page memoised
 /// an empty list.
 ///
-/// The `seeded` line is the control: the same location still answers false once the list exists,
-/// because on a tree with no rooms in it yet `completeExpansionRoom` answers more than one room
-/// there — which is why every other test in this file warms the database with `getDrills` first.
+/// Task 6 fixed both halves — the field guard and `ExpansionDrill` calling
+/// `addIncompleteExpansionRoom` — so a virgin engine now answers the same **13** drills
+/// [`an_smd_pin_is_cut_out_unless_attach_smd_and_drill_allowed`] reads off mode 2 for a *seeded*
+/// engine on this same page. That literal is the headline of the row: **0 -> 13**.
+///
+/// The `seeded` line is kept as the control, and it is still `false`: the drill at (835, 125)
+/// answers false whether or not the list exists, because on a tree with no rooms in it yet
+/// `completeExpansionRoom` answers more than one room there — `:80-83`'s `newRooms.size() != 1`,
+/// which is a different refusal from the swallowed NPE and is not what the fix is about. Which is
+/// why every other test in this file warms the database with `getDrills` first.
 #[test]
-fn a_virgin_engine_yields_no_drills_at_all() {
+fn a_virgin_engine_yields_thirteen_drills() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = AutorouteEngine::new(&mut board, 1, true);
     engine.init_connection(&mut board, 1, None);
     // No `seed_incomplete_list` here — that is the whole point.
-    let mut page = component_page(&board);
     assert!(
-        page.get_drills(&mut engine, &mut board, false, NEVER)
-            .is_empty()
+        !engine.rooms.incomplete_list_created(),
+        "the engine is virgin: `incompleteExpansionRooms` is still Java's null"
     );
 
+    let mut page = component_page(&board);
+    let drills = page.get_drills(&mut engine, &mut board, false, NEVER);
+    assert_eq!(
+        drills.len(),
+        13,
+        "mode 2's seeded count, now reached without seeding — the fix's headline, 0 -> 13"
+    );
+    assert!(
+        engine.rooms.incomplete_list_created(),
+        "`ExpansionDrill.calculateExpansionRooms` now goes through addIncompleteExpansionRoom, \
+         so the list exists by the time the first drill is built"
+    );
+
+    // The count alone would be satisfied by thirteen *different* drills, so compare the rows
+    // themselves against the derived expectation: what a **seeded** engine — the state every other
+    // test in this file warms into, and the one mode 2's literals were read off — builds on the
+    // same board and the same page. `0 -> 13` is only the headline if they are the same thirteen.
+    let mut seeded_board = probe_board(BOUNDING_BOX);
+    let mut seeded_engine = engine_on(&mut seeded_board, 1);
+    let mut seeded_page = component_page(&seeded_board);
+    let seeded_drills = seeded_page.get_drills(&mut seeded_engine, &mut seeded_board, false, NEVER);
+    assert_eq!(seeded_drills.len(), 13);
+    assert_eq!(
+        drill_rows(&engine, &drills),
+        drill_rows(&seeded_engine, &seeded_drills),
+        "a virgin engine now builds the same thirteen drills a seeded one does — same locations, \
+         same layers, same getId() hashes, same shapes"
+    );
+    // And those rows are mode 2's, so this is anchored to the jar and not just to the port
+    // agreeing with itself: the three that `an_smd_pin_is_cut_out_unless_attach_smd_and_drill_
+    // allowed` reads off the probe.
+    assert_eq!(
+        drill_rows(&engine, &drills)[10..],
+        [
+            (-481, -206, 0, 1, -14527436, (-576, -240, -409, -150)),
+            (-327, -173, 0, 1, -9907909, (-409, -240, -260, -91)),
+            (-294, -19, 0, 1, -8776812, (-350, -91, -260, 76)),
+        ]
+    );
+
+    // The two controls, on their own **cold** engines — mode 8 measured them on a tree that
+    // `getDrills` had left empty, and the fix has just filled this one, so reusing `engine` here
+    // would be measuring a different thing (and does: the warmed tree answers `true`).
+    //
+    // Cold, unseeded. Pre-fix this was `false` because of the swallowed NullPointerException;
+    // post-fix it is `false` for the reason the `seeded` row always had — `:80-83`'s
+    // `newRooms.size() != 1` on a tree with no rooms in it yet. Same answer, different cause,
+    // which is why the count above and not this line is the fix's evidence.
+    let mut cold_board = probe_board(BOUNDING_BOX);
+    let mut cold = AutorouteEngine::new(&mut cold_board, 1, true);
+    cold.init_connection(&mut cold_board, 1, None);
     let mut drill = ExpansionDrill::new(
         TileShape::Box(IntBox::from_coords(785, 75, 885, 175)),
         Point::new(835, 125),
         0,
         1,
     );
-    assert!(!drill.calculate_expansion_rooms(&mut engine, &mut board));
+    assert!(!drill.calculate_expansion_rooms(&mut cold, &mut cold_board));
 
-    seed_incomplete_list(&mut engine);
+    // Cold and seeded: mode 8's third line, unchanged by the fix in either direction.
+    let mut seeded_board = probe_board(BOUNDING_BOX);
+    let mut seeded = AutorouteEngine::new(&mut seeded_board, 1, true);
+    seeded.init_connection(&mut seeded_board, 1, None);
+    seed_incomplete_list(&mut seeded);
     let mut after = ExpansionDrill::new(
         TileShape::Box(IntBox::from_coords(785, 75, 885, 175)),
         Point::new(835, 125),
         0,
         1,
     );
-    assert!(!after.calculate_expansion_rooms(&mut engine, &mut board));
+    assert!(!after.calculate_expansion_rooms(&mut seeded, &mut seeded_board));
 }
 
 // =================================================================================================

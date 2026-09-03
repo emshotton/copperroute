@@ -528,21 +528,114 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
+/// The rows where this port **deliberately** disagrees with the jar, as `(mode, row, jvm, rust)`.
+///
+/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
+/// port answers is recorded here instead, so the jar's number and the port's sit side by side and
+/// a reviewer can see both.
+///
+/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
+/// port answers is recorded here instead, so the jar's number and the port's sit side by side and
+/// a reviewer can see both.
+///
+/// **Every entry carries the register row that authorizes it.** A divergence with no row behind it
+/// is a regression someone wrote a table entry for, which is the one failure mode this table has;
+/// the comment is what makes that visible in review.
+///
+/// * **#168** — `DrillPage.getDrills` threw on a cancelled `splitToConvex` (`:108` dereferencing
+///   the null `drillShapes`), ending the connection there. The fix installs the drill list only
+///   after the split succeeds, so a cancelled page answers "no drills" and the connection
+///   **continues** — reaching one more of ruling 6's six stop-check sites before it ends. Hence
+///   `stopCalls` one higher, on exactly the four of nine regime/limit blocks whose stop trips
+///   inside a drill page. What the test is named for does not move: `:207-213`'s degraded FAILED,
+///   the board dumps and the item lists are byte-identical on all 100 rows.
+/// * **#173** — `AutorouteControl.initNet`'s null-net arm completed only for `netNumber <= 0`; a
+///   **positive unknown** net took the arm and threw two lines later at `:219`. Mode `route`'s
+///   third call is exactly that (item 2 on net **99**, which this board does not have), so the
+///   throw hit ruling 7's fifth boundary and degraded to a bare `FAILED`. With the arm given its
+///   own half-width fallback the control builds, the router runs on, and `:49-52` answers
+///   `NO_UNCONNECTED_NETS` for an item that is already routed. The fifth boundary keeps a
+///   producer: [`a_panicking_locator_degrades_to_javas_message_less_failure`] still reaches
+///   `:154-158` and still asserts the empty `details` that distinguishes it.
+const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
+    // #168 — the connection survives a cancelled drill page and consults the stop flag once more.
+    ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
+    ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
+    ("stopafter", 77, "  stopCalls=9", "  stopCalls=10"),
+    ("stopafter", 88, "  stopCalls=13", "  stopCalls=14"),
+    // #173 — net 99 no longer throws, so boundary 5 is not reached and `:49-52` answers instead.
+    // Three regimes x (the result line, the state line).
+    (
+        "route",
+        9,
+        "  boundary5=FAILED:",
+        "  boundary5=NO_UNCONNECTED_NETS:",
+    ),
+    (
+        "route",
+        10,
+        "  boundary5state=FAILED",
+        "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
+    (
+        "route",
+        21,
+        "  boundary5=FAILED:",
+        "  boundary5=NO_UNCONNECTED_NETS:",
+    ),
+    (
+        "route",
+        22,
+        "  boundary5state=FAILED",
+        "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
+    (
+        "route",
+        33,
+        "  boundary5=FAILED:",
+        "  boundary5=NO_UNCONNECTED_NETS:",
+    ),
+    (
+        "route",
+        34,
+        "  boundary5state=FAILED",
+        "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
+];
+
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
 /// than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
     let expected = t16_section(mode);
     let mut diffs = Vec::new();
+    let mut accounted = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual
             .get(i)
             .map(|row| row.trim_end())
             .unwrap_or("<missing>");
-        if want != got {
-            diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+        if want == got {
+            continue;
         }
+        // A row this plan has deliberately moved away from the jar still has to match the jar on
+        // the left and the port on the right — a divergence that drifts is a new difference, not
+        // a known one.
+        if KNOWN_DIVERGENCES
+            .iter()
+            .any(|(m, row, jvm, rust)| *m == mode && *row == i && *jvm == want && *rust == got)
+        {
+            accounted += 1;
+            continue;
+        }
+        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
+    // The diff assert runs FIRST, and the order is load-bearing. A declared row that *drifts* —
+    // the port answering something new — both fails to match the entry (so it lands in `diffs`)
+    // and leaves `accounted` short. With the healed-check first, that drift was reported as
+    // "a divergence has healed, delete it from KNOWN_DIVERGENCES" and the actual jvm/rust detail
+    // was never printed, which is exactly backwards: the entry is right and the port moved.
+    // Mutation-verified by the Task 6 reviewer.
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",
@@ -554,6 +647,18 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .cloned()
             .collect::<Vec<_>>()
             .join("\n")
+    );
+    // Only once every row matches either the jar or its declared divergence is a shortfall here
+    // unambiguous: the divergence really has healed and its entry must go.
+    let declared = KNOWN_DIVERGENCES
+        .iter()
+        .filter(|(m, ..)| *m == mode)
+        .count();
+    assert_eq!(
+        accounted, declared,
+        "mode `{mode}` declares {declared} known divergence(s) from the jar but only {accounted} \
+         of them still differ — a divergence that has healed must be deleted from \
+         KNOWN_DIVERGENCES, not left to rot"
     );
 }
 
@@ -1081,10 +1186,17 @@ fn route_once(
 
 /// Probe mode `route`: the first connection routes, the same item routed again answers
 /// `NO_UNCONNECTED_NETS` at `:49-52` before any engine is built, and a positive net the board
-/// does not have makes `AutorouteControl::new` panic — **ruling 7's fifth boundary
-/// (`:154-158`)** — which degrades to a **bare** `FAILED` with no details at all. That empty
+/// does not have used to make `AutorouteControl::new` panic — **ruling 7's fifth boundary
+/// (`:154-158`)** — which degraded to a **bare** `FAILED` with no details at all. That empty
 /// `details` is the whole difference between the fifth boundary and every message-carrying
 /// `FAILED` `autoroute_connection` produces.
+///
+/// Plan 9 Task 6 fixed quirk #173, so the third call no longer panics: the control builds on the
+/// null-net arm's own half-width fallback and the router reaches `:49-52`'s
+/// `NO_UNCONNECTED_NETS`, item 2 being already routed. The jar's six rows are kept verbatim in
+/// the transcript and declared in [`KNOWN_DIVERGENCES`]; the fifth boundary itself keeps its
+/// producer in [`a_panicking_locator_degrades_to_javas_message_less_failure`], which is where the
+/// empty-`details` assertion now lives alone.
 #[test]
 fn route_steps_one_to_five_match_java_including_the_fifth_boundary() {
     let mut rows = Vec::new();

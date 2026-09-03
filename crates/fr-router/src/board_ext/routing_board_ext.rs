@@ -860,13 +860,20 @@ impl RoutingBoardExt for Board {
         // `USER_FIXED` (`:191-195`), both of which `newPolyline` can be after the `:659-661`
         // shorten, so `:756` is a latent `NullPointerException` (quirk #185). No `catch` covers
         // it — this method's only `try` opens at `:787` — so the nearest handler is
-        // `AutorouteConnectionRouter.route:155-158`'s bare `FAILED`, and the port reproduces that
-        // with a panic the caller's `catch_unwind` boundary turns into the same `FAILED`.
-        let combine_target = new_trace.expect(
-            "RoutingBoard.insertForcedTracePolyline:756: newTrace.combine() on a null trace — \
-             Java throws a NullPointerException here (quirk #185)",
-        );
-        let _combine_result = self.combine_trace(combine_target)?;
+        // `AutorouteConnectionRouter.route:155-158`'s bare `FAILED`.
+        //
+        // fixed: T6 (#185) — `:791`'s own `newTrace != null` test, moved up to `:756`. Nothing else
+        // in the method changes: every later use of `newTrace` (`:791`'s normalize, `:826-833`'s
+        // re-pick, `:860-862`'s pull tight) already handles the `None`, so skipping the combine is
+        // the whole repair. The segment is skipped and `:875` still answers `newCorner`, where the
+        // throw abandoned the whole connection. Pinned by
+        // `crates/fr-router/tests/insert_forced.rs`'s
+        // `a_degenerate_resample_skips_one_segment_not_the_connection` over the synthetic fixture
+        // `tests/data/t6-resampled-polyline.txt`, which the register row records as the input class
+        // all 1 621 rows of `p6t15b-insert-forced.txt` miss.
+        if let Some(combine_target) = new_trace {
+            let _combine_result = self.combine_trace(combine_target)?;
+        }
 
         // :773-776.
         let tidy_region: Option<IntOctagon> = if tidy_width < i32::MAX {
