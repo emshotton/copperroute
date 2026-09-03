@@ -1,5 +1,18 @@
 # Two routing regressions in freerouting between v2.1.0 and HEAD (2.3.1-SNAPSHOT)
 
+**status: fixed in the port at Plan 9 Task 2.** Both regressions below are repaired in
+`freerouting-rs` — Regression 1 as register row **#293** (the airline-distance ordering of the
+work list, restored in `crates/fr-router/src/pipeline/batch_autorouter.rs` over the three
+`AutorouteAirlineCalculator` methods `crates/fr-router/src/pipeline/airline.rs` now ports) and
+Regression 2 as row **#294** (the micro-neckdown fanout fallback, floored at
+`BoardRules.getMinTraceHalfWidth()` in
+`crates/fr-router/src/autoroute/path/inserter.rs`). Neither is fixed **upstream in Java**: both
+rows keep their "Java-side fix owed" cell in `docs/java-quirks.md` and are recommendation 8's two
+standing pull requests. The two secondary findings this file opens are now register rows too —
+**#295** (the every-4th-pass exhaustive tree, measured after #159 lands in Task 8) and **#296**
+(via inflation, watched at every Plan 9 milestone) — and each carries its open question and its
+owner there.
+
 Measured with the benchmark suite in `benchmark/` on 605 PCBench boards (real, human-routed
 KiCad designs whose references are routing-DRC-clean and fully connected under their own design
 rules), judged by KiCad 10 DRC with each board's own rules, `-mp 10`, 5-minute cap, one isolated
