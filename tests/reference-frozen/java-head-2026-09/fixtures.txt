@@ -1,0 +1,7 @@
+tutorial_board|examples/tutorial_board/tutorial_board.dsn
+Issue026-J2_reference|fixtures/Issue026-J2_reference.dsn
+Issue103-Board-Unrouted|fixtures/Issue103-Board-Unrouted.dsn
+Issue143-rpi_splitter|fixtures/Issue143-rpi_splitter.dsn
+Issue413-test|fixtures/Issue413-test.dsn
+Issue110-RelayModule|fixtures/Issue110-RelayModule.dsn
+Issue753-CPU-85_r104|fixtures/Issue753-CPU-85_r104.dsn

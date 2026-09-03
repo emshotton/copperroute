@@ -1,0 +1,7 @@
+jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
+jar size     63288650 bytes
+jar mtime    2026-08-27 20:03:08 -0700
+jar version  Freerouting 2.3.1-SNAPSHOT
+java         openjdk version "25.0.4.1" 2026-08-18
+hash mode    -XX:hashCode=2
+command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de <FREEROUTING_JAVA_DIR>/fixtures/Issue593-BBD_Mars-64.dsn -dr <FREEROUTING_JAVA_DIR>/fixtures/Issue593-BBD_Mars-64.rules -drc <workspace>/tests/reference/drc-issue593-rules/drc.json

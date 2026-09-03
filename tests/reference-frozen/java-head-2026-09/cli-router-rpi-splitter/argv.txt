@@ -1,0 +1,8 @@
+-de
+<JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn
+-do
+<OUT>/route.ses
+-mp
+8
+--router.fanout.enabled=true
+--router.optimizer.enabled=true
