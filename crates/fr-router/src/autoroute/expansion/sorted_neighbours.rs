@@ -297,6 +297,29 @@ impl SortedRoomNeighbours {
                  (SortedRoomNeighbours.java:192) — Java NPEs here too"
             )
         });
+        // fixed: T8 (#162). `:512` builds `roomSimplex = this.fromRoom.getShape().toSimplex()`
+        // inside `calculateNewIncompleteRooms`, three method calls after every
+        // `touchingSideNoOfRoom` has been computed against the **un-simplified** shape (`:254` for
+        // a 1-dimensional touch, `:289-297` for a corner). `Simplex.getInstance` drops redundant
+        // lines (Simplex.java:37-46), so an `IntOctagon` whose diagonals are implied by its four
+        // sides comes back with 4 or 5 lines rather than 8 — and a `firstTouchingSideNo` naming a
+        // line the simplex does not have makes the `for (;;)` at `:562` walk `prevNo` round the
+        // simplex for ever, allocating a room and a door per turn until the heap is gone.
+        //
+        // The simplex is therefore derived **once, here in the constructor**, and every side
+        // number in this class is an index into it: this is the room shape the sorted neighbours
+        // carry, the shape `tryRemoveEdge` walks, and the shape `calculateNewIncompleteRooms`
+        // uses. The loop's exit `currentTouchingSideNo == firstTouchingSideNo` is then reachable
+        // by construction, because `firstTouchingSideNo` came from this same shape.
+        //
+        // Not a loop bound: a bound stops the hang on the wrong side, leaving the room with a
+        // silently wrong door set. This makes the two shapes the same shape.
+        //
+        // The **original** shape is kept for everything that is not a side number — the complete
+        // room built at `:191`, the tree query at `:200-201`, and the door intersections — because
+        // simplifying is a change of representation, not of geometry, and the arena should hold
+        // the shape the engine handed in.
+        let room_simplex = TileShape::Simplex(room_shape.to_simplex());
 
         // :190-198.
         let completed_room = match room {
@@ -314,7 +337,7 @@ impl SortedRoomNeighbours {
         let mut result = SortedRoomNeighbours {
             from_room: room,
             completed_room,
-            room_shape: room_shape.clone(),
+            room_shape: room_simplex.clone(),
             sorted_neighbours: JavaTreeSet::new(),
             own_net_objects: Vec::new(),
         };
@@ -425,7 +448,7 @@ impl SortedRoomNeighbours {
 
             if dimension == 1 {
                 // :253-258.
-                let Some(touching_sides) = room_shape.touching_sides(&current_shape) else {
+                let Some(touching_sides) = room_simplex.touching_sides(&current_shape) else {
                     // Java's `touchingSides.length != 2`: `FRLogger.debug` (dropped), `continue`.
                     continue;
                 };
@@ -439,7 +462,7 @@ impl SortedRoomNeighbours {
                     touching_sides[1] as i32,
                     false,
                     false,
-                    room_shape.clone(),
+                    room_simplex.clone(),
                 ));
 
                 // :267-285. "make sure, that there is a door to the neighbour room."
@@ -478,14 +501,14 @@ impl SortedRoomNeighbours {
             } else {
                 // :286-326, dimension == 0.
                 let touching_point = intersection.corner(0);
-                let room_corner_no = room_shape.equals_corner(&touching_point);
+                let room_corner_no = room_simplex.equals_corner(&touching_point);
                 let (room_touch_is_corner, touching_side_no_of_room) = match room_corner_no {
                     // :292-294.
                     Some(no) => (true, no as i32),
                     // :295-301. Java logs and keeps the -1.
                     None => (
                         false,
-                        room_shape
+                        room_simplex
                             .contains_on_border_line_no(&touching_point)
                             .map_or(-1, |no| no as i32),
                     ),
@@ -514,7 +537,7 @@ impl SortedRoomNeighbours {
                     touching_side_no_of_neighbour_room,
                     room_touch_is_corner,
                     neighbour_room_touch_is_corner,
-                    room_shape.clone(),
+                    room_simplex.clone(),
                 ));
             }
         }
@@ -547,16 +570,13 @@ impl SortedRoomNeighbours {
         };
         // :419-421.
         let mut remove_edge_no: i32 = -1;
-        let room_simplex = rooms
-            .room_shape(self.from_room)
-            .unwrap_or_else(|| {
-                panic!(
-                    "SortedRoomNeighbours.tryRemoveEdge: the incomplete room has no shape \
-                     (SortedRoomNeighbours.java:420) — Java NPEs here too"
-                )
-            })
-            .to_simplex();
-        let room_shape_area = TileShape::Simplex(room_simplex.clone()).area();
+        // :420 is `this.fromRoom.getShape().toSimplex()`. fixed: T8 (#162) — the one derivation
+        // in `calculateNeighbours` is this shape, so the `currentEdgeNo` walk below and the
+        // `touchingSideNoOfRoom`s it compares against are indices into the same shape.
+        let TileShape::Simplex(room_simplex) = &self.room_shape else {
+            unreachable!("calculate_neighbours builds room_shape as a Simplex")
+        };
+        let room_shape_area = self.room_shape.area();
 
         // :423-438.
         let mut prev_edge_no: i32 = -1;
@@ -654,16 +674,16 @@ impl SortedRoomNeighbours {
     /// element and afterwards is always the *previous* element, which is the last one only at an
     /// index the loop never reaches.
     ///
-    // Java bug: SortedRoomNeighbours.calculateNewIncompleteRooms does not terminate when the
-    // room's shape has more border lines than its `toSimplex()` does (quirk #162). `:512` builds
-    // `roomSimplex = this.fromRoom.getShape().toSimplex()`, and `Simplex.getInstance` drops
-    // redundant lines (Simplex.java:37-46); `touchingSideNoOfRoom` was computed against the
-    // **un-simplified** shape (`:254` for a 1-dimensional touch, `:289-297` for a corner). When
-    // `firstTouchingSideNo` names a line the simplex does not have, the `for (;;)` at `:562`
-    // walks `prevNo` round the simplex for ever, adding an `IncompleteFreeSpaceExpansionRoom` per
-    // turn (`:642`) until the heap is gone. Reproduced, loop and all: an octagon whose diagonals
-    // are redundant is the common trigger, and `scripts/differential/run.sh p6t3 5` skips those
-    // calls on both sides rather than hanging.
+    // fixed: T8 (#162). Java does not terminate here when the room's shape has more border lines
+    // than its `toSimplex()` does: `:512` builds `roomSimplex =
+    // this.fromRoom.getShape().toSimplex()`, `Simplex.getInstance` drops redundant lines
+    // (Simplex.java:37-46), and `touchingSideNoOfRoom` was computed against the **un-simplified**
+    // shape (`:254` for a 1-dimensional touch, `:289-297` for a corner). A `firstTouchingSideNo`
+    // naming a line the simplex does not have makes the `for (;;)` at `:562` walk `prevNo` round
+    // the simplex for ever, adding an `IncompleteFreeSpaceExpansionRoom` per turn (`:642`) until
+    // the heap is gone. `self.room_shape` **is** that simplex, derived once in the constructor,
+    // so `:512`'s second derivation is gone and every side number below indexes the shape it came
+    // from — see the note in `calculate_neighbours`.
     pub fn calculate_new_incomplete_rooms(
         &self,
         board: &mut Board,
@@ -677,18 +697,9 @@ impl SortedRoomNeighbours {
                  (SortedRoomNeighbours.java:511) — Java throws NoSuchElementException here too"
             )
         };
-        // :512.
-        let room_simplex = TileShape::Simplex(
-            rooms
-                .room_shape(self.from_room)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "SortedRoomNeighbours.calculateNewIncompleteRooms: the from room has no \
-                         shape (SortedRoomNeighbours.java:512) — Java NPEs here too"
-                    )
-                })
-                .to_simplex(),
-        );
+        // :512, hoisted to the constructor (#162): this is `fromRoom.getShape().toSimplex()`,
+        // computed once and shared with the sorted neighbours' own side numbers.
+        let room_simplex = &self.room_shape;
         let from_room_layer = rooms
             .room_layer(board, self.from_room)
             .expect("the from room is in the arena");

@@ -538,11 +538,26 @@ fn run_one_complete(
     // room's shape has more border lines than its `toSimplex()` does (quirk #162), so both
     // drivers skip those calls — in **mode 5 only**, because neither angle-restricted sorter
     // walks a simplex.
+    //
+    // **The port no longer needs the skip.** Plan 9 Task 8 fixed #162: `SortedRoomNeighbours`
+    // derives its simplex once, in the constructor, so every `touchingSideNoOfRoom` indexes the
+    // shape the walk walks and the walk's exit is reachable by construction. The skip stays
+    // because the **jar** is not fixed and this driver is a differential: dropping it here would
+    // make the two sides disagree on a call the JVM cannot survive at all.
+    //
+    // `P9T8_NO_SKIP=1` runs the calls the skip would have refused. It is the port-side
+    // full-coverage measurement #162's acceptance asks for — the number of calls mode 5 executes
+    // must rise to the number it enumerates — and it is deliberately **not** the default, because
+    // the run it produces has no Java half to be compared against.
+    let no_skip = std::env::var_os("P9T8_NO_SKIP").is_some();
     let from_shape = rooms
         .room_shape(room)
         .expect("a live room with a shape")
         .clone();
-    if mode == 5 && from_shape.border_line_count() != from_shape.to_simplex().border_line_count() {
+    if mode == 5
+        && !no_skip
+        && from_shape.border_line_count() != from_shape.to_simplex().border_line_count()
+    {
         println!(
             "call i={index} kind={description} net={net_number} \
              skipped=simplexSideCountDiffers borderLines={} simplexLines={}",

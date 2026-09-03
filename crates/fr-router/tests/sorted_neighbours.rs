@@ -903,17 +903,19 @@ fn a_two_dimensional_overlap_yields_an_overlap_door_between_obstacle_rooms() {
 }
 
 #[test]
-fn the_room_shapes_that_make_calculate_new_incomplete_rooms_loop_for_ever() {
-    // quirk #162. `SortedRoomNeighbours.java:512` builds `roomSimplex =
-    // this.fromRoom.getShape().toSimplex()` and then indexes it with `touchingSideNoOfRoom`, a
+fn calculate_new_incomplete_rooms_terminates_on_the_pinned_trigger() {
+    // quirk #162, **fixed: T8**. `SortedRoomNeighbours.java:512` built `roomSimplex =
+    // this.fromRoom.getShape().toSimplex()` and then indexed it with `touchingSideNoOfRoom`, a
     // side number of the **un-simplified** shape. `Simplex.getInstance` drops redundant lines, so
-    // the two do not have the same number of sides — and when `firstTouchingSideNo` names a line
-    // the simplex does not have, the `for (;;)` at `:562` never reaches it and allocates an
-    // incomplete room per turn until the heap is gone.
+    // the two did not have the same number of sides — and when `firstTouchingSideNo` named a line
+    // the simplex does not have, the `for (;;)` at `:562` never reached it and allocated an
+    // incomplete room per turn until the heap was gone.
     //
     // The octagon below is `run.sh p6t3 4 42 30 1000`'s `call i=2` seed room, and mode 5 reports
-    // it as `skipped=simplexSideCountDiffers borderLines=8 simplexLines=5`. The assertion is the
-    // *trigger*, not the loop: running the loop is what the JVM cannot survive either.
+    // it as `skipped=simplexSideCountDiffers borderLines=8 simplexLines=5`. This test used to be
+    // called `the_room_shapes_that_make_calculate_new_incomplete_rooms_loop_for_ever` and asserted
+    // the *trigger* without running the loop, because running it was what the JVM could not
+    // survive either. It now runs it.
     let shape = TileShape::Octagon(IntOctagon::new(
         -5209, -4057, 1764, 1885, -7094, 5821, -9266, -1264,
     ));
@@ -923,26 +925,67 @@ fn the_room_shapes_that_make_calculate_new_incomplete_rooms_loop_for_ever() {
         5,
         "three of the octagon's eight constraints are redundant and `toSimplex()` drops them"
     );
-    // So a neighbour touching side 5, 6 or 7 of the octagon gives `calculateNewIncompleteRooms` a
-    // `firstTouchingSideNo` the simplex has no line for, and `prevNo` cycles 4,3,2,1,0,4,… past
-    // it for ever.
-    let simplex_sides = shape.to_simplex().border_line_count();
-    let mut reachable = std::collections::BTreeSet::new();
-    let mut side = simplex_sides - 1;
-    for _ in 0..(2 * simplex_sides) {
-        reachable.insert(side);
-        side = if side == 0 {
-            simplex_sides - 1
-        } else {
-            side - 1
-        };
-    }
-    for out_of_range in simplex_sides..shape.border_line_count() {
+
+    let (mut board, tree_id) = p6t3_board();
+    let mut rooms = p6t3_seed_rooms(&mut board, tree_id);
+    let incomplete = rooms.new_incomplete_room(Some(shape.clone()), 0, Some(shape.clone()));
+    let room = RoomRef::Incomplete(incomplete);
+
+    let result =
+        SortedRoomNeighbours::calculate_neighbours(room, 3, &mut board, &mut rooms, tree_id, 900)
+            .expect("an incomplete room completes");
+
+    // **The fix, as an invariant.** The shape every `touchingSideNoOfRoom` is an index into is the
+    // shape the loop walks, because there is only one of them now. Before the fix
+    // `result.room_shape` was the 8-line octagon and the loop walked a 5-line simplex, so a
+    // neighbour on side 5, 6 or 7 handed the loop a `firstTouchingSideNo` `prevNo` could never
+    // reach: 4, 3, 2, 1, 0, 4, … for ever.
+    assert_eq!(
+        result.room_shape.border_line_count(),
+        5,
+        "the room shape the side numbers index is the simplex, not the octagon"
+    );
+    assert!(
+        !result.sorted_neighbours.is_empty(),
+        "the trigger room must have neighbours, or the loop under test is never entered"
+    );
+    for neighbour in &result.sorted_neighbours {
+        let side = neighbour.touching_side_no_of_room;
         assert!(
-            !reachable.contains(&out_of_range),
-            "side {out_of_range} of the octagon is unreachable by prevNo over the simplex"
+            side >= 0 && (side as usize) < result.room_shape.border_line_count(),
+            "every touching side number is a line of the shape the loop walks; got {side} \
+             against {} lines",
+            result.room_shape.border_line_count()
         );
     }
+
+    // And the loop itself terminates. `calculate` is the caller Java has (`:117-130`), so this
+    // drives `tryRemoveEdge` and `calculateNewIncompleteRooms` exactly as the engine does. The
+    // work is done on a worker thread with a wall-clock join, because the pre-fix answer to this
+    // call is not "wrong" but "never" — a bounded assertion is the only kind that can be written
+    // about non-termination.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let worker = std::thread::Builder::new()
+        .stack_size(16 * 1024 * 1024)
+        .spawn(move || {
+            let completed =
+                SortedRoomNeighbours::complete(room, 3, &mut board, &mut rooms, tree_id);
+            let doors = completed.map_or(0, |r| rooms.room_doors(r).len());
+            sender.send(doors).expect("the receiver is alive");
+        })
+        .expect("a worker thread");
+    let doors = receiver
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect(
+            "SortedRoomNeighbours::complete must terminate on quirk #162's trigger room; \
+             it did not finish in 30 s, which is the unfixed behaviour (the loop allocates a \
+             room and a door per turn until the heap is gone)",
+        );
+    worker.join().expect("the worker did not panic");
+    assert!(
+        doors > 0,
+        "the completed room keeps the doors the loop built"
+    );
 }
 
 // =================================================================================================

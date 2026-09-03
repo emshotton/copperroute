@@ -61,9 +61,11 @@ fn bare_board_with_a_net_two_trace() -> Board {
 
 /// [`bare_board_with_a_net_two_trace`] on a caller-chosen bounding box.
 ///
-/// Only [`additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape`] passes
-/// anything but [`BOUNDING_BOX`]; the four tests that carry `P6T9Probe`'s room counts must keep
-/// the probe's own box, and do. See that test for why it needs a smaller one.
+/// Nothing passes anything but [`BOUNDING_BOX`] any more: the one caller that did —
+/// [`additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape`] — took a
+/// +/-5 000 box to stay clear of quirk #162, which Plan 9 Task 8 fixed. Kept parameterised
+/// because the +/-5 000 / +/-6 000 boundary is what the 1x1-against-2x2 page grid turns on, and a
+/// future bisection of that boundary should not have to reintroduce the seam.
 fn bare_board_bounded(bounds: IntBox) -> Board {
     let mut board = Board::new(
         Vec::new(),
@@ -357,42 +359,33 @@ fn additional_update_after_change_removes_the_overlapping_rooms() {
 /// — `DrillPage.getDrills` completes one per layer per drill — so the probe's room counts only
 /// hold on an engine whose pages have never been asked for drills.
 ///
-/// # Why this one board is smaller than `P6T9Probe`'s
+/// # This board was smaller than `P6T9Probe`'s until Plan 9 Task 8
 ///
-/// Plan 9 Task 6 changed what this test measures, and the change is an improvement that came with
-/// a constraint. Before quirk #169 was fixed, *every* drill on this engine was dropped: the engine
-/// is virgin here (`init_autoroute` leaves `incompleteExpansionRooms` null — measured), so
+/// Plan 9 Task 6 changed what this test measures, and the change was an improvement that came
+/// with a constraint. Before quirk #169 was fixed, *every* drill on this engine was dropped: the
+/// engine is virgin here (`init_autoroute` leaves `incompleteExpansionRooms` null — measured), so
 /// `removeIncompleteExpansionRoom` threw, `completeExpansionRoom`'s own catch swallowed it, and
 /// each page ended up memoising the **empty** list `DrillPage.getDrills:65-66` installs before the
 /// work. So `pages_holding_drills` counted pages holding `Some([])` and the assertions below were
 /// vacuously true — the test never held a single drill.
 ///
-/// With #169 fixed the drills are computed for real, and on `P6T9Probe`'s +/-10 000 box that runs
+/// With #169 fixed the drills are computed for real, and on `P6T9Probe`'s +/-10 000 box that ran
 /// away: measured at 99 % CPU with RSS climbing ~1.3 MB/s, no termination in 240 s, the whole time
 /// inside one `complete_expansion_room` -> `calculate_doors` ->
 /// `SortedRoomNeighbours::calculate_new_incomplete_rooms` -> `TileShape::intersection` on
-/// ever-growing rational coordinates.
+/// ever-growing rational coordinates. That runaway was **quirk #162** reached through a second
+/// producer — a drill page that is a *sub* rectangle of the board, so a 2x2 page grid and not a
+/// 1x1 one — and it was not #169's doing: it reproduces on the unfixed tree by seeding the
+/// incomplete-room list, which is the same engine state. Task 6 recorded it and moved this test
+/// down to +/-5 000, the largest box whose page grid is 1x1 and therefore still terminated.
 ///
-/// **That runaway is not #169's doing and predates this task**: it reproduces on the unfixed tree
-/// by seeding the incomplete-room list, which is the same engine state (measured — 240 s, no
-/// termination, with no Task 6 change applied). What #169 removed was one accidental shield in
-/// front of it. It is reported as a Task 6 finding rather than fixed here; a crash-guard task is
-/// not the place for a geometry non-termination.
-///
-/// The boundary is sharp and was measured: the runaway needs a drill page that is a **sub**
-/// rectangle of the board. At +/-5 000 the grid is 1x1, the page is the whole board, and the four
-/// overlapping-page drills compute in under a millisecond; at +/-6 000 the grid becomes 2x2 and it
-/// runs away. So this test takes +/-5 000 — the largest box that still terminates — and in
-/// exchange its pages now hold **7 real drills** where they used to hold an empty list.
+/// **Task 8 fixed #162 and the box is restored to `BOUNDING_BOX`.** The loop derives its simplex
+/// once, in `SortedRoomNeighbours`' constructor, so every `touchingSideNoOfRoom` indexes the
+/// shape the walk actually walks and the walk's exit is reachable by construction. The 2x2 page
+/// grid this box produces is #162's second acceptance producer, beside `p6t3` mode 5's.
 #[test]
 fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape() {
-    let mut board = bare_board_bounded(IntBox {
-        ll: IntPoint {
-            x: -5_000,
-            y: -5_000,
-        },
-        ur: IntPoint { x: 5_000, y: 5_000 },
-    });
+    let mut board = bare_board_with_a_net_two_trace();
     let mut engine = board.init_autoroute(None, 1, 1, None, true);
     let trace = board
         .items_in_board_order()

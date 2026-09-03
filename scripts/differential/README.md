@@ -333,9 +333,10 @@ methods with dozens of branches.
     `java -version` goes to stderr.
 
     `run.sh` bounds **both** sides with `timeout(1)` (`P6T1_TIMEOUT`, default
-    900 s): quirk #162's non-termination is unguarded in Java and in the port
-    alike, so a corpus connection can hang on both sides and the harness has to
-    report rather than hang.
+    900 s). Quirk #162's non-termination is **fixed in the port** at Plan 9 Task
+    8 and still unguarded in Java, so a corpus connection can hang on the jar
+    side and the harness has to report rather than hang. The bound stays until a
+    Java-side fix lands; it is no longer load-bearing for the port half.
 
     **Plan 7 Task 8 added a fifth and sixth argument**, so the full usage is
     `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]`:
@@ -513,7 +514,15 @@ methods with dozens of branches.
       `toSimplex()` does**: that is quirk #162, an unterminating loop in
       `calculateNewIncompleteRooms` that kills the JVM with an
       `OutOfMemoryError` (seed 42 reaches it at `i=124`), and it is skipped
-      rather than tolerated. It costs 4 of 1 000 completions.
+      rather than tolerated. On `5 42 20 1000` it costs **56** of 1 000 calls.
+
+      **Plan 9 Task 8 fixed #162 in the port, and the skip stays anyway** —
+      because the *jar* is unfixed and this is a differential: the two sides
+      have to refuse the same calls. `P9T8_NO_SKIP=1` runs them on the port
+      side alone, which is #162's port-side acceptance measurement: mode 5 goes
+      from 906 executed calls with 56 skips to **962 executed calls with 0
+      skips**, and terminates. There is no Java half to compare that run
+      against, which is why it is a switch and not the default.
     - `1`, `2`, `3` — the hazard-F probes, which build `SortedRoomNeighbour`s
       through the inner class's constructor and insert them into a `TreeSet`
       with no board in the way. `1` is random touches on all four sides; `2`
@@ -3018,7 +3027,7 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p6t3` mode 1 (20 000 comparator probes) | 179296 | 0 | exact match (250 silent `TreeSet` drops, all the same ones) |
 | `p6t3` mode 2 (30 000 same-side probes) | 262021 | 0 | exact match (8 374 drops) |
 | `p6t3` mode 3 (30 000 corner-touch probes, seeds 20260829/7) | 292682, 293041 | 0 | exact match — **with `JavaTreeSet`**; on a `BTreeSet` this mode diffs (quirk #160) |
-| `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the ~0.4 % of calls quirk #162 makes non-terminating |
+| `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the calls quirk #162 makes non-terminating **in the jar** — 56 of 1 000 on seed 42. `P9T8_NO_SKIP=1` runs them on the port side (962 executed, 0 skipped, terminating) now that Plan 9 Task 8 has fixed #162 there |
 | `p6t3` mode 6 (45-degree `calculateNeighbours`, seeds 42/7/999/20260829) | 8817-21050 | 0 | exact match (`Sorted45DegreeRoomNeighbours`, its own inner class, `edgeInteriorTouchesObstacle` and the `overlap` probe's computed `dim=2` door) |
 | `p6t3` mode 7 (orthogonal `calculateNeighbours`, seeds 42/7/999/20260829) | 9166-21501 | 0 | exact match (`SortedOrthogonalRoomNeighbours`, likewise) |
 | `p6t3` mode 8 (the whole of `complete` on a 45-degree tree, seeds 42/7/999/20260829) | 45661-53791 | 0 | exact match — and the mode that found quirk #163 |

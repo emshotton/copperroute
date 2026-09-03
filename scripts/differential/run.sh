@@ -279,8 +279,10 @@ case "$driver" in
     #
     # `P6T1_TIMEOUT` bounds the wall clock on **both** sides: quirk #162
     # (`SortedRoomNeighbours.calculateNewIncompleteRooms`) does not terminate for a small fraction
-    # of room completions and neither language guards it, so a corpus connection can hang in Java
-    # and in the port alike. Without the bound the harness would hang rather than report.
+    # of room completions. Plan 9 Task 8 fixed it in the **port** — the simplex is derived once,
+    # in the constructor, so every side number indexes the shape the walk walks — but the jar is
+    # unfixed, so a corpus connection can still hang on the Java side and the bound stays until a
+    # Java-side fix lands. Without it the harness would hang rather than report.
     #
     # Plan 7 Task 8 added a fifth and sixth argument: `steps` (`1-5` | `1-8`) and `neckWidthUm`.
     # `1-5` is unchanged in every byte, including the HEADER line the committed
