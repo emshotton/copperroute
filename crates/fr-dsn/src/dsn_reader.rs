@@ -159,6 +159,14 @@ pub fn read_board(
 /// Java answers a whole [`BoardReadResult`], not a bare metadata record — a `Success` whose
 /// `board` may be `None` (no valid outline) and whose `metadata` is always `Some`.
 ///
+/// **This function never answers [`BoardReadResult::Partial`]**, and that is deliberate rather
+/// than an oversight. #91's truncation flag is set by `read_scope_generic`'s end-of-file branch,
+/// and this loop does not use `read_scope_generic` at all: it is the hand-written PCB-level loop
+/// above, whose whole point is to `break` at the end of the `(structure …)` scope with most of
+/// the file **deliberately** unread. "The input ended early" and "we stopped early on purpose"
+/// would be indistinguishable here, so a `Partial` from this path would say nothing. A caller
+/// that needs to know whether the file is whole reads it with [`read_board`].
+///
 /// `layer_count` prefers `layerStructure.layers.length` and falls back to
 /// `board.getLayerCount()` (:261-266); with neither it stays 0.
 pub fn read_metadata(input: impl Read) -> BoardReadResult {

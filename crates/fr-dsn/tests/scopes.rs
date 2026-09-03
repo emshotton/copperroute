@@ -199,36 +199,57 @@ fn read_float_scope_widens_an_integer_token() {
 /// fixed: T4 (#90): the scope is consumed to its own bracket, `via_costs` keeps its unset state
 /// (`via_costs_raw() == None`, so a higher-priority settings source still wins the merge), and
 /// the two fields after it are read.
+///
+/// # The three shapes a malformed scalar scope comes in
+///
+/// The offending token is already consumed by the time the scope has to be resynchronised, and
+/// how many brackets are still open depends on **what** it was — `)` closed this scope, `(`
+/// opened a nested one, anything else left just this one. All three are exercised here; the
+/// `(via_costs (5))` row is the fix round's own case (a first cut resynchronised all three as if
+/// they were the third, which left the outer bracket behind on the second and over-consumed on
+/// the first).
 #[test]
 fn a_malformed_integer_scope_does_not_desync_its_caller() {
     let layer_structure = DsnLayerStructure::new(vec![
         DsnLayer::new("F.Cu".to_string(), 0, true),
         DsnLayer::new("B.Cu".to_string(), 1, true),
     ]);
-    let mut scanner = DsnScanner::new("(via_costs 5.0) (vias off) (start_ripup_costs 13)) tail");
-    let settings = read_autoroute_settings_scope(&mut scanner, &layer_structure)
-        .expect("no scan error")
-        .expect("the scope closes on its own bracket");
 
-    assert_eq!(
-        settings.via_costs_raw(),
-        None,
-        "a malformed value leaves the field unset instead of writing Java's 0"
-    );
-    assert!(
-        !settings.vias_allowed(),
-        "(vias off) is past the desync and is read now"
-    );
-    assert_eq!(
-        settings.start_ripup_costs(),
-        13,
-        "(start_ripup_costs 13) is past the desync and is read now"
-    );
-    assert_eq!(
-        scanner.next_token().unwrap(),
-        Some(Token::Str("tail".to_string())),
-        "the scope ended on its own closing bracket, not one field early"
-    );
+    // `malformed` is the whole `(via_costs …)` scope, ill-formed in three different ways; the two
+    // well-formed fields after it are what a desync would swallow.
+    for malformed in [
+        "(via_costs 5.0)",        // a value of the wrong kind: one bracket still open
+        "(via_costs (5))",        // a nested scope where a scalar belongs: two brackets still open
+        "(via_costs)",            // no value at all: the scope's bracket already consumed
+        "(via_costs 5 junk)",     // a good value, then a stray token: one bracket still open
+        "(via_costs 5 (junk 1))", // a good value, then a nested scope: two brackets still open
+    ] {
+        let text = format!("{malformed} (vias off) (start_ripup_costs 13)) tail");
+        let mut scanner = DsnScanner::new(&text);
+        let settings = read_autoroute_settings_scope(&mut scanner, &layer_structure)
+            .expect("no scan error")
+            .unwrap_or_else(|| panic!("{malformed}: the scope must close on its own bracket"));
+
+        assert_eq!(
+            settings.via_costs_raw(),
+            None,
+            "{malformed}: a malformed value leaves the field unset instead of writing Java's 0"
+        );
+        assert!(
+            !settings.vias_allowed(),
+            "{malformed}: (vias off) is past the desync and is read now"
+        );
+        assert_eq!(
+            settings.start_ripup_costs(),
+            13,
+            "{malformed}: (start_ripup_costs 13) is past the desync and is read now"
+        );
+        assert_eq!(
+            scanner.next_token().unwrap(),
+            Some(Token::Str("tail".to_string())),
+            "{malformed}: the scope ended on its own closing bracket, not one field early"
+        );
+    }
 }
 
 /// fixed: T4 (#91) — replaces

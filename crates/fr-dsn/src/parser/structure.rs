@@ -265,11 +265,12 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
                     // `if (scopeParameter.layerStructure == null)` guard that every sibling
                     // branch uses only to *create* the layer structure. Any `keepout`,
                     // `via_keepout`, `place_keepout` or `plane` scope earlier in the same
-                    // `structure` scope has already created it, and then the whole
-                    // `autoroute_settings` scope is neither read nor skipped: its body is
-                    // re-tokenised by this loop (each `(autoroute …)`/`(via_costs …)` falls to
-                    // `skipScope`) and its closing bracket ends the `structure` scope one scope
-                    // early. See `docs/java-quirks.md` row 95.
+                    // `structure` scope has already created it, and the jar then neither reads
+                    // nor skips the whole `autoroute_settings` scope: **Java's** own token loop
+                    // re-tokenises the body (each `(autoroute …)`/`(via_costs …)` falling to
+                    // `skipScope`) and the scope's closing bracket ends the `structure` scope one
+                    // level early. See `docs/java-quirks.md` row 95. **The port no longer does
+                    // any of this** — the paragraph below is what it does instead.
                     //
                     // fixed: T4 (#95) — the `AutorouteSettings.readScope` call is hoisted out of
                     // the guard, which now does only what its four sibling branches use it for:
