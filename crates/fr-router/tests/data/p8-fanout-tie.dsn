@@ -1,0 +1,63 @@
+(pcb p8-fanout-tie.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary
+      (path pcb 0  0 0  300000 0  300000 300000  0 300000  0 0)
+    )
+    (via VIA)
+  )
+  (placement
+    (component tie_footprint
+      (place JP1 150000 150000 front 0)
+    )
+    (component block_footprint
+      (place BLK1 150000 130000 front 0)
+    )
+  )
+  (library
+    (image tie_footprint
+      (side front)
+      (pin PAD 1 -20000.0 -20000.0)
+      (pin PAD 2 20000.0 -20000.0)
+      (pin PAD 3 20000.0 20000.0)
+      (pin PAD 4 -20000.0 20000.0)
+    )
+    (image block_footprint
+      (side front)
+      (pin BIG 1 0.0 0.0)
+    )
+    (padstack PAD
+      (shape (rect F.Cu -2500.0 -2500.0 2500.0 2500.0))
+      (attach off)
+    )
+    (padstack BIG
+      (shape (rect F.Cu -9000.0 -14000.0 9000.0 14000.0))
+      (attach off)
+    )
+    (padstack VIA
+      (shape (circle F.Cu 6000))
+      (shape (circle B.Cu 6000))
+      (attach off)
+    )
+  )
+  (network
+    (net N1
+      (pins JP1-1 JP1-2 JP1-3 JP1-4)
+    )
+    (net N2
+      (pins BLK1-1)
+    )
+    (class kicad_default N1 N2
+      (rule (width 250) (clearance 200))
+    )
+  )
+  (wiring
+  )
+)

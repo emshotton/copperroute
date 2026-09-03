@@ -431,8 +431,13 @@ fn the_five_sorting_orders_do_not_all_agree_on_a_real_board() {
 // =================================================================================================
 
 /// The key is the **squared** distance from the pin centre to each item's bounding-box midpoint,
-/// and `List.sort` is stable, so equidistant targets keep the `TreeSet<Item>`'s ascending id
-/// order.
+/// and `List.sort` is stable, so equidistant targets keep the `TreeSet<Item>`'s iteration order —
+/// which is **descending** id, quirk **#44** (`Item.compareTo` is `item.id - id`,
+/// Item.java:95-103; `Item.getUnconnectedSet` collects into a plain `new TreeSet<>()`,
+/// Item.java:676-690). On a tie the **higher** id therefore wins.
+///
+/// This test asserted the opposite until the tie-break fix; the whole-board proof that descending
+/// is what the jar does is `crates/fr-router/tests/fanout_tie_break.rs`.
 #[test]
 fn targets_are_sorted_by_squared_midpoint_distance_stably() {
     let board = symmetric_board();
@@ -446,10 +451,11 @@ fn targets_are_sorted_by_squared_midpoint_distance_stably() {
     let ids: Vec<u32> = sorted.iter().map(|id| id.0).collect();
     let mut ascending: Vec<u32> = targets.iter().map(|id| id.0).collect();
     ascending.sort_unstable();
+    // The two flanking pins are `ascending[0]` and `ascending[1]`; the far one is `ascending[2]`.
     assert_eq!(
         ids[0..2],
-        ascending[0..2],
-        "the tie keeps the ascending id order the ArrayList started in"
+        [ascending[1], ascending[0]],
+        "the tie keeps the descending id order the ArrayList started in (quirk #44)"
     );
     assert_eq!(ids[2], ascending[2], "the far pin sorts last");
 

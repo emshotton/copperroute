@@ -222,16 +222,45 @@ impl AutoroutePassRunner {
             // sanctioned fourth site is taken: this loop, which is Java's own
             // `AutoroutePassRunner.java:202-205` guard, one turn per item.
             //
-            // It is `poll_cancel`, **never** `poll_deadline`: the prohibition
-            // `pipeline::stop`'s module doc states is unchanged, and for the same reason —
-            // `poll_deadline` requests `ALL` on a *stage* clock and would suppress a stage Java
-            // leaves running, while `poll_cancel` carries no clock at all and copies in what an
-            // operator asked for, which is `requestStop()` by definition.
+            // Task 12 took `poll_cancel` here and only `poll_cancel`, because ruling AI's
+            // prohibition is about *per-stage* clocks: `poll_deadline` requests `ALL`, and on a
+            // stage clock that would suppress a stage Java leaves running, while `poll_cancel`
+            // carries no clock at all and copies in what an operator asked for, which is
+            // `requestStop()` by definition. The **job** deadline is not a stage clock and this
+            // is one of its two sanctioned sites, so `poll_deadline` joins it below — see the
+            // comment there.
             //
             // Byte-invisible by construction: both `RouterStop` constructors leave
             // `cancel_poll: None`, and a `None` poll is a load and nothing else. Every parity
             // driver builds `RouterStop::new()`.
             stop.poll_cancel();
+            // **The job deadline's second permitted read site**, the one
+            // `RouterStop::poll_deadline`'s own doc names: "`AutorouteBatchLoop:251` (Task 10) and
+            // the top of `AutoroutePassRunner`'s item loop at `:203` (Task 9)". Only the first had
+            // a caller until the post-merge outlier investigation measured the cost of the gap:
+            // `zx-sizif-512-ext` at `--router.job_timeout=00:05:00` ran **341 s**, +41 s, because
+            // the deadline was observed at pass boundaries only and the pass that was running when
+            // it expired ran to completion. Java's gap is a **sleep interval**, not a pass: its
+            // monitor thread (`RoutingJobSchedulerActionThread.java:55-90`) wakes once a second,
+            // calls `job.thread.requestStop()` at `:75`, and `AutoroutePassRunner.java:203` reads
+            // the flag once per item — so Java breaks out mid-pass within ~1000 ms of expiry. The
+            // port polls the clock directly at this same site and therefore lands marginally
+            // *tighter* than Java, not merely level with it; the residual is one item, which
+            // neither side preempts.
+            //
+            // This is a **job-level** site, so ruling AI's prohibition does not reach it: the four
+            // forbidden sites (`BatchFanout:111`/`:396`, `BatchOptimizer:172`/`:308`) read a
+            // *per-stage* clock whose Java action never touches the stop flag, and requesting `ALL`
+            // there would suppress a stage Java leaves running. The job deadline is not a stage
+            // clock. See `pipeline::stop`'s module doc table.
+            //
+            // Byte-invisible on an untimed run for the same reason as `poll_cancel` above: both
+            // `RouterStop` constructors leave `deadline: None`, and `poll_deadline` on a `None`
+            // deadline is a constant `false` that touches nothing. The `:203-205` guard below is
+            // the reader, exactly as in Java — no extra branch is added here, because
+            // `poll_deadline` performs Java's monitor action (`requestStop()`, i.e. `ALL`) and
+            // `is_stop_auto_router_requested()` is `!= NONE`.
+            stop.poll_deadline();
             // :203-205.
             if stop.is_stop_auto_router_requested() {
                 break;

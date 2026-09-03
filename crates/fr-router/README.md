@@ -3372,6 +3372,23 @@ unused, and `every_stem_reaches_rung_c` is what stops it being quietly re-entere
 the count does not move: the port adds none, which is what `StrictDrcRoutingTest`
 asserts and what `tests/fixtures.rs` pins independently.
 
+**The one blind spot this ladder is known to have, and what covers it now.** All
+eight stems stayed byte-identical to the jar while the fanout target sort broke
+every distance tie the wrong way (the port seeded a `BTreeSet` ascending where
+Java seeds a `TreeSet<Item>` descending — quirk #44), because **no corpus board
+contains a fanout distance tie**. It took an external board with a symmetric
+jumper to expose it, and the defect shipped. The gap is closed by a directed
+fixture rather than by adopting another whole board:
+`tests/fanout_tie_break.rs` routes the hand-written
+`tests/data/p8-fanout-tie.dsn` — four SMD pads on the corners of a square, so
+the two orthogonal neighbours of the first pad fanout reaches are at *exactly*
+equal squared distance, plus a blocking pad that makes the tie decide the routed
+output rather than mirror it — and requires byte-identity with the HEAD jar's own
+`-de/-do` answer, transcribed in `tests/data/p8-fanout-tie-jar.txt`. It is
+mutation-checked: removing the `.rev()` from `sorted_unconnected_targets` makes it
+fail with two extra vias and a `B.Cu` detour the jar does not have. See quirk
+#44's "port defect history" note and `docs/plan-8-handoff.md`'s §Errata.
+
 **What each ✅ in the table is worth.** Rungs (a) and (c) are exactly what they
 say: `batch_parity.rs` compares every `PassRecord` tuple against
 `batch.passes.jsonl` field by field, and the whole SES against `batch.ses` byte by

@@ -1,0 +1,71 @@
+# Fanout target tie-break — the HEAD jar's own answer on the directed fixture
+# fixture crates/fr-router/tests/data/p8-fanout-tie.dsn (1306 bytes)
+HEADER jar=freerouting-current-executable.jar size=63288652
+
+[jar-cli] cmd=java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -jar <HEAD jar> -de crates/fr-router/tests/data/p8-fanout-tie.dsn -do <out.ses>
+[jar-cli] exit=0
+[jar-cli] ses bytes=1156
+[jar-cli] ses|(session "p8-fanout-tie"
+[jar-cli] ses|  (base_design "p8-fanout-tie")
+[jar-cli] ses|  (placement
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (component "tie_footprint"
+[jar-cli] ses|      (place JP1 1500000 1500000 front 0)
+[jar-cli] ses|    )
+[jar-cli] ses|    (component "block_footprint"
+[jar-cli] ses|      (place BLK1 1500000 1300000 front 0)
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|  (was_is
+[jar-cli] ses|  )
+[jar-cli] ses|  (routes 
+[jar-cli] ses|    (resolution um 10)
+[jar-cli] ses|    (parser
+[jar-cli] ses|    )
+[jar-cli] ses|    (library_out 
+[jar-cli] ses|      (padstack VIA
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle F.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (shape
+[jar-cli] ses|          (circle B.Cu 60000 0 0)
+[jar-cli] ses|        )
+[jar-cli] ses|        (attach off)
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|    (network_out 
+[jar-cli] ses|      (net N1
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1300000 1500005
+[jar-cli] ses|            1700000 1500005
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1300000 1500005
+[jar-cli] ses|            1300000 1300000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1300000 1700000
+[jar-cli] ses|            1300000 1500005
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1700000 1500005
+[jar-cli] ses|            1700000 1300000
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|        (wire
+[jar-cli] ses|          (path F.Cu 2500
+[jar-cli] ses|            1700000 1700000
+[jar-cli] ses|            1700000 1500005
+[jar-cli] ses|          )
+[jar-cli] ses|        )
+[jar-cli] ses|      )
+[jar-cli] ses|    )
+[jar-cli] ses|  )
+[jar-cli] ses|)

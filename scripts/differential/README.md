@@ -1780,6 +1780,35 @@ methods with dozens of branches.
   `args` through unchanged to each side, or a per-driver default smoke run
   if none are given), and diffs stdout.
 
+## A/B-ing release binaries under `sccache` — read this first
+
+`.cargo/config.toml` sets `rustc-wrapper = sccache` (with `incremental = false`)
+for the whole workspace. **Measured on 2026-09-02:** editing one line of
+`crates/fr-router/src/board_ext/routing_board_ext.rs`, rebuilding with
+`cargo build -p freerouting --release`, and hashing the binary produced
+**`5a20dedd…` for both the edited and the unedited source** — while cargo
+reported `Compiling fr-router … Finished in 1.03s`. The same A/B run a second
+time, with a second textual change accompanying the edit, produced two
+different hashes; the debug/test path never showed it (`cargo test` saw the
+mutation immediately, every time). It has not been root-caused. Independently
+reproduced by a reviewer.
+
+The rule, for anything that compares two builds of this workspace:
+
+* **Verify the two binaries' hashes differ before trusting the comparison.**
+  `shasum` (or `cmp`) both, and if they match, make the second build's source
+  differ by more than the line under test — or drop the wrapper for that build:
+  `cargo build --config 'build.rustc-wrapper=""' …`.
+* **Run mutation checks through `cargo test`, not through a binary hash or a
+  binary's output.** A mutation check that says "the fixture still matches after
+  I removed the fix" may be reporting a stale binary, not a weak fixture — this
+  is exactly how the first draft of `crates/fr-router/tests/fanout_tie_break.rs`
+  was nearly abandoned as insensitive.
+* Every timing or byte-parity figure committed to this repo from a
+  release-binary A/B should say that its two hashes were checked. The
+  deadline-overshoot transcript
+  (`crates/fr-router/tests/data/deadline-overshoot.txt`) carries both.
+
 ## Running it
 
 Requirements:
