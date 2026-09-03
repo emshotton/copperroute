@@ -233,22 +233,82 @@ fn a_malformed_integer_scope_does_not_desync_its_caller() {
     );
 }
 
+/// fixed: T4 (#91) — replaces
+/// `read_scope_generic_returns_ok_true_when_truncated_inside_an_unknown_scope`.
+///
 /// `ScopeKeyword.readScope`'s own end-of-file check (ScopeKeyword.java:55-58) fires even when
-/// the file was truncated *inside* a nested, unrecognised scope that `skip_scope` could not
-/// close: `skip_scope` answers `Ok(false)` at end of file (mirroring Java's `false`, fix round
-/// 1), the caller discards that, and the very next `next_token()` call — now genuinely at end of
-/// file — is what makes the generic loop return `Ok(true)`. `ScopeKeyword::Pcb` dispatches
-/// straight to that generic loop (`Keyword.PCB_SCOPE` has no Java subclass), so it stands in for
-/// it here. See `docs/java-quirks.md` row 91: this is why a DSN file truncated mid-file reads as
-/// `Success` with a partial board, not a parse error.
+/// the file was truncated *inside* a nested, unrecognised scope that `skipScope` could not
+/// close: `skipScope` answers `false` at end of file (:32-33), the caller discards that, and the
+/// very next `nextToken()` call — now genuinely at end of file — is what makes the generic loop
+/// return `true`. So `DsnReader.readBoard` reports a truncated file as a **`Success`** carrying a
+/// partial board, indistinguishable from a complete read.
+///
+/// The `Ok(true)` stays: a caller may well want whatever routing data survived, and the roadmap's
+/// correction of the register's binary framing says the honest answer is a third state rather
+/// than a refusal. What changes is that the reader now *records* the truncation, and `read_board`
+/// answers `BoardReadResult::Partial` with the board **and** the diagnostic. `ScopeKeyword::Pcb`
+/// dispatches straight to the generic loop (`Keyword.PCB_SCOPE` has no Java subclass), so it
+/// stands in for it here.
 #[test]
-fn read_scope_generic_returns_ok_true_when_truncated_inside_an_unknown_scope() {
+fn a_truncation_inside_an_unknown_scope_reports_partial() {
     // `(foo 1 2` — an unrecognised nested scope keyword ("foo" is not a DSN keyword) whose body
     // is never closed before the input simply ends.
     let scanner = DsnScanner::new("(foo 1 2").expect("fits the buffer");
     let options = DsnReadOptions::default();
     let mut p = ReadScopeParameter::new(scanner, &options);
-    assert!(matches!(read_scope(ScopeKeyword::Pcb, &mut p), Ok(true)));
+    assert!(
+        matches!(read_scope(ScopeKeyword::Pcb, &mut p), Ok(true)),
+        "still Java's `true`: the surviving board is handed over, not withheld"
+    );
+    let truncation = p.truncation.as_deref().expect("the truncation is recorded");
+    assert!(
+        truncation.contains("(pcb)") && truncation.contains("end of file"),
+        "the diagnostic names the scope left open: {truncation}"
+    );
+
+    // A complete file records nothing, so the flag is evidence and not noise.
+    let scanner = DsnScanner::new("(foo 1 2))").expect("fits the buffer");
+    let mut complete = ReadScopeParameter::new(scanner, &options);
+    assert!(matches!(
+        read_scope(ScopeKeyword::Pcb, &mut complete),
+        Ok(true)
+    ));
+    assert_eq!(complete.truncation, None);
+}
+
+/// The whole-reader half of #91: `read_board` on a DSN truncated inside an unrecognised scope
+/// answers `Partial`, not `Success`.
+///
+/// The jar's answer for this input is `Success` with the same partial board — that is the bug.
+#[test]
+fn a_truncated_dsn_reads_as_partial_not_success() {
+    let text = "(pcb truncated.dsn\n  (parser\n    (string_quote \")\n  )\n  (resolution um \
+                10)\n  (unit um)\n  (structure\n    (layer F.Cu\n      (type signal)\n    )\n    \
+                (layer B.Cu\n      (type signal)\n    )\n    (boundary\n      (rect pcb 0 0 \
+                100000 50000)\n    )\n  )\n  (some_unknown_scope 1 2";
+    let options = DsnReadOptions::default();
+    let result = fr_dsn::read_board(text.as_bytes(), None, Some("truncated"), &options);
+    let fr_dsn::BoardReadResult::Partial {
+        board, diagnostic, ..
+    } = result
+    else {
+        panic!("a truncated DSN must not read as Success");
+    };
+    assert!(
+        board.is_some(),
+        "the board the file did contain is still handed over — this is not a refusal"
+    );
+    assert!(
+        diagnostic.contains("end of file"),
+        "diagnostic: {diagnostic}"
+    );
+
+    // The control: the same file, closed. `Success`, not `Partial`.
+    let closed = format!("{text})\n)\n");
+    assert!(matches!(
+        fr_dsn::read_board(closed.as_bytes(), None, Some("truncated"), &options),
+        fr_dsn::BoardReadResult::Success { .. }
+    ));
 }
 
 /// Direct pin of `skip_scope`'s own end-of-file answer (fix round 1: `Ok(false)`, not `Err`,

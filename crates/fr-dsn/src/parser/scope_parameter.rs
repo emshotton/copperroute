@@ -152,6 +152,11 @@ pub struct ReadScopeParameter<'a> {
     // exposed directly).
     /// `ReadScopeParameter.warnings`.
     pub warnings: Vec<String>,
+    /// Not a Java field. `Some(diagnostic)` when a scope reader hit end of file before the
+    /// bracket that would have closed the scope it was reading — see [`read_scope_generic`] and
+    /// register row 91 (fixed by Plan 9 Task 4). `DsnReader::read_board` turns it into
+    /// [`crate::BoardReadResult::Partial`].
+    pub truncation: Option<String>,
     /// `ReadScopeParameter.idGenerator` (ReadScopeParameter.java:30) — Java's nullable
     /// `IdGenerator`, defaulted to a fresh `ItemIdGenerator` by `DsnReader.readBoard`
     /// (DsnReader.java:73-75) and read exactly once, by `Structure.createBoard`
@@ -191,6 +196,7 @@ impl<'a> ReadScopeParameter<'a> {
             resolution: 100,
             snap_angle: AngleRestriction::FortyFiveDegree,
             warnings: Vec::new(),
+            truncation: None,
             id_generator: ItemIdGenerator::new(),
             options,
         }
@@ -288,12 +294,37 @@ pub fn skip_scope(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
 /// Tracks only "was the previous token `(`" rather than the previous token's full value —
 /// Java's `prevToken` is compared exactly once, against `Keyword.OPEN_BRACKET`
 /// (ScopeKeyword.java:59), so that is everything the loop needs to remember.
-fn read_scope_generic(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
+///
+/// `scope` names the scope being read; it is only used for the truncation diagnostic below.
+//
+// Java bug: (#91) `ScopeKeyword.skipScope` answers `false` at end of file (:32-33), every caller
+// discards that boolean, and this loop's own end-of-file check then returns **`true`** (:55-58)
+// — so a DSN file truncated in the middle of an unrecognised scope is reported by
+// `DsnReader.readBoard` as a `Success` carrying a partial board, indistinguishable from a
+// complete read.
+//
+// fixed: T4 (#91) — the `true` stays (a caller may well want whatever routing data survived, and
+// the roadmap's correction of the register's binary framing says so explicitly), but the read no
+// longer *claims* to be complete: the truncation is recorded on `ReadScopeParameter` and
+// `DsnReader::read_board` answers `BoardReadResult::Partial` with the board **and** the
+// diagnostic. Reaching this branch is itself the evidence: a well-formed scope ends on the
+// `Token::Close` below, never here.
+fn read_scope_generic(
+    p: &mut ReadScopeParameter<'_>,
+    scope: ScopeKeyword,
+) -> Result<bool, DsnError> {
     let mut prev_was_open = false;
     loop {
         let token = p.scanner.next_token()?;
         let Some(token) = token else {
             // End of file (ScopeKeyword.java:55-57).
+            if p.truncation.is_none() {
+                p.truncation = Some(format!(
+                    "unexpected end of file inside the ({}) scope: its closing bracket is \
+                     missing, so the board is only what the file held before the truncation",
+                    scope.name()
+                ));
+            }
             return Ok(true);
         };
         if token == Token::Close {
@@ -341,7 +372,7 @@ fn read_scope_generic(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> 
 /// `Placement`-specific.
 pub fn read_scope(scope: ScopeKeyword, p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     match scope {
-        ScopeKeyword::Pcb | ScopeKeyword::Placement => read_scope_generic(p),
+        ScopeKeyword::Pcb | ScopeKeyword::Placement => read_scope_generic(p, scope),
         ScopeKeyword::Structure => structure::read_structure_scope(p),
         ScopeKeyword::Plane => structure::read_plane_scope(p),
         ScopeKeyword::Network => network::read_network_scope(p),

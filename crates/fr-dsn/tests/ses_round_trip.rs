@@ -50,6 +50,11 @@ fn load_board(name: &str) -> (Board, CoordinateTransform) {
             coordinate_transform
                 .unwrap_or_else(|| panic!("{name} produced no coordinate transform")),
         ),
+        // fixed: T4 (#91) — a committed fixture is never truncated; if one becomes so, the
+        // reader now says which scope was left open instead of quietly handing back half a board.
+        BoardReadResult::Partial { diagnostic, .. } => {
+            panic!("{name}: truncated: {diagnostic}")
+        }
         BoardReadResult::ParseError { location, detail } => {
             panic!("{name}: parse error at {location}: {detail}")
         }
