@@ -447,16 +447,21 @@ impl<'a> MazeSearchEngine<'a> {
                     already_checked: false,
                     ripup_cost: 0,
                 };
-                self.push(new_list_element, board);
-                // Java bug: `MazeSearchEngine.init`
+                // fixed: T8 (#178). `:1079-1080` is `mazeExpansionList.add(newListElement);` on
+                // one line and `startOk = true;` on the next — the `boolean` the overridden `add`
+                // (`:86-124`) just answered is discarded. Under a fanout control whose escape
+                // window refuses every seeded element, `init` therefore succeeded with an
+                // **empty** queue and `getInstance` handed back an engine whose `findConnection`
+                // can only answer `null`: the caller pays for a whole engine construction, a
+                // `reduceTraceShapesAtTiePins` pass and a full round of room completion to learn
+                // that the queue was empty.
                 //
-                // `:1080` sets `startOk = true` **unconditionally**, ignoring the `boolean` the
-                // overridden `add` (`:86-124`) just answered. Under a fanout control whose escape
-                // window refuses every seeded element, `init` therefore succeeds with an **empty**
-                // queue and `getInstance` hands back an engine whose `findConnection` can only
-                // answer `null`. `docs/java-quirks.md` #178, JVM-pinned by `P6T11Probe` mode
-                // `fanout` (`instance=ok`, `queue n=0`).
-                start_ok = true;
+                // `startOk` is now exactly what `add` answered on at least one element, which is
+                // what "initialisation failed" means. Java's own `:1083-1102` reads `startOk` for
+                // precisely this decision.
+                if self.push(new_list_element, board) {
+                    start_ok = true;
+                }
             }
         }
         // :1083-1102.

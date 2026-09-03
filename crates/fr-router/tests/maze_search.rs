@@ -801,7 +801,7 @@ fn find_connection_answers_none_when_the_queue_is_empty() {
 // The fanout window on `init`'s own `add` (:84-125 through :1079)
 // =================================================================================================
 
-/// Probe mode `fanout`:
+/// Probe mode `fanout`, and quirk **#178**, **fixed: T8**:
 /// ```text
 /// resolution=0.03937007874015748
 /// maxEscapeLengthMm=null
@@ -809,10 +809,20 @@ fn find_connection_answers_none_when_the_queue_is_empty() {
 /// queue n=0
 /// ```
 ///
-/// The queue is **empty** and `getInstance` still hands back an engine: `:1079-1080` ignores
-/// `add`'s answer and sets `startOk = true` regardless. Quirk #178.
+/// The jar's queue is **empty** and its `getInstance` still hands back an engine: `:1079-1080`
+/// is `mazeExpansionList.add(newListElement);` on one line and `startOk = true;` on the next, so
+/// the `boolean` the overridden `add` (`:86-124`) just answered is discarded. The caller then
+/// pays for a whole engine construction, a `reduceTraceShapesAtTiePins` pass and a full round of
+/// room completion to learn that the queue was empty and `findConnection` can only answer `null`.
+///
+/// `startOk` is now exactly what `add` answered on at least one element, so a fanout window too
+/// tight for any start element makes `getInstance` answer `None` - which **is** what
+/// "initialisation failed" means, and is what Java's own `:1083-1102` reads `startOk` for.
+///
+/// **KNOWN DIVERGENCE from the jar, authorized by #178**: the jar's `instance=ok` with `queue
+/// n=0` is kept above, beside the port's `None`.
 #[test]
-fn the_fanout_gate_refuses_an_element_beyond_the_max_escape_length() {
+fn an_empty_queue_makes_get_instance_answer_none() {
     let mut board = probe_board();
     let mut engine = probe_engine(&mut board, 1);
     let mut ctrl = probe_control(&board, 1);
@@ -829,9 +839,12 @@ fn the_fanout_gate_refuses_an_element_beyond_the_max_escape_length() {
         &mut board,
         &ctrl,
         &|| never.check(),
-    )
-    .expect("Java answers a non-null engine even with an empty queue");
-    assert_eq!(maze.queue.len(), 0);
+    );
+    assert!(
+        maze.is_none(),
+        "every seeded element was refused by the escape window, so initialisation failed - \
+         the jar answers an engine here whose queue is empty (`instance=ok`, `queue n=0`)"
+    );
 }
 
 // =================================================================================================
