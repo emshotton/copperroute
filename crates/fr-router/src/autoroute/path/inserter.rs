@@ -358,6 +358,11 @@ impl FoundConnectionInserter {
                 None,
                 stop,
             )?;
+            // T17: #193's fourth mutation source. It runs *after* the maze search of this
+            // connection, so a fire it explains belongs to the **next** connection's search.
+            crate::autoroute::instrument::note_mutation(
+                crate::autoroute::instrument::Mutation::ForcedTraceInsert,
+            );
             // `okPoint != insertPolyline.lastCorner()` is Java's reference test; the port's is by
             // value, which agrees on every answer this method can produce — see
             // `RoutingBoardExt::insert_forced_trace_segment`'s "Java's `==` on the returned

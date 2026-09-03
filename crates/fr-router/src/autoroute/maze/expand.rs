@@ -491,7 +491,20 @@ impl MazeSearchEngine<'_> {
             // stale during routing". `treeEntryNo` is a `usize` here, so Java's `< 0` arm is
             // unrepresentable.
             let tree_shape_count = board.item_tree_shape_count(item, self.search_tree);
+            // T17: the denominator — a zero fire count only means something if the test ran.
+            crate::autoroute::instrument::record_visit(
+                crate::autoroute::instrument::Guard::G1aTreeEntryOutOfRange,
+            );
             if tree_entry_no >= tree_shape_count {
+                // T17: #193's G1a. `recoverable` is "the item still has shapes, so a re-derived
+                // index would name one" — a shape count of 0 means the item has left the tree.
+                crate::autoroute::instrument::record_guard(
+                    crate::autoroute::instrument::Guard::G1aTreeEntryOutOfRange,
+                    u64::from(item.0),
+                    tree_entry_no,
+                    tree_shape_count,
+                    tree_shape_count > 0,
+                );
                 continue;
             }
             // :660-668.
@@ -509,9 +522,23 @@ impl MazeSearchEngine<'_> {
                         )
                     })
             };
+            // T17: the denominator for G1b.
+            crate::autoroute::instrument::record_visit(
+                crate::autoroute::instrument::Guard::G1bNullConnectionShape,
+            );
             let Some(target_shape) = target_shape else {
                 // "Item's tree shape index out of range (can happen when traces are modified
                 // during routing)".
+                // T17: #193's G1b. The index passed G1a's bound, so the item *has* this many
+                // shapes; the refusal is `getTraceConnectionShape`'s own, which is a different
+                // failure and is never recoverable by re-deriving the index.
+                crate::autoroute::instrument::record_guard(
+                    crate::autoroute::instrument::Guard::G1bNullConnectionShape,
+                    u64::from(item.0),
+                    tree_entry_no,
+                    tree_shape_count,
+                    false,
+                );
                 continue;
             };
             // :669.

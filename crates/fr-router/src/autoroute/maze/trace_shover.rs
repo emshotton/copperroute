@@ -160,7 +160,21 @@ impl MazeTraceShover {
         // is at least 3 for every constructed trace (PolylineTrace.java:56-57), so the
         // subtraction cannot wrap.
         let line_count = trace_polyline.lines().len();
+        // T17: the denominator for G3.
+        crate::autoroute::instrument::record_visit(
+            crate::autoroute::instrument::Guard::G3TraceCornerOutOfRange,
+        );
         if line_count < 2 || trace_corner_no >= line_count - 2 {
+            // T17: #193's G3. `available` is the largest corner the polyline as it now stands
+            // would admit; a trace with fewer than two lines admits none, and that is the one
+            // shape from which nothing can be re-derived.
+            crate::autoroute::instrument::record_guard(
+                crate::autoroute::instrument::Guard::G3TraceCornerOutOfRange,
+                u64::from(obstacle_trace_id.0),
+                trace_corner_no,
+                line_count.saturating_sub(2),
+                line_count >= 2,
+            );
             return false;
         }
         // :68. "The side of the trace line seen from the doors to expand. Used to determine, if a

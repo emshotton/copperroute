@@ -19,6 +19,9 @@
 pub mod attempt;
 pub mod drill;
 pub mod expansion;
+// T17: the #193 stale tree-index instrumentation. Read-only, off unless `P9T17_STALE` is set;
+// Java has no counterpart.
+pub mod instrument;
 pub mod item_info;
 pub mod maze;
 pub mod path;
