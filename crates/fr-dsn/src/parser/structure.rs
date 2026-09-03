@@ -260,7 +260,7 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
                     let _ = read_plane_scope(p)?;
                 }
                 Token::Kw(Keyword::AutorouteSettings) => {
-                    // Java bug: Structure.readScope (Structure.java:1006-1012) puts the
+                    // Java bug: (#95) Structure.readScope (Structure.java:1006-1012) puts the
                     // `AutorouteSettings.readScope` call **inside** the
                     // `if (scopeParameter.layerStructure == null)` guard that every sibling
                     // branch uses only to *create* the layer structure. Any `keepout`,
@@ -269,14 +269,22 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
                     // `autoroute_settings` scope is neither read nor skipped: its body is
                     // re-tokenised by this loop (each `(autoroute …)`/`(via_costs …)` falls to
                     // `skipScope`) and its closing bracket ends the `structure` scope one scope
-                    // early. Reproduced verbatim — see `docs/java-quirks.md`.
-                    if p.layer_structure.is_none() {
-                        p.layer_structure = Some(DsnLayerStructure::new(info.layer_info.clone()));
-                        let layer_structure =
-                            p.layer_structure.clone().expect("just assigned above");
-                        p.autoroute_settings =
-                            read_autoroute_settings_scope(&mut p.scanner, &layer_structure)?;
-                    }
+                    // early. See `docs/java-quirks.md` row 95.
+                    //
+                    // fixed: T4 (#95) — the `AutorouteSettings.readScope` call is hoisted out of
+                    // the guard, which now does only what its four sibling branches use it for:
+                    // create the DSN layer structure on demand. `ensure_layer_structure` is that
+                    // guard, verbatim; the read then happens on every `(autoroute_settings …)`
+                    // scope, whatever came before it in the same `structure` scope. Exporters
+                    // conventionally write keepouts first, so this is the branch that decides
+                    // whether a real file's router settings reach the board at all.
+                    ensure_layer_structure(p, &info);
+                    let layer_structure = p
+                        .layer_structure
+                        .clone()
+                        .expect("ensure_layer_structure assigned it");
+                    p.autoroute_settings =
+                        read_autoroute_settings_scope(&mut p.scanner, &layer_structure)?;
                 }
                 Token::Kw(Keyword::Control) => {
                     read_ok = read_control_scope(p)?;
