@@ -794,6 +794,11 @@ impl<'a> MazeSearchEngine<'a> {
                 }
                 board.trees = trees;
                 board.items.insert(current_contact, Item::Trace(trace));
+                // T17: #193's prime suspect — the one board write inside `init`, and the only one
+                // that shortens a foreign trace's shape array under rooms that already exist.
+                crate::autoroute::instrument::note_mutation(
+                    crate::autoroute::instrument::Mutation::TiePinReduction,
+                );
             }
         }
     }
