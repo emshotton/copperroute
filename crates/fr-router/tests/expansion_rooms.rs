@@ -65,31 +65,174 @@ fn room_ids_are_the_engine_counter_and_items_are_not() {
     assert_eq!((a, b), (RoomId(0), RoomId(1)));
 }
 
+/// Quirk #156, **fixed: T8** — and the arithmetic that made it necessary, kept as
+/// `ObstacleExpansionRoom::java_id` so the aliasing can still be pinned.
+///
+/// `ObstacleExpansionRoom.java:49-51` is `(item.getId() << 10) | indexInItem` — an **or**, not a
+/// sum, so an index of 1024 or more spills into the item's bits, and the shift overflows a Java
+/// `int` at item id 2^21. The id reaches `ExpansionDoor.getId`, which is a sort key of
+/// `MazeListElement`, so an aliased id is a routing decision taken on a collision.
 #[test]
-fn obstacle_room_id_aliases_above_1023_shapes() {
-    // ObstacleExpansionRoom.java:49-51: `(item.getId() << 10) | indexInItem` — an **or**, not a
-    // sum, so an index of 1024 or more spills into the item's bits (quirk #156).
+fn the_java_obstacle_room_id_aliases_above_1023_shapes() {
     assert_eq!(
-        ObstacleExpansionRoom::id(ItemId(1), 1024),
-        ObstacleExpansionRoom::id(ItemId(1), 0),
+        ObstacleExpansionRoom::java_id(ItemId(1), 1024),
+        ObstacleExpansionRoom::java_id(ItemId(1), 0),
         "index 1024 sets exactly the bit item 1 already owns, so it aliases index 0"
     );
     assert_eq!(
-        ObstacleExpansionRoom::id(ItemId(1), 2048),
-        ObstacleExpansionRoom::id(ItemId(3), 0),
+        ObstacleExpansionRoom::java_id(ItemId(1), 2048),
+        ObstacleExpansionRoom::java_id(ItemId(3), 0),
         "index 2048 turns item 1 into item 3"
     );
-    // The brief's literal (`id(1, 1024) == id(2, 0)`) is arithmetically false: `1<<10 | 1024`
+    // The plan's literal (`id(1, 1024) == id(2, 0)`) is arithmetically false: `1<<10 | 1024`
     // is 1024 and `2<<10` is 2048. `|` never carries.
     assert_ne!(
-        ObstacleExpansionRoom::id(ItemId(1), 1024),
-        ObstacleExpansionRoom::id(ItemId(2), 0)
+        ObstacleExpansionRoom::java_id(ItemId(1), 1024),
+        ObstacleExpansionRoom::java_id(ItemId(2), 0)
+    );
+    // `docs/plan-9-prep/fixtures/task-8/expected-outcomes.md`'s first witness, verbatim.
+    assert_eq!(ObstacleExpansionRoom::java_id(ItemId(1), 1024), 1024);
+    assert_eq!(ObstacleExpansionRoom::java_id(ItemId(0), 1024), 1024);
+    // **Its second witness is arithmetically wrong and is corrected here.** The bank writes
+    // `id(5, 1024) = 5120 | 1024 = 6144`, but 5120 is 4096 + 1024, so bit 10 is *already* set and
+    // the `|` changes nothing: `id(5, 1024) == 5120 == id(5, 0)`. The witness the bank was
+    // reaching for is one item lower — 4096 has no bit 10, so setting it carries the room into
+    // item 5's number.
+    assert_eq!(ObstacleExpansionRoom::java_id(ItemId(5), 1024), 5120);
+    assert_eq!(
+        ObstacleExpansionRoom::java_id(ItemId(4), 1024),
+        ObstacleExpansionRoom::java_id(ItemId(5), 0),
+        "item 4's shape 1024 and item 5's shape 0 share id 5120"
     );
     // The other half of the hazard: the shift overflows a Java `int` at item id 2^21.
-    assert!(ObstacleExpansionRoom::id(ItemId(1 << 21), 0) < 0);
+    assert!(ObstacleExpansionRoom::java_id(ItemId(1 << 21), 0) < 0);
     assert_eq!(
-        ObstacleExpansionRoom::id(ItemId(1 << 22), 0),
-        ObstacleExpansionRoom::id(ItemId(0), 0)
+        ObstacleExpansionRoom::java_id(ItemId(1 << 22), 0),
+        ObstacleExpansionRoom::java_id(ItemId(0), 0),
+        "id(item, index) == id(item + 2^22, index) for every item and index"
+    );
+}
+
+/// Quirk **#156 + #167 + #158**, **fixed: T8** — the binding property test.
+///
+/// Three ids that were hashes over mutable state become one thing: a **per-engine counter**, as
+/// `CompleteFreeSpaceExpansionRoom`'s already was. The counter is shared by all four kinds of
+/// expandable object the engine owns, so the ids are injective *across* the kinds and not only
+/// within each.
+///
+/// The domain includes the two witnesses a naive small-input test misses — `indexInItem >= 1024`
+/// and `itemId >= 2^21` — because under Java's formula both are silently correct until they are
+/// not.
+#[test]
+fn every_expandable_id_is_stable_and_injective() {
+    use std::collections::BTreeSet;
+
+    let mut board = fixture_board(SPLITTER);
+    let mut engine = fr_router::autoroute::maze::AutorouteEngine::new(&mut board, 1, false);
+    let mut ids: Vec<i32> = Vec::new();
+
+    // The page grid's ids come first — they are drawn when the engine is built.
+    let array = engine.drill_pages();
+    let pages: Vec<_> = (0..array.row_count())
+        .flat_map(|j| (0..array.column_count()).map(move |i| (i, j)))
+        .map(|(i, j)| array.page_id(i, j))
+        .collect();
+    assert!(!pages.is_empty(), "the probe board has a page grid");
+    for page in &pages {
+        ids.push(engine.drill_pages().page(*page).get_id());
+    }
+
+    // #156: obstacle rooms, over a domain that includes both of Java's aliasing witnesses.
+    for (item, index) in [
+        (ItemId(1), 0usize),
+        (ItemId(1), 1024),
+        (ItemId(0), 1024),
+        (ItemId(5), 1024),
+        (ItemId(6), 0),
+        (ItemId(1 << 21), 0),
+        (ItemId(1 << 22), 0),
+    ] {
+        let room = engine
+            .rooms
+            .new_obstacle_room(&mut board, item, index, engine.tree);
+        ids.push(engine.rooms.obstacle_room(room).unwrap().get_id());
+    }
+    // Under Java's formula this domain collapses: seven rooms, four distinct ids.
+    let java_ids: BTreeSet<i32> = [
+        (ItemId(1), 0usize),
+        (ItemId(1), 1024),
+        (ItemId(0), 1024),
+        (ItemId(5), 1024),
+        (ItemId(6), 0),
+        (ItemId(1 << 21), 0),
+        (ItemId(1 << 22), 0),
+    ]
+    .into_iter()
+    .map(|(item, index)| ObstacleExpansionRoom::java_id(item, index))
+    .collect();
+    assert_eq!(java_ids.len(), 5, "Java gives these seven rooms five ids");
+
+    // #158: incomplete rooms, including the **whole-plane** room, whose shape is `None` and whose
+    // `getId` Java NPEs on.
+    let whole_plane = engine
+        .rooms
+        .new_incomplete_room(None, 0, Some(boxed(0, 0, 10, 10)));
+    ids.push(engine.rooms.incomplete_room(whole_plane).unwrap().get_id());
+    let shaped =
+        engine
+            .rooms
+            .new_incomplete_room(Some(boxed(0, 0, 10, 10)), 0, Some(boxed(0, 0, 10, 10)));
+    ids.push(engine.rooms.incomplete_room(shaped).unwrap().get_id());
+
+    // #165's own space: complete rooms draw from the same counter.
+    let id_no = engine.rooms.next_room_id_no();
+    let complete = engine
+        .rooms
+        .new_complete_room(Some(boxed(0, 0, 10, 10)), 0, id_no);
+    ids.push(engine.rooms.complete_room(complete).unwrap().get_id());
+
+    // **Injective.**
+    let distinct: BTreeSet<i32> = ids.iter().copied().collect();
+    assert_eq!(
+        distinct.len(),
+        ids.len(),
+        "every expandable object the engine owns has its own id: {ids:?}"
+    );
+
+    // **Stable** — nothing about the object moves its id.
+    //
+    // #158: `set_shape` used to move an incomplete room's id, because Java hashes the shape.
+    let before = engine.rooms.incomplete_room(shaped).unwrap().get_id();
+    engine
+        .rooms
+        .incomplete_rooms
+        .get_mut(shaped.0)
+        .unwrap()
+        .set_shape(Some(boxed(100, 100, 200, 200)));
+    assert_eq!(
+        engine.rooms.incomplete_room(shaped).unwrap().get_id(),
+        before,
+        "an object's id must not change while it is an element of an ordered collection"
+    );
+
+    // #167: `getDrills` writes `netNumber`, which Java's `DrillPage.getId` hashes.
+    let page = pages[0];
+    // `getDrills:65` writes `netNumber = engine.getNetNumber()`, so the engine has to be on a net
+    // for the write to be a change — which is exactly the production sequence.
+    engine.init_connection(&mut board, 1, None);
+    let before = engine.drill_pages().page(page).get_id();
+    let java_before = engine.drill_pages().page(page).java_id();
+    let never = || false;
+    let _ = engine.drill_page_drills(&mut board, page, false, &never);
+    assert_eq!(
+        engine.drill_pages().page(page).get_id(),
+        before,
+        "recomputing a page must not change its identity"
+    );
+    assert_ne!(
+        engine.drill_pages().page(page).java_id(),
+        java_before,
+        "Java's hash does move — this is the defect, kept pinned"
     );
 }
 
@@ -534,10 +677,13 @@ fn an_obstacle_room_reads_its_shape_once_and_its_layer_every_time() {
         store.get_object(RoomRef::Obstacle(id)),
         Some(TreeObject::Item(item))
     );
-    // getId() is the aliasing hash, and the door id folds two of those together.
-    assert_eq!(
+    // getId() was Java's aliasing hash; fixed: T8 (#156) it is the engine's own counter, and
+    // this room is the first object this store handed one to.
+    assert_eq!(store.room_id_no(RoomRef::Obstacle(id)), Some(1));
+    assert_ne!(
         store.room_id_no(RoomRef::Obstacle(id)),
-        Some(ObstacleExpansionRoom::id(item, 0))
+        Some(ObstacleExpansionRoom::java_id(item, 0)),
+        "and it is no longer the hash — the hash is what aliased"
     );
     // `allDoorsCalculated` is a plain latch (:141-148).
     assert!(!store.obstacle_room(id).unwrap().all_doors_calculated());

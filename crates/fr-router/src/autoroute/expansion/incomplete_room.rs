@@ -19,6 +19,9 @@ pub struct IncompleteFreeSpaceExpansionRoom {
     /// `private TileShape containedShape` (:11): "a shape which should be contained in the
     /// completed shape". Nullable in Java, like the inherited shape.
     contained_shape: Option<TileShape>,
+    /// The engine's own id for this room — fixed: T8 (#158), see [`Self::get_id`]. No Java
+    /// field: Java hashes the room's own (mutable, nullable) shape on every call.
+    id_no: i32,
 }
 
 impl IncompleteFreeSpaceExpansionRoom {
@@ -32,7 +35,19 @@ impl IncompleteFreeSpaceExpansionRoom {
         IncompleteFreeSpaceExpansionRoom {
             base: FreeSpaceExpansionRoom::new(shape, layer),
             contained_shape,
+            id_no: 0,
         }
+    }
+
+    /// Give this room the engine's own id — fixed: T8 (#158).
+    ///
+    /// `ExpansionRoomStore::new_incomplete_room` and its unlisted sibling call this as they put
+    /// the room in the arena, which is the moment the room becomes something the engine can name.
+    /// A room `ShapeSearchTree::complete_shape` builds and hands back as a *candidate* never
+    /// reaches the arena and keeps the placeholder `0`; nothing asks such a room for its id, and
+    /// [`Self::get_id`] says so.
+    pub fn set_id_no(&mut self, id_no: i32) {
+        self.id_no = id_no;
     }
 
     /// Port of `getContainedShape` (IncompleteFreeSpaceExpansionRoom.java:23-25).
@@ -55,38 +70,41 @@ impl IncompleteFreeSpaceExpansionRoom {
     /// Port of `getId` (IncompleteFreeSpaceExpansionRoom.java:37-41):
     /// `31 * getShape().getId() + getLayer()`, a "stable hash of shape and layer".
     ///
-    /// # Two hazards, both reproduced
+    /// fixed: T8 (#158). It is the engine's own counter now, for two reasons Java's formula
+    /// cannot answer:
     ///
-    /// * **Hazard C** (plan-6 ruling 4): the shape is *mutable*
-    ///   ([`FreeSpaceExpansionRoom::set_shape`], `:70`), so this id changes under any sorted
-    ///   container holding the room. Java has the same defect and the port does not fix it —
-    ///   the id reaches [`super::ExpansionDoor::get_id`], which is a sort key of
-    ///   `MazeListElement` (Task 8).
+    /// * **The shape is mutable.** [`FreeSpaceExpansionRoom::set_shape`] (`:70`) replaces it, and
+    ///   `AutorouteEngine.completeExpansionRoom` calls it — so the id *moved* under any sorted
+    ///   container holding the room, and the id reaches [`super::ExpansionDoor::get_id`], which
+    ///   is a sort key of `MazeListElement`. An object's id must not change while it is an
+    ///   element of an ordered collection; a counter cannot.
     /// * **The null shape NPEs.** Java calls `getShape().getId()` with no guard, so an
-    ///   incomplete room built with a null shape — which
-    ///   `ExpansionDrill.calculateExpansionRooms` does at
-    ///   `autoroute/drill/ExpansionDrill.java:77` — throws a `NullPointerException` here. That
-    ///   is a crash in both languages, so the port panics rather than inventing a value
-    ///   (`docs/java-quirks.md` #158). It is unreachable today: nothing asks a drill's seed room
-    ///   for its id before `completeExpansionRoom` replaces it.
+    ///   incomplete room built with a null shape — the **whole-plane** room, which
+    ///   `ExpansionDrill.calculateExpansionRooms` supplies at
+    ///   `autoroute/drill/ExpansionDrill.java:77` — throws a `NullPointerException` here. The
+    ///   port used to panic with Java's message; a counter has nothing to dereference, so the
+    ///   whole-plane room has an id like every other room.
     ///
-    /// The arithmetic is Java `int`, so it wraps.
+    /// A room that never reached the arena — a *candidate* `ShapeSearchTree::complete_shape`
+    /// built and handed back — has the placeholder `0` and is not an object the engine can name.
+    pub fn get_id(&self) -> i32 {
+        self.id_no
+    }
+
+    /// **Java's** `getId` arithmetic, kept so the hazard #158 fixed can be pinned. Nothing in the
+    /// port reads it, and it still panics on the whole-plane room exactly where Java NPEs.
     ///
     /// # Panics
     /// If the room's shape is `None` — Java's `NullPointerException` at `:40`.
-    pub fn get_id(&self) -> i32 {
+    pub fn java_id(&self) -> i32 {
         let shape = self.base.get_shape().unwrap_or_else(|| {
-            // Java bug: IncompleteFreeSpaceExpansionRoom.getId dereferences a shape its own
-            // constructor documents as nullable (:14-16, and ExpansionDrill.java:77 supplies a
-            // null). Java throws NullPointerException; so does this.
             panic!(
                 "IncompleteFreeSpaceExpansionRoom.getId: the room has no shape — Java NPEs here \
                  too (IncompleteFreeSpaceExpansionRoom.java:40)"
             )
         });
         // `getLayer()` is a Java `int`, so the port's `usize` truncates rather than saturating:
-        // `as i32` *is* Java's arithmetic. The two can only differ above `i32::MAX` layers, and
-        // a board has fewer than 32.
+        // `as i32` *is* Java's arithmetic.
         shape
             .get_id()
             .wrapping_mul(31)
@@ -151,28 +169,50 @@ mod tests {
     }
 
     #[test]
-    fn the_id_is_the_shape_hash_times_31_plus_the_layer() {
+    fn the_id_is_the_engine_counter_and_javas_is_the_shape_hash() {
+        // fixed: T8 (#158). Java's `getId` is `31 * getShape().getId() + getLayer()`, which
+        // `java_id` keeps; the port's is the id the store handed the room.
         let shape = boxed(1, 2, 3, 4);
-        let room = IncompleteFreeSpaceExpansionRoom::new(Some(shape.clone()), 5, None);
+        let mut room = IncompleteFreeSpaceExpansionRoom::new(Some(shape.clone()), 5, None);
         assert_eq!(
-            room.get_id(),
+            room.java_id(),
             shape.get_id().wrapping_mul(31).wrapping_add(5)
         );
+        assert_eq!(room.get_id(), 0, "a candidate that never reached the arena");
+        room.set_id_no(7);
+        assert_eq!(room.get_id(), 7);
     }
 
     #[test]
-    fn the_id_moves_when_the_shape_is_replaced() {
-        // Hazard C: the sort key mutates under the container. Reproduced, not fixed.
+    fn the_id_no_longer_moves_when_the_shape_is_replaced() {
+        // Hazard C, **fixed: T8 (#158)**: the sort key used to mutate under the container, because
+        // `FreeSpaceExpansionRoom::set_shape` replaces the very shape Java hashes — and
+        // `AutorouteEngine.completeExpansionRoom` calls it. An object's id must not change while
+        // it is an element of an ordered collection.
         let mut room = IncompleteFreeSpaceExpansionRoom::new(Some(boxed(0, 0, 1, 1)), 0, None);
+        room.set_id_no(3);
         let before = room.get_id();
+        let java_before = room.java_id();
         room.set_shape(Some(boxed(0, 0, 2, 2)));
-        assert_ne!(room.get_id(), before);
+        assert_eq!(room.get_id(), before);
+        assert_ne!(room.java_id(), java_before, "Java's does move — the defect");
+    }
+
+    #[test]
+    fn the_whole_plane_room_has_an_id() {
+        // fixed: T8 (#158). Java calls `getShape().getId()` with no guard, so the whole-plane
+        // room — the one `ExpansionDrill.calculateExpansionRooms` builds at
+        // `autoroute/drill/ExpansionDrill.java:77` — throws a `NullPointerException` here. A
+        // counter has nothing to dereference.
+        let mut room = IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(0, 0, 1, 1)));
+        room.set_id_no(11);
+        assert_eq!(room.get_id(), 11);
     }
 
     #[test]
     #[should_panic(expected = "the room has no shape")]
-    fn the_id_of_a_whole_plane_room_panics_like_javas_npe() {
-        IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(0, 0, 1, 1))).get_id();
+    fn javas_id_of_a_whole_plane_room_still_npes() {
+        IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(0, 0, 1, 1))).java_id();
     }
 
     #[test]

@@ -314,14 +314,12 @@ impl ExpansionRoomStore {
         layer: usize,
         contained_shape: Option<TileShape>,
     ) -> IncompleteRoomId {
-        IncompleteRoomId(
-            self.incomplete_rooms
-                .insert(IncompleteFreeSpaceExpansionRoom::new(
-                    shape,
-                    layer,
-                    contained_shape,
-                )),
-        )
+        // fixed: T8 (#158): the arena is where a room becomes something the engine can name, so
+        // it is where the engine's own id is drawn — one counter for every expandable object,
+        // which is what makes the ids injective across the four kinds.
+        let mut room = IncompleteFreeSpaceExpansionRoom::new(shape, layer, contained_shape);
+        room.set_id_no(self.next_room_id_no());
+        IncompleteRoomId(self.incomplete_rooms.insert(room))
     }
 
     /// Whether `AutorouteEngine.incompleteExpansionRooms` (`:71`) is non-null — see the field.
@@ -344,7 +342,9 @@ impl ExpansionRoomStore {
         index_in_item: usize,
         tree: TreeId,
     ) -> ObstacleRoomId {
-        let room = ObstacleExpansionRoom::new(board, item, index_in_item, tree);
+        // fixed: T8 (#156): the engine's own counter, not `(itemId << 10) | indexInItem`.
+        let id_no = self.next_room_id_no();
+        let room = ObstacleExpansionRoom::new(board, item, index_in_item, tree, id_no);
         ObstacleRoomId(self.obstacle_rooms.insert(room))
     }
 

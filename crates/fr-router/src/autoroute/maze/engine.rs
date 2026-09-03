@@ -181,11 +181,13 @@ impl AutorouteEngine {
             .get_default_via_diameter(&board.library.padstacks);
         let max_drill_page_width = ((5.0 * default_via_diameter) as i32).max(10_000);
 
-        // AutorouteEngine.java:91.
-        let drill_page_array = DrillPageArray::new(board, max_drill_page_width);
+        // AutorouteEngine.java:91. fixed: T8 (#167) — the store is built first so the page grid
+        // can draw its ids from the same counter every other expandable object uses.
+        let mut rooms = ExpansionRoomStore::new();
+        let drill_page_array = DrillPageArray::new(board, max_drill_page_width, &mut rooms);
 
         AutorouteEngine {
-            rooms: ExpansionRoomStore::new(),
+            rooms,
             complete_expansion_rooms: Vec::new(),
             connections: Arena::new(),
             tree,

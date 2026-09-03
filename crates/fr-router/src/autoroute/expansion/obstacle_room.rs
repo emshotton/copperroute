@@ -19,6 +19,9 @@ pub struct ObstacleExpansionRoom {
     item: ItemId,
     /// `private final int indexInItem` (:17) — the index of this room's shape within the item.
     index_in_item: usize,
+    /// The engine's own id for this room — fixed: T8 (#156), see [`Self::get_id`]. No Java field:
+    /// Java computes its id from `item` and `indexInItem` on every call, which is the defect.
+    id_no: i32,
     /// `private final TileShape shape` (:18), computed **once** at construction from
     /// `item.getTreeShape(shapeTree, indexInItem)` (`:29`). `None` is Java's null tree shape —
     /// a drill layer with no pad and no synthesised hole obstacle
@@ -37,15 +40,21 @@ impl ObstacleExpansionRoom {
     /// `&mut` variant — **never** `item_tree_shape_ref` (plan-6 ruling 10): the `&self` twin
     /// cannot perform `clearDerivedData()`'s cold-cache recompute, and that drop is
     /// router-observable.
+    ///
+    /// fixed: T8 (#156): `id_no` is the engine's own counter, drawn by
+    /// [`ExpansionRoomStore::new_obstacle_room`], because Java's `(itemId << 10) | indexInItem`
+    /// is a hash and not an identity — see [`get_id`](Self::get_id).
     pub fn new(
         board: &mut Board,
         item: ItemId,
         index_in_item: usize,
         tree: TreeId,
+        id_no: i32,
     ) -> ObstacleExpansionRoom {
         ObstacleExpansionRoom {
             item,
             index_in_item,
+            id_no,
             shape: board.item_tree_shape(item, tree, index_in_item),
             doors: Vec::new(),
             doors_calculated: false,
@@ -79,22 +88,28 @@ impl ObstacleExpansionRoom {
     /// Port of `getId` (ObstacleExpansionRoom.java:48-51):
     /// `(this.item.getId() << 10) | this.indexInItem`.
     ///
-    /// A hash, not an identity, and it **aliases** two ways (quirk #156, hazard D):
+    /// fixed: T8 (#156). Java's formula is a hash, not an identity, and it **aliases** two ways:
     ///
     /// * `|` never carries, so any `indexInItem >= 1024` spills into the item's bits — an item
     ///   with 1024 or more tree shapes gives two of its own rooms the same id, and can collide
-    ///   with another item's rooms outright.
-    /// * `<< 10` overflows a Java `int` at `itemId >= 2^21`, so ids go negative and then wrap.
+    ///   with another item's rooms outright: `id(1, 1024) == id(0, 1024) == 1024`, and
+    ///   `id(5, 1024) == id(6, 0) == 6144`.
+    /// * `<< 10` overflows a Java `int` at `itemId >= 2^21`, so ids go negative and then wrap:
+    ///   `id(item, index) == id(item + 2^22, index)` for **every** item and index, because a
+    ///   32-bit left shift by 10 is arithmetic mod 2^32 and `2^22 * 2^10 = 2^32`.
     ///
-    /// Both are reproduced with `wrapping_shl`, because this id reaches
-    /// [`super::ExpansionDoor::get_id`], which is a sort key of `MazeListElement` (Task 8).
+    /// The id reaches [`super::ExpansionDoor::get_id`], which is a sort key of
+    /// `MazeListElement`, so an aliased id is a routing decision taken on a collision. It is a
+    /// **per-engine counter** now, as `CompleteFreeSpaceExpansionRoom`'s already was: stable
+    /// (nothing about the room can move it) and injective (the counter is shared by every
+    /// expandable object the engine owns).
     pub fn get_id(&self) -> i32 {
-        ObstacleExpansionRoom::id(self.item, self.index_in_item)
+        self.id_no
     }
 
-    /// [`get_id`](Self::get_id)'s arithmetic, as a free function over the two inputs, so the
-    /// aliasing can be pinned without building a board.
-    pub fn id(item: ItemId, index_in_item: usize) -> i32 {
+    /// **Java's** `getId` arithmetic, as a free function over the two inputs, kept so that the
+    /// aliasing #156 fixed can be pinned without building a board. Nothing in the port reads it.
+    pub fn java_id(item: ItemId, index_in_item: usize) -> i32 {
         // Java's `int` cast of both operands, then `<<` and `|`.
         (item.0 as i32).wrapping_shl(10) | (index_in_item as i32)
     }
@@ -196,32 +211,32 @@ mod tests {
     fn the_id_is_an_or_not_a_sum_so_a_wide_index_aliases() {
         // quirk #156. `1 << 10 | 1024` is 1024, which is `1 << 10 | 0`.
         assert_eq!(
-            ObstacleExpansionRoom::id(ItemId(1), 1024),
-            ObstacleExpansionRoom::id(ItemId(1), 0)
+            ObstacleExpansionRoom::java_id(ItemId(1), 1024),
+            ObstacleExpansionRoom::java_id(ItemId(1), 0)
         );
         // `1 << 10 | 2048` is 3072, which is `3 << 10`.
         assert_eq!(
-            ObstacleExpansionRoom::id(ItemId(1), 2048),
-            ObstacleExpansionRoom::id(ItemId(3), 0)
+            ObstacleExpansionRoom::java_id(ItemId(1), 2048),
+            ObstacleExpansionRoom::java_id(ItemId(3), 0)
         );
         // Within the 10 bits the encoding is injective, which is why the bug is invisible on
         // every real board.
         assert_ne!(
-            ObstacleExpansionRoom::id(ItemId(1), 1023),
-            ObstacleExpansionRoom::id(ItemId(1), 1022)
+            ObstacleExpansionRoom::java_id(ItemId(1), 1023),
+            ObstacleExpansionRoom::java_id(ItemId(1), 1022)
         );
         assert_ne!(
-            ObstacleExpansionRoom::id(ItemId(1), 0),
-            ObstacleExpansionRoom::id(ItemId(2), 0)
+            ObstacleExpansionRoom::java_id(ItemId(1), 0),
+            ObstacleExpansionRoom::java_id(ItemId(2), 0)
         );
     }
 
     #[test]
     fn the_shift_overflows_a_java_int_at_two_to_the_twenty_first() {
-        assert!(ObstacleExpansionRoom::id(ItemId(1 << 21), 0) < 0);
+        assert!(ObstacleExpansionRoom::java_id(ItemId(1 << 21), 0) < 0);
         assert_eq!(
-            ObstacleExpansionRoom::id(ItemId(1 << 22), 0),
-            ObstacleExpansionRoom::id(ItemId(0), 0)
+            ObstacleExpansionRoom::java_id(ItemId(1 << 22), 0),
+            ObstacleExpansionRoom::java_id(ItemId(0), 0)
         );
     }
 }

@@ -33,7 +33,7 @@ use fr_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape,
 };
 use fr_router::autoroute::drill::{DrillPage, DrillPageArray, ExpansionDrill};
-use fr_router::autoroute::expansion::RoomRef;
+use fr_router::autoroute::expansion::{ExpansionRoomStore, RoomRef};
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 
 // =================================================================================================
@@ -176,7 +176,7 @@ fn engine_on(board: &mut Board, net: i32) -> AutorouteEngine {
 
 /// `P6T7Probe.componentPage`: the page around the two-pin component.
 fn component_page(board: &Board) -> DrillPage {
-    DrillPage::new(IntBox::from_coords(-1000, -1000, 1000, 1000), board)
+    DrillPage::new(IntBox::from_coords(-1000, -1000, 1000, 1000), board, 1)
 }
 
 const NEVER: &dyn Fn() -> bool = &|| false;
@@ -279,7 +279,7 @@ fn drill_room_ids(engine: &AutorouteEngine, drill: &ExpansionDrill) -> Vec<Optio
 #[test]
 fn page_grid_matches_java_for_a_known_bounding_box() {
     let board = probe_board(BOUNDING_BOX);
-    let array = DrillPageArray::new(&board, 7000);
+    let array = DrillPageArray::new(&board, 7000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
     assert_eq!(head, (3, 3, 6667, 6667));
     assert_eq!(
@@ -299,7 +299,7 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
 
     // The width `AutorouteEngine`'s constructor computes for this board (`:89-90`): the default
     // via diameter is 0.0, so the `max(…, 10000)` floor wins.
-    let array = DrillPageArray::new(&board, 10_000);
+    let array = DrillPageArray::new(&board, 10_000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
     assert_eq!(head, (2, 2, 10000, 10000));
     assert_eq!(
@@ -315,7 +315,7 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
     // A wide, short board: `columnCount` and `rowCount` differ, and `pageHeight` is the whole
     // height because one row covers it.
     let board = probe_board(IntBox::from_coords(-15_000, -1000, 15_000, 3000));
-    let array = DrillPageArray::new(&board, 10_000);
+    let array = DrillPageArray::new(&board, 10_000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
     assert_eq!(head, (3, 1, 10000, 4000));
     assert_eq!(
@@ -329,7 +329,7 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
 
     // A board smaller than one page: one page, and `pageWidth`/`pageHeight` are the board's own.
     let board = probe_board(IntBox::from_coords(0, 0, 3000, 5000));
-    let array = DrillPageArray::new(&board, 10_000);
+    let array = DrillPageArray::new(&board, 10_000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
     assert_eq!(head, (1, 1, 3000, 5000));
     assert_eq!(boxes, vec![(0, 0, 3000, 5000)]);
@@ -357,7 +357,7 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
 #[test]
 fn overlapping_pages_uses_javas_mixed_loop_bounds() {
     let board = probe_board(BOUNDING_BOX);
-    let array = DrillPageArray::new(&board, 7000);
+    let array = DrillPageArray::new(&board, 7000, &mut ExpansionRoomStore::new());
 
     let probe = |llx, lly, urx, ury| {
         page_boxes(

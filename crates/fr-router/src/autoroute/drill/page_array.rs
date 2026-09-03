@@ -59,7 +59,14 @@ impl DrillPageArray {
     ///   at the `int` bounds — which is exactly Rust's `as i32`, so a degenerate zero-width board
     ///   gives `columnCount = 0`, `length / 0` = `NaN`, `pageWidth = 0` and an empty grid on both
     ///   sides.
-    pub fn new(board: &Board, max_page_width: i32) -> DrillPageArray {
+    ///
+    /// fixed: T8 (#167): `rooms` is threaded in so each page can draw the engine's own id from
+    /// the same counter every other expandable object uses. Java's page has no id field at all.
+    pub fn new(
+        board: &Board,
+        max_page_width: i32,
+        rooms: &mut crate::autoroute::expansion::ExpansionRoomStore,
+    ) -> DrillPageArray {
         // :35-37.
         let bounds = board.bounding_box;
         let length = f64::from(bounds.ur.x.wrapping_sub(bounds.ll.x));
@@ -93,6 +100,7 @@ impl DrillPageArray {
                 row.push(DrillPage::new(
                     IntBox::from_coords(ll_x, ll_y, ur_x, ur_y),
                     board,
+                    rooms.next_room_id_no(),
                 ));
             }
             pages.push(row);
