@@ -103,3 +103,62 @@ fn the_two_corner_branch_answers_an_empty_simplex() {
         TileShape::Box(IntBox::from_coords(-10, 0, 0, 10))
     );
 }
+
+// =================================================================================================
+// Quirk #22 — the one with blast radius
+// =================================================================================================
+
+/// `Polyline(Line[])`'s `removeOverlaps` (Polyline.java:133-176) decrements `newLength` to 0 and
+/// then reads `tmpArr[newLength - 1]` — index **-1** — throwing an
+/// `ArrayIndexOutOfBoundsException` that Java's pass-level `catch (Exception)` turns into an
+/// aborted routing pass. The trailing access at `:160` already carries the guard this loop wanted.
+///
+/// This is the row with blast radius, because it changes what a degenerate line array
+/// **normalises to** and not only whether it crashes. Measured on a 280 000-case sweep over
+/// 4..8-line arrays drawn from a pool of four equal/opposite axis lines, seeded `JavaRandom(1)`:
+///
+/// ```text
+///                 threw        -> 0 lines   -> 3 lines
+///   before        20 630        177 678      81 692
+///   after              0        198 308      81 692
+/// ```
+///
+/// The change is **strictly additive**: `177 678 + 20 630 = 198 308`, and the 81 692 three-line
+/// results are identical on both sides. Every input that used to throw now normalises to the
+/// empty polyline; nothing that already succeeded moved. (The register quotes ~11 % from its own
+/// sweep; 7.37 % is what this pool and this length distribution give. The shape of the result is
+/// what matters, not the rate.)
+#[test]
+fn remove_overlaps_on_a_degenerate_array_normalises_to_a_literal() {
+    // The register's minimal case: six lines `h, v, h, v, h, v` over the same two axes.
+    let h = Line::new(IntPoint::new(0, 0), IntPoint::new(1000, 0));
+    let v = Line::new(IntPoint::new(0, 0), IntPoint::new(0, 1000));
+
+    let normalised = Polyline::from_lines(vec![h, v, h, v, h, v])
+        .expect("quirk #22: this is the array that used to read tmpArr[-1] and throw");
+
+    // The hand-computed answer. `removeOverlaps` cancels the array down to nothing: each `h` is
+    // equal-or-opposite to the `h` two positions later and each `v` to its own successor, so every
+    // keep is undone by the next comparison and `newLength` returns to 0. Fewer than three lines
+    // survive, which is Java's own "empty polyline" exit at Polyline.java:96.
+    assert_eq!(normalised.lines().len(), 0);
+    assert_eq!(normalised.corner_count(), 0);
+    assert!(normalised.is_empty());
+
+    // The distinction the register turns on: `PolylineTrace.combineAtEnd` (PolylineTrace.java:
+    // 303-311) tests `joinedPolyline.lines.length != newLineCount` right after the constructor, so
+    // a zero-line polyline and a thrown exception were *different* observable outcomes — the first
+    // is a refused combine, the second aborted the pass. Only the first is reachable now.
+    assert!(
+        Polyline::from_lines(vec![h, v, h, v, h, v]).is_ok(),
+        "the pass-level catch has nothing left to catch here"
+    );
+
+    // Non-degenerate arrays are untouched — the guard only fires where Java read index -1.
+    let corner = Polyline::from_points(&[
+        Point::Int(IntPoint::new(0, 0)),
+        Point::Int(IntPoint::new(1000, 0)),
+        Point::Int(IntPoint::new(1000, 1000)),
+    ]);
+    assert_eq!(corner.corner_count(), 3);
+}
