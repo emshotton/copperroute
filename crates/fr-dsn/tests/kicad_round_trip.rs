@@ -83,7 +83,15 @@ fn an_outline_clearance_matching_no_class_keeps_the_default() {
 }
 
 /// An absent or zero `clearance` — every board the jar ever wrote before this field meant
-/// anything — keeps Java's `1` too, which is why the corpus does not move.
+/// anything — keeps Java's `1` too, by the `> 0.0` guard rather than by the fallback.
+///
+/// **None of these three is why the corpus does not move.** Measured over the seven KiCad
+/// fixtures: five write `0.5` on a board whose classes are 2000 (and 2540 or 3000), so 5000
+/// matches nothing and they take the fallback; the two `*_output_session` fixtures write a value
+/// that **does** match — `0.2` -> 2000 and `300.0` at `UM`/`10` -> 3000 — and what it matches is
+/// class 1, which is the answer Java hard-coded. Same answer, opposite reason; see
+/// `outline_clearance_class`'s value-tie note for the second one, where class 2 has the same
+/// value and the ascending search picks 1.
 #[test]
 fn an_absent_outline_clearance_keeps_the_default() {
     let board = read(
@@ -92,6 +100,35 @@ fn an_absent_outline_clearance_keeps_the_default() {
             "outline":{"corners":[{"x":0,"y":0},{"x":10,"y":0},{"x":10,"y":10}]}}"#,
     );
     assert_eq!(outline_clearance_class(&board), 1);
+}
+
+/// The two shapes the **corpus** actually takes, both reaching class 1 and neither by the
+/// fallback — the cases §2 of the fix's reasoning turns on.
+#[test]
+fn an_outline_clearance_that_matches_the_default_takes_the_default() {
+    // `Issue368-CorneyIslandWireless_output_session.json`'s shape: `0.2` is 2000 at the default
+    // `MM`/`10000`, which is class 1's own value. It matches, and what it matches is the default.
+    let board = read(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "outline":{"corners":[{"x":0,"y":0},{"x":10,"y":0},{"x":10,"y":10}],
+                       "clearance":0.2}}"#,
+    );
+    assert_eq!(outline_clearance_class(&board), 1);
+
+    // `Issue733-kicad_complex_hierarchy_output_session.json`'s shape: a **value tie**. Class 2's
+    // clearance equals class 1's, so 0.3 matches both, and the ascending search answers 1 — the
+    // documented lossiness, pinned so it cannot drift into answering 2.
+    let board = read(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses":[{"name":"power","clearance":0.2}],
+            "outline":{"corners":[{"x":0,"y":0},{"x":10,"y":0},{"x":10,"y":10}],
+                       "clearance":0.2}}"#,
+    );
+    assert_eq!(
+        outline_clearance_class(&board),
+        1,
+        "class 1 and class 2 are both 2000; the ascending search answers the default"
+    );
 }
 
 /// The other three §9.1 fields are a **wire contract** and must keep round-tripping: the reader

@@ -1163,12 +1163,16 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         // constructor then normalises it into `[0, 360)` (Component.java:65-70) — so `0.0` stays
         // `-0.0`, because `-0.0 < 0` is false in Java and in Rust alike.
         //
-        // fixed: T7 (#287) — `Components.add:51` hands the new component to
+        // Java bug (quirk #287): `Components.add:51` hands the new component to
         // `UndoableObjects.insert`, whose `ConcurrentSkipListMap.put` orders keys through
-        // `Component.compareTo` -> `this.name.compareToIgnoreCase(...)`, so a `null` `reference`
-        // died inside the *container*, before anything read the component, and the port had to
-        // reproduce that throw here because it has no undo list at all. Section 1a refuses the
-        // document instead, naming `components[i].reference`.
+        // `Component.compareTo` -> `this.name.compareToIgnoreCase(...)`. A `null` `reference`
+        // therefore dies inside the *container*, before anything reads the component — measured on
+        // both `comp-null-reference-single` (one component is enough) and
+        // `comp-null-reference-second`. The port has no undo list at all (global constraints), so
+        // the throw had to be reproduced here rather than arising.
+        //
+        // fixed: T7 (#287) — section 1a refuses the document at the DTO boundary instead, naming
+        // `components[i].reference`, so there is no throw left to reproduce.
         let reference = component
             .reference
             .as_deref()
@@ -1539,13 +1543,30 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 /// reader: a shared helper would have to carry the four differences as flags, and the third one
 /// is the difference between a refusal and a silent skip.
 ///
+/// # It does **not** run [`KiCadBoardJson::validate`], and that is deliberate
+///
+/// `read_board`'s section 1a refuses a `null` name at the DTO boundary (fixed: T7 (#282, #283,
+/// #287)). This function shares the DTO and does not share the validation, because the two read
+/// different halves of it: a session document is traces, vias and conduction areas, and
+/// `importSession` never touches `layers`, `netClasses`, `nets` or `components` at all. Validating
+/// them here would refuse a document for a `null` in a section this function does not read — a new
+/// rejection with no fix behind it, and one no `readBoard` quirk describes. The one group-7 fix
+/// reachable from this path is #286's, and it **is** applied, at the via site below.
+///
+/// The nullable fields this function *does* read are the ones where `null` means absent —
+/// `zone.netName`, `trace.netName`, `via.netName` — which [`java_nets_get`] answers as "no net",
+/// exactly as `readBoard` does.
+///
 /// # Errors
 ///
 /// [`DsnError::KicadSession`] for every point Java throws: an empty or unparseable payload
-/// (`:759-761`), a `null` `zone.polygon` / `tr.points` / `vj.position`, an empty zone polygon
-/// (`new PolygonShape(new Point[0])` reads `corners[0]`), and quirk #286's negative
-/// `DrillItem.tileShapeCount`. Plus the port-only `insert_via_checked` failure, which Java's
-/// `insertVia` cannot produce and which the caller's `catch (Exception)` would have caught.
+/// (`:759-761`), a `null` `zone.polygon` / `tr.points` / `vj.position`, and an empty zone polygon
+/// (`new PolygonShape(new Point[0])` reads `corners[0]`). Plus two the port answers where Java
+/// does not: **fixed: T7 (#286)** — a via whose layer span is empty, refused before its padstack
+/// exists, where Java built the padstack, put the via in the item list and threw
+/// `NegativeArraySizeException` from inside the search-tree update; and the port-only
+/// `insert_via_checked` failure, which Java's `insertVia` cannot produce and which the caller's
+/// `catch (Exception)` would have caught.
 pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     // `:758` — `GsonProvider.GSON.fromJson(reader, KiCadBoardJson.class)`.
     //
@@ -1942,8 +1963,13 @@ fn apply_kicad_net_class_parameters(
 /// The `equalsIgnoreCase` fallback at `:972-976` walks `HashMap.entrySet()`, so in Java, when two
 /// classes differ only in case, the answer depends on `java.util.HashMap`'s bucket order.
 ///
-/// fixed: T7 (#280) — the map is a `Vec` in declaration order, so the fallback answers the
-/// **first** class declared with that spelling.
+/// fixed: T7 (#280) — **this is #280's second consumer**, and it moves for the same reason the
+/// net numbering does: the map is a `Vec` in declaration order, so the fallback answers the
+/// **first** class declared with that spelling rather than whichever one the bucket layout
+/// happened to hand back first. A board with `"Power"` and `"POWER"` and a net asking for
+/// `"power"` gets `"Power"`, because that is the one its own file names first.
+/// `crates/fr-dsn/tests/kicad_nets.rs::a_net_class_named_only_by_case_takes_the_first_declared`
+/// pins it; no corpus fixture declares two classes differing only in case, so nothing moves.
 ///
 /// # Its relationship to section 8's `clNo - 1`
 ///
@@ -2284,6 +2310,21 @@ fn unique_padstack_name(padstacks: &Padstacks, name: String) -> String {
 /// a jar that never set one) on Java's `1`. And it does not round to the nearest class — a value
 /// that matches nothing is a value this reader does not understand, and Java's default is the
 /// safe answer for it.
+///
+/// # The mapping is by **value**, so it is lossy on a tie
+///
+/// Two clearance classes with the same diagonal are indistinguishable here, and the ascending
+/// search answers the lower index. That is not hypothetical: the corpus has one —
+/// `Issue733-kicad_complex_hierarchy_output_session.json` declares a class whose clearance equals
+/// the default's (both 3000 internal units at its `UM`/`10` resolution), so its
+/// `"clearance": 300.0` matches class 1 and class 2 alike and takes class 1.
+///
+/// It is the right loss to take. The clearance a board *means* by that number is a distance, and
+/// two classes at the same distance impose the same rule on the outline; picking the higher index
+/// would attach the outline to a named net class it has no other reason to belong to, and Java's
+/// own answer for every such board was class 1 regardless. The alternative — an exact class
+/// **index** on the wire — is not available: the writer has always written a distance, and
+/// changing that would break the round trip survey §9.1 protects.
 fn outline_clearance_class(matrix: &ClearanceMatrix, clearance: f64, scale_factor: f64) -> usize {
     if clearance <= 0.0 {
         return 1;
@@ -2761,26 +2802,13 @@ mod tests {
         assert_eq!(java_max(2.0, 1.0), 2.0);
     }
 
-    /// The `referenced-nets-only` stem of `crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`: 17
-    /// Greek letters inserted in alphabetical order, handed back by the JVM in this one.
-    #[test]
-    fn the_hash_iteration_order_matches_the_jvm() {
-        let inserted = [
-            "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa",
-            "lambda", "mu", "nu", "xi", "omicron", "pi", "rho",
-        ];
-        let mut set = JavaStringSet::new();
-        for name in inserted {
-            set.add(name);
-        }
-        assert_eq!(
-            set.iteration_order(),
-            [
-                "zeta", "iota", "nu", "delta", "mu", "theta", "epsilon", "xi", "lambda", "eta",
-                "omicron", "alpha", "rho", "pi", "kappa", "beta", "gamma"
-            ]
-        );
-    }
+    // deleted: T7 (#280) — `the_hash_iteration_order_matches_the_jvm`, which pinned the JVM's
+    // bucket order for the `referenced-nets-only` stem's seventeen Greek letters, and
+    // `the_hash_set_dedups_on_exact_equality`, which pinned `JavaStringSet`'s `add`. Both tested
+    // an emulation nothing calls any more: the numbering is first-reference order, and
+    // `crates/fr-dsn/tests/kicad_nets.rs` pins *that*. Deleting them by name is the brief's
+    // binding instruction, and it is also what keeps the dead modules honestly dead — a shim with
+    // a passing test reads like a live one. The modules themselves stay until Task 24 (BP16).
 
     /// `Math.round` is half-**up**, so `round(-0.5) == 0` and `round(0.5) == 1`: a via whose
     /// radius is exactly a half-integer gets an **asymmetric** box, and `-round(r)` would give
@@ -2802,12 +2830,18 @@ mod tests {
         );
     }
 
+    /// `ReferencedNets::add` keeps `HashSet.add`'s **exact** equality — `"GND"` and `"gnd"` are
+    /// two entries. The case-insensitive test is `Nets.get`'s, one step later, and moving it here
+    /// would silently merge two nets a KiCad board declared apart.
+    ///
+    /// This replaces `the_hash_set_dedups_on_exact_equality`, which asserted the same property of
+    /// the dead `JavaStringSet`.
     #[test]
-    fn the_hash_set_dedups_on_exact_equality() {
-        let mut set = JavaStringSet::new();
-        set.add("GND");
-        set.add("gnd");
-        set.add("GND");
-        assert_eq!(set.keys, ["GND", "gnd"]);
+    fn the_referenced_net_set_dedups_on_exact_equality_and_keeps_insertion_order() {
+        let mut set = ReferencedNets::new();
+        for name in ["GND", "gnd", "GND", "VCC"] {
+            set.add(name);
+        }
+        assert_eq!(set.iteration_order(), ["GND", "gnd", "VCC"]);
     }
 }

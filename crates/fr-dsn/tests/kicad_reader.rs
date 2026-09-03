@@ -451,9 +451,12 @@ fn java_angle_restriction_name(angle: fr_board::AngleRestriction) -> &'static st
 /// name it stores and dies on hundreds of lines later (#282/#283/#287), a padstack identity that
 /// makes the second pad inherit the first one's shapes (#284), a negative array size (#286), a
 /// duplicate package per component (#285), and a net numbering that is `String.hashCode`'s
-/// (#280) — so the port is now *deliberately* different on 233 of the 3 771 rows.
+/// (#280) — so the port is now *deliberately* different from the jar on **172** of its 3 771
+/// rows, and emits **67 fewer rows** besides, because six stems that used to load are refusals
+/// now and a refusal is one row where a board was many. 239 rows in the symmetric difference,
+/// over **26** of the 91 stems.
 ///
-/// A list of 233 excused rows would be a list, not an argument. So the family moves to the port
+/// A list of 239 excused rows would be a list, not an argument. So the family moves to the port
 /// lane, the way ruling BT moves a reference family the first fix that touches it:
 ///
 /// * `data/p8t8-kicad-read-{a,b}.txt` stay exactly as they are — the **jar's** rows, still the
@@ -500,13 +503,14 @@ fn golden_rows(text: &str, prefix: &str) -> Vec<(String, Vec<String>)> {
 
 /// The stems whose port rows differ from the jar's, and the register row that authorizes each.
 ///
-/// Every entry is a **deliberate** divergence with a fix behind it. There is no entry here for a
-/// difference nobody chose; a stem that starts differing without one fails
-/// [`the_port_golden_differs_from_the_jar_only_where_a_fix_says_so`], and so does a stem that
-/// stops differing while it is still listed.
+/// **26 entries, one per diverging stem**, which is every stem on which the two transcripts
+/// differ and no other. A stem that starts differing without an entry fails
+/// [`the_port_golden_differs_from_the_jar_only_where_a_fix_says_so`]; a stem that stops differing
+/// while it is still listed fails [`every_known_divergence_still_differs`].
 ///
-/// The three pre-Task-7 rows are kept as they were and are marked `#277`/`#283`/`#282-print`:
-/// they are totalizations, not fixes, and they were the old `XDIFF`/`XDIFF_B` tables.
+/// **Five** of the 26 are pre-Task-7 and are marked `#277` / `#283` / `#282-print`: they are
+/// totalizations, not fixes, and they were the old `XDIFF` / `XDIFF_B` tables. The other 21 each
+/// have a Task 7 fix behind them.
 const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
     // ---- quirk #277: the parser's own prose on a payload the *parser* rejects ----------------
     (

@@ -19,10 +19,18 @@
 //! * **twenty-four `importSession` inputs**, each a base board plus a session document, with the
 //!   board's whole item graph afterwards (or the throwable, class and message).
 //!
-//! [`the_writer_output_matches_the_jvm_byte_for_byte`] and
-//! [`the_import_session_item_graph_matches_the_jvm`] replay them. Neither tolerates a differing
-//! line except through [`XDIFF`], which asserts that the row still **differs** so a divergence
-//! that starts matching fails the test rather than rotting.
+//! **Plan 9 Task 7 split the writer replay in two.** The port's rows are
+//! `data/p9t7-kicad-writer.txt` — see [`PORT_TRANSCRIPT`] for why —
+//! and [`the_writer_output_matches_the_port_golden_byte_for_byte`] replays them line for line,
+//! while [`the_writer_port_golden_differs_from_the_jar_only_where_a_fix_says_so`] diffs the two
+//! files and requires every diverging stem to be in [`KNOWN_DIVERGENCES`] with the register row
+//! that authorizes it — and every listed stem to still diverge. One stem of the nine diverges.
+//!
+//! [`the_import_session_item_graph_matches_the_jvm`] still replays the jar's `[is]` rows
+//! directly: only one of its twenty-four stems moved, so a whole second transcript would be
+//! ceremony. It tolerates no differing line except through [`XDIFF`], which lifts a listed prefix
+//! out of **both** sides and then asserts that the row still **differs**, so a divergence that
+//! starts matching fails the test rather than rotting.
 //!
 //! The named tests after the two replays pin, as literals, what the task brief calls out by name.
 //!
@@ -230,9 +238,9 @@ fn the_writer_output_matches_the_port_golden_byte_for_byte() {
             compared += 1;
         }
     }
-    assert!(
-        compared > 5000,
-        "the replay compares well over 5000 rows over 9 boards, got {compared}"
+    assert_eq!(
+        compared, 5021,
+        "the replay compares 5021 rows over 9 boards"
     );
 }
 

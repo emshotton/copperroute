@@ -109,7 +109,9 @@ are the record of what the jar does.
 
 **Plan 9 Task 7 moved the family to the port lane** (ruling BT). Six of the
 things the jar does on this path are wrong, and the port now does something
-else on 233 of the 3 771 rows — so the acceptance test is against
+else on 172 of the 3 771 rows (and emits 67 fewer, because a refusal is one row
+where a board was many — 239 in the symmetric difference, over 26 stems) — so
+the acceptance test is against
 `tests/data/p9t7-kicad-read-{a,b}.txt`, the **port's** rows over the same
 inputs, and a second test diffs the two files and requires every diverging
 stem to appear in `kicad_reader.rs`'s `KNOWN_DIVERGENCES` with the register

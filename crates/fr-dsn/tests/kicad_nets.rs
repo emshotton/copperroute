@@ -22,7 +22,7 @@ fn fixture(relative: &str) -> String {
         .unwrap_or_else(|e| panic!("fixture {relative}: {e}"))
 }
 
-fn board(json: &str) -> Board {
+fn read(json: &str) -> Board {
     match read_board(json, None) {
         BoardReadResult::Success { board: Some(b), .. } => *b,
         other => panic!("expected a loaded board, got {other:?}"),
@@ -49,7 +49,7 @@ fn numbered_nets(board: &Board) -> Vec<(i32, String)> {
 /// the point.
 #[test]
 fn net_numbers_follow_declaration_order() {
-    let board = board(&fixture(
+    let board = read(&fixture(
         "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json",
     ));
     assert_eq!(
@@ -78,7 +78,7 @@ fn net_numbers_follow_declaration_order() {
 /// would reproduce, numbered 1..4 in the order they appear.
 #[test]
 fn an_auto_registered_net_takes_the_next_number_at_first_reference() {
-    let board = board(
+    let board = read(
         r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
             "components":[{"reference":"U1","footprint":"F","position":{"x":0,"y":0},
               "pads":[
@@ -101,11 +101,94 @@ fn an_auto_registered_net_takes_the_next_number_at_first_reference() {
     );
 }
 
+/// **#280's second consumer.** `resolveNetClassIndex:972-976` falls back to an
+/// `equalsIgnoreCase` walk of `netClassIndexMap.entrySet()` when no class matches the net's
+/// `className` exactly — so with two classes differing only in case, which one a net lands on was
+/// `java.util.HashMap`'s bucket order, exactly as the net numbering was.
+///
+/// The tie-break is declaration order now: the net asking for `"power"` matches neither `"Power"`
+/// nor `"POWER"` exactly, hits the fallback, and gets the **first** one its own file declares.
+/// Two candidates are the whole point — with one, every order agrees.
+///
+/// Clearance class 0 is the reserved `"null"` row and 1 is `"default"`, so the two declared
+/// classes are clearance classes 2 and 3 and `NetClass` ids 1 and 2 (`readBoard:450`'s deliberate
+/// `clNo - 1`). `"Power"` is declared first, so the answer is `NetClassId(1)`.
+///
+/// **What the jar answers, computed from its own model**: `HashMap`'s bucket order at capacity 16
+/// puts `"POWER"` first for **both** declaration orders, so the jar picks `"POWER"` either way —
+/// which is the arbitrariness stated as plainly as it can be. The first half of this test
+/// therefore fails against the un-fixed reader (it answered `NetClassId(2)`) and the second half
+/// passes by coincidence; together they pin the order rather than one board's luck.
+#[test]
+fn a_net_class_named_only_by_case_takes_the_first_declared() {
+    let board = read(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses":[{"name":"Power","clearance":0.3},{"name":"POWER","clearance":0.4}],
+            "nets":[{"name":"VCC","className":"power"}]}"#,
+    );
+    let net = board.rules.nets.iter().next().expect("the one net");
+    assert_eq!(net.name, "VCC");
+    assert_eq!(
+        net.get_net_class(),
+        fr_board::NetClassId(1),
+        "`Power` is declared first, so the case-insensitive fallback answers it"
+    );
+
+    // Swap the declaration order and the answer swaps with it — which is what makes this a test
+    // of the *order* rather than of one board's happenstance.
+    let board = read(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses":[{"name":"POWER","clearance":0.4},{"name":"Power","clearance":0.3}],
+            "nets":[{"name":"VCC","className":"power"}]}"#,
+    );
+    assert_eq!(
+        board
+            .rules
+            .nets
+            .iter()
+            .next()
+            .expect("the one net")
+            .get_net_class(),
+        fr_board::NetClassId(1),
+        "still the first declared — now `POWER`"
+    );
+    assert_eq!(
+        board
+            .rules
+            .net_classes
+            .get(fr_board::NetClassId(1))
+            .get_name(),
+        "POWER"
+    );
+}
+
+/// An **exact** match still wins over the case-insensitive fallback, so the tie-break above only
+/// ever decides a case that has no exact answer.
+#[test]
+fn an_exact_net_class_name_beats_the_case_insensitive_fallback() {
+    let board = read(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses":[{"name":"Power","clearance":0.3},{"name":"POWER","clearance":0.4}],
+            "nets":[{"name":"VCC","className":"POWER"}]}"#,
+    );
+    assert_eq!(
+        board
+            .rules
+            .nets
+            .iter()
+            .next()
+            .expect("the one net")
+            .get_net_class(),
+        fr_board::NetClassId(2),
+        "`POWER` matches exactly, and the exact `HashMap.get` runs first (`:968-971`)"
+    );
+}
+
 /// A **declared** net keeps its declared number, and the auto-registered ones continue from
 /// there. That half was never hash-ordered and must not become so.
 #[test]
 fn a_declared_net_keeps_its_position_and_the_rest_follow() {
-    let board = board(
+    let board = read(
         r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
             "nets":[{"name":"GND"},{"name":"VCC"}],
             "components":[{"reference":"U1","footprint":"F","position":{"x":0,"y":0},
