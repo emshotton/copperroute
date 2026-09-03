@@ -1,0 +1,37 @@
+HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue143-rpi_splitter.dsn maxPasses=8 mode=batch-router fanout=on optimizer=off
+java-version 25.0.4.1
+ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.ses -mp 8 --router.fanout.enabled=true --router.optimizer.enabled=false
+SETTINGS maxPasses=8 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=false optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
+BOARD-PREPARED classes=7 outlineClass=2 holeClearance=0
+[transcript]
+INIT anyRoutable=true
+STATE STARTED
+INITIAL-UNROUTED 5
+FANOUT enabled=true smdPins=22
+FANOUT-SUMMARY completedPassCount=2 isTimedOut=false escapeTotalSmdPins=10 escapedCount=9 escapedPercentage=90.0 fanoutTimedOut=false items=53 traces=11 vias=9 incompletes=5 traceLength="1783196.6674376226"
+ROUTER-ENABLED true unrouted=5
+STATE RUNNING pass=1
+HIST-ADD pass=1 scoreBefore=0.0 size=1 maxScore=0.0
+PASS-RET pass=1 continueAutorouting=true scoreAfter=599.9776
+RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=0.0 fires=false
+PASS pass=1 score=599.9776 incompletes=2 violations=0 vias=9 traces=14
+STAGNATION pass=1 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=2
+HIST-ADD pass=2 scoreBefore=599.9776 size=2 maxScore=599.9776
+PASS-RET pass=2 continueAutorouting=true scoreAfter=999.9719
+RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=599.9776 fires=false
+PASS pass=2 score=999.9719 incompletes=0 violations=0 vias=9 traces=16
+ROUTED-RESET pass=2
+STAGNATION pass=2 counter=0 lastBest=999.9719 globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=3
+HIST-ADD pass=3 scoreBefore=999.9719 size=3 maxScore=999.9719
+PASS-RET pass=3 continueAutorouting=false scoreAfter=999.9719
+RESTORE-GATE pass=3 sizeGate=false modGate=false maxScore=999.9719 fires=false
+PASS pass=3 score=999.9719 incompletes=0 violations=0 vias=9 traces=16
+ROUTED-RESET pass=3
+STAGNATION pass=3 counter=0 lastBest=999.9719 globalBest=-Infinity passOfBest=0
+FINAL-SWAP currentFinalScore=999.9719 bestHistoryScore=999.9719 swapped=false
+TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=false stopAutoRouterRequested=false fires=true
+RESULT state=FINISHED passesRun=3 continueRouting=true stopRequested=false stopAutoRouterRequested=false
+TRANSCRIPT returned=true items=58 traces=16 vias=9 incompletes=0 traceLength="1.1125049576002464E7"
+[board] (elided — the board is batch.ses)

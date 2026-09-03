@@ -1,0 +1,624 @@
+(pcb "Issue026-J2_reference"
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "KiCad's Pcbnew")
+    (host_version "5.1.5-52549c5~86~ubuntu16.04.1")
+    (generated_by_freerouting)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu
+      (type signal)
+    )
+    (layer B.Cu
+      (type signal)
+    )
+    (boundary
+      (rect pcb 105945.0 -98525.0 153135.0 -72925.0)
+    )
+    (boundary
+      (polygon signal 0
+        106045.0 -98425.0
+        153035.0 -98425.0
+        153035.0 -73025.0
+        106045.0 -73025.0
+      )
+    )
+    (via "Via[0-1]_800:400_um" "Via[0-1]_800:400_um")
+    (rule
+      (width 250.0)
+      (clearance 200.2)
+      (clearance 125.0 (type smd_to_turn_gap))
+      (clearance 50.0 (type smd))
+    )
+    (snap_angle 
+      fortyfive_degree
+    )
+    (control
+      (via_at_smd off)
+    )
+  )
+  (placement
+    (component "TE_1888019-6:TE_1888019-6"
+      (place 
+        J2 135255.0 -85725.0 front 90
+        (pin S1 (clearance_class default))
+        (pin S2 (clearance_class default))
+        (pin S3 (clearance_class default))
+        (pin S4 (clearance_class default))
+        (pin S5 (clearance_class default))
+        (pin S6 (clearance_class default))
+        (pin A1 (clearance_class smd))
+        (pin B1 (clearance_class smd))
+        (pin A2 (clearance_class smd))
+        (pin B2 (clearance_class smd))
+        (pin A3 (clearance_class smd))
+        (pin B3 (clearance_class smd))
+        (pin A4 (clearance_class smd))
+        (pin B4 (clearance_class smd))
+        (pin A5 (clearance_class smd))
+        (pin B5 (clearance_class smd))
+        (pin A6 (clearance_class smd))
+        (pin B6 (clearance_class smd))
+        (pin A7 (clearance_class smd))
+        (pin B7 (clearance_class smd))
+        (pin A8 (clearance_class smd))
+        (pin B8 (clearance_class smd))
+        (pin A9 (clearance_class smd))
+        (pin B9 (clearance_class smd))
+        (pin A10 (clearance_class smd))
+        (pin B10 (clearance_class smd))
+        (pin A11 (clearance_class smd))
+        (pin B11 (clearance_class smd))
+        (pin A12 (clearance_class smd))
+        (pin B12 (clearance_class smd))
+        (pin A13 (clearance_class smd))
+        (pin B13 (clearance_class smd))
+        (pin A14 (clearance_class smd))
+        (pin B14 (clearance_class smd))
+        (pin A15 (clearance_class smd))
+        (pin B15 (clearance_class smd))
+        (pin A16 (clearance_class smd))
+        (pin B16 (clearance_class smd))
+        (pin A17 (clearance_class smd))
+        (pin B17 (clearance_class smd))
+        (pin A18 (clearance_class smd))
+        (pin B18 (clearance_class smd))
+        (keepout "keepout_1" (clearance_class default))
+        (keepout "keepout_2" (clearance_class default))
+        (keepout "keepout_3" (clearance_class default))
+        (keepout "keepout_4" (clearance_class default))
+      )
+    )
+    (component "TE_1-84953-5:TE_1-84953-5"
+      (place 
+        U1 111410.0 -85550.0 front 90
+        (pin "1" (clearance_class smd))
+        (pin "2" (clearance_class smd))
+        (pin "3" (clearance_class smd))
+        (pin "4" (clearance_class smd))
+        (pin "5" (clearance_class smd))
+        (pin "6" (clearance_class smd))
+        (pin "7" (clearance_class smd))
+        (pin "8" (clearance_class smd))
+        (pin "9" (clearance_class smd))
+        (pin "10" (clearance_class smd))
+        (pin "11" (clearance_class smd))
+        (pin "12" (clearance_class smd))
+        (pin "13" (clearance_class smd))
+        (pin "14" (clearance_class smd))
+        (pin "15" (clearance_class smd))
+        (pin PAD (clearance_class smd))
+        (pin PAD. (clearance_class smd))
+      )
+    )
+  )
+  (library
+    (image "TE_1888019-6:TE_1888019-6"
+      (side front)
+      (pin "Round[A]Pad_1358_um" S1 -8900.0 -5720.0)
+      (pin "Round[A]Pad_1358_um" S2 8900.0 -5720.0)
+      (pin "Round[A]Pad_1358_um" S3 -8900.0 -9220.0)
+      (pin "Round[A]Pad_1358_um" S4 8900.0 -9220.0)
+      (pin "Round[A]Pad_1358_um" S5 -8900.0 -12220.0)
+      (pin "Round[A]Pad_1358_um" S6 8900.0 -12220.0)
+      (pin "Rect[T]Pad_350x1800_um" A1 -6600.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B1 -7000.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A2 -5800.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B2 -6200.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A3 -5000.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B3 -5400.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A4 -4200.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B4 -4600.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A5 -3400.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B5 -3800.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A6 -2600.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B6 -3000.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A7 -1800.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B7 -2200.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A8 -1000.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B8 -1400.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A9 -200.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B9 -600.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A10 600.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B10 200.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A11 1400.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B11 1000.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A12 2200.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B12 1800.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A13 3000.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B13 2600.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A14 3800.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B14 3400.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A15 4600.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B15 4200.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A16 5400.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B16 5000.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A17 6200.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B17 5800.0 7690.0)
+      (pin "Rect[T]Pad_350x1800_um" A18 7000.0 5180.0)
+      (pin "Rect[T]Pad_350x1800_um" B18 6600.0 7690.0)
+      (keepout
+        (circle F.Cu 1590.0 -8000.0 0.0)
+      )
+      (keepout
+        (circle B.Cu 1590.0 -8000.0 0.0)
+      )
+      (keepout
+        (circle F.Cu 1590.0 8000.0 0.0)
+      )
+      (keepout
+        (circle B.Cu 1590.0 8000.0 0.0)
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 8536.5
+          9076.3 8536.5
+          9113.5 8573.7
+          9113.5 8626.3
+          9076.3 8663.5
+          -9076.3 8663.5
+          -9113.5 8626.3
+          -9113.5 8573.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          9023.7 -16863.5
+          9076.3 -16863.5
+          9113.5 -16826.3
+          9113.5 8626.3
+          9076.3 8663.5
+          9023.7 8663.5
+          8986.5 8626.3
+          8986.5 -16826.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 -16863.5
+          9076.3 -16863.5
+          9113.5 -16826.3
+          9113.5 -16773.7
+          9076.3 -16736.5
+          -9076.3 -16736.5
+          -9113.5 -16773.7
+          -9113.5 -16826.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 -16863.5
+          -9023.7 -16863.5
+          -8986.5 -16826.3
+          -8986.5 8626.3
+          -9023.7 8663.5
+          -9076.3 8663.5
+          -9113.5 8626.3
+          -9113.5 -16826.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 1051.5
+          -9023.7 1051.5
+          -8986.5 1088.7
+          -8986.5 8626.3
+          -9023.7 8663.5
+          -9076.3 8663.5
+          -9113.5 8626.3
+          -9113.5 1088.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          9023.7 1051.5
+          9076.3 1051.5
+          9113.5 1088.7
+          9113.5 8626.3
+          9076.3 8663.5
+          9023.7 8663.5
+          8986.5 8626.3
+          8986.5 1088.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          9023.7 -16863.5
+          9076.3 -16863.5
+          9113.5 -16826.3
+          9113.5 -13193.7
+          9076.3 -13156.5
+          9023.7 -13156.5
+          8986.5 -13193.7
+          8986.5 -16826.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 -16863.5
+          9076.3 -16863.5
+          9113.5 -16826.3
+          9113.5 -16773.7
+          9076.3 -16736.5
+          -9076.3 -16736.5
+          -9113.5 -16773.7
+          -9113.5 -16826.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 -16863.5
+          -9023.7 -16863.5
+          -8986.5 -16826.3
+          -8986.5 -13193.7
+          -9023.7 -13156.5
+          -9076.3 -13156.5
+          -9113.5 -13193.7
+          -9113.5 -16826.3
+        )
+      )
+      (outline
+        (polygon signal 0
+          7073.7 8536.5
+          9076.3 8536.5
+          9113.5 8573.7
+          9113.5 8626.3
+          9076.3 8663.5
+          7073.7 8663.5
+          7036.5 8626.3
+          7036.5 8573.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9076.3 8536.5
+          -7473.7 8536.5
+          -7436.5 8573.7
+          -7436.5 8626.3
+          -7473.7 8663.5
+          -9076.3 8663.5
+          -9113.5 8626.3
+          -9113.5 8573.7
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9860.4 8825.0
+          9860.4 8825.0
+          9875.0 8839.6
+          9875.0 8860.4
+          9860.4 8875.0
+          -9860.4 8875.0
+          -9875.0 8860.4
+          -9875.0 8839.6
+        )
+      )
+      (outline
+        (polygon signal 0
+          9839.6 -17075.0
+          9860.4 -17075.0
+          9875.0 -17060.4
+          9875.0 8860.4
+          9860.4 8875.0
+          9839.6 8875.0
+          9825.0 8860.4
+          9825.0 -17060.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9860.4 -17075.0
+          9860.4 -17075.0
+          9875.0 -17060.4
+          9875.0 -17039.6
+          9860.4 -17025.0
+          -9860.4 -17025.0
+          -9875.0 -17039.6
+          -9875.0 -17060.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -9860.4 -17075.0
+          -9839.6 -17075.0
+          -9825.0 -17060.4
+          -9825.0 8860.4
+          -9839.6 8875.0
+          -9860.4 8875.0
+          -9875.0 8860.4
+          -9875.0 -17060.4
+        )
+      )
+      (outline
+        (polygon signal 0
+          -10191.4 5013.4
+          -10008.6 5013.4
+          -9969.882513661203 5052.117486338798
+          -9900.0 5173.154
+          -9900.0 5226.846
+          -9969.882513661203 5347.882513661202
+          -10008.6 5386.6
+          -10191.4 5386.6
+          -10230.117486338797 5347.882513661202
+          -10300.0 5226.846
+          -10300.0 5173.154
+          -10230.117486338797 5052.117486338798
+        )
+      )
+      (outline
+        (polygon signal 0
+          -10191.4 5013.4
+          -10008.6 5013.4
+          -9969.882513661203 5052.117486338798
+          -9900.0 5173.154
+          -9900.0 5226.846
+          -9969.882513661203 5347.882513661202
+          -10008.6 5386.6
+          -10191.4 5386.6
+          -10230.117486338797 5347.882513661202
+          -10300.0 5226.846
+          -10300.0 5173.154
+          -10230.117486338797 5052.117486338798
+        )
+      )
+    )
+    (image "TE_1-84953-5:TE_1-84953-5"
+      (side front)
+      (pin "Rect[T]Pad_610x2000_um" "1" -7000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "2" -6000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "3" -5000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "4" -4000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "5" -3000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "6" -2000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "7" -1000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "8" 0.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "9" 1000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "10" 2000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "11" 3000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "12" 4000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "13" 5000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "14" 6000.0 3000.0)
+      (pin "Rect[T]Pad_610x2000_um" "15" 7000.0 3000.0)
+      (pin "Rect[T]Pad_2680x3600_um" PAD -9988.8 197.5)
+      (pin "Rect[T]Pad_2680x3600_um" PAD. 9989.1 198.0)
+    )
+    (padstack "Round[A]Pad_1358_um"
+      (shape
+        (circle F.Cu 1358.0 0.0 0.0)
+      )
+      (shape
+        (circle B.Cu 1358.0 0.0 0.0)
+      )
+      (attach off)
+    )
+    (padstack "Rect[T]Pad_2680x3600_um"
+      (shape
+        (rect F.Cu -1340.0 -1800.0 1340.0 1800.0)
+      )
+      (attach off)
+    )
+    (padstack "Rect[T]Pad_350x1800_um"
+      (shape
+        (rect F.Cu -175.0 -900.0 175.0 900.0)
+      )
+      (attach off)
+    )
+    (padstack "Rect[T]Pad_610x2000_um"
+      (shape
+        (rect F.Cu -305.0 -1000.0 305.0 1000.0)
+      )
+      (attach off)
+    )
+    (padstack "Via[0-1]_800:400_um"
+      (shape
+        (circle F.Cu 800.0 0.0 0.0)
+      )
+      (shape
+        (circle B.Cu 800.0 0.0 0.0)
+      )
+      (attach off)
+    )
+  )
+  (network
+    (net GND 1
+      (pins
+        U1-"10"
+        U1-"7"
+        U1-"4"
+        U1-"1"
+        J2-B18
+        J2-A18
+        J2-B15
+        J2-A15
+        J2-B12
+        J2-A12
+        J2-B7
+        J2-A7
+        J2-B4
+        J2-A4
+        J2-B1
+        J2-A1
+        J2-S6
+        J2-S5
+        J2-S4
+        J2-S3
+        J2-S2
+        J2-S1
+      )
+    )
+    (net "/MIPI_CSI_D0_N" 1
+      (pins
+        U1-"2"
+        J2-A2
+      )
+    )
+    (net "/MIPI_CSI_CLK_N" 1
+      (pins
+        U1-"8"
+        J2-B2
+      )
+    )
+    (net "/MIPI_CSI_D0_P" 1
+      (pins
+        U1-"3"
+        J2-A3
+      )
+    )
+    (net "/MIPI_CSI_CLK_P" 1
+      (pins
+        U1-"9"
+        J2-B3
+      )
+    )
+    (net "/MIPI_CSI_D1_N" 1
+      (pins
+        U1-"5"
+        J2-A5
+      )
+    )
+    (net "Net-(J2-PadB5)" 1
+      (pins
+        J2-B5
+      )
+    )
+    (net "/MIPI_CSI_D1_P" 1
+      (pins
+        U1-"6"
+        J2-A6
+      )
+    )
+    (net "Net-(J2-PadB6)" 1
+      (pins
+        J2-B6
+      )
+    )
+    (net "/MIPI_CSI_MCLK" 1
+      (pins
+        U1-"12"
+        J2-A8
+      )
+    )
+    (net "Net-(J2-PadB8)" 1
+      (pins
+        J2-B8
+      )
+    )
+    (net "/MIPI_CSI_CAM_nRST" 1
+      (pins
+        J2-A9
+      )
+    )
+    (net "Net-(J2-PadB9)" 1
+      (pins
+        J2-B9
+      )
+    )
+    (net "/I2C_SDA" 1
+      (pins
+        U1-"14"
+        J2-A10
+      )
+    )
+    (net "Net-(J2-PadB10)" 1
+      (pins
+        J2-B10
+      )
+    )
+    (net "/I2C_SCL" 1
+      (pins
+        U1-"13"
+        J2-A11
+      )
+    )
+    (net "/MIPI_CSI_CAM_PWDN" 1
+      (pins
+        U1-"11"
+        J2-B11
+      )
+    )
+    (net "Net-(J2-PadA13)" 1
+      (pins
+        J2-A13
+      )
+    )
+    (net +3V3 1
+      (pins
+        U1-"15"
+        J2-B14
+        J2-B13
+      )
+    )
+    (net "Net-(J2-PadA14)" 1
+      (pins
+        J2-A14
+      )
+    )
+    (net "Net-(J2-PadA16)" 1
+      (pins
+        J2-A16
+      )
+    )
+    (net "Net-(J2-PadB16)" 1
+      (pins
+        J2-B16
+      )
+    )
+    (net "Net-(J2-PadA17)" 1
+      (pins
+        J2-A17
+      )
+    )
+    (net "Net-(J2-PadB17)" 1
+      (pins
+        J2-B17
+      )
+    )
+    (via 
+      "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
+    )
+    (via_rule
+      default "Via[0-1]_800:400_um"
+    )
+    (via_rule
+      default "Via[0-1]_800:400_um"
+    )
+    (class default
+      GND "/MIPI_CSI_D0_N" "/MIPI_CSI_CLK_N" "/MIPI_CSI_D0_P" "/MIPI_CSI_CLK_P" "/MIPI_CSI_D1_N" "Net-(J2-PadB5)" "/MIPI_CSI_D1_P"
+      "Net-(J2-PadB6)" "/MIPI_CSI_MCLK" "Net-(J2-PadB8)" "/MIPI_CSI_CAM_nRST" "Net-(J2-PadB9)" "/I2C_SDA" "Net-(J2-PadB10)" "/I2C_SCL"
+      "/MIPI_CSI_CAM_PWDN" "Net-(J2-PadA13)" +3V3 "Net-(J2-PadA14)" "Net-(J2-PadA16)" "Net-(J2-PadB16)" "Net-(J2-PadA17)" "Net-(J2-PadB17)"
+      (clearance_class default)
+      (via_rule default)
+      (rule
+        (width 250.0)
+      )
+      (circuit 
+        (use_layer F.Cu B.Cu)
+      )
+    )
+  )
+  (wiring
+  )
+)

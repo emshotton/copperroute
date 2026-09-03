@@ -1,0 +1,14 @@
+2026-09-02 02:33:14.362 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)
+2026-09-02 02:33:14.397 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-09-02 02:33:15.613 INFO   New version available: v2.3.0
+2026-09-02 02:33:15.761 INFO   [146F5C\36CCC9] Loading board file 'Issue649-kicad_ecc83-pp_input_board_v1.dsn'...
+2026-09-02 02:33:15.807 INFO   [146F5C\36CCC9] Job '146F5C\36CCC9' started at 2026-09-02T09:33:15.807195Z.
+2026-09-02 02:33:15.867 INFO   [146F5C\36CCC9] Fanout stage is enabled but skipped because the board has no SMD pins.
+2026-09-02 02:33:15.892 INFO   [146F5C\36CCC9] Auto-routing stage started on board '5b5e65bf83108d0353363913dd02a7ee' for 14 unrouted items.
+2026-09-02 02:33:16.172 INFO   [146F5C\36CCC9] Auto-routing pass #1 on board '5b5e65bf83108d0353363913dd02a7ee' was completed in 0.17 seconds with score 1000.00 (0 unrouted and 0 violations).
+2026-09-02 02:33:16.277 INFO   [146F5C\36CCC9] Auto-routing pass #2 on board '53a194ae4c9e2490db350c53a0f285b4' was completed in 0.00 seconds with score 1000.00 (0 unrouted and 0 violations).
+2026-09-02 02:33:16.332 INFO   [146F5C\36CCC9] Auto-routing stage completed: started with 14 unrouted nets, completed in 0.45 seconds, final score: 1000.00 (0 unrouted and 0 violations), using 0.00 total CPU seconds, 0.00 GB total allocated, and 0.0 MB peak heap usage.
+2026-09-02 02:33:16.359 INFO   [146F5C\36CCC9] Optimization stage started on board '53a194ae4c9e2490db350c53a0f285b4' with score 1000.00 (0 unrouted and 0 violations).
+2026-09-02 02:33:16.392 INFO   [146F5C\36CCC9] Stopping optimizer because the current board score (1000.00) is already close to the maximum score (1000). Remaining potential improvement is less than the threshold (1.00%).
+2026-09-02 02:33:16.417 INFO   [146F5C\36CCC9] Optimization stage completed: started with score 1000.00 (0 unrouted and 0 violations), completed in 0.06 seconds, final score: 1000.00 (0 unrouted and 0 violations), using 0.05 total CPU seconds, 0.01 GB total allocated, and 72.6 MB peak heap usage.
+2026-09-02 02:33:16.421 INFO   [146F5C\36CCC9] Job '146F5C\36CCC9' finished with state: COMPLETED (elapsed: 0.61 seconds, finished at UTC: 2026-09-02T09:33:16.420427Z).

@@ -1,0 +1,23 @@
+jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
+jar size     63288652 bytes
+jar mtime    2026-09-01 13:35:27 -0700
+jar revision 278fe14123c49376667239659c98d41a597acce9
+java         openjdk version "25.0.4.1" 2026-08-18
+hash mode    -XX:hashCode=2
+budget       optChangedArea TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000 ms, LIVE.
+             The constant is a javac-inlined compile-time constant (`sipush 1000` at
+             every call site), so no flag and no reflection disables it on the Java
+             side. The port runs RouterBudget::disabled(); a byte-identical batch.ses
+             is therefore evidence that the limit never changed the result. Trips are
+             counted from the jar's own DEBUG log when --verify-driver needs them.
+driver       <workspace>/scripts/differential/java/P7T9.java
+passes       2
+ses bytes    15254
+ses sha256   53e3779af20ad1048dd4c49e22a3078f2102b023798a7aca13c618ecfc29cd6e
+command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn 99 batch --fanout on --optimizer on --ses <ref>/batch.ses
+passes cmd   java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn 99 batch-router --fanout on --optimizer off --passes <ref>/batch.passes.jsonl
+bare jar     java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn -do <ses> -mp 99 --router.fanout.enabled=true --router.optimizer.enabled=true
+json source  freerouting.json present, its (router …) scope empty (priority 10 contributes nothing)
+bare-jar     identical
+             P7T9 mode batch and `java -jar <jar> -de … -do …` produced the same
+             SES byte for byte (15254 B), so the driver is the jar.

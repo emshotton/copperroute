@@ -1,0 +1,31 @@
+HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue026-J2_reference.dsn maxPasses=99 mode=batch-router fanout=on optimizer=off
+java-version 25.0.4.1
+ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.ses -mp 99 --router.fanout.enabled=true --router.optimizer.enabled=false
+SETTINGS maxPasses=99 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=false optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
+BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
+[transcript]
+INIT anyRoutable=true
+STATE STARTED
+INITIAL-UNROUTED 33
+FANOUT enabled=true smdPins=53
+FANOUT-SUMMARY completedPassCount=4 isTimedOut=false escapeTotalSmdPins=51 escapedCount=39 escapedPercentage=76.47058823529412 fanoutTimedOut=false items=192 traces=90 vias=21 incompletes=15 traceLength="1601794.6223576097"
+ROUTER-ENABLED true unrouted=15
+STATE RUNNING pass=1
+HIST-ADD pass=1 scoreBefore=545.4442 size=1 maxScore=545.4442
+PASS-RET pass=1 continueAutorouting=true scoreAfter=999.9879
+RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=545.4442 fires=false
+PASS pass=1 score=999.9879 incompletes=0 violations=0 vias=21 traces=104
+ROUTED-RESET pass=1
+STAGNATION pass=1 counter=0 lastBest=999.9879 globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=2
+HIST-ADD pass=2 scoreBefore=999.9879 size=2 maxScore=999.9879
+PASS-RET pass=2 continueAutorouting=false scoreAfter=999.9879
+RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=999.9879 fires=false
+PASS pass=2 score=999.9879 incompletes=0 violations=0 vias=21 traces=104
+ROUTED-RESET pass=2
+STAGNATION pass=2 counter=0 lastBest=999.9879 globalBest=-Infinity passOfBest=0
+FINAL-SWAP currentFinalScore=999.9879 bestHistoryScore=999.9879 swapped=false
+TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=false stopAutoRouterRequested=false fires=true
+RESULT state=FINISHED passesRun=2 continueRouting=true stopRequested=false stopAutoRouterRequested=false
+TRANSCRIPT returned=true items=196 traces=99 vias=16 incompletes=0 traceLength="3778838.818962076"
+[board] (elided — the board is batch.ses)

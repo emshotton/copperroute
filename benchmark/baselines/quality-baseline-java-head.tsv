@@ -1,0 +1,85 @@
+# gate-version: g1
+# task: T1
+# source: tests/reference-frozen/java-head-2026-09/ (read ONCE, here, before the chmod -R a-w)
+# jar: build/libs/freerouting-current-executable.jar, 2.3.1-SNAPSHOT, revision 278fe14123c49376667239659c98d41a597acce9
+# jvm: openjdk 25.0.4.1 2026-08-18, -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:hashCode=2
+# timing: NONE, deliberately. Ruling BO forbids the jar as the timing reference -- a jar
+#         cpu_s taken on one machine is a number with no meaning next to a port cpu_s, and
+#         the frozen tree carries no timing anyway. The rolling PORT time baseline is
+#         benchmark/baselines/stem-times.tsv and nothing here may stand in for it.
+#
+# WHAT THIS FILE IS. Numbers, quality only, context and NEVER a gate. It is the jar column
+# scripts/quality-ab.sh renders into every row jar_incomplete, jar_violations,
+# jar_clearance_violations and jar_normalized_score, so that a reader of one A/B row can
+# see where the jar stood without opening a second file. No rule reads it, no flag comes
+# from it, and it cannot change that script exit code. The gate is the PORT column,
+# benchmark/baselines/ab/quality-ab-T<n-1>.tsv (ruling BP15).
+#
+# WHY IT LIVES HERE AND NOT IN THE FREEZE. BL8 as amended by ruling BP1: the frozen tree is
+# a historical artefact, written once and read by nothing -- no test, no script. Deriving
+# these numbers was the single, final read, and it happened before the tree was made
+# read-only. grep -rn "reference-frozen" crates/ scripts/ benchmark/ returns prose only.
+#
+# WHERE EACH COLUMN COMES FROM.
+#   incomplete, violations, clearance_violations, hole_clearance_violations
+#       The REFEREE DRC document, never a manifest (survey 4.1: the manifest own counts
+#       disagree with the program own -drc mode on 45-63% of boards, and several Plan 9
+#       tasks are busy fixing exactly that). For the 8 batch and 13 CLI stems that is the
+#       port -drc run over the JAR frozen SES -- the same instrument quality-ab.sh puts
+#       the port own SES through, so the two columns are like for like and what differs
+#       between them is the routed board and not the measurement. For the 8 DRC stems it
+#       is the frozen drc-<stem>/drc.json itself, which IS the jar own document and is a
+#       better jar number than re-refereeing the board with the port would be.
+#   normalized_score, trace_length_mm, via_*, bend_count
+#       The JAR own manifest, tests/reference-frozen/java-head-2026-09/cli-<stem>/
+#       manifest.json, written by a second bare-jar run with --router.result_json.
+#       These are board statistics and nothing disputes them.
+#   the 8 DRC stems route nothing, so their routing columns read `-`. That is not a gap.
+#
+# THE BATCH ROWS SHARE THE CLI MANIFEST, and may do so. gen-cli-reference.sh asserts per
+# stem that cli-<stem>/route.ses is byte-identical to <stem>/batch.ses, and Task 1
+# re-verified it with cmp on all 8 before deriving anything. The manifest therefore
+# describes the very board the batch row is about. The batch and cli rows for those 8
+# stems are consequently identical, exactly as they are in the port own T0 column.
+#
+# THE ONE ROW WHERE THE JAR AND THE PORT DISAGREE, and it is a known one.
+# drc/drc-natural-tone-preamp: jar 115 violations, port 112. Quirk #146, pinned by
+# crates/fr-drc/tests/reference_parity.rs::
+# natural_tone_preamp_is_the_reference_minus_three_dangling_tracks. generateReport folds
+# getAllUnconnectedItems track_dangling entries into violations
+# (DesignRulesChecker.java:271-276) and that phase dedup (:160) drops whichever dangling
+# trace a net entry hash-ordered firstItem happens to be; the port ascending-id
+# representatives make three more of them dangling. Every other one of the 29 rows matches
+# the port T0 column exactly, which is what byte-parity at this commit means and is the
+# reason this file is worth cutting at this commit and at no later one.
+#
+# cols:family	stem	mp_cap	incomplete	violations	clearance_violations	hole_clearance_violations	normalized_score	trace_length_mm	via_total	via_through	via_blind	via_buried	bend_count
+batch	router-rpi-splitter	8	0	0	0	0	999.9719	111.2505	9	9	0	0	14
+batch	router-dac2020-bm01	2	31	0	0	0	825.6295	2972.233	81	81	0	0	413
+batch	router-j2-reference	99	0	0	0	0	999.9895	377.88388	16	16	0	0	54
+batch	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0
+batch	router-ecc83-input	8	0	0	0	0	999.997	161.87364	0	0	0	0	15
+batch	router-fanout-bm11	2	2	5	0	0	987.4912	1632.4795	53	53	0	0	275
+batch	router-strict-drc-cnh	2	11	17	0	16	930.0412	5038.2734	4	4	0	0	294
+batch	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0
+cli	router-rpi-splitter	8	0	0	0	0	999.9719	111.2505	9	9	0	0	14
+cli	router-j2-reference	99	0	0	0	0	999.9895	377.88388	16	16	0	0	54
+cli	router-ecc83-input	8	0	0	0	0	999.997	161.87364	0	0	0	0	15
+cli	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0
+cli	router-dac2020-bm01	2	31	0	0	0	825.6295	2972.233	81	81	0	0	413
+cli	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0
+cli	router-fanout-bm11	2	2	5	0	0	987.4912	1632.4795	53	53	0	0	275
+cli	router-strict-drc-cnh	2	11	17	0	16	930.0412	5038.2734	4	4	0	0	294
+cli	tutorial_board	default	0	0	0	0	0.0	0.0	0	0	0	0	0
+cli	Issue026-J2_reference	default	0	0	0	0	999.9895	377.88388	16	16	0	0	54
+cli	large-outline	2	8	415	0	400	823.31805	4812.476	162	162	0	0	534
+cli	kicad-ecc83-json	3	6	14	0	14	309.99774	113.13041	0	0	0	0	11
+cli	kicad-complex-hierarchy-json	default	0	36	0	36	935.709	1399.8671	0	0	0	0	154
+drc	drc-dev-board	n/a	4	10	0	2	-	-	-	-	-	-	-
+drc	drc-bbd-mars-64	n/a	3	96	12	64	-	-	-	-	-	-	-
+drc	drc-natural-tone-preamp	n/a	44	115	0	0	-	-	-	-	-	-	-
+drc	drc-issue593-rules	n/a	74	0	0	0	-	-	-	-	-	-	-
+drc	drc-issue593-ses	n/a	45	13	0	0	-	-	-	-	-	-	-
+drc	drc-issue753-cpu85	n/a	169	107	0	78	-	-	-	-	-	-	-
+drc	drc-issue110-relay	n/a	44	26	0	4	-	-	-	-	-	-	-
+drc	drc-tutorial-board	n/a	0	0	0	0	-	-	-	-	-	-	-

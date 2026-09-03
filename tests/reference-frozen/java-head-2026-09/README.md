@@ -11,21 +11,18 @@
 >
 > ### The freeze
 >
-> Before the first regeneration, Task 1 copied this whole tree, as it stood at the last
+> Before the first regeneration, Task 1 copies this whole tree, as it stands at the last
 > jar-generated commit, to the **sibling** directory
 >
 > ```
-> tests/reference-frozen/java-head-2026-09/     # 212 files, 38 directories, 4 286 257 bytes
+> tests/reference-frozen/java-head-2026-09/
 > ```
 >
 > — a sibling, never a child of `tests/reference/`, because a recursive copy of a directory into
 > itself is not expressible and because a child would be swept up by every glob that walks this
-> tree. **That copy is done**, verified file-for-file by sha256, and read-only (`chmod -R a-w`);
-> the one thing deliberately not in it is `_scratch/`, which is gitignored working space for the
-> generators and the DRC parity tests rather than reference data. The freeze is a **historical
-> artefact, not a test input**: it is written once, made read-only, and **read by nothing** — no
-> test, no script, and specifically not `scripts/quality-ab.sh` (ruling BL8, as amended by ruling
-> BP1). The jar's quality numbers are
+> tree. The freeze is a **historical artefact, not a test input**: it is written once, made
+> read-only, and **read by nothing** — no test, no script, and specifically not
+> `scripts/quality-ab.sh` (ruling BL8, as amended by ruling BP1). The jar's quality numbers are
 > derived from it **once**, at Task 1, and written *outside* it to
 > `benchmark/baselines/quality-baseline-java-head.tsv`, where the A/B harness reads them as
 > context and never as a gate. `grep -rn "reference-frozen" crates/ scripts/` must return nothing

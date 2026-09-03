@@ -1,0 +1,8 @@
+-de
+<JAVA_DIR>/examples/tutorial_board/tutorial_board.dsn
+-do
+<OUT>/route.ses
+-mp
+8
+--router.fanout.enabled=true
+--router.optimizer.enabled=true

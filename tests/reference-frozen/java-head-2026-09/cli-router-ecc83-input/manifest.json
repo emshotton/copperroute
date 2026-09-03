@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-02T09:33:19.557555Z",
+  "app_version": "2.3.1-SNAPSHOT",
+  "git_sha": "unknown",
+  "fixture": {
+    "filename": "Issue649-kicad_ecc83-pp_input_board_v1.dsn",
+    "sha256": "e7af5da592bd5c5d19e0082ddedacea2ba4da2a264b7cfb57c336a0c9c4a80d2"
+  },
+  "settings_snapshot": {
+    "enabled": true,
+    "algorithm": "freerouting-router",
+    "fanout": {
+      "enabled": true,
+      "max_passes": 20,
+      "max_items": 2147483647,
+      "max_milliseconds_per_pin": 10000,
+      "ripup_allowed": true,
+      "min_escape_length_mm": 2.5,
+      "max_escape_length_mm": 4.5,
+      "start_via_diameter_mm": 0.25,
+      "end_via_diameter_mm": 0.25,
+      "pin_sorting_order": "outer_first",
+      "fallback_to_board_vias": true
+    },
+    "copper_to_edge_clearance_um": 500.0,
+    "hole_clearance_um": 0.0,
+    "neck_width_um": 0.0,
+    "strict_drc": false,
+    "job_timeout": "12:00:00",
+    "max_passes": 8,
+    "trace_pull_tight_accuracy": 500,
+    "allowed_via_types": true,
+    "automatic_neckdown": true,
+    "optimizer": {
+      "enabled": true,
+      "algorithm": "freerouting-optimizer",
+      "max_passes": 100,
+      "max_items": 2147483647,
+      "max_threads": 7,
+      "improvement_threshold": 0.01,
+      "max_consecutive_failures": 50,
+      "additional_ripup_cost_factor_at_start": 10,
+      "trace_ripup_cost_factor": 0.6,
+      "max_autoroute_passes": 6
+    },
+    "scoring": {
+      "default_preferred_direction_trace_cost": 1.0,
+      "default_undesired_direction_trace_cost": 1.0,
+      "via_costs": 50,
+      "plane_via_costs": 5,
+      "start_ripup_costs": 100,
+      "unrouted_net_penalty": 5000000.0,
+      "clearance_violation_penalty": 1000000.0,
+      "bend_penalty": 10.0,
+      "default_bend_cost": 0.0
+    },
+    "max_threads": 7,
+    "result_json": "<OUT>/router-ecc83-input.manifest.json"
+  },
+  "phases": {
+    "fanout": {},
+    "autorouter": {
+      "duration_seconds": 0.613,
+      "passes_completed": 2
+    },
+    "optimizer": {}
+  },
+  "board_statistics": {
+    "host": "KiCad's Pcbnew,10.0.2",
+    "unit": "mm",
+    "board": {
+      "bounding_box": {
+        "x": 1734.55,
+        "y": -900.7,
+        "width": 1211.85,
+        "height": -1366.25
+      },
+      "size": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 522.7,
+        "height": 465.55
+      }
+    },
+    "layers": {
+      "total_count": 2,
+      "signal_count": 2
+    },
+    "items": {
+      "total_count": 372,
+      "trace_count": 18,
+      "via_count": 0,
+      "conduction_area_count": 1,
+      "drill_item_count": 0,
+      "pin_count": 33,
+      "component_count": 319,
+      "other_count": 1
+    },
+    "components": {
+      "total_count": 15
+    },
+    "pads": {
+      "total_count": 33
+    },
+    "nets": {
+      "total_count": 13,
+      "class_count": 1
+    },
+    "connections": {
+      "maximum_count": 21,
+      "incomplete_count": 0
+    },
+    "traces": {
+      "total_count": 18,
+      "total_segment_count": 33,
+      "total_length": 1618.7363,
+      "total_length_mm": 161.87364,
+      "total_weighted_length": 1.2662895E7,
+      "average_length": 89.929794,
+      "total_vertical_length": 676.205,
+      "total_horizontal_length": 168.296,
+      "total_angled_length": 333.50262
+    },
+    "bends": {
+      "total_count": 15,
+      "90_degree_count": 0,
+      "45_degree_count": 15,
+      "other_angle_count": 0
+    },
+    "vias": {
+      "total_count": 0,
+      "through_hole_count": 0,
+      "blind_count": 0,
+      "buried_count": 0
+    },
+    "clearance_violations": {
+      "total_count": 0,
+      "min_violation_um": 0.0,
+      "max_violation_um": 0.0,
+      "avg_violation_um": 0.0
+    },
+    "fanout": {
+      "total_smd_pins": 0,
+      "pins_to_escape": 0,
+      "escaped_count": 0
+    }
+  },
+  "normalized_score": 999.997,
+  "resource_usage": {
+    "cpu_time": 0.0,
+    "max_memory": 0.0,
+    "peak_memory": 0.0,
+    "io_read": 0.0,
+    "io_written": 0.0
+  },
+  "final_state": "COMPLETED",
+  "exit_code": 0,
+  "output_written": true
+}

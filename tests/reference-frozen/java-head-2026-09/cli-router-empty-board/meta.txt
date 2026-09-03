@@ -1,0 +1,20 @@
+jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
+jar size     63288652 bytes
+jar mtime    2026-09-01 13:35:27 -0700
+jar revision 278fe14123c49376667239659c98d41a597acce9
+java         openjdk version "25.0.4.1" 2026-08-18
+hash mode    -XX:hashCode=2
+lane         ci
+budget       LIVE ON BOTH SIDES. Unlike scripts/gen-batch-reference.sh, this generator
+             needs no probe and disables nothing: what p8t1 compares is two whole
+             programs, and the port's CLI runs fr_core::RouterBudget::default() —
+             Java's own 1000/10000/250/1000 literals — because that is what a user
+             gets. See this script's header for the full argument and for the risk
+             (a live wall clock is a machine-speed dependency) the batch.ses
+             cross-check below bounds.
+command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de <FREEROUTING_JAVA_DIR>/fixtures/empty_board.dsn -do <OUT>/route.ses -mp 1 --router.fanout.enabled=false --router.optimizer.enabled=false
+manifest cmd java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de <FREEROUTING_JAVA_DIR>/fixtures/empty_board.dsn -do <OUT>/route.ses -mp 1 --router.fanout.enabled=false --router.optimizer.enabled=false --router.result_json=<OUT>/manifest.json
+exit code    0
+ses bytes    212
+ses sha256   4e4af63f738813aafe011e8edf317f0836716628144fddf1093cee4064008a30
+batch cross-check  identical to tests/reference/router-empty-board/batch.ses

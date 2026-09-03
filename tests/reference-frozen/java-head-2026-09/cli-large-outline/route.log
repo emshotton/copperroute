@@ -1,0 +1,22 @@
+2026-09-02 02:40:33.526 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-09-01)
+2026-09-02 02:40:33.567 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-09-02 02:40:34.680 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:40:34.701 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:40:34.950 INFO   [C0564A\3ECE31] Loading board file 'Issue035-ReadPlaceScope.dsn'...
+2026-09-02 02:40:34.956 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:40:35.001 INFO   New version available: v2.3.0
+2026-09-02 02:40:35.028 WARN   Structure.create_board: The DSN file was exported from an old KiCad version that has known compatibility issues. Please update KiCad to version 6 or newer.
+2026-09-02 02:40:35.031 INFO   [C0564A\3ECE31] Job 'C0564A\3ECE31' started at 2026-09-02T09:40:35.031642Z.
+2026-09-02 02:40:35.692 INFO   [C0564A\3ECE31] Fanout stage started on board '07daf3d8649ab4515a014a39ac68bf24' with 194 of 202 SMD pins needing fanout (7 already connected, 1 netless).
+2026-09-02 02:40:37.494 INFO   [C0564A\3ECE31] Fanout pass #1 on board '4406fd61e3443800d085285fe7db760e' completed in 1.01 seconds with 192 SMD pins fanouted, 0 not routed, 0 insert errors, +37 extra vias (0 SMD pins still to check in pass, ripup costs=100).
+2026-09-02 02:40:38.593 INFO   [C0564A\3ECE31] Fanout pass #2 on board 'fb064f46d32df4f841988be8864ff3cf' completed in 0.19 seconds with 11 SMD pins fanouted, 0 not routed, 0 insert errors, +5 extra vias (0 SMD pins still to check in pass, ripup costs=200).
+2026-09-02 02:40:39.617 INFO   [C0564A\3ECE31] Fanout pass #3 on board '5601745bbb8bfd48eb47f4f44ee70244' completed in 0.12 seconds with 4 SMD pins fanouted, 0 not routed, 0 insert errors, +1 extra via (0 SMD pins still to check in pass, ripup costs=300).
+2026-09-02 02:40:40.638 INFO   [C0564A\3ECE31] Fanout pass #4 on board '48cdfe52a94c721e6b2487e59e751015' completed in 0.12 seconds with 5 SMD pins fanouted, 0 not routed, 0 insert errors, +0 extra vias (0 SMD pins still to check in pass, ripup costs=400).
+2026-09-02 02:40:41.632 INFO   [C0564A\3ECE31] Fanout pass #5 on board '1931c50326f21bdfb2abb2914dc589e7' completed in 0.10 seconds with 3 SMD pins fanouted, 0 not routed, 0 insert errors, +1 extra via (0 SMD pins still to check in pass, ripup costs=500).
+2026-09-02 02:40:42.613 INFO   [C0564A\3ECE31] Fanout pass #6 on board '1931c50326f21bdfb2abb2914dc589e7' completed in 0.09 seconds with 2 SMD pins fanouted, 0 not routed, 0 insert errors, +0 extra vias (0 SMD pins still to check in pass, ripup costs=600).
+2026-09-02 02:40:43.071 INFO   [C0564A\3ECE31] Fanout stage completed: started with 201 total SMD pins, completed in 7.35 seconds, escaped pins: 192/201 (95.5%), using 7.55 total CPU seconds, 7.26 GB total allocated, and 397.7 MB peak heap usage.
+2026-09-02 02:40:43.516 INFO   [C0564A\3ECE31] Auto-routing stage started on board '1931c50326f21bdfb2abb2914dc589e7' for 216 unrouted items.
+2026-09-02 02:40:52.682 INFO   [C0564A\3ECE31] Auto-routing pass #1 on board '1931c50326f21bdfb2abb2914dc589e7' was completed in 7.24 seconds with score 764.99 (26 unrouted and 152 violations), using 16.70 CPU seconds and the job allocated 90.43 GB of memory so far.
+2026-09-02 02:40:57.578 INFO   [C0564A\3ECE31] Auto-routing pass #2 on board 'b87e7215cc433cd78d5e04d79aac9a92' was completed in 2.03 seconds with score 823.32 (12 unrouted and 152 violations), using 21.65 CPU seconds and the job allocated 117.59 GB of memory so far.
+2026-09-02 02:40:59.890 INFO   [C0564A\3ECE31] Auto-routing stage completed: started with 240 unrouted nets, completed in 23.61 seconds, final score: 823.32 (12 unrouted and 152 violations), using 23.65 total CPU seconds, 124.68 GB total allocated, and 546.8 MB peak heap usage.
+2026-09-02 02:40:59.919 INFO   [C0564A\3ECE31] Job 'C0564A\3ECE31' finished with state: COMPLETED (elapsed: 24.89 seconds, finished at UTC: 2026-09-02T09:40:59.918587Z).

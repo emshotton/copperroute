@@ -1,0 +1,12 @@
+HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue730-DAC2020_bm11.dsn maxPasses=2 mode=batch fanout=on optimizer=off
+java-version 25.0.4.1
+ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue730-DAC2020_bm11.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue730-DAC2020_bm11.ses -mp 2 --router.fanout.enabled=true --router.optimizer.enabled=false
+SETTINGS maxPasses=2 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=false optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
+BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
+[pipeline]
+EVENT algorithm=ROUTER state=STARTED
+EVENT algorithm=ROUTER state=RUNNING
+EVENT algorithm=ROUTER state=RUNNING
+EVENT algorithm=ROUTER state=CANCELLED
+RESULT passesRun=3 optimizerPresent=false fanoutTimedOut=false optimizerTimedOut=false items=622 traces=335 vias=53 incompletes=2 traceLength="1.6324795140767297E7"
+[board] (elided — the board is batch.ses)

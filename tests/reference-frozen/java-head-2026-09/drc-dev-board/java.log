@@ -1,0 +1,6 @@
+2026-08-29 05:28:17.237 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-08-27)
+2026-08-29 05:28:17.275 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
+2026-08-29 05:28:18.326 INFO   Loading DSN file for DRC: /Users/em/Development/freerouting/freerouting-rs/../freerouting/fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn
+2026-08-29 05:28:18.331 INFO   [4B4222\0E077A] Loading board file 'Issue575-drc_dev-board_4_hole_clearance_violations.dsn'...
+2026-08-29 05:28:18.617 INFO   DRC report written to: /Users/em/Development/freerouting/freerouting-rs/tests/reference/drc-dev-board/drc.json
+2026-08-29 05:28:18.619 INFO   New version available: v2.3.0
