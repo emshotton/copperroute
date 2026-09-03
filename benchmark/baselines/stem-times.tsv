@@ -1,5 +1,14 @@
 # gate-version: g1
 # task: T3
+# host: laptop  -- ADVISORY ONLY for the cpu lane (ruling BW).
+# Ruling BW moves the timing lane to the workbench, and this file is laptop-cut, so the
+# `cpu_s` column it seeds is advisory and not a gate until it is re-cut there. The re-cut
+# did not happen at Task 3's landing and the reason is a defect, not a decision:
+# `scripts/remote-gates.sh`'s `quality-ab` arm invokes `benchmark/scripts/quality-ab.sh`,
+# which does not exist -- the script is at `scripts/quality-ab.sh` -- it forwards no extra
+# arguments, so `--update-baseline` cannot be reached through it, and it writes the tsv
+# into the workbench slot with nothing bringing it back. The host itself is reachable.
+# Re-cutting this file on the workbench therefore falls to the controller at merge.
 # The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
 # never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s
 # column and rewrites it in place at each task's close, in the same commit as
