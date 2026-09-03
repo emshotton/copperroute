@@ -72,7 +72,7 @@ pub mod run;
 pub mod stop;
 pub mod unrouted_report;
 
-pub use airline::calculate_airline;
+pub use airline::{calculate_airline, calculate_item_distance};
 pub use batch_autorouter::BatchAutorouter;
 pub use batch_loop::{AutorouteBatchLoop, BatchLoopResult};
 pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};

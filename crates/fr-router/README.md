@@ -2815,6 +2815,30 @@ register rather than a claim that the corpus clears it.
 plus three small classes that had been on the roster: `RoutingFailureLog` (161 loc),
 `ItemRouteResult` (145 loc, in full) and `AutorouteAirlineCalculator.calculateAirline`.
 
+### The work list is airline-sorted (Plan 9 Task 2, R1 — register row #293)
+
+Plan 7 rostered three more `AutorouteAirlineCalculator` methods `// not ported:` on
+correct evidence — `calculateItemDistance` (`:162-177`), `calculateMinDistance`
+(`:179-202`) and `getItemReferencePoint` (`:204-213`) have **no caller anywhere** in
+`src/main` or `src/test`, and `grep -rn calculateItemDistance src/main src/test` still
+answers only the declaration. Plan 9 Task 2 ports all three and re-states those three
+roster lines as ported rows, because the missing caller is a **measured regression**
+rather than dead code: commit `933d2980` deleted
+`autorouteItemList.sort(Comparator.comparingDouble(this::calculateItemDistance))` and
+`benchmark/reports/java-regressions-2026-09.md` §"Regression 1" shows fully-connected
+falling 0.81 → 0.75 at v2.2.0 and never recovering, with the sort restored alone at HEAD
+bringing it back to 0.82 *and running slightly faster*.
+
+`BatchAutorouter::autoroute_items_with_handled` therefore returns the list **sorted
+ascending by `calculate_item_distance`**, unconditionally and stably: `f64::total_cmp`
+is `Double.compare`'s order, and a stable sort leaves ties in the descending-id walk
+order (quirk #63) that `getAutorouteItems` built, so the sort is a refinement of the old
+order and not a second reordering. `autoroute_items` is the untouched wrapper, and
+`pass_runner.rs:158` consumes the sorted list with no change of its own. The two
+remaining `// not ported:` rows — `nearestPointOnTrace` (`:42-83`) and
+`findClosestPointsBetweenTraces` (`:85-160`) — are **not** resurrected: they are reached
+only from each other and from `BatchAutorouterThread`, which has no caller at all.
+
 ### Quirk #213: an item enters the work list once per qualifying net
 
 `:390`'s `autorouteItemList.add(currentItem)` sits **inside** the `for (int i = 0; i <
