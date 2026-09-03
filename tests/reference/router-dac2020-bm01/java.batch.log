@@ -11,5 +11,5 @@ EVENT algorithm=ROUTER state=CANCELLED
 EVENT algorithm=OPTIMIZER state=STARTED
 EVENT algorithm=OPTIMIZER state=RUNNING
 EVENT algorithm=OPTIMIZER state=FINISHED
-RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=703 traces=313 vias=70 incompletes=42 traceLength="2.8066665041242857E7"
+RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=743 traces=342 vias=81 incompletes=34 traceLength="3.0959175624249555E7"
 [board] (elided — the board is batch.ses)

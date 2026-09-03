@@ -547,7 +547,9 @@ mod tests {
     /// The `getId()` of an untouched page: `31 * shape.getId() + (-1)`. `P6T7Probe` mode 7,
     /// `fresh netNumber=-1 id=-29760001 shapeId=-960000`.
     #[test]
-    fn a_fresh_pages_id_hashes_the_minus_one_net() {
+    fn a_fresh_pages_id_is_the_engine_counter_and_javas_hashes_the_minus_one_net() {
+        // fixed: T8 (#167): `get_id` is the id the page grid drew; `java_id` is the hash it
+        // replaced, kept so the moving key stays pinned.
         let shape = IntBox::from_coords(-1000, -1000, 1000, 1000);
         assert_eq!(shape.get_id(), -960_000);
         let page = DrillPage {
@@ -557,7 +559,8 @@ mod tests {
             drills: None,
             net_number: -1,
         };
-        assert_eq!(page.get_id(), -29_760_001);
+        assert_eq!(page.get_id(), 1);
+        assert_eq!(page.java_id(), -29_760_001);
         assert_eq!(page.net_number(), -1);
         assert_eq!(page.drills(), None);
         assert_eq!(page.get_dimension(), 2);

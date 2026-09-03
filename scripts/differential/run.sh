@@ -64,7 +64,7 @@ OUT="$BUILD/classes"
 usage() {
   echo "usage: $0 [--against-jar] <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
-  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
+  echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
   echo "           p8t2probe, p8t2, p8t5, p8t1, p8t3, p8t6, p8t7" >&2
   echo "  args default to a smoke run per driver (see README.md); pass your" >&2
@@ -258,24 +258,13 @@ case "$driver" in
     needs_jar=1
     java_flags=("${P5T_JAVA_FLAGS[@]}")
     ;;
-  p6t2)
-    # Plan 6 Task 3: `ShapeSearchTree.completeShape` / `divideLargeRoom` in all three angle
-    # regimes — the two methods `p2t10` skipped. Declares `package app.freerouting.board.searchtree`
-    # so it can call the protected `divideLargeRoom` directly, so it compiles against the clone's
-    # HEAD jar like `p2t10` (plan-6 global constraints: HEAD is the parity jar).
-    javaclass=P6T2
-    javapkg="board.searchtree"
-    default_args=(42 20 2000)
-    needs_jar=1
-    java_flags=(-Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2)
-    ;;
   p6t1)
     # Plan 6 Task 17: one real DSN board, its first `maxItems` connections routed through steps
     # 1-5 of `AutorouteConnectionRouter.route` (plan-6 ruling 2's seam) — the driver behind
     # `scripts/gen-router-reference.sh` and `crates/fr-router/tests/reference_parity.rs`.
     # Declares `package app.freerouting.autoroute.maze` (the brief's package, so the driver can
     # reach package-private members of the engine if it ever needs to) and compiles against the
-    # clone's HEAD jar like `p6t2`/`p6t3`.
+    # clone's HEAD jar like `p6t3`.
     #
     # `P6T1_TIMEOUT` bounds the wall clock on **both** sides: quirk #162
     # (`SortedRoomNeighbours.calculateNewIncompleteRooms`) does not terminate for a small fraction
@@ -646,7 +635,7 @@ case "$driver" in
     # (modes 6 and 8) and `SortedOrthogonalRoomNeighbours` (modes 7 and 9). Declares `package
     # app.freerouting.autoroute.expansion` so it can reflect into the classes' private members (the
     # sorted sets are unobservable from outside), and compiles against the clone's HEAD jar like
-    # `p6t2`.
+    # `p6t1`.
     javaclass=P6T3
     javapkg="autoroute.expansion"
     default_args=(0 42 20 1000)

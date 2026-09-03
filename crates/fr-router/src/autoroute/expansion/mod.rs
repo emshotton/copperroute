@@ -1042,12 +1042,20 @@ mod tests {
             RoomRef::Complete(store.new_complete_room(Some(boxed(0, 0, 4, 4)), 2, counter));
         assert_eq!(store.room_id_no(complete), Some(counter));
 
+        // fixed: T8 (#158): an incomplete room's id is the same counter, not
+        // `31 * shape.getId() + layer` — the shape is mutable and nullable, and the id is a sort
+        // key. `java_id` keeps the formula.
         let shape = boxed(1, 1, 5, 5);
         let incomplete =
             RoomRef::Incomplete(store.new_incomplete_room(Some(shape.clone()), 3, None));
+        assert_eq!(store.room_id_no(incomplete), Some(counter + 1));
+        let RoomRef::Incomplete(id) = incomplete else {
+            unreachable!()
+        };
         assert_eq!(
-            store.room_id_no(incomplete),
-            Some(shape.get_id().wrapping_mul(31).wrapping_add(3))
+            store.incomplete_room(id).unwrap().java_id(),
+            shape.get_id().wrapping_mul(31).wrapping_add(3),
+            "Java's formula, kept pinned"
         );
     }
 }
