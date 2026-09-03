@@ -1,0 +1,47 @@
+--- SQ ---
+  corners           = [Int(IntPoint { x: 0, y: 0 }), Int(IntPoint { x: 100, y: 0 }), Int(IntPoint { x: 100, y: 100 }), Int(IntPoint { x: 0, y: 100 })]
+  dimension         = 2
+  centre_of_gravity = FloatPoint { x: 50.0, y: 50.0 }   (corner MEAN, not the area centroid)
+  bounding_box      = IntBox { ll: IntPoint { x: 0, y: 0 }, ur: IntPoint { x: 100, y: 100 } }
+  area()            = 0   <-- #26, always 0
+  smallest_radius() = 0   <-- #28/#29, always 0
+  bounding_tile     = Box(IntBox { ll: IntPoint { x: 0, y: 0 }, ur: IntPoint { x: 100, y: 100 } })
+--- L ---
+  corners           = [Int(IntPoint { x: 0, y: 0 }), Int(IntPoint { x: 100, y: 0 }), Int(IntPoint { x: 100, y: 100 }), Int(IntPoint { x: 80, y: 100 }), Int(IntPoint { x: 80, y: 80 }), Int(IntPoint { x: 0, y: 80 })]
+  dimension         = 2
+  centre_of_gravity = FloatPoint { x: 60.0, y: 60.0 }   (corner MEAN, not the area centroid)
+  bounding_box      = IntBox { ll: IntPoint { x: 0, y: 0 }, ur: IntPoint { x: 100, y: 100 } }
+  area()            = 0   <-- #26, always 0
+  smallest_radius() = 0   <-- #28/#29, always 0
+  bounding_tile     = Simplex(Simplex { lines: [Line { a: IntPoint { x: 0, y: 0 }, b: IntPoint { x: 100, y: 0 } }, Line { a: IntPoint { x: 100, y: 0 }, b: IntPoint { x: 100, y: 100 } }, Line { a: IntPoint { x: 100, y: 100 }, b: IntPoint { x: 80, y: 100 } }, Line { a: IntPoint { x: 80, y: 100 }, b: IntPoint { x: 0, y: 80 } }, Line { a: IntPoint { x: 0, y: 80 }, b: IntPoint { x: 0, y: 0 } }] })
+
+--- IntBox::enlarge gives an OCTAGON, not a box (the house offset convention) ---
+  box.enlarge(10)   = IntOctagon { left_x: -10, bottom_y: -10, right_x: 110, top_y: 110, upper_left_diagonal_x: -114, lower_right_diagonal_x: 114, lower_left_diagonal_x: -14, upper_right_diagonal_x: 214 }
+
+--- #27 polygon vs polygon (the port panics where Java StackOverflows) ---
+
+thread 'main' (60238269) panicked at crates/fr-geometry/src/shape.rs:608:34:
+PolygonShape.intersects(PolygonShape) recurses forever (PolygonShape.java:118-121 has no PolygonShape overload to bind to)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+  sq.intersects(Shape::Polygon(disjoint)) -> PANIC (see shape.rs:605-611)
+
+================================================================================
+The corresponding stub outputs from the Task 11 probe (same v1.0.0 clone)
+================================================================================
+=== #28+#29 PolygonShape / Circle stubs ===
+  square.contains_on_border((50,0) on edge)  = false
+  square.contains_on_border((0,0) vertex)    = false
+  square.contains_on_border((50,50) inside)  = false
+  square.smallest_radius()   = 0
+  L.smallest_radius()        = 0
+  square.border_distance((50,50)) = 0
+  square.distance((150,50))       = 0
+  square.enlarge(10) is_none = true
+  circle.nearest_point_approx((300,0)) = None
+
+================================================================================
+PROVENANCE
+================================================================================
+Repo at tag v1.0.0 (ecc0abf), cloned read-only into the scratchpad and built there.
+Probe source: $SCRATCH/port-v100/crates/fr-geometry/examples/p9poly.rs
+The plan-9-post-parity working tree was never written to.

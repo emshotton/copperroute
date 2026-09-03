@@ -1,0 +1,55 @@
+(session "p9t13-multi-net-smd-pin"
+  (base_design "p9t13-multi-net-smd-pin")
+  (placement
+    (resolution um 10)
+    (component "smd_footprint"
+      (place U1 400000 1000000 front 0)
+      (place U2 1600000 1000000 front 0)
+      (place U3 400000 400000 front 0)
+      (place U4 1600000 400000 front 0)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution um 10)
+    (parser
+    )
+    (library_out 
+      (padstack VIA1
+        (shape
+          (circle F.Cu 60000 0 0)
+        )
+        (shape
+          (circle B.Cu 60000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net NFIRST
+        (wire
+          (path F.Cu 2500
+            400000 1000000
+            1600000 1000000
+          )
+          (type protect)
+        )
+      )
+      (net NSECOND
+        (wire
+          (path F.Cu 2500
+            400000 400000
+            400000 1000000
+          )
+        )
+        (wire
+          (path F.Cu 2500
+            400000 400000
+            1600000 400000
+          )
+        )
+      )
+    )
+  )
+)

@@ -1,0 +1,55 @@
+(session "p9t8-ninety-degree"
+  (base_design "p9t8-ninety-degree")
+  (placement
+    (resolution um 10)
+    (component "pad_footprint"
+      (place P1 200000 200000 front 0)
+      (place P2 1800000 200000 front 0)
+      (place P3 200000 1800000 front 0)
+      (place P4 1800000 1800000 front 0)
+    )
+    (component "blocker_footprint"
+      (place K1 1000000 1000000 front 0)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution um 10)
+    (parser
+    )
+    (library_out 
+      (padstack VIA1
+        (shape
+          (circle F.Cu 60000 0 0)
+        )
+        (shape
+          (circle B.Cu 60000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net NA
+        (wire
+          (path F.Cu 2500
+            1800000 1800000
+            1800000 796733
+            200000 796733
+            200000 200000
+          )
+        )
+      )
+      (net NB
+        (wire
+          (path B.Cu 2500
+            200000 1800000
+            200000 796733
+            1800000 796733
+            1800000 200000
+          )
+        )
+      )
+    )
+  )
+)
