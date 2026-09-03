@@ -1,5 +1,5 @@
+rust-binary <workspace>/scripts/differential/rust/target/release/p7t9
 HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue508-DAC2020_bm01.dsn maxPasses=2 mode=batch-router fanout=on optimizer=off
-java-version 25.0.4.1
 ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.ses -mp 2 --router.fanout.enabled=true --router.optimizer.enabled=false
 SETTINGS maxPasses=2 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=false optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
 BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
@@ -8,23 +8,23 @@ INIT anyRoutable=true
 STATE STARTED
 INITIAL-UNROUTED 195
 FANOUT enabled=true smdPins=212
-FANOUT-SUMMARY completedPassCount=4 isTimedOut=false escapeTotalSmdPins=187 escapedCount=186 escapedPercentage=99.46524064171123 fanoutTimedOut=false items=756 traces=303 vias=133 incompletes=145 traceLength="5013650.397537314"
-ROUTER-ENABLED true unrouted=145
+FANOUT-SUMMARY completedPassCount=10 isTimedOut=false escapeTotalSmdPins=187 escapedCount=185 escapedPercentage=98.93048128342247 fanoutTimedOut=false items=699 traces=248 vias=131 incompletes=144 traceLength="4687648.697315026"
+ROUTER-ENABLED true unrouted=144
 STATE RUNNING pass=1
-HIST-ADD pass=1 scoreBefore=256.40143 size=1 maxScore=256.40143
-PASS-RET pass=1 continueAutorouting=true scoreAfter=728.1922
-RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=256.40143 fires=false
-PASS pass=1 score=728.1922 incompletes=53 violations=0 vias=127 traces=408
+HIST-ADD pass=1 scoreBefore=261.5302 size=1 maxScore=261.5302
+PASS-RET pass=1 continueAutorouting=true scoreAfter=666.6547
+RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=261.5302 fires=false
+PASS pass=1 score=666.6547 incompletes=65 violations=0 vias=125 traces=351
 STAGNATION pass=1 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
 STATE RUNNING pass=2
-HIST-ADD pass=2 scoreBefore=728.1922 size=2 maxScore=728.1922
-PASS-RET pass=2 continueAutorouting=true scoreAfter=825.6266
-RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=728.1922 fires=false
-PASS pass=2 score=825.6266 incompletes=34 violations=0 vias=130 traces=432
+HIST-ADD pass=2 scoreBefore=666.6547 size=2 maxScore=666.6547
+PASS-RET pass=2 continueAutorouting=true scoreAfter=784.6007
+RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=666.6547 fires=false
+PASS pass=2 score=784.6007 incompletes=42 violations=0 vias=133 traces=395
 STAGNATION pass=2 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
 MAXPASSES-BREAK pass=3 maxPasses=2
-FINAL-SWAP currentFinalScore=825.6266 bestHistoryScore=728.1922 swapped=false
+FINAL-SWAP currentFinalScore=784.6007 bestHistoryScore=666.6547 swapped=false
 TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=true stopAutoRouterRequested=true fires=false
 RESULT state=CANCELLED passesRun=3 continueRouting=false stopRequested=false stopAutoRouterRequested=true
-TRANSCRIPT returned=false items=882 traces=432 vias=130 incompletes=34 traceLength="3.018514289161723E7"
+TRANSCRIPT returned=false items=848 traces=395 vias=133 incompletes=42 traceLength="2.8817232661529556E7"
 [board] (elided — the board is batch.ses)

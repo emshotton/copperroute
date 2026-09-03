@@ -477,6 +477,21 @@ fn every_stem_reaches_rung_c() {
 /// **Not a version string:** HEAD's `META-INF/MANIFEST.MF` carries
 /// `Implementation-Version: unspecified`, so `Build-Revision` is the only field that pins which
 /// build produced these bytes.
+///
+/// # Lane-aware since Plan 9 (ruling BT)
+///
+/// A reference family may sit in the **port** lane from Plan 9 on: the first fix that *moves* a
+/// family regenerates it with `--from-port`, and from then on its bytes are the port's rather
+/// than the jar's. The meta file says which lane it is in on its own `lane` line, and a file with
+/// no such line is a jar-lane file — that is what every pre-Plan-9 meta is. This test asserts the
+/// invariant **of the lane the file declares**: the jar's build identity in the jar lane, and the
+/// port sha plus the Plan 9 task that cut it in the port lane. Asserting the jar's identity over a
+/// port-cut file would only be asserting that nobody had switched lanes, which is not a property
+/// anything wants.
+///
+/// **This family is in the port lane from Plan 9 Task 2**: R1 (#293) reorders the work list and
+/// R2 (#294) stops the fanout fallback emitting sub-minimum traces, so every routed stem's SES
+/// moved and the B family regenerated for cause.
 #[test]
 fn references_are_from_the_head_jar() {
     let mut revisions = BTreeSet::new();
@@ -486,6 +501,10 @@ fn references_are_from_the_head_jar() {
             continue;
         }
         let meta = std::fs::read_to_string(&meta_path).expect("batch.meta.txt is readable");
+        if declared_lane(&meta).starts_with("port") {
+            assert_port_lane_provenance(&meta, stem.name);
+            continue;
+        }
         assert!(
             meta.contains("freerouting-current-executable.jar"),
             "{}: batch.meta.txt does not name the HEAD jar",
@@ -605,4 +624,37 @@ fn the_ses_normaliser_touches_only_the_parser_keywords() {
     assert_eq!(parity::normalize_ses_head_tokens(input), expected);
     // Idempotent, and a no-op on an SES the port itself wrote.
     assert_eq!(parity::normalize_ses_head_tokens(expected), expected);
+}
+
+/// The lane a reference meta file declares (ruling BT). A file with no `lane` line predates the
+/// Plan 9 lane switch and is a jar-lane file.
+fn declared_lane(meta: &str) -> &str {
+    meta.lines()
+        .find_map(|line| line.strip_prefix("lane "))
+        .map(str::trim)
+        .unwrap_or("jar")
+}
+
+/// The port lane's own provenance: the sha of the build that wrote the file and the Plan 9 task
+/// it was cut at, both written by the generator. They are what makes a port-cut reference
+/// traceable to a commit, exactly as `jar revision` does in the other lane.
+fn assert_port_lane_provenance(meta: &str, what: &str) {
+    let sha = meta
+        .lines()
+        .find_map(|line| line.strip_prefix("port sha "))
+        .map(str::trim)
+        .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `port sha` line:\n{meta}"));
+    assert!(
+        sha.len() >= 12 && sha.chars().all(|c| c.is_ascii_hexdigit()),
+        "{what}: `port sha` is not a git sha: {sha}"
+    );
+    let task = meta
+        .lines()
+        .find_map(|line| line.strip_prefix("plan 9 task "))
+        .map(str::trim)
+        .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `plan 9 task` line:\n{meta}"));
+    assert!(
+        task.starts_with('T') && task[1..].chars().all(|c| c.is_ascii_digit()),
+        "{what}: `plan 9 task` is not a task id: {task}"
+    );
 }

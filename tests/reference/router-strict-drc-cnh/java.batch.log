@@ -1,5 +1,5 @@
+rust-binary <workspace>/scripts/differential/rust/target/release/p7t9
 HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue555-CNH_Functional_Tester_1.dsn maxPasses=2 mode=batch fanout=on optimizer=on
-java-version 25.0.4.1
 ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue555-CNH_Functional_Tester_1.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue555-CNH_Functional_Tester_1.ses -mp 2 --router.fanout.enabled=true --router.optimizer.enabled=true
 SETTINGS maxPasses=2 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=true optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
 BOARD-PREPARED classes=11 outlineClass=10 holeClearance=0
@@ -11,5 +11,5 @@ EVENT algorithm=ROUTER state=CANCELLED
 EVENT algorithm=OPTIMIZER state=STARTED
 EVENT algorithm=OPTIMIZER state=RUNNING
 EVENT algorithm=OPTIMIZER state=FINISHED
-RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=2308 traces=214 vias=4 incompletes=11 traceLength="5.0382732283879176E7"
+RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=2287 traces=197 vias=0 incompletes=15 traceLength="4.4619887784351654E7"
 [board] (elided — the board is batch.ses)

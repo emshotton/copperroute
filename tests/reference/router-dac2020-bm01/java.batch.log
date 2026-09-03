@@ -1,5 +1,5 @@
+rust-binary <workspace>/scripts/differential/rust/target/release/p7t9
 HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue508-DAC2020_bm01.dsn maxPasses=2 mode=batch fanout=on optimizer=on
-java-version 25.0.4.1
 ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.ses -mp 2 --router.fanout.enabled=true --router.optimizer.enabled=true
 SETTINGS maxPasses=2 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=true optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
 BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
@@ -11,5 +11,5 @@ EVENT algorithm=ROUTER state=CANCELLED
 EVENT algorithm=OPTIMIZER state=STARTED
 EVENT algorithm=OPTIMIZER state=RUNNING
 EVENT algorithm=OPTIMIZER state=FINISHED
-RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=768 traces=367 vias=81 incompletes=34 traceLength="2.972232961638539E7"
+RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=703 traces=313 vias=70 incompletes=42 traceLength="2.8066665041242857E7"
 [board] (elided — the board is batch.ses)

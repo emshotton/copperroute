@@ -45,10 +45,10 @@
 //! 2.3.0-written `unrouted.ses` on the row above it is snake_case and scrapes nothing. See quirk
 //! #248's clause (b).
 //!
-//! ## PLAN OF RECORD (ruling BT) — read this before regenerating the B or C family
+//! ## The migration this row went through (ruling BT, carried out at Plan 9 Task 2)
 //!
-//! **This row depends on `tests/reference/router-dac2020-bm01/batch.ses` being JAR-written**, and
-//! a `--from-port` regeneration of the B or C family destroys that. Measured at Plan 9 Task 1,
+//! **This row depends on a JAR-written `router-dac2020-bm01/batch.ses`**, and the `--from-port`
+//! regeneration of the B and C families at Plan 9 Task 2 destroyed the live copy of it. Measured at Plan 9 Task 1,
 //! which ran the regeneration and reverted it: **20** files under `tests/reference/` carry
 //! `hostCad` before, **0** after — the port writes 2.3.0's snake_case (quirk #92), so the whole
 //! camelCase corpus leaves the live tree at once and with it the only real-file exercise of
@@ -57,16 +57,20 @@
 //! amended by ruling BP1) forbids reading `tests/reference-frozen/` to get it back — no test and
 //! no script may.
 //!
-//! **The resolution is pre-agreed, so the task that first moves B or C does not have to stop and
-//! ask.** In that same commit:
+//! **The resolution was pre-agreed, so the task that first moved B or C did not have to stop and
+//! ask** — and **Plan 9 Task 2 is that task**, which carried out all three steps in one commit:
 //!
-//! 1. copy the `hostCad`-bearing reference files this module needs into committed directed
-//!    fixtures under `crates/fr-core/tests/data/`, with a provenance header saying they are the
-//!    **pre-lane-switch real-corpus files**, naming the jar revision that wrote them
-//!    (`278fe14123c49376667239659c98d41a597acce9`, 2.3.1-SNAPSHOT) and the commit they were cut
-//!    at;
-//! 2. repoint this module's `ref:` rows at them;
-//! 3. re-cut the `p8t2` transcript against the migrated fixtures.
+//! 1. the eight `batch.ses` files this module reads were copied into
+//!    `crates/fr-core/tests/data/p8t2-batch-ses/`, with their provenance — the jar revision
+//!    `278fe14123c49376667239659c98d41a597acce9` (2.3.1-SNAPSHOT), the generator that ran it and
+//!    the commit `4a5bce6` they were cut at — in that directory's `README.md`, because a `.ses`
+//!    file has nowhere to carry a header of its own without ceasing to be the bytes under test;
+//! 2. rows 21-28 and row 31 were repointed at them, through a new `data:` source prefix that
+//!    `bytes_of` resolves against `crates/fr-core/tests/data/` (and that `P8T2Probe` resolves the
+//!    same way, so the two halves of the transcript still name one file);
+//! 3. the `p8t2` transcript was re-cut with `scripts/differential/run.sh p8t2probe`. Every `FLD`
+//!    and `JSON` value in those nine rows is unchanged, because the migrated bytes are the same
+//!    bytes; only the `BS` rows' source column moved.
 //!
 //! BL8 stays intact — a committed test data file is not the frozen tree — and the quirk exercise
 //! survives the lane switch instead of being deleted by it.
@@ -220,28 +224,28 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t20\tIssue753-CPU-85_r104/unrouted.ses\tSES\tref:Issue753-CPU-85_r104/unrouted.ses",
     "FLD\t20\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t22\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t20\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 22\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t21\trouter-rpi-splitter/batch.ses\tSES\tref:router-rpi-splitter/batch.ses",
+    "BS\t21\trouter-rpi-splitter/batch.ses\tSES\tdata:p8t2-batch-ses/router-rpi-splitter.ses",
     "FLD\t21\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t5\t<null>\t<null>\t<null>\t16\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t9\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t21\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 2\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 5\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 16\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 9\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t22\trouter-dac2020-bm01/batch.ses\tSES\tref:router-dac2020-bm01/batch.ses",
+    "BS\t22\trouter-dac2020-bm01/batch.ses\tSES\tdata:p8t2-batch-ses/router-dac2020-bm01.ses",
     "FLD\t22\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t20\t<null>\t77\t<null>\t<null>\t<null>\t367\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t81\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t22\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 20\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 77\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 367\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 81\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t23\trouter-j2-reference/batch.ses\tSES\tref:router-j2-reference/batch.ses",
+    "BS\t23\trouter-j2-reference/batch.ses\tSES\tdata:p8t2-batch-ses/router-j2-reference.ses",
     "FLD\t23\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t13\t<null>\t<null>\t<null>\t99\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t16\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t23\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 2\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 13\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 99\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 16\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t24\trouter-tutorial-board/batch.ses\tSES\tref:router-tutorial-board/batch.ses",
+    "BS\t24\trouter-tutorial-board/batch.ses\tSES\tdata:p8t2-batch-ses/router-tutorial-board.ses",
     "FLD\t24\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t24\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t25\trouter-ecc83-input/batch.ses\tSES\tref:router-ecc83-input/batch.ses",
+    "BS\t25\trouter-ecc83-input/batch.ses\tSES\tdata:p8t2-batch-ses/router-ecc83-input.ses",
     "FLD\t25\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t6\t<null>\t9\t<null>\t<null>\t<null>\t18\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t25\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 6\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 9\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 18\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t26\trouter-fanout-bm11/batch.ses\tSES\tref:router-fanout-bm11/batch.ses",
+    "BS\t26\trouter-fanout-bm11/batch.ses\tSES\tdata:p8t2-batch-ses/router-fanout-bm11.ses",
     "FLD\t26\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t4\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t21\t<null>\t36\t<null>\t<null>\t<null>\t335\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t53\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t26\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 4\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 21\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 36\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 335\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 53\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t27\trouter-strict-drc-cnh/batch.ses\tSES\tref:router-strict-drc-cnh/batch.ses",
+    "BS\t27\trouter-strict-drc-cnh/batch.ses\tSES\tdata:p8t2-batch-ses/router-strict-drc-cnh.ses",
     "FLD\t27\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t17\t<null>\t58\t<null>\t<null>\t<null>\t206\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t4\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t27\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 17\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 58\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 206\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 4\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t28\trouter-empty-board/batch.ses\tSES\tref:router-empty-board/batch.ses",
+    "BS\t28\trouter-empty-board/batch.ses\tSES\tdata:p8t2-batch-ses/router-empty-board.ses",
     "FLD\t28\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t28\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t29\tIssue143-rpi_splitter/source.dsn AS SES\tSES\tjava:fixtures/Issue143-rpi_splitter.dsn",
@@ -250,7 +254,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t30\tIssue143-rpi_splitter/unrouted.ses AS DSN\tDSN\tref:Issue143-rpi_splitter/unrouted.ses",
     "FLD\t30\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t1\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t30\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 2\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t31\trouter-dac2020-bm01/batch.ses AS DSN\tDSN\tref:router-dac2020-bm01/batch.ses",
+    "BS\t31\trouter-dac2020-bm01/batch.ses AS DSN\tDSN\tdata:p8t2-batch-ses/router-dac2020-bm01.ses",
     "FLD\t31\t\"KiCad's Pcbnew\"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t20\t<null>\t77\t0\t<null>\t<null>\t367\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t81\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t31\t{\\n  \"host\": \"KiCad's Pcbnew\",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 20\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 77,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 367\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 81\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t32\tnull data\tDSN\tnull",
@@ -632,7 +636,13 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
     // succeeds. `Parser.writeScope:98-107` skips `(stringQuote ")` for a session file, so the
     // first `)` closes `(hostCad …)` instead of truncating in front of it. Only `hostCad` is
     // inside the scope, so `:509-510`'s cad-only arm runs and there is no `,`.
-    let path = parity::reference("router-dac2020-bm01", "batch.ses");
+    //
+    // The file is the **migrated** fixture, not `tests/reference/router-dac2020-bm01/batch.ses`:
+    // Plan 9 Task 2 regenerated the B family from the port, which writes snake_case `host_cad`
+    // (quirk #92), so the live tree no longer carries a camelCase spelling anywhere. See the
+    // module doc's migration note and that directory's README.
+    let path = parity::workspace_root()
+        .join("crates/fr-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses");
     let data = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let stats = BoardStatistics::from_bytes(&data, FileFormat::Dsn);
     assert_eq!(stats.host, "KiCad's Pcbnew");
@@ -949,6 +959,12 @@ fn bytes_of(source: &str) -> Vec<u8> {
     } else if let Some(relative) = source.strip_prefix("ref:") {
         parity::workspace_root()
             .join("tests/reference")
+            .join(relative)
+    } else if let Some(relative) = source.strip_prefix("data:") {
+        // A committed directed fixture beside this file. See the module doc's migration note and
+        // `crates/fr-core/tests/data/p8t2-batch-ses/README.md`.
+        parity::workspace_root()
+            .join("crates/fr-core/tests/data")
             .join(relative)
     } else {
         panic!("unknown source {source}");
