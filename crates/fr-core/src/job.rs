@@ -852,7 +852,11 @@ impl RoutingJob {
             .expect("set_input_bytes assigns `input` before calling this");
         input.format = FileFormat::sniff_bytes(content);
         if input.format != FileFormat::Unknown {
-            input.set_data(content.to_vec());
+            // fixed: T3 (#289) — Java's `setData` sniffed these same bytes a second time and
+            // arrived at the same answer (`:343`); the format is now passed instead of
+            // re-derived, so the two can no longer disagree and the bytes are scanned once.
+            let format = input.format;
+            input.set_data(content.to_vec(), format);
             return true;
         }
         false
@@ -936,7 +940,12 @@ impl RoutingJob {
     pub fn set_rules_bytes(&mut self, content: &[u8]) -> bool {
         let mut rules = BoardFileDetails::default();
         rules.format = FileFormat::Rules; // `:290`
-        rules.set_data(content.to_vec()); // `:291`
+        // `:291` — and `setData`'s re-sniff at `:113` then **overwrites** `:290`'s `RULES` unless
+        // the bytes really start with `(rul`. Now that the format is a parameter (quirk #289's
+        // fix), that overwrite is written here rather than hidden in the callee: Java's answer,
+        // transcribed at the site that has it.
+        let format = FileFormat::sniff_bytes(content);
+        rules.set_data(content.to_vec(), format);
         self.rules = Some(rules);
         true
     }
@@ -967,7 +976,10 @@ impl RoutingJob {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         rules.set_filename(Some(&name));
-        rules.set_data(content); // `:307`
+        // `:307` — as `set_rules_bytes` above: `setData`'s re-sniff is what overwrites `:305`'s
+        // `RULES`, and it is written at the site now instead of inside `set_data`.
+        let format = FileFormat::sniff_bytes(&content);
+        rules.set_data(content, format);
         self.rules = Some(rules);
         Ok(())
     }
@@ -977,10 +989,17 @@ impl RoutingJob {
     /// `tryToSetOutputFile` (`:377-397`) — **the return value is a real decision and every caller
     /// must say in writing whether it ignores it.**
     ///
-    /// `Freerouting.java:123` ignores it (quirk label L, Task 6's row): `-do out.txt` answers
-    /// `false`, `job.output` keeps whatever `setInputFromFile` derived — `<input>.ses` — and the
-    /// SES bytes are then written to `out.txt` anyway by `Files.write(initialOutputFile)`. Task 6
-    /// owns that consequence; Task 1 owns the predicate.
+    /// `Freerouting.java:123` ignores it (quirk label L): `-do out.txt` answers `false`,
+    /// `job.output` keeps whatever `setInputFromFile` derived — `<input>.ses` — and the SES bytes
+    /// are then written to `out.txt` anyway by `Files.write(initialOutputFile)`.
+    ///
+    /// fixed: T3 (#268) — **the port's CLI caller no longer ignores it.**
+    /// `commands/route.rs`'s step 5 tests this return *and* asks whether the resolved format is
+    /// one `set_job_output` can serialise, because `true` here only means `:384-388` recognised
+    /// the extension: `-do out.dsn` answers `true` and is unwritable all the same. The MCP tool
+    /// does not call this method at all — it pins `job.output.format` to `SES` itself
+    /// (`mcp/tools/route_board.rs`'s step 14). This method is unchanged: it is Java's predicate,
+    /// and the fix is in what the caller does with it.
     ///
     /// The accepted set is `DSN | FRB | SES | SCR | KICAD_DESIGN_JSON` (`:384-388`). **`RULES` is
     /// not in it**, so `-do out.rules` is rejected even though `getFileFormat` recognises the

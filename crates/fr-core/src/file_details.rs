@@ -5,11 +5,12 @@
 //! agent written against the Java HTTP server is not gratuitously broken by the port's MCP:
 //! `size`, `crc32`, `format`, `statistics`, `filename`, `path`.
 //!
-//! Two of its methods carry quirks that reach the CLI's observable behaviour, and both are
-//! reproduced rather than corrected: [`BoardFileDetails::set_data`] re-sniffs the bytes it is
-//! given (which is what makes quirk label T possible — Task 10 owns the consequence), and
+//! Two of its methods carry quirks that reach the CLI's observable behaviour.
+//! [`BoardFileDetails::set_data`] re-sniffed the bytes it was given, which is the mechanism of
+//! quirk **#289** (`-do out.json` writes the board as it was before routing) — **fixed in Plan 9
+//! Task 3**: the format is a parameter now, and the sniff sits at the three callers that want it.
 //! [`BoardFileDetails::set_filename`] runs two Windows-only string rewrites unconditionally, one
-//! of which is a regex bug (quirk #246).
+//! of which is a regex bug (quirk #246), and that one is still reproduced.
 
 use crate::job::{FileFormat, java_path};
 use fr_router::score::BoardStatistics;
@@ -57,7 +58,11 @@ impl BoardFileDetails {
         let absolute = java_path::to_absolute_path(&file.to_string_lossy());
         details.set_filename(Some(&absolute)); // `:60`
         if let Ok(data) = std::fs::read(file) {
-            details.set_data(data); // `:63`
+            // fixed: T3 (#289) — the sniff Java did inside `setData` (`:113`), moved here where it
+            // is Java's own answer: for a file that exists, the *bytes* decide the format and the
+            // extension `setFilename` derived above is only the fallback.
+            let format = FileFormat::sniff_bytes(&data);
+            details.set_data(data, format); // `:63`
         }
         details
     }
@@ -112,24 +117,43 @@ impl BoardFileDetails {
         &self.data_bytes
     }
 
-    /// `setData(byte[])` (`:104-119`) — replaces the bytes and re-derives everything from them.
+    /// `setData(byte[])` (`:104-119`) — replaces the bytes, the size and the CRC.
     ///
-    /// **The re-sniff at `:113` is the point.** Whatever the caller had put in `format`, this
-    /// overwrites it with `RoutingJob.getFileFormat(data)`:
+    /// fixed: T3 (#289) — **the re-sniff at `:113` is gone, and the format is a parameter.**
+    /// Java overwrites whatever the caller had put in `format` with
+    /// `RoutingJob.getFileFormat(data)`, and that costs it two things:
     ///
     /// * `setRules(byte[]):290-291` sets `RULES` and then loses it again unless the bytes really
     ///   start with `(rul`;
     /// * `setJobOutput` (`RoutingJobSchedulerActionThread.java:266`) sets `KICAD_SESSION_JSON` and
-    ///   then loses it again, because JSON starts with `{` and
-    ///   `getFileFormat(byte[]):160-161` answers `KICAD_DESIGN_JSON`. That is the first half of
-    ///   quirk label T; the SES path escapes it only because `(ses` re-detects as `SES`.
+    ///   then loses it again, because JSON starts with `{` and `getFileFormat(byte[]):160-161`
+    ///   answers `KICAD_DESIGN_JSON` — after which neither `:275`'s `== KICAD_SESSION_JSON` nor
+    ///   `:282`'s `== SES` ever matches again and **every later `setJobOutput` call is a no-op**.
+    ///   That is the mechanism of quirk #289: `-do out.json` keeps what the *first* call wrote,
+    ///   which is the board as loaded. The SES path escapes it only because `(ses` re-detects as
+    ///   `SES`.
     ///
-    /// Task 10 owns the consequence. This method owns the mechanism, and it is transcribed, not
-    /// smoothed.
-    pub fn set_data(&mut self, data: Vec<u8>) {
+    /// The register's own suggested fix is *"give `BoardFileDetails` a `setData(byte[],
+    /// FileFormat)` that does not re-sniff"*, and this is that. The sniff itself has not been
+    /// deleted — it has moved to the callers that actually want it, one line each, where it is
+    /// visible. **Four callers, five call expressions** (`set_rules` and `set_rules_bytes` are two
+    /// sites of one behaviour and share a row):
+    ///
+    /// | caller | format it passes | why |
+    /// |---|---|---|
+    /// | [`BoardFileDetails::from_file`] (`:63`) | [`FileFormat::sniff_bytes`] | Java's, kept: an input file's bytes outrank its extension |
+    /// | `RoutingJob::try_to_set_input` (`:343`) | the format it just sniffed | Java sniffed the same bytes twice; now once |
+    /// | `RoutingJob::set_rules_bytes` / `set_rules` (`:291`, `:307`) | [`FileFormat::sniff_bytes`] | Java's `RULES`-then-lose-it, transcribed at the site that has it |
+    /// | `commands::route::set_job_output` (`:279`, `:288`) | the format it serialised **for** | the fix: `KICAD_SESSION_JSON` stays `KICAD_SESSION_JSON` |
+    ///
+    /// So the only behaviour that moves is the last row's, which is the one the register asked to
+    /// move. `crates/fr-core/tests/job.rs::set_data_keeps_the_format_it_was_given` is the gate.
+    pub fn set_data(&mut self, data: Vec<u8>, format: FileFormat) {
         self.size = data.len() as u64; // `:107`
         self.crc32 = BoardFileDetails::calculate_crc32(&data); // `:108-110`
-        self.format = FileFormat::sniff_bytes(&data); // `:112-113`
+        // `:112-113` — `this.format = RoutingJob.getFileFormat(data);`, which is what the
+        // parameter replaces. See the table above for what each caller passes and why.
+        self.format = format;
         // `:115-116` — `new BoardStatistics(this.dataBytes, this.format)`.
         // added in Task 2: BoardStatistics — the byte-scraping constructor (`BoardStatistics.java:436-554`).
         self.data_bytes = data; // `:106`

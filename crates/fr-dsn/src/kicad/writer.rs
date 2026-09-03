@@ -43,14 +43,16 @@
 //!   platform default charset — the same one-argument-constructor slip quirk #290 records on the
 //!   *read* side, here on the write side and on a path the port does not have.)
 //!
-//! The CLI arm is **quirk #289 (label T)**: `setJobOutput` is registered as a board-updated
-//! listener at `:100` *and* called once more at `:168`, and `setData`'s re-sniff turns the format
-//! into `KICAD_DESIGN_JSON` after the first write, so only the **first** call ever reaches this
-//! function. `crates/freerouting/src/commands/route.rs`'s `set_job_output` carries the
-//! measurement and the port's reproduction, and
-//! `crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_pre_routing_board` is the test —
-//! it lives there rather than beside this module's own tests because the quirk is a CLI-path
-//! behaviour and the assertion is the **binary**'s output file.
+//! The CLI arm was **quirk #289 (label T)**, and it is **fixed in Plan 9 Task 3**. In the jar
+//! `setJobOutput` is registered as a board-updated listener at `:100` *and* called once more at
+//! `:168`, and `setData`'s re-sniff turns the format into `KICAD_DESIGN_JSON` after the first
+//! write, so only the **first** call ever reaches this function — with the board as it was
+//! loaded. The port now calls this function **once, after the pipeline**, on the board the
+//! pipeline finished with, and `BoardFileDetails::set_data` keeps the format it is given.
+//! `crates/freerouting/src/commands/route.rs`'s step 13 carries the jar measurement and the fix;
+//! `crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_routed_board` is the test — it
+//! lives there rather than beside this module's own tests because what it asserts is the
+//! **binary**'s output file, cross-checked against the SES from the identical argv.
 //
 // not ported: KiCadJsonWriter's private constructor (KiCadJsonWriter.java:24), the
 // `private KiCadJsonWriter() {}` that makes the class non-instantiable. A Rust module needs no

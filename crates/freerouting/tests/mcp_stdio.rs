@@ -1392,8 +1392,10 @@ fn the_four_tools_over_spawned_pipes() {
     // …and the same tool on a KiCad **design JSON** answers `p8t1`'s `kicad-ecc83-json` session,
     // also byte for byte. The two inputs matter separately: the DSN path proves the sparse
     // composition, and the JSON path proves the **output format is pinned to SES** — left to the
-    // input's own extension it would take the KiCad-session-JSON arm and hand back the board as
-    // loaded, before any routing (quirk #289, label T). See `route_board`'s step 14.
+    // input's own extension it would take the KiCad-session-JSON arm and hand back a document
+    // spec §13's result has no member to carry. (Until Plan 9 Task 3 that arm also handed back
+    // the board as loaded, before any routing — quirk #289, label T; the pin now guards only the
+    // format.) See `route_board`'s step 14.
     let kicad = pipes.call(
         7,
         "route_board",

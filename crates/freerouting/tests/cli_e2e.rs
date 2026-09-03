@@ -2,12 +2,20 @@
 //!
 //! Two halves:
 //!
-//! * **the behaviour tests** — ten named cases, each pinning one quirk or one ruling of
+//! * **the behaviour tests** — named cases, each pinning one quirk or one ruling of
 //!   `Freerouting.initializeCli`. They run the port only; the jar's answer for each is either a
 //!   committed reference or a measurement recorded in `docs/java-quirks.md`. Eight came from Task
-//!   6's brief; Plan 8 Task 10 added the two the `.json` paths need — quirk #289's `-do out.json`
-//!   (whose expected bytes are the jar's own, pasted in below) and quirk #290's non-ASCII
-//!   session file;
+//!   6's brief and Plan 8 Task 10 added the two the `.json` paths need. **Plan 9 Task 3 turned
+//!   three of them around**: quirks #265, #268 and #289 are fixed, so
+//!   `an_existing_output_file_is_deleted_before_routing`,
+//!   `do_out_txt_still_receives_ses_bytes`, `do_out_dsn_writes_zero_bytes_and_exits_1` and
+//!   `do_out_json_writes_the_pre_routing_board` (with the jar's 1 540 bytes it had pasted in) are
+//!   deleted, and `a_failed_run_leaves_the_previous_result_on_disk`,
+//!   `an_empty_output_directory_is_not_unlinked`,
+//!   `an_unsupported_output_extension_is_refused_at_the_argument` and
+//!   `do_out_json_writes_the_routed_board` assert the opposite behaviour. The jar transcripts
+//!   they were built from are kept in each new test's doc comment, because that is what the fix
+//!   is measured against;
 //! * **the reference lanes** — every stem of `tests/reference/cli-fixtures.txt` run against the
 //!   committed `tests/reference/cli-<stem>/` outputs the **bare HEAD jar** wrote
 //!   (`scripts/gen-cli-reference.sh`). Four rungs per stem: byte-identical SES, equal exit code,
@@ -101,123 +109,39 @@ fn settings_snapshot(manifest: &Path) -> serde_json::Value {
         .unwrap_or_else(|| panic!("manifest has no settings_snapshot: {text}"))
 }
 
-const QUIRK_T_JAR_JSON: &str = r#"{
-  "designName": "Issue143-rpi_splitter",
-  "unit": "MIL",
-  "resolution": 254.0,
-  "layers": [
-    {
-      "index": 0,
-      "name": "1#Top",
-      "type": "signal"
-    },
-    {
-      "index": 1,
-      "name": "16#Bottom",
-      "type": "signal"
-    }
-  ],
-  "netClasses": [
-    {
-      "name": "default",
-      "clearance": 120.0,
-      "traceWidth": 160.0,
-      "viaDiameter": 297.79527559055117,
-      "viaDrill": 148.89763779527559,
-      "netNames": [
-        "D+",
-        "D-",
-        "N$5",
-        "VBUS",
-        "VCC"
-      ]
-    }
-  ],
-  "nets": [
-    {
-      "id": 1,
-      "name": "D+",
-      "className": "default",
-      "containsPlane": false
-    },
-    {
-      "id": 2,
-      "name": "D-",
-      "className": "default",
-      "containsPlane": false
-    },
-    {
-      "id": 3,
-      "name": "N$5",
-      "className": "default",
-      "containsPlane": false
-    },
-    {
-      "id": 4,
-      "name": "VBUS",
-      "className": "default",
-      "containsPlane": false
-    },
-    {
-      "id": 5,
-      "name": "VCC",
-      "className": "default",
-      "containsPlane": false
-    }
-  ],
-  "clearanceRules": [],
-  "components": [],
-  "outline": {
-    "corners": [
-      {
-        "x": 0.0,
-        "y": -0.0
-      },
-      {
-        "x": 8370.07874015748,
-        "y": -0.0
-      },
-      {
-        "x": 8370.07874015748,
-        "y": -16496.062992125986
-      },
-      {
-        "x": 0.0,
-        "y": -16496.062992125986
-      }
-    ],
-    "clearance": 120.0
-  },
-  "traces": [],
-  "vias": [],
-  "conductionAreas": []
-}"#;
-
 // =================================================================================================
 // The behaviour tests
 // =================================================================================================
 
-/// **Quirk #265** (`Freerouting.java:116-121`): the desired output file is deleted **before**
-/// anything is routed, so a run that then fails or is killed has destroyed the previous result
-/// and written nothing in its place.
+/// **Quirk #265, fixed in Plan 9 Task 3** (`Freerouting.java:116-121`).
 ///
-/// Asserted by failing *after* the delete: the input is a `.ses`, which `BoardLoader.java:31-37`
-/// refuses, so the run exits 1 having deleted the pre-existing output and written no replacement.
+/// The jar deletes the desired output file **before** the run starts — before `job.setInput` has
+/// been validated for loadability, before both settings merges, before the board load and before
+/// the router — so a run that then fails, hangs, times out without producing bytes or is refused
+/// by `BoardLoader` has destroyed the previous result and written nothing in its place. The port
+/// deletes nothing: `write_cli_output_if_available`'s `std::fs::write` truncates, so the file on
+/// disk is replaced only when there are bytes to replace it with.
+///
+/// This is the **inverse** of Plan 8's `an_existing_output_file_is_deleted_before_routing`, which
+/// this test replaces. The run is made to fail the same way that one did — the input is named
+/// `.dsn` but holds a session, which `BoardLoader.java:31-37` refuses, so the run cannot reach
+/// the writer — and the assertion is turned around: the sentinel must survive **byte for byte**.
+///
+/// It needs no JDK: what it pins is the port's own behaviour on a path where the jar's is
+/// recorded in `docs/java-quirks.md` #265 and is deliberately no longer matched.
+// fixed: T3 (#265) — the sentinel half.
 #[test]
-fn an_existing_output_file_is_deleted_before_routing() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let dir = scratch("delete-before-routing");
-    // The input is named `.dsn` but **contains a session**: `RoutingJob::set_input` sniffs the
-    // bytes first (`RoutingJob.java:431`), so `job.input.format` is `SES` and
-    // `BoardLoader.java:31-37` refuses it — the run cannot reach the writer. The name has to end
-    // `.dsn`, because the `-de` classifier routes a `.ses` argument to `designSessionFilename`
-    // instead (`GlobalSettings.java:622-628`), which would leave no input file at all.
+fn a_failed_run_leaves_the_previous_result_on_disk() {
+    let dir = scratch("failed-run-keeps-previous");
+    // The name has to end `.dsn`: the `-de` classifier routes a `.ses` argument to
+    // `designSessionFilename` instead (`GlobalSettings.java:622-628`), which would leave no input
+    // file at all. `RoutingJob::set_input` sniffs the **bytes** first (`RoutingJob.java:431`), so
+    // `job.input.format` is `SES` and the board load refuses it.
     let input = dir.join("board.dsn");
     std::fs::write(&input, b"(session previous)\n").unwrap();
     let output = dir.join("out.ses");
-    std::fs::write(&output, b"PREVIOUS RESULT").unwrap();
+    const SENTINEL: &[u8] = b"PREVIOUS RESULT";
+    std::fs::write(&output, SENTINEL).unwrap();
 
     let (_, _, code) = run(&[
         "-de",
@@ -227,101 +151,196 @@ fn an_existing_output_file_is_deleted_before_routing() {
     ]);
 
     assert_eq!(code, 1, "a SES input is `BoardLoader.java:33`'s refusal");
-    assert!(
-        !output.exists(),
-        "the previous result must be gone: `:118`'s delete runs before the load"
+    assert_eq!(
+        std::fs::read(&output).expect("the previous result is still there"),
+        SENTINEL,
+        "a failed run must leave the previous result byte for byte where it was"
     );
 }
 
-/// **Quirk #268** (label L), half one (`Freerouting.java:123`, `RoutingJob.java:377-397`):
-/// `tryToSetOutputFile`'s return value is discarded, so `-do out.txt` is *rejected* as an output
-/// format, `job.output` keeps the `<input>.ses` `setInputFromFile:441` derived — and
-/// `writeCliOutputIfAvailable` then writes the SES bytes to `out.txt` anyway, because `:206`
-/// writes to `globalSettings.initialOutputFile` and not to `job.output`.
+/// **Quirk #265, fixed in Plan 9 Task 3** — the directory half.
 ///
-/// **Measured on the HEAD jar**, not inferred:
-/// `java -jar <jar> -de Issue143-rpi_splitter.dsn -do out.txt -mp 1` exits **0** and leaves a
-/// **2 626-byte** `out.txt` beginning `(session "Issue143-r`. The port's is 2 628 bytes and
-/// byte-identical after quirk #92's two keyword literals — checked with
-/// `diff <(sed 's/(host_cad /(hostCad /;s/(host_version /(hostVersion /' port) jar`.
+/// `File.delete()` removes an empty **directory** as well as a file, so the jar's `:118` unlinks
+/// `-do <an empty dir>` before doing anything else — before the input has even been validated;
+/// the port's `delete_existing_output` had to retry with `remove_dir` to reproduce that, because
+/// `std::fs::remove_file` does not.
+///
+/// The run below fails at the board load, exactly as the test above does, and that is the point:
+/// the jar would already have unlinked the directory by then. With the delete gone nothing on
+/// this path touches the path at all, so it is still there and still empty.
+// fixed: T3 (#265) — the `File.delete()`-removes-a-directory half.
 #[test]
-fn do_out_txt_still_receives_ses_bytes() {
+fn an_empty_output_directory_is_not_unlinked() {
+    let dir = scratch("empty-output-dir");
+    let input = dir.join("board.dsn");
+    std::fs::write(&input, b"(session previous)\n").unwrap();
+    // An **empty** directory, which is the only shape `File.delete()` would have removed.
+    let output = dir.join("out.ses");
+    std::fs::create_dir(&output).unwrap();
+
+    let (_, _, code) = run(&[
+        "-de",
+        &input.to_string_lossy(),
+        "-do",
+        &output.to_string_lossy(),
+    ]);
+
+    assert_eq!(code, 1);
+    assert!(
+        output.is_dir(),
+        "the empty directory must still be there: nothing deletes it now"
+    );
+    assert_eq!(
+        std::fs::read_dir(&output).unwrap().count(),
+        0,
+        "and nothing was written into it either"
+    );
+}
+
+/// **Quirk #268 (label L), fixed in Plan 9 Task 3** (`Freerouting.java:123`, `:196-213`,
+/// `RoutingJob.java:377-397`, `RoutingJobSchedulerActionThread.java:259-295`).
+///
+/// Java discards `tryToSetOutputFile`'s `boolean`, and the two halves of that go in opposite
+/// directions:
+///
+/// * `-do out.txt` is **rejected** by `:384-388` (which accepts `DSN | FRB | SES | SCR |
+///   KICAD_DESIGN_JSON` only), so `job.output` keeps the `<input>.ses` `setInputFromFile:441`
+///   derived — and `writeCliOutputIfAvailable:206` writes to `globalSettings.initialOutputFile`
+///   rather than to `job.output`, so the SES bytes land in `out.txt` anyway and the run exits 0.
+///   *(Measured on the HEAD jar: a 2 626-byte `out.txt` beginning `(session "Issue143-r`.)*
+/// * `-do out.dsn` and `-do out.scr` are **accepted**, so `job.output.format` becomes `DSN`/`SCR`
+///   — which `setJobOutput:274-292` serialises with nothing, so `output.getData()` stays the
+///   empty array `BoardFileDetails.java:53` initialised it to, `Files.write` writes **zero
+///   bytes**, `Files.size > 0` answers false and the run exits 1 with an empty file left on disk,
+///   over the previous result quirk #265 had already deleted. *(Measured on the HEAD jar: exit 1,
+///   a 0-byte `out.dsn`.)*
+///
+/// The port refuses both **at the argument**, naming the two extensions it can write. This test
+/// replaces Plan 8's `do_out_txt_still_receives_ses_bytes` and
+/// `do_out_dsn_writes_zero_bytes_and_exits_1`, both deleted in the same commit.
+///
+/// # The refused set is wider than the register's two examples
+///
+/// The guard is keyed on **what `set_job_output` can produce**, not on a list of bad extensions,
+/// so it refuses every spelling outside `.ses` and `.json` — in three groups, all enumerated
+/// below:
+///
+/// * `.dsn`, `.frb`, `.scr` — accepted by `tryToSetOutputFile:384-388`, fillable by nothing;
+///   Java's 0-byte file and exit 1;
+/// * `.txt`, `.rules` and any other extension — rejected by `:384-388`, and Java writes the SES
+///   bytes to that path anyway at exit **0**;
+/// * **a path with no extension at all**, `-do out` — `FileFormat::from_path` answers `Unknown`,
+///   so it is the second group's silent-SES case. It is asserted separately because the register's
+///   text names only `out.txt`, and a reader could take the refusal to be extension-keyed.
+///
+/// # "At the argument" is asserted, not asserted-of
+///
+/// The refusal happens at step 5, which is before the settings merge, before the board load and
+/// before the router — and the third case below is what proves it rather than assuming it. The
+/// input is a file named `.dsn` whose bytes are `hello`: `RoutingJob::set_input` sniffs `UNKNOWN`
+/// and `setInputFromFile:433-436` re-derives `DSN` from the extension, so the *job* is valid and
+/// the *board* is not. With `-do out.ses` that run gets as far as the loader and fails there;
+/// with `-do out.dsn` it never gets there at all, and the two stderrs say so.
+// fixed: T3 (#268) — both halves of quirk L, refused; and the proof that the refusal is
+// earlier than the board load.
+#[test]
+fn an_unsupported_output_extension_is_refused_at_the_argument() {
     if !parity::require_java_dir() {
         return;
     }
-    let dir = scratch("do-out-txt");
-    let output = dir.join("out.txt");
-    let (_, _, code) = run(&[
-        "-de",
-        &small_dsn().to_string_lossy(),
-        "-do",
-        &output.to_string_lossy(),
-        "-mp",
-        "1",
-    ]);
-    assert_eq!(code, 0);
-    let bytes = std::fs::read(&output).expect("out.txt was written");
-    assert!(
-        bytes.starts_with(b"(session"),
-        "out.txt holds the SES: {:?}",
-        String::from_utf8_lossy(&bytes[..bytes.len().min(40)])
-    );
-    // And nothing was written beside the input, even though `job.output` names `<input>.ses`.
-    assert!(
-        !parity::fixture("Issue143-rpi_splitter.ses").exists(),
-        "the derived <input>.ses must not be written — `:206` uses the CLI's path"
-    );
-}
+    let dir = scratch("unsupported-output-extension");
+    let dsn = small_dsn().to_string_lossy().into_owned();
 
-/// **Quirk #268**, half two: `-do out.dsn` is *accepted* by `tryToSetOutputFile:384-388`, so
-/// `job.output.format` becomes `DSN` — and `setJobOutput:274-292` serialises only
-/// `KICAD_SESSION_JSON` and `SES`, so `output.getData()` stays the empty array
-/// `BoardFileDetails.java:53` initialised it to. `writeCliOutputIfAvailable` then writes **zero
-/// bytes**, `Files.size > 0` answers false, and the run exits 1 with an empty file left behind.
-///
-/// **Measured on the HEAD jar:** the same command with `-do out.dsn` exits **1** and leaves a
-/// **0-byte** `out.dsn`.
-#[test]
-fn do_out_dsn_writes_zero_bytes_and_exits_1() {
-    if !parity::require_java_dir() {
-        return;
+    // Every group refused the same way: `tryToSetOutputFile` says yes and the writer cannot fill
+    // it (`.dsn`, `.scr`, `.frb`); it says no and Java writes the SES there anyway (`.txt`,
+    // `.rules`); and the no-extension case, `-do out`, which is the second group and is spelled
+    // out because the register's text names only `out.txt`.
+    for name in [
+        "out.dsn",
+        "out.scr",
+        "out.frb",
+        "out.txt",
+        "out.rules",
+        "out",
+    ] {
+        let output = dir.join(name);
+        let (_, stderr, code) = run(&["-de", &dsn, "-do", &output.to_string_lossy(), "-mp", "1"]);
+        assert_eq!(code, 1, "-do {name} must be refused");
+        assert!(
+            stderr.contains("is not an output file this program can write")
+                && stderr.contains(".ses")
+                && stderr.contains(".json"),
+            "-do {name}: the refusal must name the accepted formats, got:\n{stderr}"
+        );
+        assert!(
+            !output.exists(),
+            "-do {name}: no file may be created — not even a 0-byte one"
+        );
     }
-    let dir = scratch("do-out-dsn");
-    let output = dir.join("out.dsn");
-    let (_, _, code) = run(&[
+
+    // …and the two it *can* write are still accepted, so the guard is not simply "refuse".
+    for name in ["out.ses", "out.json"] {
+        let output = dir.join(name);
+        let (_, stderr, code) = run(&["-de", &dsn, "-do", &output.to_string_lossy(), "-mp", "1"]);
+        assert_eq!(code, 0, "-do {name} must still work:\n{stderr}");
+        assert!(
+            std::fs::metadata(&output).is_ok_and(|meta| meta.len() > 0),
+            "-do {name} must hold a document"
+        );
+    }
+
+    // The refusal is **before the board load**: the same unloadable input fails in two different
+    // places depending only on the `-do` extension.
+    let broken = dir.join("broken.dsn");
+    std::fs::write(&broken, b"hello").unwrap();
+    let (_, refused, code) = run(&[
         "-de",
-        &small_dsn().to_string_lossy(),
+        &broken.to_string_lossy(),
         "-do",
-        &output.to_string_lossy(),
-        "-mp",
-        "1",
+        &dir.join("late.dsn").to_string_lossy(),
     ]);
-    assert_eq!(code, 1, "`computeCliExitCode:222` — nothing was written");
-    let meta = std::fs::metadata(&output).expect("the empty file is left behind");
-    assert_eq!(meta.len(), 0, "`Files.write` wrote the empty array");
+    assert_eq!(code, 1);
+    assert!(
+        refused.contains("is not an output file this program can write"),
+        "the output extension is refused before anything reads the board:\n{refused}"
+    );
+    let (_, loaded, code) = run(&[
+        "-de",
+        &broken.to_string_lossy(),
+        "-do",
+        &dir.join("late.ses").to_string_lossy(),
+    ]);
+    assert_eq!(code, 1);
+    assert!(
+        !loaded.contains("is not an output file this program can write"),
+        "with a writable -do the same input reaches the loader instead:\n{loaded}"
+    );
+    assert_ne!(
+        refused, loaded,
+        "the two runs must fail in two different places, or this case proves nothing"
+    );
 }
 
-/// **Quirk #289** (label T), the `-do out.json` output path
-/// (`RoutingJobSchedulerActionThread.java:100`, `:168`, `:259-295`).
+/// **Quirk #289 (label T), fixed in Plan 9 Task 3** — the `-do out.json` output path
+/// (`RoutingJobSchedulerActionThread.java:100`, `:168`, `:259-295`;
+/// `BoardFileDetails.java:105-119`).
 ///
-/// `setJobOutput` is registered as a **board-updated listener** at `:100` and called once more
-/// after `pipeline.run()` at `:168`. On the KiCad-session-JSON path only the **first** of those
-/// calls ever writes: `output.setData` re-sniffs the bytes (`BoardFileDetails.java:113` ->
-/// `RoutingJob.getFileFormat:155-164`) and a document starting `{` re-detects as
-/// `KICAD_DESIGN_JSON`, after which neither `:275`'s `== KICAD_SESSION_JSON` nor `:282`'s
-/// `== SES` matches. The SES path escapes it because `(ses` re-detects as `SES`, so *its* last
-/// write wins and that last write is `:168`'s, on the final board.
-///
-/// The first board-updated event fires from `BatchFanout.fanoutPass:203-217`, before the first
-/// pin is processed, and `job.board` is still the object `BoardLoader` produced
-/// (`AutorouteBatchLoop.java:552` reassigns it only after every pass). **So the jar's `out.json`
-/// is the board as loaded, before any routing.**
+/// In the jar, `setJobOutput` is registered as a **board-updated listener** at `:100` and called
+/// once more after `pipeline.run()` at `:168`, and on the KiCad-session-JSON path only the
+/// **first** of those calls ever writes: `output.setData` re-sniffs the bytes
+/// (`BoardFileDetails.java:113` -> `RoutingJob.getFileFormat:155-164`), a document starting `{`
+/// re-detects as `KICAD_DESIGN_JSON`, and from then on neither `:275`'s `== KICAD_SESSION_JSON`
+/// nor `:282`'s `== SES` matches. The first board-updated event fires from
+/// `BatchFanout.fanoutPass:203-217`, before the first pin is processed, and `job.board` is still
+/// the object `BoardLoader` produced — so **the jar's `out.json` is the board as loaded, before
+/// any routing**, and `-do out.json` is silently useless.
 ///
 /// **MEASURED at the pinned HEAD jar**, JDK 25, `-Djava.awt.headless=true -Duser.language=en
-/// -Duser.country=US`, on `Issue143-rpi_splitter.dsn` with the argv below:
+/// -Duser.country=US`, and kept here because it is what the fix is measured against:
 ///
-/// * `-mp 1`, `-mp 2` and `-mp 8` all produce the **same 1 540 bytes** (`md5 a20cafbe…`), and so
-///   does a run with the router disabled;
+/// * `-mp 1`, `-mp 2` and `-mp 8` on `Issue143-rpi_splitter.dsn` all produce the **same 1 540
+///   bytes** (`md5 a20cafbe…`), and so does a run with the router disabled — `"traces": []`,
+///   `"vias": []`;
 /// * the same argv with `-do out.ses` produces 16 `(wire ` and 9 `(via ` scopes, so the board did
 ///   change during the run;
 /// * `-de Issue649-kicad_ecc83-pp_input_board_v1.json -do out.json -mp 3 …` writes `"traces": []`
@@ -329,15 +348,23 @@ fn do_out_dsn_writes_zero_bytes_and_exits_1() {
 /// * `-de Issue733-kicad_complex_hierarchy_output_session.json -do out.json -mp 2 …` writes the
 ///   input's **172** pre-existing traces back out — so it is the initial board, not an empty one.
 ///
-/// The task brief's hypothesis, that the file keeps whatever the *last* mid-run event produced,
-/// is refuted by the first bullet: `-mp 1` and `-mp 8` would then differ, and the fanout stage's
-/// nine vias would appear.
+/// The port serialises **once, after the pipeline**, and `BoardFileDetails::set_data` keeps the
+/// format it is given, so `-do out.json` holds the **final** board. This test is the inverse of
+/// Plan 8's `do_out_json_writes_the_pre_routing_board`, **deleted in the same commit** along with
+/// the jar's 1 540 bytes it had pasted in as a literal.
 ///
-/// The port **reproduces** it (it does not totalize it): `commands/route.rs`'s step 12b takes the
-/// `KiCadJsonWriter.write` snapshot before `RoutingPipeline::run` and `set_job_output` writes
-/// that. The literal below is the jar's own 1 540 bytes, pasted in.
+/// # What is asserted, and why it is the SES rather than a byte literal
+///
+/// A pasted document would pin the fix to one board, one pass count and one writer revision. What
+/// makes the fix *the* fix is that the JSON and the SES now describe the same board, so the
+/// assertion is the cross-check: **the JSON's trace count equals the SES's `(wire ` count** from
+/// the identical argv, and both are non-zero. `fr_dsn::kicad::write` emits one `traces` entry per
+/// `Board::get_traces` item and `save_as_specctra_session_ses` emits one `(wire ` per the same
+/// item, so the two counts are the same number reached two ways — and before the fix the first
+/// was zero while the second was 16.
+// fixed: T3 (#289) — the JSON and the SES now describe the same board.
 #[test]
-fn do_out_json_writes_the_pre_routing_board() {
+fn do_out_json_writes_the_routed_board() {
     if !parity::require_java_dir() {
         return;
     }
@@ -359,28 +386,69 @@ fn do_out_json_writes_the_pre_routing_board() {
     };
 
     let (_, _, code) = run_to(&json);
-    assert_eq!(
-        code, 0,
-        "`-do out.json` is accepted by tryToSetOutputFile:384-388"
-    );
+    assert_eq!(code, 0, "`-do out.json` is a writable output format");
     let written = std::fs::read_to_string(&json).expect("out.json was written");
-    assert_eq!(
-        written, QUIRK_T_JAR_JSON,
-        "byte for byte, the jar's own output"
-    );
 
-    // The board really did change during the run: the SES from the identical argv carries the
-    // routed wiring the JSON does not.
     let (_, _, code) = run_to(&ses);
     assert_eq!(code, 0);
     let session = std::fs::read_to_string(&ses).expect("out.ses was written");
-    assert_eq!(session.matches("(wire").count(), 16);
-    assert_eq!(session.matches("(via ").count(), 9);
-    assert!(
-        written.contains("\"traces\": []"),
-        "and the JSON has none of it"
+
+    let wires = session.matches("(wire").count();
+    let vias = session.matches("(via ").count();
+    assert_eq!(wires, 16, "the routed board the jar transcript records");
+    assert_eq!(vias, 9);
+
+    let traces = json_array_len(&written, "traces");
+    assert_eq!(
+        traces, wires,
+        "the JSON must hold the same routed board the SES does — it held `\"traces\": []` before \
+         quirk #289 was fixed, on the identical argv:\n{written}"
     );
-    assert!(written.contains("\"vias\": []"));
+    assert_eq!(
+        json_array_len(&written, "vias"),
+        vias,
+        "and the same vias:\n{written}"
+    );
+    assert!(
+        !written.contains("\"traces\": []"),
+        "the pre-routing board is exactly what this must no longer be"
+    );
+}
+
+/// The number of elements in a top-level array of `KiCadJsonWriter`'s pretty-printed output.
+///
+/// Counted rather than parsed: what is being asserted is a property of the *document the CLI
+/// wrote*, and a `serde_json` round trip would assert a property of `serde_json`'s reading of it.
+/// The writer's shape is `GsonProvider.GSON.setPrettyPrinting()` — two-space indent, one element
+/// per `{` at a known depth — so an empty array is the literal `"<key>": []` and a filled one
+/// opens with `"<key>": [` and a newline. `fr_dsn::kicad::dto::TraceJson`/`ViaJson` each carry an
+/// `"id"` field exactly once, which is what is counted.
+fn json_array_len(text: &str, key: &str) -> usize {
+    let at = text
+        .find(&format!("\"{key}\": "))
+        .unwrap_or_else(|| panic!("the document has no `{key}` key:\n{text}"));
+    let rest = &text[at..];
+    if rest.starts_with(&format!("\"{key}\": []")) {
+        return 0;
+    }
+    // From the opening bracket to the matching close at the same nesting depth.
+    let open = rest.find('[').expect("an array");
+    let mut depth = 0usize;
+    let mut end = open;
+    for (i, c) in rest[open..].char_indices() {
+        match c {
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    end = open + i;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    rest[open..end].matches("\"id\": ").count()
 }
 
 /// **Quirk #290** (label U), end to end: the `.json` session arm's charset.
@@ -483,7 +551,7 @@ fn de_a_ses_exits_1_instead_of_hanging() {
     }
     let dir = scratch("de-a-ses");
     // Session bytes under a `.dsn` name — see
-    // [`an_existing_output_file_is_deleted_before_routing`] for why the extension has to be
+    // [`a_failed_run_leaves_the_previous_result_on_disk`] for why the extension has to be
     // `.dsn` and the *content* is what makes the format `SES`.
     let input = dir.join("board.dsn");
     std::fs::write(&input, b"(session previous)\n").unwrap();
