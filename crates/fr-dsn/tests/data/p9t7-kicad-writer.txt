@@ -1,0 +1,5043 @@
+# the PORT's rows over the inputs of data/p8t10-kicad-writer.txt, which stays as
+# the jar's record. Plan 9 Task 7 moved this family to the port lane: see this
+# file's PORT_TRANSCRIPT and KNOWN_DIVERGENCES, and kicad_reader.rs for the
+# argument in full.
+
+[wcase] stem=ecc83-v1
+[w]bytes=2690
+[w]|{
+[w]|  "designName": "Issue649-kicad_ecc83-pp_input_board_v1",
+[w]|  "unit": "MM",
+[w]|  "resolution": 10000.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "top_cu",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "F.Mask",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.2,
+[w]|      "traceWidth": 0.3,
+[w]|      "viaDiameter": 0.8,
+[w]|      "viaDrill": 0.4,
+[w]|      "netNames": [
+[w]|        "Net-(P3-P1)",
+[w]|        "GND",
+[w]|        "Net-(P2-P1)",
+[w]|        "Net-(U1A-K)",
+[w]|        "unconnected-(P5-Pad1)",
+[w]|        "unconnected-(P6-Pad1)",
+[w]|        "unconnected-(P7-Pad1)",
+[w]|        "Net-(U1A-G)",
+[w]|        "Net-(U1B-K)",
+[w]|        "Net-(P1-PM)",
+[w]|        "Net-(P4-P1)",
+[w]|        "Net-(P4-PM)",
+[w]|        "unconnected-(P8-Pad1)"
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "nets": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "name": "Net-(P3-P1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "name": "GND",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 3,
+[w]|      "name": "Net-(P2-P1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 4,
+[w]|      "name": "Net-(U1A-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 5,
+[w]|      "name": "unconnected-(P5-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 6,
+[w]|      "name": "unconnected-(P6-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 7,
+[w]|      "name": "unconnected-(P7-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 8,
+[w]|      "name": "Net-(U1A-G)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 9,
+[w]|      "name": "Net-(U1B-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 10,
+[w]|      "name": "Net-(P1-PM)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 11,
+[w]|      "name": "Net-(P4-P1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 12,
+[w]|      "name": "Net-(P4-PM)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 13,
+[w]|      "name": "unconnected-(P8-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    }
+[w]|  ],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": 121.285,
+[w]|        "y": 136.525
+[w]|      },
+[w]|      {
+[w]|        "x": 173.355,
+[w]|        "y": 90.17
+[w]|      },
+[w]|      {
+[w]|        "x": 121.285,
+[w]|        "y": 90.17
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.2
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=2661
+
+[wcase] stem=complex-hierarchy-session
+[w]bytes=68429
+[w]|{
+[w]|  "designName": "Issue733-kicad_complex_hierarchy_output_session",
+[w]|  "unit": "UM",
+[w]|  "resolution": 10.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "top_copper",
+[w]|      "type": "plane"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "bottom_copper",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 300.0,
+[w]|      "traceWidth": 400.0,
+[w]|      "viaDiameter": 1651.0,
+[w]|      "viaDrill": 825.5,
+[w]|      "netNames": [
+[w]|        "/ampli_ht_horizontal/PIEZO_IN",
+[w]|        "/ampli_ht_horizontal/PIEZO_OUT",
+[w]|        "/ampli_ht_horizontal/S_OUT+",
+[w]|        "/ampli_ht_horizontal/Vpil_0_3,3V",
+[w]|        "/ampli_ht_vertical/PIEZO_IN",
+[w]|        "/ampli_ht_vertical/PIEZO_OUT",
+[w]|        "/ampli_ht_vertical/S_OUT+",
+[w]|        "/ampli_ht_vertical/Vpil_0_3,3V",
+[w]|        "Net-(U102-CAP+)",
+[w]|        "Net-(U102-CAP-)",
+[w]|        "Net-(C201-Pad2)",
+[w]|        "Net-(C202-Pad1)",
+[w]|        "Net-(U201B-+)",
+[w]|        "Net-(C204-Pad1)",
+[w]|        "Net-(C301-Pad2)",
+[w]|        "Net-(C302-Pad1)",
+[w]|        "Net-(U301B-+)",
+[w]|        "Net-(C304-Pad1)",
+[w]|        "Net-(D201-K)",
+[w]|        "Net-(D202-K)",
+[w]|        "Net-(D203-K)",
+[w]|        "Net-(D203-A)",
+[w]|        "Net-(D204-K)",
+[w]|        "Net-(D301-K)",
+[w]|        "Net-(D302-K)",
+[w]|        "Net-(D303-A)",
+[w]|        "Net-(D303-K)",
+[w]|        "Net-(D304-K)",
+[w]|        "Net-(Q201-E)",
+[w]|        "Net-(Q202-E)",
+[w]|        "Net-(Q203-E)",
+[w]|        "Net-(Q204-E)",
+[w]|        "Net-(Q204-B)",
+[w]|        "Net-(Q301-E)",
+[w]|        "+12V",
+[w]|        "Net-(Q302-E)",
+[w]|        "Net-(Q303-E)",
+[w]|        "Net-(Q304-B)",
+[w]|        "Net-(Q304-E)",
+[w]|        "Net-(R212-Pad2)",
+[w]|        "Net-(R213-Pad1)",
+[w]|        "Net-(R312-Pad2)",
+[w]|        "Net-(R313-Pad1)",
+[w]|        "Net-(U201A--)",
+[w]|        "Net-(U301A--)",
+[w]|        "unconnected-(U102-LV-Pad6)",
+[w]|        "unconnected-(U102-OSC-Pad7)"
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "name": "power",
+[w]|      "clearance": 300.0,
+[w]|      "traceWidth": 600.0,
+[w]|      "viaDiameter": 1651.0,
+[w]|      "viaDrill": 825.5,
+[w]|      "netNames": [
+[w]|        "-VAA",
+[w]|        "/12Vext",
+[w]|        "GND",
+[w]|        "HT",
+[w]|        "VCC"
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "nets": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "name": "-VAA",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "name": "/12Vext",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 3,
+[w]|      "name": "/ampli_ht_horizontal/PIEZO_IN",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 4,
+[w]|      "name": "/ampli_ht_horizontal/PIEZO_OUT",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 5,
+[w]|      "name": "/ampli_ht_horizontal/S_OUT+",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 6,
+[w]|      "name": "/ampli_ht_horizontal/Vpil_0_3,3V",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 7,
+[w]|      "name": "/ampli_ht_vertical/PIEZO_IN",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 8,
+[w]|      "name": "/ampli_ht_vertical/PIEZO_OUT",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 9,
+[w]|      "name": "/ampli_ht_vertical/S_OUT+",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 10,
+[w]|      "name": "/ampli_ht_vertical/Vpil_0_3,3V",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 11,
+[w]|      "name": "GND",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 12,
+[w]|      "name": "HT",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 13,
+[w]|      "name": "Net-(U102-CAP+)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 14,
+[w]|      "name": "Net-(U102-CAP-)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 15,
+[w]|      "name": "Net-(C201-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 16,
+[w]|      "name": "Net-(C202-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 17,
+[w]|      "name": "Net-(U201B-+)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 18,
+[w]|      "name": "Net-(C204-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 19,
+[w]|      "name": "Net-(C301-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 20,
+[w]|      "name": "Net-(C302-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 21,
+[w]|      "name": "Net-(U301B-+)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 22,
+[w]|      "name": "Net-(C304-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 23,
+[w]|      "name": "Net-(D201-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 24,
+[w]|      "name": "Net-(D202-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 25,
+[w]|      "name": "Net-(D203-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 26,
+[w]|      "name": "Net-(D203-A)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 27,
+[w]|      "name": "Net-(D204-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 28,
+[w]|      "name": "Net-(D301-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 29,
+[w]|      "name": "Net-(D302-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 30,
+[w]|      "name": "Net-(D303-A)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 31,
+[w]|      "name": "Net-(D303-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 32,
+[w]|      "name": "Net-(D304-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 33,
+[w]|      "name": "VCC",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 34,
+[w]|      "name": "Net-(Q201-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 35,
+[w]|      "name": "Net-(Q202-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 36,
+[w]|      "name": "Net-(Q203-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 37,
+[w]|      "name": "Net-(Q204-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 38,
+[w]|      "name": "Net-(Q204-B)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 39,
+[w]|      "name": "Net-(Q301-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 40,
+[w]|      "name": "+12V",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 41,
+[w]|      "name": "Net-(Q302-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 42,
+[w]|      "name": "Net-(Q303-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 43,
+[w]|      "name": "Net-(Q304-B)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 44,
+[w]|      "name": "Net-(Q304-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 45,
+[w]|      "name": "Net-(R212-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 46,
+[w]|      "name": "Net-(R213-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 47,
+[w]|      "name": "Net-(R312-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 48,
+[w]|      "name": "Net-(R313-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 49,
+[w]|      "name": "Net-(U201A--)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 50,
+[w]|      "name": "Net-(U301A--)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 51,
+[w]|      "name": "unconnected-(U102-LV-Pad6)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 52,
+[w]|      "name": "unconnected-(U102-OSC-Pad7)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    }
+[w]|  ],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": 87900.0,
+[w]|        "y": 131826.0
+[w]|      },
+[w]|      {
+[w]|        "x": 188595.0,
+[w]|        "y": 131826.0
+[w]|      },
+[w]|      {
+[w]|        "x": 188595.0,
+[w]|        "y": 51816.0
+[w]|      },
+[w]|      {
+[w]|        "x": 87900.0,
+[w]|        "y": 51800.0
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 300.0
+[w]|  },
+[w]|  "traces": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "netName": "-VAA",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 96266.0
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 98067.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "netName": "-VAA",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 98067.7
+[w]|        },
+[w]|        {
+[w]|          "x": 104354.2,
+[w]|          "y": 108648.5
+[w]|        },
+[w]|        {
+[w]|          "x": 101945.9,
+[w]|          "y": 108648.5
+[w]|        },
+[w]|        {
+[w]|          "x": 100910.1,
+[w]|          "y": 109684.3
+[w]|        },
+[w]|        {
+[w]|          "x": 100910.1,
+[w]|          "y": 113374.1
+[w]|        },
+[w]|        {
+[w]|          "x": 108584.4,
+[w]|          "y": 121048.4
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 121048.4
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 3,
+[w]|      "netName": "-VAA",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 121048.4
+[w]|        },
+[w]|        {
+[w]|          "x": 122581.4,
+[w]|          "y": 113402.0
+[w]|        },
+[w]|        {
+[w]|          "x": 122581.4,
+[w]|          "y": 88081.9
+[w]|        },
+[w]|        {
+[w]|          "x": 126551.6,
+[w]|          "y": 84111.7
+[w]|        },
+[w]|        {
+[w]|          "x": 126551.6,
+[w]|          "y": 80768.3
+[w]|        },
+[w]|        {
+[w]|          "x": 132782.3,
+[w]|          "y": 74537.6
+[w]|        },
+[w]|        {
+[w]|          "x": 138828.9,
+[w]|          "y": 74537.6
+[w]|        },
+[w]|        {
+[w]|          "x": 147048.8,
+[w]|          "y": 66317.7
+[w]|        },
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 66317.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 4,
+[w]|      "netName": "-VAA",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 123305.1
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 121048.4
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 5,
+[w]|      "netName": "-VAA",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 64516.0
+[w]|        },
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 66317.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 6,
+[w]|      "netName": "-VAA",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 124206.0
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 123305.1
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 7,
+[w]|      "netName": "/12Vext",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94800.0,
+[w]|          "y": 67298.3
+[w]|        },
+[w]|        {
+[w]|          "x": 92788.7,
+[w]|          "y": 65287.0
+[w]|        },
+[w]|        {
+[w]|          "x": 92788.7,
+[w]|          "y": 61030.8
+[w]|        },
+[w]|        {
+[w]|          "x": 94033.4,
+[w]|          "y": 59786.1
+[w]|        },
+[w]|        {
+[w]|          "x": 96539.8,
+[w]|          "y": 59786.1
+[w]|        },
+[w]|        {
+[w]|          "x": 103378.0,
+[w]|          "y": 66624.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 8,
+[w]|      "netName": "/12Vext",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 103378.0,
+[w]|          "y": 68326.0
+[w]|        },
+[w]|        {
+[w]|          "x": 103378.0,
+[w]|          "y": 66624.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 9,
+[w]|      "netName": "/12Vext",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94800.0,
+[w]|          "y": 69400.0
+[w]|        },
+[w]|        {
+[w]|          "x": 94800.0,
+[w]|          "y": 67298.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 10,
+[w]|      "netName": "/ampli_ht_horizontal/PIEZO_IN",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102743.0,
+[w]|          "y": 78740.0
+[w]|        },
+[w]|        {
+[w]|          "x": 102743.0,
+[w]|          "y": 79941.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 11,
+[w]|      "netName": "/ampli_ht_horizontal/PIEZO_IN",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94900.0,
+[w]|          "y": 85000.0
+[w]|        },
+[w]|        {
+[w]|          "x": 96901.7,
+[w]|          "y": 85000.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 12,
+[w]|      "netName": "/ampli_ht_horizontal/PIEZO_IN",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 96901.7,
+[w]|          "y": 85000.0
+[w]|        },
+[w]|        {
+[w]|          "x": 101960.0,
+[w]|          "y": 79941.7
+[w]|        },
+[w]|        {
+[w]|          "x": 102743.0,
+[w]|          "y": 79941.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 13,
+[w]|      "netName": "/ampli_ht_horizontal/PIEZO_OUT",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 173355.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 173355.0,
+[w]|          "y": 91186.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 14,
+[w]|      "netName": "/ampli_ht_horizontal/Vpil_0_3,3V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118745.0,
+[w]|          "y": 81407.0
+[w]|        },
+[w]|        {
+[w]|          "x": 117030.5,
+[w]|          "y": 83121.5
+[w]|        },
+[w]|        {
+[w]|          "x": 113663.8,
+[w]|          "y": 83121.5
+[w]|        },
+[w]|        {
+[w]|          "x": 112395.0,
+[w]|          "y": 84390.3
+[w]|        },
+[w]|        {
+[w]|          "x": 112395.0,
+[w]|          "y": 88646.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 15,
+[w]|      "netName": "/ampli_ht_vertical/PIEZO_IN",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94615.0,
+[w]|          "y": 111633.0
+[w]|        },
+[w]|        {
+[w]|          "x": 96616.7,
+[w]|          "y": 111633.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 16,
+[w]|      "netName": "/ampli_ht_vertical/PIEZO_IN",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102235.0,
+[w]|          "y": 107061.0
+[w]|        },
+[w]|        {
+[w]|          "x": 101033.3,
+[w]|          "y": 107061.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 17,
+[w]|      "netName": "/ampli_ht_vertical/PIEZO_IN",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 96616.7,
+[w]|          "y": 111633.0
+[w]|        },
+[w]|        {
+[w]|          "x": 96616.7,
+[w]|          "y": 111477.6
+[w]|        },
+[w]|        {
+[w]|          "x": 101033.3,
+[w]|          "y": 107061.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 18,
+[w]|      "netName": "/ampli_ht_vertical/PIEZO_OUT",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 173355.0,
+[w]|          "y": 122936.0
+[w]|        },
+[w]|        {
+[w]|          "x": 173355.0,
+[w]|          "y": 119126.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 19,
+[w]|      "netName": "/ampli_ht_vertical/S_OUT+",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 98425.0,
+[w]|          "y": 125476.0
+[w]|        },
+[w]|        {
+[w]|          "x": 103389.3,
+[w]|          "y": 125476.0
+[w]|        },
+[w]|        {
+[w]|          "x": 107903.9,
+[w]|          "y": 129990.6
+[w]|        },
+[w]|        {
+[w]|          "x": 131529.4,
+[w]|          "y": 129990.6
+[w]|        },
+[w]|        {
+[w]|          "x": 135869.4,
+[w]|          "y": 125650.6
+[w]|        },
+[w]|        {
+[w]|          "x": 140617.5,
+[w]|          "y": 125650.6
+[w]|        },
+[w]|        {
+[w]|          "x": 143069.6,
+[w]|          "y": 128102.7
+[w]|        },
+[w]|        {
+[w]|          "x": 149931.7,
+[w]|          "y": 128102.7
+[w]|        },
+[w]|        {
+[w]|          "x": 156209.9,
+[w]|          "y": 121824.5
+[w]|        },
+[w]|        {
+[w]|          "x": 156209.9,
+[w]|          "y": 116713.0
+[w]|        },
+[w]|        {
+[w]|          "x": 156210.0,
+[w]|          "y": 116713.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 20,
+[w]|      "netName": "/ampli_ht_vertical/Vpil_0_3,3V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 112395.0,
+[w]|          "y": 116586.0
+[w]|        },
+[w]|        {
+[w]|          "x": 112395.0,
+[w]|          "y": 114884.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 21,
+[w]|      "netName": "/ampli_ht_vertical/Vpil_0_3,3V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118618.0,
+[w]|          "y": 109474.0
+[w]|        },
+[w]|        {
+[w]|          "x": 118618.0,
+[w]|          "y": 109696.2
+[w]|        },
+[w]|        {
+[w]|          "x": 113429.9,
+[w]|          "y": 114884.3
+[w]|        },
+[w]|        {
+[w]|          "x": 112395.0,
+[w]|          "y": 114884.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 22,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 160975.0,
+[w]|          "y": 113960.8
+[w]|        },
+[w]|        {
+[w]|          "x": 162501.0,
+[w]|          "y": 113960.8
+[w]|        },
+[w]|        {
+[w]|          "x": 167078.7,
+[w]|          "y": 118538.5
+[w]|        },
+[w]|        {
+[w]|          "x": 167078.7,
+[w]|          "y": 123455.6
+[w]|        },
+[w]|        {
+[w]|          "x": 160486.3,
+[w]|          "y": 130048.0
+[w]|        },
+[w]|        {
+[w]|          "x": 143176.0,
+[w]|          "y": 130048.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 23,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 149225.0,
+[w]|          "y": 123825.0
+[w]|        },
+[w]|        {
+[w]|          "x": 149225.0,
+[w]|          "y": 121781.9
+[w]|        },
+[w]|        {
+[w]|          "x": 157046.1,
+[w]|          "y": 113960.8
+[w]|        },
+[w]|        {
+[w]|          "x": 160975.0,
+[w]|          "y": 113960.8
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 24,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 160975.0,
+[w]|          "y": 113960.8
+[w]|        },
+[w]|        {
+[w]|          "x": 160975.0,
+[w]|          "y": 104154.2
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 25,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 160975.0,
+[w]|          "y": 104154.2
+[w]|        },
+[w]|        {
+[w]|          "x": 167053.8,
+[w]|          "y": 98075.4
+[w]|        },
+[w]|        {
+[w]|          "x": 167053.8,
+[w]|          "y": 95446.2
+[w]|        },
+[w]|        {
+[w]|          "x": 181200.0,
+[w]|          "y": 81300.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 26,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 160975.0,
+[w]|          "y": 104154.2
+[w]|        },
+[w]|        {
+[w]|          "x": 149070.5,
+[w]|          "y": 104154.2
+[w]|        },
+[w]|        {
+[w]|          "x": 147172.2,
+[w]|          "y": 102255.8
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 27,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 152101.5,
+[w]|          "y": 68727.8
+[w]|        },
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 70334.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 28,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 141619.0,
+[w]|          "y": 60706.0
+[w]|        },
+[w]|        {
+[w]|          "x": 151677.1,
+[w]|          "y": 60706.0
+[w]|        },
+[w]|        {
+[w]|          "x": 154469.1,
+[w]|          "y": 63498.0
+[w]|        },
+[w]|        {
+[w]|          "x": 154469.1,
+[w]|          "y": 66360.2
+[w]|        },
+[w]|        {
+[w]|          "x": 152101.5,
+[w]|          "y": 68727.8
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 29,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 152101.5,
+[w]|          "y": 68727.8
+[w]|        },
+[w]|        {
+[w]|          "x": 160020.0,
+[w]|          "y": 76646.3
+[w]|        },
+[w]|        {
+[w]|          "x": 160020.0,
+[w]|          "y": 78359.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 30,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 149225.0,
+[w]|          "y": 123825.0
+[w]|        },
+[w]|        {
+[w]|          "x": 142996.5,
+[w]|          "y": 117596.5
+[w]|        },
+[w]|        {
+[w]|          "x": 142996.5,
+[w]|          "y": 115926.7
+[w]|        },
+[w]|        {
+[w]|          "x": 141590.9,
+[w]|          "y": 114521.1
+[w]|        },
+[w]|        {
+[w]|          "x": 138575.8,
+[w]|          "y": 114521.1
+[w]|        },
+[w]|        {
+[w]|          "x": 134263.1,
+[w]|          "y": 118833.8
+[w]|        },
+[w]|        {
+[w]|          "x": 125355.5,
+[w]|          "y": 118833.8
+[w]|        },
+[w]|        {
+[w]|          "x": 122555.0,
+[w]|          "y": 121634.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 31,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 72136.0
+[w]|        },
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 70334.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 32,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 128277.3,
+[w]|          "y": 60706.0
+[w]|        },
+[w]|        {
+[w]|          "x": 128277.3,
+[w]|          "y": 59447.3
+[w]|        },
+[w]|        {
+[w]|          "x": 127934.3,
+[w]|          "y": 59104.3
+[w]|        },
+[w]|        {
+[w]|          "x": 125293.5,
+[w]|          "y": 59104.3
+[w]|        },
+[w]|        {
+[w]|          "x": 125017.3,
+[w]|          "y": 59380.5
+[w]|        },
+[w]|        {
+[w]|          "x": 125017.3,
+[w]|          "y": 60618.4
+[w]|        },
+[w]|        {
+[w]|          "x": 121957.8,
+[w]|          "y": 63677.9
+[w]|        },
+[w]|        {
+[w]|          "x": 105090.2,
+[w]|          "y": 63677.9
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 33,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 122936.0,
+[w]|          "y": 69596.0
+[w]|        },
+[w]|        {
+[w]|          "x": 125523.3,
+[w]|          "y": 69596.0
+[w]|        },
+[w]|        {
+[w]|          "x": 128277.3,
+[w]|          "y": 66842.0
+[w]|        },
+[w]|        {
+[w]|          "x": 128277.3,
+[w]|          "y": 60706.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 34,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 140017.3,
+[w]|          "y": 60706.0
+[w]|        },
+[w]|        {
+[w]|          "x": 128277.3,
+[w]|          "y": 60706.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 35,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 105090.2,
+[w]|          "y": 63677.9
+[w]|        },
+[w]|        {
+[w]|          "x": 105090.2,
+[w]|          "y": 69062.1
+[w]|        },
+[w]|        {
+[w]|          "x": 102348.0,
+[w]|          "y": 71804.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 36,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 103793.0,
+[w]|          "y": 62380.7
+[w]|        },
+[w]|        {
+[w]|          "x": 105090.2,
+[w]|          "y": 63677.9
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 37,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94615.0,
+[w]|          "y": 116633.0
+[w]|        },
+[w]|        {
+[w]|          "x": 91977.5,
+[w]|          "y": 113995.5
+[w]|        },
+[w]|        {
+[w]|          "x": 91977.5,
+[w]|          "y": 92922.5
+[w]|        },
+[w]|        {
+[w]|          "x": 94900.0,
+[w]|          "y": 90000.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 38,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 117983.0,
+[w]|          "y": 101346.0
+[w]|        },
+[w]|        {
+[w]|          "x": 117983.0,
+[w]|          "y": 102647.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 39,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118665.0,
+[w]|          "y": 106045.0
+[w]|        },
+[w]|        {
+[w]|          "x": 118665.0,
+[w]|          "y": 103329.7
+[w]|        },
+[w]|        {
+[w]|          "x": 117983.0,
+[w]|          "y": 102647.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 40,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 147172.2,
+[w]|          "y": 102255.8
+[w]|        },
+[w]|        {
+[w]|          "x": 145288.0,
+[w]|          "y": 104140.0
+[w]|        },
+[w]|        {
+[w]|          "x": 143049.0,
+[w]|          "y": 104140.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 41,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 148463.0,
+[w]|          "y": 100965.0
+[w]|        },
+[w]|        {
+[w]|          "x": 147172.2,
+[w]|          "y": 102255.8
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 42,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 141619.0,
+[w]|          "y": 60706.0
+[w]|        },
+[w]|        {
+[w]|          "x": 140017.3,
+[w]|          "y": 60706.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 43,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118665.0,
+[w]|          "y": 106045.0
+[w]|        },
+[w]|        {
+[w]|          "x": 120757.3,
+[w]|          "y": 108137.3
+[w]|        },
+[w]|        {
+[w]|          "x": 120757.3,
+[w]|          "y": 110683.7
+[w]|        },
+[w]|        {
+[w]|          "x": 118665.0,
+[w]|          "y": 112776.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 44,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 115897.5,
+[w]|          "y": 90547.6
+[w]|        },
+[w]|        {
+[w]|          "x": 118792.0,
+[w]|          "y": 87653.1
+[w]|        },
+[w]|        {
+[w]|          "x": 118792.0,
+[w]|          "y": 84836.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 45,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 103536.7,
+[w]|          "y": 94996.0
+[w]|        },
+[w]|        {
+[w]|          "x": 104838.4,
+[w]|          "y": 93694.3
+[w]|        },
+[w]|        {
+[w]|          "x": 112750.8,
+[w]|          "y": 93694.3
+[w]|        },
+[w]|        {
+[w]|          "x": 115897.5,
+[w]|          "y": 90547.6
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 46,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 117983.0,
+[w]|          "y": 100044.3
+[w]|        },
+[w]|        {
+[w]|          "x": 119807.5,
+[w]|          "y": 98219.8
+[w]|        },
+[w]|        {
+[w]|          "x": 119807.5,
+[w]|          "y": 94457.7
+[w]|        },
+[w]|        {
+[w]|          "x": 115897.5,
+[w]|          "y": 90547.6
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 47,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 117983.0,
+[w]|          "y": 101346.0
+[w]|        },
+[w]|        {
+[w]|          "x": 117983.0,
+[w]|          "y": 100044.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 48,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118792.0,
+[w]|          "y": 77978.0
+[w]|        },
+[w]|        {
+[w]|          "x": 120185.3,
+[w]|          "y": 79371.3
+[w]|        },
+[w]|        {
+[w]|          "x": 120185.3,
+[w]|          "y": 83442.7
+[w]|        },
+[w]|        {
+[w]|          "x": 118792.0,
+[w]|          "y": 84836.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 49,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 81026.0
+[w]|        },
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 79724.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 50,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102235.0,
+[w]|          "y": 94996.0
+[w]|        },
+[w]|        {
+[w]|          "x": 103536.7,
+[w]|          "y": 94996.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 51,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 122555.0,
+[w]|          "y": 122936.0
+[w]|        },
+[w]|        {
+[w]|          "x": 121253.3,
+[w]|          "y": 122936.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 52,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118745.0,
+[w]|          "y": 128016.0
+[w]|        },
+[w]|        {
+[w]|          "x": 118745.0,
+[w]|          "y": 126714.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 53,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118745.0,
+[w]|          "y": 126714.3
+[w]|        },
+[w]|        {
+[w]|          "x": 121253.3,
+[w]|          "y": 124206.0
+[w]|        },
+[w]|        {
+[w]|          "x": 121253.3,
+[w]|          "y": 122936.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 54,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 72136.0
+[w]|        },
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 74644.3
+[w]|        },
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 79724.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 55,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94900.0,
+[w]|          "y": 90000.0
+[w]|        },
+[w]|        {
+[w]|          "x": 92798.3,
+[w]|          "y": 87898.3
+[w]|        },
+[w]|        {
+[w]|          "x": 92798.3,
+[w]|          "y": 76401.7
+[w]|        },
+[w]|        {
+[w]|          "x": 94800.0,
+[w]|          "y": 74400.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 56,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 122555.0,
+[w]|          "y": 122936.0
+[w]|        },
+[w]|        {
+[w]|          "x": 122555.0,
+[w]|          "y": 121634.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 57,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 103793.0,
+[w]|          "y": 60579.0
+[w]|        },
+[w]|        {
+[w]|          "x": 103793.0,
+[w]|          "y": 62380.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 58,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102348.0,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 102348.0,
+[w]|          "y": 71804.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 59,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 96901.7,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 95794.0,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 94800.0,
+[w]|          "y": 74400.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 60,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102348.0,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 96901.7,
+[w]|          "y": 73406.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 61,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 96901.7,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 96901.7,
+[w]|          "y": 63901.7
+[w]|        },
+[w]|        {
+[w]|          "x": 94900.0,
+[w]|          "y": 61900.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 62,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102870.0,
+[w]|          "y": 119126.0
+[w]|        },
+[w]|        {
+[w]|          "x": 101568.3,
+[w]|          "y": 119126.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 63,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94615.0,
+[w]|          "y": 116633.0
+[w]|        },
+[w]|        {
+[w]|          "x": 99075.3,
+[w]|          "y": 116633.0
+[w]|        },
+[w]|        {
+[w]|          "x": 101568.3,
+[w]|          "y": 119126.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 64,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 94900.0,
+[w]|          "y": 90000.0
+[w]|        },
+[w]|        {
+[w]|          "x": 99896.0,
+[w]|          "y": 94996.0
+[w]|        },
+[w]|        {
+[w]|          "x": 102235.0,
+[w]|          "y": 94996.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 65,
+[w]|      "netName": "GND",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 181200.0,
+[w]|          "y": 81300.0
+[w]|        },
+[w]|        {
+[w]|          "x": 183316.5,
+[w]|          "y": 83416.5
+[w]|        },
+[w]|        {
+[w]|          "x": 183316.5,
+[w]|          "y": 105333.5
+[w]|        },
+[w]|        {
+[w]|          "x": 181192.5,
+[w]|          "y": 107457.5
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 66,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 123594.7,
+[w]|          "y": 60579.0
+[w]|        },
+[w]|        {
+[w]|          "x": 123594.7,
+[w]|          "y": 59452.9
+[w]|        },
+[w]|        {
+[w]|          "x": 124898.1,
+[w]|          "y": 58149.5
+[w]|        },
+[w]|        {
+[w]|          "x": 150427.0,
+[w]|          "y": 58149.5
+[w]|        },
+[w]|        {
+[w]|          "x": 160482.4,
+[w]|          "y": 68204.9
+[w]|        },
+[w]|        {
+[w]|          "x": 160482.4,
+[w]|          "y": 69480.2
+[w]|        },
+[w]|        {
+[w]|          "x": 161666.8,
+[w]|          "y": 70664.6
+[w]|        },
+[w]|        {
+[w]|          "x": 161666.8,
+[w]|          "y": 79565.3
+[w]|        },
+[w]|        {
+[w]|          "x": 153886.4,
+[w]|          "y": 87345.7
+[w]|        },
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 87345.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 67,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 146685.0,
+[w]|          "y": 108966.0
+[w]|        },
+[w]|        {
+[w]|          "x": 148261.8,
+[w]|          "y": 108966.0
+[w]|        },
+[w]|        {
+[w]|          "x": 151765.0,
+[w]|          "y": 112469.2
+[w]|        },
+[w]|        {
+[w]|          "x": 151765.0,
+[w]|          "y": 115062.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 68,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 121793.0,
+[w]|          "y": 60579.0
+[w]|        },
+[w]|        {
+[w]|          "x": 123594.7,
+[w]|          "y": 60579.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 69,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 87345.7
+[w]|        },
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 89916.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 70,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 86106.0
+[w]|        },
+[w]|        {
+[w]|          "x": 151795.3,
+[w]|          "y": 86106.0
+[w]|        },
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 87345.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 71,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 133853.3,
+[w]|          "y": 105918.0
+[w]|        },
+[w]|        {
+[w]|          "x": 132451.6,
+[w]|          "y": 104516.3
+[w]|        },
+[w]|        {
+[w]|          "x": 126875.6,
+[w]|          "y": 104516.3
+[w]|        },
+[w]|        {
+[w]|          "x": 124281.9,
+[w]|          "y": 101922.6
+[w]|        },
+[w]|        {
+[w]|          "x": 124281.9,
+[w]|          "y": 87733.1
+[w]|        },
+[w]|        {
+[w]|          "x": 127453.3,
+[w]|          "y": 84561.7
+[w]|        },
+[w]|        {
+[w]|          "x": 127453.3,
+[w]|          "y": 81150.8
+[w]|        },
+[w]|        {
+[w]|          "x": 131892.0,
+[w]|          "y": 76712.1
+[w]|        },
+[w]|        {
+[w]|          "x": 135360.8,
+[w]|          "y": 76712.1
+[w]|        },
+[w]|        {
+[w]|          "x": 139144.0,
+[w]|          "y": 80495.3
+[w]|        },
+[w]|        {
+[w]|          "x": 139144.0,
+[w]|          "y": 82345.1
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 72,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 119991.3,
+[w]|          "y": 60579.0
+[w]|        },
+[w]|        {
+[w]|          "x": 116312.3,
+[w]|          "y": 56900.0
+[w]|        },
+[w]|        {
+[w]|          "x": 94900.0,
+[w]|          "y": 56900.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 73,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 135255.0,
+[w]|          "y": 105918.0
+[w]|        },
+[w]|        {
+[w]|          "x": 133853.3,
+[w]|          "y": 105918.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 74,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 139144.0,
+[w]|          "y": 82345.1
+[w]|        },
+[w]|        {
+[w]|          "x": 141654.1,
+[w]|          "y": 82345.1
+[w]|        },
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 86106.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 75,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 134116.7,
+[w]|          "y": 78867.0
+[w]|        },
+[w]|        {
+[w]|          "x": 134116.7,
+[w]|          "y": 79217.4
+[w]|        },
+[w]|        {
+[w]|          "x": 137244.4,
+[w]|          "y": 82345.1
+[w]|        },
+[w]|        {
+[w]|          "x": 139144.0,
+[w]|          "y": 82345.1
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 76,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 78867.0
+[w]|        },
+[w]|        {
+[w]|          "x": 134116.7,
+[w]|          "y": 78867.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 77,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 135255.0,
+[w]|          "y": 105918.0
+[w]|        },
+[w]|        {
+[w]|          "x": 143637.0,
+[w]|          "y": 105918.0
+[w]|        },
+[w]|        {
+[w]|          "x": 146685.0,
+[w]|          "y": 108966.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 78,
+[w]|      "netName": "HT",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 121793.0,
+[w]|          "y": 60579.0
+[w]|        },
+[w]|        {
+[w]|          "x": 119991.3,
+[w]|          "y": 60579.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 79,
+[w]|      "netName": "Net-(U102-CAP+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 139700.0,
+[w]|          "y": 77216.0
+[w]|        },
+[w]|        {
+[w]|          "x": 141201.7,
+[w]|          "y": 77216.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 80,
+[w]|      "netName": "Net-(U102-CAP+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 147955.0,
+[w]|          "y": 72136.0
+[w]|        },
+[w]|        {
+[w]|          "x": 147955.0,
+[w]|          "y": 73837.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 81,
+[w]|      "netName": "Net-(U102-CAP+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 147955.0,
+[w]|          "y": 73837.7
+[w]|        },
+[w]|        {
+[w]|          "x": 144580.0,
+[w]|          "y": 73837.7
+[w]|        },
+[w]|        {
+[w]|          "x": 141201.7,
+[w]|          "y": 77216.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 82,
+[w]|      "netName": "Net-(U102-CAP-)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 72136.0
+[w]|        },
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 73837.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 83,
+[w]|      "netName": "Net-(U102-CAP-)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 153035.0,
+[w]|          "y": 73837.7
+[w]|        },
+[w]|        {
+[w]|          "x": 154700.0,
+[w]|          "y": 75502.7
+[w]|        },
+[w]|        {
+[w]|          "x": 154700.0,
+[w]|          "y": 77216.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 84,
+[w]|      "netName": "Net-(C201-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 110236.0
+[w]|        },
+[w]|        {
+[w]|          "x": 112856.0,
+[w]|          "y": 110236.0
+[w]|        },
+[w]|        {
+[w]|          "x": 113618.0,
+[w]|          "y": 109474.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 85,
+[w]|      "netName": "Net-(C201-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102235.0,
+[w]|          "y": 112776.0
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 112776.0
+[w]|        },
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 110236.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 86,
+[w]|      "netName": "Net-(C202-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 107061.0
+[w]|        },
+[w]|        {
+[w]|          "x": 106680.0,
+[w]|          "y": 110236.0
+[w]|        },
+[w]|        {
+[w]|          "x": 102235.0,
+[w]|          "y": 110236.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 87,
+[w]|      "netName": "Net-(C202-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 113665.0,
+[w]|          "y": 106045.0
+[w]|        },
+[w]|        {
+[w]|          "x": 110871.0,
+[w]|          "y": 106045.0
+[w]|        },
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 107061.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 88,
+[w]|      "netName": "Net-(U201B-+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 113665.0,
+[w]|          "y": 112776.0
+[w]|        },
+[w]|        {
+[w]|          "x": 113665.0,
+[w]|          "y": 112551.2
+[w]|        },
+[w]|        {
+[w]|          "x": 118053.4,
+[w]|          "y": 108162.8
+[w]|        },
+[w]|        {
+[w]|          "x": 119154.4,
+[w]|          "y": 108162.8
+[w]|        },
+[w]|        {
+[w]|          "x": 119954.1,
+[w]|          "y": 108962.5
+[w]|        },
+[w]|        {
+[w]|          "x": 119954.1,
+[w]|          "y": 109993.2
+[w]|        },
+[w]|        {
+[w]|          "x": 118571.1,
+[w]|          "y": 111376.2
+[w]|        },
+[w]|        {
+[w]|          "x": 118224.0,
+[w]|          "y": 111376.2
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 114665.2
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 116586.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 89,
+[w]|      "netName": "Net-(U201B-+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 112776.0
+[w]|        },
+[w]|        {
+[w]|          "x": 113665.0,
+[w]|          "y": 112776.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 90,
+[w]|      "netName": "Net-(C204-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 138176.0,
+[w]|          "y": 130048.0
+[w]|        },
+[w]|        {
+[w]|          "x": 136779.0,
+[w]|          "y": 128651.0
+[w]|        },
+[w]|        {
+[w]|          "x": 136779.0,
+[w]|          "y": 126873.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 91,
+[w]|      "netName": "Net-(C301-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 110617.0,
+[w]|          "y": 82296.0
+[w]|        },
+[w]|        {
+[w]|          "x": 110617.0,
+[w]|          "y": 84963.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 92,
+[w]|      "netName": "Net-(C301-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 113745.0,
+[w]|          "y": 81407.0
+[w]|        },
+[w]|        {
+[w]|          "x": 111506.0,
+[w]|          "y": 81407.0
+[w]|        },
+[w]|        {
+[w]|          "x": 110617.0,
+[w]|          "y": 82296.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 93,
+[w]|      "netName": "Net-(C302-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 113792.0,
+[w]|          "y": 77978.0
+[w]|        },
+[w]|        {
+[w]|          "x": 111125.0,
+[w]|          "y": 77978.0
+[w]|        },
+[w]|        {
+[w]|          "x": 110363.0,
+[w]|          "y": 78740.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 94,
+[w]|      "netName": "Net-(U301B-+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 88646.0
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 86944.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 95,
+[w]|      "netName": "Net-(U301B-+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 86944.3
+[w]|        },
+[w]|        {
+[w]|          "x": 113792.0,
+[w]|          "y": 85801.3
+[w]|        },
+[w]|        {
+[w]|          "x": 113792.0,
+[w]|          "y": 84836.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 96,
+[w]|      "netName": "Net-(U301B-+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 90347.7
+[w]|        },
+[w]|        {
+[w]|          "x": 106700.5,
+[w]|          "y": 90347.7
+[w]|        },
+[w]|        {
+[w]|          "x": 102997.0,
+[w]|          "y": 86644.2
+[w]|        },
+[w]|        {
+[w]|          "x": 102997.0,
+[w]|          "y": 84963.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 97,
+[w]|      "netName": "Net-(U301B-+)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 88646.0
+[w]|        },
+[w]|        {
+[w]|          "x": 114935.0,
+[w]|          "y": 90347.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 98,
+[w]|      "netName": "Net-(C304-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 133985.0,
+[w]|          "y": 101346.0
+[w]|        },
+[w]|        {
+[w]|          "x": 135255.0,
+[w]|          "y": 101346.0
+[w]|        },
+[w]|        {
+[w]|          "x": 138049.0,
+[w]|          "y": 104140.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 99,
+[w]|      "netName": "Net-(D201-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 135255.0,
+[w]|          "y": 108966.0
+[w]|        },
+[w]|        {
+[w]|          "x": 133953.3,
+[w]|          "y": 108966.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 100,
+[w]|      "netName": "Net-(D201-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 133953.3,
+[w]|          "y": 108966.0
+[w]|        },
+[w]|        {
+[w]|          "x": 130905.3,
+[w]|          "y": 105918.0
+[w]|        },
+[w]|        {
+[w]|          "x": 127635.0,
+[w]|          "y": 105918.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 101,
+[w]|      "netName": "Net-(D202-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 127635.0,
+[w]|          "y": 110267.7
+[w]|        },
+[w]|        {
+[w]|          "x": 128936.7,
+[w]|          "y": 110267.7
+[w]|        },
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 114046.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 102,
+[w]|      "netName": "Net-(D202-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 122555.0,
+[w]|          "y": 115316.0
+[w]|        },
+[w]|        {
+[w]|          "x": 127603.3,
+[w]|          "y": 110267.7
+[w]|        },
+[w]|        {
+[w]|          "x": 127635.0,
+[w]|          "y": 110267.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 103,
+[w]|      "netName": "Net-(D202-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 127635.0,
+[w]|          "y": 108966.0
+[w]|        },
+[w]|        {
+[w]|          "x": 127635.0,
+[w]|          "y": 110267.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 104,
+[w]|      "netName": "Net-(D203-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 140970.0,
+[w]|          "y": 115951.0
+[w]|        },
+[w]|        {
+[w]|          "x": 140970.0,
+[w]|          "y": 117252.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 105,
+[w]|      "netName": "Net-(D203-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 140970.0,
+[w]|          "y": 117252.7
+[w]|        },
+[w]|        {
+[w]|          "x": 144780.0,
+[w]|          "y": 121062.7
+[w]|        },
+[w]|        {
+[w]|          "x": 144780.0,
+[w]|          "y": 123571.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 106,
+[w]|      "netName": "Net-(D203-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145430.9,
+[w]|          "y": 115951.0
+[w]|        },
+[w]|        {
+[w]|          "x": 145430.9,
+[w]|          "y": 113595.3
+[w]|        },
+[w]|        {
+[w]|          "x": 139538.9,
+[w]|          "y": 107703.3
+[w]|        },
+[w]|        {
+[w]|          "x": 138578.2,
+[w]|          "y": 107703.3
+[w]|        },
+[w]|        {
+[w]|          "x": 133985.0,
+[w]|          "y": 112296.5
+[w]|        },
+[w]|        {
+[w]|          "x": 133985.0,
+[w]|          "y": 115316.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 107,
+[w]|      "netName": "Net-(D203-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145430.9,
+[w]|          "y": 115951.0
+[w]|        },
+[w]|        {
+[w]|          "x": 146081.7,
+[w]|          "y": 115951.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 108,
+[w]|      "netName": "Net-(D203-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 144780.0,
+[w]|          "y": 115951.0
+[w]|        },
+[w]|        {
+[w]|          "x": 145430.9,
+[w]|          "y": 115951.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 109,
+[w]|      "netName": "Net-(D203-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 146081.7,
+[w]|          "y": 115951.0
+[w]|        },
+[w]|        {
+[w]|          "x": 148240.7,
+[w]|          "y": 113792.0
+[w]|        },
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 113792.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 110,
+[w]|      "netName": "Net-(D204-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 125095.0
+[w]|        },
+[w]|        {
+[w]|          "x": 148717.0,
+[w]|          "y": 126873.0
+[w]|        },
+[w]|        {
+[w]|          "x": 144399.0,
+[w]|          "y": 126873.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 111,
+[w]|      "netName": "Net-(D204-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 140970.0,
+[w]|          "y": 123571.0
+[w]|        },
+[w]|        {
+[w]|          "x": 135255.0,
+[w]|          "y": 123571.0
+[w]|        },
+[w]|        {
+[w]|          "x": 133096.0,
+[w]|          "y": 125730.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 112,
+[w]|      "netName": "Net-(D204-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 140970.0,
+[w]|          "y": 123571.0
+[w]|        },
+[w]|        {
+[w]|          "x": 142271.7,
+[w]|          "y": 123571.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 113,
+[w]|      "netName": "Net-(D204-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 142271.7,
+[w]|          "y": 123571.0
+[w]|        },
+[w]|        {
+[w]|          "x": 142271.7,
+[w]|          "y": 124745.7
+[w]|        },
+[w]|        {
+[w]|          "x": 144399.0,
+[w]|          "y": 126873.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 114,
+[w]|      "netName": "Net-(D301-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 125095.0,
+[w]|          "y": 82296.0
+[w]|        },
+[w]|        {
+[w]|          "x": 125095.0,
+[w]|          "y": 78867.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 115,
+[w]|      "netName": "Net-(D302-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 82296.0
+[w]|        },
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 80994.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 116,
+[w]|      "netName": "Net-(D302-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 137795.0,
+[w]|          "y": 81026.0
+[w]|        },
+[w]|        {
+[w]|          "x": 134285.3,
+[w]|          "y": 77516.3
+[w]|        },
+[w]|        {
+[w]|          "x": 132222.0,
+[w]|          "y": 77516.3
+[w]|        },
+[w]|        {
+[w]|          "x": 131413.3,
+[w]|          "y": 78325.0
+[w]|        },
+[w]|        {
+[w]|          "x": 131413.3,
+[w]|          "y": 79692.6
+[w]|        },
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 80994.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 117,
+[w]|      "netName": "Net-(D302-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 82296.0
+[w]|        },
+[w]|        {
+[w]|          "x": 132715.0,
+[w]|          "y": 87376.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 118,
+[w]|      "netName": "Net-(D303-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 89916.0
+[w]|        },
+[w]|        {
+[w]|          "x": 144113.3,
+[w]|          "y": 89916.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 119,
+[w]|      "netName": "Net-(D303-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 144113.3,
+[w]|          "y": 89916.0
+[w]|        },
+[w]|        {
+[w]|          "x": 139072.3,
+[w]|          "y": 84875.0
+[w]|        },
+[w]|        {
+[w]|          "x": 137284.9,
+[w]|          "y": 84875.0
+[w]|        },
+[w]|        {
+[w]|          "x": 133985.0,
+[w]|          "y": 88174.9
+[w]|        },
+[w]|        {
+[w]|          "x": 133985.0,
+[w]|          "y": 88646.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 120,
+[w]|      "netName": "Net-(D303-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 89916.0
+[w]|        },
+[w]|        {
+[w]|          "x": 146716.7,
+[w]|          "y": 89916.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 121,
+[w]|      "netName": "Net-(D303-A)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 146716.7,
+[w]|          "y": 89916.0
+[w]|        },
+[w]|        {
+[w]|          "x": 147986.7,
+[w]|          "y": 88646.0
+[w]|        },
+[w]|        {
+[w]|          "x": 151765.0,
+[w]|          "y": 88646.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 122,
+[w]|      "netName": "Net-(D303-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 96234.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 123,
+[w]|      "netName": "Net-(D303-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 96234.3
+[w]|        },
+[w]|        {
+[w]|          "x": 141605.0,
+[w]|          "y": 92424.3
+[w]|        },
+[w]|        {
+[w]|          "x": 141605.0,
+[w]|          "y": 89916.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 124,
+[w]|      "netName": "Net-(D304-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 141605.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 140303.3,
+[w]|          "y": 97536.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 125,
+[w]|      "netName": "Net-(D304-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 132334.0,
+[w]|          "y": 96520.0
+[w]|        },
+[w]|        {
+[w]|          "x": 139287.3,
+[w]|          "y": 96520.0
+[w]|        },
+[w]|        {
+[w]|          "x": 140303.3,
+[w]|          "y": 97536.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 126,
+[w]|      "netName": "Net-(D304-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 149733.0,
+[w]|          "y": 102235.0
+[w]|        },
+[w]|        {
+[w]|          "x": 149733.0,
+[w]|          "y": 99815.6
+[w]|        },
+[w]|        {
+[w]|          "x": 149063.2,
+[w]|          "y": 99145.8
+[w]|        },
+[w]|        {
+[w]|          "x": 143805.2,
+[w]|          "y": 99145.8
+[w]|        },
+[w]|        {
+[w]|          "x": 141605.0,
+[w]|          "y": 101346.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 127,
+[w]|      "netName": "Net-(D304-K)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 141605.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 141605.0,
+[w]|          "y": 101346.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 128,
+[w]|      "netName": "VCC",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 66317.7
+[w]|        },
+[w]|        {
+[w]|          "x": 140866.7,
+[w]|          "y": 70866.0
+[w]|        },
+[w]|        {
+[w]|          "x": 124206.0,
+[w]|          "y": 70866.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 129,
+[w]|      "netName": "VCC",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 64516.0
+[w]|        },
+[w]|        {
+[w]|          "x": 145415.0,
+[w]|          "y": 66317.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 130,
+[w]|      "netName": "VCC",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 124206.0,
+[w]|          "y": 70866.0
+[w]|        },
+[w]|        {
+[w]|          "x": 123104.3,
+[w]|          "y": 70866.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 131,
+[w]|      "netName": "VCC",
+[w]|      "width": 600.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 117348.0,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 120564.3,
+[w]|          "y": 73406.0
+[w]|        },
+[w]|        {
+[w]|          "x": 123104.3,
+[w]|          "y": 70866.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 132,
+[w]|      "netName": "Net-(Q201-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 139065.0,
+[w]|          "y": 108966.0
+[w]|        },
+[w]|        {
+[w]|          "x": 139065.0,
+[w]|          "y": 112651.9
+[w]|        },
+[w]|        {
+[w]|          "x": 134555.0,
+[w]|          "y": 117161.9
+[w]|        },
+[w]|        {
+[w]|          "x": 133422.4,
+[w]|          "y": 117161.9
+[w]|        },
+[w]|        {
+[w]|          "x": 132496.7,
+[w]|          "y": 116236.2
+[w]|        },
+[w]|        {
+[w]|          "x": 132496.7,
+[w]|          "y": 115316.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 133,
+[w]|      "netName": "Net-(Q201-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 131445.0,
+[w]|          "y": 115316.0
+[w]|        },
+[w]|        {
+[w]|          "x": 132496.7,
+[w]|          "y": 115316.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 134,
+[w]|      "netName": "Net-(Q202-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 160020.0,
+[w]|          "y": 124206.0
+[w]|        },
+[w]|        {
+[w]|          "x": 161221.7,
+[w]|          "y": 124206.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 135,
+[w]|      "netName": "Net-(Q202-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 119126.0
+[w]|        },
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 120327.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 136,
+[w]|      "netName": "Net-(Q202-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 161221.7,
+[w]|          "y": 124206.0
+[w]|        },
+[w]|        {
+[w]|          "x": 165100.0,
+[w]|          "y": 120327.7
+[w]|        },
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 120327.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 137,
+[w]|      "netName": "Net-(Q203-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 164533.3,
+[w]|          "y": 122936.0
+[w]|        },
+[w]|        {
+[w]|          "x": 162055.9,
+[w]|          "y": 125413.4
+[w]|        },
+[w]|        {
+[w]|          "x": 158492.1,
+[w]|          "y": 125413.4
+[w]|        },
+[w]|        {
+[w]|          "x": 157411.7,
+[w]|          "y": 124333.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 138,
+[w]|      "netName": "Net-(Q203-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 156210.0,
+[w]|          "y": 124333.0
+[w]|        },
+[w]|        {
+[w]|          "x": 157411.7,
+[w]|          "y": 124333.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 139,
+[w]|      "netName": "Net-(Q203-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 122936.0
+[w]|        },
+[w]|        {
+[w]|          "x": 164533.3,
+[w]|          "y": 122936.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 140,
+[w]|      "netName": "Net-(Q204-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 134493.0,
+[w]|          "y": 120142.0
+[w]|        },
+[w]|        {
+[w]|          "x": 133744.1,
+[w]|          "y": 120142.0
+[w]|        },
+[w]|        {
+[w]|          "x": 130556.0,
+[w]|          "y": 123330.1
+[w]|        },
+[w]|        {
+[w]|          "x": 130556.0,
+[w]|          "y": 125730.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 141,
+[w]|      "netName": "Net-(Q204-B)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 126365.0,
+[w]|          "y": 128016.0
+[w]|        },
+[w]|        {
+[w]|          "x": 130894.2,
+[w]|          "y": 128016.0
+[w]|        },
+[w]|        {
+[w]|          "x": 131826.0,
+[w]|          "y": 127084.2
+[w]|        },
+[w]|        {
+[w]|          "x": 131826.0,
+[w]|          "y": 124460.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 142,
+[w]|      "netName": "Net-(Q301-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 131445.0,
+[w]|          "y": 88646.0
+[w]|        },
+[w]|        {
+[w]|          "x": 132496.7,
+[w]|          "y": 88646.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 143,
+[w]|      "netName": "Net-(Q301-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 137795.0,
+[w]|          "y": 86106.0
+[w]|        },
+[w]|        {
+[w]|          "x": 137795.0,
+[w]|          "y": 87307.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 144,
+[w]|      "netName": "Net-(Q301-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 137795.0,
+[w]|          "y": 87307.7
+[w]|        },
+[w]|        {
+[w]|          "x": 134617.9,
+[w]|          "y": 90484.8
+[w]|        },
+[w]|        {
+[w]|          "x": 133415.3,
+[w]|          "y": 90484.8
+[w]|        },
+[w]|        {
+[w]|          "x": 132496.7,
+[w]|          "y": 89566.2
+[w]|        },
+[w]|        {
+[w]|          "x": 132496.7,
+[w]|          "y": 88646.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 145,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 118287.7
+[w]|        },
+[w]|        {
+[w]|          "x": 115524.2,
+[w]|          "y": 118287.7
+[w]|        },
+[w]|        {
+[w]|          "x": 121617.5,
+[w]|          "y": 112194.4
+[w]|        },
+[w]|        {
+[w]|          "x": 121617.5,
+[w]|          "y": 78949.7
+[w]|        },
+[w]|        {
+[w]|          "x": 119323.2,
+[w]|          "y": 76655.4
+[w]|        },
+[w]|        {
+[w]|          "x": 117875.9,
+[w]|          "y": 76655.4
+[w]|        },
+[w]|        {
+[w]|          "x": 115794.4,
+[w]|          "y": 74573.9
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 146,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 115794.4,
+[w]|          "y": 74573.9
+[w]|        },
+[w]|        {
+[w]|          "x": 112768.9,
+[w]|          "y": 74573.9
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 80027.8
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 88646.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 147,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 115794.4,
+[w]|          "y": 74573.9
+[w]|        },
+[w]|        {
+[w]|          "x": 115794.4,
+[w]|          "y": 70211.3
+[w]|        },
+[w]|        {
+[w]|          "x": 116078.0,
+[w]|          "y": 69927.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 148,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 116586.0
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 118287.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 149,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 116078.0,
+[w]|          "y": 68326.0
+[w]|        },
+[w]|        {
+[w]|          "x": 116078.0,
+[w]|          "y": 69927.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 150,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 116078.0,
+[w]|          "y": 68326.0
+[w]|        },
+[w]|        {
+[w]|          "x": 124206.0,
+[w]|          "y": 68326.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 151,
+[w]|      "netName": "+12V",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 124206.0,
+[w]|          "y": 68326.0
+[w]|        },
+[w]|        {
+[w]|          "x": 126619.0,
+[w]|          "y": 65913.0
+[w]|        },
+[w]|        {
+[w]|          "x": 126619.0,
+[w]|          "y": 60706.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 152,
+[w]|      "netName": "Net-(Q302-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 161290.0,
+[w]|          "y": 94361.0
+[w]|        },
+[w]|        {
+[w]|          "x": 155071.5,
+[w]|          "y": 94361.0
+[w]|        },
+[w]|        {
+[w]|          "x": 151546.7,
+[w]|          "y": 90836.2
+[w]|        },
+[w]|        {
+[w]|          "x": 151546.7,
+[w]|          "y": 89916.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 153,
+[w]|      "netName": "Net-(Q302-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 92387.7
+[w]|        },
+[w]|        {
+[w]|          "x": 163263.3,
+[w]|          "y": 92387.7
+[w]|        },
+[w]|        {
+[w]|          "x": 161290.0,
+[w]|          "y": 94361.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 154,
+[w]|      "netName": "Net-(Q302-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 161290.0,
+[w]|          "y": 96334.3
+[w]|        },
+[w]|        {
+[w]|          "x": 161290.0,
+[w]|          "y": 94361.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 155,
+[w]|      "netName": "Net-(Q302-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 150495.0,
+[w]|          "y": 89916.0
+[w]|        },
+[w]|        {
+[w]|          "x": 151546.7,
+[w]|          "y": 89916.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 156,
+[w]|      "netName": "Net-(Q302-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 91186.0
+[w]|        },
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 92387.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 157,
+[w]|      "netName": "Net-(Q302-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 161290.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 161290.0,
+[w]|          "y": 96334.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 158,
+[w]|      "netName": "Net-(Q303-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 156845.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 158046.7,
+[w]|          "y": 97536.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 159,
+[w]|      "netName": "Net-(Q303-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 165735.0,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 164533.3,
+[w]|          "y": 97536.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 160,
+[w]|      "netName": "Net-(Q303-E)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 164533.3,
+[w]|          "y": 97536.0
+[w]|        },
+[w]|        {
+[w]|          "x": 163314.9,
+[w]|          "y": 98754.4
+[w]|        },
+[w]|        {
+[w]|          "x": 159265.1,
+[w]|          "y": 98754.4
+[w]|        },
+[w]|        {
+[w]|          "x": 158046.7,
+[w]|          "y": 97536.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 161,
+[w]|      "netName": "Net-(Q304-B)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 125603.0,
+[w]|          "y": 101346.0
+[w]|        },
+[w]|        {
+[w]|          "x": 125603.0,
+[w]|          "y": 98939.9
+[w]|        },
+[w]|        {
+[w]|          "x": 129292.9,
+[w]|          "y": 95250.0
+[w]|        },
+[w]|        {
+[w]|          "x": 131064.0,
+[w]|          "y": 95250.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 162,
+[w]|      "netName": "Net-(R212-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 126873.0,
+[w]|          "y": 120142.0
+[w]|        },
+[w]|        {
+[w]|          "x": 126873.0,
+[w]|          "y": 121630.8
+[w]|        },
+[w]|        {
+[w]|          "x": 119273.5,
+[w]|          "y": 129230.3
+[w]|        },
+[w]|        {
+[w]|          "x": 110637.6,
+[w]|          "y": 129230.3
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 125907.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 163,
+[w]|      "netName": "Net-(R212-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 124206.0
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 125907.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 164,
+[w]|      "netName": "Net-(R213-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102870.0,
+[w]|          "y": 126746.0
+[w]|        },
+[w]|        {
+[w]|          "x": 94615.0,
+[w]|          "y": 126746.0
+[w]|        },
+[w]|        {
+[w]|          "x": 93345.0,
+[w]|          "y": 125476.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 165,
+[w]|      "netName": "Net-(R312-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 118491.0,
+[w]|          "y": 94996.0
+[w]|        },
+[w]|        {
+[w]|          "x": 117289.3,
+[w]|          "y": 94996.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 166,
+[w]|      "netName": "Net-(R312-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 96266.0
+[w]|        },
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 94564.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 167,
+[w]|      "netName": "Net-(R312-Pad2)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 107315.0,
+[w]|          "y": 94564.3
+[w]|        },
+[w]|        {
+[w]|          "x": 116857.6,
+[w]|          "y": 94564.3
+[w]|        },
+[w]|        {
+[w]|          "x": 117289.3,
+[w]|          "y": 94996.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 168,
+[w]|      "netName": "Net-(R313-Pad1)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 102235.0,
+[w]|          "y": 102616.0
+[w]|        },
+[w]|        {
+[w]|          "x": 95885.0,
+[w]|          "y": 102616.0
+[w]|        },
+[w]|        {
+[w]|          "x": 93345.0,
+[w]|          "y": 100076.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 169,
+[w]|      "netName": "Net-(U201A--)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 122504.3
+[w]|        },
+[w]|        {
+[w]|          "x": 96316.7,
+[w]|          "y": 122504.3
+[w]|        },
+[w]|        {
+[w]|          "x": 95885.0,
+[w]|          "y": 122936.0
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 170,
+[w]|      "netName": "Net-(U201A--)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 124206.0
+[w]|        },
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 122504.3
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 171,
+[w]|      "netName": "Net-(U301A--)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 96266.0
+[w]|        },
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 97967.7
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 172,
+[w]|      "netName": "Net-(U301A--)",
+[w]|      "width": 400.0,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 109855.0,
+[w]|          "y": 97967.7
+[w]|        },
+[w]|        {
+[w]|          "x": 96316.7,
+[w]|          "y": 97967.7
+[w]|        },
+[w]|        {
+[w]|          "x": 95885.0,
+[w]|          "y": 97536.0
+[w]|        }
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=false bytes=68391
+
+[wcase] stem=corney-island-session
+[w]bytes=1502
+[w]|{
+[w]|  "designName": "Issue368-CorneyIslandWireless_output_session",
+[w]|  "unit": "MM",
+[w]|  "resolution": 10000.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "F.Cu",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "B.Cu",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.2,
+[w]|      "traceWidth": 0.3,
+[w]|      "viaDiameter": 0.8,
+[w]|      "viaDrill": 0.4,
+[w]|      "netNames": [
+[w]|        "C5",
+[w]|        "inner_bottom_B",
+[w]|        "inner_home_B",
+[w]|        "R2",
+[w]|        "R1"
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "nets": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "name": "C5",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "name": "inner_bottom_B",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 3,
+[w]|      "name": "inner_home_B",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 4,
+[w]|      "name": "R2",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 5,
+[w]|      "name": "R1",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    }
+[w]|  ],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": -5.1
+[w]|      },
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": -5.1
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.2
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=1467
+
+[wcase] stem=complex-hierarchy-design
+[w]bytes=8722
+[w]|{
+[w]|  "designName": "Issue733-kicad_complex_hierarchy_input_design",
+[w]|  "unit": "MM",
+[w]|  "resolution": 10000.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "top_copper",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "bottom_copper",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.2,
+[w]|      "traceWidth": 0.3,
+[w]|      "viaDiameter": 0.8,
+[w]|      "viaDrill": 0.4,
+[w]|      "netNames": [
+[w]|        "/ampli_ht_horizontal/PIEZO_IN",
+[w]|        "/ampli_ht_horizontal/PIEZO_OUT",
+[w]|        "/ampli_ht_horizontal/S_OUT+",
+[w]|        "/ampli_ht_horizontal/Vpil_0_3,3V",
+[w]|        "/ampli_ht_vertical/PIEZO_IN",
+[w]|        "/ampli_ht_vertical/PIEZO_OUT",
+[w]|        "/ampli_ht_vertical/S_OUT+",
+[w]|        "/ampli_ht_vertical/Vpil_0_3,3V",
+[w]|        "Net-(U102-CAP+)",
+[w]|        "Net-(U102-CAP-)",
+[w]|        "Net-(C201-Pad2)",
+[w]|        "Net-(C202-Pad1)",
+[w]|        "Net-(U201B-+)",
+[w]|        "Net-(C204-Pad1)",
+[w]|        "Net-(C301-Pad2)",
+[w]|        "Net-(C302-Pad1)",
+[w]|        "Net-(U301B-+)",
+[w]|        "Net-(C304-Pad1)",
+[w]|        "Net-(D201-K)",
+[w]|        "Net-(D202-K)",
+[w]|        "Net-(D203-K)",
+[w]|        "Net-(D203-A)",
+[w]|        "Net-(D204-K)",
+[w]|        "Net-(D301-K)",
+[w]|        "Net-(D302-K)",
+[w]|        "Net-(D303-A)",
+[w]|        "Net-(D303-K)",
+[w]|        "Net-(D304-K)",
+[w]|        "Net-(Q201-E)",
+[w]|        "Net-(Q202-E)",
+[w]|        "Net-(Q203-E)",
+[w]|        "Net-(Q204-E)",
+[w]|        "Net-(Q204-B)",
+[w]|        "Net-(Q301-E)",
+[w]|        "+12V",
+[w]|        "Net-(Q302-E)",
+[w]|        "Net-(Q303-E)",
+[w]|        "Net-(Q304-B)",
+[w]|        "Net-(Q304-E)",
+[w]|        "Net-(R212-Pad2)",
+[w]|        "Net-(R213-Pad1)",
+[w]|        "Net-(R312-Pad2)",
+[w]|        "Net-(R313-Pad1)",
+[w]|        "Net-(U201A--)",
+[w]|        "Net-(U301A--)",
+[w]|        "unconnected-(U102-LV-Pad6)",
+[w]|        "unconnected-(U102-OSC-Pad7)"
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "name": "power",
+[w]|      "clearance": 0.3,
+[w]|      "traceWidth": 0.6,
+[w]|      "viaDiameter": 1.651,
+[w]|      "viaDrill": 0.8255,
+[w]|      "netNames": [
+[w]|        "-VAA",
+[w]|        "/12Vext",
+[w]|        "GND",
+[w]|        "HT",
+[w]|        "VCC"
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "nets": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "name": "-VAA",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "name": "/12Vext",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 3,
+[w]|      "name": "/ampli_ht_horizontal/PIEZO_IN",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 4,
+[w]|      "name": "/ampli_ht_horizontal/PIEZO_OUT",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 5,
+[w]|      "name": "/ampli_ht_horizontal/S_OUT+",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 6,
+[w]|      "name": "/ampli_ht_horizontal/Vpil_0_3,3V",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 7,
+[w]|      "name": "/ampli_ht_vertical/PIEZO_IN",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 8,
+[w]|      "name": "/ampli_ht_vertical/PIEZO_OUT",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 9,
+[w]|      "name": "/ampli_ht_vertical/S_OUT+",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 10,
+[w]|      "name": "/ampli_ht_vertical/Vpil_0_3,3V",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 11,
+[w]|      "name": "GND",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 12,
+[w]|      "name": "HT",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 13,
+[w]|      "name": "Net-(U102-CAP+)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 14,
+[w]|      "name": "Net-(U102-CAP-)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 15,
+[w]|      "name": "Net-(C201-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 16,
+[w]|      "name": "Net-(C202-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 17,
+[w]|      "name": "Net-(U201B-+)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 18,
+[w]|      "name": "Net-(C204-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 19,
+[w]|      "name": "Net-(C301-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 20,
+[w]|      "name": "Net-(C302-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 21,
+[w]|      "name": "Net-(U301B-+)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 22,
+[w]|      "name": "Net-(C304-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 23,
+[w]|      "name": "Net-(D201-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 24,
+[w]|      "name": "Net-(D202-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 25,
+[w]|      "name": "Net-(D203-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 26,
+[w]|      "name": "Net-(D203-A)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 27,
+[w]|      "name": "Net-(D204-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 28,
+[w]|      "name": "Net-(D301-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 29,
+[w]|      "name": "Net-(D302-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 30,
+[w]|      "name": "Net-(D303-A)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 31,
+[w]|      "name": "Net-(D303-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 32,
+[w]|      "name": "Net-(D304-K)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 33,
+[w]|      "name": "VCC",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 34,
+[w]|      "name": "Net-(Q201-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 35,
+[w]|      "name": "Net-(Q202-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 36,
+[w]|      "name": "Net-(Q203-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 37,
+[w]|      "name": "Net-(Q204-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 38,
+[w]|      "name": "Net-(Q204-B)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 39,
+[w]|      "name": "Net-(Q301-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 40,
+[w]|      "name": "+12V",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 41,
+[w]|      "name": "Net-(Q302-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 42,
+[w]|      "name": "Net-(Q303-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 43,
+[w]|      "name": "Net-(Q304-B)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 44,
+[w]|      "name": "Net-(Q304-E)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 45,
+[w]|      "name": "Net-(R212-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 46,
+[w]|      "name": "Net-(R213-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 47,
+[w]|      "name": "Net-(R312-Pad2)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 48,
+[w]|      "name": "Net-(R313-Pad1)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 49,
+[w]|      "name": "Net-(U201A--)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 50,
+[w]|      "name": "Net-(U301A--)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 51,
+[w]|      "name": "unconnected-(U102-LV-Pad6)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    },
+[w]|    {
+[w]|      "id": 52,
+[w]|      "name": "unconnected-(U102-OSC-Pad7)",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    }
+[w]|  ],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": 87.9,
+[w]|        "y": 131.826
+[w]|      },
+[w]|      {
+[w]|        "x": 188.595,
+[w]|        "y": 131.826
+[w]|      },
+[w]|      {
+[w]|        "x": 188.595,
+[w]|        "y": 51.816
+[w]|      },
+[w]|      {
+[w]|        "x": 87.9,
+[w]|        "y": 51.8
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.2
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=8686
+
+[wcase] stem=mil-full
+[w]bytes=3145
+[w]|{
+[w]|  "designName": "mil-full",
+[w]|  "unit": "MIL",
+[w]|  "resolution": 254.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "F.Cu",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "B.Cu",
+[w]|      "type": "plane"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.7874015748031497,
+[w]|      "traceWidth": 0.984251968503937,
+[w]|      "viaDiameter": 3.1496062992125986,
+[w]|      "viaDrill": 1.5748031496062993,
+[w]|      "netNames": [
+[w]|        "GND"
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "name": "power",
+[w]|      "clearance": 1.5748031496062993,
+[w]|      "traceWidth": 1.968503937007874,
+[w]|      "viaDiameter": 4.724409448818897,
+[w]|      "viaDrill": 2.3622047244094486,
+[w]|      "netNames": [
+[w]|        "VCC"
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "nets": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "name": "GND",
+[w]|      "className": "default",
+[w]|      "containsPlane": true
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "name": "VCC",
+[w]|      "className": "power",
+[w]|      "containsPlane": false
+[w]|    }
+[w]|  ],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": 0.0,
+[w]|        "y": 157.48031496062993
+[w]|      },
+[w]|      {
+[w]|        "x": 196.8503937007874,
+[w]|        "y": 157.48031496062993
+[w]|      },
+[w]|      {
+[w]|        "x": 196.8503937007874,
+[w]|        "y": -0.0
+[w]|      },
+[w]|      {
+[w]|        "x": 0.0,
+[w]|        "y": -0.0
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.7874015748031497
+[w]|  },
+[w]|  "traces": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "netName": "VCC",
+[w]|      "width": 1.968503937007874,
+[w]|      "layerIndex": 1,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 7.874015748031496,
+[w]|          "y": 31.496062992125985
+[w]|        },
+[w]|        {
+[w]|          "x": 35.43307086614173,
+[w]|          "y": 31.496062992125985
+[w]|        }
+[w]|      ]
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "netName": "GND",
+[w]|      "width": 0.984251968503937,
+[w]|      "layerIndex": 0,
+[w]|      "points": [
+[w]|        {
+[w]|          "x": 3.937007874015748,
+[w]|          "y": 3.937007874015748
+[w]|        },
+[w]|        {
+[w]|          "x": 19.68503937007874,
+[w]|          "y": 3.937007874015748
+[w]|        },
+[w]|        {
+[w]|          "x": 19.68503937007874,
+[w]|          "y": 23.62204724409449
+[w]|        }
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "vias": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "netName": "VCC",
+[w]|      "position": {
+[w]|        "x": 27.559055118110237,
+[w]|        "y": 35.43307086614173
+[w]|      },
+[w]|      "diameter": 4.724409448818897,
+[w]|      "drill": 2.3622047244094486,
+[w]|      "startLayerIndex": 0,
+[w]|      "endLayerIndex": 1
+[w]|    },
+[w]|    {
+[w]|      "id": 2,
+[w]|      "netName": "GND",
+[w]|      "position": {
+[w]|        "x": 11.811023622047244,
+[w]|        "y": 15.748031496062993
+[w]|      },
+[w]|      "diameter": 3.1496062992125986,
+[w]|      "drill": 1.5748031496062993,
+[w]|      "startLayerIndex": 0,
+[w]|      "endLayerIndex": 1
+[w]|    }
+[w]|  ],
+[w]|  "conductionAreas": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "netName": "GND",
+[w]|      "layerIndex": 1,
+[w]|      "isObstacle": false,
+[w]|      "polygon": [
+[w]|        {
+[w]|          "x": 39.37007874015748,
+[w]|          "y": 98.4251968503937
+[w]|        },
+[w]|        {
+[w]|          "x": 118.11023622047244,
+[w]|          "y": 98.4251968503937
+[w]|        },
+[w]|        {
+[w]|          "x": 118.11023622047244,
+[w]|          "y": 39.37007874015748
+[w]|        },
+[w]|        {
+[w]|          "x": 39.37007874015748,
+[w]|          "y": 39.37007874015748
+[w]|        }
+[w]|      ]
+[w]|    }
+[w]|  ]
+[w]|}
+[rt] fixedPoint=false bytes=3146
+
+[wcase] stem=um-minimal
+[w]bytes=817
+[w]|{
+[w]|  "designName": "um-minimal",
+[w]|  "unit": "UM",
+[w]|  "resolution": 10.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "top",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 20.0,
+[w]|      "traceWidth": 300.0,
+[w]|      "viaDiameter": 80.0,
+[w]|      "viaDrill": 40.0,
+[w]|      "netNames": [
+[w]|        "n1"
+[w]|      ]
+[w]|    }
+[w]|  ],
+[w]|  "nets": [
+[w]|    {
+[w]|      "id": 1,
+[w]|      "name": "n1",
+[w]|      "className": "default",
+[w]|      "containsPlane": false
+[w]|    }
+[w]|  ],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": 100.0,
+[w]|        "y": 80.0
+[w]|      },
+[w]|      {
+[w]|        "x": 100.0,
+[w]|        "y": -0.0
+[w]|      },
+[w]|      {
+[w]|        "x": 0.0,
+[w]|        "y": -0.0
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 20.0
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=816
+
+[wcase] stem=empty-document
+[w]bytes=815
+[w]|{
+[w]|  "designName": "empty-document",
+[w]|  "unit": "MM",
+[w]|  "resolution": 10000.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "F.Cu",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "B.Cu",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.2,
+[w]|      "traceWidth": 0.3,
+[w]|      "viaDiameter": 0.8,
+[w]|      "viaDrill": 0.4,
+[w]|      "netNames": []
+[w]|    }
+[w]|  ],
+[w]|  "nets": [],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": -5.1
+[w]|      },
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": -5.1
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.2
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=810
+
+[wcase] stem=null-design-name
+[w]bytes=813
+[w]|{
+[w]|  "designName": "KiCad_Design",
+[w]|  "unit": "MM",
+[w]|  "resolution": 10000.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "F.Cu",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "B.Cu",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.2,
+[w]|      "traceWidth": 0.3,
+[w]|      "viaDiameter": 0.8,
+[w]|      "viaDrill": 0.4,
+[w]|      "netNames": []
+[w]|    }
+[w]|  ],
+[w]|  "nets": [],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": -5.1
+[w]|      },
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": -5.1
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.2
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=810
+
+[wcase] stem=one-arg-overload
+[w]bytes=813
+[w]|{
+[w]|  "designName": "KiCad_Design",
+[w]|  "unit": "MM",
+[w]|  "resolution": 10000.0,
+[w]|  "layers": [
+[w]|    {
+[w]|      "index": 0,
+[w]|      "name": "F.Cu",
+[w]|      "type": "signal"
+[w]|    },
+[w]|    {
+[w]|      "index": 1,
+[w]|      "name": "B.Cu",
+[w]|      "type": "signal"
+[w]|    }
+[w]|  ],
+[w]|  "netClasses": [
+[w]|    {
+[w]|      "name": "default",
+[w]|      "clearance": 0.2,
+[w]|      "traceWidth": 0.3,
+[w]|      "viaDiameter": 0.8,
+[w]|      "viaDrill": 0.4,
+[w]|      "netNames": []
+[w]|    }
+[w]|  ],
+[w]|  "nets": [],
+[w]|  "clearanceRules": [],
+[w]|  "components": [],
+[w]|  "outline": {
+[w]|    "corners": [
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": 5.0
+[w]|      },
+[w]|      {
+[w]|        "x": 5.1,
+[w]|        "y": -5.1
+[w]|      },
+[w]|      {
+[w]|        "x": -5.0,
+[w]|        "y": -5.1
+[w]|      }
+[w]|    ],
+[w]|    "clearance": 0.2
+[w]|  },
+[w]|  "traces": [],
+[w]|  "vias": [],
+[w]|  "conductionAreas": []
+[w]|}
+[rt] fixedPoint=true bytes=810

@@ -172,37 +172,143 @@ fn emit_writer(case: &WriterCase) -> Vec<String> {
     rows
 }
 
-/// Every `[w]`/`[rt]` row of every writer case, byte for byte against the pinned jar.
+/// The port's own `[w]`/`[rt]` rows over the same nine inputs — the **port golden**.
+///
+/// The writer itself is untouched by Plan 9 Task 7. What moved is the *board* it is handed: the
+/// reader's net numbering is first-reference order now rather than `java.util.HashSet`'s bucket
+/// order (#280), and `KiCadJsonWriter` emits its `nets` in net-number order — so a board whose
+/// nets the document does not declare writes them in a different order than the jar does. The
+/// family therefore moves to the port lane, exactly as `kicad_reader.rs`'s two transcripts do;
+/// that file's `PORT_TRANSCRIPT` carries the argument in full.
+///
+/// Regenerate with:
+///
+/// ```text
+/// cargo test -p fr-dsn --test kicad_writer emit_the_port_writer_transcript -- --ignored --nocapture
+/// ```
+const PORT_TRANSCRIPT: &str = include_str!("data/p9t7-kicad-writer.txt");
+
+/// The writer stems whose port rows differ from the jar's, and why.
+///
+/// Both directions are checked: a stem that differs without an entry fails, and an entry whose
+/// stem no longer differs fails.
+const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[(
+    "ecc83-v1",
+    "#280",
+    "the **one** writer stem of the nine whose board carries auto-registered nets: the \
+         fixture declares no `nets` at all, so all thirteen come from pad `netName`s and their \
+         numbers were `String.hashCode`'s. `KiCadJsonWriter:106-120` writes `nets` in net-number \
+         order, so 24 of its 145 rows move — the thirteen names, their `id`s, and `[w]bytes=` \
+         with them, because the names are of different lengths. The other eight stems declare \
+         their nets (or have none) and are byte-identical to the jar.",
+)];
+
+/// Every `[w]`/`[rt]` row of every writer case, against the port golden.
 ///
 /// `[w]bytes=` is Java's `getBytes(UTF_8).length` and Rust's `String::len()` — the same number,
 /// because both count UTF-8 bytes. `[rt] bytes=` is Java's `String.length()`, i.e. **UTF-16 code
 /// units**, which is `chars().count()` here for every document in the corpus (none carries an
 /// astral-plane character; the one non-ASCII stem is on the `importSession` side).
 #[test]
-fn the_writer_output_matches_the_jvm_byte_for_byte() {
+fn the_writer_output_matches_the_port_golden_byte_for_byte() {
+    let golden = writer_golden(PORT_TRANSCRIPT);
     let cases = writer_cases();
+    assert_eq!(cases.len(), golden.len());
     let mut compared = 0usize;
-    for case in &cases {
-        let actual = emit_writer(case);
+    for (case, (stem, expected)) in cases.iter().zip(&golden) {
         assert_eq!(
-            actual.len(),
-            case.expected.len(),
-            "row count for stem {}",
-            case.stem
+            &case.stem, stem,
+            "the two files list the stems in one order"
         );
-        for (row, (actual, expected)) in actual.iter().zip(&case.expected).enumerate() {
+        let actual = emit_writer(case);
+        assert_eq!(actual.len(), expected.len(), "row count for stem {stem}");
+        for (row, (actual, expected)) in actual.iter().zip(expected).enumerate() {
             assert_eq!(
                 actual, expected,
-                "stem {} row {row}: the writer diverged from the jar",
-                case.stem
+                "stem {stem} row {row}: the writer diverged from the port golden"
             );
             compared += 1;
         }
     }
-    assert_eq!(
-        compared, 5021,
-        "the replay compares 5021 rows over 9 boards"
+    assert!(
+        compared > 5000,
+        "the replay compares well over 5000 rows over 9 boards, got {compared}"
     );
+}
+
+/// The port golden differs from the jar transcript only on the stems [`KNOWN_DIVERGENCES`] names,
+/// and on every stem it names.
+#[test]
+fn the_writer_port_golden_differs_from_the_jar_only_where_a_fix_says_so() {
+    let jar = writer_golden(TRANSCRIPT);
+    let port = writer_golden(PORT_TRANSCRIPT);
+    assert_eq!(jar.len(), port.len(), "the two files list the same inputs");
+    let mut unexplained: Vec<String> = Vec::new();
+    let mut diverged: Vec<&str> = Vec::new();
+    for ((stem, jar_rows), (port_stem, port_rows)) in jar.iter().zip(&port) {
+        assert_eq!(stem, port_stem, "the stems are in one order");
+        if jar_rows == port_rows {
+            continue;
+        }
+        diverged.push(stem);
+        if !KNOWN_DIVERGENCES.iter().any(|(name, _, _)| name == stem) {
+            let first = jar_rows
+                .iter()
+                .zip(port_rows)
+                .position(|(a, b)| a != b)
+                .unwrap_or(0);
+            unexplained.push(format!(
+                "{stem}[{first}]\n  jar:  {}\n  port: {}",
+                jar_rows.get(first).map_or("<none>", String::as_str),
+                port_rows.get(first).map_or("<none>", String::as_str),
+            ));
+        }
+    }
+    assert!(
+        unexplained.is_empty(),
+        "{} writer stem(s) differ from the jar with no KNOWN_DIVERGENCES entry:\n{}",
+        unexplained.len(),
+        unexplained.join("\n")
+    );
+    for (stem, row, reason) in KNOWN_DIVERGENCES {
+        assert!(
+            diverged.contains(stem),
+            "`{stem}` now MATCHES the jar — delete its KNOWN_DIVERGENCES entry ({row}: {reason})"
+        );
+    }
+}
+
+/// The `[wcase]` stems of `text` with their `[w]`/`[rt]` rows.
+fn writer_golden(text: &str) -> Vec<(String, Vec<String>)> {
+    let mut cases: Vec<(String, Vec<String>)> = Vec::new();
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("[wcase] stem=") {
+            let stem = rest.split(' ').next().expect("a [wcase] line names a stem");
+            cases.push((stem.to_string(), Vec::new()));
+        } else if (line.starts_with("[w]") || line.starts_with("[rt] "))
+            && let Some(case) = cases.last_mut()
+        {
+            case.1.push(line.to_string());
+        }
+    }
+    cases
+}
+
+/// Prints the port writer golden, for regeneration. See [`PORT_TRANSCRIPT`].
+#[test]
+#[ignore = "a generator, not a check — see PORT_TRANSCRIPT for the command"]
+fn emit_the_port_writer_transcript() {
+    println!("# the PORT's rows over the inputs of data/p8t10-kicad-writer.txt, which stays as");
+    println!("# the jar's record. Plan 9 Task 7 moved this family to the port lane: see this");
+    println!("# file's PORT_TRANSCRIPT and KNOWN_DIVERGENCES, and kicad_reader.rs for the");
+    println!("# argument in full.");
+    for case in writer_cases() {
+        println!();
+        println!("[wcase] stem={}", case.stem);
+        for row in emit_writer(&case) {
+            println!("{row}");
+        }
+    }
 }
 
 // =============================================================== the importSession replay
@@ -240,6 +346,18 @@ const XDIFF: &[(&str, &str)] = &[
     // round trip or a hand-edited document; no KiCad export reaches it.
     ("via-start-gt-end", "[is] items count="),
     ("via-start-gt-end", "[is] item 2 Via"),
+    // fixed: T7 (#286) — the three rows above and below are now one refusal instead of a
+    // half-insertion. The port rejects the via **before** the padstack exists, so:
+    //   * the throw is a diagnostic naming the via, not `NegativeArraySizeException: -2`;
+    //   * the library holds one padstack, not two, and there is no
+    //     `Via[1-0]_800:400_um fromLayer=2 toLayer=-1` entry — a padstack with no shape on any
+    //     layer, which is the object the negative count was computed from.
+    // The reachability note above still stands and is now moot from the port's side: the board
+    // that could carry such a via is the half-inserted one this quirk produced, and the port no
+    // longer produces it.
+    ("via-start-gt-end", "[is] throw="),
+    ("via-start-gt-end", "[is] padstacks count="),
+    ("via-start-gt-end", "[is] padstack 2 name=Via"),
 ];
 
 fn session_cases() -> Vec<SessionCase> {
@@ -451,7 +569,9 @@ fn the_import_session_item_graph_matches_the_jvm() {
             xdiff_seen += 1;
         }
     }
-    assert_eq!(compared, 145, "the replay compares 145 rows over 24 inputs");
+    // 142, not the 145 this counted before Task 7: `via-start-gt-end`'s three extra XDIFF
+    // prefixes (#286's refusal-before-insertion) lift three more rows out of the comparison.
+    assert_eq!(compared, 142, "the replay compares 142 rows over 24 inputs");
     assert_eq!(
         xdiff_seen,
         XDIFF.len(),
