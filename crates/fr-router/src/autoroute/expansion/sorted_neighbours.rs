@@ -842,7 +842,7 @@ impl SortedRoomNeighbours {
                     if !corner_cut_off {
                         middle_edge_line = Some(
                             border_line_of(
-                                &room_simplex,
+                                room_simplex,
                                 current_touching_side_no,
                                 "currentTouchingSideNo",
                                 588,
