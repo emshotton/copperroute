@@ -1,14 +1,9 @@
 # gate-version: g1
-# task: T3
-# host: laptop  -- ADVISORY ONLY for the cpu lane (ruling BW).
-# Ruling BW moves the timing lane to the workbench, and this file is laptop-cut, so the
-# `cpu_s` column it seeds is advisory and not a gate until it is re-cut there. The re-cut
-# did not happen at Task 3's landing and the reason is a defect, not a decision:
-# `scripts/remote-gates.sh`'s `quality-ab` arm invokes `benchmark/scripts/quality-ab.sh`,
-# which does not exist -- the script is at `scripts/quality-ab.sh` -- it forwards no extra
-# arguments, so `--update-baseline` cannot be reached through it, and it writes the tsv
-# into the workbench slot with nothing bringing it back. The host itself is reachable.
-# Re-cutting this file on the workbench therefore falls to the controller at merge.
+# task: T3-wb
+# host: workbench — CANONICAL for the cpu lane (ruling BW migration, 2026-09-03).
+# The migration run's 1.233 corpus-median ESCALATE was the cross-host comparison
+# (workbench cpu vs the retired laptop baseline) — adjudicated expected; ratios are
+# meaningful again from the NEXT task onward, workbench-vs-workbench.
 # The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
 # never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s
 # column and rewrites it in place at each task's close, in the same commit as
@@ -25,51 +20,33 @@
 # the corpus-level position every milestone's cpu ratio is taken against.
 # v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2
 #   (quoted -- benchmark/results/ is gitignored and this checkout has no copy)
-#
-# NOTE (Plan 9 Task 3, controller ruling in the Task 3 review): TWO ROWS BELOW HAVE A
-# DIFFERENT PROVENANCE FROM THE OTHER 27, and it is stated here rather than left for a
-# later task to trip over.
-#   batch/router-j2-reference     1.048  0.024
-#   batch/router-strict-drc-cnh   9.458  0.708
-# Every other row is the median of 3 from `scripts/quality-ab.sh T3 --update-baseline`.
-# These two are the median of **5** from a targeted re-run on a quiet machine
-# (`quality-ab.sh T3 --repeats 5 router-j2-reference router-strict-drc-cnh`), because the
-# 3-repeat sweep caught them under concurrent load and recorded 1.196 (spread 0.056) and
-# 11.427 (spread 1.984) -- 14 % and 21 % high. The proof they were noise and not a code
-# path is that the SAME BOARD in the cli lane, same binary and same argv shape, measured
-# 1.021 (spread 0.007) and 9.345 (spread 0.219) in that same sweep; the re-run brings the
-# batch rows to 1.042x and 0.986x of Task 2's numbers, i.e. inside the 1.05 floor.
-# Committing the inflated pair would hand the next task a reference 14 %/21 % high and let
-# a real regression hide under it, which is the one thing a rolling baseline must not do.
-# The 29-row artefact `benchmark/baselines/ab/quality-ab-T3.tsv` is NOT edited: it is the
-# record of what that sweep measured, and a record is not corrected by rewriting it.
 # cols:family	stem	cpu_s	cpu_spread_s
-batch	router-rpi-splitter	0.054	0.001
-batch	router-dac2020-bm01	14.731	2.387
-batch	router-j2-reference	1.048	0.024
-batch	router-tutorial-board	6.897	0.118
-batch	router-ecc83-input	0.026	0.001
-batch	router-fanout-bm11	2.609	0.098
-batch	router-strict-drc-cnh	9.458	0.708
-batch	router-empty-board	0.005	0.000
-cli	router-rpi-splitter	0.055	0.001
-cli	router-j2-reference	1.021	0.007
-cli	router-ecc83-input	0.026	0.001
-cli	router-empty-board	0.005	0.000
-cli	router-dac2020-bm01	14.022	0.013
-cli	router-tutorial-board	6.921	0.142
-cli	router-fanout-bm11	2.621	0.548
-cli	router-strict-drc-cnh	9.345	0.219
-cli	tutorial_board	6.875	0.017
-cli	Issue026-J2_reference	1.017	0.009
-cli	large-outline	4.215	0.020
-cli	kicad-ecc83-json	0.275	0.004
-cli	kicad-complex-hierarchy-json	5.356	0.048
-drc	drc-dev-board	0.044	0.001
-drc	drc-bbd-mars-64	0.054	0.000
-drc	drc-natural-tone-preamp	0.122	0.002
-drc	drc-issue593-rules	0.011	0.000
-drc	drc-issue593-ses	0.027	0.001
-drc	drc-issue753-cpu85	0.122	0.002
-drc	drc-issue110-relay	0.012	0.001
-drc	drc-tutorial-board	0.827	0.004
+batch	router-rpi-splitter	0.068	0.003
+batch	router-dac2020-bm01	18.027	0.235
+batch	router-j2-reference	1.277	0.003
+batch	router-tutorial-board	9.164	0.113
+batch	router-ecc83-input	0.030	0.001
+batch	router-fanout-bm11	3.339	0.042
+batch	router-strict-drc-cnh	11.659	0.168
+batch	router-empty-board	0.002	0.001
+cli	router-rpi-splitter	0.066	0.000
+cli	router-j2-reference	1.283	0.013
+cli	router-ecc83-input	0.031	0.001
+cli	router-empty-board	0.002	0.000
+cli	router-dac2020-bm01	17.980	0.221
+cli	router-tutorial-board	9.142	0.015
+cli	router-fanout-bm11	3.385	0.033
+cli	router-strict-drc-cnh	11.592	0.129
+cli	tutorial_board	9.146	0.001
+cli	Issue026-J2_reference	1.265	0.010
+cli	large-outline	5.520	0.101
+cli	kicad-ecc83-json	0.378	0.002
+cli	kicad-complex-hierarchy-json	6.517	0.027
+drc	drc-dev-board	0.052	0.001
+drc	drc-bbd-mars-64	0.063	0.001
+drc	drc-natural-tone-preamp	0.143	0.002
+drc	drc-issue593-rules	0.010	0.001
+drc	drc-issue593-ses	0.030	0.000
+drc	drc-issue753-cpu85	0.155	0.003
+drc	drc-issue110-relay	0.011	0.002
+drc	drc-tutorial-board	1.084	0.007
