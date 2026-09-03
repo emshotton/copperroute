@@ -1,0 +1,19 @@
+# benchmark/baselines/ — Plan 9's rolling, COMMITTED measurement baselines.
+#
+# Unlike benchmark/results/ (gitignored: a run is identified by its run-id and its meta.json, and
+# the *compare* is the artefact) everything here is committed on purpose, because it is what the
+# NEXT task reads:
+#
+#   ab/quality-ab-T<n>.tsv              one row per stem per task — the G2 quality + cpu_s A/B.
+#                                       Task <n+1> reads T<n>'s file as its port baseline
+#                                       (ruling BP15), so the chain must survive in git.
+#   stem-times.tsv                      the rolling PORT cpu_s baseline (rulings BO / BP4),
+#                                       rewritten in place at each task's close.
+#   quality-baseline-java-head.tsv      the jar column — CONTEXT, NEVER A GATE. Task 1 derives it
+#                                       once from the frozen references and writes it HERE,
+#                                       outside tests/reference-frozen/, so that nothing ever has
+#                                       to read the freeze (BL8 as amended by ruling BP1).
+#   plan9-m<n>.log                      the full console output of each milestone's
+#                                       scripts/remote-run.sh, read from the file and never piped.
+#
+# This file exists so the directory survives a clean checkout even when it is momentarily empty.

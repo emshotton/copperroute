@@ -68,13 +68,33 @@
 # routing stage it runs is the one `mode batch`'s pipeline runs first, which is exactly what
 # `run.sh p7t9 <dsn> <n> batch-router` MATCHing pins.
 #
+# ## Two lanes (Plan 9 Task 0)
+#
+#   --jar         `P7T9.java` against the clone's HEAD jar. The historical lane and still the
+#                 **default**. It cut the frozen baseline (`tests/reference-frozen/`, Task 1) and
+#                 it is the triage lane for a port-cut golden nobody can explain.
+#   --from-port   **the port's own `p7t9` twin**, `scripts/differential/rust/src/bin/p7t9.rs`,
+#                 with the same argv — the binary `run.sh p7t9` diffs against `P7T9.java`, so the
+#                 reference and the differential still describe the same run after the lane
+#                 switch (survey §7.2). `--verify-driver` follows: in the port lane the "bare
+#                 jar" arm becomes a bare **port** `-de/-do` run, which is the same assertion —
+#                 the driver and the whole program answer the same SES — taken inside one lane.
+#
+# Byte parity with the jar may break from Plan 9 on, and that is the point; the `--jar` lane is a
+# diagnosis, not a gate.
+#
 # ## Usage
 #
-#   scripts/gen-batch-reference.sh [stem ...]         generate all batch stems, or just the named
+#   scripts/gen-batch-reference.sh [--jar] [stem ...]  generate all batch stems, or just the named
 #   scripts/gen-batch-reference.sh --force [stem ...] regenerate even where outputs already exist
 #                                                     (without it the run is **resumable**: a stem
 #                                                     whose batch.ses and batch.passes.jsonl are
 #                                                     both present is skipped)
+#   scripts/gen-batch-reference.sh --from-port [--task T<n>] [stem ...]
+#                                                     the same, driven by the port's p7t9 twin;
+#                                                     batch.meta.txt then carries the port's git
+#                                                     sha, the Plan 9 task at that sha and the
+#                                                     RouterBudget in force
 #   scripts/gen-batch-reference.sh --meta-only [stem ...]
 #                                                     rewrite batch.meta.txt from the existing
 #                                                     outputs without running the jar
@@ -136,6 +156,11 @@ JAR="${FREEROUTING_JAR:-$JAVA_DIR/build/libs/freerouting-current-executable.jar}
 JAVA_BIN="${JAVA:-/opt/homebrew/opt/openjdk@25/bin/java}"
 JAVAC_BIN="${JAVAC:-/opt/homebrew/opt/openjdk@25/bin/javac}"
 REF="$ROOT/tests/reference"
+# Outputs may be redirected to a scratch tree; inputs never are.
+OUT_ROOT="${REFERENCE_OUT_ROOT:-$REF}"
+PORT_BIN="$ROOT/target/release/freerouting"
+PORT_DRIVER_SRC="$ROOT/scripts/differential/rust/src/bin/p7t9.rs"
+PORT_DRIVER="$ROOT/scripts/differential/rust/target/release/p7t9"
 FIXTURES="$REF/router-fixtures.txt"
 DRIVER="$ROOT/scripts/differential/java/P7T9.java"
 # **Per invocation**, not a fixed path. `compile_driver` starts with `rm -rf "$CLASSES"`, so two
@@ -158,32 +183,50 @@ LOCALE_FLAGS=(-Djava.awt.headless=true -Duser.language=en -Duser.country=US)
 
 MODE=generate
 FORCE=0
+LANE=jar
+TASK="${PLAN9_TASK:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --verify-hash-modes) MODE=sweep; shift ;;
     --verify-driver) MODE=verify-driver; shift ;;
     --meta-only) MODE=meta; shift ;;
     --force) FORCE=1; shift ;;
+    --jar) LANE=jar; shift ;;
+    --from-port) LANE=port; shift ;;
+    --task) TASK="${2:?--task needs a task id, e.g. T1}"; shift 2 ;;
+    --task=*) TASK="${1#--task=}"; shift ;;
     --*) echo "error: unknown option $1" >&2; exit 1 ;;
     *) break ;;
   esac
 done
 WANTED=("$@")
+if [[ "$LANE" == port && "$MODE" == sweep ]]; then
+  echo "error: --verify-hash-modes is a JVM sweep and has no meaning in --from-port mode" >&2
+  exit 1
+fi
 
 # --- preflight -----------------------------------------------------------------------------------
-if [[ ! -f "$JAR" ]]; then
-  echo "error: HEAD jar not found at $JAR" >&2
-  echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
-  exit 1
-fi
-if [[ ! -x "$JAVAC_BIN" ]]; then
-  echo "error: javac not found at $JAVAC_BIN (need JDK >= 25; set JAVAC)" >&2
-  exit 1
-fi
-ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
-if [[ "${ver:-0}" -lt 25 ]]; then
-  echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
-  exit 1
+if [[ "$LANE" == jar ]]; then
+  if [[ ! -f "$JAR" ]]; then
+    echo "error: HEAD jar not found at $JAR" >&2
+    echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
+    exit 1
+  fi
+  if [[ ! -x "$JAVAC_BIN" ]]; then
+    echo "error: javac not found at $JAVAC_BIN (need JDK >= 25; set JAVAC)" >&2
+    exit 1
+  fi
+  ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
+  if [[ "${ver:-0}" -lt 25 ]]; then
+    echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
+    exit 1
+  fi
+else
+  PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+  PORT_DIRTY=""
+  if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
+    PORT_DIRTY=" +uncommitted-changes-under-crates"
+  fi
 fi
 
 TIMEOUT=()
@@ -245,10 +288,21 @@ commit_log() {
 run_driver() {
   local log="$1" hash="$2"
   shift 2
-  "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" ${TRIP_FLAGS+"${TRIP_FLAGS[@]}"} \
-      -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
-      -cp "$CLASSES:$JAR" app.freerouting.autoroute.pipeline.P7T9 "$@" \
-      > "$log" 2>&1
+  if [[ "$LANE" == port ]]; then
+    # The **same argv**, and only the program in front of it changes. No `TRIP_FLAGS`: those turn
+    # the jar's log4j2 DEBUG appender on so the budget's trips can be counted, and the port's
+    # driver has no budget to trip — `p7t9.rs` builds its context with `RouterBudget::disabled()`.
+    # `FREEROUTING_JAR` is exported because the shared `p7t_common.rs` header stamps the jar's
+    # identity into its own first line, exactly as the Java driver derives it from its code
+    # source — `run.sh`'s convention, so a run against the wrong jar is a diff and not a silent
+    # pass. No JVM starts.
+    FREEROUTING_JAR="$JAR" "${TIMEOUT[@]}" "$PORT_DRIVER" "$@" > "$log" 2>&1 < /dev/null
+  else
+    "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" ${TRIP_FLAGS+"${TRIP_FLAGS[@]}"} \
+        -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
+        -cp "$CLASSES:$JAR" app.freerouting.autoroute.pipeline.P7T9 "$@" \
+        > "$log" 2>&1
+  fi
 }
 
 # The exact message `TraceTightener.isStopRequested:209` logs on an exceeded budget.
@@ -257,8 +311,20 @@ TRIP_MESSAGE='TraceTightener.is_stop_requested: time limit exceeded'
 # The bare jar, with the argv `P7T9.batchArgv` builds. Same JVM flags, same hash mode — and the
 # same `TRIP_LOG` plumbing as `run_driver`, because answer 1's trip count belongs to the run that
 # actually differed, which is this one.
-run_bare_jar() {
+# The whole program on `P7T9.batchArgv`'s command line — the jar in the jar lane, the port's own
+# binary in the port lane. **The assertion is the same in both**: the driver and the program a
+# user runs answer the same SES, taken inside one lane. Comparing across lanes would be quirk
+# #92's head tokens and nothing else, which is a fact about the writer and not about this board.
+run_bare_program() {
   local log="$1" hash="$2" dsn="$3" max_passes="$4" fanout="$5" optimizer="$6" ses="$7"
+  if [[ "$LANE" == port ]]; then
+    "${TIMEOUT[@]}" "$PORT_BIN" \
+        -de "$dsn" -do "$ses" -mp "$max_passes" \
+        "--router.fanout.enabled=$fanout" \
+        "--router.optimizer.enabled=$optimizer" \
+        > "$log" 2>&1 < /dev/null
+    return $?
+  fi
   # `TRIP_ARGS` go after the routing switches and are `--logging.*`, which `CliSettings` ignores
   # (it reads `--router.*` only, `sources/CliSettings.java:53-55`), so they cannot move a setting.
   "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
@@ -270,6 +336,10 @@ run_bare_jar() {
       ${TRIP_ARGS+"${TRIP_ARGS[@]}"} \
       > "$log" 2>&1
 }
+
+# renamed at Plan 9 Task 0: `run_bare_jar` -> `run_bare_program`. The alias keeps every existing
+# call site and every reader's muscle memory working.
+run_bare_jar() { run_bare_program "$@"; }
 
 # What makes the jar write its own DEBUG log to `$1`; see the header. Both are empty on every
 # reference path, because turning DEBUG on costs wall-clock time and wall-clock time is what the
@@ -327,26 +397,46 @@ count_trips() {
 bool_of() { [[ "$1" == "on" ]] && printf 'true' || printf 'false'; }
 
 write_meta() {
-  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$REF/$1"
+  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$OUT_ROOT/$1"
   {
-    echo "jar          $(portable "$JAR")"
-    echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
-    echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
-    echo "jar revision $(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null \
-        | tr -d '\r' | sed -n 's/^Build-Revision: *//p' | head -1)"
-    # Deliberately **not** a version string: HEAD's manifest carries
-    # `Implementation-Version: unspecified`, so `Build-Revision` is the only field that pins which
-    # build produced these bytes (the plan text's `2.3.1-SNAPSHOT` line cannot exist there).
-    echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
-    echo "hash mode    -XX:hashCode=$HASH_MODE"
-    echo "budget       optChangedArea TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000 ms, LIVE."
-    echo "             The constant is a javac-inlined compile-time constant (\`sipush 1000\` at"
-    echo "             every call site), so no flag and no reflection disables it on the Java"
-    echo "             side. The port runs RouterBudget::disabled(); a byte-identical batch.ses"
-    echo "             is therefore evidence that the limit never changed the result. Trips are"
-    echo "             counted from the jar's own DEBUG log when --verify-driver needs them."
+    if [[ "$LANE" == port ]]; then
+      # The three provenance lines a port-cut golden carries (Plan 9 Task 0). A golden cut before
+      # a later fix must be *loudly* invalid, and this is what makes it so.
+      echo "lane         port ($(portable "$PORT_DRIVER_SRC"))"
+      echo "port sha     ${PORT_SHA}${PORT_DIRTY}"
+      if [[ -n "$TASK" ]]; then
+        echo "plan 9 task  $TASK"
+      else
+        echo "plan 9 task  UNKNOWN — this golden names no task and is therefore INVALID as a"
+        echo "             reference; re-cut it with --task T<n>. See this script's header."
+      fi
+      echo "java         n/a (no JVM runs in this lane)"
+      echo "hash mode    n/a (the port has no Object.hashCode)"
+      echo "budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 switch:"
+      echo "             time is out of every parity and every quality measurement, so this"
+      echo "             transcript cannot depend on how fast the machine is). There is no trip"
+      echo "             count in this lane because there is no limit to trip."
+      echo "driver       $(portable "$PORT_DRIVER_SRC")"
+    else
+      echo "jar          $(portable "$JAR")"
+      echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
+      echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
+      echo "jar revision $(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null \
+          | tr -d '\r' | sed -n 's/^Build-Revision: *//p' | head -1)"
+      # Deliberately **not** a version string: HEAD's manifest carries
+      # `Implementation-Version: unspecified`, so `Build-Revision` is the only field that pins
+      # which build produced these bytes (the plan text's `2.3.1-SNAPSHOT` line cannot exist).
+      echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
+      echo "hash mode    -XX:hashCode=$HASH_MODE"
+      echo "budget       optChangedArea TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP = 1000 ms, LIVE."
+      echo "             The constant is a javac-inlined compile-time constant (\`sipush 1000\` at"
+      echo "             every call site), so no flag and no reflection disables it on the Java"
+      echo "             side. The port runs RouterBudget::disabled(); a byte-identical batch.ses"
+      echo "             is therefore evidence that the limit never changed the result. Trips are"
+      echo "             counted from the jar's own DEBUG log when --verify-driver needs them."
 
-    echo "driver       $(portable "$DRIVER")"
+      echo "driver       $(portable "$DRIVER")"
+    fi
     echo "passes       $(wc -l < "$out/batch.passes.jsonl" | tr -d ' ')"
     echo "ses bytes    $(wc -c < "$out/batch.ses" | tr -d ' ')"
     echo "ses sha256   $(shasum -a 256 < "$out/batch.ses" | cut -d' ' -f1)"
@@ -354,9 +444,15 @@ write_meta() {
         "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_passes" "$fanout" "$optimizer"
     printf 'passes cmd   java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 %s %s batch-router --fanout %s --optimizer off --passes <ref>/batch.passes.jsonl\n' \
         "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_passes" "$fanout"
-    printf 'bare jar     java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar> -de %s -do <ses> -mp %s --router.fanout.enabled=%s --router.optimizer.enabled=%s\n' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_passes" \
-        "$(bool_of "$fanout")" "$(bool_of "$optimizer")"
+    if [[ "$LANE" == port ]]; then
+      printf 'bare program freerouting -de %s -do <ses> -mp %s --router.fanout.enabled=%s --router.optimizer.enabled=%s\n' \
+          "$(portable "$JAVA_DIR/$dsn")" "$max_passes" \
+          "$(bool_of "$fanout")" "$(bool_of "$optimizer")"
+    else
+      printf 'bare jar     java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar> -de %s -do <ses> -mp %s --router.fanout.enabled=%s --router.optimizer.enabled=%s\n' \
+          "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_passes" \
+          "$(bool_of "$fanout")" "$(bool_of "$optimizer")"
+    fi
     echo "json source  $(json_source_note)"
     # `--verify-driver`'s verdict, a committed input rather than generated output — the
     # `router-steps18.xdiff.txt` precedent, so a regeneration cannot lose it. An `if` and not a
@@ -398,6 +494,12 @@ sys.exit(0 if all(not v for v in router.values()) and set(router) <= {"fanout", 
 
 # --- compile the driver once ---------------------------------------------------------------------
 compile_driver() {
+  if [[ "$LANE" == port ]]; then
+    echo "== building $(portable "$PORT_DRIVER_SRC") and the port's binary (release)"
+    (cd "$ROOT/scripts/differential/rust" && cargo build --release --bin p7t9 --quiet)
+    (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+    return 0
+  fi
   echo "== compiling $(portable "$DRIVER") against $(portable "$JAR")"
   # `P7T2.java` carries the board/settings/router ladder every `p7t*` driver shares, so it is
   # compiled alongside exactly as `run.sh`'s `p7t9` case compiles it.
@@ -418,7 +520,7 @@ each_row() {
 STATUS=0
 
 generate_one() {
-  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$REF/$1"
+  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$OUT_ROOT/$1"
   mkdir -p "$out"
   if [[ "$FORCE" -eq 0 && -s "$out/batch.ses" && -f "$out/batch.passes.jsonl" ]]; then
     echo "== $stem (already generated; --force to redo)"
@@ -463,7 +565,7 @@ generate_one() {
 }
 
 meta_one() {
-  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$REF/$1"
+  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$OUT_ROOT/$1"
   echo "== $stem"
   if [[ ! -s "$out/batch.ses" ]]; then
     echo "   no batch.ses to describe; run without --meta-only first" >&2
@@ -475,13 +577,13 @@ meta_one() {
 }
 
 verify_driver_one() {
-  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$REF/$1"
+  local stem="$1" dsn="$2" max_passes="$3" fanout="$4" optimizer="$5" out="$OUT_ROOT/$1"
   mkdir -p "$out"
   echo "== $stem"
   local bare="$SCRATCH/$stem.bare.ses" driver="$SCRATCH/$stem.driver.ses"
   if ! run_bare_jar "$SCRATCH/$stem.bare.log" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_passes" \
       "$(bool_of "$fanout")" "$(bool_of "$optimizer")" "$bare" || [[ ! -s "$bare" ]]; then
-    echo "   the bare jar failed for $stem; see $SCRATCH/$stem.bare.log" >&2
+    echo "   the bare $LANE program failed for $stem; see $SCRATCH/$stem.bare.log" >&2
     STATUS=1
     return 0
   fi
@@ -495,8 +597,9 @@ verify_driver_one() {
   if cmp -s "$bare" "$driver"; then
     {
       echo "bare-jar     identical"
-      echo "             P7T9 mode batch and \`java -jar <jar> -de … -do …\` produced the same"
-      echo "             SES byte for byte ($(wc -c < "$bare" | tr -d ' ') B), so the driver is the jar."
+      echo "             mode batch and the bare \`-de … -do …\` program produced the same SES"
+      echo "             byte for byte ($(wc -c < "$bare" | tr -d ' ') B), so the driver is the program"
+      echo "             ($LANE lane)."
     } > "$out/batch.verify-driver.txt"
     echo "   bare-jar: identical ($(wc -c < "$bare" | tr -d ' ') B)"
   else
@@ -603,7 +706,7 @@ case "$MODE" in
     ;;
   generate)
     each_row generate_one
-    echo "done. batch references in $REF"
+    echo "done. batch references in $OUT_ROOT"
     ;;
 esac
 exit "$STATUS"

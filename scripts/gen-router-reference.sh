@@ -33,8 +33,25 @@
 # HEADER line is copied verbatim — no normalisation, no re-rendering, exactly as
 # `gen-drc-reference.sh` copies `drc.json`.
 #
+# ## Two lanes (Plan 9 Task 0)
+#
+#   --jar         the clone's HEAD jar, through `scripts/differential/java/P6T1.java`. The
+#                 historical lane and still the **default**. It cut the frozen baseline
+#                 (`tests/reference-frozen/`, Task 1) and it is the triage lane for a port-cut
+#                 golden nobody can explain.
+#   --from-port   **the port's own `p6t1` twin**, `scripts/differential/rust/src/bin/p6t1.rs`,
+#                 with the same argv. Not a re-implementation and deliberately so: `run.sh p6t1`
+#                 diffs that binary against `P6T1.java`, so cutting the reference from it keeps
+#                 survey §7.2's property — *the reference and the differential describe the same
+#                 run* — alive through the lane switch. A second port-side transcriber would be a
+#                 second copy of the rule, and two copies can agree with each other while both
+#                 are wrong.
+#
+# Byte parity with the jar may break from Plan 9 on, and that is the point; the `--jar` lane is a
+# diagnosis, not a gate.
+#
 # Usage:
-#   scripts/gen-router-reference.sh [stem ...]        regenerate all stems, or just the named ones
+#   scripts/gen-router-reference.sh [--jar] [stem ...]  regenerate all stems, or just the named
 #   scripts/gen-router-reference.sh --meta-only [stem ...]
 #                                                     rewrite router.meta.txt from the existing
 #                                                     router.jsonl without running the jar
@@ -43,6 +60,11 @@
 #                                                     -XX:hashCode=0..4 into a scratch dir and
 #                                                     require five byte-identical files; writes
 #                                                     nothing under tests/reference/
+#   scripts/gen-router-reference.sh --from-port [--task T<n>] [stem ...]
+#                                                     the same, driven by the port's p6t1 twin;
+#                                                     router.meta.txt then carries the port's git
+#                                                     sha, the Plan 9 task at that sha and the
+#                                                     RouterBudget in force
 #   scripts/gen-router-reference.sh --steps=1-8 [stem ...]
 #                                                     the same, but the driver runs
 #                                                     `AutorouteConnectionRouter.route` **in full**
@@ -68,7 +90,9 @@
 # set, every inserted trace polyline and via, and the metric block.
 #
 # Environment: FREEROUTING_JAVA_DIR (default ../freerouting), FREEROUTING_JAR, JAVA, JAVAC,
-#              ROUTER_HASH_MODE, ROUTER_TIMEOUT.
+#              ROUTER_HASH_MODE, ROUTER_TIMEOUT, PLAN9_TASK, REFERENCE_OUT_ROOT (default
+#              tests/reference — point it at a scratch tree to generate without touching the
+#              committed references; the fixture table is always read from tests/reference).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -81,6 +105,10 @@ JAVA_BIN="${JAVA:-/opt/homebrew/opt/openjdk@25/bin/java}"
 JAVAC_BIN="${JAVAC:-/opt/homebrew/opt/openjdk@25/bin/javac}"
 REF="$ROOT/tests/reference"
 FIXTURES="$REF/router-fixtures.txt"
+# Outputs may be redirected to a scratch tree; inputs never are.
+OUT_ROOT="${REFERENCE_OUT_ROOT:-$REF}"
+PORT_DRIVER_SRC="$ROOT/scripts/differential/rust/src/bin/p6t1.rs"
+PORT_DRIVER="$ROOT/scripts/differential/rust/target/release/p6t1"
 DRIVER="$ROOT/scripts/differential/java/P6T1.java"
 CLASSES="$ROOT/scripts/differential/build/classes-gen-router"
 
@@ -106,6 +134,8 @@ TIMEOUT_SECONDS="${ROUTER_TIMEOUT:-1800}"
 LOCALE_FLAGS=(-Djava.awt.headless=true -Duser.language=en -Duser.country=US)
 
 MODE=generate
+LANE=jar
+TASK="${PLAN9_TASK:-}"
 # Plan 7 Task 8: `1-5` is Plan 6's slice and the default; `1-8` is the whole of
 # `AutorouteConnectionRouter.route`. The two write different files and never collide.
 STEPS=1-5
@@ -119,6 +149,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --verify-hash-modes) MODE=sweep; shift ;;
     --meta-only) MODE=meta; shift ;;
+    --jar) LANE=jar; shift ;;
+    --from-port) LANE=port; shift ;;
+    --task) TASK="${2:?--task needs a task id, e.g. T1}"; shift 2 ;;
+    --task=*) TASK="${1#--task=}"; shift ;;
     --steps=1-5) STEPS=1-5; shift ;;
     --steps=1-8)
       STEPS=1-8
@@ -133,6 +167,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 WANTED=("$@")
+if [[ "$LANE" == port && "$MODE" == sweep ]]; then
+  echo "error: --verify-hash-modes is a JVM sweep and has no meaning in --from-port mode" >&2
+  exit 1
+fi
+# The two lanes keep separate stderr files, so a port run into the real `tests/reference/` cannot
+# clobber the committed `java.log` beside a transcript the jar did not produce. The transcript
+# itself (`router.jsonl`) is deliberately **one** file: it is the reference, and Plan 9's lane
+# switch means the port owns it.
+if [[ "$LANE" == port ]]; then
+  JAVALOG="${JAVALOG/java/port}"
+fi
 # The driver's fifth and sixth arguments. `neckWidthUm = 0` is `DefaultSettings.java:109`'s own
 # value, so the committed `1-8` transcripts are the production configuration; a non-zero neck is a
 # `run.sh p6t1 … 1-8 <um>` experiment, not a reference.
@@ -140,20 +185,32 @@ STEP_ARGS=()
 [[ "$STEPS" == 1-8 ]] && STEP_ARGS=(- 1-8 0)
 
 # --- preflight -----------------------------------------------------------------------------------
+# The jar is required in **both** lanes, and that is not an oversight: `p6t1.rs`'s `print_header`
+# reads `$FREEROUTING_JAR` and stamps the jar's path, size and mtime into the HEADER line, exactly
+# as `P6T1.java` does from its own code source — which is what makes a run against the wrong jar a
+# diff rather than a silent pass (`run.sh`'s convention). The port lane needs no *JDK*.
 if [[ ! -f "$JAR" ]]; then
   echo "error: HEAD jar not found at $JAR" >&2
   echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
   exit 1
 fi
-if [[ ! -x "$JAVAC_BIN" ]]; then
-  echo "error: javac not found at $JAVAC_BIN (need JDK >= 25; set JAVAC)" >&2
-  exit 1
-fi
-ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
-if [[ "${ver:-0}" -lt 25 ]]; then
-  echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
-  echo "       then: export JAVA=/opt/homebrew/opt/openjdk@25/bin/java" >&2
-  exit 1
+if [[ "$LANE" == jar ]]; then
+  if [[ ! -x "$JAVAC_BIN" ]]; then
+    echo "error: javac not found at $JAVAC_BIN (need JDK >= 25; set JAVAC)" >&2
+    exit 1
+  fi
+  ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
+  if [[ "${ver:-0}" -lt 25 ]]; then
+    echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
+    echo "       then: export JAVA=/opt/homebrew/opt/openjdk@25/bin/java" >&2
+    exit 1
+  fi
+else
+  PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+  PORT_DIRTY=""
+  if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
+    PORT_DIRTY=" +uncommitted-changes-under-crates"
+  fi
 fi
 
 # The wall-clock bound. `timeout(1)` is coreutils'; on macOS it arrives as `timeout` or `gtimeout`
@@ -192,27 +249,69 @@ portable() {
 run_driver() {
   local out="$1" log="$2" mode="$3"
   shift 3
-  "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
-      -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
-      -cp "$CLASSES:$JAR" app.freerouting.autoroute.maze.P6T1 "$@" ${STEP_ARGS+"${STEP_ARGS[@]}"} \
-      > "$out" 2> "$log"
+  if [[ "$LANE" == port ]]; then
+    # The **same argv**, and only the program in front of it changes. `FREEROUTING_JAR` is
+    # exported because `p6t1.rs` stamps the jar into its HEADER line (see the preflight note);
+    # there is no hash mode to pin, because the port has no `Object.hashCode`.
+    FREEROUTING_JAR="$JAR" "${TIMEOUT[@]}" "$PORT_DRIVER" \
+        "$@" ${STEP_ARGS+"${STEP_ARGS[@]}"} > "$out" 2> "$log"
+  else
+    "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
+        -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
+        -cp "$CLASSES:$JAR" app.freerouting.autoroute.maze.P6T1 "$@" ${STEP_ARGS+"${STEP_ARGS[@]}"} \
+        > "$out" 2> "$log"
+  fi
+}
+
+# The three provenance lines a **port-cut** golden carries (Plan 9 Task 0). A golden cut before a
+# later fix must be *loudly* invalid, and this is what makes it so.
+port_meta_lines() {
+  echo "lane         port ($(portable "$PORT_DRIVER_SRC"))"
+  echo "port sha     ${PORT_SHA}${PORT_DIRTY}"
+  if [[ -n "$TASK" ]]; then
+    echo "plan 9 task  $TASK"
+  else
+    echo "plan 9 task  UNKNOWN — this golden names no task and is therefore INVALID as a"
+    echo "             reference; re-cut it with --task T<n>. See this script's header."
+  fi
+  # `p6t1.rs` builds its context with `RouterBudget::disabled()` — ruling AI, which survives the
+  # switch: time is out of every parity and every quality measurement, so the transcript cannot
+  # depend on how fast this machine is.
+  echo "budget       RouterBudget::disabled() (ruling AI — scripts/differential/rust/src/bin/p6t1.rs)"
 }
 
 write_meta() {
   local out="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" header="$5"
   {
+    if [[ "$LANE" == port ]]; then port_meta_lines; fi
     echo "jar          $(portable "$JAR")"
     echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
     echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
     echo "jar version  Freerouting $(unzip -p "$JAR" app/freerouting/constants/Constants.class 2>/dev/null \
         | strings | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$' | head -1)"
-    echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
-    echo "hash mode    -XX:hashCode=$HASH_MODE"
-    echo "driver       $(portable "$DRIVER")$DRIVER_SUFFIX"
+    if [[ "$LANE" == port ]]; then
+      echo "java         n/a (no JVM runs in this lane; the jar above is named only because"
+      echo "             p6t1.rs stamps its identity into the HEADER line)"
+    else
+      echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
+    fi
+    if [[ "$LANE" == port ]]; then
+      echo "hash mode    n/a (the port has no Object.hashCode)"
+      echo "driver       $(portable "$PORT_DRIVER_SRC")$DRIVER_SUFFIX"
+    else
+      echo "hash mode    -XX:hashCode=$HASH_MODE"
+      echo "driver       $(portable "$DRIVER")$DRIVER_SUFFIX"
+    fi
     echo "connections  $(wc -l < "$out/$JSONL" | tr -d ' ')"
-    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 %s %s %s%s\n' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_items" "$ripup_pass_no" \
-        "${STEP_ARGS+ ${STEP_ARGS[*]}}"
+    if [[ "$LANE" == port ]]; then
+      printf 'command      FREEROUTING_JAR=<jar> p6t1 %s %s %s%s\n' \
+          "$(portable "$JAVA_DIR/$dsn")" "$max_items" "$ripup_pass_no" \
+          "${STEP_ARGS+ ${STEP_ARGS[*]}}"
+    else
+      printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 %s %s %s%s\n' \
+          "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "$JAVA_DIR/$dsn")" "$max_items" "$ripup_pass_no" \
+          "${STEP_ARGS+ ${STEP_ARGS[*]}}"
+    fi
     echo "header       $(portable "$header")"
     # A committed, hand-written note about this stem's known port-vs-jar divergence, appended
     # verbatim so regeneration cannot lose it. An `if` and not a `&&`: this is the last command in
@@ -257,6 +356,13 @@ report_states() {
 
 # --- compile the driver once ---------------------------------------------------------------------
 compile_driver() {
+  if [[ "$LANE" == port ]]; then
+    # In release, for `run.sh`'s reason: a debug build routes a board in minutes rather than
+    # seconds, and every consumer of these references runs the release build.
+    echo "== building $(portable "$PORT_DRIVER_SRC") (release)"
+    (cd "$ROOT/scripts/differential/rust" && cargo build --release --bin p6t1 --quiet)
+    return 0
+  fi
   echo "== compiling $(portable "$DRIVER") against $(portable "$JAR")"
   rm -rf "$CLASSES"
   mkdir -p "$CLASSES"
@@ -270,7 +376,7 @@ compile_driver() {
 STATUS=0
 
 generate_one() {
-  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$REF/$1" tmp
+  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$OUT_ROOT/$1" tmp
   mkdir -p "$out"
   tmp="$out/router.raw.tmp"
   echo "== $stem"
@@ -279,7 +385,7 @@ generate_one() {
   # failed or timed-out run leaves the committed reference and its meta untouched, together.
   if ! run_driver "$tmp" "$out/$JAVALOG" "$HASH_MODE" "$JAVA_DIR/$dsn" "$max_items" "$ripup_pass_no" \
       || [[ ! -s "$tmp" ]]; then
-    echo "   the driver failed for $stem; see $out/$JAVALOG ($JSONL left untouched)" >&2
+    echo "   the $LANE driver failed for $stem; see $out/$JAVALOG ($JSONL left untouched)" >&2
     rm -f "$tmp"
     STATUS=1
     return 0
@@ -299,7 +405,7 @@ generate_one() {
 }
 
 meta_one() {
-  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$REF/$1"
+  local stem="$1" dsn="$2" max_items="$3" ripup_pass_no="$4" out="$OUT_ROOT/$1"
   echo "== $stem"
   if [[ ! -f "$out/$JSONL" ]]; then
     echo "   no $JSONL to describe; run without --meta-only first" >&2
@@ -361,7 +467,7 @@ case "$MODE" in
     ;;
   generate)
     each_row generate_one
-    echo "done. router references in $REF"
+    echo "done. router references in $OUT_ROOT"
     ;;
 esac
 exit "$STATUS"

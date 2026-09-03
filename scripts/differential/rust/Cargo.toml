@@ -206,3 +206,11 @@ path = "src/bin/p8t6.rs"
 [[bin]]
 name = "p8t7"
 path = "src/bin/p8t7.rs"
+
+# Plan 9 Task 0: the port's twin of `scripts/gen-reference/RefWriter.java`, which
+# `scripts/gen-reference.sh --from-port` drives. Not a driver pair — there is no diff to take,
+# because the *generator* is what compares the two lanes — but it lives here because it is
+# harness code and this is where the port's harness code lives.
+[[bin]]
+name = "refwriter"
+path = "src/bin/refwriter.rs"
