@@ -484,6 +484,22 @@ impl FoundConnectionInserter {
     /// `okPoint` is an `Option` because `:457` reads it as one; `targetPoint` is a `&Point`
     /// because `:458`'s `targetPoint == null` is unreachable — the only caller (`:216`) passes
     /// `currentCornerArr[1]`, an element of a `Polyline`'s corner array.
+    ///
+    /// # The rules-minimum floor (Plan 9 Task 2, R2 — register row #294)
+    ///
+    /// Java's loop guard is `candidateHalfWidth <= 0 || >= baseHalfWidth` (`:473-476`) **and
+    /// nothing else**: no candidate is ever checked against the board's minimum track width.
+    /// `benchmark/reports/java-regressions-2026-09.md` §"Regression 2" measures the result — on
+    /// any board whose net-class width *equals* its minimum width, which is very common, the
+    /// fallback emits sub-minimum traces, and because a clean-pass metric weighs a DRC violation
+    /// like an unrouted net it converts "one net open" into "the board fails DRC". It recovers
+    /// **no** connectivity at all on the small tier; its benefit is real only on large boards.
+    ///
+    /// So this is a **guard, not a revert**: a candidate below
+    /// [`BoardRules::get_min_trace_half_width`](fr_board::BoardRules::get_min_trace_half_width)
+    /// is skipped, the large-board neckdowns that clear the minimum are still taken, and a class
+    /// that already sits at the minimum skips the fallback entirely and fails the connection
+    /// honestly.
     #[allow(clippy::too_many_arguments)] // Java's parameter list plus the board, engine and stop.
     fn insert_fanout_micro_neckdown(
         &self,
@@ -548,10 +564,28 @@ impl FoundConnectionInserter {
         );
         add(1.max(base_half_width / 2), &mut candidate_half_widths);
 
+        // R2 (register row #294): the floor the Java loop does not have.
+        //
+        // `BoardRules.getMinTraceHalfWidth()` (`BoardRules.java:94-96`, the field at `:37`) is
+        // the minimum over the **declared** net-class widths — the design rule. It is **not**
+        // `RoutingBoard.getMinTraceHalfWidth()` (`crates/fr-board/src/board/mod.rs:1787`), which
+        // is a running minimum over the traces already inserted and would ratchet itself down
+        // the moment this fallback inserted one narrow trace: after that, every later candidate
+        // would clear a floor the fallback itself had lowered, which is no floor at all.
+        //
+        // Read **before** the loop, because the loop takes `board` mutably and because the rule
+        // cannot change while it runs.
+        let min_half_width = board.rules.get_min_trace_half_width();
+
         // :473-509.
         for candidate_half_width in candidate_half_widths {
             // :474-476.
             if candidate_half_width <= 0 || candidate_half_width >= base_half_width {
+                continue;
+            }
+            // Java bug: `FoundConnectionInserter.insertFanoutMicroNeckdown` (`:461-476`) — the five candidate half widths are checked against `0` and the class width and against nothing else, so on any board whose class width equals its minimum the fallback emits sub-minimum traces: `track_width` violations on 31/146 of the report's small-tier boards, DRC-clean 0.94 -> 0.73 small and 0.93 -> 0.40 large (quirk #294).
+            // fixed: T2 (#294) — a candidate below the *rules* minimum is skipped, so when the class width already is the minimum the whole fallback is skipped and the connection fails honestly.
+            if candidate_half_width < min_half_width {
                 continue;
             }
             // :477-491.
@@ -1095,13 +1129,36 @@ mod tests {
     /// `ctrl.traceHalfWidth`, and `buildSimple`'s 30 is below both; and with nothing in the way
     /// `checkTraceSegment` (`:566`) answers `Integer.MAX_VALUE`, so `:574-576` returns before
     /// anything is inserted.
+    /// `P6T15Probe.buildNeck(traceHalfWidth)` — the probe's fixture, at its own widths.
     fn neck_board(trace_half_width: i32) -> Board {
+        neck_board_widths(trace_half_width, 30, 30)
+    }
+
+    /// [`neck_board`] with its three widths pulled apart, so R2's tests can say which of them
+    /// they are moving. `neck_board(hw)` is `neck_board_widths(hw, 30, 30)` and is byte-for-byte
+    /// the board the jar transcript was cut against.
+    ///
+    /// * `class_half_width` — the default net class's half width on every layer, and therefore
+    ///   `ctrl.traceHalfWidth[layer]`, the `baseHalfWidth` the candidates are fractions of.
+    /// * `seed_half_width` — the width `buildSimple` sets first. `BoardRules.setTraceHalfWidths`
+    ///   folds every value into a running **minimum** (`BoardRules.java:114-118`), so the board's
+    ///   design-rule minimum is `min(seed_half_width, class_half_width)` and this is the only
+    ///   knob that moves it.
+    /// * `board_trace_half_width` — the half width of the net-2 trace the fixture inserts, which
+    ///   moves `RoutingBoard.minTraceHalfWidth`, the **running** minimum over inserted traces
+    ///   (`BasicBoard.java:197-200`) — a different number, and the one R2's guard must **not**
+    ///   read.
+    fn neck_board_widths(
+        class_half_width: i32,
+        seed_half_width: i32,
+        board_trace_half_width: i32,
+    ) -> Board {
         let layers =
             || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
         let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
         let mut rules = BoardRules::new(layers(), clearance_matrix);
         rules.trace_angle_restriction = AngleRestriction::None;
-        rules.set_default_trace_half_widths(30);
+        rules.set_default_trace_half_widths(seed_half_width);
 
         let mut padstacks = Padstacks::new(layers());
         padstacks.add(
@@ -1176,13 +1233,13 @@ mod tests {
         board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3, the thru pin
 
         // `buildNeck`'s own two lines, after `buildSimple`.
-        board.rules.set_default_trace_half_widths(trace_half_width);
+        board.rules.set_default_trace_half_widths(class_half_width);
         let default_class = board.rules.get_default_net_class();
         board.rules.nets.add("N2", 1, false, default_class);
         board.insert_trace_without_cleaning(
             Polyline::from_points(&[Point::new(0, -900), Point::new(0, 900)]),
             0,
-            30,
+            board_trace_half_width,
             vec![2],
             1,
             FixedState::UserFixed,
@@ -1471,5 +1528,194 @@ mod tests {
         rows.push(format!("micro same={same}"));
         rows.extend(board_dump(&board));
         assert_rows_match("micro", &rows);
+    }
+
+    // =============================================================================================
+    // R2 (register row #294) — the micro-neckdown fallback's rules-minimum floor
+    //
+    // These three are the tests `.superpowers/sdd/…/task-2-brief.md` names against
+    // `crates/fr-router/tests/inserter.rs`. They live here for the reason that file's own module
+    // doc already gives: `insertFanoutMicroNeckdown` is **private**, so an integration test — a
+    // different crate — cannot call it, and the neckdown tests have always lived beside it.
+    // =============================================================================================
+
+    /// The whole of R2, on the board shape the report says is "very common": a net class whose
+    /// half width **is** the design-rule minimum.
+    ///
+    /// `neck_board_widths(100, 100, 30)` — class 100, rules minimum 100 — makes every candidate
+    /// `:469-471` can produce sub-minimum: `max(1, 100*3/4) = 75`, `max(1, 100*3/5) = 60`,
+    /// `max(1, 100/2) = 50`. With no pins there are no other candidates, so the guarded loop
+    /// rejects all three, `insertFanoutMicroNeckdown` answers `false`, and **nothing is
+    /// inserted** — the connection fails honestly rather than shipping a trace a fabricator will
+    /// reject.
+    ///
+    /// **Fails before the fix**: the unguarded loop takes the first candidate, and the far pair
+    /// leaves room for it, so a **75**-wide trace lands on the board and the method answers
+    /// `true`. That is exactly the row `the_micro_neckdown_candidate_order_is_javas_insertion_order`
+    /// pins against the jar at `base=100 startPin=null endPin=null` — the same mechanism, on a
+    /// board whose minimum makes it a defect.
+    #[test]
+    fn the_micro_neckdown_fallback_never_goes_below_the_rules_minimum() {
+        let mut board = neck_board_widths(100, 100, 30);
+        assert_eq!(
+            board.rules.get_min_trace_half_width(),
+            100,
+            "the fixture's whole point: the class width IS the rules minimum"
+        );
+        let ctrl = neck_control(&board);
+        assert_eq!(ctrl.trace_half_width[0], 100, "the base half width");
+
+        let items_before = board.get_items().count();
+        let inserter = FoundConnectionInserter::new();
+        let counter = Counter::new();
+        let from = Point::new(-700, 0);
+        let to = Point::Int(SMD_CENTER);
+        let inserted = inserter
+            .insert_fanout_micro_neckdown(
+                &mut board,
+                &ctrl,
+                None,
+                Some(&from),
+                &to,
+                0,
+                &[1],
+                None,
+                None,
+                &|| counter.check(),
+            )
+            .expect("the guarded loop cannot fail");
+
+        assert!(
+            !inserted,
+            "R2 (#294): 75, 60 and 50 are all below the rules minimum of 100, so every candidate \
+             is skipped and the fallback has nothing left to try"
+        );
+        assert_eq!(
+            board.get_items().count(),
+            items_before,
+            "a rejected candidate must leave no trace behind — before the fix a 75-wide one was \
+             inserted here"
+        );
+    }
+
+    /// The other half of "guard, not revert": the large-board benefit the report measures
+    /// (fully-connected 0.17 -> 0.33) is preserved.
+    ///
+    /// `neck_board_widths(100, 50, 30)` — class 100, rules minimum 50 — leaves all three
+    /// candidates legal, so the loop takes the **first** one, `max(1, 100*3/4) = 75`, exactly as
+    /// it did before R2. The half width of the trace that lands is the assertion: a guard that
+    /// had reordered or filtered the set would show up here as a 60 or a 50.
+    #[test]
+    fn the_fallback_still_necks_down_when_the_class_is_above_the_minimum() {
+        let mut board = neck_board_widths(100, 50, 30);
+        assert_eq!(board.rules.get_min_trace_half_width(), 50);
+        let ctrl = neck_control(&board);
+        assert_eq!(ctrl.trace_half_width[0], 100);
+
+        let before: Vec<ItemId> = board.get_items().map(Item::id).collect();
+        let inserter = FoundConnectionInserter::new();
+        let counter = Counter::new();
+        let from = Point::new(-700, 0);
+        let to = Point::Int(SMD_CENTER);
+        let inserted = inserter
+            .insert_fanout_micro_neckdown(
+                &mut board,
+                &ctrl,
+                None,
+                Some(&from),
+                &to,
+                0,
+                &[1],
+                None,
+                None,
+                &|| counter.check(),
+            )
+            .expect("the guarded loop cannot fail");
+
+        assert!(
+            inserted,
+            "75 clears a minimum of 50, so `:492-508` reaches the target and the fallback \
+             succeeds exactly as it did before R2"
+        );
+        let added: Vec<i32> = board
+            .get_items()
+            .filter(|item| !before.contains(&item.id()))
+            .filter_map(|item| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            added,
+            vec![75],
+            ":469's `max(1, base * 3 / 4)` is the first element of the LinkedHashSet and is what \
+             the loop takes"
+        );
+    }
+
+    /// The survey's one-sentence correction, pinned: the floor is
+    /// `BoardRules.getMinTraceHalfWidth()` — the minimum over the **declared net-class widths** —
+    /// and **not** `RoutingBoard.getMinTraceHalfWidth()`, the running minimum over the traces
+    /// already inserted (`BasicBoard.java:197-200`).
+    ///
+    /// The two are different numbers here and the fixture makes them disagree on purpose: the
+    /// rules minimum is 100, and a 40-half-width trace inserted before the call drags the
+    /// **board's** running minimum down to 40. Every candidate (75, 60, 50) sits between the two,
+    /// so a guard reading the board would admit all three and insert a sub-minimum trace — which
+    /// is the ratchet: one narrow trace lowers the floor, and the next one lowers it again.
+    #[test]
+    fn the_guard_reads_the_rules_minimum_not_the_running_board_minimum() {
+        let mut board = neck_board_widths(100, 100, 30);
+        // The narrow trace, inserted first — on net 2 and out of the way, so it changes nothing
+        // but the running minimum.
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-900, -700), Point::new(900, -700)]),
+            0,
+            40,
+            vec![2],
+            1,
+            FixedState::UserFixed,
+        );
+
+        assert_eq!(
+            board.rules.get_min_trace_half_width(),
+            100,
+            "the design rule does not move when a trace is inserted"
+        );
+        assert_eq!(
+            board.get_min_trace_half_width(),
+            30,
+            "the running board minimum did move — the fixture's 30-wide trace and now a 40-wide \
+             one; both sit below every candidate, which is what makes the two readers disagree"
+        );
+
+        let ctrl = neck_control(&board);
+        let items_before = board.get_items().count();
+        let inserter = FoundConnectionInserter::new();
+        let counter = Counter::new();
+        let from = Point::new(-700, 0);
+        let to = Point::Int(SMD_CENTER);
+        let inserted = inserter
+            .insert_fanout_micro_neckdown(
+                &mut board,
+                &ctrl,
+                None,
+                Some(&from),
+                &to,
+                0,
+                &[1],
+                None,
+                None,
+                &|| counter.check(),
+            )
+            .expect("the guarded loop cannot fail");
+
+        assert!(
+            !inserted,
+            "the guard must read the rules minimum (100) and reject 75/60/50; reading the \
+             board's running minimum (30) would admit every one of them and ratchet the floor \
+             down with each insertion"
+        );
+        assert_eq!(board.get_items().count(), items_before);
     }
 }

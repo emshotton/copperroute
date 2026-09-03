@@ -134,7 +134,17 @@ impl BoardRules {
             .any(|i| self.get_trace_half_width(net_number, i) != compare_width)
     }
 
-    /// Port of `BoardRules.getMinTraceHalfWidth` (BoardRules.java:94-96).
+    /// Port of `BoardRules.getMinTraceHalfWidth` (BoardRules.java:94-96): the smallest half
+    /// width any **declared** net class asks for, i.e. the board's design-rule minimum.
+    ///
+    /// # Not the same number as [`Board::get_min_trace_half_width`](crate::Board::get_min_trace_half_width)
+    ///
+    /// That one is `RoutingBoard.minTraceHalfWidth`, a running minimum over the traces the board
+    /// has actually had inserted (`BasicBoard.java:197-200`) — it moves every time a narrower
+    /// trace lands. This one moves only when a rule does. The distinction is load-bearing at one
+    /// site: Plan 9 Task 2's R2 guard (register row #294) floors the micro-neckdown fanout
+    /// fallback at **this** value, because flooring it at the running board minimum would let the
+    /// fallback's own first narrow trace lower the floor for the next one.
     pub fn get_min_trace_half_width(&self) -> i32 {
         self.min_trace_half_width
     }
