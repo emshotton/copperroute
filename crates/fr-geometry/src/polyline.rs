@@ -281,12 +281,19 @@ fn remove_consecutive_parallel_lines(lines: Vec<Line>) -> Vec<Line> {
 /// Checks if previous and next lines are equal or opposite and removes the resulting overlap
 /// (Polyline.java:133-176).
 ///
-/// Returns `Err` where Java throws `ArrayIndexOutOfBoundsException`: when the loop has already
-/// decremented `newLength` to 0, `tmpArr[newLength - 1]` reads index -1. Reachable — e.g. the six
-/// lines `h, v, h, v, h, v` over the same two axes, and ~11% of random line arrays drawn from a
-/// small pool of equal/opposite lines.
-// Java bug: Polyline.java:148 reads tmpArr[-1]; surfaced as Err rather than swallowed, because
-// PolylineTrace.combine_at_end can tell an empty polyline from a thrown exception.
+/// Java throws `ArrayIndexOutOfBoundsException` here: when the loop has already decremented
+/// `newLength` to 0, `tmpArr[newLength - 1]` reads index -1. Reachable — e.g. the six lines
+/// `h, v, h, v, h, v` over the same two axes, and ~11% of random line arrays drawn from a small
+/// pool of equal/opposite lines.
+///
+/// fixed: T6 (#22) — see the guard in the loop below. The `Result` return **stays** even though
+/// no path constructs [`PolylineError::NormalizationIndexUnderflow`] any more: it is this
+/// module's public normalisation signature, threaded through `Polyline::from_lines`,
+/// `from_lines_in_place`, `shorten` and `BoardError::Normalization` into three crates, and
+/// collapsing it would be an interface change with no behavioural content. That the variant is
+/// now unconstructible **is** the fix — Java's pass-level `catch (Exception)` has nothing left to
+/// catch here, which is exactly the abort this row is about.
+// Java bug: Polyline.java:148 reads tmpArr[-1].
 fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     if lines.len() < 4 {
         return Ok(lines);
@@ -304,11 +311,17 @@ fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     tmp_arr[new_length] = lines[1];
     new_length += 1;
     for i in 2..lines.len() - 2 {
-        if new_length == 0 {
-            // Java reads tmpArr[-1] here and throws.
-            return Err(PolylineError::NormalizationIndexUnderflow);
-        }
-        if tmp_arr[new_length - 1].is_equal_or_opposite(&lines[i + 1]) {
+        // fixed: T6 (#22) — the `newLength >= 1` guard the trailing access at Polyline.java:160
+        // already has, in the same `guard && test` shape. Java read `tmpArr[-1]` here and threw
+        // an `ArrayIndexOutOfBoundsException` that aborted the whole routing pass.
+        //
+        // With nothing kept there is no "last kept line" for the overlap test to ask about, so the
+        // answer is "no overlap" and `lines[i]` is kept — the `else` arm, reached because the
+        // guard makes the condition false. Note this is the opposite *effect* from the trailing
+        // access, whose failed guard skips its append; the shape is shared, the meaning is not.
+        // Keeping is right: the alternative, decrementing, is what the taken branch does to undo
+        // an overlap that was found, and none was.
+        if new_length >= 1 && tmp_arr[new_length - 1].is_equal_or_opposite(&lines[i + 1]) {
             // skip 2 lines
             new_length -= 1;
         } else {
@@ -1420,19 +1433,24 @@ mod tests {
             .is_empty()
         );
         // Java bug: Polyline.java:148 throws ArrayIndexOutOfBoundsException: Index -1 for this
-        // input; the port surfaces it as an error instead of swallowing it into an empty
-        // polyline, which a caller could not tell apart from a legitimate result.
-        assert_eq!(
-            Polyline::from_lines(vec![
-                Line::from_coords(0, 0, 1, 0),
-                Line::from_coords(0, 0, 0, 1),
-                Line::from_coords(0, 0, 1, 0),
-                Line::from_coords(0, 0, 0, 1),
-                Line::from_coords(0, 0, 1, 0),
-                Line::from_coords(0, 0, 0, 1),
-            ]),
-            Err(PolylineError::NormalizationIndexUnderflow)
-        );
+        // input, and the pass-level `catch (Exception)` above it aborts the routing pass.
+        //
+        // fixed: T6 (#22) — `newLength >= 1` guards the loop the way `:160` already guards the
+        // trailing access, so this array normalises to the empty polyline instead of throwing.
+        // The whole-of-input measurement and the hand-computed answer live in
+        // `crates/fr-geometry/tests/polyline.rs`'s
+        // `remove_overlaps_on_a_degenerate_array_normalises_to_a_literal`.
+        let degenerate = Polyline::from_lines(vec![
+            Line::from_coords(0, 0, 1, 0),
+            Line::from_coords(0, 0, 0, 1),
+            Line::from_coords(0, 0, 1, 0),
+            Line::from_coords(0, 0, 0, 1),
+            Line::from_coords(0, 0, 1, 0),
+            Line::from_coords(0, 0, 0, 1),
+        ])
+        .expect("the tmpArr[-1] read is guarded");
+        assert!(degenerate.is_empty());
+        assert_eq!(degenerate.lines().len(), 0);
     }
 
     /// `new Polyline(Line[])` normalises the **caller's** array: `removeConsecutiveParallelLines`
