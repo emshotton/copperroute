@@ -6,9 +6,11 @@
 #           `quality-ab-T2.tsv`'s flags to one fix or the other; it is NOT a baseline and no
 #           later task compares against it. `+uncommitted-changes-under-crates` on the port
 #           sha below is that removal and is the honest record of it.
-# repeats:  1, deliberately — the quality lane runs once whatever `--repeats` says, so the
+# repeats-note: 1 is deliberate — the quality lane runs once whatever `--repeats` says, so the
 #           incomplete / violation / neckdown columns are exactly as good as the three-repeat
 #           run's. Only `cpu_s` is a single sample here and should be read as indicative.
+#           (A key of its own: `# repeats:` below is the script's, and two lines with one key
+#           would leave `read_tsv`'s header map holding whichever came last.)
 # port-sha: bd296d78e2d8 +uncommitted-changes-under-crates
 # repeats: 1
 # port-baseline: benchmark/baselines/ab/quality-ab-T1.tsv

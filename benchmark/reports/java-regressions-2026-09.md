@@ -101,6 +101,13 @@ appear in both the batch and CLI families, several of them deliberately truncate
 it is a **direction** check and not a re-measurement of the tiers above. The 605-board M1 run
 against the frozen `java-278fe14` view is the acceptance bar and is run separately.
 
+> **Correction (Plan 9 Task 2 fix round, SF1).** Commit `27e1b75`'s message — the task's evidence
+> commit — says the G2 rule is broken "on 7 of 21 rows". The figure is **10 rows on 6 distinct
+> stems**; `grep -c INCOMPLETE-ROSE benchmark/baselines/ab/quality-ab-T2.tsv` answers 10 and the
+> six stems are named below. A commit body cannot be amended once it is history, so the correction
+> is recorded here, in the artefact that adjudication reads. Nothing else in that message changes:
+> the per-stem numbers, the attribution and the ablation it quotes are all correct.
+
 Two committed artefacts, both cut at commit `bd296d7`:
 
     benchmark/baselines/ab/quality-ab-T2.tsv          R1 + R2
@@ -258,8 +265,12 @@ evidence above would have been erased to produce them.
 
 ## The gate this did not pass, and why it is an escalation rather than a failure
 
-`scripts/quality-ab.sh`'s G2 rule is "incompletes must not rise on any stem". Seven of the 21 rows
-break it, and **R2 breaks it by design**: its whole content is that a connection which can only be
+`scripts/quality-ab.sh`'s G2 rule is "incompletes must not rise on any stem". **Ten of the 21 rows
+break it, on six distinct stems** — `router-dac2020-bm01`, `router-j2-reference`,
+`router-fanout-bm11`, `router-strict-drc-cnh`, `Issue026-J2_reference` and `large-outline`, the
+first four of them once in the batch family and once in the CLI family, which is
+`grep -c INCOMPLETE-ROSE benchmark/baselines/ab/quality-ab-T2.tsv` — and **R2 breaks the rule by
+design**: its whole content is that a connection which can only be
 completed with a sub-minimum trace should fail instead. The rule was written for the parity era,
 when a rise meant the port had diverged from the jar; it cannot express a trade of connectivity
 for legality, and the ablation above says that trade is worth 0.73 → 0.95 DRC-clean on the small
