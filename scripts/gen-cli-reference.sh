@@ -99,6 +99,11 @@
 #   scripts/gen-cli-reference.sh --meta-only [stem ...]
 #                                                    rewrite meta.txt from the existing outputs
 #   scripts/gen-cli-reference.sh --verify-hash-modes [stem ...]
+#   scripts/gen-cli-reference.sh --from-port --verify-two-runs [stem ...]
+#                                                    the PORT's determinism check: every stem run
+#                                                    twice, byte-identical SES required. The
+#                                                    successor to --verify-hash-modes, which has
+#                                                    no meaning on a side with no hashCode axis.
 #                                                    regenerate each stem's SES once per
 #                                                    -XX:hashCode=0..4 into a scratch dir and
 #                                                    require five byte-identical files; writes
@@ -137,6 +142,7 @@ TASK="${PLAN9_TASK:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --verify-hash-modes) MODE=sweep; shift ;;
+    --verify-two-runs) MODE=tworuns; shift ;;
     --meta-only) MODE=meta; shift ;;
     --force) FORCE=1; shift ;;
     --jar) LANE=jar; shift ;;
@@ -148,6 +154,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 WANTED=("$@")
+if [[ "$MODE" == tworuns && "$LANE" != port ]]; then
+  echo "error: --verify-two-runs is the PORT's determinism check and needs --from-port." >&2
+  echo "       The jar's analogue is --verify-hash-modes; the jar has an -XX:hashCode axis" >&2
+  echo "       and the port has none, which is why they are two flags and not one." >&2
+  exit 1
+fi
 if [[ "$LANE" == port && "$MODE" == sweep ]]; then
   echo "error: --verify-hash-modes is a JVM sweep and has no meaning in --from-port mode" >&2
   exit 1
@@ -481,6 +493,46 @@ sweep_one() {
   fi
 }
 
+# `--verify-two-runs` — the port-side successor to `--verify-hash-modes` (Plan 9 Task 1).
+#
+# The jar's sweep asks "does the answer depend on `Object.hashCode`?", because `HashMap` iteration
+# order feeds several of Java's routing collections. **The port has no such axis**: its collections
+# are `BTreeMap`/`BTreeSet` by construction, so the same sweep would have one arm and prove
+# nothing. What survives of the question is the half that still has teeth — *does this program
+# answer the same bytes twice?* — and #234 is why it is worth asking, because a wall-clock budget
+# is the one thing that could make the answer depend on how busy the machine is.
+#
+# Two runs here over all thirteen stems; `crates/freerouting/tests/cli_e2e.rs::
+# two_runs_of_every_ci_stem_are_byte_identical` is the same assertion over the four CI stems, in
+# the lane that runs on every `cargo nextest`. Two runs on one machine plus one run on CI is the
+# equivalent of the jar's five-mode sweep, and it is part of G1 for the rest of Plan 9.
+two_runs_one() {
+  local stem="$1" dsn="$2" extra="$3" pass ses
+  echo "== cli-$stem"
+  local digests=() sizes=()
+  for pass in 1 2; do
+    ses="$SCRATCH/$stem-run$pass.ses"
+    build_argv "$ses" "$dsn" "$extra"
+    if run_jar "$SCRATCH/$stem-run$pass.log" "" "${ARGV[@]}" && [[ -s "$ses" ]]; then
+      digests+=("$(shasum -a 256 < "$ses" | cut -c1-12)")
+      sizes+=("$(wc -c < "$ses" | tr -d ' ')")
+    else
+      digests+=("FAILED------")
+      sizes+=("?")
+      STATUS=1
+    fi
+  done
+  if [[ "${digests[0]}" == "${digests[1]}" && "${digests[0]}" != "FAILED------" ]]; then
+    echo "   2 runs agree (${digests[0]}, ${sizes[0]} B)"
+  else
+    echo "   NOT REPRODUCIBLE — two runs of the same argv on the same binary disagree:" >&2
+    echo "     run 1 ${digests[0]} bytes=${sizes[0]}" >&2
+    echo "     run 2 ${digests[1]} bytes=${sizes[1]}" >&2
+    echo "   Something in this run depends on the machine rather than on the board." >&2
+    STATUS=1
+  fi
+}
+
 each_row() {
   local body="$1" stem dsn extra lane
   while IFS='|' read -r stem dsn extra lane || [[ -n "$stem" ]]; do
@@ -491,8 +543,9 @@ each_row() {
 }
 
 case "$MODE" in
-  sweep) each_row sweep_one ;;
-  meta)  each_row meta_one ;;
-  *)     each_row generate_one ;;
+  sweep)   each_row sweep_one ;;
+  tworuns) each_row two_runs_one ;;
+  meta)    each_row meta_one ;;
+  *)       each_row generate_one ;;
 esac
 exit "$STATUS"
