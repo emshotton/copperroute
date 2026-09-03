@@ -1,10 +1,15 @@
+lane         port (<workspace>/scripts/differential/rust/src/bin/p6t1.rs)
+port sha     1b3ef63ab176
+plan 9 task  T5
+budget       RouterBudget::disabled() (ruling AI — scripts/differential/rust/src/bin/p6t1.rs)
 jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
 jar size     63288652 bytes
-jar mtime    2026-08-29 08:05:35 -0700
+jar mtime    2026-09-01 13:35:27 -0700
 jar version  Freerouting 2.3.1-SNAPSHOT
-java         openjdk version "25.0.4.1" 2026-08-18
-hash mode    -XX:hashCode=2
-driver       <workspace>/scripts/differential/java/P6T1.java
+java         n/a (no JVM runs in this lane; the jar above is named only because
+             p6t1.rs stamps its identity into the HEADER line)
+hash mode    n/a (the port has no Object.hashCode)
+driver       <workspace>/scripts/differential/rust/src/bin/p6t1.rs
 connections  294
-command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.maze.P6T1 <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn 100000 1
-header       HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788015935494 fixture=Issue508-DAC2020_bm01.dsn maxItems=100000 ripupPassNo=1 rules=-
+command      FREEROUTING_JAR=<jar> p6t1 <FREEROUTING_JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn 100000 1
+header       HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue508-DAC2020_bm01.dsn maxItems=100000 ripupPassNo=1 rules=-
