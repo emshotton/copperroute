@@ -181,7 +181,7 @@ fn routing_result_carries_the_drc_violations_and_the_incompletes() {
     );
 
     // And the router actually ran, so the assertions above are about a routed board.
-    assert!(result.pipeline.passes_run > 0);
+    assert!(result.pipeline.router_passes_completed > 0);
 }
 
 /// What one run answers: the report, and the SES bytes a `-de/-do` run would have written.

@@ -213,7 +213,12 @@ pub fn run(
         ))
     })?;
     job.finished_at = Some(std::time::Instant::now());
-    job.set_current_pass(result.pipeline.last_reported_pass);
+    // fixed: T9 (#267) — the two stages write two fields. Java has one `job.currentPass` and
+    // both loops write it, so `RoutingResultManifest.fromJob:124-126` reported whichever wrote
+    // last under a key that names the **autorouter**; `phases.optimizer.passes_completed` is
+    // Task 20's to fill (quirk #254) and the number is now here waiting for it.
+    job.set_current_pass(result.pipeline.router_passes_completed);
+    job.set_optimizer_pass(result.pipeline.optimizer_passes_completed);
     // `TIMED_OUT` comes from the **job** deadline and from nothing else — a per-stage timeout
     // leaves the job `COMPLETED`. `commands::route`'s step 12 carries the measurement.
     job.state = if job_deadline.is_timed_out() {

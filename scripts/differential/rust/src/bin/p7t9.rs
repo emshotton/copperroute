@@ -264,7 +264,7 @@ fn run_full_mode<W: Write>(
     writeln!(
         out,
         "RESULT passesRun={} optimizerPresent={} fanoutTimedOut={} optimizerTimedOut={} {}",
-        result.passes_run,
+        result.router_passes_completed,
         result.optimizer_state.is_some(),
         result
             .fanout
@@ -564,7 +564,7 @@ fn run_batch_mode<W: Write>(
     writeln!(
         out,
         "RESULT passesRun={} optimizerPresent={} fanoutTimedOut={} optimizerTimedOut={} {}",
-        result.passes_run,
+        result.router_passes_completed,
         result.optimizer_state.is_some(),
         result
             .fanout

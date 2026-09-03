@@ -180,18 +180,23 @@ pub struct BatchLoopResult {
     pub exit: BatchLoopExit,
     /// `:587` — Java's return value: `!thread.isStopAutoRouterRequested()`.
     pub continue_routing: bool,
-    /// `currentPass` as the loop left it (`:520-522`). Because `:521` increments only when the
-    /// loop is going round again, a run that stopped at `maxPasses = n` leaves this at `n + 1`.
-    pub passes_run: i32,
-    /// The value `:276`'s `job.setCurrentPass(currentPass)` last wrote — `0` when the loop never
-    /// reached it.
+    /// **The passes the routing stage completed.**
     ///
-    /// **Not** [`Self::passes_run`], and the difference is quirk #230: `:270-274`'s cap check
-    /// runs *before* `:276`, so a `maxPasses`-capped exit leaves the job's field one behind the
-    /// local. Plan 8's CLI writes this into [`fr_core::RoutingJob::set_current_pass`], because
-    /// `RoutingResultManifest.fromJob:124-126` reports the **job's** field and not the loop's.
-    /// This crate has no `RoutingJob` to write, so it hands the value back instead.
-    pub last_reported_pass: i32,
+    /// Java has two numbers for this quantity and they disagree. `currentPass` as the loop leaves
+    /// it (`:520-522`) is what the final `TaskStateChangedEvent` carries as its `passNumber`
+    /// (`:574`, `:583`); `job.currentPass`, written at `:276`, is what
+    /// `RoutingResultManifest.fromJob:124-126` reports. `:521` increments at the end of every
+    /// iteration the loop is going round again from, and `:270-274`'s cap check then breaks
+    /// **before** `:276` runs for the aborted iteration — so on a `maxPasses = n` exit the event
+    /// says `n + 1` and the job's field says `n`, for a pass that never ran. Quirk #230.
+    ///
+    // fixed: T9 (#230) — one field, and it is the honest one: the number of passes that actually
+    // completed. The `maxPasses` door is the only exit where Java's local runs ahead — every
+    // other door either breaks mid-body (after `:276`, before `:521`) or falls out of a `while`
+    // head that `:520`'s own two conjuncts had already stopped incrementing for — so the fix is
+    // to not count the pass the cap refused to run. `BatchLoopResult::last_reported_pass` is
+    // gone with the disagreement it recorded.
+    pub passes_run: i32,
     /// What `BatchFanout.fanoutBoard` answered (`:123-172`), or `None` when the fanout stage did
     /// not run — `settings.fanout.enabled` off (`:89`) or a board with no SMD pins at all
     /// (`:90-91`). Java keeps no such field: the summary is a local, read twice, at `:173`
@@ -376,9 +381,6 @@ impl AutorouteBatchLoop {
 
         // :236-242.
         let mut current_pass: i32 = 1;
-        // The value `:276` last published into `job.currentPass`; see
-        // [`BatchLoopResult::last_reported_pass`].
-        let mut last_reported_pass: i32 = 0;
         let mut consecutive_no_improvement_passes: i32 = 0;
         let mut fanout_recovery_applied = false;
         let mut last_best_score = f32::NEG_INFINITY;
@@ -449,14 +451,20 @@ impl AutorouteBatchLoop {
                 stop.request_stop_auto_router();
                 // fixed: T9 (#214) — the caller's own budget, reached.
                 exit = Some(BatchLoopExit::MaxPasses);
+                // fixed: T9 (#230) — this iteration is the one the cap refused, and `:521` at the
+                // end of the previous one has already counted it. Java leaves `currentPass` here
+                // and reports it as the final event's `passNumber` while `job.currentPass` — the
+                // number the manifest prints — still holds the last pass that ran; the two then
+                // disagree by exactly one at the moment the run stops. Undoing the speculative
+                // increment is what makes both surfaces the same honest number.
+                current_pass -= 1;
                 break;
             }
 
             // :275-277 — `job.setCurrentPass(currentPass)`. The port has no `RoutingJob`
-            // (Plan 8's, spec §13), so the value is recorded and handed back as
-            // [`BatchLoopResult::last_reported_pass`]; Plan 8 Task 6's `commands::route` writes
-            // it into the job, which is what the result manifest reads.
-            last_reported_pass = current_pass;
+            // (Plan 8's, spec §13), so the value is handed back as
+            // [`BatchLoopResult::passes_run`]; Plan 8 Task 6's `commands::route` writes it into
+            // the job, which is what the result manifest reads.
             // :279-280.
             progress.on_event(&RoutingEvent::TaskStateChanged {
                 algorithm: NamedAlgorithmType::Router,
@@ -706,7 +714,6 @@ impl AutorouteBatchLoop {
             exit,
             continue_routing: !stop.is_stop_auto_router_requested(),
             passes_run: current_pass,
-            last_reported_pass,
             fanout: fanout_summary,
             per_pass,
         })

@@ -443,7 +443,7 @@ fn run_job(dsn: &str, max_passes: i32, max_items: Option<i32>, strict_drc: bool)
 
     let statistics = result.final_statistics;
     JobResult {
-        passes_run: result.passes_run,
+        passes_run: result.router_passes_completed,
         // `Option` because `BoardStatistics`' DTOs mirror Gson's nullable fields; the pipeline
         // always fills them, and a `None` here would be a port bug rather than a routing result.
         incomplete_connections: usize::try_from(

@@ -169,8 +169,7 @@ pub fn run_pipeline(
 
     let mut optimizer_timed_out = false;
     // `BatchOptimizer.java:196`'s `job.setCurrentPass(currentPass)`, when the loop reached it.
-    // `0` means it did not, and the routing loop's own value then stands — see
-    // [`PipelineResult::last_reported_pass`].
+    // `0` means it did not — see [`PipelineResult::optimizer_passes_completed`].
     let mut optimizer_last_reported_pass = 0;
     let optimizer_state = if settings.get_run_optimizer() {
         if stop.is_stop_requested() {
@@ -224,12 +223,10 @@ pub fn run_pipeline(
     // have to repeat it.
     let final_statistics = BoardStatistics::new(board);
 
-    let (router_state, passes_run, router_last_reported_pass, fanout, per_pass) = match router_loop
-    {
+    let (router_state, router_passes_completed, fanout, per_pass) = match router_loop {
         Some(result) => (
             result.state,
             result.passes_run,
-            result.last_reported_pass,
             result.fanout,
             result.per_pass,
         ),
@@ -237,15 +234,13 @@ pub fn run_pipeline(
         // disabled, or the stop flag was already raised at entry. `TaskState::Idle` again means
         // "the stage never started", matching `router_state`'s type (`TaskState`, not
         // `Option<TaskState>` — the routing stage is not optional the way the optimizer is).
-        None => (TaskState::Idle, 0, 0, None, Vec::new()),
+        None => (TaskState::Idle, 0, None, Vec::new()),
     };
-    // The optimizer's write is later than the routing loop's whenever it happened at all — see
-    // [`PipelineResult::last_reported_pass`].
-    let last_reported_pass = if optimizer_last_reported_pass > 0 {
-        optimizer_last_reported_pass
-    } else {
-        router_last_reported_pass
-    };
+    // fixed: T9 (#267) — the two stages keep their own numbers. Java has one `job.currentPass`
+    // field and both loops write it, so `RoutingResultManifest.fromJob:124-126` reports whichever
+    // wrote last under a key that names the **autorouter**: one completed optimizer pass
+    // overwrote a three-pass routing stage with `1`. There is no arbitration here any more,
+    // because there is nothing to arbitrate.
 
     // Not a Java field: `RoutingJobSchedulerActionThread.java:170-172` composes exactly this pair
     // (`fanoutTimedOut`, `optimizerTimedOut`) itself, from a live `BatchAutorouter`/
@@ -262,8 +257,8 @@ pub fn run_pipeline(
     Ok(PipelineResult {
         router_state,
         optimizer_state,
-        last_reported_pass,
-        passes_run,
+        router_passes_completed,
+        optimizer_passes_completed: optimizer_last_reported_pass,
         fanout,
         per_pass,
         final_statistics,
@@ -285,25 +280,28 @@ pub struct PipelineResult {
     /// [`run_pipeline`]'s doc for the `TaskState::Idle` case, which **is** configured but never
     /// entered (`:117-119`).
     pub optimizer_state: Option<TaskState>,
-    /// The value `job.setCurrentPass` was **last** called with, by either stage — the routing
-    /// loop's `AutorouteBatchLoop.java:276` or, if the optimizer reached its own
-    /// `BatchOptimizer.java:196`, that one. `0` when neither did.
+    /// **The routing stage's own completed pass count** (`AutorouteBatchLoop.java:275-277`,
+    /// `:521`) — `0` when the stage never ran. Plan 8's CLI writes it into
+    /// `fr_core::RoutingJob::set_current_pass`, which is what
+    /// `RoutingResultManifest.fromJob:124-126` reports under `phases.autorouter.passes_completed`.
     ///
-    /// **The two loops write the same field**, and `RoutingResultManifest.fromJob:124-126` reads
-    /// whatever was written last, so a single completed optimizer pass reports `1` after a
-    /// three-pass routing stage. Quirk #267. Plan 8's CLI writes this into
-    /// `fr_core::RoutingJob::set_current_pass`; nothing in this crate reads it.
-    pub last_reported_pass: i32,
-    /// The routing stage's `currentPass` local as the loop left it (`AutorouteBatchLoop.java:
-    /// 275-277`, `:521`) — `0` when the stage never ran.
+    // fixed: T9 (#267) — its own field. Java has **one** `job.currentPass` and both loops write
+    // it, the router's counter starting at 1 and the optimizer's at 0, so `fromJob:124-126`
+    // reported whichever wrote last under a key naming the autorouter: `router-dac2020-bm01` at
+    // `-mp 2` logged two routing passes and one optimizer pass and its manifest said `1`.
+    // fixed: T9 (#230) — and it is the honest number at every exit. Java's loop-local and
+    // `job.currentPass` disagree by one on a `maxPasses`-capped exit, because `:270-274` breaks
+    // before `:276` runs again for the pass the cap refused; the port does not count that pass.
+    pub router_passes_completed: i32,
+    /// **The optimizer stage's own completed pass count** — `BatchOptimizer.java:196`'s
+    /// `job.setCurrentPass(currentPass)`, or `0` when the loop broke before reaching it (the
+    /// per-stage deadline at `:172-176`, or the near-perfect exit at `:182-193`).
     ///
-    /// **Not** `job.getCurrentPass()`: the cap check (`:270-274`) runs *before*
-    /// `job.setCurrentPass(currentPass)` (`:276`), so on a `maxPasses`-capped exit the job's own
-    /// value is one **less** than this field — the local was already incremented past the cap by
-    /// the completed prior iteration's `:521`, and the aborted final iteration breaks before
-    /// `job.setCurrentPass` runs again for it. `p7t9 full`'s driver reads the router's own last
-    /// `TaskStateChangedEvent.getPassNumber()` instead, which carries the same local.
-    pub passes_run: i32,
+    /// Nothing in this crate reads it. Plan 8's CLI carries it on the job for
+    /// `phases.optimizer.passes_completed`, **which Task 20 writes** — the key exists and is
+    /// always `{}` today (quirk #254), and filling it is that task's, not this one's. What
+    /// landed here is the field split.
+    pub optimizer_passes_completed: i32,
     /// What the fanout pre-pass answered (`BatchFanout.FanoutRunSummary`,
     /// `AutorouteBatchLoop.java:625-629`), or `None` when it did not run.
     pub fanout: Option<FanoutRunSummary>,

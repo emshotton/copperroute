@@ -270,7 +270,7 @@ fn route_with(token: &CancelToken, sink: &SyncProgressSink) -> Run {
     };
     let result = RoutingPipeline::run(&mut board, &ctx).expect("the stem has a routable layer");
     Run {
-        passes_run: result.pipeline.passes_run,
+        passes_run: result.pipeline.router_passes_completed,
         incompletes: result.incomplete_count(),
     }
 }

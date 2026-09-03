@@ -459,7 +459,12 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // three-pass routing stage with `1`. `PipelineResult::last_reported_pass` is that value.
     // Quirk #267; measured against the jar by `p8t2 e2e` on `router-dac2020-bm01` and
     // `router-strict-drc-cnh`, which were the two rows that caught it.
-    job.set_current_pass(result.pipeline.last_reported_pass);
+    // fixed: T9 (#267) — the two stages write two fields. Java has one `job.currentPass` and
+    // both loops write it, so `RoutingResultManifest.fromJob:124-126` reported whichever wrote
+    // last under a key that names the **autorouter**; `phases.optimizer.passes_completed` is
+    // Task 20's to fill (quirk #254) and the number is now here waiting for it.
+    job.set_current_pass(result.pipeline.router_passes_completed);
+    job.set_optimizer_pass(result.pipeline.optimizer_passes_completed);
     // **`TIMED_OUT` comes from the job deadline and from nothing else.** In Java the only writer
     // of that state is the monitor thread (`RoutingJobSchedulerActionThread.java:84`), which
     // tests `job.timeoutAt` — the instant `:41-51` derives from `routerSettings.jobTimeoutString`
