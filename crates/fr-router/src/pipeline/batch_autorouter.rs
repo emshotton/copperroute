@@ -670,21 +670,27 @@ impl<'a> BatchAutorouter<'a> {
     /// the net contains a plane and the connected set already holds a `ConductionArea`
     /// (`:383-389`).
     ///
-    /// # Java bug (plan-7 ruling 10): an item is appended once per qualifying net
+    /// # Java bug (plan-7 ruling 10, quirk #213), **fixed here**: an item was routed once per
+    /// qualifying net **times** its whole net count
     ///
     /// `:390`'s `autorouteItemList.add(currentItem)` is **inside** the net loop, so a
     /// two-net item that qualifies on both nets appears **twice** in the list — and
     /// `AutoroutePassRunner.java:202, :207` then loops over *every* net index of *each*
-    /// appearance, so that item is routed **four** times in one pass. Worse, the inner index is
+    /// appearance, so that item was routed **four** times in one pass. Worse, the inner index is
     /// a fresh `0..netCount()` walk rather than the index that qualified, so the pair actually
-    /// routed at appearance *a*, index *b* has nothing to do with the reason the item was
+    /// routed at appearance *a*, index *b* had nothing to do with the reason the item was
     /// enqueued.
     ///
     /// It is not merely wasteful: each repeat runs against the board the previous one left, so
-    /// the extra attempts route real connections and rip real traces. The port reproduces it
-    /// exactly, because the corpus depends on it.
+    /// the extra attempts route real connections and rip real traces.
     ///
     // Java bug: `BatchAutorouter.getAutorouteItems` (`:390`) — the append is inside the per-net loop, so a multi-net item enters the work list once per qualifying net and `AutoroutePassRunner:202,207` then routes it netCount times per appearance (quirk #213).
+    // fixed: T9 (#213) — the work list carries `(ItemId, net number)` **pairs**, which is the
+    // register row's own `List<Map.Entry<Item,Integer>>`. The append still happens once per
+    // *qualifying* net, because that is what "once per net that actually needs routing" means;
+    // what is gone is `AutoroutePassRunner:207`'s fresh `0..netCount()` walk per appearance, so a
+    // two-net item that qualifies on both nets is routed **twice** — once for each qualifying net
+    // — instead of four times on net indices unrelated to the ones that qualified it.
     ///
     /// # `&self, &Board`, not `&mut self, &mut Board`
     ///
@@ -695,12 +701,19 @@ impl<'a> BatchAutorouter<'a> {
     /// nothing — a `&mut Board` reborrows — and it is what lets the pass runner hold the list
     /// while it mutates the board.
     ///
-    /// # `Vec<ItemId>`, not `Vec<(ItemId, i32)>`
+    /// # The second element is a net **number**, not a net index
     ///
-    /// Java's return type is `List<Item>`: the list carries **items**, never `(item, net)` pairs.
-    /// The net numbers the pass runner loops over come from the item itself (`:207`), which is
-    /// the whole reason the bug above is a bug. The plan's first draft said otherwise.
-    pub fn autoroute_items(&self, board: &Board) -> Vec<ItemId> {
+    /// `:364`'s `currentNetNumber = currentItem.getNetNumber(i)` is what qualified the entry at
+    /// `:375`, and it is what `AutoroutePassRunner:239` hands to `autorouteItem`. Carrying the
+    /// *number* rather than the index `i` is what makes the fix a fix: `RoutingBoard.
+    /// reduceNetsOfRouteItems` can change an item's net list between connections (quirk #211), so
+    /// an index re-read later in the pass can name a different net, which is the second half of
+    /// what `:207` got wrong.
+    ///
+    /// **Corpus-latent.** No corpus board has a multi-net routable-candidate item, so every entry
+    /// is `(item, item.getNetNumber(0))` and the pass walks exactly the pairs it walked before —
+    /// which is why the evidence for this row is the directed test rather than a stem.
+    pub fn autoroute_items(&self, board: &Board) -> Vec<(ItemId, i32)> {
         self.autoroute_items_with_handled(board).0
     }
 
@@ -732,9 +745,14 @@ impl<'a> BatchAutorouter<'a> {
     /// The same holds for `p7t2`, `p7t5`, `p7t9` and `p8t1`, which route a board and so inherit
     /// the order downstream. `crates/fr-router/README.md`'s "The work list is airline-sorted"
     /// section says it once more for a reader who arrives from the driver rather than from here.
-    pub fn autoroute_items_with_handled(&self, board: &Board) -> (Vec<ItemId>, BTreeSet<ItemId>) {
+    pub fn autoroute_items_with_handled(
+        &self,
+        board: &Board,
+    ) -> (Vec<(ItemId, i32)>, BTreeSet<ItemId>) {
         // :347-350. The port allocates rather than reusing; see the doc.
-        let mut autoroute_item_list: Vec<ItemId> = Vec::new();
+        // fixed: T9 (#213) — `(item, qualifying net number)` pairs, Java's
+        // `List<Map.Entry<Item,Integer>>`.
+        let mut autoroute_item_list: Vec<(ItemId, i32)> = Vec::new();
         let mut handled_items: BTreeSet<ItemId> = BTreeSet::new();
 
         // :351-357 — `itemList.startReadObject()` / `readObject(it)`, i.e. descending item id.
@@ -792,8 +810,9 @@ impl<'a> BatchAutorouter<'a> {
                     }
                 }
 
-                // :390. Once per qualifying net index — the bug above.
-                autoroute_item_list.push(current_item);
+                // :390. Once per qualifying net — and, since the fix, carrying the net that
+                // qualified it rather than leaving the pass runner to guess (quirk #213).
+                autoroute_item_list.push((current_item, current_net_number));
                 // :391-402 is the `FRLogger.debug` payload; not ported.
             }
         }
@@ -830,13 +849,22 @@ impl<'a> BatchAutorouter<'a> {
         //
         // Java bug: `BatchAutorouter.getAutorouteItems` (`:345-409`) — the work list is returned in `board.itemList` descending-id order because `933d2980` deleted the `calculateItemDistance` sort; the commit's own justification is contradicted by measurement (quirk #293).
         // fixed: T2 (#293) — the sort is restored here, ascending, stable, unconditional.
+        // The key is a property of the **item**, so it is computed once per `(item, net)` pair
+        // (quirk #213's shape) over the shared cache, and the sort's stability then keeps an
+        // item's own pairs in the qualifying order this loop produced them in.
         let mut cache = ItemDistanceCache::default();
-        let mut keyed: Vec<(f64, ItemId)> = autoroute_item_list
+        let mut keyed: Vec<(f64, (ItemId, i32))> = autoroute_item_list
             .iter()
-            .map(|id| (calculate_item_distance_cached(board, *id, &mut cache), *id))
+            .map(|entry| {
+                (
+                    calculate_item_distance_cached(board, entry.0, &mut cache),
+                    *entry,
+                )
+            })
             .collect();
         keyed.sort_by(|a, b| a.0.total_cmp(&b.0));
-        let autoroute_item_list: Vec<ItemId> = keyed.into_iter().map(|(_, id)| id).collect();
+        let autoroute_item_list: Vec<(ItemId, i32)> =
+            keyed.into_iter().map(|(_, entry)| entry).collect();
 
         // :407.
         (autoroute_item_list, handled_items)

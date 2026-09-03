@@ -157,10 +157,15 @@ fn run_one_pass(
 // getAutorouteItems — the work list
 // =================================================================================================
 
-/// Plan-7 ruling 10's pin: `:390`'s `autorouteItemList.add(currentItem)` is **inside** the per-net
-/// loop, so a two-net item that qualifies on both nets is appended **twice** — and
-/// `AutoroutePassRunner:202, :207` then walks *every* net index of *each* appearance, so the item
-/// is routed **four** times in one pass.
+/// **Quirk #213, fixed in Plan 9 Task 9.** `:390`'s `autorouteItemList.add(currentItem)` is
+/// **inside** the per-net loop, so a two-net item that qualifies on both nets is appended
+/// **twice** — and `AutoroutePassRunner:202, :207` then walked *every* net index of *each*
+/// appearance, so the item was routed **four** times in one pass, on net indices unrelated to the
+/// ones that qualified it.
+///
+/// The fix carries the qualifying net with the entry and drops `:207`'s walk, so the literal
+/// below is **2**: once per net that actually needs routing. The two entries are still there —
+/// that is what "once per qualifying net" means — and what is gone is the inner multiplication.
 ///
 /// The board is the smallest one that isolates it. `A` is a user-fixed two-net trace, so it is
 /// `Connectable` and not `isRoutable()`; `B` and `C` are ordinary traces on nets 1 and 2, so they
@@ -168,10 +173,11 @@ fn run_one_pass(
 /// counts them — which is what makes `:375`'s `connectedSet.size() < netItemCount` true on both
 /// of `A`'s nets.
 ///
-/// `p7t1` shows the same shape on the corpus: `router-dac2020-bm01` at pass 1 prints 591 lines
-/// for a board whose `getAutorouteItems` returns far fewer distinct items than entries.
+/// **This is the row's only evidence**, because no corpus board has a multi-net candidate: on the
+/// corpus every entry is `(item, getNetNumber(0))` and the pass walks exactly what it walked
+/// before.
 #[test]
-fn a_two_net_item_is_routed_four_times() {
+fn a_two_net_item_is_routed_once_per_qualifying_net() {
     let mut board = empty_board();
     add_net(&mut board, "N1", false);
     add_net(&mut board, "N2", false);
@@ -201,32 +207,36 @@ fn a_two_net_item_is_routed_four_times() {
     let settings = settings_for(&board);
     let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
 
-    // `:390` — two entries for one item.
+    // `:390` — two entries for one item, one per qualifying net, each carrying **its own** net.
     let work_list = router.autoroute_items(&board);
     assert_eq!(
         work_list,
-        vec![a, a],
-        "BatchAutorouter.java:390 appends once per qualifying net index"
+        vec![(a, 1), (a, 2)],
+        "BatchAutorouter.java:390 appends once per qualifying net; fixed: T9 (#213) — the entry \
+         carries the net that qualified it"
     );
 
-    // `AutoroutePassRunner:202, :207` — two appearances x two net indices.
+    // `AutoroutePassRunner:202` — one visit per pair. **Two**, not four.
     let stop = RouterStop::new();
     run_one_pass(&mut board, &mut router, &stop).expect("the pass answers Ok");
     assert_eq!(
-        router.total_items_routed, 4,
-        "AutoroutePassRunner.java:222 counts one visit per (appearance, net index); a smaller \
-         number here means the pass ended early — most likely at :203/:208's stop check, or on a \
-         panic the :331 boundary swallowed"
+        router.total_items_routed, 2,
+        "fixed: T9 (#213) — AutoroutePassRunner.java:222 counts one visit per (item, qualifying \
+         net) pair. Java's :207 multiplied that by the item's whole netCount and this literal was \
+         4; a smaller number than 2 means the pass ended early — most likely at :203's stop \
+         check, or on a panic the :331 boundary swallowed"
     );
 }
 
-/// The second half of the same bug: `:207`'s `i` is a **fresh** `0..netCount()` walk, not the net
-/// index that qualified at `:375`. Here `A` qualifies on net 2 only — net 1 has no second
-/// connectable item, so `connectedSet.size() < netItemCount` is `1 < 1`, false — and the work
-/// list therefore holds **one** entry. The pass still routes `A` **twice**, once for each of its
-/// net indices, i.e. it attempts net 1 although nothing enqueued net 1.
+/// The second half of the same bug, also fixed: `:207`'s `i` is a **fresh** `0..netCount()` walk,
+/// not the net index that qualified at `:375`. Here `A` qualifies on net 2 only — net 1 has no
+/// second connectable item, so `connectedSet.size() < netItemCount` is `1 < 1`, false — and the
+/// work list therefore holds **one** entry. Java still routed `A` **twice**, once for each of its
+/// net indices, i.e. it attempted net 1 although nothing enqueued net 1.
+///
+/// fixed: T9 (#213) — the entry carries net 2 and the pass routes it once, on net 2.
 #[test]
-fn the_inner_index_is_a_net_index_not_the_qualifying_one() {
+fn the_inner_index_is_the_qualifying_net() {
     let mut board = empty_board();
     add_net(&mut board, "N1", false);
     add_net(&mut board, "N2", false);
@@ -252,16 +262,16 @@ fn the_inner_index_is_a_net_index_not_the_qualifying_one() {
 
     assert_eq!(
         router.autoroute_items(&board),
-        vec![a],
-        "only net 2 satisfies :375, so :390 runs once"
+        vec![(a, 2)],
+        "only net 2 satisfies :375, so :390 runs once — and the entry says which net it was"
     );
 
     let stop = RouterStop::new();
     run_one_pass(&mut board, &mut router, &stop).expect("the pass answers Ok");
     assert_eq!(
-        router.total_items_routed, 2,
-        "AutoroutePassRunner.java:207 loops over both net indices of the single appearance, so \
-         net 1 is attempted although net 2 is what qualified"
+        router.total_items_routed, 1,
+        "fixed: T9 (#213) — one visit, on net 2. Java's :207 looped over both net indices of the \
+         single appearance and attempted net 1, which nothing had enqueued; the literal was 2"
     );
 }
 
@@ -319,11 +329,11 @@ fn a_plane_net_with_a_conduction_area_is_skipped() {
     let work_list = router.autoroute_items(&board);
 
     assert!(
-        !work_list.contains(&a),
+        !work_list.iter().any(|(id, _)| *id == a),
         "BatchAutorouter.java:383-389 skips an item already connected to the pour"
     );
     assert!(
-        work_list.contains(&b),
+        work_list.iter().any(|(id, _)| *id == b),
         "…and enqueues one that is not, so it can be routed to the pour this pass"
     );
 }
@@ -365,7 +375,7 @@ fn an_item_with_ignored_nets_is_skipped() {
     let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
     assert_eq!(
         router.autoroute_items(&board),
-        vec![a],
+        vec![(a, 1)],
         "with the flag clear the item is a normal candidate"
     );
 
@@ -373,7 +383,10 @@ fn an_item_with_ignored_nets_is_skipped() {
     let settings = settings_for(&board);
     let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
     assert!(
-        !router.autoroute_items(&board).contains(&a),
+        !router
+            .autoroute_items(&board)
+            .iter()
+            .any(|(id, _)| *id == a),
         "BatchAutorouter.java:375 — hasIgnoredNets() drops the item"
     );
 }
@@ -631,7 +644,7 @@ fn the_pass_ends_with_remove_tails() {
 
     let settings = settings_for(&board);
     let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
-    assert_eq!(router.autoroute_items(&board), vec![candidate]);
+    assert_eq!(router.autoroute_items(&board), vec![(candidate, 1)]);
     assert!(board.get_item(tail).is_some(), "before the pass");
 
     let stop = RouterStop::new();
