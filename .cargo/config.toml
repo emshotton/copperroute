@@ -1,10 +1,17 @@
-# Build cache (2026-09-01): sccache across agents' repeated clean/forced rebuilds.
-# sccache does not support incremental compilation, so it is disabled; the win on
-# fresh builds (every subagent) outweighs the tiny-edit loop cost.
-[build]
-# WARNING, measured 2026-09-02: an A/B of two *different* sources through this wrapper produced a
-# byte-identical `target/release/freerouting`. Before trusting any release-binary A/B, check the
-# two hashes differ; run mutation checks through `cargo test`, not a binary. Full rule and the
-# reproduction in `scripts/differential/README.md`, "A/B-ing release binaries under sccache".
-rustc-wrapper = "/Users/em/.cargo/bin/sccache"
-incremental = false
+# Build cache: sccache is a MACHINE-LOCAL opt-in, not committed — a hardcoded wrapper
+# path breaks builds on any other machine (measured 2026-09-02 on the NixOS workbench:
+# `could not execute process /Users/em/.cargo/bin/sccache`).
+#
+# To enable it on a development machine, create an UNTRACKED cargo config in a parent
+# directory of this checkout (cargo merges configs from all parent directories), e.g.
+# `~/Development/freerouting/.cargo/config.toml`:
+#
+#     [build]
+#     rustc-wrapper = "/Users/<you>/.cargo/bin/sccache"   # or wherever sccache lives
+#     incremental = false   # sccache refuses incremental; the pair travels together
+#
+# WARNING, measured 2026-09-02: an A/B of two *different* sources through the sccache
+# wrapper once produced a byte-identical `target/release/freerouting`. Before trusting any
+# release-binary A/B, check the two hashes differ; run mutation checks through `cargo test`,
+# not a binary. Full rule and the reproduction in `scripts/differential/README.md`,
+# "A/B-ing release binaries under sccache".
