@@ -345,12 +345,12 @@ impl<'a> MazeSearchEngine<'a> {
             if self.engine.is_stop_requested(stop) {
                 return false;
             }
-            // :1038-1039. `Err` is Java's `return new ArrayList<>()` (quirk #166), never a
-            // failure to propagate.
+            // :1038-1039. Java's `catch` answers `new ArrayList<>()` here (quirk #166) about
+            // rooms it has already put in the tree; fixed: T8, so this takes the rooms that were
+            // committed, whether or not the call finished. Never a failure to propagate.
             let current_completed_rooms = self
                 .engine
-                .complete_expansion_room(board, current_room)
-                .unwrap_or_default();
+                .complete_expansion_room_or_committed(board, current_room);
             completed_start_rooms.extend(current_completed_rooms);
         }
 

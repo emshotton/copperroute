@@ -168,9 +168,29 @@ impl ExpansionRoomStore {
     /// differs from Java's: `audit-port.sh` scopes `AutorouteEngine` to
     /// `autoroute/maze/engine.rs`, so the obligation to write the engine method stays open
     /// until Task 6 writes it there, rather than being discharged from this file.
+    ///
+    /// fixed: T8 (#165) — the improvement column's first half, "have `SortedRoomNeighbours.
+    /// calculate` take the room id *after* it commits". `calculate` now draws one id per call and
+    /// reuses it across the `edgeRemoved` retry, and [`Self::release_room_id_no`] gives it back on
+    /// the `addCompleteRoom` `null` path, so a room that is never committed no longer consumes
+    /// one. The ids remain strictly increasing in creation order, which is the property
+    /// [`RoomId`] — the arena index — has to agree with.
     pub fn next_room_id_no(&mut self) -> i32 {
         self.room_instance_count = self.room_instance_count.wrapping_add(1);
         self.room_instance_count
+    }
+
+    /// Hand back the id [`Self::next_room_id_no`] last produced, if `id_no` is it.
+    ///
+    /// fixed: T8 (#165). No Java counterpart: Java's `expansionRoomInstanceCount` only ever
+    /// increments, and `generateRoomIdNo()` being an *argument* is exactly why an abandoned room
+    /// burns a number. Rewinding is conditional on purpose — it is a no-op unless the id being
+    /// released is the newest, so it can never hand the same number to two rooms that both
+    /// survive, and a caller that releases out of order simply leaves the gap Java would have.
+    pub fn release_room_id_no(&mut self, id_no: i32) {
+        if self.room_instance_count == id_no {
+            self.room_instance_count = self.room_instance_count.wrapping_sub(1);
+        }
     }
 
     /// `AutorouteEngine.clear` (AutorouteEngine.java:306-317) minus its last line: **take every
@@ -763,6 +783,35 @@ impl ExpansionRoomStore {
             if let RoomRef::Incomplete(id) = other {
                 self.remove_incomplete_expansion_room(id);
             }
+        }
+        self.clear_doors(room);
+    }
+
+    /// [`Self::remove_all_doors`] **without** the incomplete-room cascade: every door of `room` is
+    /// unlinked from the room on its other side and from `room` itself, and nothing else is
+    /// removed.
+    ///
+    /// fixed: T8 (#165). Java has no such method, and the register's improvement column asks for
+    /// `removeAllDoors` on `addCompleteRoom`'s `null` path. **`removeAllDoors` is the wrong tool
+    /// there, and that is measured**: the room `addCompleteRoom` abandons is one
+    /// `calculateDoors` has already wired to *newly built* incomplete rooms, and those rooms are
+    /// the engine's expansion frontier — Java leaks them into `incompleteExpansionRooms` and the
+    /// maze search then expands through them. Deleting them with the room removes real frontier:
+    /// with `remove_all_doors` on that path, six `tests/locator.rs` cases stop finding a
+    /// connection at all (`findConnection answers a result`), which is a connectivity regression
+    /// and the opposite of what this row is for.
+    ///
+    /// What the row actually asks for is that an abandoned room "leaves no doors behind" — that
+    /// it stops being **reachable**, so that `completeExpansionRoom`'s `:426-432` scan cannot pick
+    /// it as `ignoreObject` and hand `completeShape` a room that is not in the tree it is
+    /// querying. Unlinking does exactly that and nothing more.
+    pub fn detach_all_doors(&mut self, room: RoomRef) {
+        let doors: Vec<DoorId> = self.room_doors(room).to_vec();
+        for door in doors {
+            let Some(other) = self.doors.get(door.0).and_then(|d| d.other_room(room)) else {
+                continue;
+            };
+            self.remove_door(other, ExpandableRef::Door(door));
         }
         self.clear_doors(room);
     }

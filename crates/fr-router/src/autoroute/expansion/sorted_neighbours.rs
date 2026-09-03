@@ -219,10 +219,20 @@ impl SortedRoomNeighbours {
         rooms: &mut ExpansionRoomStore,
         tree_id: TreeId,
     ) -> Option<RoomRef> {
+        // :99-104. `generateRoomIdNo()` is an *argument*, so in Java the counter ticks before the
+        // method knows whether a complete room will be built at all — and the `edgeRemoved` retry
+        // at `:111-114` recurses, drawing a **fresh** id for the room that replaces one Java has
+        // just thrown away.
+        //
+        // fixed: T8 (#165), the improvement column's first half — "have `SortedRoomNeighbours.
+        // calculate` take the room id *after* it commits". The id is drawn **once** here and
+        // reused across retries, so a room that is discarded does not consume one. The discarded
+        // room keeps its arena slot (the arena is Java's heap and Java's is garbage-collected the
+        // same way), but it is not in the tree, not in `completeExpansionRooms`, and — since the
+        // retry's `removeAllDoors` — not reachable through a door either, so nothing can observe
+        // the id it shares with its replacement.
+        let room_id_no = rooms.next_room_id_no();
         loop {
-            // :99-104. `generateRoomIdNo()` is an *argument*, so the counter ticks before the
-            // method knows whether a complete room will be built at all.
-            let room_id_no = rooms.next_room_id_no();
             let room_neighbours = SortedRoomNeighbours::calculate_neighbours(
                 room, net_number, board, rooms, tree_id, room_id_no,
             )?;

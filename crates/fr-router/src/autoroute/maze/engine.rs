@@ -797,23 +797,70 @@ impl AutorouteEngine {
         room: IncompleteRoomId,
     ) -> Result<Vec<RoomId>, RouterError> {
         // AutorouteEngine.java:421 / :518-521.
+        //
+        // fixed: T8 (#166), by the improvement column's first option — `result` is hoisted out of
+        // the `try` and returned from the `catch`. Java declares it inside (`:422`) and the catch
+        // answers `new ArrayList<>()`, so a caller that partially fails is told "no rooms were
+        // completed" about rooms that **exist, are in the tree and have doors**: every
+        // `addCompleteRoom` before the throw has already appended to `completeExpansionRooms` and
+        // inserted into the autoroute search tree (`:534-535`), and the input room was removed at
+        // `:469`. That is silent data loss, and the register calls the third option — leaving
+        // them in the tree while reporting an empty list — the worst of the three.
+        //
+        // The port's `result` is a `Vec<RoomId>` the closure fills through `&mut`, so what the
+        // `catch` returns is what the `try` had built when it threw. `RouterError` is kept beside
+        // it — the degraded run is still a degraded run and the caller may want to know — and
+        // every caller's `unwrap_or_default()` is replaced by the rooms themselves through
+        // [`Self::complete_expansion_room_or_committed`].
+        let mut result: Vec<RoomId> = Vec::new();
         match std::panic::catch_unwind(AssertUnwindSafe(|| {
-            self.complete_expansion_room_inner(board, room)
+            self.complete_expansion_room_inner(board, room, &mut result)
         })) {
-            Ok(rooms) => Ok(rooms),
-            Err(payload) => Err(RouterError::Panicked(panic_message(&payload))),
+            Ok(()) => Ok(result),
+            Err(payload) => {
+                let message = panic_message(&payload);
+                if result.is_empty() {
+                    Err(RouterError::Panicked(message))
+                } else {
+                    Err(RouterError::PanickedWithRooms {
+                        message,
+                        rooms: result,
+                    })
+                }
+            }
         }
     }
 
-    /// The body of the `try` at AutorouteEngine.java:421-517.
-    fn complete_expansion_room_inner(
+    /// [`Self::complete_expansion_room`] read the way every caller has to read it: the rooms the
+    /// method **committed to the database**, whether or not it finished.
+    ///
+    /// fixed: T8 (#166). This replaces `complete_expansion_room(..).unwrap_or_default()`, which
+    /// was Java's `:520` — an empty collection for rooms that are in the tree with doors on them.
+    /// The obligation the old form carried ("never with `?`") is discharged by construction here:
+    /// there is nothing to propagate.
+    pub fn complete_expansion_room_or_committed(
         &mut self,
         board: &mut Board,
         room: IncompleteRoomId,
     ) -> Vec<RoomId> {
+        match self.complete_expansion_room(board, room) {
+            Ok(rooms) => rooms,
+            Err(RouterError::PanickedWithRooms { rooms, .. }) => rooms,
+            Err(_) => Vec::new(),
+        }
+    }
+
+    /// The body of the `try` at AutorouteEngine.java:421-517.
+    ///
+    /// fixed: T8 (#166): `result` is the caller's, passed by `&mut`, so the rooms committed
+    /// before a throw are the caller's too. Java's `:422` declares it inside the `try`.
+    fn complete_expansion_room_inner(
+        &mut self,
+        board: &mut Board,
+        room: IncompleteRoomId,
+        result: &mut Vec<RoomId>,
+    ) {
         let room_ref = RoomRef::Incomplete(room);
-        // :422.
-        let mut result: Vec<RoomId> = Vec::new();
 
         // :423-434. The first door to an existing **complete free-space** room whose dimension is
         // 2 supplies both `fromDoorShape` and `ignoreObject`; the loop breaks on it.
@@ -921,8 +968,7 @@ impl AutorouteEngine {
                 }
             }
         }
-        // :517.
-        result
+        // :517. `result` is the caller's; see the note on this method.
     }
 
     /// `this.autorouteSearchTree.completeShape(room, this.netNumber, ignoreObject, fromDoorShape)`
@@ -984,17 +1030,45 @@ impl AutorouteEngine {
 
         // :528-530. Java's cast to `CompleteFreeSpaceExpansionRoom` cannot fail here: the input is
         // an incomplete room, so `calculateNeighbours` took the `:190-193` branch.
-        let RoomRef::Complete(completed_room) = completed_room? else {
-            return None;
+        //
+        // fixed: T8 (#165), the improvement column's second half — "give `addCompleteRoom`'s
+        // `null` path a `removeAllDoors` so an abandoned room leaves no doors behind". Java's
+        // `return null` at `:530` walks away from a `CompleteFreeSpaceExpansionRoom` that
+        // `calculateNewIncompleteRooms` has already wired to real incomplete rooms, and because
+        // the room was never added to `completeExpansionRooms` nothing ever removes it: `clear`
+        // (`:308-312`), `validate` (`:642`), `getRoomsWithTargetItems` (`:623`) and
+        // `initConnection`'s net-dependent invalidation (`:102`) all walk that list. The room
+        // stays **reachable through its doors**, and `completeExpansionRoom`'s own `:426-432`
+        // scan can then pick it as `ignoreObject` — handing `completeShape` a room that is not in
+        // the tree it is querying.
+        let completed_room = completed_room?;
+        // `detach_all_doors`, not `remove_all_doors`: the abandoned room's doors lead to newly
+        // built **incomplete** rooms which are the engine's expansion frontier, and Java's
+        // `removeAllDoors` would delete them with it. Measured — see that method's own note.
+        let abandon = |engine: &mut Self| {
+            engine.rooms.detach_all_doors(completed_room);
+            // …and the id it drew goes back, so a room that is never committed does not consume
+            // one — the other half of #165's improvement column.
+            if let Some(id_no) = engine.rooms.room_id_no(completed_room) {
+                engine.rooms.release_room_id_no(id_no);
+            }
+            None
+        };
+        let RoomRef::Complete(completed_room_id) = completed_room else {
+            return abandon(self);
         };
         let dimension = self
             .rooms
-            .complete_room(completed_room)
+            .complete_room(completed_room_id)
             .and_then(|r| r.get_shape())
-            .map(TileShape::dimension)?;
+            .map(TileShape::dimension);
+        let Some(dimension) = dimension else {
+            return abandon(self);
+        };
         if dimension != 2 {
-            return None;
+            return abandon(self);
         }
+        let completed_room = completed_room_id;
 
         // :531-534.
         self.complete_expansion_rooms.push(completed_room);

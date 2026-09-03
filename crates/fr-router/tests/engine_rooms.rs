@@ -97,6 +97,25 @@ fn complete_rooms(engine: &AutorouteEngine) -> Vec<RoomRow> {
         .collect()
 }
 
+/// The `CompleteFreeSpaceExpansionRoom`s the autoroute tree holds, as a set — the other half of
+/// quirk #165's I1 invariant, which is set equality against `completeExpansionRooms`.
+fn tree_rooms(board: &Board, engine: &AutorouteEngine) -> std::collections::BTreeSet<RoomId> {
+    let tree = board
+        .trees
+        .trees()
+        .find(|tree| tree.id() == engine.tree)
+        .expect("the autoroute tree");
+    let ctx = board.ctx();
+    let probe = TileShape::Box(board.get_bounding_box());
+    tree.overlapping_tree_entries_with_rooms(&probe, None, &[], &board.items, &engine.rooms, &ctx)
+        .into_iter()
+        .filter_map(|entry| match entry.object {
+            fr_board::ids::TreeObject::Room(id) => Some(id),
+            fr_board::ids::TreeObject::Item(_) => None,
+        })
+        .collect()
+}
+
 fn tree_size(board: &Board, engine: &AutorouteEngine) -> usize {
     board
         .trees
@@ -726,6 +745,193 @@ fn reset_all_doors_clears_the_scratch_it_finds_and_creates_none() {
 
 // =================================================================================================
 // Shared runs
+/// Quirk #165's I2, **fixed: T8** — an abandoned room leaves no live doors.
+///
+/// `SortedRoomNeighbours.calculate` constructs a `CompleteFreeSpaceExpansionRoom` at `:191-192`
+/// *before* it knows whether the room survives, and `AutorouteEngine.addCompleteRoom` returns
+/// `null` at `:528-530` when the completed shape is no longer 2-dimensional. Java's `null` path
+/// removes the room from nothing — it was never added to `completeExpansionRooms` — but
+/// `calculateNewIncompleteRooms` has already built doors from it to real rooms, so it stays
+/// **reachable** through them. Everything that walks the list then misses it: `clear`
+/// (`:308-312`), `validate` (`:642`), `getRoomsWithTargetItems` (`:623`) and `initConnection`'s
+/// net-dependent invalidation (`:102`) — and `completeExpansionRoom`'s own `:426-432` scan can
+/// pick it as `ignoreObject`, handing `completeShape` a room that is not in the tree it is
+/// querying.
+///
+/// The invariant asserted here is the one that closes that: **every complete room on the far side
+/// of a live door is a room the engine knows about**, i.e. is in `completeExpansionRooms`. Before
+/// the fix, this run leaves doors onto rooms that are in none of the engine's lists.
+///
+/// The fix is `detach_all_doors`, **not** `removeAllDoors`, and that distinction is measured:
+/// see `ExpansionRoomStore::detach_all_doors`, and
+/// [`an_abandoned_rooms_incomplete_neighbours_are_not_deleted_with_it`] below.
+#[test]
+fn an_abandoned_room_leaves_no_live_doors() {
+    let (_board, engine, rooms) = one_obstacle_run();
+    let known: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    assert_eq!(known.len(), rooms.len());
+
+    // Every door reachable from a room the engine knows about must lead to a room it also knows
+    // about (or to an incomplete room, which is a live expansion frontier by construction).
+    let mut dangling = Vec::new();
+    for room in &known {
+        let room_ref = RoomRef::Complete(*room);
+        for door in engine.rooms.room_doors(room_ref).to_vec() {
+            let Some(other) = engine.rooms.door(door).and_then(|d| d.other_room(room_ref)) else {
+                continue;
+            };
+            if let RoomRef::Complete(other) = other
+                && !known.contains(&other)
+            {
+                dangling.push((*room, other));
+            }
+        }
+    }
+    assert!(
+        dangling.is_empty(),
+        "a live room holds a door onto a complete room the engine has abandoned: {dangling:?}"
+    );
+}
+
+/// Quirk #165's I1, **fixed: T8** — `completeExpansionRooms` **is** the set of complete rooms that
+/// exist, in both directions.
+///
+/// The register's title is literally this: the list and the search tree disagreed. The assertion
+/// is set equality — every room in the list is a room the tree holds, and every room the tree
+/// holds is in the list — which is what `addCompleteRoom` committing to both at once (`:531-535`)
+/// is supposed to guarantee and what an abandoned room broke.
+///
+/// The id half of the improvement column is here too: `SortedRoomNeighbours.calculate` draws its
+/// room id **once** and reuses it across the `edgeRemoved` retry, so a room that is thrown away no
+/// longer consumes one. On this run the ids used to read `[1, 2, 6, 7, 8, 9]` — three numbers
+/// burnt by retries — and now read `[1, 2, 3, 4, 5, 6]`.
+#[test]
+fn the_complete_room_list_is_exactly_the_rooms_in_the_tree() {
+    let (board, engine, rooms) = one_obstacle_run();
+    let listed: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    let in_tree: std::collections::BTreeSet<RoomId> = tree_rooms(&board, &engine);
+    assert_eq!(listed, in_tree, "the list and the tree hold the same rooms");
+    assert_eq!(listed.len(), rooms.len());
+
+    let ids: Vec<i32> = rooms
+        .iter()
+        .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
+        .collect();
+    assert_eq!(
+        ids,
+        vec![1, 2, 3, 4, 5, 6],
+        "a room thrown away by the edgeRemoved retry no longer burns an id (the jar's are \
+         [1, 2, 6, 7, 8, 9])"
+    );
+}
+
+/// Why `addCompleteRoom`'s `null` path uses `detach_all_doors` and not Java's `removeAllDoors`.
+///
+/// The register's improvement column asks for `removeAllDoors`, and it is the wrong tool: the
+/// room being abandoned is one `calculateDoors` has already wired to **newly built incomplete
+/// rooms**, which are the engine's expansion frontier, and `removeAllDoors` deletes an incomplete
+/// room on the far side of every door it walks (`AutorouteEngine.java:610-612`, recursing through
+/// `removeIncompleteExpansionRoom`). Measured: with `remove_all_doors` on that path, six of
+/// `tests/locator.rs`'s cases stop finding a connection at all. Unlinking removes the room's
+/// *reachability*, which is all the row asks for.
+#[test]
+fn an_abandoned_rooms_incomplete_neighbours_are_not_deleted_with_it() {
+    let mut store = fr_router::autoroute::expansion::ExpansionRoomStore::new();
+    let abandoned = RoomRef::Complete(store.new_complete_room(
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 100, 100))),
+        0,
+        1,
+    ));
+    let frontier = RoomRef::Incomplete(store.new_incomplete_room(
+        Some(TileShape::Box(IntBox::from_coords(100, 0, 200, 100))),
+        0,
+        None,
+    ));
+    let door = store.new_door(abandoned, frontier, 1);
+    store.add_door(abandoned, door);
+    store.add_door(frontier, door);
+
+    store.detach_all_doors(abandoned);
+    assert!(store.room_doors(abandoned).is_empty(), "unlinked");
+    assert!(store.room_doors(frontier).is_empty(), "on both sides");
+    let RoomRef::Incomplete(id) = frontier else {
+        unreachable!()
+    };
+    assert!(
+        store.incomplete_room(id).is_some(),
+        "the frontier room survives — `remove_all_doors` would have deleted it"
+    );
+}
+
+/// Quirk #166, **fixed: T8** — the rooms a partially failed `completeExpansionRoom` committed are
+/// returned, not replaced by an empty collection.
+///
+/// **Java wins over the task brief and over the controller's note**, both of which say the catch
+/// "returns the rooms completed so far". It does not: `result` is declared *inside* the `try`
+/// (`:422`) and the catch at `:520` returns `new ArrayList<>()` — a **fresh empty** collection,
+/// about rooms that exist, are in the search tree and have doors on them. `result` is hoisted out
+/// of the closure in the port and comes back from the catch, with the panic message beside it in
+/// [`fr_router::RouterError::PanickedWithRooms`].
+///
+/// **What this test can and cannot reach.** The two arms are distinguished and both are asserted:
+/// a run that commits rooms answers them, and a run that panics before committing anything
+/// answers `Panicked` with nothing. A panic *after* a commit is not constructible through the
+/// public API on any fixture here — every injection point available (a stale `IncompleteRoomId`,
+/// a dangling tree leaf) is reached by the **first** `completeShape`, before the commit loop
+/// starts — so the third row of the table is asserted at the boundary itself rather than through
+/// a fixture. That limitation is named rather than hidden; what is asserted is that the success
+/// arm's value **is** the committed set (which is only true because `result` is the caller's), and
+/// that the failure arm distinguishes "committed nothing" from "committed something".
+#[test]
+fn a_committed_room_survives_the_catch() {
+    let (mut board, mut engine, rooms) = one_obstacle_run();
+
+    // The success arm: what the method answered is exactly what it committed, to the list and to
+    // the tree. Before the fix this was also true — but only because nothing threw.
+    let listed: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    assert_eq!(
+        rooms
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>(),
+        listed,
+        "the returned rooms are the committed rooms"
+    );
+    assert_eq!(listed, tree_rooms(&board, &engine));
+
+    // The failure arm, with nothing committed: a stale `IncompleteRoomId` is where Java holds a
+    // reference the port cannot, and dereferencing it panics inside the boundary — before the
+    // commit loop is reached. `Panicked`, not `PanickedWithRooms`, and the rooms already in the
+    // database are untouched.
+    let before = complete_rooms(&engine);
+    let stale = engine.add_incomplete_expansion_room(
+        None,
+        0,
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 10, 10))),
+    );
+    engine.remove_incomplete_expansion_room(stale);
+    let answer = engine.complete_expansion_room(&mut board, stale);
+    assert!(
+        matches!(answer, Err(fr_router::RouterError::Panicked(_))),
+        "nothing was committed, so the boundary has no rooms to carry: {answer:?}"
+    );
+    assert!(
+        engine
+            .complete_expansion_room_or_committed(&mut board, stale)
+            .is_empty(),
+        "and the caller's reading of it is empty"
+    );
+    assert_eq!(
+        complete_rooms(&engine),
+        before,
+        "Java's side effects survive"
+    );
+    assert_eq!(rooms.len(), 6);
+}
+
 // =================================================================================================
 
 /// Probe mode 1: the bare board with one obstacle, one seed completed.
