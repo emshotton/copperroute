@@ -461,7 +461,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     // ------------------------------------------------------- 6. Communication object setup :312
     // `:313` — the KiCad reader builds its own transform; `LoadedBoard` (Plan 8 Task 3) is what
     // carries it to the writer, so it rides out on `BoardReadResult::Success`.
-    let coordinate_transform = CoordinateTransform::new(scale_factor, 0.0, 0.0);
+    // `scale_factor` is `f64::from(resolution)` and `resolution` is `java_max(1.0, …) as i32`, so
+    // it is finite and at least `1.0` and the constructor's #89 guard cannot fire. Answered, not
+    // unwrapped, because this function already has a failure channel.
+    let coordinate_transform = match CoordinateTransform::new(scale_factor, 0.0, 0.0) {
+        Ok(coordinate_transform) => coordinate_transform,
+        Err(error) => return parse_error("resolution", &error.to_string()),
+    };
     // `:314-319` — the two host fallbacks are the literal strings `"KiCad"` and `"v10.0"`. They
     // are **not** `PARITY_VERSION` (plan-8 ruling 5): they reach
     // `Communication.SpecctraParserInfo` and therefore the SES the port later writes.

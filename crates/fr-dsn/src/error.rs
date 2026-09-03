@@ -73,6 +73,20 @@ pub enum DsnError {
         item: ItemId,
     },
 
+    /// A [`CoordinateTransform`] was asked for with a scale factor that is zero, infinite or
+    /// `NaN`.
+    ///
+    /// Java builds `new CoordinateTransform(0, 0, 0)` without complaint whenever
+    /// `Structure.createBoard`'s overflow loop truncates its `int` scale factor to zero (quirks
+    /// #94/#89), and the read still reports `Success` while every written coordinate is
+    /// `Infinity`/`NaN`. Plan 9 Task 4 makes that state unrepresentable instead; this is the
+    /// loud refusal it becomes.
+    #[error("a coordinate transform needs a finite, non-zero scale factor, not {scale_factor}")]
+    InvalidScaleFactor {
+        /// The refused scale factor.
+        scale_factor: f64,
+    },
+
     /// `KiCadJsonReader.importSession` (KiCadJsonReader.java:757-855) threw.
     ///
     /// That method declares `throws Exception` and carries **no** `catch` of its own — unlike

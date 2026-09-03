@@ -15,7 +15,9 @@ use fr_dsn::parser::header::{
     write_resolution_scope, write_unit_scope,
 };
 use fr_dsn::parser::scope_parameter::{DsnReadOptions, ReadScopeParameter};
-use fr_dsn::{CoordinateTransform, DSN_RESERVED, DsnScanner, IdentifierType, IndentFileWriter};
+use fr_dsn::{
+    CoordinateTransform, DSN_RESERVED, DsnError, DsnScanner, IdentifierType, IndentFileWriter,
+};
 use fr_geometry::{FloatPoint, IntBox, IntPoint};
 
 fn identifier() -> IdentifierType {
@@ -47,22 +49,40 @@ fn scan(input: &str) -> DsnScanner {
 
 #[test]
 fn coordinate_transform_scales_both_ways() {
-    let transform = CoordinateTransform::new(10.0, 0.0, 0.0);
+    let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
     assert_eq!(transform.board_to_dsn(1000.0), 100.0);
     assert_eq!(transform.dsn_to_board(100.0), 1000.0);
 }
 
+/// fixed: T4 (#89) — replaces `coordinate_transform_with_a_zero_scale_factor_gives_infinity`.
+///
+/// Java's `value / scaleFactor` on `double`s is IEEE division, not the integer division that
+/// throws, so `new CoordinateTransform(0, 0, 0)` is built without complaint and every coordinate
+/// it writes afterwards is `Infinity` (or `NaN`, for a value of `0`). `Structure.createBoard`
+/// reaches that constructor for real — quirk #94, JVM-verified to report `Success` — so the state
+/// is not hypothetical. It is now unrepresentable: the constructor refuses a scale factor that is
+/// zero, infinite or `NaN`, and there is no other way to build the type.
 #[test]
-fn coordinate_transform_with_a_zero_scale_factor_gives_infinity() {
-    // Quirk row: Java's `value / scaleFactor` on doubles is IEEE division, not the integer
-    // division that throws — a zero scale factor yields +Inf, and the port reproduces it.
-    let transform = CoordinateTransform::new(0.0, 0.0, 0.0);
-    assert_eq!(transform.board_to_dsn(1000.0), f64::INFINITY);
+fn a_zero_scale_is_refused_loudly() {
+    for bad in [0.0_f64, -0.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+        let refused = CoordinateTransform::new(bad, 0.0, 0.0);
+        assert!(
+            matches!(refused, Err(DsnError::InvalidScaleFactor { .. })),
+            "a scale factor of {bad} must be refused, not divided by"
+        );
+    }
+    // The neighbouring legal values are still accepted, so the guard is a guard and not a wall.
+    for good in [1.0_f64, 0.1, -10.0, f64::MIN_POSITIVE] {
+        assert!(
+            CoordinateTransform::new(good, 0.0, 0.0).is_ok(),
+            "a scale factor of {good} is finite and non-zero"
+        );
+    }
 }
 
 #[test]
 fn coordinate_transform_offsets_points_by_the_base_but_not_relative_points() {
-    let transform = CoordinateTransform::new(10.0, 3.0, 5.0);
+    let transform = CoordinateTransform::new(10.0, 3.0, 5.0).expect("a valid scale");
     let point = FloatPoint::new(1000.0, 2000.0);
     assert_eq!(transform.board_to_dsn_point(&point), [103.0, 205.0]);
     assert_eq!(transform.board_to_dsn_rel_point(&point), [100.0, 200.0]);
@@ -78,7 +98,7 @@ fn coordinate_transform_offsets_points_by_the_base_but_not_relative_points() {
 
 #[test]
 fn coordinate_transform_box_and_points() {
-    let transform = CoordinateTransform::new(10.0, 1.0, 2.0);
+    let transform = CoordinateTransform::new(10.0, 1.0, 2.0).expect("a valid scale");
     let b = IntBox::new(IntPoint::new(0, 0), IntPoint::new(100, 200));
     assert_eq!(transform.board_to_dsn_box(&b), [1.0, 2.0, 11.0, 22.0]);
     assert_eq!(transform.board_to_dsn_rel_box(&b), [0.0, 0.0, 10.0, 20.0]);
@@ -95,7 +115,7 @@ fn coordinate_transform_box_and_points() {
 
 #[test]
 fn board_to_dsn_shape_maps_a_box_to_a_rectangle() {
-    let transform = CoordinateTransform::new(10.0, 0.0, 0.0);
+    let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
     let shape = fr_geometry::Shape::Tile(fr_geometry::TileShape::Box(IntBox::new(
         IntPoint::new(0, 0),
         IntPoint::new(100, 200),
@@ -157,14 +177,41 @@ fn circle_write_scope_and_write_scope_int() {
     );
 }
 
+/// fixed: T4 (#93) — replaces `circle_bounding_box_is_javas_doubled_box`.
+///
+/// Java bug (register row 93): `Circle.boundingBox` (Circle.java:56-64) spends the whole of
+/// `coor[0]` on each side, though `coor[0]` is a **diameter** everywhere else in the same class
+/// and at its only producer (Circle.java:40,48; CoordinateTransform.java:99).
+///
+/// Hand-computed, all four bounds, for a diameter-4 circle centred on `(10, 20)`:
+/// radius = 4 / 2 = 2, so `[10 - 2, 20 - 2, 10 + 2, 20 + 2] == [8, 18, 12, 22]`.
+/// Java's answer was `[6, 16, 14, 24]` — twice as wide and twice as tall.
+///
+/// The second case is the round trip that makes the reading unambiguous: a board `Circle` of
+/// radius 25 becomes, through `CoordinateTransform::board_to_dsn_shape`, a `DsnCircle` whose
+/// `coor[0]` is `2 * board_to_dsn(25)`, and the bounding box of *that* must be the box of the
+/// circle we started from.
 #[test]
-fn circle_bounding_box_is_javas_doubled_box() {
-    // Java bug (quirks row 93): Circle.boundingBox:56-64 spends the whole of `coor[0]` on each
-    // side, though `coor[0]` is a diameter everywhere else (Circle.java:40,48;
-    // CoordinateTransform.java:99). A diameter-4 circle at (10, 20) needs
-    // `[8, 18, 12, 22]`; Java answers twice that. Reproduced, not fixed.
+fn a_circle_bounding_box_is_not_twice_too_wide() {
     let circle = DsnCircle::new(DsnLayer::signal(), [4.0, 10.0, 20.0]);
-    assert_eq!(circle.bounding_box().coor, [6.0, 16.0, 14.0, 24.0]);
+    assert_eq!(circle.bounding_box().coor, [8.0, 18.0, 12.0, 22.0]);
+
+    // Round trip: radius 25 at (100, 200) on a scale factor of 10 is a DSN circle of diameter
+    // 5 centred on (10, 20), whose box is [10 - 2.5, 20 - 2.5, 10 + 2.5, 20 + 2.5].
+    let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
+    let board_circle =
+        fr_geometry::Shape::Circle(fr_geometry::Circle::new(IntPoint::new(100, 200), 25));
+    let Some(DsnShape::Circle(round_tripped)) =
+        transform.board_to_dsn_shape(&board_circle, DsnLayer::signal())
+    else {
+        panic!("a Circle becomes a Circle");
+    };
+    assert_eq!(round_tripped.coor, [5.0, 10.0, 20.0]);
+    assert_eq!(
+        round_tripped.bounding_box().coor,
+        [7.5, 17.5, 12.5, 22.5],
+        "the box of the circle the board actually has"
+    );
 }
 
 #[test]
