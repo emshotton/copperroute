@@ -154,11 +154,20 @@ impl Communication {
             .chars()
             .take_while(char::is_ascii_digit)
             .collect();
-        let version_number: i32 = digits.parse().expect(
-            "Communication.hostIsOldKicad: Integer.parseInt throws NumberFormatException on a \
-             digit run that overflows an int (Communication.java:79)",
-        );
-        version_number <= 5
+        // fixed: T6 (#67) — Java's `Integer.parseInt` (Communication.java:79) is unguarded, so a
+        // `host_version` whose first digit run overflows an int throws `NumberFormatException`
+        // out of a predicate **every board load calls** — and this one is KiCad-facing, where a
+        // long digit run in a version string is exactly the input to expect.
+        //
+        // Both halves of the register's suggested fix at once. The parse widens to `i64`, which
+        // is `Long.parseLong`, so every version a board could plausibly carry now answers
+        // truthfully instead of throwing; and a run too long even for that answers `false`, which
+        // is the "catch and answer false" half. The two agree on the meaning: the digits are
+        // non-empty and all ASCII, so the only way the parse can fail is overflow, and an
+        // overflowing version number is emphatically not `<= 5`.
+        digits
+            .parse::<i64>()
+            .is_ok_and(|version_number| version_number <= 5)
     }
 
     /// Port of `Communication.hostCadExists` (Communication.java:88-90).

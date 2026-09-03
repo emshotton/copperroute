@@ -1086,6 +1086,16 @@ impl TileShape {
     /// branch just below it.
     // Java bug: TileShape.java:694 passes 0 to LineSegment(Polyline, int), which requires >= 1.
     // totalized: that NullPointerException becomes Simplex::EMPTY.
+    //
+    // fixed: T6 (#24) — like #25, the guard was **already here** before Plan 9: the two-corner
+    // arm has always answered `Simplex::EMPTY` rather than building the three-`null` segment.
+    // Task 6 changes no code at this site; it adds this marker, the directed test
+    // `the_two_corner_branch_answers_an_empty_simplex` in `crates/fr-geometry/tests/polyline.rs`,
+    // and the register status. The register's suggested Java fix — "pass 1 instead of 0" — is
+    // *not* what the port does and deliberately so: `LineSegment(polyline, 1)` on a two-corner
+    // polyline would build a real segment out of a shape that has no area, where the zero-corner
+    // arm immediately below already answers `EMPTY`. Matching the neighbour is the more defensible
+    // reading, and it is the one the port has shipped since Plan 2.
     pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> TileShape {
         if angle == 0.0 {
             return self.clone();

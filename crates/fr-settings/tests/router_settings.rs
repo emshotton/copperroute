@@ -332,28 +332,64 @@ fn horizontal_vertical_and_trace_costs() {
     );
 }
 
-/// Quirk Q10 (`docs/java-quirks.md` #123): `getHorizontalTraceCosts` reads
-/// `scoring.preferredDirectionTraceCost[layer]` with
-/// no null guard (`:825-827`), unlike `getPreferredDirectionTraceCosts` two methods above, so a
-/// `scoring` with null arrays and a non-empty `layers` throws. JVM-confirmed:
-/// `E.getHorizontalTraceCosts(0) -> java.lang.NullPointerException`.
+/// Quirk Q10 (`docs/java-quirks.md` #123), inverted. `getHorizontalTraceCosts` read
+/// `scoring.preferredDirectionTraceCost[layer]` with no null guard (`:825-827`), unlike
+/// `getPreferredDirectionTraceCosts` two methods above, so a `scoring` with null arrays and a
+/// non-empty `layers` threw. JVM-confirmed: `E.getHorizontalTraceCosts(0) ->
+/// java.lang.NullPointerException` **while** `E.getPreferredDirectionTraceCosts(0) = 1.0` on the
+/// very same object — one pair of accessors answered, the other crashed.
+///
+/// Task 6 gave both the siblings' guard, so all four now agree.
 #[test]
-#[should_panic(expected = "RouterSettings.java:825-827")]
-fn horizontal_trace_costs_panics_without_the_array() {
+fn horizontal_and_vertical_trace_costs_are_guarded_without_the_array() {
     let mut settings = RouterSettings::new();
     settings.layers = Some(vec![LayerSettings::default(); 2]);
     settings.scoring = Some(ScoringSettings::default());
-    let _ = settings.get_horizontal_trace_costs(0);
+
+    // The two that used to throw, now answering the siblings' `1.0` (`:781-785`, `:806-810`).
+    assert_eq!(settings.get_horizontal_trace_costs(0), 1.0);
+    assert_eq!(settings.get_vertical_trace_costs(0), 1.0);
+    // The siblings, unchanged — this is the disagreement the fix removes.
+    assert_eq!(settings.get_preferred_direction_trace_costs(0), 1.0);
+    assert_eq!(settings.get_against_preferred_direction_trace_costs(0), 1.0);
+
+    // A `scoring` that is absent altogether takes the same guard: Java's `:825` dereferences
+    // `scoring` itself before either array.
+    let mut no_scoring = RouterSettings::new();
+    no_scoring.layers = Some(vec![LayerSettings::default(); 2]);
+    no_scoring.scoring = None;
+    assert_eq!(no_scoring.get_horizontal_trace_costs(0), 1.0);
+    assert_eq!(no_scoring.get_vertical_trace_costs(0), 1.0);
 }
 
-/// The same for `getVerticalTraceCosts` (`:869-871`).
+/// `getTraceCosts` (`:877-889`) guards only `preferredDirectionTraceCost` (`:878-880`), so a
+/// populated preferred array with an absent *undesired* one used to reach the unguarded
+/// dereference one level up and throw. The half-guard is Java's and is unchanged; what changed is
+/// that the entry it walks into now carries the siblings' `1.0`.
 #[test]
-#[should_panic(expected = "RouterSettings.java:869-871")]
-fn vertical_trace_costs_panics_without_the_array() {
+fn trace_costs_survives_a_half_populated_scoring() {
     let mut settings = RouterSettings::new();
     settings.layers = Some(vec![LayerSettings::default(); 2]);
-    settings.scoring = Some(ScoringSettings::default());
-    let _ = settings.get_vertical_trace_costs(0);
+    settings.scoring = Some(ScoringSettings {
+        preferred_direction_trace_cost: Some(vec![2.0, 3.0]),
+        undesired_direction_trace_cost: None,
+        ..ScoringSettings::default()
+    });
+
+    // Which array each accessor reads depends on the layer's preferred direction (`:821-826`),
+    // so pin that first — otherwise the four numbers below are unreadable.
+    assert!(!settings.get_preferred_direction_is_horizontal(0));
+    assert!(settings.get_preferred_direction_is_horizontal(1));
+
+    let costs = settings.get_trace_costs();
+    assert_eq!(costs.len(), 2);
+    // Layer 0 prefers *vertical*: `getVerticalTraceCosts` reads the populated preferred array and
+    // `getHorizontalTraceCosts` reaches for the absent undesired one — the throw, now `1.0`.
+    assert_eq!(costs[0].vertical, 2.0);
+    assert_eq!(costs[0].horizontal, 1.0);
+    // Layer 1 prefers horizontal, so the two swap.
+    assert_eq!(costs[1].horizontal, 3.0);
+    assert_eq!(costs[1].vertical, 1.0);
 }
 
 /// The out-of-range guard runs *before* the unguarded dereference, so out-of-range indices are
