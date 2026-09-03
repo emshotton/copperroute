@@ -36,11 +36,11 @@ use fr_board::prelude::*;
 use fr_router::RouterError;
 use fr_router::pipeline::batch_loop::{
     BOARD_RANK_LIMIT, STAGNATION_PASS_LIMIT, STOP_AT_PASS_MINIMUM, STOP_AT_PASS_MODULO,
-    final_best_board_swap, rank_limit_exceeded, restore_gate, stagnation_guard,
+    final_best_board_swap, rank_limit_exceeded, restore_gate, stagnation_guard, stagnation_step,
 };
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchLoopExit, BoardHistory, NamedAlgorithmType, NoopProgressSink,
-    ProgressSink, RouterBudget, RouterStop, RoutingEvent, TaskState,
+    ProgressSink, RouterBudget, RouterStop, RoutingEvent, StagnationStep, TaskState,
 };
 use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
@@ -765,41 +765,74 @@ fn the_rank_the_loop_tests_is_read_after_restore_boards_reorder() {
 // :422 with :509-517 — quirk #215
 // =================================================================================================
 
-/// **Quirk #215.** The fully-routed counter reset at `:509-517` is the `else` of `:422`'s
-/// `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting`, so it fires on passes **1-7** and
-/// never on pass 8 or later — the opposite of the rule its own comment (`:511-514`) describes.
+/// **Quirk #215, fixed in Plan 9 Task 9.** The fully-routed counter reset at `:509-517` was the
+/// `else` of `:422`'s `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting`, so it fired on
+/// passes **1-7** and never on pass 8 or later — the opposite of the rule its own comment
+/// (`:511-514`) describes. The consequence was that the pass-local counter was reset exactly while
+/// it was still incapable of firing (it needs [`STAGNATION_PASS_LIMIT`] increments, and the
+/// increments themselves only happen inside the `>= 8` arm), and was not reset once it could.
 ///
-/// The consequence is that the pass-local counter is reset exactly while it is still incapable of
-/// firing (it needs [`STAGNATION_PASS_LIMIT`] increments, and the increments themselves only
-/// happen inside the `>= 8` arm), and is not reset once it can.
+/// The fix moves it inside, as [`StagnationStep::BoardRouted`] — the third branch of `:425`'s
+/// score test. This test asserts the new placement from both sides: the reset is unreachable
+/// below pass 8 because the guard is, and from pass 8 on it is the branch a fully-routed board
+/// above the score threshold takes.
 #[test]
-fn the_stagnation_counter_resets_only_below_pass_eight_for_a_routed_board() {
-    // Passes 1-7: the guard is false, so the `else if` at `:509` is the arm that runs — and a
-    // fully-routed board resets the counter there.
+fn the_stagnation_counter_resets_only_from_pass_eight() {
+    // Passes 1-7: the guard is false, so **no** arm of the stagnation block runs at all — neither
+    // the increment nor the reset. That is the half Java got backwards.
     for pass in 1..STOP_AT_PASS_MINIMUM {
         assert!(
             !stagnation_guard(pass, true),
-            "pass {pass} takes :509's else-if, where a routed board resets the counter"
+            "pass {pass} reaches no arm of the stagnation block, reset included"
         );
     }
-    // Pass 8 and later: the guard is true, so the reset is unreachable and the counter keeps
-    // climbing however well the board is routed.
+    // Pass 8 and later: the guard is true, and `stagnation_step` is the three-way inside it.
     for pass in [STOP_AT_PASS_MINIMUM, 9, 12, 40] {
         assert!(
             stagnation_guard(pass, true),
-            "pass {pass} takes the stagnation arm, and :509's reset is out of reach"
+            "pass {pass} takes the stagnation arm, and :509's reset is now inside it"
         );
     }
     // The second conjunct: once `autoroutePass` answers false the guard is false again at *any*
-    // pass number, so the reset comes back — on a pass the loop is about to leave anyway.
+    // pass number — on a pass the loop is about to leave anyway.
     assert!(!stagnation_guard(40, false));
 
-    // The window the reset is protecting the counter from is ten passes wide (`:456`, `:486`),
-    // and `:429`'s increment is itself inside the `>= 8` arm — so the counter first reaches 10 at
-    // **pass 17**, and the global tracker (whose `passOfBestScore` the first pass >= 8 always
-    // sets) first fires at **pass 18**. Both are strictly inside the band where the reset no
-    // longer runs, which is what makes the misplacement a null operation rather than a bug with a
-    // visible effect at these pass counts.
+    // The three-way itself, in Java's own order.
+    //
+    // `:425` wins when the score rose past the threshold, whatever the incomplete count.
+    assert_eq!(
+        stagnation_step(10.0, 5.0, 3),
+        StagnationStep::ScoreImproved,
+        ":425 — boardScoreAfter > lastBestScore + 0.5"
+    );
+    assert_eq!(
+        stagnation_step(10.0, 5.0, 0),
+        StagnationStep::ScoreImproved,
+        ":425 is tested first, so an improving *and* completed pass reports the improvement"
+    );
+    // `:510`, now reachable: a fully-routed board above the score threshold that did **not**
+    // improve resets the counter instead of incrementing it.
+    assert_eq!(
+        stagnation_step(5.0, 5.0, 0),
+        StagnationStep::BoardRouted,
+        ":510 — incompleteCount == 0 && boardScoreAfter > 0.5"
+    );
+    // …and the case `:511-514`'s comment is explicitly about: a fully-routed board scoring **0**
+    // must NOT reset. Before the fix this rule was stated in a comment attached to an arm that
+    // could never run at a pass where the counter existed.
+    assert_eq!(
+        stagnation_step(0.0, 5.0, 0),
+        StagnationStep::Accumulate,
+        "a fully-routed board with score == 0 keeps accumulating until the global tracker fires"
+    );
+    // The score threshold is the same 0.5 the improvement test adds, and it is **strict**.
+    assert_eq!(stagnation_step(0.5, 5.0, 0), StagnationStep::Accumulate);
+    // An incomplete board that did not improve: the ordinary `:429` path.
+    assert_eq!(stagnation_step(5.0, 5.0, 3), StagnationStep::Accumulate);
+
+    // The window is ten passes wide (`:456`, `:486`) and `:429`'s increment is inside the `>= 8`
+    // arm, so the counter first reaches 10 at **pass 17** and the global tracker at **pass 18** —
+    // the band in which the reset used to be out of reach and now is not.
     assert_eq!(STAGNATION_PASS_LIMIT, 10, "BatchAutorouter.java:52");
 }
 

@@ -554,48 +554,67 @@ impl AutorouteBatchLoop {
                 progress.on_event(&RoutingEvent::BoardSnapshot { pass: current_pass });
             }
 
-            // :422 — the stagnation detector's guard, and the reason `:509`'s `else if` is a bug.
+            // :422 — the stagnation detector's guard, and the arm `:509`'s `else if` belongs
+            // inside.
             if stagnation_guard(current_pass, continue_autorouting) {
-                // :425-427 — the pass-local counter, which a board restore resets.
-                if board_score_after > last_best_score + STAGNATION_SCORE_THRESHOLD {
-                    consecutive_no_improvement_passes = 0;
-                    last_best_score = board_score_after;
-                } else {
-                    // :429.
-                    consecutive_no_improvement_passes += 1;
-
-                    // :435-454 — the one-shot fanout recovery. Task 10 could not reach it at
-                    // all (`is_fanout_enabled()` was asserted `false`); Task 12 removed that
-                    // stub, so `p7t9 router+fanout` is now on a path that can fire it.
-                    if fanout_recovery_fires(
-                        settings,
-                        fanout_recovery_applied,
-                        stat(board_statistics_after.connections.incomplete_count),
-                        consecutive_no_improvement_passes,
-                    ) {
-                        // :440 — `removeTails(NONE)`, i.e. fanout vias included.
-                        router.remove_tails(board, None, StopConnectionOption::None, &|| {
-                            stop.is_stop_requested()
-                        })?;
-                        // :441-443.
-                        board_statistics_after = BoardStatistics::new(board);
-                        board_score_after = board_statistics_after.normalized_score(scoring);
-                        last_best_score = board_score_after;
-                        // :444-445.
+                // :425-427, :509-517 and :429 as the one three-way they are — see
+                // [`stagnation_step`], and quirk #215 for why the middle branch used to sit
+                // outside this block.
+                match stagnation_step(
+                    board_score_after,
+                    last_best_score,
+                    stat(board_statistics_after.connections.incomplete_count),
+                ) {
+                    // :425-427 — the pass-local counter, which a board restore resets.
+                    StagnationStep::ScoreImproved => {
                         consecutive_no_improvement_passes = 0;
-                        fanout_recovery_applied = true;
-                        // :446 clears the dead hash set; not ported.
+                        last_best_score = board_score_after;
                     }
+                    // :515-516 — fixed: T9 (#215); this arm is `:509-517`, moved in.
+                    StagnationStep::BoardRouted => {
+                        consecutive_no_improvement_passes = 0;
+                        last_best_score = board_score_after;
+                    }
+                    StagnationStep::Accumulate => {
+                        // :429.
+                        consecutive_no_improvement_passes += 1;
 
-                    // :456-476.
-                    if consecutive_no_improvement_passes >= STAGNATION_PASS_LIMIT {
-                        // :457.
-                        let _report = build_unrouted_report(board);
-                        // :474-475.
-                        stop.request_stop_auto_router();
-                        // fixed: T9 (#214).
-                        exit = Some(BatchLoopExit::Stagnation);
-                        break;
+                        // :435-454 — the one-shot fanout recovery. Task 10 could not reach it at
+                        // all (`is_fanout_enabled()` was asserted `false`); Task 12 removed that
+                        // stub, so `p7t9 router+fanout` is now on a path that can fire it.
+                        if fanout_recovery_fires(
+                            settings,
+                            fanout_recovery_applied,
+                            stat(board_statistics_after.connections.incomplete_count),
+                            consecutive_no_improvement_passes,
+                        ) {
+                            // :440 — `removeTails(NONE)`, i.e. fanout vias included.
+                            router.remove_tails(
+                                board,
+                                None,
+                                StopConnectionOption::None,
+                                &|| stop.is_stop_requested(),
+                            )?;
+                            // :441-443.
+                            board_statistics_after = BoardStatistics::new(board);
+                            board_score_after = board_statistics_after.normalized_score(scoring);
+                            last_best_score = board_score_after;
+                            // :444-445.
+                            consecutive_no_improvement_passes = 0;
+                            fanout_recovery_applied = true;
+                            // :446 clears the dead hash set; not ported.
+                        }
+
+                        // :456-476.
+                        if consecutive_no_improvement_passes >= STAGNATION_PASS_LIMIT {
+                            // :457.
+                            let _report = build_unrouted_report(board);
+                            // :474-475.
+                            stop.request_stop_auto_router();
+                            // fixed: T9 (#214).
+                            exit = Some(BatchLoopExit::Stagnation);
+                            break;
+                        }
                     }
                 }
 
@@ -615,21 +634,12 @@ impl AutorouteBatchLoop {
                     break;
                 }
 
-            // Java bug: `AutorouteBatchLoop.java:509-517` — this `else if` hangs off `:422`'s
-            // `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting` guard, so it runs on
-            // passes **1-7** (and on any pass where the router has stopped making progress) and
-            // never on pass 8 or later. Its own comment at `:511-514` says the opposite: it
-            // describes a rule for "a fully-routed board with score == 0" that "must NOT reset the
-            // stagnation counter … it should keep accumulating until the global tracker fires",
-            // which only makes sense inside the `>= 8` arm. As written, a fully routed board
-            // resets the counter exactly when the counter cannot yet fire, and stops resetting it
-            // exactly when it can. Quirk #215.
-            } else if stat(board_statistics_after.connections.incomplete_count) == 0
-                && board_score_after > STAGNATION_SCORE_THRESHOLD
-            {
-                // :515-516.
-                consecutive_no_improvement_passes = 0;
-                last_best_score = board_score_after;
+                // Java bug: `AutorouteBatchLoop.java:509-517` — this `else if` hangs off `:422`'s `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting` guard, so it runs on passes **1-7** (and on any pass where the router has stopped making progress) and never on pass 8 or later, the opposite of its own comment at `:511-514` (quirk #215).
+                // fixed: T9 (#215) — the arm moved **into** the `>= 8` block above as
+                // [`StagnationStep::BoardRouted`]. Nothing is left here, so the `else` is gone rather
+                // than emptied: on passes 1-7 `:429`'s increment cannot have run, so the reset was a
+                // no-op on the counter, and `lastBestScore` is seeded to `-inf` and first read at
+                // `:425`, which is itself inside the arm.
             }
 
             // :520-522.
@@ -762,24 +772,80 @@ pub fn rank_limit_exceeded(rank: i32) -> bool {
 
 /// `:422` — the stagnation detector's guard, and therefore also the guard on `:509`'s `else if`.
 ///
-/// # Java bug (quirk #215): the `else if` is attached to the wrong arm
+/// # Java bug (quirk #215), **fixed in Plan 9 Task 9**: the `else if` was attached to the wrong
+/// arm
 ///
 /// `:509-517` resets the pass-local stagnation counter when the board is fully routed and scoring
-/// above the threshold. It is the `else` of **this** predicate, so it runs on passes **1-7** — and
-/// on any pass where `autoroutePass` has already answered `false` — and never on pass 8 or later.
-/// Its own comment (`:511-514`) describes the opposite rule: "A fully-routed board with score == 0
-/// … must NOT reset the stagnation counter; it should keep accumulating until the global tracker
-/// fires", which is a statement about the arm the code cannot reach. As written the reset happens
-/// exactly while the counter is still incapable of firing, and stops happening exactly when it
-/// becomes capable.
+/// above the threshold. In Java it is the `else` of **this** predicate, so it ran on passes
+/// **1-7** — and on any pass where `autoroutePass` had already answered `false` — and never on
+/// pass 8 or later. Its own comment (`:511-514`) describes the opposite rule: "A fully-routed
+/// board with score == 0 … must NOT reset the stagnation counter; it should keep accumulating
+/// until the global tracker fires", which is a statement about the arm the code could not reach.
+/// As Java writes it the reset happens exactly while the counter is still incapable of firing,
+/// and stops happening exactly when it becomes capable.
 ///
-/// Measured on the corpus: `scripts/differential/run.sh p7t9 <ecc83> 8 router-only` prints
-/// `ROUTED-RESET pass=1` and `ROUTED-RESET pass=2` and nothing after that.
-// Java bug: `AutorouteBatchLoop.java:422` with `:509-517` — the fully-routed counter reset hangs
-// off the `currentPass >= STOP_AT_PASS_MINIMUM` guard, so it fires on passes 1-7 only, the
-// opposite of the comment at `:511-514` (quirk #215).
+/// Measured on the corpus before the fix: `scripts/differential/run.sh p7t9 <ecc83> 8
+/// router-only` prints `ROUTED-RESET pass=1` and `ROUTED-RESET pass=2` and nothing after that.
+///
+// Java bug: `AutorouteBatchLoop.java:422` with `:509-517` — the fully-routed counter reset hangs off the `currentPass >= STOP_AT_PASS_MINIMUM` guard, so it fires on passes 1-7 only, the opposite of the comment at `:511-514` (quirk #215).
+// fixed: T9 (#215) — the reset is [`StagnationStep::BoardRouted`], the third branch of `:425`'s
+// score test and therefore **inside** this guard. The guard itself is untouched: it is still
+// `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting`, because that is where the counter
+// lives. This changes which passes reset the counter on every board that completes early, and
+// therefore where a long run stops.
 pub fn stagnation_guard(current_pass: i32, continue_autorouting: bool) -> bool {
     current_pass >= STOP_AT_PASS_MINIMUM && continue_autorouting
+}
+
+/// Which of the three arms of `:425`'s score test the stagnation block takes.
+///
+/// renamed: not a Java type — Java writes the three-way as an `if`/`else` at `:425-429` with the
+/// middle branch **misplaced** outside the enclosing `:422` guard (`:509-517`, quirk #215). It is
+/// an enum here for the reason the other four decisions in this file are functions: it is a
+/// decision over two `float`s and a count, and a test that had to route eight real passes to
+/// reach it would be a test of the router.
+///
+// fixed: T9 (#215) — [`StagnationStep::BoardRouted`] is `:509-517` in its proper place, as the
+// third branch of `:425`'s score test, which is what its own comment at `:511-514` describes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StagnationStep {
+    /// `:425-427` — the score rose past [`STAGNATION_SCORE_THRESHOLD`]. Reset the counter.
+    ScoreImproved,
+    /// `:509-517` — the board is **fully routed** and scoring above the threshold. Reset the
+    /// counter. Note the second conjunct: a fully-routed board scoring `0` takes
+    /// [`Self::Accumulate`] instead, which is exactly the rule `:511-514`'s comment states and
+    /// exactly the case Java's misplacement made unreachable.
+    BoardRouted,
+    /// `:429` — neither. The pass-local counter climbs towards [`STAGNATION_PASS_LIMIT`].
+    Accumulate,
+}
+
+/// `:425-427` + `:509-517` + `:429`, as the one three-way they are.
+///
+/// Only reachable inside [`stagnation_guard`], i.e. from pass [`STOP_AT_PASS_MINIMUM`] on and
+/// only while `autoroutePass` is still answering `true` — which is the whole of quirk #215's fix:
+/// Java evaluated the middle branch **only outside** that guard, on passes 1-7, where `:429`'s
+/// increment has never run and the counter it protects is always `0`.
+///
+/// The comparison order is Java's, and it matters: `:425`'s improvement test wins over the
+/// routed-board test, so a pass that both improved the score and completed the board reports
+/// [`StagnationStep::ScoreImproved`]. The two arms do the same two assignments, so the
+/// distinction is diagnostic rather than behavioural — but the port must not invent an order Java
+/// does not have.
+pub fn stagnation_step(
+    board_score_after: f32,
+    last_best_score: f32,
+    incomplete_count: usize,
+) -> StagnationStep {
+    // :425.
+    if board_score_after > last_best_score + STAGNATION_SCORE_THRESHOLD {
+        StagnationStep::ScoreImproved
+    // :510 — `incompleteCount == 0 && boardScoreAfter > 0.5`.
+    } else if incomplete_count == 0 && board_score_after > STAGNATION_SCORE_THRESHOLD {
+        StagnationStep::BoardRouted
+    } else {
+        StagnationStep::Accumulate
+    }
 }
 
 /// `:435-439` — the one-shot fanout recovery's four-term guard.
