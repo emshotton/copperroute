@@ -19,6 +19,14 @@
 //! `insertFanoutMicroNeckdown` live in `src/autoroute/path/inserter.rs`'s own `#[cfg(test)]`
 //! module, because those three methods are package-private or private in Java and an integration
 //! test is a different crate.
+//!
+//! **That includes R2's three (Plan 9 Task 2, register row #294).** The task brief names them
+//! against *this* file — `the_micro_neckdown_fallback_never_goes_below_the_rules_minimum`,
+//! `the_fallback_still_necks_down_when_the_class_is_above_the_minimum` and
+//! `the_guard_reads_the_rules_minimum_not_the_running_board_minimum` — and they carry those exact
+//! names in `src/autoroute/path/inserter.rs`'s test module instead, for the reason in the
+//! paragraph above: `insert_fanout_micro_neckdown` is private, and a test in this crate cannot
+//! call it. The alternative was widening a private method's visibility to satisfy a file name.
 
 #![allow(clippy::too_many_lines)]
 

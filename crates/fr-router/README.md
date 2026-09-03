@@ -2815,6 +2815,31 @@ register rather than a claim that the corpus clears it.
 plus three small classes that had been on the roster: `RoutingFailureLog` (161 loc),
 `ItemRouteResult` (145 loc, in full) and `AutorouteAirlineCalculator.calculateAirline`.
 
+### The micro-neckdown fanout fallback has a floor (Plan 9 Task 2, R2 — register row #294)
+
+`FoundConnectionInserter.insertFanoutMicroNeckdown` (`:455-523`) retries a failed
+2-point fanout insertion at a `LinkedHashSet` of up to five narrower half widths — the
+start pin's `getTraceNeckdownHalfwidth(layer)`, the end pin's, then `max(1, base*3/4)`,
+`max(1, base*3/5)` and `max(1, base/2)` of the class width — "keeping the same clearance
+class". Its loop guard (`:473-476`) is `candidateHalfWidth <= 0 || >= baseHalfWidth` **and
+nothing else**: no candidate is ever compared against the board's minimum track width.
+
+`benchmark/reports/java-regressions-2026-09.md` §"Regression 2" measures the cost. On any
+board whose net-class width *equals* its minimum width — very common — the fallback emits
+sub-minimum traces: `track_width` violations on 31/146 of the report's small-tier boards,
+DRC-clean 0.94 → 0.73 small and 0.93 → 0.40 large. Because a clean-pass metric weighs a
+violation like an unrouted net, the fallback turns "one net open" into "the board fails
+DRC", and on the small tier it recovers **no** connectivity at all. Its benefit is real
+only on large boards (fully-connected 0.17 → 0.33).
+
+So the port **guards rather than reverts**: a candidate below
+`BoardRules::get_min_trace_half_width()` is skipped. That is the minimum over the declared
+net-class widths (`BoardRules.java:94-96`) and **not** `Board::get_min_trace_half_width()`,
+which is a running minimum over the traces already inserted and would ratchet itself down
+the moment the fallback inserted one narrow trace. A class that already sits at the
+minimum skips the fallback entirely and the connection fails honestly; a class above the
+minimum still gets its neckdown.
+
 ### The work list is airline-sorted (Plan 9 Task 2, R1 — register row #293)
 
 Plan 7 rostered three more `AutorouteAirlineCalculator` methods `// not ported:` on
