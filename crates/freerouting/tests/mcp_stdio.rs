@@ -1514,7 +1514,15 @@ fn an_output_path_answers_a_path_and_no_body() {
 ///
 /// 1. `{"enabled": false}` outranks `DefaultSettings`' `true` — the auto-routing stage is skipped
 ///    and only the fanout pre-pass's traces survive;
-/// 2. `{"max_passes": 1}` outranks `DefaultSettings`' `9999` — a different, smaller board;
+/// 2. `{"max_passes": 1}` outranks `DefaultSettings`' `9999` — a different, smaller board.
+///    **On `Issue733-kicad_complex_hierarchy_input_design.json`, not on the splitter** (changed
+///    at Plan 9 Task 2, R1/#293): with the airline-first ordering restored the splitter converges
+///    in its **first** pass, so `max_passes = 1` and `max_passes = 9999` route it to the same
+///    bytes and the observation would have been vacuous. The hierarchy board still needs the
+///    later passes and answers **1** incomplete connection at one pass against **0** at the
+///    default — the original claim, on a board the pass loop is still working on. (`J2_reference`
+///    was measured and rejected for the same reason as the splitter: through this tool it now
+///    finishes in one pass too.);
 /// 3. `{"scoring": {"via_costs": 500}}` names **one** of `ScoringSettings`' eleven fields and the
 ///    run still completes with the full ratsnest routed. Had the sparse object replaced the tier,
 ///    `unrouted_net_penalty` and the rest would be `null` and the score the router steers by
@@ -1525,8 +1533,10 @@ fn a_sparse_settings_payload_composes_at_priority_70() {
         return;
     }
     let board = dsn("fixtures/Issue143-rpi_splitter.dsn");
+    // The multi-pass board observation 2 needs; see this test's doc.
+    let slow_board = dsn("fixtures/Issue733-kicad_complex_hierarchy_input_design.json");
     let mut pipes = Pipes::start();
-    let route = |pipes: &mut Pipes, id: i64, settings: Value| -> Value {
+    let route = |pipes: &mut Pipes, id: i64, board: &str, settings: Value| -> Value {
         let mut arguments = json!({"dsn_path": board});
         if !settings.is_null() {
             arguments["settings"] = settings;
@@ -1534,23 +1544,67 @@ fn a_sparse_settings_payload_composes_at_priority_70() {
         pipes.call(id, "route_board", arguments)
     };
 
-    let bare = route(&mut pipes, 1, Value::Null);
-    let router_off = route(&mut pipes, 2, json!({"enabled": false}));
-    let one_pass = route(&mut pipes, 3, json!({"max_passes": 1}));
-    let via_costs = route(&mut pipes, 4, json!({"scoring": {"via_costs": 500}}));
+    let bare = route(&mut pipes, 1, &board, Value::Null);
+    let router_off = route(&mut pipes, 2, &board, json!({"enabled": false}));
+    let slow_bare = route(&mut pipes, 3, &slow_board, Value::Null);
+    let one_pass = route(&mut pipes, 4, &slow_board, json!({"max_passes": 1}));
+    let via_costs = route(
+        &mut pipes,
+        5,
+        &board,
+        json!({"scoring": {"via_costs": 500}}),
+    );
     assert_eq!(pipes.finish(), 0);
 
     let wires = |v: &Value| v["ses_text"].as_str().unwrap().matches("(wire").count();
+    let length = |v: &Value| {
+        v["stats"]["traces"]["total_length_mm"]
+            .as_f64()
+            .expect("stats.traces.total_length_mm")
+    };
+    let vias = |v: &Value| {
+        v["stats"]["vias"]["total_count"]
+            .as_u64()
+            .expect("stats.vias.total_count")
+    };
     // 1. The bare run routes the board; the override stops the auto-routing stage.
+    //
+    // **Measured in copper, not in `(wire` records** (changed at Plan 9 Task 2, R1/#293). This
+    // read `wires(&bare) > wires(&router_off)`, and the wire *count* was only ever a proxy for
+    // "the auto-router did work on top of the fanout". With the airline-first ordering restored
+    // the proxy is false on this board and the claim behind it is not: the auto-router now
+    // replaces the pre-pass's short escape stubs with fewer, longer traces, so the fully routed
+    // board carries **16** wire records against the fanout-only board's **19** — while laying
+    // more copper (112.34967 mm against 111.18725 mm) and placing more vias (9 against 6).
+    // Length and via count say what the count was standing in for and cannot be satisfied by a
+    // board that merely rearranged its records.
     assert_eq!(bare["incompletes"], 0);
-    assert!(wires(&bare) > wires(&router_off));
+    assert!(
+        length(&bare) > length(&router_off),
+        "the auto-routing stage lays copper the fanout pre-pass did not: {} mm vs {} mm",
+        length(&bare),
+        length(&router_off)
+    );
+    assert!(
+        vias(&bare) > vias(&router_off),
+        "…and places vias the pre-pass did not: {} vs {}",
+        vias(&bare),
+        vias(&router_off)
+    );
     assert!(
         wires(&router_off) > 0,
         "the fanout pre-pass still ran; only the auto-router was disabled"
     );
-    // 2. One pass leaves the board incomplete where the default 9999 does not.
-    assert_ne!(one_pass["ses_text"], bare["ses_text"]);
-    assert_ne!(one_pass["incompletes"], bare["incompletes"]);
+    // 2. One pass leaves more of the board incomplete than the default 9999 does.
+    assert_ne!(one_pass["ses_text"], slow_bare["ses_text"]);
+    assert!(
+        one_pass["incompletes"].as_u64().expect("a count")
+            > slow_bare["incompletes"].as_u64().expect("a count"),
+        "max_passes = 1 must reach the pass loop: {} incomplete at one pass against {} at the \
+         default",
+        one_pass["incompletes"],
+        slow_bare["incompletes"]
+    );
     // 3. Naming one nested field did not null out the other ten.
     assert_eq!(via_costs["incompletes"], 0);
     assert_eq!(via_costs["timed_out"], false);

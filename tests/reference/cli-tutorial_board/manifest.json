@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-02T09:34:56.383740Z",
+  "generated_at": "2026-09-03T06:48:52.760662Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -61,7 +61,7 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 45.577,
+      "duration_seconds": 6.802,
       "passes_completed": 1
     },
     "optimizer": {}
@@ -148,9 +148,9 @@
   },
   "normalized_score": 0.0,
   "resource_usage": {
-    "cpu_time": 45.14401,
-    "max_memory": 23736.979,
-    "peak_memory": 471.48123,
+    "cpu_time": 0.0,
+    "max_memory": 0.0,
+    "peak_memory": 0.0,
     "io_read": 0.0,
     "io_written": 0.0
   },

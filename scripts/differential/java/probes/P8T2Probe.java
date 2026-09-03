@@ -33,7 +33,11 @@ import java.util.List;
  *
  * <p>A {@code BS} row's {@code src} column is one of {@code null} (a null {@code byte[]}),
  * {@code java:&lt;relative path&gt;} (a file under the Java checkout), {@code ref:&lt;relative
- * path&gt;} (a file under this repository's {@code tests/reference/}), {@code hex:&lt;hex&gt;} (a
+ * path&gt;} (a file under this repository's {@code tests/reference/}),
+ * {@code data:&lt;relative path&gt;} (a committed directed fixture under
+ * {@code crates/fr-core/tests/data/} — the eight {@code batch.ses} rows, migrated there by
+ * Plan 9 Task 2; see {@code crates/fr-core/tests/data/p8t2-batch-ses/README.md}),
+ * {@code hex:&lt;hex&gt;} (a
  * synthetic input the probe builds itself, so the Rust twin can rebuild exactly the same bytes) or
  * {@code synth:&lt;name&gt;} (a {@code BoardStatistics} assembled field by field rather than
  * scraped, which is how the Gson surface is pinned on the fields the scraper never writes).
@@ -205,9 +209,17 @@ public final class P8T2Probe {
       emitFile(stem[0] + "/unrouted.ses", FileFormat.SES, "ref:" + stem[0] + "/unrouted.ses",
           repoRoot.resolve("tests/reference/" + stem[0] + "/unrouted.ses"));
     }
+    // The eight `batch.ses` rows read **migrated** fixtures under `crates/fr-core/tests/data/`
+    // rather than the live `tests/reference/` tree, and that is ruling BT's pre-agreed
+    // resolution rather than a convenience. Plan 9 Task 2 regenerated the B family from the port
+    // (R1/#293 reorders the work list, R2/#294 stops the sub-minimum fanout traces), and the
+    // port writes 2.3.0's snake_case `host_cad` (quirk #92) — so the whole camelCase corpus left
+    // the live tree at once, and with it the only real-file exercise of quirks #248(b), #250 and
+    // #252 (row 31 below). These eight files are the **pre-lane-switch, jar-written** bytes,
+    // committed beside the transcript with their provenance; see that directory's README.
     for (String stem : BATCH_STEMS) {
-      emitFile(stem + "/batch.ses", FileFormat.SES, "ref:" + stem + "/batch.ses",
-          repoRoot.resolve("tests/reference/" + stem + "/batch.ses"));
+      emitFile(stem + "/batch.ses", FileFormat.SES, "data:p8t2-batch-ses/" + stem + ".ses",
+          repoRoot.resolve("crates/fr-core/tests/data/p8t2-batch-ses/" + stem + ".ses"));
     }
 
     // A DSN read as SES and a SES read as DSN: the constructor trusts its `format` argument and
@@ -225,8 +237,8 @@ public final class P8T2Probe {
     // Reachable only by handing a `.ses` to the DSN branch, which no Freerouting code path does.
     // The 2.3.0-written `unrouted.ses` above is snake_case and scrapes nothing.
     emitFile("router-dac2020-bm01/batch.ses AS DSN", FileFormat.DSN,
-        "ref:router-dac2020-bm01/batch.ses",
-        repoRoot.resolve("tests/reference/router-dac2020-bm01/batch.ses"));
+        "data:p8t2-batch-ses/router-dac2020-bm01.ses",
+        repoRoot.resolve("crates/fr-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses"));
 
     // ---- the guards and the formats with no branch -------------------------------------------
     emitNull("null data", FileFormat.DSN);

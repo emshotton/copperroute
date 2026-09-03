@@ -196,8 +196,10 @@ fn main() {
         rows.push(file_row(
             &format!("{stem}/batch.ses"),
             FileFormat::Ses,
-            &format!("ref:{stem}/batch.ses"),
-            &repo_root.join(format!("tests/reference/{stem}/batch.ses")),
+            // The migrated, pre-lane-switch jar-written copies (ruling BT, Plan 9 Task 2); see
+            // `crates/fr-core/tests/data/p8t2-batch-ses/README.md` and the Java twin's note.
+            &format!("data:p8t2-batch-ses/{stem}.ses"),
+            &repo_root.join(format!("crates/fr-core/tests/data/p8t2-batch-ses/{stem}.ses")),
         ));
     }
     rows.push(file_row(
@@ -219,8 +221,8 @@ fn main() {
     rows.push(file_row(
         "router-dac2020-bm01/batch.ses AS DSN",
         FileFormat::Dsn,
-        "ref:router-dac2020-bm01/batch.ses",
-        &repo_root.join("tests/reference/router-dac2020-bm01/batch.ses"),
+        "data:p8t2-batch-ses/router-dac2020-bm01.ses",
+        &repo_root.join("crates/fr-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses"),
     ));
 
     // ---- the guards and the formats with no branch --------------------------------------------

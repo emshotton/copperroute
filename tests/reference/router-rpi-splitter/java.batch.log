@@ -1,5 +1,5 @@
+rust-binary <workspace>/scripts/differential/rust/target/release/p7t9
 HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue143-rpi_splitter.dsn maxPasses=8 mode=batch fanout=on optimizer=on
-java-version 25.0.4.1
 ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.ses -mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true
 SETTINGS maxPasses=8 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=true optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
 BOARD-PREPARED classes=7 outlineClass=2 holeClearance=0
@@ -7,9 +7,8 @@ BOARD-PREPARED classes=7 outlineClass=2 holeClearance=0
 EVENT algorithm=ROUTER state=STARTED
 EVENT algorithm=ROUTER state=RUNNING
 EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
 EVENT algorithm=ROUTER state=FINISHED
 EVENT algorithm=OPTIMIZER state=STARTED
 EVENT algorithm=OPTIMIZER state=FINISHED
-RESULT passesRun=3 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=58 traces=16 vias=9 incompletes=0 traceLength="1.1125049576002464E7"
+RESULT passesRun=2 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=58 traces=16 vias=9 incompletes=0 traceLength="1.1234967365546612E7"
 [board] (elided — the board is batch.ses)

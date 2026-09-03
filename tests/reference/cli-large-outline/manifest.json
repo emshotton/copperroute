@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-02T09:41:28.837601Z",
+  "generated_at": "2026-09-03T06:49:03.461108Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -61,7 +61,7 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 25.705,
+      "duration_seconds": 4.186,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -89,8 +89,8 @@
     },
     "items": {
       "total_count": 3732,
-      "trace_count": 486,
-      "via_count": 162,
+      "trace_count": 483,
+      "via_count": 165,
       "conduction_area_count": 0,
       "drill_item_count": 0,
       "pin_count": 346,
@@ -109,28 +109,28 @@
     },
     "connections": {
       "maximum_count": 240,
-      "incomplete_count": 12
+      "incomplete_count": 15
     },
     "traces": {
-      "total_count": 486,
-      "total_segment_count": 1020,
-      "total_length": 48124.76,
-      "total_length_mm": 4812.476,
-      "total_weighted_length": 1.5646162E8,
-      "average_length": 99.02214,
-      "total_vertical_length": 7957.102,
-      "total_horizontal_length": 24913.992,
-      "total_angled_length": 8780.599
+      "total_count": 483,
+      "total_segment_count": 963,
+      "total_length": 45708.04,
+      "total_length_mm": 4570.804,
+      "total_weighted_length": 1.4843411E8,
+      "average_length": 94.63362,
+      "total_vertical_length": 7923.846,
+      "total_horizontal_length": 21117.771,
+      "total_angled_length": 8659.457
     },
     "bends": {
-      "total_count": 534,
-      "90_degree_count": 2,
-      "45_degree_count": 532,
+      "total_count": 480,
+      "90_degree_count": 0,
+      "45_degree_count": 480,
       "other_angle_count": 0
     },
     "vias": {
-      "total_count": 162,
-      "through_hole_count": 162,
+      "total_count": 165,
+      "through_hole_count": 165,
       "blind_count": 0,
       "buried_count": 0
     },
@@ -142,15 +142,15 @@
     },
     "fanout": {
       "total_smd_pins": 201,
-      "pins_to_escape": 58,
-      "escaped_count": 192
+      "pins_to_escape": 84,
+      "escaped_count": 193
     }
   },
-  "normalized_score": 823.31805,
+  "normalized_score": 810.81866,
   "resource_usage": {
-    "cpu_time": 24.453224,
-    "max_memory": 127667.99,
-    "peak_memory": 578.56104,
+    "cpu_time": 0.0,
+    "max_memory": 0.0,
+    "peak_memory": 0.0,
     "io_read": 0.0,
     "io_written": 0.0
   },

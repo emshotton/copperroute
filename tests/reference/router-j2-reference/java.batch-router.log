@@ -1,5 +1,5 @@
+rust-binary <workspace>/scripts/differential/rust/target/release/p7t9
 HEADER jar=<FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar bytes=63288652 mtime=1788294927489 fixture=Issue026-J2_reference.dsn maxPasses=99 mode=batch-router fanout=on optimizer=off
-java-version 25.0.4.1
 ARGV -de <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn -do <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.ses -mp 99 --router.fanout.enabled=true --router.optimizer.enabled=false
 SETTINGS maxPasses=99 maxItems=2147483647 runRouter=true runFanout=true runOptimizer=false optMaxPasses=100 optMaxItems=2147483647 fanoutMsPerPin=10000 tracePullTightAccuracy=500
 BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
@@ -8,24 +8,119 @@ INIT anyRoutable=true
 STATE STARTED
 INITIAL-UNROUTED 33
 FANOUT enabled=true smdPins=53
-FANOUT-SUMMARY completedPassCount=4 isTimedOut=false escapeTotalSmdPins=51 escapedCount=39 escapedPercentage=76.47058823529412 fanoutTimedOut=false items=192 traces=90 vias=21 incompletes=15 traceLength="1601794.6223576097"
-ROUTER-ENABLED true unrouted=15
+FANOUT-SUMMARY completedPassCount=3 isTimedOut=false escapeTotalSmdPins=51 escapedCount=36 escapedPercentage=70.58823529411765 fanoutTimedOut=false items=163 traces=62 vias=20 incompletes=16 traceLength="1490563.913771533"
+ROUTER-ENABLED true unrouted=16
 STATE RUNNING pass=1
-HIST-ADD pass=1 scoreBefore=545.4442 size=1 maxScore=545.4442
-PASS-RET pass=1 continueAutorouting=true scoreAfter=999.9879
-RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=545.4442 fires=false
-PASS pass=1 score=999.9879 incompletes=0 violations=0 vias=21 traces=104
-ROUTED-RESET pass=1
-STAGNATION pass=1 counter=0 lastBest=999.9879 globalBest=-Infinity passOfBest=0
+HIST-ADD pass=1 scoreBefore=515.14325 size=1 maxScore=515.14325
+PASS-RET pass=1 continueAutorouting=true scoreAfter=909.08075
+RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=515.14325 fires=false
+PASS pass=1 score=909.08075 incompletes=3 violations=0 vias=19 traces=75
+STAGNATION pass=1 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
 STATE RUNNING pass=2
-HIST-ADD pass=2 scoreBefore=999.9879 size=2 maxScore=999.9879
-PASS-RET pass=2 continueAutorouting=false scoreAfter=999.9879
-RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=999.9879 fires=false
-PASS pass=2 score=999.9879 incompletes=0 violations=0 vias=21 traces=104
-ROUTED-RESET pass=2
-STAGNATION pass=2 counter=0 lastBest=999.9879 globalBest=-Infinity passOfBest=0
-FINAL-SWAP currentFinalScore=999.9879 bestHistoryScore=999.9879 swapped=false
-TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=false stopAutoRouterRequested=false fires=true
-RESULT state=FINISHED passesRun=2 continueRouting=true stopRequested=false stopAutoRouterRequested=false
-TRANSCRIPT returned=true items=196 traces=99 vias=16 incompletes=0 traceLength="3778838.818962076"
+HIST-ADD pass=2 scoreBefore=909.08075 size=2 maxScore=909.08075
+PASS-RET pass=2 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=909.08075 fires=false
+PASS pass=2 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=2 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=3
+HIST-ADD pass=3 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=3 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=3 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=3 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=3 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=4
+HIST-ADD pass=4 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=4 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=4 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=4 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=4 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=5
+HIST-ADD pass=5 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=5 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=5 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=5 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=5 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=6
+HIST-ADD pass=6 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=6 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=6 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=6 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=6 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=7
+HIST-ADD pass=7 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=7 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=7 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=7 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=7 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
+STATE RUNNING pass=8
+HIST-ADD pass=8 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=8 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=8 sizeGate=false modGate=true maxScore=939.3824 fires=false
+PASS pass=8 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=8 counter=0 lastBest=939.3824 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=9
+HIST-ADD pass=9 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=9 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=9 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=9 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=9 counter=1 lastBest=939.3824 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=10
+HIST-ADD pass=10 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=10 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=10 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=10 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+STAGNATION pass=10 counter=2 lastBest=939.3824 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=11
+HIST-ADD pass=11 scoreBefore=939.3824 size=3 maxScore=939.3824
+PASS-RET pass=11 continueAutorouting=true scoreAfter=939.3824
+RESTORE-GATE pass=11 sizeGate=false modGate=false maxScore=939.3824 fires=false
+PASS pass=11 score=939.3824 incompletes=2 violations=0 vias=20 traces=78
+FANOUT-RECOVERY pass=11
+STAGNATION pass=11 counter=0 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=12
+HIST-ADD pass=12 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=12 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=12 sizeGate=false modGate=true maxScore=939.3837 fires=false
+PASS pass=12 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION pass=12 counter=1 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=13
+HIST-ADD pass=13 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=13 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=13 sizeGate=false modGate=false maxScore=939.3837 fires=false
+PASS pass=13 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION pass=13 counter=2 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=14
+HIST-ADD pass=14 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=14 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=14 sizeGate=false modGate=false maxScore=939.3837 fires=false
+PASS pass=14 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION pass=14 counter=3 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=15
+HIST-ADD pass=15 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=15 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=15 sizeGate=false modGate=false maxScore=939.3837 fires=false
+PASS pass=15 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION pass=15 counter=4 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=16
+HIST-ADD pass=16 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=16 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=16 sizeGate=false modGate=true maxScore=939.3837 fires=false
+PASS pass=16 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION pass=16 counter=5 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=17
+HIST-ADD pass=17 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=17 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=17 sizeGate=false modGate=false maxScore=939.3837 fires=false
+PASS pass=17 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION pass=17 counter=6 lastBest=939.3837 globalBest=939.3824 passOfBest=8
+STATE RUNNING pass=18
+HIST-ADD pass=18 scoreBefore=939.3837 size=4 maxScore=939.3837
+PASS-RET pass=18 continueAutorouting=true scoreAfter=939.3837
+RESTORE-GATE pass=18 sizeGate=false modGate=false maxScore=939.3837 fires=false
+PASS pass=18 score=939.3837 incompletes=2 violations=0 vias=16 traces=75
+STAGNATION-GLOBAL-BREAK pass=18 passOfBestScore=8 incompleteAtBest=2
+FINAL-SWAP currentFinalScore=939.3837 bestHistoryScore=939.3837 swapped=false
+TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=true stopAutoRouterRequested=true fires=false
+RESULT state=CANCELLED passesRun=18 continueRouting=false stopRequested=false stopAutoRouterRequested=true
+TRANSCRIPT returned=false items=172 traces=75 vias=16 incompletes=2 traceLength="3705053.7566574444"
 [board] (elided — the board is batch.ses)
