@@ -75,10 +75,7 @@ pub fn read_board(
         Ok(text) => text,
         Err(error) => return BoardReadResult::IoError(error),
     };
-    let scanner = match DsnScanner::new(&text) {
-        Ok(scanner) => scanner,
-        Err(error) => return parse_error(&error),
-    };
+    let scanner = DsnScanner::new(&text);
     let mut p = ReadScopeParameter::new(scanner, options);
     p.id_generator = id_generator.unwrap_or_default();
 
@@ -170,10 +167,7 @@ pub fn read_metadata(input: impl Read) -> BoardReadResult {
         Ok(text) => text,
         Err(error) => return BoardReadResult::IoError(error),
     };
-    let scanner = match DsnScanner::new(&text) {
-        Ok(scanner) => scanner,
-        Err(error) => return parse_error(&error),
-    };
+    let scanner = DsnScanner::new(&text);
     let mut p = ReadScopeParameter::new(scanner, &options);
 
     // DsnReader.java:194-214 — the same three-token check as `readBoard`.

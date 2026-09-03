@@ -28,7 +28,7 @@ use fr_dsn::parser::scope_parameter::{
 /// Reads a whole `(pcb …)` file the way a later task's `DsnReader::read_board` will.
 fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> T) -> T {
     let options = DsnReadOptions::default();
-    let scanner = DsnScanner::new(text).expect("fits the lexer buffer");
+    let scanner = DsnScanner::new(text);
     let mut p = ReadScopeParameter::new(scanner, &options);
     assert_eq!(p.scanner.next_token().expect("scan"), Some(Token::Open));
     assert_eq!(

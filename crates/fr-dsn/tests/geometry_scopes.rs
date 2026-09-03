@@ -42,7 +42,7 @@ fn pcb_layer() -> DsnLayer {
 }
 
 fn scan(input: &str) -> DsnScanner {
-    DsnScanner::new(input).expect("fits the buffer")
+    DsnScanner::new(input)
 }
 
 // ---------------------------------------------------------------- CoordinateTransform

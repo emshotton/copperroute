@@ -86,7 +86,7 @@ pub fn read(
     ct: &CoordinateTransform,
 ) -> Result<SesImportSummary, DsnError> {
     let text = read_to_string(input)?;
-    let scanner = DsnScanner::new(&text)?;
+    let scanner = DsnScanner::new(&text);
 
     // SES files use the DSN-to-board scale factor: dsn_to_board(1) / resolution
     // (SesReader.java:71-72). See the module docs for why `ct` is a parameter here.
