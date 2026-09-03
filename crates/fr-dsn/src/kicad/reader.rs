@@ -111,6 +111,30 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         }
     };
 
+    // ------------------------------------------------- 1a. The DTO boundary's null validation
+    //
+    // fixed: T7 (#282, #283, #287) — a `null` where the board needs a name, and a `null` array
+    // element, are refused **here**, at the boundary, with a diagnostic naming the file, the
+    // section and the object. Java stores each of them verbatim and dies hundreds of lines later
+    // inside a JDK collection (or, for the array element, never — the pad silently loses a
+    // layer); [`KiCadBoardJson::validate`] carries the table of where each one landed.
+    //
+    // It runs before section 2 rather than at each use site because that is what deletes the
+    // three null side-tables the port needed to reproduce the crashes: `board_layer_names`'
+    // `Option`, `net_name_is_null` and `package_pin_names`. The cost is that a document with
+    // **both** a null name and one of Java's unguarded null-list dereferences now reports the
+    // name; a null *list* on its own is untouched, because this walks a list's contents and never
+    // asserts its presence.
+    if let Err(malformed) = board_json.validate() {
+        return parse_error(
+            malformed.section,
+            &format!(
+                "the KiCad board JSON file is malformed in its `{}` section: {} {}",
+                malformed.section, malformed.object, malformed.problem
+            ),
+        );
+    }
+
     // ------------------------------------------------------- 2. Set up units and scaling :88
     // `:89-94`. Every arm that is neither `MIL` nor `UM` — including Gson's `null` for an absent
     // key, an explicit `null` and an unrecognised constant name — lands on `MM`.
@@ -145,19 +169,20 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         json_layers.len()
     };
     let mut board_layers: Vec<Layer> = Vec::with_capacity(layer_count);
-    // `Layer.name` is a nullable Java `String` and `fr_board::Layer::name` is a `String`, so the
-    // line below totalizes a JSON `"name": null` to `""` (quirk #282). **Section 9 turns on
-    // exactly that lost bit**: `:545` dereferences `boardLayers[li].name` unconditionally, so a
-    // board with a null layer name and a pad that names any layer is a `ParseError` in Java and
-    // would be a silent `""` comparison here. This vector carries the bit forward; nothing else
-    // reads it.
-    let mut board_layer_names: Vec<Option<String>> = Vec::with_capacity(layer_count);
+    // The names, kept alongside because section 9 compares against them and `board_layers` is
+    // moved into the [`LayerStructure`] below.
+    //
+    // fixed: T7 (#282) — this was a `Vec<Option<String>>` carrying the bit `Layer::new`'s
+    // `String` dropped, because `:545` dereferences `boardLayers[li].name` and a JSON
+    // `"name": null` killed it there. Section 1a refuses that document, so the name is a
+    // `String` and every `null`-name arm below is gone with it.
+    let mut board_layer_names: Vec<String> = Vec::with_capacity(layer_count);
     if json_layers.is_empty() {
         // `:108-109`.
         board_layers.push(Layer::new("F.Cu", true));
         board_layers.push(Layer::new("B.Cu", true));
-        board_layer_names.push(Some("F.Cu".to_string()));
-        board_layer_names.push(Some("B.Cu".to_string()));
+        board_layer_names.push("F.Cu".to_string());
+        board_layer_names.push("B.Cu".to_string());
     } else {
         for layer_json in json_layers {
             // `:113` — `!"plane".equalsIgnoreCase(type)`, so a `null` type is a *signal* layer.
@@ -165,16 +190,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 .r#type
                 .as_deref()
                 .is_some_and(|kind| equals_ignore_case("plane", kind));
-            // totalized: `Layer.name` is a Java `String` and takes `layerJson.name` verbatim,
-            // `null` included (`:114`); `fr_board::Layer::new` needs a `String`, so a JSON
-            // `"name": null` becomes `""` here. Java only crashes on it later, in **section 9**
-            // (`:545`, `boardLayers[li].name.equalsIgnoreCase(layerName)`), and only for a board
-            // that also has pads; a KiCad export always writes the key. Quirk #282.
-            board_layers.push(Layer::new(
-                layer_json.name.clone().unwrap_or_default(),
-                is_signal,
-            ));
-            board_layer_names.push(layer_json.name.clone());
+            // `:114`. Section 1a has already refused a `null` name.
+            let name = layer_json
+                .name
+                .clone()
+                .expect("section 1a refused a null layer name");
+            board_layers.push(Layer::new(name.clone(), is_signal));
+            board_layer_names.push(name);
         }
     }
     let layer_structure = LayerStructure::new(board_layers);
@@ -198,10 +220,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     clearance_class_names.push("null".to_string());
     clearance_class_names.push("default".to_string());
     for net_class in &additional_net_classes {
-        // totalized: as `Layer::new` above — **quirk #282**. Java stores the `null` name in the
-        // matrix row and NPEs in `ClearanceMatrix.getNo` the next time a custom clearance rule is
-        // looked up, because `row[i].name.equalsIgnoreCase(...)` dereferences the *row's* name.
-        clearance_class_names.push(net_class.name.clone().unwrap_or_default());
+        // `:131`. Section 1a has already refused a `null` name, which Java stored in the matrix
+        // row and then NPEd on in `ClearanceMatrix.getNo` at the next custom clearance rule.
+        clearance_class_names.push(
+            net_class
+                .name
+                .clone()
+                .expect("section 1a refused a null net-class name"),
+        );
     }
 
     // `:134-135`.
@@ -454,9 +480,25 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         bounding_box = outline.bounding_box().offset(1000.0);
     }
 
-    // `:310` — Default clearance class. `OutlineJson.clearance` ("outline/edge clearance class
-    // mapping", KiCadBoardJson.java:90) is never consulted.
-    let outline_clearance_no = 1;
+    // `:310` — "Default clearance class".
+    //
+    // fixed: T7 (#281) — Java hard-codes the literal `1` here and never consults
+    // `OutlineJson.clearance`, whose own declaration calls it the "outline/edge clearance class
+    // mapping" (KiCadBoardJson.java:90). **Wired, not dropped**: the field is a real design rule,
+    // the writer already round-trips it, and survey §9.1 forbids turning the DTO into the
+    // reader's private struct.
+    //
+    // What it maps to is the clearance **class**, which is what `outlineClearanceNo` is — and
+    // the mapping is by value, because that is what [`crate::kicad::writer`] writes back:
+    // `clearance_matrix.get_value(class, class, 0, false) / scale_factor`, in user units. So a
+    // board that came out of the port's own writer finds its class again, and one whose
+    // `clearance` names no class keeps Java's `1`. Ascending order makes `"default"` win a tie.
+    //
+    // The clearance matrix is complete by now: section 4 (`:122-163`) fills every class before
+    // section 5 builds the outline.
+    let outline_clearance_no = board_json.outline.as_ref().map_or(1, |outline| {
+        outline_clearance_class(&clearance_matrix, outline.clearance, scale_factor)
+    });
 
     // ------------------------------------------------------- 6. Communication object setup :312
     // `:313` — the KiCad reader builds its own transform; `LoadedBoard` (Plan 8 Task 3) is what
@@ -521,8 +563,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     board.rules.create_default_net_class();
     let default_net_class = board.rules.get_default_net_class();
     // `:343` — a `HashMap<String, Integer>`, whose **iteration** order `resolveNetClassIndex`
-    // depends on (`:972-976`). [`JavaStringMap`] reproduces it.
-    let mut net_class_index_map = JavaStringMap::new();
+    // depends on (`:972-976`) when two class names differ only in case.
+    //
+    // fixed: T7 (#280) — declaration order, the same one-word `LinkedHashMap` fix the referenced
+    // nets get below. This is the second and last consumer of the `HashMap` bucket-layout
+    // reconstruction, so the whole emulation dies with it.
+    let mut net_class_index_map: Vec<(String, usize)> = Vec::new();
     // `:344-347`.
     if let Some(kicad_default) = kicad_default_net_class {
         apply_kicad_net_class_parameters(
@@ -538,7 +584,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     // `:349-356`.
     for (i, net_class) in additional_net_classes.iter().enumerate() {
         let cl_no = i + 2;
-        let name = net_class.name.clone().unwrap_or_default();
+        let name = net_class
+            .name
+            .clone()
+            .expect("section 1a refused a null net-class name");
         let board_net_class = board
             .rules
             .net_classes
@@ -551,7 +600,16 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             scale_factor,
             cl_no,
         );
-        net_class_index_map.put(name, cl_no);
+        // `:355` — `HashMap.put` replaces the value of an existing key and leaves the entry where
+        // it is, which is what this reproduces on a `Vec`.
+        if let Some(entry) = net_class_index_map
+            .iter_mut()
+            .find(|(existing, _)| *existing == name)
+        {
+            entry.1 = cl_no;
+        } else {
+            net_class_index_map.push((name, cl_no));
+        }
     }
 
     // Create via rules and register via padstacks so that the router is allowed to use vias
@@ -642,7 +700,11 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         let via_shape_arr = vec![Some(via_shape(radius)); layer_count];
 
         // `:429-431`.
-        let via_name = format!("via_{}", net_class.name.clone().unwrap_or_default());
+        let net_class_name = net_class
+            .name
+            .clone()
+            .expect("section 1a refused a null net-class name");
+        let via_name = format!("via_{net_class_name}");
         let via_padstack =
             board
                 .library
@@ -661,7 +723,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         board.rules.via_infos.add(via_info);
 
         // `:439-442`.
-        let mut via_rule = ViaRule::new(net_class.name.clone().unwrap_or_default());
+        let mut via_rule = ViaRule::new(net_class_name);
         via_rule.append_via(registered_via_info(&board.rules, &via_name));
         board.rules.via_rules.push(via_rule.clone());
         board
@@ -678,14 +740,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     let Some(json_nets) = board_json.nets.as_ref() else {
         return npe("java.util.List.size()", "boardJson.nets");
     };
-    // As `board_layer_names` above: `fr_board::Net::name` is a `String` where Java's is nullable,
-    // and `Nets.get(String, int)` (Nets.java:43-45) dereferences the **stored** name of every net
-    // it walks past. A JSON `"name": null` therefore kills the first lookup that reaches it — at
-    // `:491` below if anything references a net at all, otherwise in section 9 at `:639`. Both
-    // measured; quirk #282, whose "crashes in section 9" claim Task 9 was handed to verify.
-    let mut net_name_is_null: Vec<bool> = Vec::with_capacity(json_nets.len());
+    // fixed: T7 (#282) — a `net_name_is_null: Vec<bool>` used to ride along here, one entry per
+    // net, because `Nets.get(String, int)` (Nets.java:43-45) dereferences the **stored** name of
+    // every net it walks past and a JSON `"name": null` therefore killed the first lookup that
+    // reached it. Section 1a refuses that document, so [`java_nets_get`] is total and the side
+    // table is gone.
     for net_json in json_nets {
-        net_name_is_null.push(net_json.name.is_none());
         // `:448`. Java's `Nets.add` assigns `rules.getDefaultNetClass()` inside the `Net`
         // constructor (Net.java:50) through the board back-pointer `BasicBoard`'s constructor
         // set; this port passes it, and `:450-451` immediately overwrites it anyway.
@@ -696,7 +756,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         // `netClassIndexMap`, which nothing in this loop writes.
         let cl_no = resolve_net_class_index(&net_class_index_map, net_json.className.as_deref());
         let net = board.rules.nets.add(
-            net_json.name.clone().unwrap_or_default(),
+            net_json
+                .name
+                .clone()
+                .expect("section 1a refused a null net name"),
             1,
             net_json.containsPlane,
             NetClassId(0),
@@ -711,11 +774,17 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     // list (`:454-496`).
     //
     // `:456`'s `java.util.HashSet<String>` is iterated at `:490`, and the order it hands the
-    // names back **is** the order `Nets.add` numbers them in — so the net numbers of every
-    // auto-registered net are a function of `String.hashCode` and of nothing else. Quirk #280:
-    // [`java_hash_iteration_order`] reproduces `java.util.HashMap`'s bucket layout so the
-    // numbering matches.
-    let mut referenced_nets = JavaStringSet::new();
+    // names back **is** the order `Nets.add` numbers them in — so in Java the net numbers of
+    // every auto-registered net are a function of `String.hashCode` and of nothing else.
+    // Deterministic, but arbitrary: `Issue649`'s thirteen pad nets come back in nothing like the
+    // order the file mentions them, and that numbering is what every `netNumbers[]`, every DSN
+    // `(net …)` scope and every SES wire carries.
+    //
+    // fixed: T7 (#280) — **first-reference order**, i.e. Java's own one-word fix
+    // (`LinkedHashSet`). [`ReferencedNets`] is the insertion-ordered set that replaces the
+    // `HashMap` bucket-layout reconstruction; the reconstruction and its treeification hazard are
+    // dead below, awaiting Task 24.
+    let mut referenced_nets = ReferencedNets::new();
     if let Some(components) = board_json.components.as_ref() {
         for component in components {
             if let Some(pads) = component.pads.as_ref() {
@@ -762,21 +831,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     // from a declared net registers nothing.
     for net_name in referenced_nets.iteration_order() {
         // `:491`. [`java_nets_get`] rather than `Nets::get_by_name_and_subnet` because Java's
-        // loop dereferences `currentNet.name` **before** comparing, so a declared net whose name
-        // was `null` throws here rather than simply failing to match (quirk #282).
-        let existing = match java_nets_get(&board.rules.nets, &net_name_is_null, Some(net_name), 1)
-        {
-            Ok(existing) => existing,
-            Err(error) => return npe(error.invoked, error.receiver),
-        };
-        if existing.is_none() {
+        // loop is `equalsIgnoreCase` on the *stored* name and stops at the first match.
+        if java_nets_get(&board.rules.nets, Some(net_name), 1).is_none() {
             let net = board
                 .rules
                 .nets
                 .add(net_name.to_string(), 1, false, NetClassId(0));
             // Fallback to default class (default net class is at index 0)
             net.set_class(NetClassId(0));
-            net_name_is_null.push(false);
         }
     }
 
@@ -813,13 +875,18 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     // insert sites ([`java_drill_item_tile_shape_count`]), which is the reported finding quirk
     // #286 records — not by catching a Rust panic.
 
-    // Java's `Package.Pin.name` is a nullable `String` and `fr_board::PackagePin::name` is a
-    // `String`, so a pad with no `name` key is totalized to `""` (quirk #282's family). Recovery
-    // boundary 1 above turns on exactly that lost bit, because `arePackagePinsIdentical`
-    // dereferences the **existing** package's pin name. This side table keeps it, indexed by
-    // `Package.no - 1`; section 9 is the only thing that ever adds a package to this board, so it
-    // stays in step with `board.library.packages` by construction.
-    let mut package_pin_names: Vec<Vec<Option<String>>> = Vec::new();
+    // fixed: T7 (#282, #285) — a `package_pin_names: Vec<Vec<Option<String>>>` used to ride along
+    // here, indexed by `Package.no - 1`, because Java's `Package.Pin.name` is nullable where
+    // `fr_board::PackagePin::name` is a `String` and recovery boundary 1 turned on exactly that
+    // lost bit. Section 1a refuses a `null` pad name, so the side table and the boundary are both
+    // gone: see [`are_package_pins_identical`], which no longer has a throw to make.
+    //
+    // fixed: T7 (#284) — the padstack a pad is given is keyed on its **shapes and its drill**,
+    // not on its generated name. This is that key: one entry per padstack section 9 created, in
+    // creation order. Section 8's via padstacks are deliberately not in it — a through-hole pad
+    // whose box happens to match `defaultVia`'s must not become a via padstack, which is the one
+    // merge Java's name lookup could never make and this one could.
+    let mut pad_padstacks: Vec<(Vec<Option<Shape>>, bool, PadstackId)> = Vec::new();
 
     // `:503` dereferences `boardJson.components` with no null check.
     let Some(json_components) = board_json.components.as_ref() else {
@@ -832,7 +899,6 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         };
         // `:505`.
         let mut package_pins: Vec<PackagePin> = Vec::new();
-        let mut package_pin_name_arr: Vec<Option<String>> = Vec::new();
         for pad in pads {
             // `:508` — one slot per board layer, all null until `:555-557` fills a range.
             let mut shapes: Vec<Option<Shape>> = vec![None; layer_count];
@@ -909,23 +975,16 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 let mut lowest_idx = layer_count - 1;
                 let mut highest_idx = 0usize;
                 for layer_name in pad_layers {
+                    // fixed: T7 (#282, #283) — `:545` is
+                    // `boardLayers[li].name.equalsIgnoreCase(layerName)`: it dereferenced the
+                    // board layer's name (a `null` there was a crash 430 lines from the JSON that
+                    // caused it) and tolerated a `null` *argument* (a `null` element of
+                    // `pad.layers` silently cost the pad a layer). Section 1a refuses both.
+                    let layer_name = layer_name
+                        .as_deref()
+                        .expect("section 1a refused a null pad-layer element");
                     for (li, board_layer_name) in board_layer_names.iter().enumerate() {
-                        // `:545` — **quirk #282's crash site**, and the line Task 8 handed this
-                        // task to verify. `boardLayers[li].name.equalsIgnoreCase(layerName)`
-                        // dereferences the *board layer's* name, which Gson leaves `null` for a
-                        // JSON `"name": null`. Measured: stem `layer-null-name-with-pads` is a
-                        // `ParseError` here, and `layer-null-name-no-pad-layers` — the same board
-                        // with an empty pad `layers` list, which never enters this branch — loads.
-                        let Some(board_layer_name) = board_layer_name.as_deref() else {
-                            return npe("String.equalsIgnoreCase(String)", "boardLayers[li].name");
-                        };
-                        // A `null` *element* of `pad.layers` is `equalsIgnoreCase(null)`, i.e.
-                        // false, not a throw — quirk #283, which is why the DTO's element type is
-                        // `Option<String>`.
-                        if layer_name
-                            .as_deref()
-                            .is_some_and(|name| equals_ignore_case(board_layer_name, name))
-                        {
+                        if equals_ignore_case(board_layer_name, layer_name) {
                             lowest_idx = lowest_idx.min(li);
                             highest_idx = highest_idx.max(li);
                         }
@@ -947,33 +1006,63 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 
             // `:559`.
             let is_drillable = pad.drill > 0.0;
-            // `:560`.
-            let padstack_name =
-                match get_descriptive_padstack_name(pad, &board_layer_names, layer_count) {
-                    Ok(name) => name,
-                    // `:746` over whatever `:857-890` threw.
-                    Err(message) => {
-                        return parse_error(
-                            "json_payload",
-                            &format!("Exception occurred: {message}"),
+            // `:561-564`. Java looks the padstack up by the name `:560` generated, through
+            // `Padstacks.get(String)`, which is case-**insensitive** (Padstacks.java:25-32) — and
+            // that name encodes neither the layer span nor the drill flag, so the **second** pad
+            // to generate a name silently inherited the first pad's shapes and its
+            // `attachAllowed`. Quirk #284, and it masked #286 besides: a pad whose `layers` match
+            // nothing borrowed a valid padstack instead of producing the all-`null` one that
+            // crashes.
+            //
+            // fixed: T7 (#284) — the identity is the **shape array** (which carries the layer set:
+            // a layer this pad is not on has no shape) and the **drill**. The generated name is a
+            // display artefact from here on, and [`unique_padstack_name`] keeps it unique so the
+            // SES it reaches still names one padstack each.
+            let padstack = match pad_padstacks
+                .iter()
+                .find(|(existing, drillable, _)| *drillable == is_drillable && *existing == shapes)
+            {
+                Some((_, _, id)) => *id,
+                None => {
+                    // fixed: T7 (#286) — an all-`null` shape array is refused **here**, before it
+                    // becomes a padstack. Java built it, and `DrillItem.tileShapeCount` then
+                    // answered `toLayer - fromLayer + 1` = `-layerCount`, so `insertPin`
+                    // allocated `new TileShape[-2]` and reported the bare number:
+                    // `Exception occurred: -2`.
+                    if shapes.iter().all(Option::is_none) {
+                        return no_shape_on_any_layer(
+                            "components",
+                            &format!(
+                                "pad `{}` of component `{}`",
+                                pad.name.as_deref().unwrap_or_default(),
+                                component.reference.as_deref().unwrap_or_default()
+                            ),
+                            "its `layers` list names no layer this board has",
                         );
                     }
-                };
-            // `:561-564`. `Padstacks.get(String)` is case-**insensitive**
-            // (core/library/Padstacks.java:25-32),
-            // and the name encodes neither the layer span nor the drill flag — quirk #284, which
-            // is why a second pad can silently inherit the first one's shapes.
-            let existing_padstack = board
-                .library
-                .padstacks
-                .get_by_name(&padstack_name)
-                .map(|padstack| PadstackId(padstack.no));
-            let padstack = match existing_padstack {
-                Some(id) => id,
-                None => board
-                    .library
-                    .padstacks
-                    .add(padstack_name, shapes, is_drillable, false),
+                    // `:560`.
+                    let padstack_name =
+                        match get_descriptive_padstack_name(pad, &board_layer_names, layer_count) {
+                            Ok(name) => name,
+                            // `:746` over whatever `:857-890` threw.
+                            Err(message) => {
+                                return parse_error(
+                                    "json_payload",
+                                    &format!("Exception occurred: {message}"),
+                                );
+                            }
+                        };
+                    let padstack_name =
+                        unique_padstack_name(&board.library.padstacks, padstack_name);
+                    let id = board.library.padstacks.add(
+                        padstack_name,
+                        shapes.clone(),
+                        is_drillable,
+                        false,
+                    );
+                    pad_padstacks.push((shapes, is_drillable, id));
+                    id
+                }
             };
             // `:565-568` — `pad.offset` is unguarded, and its Y is negated as every other
             // coordinate in this reader is.
@@ -984,15 +1073,16 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 java_round_to_int(offset.x * scale_factor),
                 java_round_to_int(-offset.y * scale_factor),
             ));
-            // `:569`. `Package.Pin.name` takes `pad.name` verbatim, `null` included; see
-            // `package_pin_names` above for the bit this line drops.
+            // `:569`. Section 1a has already refused a `null` `pad.name`, so `Package.Pin.name`
+            // is a name and not a totalized `""`.
             package_pins.push(PackagePin::new(
-                pad.name.clone().unwrap_or_default(),
+                pad.name
+                    .clone()
+                    .expect("section 1a refused a null pad name"),
                 padstack,
                 relative_loc,
                 0.0,
             ));
-            package_pin_name_arr.push(pad.name.clone());
         }
 
         // `:572` — anything that is not `B.Cu` (case-insensitively) is the front, `null` layer
@@ -1030,7 +1120,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             if !names_match {
                 // `:585-596`. Java passes `null` for the outline, the outline widths and the
                 // closed flags, and three empty `Keepout[]`s.
-                let added = board.library.packages.add(
+                break board.library.packages.add(
                     test_name,
                     package_pins.clone(),
                     None,
@@ -1041,52 +1131,24 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     Vec::new(),
                     is_front,
                 );
-                package_pin_names.push(package_pin_name_arr.clone());
-                break added;
             }
             let existing_no = existing.expect("names_match implies a package was found");
             // `:598` inside `:582`'s `try`.
-            match are_package_pins_identical(
-                board.library.packages.get(existing_no),
-                &package_pin_names[existing_no - 1],
-                &package_pins,
-                &package_pin_name_arr,
-            ) {
+            //
+            // fixed: T7 (#285) — `:603-617`'s `catch (Exception e)` is gone with the throw it
+            // caught. It was never a component skip: it logged "package deduplication error,
+            // falling back" and added a **duplicate** package under the raw `comp.footprint`, so
+            // a board whose pads had no `name` silently gained one package per component (three
+            // components, three packages all called `NONAME`). The one throw it could catch was
+            // `arePackagePinsIdentical:908`'s `pin1.name.equals(...)` over a `null` pin name,
+            // which section 1a now refuses at the DTO boundary.
+            if are_package_pins_identical(board.library.packages.get(existing_no), &package_pins) {
                 // `:599-601`.
-                Ok(true) => break existing_no,
-                Ok(false) => {}
-                // `:603-617` — recovery boundary 1. not ported: `:604`'s `FRLogger.error`.
-                // The fallback name is `comp.footprint` *raw* — **not** `basePackageName`, so an
-                // empty-string footprint produces a package literally named `""` here where the
-                // ladder above would have called it `"Package"`.
-                Err(_) => {
-                    let fallback_name = component
-                        .footprint
-                        .clone()
-                        .unwrap_or_else(|| "Package".to_string());
-                    let added = board.library.packages.add(
-                        fallback_name,
-                        package_pins.clone(),
-                        None,
-                        None,
-                        None,
-                        Vec::new(),
-                        Vec::new(),
-                        Vec::new(),
-                        is_front,
-                    );
-                    package_pin_names.push(package_pin_name_arr.clone());
-                    break added;
-                }
+                break existing_no;
             }
             // `:618`.
             suffix += 1;
         };
-        debug_assert_eq!(
-            package_pin_names.len(),
-            board.library.packages.count(),
-            "the nullable-pin-name side table must stay indexed by Package.no - 1"
-        );
 
         // `:620-623` — `comp.position` is unguarded.
         let Some(position) = component.position.as_ref() else {
@@ -1107,14 +1169,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         // therefore dies inside the *container*, before anything reads the component — measured on
         // both `comp-null-reference-single` (one component is enough) and
         // `comp-null-reference-second`. The port has no undo list at all (global constraints), so
-        // the throw is reproduced here rather than arising.
-        let Some(reference) = component.reference.as_deref() else {
-            return parse_error(
-                "json_payload",
-                "Exception occurred: Cannot invoke \"String.compareToIgnoreCase(String)\" \
-                 because \"this.name\" is null",
-            );
-        };
+        // the throw had to be reproduced here rather than arising.
+        //
+        // fixed: T7 (#287) — section 1a refuses the document at the DTO boundary instead, naming
+        // `components[i].reference`, so there is no throw left to reproduce.
+        let reference = component
+            .reference
+            .as_deref()
+            .expect("section 1a refused a null component reference");
         let board_comp_id = board
             .components
             .add(
@@ -1132,40 +1194,18 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         // Insert actual pin items mapped to nets (`:637-644`).
         for (pad_index, pad) in pads.iter().enumerate() {
             // `:639-641`.
-            let target_net = match java_nets_get(
-                &board.rules.nets,
-                &net_name_is_null,
-                pad.netName.as_deref(),
-                1,
-            ) {
-                Ok(target) => target,
-                Err(error) => return npe(error.invoked, error.receiver),
-            };
-            let net_number = target_net.unwrap_or(0);
+            let net_number =
+                java_nets_get(&board.rules.nets, pad.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
                 Vec::new()
             };
-            // Quirk #286: `:642`'s `insertPin` reaches `DrillItem.tileShapeCount` through the
-            // search tree, and a package pin whose padstack has no shape on any layer makes that
-            // count negative. The pin's padstack is the one on the **component's** package, which
-            // is not always the array built above (the ladder may have reused an existing
-            // package), so it is read back the way `Pin.getPadstack` does.
-            let pin_padstack = board
-                .library
-                .packages
-                .get(component_package)
-                .get_pin(i32::try_from(pad_index).unwrap_or(i32::MAX))
-                .map(|pin| pin.padstack_no);
-            if let Some(pin_padstack) = pin_padstack
-                && let Some(padstack) = board.library.padstacks.get(pin_padstack)
-            {
-                let span = java_drill_item_tile_shape_count(padstack);
-                if span < 0 {
-                    return parse_error("json_payload", &format!("Exception occurred: {span}"));
-                }
-            }
+            // fixed: T7 (#286) — `:642`'s `insertPin` reached `DrillItem.tileShapeCount` through
+            // the search tree, and a package pin whose padstack had no shape on any layer made
+            // that count negative, so the port had to test the span here before inserting. No
+            // such padstack can exist any more: the refusal is at the point of **creation**, in
+            // the pad loop above, where the pad that caused it can still be named.
             // `:642-643`.
             board.insert_pin(
                 board_comp_id,
@@ -1184,16 +1224,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     };
     for zone in json_zones {
         // `:649-651`.
-        let target_net = match java_nets_get(
-            &board.rules.nets,
-            &net_name_is_null,
-            zone.netName.as_deref(),
-            1,
-        ) {
-            Ok(target) => target,
-            Err(error) => return npe(error.invoked, error.receiver),
-        };
-        let net_number = target_net.unwrap_or(0);
+        let net_number = java_nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -1251,16 +1282,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     };
     for trace in json_traces {
         // `:668-670`.
-        let target_net = match java_nets_get(
-            &board.rules.nets,
-            &net_name_is_null,
-            trace.netName.as_deref(),
-            1,
-        ) {
-            Ok(target) => target,
-            Err(error) => return npe(error.invoked, error.receiver),
-        };
-        let net_number = target_net.unwrap_or(0);
+        let net_number = java_nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -1314,16 +1336,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     };
     for via in json_vias {
         // `:685-687`.
-        let target_net = match java_nets_get(
-            &board.rules.nets,
-            &net_name_is_null,
-            via.netName.as_deref(),
-            1,
-        ) {
-            Ok(target) => target,
-            Err(error) => return npe(error.invoked, error.receiver),
-        };
-        let net_number = target_net.unwrap_or(0);
+        let net_number = java_nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -1379,7 +1392,24 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             java_format_fixed(via.diameter * 1000.0, 0),
             java_format_fixed(via.drill * 1000.0, 0)
         );
-        // `:712-715`.
+        // fixed: T7 (#286) — `startLayerIndex > endLayerIndex` leaves every shape null,
+        // `Padstack.fromLayer()` answers `layerCount` and `toLayer()` answers `-1`, and
+        // `DrillItem.tileShapeCount` is then `-layerCount`; Java built the padstack, put the via
+        // in the item list, and threw `NegativeArraySizeException` from inside the search-tree
+        // update — leaving a via that is in the item list and in no search tree. The refusal is
+        // moved ahead of the padstack, so nothing half-inserted can exist.
+        if shapes.iter().all(Option::is_none) {
+            return no_shape_on_any_layer(
+                "vias",
+                &format!("via `{via_padstack_name}`"),
+                "its layer span is empty",
+            );
+        }
+        // `:712-715`. The via padstack is still keyed on its **name**, and deliberately so: unlike
+        // the pad name quirk #284 is about, `Via[<start>-<end>]_<dia>:<drill>_um` encodes the
+        // layer span and the drill, so two vias share a name exactly when they share a padstack.
+        // `Padstack::drill_radius` parses that name for its `<dia>:<drill>` fragment, which is
+        // the second reason not to touch it.
         let existing_padstack = board
             .library
             .padstacks
@@ -1392,17 +1422,6 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 .padstacks
                 .add(via_padstack_name, shapes, true, false),
         };
-        // Quirk #286, as at the pin site above: `startLayerIndex > endLayerIndex` leaves every
-        // shape null, `Padstack.fromLayer()` answers `layerCount` and `toLayer()` answers `-1`,
-        // and `DrillItem.tileShapeCount` is then `-layerCount`. `new TileShape[-2]` throws
-        // `NegativeArraySizeException`, whose `getMessage()` is the bare number. Measured, stem
-        // `via-start-gt-end`.
-        if let Some(padstack) = board.library.padstacks.get(via_padstack) {
-            let span = java_drill_item_tile_shape_count(padstack);
-            if span < 0 {
-                return parse_error("json_payload", &format!("Exception occurred: {span}"));
-            }
-        }
         // `:716`. **The checked seam**, not the unchecked wrapper: `BasicBoard.insertVia` walks
         // `fromLayer..toLayer` calling `splitTraces` -> `PolylineTrace.split`, the machinery quirk
         // #76 does not terminate in, and Java has no catch around it. Task 3 gave the DSN reader
@@ -1524,13 +1543,30 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 /// reader: a shared helper would have to carry the four differences as flags, and the third one
 /// is the difference between a refusal and a silent skip.
 ///
+/// # It does **not** run [`KiCadBoardJson::validate`], and that is deliberate
+///
+/// `read_board`'s section 1a refuses a `null` name at the DTO boundary (fixed: T7 (#282, #283,
+/// #287)). This function shares the DTO and does not share the validation, because the two read
+/// different halves of it: a session document is traces, vias and conduction areas, and
+/// `importSession` never touches `layers`, `netClasses`, `nets` or `components` at all. Validating
+/// them here would refuse a document for a `null` in a section this function does not read — a new
+/// rejection with no fix behind it, and one no `readBoard` quirk describes. The one group-7 fix
+/// reachable from this path is #286's, and it **is** applied, at the via site below.
+///
+/// The nullable fields this function *does* read are the ones where `null` means absent —
+/// `zone.netName`, `trace.netName`, `via.netName` — which [`java_nets_get`] answers as "no net",
+/// exactly as `readBoard` does.
+///
 /// # Errors
 ///
 /// [`DsnError::KicadSession`] for every point Java throws: an empty or unparseable payload
-/// (`:759-761`), a `null` `zone.polygon` / `tr.points` / `vj.position`, an empty zone polygon
-/// (`new PolygonShape(new Point[0])` reads `corners[0]`), and quirk #286's negative
-/// `DrillItem.tileShapeCount`. Plus the port-only `insert_via_checked` failure, which Java's
-/// `insertVia` cannot produce and which the caller's `catch (Exception)` would have caught.
+/// (`:759-761`), a `null` `zone.polygon` / `tr.points` / `vj.position`, and an empty zone polygon
+/// (`new PolygonShape(new Point[0])` reads `corners[0]`). Plus two the port answers where Java
+/// does not: **fixed: T7 (#286)** — a via whose layer span is empty, refused before its padstack
+/// exists, where Java built the padstack, put the via in the item list and threw
+/// `NegativeArraySizeException` from inside the search-tree update; and the port-only
+/// `insert_via_checked` failure, which Java's `insertVia` cannot produce and which the caller's
+/// `catch (Exception)` would have caught.
 pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     // `:758` — `GsonProvider.GSON.fromJson(reader, KiCadBoardJson.class)`.
     //
@@ -1594,24 +1630,14 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     }
     let scale_factor = f64::from(resolution);
 
-    // Every net on the board came from a reader that cannot store a `null` name (`readBoard`
-    // crashes on one long before this, and the DSN reader has no nullable name at all), so
-    // `java_nets_get`'s null-name side table is empty here — see its own docs.
-    let net_name_is_null: Vec<bool> = Vec::new();
     let layer_count = board.get_layer_count();
 
     // ── 1. Conduction Areas (`:776-794`) ────────────────────────────────────────────────────
     if let Some(zones) = board_json.conductionAreas.as_ref() {
         for zone in zones {
             // `:779-781`.
-            let net_number = java_nets_get(
-                &board.rules.nets,
-                &net_name_is_null,
-                zone.netName.as_deref(),
-                1,
-            )
-            .map_err(session_npe)?
-            .unwrap_or(0);
+            let net_number =
+                java_nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1620,10 +1646,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
             // `:783-789` — `zone.polygon` is dereferenced unguarded.
             let Some(polygon) = zone.polygon.as_ref() else {
-                return Err(session_npe(JavaNpe {
-                    invoked: "java.util.List.size()",
-                    receiver: "zone.polygon",
-                }));
+                return Err(session_npe("java.util.List.size()", "zone.polygon"));
             };
             let zone_points: Vec<Point> = polygon
                 .iter()
@@ -1661,14 +1684,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     if let Some(traces) = board_json.traces.as_ref() {
         for trace in traces {
             // `:799-801`.
-            let net_number = java_nets_get(
-                &board.rules.nets,
-                &net_name_is_null,
-                trace.netName.as_deref(),
-                1,
-            )
-            .map_err(session_npe)?
-            .unwrap_or(0);
+            let net_number =
+                java_nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1679,10 +1696,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
             // `:804-810` — `tr.points` is dereferenced unguarded.
             let Some(points) = trace.points.as_ref() else {
-                return Err(session_npe(JavaNpe {
-                    invoked: "java.util.List.size()",
-                    receiver: "tr.points",
-                }));
+                return Err(session_npe("java.util.List.size()", "tr.points"));
             };
             let trace_points: Vec<Point> = points
                 .iter()
@@ -1719,14 +1733,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     if let Some(vias) = board_json.vias.as_ref() {
         for via in vias {
             // `:820-822`.
-            let net_number = java_nets_get(
-                &board.rules.nets,
-                &net_name_is_null,
-                via.netName.as_deref(),
-                1,
-            )
-            .map_err(session_npe)?
-            .unwrap_or(0);
+            let net_number =
+                java_nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1788,6 +1796,16 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 java_format_fixed(via.diameter * 1000.0, 0),
                 java_format_fixed(via.drill * 1000.0, 0)
             );
+            // fixed: T7 (#286) — as at `readBoard:716`: an all-`null` padstack made
+            // `DrillItem.tileShapeCount` negative and `new TileShape[-n]` threw
+            // `NegativeArraySizeException` from inside the search-tree update, after the via was
+            // already in the item list. Refused before the padstack exists instead.
+            if shapes.iter().all(Option::is_none) {
+                return Err(DsnError::KicadSession(format!(
+                    "the KiCad session JSON file is malformed: via `{via_padstack_name}` has no \
+                     shape on any layer, because its layer span is empty"
+                )));
+            }
             // `:848-851`.
             let existing = board
                 .library
@@ -1801,18 +1819,6 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                     .padstacks
                     .add(via_padstack_name, shapes, true, false),
             };
-            // Quirk #286, as at `readBoard:716`: an all-`null` padstack makes
-            // `DrillItem.tileShapeCount` negative and `new TileShape[-n]` throws
-            // `NegativeArraySizeException`, whose `getMessage()` is the bare number. `fr_board`'s
-            // own `tile_shape_count` panics instead, so the span is tested before inserting.
-            if let Some(padstack) = board.library.padstacks.get(via_padstack) {
-                let span = java_drill_item_tile_shape_count(padstack);
-                if span < 0 {
-                    return Err(DsnError::KicadSession(format!(
-                        "java.lang.NegativeArraySizeException: {span}"
-                    )));
-                }
-            }
             // `:852`. The **checked** seam, for the reason `readBoard:716` gives — and here the
             // argument is stronger, not weaker: `importSession` runs onto a board that already
             // carries wiring, so `splitTraces` really does walk pre-existing traces on the very
@@ -1840,15 +1846,17 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
     Ok(())
 }
 
-/// [`JavaNpe`] as the [`DsnError`] `importSession`'s callers catch.
+/// A `java.lang.NullPointerException` as the [`DsnError`] `importSession`'s callers catch.
 ///
-/// `readBoard` turns the same value into a `ParseError` because its own `catch (Throwable)` at
+/// `readBoard` turns the same two facts into a `ParseError` because its own `catch (Throwable)` at
 /// `:746` does; `importSession` has no catch of its own, so the throwable reaches the caller and
 /// what it prints is `Throwable.toString()`.
-fn session_npe(error: JavaNpe) -> DsnError {
+///
+/// It takes the two facts directly rather than a [`JavaNpe`]: T7's DTO validation removed every
+/// other producer of that struct, and passing it here was the last thing keeping it alive.
+fn session_npe(invoked: &str, receiver: &str) -> DsnError {
     DsnError::KicadSession(format!(
-        "java.lang.NullPointerException: Cannot invoke \"{}\" because \"{}\" is null",
-        error.invoked, error.receiver
+        "java.lang.NullPointerException: Cannot invoke \"{invoked}\" because \"{receiver}\" is null"
     ))
 }
 
@@ -1952,9 +1960,16 @@ fn apply_kicad_net_class_parameters(
 /// Port of `KiCadJsonReader.resolveNetClassIndex` (KiCadJsonReader.java:964-978): the clearance
 /// class index a `NetJson.className` names, defaulting to 1.
 ///
-/// The `equalsIgnoreCase` fallback at `:972-976` walks `HashMap.entrySet()`, so when two classes
-/// differ only in case the answer depends on `java.util.HashMap`'s bucket order — see
-/// [`JavaStringMap`].
+/// The `equalsIgnoreCase` fallback at `:972-976` walks `HashMap.entrySet()`, so in Java, when two
+/// classes differ only in case, the answer depends on `java.util.HashMap`'s bucket order.
+///
+/// fixed: T7 (#280) — **this is #280's second consumer**, and it moves for the same reason the
+/// net numbering does: the map is a `Vec` in declaration order, so the fallback answers the
+/// **first** class declared with that spelling rather than whichever one the bucket layout
+/// happened to hand back first. A board with `"Power"` and `"POWER"` and a net asking for
+/// `"power"` gets `"Power"`, because that is the one its own file names first.
+/// `crates/fr-dsn/tests/kicad_nets.rs::a_net_class_named_only_by_case_takes_the_first_declared`
+/// pins it; no corpus fixture declares two classes differing only in case, so nothing moves.
 ///
 /// # Its relationship to section 8's `clNo - 1`
 ///
@@ -1966,22 +1981,22 @@ fn apply_kicad_net_class_parameters(
 /// are both one greater than the `NetClassId` the caller wants, and the two lines only agree
 /// because `netClassIndexMap` was filled at `:345`'s `i + 2` from the same offset. Change either
 /// and the other must change with it; the caller's comment says the same thing from its side.
-fn resolve_net_class_index(map: &JavaStringMap, class_name: Option<&str>) -> usize {
+fn resolve_net_class_index(map: &[(String, usize)], class_name: Option<&str>) -> usize {
     // `:965-967`. A `null` class name is not a default-class name, so it falls through.
     if class_name.is_some_and(is_kicad_default_net_class_name) {
         return 1;
     }
     // `:968-971` — the exact-match `HashMap.get`.
-    if let Some(class_index) = class_name.and_then(|name| map.get(name)) {
-        return class_index;
+    if let Some(name) = class_name
+        && let Some((_, value)) = map.iter().find(|(key, _)| key == name)
+    {
+        return *value;
     }
     // `:972-976`.
-    if let Some(name) = class_name {
-        for (key, value) in map.entry_set() {
-            if equals_ignore_case(key, name) {
-                return value;
-            }
-        }
+    if let Some(name) = class_name
+        && let Some((_, value)) = map.iter().find(|(key, _)| equals_ignore_case(key, name))
+    {
+        return *value;
     }
     // `:977`.
     1
@@ -2038,20 +2053,30 @@ impl PointOutline {
 /// are what `Padstack.name` carries into `SesWriter`/`DsnWriter`, so the string building is
 /// transcribed exactly rather than paraphrased.
 ///
-/// Three things about it are worth knowing before editing:
+/// Two things about it are worth knowing before editing:
 ///
-/// * `"Round".equals(shapeStr)` at `:882` is **case-sensitive** and compares against the value
-///   this function itself computed, so it selects the one-number `Pad_<x>_um` form for exactly the
-///   shapes `:861-862` mapped to the literal `"Round"` — `"circle"` and `"round"`, in any case —
-///   and for a `null` shape, which never enters the `if` at all. A shape spelled `"rounded"`
-///   falls through to `:868`, becomes `"Rounded"`, and takes the two-number form.
-/// * `:885-888` formats `"%s[%s]Pad_%.0fxf_%.0f_um"` and then `.replace("xf_", "x")`. The
-///   round-trip through the `xf_` marker is Java's; it is reproduced verbatim because
-///   `String.replace(CharSequence, CharSequence)` replaces **every** occurrence, so a shape name
-///   containing `xf_` would be rewritten too.
 /// * both `%.0f`s go through [`java_format_fixed`], not Rust's `{:.0}`: `java.util.Formatter`
 ///   rounds the shortest round-trip digits **HALF_UP** where Rust rounds half-to-even, so a pad
 ///   `0.0025 mm` wide is `3` to Java and `2` to Rust. Measured, stem `pad-name-half-up`.
+/// * the layer type is `T` / `B` / `A`, and `A` covers both "every layer" and "some middle
+///   layers", so it does **not** identify the padstack. Nothing here does — see below.
+///
+/// # fixed: T7 (#284) — two changes, both because the name stopped being the identity
+///
+/// * `:882`'s `"Round".equals(shapeStr)` selected a **one-number** `Pad_<x>_um` form for the
+///   shapes `:861-862` mapped to the literal `"Round"` (`"circle"` and `"round"`, in any case,
+///   and a `null` shape) — so a `1 x 2` round pad and a `1 x 1` round pad had the *same* name,
+///   and under a name-keyed lookup the second silently inherited the first one's shapes. The form
+///   is now the two-number one for every shape, which is what makes the name describe the pad it
+///   was generated for. It re-names every round pad's padstack.
+/// * `:885-888` formatted `"%s[%s]Pad_%.0fxf_%.0f_um"` and then called `.replace("xf_", "x")`.
+///   `String.replace(CharSequence, CharSequence)` replaces **every** occurrence, so a shape name
+///   containing `xf_` was rewritten too; the format string writes the `x` directly now and the
+///   round trip through the marker is gone with it.
+///
+/// The name is a **display artefact** from here on: [`read_board`]'s section 9 keys the padstack
+/// on the shape array and the drill, and hands whatever this composes to
+/// [`unique_padstack_name`].
 ///
 /// Quirk #288: `String.format` here is the **one-argument** form, which resolves
 /// `Locale.getDefault(Locale.Category.FORMAT)`. On an `ar_EG` JVM this returns
@@ -2062,14 +2087,13 @@ impl PointOutline {
 /// a whole [`BoardReadResult`], so the `Result` stays small; the one call site turns it into the
 /// same `ParseError` every other throw site here returns.
 ///
-/// It carries the `NullPointerException` at `:875`/`:877` over a `null` board-layer name. That is
-/// **not reachable** from `readBoard`: a `pad.layers` of size 1 is non-empty, so `:539-553` has
-/// already walked every board layer's name and thrown there — measured, stem
-/// `layer-null-name-with-pads`, whose `ParseError` names `boardLayers[li].name`. The arm is
-/// transcribed anyway because the function is 35 lines of contract.
+/// fixed: T7 (#282) — it used to carry the `NullPointerException` at `:875`/`:877` over a `null`
+/// board-layer name, which was already unreachable from `readBoard` (a `pad.layers` of size 1 is
+/// non-empty, so `:539-553` had walked every board layer's name and thrown there first). Section
+/// 1a refuses that document, so the name is a `String` and the two arms are gone.
 fn get_descriptive_padstack_name(
     pad: &PadJson,
-    board_layer_names: &[Option<String>],
+    board_layer_names: &[String],
     layer_count: usize,
 ) -> Result<String, String> {
     // `:859-870`.
@@ -2114,27 +2138,15 @@ fn get_descriptive_padstack_name(
     if let Some(pad_layers) = pad.layers.as_ref()
         && pad_layers.len() == 1
     {
-        let layer_name = pad_layers[0].as_deref();
+        let layer_name = pad_layers[0]
+            .as_deref()
+            .expect("section 1a refused a null pad-layer element");
         // `:875`.
-        let Some(first_layer_name) = board_layer_names[0].as_deref() else {
-            return Err(npe_message(
-                "String.equalsIgnoreCase(String)",
-                "boardLayers[0].name",
-            ));
-        };
-        if layer_name.is_some_and(|name| equals_ignore_case(first_layer_name, name)) {
+        if equals_ignore_case(&board_layer_names[0], layer_name) {
             layer_type = "T";
-        } else {
+        } else if equals_ignore_case(&board_layer_names[layer_count - 1], layer_name) {
             // `:877`.
-            let Some(last_layer_name) = board_layer_names[layer_count - 1].as_deref() else {
-                return Err(npe_message(
-                    "String.equalsIgnoreCase(String)",
-                    "boardLayers[layerCount - 1].name",
-                ));
-            };
-            if layer_name.is_some_and(|name| equals_ignore_case(last_layer_name, name)) {
-                layer_type = "B";
-            }
+            layer_type = "B";
         }
     }
 
@@ -2144,37 +2156,30 @@ fn get_descriptive_padstack_name(
         .size
         .as_ref()
         .expect("KiCadJsonReader.java:509 dereferenced pad.size before calling this");
-    if shape_str == "Round" {
-        // `:883`.
-        Ok(format!(
-            "{shape_str}[{layer_type}]Pad_{}_um",
-            java_format_fixed(size.x * 1000.0, 0)
-        ))
-    } else {
-        // `:885-888`.
-        Ok(format!(
-            "{shape_str}[{layer_type}]Pad_{}xf_{}_um",
-            java_format_fixed(size.x * 1000.0, 0),
-            java_format_fixed(size.y * 1000.0, 0)
-        )
-        .replace("xf_", "x"))
-    }
+    Ok(format!(
+        "{shape_str}[{layer_type}]Pad_{}x{}_um",
+        java_format_fixed(size.x * 1000.0, 0),
+        java_format_fixed(size.y * 1000.0, 0)
+    ))
 }
 
 /// Port of `KiCadJsonReader.arePackagePinsIdentical` (KiCadJsonReader.java:892-924): **the
 /// function that decides package reuse**, so getting it wrong either duplicates or merges library
 /// packages — visible in the item count and in the SES. Transcribed pin by pin.
 ///
-/// # The `Err` arm is the throw `:603` catches
+/// # It used to have an `Err` arm, and that arm was quirk #285
 ///
 /// `:908` is `pin1.name.equals(pin2.name)`, and `pin1` is a pin of the **existing** package. Java
-/// stores `pad.name` there verbatim, `null` included, so a pad with no `name` key makes this
-/// `NullPointerException` — the one exception the `catch (Exception e)` at `:603` ever sees, and
-/// therefore the whole reason quirk #285's duplicate packages exist. `fr_board::PackagePin::name`
-/// is a `String`, so the nullability travels beside the pins in `pkg1_names` / `p2_names`.
+/// stores `pad.name` there verbatim, `null` included, so a pad with no `name` key made this a
+/// `NullPointerException` — the one exception the `catch (Exception e)` at `:603` ever saw, and
+/// therefore the whole reason quirk #285's duplicate packages existed.
 ///
-/// Java's `pin2.name` may be `null` too, and `String.equals(null)` is simply `false`; that is why
-/// the comparison below is over `Option<&str>` rather than over the totalized `""`.
+/// fixed: T7 (#285, #282) — the comparison is total. The belt-and-braces null check the fix
+/// sketch asks for is **discharged by the type**: `fr_board::PackagePin::name` is a `String`, so
+/// there is no `null` to check, and the two side tables that used to carry the nullability beside
+/// the pins are gone because section 1a refuses the document that produced it. A pad named `""`
+/// still compares equal to a pad named `""`, which is the behaviour a board of genuinely unnamed
+/// pads wants and never got: it got one duplicate package per component instead.
 ///
 /// not reachable: `:893-895`'s `pkg1 == null || p2 == null` guard — the one call site tested
 /// `existingPkg != null` at `:584` and built `p2` two lines earlier, and neither of the port's
@@ -2182,55 +2187,48 @@ fn get_descriptive_padstack_name(
 ///
 /// not reachable: `:902-907`'s `pin1 == null || pin2 == null` arm — `Package.getPin` answers
 /// `null` only out of range, and `:896`'s length test has already made that impossible.
-fn are_package_pins_identical(
-    pkg1: &Package,
-    pkg1_names: &[Option<String>],
-    p2: &[PackagePin],
-    p2_names: &[Option<String>],
-) -> Result<bool, JavaNpe> {
+fn are_package_pins_identical(pkg1: &Package, p2: &[PackagePin]) -> bool {
     // `:896-898`.
     if pkg1.pin_count() != p2.len() {
-        return Ok(false);
+        return false;
     }
-    for i in 0..p2.len() {
+    for (i, pin2) in p2.iter().enumerate() {
         // `:900-901`.
         let pin1 = pkg1
             .get_pin(i32::try_from(i).unwrap_or(i32::MAX))
             .expect("i < pin_count(), checked above");
-        let pin2 = &p2[i];
         // `:908-910`.
-        let Some(name1) = pkg1_names[i].as_deref() else {
-            return Err(JavaNpe {
-                invoked: "String.equals(Object)",
-                receiver: "pin1.name",
-            });
-        };
-        if p2_names[i].as_deref() != Some(name1) {
-            return Ok(false);
+        if pin1.name != pin2.name {
+            return false;
         }
         // `:911-913`.
         if pin1.padstack_no != pin2.padstack_no {
-            return Ok(false);
+            return false;
         }
         // `:914-918`. `Math.abs` on a NaN difference answers NaN, and `NaN > 0.001` is false in
         // both languages, so a NaN coordinate reports "identical" on both sides.
         let loc1 = pin1.relative_location.to_float();
         let loc2 = pin2.relative_location.to_float();
         if (loc1.x - loc2.x).abs() > 0.001 || (loc1.y - loc2.y).abs() > 0.001 {
-            return Ok(false);
+            return false;
         }
         // `:919-921`.
         if (pin1.rotation_in_degree - pin2.rotation_in_degree).abs() > 0.001 {
-            return Ok(false);
+            return false;
         }
     }
     // `:923`.
-    Ok(true)
+    true
 }
 
+// dead: killed by #282/#287, deleted at T24. The DTO validation refuses a `null` name at the
+// boundary, so no site composes a `NullPointerException` from a nullable *name* any more, and
+// `session_npe` takes its two facts directly. Left in place rather than deleted because a shim is
+// removed only after the fix that killed it has merged (ruling BP16, survey §8).
 /// A `java.lang.NullPointerException` as a value: the two facts the JVM's helpful message is
 /// composed from. See [`npe`], which turns one into the `ParseError` `:746` would have answered.
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)] // dead: killed by #282/#287, deleted at T24.
 struct JavaNpe {
     /// The method the throwing expression was about to invoke.
     invoked: &'static str,
@@ -2238,43 +2236,147 @@ struct JavaNpe {
     receiver: &'static str,
 }
 
-/// Port of `Nets.get(String, int)` (Nets.java:42-52), **including the `NullPointerException`
-/// quirk #282 predicted**.
+/// `readBoard:456`'s `referencedNets`, in **first-reference** order.
+///
+/// fixed: T7 (#280) — Java's is a `java.util.HashSet<String>`, iterated at `:490` to number the
+/// nets it auto-registers, so the net number of every net a KiCad board does not declare was a
+/// function of `String.hashCode` and of nothing else. This is Java's own one-word fix
+/// (`LinkedHashSet`) and it is what makes [`java_hash_iteration_order`] and its treeification
+/// hazard dead below.
+struct ReferencedNets {
+    /// The distinct names, in insertion order.
+    keys: Vec<String>,
+}
+
+impl ReferencedNets {
+    fn new() -> ReferencedNets {
+        ReferencedNets { keys: Vec::new() }
+    }
+
+    /// `HashSet.add` — a no-op when the key is already present (**exact** equality, not
+    /// `equalsIgnoreCase`; the case-insensitive test is `Nets.get`'s, one step later).
+    fn add(&mut self, key: &str) {
+        if !self.keys.iter().any(|existing| existing == key) {
+            self.keys.push(key.to_string());
+        }
+    }
+
+    /// The order the enhanced-for at `:490` sees.
+    fn iteration_order(&self) -> &[String] {
+        &self.keys
+    }
+}
+
+/// `name`, or the first `name#2`, `name#3`, … that no padstack in `padstacks` answers to.
+///
+/// fixed: T7 (#284) — the generated padstack name is a **display artefact** now that identity is
+/// the shape array and the drill, and two structurally different padstacks can therefore generate
+/// the same name (a middle-layer pad and a top-layer pad of the same size, say, both spell their
+/// layer type `A`). The name still reaches the SES, where one name must mean one padstack, so a
+/// collision is disambiguated rather than merged.
+///
+/// The suffix is `#`, not the `::` the package ladder uses, and that is deliberate:
+/// [`fr_board::Padstack::drill_radius`] parses a name containing `:` for an `<outer>:<drill>_`
+/// fragment, and `#` is already this library's own disambiguator (`Padstacks::add_unnamed` writes
+/// `padstack#<n>`).
+///
+/// Measured on all seven KiCad fixtures the Java checkout ships: **zero** collisions, so no
+/// corpus board takes a suffix. It exists for the input space, not for the corpus.
+fn unique_padstack_name(padstacks: &Padstacks, name: String) -> String {
+    if padstacks.get_by_name(&name).is_none() {
+        return name;
+    }
+    let mut suffix = 2usize;
+    loop {
+        let candidate = format!("{name}#{suffix}");
+        if padstacks.get_by_name(&candidate).is_none() {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+/// The clearance class `OutlineJson.clearance` names, or `1` — Java's hard-coded "default".
+///
+/// fixed: T7 (#281). `clearance` is a distance in user units, which is what
+/// [`crate::kicad::writer`] writes for the outline's own class
+/// (`get_value(class, class, 0, false) / scale_factor`), so the mapping back is: scale it, and
+/// answer the first class whose diagonal value equals it.
+///
+/// Three things it deliberately does not do. It does not **create** a class — a KiCad board's
+/// clearance classes are exactly the ones its `netClasses` declare, and inventing one would give
+/// the board a rule no net can name. It does not answer class **0**, which is the reserved
+/// `"null"` row: the `> 0.0` guard keeps a `0.0` clearance (an absent key, or a board written by
+/// a jar that never set one) on Java's `1`. And it does not round to the nearest class — a value
+/// that matches nothing is a value this reader does not understand, and Java's default is the
+/// safe answer for it.
+///
+/// # The mapping is by **value**, so it is lossy on a tie
+///
+/// Two clearance classes with the same diagonal are indistinguishable here, and the ascending
+/// search answers the lower index. That is not hypothetical: the corpus has one —
+/// `Issue733-kicad_complex_hierarchy_output_session.json` declares a class whose clearance equals
+/// the default's (both 3000 internal units at its `UM`/`10` resolution), so its
+/// `"clearance": 300.0` matches class 1 and class 2 alike and takes class 1.
+///
+/// It is the right loss to take. The clearance a board *means* by that number is a distance, and
+/// two classes at the same distance impose the same rule on the outline; picking the higher index
+/// would attach the outline to a named net class it has no other reason to belong to, and Java's
+/// own answer for every such board was class 1 regardless. The alternative — an exact class
+/// **index** on the wire — is not available: the writer has always written a distance, and
+/// changing that would break the round trip survey §9.1 protects.
+fn outline_clearance_class(matrix: &ClearanceMatrix, clearance: f64, scale_factor: f64) -> usize {
+    if clearance <= 0.0 {
+        return 1;
+    }
+    let value = java_round_to_int(clearance * scale_factor);
+    (1..matrix.get_class_count())
+        .find(|&class| matrix.get_value(class, class, 0, false) == value)
+        .unwrap_or(1)
+}
+
+/// The refusal quirk #286's negative array size becomes.
+///
+/// fixed: T7 (#286) — Java built the padstack, inserted the item, and only then allocated
+/// `new TileShape[toLayer - fromLayer + 1]` from inside the search-tree update, where an all-null
+/// padstack makes that count `-layerCount`. `getMessage()` on a `NegativeArraySizeException` is
+/// the bare number, so what a user saw was `Exception occurred: -2`. This says which object and
+/// why, and it says it before anything is built.
+fn no_shape_on_any_layer(section: &str, object: &str, because: &str) -> BoardReadResult {
+    parse_error(
+        section,
+        &format!(
+            "the KiCad board JSON file is malformed in its `{section}` section: {object} has no \
+             shape on any layer, because {because}"
+        ),
+    )
+}
+
+/// Port of `Nets.get(String, int)` (Nets.java:42-52).
 ///
 /// Java's loop is `currentNet != null && currentNet.name.equalsIgnoreCase(name)`, so it
-/// dereferences the *stored* name of every net it walks past — and stops at the first match. A net
-/// whose JSON `name` was `null` therefore kills the first lookup that reaches it, and only if it
-/// is reached: a match earlier in the list returns before ever touching it.
+/// dereferences the *stored* name of every net it walks past — and stops at the first match.
 ///
-/// `fr_board::Net::name` is a `String` where Java's is nullable, so `name_is_null` carries the bit
-/// section 8's totalization dropped, one entry per net in net-number order.
+/// fixed: T7 (#282) — this used to take a `name_is_null: &[bool]` side table and answer a
+/// `Result`, because a net whose JSON `name` was `null` killed the first lookup that reached it
+/// (and only if it was reached: a match earlier in the list returned before ever touching it).
+/// Section 1a refuses that document, so the walk is total.
 ///
 /// A `null` **argument** is not a throw: `String.equalsIgnoreCase(null)` is `false`. That is why
 /// `name` is an `Option<&str>` and a `None` simply never matches — which is what makes a pad with
 /// no `netName` land on net number 0 rather than on a net the port stored as `""`.
 ///
-/// `Ok(None)` is Java's `return null`; the answer is the net **number**, because every caller
+/// `None` is Java's `return null`; the answer is the net **number**, because every caller
 /// immediately reads `targetNet.netNumber`.
-fn java_nets_get(
-    nets: &Nets,
-    name_is_null: &[bool],
-    name: Option<&str>,
-    subnet_number: i32,
-) -> Result<Option<i32>, JavaNpe> {
-    for (index, current_net) in nets.iter().enumerate() {
-        if name_is_null.get(index).copied().unwrap_or(false) {
-            return Err(JavaNpe {
-                invoked: "String.equalsIgnoreCase(String)",
-                receiver: "currentNet.name",
-            });
-        }
+fn java_nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<i32> {
+    for current_net in nets.iter() {
         if name.is_some_and(|name| equals_ignore_case(&current_net.name, name))
             && current_net.subnet_number == subnet_number
         {
-            return Ok(Some(current_net.net_number));
+            return Some(current_net.net_number);
         }
     }
-    Ok(None)
+    None
 }
 
 /// Port of `DrillItem.tileShapeCount` (DrillItem.java:202-208): `toLayer - fromLayer + 1`, read
@@ -2296,6 +2398,7 @@ fn java_nets_get(
 /// here (`crates/fr-board/src/items/drill.rs`'s `layer_index`, which cannot express a negative
 /// layer in a `usize`), so the reader tests the span itself before inserting rather than letting
 /// a panic stand in for Java's throw.
+#[allow(dead_code)] // dead: killed by #286, deleted at T24.
 fn java_drill_item_tile_shape_count(padstack: &Padstack) -> i32 {
     padstack.to_layer() - padstack.from_layer() + 1
 }
@@ -2457,7 +2560,21 @@ fn java_is_whitespace(c: char) -> bool {
         || (c.is_whitespace() && !matches!(c, '\u{a0}' | '\u{85}' | '\u{2007}' | '\u{202f}'))
 }
 
+// ============================================ dead: killed by #280, deleted at T24
+//
+// Everything from here to the end of the module reproduced `java.util.HashMap`'s iteration order,
+// because `readBoard:490` numbered the nets it auto-registered in it and `:972` resolved a
+// net-class name in it. **T7 replaced both with declaration order** (`ReferencedNets` and a
+// `Vec<(String, usize)>`), which is Java's own one-word fix, so none of it has a call site left.
+//
+// It stays in place, marked, rather than being deleted here: a shim is removed only after the fix
+// that killed it has merged (ruling BP16, survey §8), and Task 24 does the removing. The
+// `debug_assert!` that guarded `java_hash_iteration_order` against `HashMap`'s treeification —
+// the hazard the Plan 8 hand-off parks at §6 task 9 — is **deleted with the numbering it
+// guarded**: there is no longer a code path whose answer depends on a bucket layout.
+
 /// `String.hashCode()` (`h = 31 * h + c` over the **UTF-16 code units**, wrapping as an `int`).
+#[allow(dead_code)] // dead: killed by #280, deleted at T24.
 fn java_string_hash(text: &str) -> i32 {
     let mut hash: i32 = 0;
     for unit in text.encode_utf16() {
@@ -2485,8 +2602,9 @@ fn java_string_hash(text: &str) -> i32 {
 /// A bucket that reaches 8 entries **while the table is at capacity >= 64** is converted to a
 /// red-black tree (`TREEIFY_THRESHOLD`/`MIN_TREEIFY_CAPACITY`), and its iteration order becomes
 /// the tree's. Below capacity 64 Java resizes instead, which this function already models. The
-/// `debug_assert!` below names the condition, conservatively: `HashMap.putVal` treeifies only when
-/// a bin that already holds 8 takes a 9th.
+/// An earlier revision named that condition in a `debug_assert!`. It is **deleted with the
+/// numbering it guarded** (fixed: T7 (#280)): nothing reads this function's answer any more, so a
+/// treeified bucket can no longer change a net number.
 ///
 /// Peak bucket over the `referencedNets` set of every corpus fixture, measured with this same
 /// model — which `the_hash_iteration_order_matches_the_jvm` validates against the JVM:
@@ -2516,6 +2634,7 @@ fn java_string_hash(text: &str) -> i32 {
 /// `referencedNets` and `:972`'s `netClassIndexMap` — and the bucket table below is unchanged.
 /// The `debug_assert!` runs under every test build, including the 67-input part-B replay and the
 /// seven whole-fixture round trips, and has never fired.
+#[allow(dead_code)] // dead: killed by #280, deleted at T24.
 fn java_hash_iteration_order(keys: &[String]) -> Vec<usize> {
     let mut capacity = 16_usize;
     let mut threshold = 12_usize;
@@ -2531,26 +2650,22 @@ fn java_hash_iteration_order(keys: &[String]) -> Vec<usize> {
         let spread = hash ^ (hash >> 16);
         buckets[(capacity - 1) & (spread as usize)].push(index);
     }
-    // `debug_assert!` and not `assert!`: this is a *diagnostic* for a case the corpus does not
-    // reach, on a function every KiCad read runs — so it is **silent in release**, which is what
-    // the CLI ships, and a board that did treeify would diverge quietly. Left as a debug assert
-    // because a wrong net *numbering* is caught downstream by any DSN/SES parity run; recorded
-    // here so Task 9 and Task 14's `io/` sweep can revisit the choice rather than rediscover it.
-    debug_assert!(
-        capacity < 64 || buckets.iter().all(|bucket| bucket.len() < 8),
-        "java_hash_iteration_order: a bucket reached TREEIFY_THRESHOLD at capacity {capacity}, \
-         where java.util.HashMap switches to a red-black tree this function does not model"
-    );
+    // deleted: T7 (#280) — the `debug_assert!` that fired when a bucket reached
+    // `TREEIFY_THRESHOLD` at capacity >= 64, where `java.util.HashMap` switches to a red-black
+    // tree this function does not model. It guarded a *numbering*; the numbering is declaration
+    // order now, so there is nothing left for it to guard.
     buckets.into_iter().flatten().collect()
 }
 
 /// `java.util.HashSet<String>` — `readBoard:456`'s `referencedNets`, reduced to the two
 /// operations that method performs: `add` and the enhanced-for at `:490`.
+#[allow(dead_code)] // dead: killed by #280, deleted at T24.
 struct JavaStringSet {
     /// The distinct keys, in insertion order.
     keys: Vec<String>,
 }
 
+#[allow(dead_code)] // dead: killed by #280, deleted at T24.
 impl JavaStringSet {
     fn new() -> JavaStringSet {
         JavaStringSet { keys: Vec::new() }
@@ -2575,6 +2690,7 @@ impl JavaStringSet {
 
 /// `java.util.HashMap<String, Integer>` — `readBoard:343`'s `netClassIndexMap`, reduced to the
 /// three operations it needs: `put` (`:355`), `get` (`:968`) and `entrySet` (`:972`).
+#[allow(dead_code)] // dead: killed by #280, deleted at T24.
 struct JavaStringMap {
     /// The distinct keys with their current values, in **first-insertion** order — `put` on an
     /// existing key replaces the value and leaves the entry where it is, which is what
@@ -2582,6 +2698,7 @@ struct JavaStringMap {
     entries: Vec<(String, usize)>,
 }
 
+#[allow(dead_code)] // dead: killed by #280, deleted at T24.
 impl JavaStringMap {
     fn new() -> JavaStringMap {
         JavaStringMap {
@@ -2685,26 +2802,13 @@ mod tests {
         assert_eq!(java_max(2.0, 1.0), 2.0);
     }
 
-    /// The `referenced-nets-only` stem of `crates/fr-dsn/tests/data/p8t8-kicad-read-a.txt`: 17
-    /// Greek letters inserted in alphabetical order, handed back by the JVM in this one.
-    #[test]
-    fn the_hash_iteration_order_matches_the_jvm() {
-        let inserted = [
-            "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa",
-            "lambda", "mu", "nu", "xi", "omicron", "pi", "rho",
-        ];
-        let mut set = JavaStringSet::new();
-        for name in inserted {
-            set.add(name);
-        }
-        assert_eq!(
-            set.iteration_order(),
-            [
-                "zeta", "iota", "nu", "delta", "mu", "theta", "epsilon", "xi", "lambda", "eta",
-                "omicron", "alpha", "rho", "pi", "kappa", "beta", "gamma"
-            ]
-        );
-    }
+    // deleted: T7 (#280) — `the_hash_iteration_order_matches_the_jvm`, which pinned the JVM's
+    // bucket order for the `referenced-nets-only` stem's seventeen Greek letters, and
+    // `the_hash_set_dedups_on_exact_equality`, which pinned `JavaStringSet`'s `add`. Both tested
+    // an emulation nothing calls any more: the numbering is first-reference order, and
+    // `crates/fr-dsn/tests/kicad_nets.rs` pins *that*. Deleting them by name is the brief's
+    // binding instruction, and it is also what keeps the dead modules honestly dead — a shim with
+    // a passing test reads like a live one. The modules themselves stay until Task 24 (BP16).
 
     /// `Math.round` is half-**up**, so `round(-0.5) == 0` and `round(0.5) == 1`: a via whose
     /// radius is exactly a half-integer gets an **asymmetric** box, and `-round(r)` would give
@@ -2726,12 +2830,18 @@ mod tests {
         );
     }
 
+    /// `ReferencedNets::add` keeps `HashSet.add`'s **exact** equality — `"GND"` and `"gnd"` are
+    /// two entries. The case-insensitive test is `Nets.get`'s, one step later, and moving it here
+    /// would silently merge two nets a KiCad board declared apart.
+    ///
+    /// This replaces `the_hash_set_dedups_on_exact_equality`, which asserted the same property of
+    /// the dead `JavaStringSet`.
     #[test]
-    fn the_hash_set_dedups_on_exact_equality() {
-        let mut set = JavaStringSet::new();
-        set.add("GND");
-        set.add("gnd");
-        set.add("GND");
-        assert_eq!(set.keys, ["GND", "gnd"]);
+    fn the_referenced_net_set_dedups_on_exact_equality_and_keeps_insertion_order() {
+        let mut set = ReferencedNets::new();
+        for name in ["GND", "gnd", "GND", "VCC"] {
+            set.add(name);
+        }
+        assert_eq!(set.iteration_order(), ["GND", "gnd", "VCC"]);
     }
 }

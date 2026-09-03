@@ -1,0 +1,1048 @@
+# the PORT's rows over the inputs of data/p8t8-kicad-read-a.txt, which stays as
+# the jar's record. Plan 9 Task 7 moved this family to the port lane: see
+# kicad_reader.rs's PORT_TRANSCRIPT for why, and KNOWN_DIVERGENCES for where
+# the two differ and which register row authorizes each difference.
+
+[case] stem=ecc83-v1
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=top_cu signal=true
+[s8] layer 1 name=F.Mask signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox 1211850 -1366250 1734550 -900700
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=3
+[s8] corner 0 0 1212850.0 -1365250.0
+[s8] corner 0 1 1733550.0 -901700.0
+[s8] corner 0 2 1212850.0 -901700.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=13
+[s8] net 1 name=Net-(P3-P1) subnet=1 containsPlane=false class=default
+[s8] net 2 name=GND subnet=1 containsPlane=false class=default
+[s8] net 3 name=Net-(P2-P1) subnet=1 containsPlane=false class=default
+[s8] net 4 name=Net-(U1A-K) subnet=1 containsPlane=false class=default
+[s8] net 5 name=unconnected-(P5-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 6 name=unconnected-(P6-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 7 name=unconnected-(P7-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 8 name=Net-(U1A-G) subnet=1 containsPlane=false class=default
+[s8] net 9 name=Net-(U1B-K) subnet=1 containsPlane=false class=default
+[s8] net 10 name=Net-(P1-PM) subnet=1 containsPlane=false class=default
+[s8] net 11 name=Net-(P4-P1) subnet=1 containsPlane=false class=default
+[s8] net 12 name=Net-(P4-PM) subnet=1 containsPlane=false class=default
+[s8] net 13 name=unconnected-(P8-Pad1) subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=ecc83-v2
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=top_cu signal=true
+[s8] layer 1 name=F.Mask signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox 1211850 -1366250 1734550 -900700
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=3
+[s8] corner 0 0 1212850.0 -1365250.0
+[s8] corner 0 1 1733550.0 -901700.0
+[s8] corner 0 2 1212850.0 -901700.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=13
+[s8] net 1 name=Net-(P3-P1) subnet=1 containsPlane=false class=default
+[s8] net 2 name=Net-(P2-P1) subnet=1 containsPlane=false class=default
+[s8] net 3 name=Net-(U1A-K) subnet=1 containsPlane=false class=default
+[s8] net 4 name=Net-(P1-PM) subnet=1 containsPlane=false class=default
+[s8] net 5 name=Net-(P4-P1) subnet=1 containsPlane=false class=default
+[s8] net 6 name=Net-(P4-PM) subnet=1 containsPlane=false class=default
+[s8] net 7 name=Net-(U1A-G) subnet=1 containsPlane=false class=default
+[s8] net 8 name=Net-(U1B-K) subnet=1 containsPlane=false class=default
+[s8] net 9 name=GND subnet=1 containsPlane=false class=default
+[s8] net 10 name=unconnected-(P5-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 11 name=unconnected-(P6-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 12 name=unconnected-(P7-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 13 name=unconnected-(P8-Pad1) subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=complex-hierarchy
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=top_copper signal=true
+[s8] layer 1 name=bottom_copper signal=true
+[s8] clearance classes=3 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] clname 2 power
+[s8] cl 0 0 0 0 0
+[s8] cl 0 1 0 2000 3000
+[s8] cl 0 2 0 2000 3000
+[s8] cl 1 0 0 0 0
+[s8] cl 1 1 0 2000 3000
+[s8] cl 1 2 0 2000 3000
+[s8] bbox 878000 -1319260 1886950 -517000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 879000.0 -1318260.0
+[s8] corner 0 1 1885950.0 -1318260.0
+[s8] corner 0 2 1885950.0 -518160.0
+[s8] corner 0 3 879000.0 -518000.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=2
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=power traceClearanceClass=2 halfWidths=[3000,3000] activeLayers=[true,true] viaRule=power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=52
+[s8] net 1 name=-VAA subnet=1 containsPlane=false class=power
+[s8] net 2 name=/12Vext subnet=1 containsPlane=false class=power
+[s8] net 3 name=/ampli_ht_horizontal/PIEZO_IN subnet=1 containsPlane=false class=default
+[s8] net 4 name=/ampli_ht_horizontal/PIEZO_OUT subnet=1 containsPlane=false class=default
+[s8] net 5 name=/ampli_ht_horizontal/S_OUT+ subnet=1 containsPlane=false class=default
+[s8] net 6 name=/ampli_ht_horizontal/Vpil_0_3,3V subnet=1 containsPlane=false class=default
+[s8] net 7 name=/ampli_ht_vertical/PIEZO_IN subnet=1 containsPlane=false class=default
+[s8] net 8 name=/ampli_ht_vertical/PIEZO_OUT subnet=1 containsPlane=false class=default
+[s8] net 9 name=/ampli_ht_vertical/S_OUT+ subnet=1 containsPlane=false class=default
+[s8] net 10 name=/ampli_ht_vertical/Vpil_0_3,3V subnet=1 containsPlane=false class=default
+[s8] net 11 name=GND subnet=1 containsPlane=false class=power
+[s8] net 12 name=HT subnet=1 containsPlane=false class=power
+[s8] net 13 name=Net-(U102-CAP+) subnet=1 containsPlane=false class=default
+[s8] net 14 name=Net-(U102-CAP-) subnet=1 containsPlane=false class=default
+[s8] net 15 name=Net-(C201-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 16 name=Net-(C202-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 17 name=Net-(U201B-+) subnet=1 containsPlane=false class=default
+[s8] net 18 name=Net-(C204-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 19 name=Net-(C301-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 20 name=Net-(C302-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 21 name=Net-(U301B-+) subnet=1 containsPlane=false class=default
+[s8] net 22 name=Net-(C304-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 23 name=Net-(D201-K) subnet=1 containsPlane=false class=default
+[s8] net 24 name=Net-(D202-K) subnet=1 containsPlane=false class=default
+[s8] net 25 name=Net-(D203-K) subnet=1 containsPlane=false class=default
+[s8] net 26 name=Net-(D203-A) subnet=1 containsPlane=false class=default
+[s8] net 27 name=Net-(D204-K) subnet=1 containsPlane=false class=default
+[s8] net 28 name=Net-(D301-K) subnet=1 containsPlane=false class=default
+[s8] net 29 name=Net-(D302-K) subnet=1 containsPlane=false class=default
+[s8] net 30 name=Net-(D303-A) subnet=1 containsPlane=false class=default
+[s8] net 31 name=Net-(D303-K) subnet=1 containsPlane=false class=default
+[s8] net 32 name=Net-(D304-K) subnet=1 containsPlane=false class=default
+[s8] net 33 name=VCC subnet=1 containsPlane=false class=power
+[s8] net 34 name=Net-(Q201-E) subnet=1 containsPlane=false class=default
+[s8] net 35 name=Net-(Q202-E) subnet=1 containsPlane=false class=default
+[s8] net 36 name=Net-(Q203-E) subnet=1 containsPlane=false class=default
+[s8] net 37 name=Net-(Q204-E) subnet=1 containsPlane=false class=default
+[s8] net 38 name=Net-(Q204-B) subnet=1 containsPlane=false class=default
+[s8] net 39 name=Net-(Q301-E) subnet=1 containsPlane=false class=default
+[s8] net 40 name=+12V subnet=1 containsPlane=false class=default
+[s8] net 41 name=Net-(Q302-E) subnet=1 containsPlane=false class=default
+[s8] net 42 name=Net-(Q303-E) subnet=1 containsPlane=false class=default
+[s8] net 43 name=Net-(Q304-B) subnet=1 containsPlane=false class=default
+[s8] net 44 name=Net-(Q304-E) subnet=1 containsPlane=false class=default
+[s8] net 45 name=Net-(R212-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 46 name=Net-(R213-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 47 name=Net-(R312-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 48 name=Net-(R313-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 49 name=Net-(U201A--) subnet=1 containsPlane=false class=default
+[s8] net 50 name=Net-(U301A--) subnet=1 containsPlane=false class=default
+[s8] net 51 name=unconnected-(U102-LV-Pad6) subnet=1 containsPlane=false class=default
+[s8] net 52 name=unconnected-(U102-OSC-Pad7) subnet=1 containsPlane=false class=default
+[s8] viainfos count=2
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 1 name=via_power padstack=via_power clearanceClass=1 attachSmd=true
+[s8] viarules count=2
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viarule 1 name=power vias=[via_power]
+[s8] viapadstacks count=2
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] viapadstack 1 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=interf-u
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=top_copper signal=true
+[s8] layer 1 name=bottom_copper signal=true
+[s8] clearance classes=3 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] clname 2 Power
+[s8] cl 0 0 0 0 0
+[s8] cl 0 1 0 2000 2540
+[s8] cl 0 2 0 2000 2540
+[s8] cl 1 0 0 0 0
+[s8] cl 1 1 0 2000 2540
+[s8] cl 1 2 0 2000 2540
+[s8] bbox 792750 -1425940 1950450 -341900
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=7
+[s8] corner 0 0 908050.0 -1424940.0
+[s8] corner 0 1 1720850.0 -1424940.0
+[s8] corner 0 2 1720850.0 -1333500.0
+[s8] corner 0 3 1949450.0 -1333500.0
+[s8] corner 0 4 793750.0 -342900.0
+[s8] corner 0 5 793750.0 -1333500.0
+[s8] corner 0 6 908050.0 -1333500.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=2
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=Power traceClearanceClass=2 halfWidths=[2500,2500] activeLayers=[true,true] viaRule=Power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=173
+[s8] net 1 name=/8MH-OUT subnet=1 containsPlane=false class=default
+[s8] net 2 name=/ACK subnet=1 containsPlane=false class=default
+[s8] net 3 name=/AUTOFD- subnet=1 containsPlane=false class=default
+[s8] net 4 name=/BIT0 subnet=1 containsPlane=false class=default
+[s8] net 5 name=/BIT1 subnet=1 containsPlane=false class=default
+[s8] net 6 name=/BIT2 subnet=1 containsPlane=false class=default
+[s8] net 7 name=/BIT3 subnet=1 containsPlane=false class=default
+[s8] net 8 name=/BIT4 subnet=1 containsPlane=false class=default
+[s8] net 9 name=/BIT5 subnet=1 containsPlane=false class=default
+[s8] net 10 name=/BIT6 subnet=1 containsPlane=false class=default
+[s8] net 11 name=/BIT7 subnet=1 containsPlane=false class=default
+[s8] net 12 name=/BUST+ subnet=1 containsPlane=false class=default
+[s8] net 13 name=/CLKLCA subnet=1 containsPlane=false class=default
+[s8] net 14 name=/CS1- subnet=1 containsPlane=false class=default
+[s8] net 15 name=/D0 subnet=1 containsPlane=false class=default
+[s8] net 16 name=/D1 subnet=1 containsPlane=false class=default
+[s8] net 17 name=/D2 subnet=1 containsPlane=false class=default
+[s8] net 18 name=/D3 subnet=1 containsPlane=false class=default
+[s8] net 19 name=/D4 subnet=1 containsPlane=false class=default
+[s8] net 20 name=/D5 subnet=1 containsPlane=false class=default
+[s8] net 21 name=/D6 subnet=1 containsPlane=false class=default
+[s8] net 22 name=/D7 subnet=1 containsPlane=false class=default
+[s8] net 23 name=/DIR subnet=1 containsPlane=false class=default
+[s8] net 24 name=/DONE subnet=1 containsPlane=false class=default
+[s8] net 25 name=/ENBBUF subnet=1 containsPlane=false class=default
+[s8] net 26 name=/ERROR- subnet=1 containsPlane=false class=default
+[s8] net 27 name=/INIT- subnet=1 containsPlane=false class=default
+[s8] net 28 name=/LED1 subnet=1 containsPlane=false class=default
+[s8] net 29 name=/LED2 subnet=1 containsPlane=false class=default
+[s8] net 30 name=/MA0 subnet=1 containsPlane=false class=default
+[s8] net 31 name=/MA1 subnet=1 containsPlane=false class=default
+[s8] net 32 name=/MA10 subnet=1 containsPlane=false class=default
+[s8] net 33 name=/MA11 subnet=1 containsPlane=false class=default
+[s8] net 34 name=/MA12 subnet=1 containsPlane=false class=default
+[s8] net 35 name=/MA13 subnet=1 containsPlane=false class=default
+[s8] net 36 name=/MA14 subnet=1 containsPlane=false class=default
+[s8] net 37 name=/MA15 subnet=1 containsPlane=false class=default
+[s8] net 38 name=/MA16 subnet=1 containsPlane=false class=default
+[s8] net 39 name=/MA2 subnet=1 containsPlane=false class=default
+[s8] net 40 name=/MA3 subnet=1 containsPlane=false class=default
+[s8] net 41 name=/MA4 subnet=1 containsPlane=false class=default
+[s8] net 42 name=/MA5 subnet=1 containsPlane=false class=default
+[s8] net 43 name=/MA6 subnet=1 containsPlane=false class=default
+[s8] net 44 name=/MA7 subnet=1 containsPlane=false class=default
+[s8] net 45 name=/MA8 subnet=1 containsPlane=false class=default
+[s8] net 46 name=/MA9 subnet=1 containsPlane=false class=default
+[s8] net 47 name=/MATCHL subnet=1 containsPlane=false class=default
+[s8] net 48 name=/MD0 subnet=1 containsPlane=false class=default
+[s8] net 49 name=/MD1 subnet=1 containsPlane=false class=default
+[s8] net 50 name=/MD2 subnet=1 containsPlane=false class=default
+[s8] net 51 name=/MD3 subnet=1 containsPlane=false class=default
+[s8] net 52 name=/MD4 subnet=1 containsPlane=false class=default
+[s8] net 53 name=/MD5 subnet=1 containsPlane=false class=default
+[s8] net 54 name=/MD6 subnet=1 containsPlane=false class=default
+[s8] net 55 name=/MD7 subnet=1 containsPlane=false class=default
+[s8] net 56 name=/OE- subnet=1 containsPlane=false class=default
+[s8] net 57 name=/PC-A0 subnet=1 containsPlane=false class=default
+[s8] net 58 name=/PC-A1 subnet=1 containsPlane=false class=default
+[s8] net 59 name=/PC-A10 subnet=1 containsPlane=false class=default
+[s8] net 60 name=/PC-A11 subnet=1 containsPlane=false class=default
+[s8] net 61 name=/PC-A2 subnet=1 containsPlane=false class=default
+[s8] net 62 name=/PC-A3 subnet=1 containsPlane=false class=default
+[s8] net 63 name=/PC-A4 subnet=1 containsPlane=false class=default
+[s8] net 64 name=/PC-A5 subnet=1 containsPlane=false class=default
+[s8] net 65 name=/PC-A6 subnet=1 containsPlane=false class=default
+[s8] net 66 name=/PC-A7 subnet=1 containsPlane=false class=default
+[s8] net 67 name=/PC-A8 subnet=1 containsPlane=false class=default
+[s8] net 68 name=/PC-A9 subnet=1 containsPlane=false class=default
+[s8] net 69 name=/PC-AEN subnet=1 containsPlane=false class=default
+[s8] net 70 name=/PC-DB0 subnet=1 containsPlane=false class=default
+[s8] net 71 name=/PC-DB1 subnet=1 containsPlane=false class=default
+[s8] net 72 name=/PC-DB2 subnet=1 containsPlane=false class=default
+[s8] net 73 name=/PC-DB3 subnet=1 containsPlane=false class=default
+[s8] net 74 name=/PC-DB4 subnet=1 containsPlane=false class=default
+[s8] net 75 name=/PC-DB5 subnet=1 containsPlane=false class=default
+[s8] net 76 name=/PC-DB6 subnet=1 containsPlane=false class=default
+[s8] net 77 name=/PC-DB7 subnet=1 containsPlane=false class=default
+[s8] net 78 name=/PC-IOR subnet=1 containsPlane=false class=default
+[s8] net 79 name=/PC-IOW subnet=1 containsPlane=false class=default
+[s8] net 80 name=/PC-RD subnet=1 containsPlane=false class=default
+[s8] net 81 name=/PC-RST subnet=1 containsPlane=false class=default
+[s8] net 82 name=/PC-WR subnet=1 containsPlane=false class=default
+[s8] net 83 name=/PE+ subnet=1 containsPlane=false class=default
+[s8] net 84 name=/PROG- subnet=1 containsPlane=false class=default
+[s8] net 85 name=/REF10 subnet=1 containsPlane=false class=default
+[s8] net 86 name=/REF11 subnet=1 containsPlane=false class=default
+[s8] net 87 name=/REF4 subnet=1 containsPlane=false class=default
+[s8] net 88 name=/REF5 subnet=1 containsPlane=false class=default
+[s8] net 89 name=/REF6 subnet=1 containsPlane=false class=default
+[s8] net 90 name=/REF7 subnet=1 containsPlane=false class=default
+[s8] net 91 name=/REF8 subnet=1 containsPlane=false class=default
+[s8] net 92 name=/REF9 subnet=1 containsPlane=false class=default
+[s8] net 93 name=/RSTL subnet=1 containsPlane=false class=default
+[s8] net 94 name=/SEL_LPT subnet=1 containsPlane=false class=default
+[s8] net 95 name=/SLCT+ subnet=1 containsPlane=false class=default
+[s8] net 96 name=/SLCTIN- subnet=1 containsPlane=false class=default
+[s8] net 97 name=/STROBE subnet=1 containsPlane=false class=default
+[s8] net 98 name=/WR- subnet=1 containsPlane=false class=default
+[s8] net 99 name=/WR_REG subnet=1 containsPlane=false class=default
+[s8] net 100 name=GND subnet=1 containsPlane=false class=Power
+[s8] net 101 name=VCC subnet=1 containsPlane=false class=Power
+[s8] net 102 name=unconnected-(BUS1-INQ2-Pad4) subnet=1 containsPlane=false class=default
+[s8] net 103 name=Net-(C3-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 104 name=unconnected-(BUS1--5V-Pad5) subnet=1 containsPlane=false class=default
+[s8] net 105 name=unconnected-(BUS1-DRQ2-Pad6) subnet=1 containsPlane=false class=default
+[s8] net 106 name=unconnected-(BUS1--12V-Pad7) subnet=1 containsPlane=false class=default
+[s8] net 107 name=unconnected-(BUS1-UNUSED-Pad8) subnet=1 containsPlane=false class=default
+[s8] net 108 name=unconnected-(BUS1-+12V-Pad9) subnet=1 containsPlane=false class=default
+[s8] net 109 name=unconnected-(BUS1-GND-Pad10) subnet=1 containsPlane=false class=default
+[s8] net 110 name=unconnected-(BUS1-MEM-Pad11) subnet=1 containsPlane=false class=default
+[s8] net 111 name=unconnected-(BUS1-MEM-Pad12) subnet=1 containsPlane=false class=default
+[s8] net 112 name=unconnected-(BUS1-DACK3-Pad15) subnet=1 containsPlane=false class=default
+[s8] net 113 name=unconnected-(BUS1-DRQ3-Pad16) subnet=1 containsPlane=false class=default
+[s8] net 114 name=unconnected-(BUS1-DACK1-Pad17) subnet=1 containsPlane=false class=default
+[s8] net 115 name=unconnected-(BUS1-DRQ1-Pad18) subnet=1 containsPlane=false class=default
+[s8] net 116 name=unconnected-(BUS1-DACK0-Pad19) subnet=1 containsPlane=false class=default
+[s8] net 117 name=unconnected-(BUS1-CLK-Pad20) subnet=1 containsPlane=false class=default
+[s8] net 118 name=unconnected-(BUS1-IRQ7-Pad21) subnet=1 containsPlane=false class=default
+[s8] net 119 name=unconnected-(BUS1-IRQ6-Pad22) subnet=1 containsPlane=false class=default
+[s8] net 120 name=unconnected-(BUS1-IRQ5-Pad23) subnet=1 containsPlane=false class=default
+[s8] net 121 name=unconnected-(BUS1-IRQ4-Pad24) subnet=1 containsPlane=false class=default
+[s8] net 122 name=unconnected-(BUS1-IRQ3-Pad25) subnet=1 containsPlane=false class=default
+[s8] net 123 name=unconnected-(BUS1-DACK2-Pad26) subnet=1 containsPlane=false class=default
+[s8] net 124 name=unconnected-(BUS1-TC-Pad27) subnet=1 containsPlane=false class=default
+[s8] net 125 name=unconnected-(BUS1-ALE-Pad28) subnet=1 containsPlane=false class=default
+[s8] net 126 name=unconnected-(BUS1-OSC-Pad30) subnet=1 containsPlane=false class=default
+[s8] net 127 name=unconnected-(BUS1-IO-Pad32) subnet=1 containsPlane=false class=default
+[s8] net 128 name=unconnected-(BUS1-IO_READY-Pad41) subnet=1 containsPlane=false class=default
+[s8] net 129 name=unconnected-(BUS1-BA19-Pad43) subnet=1 containsPlane=false class=default
+[s8] net 130 name=unconnected-(BUS1-BA18-Pad44) subnet=1 containsPlane=false class=default
+[s8] net 131 name=unconnected-(BUS1-BA17-Pad45) subnet=1 containsPlane=false class=default
+[s8] net 132 name=unconnected-(BUS1-BA16-Pad46) subnet=1 containsPlane=false class=default
+[s8] net 133 name=unconnected-(BUS1-BA15-Pad47) subnet=1 containsPlane=false class=default
+[s8] net 134 name=unconnected-(BUS1-BA14-Pad48) subnet=1 containsPlane=false class=default
+[s8] net 135 name=unconnected-(BUS1-BA13-Pad49) subnet=1 containsPlane=false class=default
+[s8] net 136 name=unconnected-(BUS1-BA12-Pad50) subnet=1 containsPlane=false class=default
+[s8] net 137 name=Net-(U9-P{slash}A3) subnet=1 containsPlane=false class=default
+[s8] net 138 name=Net-(D1-A) subnet=1 containsPlane=false class=default
+[s8] net 139 name=Net-(D2-A) subnet=1 containsPlane=false class=default
+[s8] net 140 name=Net-(U5-CS2) subnet=1 containsPlane=false class=default
+[s8] net 141 name=unconnected-(RR1-Pad10) subnet=1 containsPlane=false class=default
+[s8] net 142 name=unconnected-(U3-Y7-Pad11) subnet=1 containsPlane=false class=default
+[s8] net 143 name=Net-(U3-Y3) subnet=1 containsPlane=false class=default
+[s8] net 144 name=Net-(U3-Y2) subnet=1 containsPlane=false class=default
+[s8] net 145 name=Net-(U3-Y1) subnet=1 containsPlane=false class=default
+[s8] net 146 name=Net-(U3-Y0) subnet=1 containsPlane=false class=default
+[s8] net 147 name=unconnected-(U8-I{slash}O8-Pad8) subnet=1 containsPlane=false class=default
+[s8] net 148 name=unconnected-(U8-I{slash}O9-Pad9) subnet=1 containsPlane=false class=default
+[s8] net 149 name=unconnected-(U8-I{slash}O10-Pad10) subnet=1 containsPlane=false class=default
+[s8] net 150 name=unconnected-(U9-NC-PadA1) subnet=1 containsPlane=false class=default
+[s8] net 151 name=unconnected-(U9-NC-PadA2) subnet=1 containsPlane=false class=default
+[s8] net 152 name=unconnected-(U9-NC-PadA3) subnet=1 containsPlane=false class=default
+[s8] net 153 name=unconnected-(U9-NC-PadB1) subnet=1 containsPlane=false class=default
+[s8] net 154 name=unconnected-(U9-TCK-PadB4) subnet=1 containsPlane=false class=default
+[s8] net 155 name=unconnected-(U9-TMS-PadB5) subnet=1 containsPlane=false class=default
+[s8] net 156 name=unconnected-(U9-NC-PadB10) subnet=1 containsPlane=false class=default
+[s8] net 157 name=unconnected-(U9-NC-PadB13) subnet=1 containsPlane=false class=default
+[s8] net 158 name=unconnected-(U9-TDI-PadC5) subnet=1 containsPlane=false class=default
+[s8] net 159 name=unconnected-(U9-NC-PadE2) subnet=1 containsPlane=false class=default
+[s8] net 160 name=unconnected-(U9-NC-PadE3) subnet=1 containsPlane=false class=default
+[s8] net 161 name=unconnected-(U9-NC-PadE11) subnet=1 containsPlane=false class=default
+[s8] net 162 name=unconnected-(U9-NC-PadJ3) subnet=1 containsPlane=false class=default
+[s8] net 163 name=unconnected-(U9-NC-PadJ11) subnet=1 containsPlane=false class=default
+[s8] net 164 name=unconnected-(U9-NC-PadK12) subnet=1 containsPlane=false class=default
+[s8] net 165 name=unconnected-(U9-NC-PadL5) subnet=1 containsPlane=false class=default
+[s8] net 166 name=unconnected-(U9-P{slash}D2-PadL6) subnet=1 containsPlane=false class=default
+[s8] net 167 name=unconnected-(U9-NC-PadL9) subnet=1 containsPlane=false class=default
+[s8] net 168 name=unconnected-(U9-NC-PadM1) subnet=1 containsPlane=false class=default
+[s8] net 169 name=unconnected-(U9-TDO-PadM2) subnet=1 containsPlane=false class=default
+[s8] net 170 name=unconnected-(U9-PGCK4{slash}A1-PadN1) subnet=1 containsPlane=false class=default
+[s8] net 171 name=unconnected-(U9-P{slash}RCLK{slash}BSY{slash}RDY-PadN3) subnet=1 containsPlane=false class=default
+[s8] net 172 name=unconnected-(U9-P-PadN5) subnet=1 containsPlane=false class=default
+[s8] net 173 name=unconnected-(U9-NC-PadN12) subnet=1 containsPlane=false class=default
+[s8] viainfos count=2
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 1 name=via_Power padstack=via_Power clearanceClass=1 attachSmd=true
+[s8] viarules count=2
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viarule 1 name=Power vias=[via_Power]
+[s8] viapadstacks count=2
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] viapadstack 1 name=via_Power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=corney-island
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox 1899000 -1027250 2075000 -722000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 1900000.0 -1026250.0
+[s8] corner 0 1 2074000.0 -1026250.0
+[s8] corner 0 2 2074000.0 -723000.0
+[s8] corner 0 3 1900000.0 -723000.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=5
+[s8] net 1 name=C5 subnet=1 containsPlane=false class=default
+[s8] net 2 name=inner_bottom_B subnet=1 containsPlane=false class=default
+[s8] net 3 name=inner_home_B subnet=1 containsPlane=false class=default
+[s8] net 4 name=R2 subnet=1 containsPlane=false class=default
+[s8] net 5 name=R1 subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=1
+[s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
+
+[case] stem=corney-island-session
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -51000 -51000 52000 52000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 -50000.0 -50000.0
+[s8] corner 0 1 51000.0 -50000.0
+[s8] corner 0 2 51000.0 51000.0
+[s8] corner 0 3 -50000.0 51000.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=5
+[s8] net 1 name=C5 subnet=1 containsPlane=false class=default
+[s8] net 2 name=inner_bottom_B subnet=1 containsPlane=false class=default
+[s8] net 3 name=inner_home_B subnet=1 containsPlane=false class=default
+[s8] net 4 name=R2 subnet=1 containsPlane=false class=default
+[s8] net 5 name=R1 subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=1
+[s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
+
+[case] stem=complex-hierarchy-session
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=top_copper signal=false
+[s8] layer 1 name=bottom_copper signal=true
+[s8] clearance classes=3 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] clname 2 power
+[s8] cl 0 0 0 0 0
+[s8] cl 0 1 0 3000 3000
+[s8] cl 0 2 0 2000 3000
+[s8] cl 1 0 0 0 0
+[s8] cl 1 1 0 3000 3000
+[s8] cl 1 2 0 2000 3000
+[s8] bbox 878000 -1319260 1886950 -517000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 879000.0 -1318260.0
+[s8] corner 0 1 1885950.0 -1318260.0
+[s8] corner 0 2 1885950.0 -518160.0
+[s8] corner 0 3 879000.0 -518000.0
+[s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=2
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[2000,2000] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=power traceClearanceClass=2 halfWidths=[3000,3000] activeLayers=[false,true] viaRule=power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=52
+[s8] net 1 name=-VAA subnet=1 containsPlane=false class=power
+[s8] net 2 name=/12Vext subnet=1 containsPlane=false class=power
+[s8] net 3 name=/ampli_ht_horizontal/PIEZO_IN subnet=1 containsPlane=false class=default
+[s8] net 4 name=/ampli_ht_horizontal/PIEZO_OUT subnet=1 containsPlane=false class=default
+[s8] net 5 name=/ampli_ht_horizontal/S_OUT+ subnet=1 containsPlane=false class=default
+[s8] net 6 name=/ampli_ht_horizontal/Vpil_0_3,3V subnet=1 containsPlane=false class=default
+[s8] net 7 name=/ampli_ht_vertical/PIEZO_IN subnet=1 containsPlane=false class=default
+[s8] net 8 name=/ampli_ht_vertical/PIEZO_OUT subnet=1 containsPlane=false class=default
+[s8] net 9 name=/ampli_ht_vertical/S_OUT+ subnet=1 containsPlane=false class=default
+[s8] net 10 name=/ampli_ht_vertical/Vpil_0_3,3V subnet=1 containsPlane=false class=default
+[s8] net 11 name=GND subnet=1 containsPlane=false class=power
+[s8] net 12 name=HT subnet=1 containsPlane=false class=power
+[s8] net 13 name=Net-(U102-CAP+) subnet=1 containsPlane=false class=default
+[s8] net 14 name=Net-(U102-CAP-) subnet=1 containsPlane=false class=default
+[s8] net 15 name=Net-(C201-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 16 name=Net-(C202-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 17 name=Net-(U201B-+) subnet=1 containsPlane=false class=default
+[s8] net 18 name=Net-(C204-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 19 name=Net-(C301-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 20 name=Net-(C302-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 21 name=Net-(U301B-+) subnet=1 containsPlane=false class=default
+[s8] net 22 name=Net-(C304-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 23 name=Net-(D201-K) subnet=1 containsPlane=false class=default
+[s8] net 24 name=Net-(D202-K) subnet=1 containsPlane=false class=default
+[s8] net 25 name=Net-(D203-K) subnet=1 containsPlane=false class=default
+[s8] net 26 name=Net-(D203-A) subnet=1 containsPlane=false class=default
+[s8] net 27 name=Net-(D204-K) subnet=1 containsPlane=false class=default
+[s8] net 28 name=Net-(D301-K) subnet=1 containsPlane=false class=default
+[s8] net 29 name=Net-(D302-K) subnet=1 containsPlane=false class=default
+[s8] net 30 name=Net-(D303-A) subnet=1 containsPlane=false class=default
+[s8] net 31 name=Net-(D303-K) subnet=1 containsPlane=false class=default
+[s8] net 32 name=Net-(D304-K) subnet=1 containsPlane=false class=default
+[s8] net 33 name=VCC subnet=1 containsPlane=false class=power
+[s8] net 34 name=Net-(Q201-E) subnet=1 containsPlane=false class=default
+[s8] net 35 name=Net-(Q202-E) subnet=1 containsPlane=false class=default
+[s8] net 36 name=Net-(Q203-E) subnet=1 containsPlane=false class=default
+[s8] net 37 name=Net-(Q204-E) subnet=1 containsPlane=false class=default
+[s8] net 38 name=Net-(Q204-B) subnet=1 containsPlane=false class=default
+[s8] net 39 name=Net-(Q301-E) subnet=1 containsPlane=false class=default
+[s8] net 40 name=+12V subnet=1 containsPlane=false class=default
+[s8] net 41 name=Net-(Q302-E) subnet=1 containsPlane=false class=default
+[s8] net 42 name=Net-(Q303-E) subnet=1 containsPlane=false class=default
+[s8] net 43 name=Net-(Q304-B) subnet=1 containsPlane=false class=default
+[s8] net 44 name=Net-(Q304-E) subnet=1 containsPlane=false class=default
+[s8] net 45 name=Net-(R212-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 46 name=Net-(R213-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 47 name=Net-(R312-Pad2) subnet=1 containsPlane=false class=default
+[s8] net 48 name=Net-(R313-Pad1) subnet=1 containsPlane=false class=default
+[s8] net 49 name=Net-(U201A--) subnet=1 containsPlane=false class=default
+[s8] net 50 name=Net-(U301A--) subnet=1 containsPlane=false class=default
+[s8] net 51 name=unconnected-(U102-LV-Pad6) subnet=1 containsPlane=false class=default
+[s8] net 52 name=unconnected-(U102-OSC-Pad7) subnet=1 containsPlane=false class=default
+[s8] viainfos count=2
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 1 name=via_power padstack=via_power clearanceClass=1 attachSmd=true
+[s8] viarules count=2
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viarule 1 name=power vias=[via_power]
+[s8] viapadstacks count=2
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] viapadstack 1 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=um resolution=10 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=empty-object
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -51000 -51000 52000 52000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 -50000.0 -50000.0
+[s8] corner 0 1 51000.0 -50000.0
+[s8] corner 0 2 51000.0 51000.0
+[s8] corner 0 3 -50000.0 51000.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=1
+[s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
+
+[case] stem=json-null
+[s8] result=ParseError location=json_root detail=JSON payload is empty or invalid
+
+[case] stem=json-empty
+[s8] result=ParseError location=json_root detail=JSON payload is empty or invalid
+
+[case] stem=json-truncated
+[s8] result=ParseError location=json_payload detail=Exception occurred: EOF while parsing an object at line 1 column 1
+
+[case] stem=layers-null
+[s8] result=ParseError location=json_payload detail=Exception occurred: Cannot invoke "java.util.List.isEmpty()" because "boardJson.layers" is null
+
+[case] stem=netclasses-null
+[s8] result=ParseError location=json_payload detail=Exception occurred: Cannot invoke "java.util.List.iterator()" because "netClasses" is null
+
+[case] stem=unit-mil
+[s8] result=Success
+[s8] layers count=3
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=In1.Cu signal=false
+[s8] layer 2 name=B.Cu signal=true
+[s8] clearance classes=3 layers=3
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] clname 2 HV
+[s8] cl 0 0 0 0 0
+[s8] cl 0 1 0 10 78
+[s8] cl 0 2 0 8 40
+[s8] cl 1 0 0 0 0
+[s8] cl 1 1 0 10 78
+[s8] cl 1 2 0 8 40
+[s8] cl 2 0 0 0 0
+[s8] cl 2 1 0 10 78
+[s8] cl 2 2 0 8 40
+[s8] bbox -1000 -1080 1100 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 0.0 -80.0
+[s8] corner 0 1 100.0 -80.0
+[s8] corner 0 2 100.0 0.0
+[s8] corner 0 3 0.0 0.0
+[s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=1.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=2
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[8,8,8] activeLayers=[true,false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=HV traceClearanceClass=2 halfWidths=[13,13,13] activeLayers=[true,false,true] viaRule=HV shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=3
+[s8] net 1 name=GND subnet=1 containsPlane=true class=default
+[s8] net 2 name=HV1 subnet=1 containsPlane=false class=HV
+[s8] net 3 name=NC subnet=1 containsPlane=false class=default
+[s8] viainfos count=2
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 1 name=via_HV padstack=via_HV clearanceClass=1 attachSmd=true
+[s8] viarules count=2
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viarule 1 name=HV vias=[via_HV]
+[s8] viapadstacks count=2
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false
+[s8] viapadstack 1 name=via_HV fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=3 unit=mil resolution=1 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=unit-um
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=top signal=false
+[s8] layer 1 name=bot signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -1000 -41000 51000 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=3
+[s8] corner 0 0 50000.0 -40000.0
+[s8] corner 0 1 50000.0 0.0
+[s8] corner 0 2 0.0 0.0
+[s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1250,1250] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=1
+[s8] net 1 name=N1 subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=um resolution=10 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=unit-unknown
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -1000 -101000 101000 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 0.0 -100000.0
+[s8] corner 0 1 100000.0 -100000.0
+[s8] corner 0 2 100000.0 0.0
+[s8] corner 0 3 0.0 0.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=unit-lowercase
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -1000 -101000 101000 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=3
+[s8] corner 0 0 100000.0 -100000.0
+[s8] corner 0 1 100000.0 0.0
+[s8] corner 0 2 0.0 0.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=resolution-fractional
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 0
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 0
+[s8] bbox -1000 -1020 1020 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 0.0 -20.0
+[s8] corner 0 1 20.0 -20.0
+[s8] corner 0 2 20.0 0.0
+[s8] corner 0 3 0.0 0.0
+[s8] comm unit=mm resolution=2 stringQuote=" hostCad=KiCad hostVersion=9.9 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=2.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=2 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=resolution-zero
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 0
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 0
+[s8] bbox -1000 -1010 1010 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 0.0 -10.0
+[s8] corner 0 1 10.0 -10.0
+[s8] corner 0 2 10.0 0.0
+[s8] corner 0 3 0.0 0.0
+[s8] comm unit=mm resolution=1 stringQuote=" hostCad=Altium hostVersion=v24 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=1.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=1 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=outline-two-corners
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -21000 -91000 81000 11000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 -20000.0 -90000.0
+[s8] corner 0 1 80000.0 -90000.0
+[s8] corner 0 2 80000.0 10000.0
+[s8] corner 0 3 -20000.0 10000.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=1
+[s8] net 1 name=V subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=1
+[s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
+
+[case] stem=outline-unsorted
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -1000 -101000 101000 31000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=5
+[s8] corner 0 0 0.0 -100000.0
+[s8] corner 0 1 100000.0 -100000.0
+[s8] corner 0 2 100000.0 0.0
+[s8] corner 0 3 50000.0 30000.0
+[s8] corner 0 4 0.0 0.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=y-half-tie
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 8
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 8
+[s8] bbox -999 -1020 1011 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=3
+[s8] corner 0 0 11.0 -20.0
+[s8] corner 0 1 11.0 0.0
+[s8] corner 0 2 1.0 0.0
+[s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=1.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=0
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mil resolution=1 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=netclass-duplicate-names
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=4 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] clname 2 A
+[s8] clname 3 A
+[s8] cl 0 0 0 0 0 0
+[s8] cl 0 1 0 2000 2000 4000
+[s8] cl 0 2 0 2000 2000 2000
+[s8] cl 0 3 0 2000 2000 4000
+[s8] cl 1 0 0 0 0 0
+[s8] cl 1 1 0 2000 2000 4000
+[s8] cl 1 2 0 2000 2000 2000
+[s8] cl 1 3 0 2000 2000 4000
+[s8] bbox -1000 -101000 101000 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 0.0 -100000.0
+[s8] corner 0 1 100000.0 -100000.0
+[s8] corner 0 2 100000.0 0.0
+[s8] corner 0 3 0.0 0.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=3
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=A traceClearanceClass=2 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=A shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 2 name=A traceClearanceClass=3 halfWidths=[2500,2500] activeLayers=[true,true] viaRule=A shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=1
+[s8] net 1 name=n1 subnet=1 containsPlane=false class=A
+[s8] viainfos count=2
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 1 name=via_A padstack=via_A clearanceClass=1 attachSmd=true
+[s8] viarules count=3
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viarule 1 name=A vias=[via_A]
+[s8] viarule 2 name=A vias=[via_A]
+[s8] viapadstacks count=2
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] viapadstack 1 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0
+
+[case] stem=referenced-nets-only
+[s8] result=Success
+[s8] layers count=2
+[s8] layer 0 name=F.Cu signal=true
+[s8] layer 1 name=B.Cu signal=true
+[s8] clearance classes=2 layers=2
+[s8] clname 0 null
+[s8] clname 1 default
+[s8] cl 0 0 0 0
+[s8] cl 0 1 0 2000
+[s8] cl 1 0 0 0
+[s8] cl 1 1 0 2000
+[s8] bbox -1000 -301000 401000 1000
+[s8] outline shapes=1 clearanceClass=1
+[s8] outlineshape 0 PolygonShape corners=4
+[s8] corner 0 0 0.0 -300000.0
+[s8] corner 0 1 400000.0 -300000.0
+[s8] corner 0 2 400000.0 0.0
+[s8] corner 0 3 0.0 0.0
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] netclasses count=1
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] nets count=17
+[s8] net 1 name=alpha subnet=1 containsPlane=false class=default
+[s8] net 2 name=beta subnet=1 containsPlane=false class=default
+[s8] net 3 name=gamma subnet=1 containsPlane=false class=default
+[s8] net 4 name=delta subnet=1 containsPlane=false class=default
+[s8] net 5 name=epsilon subnet=1 containsPlane=false class=default
+[s8] net 6 name=zeta subnet=1 containsPlane=false class=default
+[s8] net 7 name=eta subnet=1 containsPlane=false class=default
+[s8] net 8 name=theta subnet=1 containsPlane=false class=default
+[s8] net 9 name=iota subnet=1 containsPlane=false class=default
+[s8] net 10 name=kappa subnet=1 containsPlane=false class=default
+[s8] net 11 name=lambda subnet=1 containsPlane=false class=default
+[s8] net 12 name=mu subnet=1 containsPlane=false class=default
+[s8] net 13 name=nu subnet=1 containsPlane=false class=default
+[s8] net 14 name=xi subnet=1 containsPlane=false class=default
+[s8] net 15 name=omicron subnet=1 containsPlane=false class=default
+[s8] net 16 name=pi subnet=1 containsPlane=false class=default
+[s8] net 17 name=rho subnet=1 containsPlane=false class=default
+[s8] viainfos count=1
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viarules count=1
+[s8] viarule 0 name=default vias=[defaultVia]
+[s8] viapadstacks count=1
+[s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
+[s8] warnings count=0

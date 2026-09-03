@@ -442,83 +442,411 @@ fn java_angle_restriction_name(angle: fr_board::AngleRestriction) -> &'static st
     }
 }
 
-/// The one row of the transcript that the port is **not** expected to reproduce, with its root
-/// cause — an XDIFF, in the sense the workspace uses the word: a divergence that is understood,
-/// bounded and recorded, not a failure that is tolerated.
+/// The port's own `[s8]` rows over the same 24 inputs — the **port golden**.
 ///
-/// **Quirk #277.** Java parses with Gson and the port with `serde_json`. On a *well-formed*
-/// payload the two agree on everything (995 of the 996 rows below prove it), but a **malformed**
-/// one produces a `ParseError` whose `detail` is the parser's own message, and no port can
-/// reconstruct Gson's. Both readers reject the same inputs at the same `location`; only the
-/// human-readable text differs, and nothing in the tree parses it — `fr_core::load`'s
-/// `parse_board_result` turns a `ParseError` into an `Error` by formatting both fields into a
-/// message for the user (`crates/fr-core/src/load.rs`), and the CLI prints that.
+/// # Why there are now two transcripts, and what each one is for
 ///
-/// The other three malformed stems — `json-null`, `json-empty`, `layers-null`,
-/// `netclasses-null` — do **not** appear here: their `detail` is a string `readBoard` itself
-/// composes, so the port matches them byte for byte.
-const XDIFF: &[(&str, usize, &str)] = &[(
-    "json-truncated",
-    0,
-    "quirk #277: the ParseError detail on a syntactically invalid payload is the JSON parser's \
-     own message — `java.io.EOFException: End of input at line 1 column 2 path $.` from Gson, \
-     `EOF while parsing an object at line 1 column 1` from serde_json. Same location, same \
-     rejection, different prose.",
-)];
+/// Until Plan 9 Task 7 the acceptance test was "the port reproduces the jar, row for row, with
+/// one recorded exception". Task 7 fixed six things the jar gets wrong on this path — a `null`
+/// name it stores and dies on hundreds of lines later (#282/#283/#287), a padstack identity that
+/// makes the second pad inherit the first one's shapes (#284), a negative array size (#286), a
+/// duplicate package per component (#285), and a net numbering that is `String.hashCode`'s
+/// (#280) — so the port is now *deliberately* different from the jar on **172** of its 3 771
+/// rows, and emits **67 fewer rows** besides, because six stems that used to load are refusals
+/// now and a refusal is one row where a board was many. 239 rows in the symmetric difference,
+/// over **26** of the 91 stems.
+///
+/// A list of 239 excused rows would be a list, not an argument. So the family moves to the port
+/// lane, the way ruling BT moves a reference family the first fix that touches it:
+///
+/// * `data/p8t8-kicad-read-{a,b}.txt` stay exactly as they are — the **jar's** rows, still the
+///   record of what the jar does, still the source of the input corpus (every `[case]` line).
+/// * `data/p9t7-kicad-read-{a,b}.txt` are the **port's** rows over those same inputs.
+/// * [`the_whole_section_1_to_8_surface_matches_the_port_golden`] pins the port's side: any change
+///   in the reader that moves a row fails it.
+/// * [`the_port_golden_differs_from_the_jar_only_where_a_fix_says_so`] pins the jar's side: it
+///   diffs the two files and requires every stem that differs to be in [`KNOWN_DIVERGENCES`] with
+///   an authorizing register row — **and** requires every stem *in* that table to still differ,
+///   so a fix that silently reverted would fail here too.
+///
+/// Both sides are pinned and drift fails both ways, which is what the divergence convention asks
+/// for. Regenerate the port goldens with:
+///
+/// ```text
+/// cargo test -p fr-dsn --test kicad_reader emit_the_port_transcripts -- --ignored --nocapture
+/// ```
+///
+/// which prints both files (they are marked in the output) for `>`-redirection into `tests/data`.
+const PORT_TRANSCRIPT: &str = include_str!("data/p9t7-kicad-read-a.txt");
 
-/// **The acceptance test**: zero *unexplained* differing `[s8]` rows on all 24 inputs, the one
-/// [`XDIFF`] row aside.
+/// The part-B port golden — see [`PORT_TRANSCRIPT`].
+const PORT_TRANSCRIPT_B: &str = include_str!("data/p9t7-kicad-read-b.txt");
+
+/// The rows of `text` for `stem`, under `prefix` (`[s8]` or `[s9]`).
+fn golden_rows(text: &str, prefix: &str) -> Vec<(String, Vec<String>)> {
+    let mut cases: Vec<(String, Vec<String>)> = Vec::new();
+    let row_prefix = format!("{prefix} ");
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("[case] stem=") {
+            let stem = rest.split(' ').next().expect("a [case] line names a stem");
+            cases.push((stem.to_string(), Vec::new()));
+        } else if let Some(row) = line.strip_prefix(row_prefix.as_str()) {
+            cases
+                .last_mut()
+                .expect("a row follows a [case] line")
+                .1
+                .push(row.to_string());
+        }
+    }
+    cases
+}
+
+/// The stems whose port rows differ from the jar's, and the register row that authorizes each.
+///
+/// **26 entries, one per diverging stem**, which is every stem on which the two transcripts
+/// differ and no other. A stem that starts differing without an entry fails
+/// [`the_port_golden_differs_from_the_jar_only_where_a_fix_says_so`]; a stem that stops differing
+/// while it is still listed fails [`every_known_divergence_still_differs`].
+///
+/// **Five** of the 26 are pre-Task-7 and are marked `#277` / `#283` / `#282-print`: they are
+/// totalizations, not fixes, and they were the old `XDIFF` / `XDIFF_B` tables. The other 21 each
+/// have a Task 7 fix behind them.
+const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
+    // ---- quirk #277: the parser's own prose on a payload the *parser* rejects ----------------
+    (
+        "json-truncated",
+        "#277",
+        "the ParseError detail on a syntactically invalid payload is the JSON parser's own \
+         message — Gson's `java.io.EOFException: End of input at line 1 column 2 path $.` against \
+         serde_json's `EOF while parsing an object at line 1 column 1`. Same location, same \
+         rejection, different prose. Not a fix: no port can reconstruct Gson's text.",
+    ),
+    (
+        "trace-point-null-element",
+        "#283",
+        "`\"points\": [{...}, null]` is a `List<Point2D>` holding a null in Gson, and `:675`'s \
+         `pt.x` then throws. `serde_json` refuses the null against `Vec<Point2D>` first, so the \
+         port answers the same `location` with the deserializer's prose. Both reject the file.",
+    ),
+    (
+        "outline-corner-null-element",
+        "#283",
+        "as `trace-point-null-element`, through section 5's `outline.corners`.",
+    ),
+    (
+        "netclass-null-element",
+        "#283",
+        "`\"netClasses\": [null]` is a one-element list holding a null, and \
+         `isKiCadDefaultNetClassName(netClass.name)` then throws. Same rejection, different prose.",
+    ),
+    (
+        "zone-negative-layer",
+        "#282-print",
+        "totalized: `ObstacleArea.layer` is a Java `int` that `:663` fills from `zone.layerIndex` \
+         verbatim, so Java keeps `-3`; `fr_board`'s layer is a `usize` holding the same 64 bits \
+         and printing them unsigned. Nothing a KiCad export writes reaches it.",
+    ),
+    // ---- fixed: T7 (#282, #283, #287) — the DTO boundary refuses a null name -----------------
+    (
+        "layer-null-name-with-pads",
+        "#282",
+        "a `null` layer name. Java dies at `:545` — 430 lines from the JSON that caused it, and \
+         only because this board also has pads naming layers. The port refuses at the DTO \
+         boundary, naming `layers[i].name`.",
+    ),
+    (
+        "layer-null-name-no-pad-layers",
+        "#282",
+        "the **same** board with an empty pad `layers` list, which never reaches `:545` — so Java \
+         loads it, with a layer whose name is `null`, and every later lookup against that layer \
+         silently fails. The port refuses it too: the document is malformed either way.",
+    ),
+    (
+        "net-null-name-with-pads",
+        "#282",
+        "a `null` net name. Java dies inside `Nets.get`'s walk, at the first lookup that reaches \
+         the net. The port refuses at the boundary, naming `nets[i].name`.",
+    ),
+    (
+        "net-null-name-pad-without-net",
+        "#282",
+        "the same board whose pad names no net, so Java's walk never reaches the null and the \
+         board loads with a nameless net. Refused at the boundary.",
+    ),
+    (
+        "comp-null-reference-single",
+        "#287",
+        "a `null` component `reference`. Java dies inside `ConcurrentSkipListMap.put`, through \
+         `Component.compareTo`, before anything reads the component. The port refuses at the \
+         boundary, naming `components[i].reference`.",
+    ),
+    (
+        "comp-null-reference-second",
+        "#287",
+        "as `comp-null-reference-single`, with the null on the second component.",
+    ),
+    (
+        "pad-null-name-dedup",
+        "#282+#285",
+        "three components whose pads have no `name`. Java's `:603` catch turns \
+         `arePackagePinsIdentical`'s throw into a **duplicate package per component** — three \
+         packages all called `NONAME`, silently. The port refuses the document, naming \
+         `components[i].pads[j].name`; the deduplication case it was hiding is now testable, in \
+         `kicad_packages.rs`.",
+    ),
+    (
+        "pad-layers-null-element",
+        "#283",
+        "`\"layers\": [null, \"B.Cu\"]` — the one null element Java *tolerates*, because \
+         `equalsIgnoreCase(null)` is `false`: the pad silently spans `B.Cu` only. The port refuses \
+         it, naming `components[i].pads[j].layers[k]`.",
+    ),
+    // ---- fixed: T7 (#284) — the padstack identity, and the name that follows from it ---------
+    (
+        "pad-shape-arms",
+        "#284",
+        "every pad shape arm, so every generated padstack name: the `Round` form carries `size.y` \
+         now, where `:883` dropped it and two round pads of different heights therefore shared a \
+         padstack.",
+    ),
+    (
+        "pad-layer-selection",
+        "#284",
+        "the `T`/`B`/`A` layer-type letter with pads on different spans — the case where Java's \
+         name-keyed lookup hands the second pad the first pad's shapes.",
+    ),
+    (
+        "pad-name-half-up",
+        "#284",
+        "the HALF_UP `%.0f` rounding is unchanged; what moved is the `Round` form's second \
+         number, which the name now carries.",
+    ),
+    (
+        "pad-layers-unmatched-only",
+        "#284+#286",
+        "a pad whose `layers` match no board layer, and nothing before it in the library. Java \
+         built the all-`null` padstack, inserted the pin, and threw `NegativeArraySizeException` \
+         from inside the search-tree update — reported as the bare number, `Exception occurred: \
+         -2`. The port refuses before the padstack exists, naming the pad.",
+    ),
+    (
+        "via-start-gt-end",
+        "#286",
+        "a via whose `startLayerIndex` is past its `endLayerIndex`, which is the same negative \
+         count reached through `insertVia` — and on the `importSession` path Java keeps a via that \
+         is in the item list and in no search tree.",
+    ),
+    // ---- fixed: T7 (#280) — insertion-ordered net numbers ------------------------------------
+    (
+        "referenced-nets-only",
+        "#280",
+        "seventeen nets, none declared, all auto-registered: the stem that exists to measure \
+         `java.util.HashSet`'s iteration order. They are numbered 1..17 in first-reference order \
+         now.",
+    ),
+    (
+        "ecc83-v1",
+        "#280",
+        "the fixture the fix list names: thirteen pad nets, none declared. This renumbering is \
+         what moves `tests/reference/cli-kicad-ecc83-json/`.",
+    ),
+    (
+        "ecc83-v2",
+        "#280+#284",
+        "the same board's v2 export — its nets renumber, and its 24 round pads take the two-number \
+         name.",
+    ),
+    (
+        "interf-u",
+        "#284",
+        "173 referenced nets, all declared, so #280 does not touch it; its 158 round pads take the \
+         two-number name.",
+    ),
+    (
+        "complex-hierarchy",
+        "#284",
+        "52 declared nets, so #280 does not touch it either; its 54 round pads take the two-number \
+         name. This is the second CLI stem, and its SES does not carry a pad padstack name, which \
+         is why the golden does not move.",
+    ),
+    (
+        "corney-island",
+        "#284",
+        "ten round pads, five distinct names.",
+    ),
+    ("traces", "#280", "three trace nets, none declared."),
+    (
+        "mixed",
+        "#280",
+        "a board mixing declared and referenced nets: the declared ones keep their numbers and \
+         the referenced ones follow in first-reference order.",
+    ),
+];
+
+/// **The port's acceptance test**: the reader reproduces `p9t7-kicad-read-a.txt` exactly.
 #[test]
-fn the_whole_section_1_to_8_surface_matches_the_jvm() {
+fn the_whole_section_1_to_8_surface_matches_the_port_golden() {
+    assert_golden(
+        &transcript_cases(),
+        &golden_rows(PORT_TRANSCRIPT, "[s8]"),
+        emit,
+    );
+}
+
+/// **The jar's side**: the port golden differs from the jar transcript only on the stems
+/// [`KNOWN_DIVERGENCES`] names, and differs on **every** stem it names.
+#[test]
+fn the_port_golden_differs_from_the_jar_only_where_a_fix_says_so() {
+    assert_divergences(
+        &golden_rows(TRANSCRIPT, "[s8]"),
+        &golden_rows(PORT_TRANSCRIPT, "[s8]"),
+        "part A",
+    );
+}
+
+/// Compares the port's live emission against a port golden, row for row.
+fn assert_golden(
+    cases: &[Case],
+    golden: &[(String, Vec<String>)],
+    emit_rows: fn(&BoardReadResult) -> Vec<String>,
+) {
+    assert_eq!(
+        cases.len(),
+        golden.len(),
+        "the port golden must cover the same inputs as the jar transcript"
+    );
     let mut diffs: Vec<String> = Vec::new();
     let mut compared = 0usize;
-    let mut xdiffs_seen = 0usize;
-    for case in transcript_cases() {
-        let result = read_board(&case.json, None);
-        let actual = emit(&result);
-        for (i, expected) in case.expected.iter().enumerate() {
+    for (case, (stem, expected)) in cases.iter().zip(golden) {
+        assert_eq!(
+            &case.stem, stem,
+            "the two files list the stems in one order"
+        );
+        let actual = emit_rows(&read_board(&case.json, None));
+        for (i, expected) in expected.iter().enumerate() {
             compared += 1;
-            let excused = XDIFF
-                .iter()
-                .find(|(stem, row, _)| *stem == case.stem && *row == i);
-            match (actual.get(i), excused) {
-                (Some(row), None) if row == expected => {}
-                (Some(row), Some((_, _, reason))) => {
-                    assert_ne!(
-                        row, expected,
-                        "{}[{i}] now MATCHES the JVM — delete its XDIFF entry ({reason})",
-                        case.stem
-                    );
-                    xdiffs_seen += 1;
-                }
-                (Some(row), None) => diffs.push(format!(
-                    "{}[{i}]\n  java: {expected}\n  rust: {row}",
-                    case.stem
+            match actual.get(i) {
+                Some(row) if row == expected => {}
+                Some(row) => diffs.push(format!(
+                    "{stem}[{i}]\n  golden: {expected}\n  rust:   {row}"
                 )),
-                (None, _) => diffs.push(format!("{}[{i}] missing\n  java: {expected}", case.stem)),
+                None => diffs.push(format!("{stem}[{i}] missing\n  golden: {expected}")),
             }
         }
-        if actual.len() > case.expected.len() {
-            for row in &actual[case.expected.len()..] {
-                diffs.push(format!("{} extra\n  rust: {row}", case.stem));
-            }
+        for row in actual.iter().skip(expected.len()) {
+            diffs.push(format!("{stem} extra\n  rust: {row}"));
         }
     }
     assert!(
-        compared > 900,
-        "the transcript should carry well over 900 [s8] rows, got {compared}"
-    );
-    assert_eq!(
-        xdiffs_seen,
-        XDIFF.len(),
-        "every XDIFF row must have been reached"
-    );
-    assert!(
         diffs.is_empty(),
-        "{} of {compared} rows differ from the JVM with no XDIFF entry:\n{}",
+        "{} of {compared} rows differ from the port golden — regenerate it only if the change \
+         was intended, and record the fix that caused it:\n{}",
         diffs.len(),
         diffs.join("\n")
     );
+}
+
+/// The stems whose port rows differ from the jar's, in one part.
+fn diverging_stems(jar: &[(String, Vec<String>)], port: &[(String, Vec<String>)]) -> Vec<String> {
+    assert_eq!(jar.len(), port.len(), "the two files list the same inputs");
+    jar.iter()
+        .zip(port)
+        .filter(|((stem, jar_rows), (port_stem, port_rows))| {
+            assert_eq!(stem, port_stem, "the stems are in one order");
+            jar_rows != port_rows
+        })
+        .map(|((stem, _), _)| stem.clone())
+        .collect()
+}
+
+/// Diffs a jar transcript against its port golden and requires every difference to be authorized.
+///
+/// This is the **forward** direction only. The other one — an entry that no longer describes a
+/// divergence — is [`every_known_divergence_still_differs`], and it has to look at both parts at
+/// once: a stem may diverge in the item graph and not in the section-1-to-8 surface, which is
+/// exactly what a fix to a padstack **name** does.
+fn assert_divergences(jar: &[(String, Vec<String>)], port: &[(String, Vec<String>)], part: &str) {
+    let mut unexplained: Vec<String> = Vec::new();
+    for ((stem, jar_rows), (_, port_rows)) in jar.iter().zip(port) {
+        if jar_rows == port_rows || KNOWN_DIVERGENCES.iter().any(|(name, _, _)| name == stem) {
+            continue;
+        }
+        let first = jar_rows
+            .iter()
+            .zip(port_rows)
+            .position(|(a, b)| a != b)
+            .unwrap_or_else(|| jar_rows.len().min(port_rows.len()));
+        unexplained.push(format!(
+            "{stem}[{first}]\n  jar:  {}\n  port: {}",
+            jar_rows.get(first).map_or("<none>", String::as_str),
+            port_rows.get(first).map_or("<none>", String::as_str),
+        ));
+    }
+    assert!(
+        unexplained.is_empty(),
+        "{part}: {} stem(s) differ from the jar with no KNOWN_DIVERGENCES entry — add one naming \
+         the register row that authorizes it, or fix the port:\n{}",
+        unexplained.len(),
+        unexplained.join("\n")
+    );
+}
+
+/// The other direction: an entry that no longer describes a divergence is a fix that has silently
+/// reverted, or a table that has gone stale. Either way the table must not claim a difference
+/// that is not there.
+#[test]
+fn every_known_divergence_still_differs() {
+    let mut diverged = diverging_stems(
+        &golden_rows(TRANSCRIPT, "[s8]"),
+        &golden_rows(PORT_TRANSCRIPT, "[s8]"),
+    );
+    diverged.extend(diverging_stems(
+        &golden_rows(TRANSCRIPT_B, "[s9]"),
+        &golden_rows(PORT_TRANSCRIPT_B, "[s9]"),
+    ));
+    for (stem, row, reason) in KNOWN_DIVERGENCES {
+        assert!(
+            diverged.iter().any(|name| name == stem),
+            "`{stem}` now MATCHES the jar in both parts — delete its KNOWN_DIVERGENCES entry \
+             ({row}: {reason})"
+        );
+    }
+}
+
+/// Prints both port goldens, for regeneration. See [`PORT_TRANSCRIPT`].
+#[test]
+#[ignore = "a generator, not a check — see PORT_TRANSCRIPT for the command"]
+fn emit_the_port_transcripts() {
+    for (path, cases, prefix, emit_rows) in [
+        (
+            "p9t7-kicad-read-a.txt",
+            transcript_cases(),
+            "[s8]",
+            emit as fn(&BoardReadResult) -> Vec<String>,
+        ),
+        (
+            "p9t7-kicad-read-b.txt",
+            transcript_b_cases(),
+            "[s9]",
+            emit_b as fn(&BoardReadResult) -> Vec<String>,
+        ),
+    ] {
+        println!("===== {path} =====");
+        println!(
+            "# the PORT's rows over the inputs of data/p8t8-kicad-read-{}.txt, which stays as",
+            if prefix == "[s8]" { "a" } else { "b" }
+        );
+        println!("# the jar's record. Plan 9 Task 7 moved this family to the port lane: see");
+        println!("# kicad_reader.rs's PORT_TRANSCRIPT for why, and KNOWN_DIVERGENCES for where");
+        println!("# the two differ and which register row authorizes each difference.");
+        for case in cases {
+            println!();
+            println!("[case] stem={}", case.stem);
+            for row in emit_rows(&read_board(&case.json, None)) {
+                println!("{prefix} {row}");
+            }
+        }
+    }
 }
 
 // ============================================ the part-B transcript replay (sections 9-11)
@@ -818,123 +1146,24 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
     rows
 }
 
-/// The part-B rows the port is **not** expected to reproduce, each with its root cause.
-///
-/// There are three families and all three are totalizations, not disagreements about what the
-/// reader does:
-///
-/// 1. **quirk #277** — the `ParseError.detail` of a payload the *parser* rejects is the parser's
-///    own prose (Gson vs `serde_json`). Row 0 of `json-truncated`, exactly as in part A.
-/// 2. **quirk #283** — a `null` **element** inside a JSON array. Gson stores a `null` reference;
-///    `serde_json` needs the element type to be nullable. `PadJson.layers` was made
-///    `Option<Vec<Option<String>>>` because Java *loads* that input (stem
-///    `pad-layers-null-element`, which matches). The three lists where Java stores the `null` and
-///    then **throws** on it are left as they are: both sides reject the file, and only the prose
-///    differs.
-/// 3. **quirk #282's family** — a name Java keeps as `null` and `fr_board` keeps as a `String`.
-///    Two consequences reach a row: a package pin whose `name` the probe prints as `<null>`, and a
-///    conduction area whose `layerIndex` Java stores negative where `fr_board`'s layer is a
-///    `usize`.
-const XDIFF_B: &[(&str, usize, &str)] = &[
-    (
-        "json-truncated",
-        0,
-        "quirk #277: the ParseError detail on a syntactically invalid payload is the JSON \
-         parser's own message — Gson's `java.io.EOFException: End of input at line 1 column 2 \
-         path $.` against serde_json's `EOF while parsing an object at line 1 column 1`.",
-    ),
-    (
-        "trace-point-null-element",
-        0,
-        "quirk #283: `\"points\": [{...}, null]` is a `List<Point2D>` holding a null in Gson, and \
-         `:675`'s `pt.x` then throws `Cannot read field \"x\" because \"pt\" is null`. \
-         `serde_json` refuses the null against `Vec<Point2D>` first, so the port answers the same \
-         `location` with the deserializer's prose. Both reject the file.",
-    ),
-    (
-        "outline-corner-null-element",
-        0,
-        "quirk #283, as `trace-point-null-element` but through section 5's `outline.corners`.",
-    ),
-    (
-        "netclass-null-element",
-        0,
-        "quirk #283: `\"netClasses\": [null]` is a one-element list holding a null, and \
-         `isKiCadDefaultNetClassName(netClass.name)` then throws `Cannot read field \"name\" \
-         because \"netClass\" is null`. Same rejection, different prose.",
-    ),
-    (
-        "pad-null-name-dedup",
-        6,
-        "quirk #282's family: `Package.Pin.name` is a nullable Java `String` and \
-         `fr_board::PackagePin::name` is a `String`, so a pad with no `name` key is `<null>` to \
-         the probe and `` here. The behaviour it drives — `arePackagePinsIdentical:908`'s throw, \
-         and therefore the three duplicate packages this stem ends with — **is** reproduced; only \
-         the printed name differs.",
-    ),
-    ("pad-null-name-dedup", 8, "quirk #282's family, as row 6."),
-    ("pad-null-name-dedup", 10, "quirk #282's family, as row 6."),
-    (
-        "zone-negative-layer",
-        6,
-        "totalized: `ObstacleArea.layer` is a Java `int` that `:663` fills from `zone.layerIndex` \
-         verbatim, so Java keeps `-3`; `fr_board`'s layer is a `usize`. Nothing a KiCad export \
-         writes and nothing in the corpus reaches it — the stem exists so the divergence is \
-         measured rather than assumed.",
-    ),
-];
-
-/// **The part-B acceptance test**: zero *unexplained* differing `[s9]` rows on all 67 inputs.
+/// **The part-B acceptance test**: the reader reproduces `p9t7-kicad-read-b.txt` exactly, over
+/// all 67 inputs.
 #[test]
-fn the_whole_section_9_to_11_item_graph_matches_the_jvm() {
-    let mut diffs: Vec<String> = Vec::new();
-    let mut compared = 0usize;
-    let mut xdiffs_seen = 0usize;
-    for case in transcript_b_cases() {
-        let result = read_board(&case.json, None);
-        let actual = emit_b(&result);
-        for (i, expected) in case.expected.iter().enumerate() {
-            compared += 1;
-            let excused = XDIFF_B
-                .iter()
-                .find(|(stem, row, _)| *stem == case.stem && *row == i);
-            match (actual.get(i), excused) {
-                (Some(row), None) if row == expected => {}
-                (Some(row), Some((_, _, reason))) => {
-                    assert_ne!(
-                        row, expected,
-                        "{}[{i}] now MATCHES the JVM — delete its XDIFF entry ({reason})",
-                        case.stem
-                    );
-                    xdiffs_seen += 1;
-                }
-                (Some(row), None) => diffs.push(format!(
-                    "{}[{i}]\n  java: {expected}\n  rust: {row}",
-                    case.stem
-                )),
-                (None, _) => diffs.push(format!("{}[{i}] missing\n  java: {expected}", case.stem)),
-            }
-        }
-        if actual.len() > case.expected.len() {
-            for row in &actual[case.expected.len()..] {
-                diffs.push(format!("{} extra\n  rust: {row}", case.stem));
-            }
-        }
-    }
-    assert!(
-        compared > 2700,
-        "the part-B transcript should carry well over 2700 [s9] rows, got {compared}"
+fn the_whole_section_9_to_11_item_graph_matches_the_port_golden() {
+    assert_golden(
+        &transcript_b_cases(),
+        &golden_rows(PORT_TRANSCRIPT_B, "[s9]"),
+        emit_b,
     );
-    assert_eq!(
-        xdiffs_seen,
-        XDIFF_B.len(),
-        "every XDIFF row must have been reached"
-    );
-    assert!(
-        diffs.is_empty(),
-        "{} of {compared} rows differ from the JVM with no XDIFF entry:\n{}",
-        diffs.len(),
-        diffs.join("\n")
+}
+
+/// The part-B half of [`the_port_golden_differs_from_the_jar_only_where_a_fix_says_so`].
+#[test]
+fn the_part_b_port_golden_differs_from_the_jar_only_where_a_fix_says_so() {
+    assert_divergences(
+        &golden_rows(TRANSCRIPT_B, "[s9]"),
+        &golden_rows(PORT_TRANSCRIPT_B, "[s9]"),
+        "part B",
     );
 }
 
@@ -1232,38 +1461,67 @@ fn an_empty_or_null_payload_is_a_json_root_parse_error() {
     }
 }
 
-/// **Quirk #280.** `:456`'s `HashSet<String> referencedNets` is iterated at `:490`, and the order
-/// it hands the names back is the order `Nets.add` numbers them in — so the net numbers of every
-/// auto-registered net are a function of `String.hashCode` and of nothing else. The literals are
-/// the transcript's `ecc83-v1` stem, whose JSON declares **no** nets at all: all thirteen come
-/// from pad `netName`s.
+/// **Quirk #280, and the shape of the fix.** `:456`'s `HashSet<String> referencedNets` is
+/// iterated at `:490`, and the order it hands the names back is the order `Nets.add` numbers them
+/// in — so in Java the net numbers of every auto-registered net are a function of
+/// `String.hashCode` and of nothing else. The fixture is the transcript's `ecc83-v1` stem, whose
+/// JSON declares **no** nets at all: all thirteen come from pad `netName`s.
+///
+/// fixed: T7 (#280) — first-reference order. Both orders are pinned here, which is what makes
+/// this the record of the change rather than of one side of it. `crates/fr-dsn/tests/kicad_nets.rs`
+/// derives the same expectation from the JSON independently of the reader.
 #[test]
-fn the_auto_registered_nets_take_java_hash_set_order() {
+fn the_auto_registered_nets_take_first_reference_order_not_java_hash_set_order() {
     let (board, _, _) = board_of(&fixture(
         "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json",
     ));
     let names: Vec<&str> = (1..=board.rules.nets.max_net_number())
         .map(|no| board.rules.nets.get(no).expect("in range").name.as_str())
         .collect();
+    /// `java.util.HashSet`'s bucket order, which is what the jar answers and what
+    /// `data/p8t8-kicad-read-a.txt` records.
+    const JAR: [&str; 13] = [
+        "unconnected-(P7-Pad1)",
+        "unconnected-(P6-Pad1)",
+        "unconnected-(P8-Pad1)",
+        "Net-(P2-P1)",
+        "Net-(U1B-K)",
+        "unconnected-(P5-Pad1)",
+        "Net-(U1A-K)",
+        "Net-(P4-PM)",
+        "Net-(P3-P1)",
+        "Net-(U1A-G)",
+        "Net-(P4-P1)",
+        "GND",
+        "Net-(P1-PM)",
+    ];
     assert_eq!(
         names,
         [
-            "unconnected-(P7-Pad1)",
-            "unconnected-(P6-Pad1)",
-            "unconnected-(P8-Pad1)",
-            "Net-(P2-P1)",
-            "Net-(U1B-K)",
-            "unconnected-(P5-Pad1)",
-            "Net-(U1A-K)",
-            "Net-(P4-PM)",
             "Net-(P3-P1)",
-            "Net-(U1A-G)",
-            "Net-(P4-P1)",
             "GND",
+            "Net-(P2-P1)",
+            "Net-(U1A-K)",
+            "unconnected-(P5-Pad1)",
+            "unconnected-(P6-Pad1)",
+            "unconnected-(P7-Pad1)",
+            "Net-(U1A-G)",
+            "Net-(U1B-K)",
             "Net-(P1-PM)",
+            "Net-(P4-P1)",
+            "Net-(P4-PM)",
+            "unconnected-(P8-Pad1)",
         ],
-        "this is java.util.HashSet's bucket order, not the pads' declaration order"
+        "the order the pads first mention each name"
     );
+    assert_ne!(names, JAR, "and it is not the jar's bucket order");
+    // The two orders are a permutation of one another: the fix renumbers, it does not add or
+    // drop a net.
+    let mut sorted_port = names.clone();
+    sorted_port.sort_unstable();
+    let mut sorted_jar = JAR.to_vec();
+    sorted_jar.sort_unstable();
+    assert_eq!(sorted_port, sorted_jar);
 }
 
 /// `:341-406` — the default net class, its via info, its via rule and the `defaultVia` padstack,
@@ -1491,17 +1749,21 @@ fn identical_packages_are_reused() {
 /// **`:603`'s `catch (Exception e)` — recovery boundary 1, and the task brief's one factual
 /// error.**
 ///
-/// The brief said this arm "skips one component and continues". It does not: it wraps *only* the
-/// package-dedup lookup, adds a **duplicate** package under the base name and lets the component
-/// through. Java wins; measured on the `pad-null-name-dedup` stem, which this test replays as a
-/// literal.
+/// The Plan 8 brief said this arm "skips one component and continues". It does not: it wraps
+/// *only* the package-dedup lookup, adds a **duplicate** package under the raw `comp.footprint`
+/// and lets the component through. The throw it caught was `arePackagePinsIdentical:908`'s
+/// `pin1.name.equals(pin2.name)` over a `null` pin name — a pad with no `"name"` key — so three
+/// components sharing one footprint ended with **three** packages all called `NONAME`, of which
+/// `Packages.get` can only ever reach the first (quirk #285).
 ///
-/// The throw it catches is `arePackagePinsIdentical:908`'s `pin1.name.equals(pin2.name)` over a
-/// `null` pin name — a pad with no `"name"` key. So three components sharing one footprint end
-/// with **three** packages all called `NONAME`, of which `Packages.get` can only ever reach the
-/// first (quirk #285).
+/// fixed: T7 (#285, #282) — the throw is refused at the DTO boundary, so the fallback is
+/// unreachable and is gone. Both halves are pinned below: the board that produced the three
+/// packages is now a diagnostic naming the pad, and the board with named pads takes the ordinary
+/// path exactly as it did. `crates/fr-dsn/tests/kicad_packages.rs` carries the case the fallback
+/// was hiding — three components whose pads are named `""`, which never threw and always
+/// deduplicated correctly.
 #[test]
-fn a_package_dedup_failure_falls_back_to_a_duplicate_package() {
+fn a_package_dedup_failure_is_refused_rather_than_falling_back() {
     let nameless_pad = "{\"netName\":\"N\",\"shape\":\"rect\",\
                         \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}";
     let json = kicad_board(&format!(
@@ -1510,31 +1772,19 @@ fn a_package_dedup_failure_falls_back_to_a_duplicate_package() {
         kicad_component("U2", "NONAME", nameless_pad),
         kicad_component("U3", "NONAME", nameless_pad)
     ));
-    let (board, _, _) = board_of(&json);
-    assert_eq!(
-        board.components.count(),
-        3,
-        "the catch does NOT skip the component — every one of the three loads"
-    );
-    assert_eq!(
-        board.library.packages.count(),
-        3,
-        "each retry adds a duplicate package under the base name (`:605-617`)"
-    );
-    for no in 1..=3 {
-        assert_eq!(board.library.packages.get(no).name, "NONAME");
+    match read_board(&json, None) {
+        BoardReadResult::ParseError { location, detail } => {
+            assert_eq!(location, "components");
+            assert!(
+                detail.contains("components[0].pads[0].name") && detail.contains("is null"),
+                "the diagnostic names the pad that would have thrown: {detail}"
+            );
+        }
+        other => panic!("expected the DTO refusal, got {other:?}"),
     }
-    // `Packages.get` answers the first of the three, so the other two are unreachable by name.
-    assert_eq!(
-        board
-            .library
-            .packages
-            .get_by_name("NONAME", true)
-            .expect("one of the three")
-            .no,
-        1
-    );
-    // The same board with **named** pads takes the ordinary path and ends with one package.
+
+    // The same board with **named** pads takes the ordinary path and ends with one package —
+    // unchanged by the fix, which is the half that proves the ladder itself was not touched.
     let named_pad = "{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\
                      \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}";
     let json = kicad_board(&format!(
@@ -1545,6 +1795,7 @@ fn a_package_dedup_failure_falls_back_to_a_duplicate_package() {
     ));
     let (board, _, _) = board_of(&json);
     assert_eq!(board.library.packages.count(), 1);
+    assert_eq!(board.components.count(), 3);
 }
 
 /// **`:746`'s `catch (Throwable e)` — recovery boundary 2.** Every point sections 9-11 can throw
@@ -1588,11 +1839,11 @@ fn a_malformed_document_answers_parse_error() {
         }
     }
 
-    // Nine bodies, every one measured against the jar: **three** field reads on a `null`
-    // `Point2D` (`pad.size`, `comp.position`, `vj.position`), **one** `List.size()` invoke on a
-    // `null` `zone.polygon`, **two** array-index throws (`Index 0`, `Index 2`), **one**
-    // `NegativeArraySizeException` (`-2`), **one** `String.compareToIgnoreCase` invoke on a
-    // `null` component name, and **one** `String.substring` range throw.
+    // Seven bodies, every one measured against the jar and every one still Java's: **three**
+    // field reads on a `null` `Point2D` (`pad.size`, `comp.position`, `vj.position`), **one**
+    // `List.size()` invoke on a `null` `zone.polygon`, **two** array-index throws (`Index 0`,
+    // `Index 2`), and **one** `String.substring` range throw. Task 7 moved the other two to
+    // named refusals of their own — see the note where they were.
     let bodies: &[(&str, &str)] = &[
         (
             "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
@@ -1630,20 +1881,15 @@ fn a_malformed_document_answers_parse_error() {
             // `shapes[li] = viaShape` with `li == layerCount`.
             "Index 2 out of bounds for length 2",
         ),
-        (
-            "\"vias\":[{\"id\":1,\"netName\":\"N\",\"position\":{\"x\":3.0,\"y\":4.0},\
-              \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":1,\"endLayerIndex\":0}]",
-            // Quirk #286: every shape null, so `DrillItem.tileShapeCount` is `-layerCount`.
-            "-2",
-        ),
-        (
-            "\"components\":[{\"reference\":null,\"value\":\"v\",\"footprint\":\"P\",\
-              \"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\",\
-              \"pads\":[{\"name\":\"1\",\"netName\":\"N\",\"shape\":\"rect\",\
-              \"size\":{\"x\":1.0,\"y\":1.0},\"drill\":0.0}]}]",
-            // Quirk #287: `UndoableObjects.insert`'s skip list orders through `Component.compareTo`.
-            "Cannot invoke \"String.compareToIgnoreCase(String)\" because \"this.name\" is null",
-        ),
+        // fixed: T7 (#286) — this body used to belong here, with the detail `-2`: every shape
+        // null, so `DrillItem.tileShapeCount` was `-layerCount` and `new TileShape[-2]` threw
+        // `NegativeArraySizeException`, whose `getMessage()` is the bare number. It is a named
+        // refusal now, in `kicad_padstacks.rs::a_via_with_an_empty_layer_span_is_refused_naming_the_via`.
+        //
+        // fixed: T7 (#287) — so did a `"reference": null` component, whose detail was
+        // `Cannot invoke "String.compareToIgnoreCase(String)" because "this.name" is null` —
+        // Java dying inside `UndoableObjects.insert`'s skip list. It is a DTO refusal now, in
+        // `kicad_dto.rs::a_null_component_reference_is_rejected_with_the_section_named`.
         (
             "\"components\":[{\"reference\":\"U1\",\"value\":\"v\",\"footprint\":\"P\",\
               \"position\":{\"x\":1.0,\"y\":1.0},\"rotation\":0.0,\"layer\":\"F.Cu\",\
@@ -1678,8 +1924,14 @@ fn a_malformed_document_answers_parse_error() {
 ///   `currentNet.name.equalsIgnoreCase(name)` (Nets.java:44), which section 8's auto-registration
 ///   loop already reaches at `:491`. A board with no referenced nets at all defers that to
 ///   section 9's `:639`, and both answer the same message.
+///
+/// fixed: T7 (#282) — **and that is the argument for the fix, written out**. A crash whose
+/// reachability depends on whether some *other* pad happens to name a layer is not a rejection a
+/// user can act on; a board that loads with a nameless layer is worse still. Both are one
+/// diagnostic now, naming the section and the object, and this test asserts the two shapes the
+/// old behaviour had are both gone.
 #[test]
-fn a_null_layer_name_crashes_in_section_9_exactly_where_quirk_282_says() {
+fn a_null_layer_or_net_name_is_refused_at_the_boundary_not_in_section_9() {
     let board_with_null_layer = |pad_layers: &str| {
         format!(
             "{{\"unit\":\"MM\",\"resolution\":1000.0,\
@@ -1693,28 +1945,30 @@ fn a_null_layer_name_crashes_in_section_9_exactly_where_quirk_282_says() {
                \"size\":{{\"x\":1.0,\"y\":1.0}},\"drill\":0.0,\"layers\":{pad_layers}}}]}}]}}"
         )
     };
-    match read_board(&board_with_null_layer("[\"B.Cu\"]"), None) {
-        BoardReadResult::ParseError { location, detail } => {
-            assert_eq!(location, "json_payload");
-            assert_eq!(
-                detail,
-                "Exception occurred: Cannot invoke \"String.equalsIgnoreCase(String)\" \
-                 because \"boardLayers[li].name\" is null"
-            );
+    // Both pad-`layers` shapes now answer the **same** diagnostic: the one whose pad names a
+    // layer, which used to crash at `:545`, and the one whose `layers` list is empty, which used
+    // to load with a layer called `""`.
+    for pad_layers in ["[\"B.Cu\"]", "[]"] {
+        match read_board(&board_with_null_layer(pad_layers), None) {
+            BoardReadResult::ParseError { location, detail } => {
+                assert_eq!(location, "layers", "for pad layers {pad_layers}");
+                assert!(
+                    detail.contains("KiCad board JSON file")
+                        && detail.contains("layers[0].name")
+                        && detail.contains("is null"),
+                    "for pad layers {pad_layers}: {detail}"
+                );
+                assert!(
+                    !detail.contains("boardLayers[li].name"),
+                    "the crash 430 lines away is gone: {detail}"
+                );
+            }
+            other => panic!("expected the DTO refusal for {pad_layers}, got {other:?}"),
         }
-        other => panic!("expected the `:545` crash, got {other:?}"),
     }
-    // The narrow half: an empty pad `layers` list never enters `:540-550`.
-    let (board, _, _) = board_of(&board_with_null_layer("[]"));
-    assert_eq!(board.components.count(), 1);
-    assert_eq!(
-        board.layer_structure().layers[0].name,
-        "",
-        "totalized `null`"
-    );
 
-    // The wide half: a `null` **net** name dies in `Nets.get`, at `:491` when anything references
-    // a net and at `:639` when nothing does. Same message either way.
+    // The same for a `null` **net** name, which used to die in `Nets.get` — at `:491` when
+    // anything referenced a net and at `:639` when nothing did.
     for pad_net in ["N", ""] {
         let json = format!(
             "{{\"unit\":\"MM\",\"resolution\":1000.0,\
@@ -1727,18 +1981,24 @@ fn a_null_layer_name_crashes_in_section_9_exactly_where_quirk_282_says() {
                \"size\":{{\"x\":1.0,\"y\":1.0}},\"drill\":0.0}}]}}]}}"
         );
         match read_board(&json, None) {
-            BoardReadResult::ParseError { detail, .. } => assert_eq!(
-                detail,
-                "Exception occurred: Cannot invoke \"String.equalsIgnoreCase(String)\" \
-                 because \"currentNet.name\" is null"
-            ),
-            other => panic!("expected the Nets.get crash, got {other:?}"),
+            BoardReadResult::ParseError { location, detail } => {
+                assert_eq!(location, "nets", "for pad net {pad_net:?}");
+                assert!(
+                    detail.contains("nets[0].name") && detail.contains("is null"),
+                    "for pad net {pad_net:?}: {detail}"
+                );
+                assert!(
+                    !detail.contains("currentNet.name"),
+                    "the crash inside Nets.get's walk is gone: {detail}"
+                );
+            }
+            other => panic!("expected the DTO refusal, got {other:?}"),
         }
     }
 }
 
 /// **`getDescriptivePadstackName` (`:857-890`) — a name-generating function whose output reaches
-/// the SES.** Every literal below is the jar's, from `p8t8-kicad-read-b.txt`.
+/// the SES.**
 ///
 /// Three things it pins that nothing else does:
 ///
@@ -1748,8 +2008,14 @@ fn a_null_layer_name_crashes_in_section_9_exactly_where_quirk_282_says() {
 ///   `layers` list naming the first or last board layer;
 /// * the `%.0f`s, which are `java.util.Formatter`'s **HALF_UP** over the shortest round-trip
 ///   digits, not Rust's half-to-even: `0.0005 mm` is `1`, `0.0025` is `3`, `0.0035` is `4`.
+///
+/// fixed: T7 (#284) — one literal family moved: the `Round` form carries `size.y`, where `:883`
+/// wrote a one-number `Pad_<x>_um` and two round pads of different heights therefore had the same
+/// name and, under the name-keyed lookup, the same padstack. The **via** names are untouched, and
+/// deliberately: `Via[<start>-<end>]_<dia>:<drill>_um` already identifies its padstack, and
+/// `Padstack::drill_radius` parses it.
 #[test]
-fn the_generated_padstack_names_match_the_jar() {
+fn the_generated_padstack_names_carry_both_dimensions() {
     let pad = |name: &str, shape: &str, sx: f64, sy: f64, layers: &str| {
         format!(
             "{{\"name\":\"{name}\",\"netName\":\"N\",\"shape\":{shape},\
@@ -1780,7 +2046,7 @@ fn the_generated_padstack_names_match_the_jar() {
     ));
     let (board, _, _) = board_of(&json);
     // `defaultVia` is section 8's; every later padstack is section 9's, in pad order, deduplicated
-    // by name.
+    // by shapes-and-drill.
     let names: Vec<&str> = (1..=board.library.padstacks.count())
         .map(|no| {
             board
@@ -1796,17 +2062,24 @@ fn the_generated_padstack_names_match_the_jar() {
         names,
         [
             "defaultVia",
-            "Round[A]Pad_1000_um",
-            "Round[A]Pad_3000_um",
+            // The two `Round` names the jar spells `Round[A]Pad_1000_um` and
+            // `Round[A]Pad_3000_um`, dropping the height.
+            "Round[A]Pad_1000x2000_um",
+            "Round[A]Pad_3000x2000_um",
             "Oval[A]Pad_1000x2000_um",
             "Rect[A]Pad_1000x2000_um",
             "Rect[A]Pad_4000x5000_um",
-            "Trapezoid[A]Pad_1000x2000_um",
-            "Round[A]Pad_6000_um",
+            // No `Trapezoid[A]Pad_1000x2000_um`: `"trapezoid"` is not one of the three shape
+            // arms, so `:526-534` draws it as the plain box — the *same* box as the `"rect"` pad
+            // above, on the same layers with the same drill. Under the fixed identity the two
+            // pads share one padstack and it keeps the first one's name. The name a pad
+            // generates is still its own; which padstack it lands on is its geometry's.
+            "Round[A]Pad_6000x2000_um",
             "Rect[T]Pad_7000x7000_um",
             "Rect[B]Pad_8000x8000_um",
             "Rect[A]Pad_9000x9000_um",
-            "Round[A]Pad_1_um",
+            // HALF_UP, unchanged: `0.0005` is `1`, `0.0025` is `3`, `0.0035` is `4`.
+            "Round[A]Pad_1x1_um",
             "Rect[A]Pad_3x4_um",
         ]
     );
@@ -1841,12 +2114,15 @@ fn the_generated_padstack_names_match_the_jar() {
 
 /// **Quirk #284**: the generated name encodes the pad's *shape word*, a single-layer T/B/A
 /// discriminator and its two dimensions — and neither the **layer span** nor the **drill flag**.
-/// So `Padstacks.get(name)` hands a later pad the earlier one's padstack, shapes and all.
+/// So `Padstacks.get(name)` handed a later pad the earlier one's padstack, shapes and all: the
+/// `mid` pad below lives on `In1.Cu` alone and ended up with copper on all three layers, and the
+/// `drilled` pad ended up on the undrilled one's padstack and so with its `attachAllowed`.
 ///
-/// The `mid` pad below lives on `In1.Cu` alone and ends up on the padstack the `span` pad built
-/// across all three layers; the `drilled` pad ends up on the undrilled one's.
+/// fixed: T7 (#284) — the identity is the shape array and the drill; the name is a display
+/// artefact. Three pads, three padstacks, each with the span and the flag its own JSON asked for.
+/// `crates/fr-dsn/tests/kicad_padstacks.rs` takes the same two cases apart one at a time.
 #[test]
-fn the_padstack_name_encodes_neither_the_layer_span_nor_the_drill() {
+fn the_padstack_identity_is_the_layer_span_and_the_drill_not_the_name() {
     let pad = |name: &str, drill: f64, layers: &str| {
         format!(
             "{{\"name\":\"{name}\",\"netName\":\"N\",\"shape\":\"rect\",\
@@ -1871,21 +2147,39 @@ fn the_padstack_name_encodes_neither_the_layer_span_nor_the_drill() {
     let (board, _, _) = board_of(&json);
     let package = board.library.packages.get(1);
     let span = package.get_pin(0).expect("span").padstack_no;
+    let mid = package.get_pin(1).expect("mid").padstack_no;
+    let drilled = package.get_pin(2).expect("drilled").padstack_no;
+    assert_ne!(
+        mid, span,
+        "an In1.Cu-only pad must not inherit the all-layer padstack"
+    );
+    assert_ne!(
+        drilled, span,
+        "and a drilled pad must not inherit an undrilled one's"
+    );
+    assert_ne!(mid, drilled);
+
+    let span = board.library.padstacks.get(span).expect("the span pad's");
+    assert_eq!((span.from_layer(), span.to_layer()), (0, 2));
+    assert!(!span.attach_allowed);
+    let mid = board.library.padstacks.get(mid).expect("the mid pad's");
     assert_eq!(
-        package.get_pin(1).expect("mid").padstack_no,
-        span,
-        "an In1.Cu-only pad silently inherits the all-layer padstack (quirk #284)"
+        (mid.from_layer(), mid.to_layer()),
+        (1, 1),
+        "the In1.Cu pad has copper on In1.Cu and nowhere else"
     );
-    assert_eq!(
-        package.get_pin(2).expect("drilled").padstack_no,
-        span,
-        "and so does a drilled pad of the same size"
-    );
-    let padstack = board.library.padstacks.get(span).expect("the shared one");
-    assert_eq!(padstack.name, "Rect[A]Pad_1000x1000_um");
-    assert_eq!((padstack.from_layer(), padstack.to_layer()), (0, 2));
-    assert!(
-        !padstack.attach_allowed,
-        "the first pad was undrilled, and the name carries no drill flag to distinguish them"
-    );
+    let drilled = board
+        .library
+        .padstacks
+        .get(drilled)
+        .expect("the drilled pad's");
+    assert_eq!((drilled.from_layer(), drilled.to_layer()), (0, 2));
+    assert!(drilled.attach_allowed);
+
+    // All three generate the same name — `[A]` covers "every layer" and "one middle layer"
+    // alike, and the name carries no drill — so two of them take the disambiguating suffix. The
+    // name is a label; the identity is above.
+    assert_eq!(span.name, "Rect[A]Pad_1000x1000_um");
+    assert_eq!(mid.name, "Rect[A]Pad_1000x1000_um#2");
+    assert_eq!(drilled.name, "Rect[A]Pad_1000x1000_um#3");
 }
