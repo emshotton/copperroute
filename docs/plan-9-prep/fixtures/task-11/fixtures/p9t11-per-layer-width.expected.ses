@@ -1,0 +1,80 @@
+(session "p9t11-per-layer-width"
+  (base_design "p9t11-per-layer-width")
+  (placement
+    (resolution um 10)
+    (component "front_pad"
+      (place P1 300000 1000000 front 0)
+      (place P3 300000 400000 front 0)
+    )
+    (component "back_pad"
+      (place P2 2700000 1000000 front 0)
+      (place P4 2700000 400000 front 0)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution um 10)
+    (parser
+    )
+    (library_out 
+      (padstack VIA1
+        (shape
+          (circle F.Cu 60000 0 0)
+        )
+        (shape
+          (circle B.Cu 60000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net NWIDE
+        (wire
+          (path F.Cu 40000
+            2763281 1000000
+            300000 1000000
+          )
+        )
+        (wire
+          (path B.Cu 5000
+            2763281 1000000
+            2700000 1000000
+          )
+        )
+        (via VIA1 2763281 1000000
+        )
+      )
+      (net NNARROW
+        (wire
+          (path F.Cu 40000
+            352017 400000
+            366017 414000
+            2633628 414000
+          )
+        )
+        (wire
+          (path B.Cu 5000
+            2633628 414000
+            2651483 414000
+            2665483 400000
+          )
+        )
+        (wire
+          (path B.Cu 5000
+            2700000 400000
+            2665483 400000
+          )
+        )
+        (wire
+          (path F.Cu 40000
+            300000 400000
+            352017 400000
+          )
+        )
+        (via VIA1 2633628 414000
+        )
+      )
+    )
+  )
+)

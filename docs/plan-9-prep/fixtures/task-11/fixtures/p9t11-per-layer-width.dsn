@@ -1,0 +1,72 @@
+(pcb p9t11-per-layer-width.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary
+      (path pcb 0  0 0  300000 0  300000 200000  0 200000  0 0)
+    )
+    (via VIA1)
+    (rule
+      (width 250)
+      (clearance 200)
+    )
+  )
+  (placement
+    (component front_pad
+      (place P1  30000 100000 front 0)
+      (place P3  30000  40000 front 0)
+    )
+    (component back_pad
+      (place P2 270000 100000 front 0)
+      (place P4 270000  40000 front 0)
+    )
+  )
+  (library
+    (image front_pad
+      (side front)
+      (pin PADF 1 0.0 0.0)
+    )
+    (image back_pad
+      (side front)
+      (pin PADB 1 0.0 0.0)
+    )
+    (padstack PADF
+      (shape (rect F.Cu -3000.0 -3000.0 3000.0 3000.0))
+      (attach off)
+    )
+    (padstack PADB
+      (shape (rect B.Cu -3000.0 -3000.0 3000.0 3000.0))
+      (attach off)
+    )
+    (padstack VIA1
+      (shape (circle F.Cu 6000))
+      (shape (circle B.Cu 6000))
+      (attach off)
+    )
+  )
+  (network
+    (net NWIDE
+      (pins P1-1 P2-1)
+    )
+    (net NNARROW
+      (pins P3-1 P4-1)
+    )
+    (class kicad_default NWIDE NNARROW
+      (rule (clearance 200))
+      (layer_rule F.Cu
+        (rule (width 4000))
+      )
+      (layer_rule B.Cu
+        (rule (width 500))
+      )
+    )
+  )
+  (wiring
+  )
+)

@@ -1,0 +1,183 @@
+   Compiling fr-geometry v0.1.0 (/private/tmp/claude-501/-Users-em-Development-freerouting/78beff9e-8700-478c-a43a-c03db0a4acbb/scratchpad/port-v100/crates/fr-geometry)
+    Finished `release` profile [optimized] target(s) in 1.13s
+     Running `target/release/examples/p9probe`
+=== #5 RationalPoint::perpendicular_projection sign bug ===
+  IntPoint(0,0)  onto y=10 -> Int(IntPoint { x: 0, y: 10 })
+  Rational(0,0)  onto y=10 -> Int(IntPoint { x: 0, y: -10 })
+  IntPoint(3,7)  onto y=0  -> Int(IntPoint { x: 3, y: 0 })
+  Rational(3,7)  onto y=0  -> Int(IntPoint { x: 3, y: 0 })
+  IntPoint(10,5) onto (0,5)-(10,15) -> Int(IntPoint { x: 5, y: 10 })
+  Rational(10,5) onto (0,5)-(10,15) -> Int(IntPoint { x: 5, y: 5 })
+
+=== #7 IntBox / IntOctagon border_line_index ===
+  box.border_line(0) = Line { a: IntPoint { x: 0, y: 0 }, b: IntPoint { x: 1, y: 0 } } -> border_line_index = None
+  box.border_line(1) = Line { a: IntPoint { x: 100, y: 0 }, b: IntPoint { x: 100, y: 1 } } -> border_line_index = None
+  box.border_line(2) = Line { a: IntPoint { x: 0, y: 50 }, b: IntPoint { x: -1, y: 50 } } -> border_line_index = None
+  box.border_line(3) = Line { a: IntPoint { x: 0, y: 0 }, b: IntPoint { x: 0, y: -1 } } -> border_line_index = None
+
+=== #15 index_of_nearest_corner ===
+  corner nearest to (9,9) = 0
+  corner nearest to (10,10) = 2
+  corner nearest to (1,9) = 0
+  corner nearest to (0,10) = 3
+  corner nearest to (5,5) = 0
+  corner nearest to (11,11) = 0
+    corner[0] = FloatPoint { x: 0.0, y: 0.0 }
+    corner[1] = FloatPoint { x: 10.0, y: 0.0 }
+    corner[2] = FloatPoint { x: 10.0, y: 10.0 }
+    corner[3] = FloatPoint { x: 0.0, y: 10.0 }
+
+=== #26 PolygonShape::area ===
+  square 100x100: dimension = 2, area = 0
+  square corners = [Int(IntPoint { x: 0, y: 0 }), Int(IntPoint { x: 100, y: 0 }), Int(IntPoint { x: 100, y: 100 }), Int(IntPoint { x: 0, y: 100 })]
+  L-shape: dimension = 2, area = 0
+  L corners = [Int(IntPoint { x: 0, y: 0 }), Int(IntPoint { x: 60, y: 0 }), Int(IntPoint { x: 60, y: 20 }), Int(IntPoint { x: 20, y: 20 }), Int(IntPoint { x: 20, y: 60 }), Int(IntPoint { x: 0, y: 60 })]
+
+=== #28+#29 PolygonShape / Circle stubs ===
+  square.contains_on_border((50,0) on edge)  = false
+  square.contains_on_border((0,0) vertex)    = false
+  square.contains_on_border((50,50) inside)  = false
+  square.smallest_radius()   = 0
+  L.smallest_radius()        = 0
+  square.border_distance((50,50)) = 0
+  square.distance((150,50))       = 0
+  square.enlarge(10) is_none = true
+  circle.nearest_point_approx((300,0)) = None
+
+=== #27 PolygonShape polygon-vs-polygon intersects ===
+  (skipped: recurses to stack overflow — see expected-outcomes.md)
+
+=== #17 IntOctagon::contains(FloatPoint) vs IntBox ===
+  oct = IntOctagon { left_x: 0, bottom_y: 0, right_x: 100, top_y: 100, upper_left_diagonal_x: -100, lower_right_diagonal_x: 100, lower_left_diagonal_x: 0, upper_right_diagonal_x: 200 }
+  oct.contains_float((0,50)) = true
+  box.contains_float((0,50)) = false
+  oct.contains_float((50,0)) = true
+  box.contains_float((50,0)) = false
+  oct.contains_float((50,50)) = true
+  box.contains_float((50,50)) = true
+  oct.contains_float((100,50)) = true
+  box.contains_float((100,50)) = false
+  oct.contains_float((-1,50)) = false
+  box.contains_float((-1,50)) = false
+
+=== #18 IntBox::divide_into_sections ===
+  flat box dim-1 divide(30) -> 0 sections: []
+  20000-square divide(10000) -> 4 sections
+
+=== #32 Circle::translate_by(RationalVector) ===
+  circle before = Circle { center: IntPoint { x: 0, y: 0 }, radius: 100 }
+
+=== #23 Polyline::from_two_points vs from Polygon ===
+  from_two_points((0,0),(100,0)) lines = [Line { a: IntPoint { x: 0, y: 0 }, b: IntPoint { x: 0, y: 1 } }, Line { a: IntPoint { x: 0, y: 0 }, b: IntPoint { x: 100, y: 0 } }, Line { a: IntPoint { x: 100, y: 0 }, b: IntPoint { x: 100, y: 1 } }]
+
+=== #13 stair_approximation_45 ===
+  seg (0,0)->(7,20) width 2 to_the_right=true : [IntPoint { x: 0, y: 0 }, IntPoint { x: 17, y: 17 }, IntPoint { x: 17, y: 6 }, IntPoint { x: 34, y: 23 }, IntPoint { x: 34, y: 12 }, IntPoint { x: 51, y: 29 }, IntPoint { x: 51, y: 18 }, IntPoint { x: 7, y: 62 }, IntPoint { x: 7, y: 20 }]
+  seg (0,0)->(20,7) width 2 to_the_right=true : [IntPoint { x: 0, y: 0 }, IntPoint { x: 4, y: 0 }, IntPoint { x: 6, y: 2 }, IntPoint { x: 10, y: 2 }, IntPoint { x: 12, y: 4 }, IntPoint { x: 16, y: 4 }, IntPoint { x: 18, y: 6 }, IntPoint { x: 19, y: 6 }, IntPoint { x: 20, y: 7 }]
+
+================================================================================
+PROVENANCE
+================================================================================
+Produced by crates/fr-geometry/examples/p9probe.rs in a read-only clone of
+freerouting-rs at tag v1.0.0 (ecc0abf), built in the scratchpad. The working tree at
+plan-9-post-parity was never touched. The probe source is kept at
+  $SCRATCH/port-v100/crates/fr-geometry/examples/p9probe.rs
+
+================================================================================
+#187 — the per-layer-width fixture, validated against the v1.0.0 binary
+================================================================================
+$ ./target/release/freerouting -de p9t11-per-layer-width.dsn -do p9t11.ses   (exit 0)
+    (network_out 
+      (net NWIDE
+        (wire
+          (path F.Cu 40000
+            2763281 1000000
+            300000 1000000
+          )
+        )
+        (wire
+          (path B.Cu 5000
+            2763281 1000000
+            2700000 1000000
+          )
+        )
+        (via VIA1 2763281 1000000
+        )
+      )
+      (net NNARROW
+        (wire
+          (path F.Cu 40000
+            352017 400000
+            366017 414000
+            2633628 414000
+          )
+        )
+        (wire
+          (path B.Cu 5000
+            2633628 414000
+            2651483 414000
+            2665483 400000
+          )
+        )
+        (wire
+          (path B.Cu 5000
+            2700000 400000
+            2665483 400000
+          )
+        )
+        (wire
+          (path F.Cu 40000
+            300000 400000
+            352017 400000
+          )
+        )
+        (via VIA1 2633628 414000
+        )
+      )
+    )
+  )
+)
+  F.Cu traces are 40000 wide (= 4000 um), B.Cu traces 5000 (= 500 um): an 8:1 ratio.
+  Both nets change layer through a via, so both stub-insertion directions are exercised.
+
+================================================================================
+#88 — PolygonPath::bounding_box, read from the source (v1.0.0)
+================================================================================
+crates/fr-dsn/src/parser/geometry.rs:636-661
+    let offset = self.width / 2.0;
+    let mut bounds = [i32::MAX as f64, i32::MAX as f64, i32::MIN as f64, i32::MIN as f64];
+    for (i, c) in self.coordinate_arr.iter().enumerate() {
+        if i % 2 == 0 {
+            bounds[0] = bounds[0].min(*c - offset);
+            bounds[2] = bounds[2].max(*c) + offset;   // <-- '+ offset' OUTSIDE the max
+        } else {
+            bounds[1] = bounds[1].min(*c - offset);
+            bounds[3] = bounds[3].max(*c + offset);   // <-- '+ offset' INSIDE  the max
+        }
+    }
+
+================================================================================
+#32 — Circle::translate_by, read from the source (v1.0.0)
+================================================================================
+crates/fr-geometry/src/circle.rs:282-291
+    pub fn translate_by(&self, vector: &Vector) -> Circle {
+        if *vector == Vector::ZERO { return *self; }
+        let Vector::Int(int_vector) = vector else {
+            // Java: FRLogger.warn("Circle.translate_by only implemented for IntVectors till now")
+            return *self;                              // <-- silently untranslated
+        };
+        Circle::new(self.center.translate_by(int_vector), self.radius)
+    }
+
+================================================================================
+#15 — the port's own pinning test names the real mechanism
+================================================================================
+crates/fr-geometry/src/tile_shape.rs:1843-1857
+    /// Java initializes the running minimum of indexOfNearestCorner with Double.MIN_VALUE
+    /// (the smallest *positive* double) instead of Double.MAX_VALUE, so the comparison only
+    /// fires at distance 0: for any point that is not itself a corner the answer is 0,
+    /// however near corner 2 is.
+    fn index_of_nearest_corner_only_moves_off_zero_at_distance_zero() {
+        assert_eq!(bx().index_of_nearest_corner(&Point::Int(IntPoint::new(9, 9))),   0);
+        assert_eq!(bx().index_of_nearest_corner(&Point::Int(IntPoint::new(10, 10))), 2);
+    }
+  => the survey's 'a corner at distance exactly 0 is never nearest' is BACKWARDS.
