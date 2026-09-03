@@ -263,6 +263,38 @@ is the work the **accept** branch of the adjudication below implies, and it is d
 done here: if the adjudication is *revert* or *rework R1*, all twelve revert with it and the
 evidence above would have been erased to produce them.
 
+### Closed at the M1 accept wave (ruling BV)
+
+M1 ran and **ruling BV accepted the fixes with the gap recorded** (`plan9-m1` vs the frozen
+`java-278fe14`, 605 boards: corpus clean-pass 0.375 -> 0.550). All **14** rows above were therefore
+re-cut from the fixed port, each carrying the old jar-parity value, the new port value and
+`accepted at M1 (ruling BV)` beside the assertion. They are now **port-regression pins**: a change
+to any of them is a change in the port's own behaviour, not a divergence from the jar.
+
+Three of them could not be repaired by editing a number, and the re-cut says so at each site:
+
+| row | what was re-cut |
+|---|---|
+| `batch_loop::only_a_pass_that_routes_nothing_reaches_finished` | the **board**. `rpi_splitter` now ends `CANCELLED` at the stagnation detector (18 passes, `incomplete_count` 2 throughout), so the `FINISHED` arm is witnessed on `Issue649-kicad_ecc83-pp_input_board_v1.dsn`, which still routes to completion. |
+| `batch_loop::a_full_history_never_ranks_a_board_past_its_cap` and `…the_rank_the_loop_tests_is_read_after_restore_boards_reorder` | the **board**. `rpi_splitter` converges after pass 1, so passes 2 and 3 hand back a structurally identical board that `BoardHistory::add` deduplicates; `Issue103-Board-Unrouted.dsn` still gives four distinct boards and three strictly increasing scores. |
+| `optimizer::a_near_perfect_board_exits_before_the_first_pass` | the **threshold**, 0.5 -> 0.7. The arm is `score * (1 + t) >= 1000` and the post-pass score fell from 799.982 67 to 599.985 4, so 0.5 no longer reaches the ceiling. |
+
+Five tests were renamed with their literals, because the name asserted the jar agreement the port
+has deliberately given up (or carried a number that moved):
+
+| was | is |
+|---|---|
+| `optimizer::the_optimizer_stage_matches_the_jvm` | `optimizer::the_optimizer_stage_is_pinned_on_the_routed_rpi` |
+| `optimizer_items::the_item_sequence_matches_the_jvm` | `optimizer_items::the_item_sequence_is_the_ports_own` |
+| `fanout_order::fanout_escapes_every_smd_pin_of_the_corpus_board_like_the_jvm` | `fanout_order::fanout_escapes_every_smd_pin_of_the_corpus_board` |
+| `fixtures::dac2020_bm01_pipeline_one_pass_leaves_at_most_56_incompletes` | `…_at_most_69_incompletes` |
+| `fixtures::dac2020_bm01_pipeline_two_passes_leave_at_most_28_incompletes` | `…_at_most_37_incompletes` |
+
+After the re-cut the five binaries answer **90 of 90 passing** under
+`FR_SLOW_PARITY=1 cargo nextest run --workspace --release` — the same 90 the ablation reported with
+both fixes removed, which is the arithmetic that says the re-cut moved the expectations and not the
+coverage.
+
 ## The gate this did not pass, and why it is an escalation rather than a failure
 
 `scripts/quality-ab.sh`'s G2 rule is "incompletes must not rise on any stem". **Ten of the 21 rows

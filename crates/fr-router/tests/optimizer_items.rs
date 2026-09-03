@@ -10,8 +10,10 @@
 //! driven item by item with the two ripped sets and the ripup costs transcribed beside each call
 //! (mode `item`), against the HEAD jar on the corpus stems. That is where "the visit order and
 //! the re-route agree with Java" is established, and
-//! [`the_item_sequence_matches_the_jvm`](fn.the_item_sequence_matches_the_jvm.html) copies its
-//! transcript in as literals so a regression is a unit-test failure rather than a driver run.
+//! [`the_item_sequence_is_the_ports_own`](fn.the_item_sequence_is_the_ports_own.html) copies the
+//! sequence in as literals so a regression is a unit-test failure rather than a driver run. Those
+//! literals were the jar's until the M1 accept wave (ruling BV) re-cut them from the port; see
+//! the pin on [`RPI_SEQUENCE`].
 //!
 //! This file pins the arms a corpus run cannot show, each on a board built for it:
 //!
@@ -693,23 +695,30 @@ fn a_user_fixed_contact_never_reaches_the_ripped_connections() {
 }
 
 // =================================================================================================
-// The JVM transcript — `run.sh p7t8 <rpi> sequence|item 1 all`
+// The routed-board sequence — the shape of `run.sh p7t8 <rpi> sequence|item 1 all`
 // =================================================================================================
 
-/// The `[sequence]` block of `p7t8 fixtures/Issue143-rpi_splitter.dsn sequence 1 all`, HEAD jar,
-/// JDK 25 — `(id, class, key x, key y, layer)` in order.
-const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 6] = [
-    (43, "Via", 531_001.0, 2_346_089.0, 0),
-    (49, "Via", 546_813.0, 2_253_860.0, 0),
-    (99, "Via", 552_083.0, 1_806_420.0, 0),
-    (104, "Via", 666_000.0, 1_432_720.0, 0),
-    (238, "PolylineTrace", 1_116_000.0, 802_200.0, 0),
-    (161, "Via", 1_366_000.0, 1_007_139.0, 0),
+/// The reader's walk over the routed `Issue143-rpi_splitter.dsn` — `(id, class, key x, key y,
+/// layer)` in order.
+/// PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV), and the test that reads it
+/// renamed with the literals (`the_item_sequence_matches_the_jvm`). The jar-parity sequence was
+/// **six** entries, ids `43, 49, 99, 104, 238, 161`, the fifth of them a `PolylineTrace` at
+/// `(1 116 000, 802 200)`. Plan 9 Task 2's R1 (#293) re-orders the work list and R2 (#294)
+/// withholds the sub-minimum fanout trace, so the routed board offers **five** items, every id
+/// has moved and the trace is gone — while the four surviving key coordinates are the jar's to
+/// the digit, which is what says the *reader's* order is unchanged and only the board moved.
+/// Accepted at M1 (ruling BV).
+const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 5] = [
+    (86, "Via", 531_001.0, 2_346_089.0, 0),
+    (92, "Via", 546_813.0, 2_253_860.0, 0),
+    (41, "Via", 552_083.0, 1_806_420.0, 0),
+    (46, "Via", 666_000.0, 1_432_720.0, 0),
+    (127, "Via", 1_366_000.0, 1_007_139.0, 0),
 ];
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn the_item_sequence_matches_the_jvm() {
+fn the_item_sequence_is_the_ports_own() {
     let mut board = load_board(RPI);
     let settings = build_settings(&board);
     let stop = RouterStop::new();
@@ -752,10 +761,17 @@ fn the_item_sequence_matches_the_jvm() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn an_unimproved_item_restores_the_clone_byte_for_byte() {
-    // Plan-7 ruling 8, measured. `p7t8 <rpi> item 1 all` reports item 0 (`id = 43`) as
-    // `improved=true` and item 1 (`id = 49`) as `improved=false`, and its `BOARD` lines say the
-    // board after item 1 is item 0's board again — while `maxIdAfter` moved from 416 to 544,
-    // because Java's `undo` does not roll the id generator back and neither does this port.
+    // Plan-7 ruling 8, measured. Item 0 (`id = 86`) is `improved=true` and item 1 (`id = 92`) is
+    // `improved=false`, and the board after item 1 is item 0's board again — while the id
+    // generator's maximum has moved on, because Java's `undo` does not roll it back and neither
+    // does this port.
+    //
+    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity ids were
+    // `p7t8 <rpi> item 1 all`'s **43** and **49**; Plan 9 Task 2's R1 (#293)/R2 (#294) route the
+    // board differently and the reader's first two items are now **86** and **92**. The two
+    // *claims* — the first item improves, the second does not and is restored byte for byte while
+    // its burned ids stay burned — are unchanged and are what this test is for. Accepted at M1
+    // (ruling BV).
     let mut board = load_board(RPI);
     let settings = build_settings(&board);
     let stop = RouterStop::new();
@@ -786,7 +802,7 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
     let mut reader = ReadSortedRouteItems::new();
 
     let first = reader.next(&board).expect("item 0");
-    assert_eq!(first.0, 43);
+    assert_eq!(first.0, 86);
     let improved = optimizer
         .opt_route_item(
             &mut board,
@@ -798,12 +814,12 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
             &mut sink,
         )
         .expect("optRouteItem answers Ok");
-    assert!(improved.improved(), "p7t8: item 0 is improved=true");
+    assert!(improved.improved(), "item 0 is improved=true");
     let hash_after_first = board.structural_hash();
     let id_after_first = board.communication.id_gen.max_generated_id();
 
     let second = reader.next(&board).expect("item 1");
-    assert_eq!(second.0, 49);
+    assert_eq!(second.0, 92);
     let unimproved = optimizer
         .opt_route_item(
             &mut board,
@@ -815,7 +831,7 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
             &mut sink,
         )
         .expect("optRouteItem answers Ok");
-    assert!(!unimproved.improved(), "p7t8: item 1 is improved=false");
+    assert!(!unimproved.improved(), "item 1 is improved=false");
     assert_eq!(
         board.structural_hash(),
         hash_after_first,
