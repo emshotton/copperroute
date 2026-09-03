@@ -1229,17 +1229,29 @@ fn complete_shape_90(
                 continue;
             }
             // :112-130.
-            // Java bug: ShapeSearchTree90Degree.completeShape drops the room here instead of
-            // keeping it (quirk #159). The base class falls through to
-            // `if (!somethingChanged) newResult.add(currentIncompleteRoom)`
+            // fixed: T8 (#159). Java drops the room here instead of keeping it: the base class
+            // falls through to `if (!somethingChanged) newResult.add(currentIncompleteRoom)`
             // (ShapeSearchTree.java:683-687) and the 45-degree override re-adds it explicitly
-            // unless the ignore shape swallows it whole (…45Degree.java:209-212); this one has
-            // no re-add before the `continue`, so the room vanishes from the result.
+            // unless the ignore shape swallows it whole (…45Degree.java:209-212), but
+            // …90Degree.java:126-129 has no re-add before its `continue`, so on a 90-degree board
+            // a room whose only overlap is the door it came through expands to nothing.
+            //
+            // The re-add is transcribed from the **45-degree sibling**, not from the base class,
+            // because that is the override this one is a copy of: the same early `continue` on
+            // non-overlap, the same inline `boundingShape` pruning, and no `somethingChanged`
+            // flag to fall through. Its extra "unless the ignore shape swallows the room whole"
+            // test is kept with it; the two forms agree wherever the room is larger than the
+            // ignore shape, which is every case the door-ignore decision produces.
             if matches!(current_object, TreeObject::Room(_))
                 && let Some(ignore_shape) = ignore_shape
             {
                 let intersection = current_shape.intersection(&current_object_shape);
                 if ignore_shape.contains_tile(&TileShape::Box(intersection)) {
+                    if !ignore_shape.contains_tile(&TileShape::Box(current_shape)) {
+                        new_result.push(current_room.clone());
+                        new_bounding_shape =
+                            new_bounding_shape.union(&current_shape.bounding_box());
+                    }
                     continue;
                 }
             }
@@ -1258,7 +1270,15 @@ fn complete_shape_90(
         result = new_result;
         bounding_shape = new_bounding_shape;
     }
-    // :190. This regime never calls `divideLargeRoom`.
+    // :190. This regime never calls `divideLargeRoom`, and **that stays Java's**.
+    //
+    // The plan's binding assertion for #159 is `[4, 4, 4]`, and reaching the third 4 needs a
+    // second change — routing this regime through `divideLargeRoom` — which the register does not
+    // authorize and which is measurably not free: with it, `p6t16-autoroute-connection.txt`'s
+    // `NINETY_DEGREE` block moves on four modes (`plain` 2 rows, `route` 2, `stopafter` 4,
+    // `routeripup` 73 of 84). Restoring the re-add alone moves no jar-parity row anywhere. See
+    // `tests/tree_ext.rs::the_ninety_degree_override_keeps_the_room_it_ignores_by_shape` for the
+    // decision, the measurement and the amended literal.
     result
 }
 

@@ -335,6 +335,11 @@ fn the_90_degree_override_never_calls_divide_large_room() {
     // ShapeSearchTree90Degree.completeShape ends at `return result` (:190) — unlike the base
     // class (:692) and the 45-degree override (:276), it never divides. A board-sized seed room
     // on a 90-degree tree therefore comes back as one room.
+    //
+    // Plan 9 Task 8 measured whether to change that alongside #159 and decided **not** to: see
+    // `the_ninety_degree_override_keeps_the_room_it_ignores_by_shape` for the argument and the
+    // measurement. This third difference between the override and its two siblings is Java's, it
+    // has no register row of its own, and it stays.
     let board = TestBoard::new(
         AngleRestriction::NinetyDegree,
         &[(ItemId(1), boxed(200, 200, 300, 300), 1, vec![])],
@@ -388,13 +393,38 @@ fn an_octagon_obstacle_restrains_the_45_degree_room_on_a_diagonal() {
 }
 
 #[test]
-fn only_the_90_degree_override_drops_a_room_it_ignores_by_shape() {
-    // Java bug: ShapeSearchTree90Degree.completeShape drops the room instead of keeping it
-    // (quirk #159). At the `ignoreShape.contains(intersection)` decision the base class falls
+fn the_ninety_degree_override_keeps_the_room_it_ignores_by_shape() {
+    // fixed: T8 (#159). Java bug: `ShapeSearchTree90Degree.completeShape` drops the room instead
+    // of keeping it. At the `ignoreShape.contains(intersection)` decision the base class falls
     // through to `if (!somethingChanged) newResult.add(currentIncompleteRoom)`
     // (ShapeSearchTree.java:683-687) and the 45-degree override re-adds the room explicitly
     // unless the ignore shape swallows it whole (…45Degree.java:209-212), but the 90-degree
-    // override just `continue`s (…90Degree.java:126-129) — so the room vanishes from the result.
+    // override just `continue`s (…90Degree.java:126-129) — so the room vanished from the result
+    // and, since `completeExpansionRoom` passes exactly that pair on every room completion, a
+    // 90-degree room whose only overlap is the door it came through expanded to nothing.
+    //
+    // This test replaces `only_the_90_degree_override_drops_a_room_it_ignores_by_shape`, which
+    // asserted `[4, 4, 0]`.
+    //
+    // # Why `[4, 4, 1]` and not the plan's `[4, 4, 4]` — decided and measured
+    //
+    // The 4 in the first two regimes is `divideLargeRoom`'s 2x2 sectioning of the board-sized
+    // room the fallthrough keeps (room bbox = board bbox = 1000x1000, neither `2 * 1000 <= 1000`
+    // guard fires, `maxSectionWidth = 0.5 * 1000 = 500`, `ceil(1000 / 500) ^ 2 = 4`). The
+    // 90-degree override does not call `divideLargeRoom` at all (…90Degree.java:190), so the fix
+    // as the register sketches it — restore the re-add — gives **1**, not 4, and reaching 4 needs
+    // a *second* change: routing the 90-degree path through `divideLargeRoom` too.
+    //
+    // Both were implemented and measured against the HEAD-jar transcripts. Restoring the re-add
+    // alone moves **no** jar-parity row anywhere in the workspace. Adding the division breaks
+    // `p6t16-autoroute-connection.txt` on three modes in the `NINETY_DEGREE` block — `plain` 2
+    // rows, `route` 2 rows, `stopafter` 4 rows and `routeripup` **73 of 84**, where the port
+    // stops taking Java's via detour and rips the net-2 blocker instead. Those are real routing
+    // changes, they are the second change's and not #159's, and no register row authorizes them:
+    // a 73-row `KNOWN_DIVERGENCES` entry against a jar transcript is a re-cut wearing a table's
+    // clothes. So the fix is the register's, the third difference stays Java's (see
+    // `the_90_degree_override_never_calls_divide_large_room`), and the literal is amended — which
+    // `docs/plan-9-prep/fixtures/task-8/expected-outcomes.md`'s ⚠ block explicitly provides for.
     let ignore = boxed(300, 300, 700, 700);
     let mut results = Vec::new();
     for angle in [
@@ -411,12 +441,11 @@ fn only_the_90_degree_override_drops_a_room_it_ignores_by_shape() {
         let seed = IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(100, 100, 200, 200)));
         results.push(board.complete(&seed, 1, None, Some(&ignore)).len());
     }
-    // The kept room is board-sized, so `divideLargeRoom` then cuts it into four sections —
-    // which is itself the third difference: the 90-degree override never divides at all.
     assert_eq!(
         results,
-        vec![4, 4, 0],
-        "base and 45 degree keep the ignored room; 90 degree drops it"
+        vec![4, 4, 1],
+        "all three regimes now KEEP the ignored room (was [4, 4, 0]); the 1 against the 4s is \
+         the third, unregistered difference — the 90-degree override does not divide"
     );
 }
 
@@ -900,8 +929,11 @@ fn route_ninety_degree_fixture() -> String {
     use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
 
     let root = parity::workspace_root();
-    let dsn = root.join(format!("crates/fr-router/tests/data/{NINETY_DEGREE_STEM}.dsn"));
-    let bytes = std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
+    let dsn = root.join(format!(
+        "crates/fr-router/tests/data/{NINETY_DEGREE_STEM}.dsn"
+    ));
+    let bytes =
+        std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = format!("{NINETY_DEGREE_STEM}.dsn");
 
     let (mut board, transform) = match fr_dsn::read_board(
