@@ -256,11 +256,14 @@ pub struct PadJson {
     /// The **element** type is `Option<String>` because Gson stores a JSON `null` inside a
     /// `List<String>` as a `null` reference and `readBoard:545` then calls
     /// `boardLayers[li].name.equalsIgnoreCase(null)`, which is `false` rather than a throw — so
-    /// `{"layers": [null, "B.Cu"]}` **loads** in Java, on `B.Cu`. A `Vec<String>` would make
-    /// `serde_json` reject the whole file instead. Measured, stem `pad-layers-null-element` of
-    /// `crates/fr-dsn/tests/data/p8t8-kicad-read-b.txt`; quirk #283, which records the three
-    /// sibling lists where Java *also* stores the `null` but then throws on it, and where the port
-    /// therefore diverges only in the `ParseError`'s prose.
+    /// `{"layers": [null, "B.Cu"]}` **loads** in Java, on `B.Cu`. Quirk #283 records the three
+    /// sibling lists where Java *also* stores the `null` but then throws on it.
+    ///
+    /// fixed: T7 (#283) — the port refuses the null element, and the inner `Option` is what lets
+    /// it say **which** element: a `Vec<String>` would make `serde_json` reject the document with
+    /// a byte offset, where [`KiCadBoardJson::validate`] names
+    /// `components[i].pads[j].layers[k]`. The type is unchanged; what changed is that the value
+    /// it can hold is now refused rather than silently dropping a layer.
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
@@ -272,8 +275,15 @@ pub struct OutlineJson {
     /// `boardJson.outline.corners.size()` after only a `boardJson.outline == null` test.
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub corners: Option<Vec<Point2D>>,
-    /// `OutlineJson.clearance` (:90), "outline/edge clearance class mapping". **Never read**:
-    /// `readBoard:310` hard-codes `outlineClearanceNo = 1`.
+    /// `OutlineJson.clearance` (:90), "outline/edge clearance class mapping" — the outline's own
+    /// clearance, as a distance in the document's units.
+    ///
+    /// fixed: T7 (#281) — Java parses it and never reads it: `readBoard:310` hard-codes
+    /// `outlineClearanceNo = 1` with the comment "Default clearance class". The port **wires**
+    /// it, through `crate::kicad::reader`'s `outline_clearance_class`, which is the inverse of
+    /// what [`crate::kicad::writer`] already wrote here. It stays in the DTO either way: the
+    /// other three §9.1 fields (`NetClassJson.netNames`, `NetJson.id`, `LayerJson.index`) are a
+    /// wire contract the writer must keep round-tripping, and this one is that *and* a rule.
     #[serde(default, deserialize_with = "nullable")]
     pub clearance: f64,
 }
@@ -530,6 +540,116 @@ where
 /// leaves an empty list, which is not the same as an explicit `null`.
 fn empty<T>() -> Option<Vec<T>> {
     Some(Vec::new())
+}
+
+// =========================================================== the DTO boundary's null validation
+
+/// A `null` the board cannot carry, located precisely enough to fix the file: which **section**
+/// of the document, which **object** inside it, and what is wrong with it.
+///
+/// fixed: T7 (#282, #283, #287) — the value [`KiCadBoardJson::validate`] answers, which
+/// `crate::kicad::reader::read_board` turns into a `ParseError` before it reads anything else.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MalformedJson {
+    /// The document section the object lives in — `layers`, `netClasses`, `nets` or
+    /// `components`. It is also the `ParseError`'s `location`.
+    pub section: &'static str,
+    /// The offending object's full JSON path, e.g. `components[2].pads[0].name`.
+    pub object: String,
+    /// What is wrong with it, as a sentence fragment that follows the object.
+    pub problem: &'static str,
+}
+
+impl KiCadBoardJson {
+    /// Refuse a `null` where the board needs a **name**, and a `null` **element** of an array,
+    /// before `readBoard` reads anything.
+    ///
+    /// # Why the reader cannot simply carry the `null` forward
+    ///
+    /// Java does carry it forward, and every one of the four ways that ends is worse than a
+    /// refusal:
+    ///
+    /// | the `null` | where Java dies | how far from the JSON |
+    /// |---|---|---|
+    /// | a layer `name` | `KiCadJsonReader:545`, and **only** if the board also has pads naming layers | 430 lines |
+    /// | a net-class `name` | `ClearanceMatrix.getNo`, at the next custom clearance rule | a different class |
+    /// | a net `name` | inside `Nets.get`'s walk | a different class |
+    /// | a component `reference` | inside `ConcurrentSkipListMap.put`, via `Component.compareTo` | inside the JDK |
+    /// | a pad `name` | inside `arePackagePinsIdentical`, where a `catch` turns it into a duplicate package | silently |
+    /// | a `null` array element | nowhere — the pad silently loses a layer | never |
+    ///
+    /// # What it does **not** refuse
+    ///
+    /// A `null` **list** (`"layers": null`) is left alone: that is Java's unguarded dereference
+    /// at `:105`, a different quirk with its own message, and this validation walks a list's
+    /// contents rather than asserting its presence. A `null` on a field where `null` means
+    /// *absent* — `netName`, `className`, `value`, `layer`, `shape`, `classA`/`classB` — is left
+    /// alone too, because a KiCad export writes those keys only when it has something to say.
+    ///
+    /// # Errors
+    ///
+    /// [`MalformedJson`] naming the first offending object in document order: `layers`, then
+    /// `netClasses`, then `nets`, then `components` (and inside a component its `reference`
+    /// before its pads, and inside a pad its `name` before its `layers`).
+    pub fn validate(&self) -> Result<(), MalformedJson> {
+        for (index, layer) in self.layers.iter().flatten().enumerate() {
+            if layer.name.is_none() {
+                return Err(MalformedJson {
+                    section: "layers",
+                    object: format!("layers[{index}].name"),
+                    problem: "is null, and a board layer must have a name",
+                });
+            }
+        }
+        for (index, net_class) in self.netClasses.iter().flatten().enumerate() {
+            if net_class.name.is_none() {
+                return Err(MalformedJson {
+                    section: "netClasses",
+                    object: format!("netClasses[{index}].name"),
+                    problem: "is null, and a net class must have a name",
+                });
+            }
+        }
+        for (index, net) in self.nets.iter().flatten().enumerate() {
+            if net.name.is_none() {
+                return Err(MalformedJson {
+                    section: "nets",
+                    object: format!("nets[{index}].name"),
+                    problem: "is null, and a net must have a name",
+                });
+            }
+        }
+        for (index, component) in self.components.iter().flatten().enumerate() {
+            if component.reference.is_none() {
+                return Err(MalformedJson {
+                    section: "components",
+                    object: format!("components[{index}].reference"),
+                    problem: "is null, and a component must have a reference",
+                });
+            }
+            for (pad_index, pad) in component.pads.iter().flatten().enumerate() {
+                if pad.name.is_none() {
+                    return Err(MalformedJson {
+                        section: "components",
+                        object: format!("components[{index}].pads[{pad_index}].name"),
+                        problem: "is null, and a pad must have a name",
+                    });
+                }
+                for (layer_index, layer_name) in pad.layers.iter().flatten().enumerate() {
+                    if layer_name.is_none() {
+                        return Err(MalformedJson {
+                            section: "components",
+                            object: format!(
+                                "components[{index}].pads[{pad_index}].layers[{layer_index}]"
+                            ),
+                            problem: "is a null array element, and a layer name must be a string",
+                        });
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// `KiCadBoardJson.unit = UnitJson.MM` (KiCadBoardJson.java:11).
