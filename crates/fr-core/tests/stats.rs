@@ -45,6 +45,32 @@
 //! 2.3.0-written `unrouted.ses` on the row above it is snake_case and scrapes nothing. See quirk
 //! #248's clause (b).
 //!
+//! ## PLAN OF RECORD (ruling BT) — read this before regenerating the B or C family
+//!
+//! **This row depends on `tests/reference/router-dac2020-bm01/batch.ses` being JAR-written**, and
+//! a `--from-port` regeneration of the B or C family destroys that. Measured at Plan 9 Task 1,
+//! which ran the regeneration and reverted it: **20** files under `tests/reference/` carry
+//! `hostCad` before, **0** after — the port writes 2.3.0's snake_case (quirk #92), so the whole
+//! camelCase corpus leaves the live tree at once and with it the only real-file exercise of
+//! quirks #248(b), #250 and #252. No literal can stand in for it, because this test reads the
+//! file's **bytes** and runs the scraper over them: the fixture *is* the assertion. And BL8 (as
+//! amended by ruling BP1) forbids reading `tests/reference-frozen/` to get it back — no test and
+//! no script may.
+//!
+//! **The resolution is pre-agreed, so the task that first moves B or C does not have to stop and
+//! ask.** In that same commit:
+//!
+//! 1. copy the `hostCad`-bearing reference files this module needs into committed directed
+//!    fixtures under `crates/fr-core/tests/data/`, with a provenance header saying they are the
+//!    **pre-lane-switch real-corpus files**, naming the jar revision that wrote them
+//!    (`278fe14123c49376667239659c98d41a597acce9`, 2.3.1-SNAPSHOT) and the commit they were cut
+//!    at;
+//! 2. repoint this module's `ref:` rows at them;
+//! 3. re-cut the `p8t2` transcript against the migrated fixtures.
+//!
+//! BL8 stays intact — a committed test data file is not the frozen tree — and the quirk exercise
+//! survives the lane switch instead of being deleted by it.
+//!
 //! # Rows the sibling Java checkout gates
 //!
 //! Eight `BS` rows read a file out of `$FREEROUTING_JAVA_DIR` (the seven `source.dsn`s and the

@@ -842,6 +842,16 @@ fn result_json_path(job: &RoutingJob, args: &RouteArgs) -> Option<String> {
 /// program, because that is what its 29 stems are references of. It needs one lever that reaches
 /// inside a process it can only start, and this is that lever.
 ///
+/// **#234 makes half of this seam redundant, and only half.** Since `opt_changed_area_ms` defaults
+/// to `0`, an unset run and a `disabled` run already agree about the pull-tight clock — the one
+/// clock that changes a routed board. What still separates them is
+/// [`fr_router::pipeline::RouterBudget::fanout_ms_per_pin`]: Java's `10000` against `disabled`'s
+/// [`i32::MAX`]. The fanout stage's per-pin budget is live in a default run, it *does* change what
+/// gets routed on a big board (it is why `Issue420-contribution-board.dsn` was rejected as a
+/// reference stem), and taking it out of a quality measurement is exactly ruling AI. So
+/// `scripts/quality-ab.sh`'s quality lane still sets this variable. Whether the seam survives at
+/// all once nothing needs it is Task 24's decision, parked there.
+///
 /// It is an environment variable read at exactly one site precisely so that it is *not* part of
 /// the settings surface several Plan 9 tasks are busy making predictable: it cannot be set by a
 /// settings file, it cannot be merged, it does not appear in the manifest's `settings_snapshot`,
