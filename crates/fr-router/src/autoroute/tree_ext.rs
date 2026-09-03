@@ -1275,8 +1275,9 @@ fn complete_shape_90(
     // The plan's binding assertion for #159 is `[4, 4, 4]`, and reaching the third 4 needs a
     // second change — routing this regime through `divideLargeRoom` — which the register does not
     // authorize and which is measurably not free: with it, `p6t16-autoroute-connection.txt`'s
-    // `NINETY_DEGREE` block moves on four modes (`plain` 2 rows, `route` 2, `stopafter` 4,
-    // `routeripup` 73 of 84). Restoring the re-add alone moves no jar-parity row anywhere. See
+    // `NINETY_DEGREE` block moves on four modes (`plain` 2 of 33 rows, `route` 2 of 36,
+    // `stopafter` 4 of 100, `routeripup` 73 of 84 — **81 rows in all**). Restoring the re-add
+    // alone moves no jar-parity row anywhere. See
     // `tests/tree_ext.rs::the_ninety_degree_override_keeps_the_room_it_ignores_by_shape` for the
     // decision, the measurement and the amended literal.
     result

@@ -78,6 +78,14 @@ ruling-AW ladder `batch_parity.rs` uses (`resolve_headless` → `prepare_board` 
 | `router-empty-board` | 0 | 0 | 0 | 0 | 0 | **0** |
 | **total** | **34 516** | **34 516** | **489 077** | **489 077** | **53 878** | **0 / 1 101 064** |
 
+> **Superseded as a current measurement by Plan 9 Task 8 — the finding is not.** T8's nine fixes
+> changed what the router does, so the **visit** counts above moved on four of the eight stems and
+> the denominator is now **1 160 973**. Every **fire** count is still **zero**, which is this
+> report's actual claim. The live table is `crates/fr-router/tests/stale_index.rs`'s `MEASURED`,
+> whose `// T8:` comments name the commit and the fix that moved each row (`#163` `cc6c210`,
+> `#171 + #170` `e860a26`, `#156 + #167 + #158` `c39d844`), bisected commit by commit. The numbers
+> above are the T17 measurement and are kept as it stood.
+
 The cells are **visits**; the last column is the fire count, which is zero in every cell of every
 guard on every stem.
 
@@ -154,6 +162,8 @@ a defence against a window that the ordering of `init`, `autorouteConnection` an
 
 **Ruling BP7's blanket argument first**, because it covers all nine at once: a symptom cannot be
 downstream of a guard that never ran. All three of #193's guards fired **zero** times in 1 101 064
+(T8 re-measured the same guards at **1 160 973** evaluations and the fire count is still zero;
+see the note under §3's table)
 evaluations across the eight stems, and Task 8's fix list is measured on those same boards. **No row
 of Task 8's fix list has any part of its measured symptom explained by #193's mechanism.** The
 per-row lines below give the mechanism-level reason as well, so that the verdict does not rest on

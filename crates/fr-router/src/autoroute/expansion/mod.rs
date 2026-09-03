@@ -187,6 +187,24 @@ impl ExpansionRoomStore {
     /// burns a number. Rewinding is conditional on purpose — it is a no-op unless the id being
     /// released is the newest, so it can never hand the same number to two rooms that both
     /// survive, and a caller that releases out of order simply leaves the gap Java would have.
+    /// # T8: `clear` and this counter open an alias window that the drill pages sit in
+    ///
+    /// `AutorouteEngine.clear` (`:306-317`) resets `expansionRoomInstanceCount` to 0, and since
+    /// #156/#167/#158 that counter is shared by **every** expandable object — including the drill
+    /// pages, which draw their ids once when the page grid is built and keep them for the life of
+    /// the engine. `clear` does **not** touch the page grid (it is `drillPageArray`, which Java's
+    /// `clear` deliberately leaves alone — see [`Self::drills`]), so after a `clear` the counter
+    /// re-issues numbers that live pages still hold, and a page and a room can answer the same
+    /// id.
+    ///
+    /// **Not reachable today, and named here so it is not discovered by accident.** The two ids
+    /// meet only in `MazeListElement::compare_to`'s third key, through
+    /// `AutorouteEngine::expandable_id_no`, and a page id and a room id reach it only from the
+    /// same maze queue — which belongs to one connection, inside one `initConnection`/`clear`
+    /// cycle. Java has the same shape and the same reset, so this is not a divergence; it is a
+    /// property of sharing one counter that the pre-T8 hashes did not have, and the fix for it if
+    /// it ever becomes reachable is that `clear` must not reset a counter whose consumers outlive
+    /// it. Task 24 owns the `clear`/page-grid lifetime question.
     pub fn release_room_id_no(&mut self, id_no: i32) {
         if self.room_instance_count == id_no {
             self.room_instance_count = self.room_instance_count.wrapping_sub(1);

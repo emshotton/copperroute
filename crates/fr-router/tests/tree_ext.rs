@@ -417,8 +417,9 @@ fn the_ninety_degree_override_keeps_the_room_it_ignores_by_shape() {
     //
     // Both were implemented and measured against the HEAD-jar transcripts. Restoring the re-add
     // alone moves **no** jar-parity row anywhere in the workspace. Adding the division breaks
-    // `p6t16-autoroute-connection.txt` on three modes in the `NINETY_DEGREE` block — `plain` 2
-    // rows, `route` 2 rows, `stopafter` 4 rows and `routeripup` **73 of 84**, where the port
+    // `p6t16-autoroute-connection.txt` on **four** modes in the `NINETY_DEGREE` block — `plain` 2
+    // of 33 rows, `route` 2 of 36, `stopafter` 4 of 100 and `routeripup` **73 of 84**, which is
+    // **81 rows in all**, where the port
     // stops taking Java's via detour and rips the net-2 blocker instead. Those are real routing
     // changes, they are the second change's and not #159's, and no register row authorizes them:
     // a 73-row `KNOWN_DIVERGENCES` entry against a jar transcript is a re-cut wearing a table's

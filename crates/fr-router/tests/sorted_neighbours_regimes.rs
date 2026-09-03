@@ -492,10 +492,20 @@ fn flags(values: &[bool]) -> String {
     out
 }
 
+/// Compares one produced script with the expected one, line by line.
+///
+/// `FR_DUMP_SCRIPT=1` prints what was actually produced, prefixed `DUMP|`, instead of only saying
+/// which line differs. It exists because these scripts are re-cut by hand whenever an authorized
+/// divergence moves one, and doing that from a first-differing-line message is how a re-cut goes
+/// wrong. Added at Plan 9 Task 8 (it cut `an_eight_sided_obstacle_room_gets_eight_doors`); named
+/// for what it does rather than for the task, because the next re-cut will want it too.
+///
+/// It is a **read** — it prints and changes no assertion — so an unset variable and a set one
+/// compare exactly the same thing.
 fn assert_script(actual: &[String], expected: &str) {
-    if std::env::var_os("P9T8_DUMP").is_some() {
-        for l in actual {
-            eprintln!("DUMP|{l}");
+    if std::env::var_os("FR_DUMP_SCRIPT").is_some() {
+        for line in actual {
+            eprintln!("DUMP|{line}");
         }
     }
     let expected: Vec<&str> = expected.trim_matches('\n').lines().collect();

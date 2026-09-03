@@ -1438,11 +1438,32 @@ impl SortedRoomNeighbour {
     /// *which* key answers and then takes the exact sign of whichever it selected, which is the
     /// textbook non-transitivity: `a ≈ b` and `b ≈ c` do not give `a ≈ c`, so the relation is not
     /// a strict weak ordering and a `TreeSet`'s red-black invariants stop meaning anything. The
-    /// keys are compared exactly instead, and "tie" means *equal*. This is strictly a refinement
-    /// of Java's order — every pair Java called a tie either still ties (the distances really are
-    /// equal, and the last corner decides exactly as Java intended) or is separated by a genuine
-    /// difference in where the door starts, which is a legal counterclockwise order either way.
-    /// `c_dist_tolerance` itself has no reader left and is gone with the gate.
+    /// keys are compared exactly instead, and "tie" means *equal*. `c_dist_tolerance` itself has
+    /// no reader left and is gone with the gate.
+    ///
+    /// **This is NOT "strictly a refinement" of Java's order, and an earlier draft of this note
+    /// said it was. It is wrong, and here is the counterexample.** Java has two bands, and they
+    /// are not alike:
+    ///
+    /// * the **outer** band, on the first-corner key, is *dead as a selector*. Its body is gated
+    ///   on `firstCorner().equals(other.firstCorner())` — exact point equality — which already
+    ///   forces `deltaDistance == 0.0`. So a pair whose first-corner distances differ by, say,
+    ///   0.5 enters the band, fails the inner test, and is decided by `sign(-0.5)` exactly as it
+    ///   would be with no band at all. Removing it changes nothing.
+    /// * the **inner** band, `|deltaDistance| <= 1.0 && both ntc` on the *last*-corner key, is
+    ///   **live**, and removing it reorders pairs. Take two neighbours on the same side of the
+    ///   room, both `neighbourRoomTouchIsCorner`, with equal first-corner distances and last
+    ///   corners 300.0 and 300.5 from the compare corner. Java: `|-0.5| <= 1.0`, so
+    ///   `Direction.compareFrom` decides, and it may answer `Greater`. This method: the exact
+    ///   last-corner comparison answers `Less`. **The pair is ordered the other way round** — a
+    ///   reversal, not a refinement.
+    ///
+    /// That reversal is accepted deliberately, and it is the price of the fix rather than a side
+    /// effect of it: a tolerance that *selects which key answers* is exactly what makes the
+    /// relation non-transitive, so a comparator that keeps it cannot be a total order at all. What
+    /// is kept is Java's key **order** and Java's meaning for each key; what is given up is Java's
+    /// answer on the pairs whose last corners are within one unit of each other and whose
+    /// neighbour border lines happen to disagree with their distances.
     ///
     /// **3. `:756-760`'s id subtraction compares the object *kind* first (#161), and does not
     /// wrap.** `searchTreeObject.getId()` is a `BasicBoard.ItemIdGenerator` number for an item and

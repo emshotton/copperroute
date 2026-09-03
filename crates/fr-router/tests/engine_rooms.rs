@@ -459,15 +459,37 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
 /// was visited".
 #[test]
 fn a_door_onto_an_incomplete_room_is_not_skipped() {
+    // **Re-cut at Plan 9 Task 8's fix round, and the numbers below are the PORT's — not one of
+    // them is a jar number.** `net_dependent_run` is a hand-built board with no jar transcript
+    // behind it, and every literal here is a count of the port's own arena. What moved them is
+    // this task's own commit 10 (#156 + #167 + #158): the expandable ids became one shared
+    // counter, that counter feeds `MazeListElement`'s third sort key, and this fixture's room set
+    // changed with it.
     let (mut board, mut engine) = net_dependent_run(true);
     let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 9);
 
-    // The first removal's two neighbours are complete rooms; it is the control, and the two rooms
-    // it regenerates survive because nothing deletes a complete neighbour.
+    // The first removal **was** the control — two complete neighbours, two regenerated rooms that
+    // survive because nothing deletes a complete neighbour. After the ids moved, that room has no
+    // doors at all on this fixture, so there is nothing to regenerate and nothing to control
+    // against. Asserted rather than deleted, so the disappearance is visible rather than implied
+    // by an unmoved number.
+    assert!(
+        engine
+            .rooms
+            .room_doors(RoomRef::Complete(rooms[0]))
+            .is_empty(),
+        "the first room's door list is empty on this fixture since the ids moved"
+    );
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 11, "9 + 2 regenerated");
+    assert_eq!(
+        engine.rooms.incomplete_rooms.len(),
+        9,
+        "no doors, so nothing regenerated and nothing cascaded"
+    );
 
-    // The second removal's four neighbours are all incomplete — the doors `:385` used to skip.
+    // The second removal is the one this test exists for: its four neighbours are all incomplete
+    // rooms — the doors `:385` used to skip.
     let room_slots_before = engine.rooms.incomplete_rooms.slot_count();
     let door_slots_before = engine.rooms.doors.slot_count();
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
@@ -484,10 +506,10 @@ fn a_door_onto_an_incomplete_room_is_not_skipped() {
         "and a door apiece"
     );
 
-    // The live counts are Java's and do not move: `:403`'s cascade deletes the two regenerated
-    // rooms along with the incomplete neighbours they hang off.
+    // The live counts do not move for the reason the doc comment gives: `:403`'s cascade deletes
+    // the two regenerated rooms along with the incomplete neighbours they hang off.
     assert_eq!(engine.complete_expansion_rooms().len(), 0);
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "11 - 4, none added");
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "9 - 4, none added");
     assert_eq!(tree_size(&board, &engine), 2);
 }
 
@@ -538,7 +560,10 @@ fn touching_sides_is_length_checked() {
     );
 
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 7);
+    // Re-cut with the sibling above, and for the same reason: a port-only arena count, moved by
+    // this task's own commit 10. The `empty == 2` above — the thing this test is *for* — did not
+    // move.
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5);
 }
 
 /// The same run with `maintainDatabase == false`: `:97` gates the whole invalidation, so the two
@@ -804,8 +829,13 @@ fn an_abandoned_room_leaves_no_live_doors() {
 ///
 /// The id half of the improvement column is here too: `SortedRoomNeighbours.calculate` draws its
 /// room id **once** and reuses it across the `edgeRemoved` retry, so a room that is thrown away no
-/// longer consumes one. On this run the ids used to read `[1, 2, 6, 7, 8, 9]` — three numbers
-/// burnt by retries — and now read `[1, 2, 3, 4, 5, 6]`.
+/// longer consumes one. The jar's six ids are `[1, 2, 6, 7, 8, 9]` — three numbers burnt by
+/// retries. **They are not `[1, 2, 3, 4, 5, 6]`, which is what this doc said when #165 landed and
+/// what stopped being true three commits later**: #156 + #167 + #158 put obstacle rooms,
+/// incomplete rooms and drill pages on the *same* counter, so the ids are injective across the
+/// four kinds and no longer dense. Density was never this row's property; "a discarded room
+/// consumes nothing" and "strictly increasing in creation order" are, and both are asserted
+/// below.
 #[test]
 fn the_complete_room_list_is_exactly_the_rooms_in_the_tree() {
     let (board, engine, rooms) = one_obstacle_run();
@@ -819,11 +849,17 @@ fn the_complete_room_list_is_exactly_the_rooms_in_the_tree() {
         .iter()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
-    assert_eq!(
-        ids,
-        vec![1, 2, 3, 4, 5, 6],
-        "a room thrown away by the edgeRemoved retry no longer burns an id (the jar's are \
-         [1, 2, 6, 7, 8, 9])"
+    // **Re-cut at Task 8's fix round; a port-only list, no jar number in it.** The jar's six ids
+    // are `[1, 2, 6, 7, 8, 9]` — three burnt by the `edgeRemoved` retry. #165(a) stopped the
+    // retry burning any, and then #156 + #167 + #158 put obstacle rooms, incomplete rooms and
+    // drill pages on the **same** counter, which is what makes the ids injective across the four
+    // kinds. So the ids are no longer dense, and density was never the property #165 was for:
+    // what it buys is that a room which is never committed consumes nothing, and what the tree
+    // ordering needs is that they strictly increase in creation order.
+    assert_eq!(ids, vec![6, 12, 23, 29, 36, 38]);
+    assert!(
+        ids.windows(2).all(|w| w[0] < w[1]),
+        "strictly increasing in creation order, which is the property RoomId has to agree with"
     );
 }
 
