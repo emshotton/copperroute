@@ -1222,6 +1222,117 @@ fn an_invalid_input_writes_no_manifest_because_java_never_reaches_the_writer() {
     );
 }
 
+/// **Quirk #105, fixed in Plan 9 Task 5** (`Wiring.java:684-687`): the jar cannot finish routing
+/// this file, and the port can.
+///
+/// `Wiring.readViaScope`'s net-number loop omits the `++currentIndex` its twin in `readWireScope`
+/// (:439-445) has, so a `(via … (net NAME))` on a name carrying several subnets reads
+/// `netNumbers = [lastSubnetsNumber, 0, 0, …]`. `Nets.isNormalNetNumber` treats the padded `0` as
+/// "no net", so the *reader* looks unharmed — but `DesignRulesChecker.calculateAllIncompletes`
+/// (:558) does `rules.nets.get(0)`, i.e. `Vector.get(-1)`, and throws
+/// `ArrayIndexOutOfBoundsException: Index -1` on **every** autoroute pass while
+/// `AutorouteBatchLoop.run` retries for ever.
+///
+/// # The jar's transcript, verbatim
+///
+/// `crates/fr-dsn/tests/data/p8t13-directed-via-net-numbers.txt`, Plan 8 Task 13, HEAD jar:
+///
+/// ```text
+/// [jar-cli] cmd=java … -jar <HEAD jar> -de …/p8t13-via-net-numbers.dsn -do <out.ses>
+/// [jar-cli] exit=<none: still running after 60s, killed by the probe>
+/// [jar-cli] throwable java.lang.ArrayIndexOutOfBoundsException: Index -1 out of bounds for length 2
+/// [jar-cli] frame at app.freerouting.drc.DesignRulesChecker.calculateAllIncompletes(DesignRulesChecker.java:558)
+/// [jar-cli] ses <not written>
+/// ```
+///
+/// Its control — the same file with `(net NORDERED 1)` on the via, so `getSubnets` takes its
+/// single-net branch and nothing is padded — is `[jar-cli] exit=0` with a 1 995-byte `.ses`.
+/// Controller ruling BI.
+///
+/// # What this test asserts, and what it does not
+///
+/// It asserts the **port's** end-to-end outcome on the hang fixture: exit 0, a `.ses` on disk,
+/// and — the part that matters — a `.ses` the port's own reader accepts back. The jar's 1 995
+/// bytes are *the control's* output, not this fixture's, so there is no jar-side byte count to
+/// compare against here: the jar never wrote one for this file.
+///
+/// Nor was the port ever the thing that hung. Measured on this fixture with the fix stashed, the
+/// port's CLI already exited 0 and wrote **2 024** bytes — its DRC has no `nets.get(0)` — so the
+/// fix's visible effect here is a *routing* change, not a liveness one: with both net numbers on
+/// the via, the via joins both subnets' connectivity and the router finds a different, shorter
+/// set of wires. 2 024 bytes becomes **1 843**. The liveness half of the row is the jar's, and it
+/// is asserted where it lives, in
+/// `crates/fr-dsn/tests/wiring.rs::a_multi_subnet_via_carries_every_net_number`.
+#[test]
+fn the_via_net_number_fixture_routes_instead_of_hanging() {
+    let dir = scratch("via-net-numbers");
+    let fixture =
+        parity::workspace_root().join("crates/fr-dsn/tests/data/p8t13-via-net-numbers.dsn");
+    let ses = dir.join("out.ses");
+    let (_, stderr, code) = run(&[
+        "-de",
+        &fixture.to_string_lossy(),
+        "-do",
+        &ses.to_string_lossy(),
+    ]);
+    assert_eq!(
+        code, 0,
+        "the port must route the jar's hang fixture: {stderr}"
+    );
+
+    let bytes = std::fs::read(&ses).expect("the run must write a .ses");
+    assert_eq!(
+        bytes.len(),
+        1_843,
+        "the routed SES for the fixed reader; it was 2 024 with the padded net array"
+    );
+
+    // Asserted by re-read as well as by size: a byte count alone would pass on a truncated file.
+    let text = String::from_utf8(bytes).expect("the SES is UTF-8");
+    assert!(text.starts_with("(session \"p8t13-via-net-numbers\""));
+    assert!(
+        text.contains("(net NORDERED"),
+        "the routed net must be named in the session"
+    );
+    // The via the quirk is about is placed, and on the net it was read onto.
+    assert!(
+        text.contains("(via VIA1 "),
+        "the fixture's one via must reach the output"
+    );
+
+    // The whole file back through the port's own `SesReader` — the strongest re-read available
+    // without a JDK, and what makes the size assertion mean "a complete session scope" rather
+    // than "1 843 bytes of something". `SesReader.read` needs the board the session belongs to,
+    // so the fixture is read first, exactly as `Freerouting`'s own import path does.
+    let dsn = std::fs::read(&fixture).expect("the fixture");
+    let options = fr_dsn::DsnReadOptions::default();
+    let fr_dsn::BoardReadResult::Success {
+        mut board,
+        coordinate_transform,
+        ..
+    } = fr_dsn::read_board(
+        dsn.as_slice(),
+        None,
+        Some("p8t13-via-net-numbers.dsn"),
+        &options,
+    )
+    else {
+        panic!("the fixture must read")
+    };
+    let mut board = *board.take().expect("a board");
+    let coordinate_transform = coordinate_transform.expect("a coordinate transform");
+    let summary = fr_dsn::ses_reader::read(text.as_bytes(), &mut board, &coordinate_transform)
+        .expect("the port must read back the session it just wrote");
+    assert_eq!(
+        summary.errors_encountered, 0,
+        "the re-read must reach no error"
+    );
+    assert!(
+        summary.wires_imported > 0 && summary.vias_imported > 0,
+        "the session must carry the routed wires and the fixture's via: {summary:?}"
+    );
+}
+
 // =================================================================================================
 // `freerouting drc` — the nine behaviour tests (Plan 8 Task 7)
 //

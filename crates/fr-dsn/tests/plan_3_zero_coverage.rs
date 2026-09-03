@@ -67,12 +67,19 @@ const ROWS: [Row; 4] = [
         source: include_str!("placement_scope.rs"),
         control: None,
     },
+    // Plan 9 Task 5 **fixed** quirk #105 (the `++currentIndex`), so this row's test no longer
+    // asserts that the port reproduces the padding — it asserts the fixed reader against the
+    // jar transcript with the one diverging row substituted, and keeps both jar verdicts. It
+    // moved out of `tests/dsn_reader.rs` into a file of its own with it. The coverage claim this
+    // register makes is unchanged: the path is executed by a named test against a committed
+    // fixture with JVM ground truth.
     Row {
         path: "via-net-numbers",
-        java: "quirk #105 — Wiring.readViaScope's net-number loop (Wiring.java:684-687)",
-        test: "read_via_scope_pads_a_multi_subnet_vias_net_numbers_with_zeros",
-        suite: "tests/dsn_reader.rs",
-        source: include_str!("dsn_reader.rs"),
+        java: "quirk #105 — Wiring.readViaScope's net-number loop (Wiring.java:684-687), fixed in \
+               Plan 9 Task 5",
+        test: "a_multi_subnet_via_carries_every_net_number",
+        suite: "tests/wiring.rs",
+        source: include_str!("wiring.rs"),
         control: Some("via-net-numbers-control"),
     },
 ];

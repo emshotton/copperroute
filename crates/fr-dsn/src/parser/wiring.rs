@@ -548,17 +548,29 @@ fn read_via_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
         );
         p.warnings.push(msg);
     }
-    // Java bug: Wiring.readViaScope — Wiring.java:684-690 declares `int currentIndex = 0` and writes
-    // `netNumbers[currentIndex] = currentNet.netNumber` inside the loop **without ever
-    // incrementing it** — unlike the identical loop in `readWireScope` (:440-445), which does.
-    // A via on a net name with several subnets therefore gets `netNumbers = [lastSubnet, 0, 0,
-    // …]`: one real net number followed by `foundNets.size() - 1` zeros, and `Nets.isNormalNetNumber`
-    // treats 0 as "no net". Reproduced, zeros and all. See docs/java-quirks.md quirk #105.
+    // fixed: T5 (#105) — Wiring.readViaScope, Wiring.java:684-690, declares `int currentIndex = 0`
+    // and writes `netNumbers[currentIndex] = currentNet.netNumber` inside the loop **without ever
+    // incrementing it** — unlike the line-for-line identical loop in `readWireScope` (:439-445),
+    // which has the `++currentIndex`. A via on a net name with several subnets therefore got
+    // `netNumbers = [lastSubnet, 0, 0, …]`: one real net number followed by
+    // `foundNets.size() - 1` zeros, where a wire on the same net gets all of them.
+    //
+    // The zeros are not inert. `Nets.isNormalNetNumber` reads 0 as "no net", so the reader looks
+    // unharmed — but `DesignRulesChecker.calculateAllIncompletes` (:558) does `rules.nets.get(0)`,
+    // which is `Vector.get(-1)`, so **every autoroute pass throws
+    // `ArrayIndexOutOfBoundsException: Index -1` and `AutorouteBatchLoop.run` retries for ever**.
+    // The HEAD jar does not survive its own file: `crates/fr-dsn/tests/data/p8t13-via-net-numbers.dsn`
+    // never terminates under `java -jar <HEAD jar> -de <it> -do <out.ses>`, while its control —
+    // the same file with `(net NORDERED 1)` on the via, one found net, no padding — exits 0 with
+    // a routed `.ses`. Both transcripts are committed beside the fixtures (Plan 8 Task 13,
+    // controller ruling BI).
+    //
+    // The `++currentIndex` is the whole fix, and it is the one place in the port where the fixed
+    // reader is known to make an input *routable* that the jar cannot finish reading its way out
+    // of. Upstream-PR candidate.
     let mut net_numbers: Vec<i32> = vec![0; found_nets.len()];
-    for (net_number, found_class) in &found_nets {
-        if let Some(slot) = net_numbers.first_mut() {
-            *slot = *net_number;
-        }
+    for (index, (net_number, found_class)) in found_nets.iter().enumerate() {
+        net_numbers[index] = *net_number;
         net_class = *found_class;
     }
 

@@ -421,20 +421,30 @@ impl Board {
     ///   can change between the read and the use, and `isOnTheBoard` is taken from the live
     ///   board.
     ///
-    /// # This method can fail to terminate (quirk #76)
+    /// # In Java this method fails to terminate (quirk #76)
     ///
-    /// Two rails joined by four or more rungs on one net make the re-read above loop forever, in
-    /// Java and here alike, and neither `MAX_NORMALIZATION_DEPTH` nor `MAX_NORMALIZE_ITERATIONS`
-    /// reaches it — both count outer passes this never leaves.
-    /// `crates/fr-board/tests/trace_normalize.rs`'s
-    /// `a_four_rung_ladder_never_finishes_normalizing` is the (`#[ignore]`d) reproduction.
+    /// Two rails joined by four or more rungs on one net make the re-read above loop forever in
+    /// Java, and neither `MAX_NORMALIZATION_DEPTH` nor `MAX_NORMALIZE_ITERATIONS` reaches it —
+    /// both count outer passes this never leaves.
     ///
     /// **Where the ladder actually hangs first** (Plan 3 Task 10): not here. The walk below
     /// retires only ~60 entries a minute on a four-rung ladder because each one is stuck inside
     /// `BasicBoard.removeIfCycle` -> [`Board::connection_items`], whose walk along the contacts
-    /// has no visited set and circles a closed connection for ever (quirk #106). Both loops are
-    /// escapable now — see [`Board::split_trace_checked`] and
-    /// [`Board::connection_items_checked`].
+    /// has no visited set and circles a closed connection for ever (quirk #106).
+    //
+    // fixed: T5 (#76) — by the two fixes above and in `connectivity.rs`, in that order and with
+    // that division of labour. Measured: #71's re-read fix alone changes **nothing** on the
+    // four-rung ladder (identical step counts, timings and surviving traces at budgets of 500,
+    // 50 000 and 5 000 000, with the fix and without it), because the walk never reaches its
+    // second re-read; adding #106's visited set makes the same call return in **80** stop-check
+    // steps, answering `true` and leaving no trace on the board.
+    // `crates/fr-board/tests/trace_normalize.rs`'s
+    // `a_two_rail_four_rung_ladder_normalizes_and_terminates` is that literal answer and replaces
+    // the `#[ignore]`d `a_four_rung_ladder_never_finishes_normalizing`.
+    //
+    // The ruling-4 `StopCheck` on [`Board::split_trace_checked`] and
+    // [`Board::connection_items_checked`] stays: `fr-dsn` still runs `normalizeAllTraces` under a
+    // budget, and a caller that wants one for the other loops here still has it.
     //
     // obligation: Plan 3 (docs/java-quirks.md, "Ladder hang in DSN import") — **discharged in
     // Plan 3 Task 10**, ruling 4's option (b): `Wiring.java:347` ends every DSN read with
