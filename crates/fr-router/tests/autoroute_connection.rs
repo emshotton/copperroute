@@ -544,11 +544,58 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
 /// What the test is named for does not move: `:207-213`'s degraded FAILED, the board dumps and
 /// the item lists are byte-identical on all 100 rows. Only these four counters differ, and only
 /// by one.
+/// Plan 9 Task 6, quirk #173. `AutorouteControl.initNet`'s null-net arm completed only for
+/// `netNumber <= 0`; a **positive unknown** net took the arm and then threw two lines later at
+/// `:219`. Mode `route`'s third call is exactly that — item 2 on net **99**, which this board does
+/// not have — so the throw hit ruling 7's fifth boundary and degraded to a bare `FAILED`. With the
+/// arm given its own half-width fallback the control builds, the router runs on, and `:49-52`
+/// answers `NO_UNCONNECTED_NETS` because item 2 is already routed. That is the register's stated
+/// payoff — `RoutingBoard.java:1023` builds a control from a pin's net number, so a stale net
+/// number no longer kills the connection.
+///
+/// The fifth boundary keeps a producer: [`a_panicking_locator_degrades_to_javas_message_less_failure`]
+/// still reaches `:154-158` and still asserts the empty `details` that distinguishes it.
 const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
     ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
     ("stopafter", 77, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 88, "  stopCalls=13", "  stopCalls=14"),
+    (
+        "route",
+        9,
+        "  boundary5=FAILED:",
+        "  boundary5=NO_UNCONNECTED_NETS:",
+    ),
+    (
+        "route",
+        10,
+        "  boundary5state=FAILED",
+        "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
+    (
+        "route",
+        21,
+        "  boundary5=FAILED:",
+        "  boundary5=NO_UNCONNECTED_NETS:",
+    ),
+    (
+        "route",
+        22,
+        "  boundary5state=FAILED",
+        "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
+    (
+        "route",
+        33,
+        "  boundary5=FAILED:",
+        "  boundary5=NO_UNCONNECTED_NETS:",
+    ),
+    (
+        "route",
+        34,
+        "  boundary5state=FAILED",
+        "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
 ];
 
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
@@ -1126,10 +1173,17 @@ fn route_once(
 
 /// Probe mode `route`: the first connection routes, the same item routed again answers
 /// `NO_UNCONNECTED_NETS` at `:49-52` before any engine is built, and a positive net the board
-/// does not have makes `AutorouteControl::new` panic — **ruling 7's fifth boundary
-/// (`:154-158`)** — which degrades to a **bare** `FAILED` with no details at all. That empty
+/// does not have used to make `AutorouteControl::new` panic — **ruling 7's fifth boundary
+/// (`:154-158`)** — which degraded to a **bare** `FAILED` with no details at all. That empty
 /// `details` is the whole difference between the fifth boundary and every message-carrying
 /// `FAILED` `autoroute_connection` produces.
+///
+/// Plan 9 Task 6 fixed quirk #173, so the third call no longer panics: the control builds on the
+/// null-net arm's own half-width fallback and the router reaches `:49-52`'s
+/// `NO_UNCONNECTED_NETS`, item 2 being already routed. The jar's six rows are kept verbatim in
+/// the transcript and declared in [`KNOWN_DIVERGENCES`]; the fifth boundary itself keeps its
+/// producer in [`a_panicking_locator_degrades_to_javas_message_less_failure`], which is where the
+/// empty-`details` assertion now lives alone.
 #[test]
 fn route_steps_one_to_five_match_java_including_the_fifth_boundary() {
     let mut rows = Vec::new();
