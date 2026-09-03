@@ -8,7 +8,9 @@
 
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, LexicalState, Token};
+use fr_dsn::parser::autoroute_settings::read_autoroute_settings_scope;
 use fr_dsn::parser::dsn_file::{read_float_scope, read_integer_scope, read_on_off_scope};
+use fr_dsn::parser::geometry::{DsnLayer, DsnLayerStructure};
 use fr_dsn::parser::scope_parameter::{DsnReadOptions, ReadScopeParameter, read_scope, skip_scope};
 
 #[test]
@@ -158,25 +160,77 @@ fn read_on_off_scope_reads_on_and_off() {
 }
 
 #[test]
-fn read_integer_scope_accepts_an_integer_and_totalizes_a_float_to_zero() {
-    // Java-wins ruling (fix round 1): `DsnFile.readIntegerScope` (DsnFile.java:134-160) warns
-    // and returns `0` for a non-integer token — it does not throw, and
-    // `AutorouteSettings.java:53,55,57` feeds that `0` straight into `RouterSettings`, which is
-    // written back out and carried on `BoardMetadata`, so this must not become an `Err`.
+fn read_integer_scope_accepts_an_integer_and_reports_no_value_for_a_float() {
+    // fixed: T4 (#90) — `DsnFile.readIntegerScope` (DsnFile.java:134-160) warns and returns `0`
+    // for a non-integer token, and `AutorouteSettings.java:53,55,57` feeds that `0` straight into
+    // `RouterSettings`, where it is written back out and carried on `BoardMetadata`. The port now
+    // answers "no value read" so the caller leaves its field alone.
     let mut int_scanner = DsnScanner::new("5)").expect("fits");
-    assert_eq!(read_integer_scope(&mut int_scanner).expect("integer"), 5);
+    assert_eq!(
+        read_integer_scope(&mut int_scanner).expect("integer"),
+        Some(5)
+    );
 
     let mut float_scanner = DsnScanner::new("5.0)").expect("fits");
     assert_eq!(
         read_integer_scope(&mut float_scanner).expect("no scan error"),
-        0
+        None
     );
 }
 
 #[test]
 fn read_float_scope_widens_an_integer_token() {
     let mut scanner = DsnScanner::new("5)").expect("fits");
-    assert_eq!(read_float_scope(&mut scanner).expect("number"), 5.0_f64);
+    assert_eq!(
+        read_float_scope(&mut scanner).expect("number"),
+        Some(5.0_f64)
+    );
+}
+
+/// #90's binding test: a malformed integer scope must not end its caller's scope.
+///
+/// The jar's answer for this exact input, from `DsnFile.readIntegerScope`'s first failure branch
+/// (DsnFile.java:141-146) plus `AutorouteSettings.readScope`'s flat loop: `via_costs` totalizes
+/// to `0`, the `)` that closes `(via_costs 5.0)` is read as the end of the **whole**
+/// `autoroute_settings` scope, and everything after it — here `(vias off)` and
+/// `(start_ripup_costs 13)` — is never seen by this reader at all. So the jar reports
+/// `viasAllowed = true` (the default) and `startRipupCosts = 1` (the default), with
+/// `viaCosts = 0`.
+///
+/// fixed: T4 (#90): the scope is consumed to its own bracket, `via_costs` keeps its unset state
+/// (`via_costs_raw() == None`, so a higher-priority settings source still wins the merge), and
+/// the two fields after it are read.
+#[test]
+fn a_malformed_integer_scope_does_not_desync_its_caller() {
+    let layer_structure = DsnLayerStructure::new(vec![
+        DsnLayer::new("F.Cu".to_string(), 0, true),
+        DsnLayer::new("B.Cu".to_string(), 1, true),
+    ]);
+    let mut scanner =
+        DsnScanner::new("(via_costs 5.0) (vias off) (start_ripup_costs 13)) tail").expect("fits");
+    let settings = read_autoroute_settings_scope(&mut scanner, &layer_structure)
+        .expect("no scan error")
+        .expect("the scope closes on its own bracket");
+
+    assert_eq!(
+        settings.via_costs_raw(),
+        None,
+        "a malformed value leaves the field unset instead of writing Java's 0"
+    );
+    assert!(
+        !settings.vias_allowed(),
+        "(vias off) is past the desync and is read now"
+    );
+    assert_eq!(
+        settings.start_ripup_costs(),
+        13,
+        "(start_ripup_costs 13) is past the desync and is read now"
+    );
+    assert_eq!(
+        scanner.next_token().unwrap(),
+        Some(Token::Str("tail".to_string())),
+        "the scope ended on its own closing bracket, not one field early"
+    );
 }
 
 /// `ScopeKeyword.readScope`'s own end-of-file check (ScopeKeyword.java:55-58) fires even when
