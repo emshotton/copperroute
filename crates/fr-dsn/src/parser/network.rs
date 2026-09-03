@@ -3025,7 +3025,7 @@ mod tests {
     use super::*;
 
     fn scan(text: &str) -> DsnScanner {
-        DsnScanner::new(text).expect("fits the lexer buffer")
+        DsnScanner::new(text)
     }
 
     #[test]
@@ -3473,7 +3473,7 @@ mod component_rejection_tests {
         package_pair(&mut board.library.packages, "GOOD", &[good]);
 
         let options = DsnReadOptions::default();
-        let mut p = ReadScopeParameter::new(DsnScanner::new("").expect("fits"), &options);
+        let mut p = ReadScopeParameter::new(DsnScanner::new(""), &options);
         p.board = Some(board);
         p.coordinate_transform = Some(ct);
         p.placement_list = placement_list;

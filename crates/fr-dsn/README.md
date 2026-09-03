@@ -189,10 +189,13 @@ the only one that round-trips a file's coordinates unchanged.
   `items_in_board_order`, which iterate *descending* by id (quirk #63) — the
   order Java's `UndoableObjects.startReadObject` produces, and the order the
   output bytes depend on.
-- **The lexer buffer is finite.** Java allocates `zzBuffer` once as a
-  `char[16 * 1024 * 1024]` and its hand-rolled `nextString` indexes that
-  buffer with no refill, so a larger file is silently mis-lexed. The port
-  refuses it with `DsnError::InputTooLarge` instead.
+- **The lexer buffer is finite in Java, not here.** Java allocates `zzBuffer`
+  once as a `char[16 * 1024 * 1024]` and its hand-rolled `nextString` indexes
+  that buffer with no refill, so a larger file is silently mis-lexed and a design
+  over 16 MiB cannot be scanned at all. The port used to refuse such an input
+  with `DsnError::InputTooLarge`, reproducing the ceiling on purpose; quirk #86
+  (Plan 9 Task 4) deleted that limit. `DsnScanner::new` sizes its buffer to the
+  input and is infallible.
 - **Never edit a generated reference by hand.** `tests/reference/<stem>/`
   is produced only by `scripts/gen-reference.sh` against the pinned 2.3.0
   jar.

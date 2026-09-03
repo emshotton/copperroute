@@ -109,7 +109,7 @@ pub fn read(
 ) -> Result<bool, DsnError> {
     let _ = design_name;
     let text = read_to_string(input)?;
-    let mut scanner = DsnScanner::new(&text)?;
+    let mut scanner = DsnScanner::new(&text);
 
     // The "(rules PCB <name>" header (RulesReader.java:80-110). The name token is consumed but
     // never validated — a mismatch is non-fatal in Java too.
@@ -203,7 +203,7 @@ pub fn read_router_settings(input: impl Read) -> Result<Option<DsnRouterSettings
 
     // The pre-pass over the whole buffer, then a second scan of the same bytes (:198-199).
     let layer_structure = discover_layer_structure(&text)?;
-    let mut scanner = DsnScanner::new(&text)?;
+    let mut scanner = DsnScanner::new(&text);
     if !read_rules_header(&mut scanner)? {
         return Ok(None);
     }
@@ -250,7 +250,7 @@ pub fn read_router_settings(input: impl Read) -> Result<Option<DsnRouterSettings
 // wider visibility.
 pub fn discover_layer_structure(text: &str) -> Result<DsnLayerStructure, DsnError> {
     let mut layer_names: Vec<String> = Vec::new();
-    let mut scanner = DsnScanner::new(text)?;
+    let mut scanner = DsnScanner::new(text);
     let mut prev_was_open = false;
     loop {
         let Some(token) = scanner.next_token()? else {

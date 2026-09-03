@@ -79,7 +79,7 @@ fn scope_keyword_from_keyword_round_trips() {
 /// leaves the following token untouched.
 #[test]
 fn skip_scope_consumes_exactly_the_matching_bracket() {
-    let mut scanner = DsnScanner::new("(foo (bar 1 2) baz) tail").expect("fits the buffer");
+    let mut scanner = DsnScanner::new("(foo (bar 1 2) baz) tail");
     assert_eq!(scanner.next_token().unwrap(), Some(Token::Open));
     assert_eq!(
         scanner.next_token().unwrap(),
@@ -111,8 +111,7 @@ fn skip_scope_handles_glued_digit_letter_tokens_throughout() {
     // have consumed before ever calling `skip_scope` (see the `ScopeKeyword.readScope` docs);
     // everything from `123abc` onward is the scope's body, which is what `skip_scope` itself
     // reads, each token preceded by its own `yybegin(NAME)`.
-    let mut scanner =
-        DsnScanner::new("(foo 123abc (456def 1) 789ghi) tail").expect("fits the buffer");
+    let mut scanner = DsnScanner::new("(foo 123abc (456def 1) 789ghi) tail");
     assert_eq!(scanner.next_token().unwrap(), Some(Token::Open));
     assert_eq!(
         scanner.next_token().unwrap(),
@@ -134,14 +133,14 @@ fn skip_scope_handles_glued_digit_letter_tokens_throughout() {
 /// `skip_scope` sets before every read), the whole run is one `Str`.
 #[test]
 fn name_state_lexes_a_leading_digit_run_as_one_string() {
-    let mut initial = DsnScanner::new("123abc").expect("fits the buffer");
+    let mut initial = DsnScanner::new("123abc");
     assert_eq!(
         initial.next_token().unwrap(),
         Some(Token::Int(123)),
         "YyInitial splits the digits off as their own token"
     );
 
-    let mut name = DsnScanner::new("123abc").expect("fits the buffer");
+    let mut name = DsnScanner::new("123abc");
     name.yybegin(LexicalState::Name);
     assert_eq!(
         name.next_token().unwrap(),
@@ -152,10 +151,10 @@ fn name_state_lexes_a_leading_digit_run_as_one_string() {
 
 #[test]
 fn read_on_off_scope_reads_on_and_off() {
-    let mut on = DsnScanner::new("on)").expect("fits");
+    let mut on = DsnScanner::new("on)");
     assert!(read_on_off_scope(&mut on).expect("no scan error"));
 
-    let mut off = DsnScanner::new("off)").expect("fits");
+    let mut off = DsnScanner::new("off)");
     assert!(!read_on_off_scope(&mut off).expect("no scan error"));
 }
 
@@ -165,13 +164,13 @@ fn read_integer_scope_accepts_an_integer_and_reports_no_value_for_a_float() {
     // for a non-integer token, and `AutorouteSettings.java:53,55,57` feeds that `0` straight into
     // `RouterSettings`, where it is written back out and carried on `BoardMetadata`. The port now
     // answers "no value read" so the caller leaves its field alone.
-    let mut int_scanner = DsnScanner::new("5)").expect("fits");
+    let mut int_scanner = DsnScanner::new("5)");
     assert_eq!(
         read_integer_scope(&mut int_scanner).expect("integer"),
         Some(5)
     );
 
-    let mut float_scanner = DsnScanner::new("5.0)").expect("fits");
+    let mut float_scanner = DsnScanner::new("5.0)");
     assert_eq!(
         read_integer_scope(&mut float_scanner).expect("no scan error"),
         None
@@ -180,7 +179,7 @@ fn read_integer_scope_accepts_an_integer_and_reports_no_value_for_a_float() {
 
 #[test]
 fn read_float_scope_widens_an_integer_token() {
-    let mut scanner = DsnScanner::new("5)").expect("fits");
+    let mut scanner = DsnScanner::new("5)");
     assert_eq!(
         read_float_scope(&mut scanner).expect("number"),
         Some(5.0_f64)
@@ -206,8 +205,7 @@ fn a_malformed_integer_scope_does_not_desync_its_caller() {
         DsnLayer::new("F.Cu".to_string(), 0, true),
         DsnLayer::new("B.Cu".to_string(), 1, true),
     ]);
-    let mut scanner =
-        DsnScanner::new("(via_costs 5.0) (vias off) (start_ripup_costs 13)) tail").expect("fits");
+    let mut scanner = DsnScanner::new("(via_costs 5.0) (vias off) (start_ripup_costs 13)) tail");
     let settings = read_autoroute_settings_scope(&mut scanner, &layer_structure)
         .expect("no scan error")
         .expect("the scope closes on its own bracket");
@@ -253,7 +251,7 @@ fn a_malformed_integer_scope_does_not_desync_its_caller() {
 fn a_truncation_inside_an_unknown_scope_reports_partial() {
     // `(foo 1 2` — an unrecognised nested scope keyword ("foo" is not a DSN keyword) whose body
     // is never closed before the input simply ends.
-    let scanner = DsnScanner::new("(foo 1 2").expect("fits the buffer");
+    let scanner = DsnScanner::new("(foo 1 2");
     let options = DsnReadOptions::default();
     let mut p = ReadScopeParameter::new(scanner, &options);
     assert!(
@@ -267,7 +265,7 @@ fn a_truncation_inside_an_unknown_scope_reports_partial() {
     );
 
     // A complete file records nothing, so the flag is evidence and not noise.
-    let scanner = DsnScanner::new("(foo 1 2))").expect("fits the buffer");
+    let scanner = DsnScanner::new("(foo 1 2))");
     let mut complete = ReadScopeParameter::new(scanner, &options);
     assert!(matches!(
         read_scope(ScopeKeyword::Pcb, &mut complete),
@@ -315,6 +313,6 @@ fn a_truncated_dsn_reads_as_partial_not_success() {
 /// mirroring `ScopeKeyword.skipScope`'s `false` — ScopeKeyword.java:32-33).
 #[test]
 fn skip_scope_returns_ok_false_at_end_of_file() {
-    let mut scanner = DsnScanner::new("no closing bracket here").expect("fits the buffer");
+    let mut scanner = DsnScanner::new("no closing bracket here");
     assert!(matches!(skip_scope(&mut scanner), Ok(false)));
 }

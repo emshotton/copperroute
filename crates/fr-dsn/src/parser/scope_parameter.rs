@@ -393,7 +393,7 @@ mod tests {
     #[test]
     fn read_scope_parameter_defaults_match_java() {
         let options = DsnReadOptions::default();
-        let p = ReadScopeParameter::new(DsnScanner::new("").expect("fits"), &options);
+        let p = ReadScopeParameter::new(DsnScanner::new(""), &options);
         assert_eq!(p.resolution, 100);
         assert_eq!(p.snap_angle, AngleRestriction::FortyFiveDegree);
         assert_eq!(p.string_quote, "\"");

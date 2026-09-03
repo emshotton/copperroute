@@ -158,9 +158,8 @@ pub fn apply_rules_file_against_board(
     // `new InputStreamReader(in)` (`RulesReader.java:78`), as `fr_dsn`'s own reader decodes it.
     let text = String::from_utf8_lossy(bytes).into_owned();
     let layer_structure = DsnLayerStructure::from_board(board.layer_structure());
-    let Ok(mut scanner) = DsnScanner::new(&text) else {
-        return false;
-    };
+    // fixed: T4 (#86) — was a fallible constructor with a 16 MiB ceiling; now infallible.
+    let mut scanner = DsnScanner::new(&text);
 
     // The `(rules PCB <name>` header (`:80-110`). The name is consumed and never validated: a
     // mismatch is logged, not fatal.

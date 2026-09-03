@@ -1919,7 +1919,7 @@ mod tests {
     use crate::lexer::DsnScanner;
 
     fn scan(input: &str) -> DsnScanner {
-        DsnScanner::new(input).expect("fits the buffer")
+        DsnScanner::new(input)
     }
 
     #[test]

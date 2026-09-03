@@ -69,10 +69,16 @@ pub enum LexicalState {
 /// code unit at a time.
 #[derive(Debug)]
 pub struct DsnScanner {
-    /// `zzBuffer`. // Java bug: zzBuffer is a fixed `char[16 * 1024 * 1024]` (`:40`, `:561`)
-    /// that `nextString` indexes without ever refilling, so a token straddling a refill is
-    /// silently mis-lexed and a file over 16 MiB cannot be scanned at all. The port refuses
-    /// such an input with [`DsnError::InputTooLarge`] rather than mis-lexing it.
+    /// `zzBuffer`.
+    //
+    // Java bug: (#86) zzBuffer is a fixed `char[16 * 1024 * 1024]` (`:40`, `:561`) that
+    // `nextString` indexes without ever refilling, so a token straddling a refill is silently
+    // mis-lexed and a design over 16 MiB cannot be scanned at all.
+    //
+    // fixed: T4 (#86) — this buffer is the whole input, exactly sized, so there is no refill to
+    // straddle and no ceiling to hit. The port used to *reproduce* the ceiling on purpose, with
+    // a `DsnError::InputTooLarge` at the constructor; that limit is gone, and with it the
+    // constructor's `Result`.
     buffer: Vec<u16>,
     /// `zzStartRead` — start of `yytext()` in the buffer. Java's positions are `int`s that
     /// `nextString`/`nextStringList` can drive to `-1`, so they are `isize` here.
@@ -98,18 +104,18 @@ impl DsnScanner {
     /// Creates a scanner over `input` (Java: `SpecctraDsnStreamReader(InputStream)`, which
     /// wraps the stream in an `InputStreamReader` and so decodes it as UTF-8).
     ///
-    /// Fails with [`DsnError::InputTooLarge`] when the input does not fit Java's fixed 16 MiB
-    /// `zzBuffer`; see the field's note.
-    pub fn new(input: &str) -> Result<Self, DsnError> {
-        let buffer: Vec<u16> = input.encode_utf16().collect();
-        if buffer.len() > tables::ZZ_BUFFERSIZE {
-            return Err(DsnError::InputTooLarge {
-                units: buffer.len(),
-                limit: tables::ZZ_BUFFERSIZE,
-            });
-        }
-        Ok(Self {
-            buffer,
+    /// Infallible: the buffer is sized to the input. See the `#86` markers on
+    /// [`DsnScanner::buffer`] — this used to return `Err(DsnError::InputTooLarge)` above 16 MiB,
+    /// deliberately reproducing Java's fixed `zzBuffer`.
+    //
+    // T22: this constructor is #86's site only. `#84`/`#85` — the skip/stop sets and the number
+    // grammar — are Task 22's, in `next_token`/`next_double`/`next_string` further down this
+    // file. Different functions, and Task 4 lands first; each regenerates the G family for its
+    // own reason (plan ruling BP6, named at both ends).
+    #[must_use]
+    pub fn new(input: &str) -> Self {
+        Self {
+            buffer: input.encode_utf16().collect(),
             zz_start_read: 0,
             zz_marked_pos: 0,
             zz_current_pos: 0,
@@ -117,7 +123,7 @@ impl DsnScanner {
             zz_lexical_state: LexicalState::YyInitial,
             string_buffer: Vec::new(),
             scope_identifier: String::new(),
-        })
+        }
     }
 
     /// `yybegin` (`:795`) — enters a new lexical state.
@@ -1082,7 +1088,7 @@ mod tests {
     /// runs on to the end of the 16 MiB `zzBuffer` and appends its unwritten `\0`s.
     #[test]
     fn a_token_running_to_the_end_of_the_input_stops_there() {
-        let mut scanner = DsnScanner::new(" foo").expect("fits");
+        let mut scanner = DsnScanner::new(" foo");
         assert_eq!(scanner.next_string(), "foo");
     }
 }
