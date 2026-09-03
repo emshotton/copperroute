@@ -8,7 +8,7 @@
 //! |---|---|
 //! | (a) | a **KiCad-exported DSN** routed to a SES that is byte-identical to `tests/reference/cli-router-ecc83-input/route.ses` **and that `fr_dsn::ses_reader::read` reads back without error** |
 //! | (b) | Task 9's `-de board.json -do out.ses`: the same physical board as a KiCad *design* JSON, through the port's own JSON reader, against `tests/reference/cli-kicad-ecc83-json/route.ses` |
-//! | (c) | Task 10's quirk **T**: `-do out.json` writes the board **as loaded**, so the document does not depend on how many passes ran — measured on **both** programs |
+//! | (c) | quirk **T** (register #289), **fixed in Plan 9 Task 3**: the port's `-do out.json` holds the **routed** board, where the jar's holds the board as loaded — a deliberate divergence, measured live on **both** programs |
 //!
 //! # Rungs (a) and (b) compare against the committed golden (Plan 9 M1 accept wave, ruling BV)
 //!
@@ -21,12 +21,21 @@
 //! right-hand side is `tests/reference/cli-<stem>/{route.ses,route.exit}`, which Task 2 regenerated
 //! from the port at `bd296d7`.
 //!
-//! **Rung (c) keeps its live jar in both lanes, deliberately.** What it measures is a *jar* quirk
-//! (label T, register #289) on **both** programs at two pass counts; a committed golden cannot
-//! express "the jar and the port answer the same document", so retiring the jar there would retire
-//! the measurement rather than move it. It is also not affected by the conversion's cause: it was
-//! `MATCH` before R1/R2 and it is `MATCH` after. Plan 9 Task 3 rewrites this rung for #289, at
-//! which point it becomes an `XDIFF` with the divergence named.
+//! **Rung (c) keeps its live jar in both lanes, deliberately, and it can never convert.** What it
+//! measures is a *jar* quirk (label T, register #289) on **both** programs; a committed golden
+//! cannot express a claim about what the **jar** does, so retiring the jar there would retire the
+//! measurement rather than move it. It was also not affected by the conversion's cause — it was
+//! `MATCH` before R1/R2 and `MATCH` after.
+//!
+//! **Plan 9 Task 3 has now rewritten it, and that closed the question rather than deferring it.**
+//! The port no longer reproduces #289 (it serialises once, after the pipeline), so the rung is an
+//! **`XDIFF`** whose detail names the direction. Converting it to port-golden after that rewrite
+//! would make it **false**: two of its three checks are assertions about the jar — that the jar
+//! still writes the same 0-trace document at `-mp 1` and `-mp 8` — and a port-cut golden cannot
+//! carry them. Pinning the port's own half against a golden would silently drop the half that
+//! makes the row a *divergence* measurement rather than a self-comparison. So rung (c) is the one
+//! rung in this file that stays live on both sides under both lanes, and `--against-jar` changes
+//! nothing about it.
 //!
 //! # Why rung (a) reads its own output back
 //!
@@ -86,9 +95,18 @@ fn main() {
     for row in &rows {
         println!("{:<28} {:<7} {}", row.rung, row.verdict, row.detail);
     }
+    // `XDIFF` is a **deliberate** divergence, stated in the rung that produces it and in
+    // `docs/java-quirks.md`: rung (c)'s is quirk #289, which Plan 9 Task 3 fixed on the port and
+    // could not fix on the jar. It passes; an unexplained `DIFF` does not. The tally prints all
+    // three so a reader can see that the expected-divergence count is one and not two.
     let matched = rows.iter().filter(|r| r.verdict == "MATCH").count();
-    println!("rungs: {}  MATCH: {}  DIFF: {}", rows.len(), matched, rows.len() - matched);
-    if matched != rows.len() {
+    let expected = rows.iter().filter(|r| r.verdict == "XDIFF").count();
+    let differing = rows.len() - matched - expected;
+    println!(
+        "rungs: {}  MATCH: {matched}  XDIFF: {expected}  DIFF: {differing}",
+        rows.len()
+    );
+    if differing != 0 {
         std::process::exit(1);
     }
 }
@@ -251,40 +269,67 @@ fn rung_b(scratch: &Path, against_jar: bool) -> Row {
     }
 }
 
-/// Rung (c): **quirk T** (register #289), measured on both programs.
+/// Rung (c): **quirk T** (register #289), **fixed in Plan 9 Task 3** — measured on both programs
+/// as a deliberate divergence.
 ///
-/// `-do out.json` on a board input takes the KiCad-session-JSON path, where `setJobOutput` is both
-/// a board-updated listener (`RoutingJobSchedulerActionThread.java:100`) and a once-only call
-/// after `pipeline.run()` (`:168`) — and only the **first** of those ever writes, because
+/// In the jar, `-do out.json` takes the KiCad-session-JSON path, where `setJobOutput` is both a
+/// board-updated listener (`RoutingJobSchedulerActionThread.java:100`) and a once-only call after
+/// `pipeline.run()` (`:168`) — and only the **first** of those ever writes, because
 /// `output.setData` re-sniffs the bytes and a document starting `{` re-detects as
-/// `KICAD_DESIGN_JSON`, after which neither `:275` nor `:282` matches again. So the file holds the
-/// board **as loaded**, before any routing, and does not depend on how many passes ran.
+/// `KICAD_DESIGN_JSON`, after which neither `:275` nor `:282` matches again. So the jar's file
+/// holds the board **as loaded**, before any routing, and does not depend on how many passes ran.
+/// Plan 8 Task 10 measured that, and this rung used to require all four documents (jar/port x
+/// `-mp 1`/`-mp 8`) to be the same bytes.
 ///
-/// Task 10 measured that on the jar. This rung measures it on **both**, at two pass counts, and
-/// requires all four documents to be the same bytes — which is the strongest form of the claim: if
-/// the port ever started writing the routed board, or the jar stopped, one of the four moves.
+/// Task 3 fixed the port: it serialises once, after the pipeline, and `BoardFileDetails::set_data`
+/// keeps the format it is given, so `-do out.json` holds the **final** board. The rung is
+/// therefore inverted and is now the strongest form of *that* claim, in three parts:
 ///
-/// **This rung keeps its live jar in both lanes** (Plan 9 M1 accept wave, ruling BV). The claim is
-/// about the two programs agreeing on a *jar* quirk; a committed golden cannot express it, so
-/// retiring the jar here would retire the measurement rather than move it. R1/R2 do not reach it —
-/// it was `MATCH` before them and is `MATCH` after. Plan 9 Task 3 rewrites it for #289.
+/// 1. the **jar** still writes the same document at `-mp 1` and `-mp 8` — the quirk is still
+///    there, on the program the port is measured against, and this row is what would notice if a
+///    future jar changed;
+/// 2. the **port** writes a document carrying the traces the jar's does not;
+/// 3. and the port's document is the board the port's own SES describes, on the identical argv —
+///    equal `traces` and `(wire ` counts, both non-zero.
+///
+/// The verdict is `XDIFF`: the two programs are *supposed* to differ here, and saying `MATCH`
+/// would hide which direction they differ in.
+///
+/// **This rung keeps its live jar in both lanes and cannot be converted** (Plan 9 M1 accept wave,
+/// ruling BV, and the wave's own concern about this row). Parts 1 and 2 are assertions about the
+/// **jar**; a committed port-cut golden cannot carry them, so converting this rung would not move
+/// the measurement, it would make the row **false** — it would keep part 3, which is the port
+/// agreeing with itself, and silently drop the two halves that make it a divergence measurement.
+/// The conversion's cause does not reach it either: it was `MATCH` before R1/R2 and it is `XDIFF`
+/// after, for #289 and for nothing else. `--against-jar` changes nothing here.
 fn rung_c(scratch: &Path) -> Row {
+    const RUNG: &str = "c: quirk T (-do out.json)";
     let dsn = parity::java_dir().join("fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn");
     let dir = dir(scratch, "quirk-t");
+    let diff = |detail: String| Row {
+        rung: RUNG,
+        verdict: "DIFF",
+        detail,
+    };
+
+    let json_argv = |out: &Path, passes: &str| -> Vec<String> {
+        vec![
+            "-de".into(),
+            dsn.display().to_string(),
+            "-do".into(),
+            out.display().to_string(),
+            "-mp".into(),
+            passes.into(),
+            "--router.fanout.enabled=true".into(),
+            "--router.optimizer.enabled=true".into(),
+        ]
+    };
+
     let mut documents = Vec::new();
     for passes in ["1", "8"] {
         for (side, jar) in [("jar", true), ("port", false)] {
             let out = dir.join(format!("{side}-{passes}.json"));
-            let argv: Vec<String> = vec![
-                "-de".into(),
-                dsn.display().to_string(),
-                "-do".into(),
-                out.display().to_string(),
-                "-mp".into(),
-                passes.into(),
-                "--router.fanout.enabled=true".into(),
-                "--router.optimizer.enabled=true".into(),
-            ];
+            let argv = json_argv(&out, passes);
             let refs: Vec<&str> = argv.iter().map(String::as_str).collect();
             let (_, err, code) = if jar {
                 parity::run_jar(&refs)
@@ -292,51 +337,116 @@ fn rung_c(scratch: &Path) -> Row {
                 parity::run_port(&refs)
             };
             if code != 0 {
-                return Row {
-                    rung: "c: quirk T (-do out.json)",
-                    verdict: "DIFF",
-                    detail: format!(
-                        "{side} -mp {passes} exited {code}: {}",
-                        String::from_utf8_lossy(&err).lines().last().unwrap_or_default()
-                    ),
-                };
+                return diff(format!(
+                    "{side} -mp {passes} exited {code}: {}",
+                    String::from_utf8_lossy(&err).lines().last().unwrap_or_default()
+                ));
             }
             match std::fs::read_to_string(&out) {
-                Ok(text) => documents.push((format!("{side} -mp {passes}"), text)),
-                Err(e) => {
-                    return Row {
-                        rung: "c: quirk T (-do out.json)",
-                        verdict: "DIFF",
-                        detail: format!("{side} -mp {passes} wrote nothing: {e}"),
-                    };
-                }
+                Ok(text) => documents.push((side, passes, text)),
+                Err(e) => return diff(format!("{side} -mp {passes} wrote nothing: {e}")),
             }
         }
     }
-    let (first_label, first) = &documents[0];
-    for (label, text) in &documents[1..] {
-        if text != first {
-            return Row {
-                rung: "c: quirk T (-do out.json)",
-                verdict: "DIFF",
-                detail: format!(
-                    "{label} ({} B) differs from {first_label} ({} B)",
-                    text.len(),
-                    first.len()
-                ),
-            };
-        }
+    let pick = |side: &str, passes: &str| -> &str {
+        documents
+            .iter()
+            .find(|(s, p, _)| *s == side && *p == passes)
+            .map(|(_, _, text)| text.as_str())
+            .expect("all four documents were collected above")
+    };
+
+    // (1) The jar's quirk is still the jar's: the same bytes however many passes ran.
+    if pick("jar", "1") != pick("jar", "8") {
+        return diff(format!(
+            "the jar's -mp 1 ({} B) and -mp 8 ({} B) documents differ — quirk #289 no longer \
+             holds on the jar, and the divergence this rung records has changed shape",
+            pick("jar", "1").len(),
+            pick("jar", "8").len()
+        ));
     }
-    // The board as **loaded** carries no trace the router produced. The same argv with `-do
-    // out.ses` answers a session with wires, which is what makes this a quirk rather than an
-    // empty board.
-    let traces = first.matches("\"traces\"").count();
+    let jar_traces = traces(pick("jar", "1"));
+    if jar_traces != 0 {
+        return diff(format!(
+            "the jar's -do out.json carries {jar_traces} traces; quirk #289 says it carries the \
+             board as loaded, which for this input has none"
+        ));
+    }
+
+    // (2)/(3) The port's document is the routed board, and it is the board the port's own SES
+    // describes on the identical argv.
+    let port = pick("port", "8");
+    let port_traces = traces(port);
+    if port_traces == 0 {
+        return diff(
+            "the port's -do out.json still carries no trace — quirk #289's fix is not in the \
+             binary this driver ran"
+                .to_string(),
+        );
+    }
+    let ses_out = dir.join("port-8.ses");
+    let argv = json_argv(&ses_out, "8");
+    let refs: Vec<&str> = argv.iter().map(String::as_str).collect();
+    let (_, err, code) = parity::run_port(&refs);
+    if code != 0 {
+        return diff(format!(
+            "the port's -do out.ses on the identical argv exited {code}: {}",
+            String::from_utf8_lossy(&err).lines().last().unwrap_or_default()
+        ));
+    }
+    let session = match std::fs::read_to_string(&ses_out) {
+        Ok(text) => text,
+        Err(e) => return diff(format!("the port wrote no route.ses: {e}")),
+    };
+    let wires = session.matches("(wire").count();
+    if port_traces != wires {
+        return diff(format!(
+            "the port's JSON carries {port_traces} traces where its own SES carries {wires} \
+             wires, on the identical argv"
+        ));
+    }
+
     Row {
-        rung: "c: quirk T (-do out.json)",
-        verdict: "MATCH",
+        rung: RUNG,
+        verdict: "XDIFF",
         detail: format!(
-            "4 documents (jar/port x -mp 1/8) byte-identical, {} B, {traces} traces key",
-            first.len()
+            "fixed T3 (#289), deliberate: the jar writes the board as loaded ({} B, 0 traces, \
+             identical at -mp 1 and -mp 8); the port writes the routed board ({} B, {port_traces} \
+             traces = its own SES's {wires} wires)",
+            pick("jar", "1").len(),
+            port.len()
         ),
     }
+}
+
+/// The number of `traces` entries in a `KiCadJsonWriter` document.
+///
+/// Counted rather than parsed, for the reason `cli_e2e.rs::json_array_len` gives: what is under
+/// test is the document the program wrote. `"traces": []` is Gson's empty array; otherwise every
+/// entry carries exactly one `"id"` before the next top-level key opens.
+fn traces(text: &str) -> usize {
+    let Some(at) = text.find("\"traces\": ") else {
+        return 0;
+    };
+    let rest = &text[at..];
+    if rest.starts_with("\"traces\": []") {
+        return 0;
+    }
+    let open = rest.find('[').expect("an array");
+    let mut depth = 0usize;
+    let mut end = open;
+    for (i, c) in rest[open..].char_indices() {
+        match c {
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    end = open + i;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    rest[open..end].matches("\"id\": ").count()
 }

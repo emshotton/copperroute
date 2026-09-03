@@ -852,7 +852,11 @@ impl RoutingJob {
             .expect("set_input_bytes assigns `input` before calling this");
         input.format = FileFormat::sniff_bytes(content);
         if input.format != FileFormat::Unknown {
-            input.set_data(content.to_vec());
+            // fixed: T3 (#289) — Java's `setData` sniffed these same bytes a second time and
+            // arrived at the same answer (`:343`); the format is now passed instead of
+            // re-derived, so the two can no longer disagree and the bytes are scanned once.
+            let format = input.format;
+            input.set_data(content.to_vec(), format);
             return true;
         }
         false
@@ -936,7 +940,12 @@ impl RoutingJob {
     pub fn set_rules_bytes(&mut self, content: &[u8]) -> bool {
         let mut rules = BoardFileDetails::default();
         rules.format = FileFormat::Rules; // `:290`
-        rules.set_data(content.to_vec()); // `:291`
+        // `:291` — and `setData`'s re-sniff at `:113` then **overwrites** `:290`'s `RULES` unless
+        // the bytes really start with `(rul`. Now that the format is a parameter (quirk #289's
+        // fix), that overwrite is written here rather than hidden in the callee: Java's answer,
+        // transcribed at the site that has it.
+        let format = FileFormat::sniff_bytes(content);
+        rules.set_data(content.to_vec(), format);
         self.rules = Some(rules);
         true
     }
@@ -967,7 +976,10 @@ impl RoutingJob {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         rules.set_filename(Some(&name));
-        rules.set_data(content); // `:307`
+        // `:307` — as `set_rules_bytes` above: `setData`'s re-sniff is what overwrites `:305`'s
+        // `RULES`, and it is written at the site now instead of inside `set_data`.
+        let format = FileFormat::sniff_bytes(&content);
+        rules.set_data(content, format);
         self.rules = Some(rules);
         Ok(())
     }

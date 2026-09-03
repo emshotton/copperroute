@@ -228,13 +228,14 @@ pub fn run(
     // Spec §13's result member is `ses_path | ses_text`: a Specctra session, whatever went in.
     // Left alone, the format would come from the *input*'s extension (`RoutingJob.java:438-454`
     // derives `<input>.json` for a KiCad design JSON, and `setJobOutput:265-271` derives
-    // `KICAD_SESSION_JSON` when there is no output at all), and the KiCad-session-JSON arm hands
-    // back the board **as loaded, before any routing** — quirk #289, label T. `freerouting route`
-    // reproduces that, because a user who types `-do out.json` should get what the jar gives
-    // them; this tool must not, because nobody asked it for a `.json`, its result has no member
-    // to carry one, and an unrouted board is not an answer to "route this board". Pinning the
-    // format here is also what makes quirk T unreachable from this path, which is why the
-    // `pre_routing_json` snapshot `commands::route`'s step 12b takes has no counterpart above.
+    // `KICAD_SESSION_JSON` when there is no output at all), so a KiCad design JSON would come
+    // back as a KiCad session JSON — a document this tool's result has no member to carry.
+    //
+    // fixed: T3 (#289) — the reason has narrowed to exactly that. Until Plan 9 Task 3 the
+    // KiCad-session-JSON arm also handed back the board **as loaded, before any routing** (quirk
+    // #289, label T), and pinning the format here was what kept that unreachable from this path.
+    // `set_job_output` now serialises the final board on both arms, so the quirk is gone from
+    // both programs; the pin stays because the *format* is still a spec §13 decision.
     //
     // `p8t7`'s rung (b) is where the KiCad-JSON-in, SES-out path is compared against the jar,
     // through the CLI, on the argv a user types.
@@ -248,7 +249,7 @@ pub fn run(
     // argument, and a bare name would blank the directory the input's own path put there.
     output.filename = format!("{base}.ses");
     job.output = Some(output);
-    set_job_output(&mut job, &board, &transform, None);
+    set_job_output(&mut job, &board, &transform);
     let output = job
         .output
         .as_ref()
