@@ -28,14 +28,24 @@
 //!   own `assertThrows` half is ported in `tests/java_ports.rs`.
 //! * The brief's `a_null_net_uses_clearance_class_one_and_the_first_via_rule` is only reachable
 //!   for `netNumber <= 0`. For any *positive* net number the board does not have, `initNet`'s
-//!   null-net arm (`:212-216`) does run — and `:219` then dereferences the same `null` through
-//!   `BoardRules.getTraceHalfWidth` (`BoardRules.java:75-77`) and throws. Pinned by the probe
-//!   (`ctrl net=1094 threw java.lang.NullPointerException`) and by
-//!   [`a_positive_net_the_board_does_not_have_throws_like_java`].
+//!   null-net arm (`:212-216`) does run — and `:219` then dereferenced the same `null` through
+//!   `BoardRules.getTraceHalfWidth` (`BoardRules.java:75-77`) and threw. Pinned by the probe
+//!   (`ctrl net=1094 threw java.lang.NullPointerException`).
+//!
+//! # Plan 9 Task 6: one transcript row the port deliberately no longer reproduces
+//!
+//! Quirk #173 is fixed, so `ctrl net=1094` no longer throws: the null-net arm has its own
+//! half-width fallback (the default net class) instead of reaching for a net the board does not
+//! have. The jar's stdout stays committed verbatim — that row still says `threw
+//! java.lang.NullPointerException`, because that is still what the jar does — and
+//! [`every_field_of_the_jvm_transcript_is_reproduced`]'s `" threw "` branch now asserts the
+//! port's answer positively rather than asserting a panic.
+//! [`a_positive_unknown_net_gets_the_half_width_fallback`] replaces
+//! `a_positive_net_the_board_does_not_have_throws_like_java`.
 
 use std::path::Path;
 
-use fr_board::ids::ViaInfoId;
+use fr_board::ids::{NetClassId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
@@ -244,15 +254,36 @@ fn every_field_of_the_jvm_transcript_is_reproduced() {
             let (pure, mixed) = first_pure_and_mixed(b);
             assert_eq!(format!("{pure} firstMixedNet={mixed}"), rest);
         } else if line.contains(" threw ") {
+            // A jar row this plan has deliberately moved away from. The transcript is the jar's
+            // own stdout and stays committed verbatim — `ctrl net=1094 threw
+            // java.lang.NullPointerException` is still what the jar does — but quirk #173 is
+            // fixed here, so the port answers instead of throwing. Asserted positively rather
+            // than just "does not panic": the null-net arm's own fallback is the default net
+            // class's width on every layer. See `a_positive_unknown_net_gets_the_half_width_
+            // fallback` for the full row and `docs/java-quirks.md` #173.
             let net: i32 = line
                 .strip_prefix("ctrl net=")
                 .and_then(|r| r.split(' ').next())
                 .and_then(|n| n.parse().ok())
                 .expect("a net number");
-            let panicked =
+            assert!(
+                b.rules.nets.get(net).is_none(),
+                "the jar threw here because net {net} does not exist"
+            );
+            let ctrl =
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| control(b, net, s)))
-                    .is_err();
-            assert!(panicked, "net {net} must throw the way Java's NPE does");
+                    .unwrap_or_else(|_| {
+                        panic!("net {net} must no longer throw — quirk #173 is fixed (fixed: T6)")
+                    });
+            let default_class = b.rules.net_classes.get(NetClassId(0));
+            for layer in 0..b.get_layer_count() {
+                assert_eq!(
+                    ctrl.trace_half_width[layer],
+                    default_class.get_trace_half_width(layer),
+                    "net {net}, layer {layer}: the null-net arm's own half-width fallback"
+                );
+            }
+            assert_eq!(ctrl.trace_clearance_class_index, 1, "`:213`, unchanged");
         } else if line.starts_with("ctrl net=") {
             let net: i32 = line
                 .strip_prefix("ctrl net=")
@@ -347,12 +378,31 @@ fn an_empty_net_is_not_pure_smd() {
     assert!(!AutorouteControl::is_pure_smd_net(&board, unused));
 }
 
-/// `initNet` (`:217-222`): `netNumber > 0` reads the net's own half widths, anything else falls
+/// `initNet` (`:217-222`): `netNumber > 0` reads the net's own half widths, anything else fell
 /// back to **net 1's**.
+///
+/// Quirk #173's fix replaced that fallback with the default net class's widths, and this test
+/// still passes — **because on this board the two coincide**, which the assertion below now says
+/// out loud instead of leaving it as luck. Net 1 of `Issue508-DAC2020_bm01.dsn` is on the default
+/// net class, so "net 1's widths" and "the default class's widths" are the same numbers. On a
+/// board where net 1 carried a class of its own they would differ, and that is exactly why the
+/// register calls net 1 an arbitrary choice.
 #[test]
 fn net_zero_falls_back_to_net_one_half_widths() {
     let board = fixture_board("Issue508-DAC2020_bm01.dsn");
     let settings = board_settings(&board);
+
+    assert_eq!(
+        board
+            .rules
+            .nets
+            .get(1)
+            .expect("net 1 exists on this board")
+            .get_net_class(),
+        NetClassId(0),
+        "the old fallback (net 1) and the new one (the default class) agree here only because \
+         net 1 is on the default class"
+    );
 
     let zero = control(&board, 0, &settings);
     let one = control(&board, 1, &settings);
@@ -389,16 +439,49 @@ fn a_null_net_uses_clearance_class_one_and_the_first_via_rule() {
     assert!(board.rules.via_rules.len() > 1, "there is a second rule");
 }
 
-/// The other half of the same arm: for a **positive** net number the board does not have,
-/// `:212-216` runs and then `:219` throws. The probe's `ctrl net=1094 threw
-/// java.lang.NullPointerException` is Java's answer; `BoardRules::get_trace_half_width` panics
-/// with the same meaning.
+/// Quirk #173, inverted. The other half of the same arm: for a **positive** net number the board
+/// does not have, `:212-216` ran and then `:219` threw — the probe's
+/// `ctrl net=1094 threw java.lang.NullPointerException`. `RoutingBoard.java:1023` builds a control
+/// from a pin's net number, so a stale net number was enough to kill the connection.
+///
+/// Task 6 gives the null-net arm its own half-width fallback: the **default net class**, which is
+/// where a net with no class of its own belongs and is already the arm's choice for the clearance
+/// class (`:213`'s literal 1 is `BoardRules.defaultClearanceClass`). The register's other option —
+/// moving the `netNumber > 0` test above the null lookup — would have kept the arm reading net 1's
+/// widths, and net 1 is arbitrary: whichever net was declared first, not necessarily existing, and
+/// with no relation to a net the board does not have.
 #[test]
-#[should_panic(expected = "BoardRules.getTraceHalfWidth")]
-fn a_positive_net_the_board_does_not_have_throws_like_java() {
+fn a_positive_unknown_net_gets_the_half_width_fallback() {
     let board = fixture_board("Issue593-BBD_Mars-64.dsn");
     let settings = board_settings(&board);
-    control(&board, board.rules.nets.max_net_number() + 1000, &settings);
+    let unknown = board.rules.nets.max_net_number() + 1000;
+    assert!(
+        board.rules.nets.get(unknown).is_none(),
+        "the net the control is built for must be one the board does not have"
+    );
+
+    let ctrl = control(&board, unknown, &settings);
+
+    // `:212-216`, unchanged — the arm that always worked.
+    assert_eq!(ctrl.trace_clearance_class_index, 1);
+    assert_eq!(ctrl.via_rule.as_ref(), Some(&board.rules.via_rules[0]));
+    // `:217-222`, the arm that used to throw. Every layer answers the default net class's width.
+    let default_class = board.rules.net_classes.get(NetClassId(0));
+    for layer in 0..board.get_layer_count() {
+        assert_eq!(
+            ctrl.trace_half_width[layer],
+            default_class.get_trace_half_width(layer),
+            "layer {layer} takes the default net class's width, not net 1's and not a throw"
+        );
+    }
+    // And the compensation of `:223-225` rides on it rather than on a half-built control.
+    assert!(
+        ctrl.compensated_trace_half_width
+            .iter()
+            .zip(&ctrl.trace_half_width)
+            .all(|(compensated, half)| compensated >= half),
+        "`:223-225` adds a non-negative clearance compensation to each width"
+    );
 }
 
 // =================================================================================================
