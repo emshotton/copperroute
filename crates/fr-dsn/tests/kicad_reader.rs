@@ -157,6 +157,15 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
             ));
             return rows;
         }
+        // fixed: T4 (#91) — the KiCad JSON reader has no truncation channel of its own (it is
+        // a JSON parse, not a bracket walk), so this variant cannot come out of it.
+        BoardReadResult::Partial { diagnostic, .. } => {
+            rows.push(format!(
+                "result=Partial diagnostic={}",
+                escape(Some(diagnostic))
+            ));
+            return rows;
+        }
         BoardReadResult::OutlineMissing {
             board,
             metadata,
@@ -626,6 +635,15 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
             rows.push(format!(
                 "result=IoError cause={}",
                 escape(Some(&error.to_string()))
+            ));
+            return rows;
+        }
+        // fixed: T4 (#91) — the KiCad JSON reader has no truncation channel of its own (it is
+        // a JSON parse, not a bracket walk), so this variant cannot come out of it.
+        BoardReadResult::Partial { diagnostic, .. } => {
+            rows.push(format!(
+                "result=Partial diagnostic={}",
+                escape(Some(diagnostic))
             ));
             return rows;
         }

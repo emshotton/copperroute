@@ -149,8 +149,10 @@ pub struct BoardMetadata {
 }
 
 /// Sealed result type for all outcomes of a board read operation (DSN, JSON, or any other
-/// format) — `io/BoardReadResult.java`, ported as a Rust `enum` verbatim (its Java `sealed
-/// interface` + four `record` permits become the four variants below).
+/// format) — `io/BoardReadResult.java`, ported as a Rust `enum` (its Java `sealed interface` +
+/// four `record` permits are the four variants `Success`, `OutlineMissing`, `ParseError` and
+/// `IoError`; [`BoardReadResult::Partial`] is a **fifth**, added by Plan 9 Task 4 for quirk #91
+/// — Java has no way to say "this board is what a truncated file contained").
 ///
 /// `Success.metadata` is `Option` because `DsnReader.readBoard` returns `Success` with a
 /// **`null`** metadata — only `readMetadata` populates it. Both variants' `board` is `Option`
@@ -192,6 +194,35 @@ pub enum BoardReadResult {
         /// The transform `Structure.createBoard` built between DSN and board coordinates; `None`
         /// if it never ran. Added by the port — see the type's doc comment.
         coordinate_transform: Option<CoordinateTransform>,
+    },
+    /// The input ran out **before** a scope's closing bracket, so the board is only the part of
+    /// the design the file held up to the truncation.
+    ///
+    // Java bug: (#91) `ScopeKeyword.skipScope` answers `false` at end of file, every caller
+    // discards it, and `ScopeKeyword.readScope`'s own end-of-file check then returns `true`
+    // (ScopeKeyword.java:32-33, :55-58) — so `DsnReader.readBoard` reports a truncated file as
+    // `Success` with a partial board, indistinguishable from a complete read.
+    //
+    // fixed: T4 (#91) — this variant. Deliberately **not** a hard failure: a caller may well
+    // want whatever routing data survived, and the roadmap's correction of the register's binary
+    // framing says the honest answer is a third state, not a refusal. It carries the same four
+    // payload fields as [`BoardReadResult::Success`] — an amendment to the task brief's
+    // two-field sketch (`Partial { board, diagnostic }`), because a `Partial` with no
+    // `coordinate_transform` cannot be loaded by `fr_core::load::parse_board_result` at all and
+    // would be a hard failure wearing a softer name.
+    Partial {
+        /// The board as far as the file got; `None` when the truncation came before one existed.
+        board: Option<Box<Board>>,
+        /// Header/structure metadata; `None` on the [`crate::read_board`] path, as for `Success`.
+        metadata: Option<BoardMetadata>,
+        /// Non-fatal issues encountered during loading. May be empty; the truncation itself is
+        /// in `diagnostic`, not here.
+        warnings: Vec<String>,
+        /// The transform `Structure.createBoard` built between DSN and board coordinates; `None`
+        /// if it never ran.
+        coordinate_transform: Option<CoordinateTransform>,
+        /// What was truncated, and where: the scope whose closing bracket never arrived.
+        diagnostic: String,
     },
     /// The input did not conform to the expected grammar/format.
     ParseError {

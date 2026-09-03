@@ -49,6 +49,9 @@ fn read_board(path: &Path) -> Result<(Board, CoordinateTransform), String> {
                 .ok_or_else(|| "the reader produced no coordinate transform".to_string())?;
             Ok((board, ct))
         }
+        // fixed: T4 (#91) — `Partial` is the port's fifth variant; a reference stem is never
+        // truncated, so reaching it here is a failure and not a board to write.
+        BoardReadResult::Partial { diagnostic, .. } => Err(format!("truncated: {diagnostic}")),
         BoardReadResult::ParseError { location, detail } => {
             Err(format!("parse error at {location}: {detail}"))
         }

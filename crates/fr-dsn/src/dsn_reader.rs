@@ -44,6 +44,7 @@ const PCB: &str = "(pcb";
 /// | Java | here |
 /// |---|---|
 /// | `readScope` true | [`BoardReadResult::Success`], with **`metadata: None`** — only [`read_metadata`] fills it (:146) |
+/// | `readScope` true, but the input ended inside an unclosed scope | [`BoardReadResult::Partial`] — quirk #91, fixed by Plan 9 Task 4. Java has no such row: it answers `Success` here too |
 /// | `readScope` false, `boardOutlineOk` false | [`BoardReadResult::OutlineMissing`] (:147-157) |
 /// | `readScope` false, `boardOutlineOk` true | [`BoardReadResult::ParseError`], detail `"DSN structure parsing failed"` (:159) |
 /// | header check failed | [`BoardReadResult::ParseError`], detail `"Not a Specctra DSN file: expected '(pcb <name>' header"` (:106-107) |
@@ -113,6 +114,19 @@ pub fn read_board(
             && let Err(error) = dsn_file::adjust_plane_autoroute_settings(board)
         {
             return parse_error(&error);
+        }
+        // fixed: T4 (#91) — Java has no branch here: `readScope` answered `true` and
+        // `readBoard` returns `Success` whether or not the file actually ended. The port asks
+        // the reader whether it ran out of input inside an unclosed scope (see
+        // `read_scope_generic`) and says so, without withholding the board.
+        if let Some(diagnostic) = p.truncation.take() {
+            return BoardReadResult::Partial {
+                board: board.map(Box::new),
+                metadata: None,
+                warnings,
+                coordinate_transform,
+                diagnostic,
+            };
         }
         // DsnReader.java:146: `metadata` is **null** on this path.
         BoardReadResult::Success {

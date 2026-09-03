@@ -255,12 +255,16 @@ fn read_board_f60_keyboard() {
 
 /// `DsnReaderTest.patternSwitchIsExhaustive` (:131-143) / `DsnReadResultTest.patternMatchExhaustive`
 /// (:16-28). In Rust the exhaustiveness is a compile-time property of `match` on a non-`#[non_exhaustive]`
-/// enum — this test exists so the four arms are written down somewhere.
+/// enum — this test exists so the arms are written down somewhere.
+///
+/// fixed: T4 (#91) — renamed from `the_four_variant_match_is_exhaustive`: `Partial` is a fifth
+/// variant the port adds, and Java's sealed interface has no counterpart for it.
 #[test]
-fn the_four_variant_match_is_exhaustive() {
+fn the_five_variant_match_is_exhaustive() {
     let result = read("not dsn");
     let label = match result {
         BoardReadResult::Success { .. } => "success",
+        BoardReadResult::Partial { .. } => "partial",
         BoardReadResult::OutlineMissing { .. } => "outline",
         BoardReadResult::ParseError { .. } => "parse",
         BoardReadResult::IoError(_) => "io",
@@ -787,6 +791,10 @@ fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
         let result = read_board(&bytes[..], None, Some(required), &options);
         let variant = match &result {
             BoardReadResult::Success { .. } => "Success",
+            // fixed: T4 (#91) — never expected here; the golden's own variant names are the jar's
+            // four, so a corpus file that started reading as `Partial` would fail this assertion
+            // by name rather than pass as a `Success`.
+            BoardReadResult::Partial { .. } => "Partial",
             BoardReadResult::OutlineMissing { .. } => "OutlineMissing",
             BoardReadResult::ParseError { .. } => "ParseError",
             BoardReadResult::IoError(_) => "IoError",
@@ -855,6 +863,10 @@ fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
         let result = read_board(&bytes[..], None, Some(&name), &options);
         let (variant, warnings): (&str, &[String]) = match &result {
             BoardReadResult::Success { warnings, .. } => ("Success", warnings),
+            // fixed: T4 (#91) — the corpus golden is the measurement of whether this fix moves
+            // anything: a fixture that is truncated inside an unclosed scope would print
+            // `Partial` here where the jar's golden says `Success`.
+            BoardReadResult::Partial { warnings, .. } => ("Partial", warnings),
             BoardReadResult::OutlineMissing { warnings, .. } => ("OutlineMissing", warnings),
             BoardReadResult::ParseError { .. } => ("ParseError", &[]),
             BoardReadResult::IoError(_) => ("IoError", &[]),

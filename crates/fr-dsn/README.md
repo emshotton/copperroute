@@ -146,7 +146,7 @@ invoked with no argument.
 | `Shape` (abstract) + `Rectangle`/`Circle`/`Polygon`/`Path`/`PolygonPath`/`PolylinePath` | `enum DsnShape { Rect, Circle, Polygon, Path, PolylinePath }` + `DsnRectangle`/`DsnCircle`/`DsnPolygon`/`DsnPolygonPath`/`DsnPolylinePath` |
 | `Layer`, `LayerStructure` (the DSN-side ones) | `DsnLayer`, `DsnLayerStructure` |
 | `Structure`, `Plane`, `Library`, `Package`, `PartLibrary`, `Placement`, `Component`, `Network`, `Net`, `NetClass`, `NetList`, `Circuit`, `Rule`, `Wiring`, `Parser`, `PlaceControl`, `AutorouteSettings`, `KiCadNetClassNames` | one module each under `parser/` (`scripts/audit-map/fr-dsn.map` is the class → file map) |
-| `BoardReadResult` (sealed interface, 4 records) | `enum BoardReadResult` — plus a `coordinate_transform` field the port adds |
+| `BoardReadResult` (sealed interface, 4 records) | `enum BoardReadResult` — plus a `coordinate_transform` field the port adds, and a fifth variant `Partial` (quirk #91, Plan 9 Task 4: a file truncated inside an unclosed scope, which Java reports as `Success`) |
 | `BoardMetadata`, `FileFormat` | `BoardMetadata`, `FileFormat` (`error.rs`) |
 | `CoordinateTransform` | `CoordinateTransform` |
 | `IdentifierType`, `IndentFileWriter` | `format::IdentifierType`, `format::IndentFileWriter` |
