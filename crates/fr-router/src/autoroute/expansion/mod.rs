@@ -762,7 +762,7 @@ impl ExpansionRoomStore {
     /// first element `equals` it — `IncompleteFreeSpaceExpansionRoom` has no `equals` override,
     /// so that is reference identity, which is what removing the arena slot is.
     ///
-    /// # Panics
+    /// # The null list, and the thirteen drills it cost
     ///
     /// Java bug: `AutorouteEngine.removeIncompleteExpansionRoom` — `:370` dereferences
     /// `incompleteExpansionRooms` with no null guard, although every other reader of the field
@@ -772,18 +772,27 @@ impl ExpansionRoomStore {
     /// an incomplete room added. It is reachable: `ExpansionDrill.calculateExpansionRooms:79`
     /// reaches it through `completeExpansionRoom:469` for a room it built with the bare
     /// constructor, and `completeExpansionRoom`'s own `catch` then turns the throw into an empty
-    /// room list, so **every drill on a virgin engine is silently dropped**. See
-    /// `docs/java-quirks.md` #169; `crates/fr-router/tests/drill.rs`'s
-    /// `a_virgin_engine_yields_no_drills_at_all` is the probe's mode 8 verbatim.
+    /// room list, so **every drill on a virgin engine is silently dropped** — JVM-verified as
+    /// 0 drills against 13 on the same page, with 28 swallowed `NullPointerException`s in the log.
+    ///
+    /// fixed: T6 (#169) — both halves of the register's suggested fix, because either alone
+    /// leaves the engine wrong:
+    ///
+    /// * the field guard the three sibling readers already have, which is this method's missing
+    ///   `assert!`. The arena removal stays unconditional: the arena is the list's *contents*
+    ///   rather than the list, so leaving the room in it would be worse than Java's post-fix
+    ///   behaviour, not the same as it — Java's caller drops its own reference on the next line
+    ///   and `getFirstIncompleteExpansionRoom` would find the port's leftover;
+    /// * `ExpansionDrill.calculateExpansionRooms` now calls
+    ///   [`new_incomplete_room`](Self::new_incomplete_room) instead of
+    ///   [`new_unlisted_incomplete_room`](Self::new_unlisted_incomplete_room), so the room is in
+    ///   the database it is about to be completed out of and the guard above is a safety net
+    ///   rather than the fix.
+    ///
+    /// See `docs/java-quirks.md` #169; `crates/fr-router/tests/drill.rs`'s
+    /// `a_virgin_engine_yields_thirteen_drills` is the inversion of the probe's mode 8.
     pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
         self.remove_all_doors(RoomRef::Incomplete(room));
-        assert!(
-            self.incomplete_list_created,
-            "AutorouteEngine.removeIncompleteExpansionRoom: incompleteExpansionRooms is null — \
-             Java throws a NullPointerException here too (AutorouteEngine.java:370), and the \
-             lazily created list (`:343-345`) does not exist until the first \
-             addIncompleteExpansionRoom"
-        );
         self.incomplete_rooms.remove(room.0);
     }
 

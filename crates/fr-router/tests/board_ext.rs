@@ -56,10 +56,19 @@ fn rules_with_wide_class(angle: AngleRestriction) -> BoardRules {
 /// `init_connection(2)` performs must have come from `initConnection:111-117` ->
 /// `additionalUpdateAfterChange`.
 fn bare_board_with_a_net_two_trace() -> Board {
+    bare_board_bounded(BOUNDING_BOX)
+}
+
+/// [`bare_board_with_a_net_two_trace`] on a caller-chosen bounding box.
+///
+/// Only [`additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape`] passes
+/// anything but [`BOUNDING_BOX`]; the four tests that carry `P6T9Probe`'s room counts must keep
+/// the probe's own box, and do. See that test for why it needs a smaller one.
+fn bare_board_bounded(bounds: IntBox) -> Board {
     let mut board = Board::new(
         Vec::new(),
         0,
-        BOUNDING_BOX,
+        bounds,
         rules_with_wide_class(AngleRestriction::None),
         BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
         Components::new(),
@@ -347,9 +356,43 @@ fn additional_update_after_change_removes_the_overlapping_rooms() {
 /// It is a separate test from the one above because populating the pages **completes more rooms**
 /// — `DrillPage.getDrills` completes one per layer per drill — so the probe's room counts only
 /// hold on an engine whose pages have never been asked for drills.
+///
+/// # Why this one board is smaller than `P6T9Probe`'s
+///
+/// Plan 9 Task 6 changed what this test measures, and the change is an improvement that came with
+/// a constraint. Before quirk #169 was fixed, *every* drill on this engine was dropped: the engine
+/// is virgin here (`init_autoroute` leaves `incompleteExpansionRooms` null — measured), so
+/// `removeIncompleteExpansionRoom` threw, `completeExpansionRoom`'s own catch swallowed it, and
+/// each page ended up memoising the **empty** list `DrillPage.getDrills:65-66` installs before the
+/// work. So `pages_holding_drills` counted pages holding `Some([])` and the assertions below were
+/// vacuously true — the test never held a single drill.
+///
+/// With #169 fixed the drills are computed for real, and on `P6T9Probe`'s +/-10 000 box that runs
+/// away: measured at 99 % CPU with RSS climbing ~1.3 MB/s, no termination in 240 s, the whole time
+/// inside one `complete_expansion_room` -> `calculate_doors` ->
+/// `SortedRoomNeighbours::calculate_new_incomplete_rooms` -> `TileShape::intersection` on
+/// ever-growing rational coordinates.
+///
+/// **That runaway is not #169's doing and predates this task**: it reproduces on the unfixed tree
+/// by seeding the incomplete-room list, which is the same engine state (measured — 240 s, no
+/// termination, with no Task 6 change applied). What #169 removed was one accidental shield in
+/// front of it. It is reported as a Task 6 finding rather than fixed here; a crash-guard task is
+/// not the place for a geometry non-termination.
+///
+/// The boundary is sharp and was measured: the runaway needs a drill page that is a **sub**
+/// rectangle of the board. At +/-5 000 the grid is 1x1, the page is the whole board, and the four
+/// overlapping-page drills compute in under a millisecond; at +/-6 000 the grid becomes 2x2 and it
+/// runs away. So this test takes +/-5 000 — the largest box that still terminates — and in
+/// exchange its pages now hold **7 real drills** where they used to hold an empty list.
 #[test]
 fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape() {
-    let mut board = bare_board_with_a_net_two_trace();
+    let mut board = bare_board_bounded(IntBox {
+        ll: IntPoint {
+            x: -5_000,
+            y: -5_000,
+        },
+        ur: IntPoint { x: 5_000, y: 5_000 },
+    });
     let mut engine = board.init_autoroute(None, 1, 1, None, true);
     let trace = board
         .items_in_board_order()
@@ -369,11 +412,23 @@ fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shap
         populated > 0,
         "the fixture needs at least one page holding drills"
     );
-    assert!(
-        overlapping
-            .iter()
-            .all(|page| engine.drill_pages().page(*page).drills().is_some()),
-        "every overlapping page should be holding drills before the invalidation"
+    // Not `is_some()`: `DrillPage.getDrills:65-66` installs an empty list *before* the work, so
+    // `Some([])` is what a page that computed nothing also looks like — which is exactly how this
+    // assertion stayed green through quirk #169 without ever holding a drill. Count them.
+    let held: usize = overlapping
+        .iter()
+        .map(|page| {
+            engine
+                .drill_pages()
+                .page(*page)
+                .drills()
+                .map_or(0, <[_]>::len)
+        })
+        .sum();
+    assert_eq!(
+        held, 7,
+        "every overlapping page should be holding real drills before the invalidation, and on \
+         this board that is seven of them (quirk #169 fixed; before it, zero)"
     );
 
     board.additional_update_after_change(&mut engine, trace);
