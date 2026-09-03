@@ -129,6 +129,7 @@ fn settings_snapshot(manifest: &Path) -> serde_json::Value {
 ///
 /// It needs no JDK: what it pins is the port's own behaviour on a path where the jar's is
 /// recorded in `docs/java-quirks.md` #265 and is deliberately no longer matched.
+// fixed: T3 (#265) — the sentinel half.
 #[test]
 fn a_failed_run_leaves_the_previous_result_on_disk() {
     let dir = scratch("failed-run-keeps-previous");
@@ -167,6 +168,7 @@ fn a_failed_run_leaves_the_previous_result_on_disk() {
 /// The run below fails at the board load, exactly as the test above does, and that is the point:
 /// the jar would already have unlinked the directory by then. With the delete gone nothing on
 /// this path touches the path at all, so it is still there and still empty.
+// fixed: T3 (#265) — the `File.delete()`-removes-a-directory half.
 #[test]
 fn an_empty_output_directory_is_not_unlinked() {
     let dir = scratch("empty-output-dir");
@@ -225,6 +227,8 @@ fn an_empty_output_directory_is_not_unlinked() {
 /// and `setInputFromFile:433-436` re-derives `DSN` from the extension, so the *job* is valid and
 /// the *board* is not. With `-do out.ses` that run gets as far as the loader and fails there;
 /// with `-do out.dsn` it never gets there at all, and the two stderrs say so.
+// fixed: T3 (#268) — both halves of quirk L, refused; and the proof that the refusal is
+// earlier than the board load.
 #[test]
 fn an_unsupported_output_extension_is_refused_at_the_argument() {
     if !parity::require_java_dir() {
@@ -334,6 +338,7 @@ fn an_unsupported_output_extension_is_refused_at_the_argument() {
 /// `Board::get_traces` item and `save_as_specctra_session_ses` emits one `(wire ` per the same
 /// item, so the two counts are the same number reached two ways — and before the fix the first
 /// was zero while the second was 16.
+// fixed: T3 (#289) — the JSON and the SES now describe the same board.
 #[test]
 fn do_out_json_writes_the_routed_board() {
     if !parity::require_java_dir() {
