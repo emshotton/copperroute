@@ -13,6 +13,13 @@
 #                                       once from the frozen references and writes it HERE,
 #                                       outside tests/reference-frozen/, so that nothing ever has
 #                                       to read the freeze (BL8 as amended by ruling BP1).
+#                                       Task 1 must write it in quality-ab.sh's OWN tsv shape —
+#                                       a `# gate-version:` header, a `# cols:` header, and
+#                                       family/stem keys matching the 29 stems — because that is
+#                                       what the script reads it with. Its values land in each
+#                                       row's jar_* columns; until it exists those render `-` and
+#                                       the tsv header says [absent]. Nothing ever affirms a
+#                                       reference it did not read.
 #   plan9-m<n>.log                      the full console output of each milestone's
 #                                       scripts/remote-run.sh, read from the file and never piped.
 #

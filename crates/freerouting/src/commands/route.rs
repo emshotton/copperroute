@@ -333,10 +333,12 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         settings: &settings,
         cancel,
         progress: &progress,
-        // Ruling AI's wall clock, **live** — Java's four literals. The parity drivers disable it;
-        // the CLI must not, because `tests/reference/cli-*` compares two whole programs and the
-        // jar cannot switch its own (javac-inlined) budget off either. See
-        // `scripts/gen-cli-reference.sh`'s header.
+        // Ruling AI's wall clock, **live by default** — Java's four literals. `tests/reference/
+        // cli-*` compares two whole programs and the jar cannot switch its own (javac-inlined)
+        // budget off, so a plain CLI run must not either; see `scripts/gen-cli-reference.sh`'s
+        // header. [`harness_budget`] is that default, plus the one harness escape
+        // `scripts/quality-ab.sh` needs to take time out of a *quality* measurement — read its
+        // doc before assuming this line is unconditional.
         budget: harness_budget(),
     };
     // ── 12b. **quirk #289 (label T)**: the board `-do out.json` actually writes ───────────────
@@ -837,12 +839,22 @@ fn result_json_path(job: &RoutingJob, args: &RouteArgs) -> Option<String> {
 /// harness that thinks it disabled the clock and did not would produce numbers nobody could
 /// trust, and that is worse than a stopped run.
 fn harness_budget() -> fr_core::RouterBudget {
+    use std::env::VarError;
     match std::env::var("FR_ROUTER_BUDGET").as_deref() {
-        Err(_) | Ok("") | Ok("default") => fr_core::RouterBudget::default(),
+        // The only silent arm, and it is the one every user, every test and every committed
+        // golden is in: the variable is not set at all.
+        Err(VarError::NotPresent) | Ok("") | Ok("default") => fr_core::RouterBudget::default(),
         Ok("disabled") => fr_core::RouterBudget::disabled(),
-        Ok(other) => {
+        // A set-but-unreadable value is a *set* value. Folding `NotUnicode` into the unset arm
+        // would hand a harness that believes it disabled the clock a run with the clock live,
+        // which is the one failure mode this knob exists to make impossible.
+        other => {
+            let shown = match other {
+                Ok(v) => format!("{v:?}"),
+                Err(_) => "<not valid unicode>".to_string(),
+            };
             eprintln!(
-                "FR_ROUTER_BUDGET={other:?} is not a budget; use `default` (Java's four \
+                "FR_ROUTER_BUDGET={shown} is not a budget; use `default` (Java's four \
                  literals) or `disabled` (ruling AI's every-clock-off, what the parity drivers \
                  and scripts/quality-ab.sh run)"
             );

@@ -28,6 +28,28 @@ pub fn example(name: &str) -> PathBuf {
     java_dir().join("examples").join(name)
 }
 
+/// `Path.of(args[0]).getFileName().toString().replaceAll("\\.dsn$", "")`
+/// (`scripts/gen-reference/RefWriter.java:26`) — the `designName` the DSN/SES writers stamp into
+/// `(pcb "…")` and `(session "…")`.
+///
+/// The Java is a **regex replace over the whole file name**, anchored with `$`, so `a.dsn` becomes
+/// `a` and `a.dsn.b` is left alone; `strip_suffix` is exactly that. A name that is *not* a `.dsn`
+/// yields the empty string, which is Java's behaviour too and is why the `unwrap_or_default` is
+/// not a shortcut.
+///
+/// **One copy, deliberately.** It lived twice — in `crates/fr-dsn/tests/parity_dsn.rs` and in
+/// `scripts/differential/rust/src/bin/refwriter.rs`, the binary that cuts the committed
+/// `roundtrip.dsn` / `unrouted.ses` from the port — and a drift between the two would have moved
+/// every family-G golden with nothing failing (Plan 9 Task 0 review, S5). Both now call this.
+pub fn dsn_design_name(path: &Path) -> String {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default()
+        .strip_suffix(".dsn")
+        .unwrap_or_default()
+        .to_string()
+}
+
 pub fn reference(stem: &str, file: &str) -> PathBuf {
     workspace_root()
         .join("tests")
