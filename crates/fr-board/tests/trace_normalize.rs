@@ -1541,7 +1541,78 @@ fn combine_stack_overflow_fixture() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The non-terminating ladder (quirk #76) — reproduced, not fixed
+// Plan 9 Task 5: quirk #71 — the re-read no longer aliases the walk's own list
+// ---------------------------------------------------------------------------------------------
+
+/// **fixed: T5 (#71).** `ShapeSearchTree.overlappingTreeEntries` appends into the collection it is
+/// handed (ShapeSearchTree.java:429-430) and never clears it, which is what lets
+/// `PolylineTrace.split`'s re-read (:584-588) put stale entries in front of fresh ones and walk
+/// them all again.
+///
+/// The port's half of that fix is structural: `overlapping_tree_entries` **returns** its answer
+/// rather than taking a collection to append to, so no caller can alias one. This test is the lock
+/// on that signature's behaviour — two calls with identical arguments over an unchanged tree
+/// answer identical, *independent* vectors, and a vector the caller already holds is never
+/// lengthened by a call.
+///
+/// The other half — `split`'s own `entries.extend(fresh)` becoming `entries = fresh` — is measured
+/// by `a_two_rail_four_rung_ladder_normalizes_and_terminates`.
+#[test]
+fn overlapping_tree_entries_returns_a_fresh_collection() {
+    let (mut board, _) = trace_board(1);
+    // Three traces that all cross the probe box below, so the answer is non-empty and a stale
+    // append would be visible as a doubled length.
+    tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
+    tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[0, 5000, 30000, 5000],
+    );
+    tr(
+        &mut board,
+        1000,
+        1,
+        FixedState::Unfixed,
+        &[10000, -5000, 10000, 10000],
+    );
+
+    let probe = TileShape::Box(IntBox::from_coords(-2000, -2000, 32000, 12000));
+    let ctx = board.ctx();
+    let tree = board.trees.get_default_tree();
+
+    let first = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
+    assert!(
+        !first.is_empty(),
+        "the probe must actually reach the three traces, or this test asserts nothing"
+    );
+    let second = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
+    assert_eq!(
+        first, second,
+        "a second call over an unchanged tree answers the same entries, not the same entries \
+         appended to the first call's"
+    );
+
+    // And the caller's own collection is untouched: Java's signature makes
+    // `overlappingTreeEntries(shape, layer, mine)` grow `mine`; here there is no such parameter,
+    // so the only way to accumulate is for the caller to ask for it.
+    let mut mine: Vec<_> = Vec::new();
+    let third = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
+    assert!(
+        mine.is_empty(),
+        "the call cannot reach a collection the caller did not hand it"
+    );
+    mine.extend(third);
+    assert_eq!(
+        mine.len(),
+        first.len(),
+        "one call's worth of entries is one call's worth"
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
+// The ladder (quirks #76 and #106)
 // ---------------------------------------------------------------------------------------------
 
 /// **This test does not terminate**, in Java and in the port alike, which is why it is

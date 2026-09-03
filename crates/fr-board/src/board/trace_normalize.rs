@@ -398,13 +398,22 @@ impl Board {
     /// If nothing was split the answer is just this trace. `clip`, Java's `clipShape`, restricts
     /// the scan to the segments whose bounding box it meets (:475-479).
     ///
-    /// # Two things a reader should not mistake for port bugs
+    /// # The re-read replaces, and that is a deliberate divergence from Java
     ///
-    /// * **The re-read appends.** `ShapeSearchTree.overlappingTreeEntries` *adds* to the
-    ///   collection it is handed (ShapeSearchTree.java:429-430); it does not clear it. So the
-    ///   "reread the overlapping tree entries and reset the iterator" step (:584-588) leaves the
-    ///   stale entries in front of the fresh ones and walks them all again. Reproduced; quirk
-    ///   row.
+    /// `ShapeSearchTree.overlappingTreeEntries` *adds* to the collection it is handed
+    /// (ShapeSearchTree.java:429-430) and never clears it, so Java's "reread the overlapping tree
+    /// entries and reset the iterator" step (:584-588) leaves the stale entries in front of the
+    /// fresh ones and walks them all again — the mechanism of quirk **#71**, and half of the
+    /// ladder hang of quirk **#76**. The port reproduced it until Plan 9 Task 5; it now assigns
+    /// the fresh read over the list rather than extending it, which is the register's fix ("clear
+    /// the collection before the re-read").
+    /// [`ShapeSearchTree::overlapping_tree_entries`](crate::ShapeSearchTree::overlapping_tree_entries)
+    /// already
+    /// *returns* its answer instead of appending into a caller's collection, so after this the
+    /// aliasing is unrepresentable at both ends.
+    ///
+    /// # One thing a reader should not mistake for a port bug
+    ///
     /// * **A stale entry can name a trace that is no longer on the board.** Java's `TreeEntry`
     ///   holds the item itself, so the removed trace's polyline is still readable. The port's
     ///   entries hold an [`ItemId`], so each read of the tree snapshots the items it named into
@@ -501,7 +510,8 @@ impl Board {
             else {
                 continue;
             };
-            // PolylineTrace.java:483-486: the list the re-read appends to.
+            // PolylineTrace.java:483-486: the list the re-read replaces (Java: appends to — see
+            // the doc comment's "The re-read replaces", quirk #71).
             let mut entry_items: BTreeMap<ItemId, Item> = BTreeMap::new();
             let mut entries =
                 self.split_overlapping_entries(&current_shape, layer, &mut entry_items);
@@ -571,14 +581,19 @@ impl Board {
                                     split_pieces.push(piece);
                                 }
                                 if found_trace_split {
-                                    // PolylineTrace.java:584-588: the board changed, so re-read
-                                    // — appending to the same list — and restart the walk.
-                                    let fresh = self.split_overlapping_entries(
+                                    // fixed: T5 (#71) — PolylineTrace.java:584-588: the board
+                                    // changed, so re-read and restart the walk. Java appends the
+                                    // fresh read to the *same* `LinkedList`
+                                    // (ShapeSearchTree.java:429-430 never clears it), so the walk
+                                    // then re-visits every entry it has already retired; here the
+                                    // fresh read **replaces** the list. `entry_items` still
+                                    // accumulates, because it is the snapshot of items an entry
+                                    // may name after a later step removes them — not the aliasing.
+                                    entries = self.split_overlapping_entries(
                                         &current_shape,
                                         layer,
                                         &mut entry_items,
                                     );
-                                    entries.extend(fresh);
                                     cursor = 0;
                                     break;
                                 }
