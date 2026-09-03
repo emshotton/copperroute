@@ -712,6 +712,26 @@ impl<'a> BatchAutorouter<'a> {
     /// reuses the collection and clears it at `:348`; the port allocates a fresh set per call
     /// (that field is `not ported:`), so there is nothing for a driver to reflect into and the
     /// set is returned instead. `getAutorouteItems`' own answer is `.0` and is unaffected.
+    ///
+    /// # `run.sh p7t1` MISMATCHes on the `ITEM` order **by design**, since Plan 9 Task 2
+    ///
+    /// The driver prints one `ITEM` line per work-list entry, in list order, and that order is
+    /// what the sort below changes. **A `p7t1` MISMATCH confined to the order of the `ITEM`
+    /// lines is R1 (#293) working, not the port drifting** — the jar has no sort, the port
+    /// restores it, and the two therefore disagree on this seam for as long as the register row
+    /// says `fixed: T2`. What still has to agree, and what a reader should check before calling
+    /// a `p7t1` diff a defect:
+    ///
+    /// * the **multiset** of `ITEM` lines — same ids, same multiplicities. Quirk #213's
+    ///   duplicate entries are membership, not order, and the sort is stable, so a duplicated
+    ///   entry is still two `ITEM` lines with one id;
+    /// * the `HANDLED` set, which this method builds before the sort and which the sort does not
+    ///   touch;
+    /// * every other line the driver prints.
+    ///
+    /// The same holds for `p7t2`, `p7t5`, `p7t9` and `p8t1`, which route a board and so inherit
+    /// the order downstream. `crates/fr-router/README.md`'s "The work list is airline-sorted"
+    /// section says it once more for a reader who arrives from the driver rather than from here.
     pub fn autoroute_items_with_handled(&self, board: &Board) -> (Vec<ItemId>, BTreeSet<ItemId>) {
         // :347-350. The port allocates rather than reusing; see the doc.
         let mut autoroute_item_list: Vec<ItemId> = Vec::new();

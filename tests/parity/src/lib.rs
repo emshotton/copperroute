@@ -1073,3 +1073,54 @@ pub fn normalize_manifest(json: &str) -> ManifestDoc {
     }
     ManifestDoc(value)
 }
+
+/// The **lane** a reference meta file declares (ruling BT, Plan 9).
+///
+/// A reference family may sit in the `port` lane from Plan 9 on: the first fix that *moves* a
+/// family regenerates it with `--from-port`, and from then on its bytes are the port's rather
+/// than the jar's. The generators write that on the meta file's own `lane` line. A file with no
+/// such line **is a jar-lane file** — which is what every pre-Plan-9 meta is, and why the default
+/// is not an error.
+///
+/// Lives here rather than in each `references_are_from_the_head_jar` because all three of them
+/// ask the same question of three different meta files, and a fourth family will ask it too.
+#[must_use]
+pub fn declared_lane(meta: &str) -> &str {
+    meta.lines()
+        .find_map(|line| line.strip_prefix("lane "))
+        .map(str::trim)
+        .unwrap_or("jar")
+}
+
+/// The port lane's own provenance, asserted: the sha of the build that wrote the reference and
+/// the Plan 9 task it was cut at, both written by the generator.
+///
+/// They are what makes a port-cut reference traceable to a commit, exactly as `jar revision` does
+/// in the other lane — and asserting the *jar's* build identity over a port-cut file would only
+/// be asserting that nobody had switched lanes, which is not a property anything wants.
+///
+/// `what` names the stem in the panic message.
+///
+/// # Panics
+///
+/// If either line is absent or malformed.
+pub fn assert_port_lane_provenance(meta: &str, what: &str) {
+    let sha = meta
+        .lines()
+        .find_map(|line| line.strip_prefix("port sha "))
+        .map(str::trim)
+        .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `port sha` line:\n{meta}"));
+    assert!(
+        sha.len() >= 12 && sha.chars().all(|c| c.is_ascii_hexdigit()),
+        "{what}: `port sha` is not a git sha: {sha}"
+    );
+    let task = meta
+        .lines()
+        .find_map(|line| line.strip_prefix("plan 9 task "))
+        .map(str::trim)
+        .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `plan 9 task` line:\n{meta}"));
+    assert!(
+        task.starts_with('T') && task[1..].chars().all(|c| c.is_ascii_digit()),
+        "{what}: `plan 9 task` is not a task id: {task}"
+    );
+}

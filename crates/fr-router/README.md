@@ -2859,7 +2859,19 @@ ascending by `calculate_item_distance`**, unconditionally and stably: `f64::tota
 is `Double.compare`'s order, and a stable sort leaves ties in the descending-id walk
 order (quirk #63) that `getAutorouteItems` built, so the sort is a refinement of the old
 order and not a second reordering. `autoroute_items` is the untouched wrapper, and
-`pass_runner.rs:158` consumes the sorted list with no change of its own. The two
+`AutoroutePassRunner::run_single_thread_body` (Java `:158`) consumes the sorted list
+with no change of its own.
+
+**`run.sh p7t1` MISMATCHes on the `ITEM` order by design.** The driver prints one
+`ITEM` line per work-list entry in list order; the jar has no sort and the port
+restores it, so the two disagree on that seam for as long as register row #293 reads
+`fixed: T2`. A `p7t1` diff confined to the *order* of the `ITEM` lines is the fix
+working. What must still agree, and what to check before calling such a diff a
+defect: the **multiset** of `ITEM` lines (same ids, same multiplicities — quirk
+#213's duplicates are membership, not order, and the sort is stable), the `HANDLED`
+set, which is built before the sort, and every other line the driver prints. `p7t2`,
+`p7t5`, `p7t9` and `p8t1` route a board and inherit the order downstream, so the same
+reading applies to them. The two
 remaining `// not ported:` rows — `nearestPointOnTrace` (`:42-83`) and
 `findClosestPointsBetweenTraces` (`:85-160`) — are **not** resurrected: they are reached
 only from each other and from `BatchAutorouterThread`, which has no caller at all.
@@ -2879,6 +2891,9 @@ the corpus depends on it. `tests/pass_runner.rs`'s
 `a_two_net_item_is_routed_four_times` and
 `the_inner_index_is_a_net_index_not_the_qualifying_one` are the pins, and `p7t1`
 prints the list in order so a duplicated entry is two `ITEM` lines with one id.
+**Since Plan 9 Task 2 that order is the port's, not the jar's** — see the next
+section — so read a `p7t1` diff as a multiset comparison: the duplicate is still
+two lines with one id, but the lines need not sit where the jar put them.
 
 ### Java's list is a `List<Item>`, not a list of `(item, net)` pairs
 

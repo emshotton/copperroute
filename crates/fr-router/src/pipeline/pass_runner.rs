@@ -164,12 +164,13 @@ impl AutoroutePassRunner {
         stop: &RouterStop,
         progress: &mut dyn ProgressSink,
     ) -> Result<bool, RouterError> {
-        // :158. Since Plan 9 Task 2 (R1, register row #293) this list arrives **sorted ascending
-        // by `calculateItemDistance`** — shortest airline first, ties in the descending-id walk
-        // order Java's `board.itemList` produces. The sort lives in
+        // :158 — the Java line. Since Plan 9 Task 2 (R1, register row #293) this list arrives
+        // **sorted ascending by `calculateItemDistance`** — shortest airline first, ties in the
+        // descending-id walk order Java's `board.itemList` produces. The sort lives in
         // [`BatchAutorouter::autoroute_items_with_handled`], where Java's deleted
         // `autorouteItemList.sort(...)` stood; nothing changes here, and the `for` at `:202`
-        // below simply walks a better order.
+        // below simply walks a better order. `run.sh p7t1` therefore MISMATCHes on the `ITEM`
+        // order by design — that seam's doc says what must still agree.
         let autoroute_item_list = router.autoroute_items(board);
 
         // :163-166. `router.airLine = null` is the not-ported field.

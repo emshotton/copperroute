@@ -685,8 +685,8 @@ fn references_are_from_the_head_jar() {
         }
         let meta = std::fs::read_to_string(&meta_path)
             .unwrap_or_else(|e| panic!("cannot read {}: {e}", meta_path.display()));
-        if declared_lane(&meta).starts_with("port") {
-            assert_port_lane_provenance(&meta, &row.stem);
+        if parity::declared_lane(&meta).starts_with("port") {
+            parity::assert_port_lane_provenance(&meta, &row.stem);
             continue;
         }
         assert!(
@@ -877,37 +877,4 @@ fn steps_one_to_eight_on_dac2020_matches_the_jar() {
             }
         );
     }
-}
-
-/// The lane a reference meta file declares (ruling BT). A file with no `lane` line predates the
-/// Plan 9 lane switch and is a jar-lane file.
-fn declared_lane(meta: &str) -> &str {
-    meta.lines()
-        .find_map(|line| line.strip_prefix("lane "))
-        .map(str::trim)
-        .unwrap_or("jar")
-}
-
-/// The port lane's own provenance: the sha of the build that wrote the file and the Plan 9 task
-/// it was cut at, both written by the generator. They are what makes a port-cut reference
-/// traceable to a commit, exactly as `jar revision` does in the other lane.
-fn assert_port_lane_provenance(meta: &str, what: &str) {
-    let sha = meta
-        .lines()
-        .find_map(|line| line.strip_prefix("port sha "))
-        .map(str::trim)
-        .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `port sha` line:\n{meta}"));
-    assert!(
-        sha.len() >= 12 && sha.chars().all(|c| c.is_ascii_hexdigit()),
-        "{what}: `port sha` is not a git sha: {sha}"
-    );
-    let task = meta
-        .lines()
-        .find_map(|line| line.strip_prefix("plan 9 task "))
-        .map(str::trim)
-        .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `plan 9 task` line:\n{meta}"));
-    assert!(
-        task.starts_with('T') && task[1..].chars().all(|c| c.is_ascii_digit()),
-        "{what}: `plan 9 task` is not a task id: {task}"
-    );
 }
