@@ -606,19 +606,50 @@ fn calculate_crc32_matches_the_standard_check_vector() {
     assert_eq!(BoardFileDetails::calculate_crc32(b"a"), 0xE8B7_BE43);
 }
 
+/// fixed: T3 (#289) — the inverse of Plan 8's
+/// `set_data_re_sniffs_the_bytes_and_overwrites_the_format`, which this test replaces.
+///
+/// `BoardFileDetails.setData:113` re-derived the format from the bytes it was handed, so
+/// `setJobOutput:266`'s `KICAD_SESSION_JSON` became `KICAD_DESIGN_JSON` the instant the JSON was
+/// written (a document starting `{`), and every later `setJobOutput` call then matched neither
+/// `:275` nor `:282` and did nothing. That is the whole mechanism of `-do out.json` holding the
+/// board as it was before routing. The format is a parameter now, and it survives — including for
+/// the exact byte sequence that used to overwrite it.
 #[test]
-fn set_data_re_sniffs_the_bytes_and_overwrites_the_format() {
-    // The mechanism behind quirk label T (Task 10's): whatever the caller set is discarded.
+fn set_data_keeps_the_format_it_was_given() {
+    // The bytes that used to defeat it: a JSON document, declared as a KiCad *session*.
     let mut d = BoardFileDetails::default();
-    d.format = FileFormat::KicadSessionJson;
-    d.set_data(b"{\"a\":1}".to_vec());
-    assert_eq!(d.format, FileFormat::KicadDesignJson);
+    d.set_data(b"{\"a\":1}".to_vec(), FileFormat::KicadSessionJson);
+    assert_eq!(
+        d.format,
+        FileFormat::KicadSessionJson,
+        "the re-sniff at BoardFileDetails.java:113 is gone; `{{` no longer means KICAD_DESIGN_JSON \
+         when the caller said otherwise"
+    );
+    // Everything else `setData` derives is still derived from the bytes.
+    assert_eq!(d.size, 7);
+    assert_eq!(d.crc32, BoardFileDetails::calculate_crc32(b"{\"a\":1}"));
+    assert_eq!(d.get_data(), b"{\"a\":1}");
 
-    // The SES path escapes it only because `(ses` re-detects as SES.
+    // The SES path, which escaped the re-sniff only by coincidence (`(ses` re-detects as SES),
+    // now escapes it by construction.
     let mut d = BoardFileDetails::default();
-    d.format = FileFormat::Ses;
-    d.set_data(b"(ses X)".to_vec());
+    d.set_data(b"(ses X)".to_vec(), FileFormat::Ses);
     assert_eq!(d.format, FileFormat::Ses);
+
+    // And a caller that *wants* the sniff still gets it — it is one visible line at the site
+    // rather than a hidden overwrite. `RoutingJob::set_rules_bytes` is the one that relies on it:
+    // Java sets `RULES` at `:290` and loses it again unless the bytes start with `(rul`.
+    let mut job = RoutingJob::default();
+    assert!(job.set_rules_bytes(b"(rules (clearance 200))"));
+    assert_eq!(job.rules.as_ref().expect("rules").format, FileFormat::Rules);
+    let mut job = RoutingJob::default();
+    assert!(job.set_rules_bytes(b"not a rules file"));
+    assert_eq!(
+        job.rules.as_ref().expect("rules").format,
+        FileFormat::Unknown,
+        "setRules' own `RULES`-then-lose-it is Java's and is kept — it just lives at the caller"
+    );
 }
 
 #[test]
