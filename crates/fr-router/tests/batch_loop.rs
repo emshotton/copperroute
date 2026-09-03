@@ -13,8 +13,9 @@
 //! This file pins the four things a corpus run cannot show:
 //!
 //! * the **error** boundary (`:44-56`) — no corpus stem has its layers switched off;
-//! * the two **counter-intuitive reports** — a normal finish saying `CANCELLED` (quirk #214) and
-//!   `maxPasses = 0` meaning *unlimited* (quirk #140);
+//! * the two **counter-intuitive reports** — quirk #214's normal finish, which said `CANCELLED`
+//!   until Plan 9 Task 9 gave the loop an exit reason, and `maxPasses = 0` meaning *unlimited*
+//!   (quirk #140);
 //! * the arms that are **unreachable on the corpus**: the rank break (quirk #217 — unreachable
 //!   *everywhere*, see below) and the final best-board swap, which prints `swapped=false` on every
 //!   `p7t9` run because no corpus history ever holds a strictly better board than the one the run
@@ -38,8 +39,8 @@ use fr_router::pipeline::batch_loop::{
     final_best_board_swap, rank_limit_exceeded, restore_gate, stagnation_guard,
 };
 use fr_router::pipeline::{
-    AutorouteBatchLoop, BoardHistory, NamedAlgorithmType, NoopProgressSink, ProgressSink,
-    RouterBudget, RouterStop, RoutingEvent, TaskState,
+    AutorouteBatchLoop, BatchLoopExit, BoardHistory, NamedAlgorithmType, NoopProgressSink,
+    ProgressSink, RouterBudget, RouterStop, RoutingEvent, TaskState,
 };
 use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
@@ -274,18 +275,64 @@ fn an_active_non_signal_layer_is_not_routable() {
 // :571-585 — quirk #214, the headline row
 // =================================================================================================
 
-/// **Quirk #214.** A run that stops because it reached its pass budget reports
-/// [`TaskState::Cancelled`], not [`TaskState::Finished`] — because `:271`'s
-/// `requestStopAutoRouter()` has already raised the flag `:571` tests.
+/// **Quirk #214, fixed in Plan 9 Task 9.** A run that stops because it reached its pass budget
+/// reports [`TaskState::Finished`].
 ///
-/// The run did exactly what it was asked to do and nothing went wrong — one pass of
-/// `rpi_splitter` takes it from five incomplete connections to two. An API consumer watching
-/// `TaskStateChangedEvent` cannot tell that from a user cancellation.
+/// Before the fix it reported [`TaskState::Cancelled`], because `:271`'s
+/// `requestStopAutoRouter()` has already raised the flag `:571` tests — and four sibling arms do
+/// the same, so the *only* reachable `FINISHED` was the `while` head's own
+/// `continueAutorouting == false`. The run did exactly what it was asked to do and nothing went
+/// wrong — one pass of `rpi_splitter` takes it from five incomplete connections to two — and an
+/// API consumer watching `TaskStateChangedEvent` could not tell that from a user cancellation.
 ///
-/// Its companion below shows the *only* path that does reach `FINISHED`.
+/// The fix carries the **reason** out of the loop ([`BatchLoopExit`]) and takes `:571-585`'s
+/// decision on it. This test measures both halves: the reason on a real capped run, and the
+/// state each of the five doors maps to on a constructed exit — including that
+/// [`BatchLoopExit::Cancelled`] still reports `CANCELLED` and, with the job clock expired,
+/// `TIMED_OUT`.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn a_normal_finish_reports_cancelled_not_finished() {
+fn a_normal_finish_reports_finished() {
+    // The five doors, each on a constructed exit. `Cancelled` is the only one that is not a
+    // finish, and it is the only one a `timed_out` job clock can turn into `TIMED_OUT`.
+    assert_eq!(
+        BatchLoopExit::Completed.task_state(false),
+        TaskState::Finished
+    );
+    assert_eq!(
+        BatchLoopExit::MaxPasses.task_state(false),
+        TaskState::Finished
+    );
+    assert_eq!(
+        BatchLoopExit::NoImprovement.task_state(false),
+        TaskState::Finished
+    );
+    assert_eq!(
+        BatchLoopExit::Stagnation.task_state(false),
+        TaskState::Finished
+    );
+    assert_eq!(
+        BatchLoopExit::Cancelled.task_state(false),
+        TaskState::Cancelled
+    );
+    // `:578-584` — the job clock, and only on the one door a clock can produce.
+    assert_eq!(
+        BatchLoopExit::Cancelled.task_state(true),
+        TaskState::TimedOut
+    );
+    for door in [
+        BatchLoopExit::Completed,
+        BatchLoopExit::MaxPasses,
+        BatchLoopExit::NoImprovement,
+        BatchLoopExit::Stagnation,
+    ] {
+        assert_eq!(
+            door.task_state(true),
+            TaskState::Finished,
+            "{door:?} is a finish whatever the job clock says — only a cancellation is timed out"
+        );
+    }
+
     if !parity::require_java_dir() {
         return;
     }
@@ -304,19 +351,25 @@ fn a_normal_finish_reports_cancelled_not_finished() {
     .expect("rpi_splitter has two signal layers");
 
     assert_eq!(
+        result.exit(),
+        BatchLoopExit::MaxPasses,
+        "`:268-273` is the door a `--max-passes 1` run leaves by"
+    );
+    assert_eq!(
         result.state,
-        TaskState::Cancelled,
-        "AutorouteBatchLoop.java:271 raises the flag :571 tests, so a maxPasses stop is CANCELLED"
+        TaskState::Finished,
+        "fixed: T9 (#214) — a run that did exactly what it was asked has FINISHED"
     );
     assert!(
         !result.continue_routing,
-        ":587 is `!isStopAutoRouterRequested()`, and :271 requested it"
+        ":587 is `!isStopAutoRouterRequested()`, and :271 requested it — the flag is still raised, \
+         which is what four other readers in the loop depend on"
     );
     // The full event tape: STARTED, one RUNNING per pass, then the final state. The `maxPasses`
     // break happens at the *top* of pass 2, before `:279`, so there is exactly one RUNNING.
     assert_eq!(
         sink.states(),
-        vec![TaskState::Started, TaskState::Running, TaskState::Cancelled]
+        vec![TaskState::Started, TaskState::Running, TaskState::Finished]
     );
     // And the pass really did route: one pass of rpi_splitter takes the board from five
     // incomplete connections to two. The point of the quirk is that this is a *successful* run.
@@ -329,7 +382,7 @@ fn a_normal_finish_reports_cancelled_not_finished() {
     assert_eq!(result.per_pass[0].incomplete_count, 2);
     assert!(
         result.per_pass[0].score > 0.0,
-        "the CANCELLED run routed a board: {:?}",
+        "the FINISHED run routed a board: {:?}",
         result.per_pass[0]
     );
 }
@@ -423,14 +476,18 @@ fn max_passes_zero_is_unlimited() {
     );
     // …and here it is the stagnation detector that stops it, not the board being done.
     //
-    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was **`Finished`** — on the pre-R1/R2 port
-    // `rpi_splitter` closed every connection and the `while` head fell out on its own. R1 (#293)
-    // and R2 (#294) leave two connections no pass can route, so the run walks 18 passes at a flat
-    // `incomplete_count` of 2 and the stagnation guard raises the flag: `CANCELLED`. Accepted at
-    // M1 (ruling BV). The *unlimited* claim above — strictly more passes than `maxPasses = 1` —
-    // is what this test is for and is untouched; the `FINISHED` arm is measured by
-    // [`only_a_pass_that_routes_nothing_reaches_finished`], on a board that still completes.
-    assert_eq!(unlimited.state, TaskState::Cancelled);
+    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV) and again by Plan 9 Task 9's
+    // #214. On the pre-R1/R2 port `rpi_splitter` closed every connection and the `while` head fell
+    // out on its own; R1 (#293) and R2 (#294) leave two connections no pass can route, so the run
+    // walks 18 passes at a flat `incomplete_count` of 2 and the **stagnation** door ends it. Under
+    // the jar and under the pre-T9 port that door reported `CANCELLED` (quirk #214); it is a door
+    // the *router* chose, so it now reports `FINISHED` and names itself.
+    assert_eq!(unlimited.exit(), BatchLoopExit::Stagnation);
+    assert_eq!(unlimited.state, TaskState::Finished);
+    // The two doors really are told apart — `maxPasses` is the caller's, stagnation is the
+    // router's, and neither is a cancellation.
+    assert_eq!(one.exit(), BatchLoopExit::MaxPasses);
+    assert_eq!(one.state, TaskState::Finished);
 
     // The negative case, which is the other side of `:221-223`'s `>= 0`: the router is disabled,
     // so `continueAutorouting` starts false and the `while` head never runs a pass.
@@ -440,6 +497,11 @@ fn max_passes_zero_is_unlimited() {
         ":221-223's `maxPasses >= 0` is false for -1, so isRouterEnabled is false"
     );
     assert_eq!(disabled.state, TaskState::Finished);
+    assert_eq!(
+        disabled.exit(),
+        BatchLoopExit::Completed,
+        "a loop that was never entered left by the `while` head's own first conjunct"
+    );
 }
 
 // =================================================================================================
@@ -947,16 +1009,25 @@ fn the_stagnation_report_is_discharged_and_names_task_15() {
     // The call is the *report*, never the break. Java's loop leaves through five
     // `requestStopAutoRouter(); break;` pairs — `:271-272` (maxPasses), `:311-312` ("not able to
     // improve"), `:318-319` (the rank limit), `:474-475` (the pass-local stagnation window) and
-    // `:505-506` (the global one) — and all five are this task's, including the two the stub sits
-    // between. Counted on a whitespace-normalised copy so that rustfmt's indentation cannot make
-    // the assertion pass or fail for the wrong reason.
+    // `:505-506` (the global one). Since Plan 9 Task 9 each of them also **names its door**
+    // (`exit = Some(BatchLoopExit::…)`, quirk #214) between the request and the `break`, and the
+    // rank-limit arm is still here at this commit (quirk #217's decision lands later in the same
+    // task) — so the count is **five** requests each followed by a `break`, plus `:252`'s dead
+    // arm, and the two the stub sits between are among them. Counted on a whitespace-normalised
+    // copy so that rustfmt's indentation cannot make the assertion pass or fail for the wrong
+    // reason.
     let flat = source.split_whitespace().collect::<Vec<_>>().join(" ");
     assert_eq!(
-        flat.matches("stop.request_stop_auto_router(); break;")
-            .count(),
+        flat.matches("stop.request_stop_auto_router();").count(),
+        // `:252`'s dead arm (quirk #203) is the sixth call and has no `break`.
+        6,
+        "the five `requestStopAutoRouter()` breaks (:271-272, :311-312, :318-319, :474-475, \
+         :505-506) plus `:252`'s dead arm must all be present"
+    );
+    assert_eq!(
+        flat.matches("exit = Some(BatchLoopExit::").count(),
         5,
-        "the five `requestStopAutoRouter(); break;` pairs (:271-272, :311-312, :318-319, \
-         :474-475, :505-506) must all be present"
+        "every one of the five breaks names the door it left by — quirk #214's fix"
     );
     // …and the report really is called at both stagnation arms, so Task 15 has two sites to
     // discharge rather than one.

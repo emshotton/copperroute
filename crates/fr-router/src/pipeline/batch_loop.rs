@@ -71,6 +71,83 @@ pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 =
 pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_THRESHOLD;
 
 // =================================================================================================
+// `BatchLoopExit` — the door the pass loop left by
+// =================================================================================================
+
+/// **Which door [`AutorouteBatchLoop::run`] left the pass loop by.**
+///
+/// renamed: not a Java type. Java carries the answer in one `boolean` — the stop flag — and that
+/// is precisely quirk #214: `AutorouteBatchLoop.java:571` fires `TaskState.FINISHED` only when
+/// `thread.isStopAutoRouterRequested()` is still false, and **every ordinary exit raises the flag
+/// first** (`:271` `maxPasses`, `:311` "not able to improve", `:474` and `:505` the two stagnation
+/// windows). So a CLI run that does exactly what it was asked ends `CANCELLED`, and no consumer
+/// can tell it from a user cancellation.
+///
+// fixed: T9 (#214) — the exit reason is carried out of the loop rather than inferred from one
+// flag, which is what the register row's suggested fix asks for and what `BatchLoopResult` was
+// already shaped for. [`BatchLoopExit::task_state`] is the `:571-585` decision, re-taken on the
+// reason instead of on the flag.
+///
+/// # The five doors, and why only one of them is a cancellation
+///
+/// | variant | Java site | asked for by |
+/// |---|---|---|
+/// | [`Self::Completed`] | the `while` head's own `continueAutorouting == false` (`:250`) | the board — there was nothing left to route |
+/// | [`Self::MaxPasses`] | `:268-273` | the caller — `--max-passes` |
+/// | [`Self::NoImprovement`] | `:308-313` — [`BoardHistory::restore_board`] gave up | the router |
+/// | [`Self::Stagnation`] | `:456-476` (the pass-local window) and `:486-507` (the global tracker) | the router |
+/// | [`Self::Cancelled`] | the `while` head with the flag raised by something **outside** the loop — [`RouterStop::poll_cancel`]'s operator request or [`RouterStop::poll_deadline`]'s job deadline | nobody the loop can see |
+///
+/// The first four are the loop finishing its work; only the last is a stop the caller did not
+/// ask for, and it is the only one that reports [`TaskState::Cancelled`].
+///
+/// The rank-limit arm (`:317-320`) is **not** a sixth variant: quirk #217's break was deleted in
+/// this same task — see [`AutorouteBatchLoop::run`]'s doc for the decision and its record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BatchLoopExit {
+    /// The `while` head's own `continueAutorouting == false` (`:250`) — the last pass routed and
+    /// failed nothing, so there is no work left. Also the state of a loop that was never entered
+    /// because `:221-223` disabled the router.
+    Completed,
+    /// `:268-273` — `currentPass > settings.maxPasses`. The caller's own budget, reached.
+    MaxPasses,
+    /// `:308-313` — "the router was not able to improve the board": the best-board restore ran
+    /// out of tries on every history entry.
+    NoImprovement,
+    /// `:456-476` or `:486-507` — one of the two stagnation windows closed.
+    Stagnation,
+    /// The `while` head with the stop flag raised from outside the loop: an operator's
+    /// `notifications/cancelled` copied in by [`RouterStop::poll_cancel`], or ruling AI's job
+    /// deadline observed by [`RouterStop::poll_deadline`].
+    Cancelled,
+}
+
+impl BatchLoopExit {
+    /// `:571-585`'s decision, re-taken on the **reason** rather than on the flag.
+    ///
+    /// Java tests `!thread.isStopAutoRouterRequested()` for `FINISHED`, `job.state ==
+    /// RoutingJobState.TIMED_OUT` for `TIMED_OUT` and falls through to `CANCELLED`. The first test
+    /// is the bug (quirk #214): four of the five doors above raise that flag on the way out, so
+    /// only [`Self::Completed`] could ever reach `FINISHED`.
+    ///
+    /// `timed_out` is [`RouterStop::is_timed_out`], i.e. Java's `job.state == TIMED_OUT`, and it
+    /// is consulted for exactly the same reason `:578-584` consults it — but only on the one door
+    /// a clock can produce.
+    pub fn task_state(self, timed_out: bool) -> TaskState {
+        match self {
+            // :578-584.
+            BatchLoopExit::Cancelled if timed_out => TaskState::TimedOut,
+            BatchLoopExit::Cancelled => TaskState::Cancelled,
+            // :572-574 — a door the loop chose is a finish.
+            BatchLoopExit::Completed
+            | BatchLoopExit::MaxPasses
+            | BatchLoopExit::NoImprovement
+            | BatchLoopExit::Stagnation => TaskState::Finished,
+        }
+    }
+}
+
+// =================================================================================================
 // `BatchLoopResult` — what Java writes into fields
 // =================================================================================================
 
@@ -91,9 +168,16 @@ pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_TH
 /// argument is that field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchLoopResult {
-    /// The state `:571-585` reports. **A normal end of routing is `Cancelled`** — see quirk #214
-    /// and [`AutorouteBatchLoop::run`]'s doc.
+    /// The state `:571-585` reports.
+    ///
+    // fixed: T9 (#214) — computed by [`BatchLoopExit::task_state`] from [`Self::exit`], so a
+    // normal end of routing is `Finished` and `Cancelled` means a stop the caller did not ask
+    // for. Before the fix every ordinary exit reported `Cancelled`.
     pub state: TaskState,
+    /// **The door the loop left by** — the reason `:571`'s one flag could not carry (quirk #214).
+    ///
+    // fixed: T9 (#214).
+    pub exit: BatchLoopExit,
     /// `:587` — Java's return value: `!thread.isStopAutoRouterRequested()`.
     pub continue_routing: bool,
     /// `currentPass` as the loop left it (`:520-522`). Because `:521` increments only when the
@@ -127,6 +211,14 @@ pub struct BatchLoopResult {
     pub per_pass: Vec<PassRecord>,
 }
 
+impl BatchLoopResult {
+    /// The door the loop left by — [`Self::exit`], as the accessor the pipeline's interface block
+    /// names.
+    pub fn exit(&self) -> BatchLoopExit {
+        self.exit
+    }
+}
+
 // =================================================================================================
 // `AutorouteBatchLoop`
 // =================================================================================================
@@ -147,15 +239,23 @@ impl AutorouteBatchLoop {
     /// beside it. **`board` is Java's `job.board` (`:552`)**: on return it is the board the run
     /// chose, which may be an *older* one restored out of [`BoardHistory`].
     ///
-    /// # Java bug (quirk #214): a normal end of routing reports `CANCELLED`, not `FINISHED`
+    /// # Java bug (quirk #214), **fixed here**: a normal end of routing reported `CANCELLED`
     ///
     /// `:571` reports [`TaskState::Finished`] only when the stop flag is still `NONE`. **Every
     /// ordinary exit from the loop raises it first** — `maxPasses` (`:271`), "not able to improve"
     /// (`:311`), the rank limit (`:318`) and both stagnation windows (`:474`, `:505`). The only
     /// path that leaves the flag `NONE` is the `while` head's own `continueAutorouting == false`,
     /// i.e. a pass that routed nothing at all. So a run that stops because it hit its pass budget
-    /// — the CLI's normal case — reports `CANCELLED`, and an API consumer watching
-    /// `TaskStateChangedEvent` cannot tell it from a user cancellation.
+    /// — the CLI's normal case — reported `CANCELLED`, and an API consumer watching
+    /// `TaskStateChangedEvent` could not tell it from a user cancellation.
+    ///
+    // fixed: T9 (#214) — the loop now carries the reason out in [`BatchLoopExit`], and
+    // [`BatchLoopExit::task_state`] takes `:571-585`'s decision on that reason. The **flag** is
+    // still raised at every one of Java's arms, because four other readers depend on it
+    // (`:298-300`'s restore gate, `:520-522`'s increment, `:557-563`'s tail removal and `:587`'s
+    // return value) and lowering it would be a different program; what changed is only what the
+    // *state* is computed from. This is also the prerequisite for #227's stage-scoped stop: the
+    // two are the same defect one level apart.
     ///
     /// # Ruling 7's sole new recovery boundary
     ///
@@ -299,6 +399,11 @@ impl AutorouteBatchLoop {
         let mut failure_log = RoutingFailureLog::new();
         let mut per_pass: Vec<PassRecord> = Vec::new();
 
+        // fixed: T9 (#214) — the door the loop leaves by. `None` while the loop is still running;
+        // every `break` below names its own door, and a `while` head that falls through is
+        // resolved after the loop from `continue_autorouting`.
+        let mut exit: Option<BatchLoopExit> = None;
+
         // :250.
         while continue_autorouting && !stop.is_stop_auto_router_requested() {
             // Controller ruling BB's poll seam (Plan 8 Task 11) — the **job-level** site. No Java
@@ -342,6 +447,8 @@ impl AutorouteBatchLoop {
                 .is_some_and(|max| max > 0 && current_pass > max)
             {
                 stop.request_stop_auto_router();
+                // fixed: T9 (#214) — the caller's own budget, reached.
+                exit = Some(BatchLoopExit::MaxPasses);
                 break;
             }
 
@@ -389,6 +496,8 @@ impl AutorouteBatchLoop {
                     else {
                         // :308-313 — "The router was not able to improve the board".
                         stop.request_stop_auto_router();
+                        // fixed: T9 (#214).
+                        exit = Some(BatchLoopExit::NoImprovement);
                         break;
                     };
 
@@ -400,6 +509,9 @@ impl AutorouteBatchLoop {
                     // :317-320.
                     if rank_limit_exceeded(board_to_restore_rank) {
                         stop.request_stop_auto_router();
+                        // fixed: T9 (#214). Unreachable — quirk #217; the branch itself is
+                        // deleted later in this task.
+                        exit = Some(BatchLoopExit::NoImprovement);
                         break;
                     }
 
@@ -481,6 +593,8 @@ impl AutorouteBatchLoop {
                         let _report = build_unrouted_report(board);
                         // :474-475.
                         stop.request_stop_auto_router();
+                        // fixed: T9 (#214).
+                        exit = Some(BatchLoopExit::Stagnation);
                         break;
                     }
                 }
@@ -496,6 +610,8 @@ impl AutorouteBatchLoop {
                     let _report = build_unrouted_report(board);
                     // :505-506.
                     stop.request_stop_auto_router();
+                    // fixed: T9 (#214).
+                    exit = Some(BatchLoopExit::Stagnation);
                     break;
                 }
 
@@ -553,18 +669,22 @@ impl AutorouteBatchLoop {
 
         // :567-569 — `PerformanceProfiler.printResults()` / `reset()`; see the roster.
 
-        // :571-585. Quirk #214: `FINISHED` needs the flag still `NONE`, and every ordinary exit
-        // raised it.
-        let state = if !stop.is_stop_auto_router_requested() {
-            // :572-574.
-            TaskState::Finished
-        } else if stop.is_timed_out() {
-            // :578-584 — `job.state == RoutingJobState.TIMED_OUT`, which is what
-            // `RouterStop::is_timed_out` models.
-            TaskState::TimedOut
-        } else {
-            TaskState::Cancelled
-        };
+        // :571-585.
+        //
+        // fixed: T9 (#214) — the door the loop left by decides the state, not the flag every
+        // ordinary exit raises. A `while` head that fell through has no recorded door: it is
+        // `Completed` when the last pass answered "nothing left to route" (`:250`'s first
+        // conjunct) and `Cancelled` when something outside the loop raised the flag while there
+        // was still work — an operator's `poll_cancel` or ruling AI's `poll_deadline`, which are
+        // the only two writers this loop does not perform itself.
+        let exit = exit.unwrap_or({
+            if continue_autorouting {
+                BatchLoopExit::Cancelled
+            } else {
+                BatchLoopExit::Completed
+            }
+        });
+        let state = exit.task_state(stop.is_timed_out());
         progress.on_event(&RoutingEvent::TaskStateChanged {
             algorithm: NamedAlgorithmType::Router,
             state,
@@ -573,6 +693,7 @@ impl AutorouteBatchLoop {
         // :587.
         Ok(BatchLoopResult {
             state,
+            exit,
             continue_routing: !stop.is_stop_auto_router_requested(),
             passes_run: current_pass,
             last_reported_pass,
