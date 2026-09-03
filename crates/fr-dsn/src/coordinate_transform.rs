@@ -86,9 +86,11 @@ impl CoordinateTransform {
     //
     // Java bug: (#89) CoordinateTransform.boardToDsn with a `scaleFactor` of 0 yields
     // `±Infinity` (or `NaN` for a value of 0) rather than throwing, because `/` on `double`s is
-    // IEEE division. // fixed: T4 (#89) — not here, but at the constructor: a `CoordinateTransform`
-    // whose scale factor is zero or non-finite cannot be built any more, so this division has
-    // nothing left to divide by.
+    // IEEE division.
+    //
+    // fixed: T4 (#89) — not here, but at the constructor: a `CoordinateTransform` whose scale
+    // factor is zero or non-finite cannot be built any more, so this division has nothing left
+    // to divide by.
     #[must_use]
     pub fn board_to_dsn(&self, value: f64) -> f64 {
         value / self.scale_factor
