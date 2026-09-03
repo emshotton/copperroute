@@ -240,10 +240,13 @@ impl AutoroutePassRunner {
             // a caller until the post-merge outlier investigation measured the cost of the gap:
             // `zx-sizif-512-ext` at `--router.job_timeout=00:05:00` ran **341 s**, +41 s, because
             // the deadline was observed at pass boundaries only and the pass that was running when
-            // it expired ran to completion. Java has no such gap — its monitor thread
-            // (`RoutingJobSchedulerActionThread.java:75`) flips the flag the moment the deadline
-            // passes and `AutoroutePassRunner.java:203` reads it once per item, so Java breaks out
-            // mid-pass.
+            // it expired ran to completion. Java's gap is a **sleep interval**, not a pass: its
+            // monitor thread (`RoutingJobSchedulerActionThread.java:55-90`) wakes once a second,
+            // calls `job.thread.requestStop()` at `:75`, and `AutoroutePassRunner.java:203` reads
+            // the flag once per item — so Java breaks out mid-pass within ~1000 ms of expiry. The
+            // port polls the clock directly at this same site and therefore lands marginally
+            // *tighter* than Java, not merely level with it; the residual is one item, which
+            // neither side preempts.
             //
             // This is a **job-level** site, so ruling AI's prohibition does not reach it: the four
             // forbidden sites (`BatchFanout:111`/`:396`, `BatchOptimizer:172`/`:308`) read a

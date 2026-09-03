@@ -2,5 +2,9 @@
 # sccache does not support incremental compilation, so it is disabled; the win on
 # fresh builds (every subagent) outweighs the tiny-edit loop cost.
 [build]
+# WARNING, measured 2026-09-02: an A/B of two *different* sources through this wrapper produced a
+# byte-identical `target/release/freerouting`. Before trusting any release-binary A/B, check the
+# two hashes differ; run mutation checks through `cargo test`, not a binary. Full rule and the
+# reproduction in `scripts/differential/README.md`, "A/B-ing release binaries under sccache".
 rustc-wrapper = "/Users/em/.cargo/bin/sccache"
 incremental = false

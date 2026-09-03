@@ -1,0 +1,28 @@
+# Job-deadline overshoot — the pass-boundary gap, measured before and after the fix
+# Board: pcbench-zx-sizif-512-ext (outlier_pcbs/.../board/unrouted.dsn, read-only), 10 s budget
+# Produced 2026-09-02 on the `fix/fanout-tie-break` branch. Both binaries were built from
+# this workspace and their sha256s CHECKED TO DIFFER first — see
+# scripts/differential/README.md, "A/B-ing release binaries under sccache".
+#
+# `before` = the same source with `stop.poll_deadline();` removed from
+#            crates/fr-router/src/pipeline/pass_runner.rs's item loop, and nothing else.
+# `after`  = the committed tree.
+# NOT replayed by any test: this is the preserved measurement record that
+# docs/plan-8-handoff.md's §Errata cites. It lives beside the fixture data because a
+# committed number with no artifact behind it is not evidence.
+
+BOARD  /Users/em/Development/freerouting/outlier_pcbs/pcbench-zx-sizif-512-ext_sizif512ext/board/unrouted.dsn
+ARGV   -de <board> -do <out.ses> -mp 10 --router.job_timeout=00:00:10 --router.max_threads=1 --gui.enabled=false --api_server.enabled=false --mcp_server.enabled=false
+
+[before] binary sha256=92e73bf404e25a3b978b1a18e3924f58cc6fbe9bea509ef35b0b9e2f73ddca3e
+[after] binary sha256=d46482e94cc8ea5ff705103de5c4655b82f0e655fef5e92570c42fc86fec8cb6
+
+[before] exit=0 wall=33.69s overshoot=+23.69s ses_bytes=142349 ses_sha256=1e76c56813a3ced501d5ce14a890262617875315be505751aca15495aad2cb85
+[before] stdout+stderr bytes=0 (the port is silent at this argv shape; see the
+[before]   outlier investigation §6(b) — the jar logs a full INFO trace here, the port none)
+[after] exit=0 wall=10.94s overshoot=+0.94s ses_bytes=83619 ses_sha256=340462d605a726ee68831fb8545e136e5ea6b58f262d3c287b17f2793cbc5dfb
+[after] stdout+stderr bytes=0 (the port is silent at this argv shape; see the
+[after]   outlier investigation §6(b) — the jar logs a full INFO trace here, the port none)
+
+VERDICT overshoot +23.69s -> +0.94s at a 10 s budget (25x tighter)
+VERDICT the jar's own figure on this board at a 300 s budget was +7.9 s (outlier-investigation.md §4)

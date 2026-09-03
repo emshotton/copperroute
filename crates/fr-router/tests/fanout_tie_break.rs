@@ -104,29 +104,33 @@ fn jar_ses(transcript: &std::path::Path) -> String {
 /// `tests/batch_parity.rs::route_stem` builds it: ruling AW's `resolve_headless` ladder and
 /// `prepare_board`, then `run_pipeline` and the SES writer.
 fn route(dsn: &std::path::Path) -> String {
+    // One read: the same bytes feed `DsnFileSettings` (the priority-30 tier) and the parser.
     let bytes = std::fs::read(dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = format!("{STEM}.dsn");
 
-    let file = std::fs::File::open(dsn).unwrap_or_else(|e| panic!("cannot open {dsn:?}: {e}"));
-    let (mut board, transform): (fr_board::Board, CoordinateTransform) =
-        match fr_dsn::read_board(file, None, Some(&file_name), &DsnReadOptions::default()) {
-            BoardReadResult::Success {
-                board,
-                coordinate_transform,
-                ..
-            } => (
-                *board.expect("the fixture produces a board"),
-                coordinate_transform.expect("the fixture produces a coordinate transform"),
-            ),
-            other => panic!("{STEM} did not read: {other:?}"),
-        };
+    let (mut board, transform): (fr_board::Board, CoordinateTransform) = match fr_dsn::read_board(
+        std::io::Cursor::new(&bytes[..]),
+        None,
+        Some(&file_name),
+        &DsnReadOptions::default(),
+    ) {
+        BoardReadResult::Success {
+            board,
+            coordinate_transform,
+            ..
+        } => (
+            *board.expect("the fixture produces a board"),
+            coordinate_transform.expect("the fixture produces a coordinate transform"),
+        ),
+        other => panic!("{STEM} did not read: {other:?}"),
+    };
 
-    let argv = vec![
-        "-de".to_string(),
-        dsn.display().to_string(),
-        "-do".to_string(),
-        dsn.display().to_string().replace(".dsn", ".ses"),
-    ];
+    // The jar's argv, minus `-do`: this function writes the SES into a `Vec` rather than to a
+    // path, and carrying an output path the test never creates would be a lie in the fixture. The
+    // omission is settings-invisible — the CLI tier reads `-do` for the output *destination*, and
+    // nothing below consults it — and the assertion is what proves it, because the reference on
+    // the other side is the jar run **with** `-do`.
+    let argv = vec!["-de".to_string(), dsn.display().to_string()];
     let dsn_source = DsnFileSettings::new(&bytes[..], &file_name);
     let env_map: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     let env_source = EnvironmentVariablesSource::new(&env_map);
