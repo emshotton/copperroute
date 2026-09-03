@@ -417,13 +417,30 @@ impl IntBox {
         }
     }
 
-    /// Java `borderLineIndex(Line line)` (IntBox.java:432-436) is an unfinished stub in upstream
-    /// freerouting: it unconditionally logs a warning and returns -1, regardless of whether
-    /// `line` actually is one of this box's border lines. Ported faithfully as always `None`
-    /// (`FRLogger.warn` dropped per conventions — `fr-geometry` has no `tracing` dependency, and
-    /// the log carried no information beyond "not implemented").
-    pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
-        None
+    /// Returns the index of `line` among this box's four border lines, or `None` if it is not
+    /// one of them.
+    ///
+    /// **Java bug:** `borderLineIndex(Line line)` (IntBox.java:432-436) is an unfinished stub in
+    /// upstream freerouting — it logs a warning and returns `-1` for *every* line, including this
+    /// box's own border lines. The live caller `ShapeAndEntrySide.java:59,63` receives that `-1`,
+    /// so the shove's entry-side search never finds the side it is looking for.
+    ///
+    /// **fixed: T11 (#7).** Implemented geometrically against [`IntBox::border_line`], which is
+    /// the specification: `border_line` says which line each index names, so this is its inverse
+    /// and needs no oracle beyond the same file. The comparison is [`Line::equals_geometric`] —
+    /// Java's own `Line.equals`, and exactly what the already-implemented
+    /// `Simplex::border_line_index` (Simplex.java:668) uses, so the three arms of
+    /// `TileShape::border_line_index` now agree about what an index means.
+    ///
+    /// Geometric, not structural, for two reasons that a collinearity-only test would get wrong:
+    /// a border line may be handed over described by *different* points on the same line, and the
+    /// **reversed** line — same points, opposite direction — is a different border line. The tile
+    /// convention is that the shape lies on the right of every border line, so direction is part
+    /// of the identity. `equals_geometric` checks collinearity of both end points *and* a
+    /// positive direction projection, which settles both. It also tells border lines 0 and 3 of a
+    /// box at the origin apart, though they share the point `(0,0)`.
+    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+        (0..4).find(|&i| line.equals_geometric(&self.border_line(i)))
     }
 
     /// Returns the box offsetted by dist. If dist > 0, the offset is to the outside, else to the
@@ -814,10 +831,13 @@ mod tests {
         assert_eq!(x.border_line(2), Line::from_coords(0, x.ur.y, -1, x.ur.y));
         assert_eq!(x.border_line(3), Line::from_coords(x.ll.x, 0, x.ll.x, -1));
 
-        // IntBox.java:432-436: borderLineIndex is an unfinished stub upstream — it always logs a
-        // warning and returns -1, even for a box's own border lines.
+        // fixed: T11 (#7). Java bug: IntBox.java:432-436 is an unfinished stub upstream — it
+        // always logs a warning and returns -1, even for a box's own border lines, and this loop
+        // asserted `None` for all four. `border_line` above is the specification, so the index is
+        // now its inverse. The wider contract — the orientation trap, the shared-point trap, and
+        // agreement with the simplex arm — is `crates/fr-geometry/tests/border_line_index.rs`.
         for i in 0..4 {
-            assert_eq!(x.border_line_index(&x.border_line(i)), None);
+            assert_eq!(x.border_line_index(&x.border_line(i)), Some(i));
         }
         assert_eq!(x.border_line_index(&Line::from_coords(0, 0, 1, 1)), None);
     }

@@ -1812,11 +1812,20 @@ mod tests {
         assert!(bx().corner_is_bounded(0) && tri().corner_is_bounded(0));
         assert_eq!(bx().corner(2), Point::Int(IntPoint::new(10, 10)));
         assert_eq!(bx().corner_approx_arr().len(), 4);
-        // borderLineIndex is a Java stub for IntBox/IntOctagon and real only for Simplex
+        // fixed: T11 (#7). Java bug: `borderLineIndex` was a stub for IntBox/IntOctagon and real
+        // only for Simplex, so the same geometry answered differently depending on which
+        // representation held it — and this dispatch test pinned that disagreement. All three
+        // arms now search geometrically, so the dispatch is a dispatch rather than a fork.
         let tri_line = tri().border_line(0).unwrap();
         assert_eq!(tri().border_line_index(&tri_line), Some(0));
-        assert_eq!(bx().border_line_index(&bx().border_line(0).unwrap()), None);
-        assert_eq!(oct.border_line_index(&oct.border_line(0).unwrap()), None);
+        assert_eq!(
+            bx().border_line_index(&bx().border_line(0).unwrap()),
+            Some(0)
+        );
+        assert_eq!(
+            oct.border_line_index(&oct.border_line(0).unwrap()),
+            Some(0)
+        );
     }
 
     #[test]
