@@ -169,11 +169,19 @@ impl ExpansionDrill {
                     // **constructor**, not `addIncompleteExpansionRoom`, so the room never joins
                     // `incompleteExpansionRooms` — and on an engine whose list is still null that
                     // is what makes `:79` throw (quirk #169).
-                    let new_incomplete_room = engine.rooms.new_unlisted_incomplete_room(
-                        None,
-                        layer,
-                        Some(search_shape.clone()),
-                    );
+                    //
+                    // fixed: T6 (#169) — the second half of the register's suggested fix: build
+                    // the room with `addIncompleteExpansionRoom` (`new_incomplete_room`) rather
+                    // than the bare constructor, "so the room is in the database it is about to be
+                    // completed out of". The first half is the field guard in
+                    // `ExpansionRoomStore::remove_incomplete_expansion_room`; both are needed,
+                    // because the guard alone would leave `ExpansionDrill` completing a room the
+                    // engine has never heard of, and this alone would leave every other bare
+                    // constructor (there are none today) able to reinstate the crash.
+                    let new_incomplete_room =
+                        engine
+                            .rooms
+                            .new_incomplete_room(None, layer, Some(search_shape.clone()));
                     // :78-79.
                     let new_rooms = engine
                         .complete_expansion_room(board, new_incomplete_room)
