@@ -697,6 +697,16 @@ impl CopyFields for RouterSettings {
         );
         // rule 1 (`ReflectionUtil.java:226-228`): `board_specific_trace_costs_applied` is
         // `private transient` in Java (`RouterSettings.java:111`) and is never copied.
+        //
+        // The port's own field comes last, after every Java one, so the iteration order above is
+        // still exactly `ReflectionUtil`'s. It is `public` and non-`transient`, so rule 1 copies
+        // it like any other scalar (Plan 9 Task 1, #234).
+        scalar_copy(
+            &self.opt_changed_area_ms,
+            &mut target.opt_changed_area_ms,
+            mode,
+            report,
+        );
     }
 }
 

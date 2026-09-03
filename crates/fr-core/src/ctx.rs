@@ -38,13 +38,21 @@ pub struct Ctx<'a> {
     pub progress: &'a SyncProgressSink,
     /// Ruling AI's wall-clock knob. Every parity run passes
     /// [`fr_router::pipeline::RouterBudget::disabled`]; the CLI passes
-    /// [`fr_router::pipeline::RouterBudget::default`], which is Java's four literals.
+    /// [`fr_router::pipeline::RouterBudget::default`], which is **the port's** budget — Java's
+    /// literals for the three clocks that cannot change a routed board, and `0` for the one that
+    /// can (`opt_changed_area_ms`, quirk #234, Plan 9 Task 1). Java's four literals as such are
+    /// [`fr_router::pipeline::RouterBudget::java_literals`].
     pub budget: fr_router::pipeline::RouterBudget,
 }
 
 impl<'a> Ctx<'a> {
-    /// A context with no cancellation and Java's own budget literals — what a plain
-    /// `-de/-do` run is.
+    /// A context with no cancellation and the port's own budget — what a plain `-de/-do` run is.
+    ///
+    /// "The port's own" rather than "Java's literals" since Plan 9 Task 1: `opt_changed_area_ms`
+    /// defaults to `0`, Java's own "off" value, because the 1000 ms Java inlines there abandons
+    /// the pull-tight on wall clock and makes the routed board depend on how fast the machine is
+    /// (#234). The other three keep Java's numbers. See
+    /// [`fr_router::pipeline::RouterBudget::default`].
     pub fn new(
         settings: &'a fr_settings::RouterSettings,
         progress: &'a SyncProgressSink,

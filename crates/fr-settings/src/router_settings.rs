@@ -264,6 +264,36 @@ pub struct RouterSettings {
     /// same reason. `transient`, so also never round-tripped through JSON.
     #[serde(skip)]
     pub(crate) board_specific_trace_costs_applied: Option<bool>,
+
+    /// The `optChangedArea` pull-tight budget, in milliseconds. **The port's own field: Java has
+    /// no counterpart**, and that is the whole point of it.
+    ///
+    // Java bug: `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is declared `static final int … = 1000` with
+    // a constant initialiser at all four sites, so `javac` inlines it (`javap -c -p` on the
+    // shipping jar shows `sipush 1000` before every `optChangedArea` call and no `getstatic`);
+    // the fields are dead, reflection cannot reach them, and no flag exists. The only way to
+    // observe or disable the limit in the jar is to recompile — quirk #234.
+    // fixed: T1 (#234) — this field is the register's own suggested fix, "make the limit a
+    // settings field so a reproducible run is expressible", and it is why the port's
+    // `RouterBudget::default()` may safely be `0`: the 1000 ms behaviour is not deleted, it is
+    // moved from an inlined constant to something a user can ask for.
+    ///
+    /// `--router.opt_changed_area_ms=1000` (or `{"opt_changed_area_ms": 1000}`) reproduces the
+    /// jar's behaviour, including its non-reproducibility. `0` — the default when this is unset —
+    /// is Java's own "off" value: `TraceTightener`'s constructor builds a `TimeLimit` only
+    /// `if (timeLimit > 0)` (`board/optimize/TraceTightener.java:73-77`), so the pull-tight simply
+    /// runs to completion, which is strictly more work and cannot lengthen a trace. A negative
+    /// value takes the same branch (`> 0`, not `!= 0`) and is also "off".
+    ///
+    /// It is deliberately **last** in [`RouterSettings::FIELD_NAMES`], after every Java field, so
+    /// that Java's `getDeclaredFields()` order — which the merge engine's `copy_fields` iterates
+    /// and `struct_shape.rs` pins — is unchanged by its arrival.
+    #[serde(
+        rename = "opt_changed_area_ms",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub opt_changed_area_ms: Option<i32>,
     // Java's `private transient PropertyChangeSupport pcs` (RouterSettings.java:114) is GUI
     // bidirectional-binding plumbing with no headless use; the plan's Global Constraints ("No
     // GUI, no PropertyChangeSupport") drop it entirely rather than modeling it as an unused
@@ -277,7 +307,13 @@ pub struct RouterSettings {
 impl RouterSettings {
     /// Rust field names in `RouterSettings.getDeclaredFields()` source order (constants, the two
     /// constructors, and the dropped `pcs` field excluded — see the struct's trailing doc
-    /// comments). Pins the order the merge engine's `copy_fields` (Task 2) must iterate in.
+    /// comments), **followed by the port's own fields**. Pins the order the merge engine's
+    /// `copy_fields` (Task 2) must iterate in.
+    ///
+    /// Java's twenty-one names come first and in Java's order, so `copy_fields` iterates exactly
+    /// as `ReflectionUtil` does. The port's own additions are appended after them, where they
+    /// cannot shift a Java field's position; there is one today,
+    /// [`RouterSettings::opt_changed_area_ms`] (Plan 9 Task 1, #234).
     pub const FIELD_NAMES: &'static [&'static str] = &[
         "enabled",
         "algorithm",
@@ -300,6 +336,8 @@ impl RouterSettings {
         "max_threads",
         "result_json_path",
         "board_specific_trace_costs_applied",
+        // The port's own, after every Java name. See this const's doc comment.
+        "opt_changed_area_ms",
     ];
 
     /// Mirrors Java's no-arg constructor (`RouterSettings()`, `RouterSettings.java:119-124`),

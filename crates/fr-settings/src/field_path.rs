@@ -229,6 +229,17 @@ impl RouterSettings {
             "board_specific_trace_costs_applied",
             FieldKind::Bool,
         ),
+        // The port's own field, after every Java one (Plan 9 Task 1, #234). Its `serialized` and
+        // its `declared` name are the same because there is no Java field to disagree with: the
+        // Java counterpart is the javac-inlined `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`, which no
+        // property path can reach. `--router.opt_changed_area_ms=1000` restores the jar's own
+        // behaviour; unset, the port's default is Java's "off" value.
+        spec(
+            "opt_changed_area_ms",
+            "opt_changed_area_ms",
+            "opt_changed_area_ms",
+            FieldKind::I32,
+        ),
     ];
 }
 
@@ -933,6 +944,7 @@ fn set_router_leaf(
         "board_specific_trace_costs_applied" => {
             target.board_specific_trace_costs_applied = Some(java_parse_bool(value));
         }
+        "opt_changed_area_ms" => target.opt_changed_area_ms = Some(java_parse_i32(value, path)?),
         // `fanout`, `layers`, `optimizer`, `scoring`: `convertValue` matches none of its arms for
         // a struct or object-array target type and returns the raw `String` (:203-204), which
         // `field.set` (:41) then rejects with `IllegalArgumentException` (JVM probes H5/H6).

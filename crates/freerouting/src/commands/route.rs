@@ -333,13 +333,11 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         settings: &settings,
         cancel,
         progress: &progress,
-        // Ruling AI's wall clock, **live by default** — Java's four literals. `tests/reference/
-        // cli-*` compares two whole programs and the jar cannot switch its own (javac-inlined)
-        // budget off, so a plain CLI run must not either; see `scripts/gen-cli-reference.sh`'s
-        // header. [`harness_budget`] is that default, plus the one harness escape
-        // `scripts/quality-ab.sh` needs to take time out of a *quality* measurement — read its
-        // doc before assuming this line is unconditional.
-        budget: harness_budget(),
+        // Ruling AI's wall clock. The three knobs that do not change a routed board keep Java's
+        // literals; the one that does — `optChangedArea`'s inlined 1000 ms, quirk #234 — is off
+        // by default, so a CLI run is reproducible. [`run_budget`] is the whole rule, precedence
+        // included; read its doc before assuming this line is unconditional.
+        budget: run_budget(&settings),
     };
     // ── 12b. **quirk #289 (label T)**: the board `-do out.json` actually writes ───────────────
     //
@@ -809,56 +807,95 @@ fn result_json_path(job: &RoutingJob, args: &RouteArgs) -> Option<String> {
     })
 }
 
-/// The router's wall-clock budget for this run: **Java's four literals**, unless the harness
-/// variable `FR_ROUTER_BUDGET` says otherwise.
+/// The router's wall-clock budget for this run.
 ///
-/// # Why a knob exists at all
+/// # The precedence, which is the whole of this function (controller ruling BR)
+///
+/// ```text
+/// FR_ROUTER_BUDGET, if set    the test-harness seam  — whole-budget, coarse, wins outright
+///   else router.opt_changed_area_ms, if set   the user's setting — one field
+///     else RouterBudget::default()            the port's own budget
+/// ```
+///
+/// The two upper levels are different kinds of thing and that is why one can outrank the other
+/// without either being redundant. The setting names **one field**; the environment variable
+/// selects a whole budget and exists so a harness can assert it took the clock out of a
+/// measurement. A harness that set the variable and silently got the settings file's value back
+/// would be measuring something it did not choose, so when the variable is set, it wins.
+///
+/// # `FR_ROUTER_BUDGET` is a test-harness seam, not a user surface
 ///
 /// Ruling AI's rule is that *time is out of every quality measurement*: a wall-clock budget makes
-/// the answer depend on how fast the machine is, so a comparison taken with the clock live is a
+/// the answer depend on how fast the machine is, so a comparison taken with a clock live is a
 /// comparison of two machines as much as of two programs. Every parity driver therefore runs
 /// [`fr_router::pipeline::RouterBudget::disabled`], and Plan 9's per-task quality A/B
 /// (`scripts/quality-ab.sh`) must do the same — but that harness drives **the CLI**, as a whole
-/// program, because that is what its 29 stems are references of.
+/// program, because that is what its 29 stems are references of. It needs one lever that reaches
+/// inside a process it can only start, and this is that lever.
 ///
-/// # Why it is an environment variable and not a flag
+/// It is an environment variable read at exactly one site precisely so that it is *not* part of
+/// the settings surface several Plan 9 tasks are busy making predictable: it cannot be set by a
+/// settings file, it cannot be merged, it does not appear in the manifest's `settings_snapshot`,
+/// and `EnvironmentVariablesSource` cannot see it (that source reads only `FREEROUTING__ROUTER__*`,
+/// `settings/sources/EnvironmentVariablesSource.java:59-61`, and this name deliberately does not
+/// start with that prefix). A user who wants the jar's pull-tight clock back asks for the setting
+/// — `--router.opt_changed_area_ms=1000` — and never for this.
 ///
-/// A `--router.budget` flag would be a *user-visible setting the Java program does not have*, and
-/// the settings surface is a wire contract several Plan 9 tasks are busy making predictable. An
-/// environment variable read at exactly one site is not part of that surface: it cannot be set by
-/// a settings file, it cannot be merged, it does not appear in the manifest's
-/// `settings_snapshot`, and `EnvironmentVariablesSource` cannot see it (that source reads only
-/// `FREEROUTING__ROUTER__*`, `settings/sources/EnvironmentVariablesSource.java:59-61`, and this
-/// name deliberately does not start with that prefix).
+/// An earlier draft of this comment argued that a *flag* for the budget would be "a user-visible
+/// setting the Java program does not have", and #234 then added exactly such a setting. Both are
+/// right, and the contradiction was in treating them as the same object: `router.opt_changed_area_ms`
+/// is a documented user setting that exists because Java's own constant is unreachable, and
+/// `FR_ROUTER_BUDGET` is a harness seam that exists because a subprocess has no other way to be
+/// told "no clocks at all". Neither is the other's flag.
 ///
-/// # What it does not change
+/// # What is left when nothing is set
 ///
-/// **Unset — the case every user, every test and every committed golden is in — this is exactly
-/// `RouterBudget::default()`**, i.e. the four Java literals, and the CLI behaves as it did before
-/// the knob existed. An unrecognised value is a hard error rather than a silent fallback: a
-/// harness that thinks it disabled the clock and did not would produce numbers nobody could
-/// trust, and that is worse than a stopped run.
-fn harness_budget() -> fr_core::RouterBudget {
+/// [`fr_router::pipeline::RouterBudget::default`] — Java's literals for the fanout per-pin budget
+/// and the two progress throttles, and **0 for `opt_changed_area_ms`** (#234, Plan 9 Task 1), which
+/// is Java's own "off" value and makes a plain CLI run reproducible. An unrecognised
+/// `FR_ROUTER_BUDGET` value is a hard error rather than a silent fallback: a harness that thinks
+/// it disabled the clock and did not would produce numbers nobody could trust, and that is worse
+/// than a stopped run.
+fn run_budget(settings: &fr_settings::RouterSettings) -> fr_core::RouterBudget {
     use std::env::VarError;
     match std::env::var("FR_ROUTER_BUDGET").as_deref() {
-        // The only silent arm, and it is the one every user, every test and every committed
-        // golden is in: the variable is not set at all.
-        Err(VarError::NotPresent) | Ok("") | Ok("default") => fr_core::RouterBudget::default(),
+        // The variable is not set at all: the settings have their say, then the default.
+        Err(VarError::NotPresent) | Ok("") => settings_budget(settings),
+        // `default` names the port's default explicitly and therefore also overrides the setting;
+        // a harness that asks for the default is asking for the default, not for whatever the
+        // board's settings file happens to carry.
+        Ok("default") => fr_core::RouterBudget::default(),
+        Ok("java") => fr_core::RouterBudget::java_literals(),
         Ok("disabled") => fr_core::RouterBudget::disabled(),
         // A set-but-unreadable value is a *set* value. Folding `NotUnicode` into the unset arm
         // would hand a harness that believes it disabled the clock a run with the clock live,
-        // which is the one failure mode this knob exists to make impossible.
+        // which is the one failure mode this seam exists to make impossible.
         other => {
             let shown = match other {
                 Ok(v) => format!("{v:?}"),
                 Err(_) => "<not valid unicode>".to_string(),
             };
             eprintln!(
-                "FR_ROUTER_BUDGET={shown} is not a budget; use `default` (Java's four \
-                 literals) or `disabled` (ruling AI's every-clock-off, what the parity drivers \
-                 and scripts/quality-ab.sh run)"
+                "FR_ROUTER_BUDGET={shown} is not a budget; use `default` (the port's own — \
+                 Java's literals with the optChangedArea clock off), `java` (Java's four \
+                 literals, quirk #234's 1000 ms included), or `disabled` (ruling AI's \
+                 every-clock-off, what the parity drivers and scripts/quality-ab.sh run)"
             );
             std::process::exit(2);
         }
     }
+}
+
+/// [`fr_router::pipeline::RouterBudget::default`], with `router.opt_changed_area_ms` applied if
+/// the resolved settings carry one.
+///
+// fixed: T1 (#234) — the setting the register asked for ("make the limit a settings field so a
+// reproducible run is expressible"), reaching the budget. This is the only field of the four the
+// settings surface exposes, because it is the only one of the four that changes a routed board.
+fn settings_budget(settings: &fr_settings::RouterSettings) -> fr_core::RouterBudget {
+    let mut budget = fr_core::RouterBudget::default();
+    if let Some(ms) = settings.opt_changed_area_ms {
+        budget.opt_changed_area_ms = ms;
+    }
+    budget
 }

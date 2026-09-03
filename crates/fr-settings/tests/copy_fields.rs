@@ -535,6 +535,10 @@ fn populated_router() -> RouterSettings {
     s.scoring = Some(populated_scoring());
     s.max_threads = Some(47);
     s.result_json_path = Some("/tmp/result.json".to_string());
+    // The port's own field (Plan 9 Task 1, #234) — populated like any other `pub` scalar, which
+    // is the assertion: rule 1 copies it because it is `public` and non-`transient`, and nothing
+    // about it is special-cased.
+    s.opt_changed_area_ms = Some(48);
     s
 }
 
@@ -633,6 +637,11 @@ fn router_settings_table_covers_every_field() {
     // `private` flag rule 1 skips = the plain scalars; the nested objects contribute their own
     // recursive counts (`:335`), `layers` contributes `source.len()` (`:311`) and
     // `ignore_net_classes` one (`:288`).
+    //
+    // `opt_changed_area_ms` (Plan 9 Task 1, #234) needs no term of its own: it is a `public`,
+    // non-`transient` scalar, so it is inside the `FIELD_NAMES.len() - 6` above and the arithmetic
+    // absorbs it. That it does is the point — a port-only field that rule 1 treated specially
+    // would be a second merge rule nobody asked for.
     let expected = (RouterSettings::FIELD_NAMES.len() - 6)
         + 1
         + 1

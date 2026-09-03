@@ -447,10 +447,18 @@ fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
 /// The Rust-only half of controller ruling AI's knob: a **budget** — not a stop check — trips the
 /// same `:147` read, through the `TimeLimit` `TraceTightener`'s constructor builds when
 /// `timeLimit > 0` (TraceTightener.java:73-77). A 1 ms budget on an already-expired clock cuts the
-/// sweep; the default is Java's own literal 1000.
+/// sweep.
+///
+/// The budget asserted here is `java_literals()`'s 1000, not `default()`'s: since Plan 9 Task 1
+/// the port's default is `0` (#234), because a wall clock that abandons the pull-tight makes the
+/// routed board depend on how fast the machine is. The mechanism this test exercises is
+/// unchanged — it is still reachable, still Java's, and now a user asks for it by name with
+/// `--router.opt_changed_area_ms=1000`.
 #[test]
 fn the_budget_trips_the_sweep() {
-    assert_eq!(RouterBudget::default().opt_changed_area_ms, 1000);
+    assert_eq!(RouterBudget::java_literals().opt_changed_area_ms, 1000);
+    // fixed: T1 (#234) — and the port's own default no longer carries it.
+    assert_eq!(RouterBudget::default().opt_changed_area_ms, 0);
 
     let mut board = detour_board(200);
     mark_every_trace(&mut board);

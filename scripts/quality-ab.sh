@@ -46,8 +46,18 @@
 #   Plan 9 switch: *time is out of every quality measurement*, because a live wall-clock budget
 #   makes the routed board depend on how fast the machine is, and an A/B between two tasks would
 #   then be comparing two machine loads. The CLI reads `FR_ROUTER_BUDGET=disabled` at exactly one
-#   site (`crates/freerouting/src/commands/route.rs::harness_budget`); unset, it is Java's four
-#   literals and every user, test and committed golden is in that case.
+#   site (`crates/freerouting/src/commands/route.rs::run_budget`), and that variable is a **test
+#   harness seam**, not a user surface — it is not a setting, it cannot be merged, and it does not
+#   appear in a manifest's `settings_snapshot`.
+#
+#   **Task 1's #234 makes half of this seam redundant, and only half** (ruling BR). Since
+#   `opt_changed_area_ms` defaults to `0`, an unset run and a `disabled` run already agree about
+#   the pull-tight clock — the one clock that changes a routed board. What still separates them is
+#   `fanout_ms_per_pin`, Java's `10000` against `disabled`'s `i32::MAX`: the fanout stage's per-pin
+#   budget is live in a default run, it *does* change what gets routed on a big board, and taking
+#   it out of a quality measurement is exactly ruling AI. So this lane keeps setting the variable.
+#   Whether the seam should exist at all once nothing else needs it is **Task 24's** decision and
+#   is parked there; nothing before Task 24 should remove it.
 # * **The time lane** runs the budget in its **normal** configuration — what a user gets — and is
 #   the `cpu_s` column. It is the **median of `--repeats` runs (default 3)** on an otherwise-quiet
 #   machine, and the spread (max - min) is printed beside it. That spread is the only noise figure
@@ -260,7 +270,7 @@ echo "== building the port's binary (release)"
 # generators compute the same pair, and for the same reason: `port-sha` is the one provenance line
 # the measurement spine has, and a bare HEAD sha on a dirty tree names a commit that does not
 # contain the code that was measured. (Task 0's own first run is the standing example: it recorded
-# the base sha, which does not carry `harness_budget()` — at that sha `FR_ROUTER_BUDGET=disabled`
+# the base sha, which does not carry `run_budget()` — at that sha `FR_ROUTER_BUDGET=disabled`
 # is ignored and the quality lane would have run with the clock live.)
 PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
 if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then

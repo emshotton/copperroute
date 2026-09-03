@@ -1,7 +1,7 @@
 {
   "RouterSettings": {
     "additionalProperties": false,
-    "description": "The router's settings, as `settings/RouterSettings.java` declares them and as Gson spells them on the wire. Every field is optional: a value given here overrides the resolved default, and a field left out keeps it. Unknown keys are ignored rather than refused, which is Gson's behaviour and therefore this reader's.",
+    "description": "The router's settings, as `settings/RouterSettings.java` declares them and as Gson spells them on the wire, plus `opt_changed_area_ms`, which the port adds because the Java constant behind it is inlined by javac and cannot be reached. Every field is optional: a value given here overrides the resolved default, and a field left out keeps it. Unknown keys are ignored rather than refused, which is Gson's behaviour and therefore this reader's.",
     "properties": {
       "algorithm": {
         "description": "Which routing algorithm to use. One name is implemented; anything else is normalised back to it.",
@@ -120,6 +120,10 @@
       "neck_width_um": {
         "description": "Trace width, in micrometres, used where a full-width trace will not fit (see automatic_neckdown).",
         "type": "number"
+      },
+      "opt_changed_area_ms": {
+        "description": "Wall-clock budget, in milliseconds, for the pull-tight pass over a changed area. 0 or absent (the default) means no budget and the pull-tight always runs to completion, which is deterministic. The Java program hard-codes 1000 here and cannot switch it off, which makes its own output depend on how fast the machine is; set 1000 to reproduce that.",
+        "type": "integer"
       },
       "optimizer": {
         "additionalProperties": false,

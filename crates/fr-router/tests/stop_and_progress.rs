@@ -566,12 +566,19 @@ fn router_counters_field_list_matches_java() {
 // `RouterBudget` (ruling AI, amendment ruling 10)
 // =================================================================================================
 
-/// The four defaults are Java's literals, each with its Java line in the message. Two of them the
-/// probe reflected; two are inline in a method body and one is a constructor argument, so those
-/// three are source citations (see the module doc).
+/// [`RouterBudget::java_literals`]'s four values are Java's literals, each with its Java line in
+/// the message. Two of them the probe reflected; two are inline in a method body and one is a
+/// constructor argument, so those three are source citations (see the module doc).
+///
+/// **This was `RouterBudget::default()` until Plan 9 Task 1.** #234 moved the port's default
+/// `opt_changed_area_ms` to `0` — Java's own "off" value — because the 1000 abandons the
+/// pull-tight on wall clock and makes the jar's own output depend on how fast the machine is.
+/// The Java fact did not stop being a fact, so it kept a constructor and kept this test; the
+/// port's departure from it is pinned separately by
+/// [`the_ports_default_budget_departs_from_java_in_exactly_one_field`].
 #[test]
-fn the_budget_defaults_are_javas_literals() {
-    let budget = RouterBudget::default();
+fn the_java_literal_budget_carries_javas_four_literals() {
+    let budget = RouterBudget::java_literals();
 
     // Reflected by the probe at all four declaration sites.
     let reflected: Vec<i32> = section("constants")
@@ -621,11 +628,15 @@ fn the_budget_defaults_are_javas_literals() {
 /// `TraceTightener`'s constructor only builds a `TimeLimit` when `timeLimit > 0`
 /// (`board/optimize/TraceTightener.java:73-77`), so `opt_changed_area_ms = 0` is *exactly*
 /// Java's "no limit" and needs no port-only branch. That is what makes
-/// [`RouterBudget::disabled`] a faithful configuration rather than a port-only mode.
+/// [`RouterBudget::disabled`] a faithful configuration rather than a port-only mode — and, since
+/// Plan 9 Task 1, what makes the port's own default a legal Java configuration too (#234) rather
+/// than a behaviour the jar has no way to express.
 #[test]
 fn a_zero_opt_changed_area_budget_is_javas_no_limit() {
     assert!(
-        RouterBudget::default().opt_changed_area_limit().is_some(),
+        RouterBudget::java_literals()
+            .opt_changed_area_limit()
+            .is_some(),
         "TraceTightener.java:73 — `if (timeLimit > 0) this.timeLimit = new TimeLimit(timeLimit)`"
     );
     let disabled = RouterBudget::disabled();
@@ -640,6 +651,38 @@ fn a_zero_opt_changed_area_budget_is_javas_no_limit() {
         ..RouterBudget::default()
     };
     assert!(negative.opt_changed_area_limit().is_none());
+}
+
+/// #234's fix, stated as the delta rather than as an absolute: the port's default differs from
+/// Java's literals in **exactly one** field, and it is the only one of the four that can change a
+/// routed board.
+///
+// fixed: T1 (#234) — this is the test that says how much of a departure the fix is, so that a
+// later reader can see it was one field and not a general retreat from parity.
+#[test]
+fn the_ports_default_budget_departs_from_java_in_exactly_one_field() {
+    let java = RouterBudget::java_literals();
+    let port = RouterBudget::default();
+
+    assert_eq!(java.opt_changed_area_ms, 1000, "the jar's inlined constant");
+    assert_eq!(
+        port.opt_changed_area_ms, 0,
+        "Java's own `off` value, TraceTightener.java:73-77"
+    );
+    assert!(
+        port.opt_changed_area_limit().is_none(),
+        "so a default CLI run's pull-tight is never abandoned mid-way, and two runs agree"
+    );
+
+    // The other three are untouched: a fanout per-pin budget that changes what a user gets on a
+    // huge board, and two progress throttles that decide only whether an event fires.
+    assert_eq!(port.fanout_ms_per_pin, java.fanout_ms_per_pin);
+    assert_eq!(port.board_update_throttle_ms, java.board_update_throttle_ms);
+    assert_eq!(port.progress_throttle_ms, java.progress_throttle_ms);
+
+    // And `disabled` is still strictly stronger than `default`, which is why ruling AI's parity
+    // configuration and `scripts/quality-ab.sh`'s quality lane are not made redundant by #234.
+    assert_ne!(RouterBudget::disabled(), port);
 }
 
 /// **Not a parity test** (ruling AI: no parity run ever reaches this limit). It proves the port's

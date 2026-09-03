@@ -482,13 +482,23 @@ impl RouterStop {
 
 /// Ruling AI's budget knob: Java's four wall-clock literals become explicit parameters, so a
 /// parity run can disable them on **both** sides and neither side's answer depends on how fast
-/// the machine is. The defaults are Java's literals.
+/// the machine is.
 ///
 /// Amendment ruling 10 split this into **four** fields, not three: `250` and `1000` are two
 /// different Java throttles, and conflating them would have turned a 250 ms gate into a 1000 ms
 /// one.
 ///
-/// Pinned by `the_budget_defaults_are_javas_literals`, which carries every Java line.
+/// # Three constructors, and which is which (Plan 9 Task 1, #234)
+///
+/// * [`RouterBudget::java_literals`] — Java's four values exactly, the fact about the Java
+///   program. Pinned by `the_java_literal_budget_carries_javas_four_literals`, which carries
+///   every Java line. **This is what `default()` used to be.**
+/// * [`RouterBudget::default`] — the **port's** budget: `java_literals()` with
+///   [`RouterBudget::opt_changed_area_ms`] set to `0`. That one literal is quirk #234, a
+///   wall clock that makes the jar's own output depend on how fast the machine is; the other
+///   three are a fanout per-pin budget and two progress throttles, and none of them changes a
+///   routed board.
+/// * [`RouterBudget::disabled`] — every wall clock off, ruling AI's parity configuration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RouterBudget {
     /// `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` — the `optChangedArea` pull-tight budget. Declared
@@ -501,6 +511,20 @@ pub struct RouterBudget {
     /// `0` disables the limit exactly as Java does: `TraceTightener`'s constructor only builds a
     /// `TimeLimit` when `timeLimit > 0` (`board/optimize/TraceTightener.java:73-77`), so the
     /// "off" value needs no port-only branch. See [`RouterBudget::opt_changed_area_limit`].
+    ///
+    // Java bug: `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `static final int` with a constant
+    // initialiser at all four declaration sites, so `javac` inlines it and neither a flag nor
+    // reflection can switch it off — quirk #234. The pull-tight is abandoned mid-way on wall
+    // clock, which makes the jar's own whole-board routing non-reproducible from pass 3
+    // (`Issue508-DAC2020_bm01.dsn`: 841.0115 at `-mp 3`, 835.88336 at `-mp 20`, three runs each).
+    // fixed: T1 (#234) — the port's [`RouterBudget::default`] sets this field to `0`, which is
+    // Java's OWN "off" value (`TraceTightener.java:73`'s `> 0` guard) and therefore not a
+    // port-only branch. [`RouterBudget::java_literals`] keeps the 1000 as the record of what Java
+    // does, and `router.opt_changed_area_ms` restores it for anyone who wants it. The register's
+    // own suggested fix — "bound the pull-tight by work rather than by wall clock" — is the
+    // better long-term answer and is deliberately **not** taken here: it would change what the
+    // router computes, and this task's job is to remove a machine-speed dependency, not to add a
+    // new heuristic to the program whose output is about to become the reference.
     pub opt_changed_area_ms: i32,
     /// `settings.fanout.maxMillisecondsPerPin`'s fallback, `10000L`
     /// (`autoroute/pipeline/BatchFanout.java:175-178`). Multiplied by the pass number at
@@ -520,8 +544,49 @@ pub struct RouterBudget {
 }
 
 impl Default for RouterBudget {
-    /// Java's four literals.
+    /// The **port's** budget: Java's literals, with the `optChangedArea` wall clock off.
+    ///
+    /// # Why this is not [`RouterBudget::java_literals`] any more (#234, Plan 9 Task 1)
+    ///
+    /// `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` abandons the pull-tight part-way through on wall
+    /// clock. What it costs is reproducibility: measured on `Issue508-DAC2020_bm01.dsn`, the jar
+    /// scores **841.0115** at `-mp 3` and **835.88336** at `-mp 20` (three runs each), and the
+    /// same `-mp 20` run with the jar's DEBUG log on — which slows it down — is back to
+    /// `841.0115`. The variable is the machine, not the board.
+    ///
+    /// Carrying that into the port would put a machine-speed dependency in the program whose
+    /// output becomes Plan 9's reference. So the port's default is Java's own "off" value, `0`
+    /// (`TraceTightener.java:73-77` builds a `TimeLimit` only `if (timeLimit > 0)`), and the
+    /// pull-tight always runs to completion. That is strictly **more** work and strictly better
+    /// output: a completed pull-tight cannot lengthen a trace.
+    ///
+    /// The other three fields keep Java's literals. `fanout_ms_per_pin` is a per-pin budget with
+    /// a real user-facing purpose on huge boards, and the two throttles are progress only
+    /// (ruling 11) and change no routed board.
+    ///
+    /// Ruling AI is untouched: time is still out of every *measurement*, and every parity driver
+    /// still passes [`RouterBudget::disabled`].
     fn default() -> Self {
+        RouterBudget {
+            // fixed: T1 (#234) — Java's inlined 1000 ms, replaced by Java's own "off" value.
+            opt_changed_area_ms: 0,
+            ..RouterBudget::java_literals()
+        }
+    }
+}
+
+impl RouterBudget {
+    /// **Java's four literals**, exactly — the fact about the Java program, kept whatever the
+    /// port's own default becomes.
+    ///
+    /// This is what [`RouterBudget::default`] was until Plan 9 Task 1 moved
+    /// [`RouterBudget::opt_changed_area_ms`] to `0` for #234. It survives because the 1000 is
+    /// still true of the jar and several tests assert it against a JVM probe; a fix that deleted
+    /// the number would have deleted the evidence for the fix.
+    ///
+    /// Nothing on the routing path calls this. It is the reference value, and its callers are
+    /// tests and the `router.opt_changed_area_ms` documentation.
+    pub fn java_literals() -> RouterBudget {
         RouterBudget {
             opt_changed_area_ms: 1000,
             fanout_ms_per_pin: 10000,
@@ -529,9 +594,7 @@ impl Default for RouterBudget {
             progress_throttle_ms: 1000,
         }
     }
-}
 
-impl RouterBudget {
     /// Every wall clock off — what every `p7t*` parity driver sets, on both sides.
     ///
     /// The "off" values are **not** all zero, and each is the value Java's own code makes inert:

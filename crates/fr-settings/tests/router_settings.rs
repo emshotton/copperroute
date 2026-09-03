@@ -746,3 +746,88 @@ fn plain_setters() {
     s.strict_drc = Some(true);
     assert!(s.is_strict_drc());
 }
+
+// =================================================================================================
+// `router.opt_changed_area_ms` — the port's own field (Plan 9 Task 1, #234)
+// =================================================================================================
+
+/// The directed test the task brief names: `--router.opt_changed_area_ms=250` reaches
+/// `RouterBudget`.
+///
+/// It reaches it in two hops, and both are asserted here because either one silently missing is a
+/// setting that parses and then does nothing:
+///
+/// 1. `--router.<path>=<value>` → the field, through `CliSettings`' property-path setter — the
+///    same route `--router.neck_width_um=250` takes, so a typo'd `FieldSpec` fails here;
+/// 2. the field → `RouterBudget::opt_changed_area_ms`, which is what
+///    `crates/freerouting/src/commands/route.rs::settings_budget` does at exactly one site.
+///
+/// The second hop is spelled out rather than called, because `fr-settings` sits below
+/// `freerouting` and cannot call the CLI; `crates/freerouting/tests/cli_e2e.rs` drives the whole
+/// program over the same setting.
+#[test]
+fn opt_changed_area_ms_is_a_settable_field() {
+    // The field exists, is public, and is absent by default — absent, not `Some(0)`, because
+    // "the user said nothing" and "the user asked for no limit" must stay distinguishable in the
+    // manifest's `settings_snapshot`.
+    assert_eq!(RouterSettings::new().opt_changed_area_ms, None);
+    assert_eq!(RouterSettings::default().opt_changed_area_ms, None);
+
+    // Hop 1: the CLI property path.
+    let argv = ["--router.opt_changed_area_ms=250".to_string()];
+    let cli = fr_settings::sources::CliSettings::new(&argv);
+    let settings = cli
+        .get_settings()
+        .expect("CliSettings always answers a table");
+    assert_eq!(
+        settings.opt_changed_area_ms,
+        Some(250),
+        "`--router.opt_changed_area_ms=250` must reach the field; if this fails the FieldSpec in \
+         field_path.rs or the arm in set_router_leaf is missing"
+    );
+    assert!(cli.errors().is_empty());
+
+    // Hop 2: the field to the budget. `fr-settings` sits **below** `fr-router` in the dependency
+    // graph and cannot name `RouterBudget` without inverting it, so what is asserted here is the
+    // shape the CLI's one site relies on — an `Option<i32>` that is `Some` exactly when the user
+    // asked, carrying the user's number unchanged and unclamped. The budget end of the same wire
+    // is `crates/fr-core/tests/ctx.rs`, and the whole program over it is
+    // `crates/freerouting/tests/cli_e2e.rs`.
+    assert_eq!(settings.opt_changed_area_ms, Some(250));
+
+    // No clamp, unlike `max_threads` and `trace_pull_tight_accuracy`: every value is meaningful.
+    // `1000` is the jar's own `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` and asks for its behaviour
+    // back; `0` and any negative are Java's "no limit" (`TraceTightener.java:73-77`'s `> 0`, not
+    // `!= 0`), which is what the port does when the field is absent.
+    for (arg, want) in [("1000", 1000), ("0", 0), ("-1", -1)] {
+        let argv = [format!("--router.opt_changed_area_ms={arg}")];
+        let parsed = fr_settings::sources::CliSettings::new(&argv)
+            .get_settings()
+            .unwrap()
+            .opt_changed_area_ms;
+        assert_eq!(parsed, Some(want), "`--router.opt_changed_area_ms={arg}`");
+    }
+}
+
+/// It round-trips through JSON under its own name, and — because it is `Option` with
+/// `skip_serializing_if` — an unset field does not appear at all. That is what keeps every
+/// existing manifest and settings golden byte-identical for a user who never touches it.
+#[test]
+fn opt_changed_area_ms_round_trips_and_is_absent_when_unset() {
+    let unset = RouterSettings::new();
+    let json = serde_json::to_value(&unset).expect("serializes");
+    assert!(
+        json.get("opt_changed_area_ms").is_none(),
+        "an unset port-only field must not appear on the wire, or every committed settings \
+         snapshot moves for a field nobody set"
+    );
+
+    let mut set = RouterSettings::new();
+    set.opt_changed_area_ms = Some(1000);
+    let json = serde_json::to_value(&set).expect("serializes");
+    assert_eq!(json["opt_changed_area_ms"], 1000);
+
+    let back: RouterSettings =
+        serde_json::from_str(r#"{"opt_changed_area_ms":250}"#).expect("deserializes");
+    assert_eq!(back.opt_changed_area_ms, Some(250));
+}
