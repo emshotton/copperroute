@@ -239,6 +239,7 @@ fn optimizer_transient_fields_never_appear_in_serialized_output() {
 
 #[test]
 fn field_names_pin_javas_declaration_order() {
+    // Java's names, in Java's order, followed by the port's own. See `RouterSettings::FIELD_NAMES`.
     assert_eq!(
         RouterSettings::FIELD_NAMES,
         &[
@@ -263,6 +264,11 @@ fn field_names_pin_javas_declaration_order() {
             "max_threads",
             "result_json_path",
             "board_specific_trace_costs_applied",
+            // The port's own, appended after every Java name so that none of the twenty-one above
+            // moves: `opt_changed_area_ms` (Plan 9 Task 1, #234). Java's counterpart is the
+            // javac-inlined `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`, which is not a field
+            // `getDeclaredFields()` can reach — which is precisely why the port needs one.
+            "opt_changed_area_ms",
         ]
     );
     assert_eq!(

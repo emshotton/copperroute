@@ -777,27 +777,31 @@ fn field_kinds_match_the_java_field_types() {
         "RouterSettings",
         RouterSettings::FIELDS,
         &[
-            ("enabled", Bool),                            // Boolean
-            ("algorithm", Str),                           // String
-            ("fanout", Nested),                           // FanoutSettings
-            ("copper_to_edge_clearance_um", F64),         // Double
-            ("hole_clearance_um", F64),                   // Double
-            ("neck_width_um", F64),                       // Double
-            ("strict_drc", Bool),                         // Boolean
-            ("job_timeout_string", Str),                  // String
-            ("max_passes", I32),                          // Integer
-            ("max_items", I32),                           // Integer
-            ("layers", ObjectArray),                      // LayerSettings[]
-            ("save_intermediate_stages", Bool),           // Boolean
-            ("ignore_net_classes", StringVec),            // String[]
-            ("trace_pull_tight_accuracy", I32),           // Integer
-            ("vias_allowed", Bool),                       // Boolean
-            ("automatic_neckdown", Bool),                 // Boolean
-            ("optimizer", Nested),                        // OptimizerSettings
-            ("scoring", Nested),                          // ScoringSettings
-            ("max_threads", I32),                         // Integer
-            ("result_json_path", Str),                    // String
-            ("board_specific_trace_costs_applied", Bool), // Boolean
+            ("enabled", Bool),                    // Boolean
+            ("algorithm", Str),                   // String
+            ("fanout", Nested),                   // FanoutSettings
+            ("copper_to_edge_clearance_um", F64), // Double
+            ("hole_clearance_um", F64),           // Double
+            ("neck_width_um", F64),               // Double
+            ("strict_drc", Bool),                 // Boolean
+            ("job_timeout_string", Str),          // String
+            ("max_passes", I32),                  // Integer
+            ("max_items", I32),                   // Integer
+            ("layers", ObjectArray),              // LayerSettings[]
+            ("save_intermediate_stages", Bool),   // Boolean
+            ("ignore_net_classes", StringVec),    // String[]
+            ("trace_pull_tight_accuracy", I32),   // Integer
+            ("vias_allowed", Bool),               // Boolean
+            ("automatic_neckdown", Bool),         // Boolean
+            ("optimizer", Nested),                // OptimizerSettings
+            ("scoring", Nested),                  // ScoringSettings
+            ("max_threads", I32),                 // Integer
+            ("result_json_path", Str),            // String
+            ("board_specific_trace_costs_applied", Bool),
+            // The port's own field, after every Java one (Plan 9 Task 1, #234). `I32` because
+            // the budget it feeds is `RouterBudget::opt_changed_area_ms`, an `i32` matching
+            // Java's `static final int TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`.
+            ("opt_changed_area_ms", I32), // Boolean
         ],
     );
     check(

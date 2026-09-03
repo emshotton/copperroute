@@ -154,7 +154,7 @@ pub fn router_settings_schema() -> Value {
     json!({
         "type": "object",
         "title": "RouterSettings",
-        "description": "The router's settings, as `settings/RouterSettings.java` declares them and as Gson spells them on the wire. Every field is optional: a value given here overrides the resolved default, and a field left out keeps it. Unknown keys are ignored rather than refused, which is Gson's behaviour and therefore this reader's.",
+        "description": "The router's settings, as `settings/RouterSettings.java` declares them and as Gson spells them on the wire, plus `opt_changed_area_ms`, which the port adds because the Java constant behind it is inlined by javac and cannot be reached. Every field is optional: a value given here overrides the resolved default, and a field left out keeps it. Unknown keys are ignored rather than refused, which is Gson's behaviour and therefore this reader's.",
         "additionalProperties": false,
         "properties": {
             "enabled": { "type": "boolean", "description": "Run the auto-routing stage at all." },
@@ -177,7 +177,8 @@ pub fn router_settings_schema() -> Value {
             "optimizer": optimizer_schema(),
             "scoring": scoring_schema(),
             "max_threads": { "type": "integer", "description": "Worker threads for the stages that are parallel. Defaults to a share of the host's processor count." },
-            "result_json": { "type": "string", "description": "Where a run writes its result manifest. Read by the CLI; this tool answers its result directly and does not write one." }
+            "result_json": { "type": "string", "description": "Where a run writes its result manifest. Read by the CLI; this tool answers its result directly and does not write one." },
+            "opt_changed_area_ms": { "type": "integer", "description": "Wall-clock budget, in milliseconds, for the pull-tight pass over a changed area. 0 or absent (the default) means no budget and the pull-tight always runs to completion, which is deterministic. The Java program hard-codes 1000 here and cannot switch it off, which makes its own output depend on how fast the machine is; set 1000 to reproduce that." }
         }
     })
 }
