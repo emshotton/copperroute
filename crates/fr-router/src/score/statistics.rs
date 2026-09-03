@@ -89,6 +89,26 @@ impl BoardStatistics {
         BoardStatistics::compute(board, unit, include_clearance_violations, true)
     }
 
+    /// Everything [`Self::compute`] does **to the board**, for the call sites that run Java's
+    /// constructor for its effect and drop its value.
+    ///
+    /// The asymmetry is load-bearing, so do not make it symmetric. `:265-271`'s connections
+    /// checker cannot reach the board: `calculate_all_incompletes` reborrows it immutably on its
+    /// first line, `NetIncompletes::new` takes `&Board`, [`DesignRulesChecker`] has no `Drop`, and
+    /// `fr-drc` has no mutable statics — so its whole state dies with it and it is absent here.
+    /// `:338-341`'s clearance checker does reach it, ratcheting `header.smallest_clearance` down
+    /// and never up (quirk #153) and advancing the default tree's entry counter.
+    ///
+    /// [`Self::compute`]'s "construction count is observable" note is about the pair of checkers a
+    /// **read** `BoardStatistics` builds; every site that reads one still builds both.
+    pub fn compute_side_effects(board: &mut Board, include_clearance_violations: bool) {
+        if include_clearance_violations {
+            // BoardStatistics.java:338-341.
+            let mut clearance_drc = DesignRulesChecker::new(board);
+            let _ = clearance_drc.get_all_clearance_violations();
+        }
+    }
+
     /// Port of the computing constructor
     /// `BoardStatistics(BasicBoard, Unit, boolean, boolean)` (BoardStatistics.java:110-427).
     ///

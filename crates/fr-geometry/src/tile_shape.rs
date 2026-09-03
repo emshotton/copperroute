@@ -280,6 +280,7 @@ impl TileShape {
     }
 
     /// Returns the smallest axis-parallel box containing this shape.
+    #[inline]
     pub fn bounding_box(&self) -> IntBox {
         match self {
             TileShape::Box(b) => b.bounding_box(),
@@ -290,6 +291,7 @@ impl TileShape {
 
     /// Returns the smallest 45-degree octagon containing this shape; `None` for an unbounded
     /// simplex, where Java returns `null`.
+    #[inline]
     pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             TileShape::Box(b) => Some(b.bounding_octagon()),
@@ -469,6 +471,7 @@ impl TileShape {
     }
 
     /// Java `intersects(IntOctagon other)`.
+    #[inline]
     pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         match self {
             TileShape::Box(b) => b.intersects_octagon(other),

@@ -123,6 +123,10 @@ pub struct BatchAutorouter<'a> {
     /// `BoardStatistics progressStatistics` (`:106`), rebuilt every
     /// [`BatchAutorouter::PROGRESS_STATISTICS_ITEM_INTERVAL`] items by
     /// `AutoroutePassRunner.updateProgress` (`:496-501`) — Task 9's writer.
+    ///
+    /// Never written: the port has no reader for it (ruling AK replaced the listener that would
+    /// have had one), and Java's two write sites call
+    /// [`BoardStatistics::compute_side_effects`].
     pub progress_statistics: Option<BoardStatistics>,
     /// `int progressItemsSinceStatistics` (`:107`), the counter beside it.
     pub progress_items_since_statistics: i32,

@@ -32,6 +32,7 @@ pub trait ItemLookup {
 }
 
 impl ItemLookup for BTreeMap<ItemId, Item> {
+    #[inline]
     fn item(&self, id: ItemId) -> Option<&Item> {
         self.get(&id)
     }
