@@ -175,6 +175,19 @@ the corpus result alone.
 reads `unaffected`, that sentence is the record and the fix list stands at nine."* It does. **Task 8
 drops nothing, narrows nothing, and its fix list stands at nine rows.**
 
+**Third, independent corroboration.** `docs/plan-9-prep/fixtures/task-8/`'s ground truth —
+`expected-outcomes.md`, `READY.md` and `current-port-behavior.txt`, derived from the geometry
+without reference to the jar and without reference to this task — contains **no occurrence of
+"193", "stale", `treeEntryNo` or `tree_entry`**. Nine rows' worth of independent derivation never
+needed #193's mechanism to explain a single expected outcome. That was arrived at before this
+measurement existed, so it is not an echo of it.
+
+The one place the fixture bank does correct the plan is unrelated to #193 and stays Task 8's:
+#159's `[4, 4, 4]` does not follow from the fix as sketched, because
+`ShapeSearchTree90Degree.completeShape` never calls `divideLargeRoom` at all
+(`expected-outcomes.md`, the ⚠ block). Flagged here only so the reader does not mistake it for
+something this report has absorbed — it has not.
+
 ---
 
 ## 6. Open questions
