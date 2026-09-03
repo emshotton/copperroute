@@ -1258,7 +1258,9 @@ impl RoutingBoardExt for Board {
         let pin_connected_set = self.connected_set(pin, pin_net_no, false);
         // :991-996 — quirk #44's descending id order, which cannot change the answer here (the
         // loop returns on the first non-conforming item and the predicate is per item) but is the
-        // convention every `TreeSet<Item>` walk in this port keeps.
+        // convention every `TreeSet<Item>` walk in this port keeps. The target sort at `:1002-1021`
+        // below keeps the *same* rule and there it **does** change the answer, because the sort is
+        // stable and the seed decides every distance tie — see [`sorted_unconnected_targets`].
         for current_item in pin_connected_set.iter().rev() {
             let Some(item) = self.get_item(*current_item) else {
                 continue;
@@ -1280,9 +1282,13 @@ impl RoutingBoardExt for Board {
         // midpoint of each item's bounding box.
         //
         // `sortedUnconnectedList` is `new ArrayList<>(unconnectedSet)`, i.e. the `TreeSet<Item>`'s
-        // **ascending** id order, and `List.sort` is TimSort, which is **stable** — so ties keep
-        // that ascending order. `sort_by` is Rust's stable sort, and the key is built the way
-        // Java builds it: `int` midpoint sums divided by `2.0`, then a `double` difference.
+        // iteration order — and that is **descending** id, quirk #44: `Item.compareTo` is
+        // `item.id - id` (Item.java:95-103) and `Item.getUnconnectedSet` returns a plain
+        // `new TreeSet<>()` (Item.java:676-690), the same rule the `pin_connected_set` walk above
+        // keeps with `.iter().rev()`. `List.sort` is TimSort, which is **stable**, so on an exact
+        // distance tie the **higher** id wins. `sort_by` is Rust's stable sort, and the key is
+        // built the way Java builds it: `int` midpoint sums divided by `2.0`, then a `double`
+        // difference.
         let pin_center = pin_center_of(self, pin).to_float();
         let sorted_unconnected_list =
             sorted_unconnected_targets(self, &pin_center, &unconnected_set);
@@ -1460,9 +1466,17 @@ const PULL_TIGHT_TIME_LIMIT: i32 = 2000;
 /// # Stability is load-bearing
 ///
 /// `sortedUnconnectedList` starts as `new ArrayList<>(unconnectedSet)` (`:1003`), i.e. the
-/// `TreeSet<Item>`'s **ascending id** order, and `List.sort` is TimSort, which is **stable** — so
-/// two targets at the same squared distance keep ascending id order. `sort_by` is Rust's stable
-/// sort, and `sort_unstable_by` here would be a silent divergence on every symmetric board.
+/// `TreeSet<Item>`'s iteration order, and `List.sort` is TimSort, which is **stable** — so two
+/// targets at the same squared distance keep that order. The order is **descending id**, not
+/// ascending: quirk **#44**, `Item.compareTo` is `item.id - id` (Item.java:95-103) and
+/// `Item.getUnconnectedSet` (Item.java:676-690) collects into a plain `new TreeSet<>()`. A
+/// [`BTreeSet`] iterates **ascending**, so the seed is `.iter().rev()` — the same rule
+/// [`RoutingBoardExt::fanout`]'s `pin_connected_set` walk keeps a few lines earlier. On a tie the
+/// **higher** id wins.
+///
+/// `sort_by` is Rust's stable sort, and `sort_unstable_by` here would be a silent divergence on
+/// every symmetric board — as would seeding ascending, which is the shape this port shipped with
+/// until the tie-break fix (see `crates/fr-router/tests/fanout_tie_break.rs`).
 pub fn sorted_unconnected_targets(
     board: &Board,
     pin_center: &fr_geometry::FloatPoint,
@@ -1483,7 +1497,8 @@ pub fn sorted_unconnected_targets(
         let dy = cy - pin_center.y;
         dx * dx + dy * dy
     };
-    let mut list: Vec<ItemId> = unconnected_set.iter().copied().collect();
+    // Quirk #44: descending id, so the stable sort's tie-break matches Java's TreeSet seed.
+    let mut list: Vec<ItemId> = unconnected_set.iter().rev().copied().collect();
     // `Double.compare` (`:1019`). Both operands are finite and non-negative here, so `total_cmp`
     // is that function; the two differ only for a **negative** NaN, which a sum of two squares
     // cannot be.
