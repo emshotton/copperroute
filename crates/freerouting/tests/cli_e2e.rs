@@ -2052,6 +2052,56 @@ fn the_slow_stems_match_the_jars_reference() {
     climb(false);
 }
 
+/// The CLI half of the pair `an_unreadable_router_budget_is_an_error_and_the_server_survives`
+/// (`mcp_stdio.rs`) closes: **the CLI still exits 2, and writes nothing.**
+///
+/// `run_budget` answers a `Result` rather than exiting, so that the MCP tool can refuse a call and
+/// stay up. The risk in that change is the other direction — that the CLI quietly starts routing
+/// with a budget it was told not to use, which is the one failure mode `FR_ROUTER_BUDGET` exists
+/// to make impossible. This is the assertion that it did not.
+///
+/// The board is loaded and the settings resolved before the budget is read, so reaching the
+/// refusal at all is proof the run got as far as it does in earnest.
+#[test]
+fn the_cli_refuses_an_unreadable_router_budget_with_exit_2() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dir = scratch("bad-router-budget");
+    let out = dir.join("route.ses");
+    let output = std::process::Command::new(PORT)
+        .env("FR_ROUTER_BUDGET", "banana")
+        .args([
+            "-de",
+            &parity::java_dir()
+                .join("fixtures/empty_board.dsn")
+                .display()
+                .to_string(),
+            "-do",
+            &out.display().to_string(),
+        ])
+        .output()
+        .expect("the freerouting binary runs");
+
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "an unreadable FR_ROUTER_BUDGET is `ExitCode::UsageError`, the same 2 the \
+         `std::process::exit(2)` this replaced produced.\n--- stderr ---\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("FR_ROUTER_BUDGET") && stderr.contains("banana"),
+        "the refusal must name the variable and the value: {stderr}"
+    );
+    assert!(
+        !out.exists(),
+        "a refused run must not write a session — it would be a board routed with a budget the \
+         operator explicitly did not ask for"
+    );
+}
+
 // =================================================================================================
 // The two-run identity check — Plan 9 Task 1's successor to `--verify-hash-modes`
 // =================================================================================================

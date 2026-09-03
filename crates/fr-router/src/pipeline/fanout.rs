@@ -1060,9 +1060,10 @@ pub struct TimespanError {
 ///
 /// # Why the suffixes are case-sensitive and why there is no `d`
 ///
-/// `h`/`m`/`s` are the letters the javadoc writes, in the case it writes them. `M` is minutes
-/// here and months in ISO-8601, and quietly picking one would be a worse defect than the one this
-/// fixes. A day suffix is not offered because nothing in Java's own converter can emit `P…D` —
+/// `h`/`m`/`s` are the letters the javadoc writes, in the case it writes them. **`M` is refused**,
+/// and deliberately: it would have to mean minutes to match `m`, and it means *months* in the
+/// ISO-8601 grammar this whole family is built on. Quietly picking one of those would be a worse
+/// defect than the one this fixes, so `5M` is an error that names itself. A day suffix is not offered because nothing in Java's own converter can emit `P…D` —
 /// the register's note that the day form is unreachable — and inventing a unit no Java surface
 /// mentions is not a fix to a documentation-mismatch bug.
 pub fn parse_timespan_seconds(timespan_string: &str) -> Result<Option<i64>, TimespanError> {

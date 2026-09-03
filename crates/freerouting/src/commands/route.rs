@@ -338,15 +338,33 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // is honoured **inside** `run_pipeline` (Plan 7), which is where Java honours it too
     // (`RoutingPipeline.java:97`).
     let progress = SyncProgressSink::noop();
+    // Ruling AI's wall clock. The three knobs that do not change a routed board keep Java's
+    // literals; the one that does — `optChangedArea`'s inlined 1000 ms, quirk #234 — is off by
+    // default, so a CLI run is reproducible. [`run_budget`] is the whole rule, precedence
+    // included; read its doc before assuming this line is unconditional.
+    //
+    // **This** is where an unreadable `FR_ROUTER_BUDGET` becomes `exit 2`: a CLI process that was
+    // told to disable a clock and could not must not route anyway. The MCP tool makes the other
+    // choice — see `run_budget`'s doc — because killing a live stdio server is not a diagnosis.
+    //
+    // `UsageError` rather than `Failure`, and it is the same **2** the `std::process::exit(2)` this
+    // replaced produced. The variant fits for the reason its own doc gives — it is the port-only
+    // "you invoked me wrongly" code, and `FR_ROUTER_BUDGET` is a port-only seam Java has no
+    // counterpart for — whereas `Failure` is Java's own single failure code and belongs to runs
+    // that started. Nothing has been routed at this point.
+    let budget = match run_budget(&settings) {
+        Ok(budget) => budget,
+        Err(message) => {
+            eprintln!("{message}");
+            tracing::warn!("{message}");
+            return ExitCode::UsageError;
+        }
+    };
     let ctx = Ctx {
         settings: &settings,
         cancel,
         progress: &progress,
-        // Ruling AI's wall clock. The three knobs that do not change a routed board keep Java's
-        // literals; the one that does — `optChangedArea`'s inlined 1000 ms, quirk #234 — is off
-        // by default, so a CLI run is reproducible. [`run_budget`] is the whole rule, precedence
-        // included; read its doc before assuming this line is unconditional.
-        budget: run_budget(&settings),
+        budget,
     };
     // ── 12b. **quirk #289 (label T)**: the board `-do out.json` actually writes ───────────────
     //
@@ -875,10 +893,28 @@ fn result_json_path(job: &RoutingJob, args: &RouteArgs) -> Option<String> {
 /// `FR_ROUTER_BUDGET` value is a hard error rather than a silent fallback: a harness that thinks
 /// it disabled the clock and did not would produce numbers nobody could trust, and that is worse
 /// than a stopped run.
-pub(crate) fn run_budget(settings: &fr_settings::RouterSettings) -> fr_core::RouterBudget {
+///
+/// # Why it answers a `Result` rather than exiting
+///
+/// It used to call `std::process::exit(2)` itself, which was safe while the CLI was its only
+/// caller. It is not any more: `mcp::tools::route_board` calls it too (#234 made the two faces
+/// share a budget), and a **long-running stdio server** must not be killed mid-JSON-RPC by a
+/// misconfigured environment variable — that would bypass the drain machinery
+/// `the_drain_takes_no_new_work_after_a_write_failure` exists to protect. So the decision belongs
+/// to the caller: **the CLI still exits 2**, and the MCP tool answers `invalid_params` and stays
+/// up. That is the shape [`fr_core::job_timeout_deadline`] already uses two lines above each call
+/// site, and the two now match.
+pub(crate) fn run_budget(
+    settings: &fr_settings::RouterSettings,
+) -> Result<fr_core::RouterBudget, String> {
     use std::env::VarError;
-    match std::env::var("FR_ROUTER_BUDGET").as_deref() {
-        // The variable is not set at all: the settings have their say, then the default.
+    Ok(match std::env::var("FR_ROUTER_BUDGET").as_deref() {
+        // Unset, or set to the empty string. Empty is treated as unset **deliberately**, and it is
+        // the one place the "a set value is a set value" rule below is not applied: `FOO=` is how
+        // a shell script unsets a variable it cannot `unset` (a `Makefile` recipe, a CI matrix
+        // entry that leaves a cell blank), so reading it as "no budget named" is what the people
+        // who write those files mean. It is also the only unrecognised value that cannot be a
+        // *typo* for one of the four names.
         Err(VarError::NotPresent) | Ok("") => settings_budget(settings),
         // `default` names the port's default explicitly and therefore also overrides the setting;
         // a harness that asks for the default is asking for the default, not for whatever the
@@ -894,15 +930,14 @@ pub(crate) fn run_budget(settings: &fr_settings::RouterSettings) -> fr_core::Rou
                 Ok(v) => format!("{v:?}"),
                 Err(_) => "<not valid unicode>".to_string(),
             };
-            eprintln!(
+            return Err(format!(
                 "FR_ROUTER_BUDGET={shown} is not a budget; use `default` (the port's own — \
                  Java's literals with the optChangedArea clock off), `java` (Java's four \
                  literals, quirk #234's 1000 ms included), or `disabled` (ruling AI's \
                  every-clock-off, what the parity drivers and scripts/quality-ab.sh run)"
-            );
-            std::process::exit(2);
+            ));
         }
-    }
+    })
 }
 
 /// [`fr_router::pipeline::RouterBudget::default`], with `router.opt_changed_area_ms` applied if

@@ -801,7 +801,7 @@ fn field_kinds_match_the_java_field_types() {
             // The port's own field, after every Java one (Plan 9 Task 1, #234). `I32` because
             // the budget it feeds is `RouterBudget::opt_changed_area_ms`, an `i32` matching
             // Java's `static final int TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`.
-            ("opt_changed_area_ms", I32), // Boolean
+            ("opt_changed_area_ms", I32), // (the port's own — no Java field)
         ],
     );
     check(
