@@ -66,9 +66,14 @@
 #   rather than re-derives from goldens that have since moved.
 # * **The jar column — context, never a gate.** `benchmark/baselines/quality-baseline-java-head.tsv`,
 #   which **Task 1** derives once from the frozen references and writes **outside** the frozen
-#   tree. It carries **quality only and no timing at all**. This script does **not** read
-#   `tests/reference-frozen/` and must never learn how (BL8 as amended by ruling BP1): the freeze
-#   is a historical artefact, written once and read by nothing.
+#   tree. It carries **quality only and no timing at all**, and it is rendered into every row's
+#   `jar_*` columns so a reader can see where the jar stood without opening a second file. No rule
+#   reads it, no flag comes from it and it cannot change the exit code. Until Task 1 writes it the
+#   columns render `-` and the tsv header says `[absent]` — this script never affirms a reference
+#   it did not read. **Task 1 must write that file in this script's own tsv shape**: a
+#   `# gate-version:` header, a `# cols:` header, and `family`/`stem` keys matching these 29 rows.
+#   This script does **not** read `tests/reference-frozen/` and must never learn how (BL8 as
+#   amended by ruling BP1): the freeze is a historical artefact, written once and read by nothing.
 #
 # **The rolling time baseline** is `benchmark/baselines/stem-times.tsv` — the **previous task's**
 # `cpu_s`, never the jar's. At task close this script updates it in place, in the same commit as
@@ -147,12 +152,27 @@ GATE_VERSION="g1"
 # tolerances; this is the floor beneath which a "slowdown" is the machine and not the code. A
 # slowdown above it on an equal-quality change is a **rejection**, not a note.
 #
-# 5 % is the global floor and it is measured, not chosen: over the 29 stems of Task 0's dry run
-# the largest median-of-3 spread was 0.556 s on a 10.996 s stem — **5.1 %** — and every other stem
-# came in under 3.4 %. The scorer additionally raises the floor **per stem** to that stem's own
-# recorded spread whenever the spread is the larger of the two, so a stem that is genuinely noisy
-# on this machine is judged against its own noise rather than against the corpus's.
+# The floor is **per stem**, and it is the largest of four terms:
+#
+#     floor = max( CPU_NOISE_FLOOR,
+#                  1 + prior_spread   / prior_cpu,     the baseline run's own measured spread
+#                  1 + current_spread / prior_cpu,     THIS run's measured spread
+#                  1 + CPU_EPSILON_S  / prior_cpu )    an absolute floor, for the fast stems
+#
+# 5 % is the global term and it is measured, not chosen: over the 29 stems of Task 0's dry run the
+# largest median-of-3 spread was 0.556 s on a 10.996 s stem — **5.1 %** — and every other stem came
+# in under 3.4 %. The two spread terms mean a stem that is genuinely noisy is judged against its
+# own noise rather than the corpus's, and the *current* spread is in there because it is measured,
+# sits in the same row, and is exactly as good evidence about this stem as the baseline's is.
+#
+# `CPU_EPSILON_S` is what stops a purely relative rule from being nonsense at the bottom of the
+# range. Five of the 29 stems run in under 0.08 s and seven in under 0.35 s, where the measurement
+# is process startup; on the review's own re-run `batch/router-ecc83-input` came in at 1.069x
+# against a 1.06897x floor — a **2 ms** difference on a 29 ms stem, one floating-point hair from a
+# REGRESSION and a non-zero exit. 5 ms is below the resolution at which a routing change is
+# visible at all and well above the jitter of starting a process.
 CPU_NOISE_FLOOR="1.05"
+CPU_EPSILON_S="0.005"
 # Ruling BO's two escalation thresholds.
 CPU_STEM_ESCALATE="2.0"
 CPU_CORPUS_ESCALATE="1.20"
@@ -236,7 +256,16 @@ fi
 
 echo "== building the port's binary (release)"
 (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+# The sha, and whether the binary that produced these numbers is actually *at* it. The five
+# generators compute the same pair, and for the same reason: `port-sha` is the one provenance line
+# the measurement spine has, and a bare HEAD sha on a dirty tree names a commit that does not
+# contain the code that was measured. (Task 0's own first run is the standing example: it recorded
+# the base sha, which does not carry `harness_budget()` — at that sha `FR_ROUTER_BUDGET=disabled`
+# is ignored and the quality lane would have run with the clock live.)
 PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
+  PORT_SHA="$PORT_SHA +uncommitted-changes-under-crates"
+fi
 
 wanted() {
   [[ ${#WANTED[@]} -eq 0 ]] && return 0
@@ -312,8 +341,16 @@ fi
 run_timed() {
   local log="$1"
   shift
-  local t
-  t="$( { TIMEFORMAT='%3U %3S'; time "${TIMEOUT[@]}" "$@" > "$log" 2>&1 < /dev/null; } 2>&1 )" || true
+  local t rc=0
+  # The command's own output is redirected **inside** the braces, so what the substitution
+  # captures is the timing line and nothing else. `rc` is carried out through a marker line
+  # rather than lost to `|| true`: a repeat that failed or was killed by `timeout(1)` still burned
+  # CPU, and folding that number into the median would quietly report a hung stem as a fast one.
+  t="$( { TIMEFORMAT='%3U %3S'; time { "${TIMEOUT[@]}" "$@" > "$log" 2>&1 < /dev/null || echo "RC=$?"; } ; } 2>&1 )"
+  if grep -q '^RC=' <<< "$t"; then
+    printf 'FAILED'
+    return 0
+  fi
   awk '{ printf "%.3f", $1 + $2 }' <<< "$(tail -1 <<< "$t")"
 }
 
@@ -457,6 +494,15 @@ measure_one() {
           ${TIME_EXTRA+"${TIME_EXTRA[@]}"})")
     fi
   done
+  local failed=0 t
+  for t in "${times[@]}"; do [[ "$t" == FAILED ]] && failed=1; done
+  if [[ "$failed" -eq 1 ]]; then
+    echo "   FAILED: a cpu_s repeat for $key exited non-zero or hit the ${TIMEOUT_SECONDS}s bound;" >&2
+    echo "           its CPU time is not a measurement of this stem and is not folded into a" >&2
+    echo "           median. See $SCRATCH/$family-$stem.t*.log." >&2
+    STATUS=1
+    return 0
+  fi
   local cpu
   cpu="$(median_and_spread "${times[@]}")"
 
@@ -490,11 +536,12 @@ done < "$STEMS"
 set +e
 python3 - "$TSV" "$ROWS" "$GATE_VERSION" "$TASK" "$PORT_SHA" "$PREV_TSV" "$JAR_TSV" \
     "$STEM_TIMES" "$CPU_NOISE_FLOOR" "$CPU_STEM_ESCALATE" "$CPU_CORPUS_ESCALATE" \
-    "$SCORE_NOISE" "$REPEATS" "$ROOT" <<'PY'
+    "$SCORE_NOISE" "$REPEATS" "$ROOT" "$CPU_EPSILON_S" <<'PY'
 import statistics, sys, os
 
 (out_path, rows_path, gate, task, sha, prev_path, jar_path, times_path,
- noise_floor, stem_escalate, corpus_escalate, score_noise, repeats, root) = sys.argv[1:]
+ noise_floor, stem_escalate, corpus_escalate, score_noise, repeats, root,
+ cpu_epsilon) = sys.argv[1:]
 
 
 def rel(p):
@@ -506,11 +553,29 @@ def rel(p):
 
 noise_floor = float(noise_floor); stem_escalate = float(stem_escalate)
 corpus_escalate = float(corpus_escalate); score_noise = float(score_noise)
+cpu_epsilon = float(cpu_epsilon)
 
-COLUMNS = ["family", "stem", "mp_cap", "incomplete", "violations", "clearance_violations",
-           "hole_clearance_violations", "normalized_score", "trace_length_mm", "via_total",
-           "via_through", "via_blind", "via_buried", "bend_count", "cpu_s", "cpu_spread_s",
-           "flag"]
+# The 14 measured quality columns, then `cpu_s`/`cpu_spread_s`, then the **jar context columns**,
+# then the flag.
+#
+# The jar columns are the second of the two references brief item 6 requires every row to carry:
+# the frozen HEAD numbers Task 1 derives once from the frozen references and writes to
+# `benchmark/baselines/quality-baseline-java-head.tsv`. They are **context and never a gate** —
+# nothing below reads them into `flag`, into a `REGRESSION:` line or into the exit code — and they
+# carry **no timing**, because the frozen tree has none and a jar time on a different machine
+# would be a number with no meaning. They exist so a reader looking at a row can see where the jar
+# stood without opening a second file, which is the whole reason the brief asks for two references
+# per row rather than two files.
+#
+# **They render `-` until that file exists**, and the `# jar-baseline:` header says which of those
+# two worlds this tsv was written in. Nothing here ever affirms a reference it did not read.
+QUALITY_COLUMNS = ["incomplete", "violations", "clearance_violations",
+                   "hole_clearance_violations", "normalized_score", "trace_length_mm",
+                   "via_total", "via_through", "via_blind", "via_buried", "bend_count"]
+JAR_COLUMNS = ["jar_incomplete", "jar_violations", "jar_clearance_violations",
+               "jar_normalized_score"]
+COLUMNS = (["family", "stem", "mp_cap"] + QUALITY_COLUMNS + ["cpu_s", "cpu_spread_s"]
+           + JAR_COLUMNS + ["flag"])
 
 # The one routed stem in the corpus whose *input* board already violates its own clearance
 # rules. `tests/reference/cli-fixtures.txt` names it: "router-strict-drc-cnh | slow | the only
@@ -526,22 +591,40 @@ for line in open(rows_path, encoding="utf-8"):
 
 
 def read_tsv(path):
-    """A tsv written by this script: `# key: value` headers, then a `#` column line, then rows."""
+    """A tsv written by this script: `# key: value` header lines, exactly one of which is
+    `# cols: <tab-separated column names>`, then the rows.
+
+    **`# cols:` is the ONLY column source, and its absence is a hard error.** The header used to
+    take "the last `#` line that has no colon" as the column line, which worked only because the
+    column line happened to be written last: adding one line of prose below it would have shifted
+    every row one column and, worse, would have failed *silently* — no baseline found, every row
+    scored `seed`, the gate quietly not gating. A named key cannot drift that way, and a file that
+    exists but does not carry one is malformed rather than empty."""
     if not path or not os.path.exists(path):
         return None, {}
     headers, table = {}, {}
     cols = None
     for line in open(path, encoding="utf-8"):
         line = line.rstrip("\n")
-        if line.startswith("# ") and ":" in line and cols is None:
-            k, _, v = line[2:].partition(":")
-            headers[k.strip()] = v.strip()
-        elif line.startswith("#"):
-            cols = line[1:].split("\t")
+        if line.startswith("#"):
+            key, sep, value = line[1:].partition(":")
+            if not sep:
+                continue          # prose. Never a column source.
+            key = key.strip()
+            if key == "cols":
+                cols = value.strip("\t").split("\t")
+            else:
+                headers[key] = value.strip()
         elif line and cols:
-            cells = line.split("\t")
-            rec = dict(zip(cols, cells))
+            rec = dict(zip(cols, line.split("\t")))
             table[(rec.get("family"), rec.get("stem"))] = rec
+    if cols is None:
+        sys.stderr.write(
+            f"error: {path} exists but carries no `# cols:` header line, so its columns cannot\n"
+            "       be identified and none of its rows can be read. Treating that as 'no\n"
+            "       baseline' would make this gate pass by accident, so it is an error instead.\n"
+            "       Re-cut the file with this script, or delete it if it is genuinely stale.\n")
+        sys.exit(3)
     return headers, table
 
 
@@ -549,7 +632,14 @@ def check_gate(path, headers, what):
     if headers is None:
         return
     theirs = headers.get("gate-version")
-    if theirs and theirs != gate:
+    if theirs is None:
+        sys.stderr.write(
+            f"error: {what} ({path}) carries no gate-version header. Ruling BP8 makes the gate\n"
+            "       version the precondition of every comparison, so an unversioned baseline is\n"
+            "       one whose comparability nobody can establish — which is a refusal, not a\n"
+            "       pass. Re-cut it with this script.\n")
+        sys.exit(3)
+    if theirs != gate:
         sys.stderr.write(
             f"error: {what} ({path}) carries gate-version {theirs} and this run is {gate}.\n"
             "       An A/B is only ever compared within one gate version (ruling BP8). The task\n"
@@ -613,7 +703,12 @@ for r in rows:
         # honest where saying `ok` would imply a comparison happened.
         flag = "seed" if flag == "ok" else flag
     else:
-        equal_quality = True
+        # `equal_quality` is a claim about the *quality* columns, so it can only be true when
+        # there is a quality baseline to compare them against. A stem with a time baseline and no
+        # quality baseline was previously judged by the strict equal-quality-not-slower rule with
+        # nothing establishing that quality was equal; it now falls through to the escalation
+        # thresholds, which is the honest reading of "we do not know whether this bought anything".
+        equal_quality = base is not None
         if base is not None:
             if inc != "-" and base["incomplete"] != "-" and int(inc) > int(base["incomplete"]):
                 flag = "INCOMPLETE-ROSE"
@@ -643,9 +738,19 @@ for r in rows:
         if prior_cpu and float(cpu) > 0:
             ratio = float(cpu) / prior_cpu
             ratios.append(ratio)
-            # The per-stem floor: this stem's own measured spread, when that is wider than the
-            # corpus floor. See CPU_NOISE_FLOOR's note in the shell half.
-            floor = max(noise_floor, 1.0 + (prior_spread or 0.0) / prior_cpu)
+            # The per-stem floor: the largest of the corpus floor, the baseline's own measured
+            # spread, THIS run's measured spread, and an absolute epsilon that keeps the rule
+            # meaningful on a 30 ms stem. See CPU_NOISE_FLOOR's note in the shell half.
+            try:
+                current_spread = float(spread)
+            except ValueError:
+                current_spread = 0.0
+            floor = max(
+                noise_floor,
+                1.0 + (prior_spread or 0.0) / prior_cpu,
+                1.0 + current_spread / prior_cpu,
+                1.0 + cpu_epsilon / prior_cpu,
+            )
             if equal_quality and ratio > floor:
                 flag = "SLOWER" if flag == "ok" else flag
                 regressions.append(
@@ -659,8 +764,12 @@ for r in rows:
 
     if flag not in ("ok", "seed"):
         flags.append(f"{family}/{stem}={flag}")
-    out.append([family, stem, cap, inc, viol, clear, hole, score, length, vt, vth, vbl, vbu,
-                bends, cpu, spread, flag])
+    # Context only. `jbase` is never consulted by any rule above, and a missing file or a missing
+    # stem renders `-` rather than a zero — a jar number nobody measured is not a jar number.
+    jbase = jar.get((family, stem))
+    jar_cells = [jbase.get(name[len("jar_"):], "-") if jbase else "-" for name in JAR_COLUMNS]
+    out.append([family, stem, cap] + [inc, viol, clear, hole, score, length, vt, vth, vbl, vbu,
+                                      bends] + [cpu, spread] + jar_cells + [flag])
 
 corpus_note = ""
 if ratios:
@@ -680,8 +789,13 @@ with open(out_path, "w", encoding="utf-8") as fh:
     else:
         fh.write(f"# port-baseline: {rel(prev_path)}"
                  f"{'' if os.path.exists(prev_path) else '  [absent]'}\n")
-    fh.write(f"# jar-baseline: {rel(jar_path)}"
-             f"{'' if os.path.exists(jar_path) else '  [absent — Task 1 writes it]'}\n")
+    if os.path.exists(jar_path):
+        fh.write(f"# jar-baseline: {rel(jar_path)}  [read; rendered in the jar_* columns as"
+                 f" context, never a gate; {len(jar)} stem"
+                 f"{'' if len(jar) == 1 else 's'}]\n")
+    else:
+        fh.write(f"# jar-baseline: {rel(jar_path)}  [absent — Task 1 writes it; the jar_* columns"
+                 f" render `-`]\n")
     fh.write(f"# time-baseline: {rel(times_path)}"
              f"{'' if os.path.exists(times_path) else '  [absent — this run seeds it]'}\n")
     fh.write(f"# corpus-median-cpu-ratio: {corpus_note or '(no time baseline)'}\n")
@@ -691,7 +805,7 @@ with open(out_path, "w", encoding="utf-8") as fh:
              " board.bounding_box.width/height (#196)\n")
     fh.write("# quality-lane-budget: RouterBudget::disabled() (ruling AI);"
              " cpu_s lane: RouterBudget::default()\n")
-    fh.write("#" + "\t".join(COLUMNS) + "\n")
+    fh.write("# cols:" + "\t".join(COLUMNS) + "\n")
     for row in out:
         fh.write("\t".join(str(c) for c in row) + "\n")
 
@@ -727,10 +841,11 @@ tsv, times, gate, task, v100 = sys.argv[1:]
 cols, rows = None, []
 for line in open(tsv, encoding="utf-8"):
     line = line.rstrip("\n")
-    if line.startswith("#") and "\t" in line:
-        cols = line[1:].split("\t")
+    if line.startswith("# cols:"):
+        cols = line[len("# cols:"):].strip("\t").split("\t")
     elif line and not line.startswith("#"):
         rows.append(dict(zip(cols, line.split("\t"))))
+assert cols is not None, f"{tsv} carries no `# cols:` header line"
 
 # The corpus position of the binary this branch is based on. `benchmark/results/` is gitignored,
 # so this is read when it is there and quoted from the run of record when it is not; either way it
@@ -770,7 +885,7 @@ with open(times, "w", encoding="utf-8") as fh:
     else:
         fh.write("# v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2\n")
         fh.write("#   (quoted -- benchmark/results/ is gitignored and this checkout has no copy)\n")
-    fh.write("#family\tstem\tcpu_s\tcpu_spread_s\n")
+    fh.write("# cols:family\tstem\tcpu_s\tcpu_spread_s\n")
     for r in rows:
         fh.write(f"{r['family']}\t{r['stem']}\t{r['cpu_s']}\t{r['cpu_spread_s']}\n")
 print(f"updated {times} from {tsv}")

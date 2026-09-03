@@ -929,10 +929,17 @@ else
   args=("${default_args[@]}")
 fi
 
+# **The flag is wired, not merely parsed.** It is exported into every driver's environment, so a
+# task that converts a driver to port-golden comparison reads `$AGAINST_JAR` from inside the
+# driver and needs no new spelling of its own — and a converted driver that forgets to read it is
+# a driver that ignores an environment variable it can see, which is a smaller mistake to find
+# than a flag that reached nothing.
+export AGAINST_JAR
 if [[ "$AGAINST_JAR" -eq 1 ]]; then
   echo "== --against-jar: this run compares the port against a LIVE jar. It is a triage tool," >&2
   echo "   never a gate (Plan 9 Task 0) — a DIFF here is a finding to explain, not a failure." >&2
-  echo "   At Task 0 the flag changes nothing: every driver still runs the jar live." >&2
+  echo "   At Task 0 the flag changes nothing: every driver still runs the jar live, so this is" >&2
+  echo "   already what the harness does. AGAINST_JAR=1 is exported for the converted drivers." >&2
 fi
 
 if [[ "$needs_jar_230" -eq 1 ]]; then

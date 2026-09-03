@@ -42,15 +42,11 @@ fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
     }
 }
 
-/// `Path.of(args[0]).getFileName().toString().replaceAll("\\.dsn$", "")` (RefWriter.java:26).
-fn design_name(path: &Path) -> String {
-    path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or_default()
-        .strip_suffix(".dsn")
-        .unwrap_or_default()
-        .to_string()
-}
+/// `RefWriter.main`'s `designName`. **One copy for the whole tree**, in `parity`, because
+/// `scripts/differential/rust/src/bin/refwriter.rs` — the binary that cuts these very references
+/// from the port — needs the same rule and a drift between two copies would move every family-G
+/// golden with nothing failing (Plan 9 Task 0 review, S5).
+use parity::dsn_design_name as design_name;
 
 fn assert_roundtrip_parity(stem: &str, relative_fixture: &str) {
     if !parity::require_java_dir() {
@@ -324,4 +320,100 @@ fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
     // (DsnWriter.java:76-80) — the header is unchanged.
     assert!(compat.contains("(string_quote "));
     assert!(compat.contains("(space_in_quoted_tokens on)"));
+}
+
+// =================================================================================================
+// The generator binary itself (Plan 9 Task 0 review, S5)
+// =================================================================================================
+
+/// `scripts/gen-reference.sh --from-port` cuts every committed `roundtrip.dsn` / `unrouted.ses`
+/// by running `scripts/differential/rust/src/bin/refwriter.rs`. The assertions above bind the
+/// **call pair** that binary makes; this one binds **the binary**, end to end, on one stem.
+///
+/// # Why it earns its place
+///
+/// From Plan 9 Task 1 on, family G is regenerated from the port, and the only thing standing
+/// between a bug in that ~40-line driver and a silent move of every DSN/SES golden is a shell
+/// script nobody runs in CI. A drift in its argv handling, its `designName`, its write order or
+/// its error path would surface as an unexplained golden churn at a regeneration rather than as a
+/// failing test. This runs it and byte-compares.
+///
+/// # Why one stem, and why this one
+///
+/// `Issue143-rpi_splitter` is the smallest board in `fixtures.txt` (5.5 kB round trip) and the
+/// driver is board-independent — it reads and writes whatever the reader produced. Seven stems
+/// would cost seven times as much and bind nothing further; the *seven-stem* claim is
+/// `assert_roundtrip_parity` above, which this test does not duplicate.
+///
+/// # The build
+///
+/// `scripts/differential/rust` is a **separate workspace** (excluded from the root one), so
+/// `CARGO_BIN_EXE_*` cannot reach it and the binary has to be built here. It has its own
+/// `target/`, so this cannot deadlock against the outer cargo's lock, and it is incremental after
+/// the first run. `FR_REFWRITER_BIN` skips the build for a caller that has already built it.
+#[test]
+fn the_refwriter_binary_reproduces_a_committed_reference() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let reference_dsn = parity::reference("Issue143-rpi_splitter", "roundtrip.dsn");
+    let reference_ses = parity::reference("Issue143-rpi_splitter", "unrouted.ses");
+    if !parity::require_reference(&reference_dsn) || !parity::require_reference(&reference_ses) {
+        return;
+    }
+
+    let root = parity::workspace_root();
+    let manifest = root.join("scripts/differential/rust/Cargo.toml");
+    let binary = match std::env::var_os("FR_REFWRITER_BIN") {
+        Some(path) => std::path::PathBuf::from(path),
+        None => {
+            let status = std::process::Command::new(env!("CARGO"))
+                .args(["build", "--release", "--bin", "refwriter", "--quiet"])
+                .arg("--manifest-path")
+                .arg(&manifest)
+                .status()
+                .expect("cargo must be runnable");
+            assert!(status.success(), "building refwriter failed: {status}");
+            root.join("scripts/differential/rust/target/release/refwriter")
+        }
+    };
+
+    let out = std::env::temp_dir().join(format!("fr-refwriter-{}", std::process::id()));
+    std::fs::create_dir_all(&out).expect("scratch directory");
+    let dsn = out.join("roundtrip.dsn");
+    let ses = out.join("unrouted.ses");
+    let input = parity::fixture("Issue143-rpi_splitter.dsn");
+
+    let status = std::process::Command::new(&binary)
+        .arg(&input)
+        .arg(&dsn)
+        .arg(&ses)
+        .status()
+        .unwrap_or_else(|e| panic!("cannot run {}: {e}", binary.display()));
+    assert!(status.success(), "refwriter exited {status}");
+
+    // **Bytes**, not `assert_text_parity`: what the generator writes is what gets committed, so a
+    // whitespace-tolerant comparison here would let exactly the drift this test exists to catch
+    // through.
+    for (produced, committed) in [(&dsn, &reference_dsn), (&ses, &reference_ses)] {
+        let actual = std::fs::read(produced).expect("the driver wrote its output");
+        let expected = std::fs::read(committed).expect("the committed reference");
+        assert_eq!(
+            actual.len(),
+            expected.len(),
+            "{} is {} bytes and {} is {}",
+            produced.display(),
+            actual.len(),
+            committed.display(),
+            expected.len()
+        );
+        assert!(
+            actual == expected,
+            "{} differs from the committed {} — scripts/gen-reference.sh --from-port would move \
+             this golden",
+            produced.display(),
+            committed.display()
+        );
+    }
+    std::fs::remove_dir_all(&out).ok();
 }

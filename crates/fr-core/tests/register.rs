@@ -8,10 +8,18 @@
 //! * [`every_java_bug_marker_has_a_register_row`] — code → register. A marker that names an id
 //!   the register does not carry is a marker pointing at nothing.
 //! * [`a_fixed_row_has_a_fixed_marker`] — register → code. A row whose `status` says
-//!   `fixed: T<n>` must have a `// fixed: T<n>` marker at some site, or the register is claiming
-//!   a fix the code does not carry. **Vacuously true at Task 0; it is the gate every later task
-//!   arms**, and it is what makes "edit the status cell in the same commit as the fix" checkable
-//!   rather than a convention nobody enforces.
+//!   `fixed: T<n>` must have a `// fixed: T<n> (#id)` marker **naming that row**, and one per
+//!   site wherever the site inventory is knowable, or the register is claiming a fix the code
+//!   does not carry. **Vacuously true at Task 0; it is the gate every later task arms**, and it
+//!   is what makes "edit the status cell in the same commit as the fix" checkable rather than a
+//!   convention nobody enforces.
+//!
+//!   **Why the id is in the marker.** Keyed on the task alone, one `// fixed: T9` anywhere would
+//!   satisfy every row Task 9 closes — a task fixing ten rows would need one comment, and the
+//!   assertion message would be claiming a check the code did not make. The id makes the marker
+//!   point at its own row. The site count then comes free wherever the neighbouring
+//!   `// Java bug:` markers carry the id too (26 lines name 24 ids today): if `n` of them name
+//!   `#id`, at least `n` `// fixed:` markers must name it back.
 //! * [`the_register_is_contiguous`] — the register's own arithmetic note, executed. The note at
 //!   the bottom of `docs/java-quirks.md` says the ids are contiguous from 1 and names the next
 //!   free id; a plan that allocates ids by reading a prose sentence needs that sentence checked.
@@ -33,7 +41,7 @@
 //! and already depends on `parity` for its workspace-root helper; nothing in this file touches
 //! `fr_core` itself.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 /// Survey §9.1's count of record: 165 `// Java bug:` markers across the eight crates. The
@@ -253,21 +261,38 @@ fn a_fixed_row_has_a_fixed_marker() {
         // not fixed anything yet, which is true at Task 0 and false from Task 1 on.
         return;
     }
-    // Every `// fixed: T<n>` marker in the tree, as the task tokens it names.
-    let mut markers: BTreeSet<String> = BTreeSet::new();
+
+    // Every `// fixed: T<n> (#id)` marker in the tree, counted **per (task, id)**. Counting
+    // rather than collecting a set is what makes the "at every site" clause below possible: a set
+    // would let one comment satisfy ten rows, which is what this test used to do and what its own
+    // message already denied.
+    let mut fixed_markers: BTreeMap<(String, u32), usize> = BTreeMap::new();
+    // And every `// Java bug:` marker that names an id, counted the same way — the site inventory
+    // the "at every site" clause is measured against.
+    let mut bug_sites: BTreeMap<u32, usize> = BTreeMap::new();
+    for (_, _, line) in java_bug_markers() {
+        for id in ids_in(&line) {
+            *bug_sites.entry(id).or_default() += 1;
+        }
+    }
     for path in rust_sources() {
         let Ok(source) = std::fs::read_to_string(&path) else {
             continue;
         };
         for line in source.lines() {
-            if let Some(rest) = line.split("// fixed: T").nth(1) {
-                let task: String = rest.chars().take_while(char::is_ascii_digit).collect();
-                if !task.is_empty() {
-                    markers.insert(format!("T{task}"));
-                }
+            let Some(rest) = line.split("// fixed: T").nth(1) else {
+                continue;
+            };
+            let task: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            if task.is_empty() {
+                continue;
+            }
+            for id in ids_in(rest) {
+                *fixed_markers.entry((format!("T{task}"), id)).or_default() += 1;
             }
         }
     }
+
     let mut missing = Vec::new();
     for (id, status) in &fixed {
         // `fixed: T9` / `fixed: T9 — one clause`: the task token is the first word after the colon.
@@ -275,16 +300,32 @@ fn a_fixed_row_has_a_fixed_marker() {
             .chars()
             .take_while(|c| c.is_ascii_alphanumeric())
             .collect();
-        if !markers.contains(&task) {
+        let marked = fixed_markers
+            .get(&(task.clone(), *id))
+            .copied()
+            .unwrap_or_default();
+        if marked == 0 {
             missing.push(format!(
-                "row #{id} says {status:?} but no `// fixed: {task}` marker exists"
+                "row #{id} says {status:?} but no `// fixed: {task} (#{id})` marker exists (a marker naming another row's id does not close this one)"
+            ));
+            continue;
+        }
+        // **At every site**, wherever the site inventory is knowable. A `// Java bug:` marker that
+        // names its id is a site this register row describes, so the fix must have left a
+        // `// fixed:` marker beside each of them. Where the neighbouring markers carry no id — the
+        // majority, which name the Java method in prose instead — the inventory is not machine
+        // readable and the `>= 1` above is the whole check; that is a limit of the older markers,
+        // not a softening of the rule, and it shrinks every time a task touches one.
+        let sites = bug_sites.get(id).copied().unwrap_or_default();
+        if marked < sites {
+            missing.push(format!(
+                "row #{id} says {status:?} and {sites} `// Java bug:` markers name #{id}, but                  only {marked} of them has a `// fixed: {task} (#{id})` beside it — the rule is                  one marker per site, not one per row"
             ));
         }
     }
     assert!(
         missing.is_empty(),
-        "a register row may only claim `fixed: T<n>` once the fix is in the code, with a \
-         `// fixed: T<n>` marker beside the `// Java bug:` one at every site:\n{}",
+        "a register row may only claim `fixed: T<n>` once the fix is in the code, with a `// fixed: T<n> (#id)` marker naming that row beside the `// Java bug:` one at every site:\n{}",
         missing.join("\n")
     );
 }

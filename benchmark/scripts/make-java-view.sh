@@ -53,11 +53,18 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 RESULTS="$HERE/results"
 
-# The identity this view is frozen at. All five are asserted after the view is built.
+# The identity this view is frozen at. The verification step at the bottom asserts **ten** things
+# about the rebuilt view: the candidate list, its sha, the board count, `seeds`, `max_passes`,
+# `timeout_s`, `threads`, `jobs`, `tier`, and — the one that catches a `meta.json` promising boards
+# that are not on disk — the count of cells whose `metrics.json` is readable through the symlink.
 EXPECT_RUN_ID="java-278fe14"
 EXPECT_SHA="278fe14123c4"
 EXPECT_BOARDS=605
 EXPECT_CANDIDATE="java-current"
+# `jobs 12` is part of the run identity `bench compare` checks for compatibility
+# (`compare.py::_check_config` keys on threads/jobs/max_passes/timeout_s), so it is asserted here
+# rather than only named in this header.
+EXPECT_JOBS=12
 
 SOURCE=""
 RUN_ID="$EXPECT_RUN_ID"
@@ -79,6 +86,14 @@ fi
 # Relative paths are resolved against `benchmark/`, so `results/full-rs-vs-java` works from either
 # `benchmark/` or `benchmark/scripts/`.
 [[ "$SOURCE" == /* ]] || SOURCE="$HERE/$SOURCE"
+if [[ ! -d "$SOURCE" ]]; then
+  echo "error: $SOURCE is not a directory" >&2
+  echo "       give this script the bench RUN directory that holds the jar's cells, e.g." >&2
+  echo "       $0 results/full-rs-vs-java" >&2
+  echo "       (benchmark/results/ is gitignored, so a clean checkout has none until a run is" >&2
+  echo "        copied in — that is exactly the situation this script exists for.)" >&2
+  exit 1
+fi
 SOURCE="$(cd "$SOURCE" && pwd)"
 
 if [[ ! -f "$SOURCE/meta.json" ]]; then
@@ -135,11 +150,12 @@ ln -sfn "$SOURCE/$EXPECT_CANDIDATE" "$VIEW/$EXPECT_CANDIDATE"
 echo "   $EXPECT_CANDIDATE -> $(readlink "$VIEW/$EXPECT_CANDIDATE")"
 
 # ---- 3. verify ------------------------------------------------------------------------------------
-python3 - "$VIEW" "$EXPECT_SHA" "$EXPECT_BOARDS" "$EXPECT_CANDIDATE" <<'PY'
+python3 - "$VIEW" "$EXPECT_SHA" "$EXPECT_BOARDS" "$EXPECT_CANDIDATE" "$EXPECT_JOBS" <<'PY'
 import json, os, sys
 
-view, expect_sha, expect_boards, candidate = sys.argv[1:]
+view, expect_sha, expect_boards, candidate, expect_jobs = sys.argv[1:]
 expect_boards = int(expect_boards)
+expect_jobs = int(expect_jobs)
 meta = json.loads(open(os.path.join(view, "meta.json"), encoding="utf-8").read())
 args = meta["args"]
 
@@ -161,6 +177,7 @@ check("seeds", args.get("seeds"), 1)
 check("max_passes", args.get("max_passes"), 10)
 check("timeout_s", args.get("timeout_s"), 300)
 check("threads", args.get("threads"), 1)
+check("jobs", args.get("jobs"), expect_jobs)
 check("tier", args.get("tier"), "pcbench")
 
 # The cells the compare will actually read: one per board for the kept candidate, each with a
