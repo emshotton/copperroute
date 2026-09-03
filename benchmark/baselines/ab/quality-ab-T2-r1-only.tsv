@@ -1,0 +1,50 @@
+# gate-version: g1
+# task: T2
+# ABLATION: R1 (#293) ONLY — R2 (#294)'s three-line rules-minimum guard removed from
+#           `crates/fr-router/src/autoroute/path/inserter.rs::insert_fanout_micro_neckdown`
+#           and NOTHING else changed. This is the BP12 bisection artefact that attributes
+#           `quality-ab-T2.tsv`'s flags to one fix or the other; it is NOT a baseline and no
+#           later task compares against it. `+uncommitted-changes-under-crates` on the port
+#           sha below is that removal and is the honest record of it.
+# repeats:  1, deliberately — the quality lane runs once whatever `--repeats` says, so the
+#           incomplete / violation / neckdown columns are exactly as good as the three-repeat
+#           run's. Only `cpu_s` is a single sample here and should be read as indicative.
+# port-sha: bd296d78e2d8 +uncommitted-changes-under-crates
+# repeats: 1
+# port-baseline: benchmark/baselines/ab/quality-ab-T1.tsv
+# jar-baseline: benchmark/baselines/quality-baseline-java-head.tsv  [read; rendered in the jar_* columns as context, never a gate; 29 stems]
+# time-baseline: benchmark/baselines/stem-times.tsv
+# corpus-median-cpu-ratio: 0.978
+# source-of-incomplete-and-violations: the referee's DRC document (`-de <board> <ses> -drc <report>`), NEVER the manifest (survey §4.1)
+# forbidden-inputs: traces.total_{vertical,horizontal,angled}_length (#195), board.bounding_box.width/height (#196)
+# quality-lane-budget: RouterBudget::disabled() (ruling AI); cpu_s lane: RouterBudget::default()
+# cols:family	stem	mp_cap	incomplete	violations	clearance_violations	hole_clearance_violations	normalized_score	trace_length_mm	via_total	via_through	via_blind	via_buried	bend_count	neckdown_below_class_width	cpu_s	cpu_spread_s	jar_incomplete	jar_violations	jar_clearance_violations	jar_normalized_score	flag
+batch	router-rpi-splitter	8	0	0	0	0	999.9724	109.36456	9	9	0	0	13	2	0.064	0.000	0	0	0	999.9719	ok
+batch	router-dac2020-bm01	2	32	48	0	0	830.7546	3074.4395	126	126	0	0	492	49	16.648	0.000	31	0	0	825.6295	INCOMPLETE-ROSE
+batch	router-j2-reference	99	0	0	0	0	999.98895	377.77234	18	18	0	0	54	43	0.308	0.000	0	0	0	999.9895	ok
+batch	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	0	6.936	0.000	0	0	0	0.0	ok
+batch	router-ecc83-input	8	0	0	0	0	999.997	161.82767	0	0	0	0	15	0	0.038	0.000	0	0	0	999.997	SLOWER
+batch	router-fanout-bm11	2	3	4	0	0	974.9914	1629.9095	53	53	0	0	263	62	5.903	0.000	2	5	0	987.4912	INCOMPLETE-ROSE
+batch	router-strict-drc-cnh	2	14	17	0	16	910.33777	4461.989	0	0	0	0	268	1	9.884	0.000	11	17	0	930.0412	INCOMPLETE-ROSE
+batch	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0	0.006	0.000	0	0	0	0.0	ok
+cli	router-rpi-splitter	8	0	0	0	0	999.9724	109.36456	9	9	0	0	13	2	0.067	0.000	0	0	0	999.9719	ok
+cli	router-j2-reference	99	0	0	0	0	999.98895	377.77234	18	18	0	0	54	43	0.318	0.000	0	0	0	999.9895	ok
+cli	router-ecc83-input	8	0	0	0	0	999.997	161.82767	0	0	0	0	15	0	0.028	0.000	0	0	0	999.997	ok
+cli	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0	0.006	0.000	0	0	0	0.0	ok
+cli	router-dac2020-bm01	2	32	48	0	0	830.7546	3074.4395	126	126	0	0	492	49	17.792	0.000	31	0	0	825.6295	INCOMPLETE-ROSE
+cli	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	0	6.856	0.000	0	0	0	0.0	ok
+cli	router-fanout-bm11	2	3	4	0	0	974.9914	1629.9095	53	53	0	0	263	62	5.232	0.000	2	5	0	987.4912	INCOMPLETE-ROSE
+cli	router-strict-drc-cnh	2	14	17	0	16	910.33777	4461.989	0	0	0	0	268	1	9.395	0.000	11	17	0	930.0412	INCOMPLETE-ROSE
+cli	tutorial_board	default	0	0	0	0	0.0	0.0	0	0	0	0	0	0	6.847	0.000	0	0	0	0.0	ok
+cli	Issue026-J2_reference	default	0	0	0	0	999.98895	377.77234	18	18	0	0	54	43	0.313	0.000	0	0	0	999.9895	ok
+cli	large-outline	2	7	419	0	400	831.65106	4841.236	169	169	0	0	540	15	4.890	0.000	8	415	0	823.31805	ok
+cli	kicad-ecc83-json	3	6	14	0	14	309.9979	113.13035	0	0	0	0	10	0	0.273	0.000	6	14	0	309.99774	ok
+cli	kicad-complex-hierarchy-json	default	0	36	0	36	935.7093	1337.9388	0	0	0	0	145	0	5.316	0.000	0	36	0	935.709	SLOWER
+drc	drc-dev-board	n/a	4	10	0	2	-	-	-	-	-	-	-	-	0.044	0.000	4	10	0	-	ok
+drc	drc-bbd-mars-64	n/a	3	96	12	64	-	-	-	-	-	-	-	-	0.054	0.000	3	96	12	-	ok
+drc	drc-natural-tone-preamp	n/a	44	112	0	0	-	-	-	-	-	-	-	-	0.119	0.000	44	115	0	-	ok
+drc	drc-issue593-rules	n/a	74	0	0	0	-	-	-	-	-	-	-	-	0.011	0.000	74	0	0	-	ok
+drc	drc-issue593-ses	n/a	45	13	0	0	-	-	-	-	-	-	-	-	0.027	0.000	45	13	0	-	ok
+drc	drc-issue753-cpu85	n/a	169	107	0	78	-	-	-	-	-	-	-	-	0.121	0.000	169	107	0	-	ok
+drc	drc-issue110-relay	n/a	44	26	0	4	-	-	-	-	-	-	-	-	0.012	0.000	44	26	0	-	ok
+drc	drc-tutorial-board	n/a	0	0	0	0	-	-	-	-	-	-	-	-	0.817	0.000	0	0	0	-	ok
