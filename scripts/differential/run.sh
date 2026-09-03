@@ -930,9 +930,13 @@ case "$driver" in
     #   (b) Task 9's `-de board.json -do out.ses` rung: the same board as a KiCad *design* JSON,
     #       through the port's own JSON reader, against
     #       `tests/reference/cli-kicad-ecc83-json/route.ses`;
-    #   (c) Task 10's quirk-T measurement: `-do out.json` writes the board **as loaded**, before
-    #       any routing, so the file is byte-identical for `-mp 1` and `-mp 8` and carries no
-    #       trace the router produced.
+    #   (c) quirk T (register #289), **fixed in Plan 9 Task 3**: the jar's `-do out.json` writes
+    #       the board **as loaded**, before any routing, so its file is byte-identical for
+    #       `-mp 1` and `-mp 8` and carries no trace the router produced; the port's carries the
+    #       routed board, and the same trace count its own SES carries on the identical argv. The
+    #       rung's verdict is `XDIFF` — the two programs are supposed to differ here, and this is
+    #       the one rung that **cannot** convert to port-golden: two of its three checks are
+    #       assertions about the *jar*, which a port-cut golden cannot carry.
     #
     # `rust_only=1`, for `p8t1`'s reason. The stems are `tests/reference/cli-fixtures.txt`'s two
     # KiCad rows plus the DSN twin of the same board.

@@ -1,0 +1,41 @@
+# gate-version: g1
+# task: T3
+# port-sha: ad7208bf06d8
+# repeats: 3
+# port-baseline: benchmark/baselines/ab/quality-ab-T2.tsv  [absent]
+# jar-baseline: benchmark/baselines/quality-baseline-java-head.tsv  [read; rendered in the jar_* columns as context, never a gate; 29 stems]
+# time-baseline: benchmark/baselines/stem-times.tsv
+# corpus-median-cpu-ratio: 0.996
+# source-of-incomplete-and-violations: the referee's DRC document (`-de <board> <ses> -drc <report>`), NEVER the manifest (survey §4.1)
+# forbidden-inputs: traces.total_{vertical,horizontal,angled}_length (#195), board.bounding_box.width/height (#196)
+# quality-lane-budget: RouterBudget::disabled() (ruling AI); cpu_s lane: RouterBudget::default()
+# cols:family	stem	mp_cap	incomplete	violations	clearance_violations	hole_clearance_violations	normalized_score	trace_length_mm	via_total	via_through	via_blind	via_buried	bend_count	cpu_s	cpu_spread_s	jar_incomplete	jar_violations	jar_clearance_violations	jar_normalized_score	flag
+batch	router-rpi-splitter	8	0	0	0	0	999.9719	111.2505	9	9	0	0	14	0.073	0.001	0	0	0	999.9719	ok
+batch	router-dac2020-bm01	2	31	0	0	0	825.6295	2972.233	81	81	0	0	413	14.932	0.048	31	0	0	825.6295	ok
+batch	router-j2-reference	99	0	0	0	0	999.9895	377.88388	16	16	0	0	54	0.324	0.002	0	0	0	999.9895	ok
+batch	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	6.984	0.031	0	0	0	0.0	ok
+batch	router-ecc83-input	8	0	0	0	0	999.997	161.87364	0	0	0	0	15	0.029	0.001	0	0	0	999.997	ok
+batch	router-fanout-bm11	2	2	5	0	0	987.4912	1632.4795	53	53	0	0	275	5.552	0.039	2	5	0	987.4912	ok
+batch	router-strict-drc-cnh	2	11	17	0	16	930.0412	5038.2734	4	4	0	0	294	10.792	0.053	11	17	0	930.0412	ok
+batch	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0.005	0.001	0	0	0	0.0	ok
+cli	router-rpi-splitter	8	0	0	0	0	999.9719	111.2505	9	9	0	0	14	0.073	0.000	0	0	0	999.9719	ok
+cli	router-j2-reference	99	0	0	0	0	999.9895	377.88388	16	16	0	0	54	0.324	0.001	0	0	0	999.9895	ok
+cli	router-ecc83-input	8	0	0	0	0	999.997	161.87364	0	0	0	0	15	0.029	0.001	0	0	0	999.997	ok
+cli	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0.006	0.002	0	0	0	0.0	ok
+cli	router-dac2020-bm01	2	31	0	0	0	825.6295	2972.233	81	81	0	0	413	14.959	0.089	31	0	0	825.6295	ok
+cli	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	6.980	0.011	0	0	0	0.0	ok
+cli	router-fanout-bm11	2	2	5	0	0	987.4912	1632.4795	53	53	0	0	275	5.586	0.065	2	5	0	987.4912	ok
+cli	router-strict-drc-cnh	2	11	17	0	16	930.0412	5038.2734	4	4	0	0	294	10.575	0.030	11	17	0	930.0412	ok
+cli	tutorial_board	default	0	0	0	0	0.0	0.0	0	0	0	0	0	6.845	0.008	0	0	0	0.0	ok
+cli	Issue026-J2_reference	default	0	0	0	0	999.9895	377.88388	16	16	0	0	54	0.325	0.000	0	0	0	999.9895	ok
+cli	large-outline	2	8	415	0	400	823.31805	4812.476	162	162	0	0	534	4.976	0.881	8	415	0	823.31805	ok
+cli	kicad-ecc83-json	3	6	14	0	14	309.99774	113.13041	0	0	0	0	11	0.291	0.005	6	14	0	309.99774	ok
+cli	kicad-complex-hierarchy-json	default	0	36	0	36	935.709	1399.8671	0	0	0	0	154	2.713	0.031	0	36	0	935.709	ok
+drc	drc-dev-board	n/a	4	10	0	2	-	-	-	-	-	-	-	0.044	0.000	4	10	0	-	ok
+drc	drc-bbd-mars-64	n/a	3	96	12	64	-	-	-	-	-	-	-	0.053	0.002	3	96	12	-	ok
+drc	drc-natural-tone-preamp	n/a	44	112	0	0	-	-	-	-	-	-	-	0.122	0.002	44	115	0	-	ok
+drc	drc-issue593-rules	n/a	74	0	0	0	-	-	-	-	-	-	-	0.013	0.001	74	0	0	-	ok
+drc	drc-issue593-ses	n/a	45	13	0	0	-	-	-	-	-	-	-	0.028	0.001	45	13	0	-	ok
+drc	drc-issue753-cpu85	n/a	169	107	0	78	-	-	-	-	-	-	-	0.124	0.000	169	107	0	-	ok
+drc	drc-issue110-relay	n/a	44	26	0	4	-	-	-	-	-	-	-	0.013	0.000	44	26	0	-	ok
+drc	drc-tutorial-board	n/a	0	0	0	0	-	-	-	-	-	-	-	0.841	0.005	0	0	0	-	ok

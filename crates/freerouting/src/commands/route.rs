@@ -189,6 +189,17 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // and the writer cannot disagree. A path this program cannot write is refused **at the
     // argument** — before the settings merge, before the board load, before the router — and
     // **nothing is written and nothing is touched**.
+    //
+    // One consequence of #265's fix belongs here rather than in a report, because this is the
+    // line it lands on. `tryToSetOutputFile:389` builds a `BoardFileDetails(File)`, which
+    // **reads the file** if it exists (`BoardFileDetails.java:58-67`) — and in Java it never
+    // does, because `:118` deleted it eight lines earlier. Now that nothing deletes it, an
+    // existing `-do` target is read here and CRC32'd for nothing. It is harmless: `:391` assigns
+    // `output.format` from the **path's** extension immediately afterwards, so the re-sniff of
+    // the previous file's bytes cannot survive; step 13's `set_data` replaces the size and the
+    // CRC with the ones it writes; and `RoutingResultManifest` carries `output_written`, a
+    // boolean, and neither the size nor the CRC of the output. What it costs is one read of a
+    // file that is about to be overwritten.
     let accepted = job.try_to_set_output_file(Some(&args.output));
     let resolved = job.output.as_ref().map(|output| output.format);
     if !accepted || !resolved.is_some_and(|format| WRITABLE_OUTPUT_FORMATS.contains(&format)) {
@@ -627,11 +638,12 @@ const WRITABLE_OUTPUT_FORMATS: [FileFormat; 2] = [FileFormat::Ses, FileFormat::K
 
 /// `setJobOutput:260-271`'s format resolution, hoisted out of it.
 ///
-/// Java asks the question twice — once inside `setJobOutput`'s `job.output == null` arm and,
-/// implicitly, every time the `:275`/`:282` ladder re-reads `job.output.format`. The port asked it
-/// a **third** time before the pipeline ran, to decide whether to take quirk #289's pre-routing
-/// snapshot; fixed: T3 (#289) removed that call with the snapshot it existed for, so the function
-/// is back to Java's two askers.
+/// Java derives it inside `setJobOutput`'s `job.output == null` arm and then re-reads
+/// `job.output.format` at `:275` and `:282`. The port asked this function a **second** time
+/// before the pipeline ran, to decide whether to take quirk #289's pre-routing snapshot;
+/// fixed: T3 (#289) removed that call along with the snapshot it existed for, so there is one
+/// caller again — the `job.output.is_none()` arm below — and the `:275`/`:282` ladder reads the
+/// field it filled, which is Java's shape.
 ///
 /// `job.output.format` when there is one — `tryToSetOutputFile:391` set it from the *output*
 /// path's extension — and otherwise `:265-271`'s derivation from the **input** format.
