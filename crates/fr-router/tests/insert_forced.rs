@@ -83,12 +83,16 @@ fn resampled_polyline() -> Polyline {
     ])
 }
 
-/// The derivation of `tests/data/t6-resampled-polyline.txt` up to the point where
-/// `insertTraceWithoutCleaning` refuses the resampled polyline — the half of the fixture that
-/// does not depend on the fix, so that a later change which stops *reaching* `:756` is visible as
-/// a failure here rather than as a silently vacuous test above.
+/// The arithmetic of `tests/data/t6-resampled-polyline.txt`, re-derived **standalone**.
+///
+/// This calls [`Polyline::shorten`] directly with the arguments the derivation computes for
+/// `:659-661` — it does **not** go through `insert_forced_trace_polyline`, and is not an
+/// end-to-end check; the test above is that. What it is for is the half of the fixture that does
+/// not depend on the fix: if a later change stops the method *reaching* `:756` with a closed
+/// polyline, the test above would go quietly vacuous, and this one says which link of the
+/// derivation broke.
 #[test]
-fn the_fixtures_resample_closes_the_polyline() {
+fn the_fixtures_shorten_closes_the_polyline_standalone() {
     let board = resampled_polyline_board();
     assert_eq!(
         board.get_min_trace_half_width(),

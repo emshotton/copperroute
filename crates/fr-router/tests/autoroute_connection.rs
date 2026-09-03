@@ -534,32 +534,37 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
 /// port answers is recorded here instead, so the jar's number and the port's sit side by side and
 /// a reviewer can see both.
 ///
-/// Plan 9 Task 6, quirk #168. `DrillPage.getDrills` used to throw on a cancelled `splitToConvex`
-/// (`:108` dereferencing the null `drillShapes`), which ended the connection right there; the fix
-/// installs the drill list only after the split succeeds, so a cancelled page answers "no drills"
-/// and the connection **continues** — and reaches one more of ruling 6's six stop-check sites
-/// before it ends. Hence `stopCalls` one higher, on exactly the four of nine regime/limit blocks
-/// whose stop trips inside a drill page.
+/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
+/// port answers is recorded here instead, so the jar's number and the port's sit side by side and
+/// a reviewer can see both.
 ///
-/// What the test is named for does not move: `:207-213`'s degraded FAILED, the board dumps and
-/// the item lists are byte-identical on all 100 rows. Only these four counters differ, and only
-/// by one.
-/// Plan 9 Task 6, quirk #173. `AutorouteControl.initNet`'s null-net arm completed only for
-/// `netNumber <= 0`; a **positive unknown** net took the arm and then threw two lines later at
-/// `:219`. Mode `route`'s third call is exactly that — item 2 on net **99**, which this board does
-/// not have — so the throw hit ruling 7's fifth boundary and degraded to a bare `FAILED`. With the
-/// arm given its own half-width fallback the control builds, the router runs on, and `:49-52`
-/// answers `NO_UNCONNECTED_NETS` because item 2 is already routed. That is the register's stated
-/// payoff — `RoutingBoard.java:1023` builds a control from a pin's net number, so a stale net
-/// number no longer kills the connection.
+/// **Every entry carries the register row that authorizes it.** A divergence with no row behind it
+/// is a regression someone wrote a table entry for, which is the one failure mode this table has;
+/// the comment is what makes that visible in review.
 ///
-/// The fifth boundary keeps a producer: [`a_panicking_locator_degrades_to_javas_message_less_failure`]
-/// still reaches `:154-158` and still asserts the empty `details` that distinguishes it.
+/// * **#168** — `DrillPage.getDrills` threw on a cancelled `splitToConvex` (`:108` dereferencing
+///   the null `drillShapes`), ending the connection there. The fix installs the drill list only
+///   after the split succeeds, so a cancelled page answers "no drills" and the connection
+///   **continues** — reaching one more of ruling 6's six stop-check sites before it ends. Hence
+///   `stopCalls` one higher, on exactly the four of nine regime/limit blocks whose stop trips
+///   inside a drill page. What the test is named for does not move: `:207-213`'s degraded FAILED,
+///   the board dumps and the item lists are byte-identical on all 100 rows.
+/// * **#173** — `AutorouteControl.initNet`'s null-net arm completed only for `netNumber <= 0`; a
+///   **positive unknown** net took the arm and threw two lines later at `:219`. Mode `route`'s
+///   third call is exactly that (item 2 on net **99**, which this board does not have), so the
+///   throw hit ruling 7's fifth boundary and degraded to a bare `FAILED`. With the arm given its
+///   own half-width fallback the control builds, the router runs on, and `:49-52` answers
+///   `NO_UNCONNECTED_NETS` for an item that is already routed. The fifth boundary keeps a
+///   producer: [`a_panicking_locator_degrades_to_javas_message_less_failure`] still reaches
+///   `:154-158` and still asserts the empty `details` that distinguishes it.
 const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
+    // #168 — the connection survives a cancelled drill page and consults the stop flag once more.
     ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
     ("stopafter", 77, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 88, "  stopCalls=13", "  stopCalls=14"),
+    // #173 — net 99 no longer throws, so boundary 5 is not reached and `:49-52` answers instead.
+    // Three regimes x (the result line, the state line).
     (
         "route",
         9,
@@ -625,16 +630,12 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
         }
         diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
-    let declared = KNOWN_DIVERGENCES
-        .iter()
-        .filter(|(m, ..)| *m == mode)
-        .count();
-    assert_eq!(
-        accounted, declared,
-        "mode `{mode}` declares {declared} known divergence(s) from the jar but only {accounted} \
-         of them still differ — a divergence that has healed must be deleted from \
-         KNOWN_DIVERGENCES, not left to rot"
-    );
+    // The diff assert runs FIRST, and the order is load-bearing. A declared row that *drifts* —
+    // the port answering something new — both fails to match the entry (so it lands in `diffs`)
+    // and leaves `accounted` short. With the healed-check first, that drift was reported as
+    // "a divergence has healed, delete it from KNOWN_DIVERGENCES" and the actual jvm/rust detail
+    // was never printed, which is exactly backwards: the entry is right and the port moved.
+    // Mutation-verified by the Task 6 reviewer.
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",
@@ -646,6 +647,18 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .cloned()
             .collect::<Vec<_>>()
             .join("\n")
+    );
+    // Only once every row matches either the jar or its declared divergence is a shortfall here
+    // unambiguous: the divergence really has healed and its entry must go.
+    let declared = KNOWN_DIVERGENCES
+        .iter()
+        .filter(|(m, ..)| *m == mode)
+        .count();
+    assert_eq!(
+        accounted, declared,
+        "mode `{mode}` declares {declared} known divergence(s) from the jar but only {accounted} \
+         of them still differ — a divergence that has healed must be deleted from \
+         KNOWN_DIVERGENCES, not left to rot"
     );
 }
 

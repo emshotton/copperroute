@@ -1,6 +1,6 @@
 # gate-version: g1
 # task: T6
-# port-sha: 11c758e9bec6
+# port-sha: 11c758e9bec6 (the measured tree; an ancestor of the commit carrying this file)
 # repeats: 3
 # port-baseline: benchmark/baselines/ab/quality-ab-T5.tsv  [absent]
 # jar-baseline: benchmark/baselines/quality-baseline-java-head.tsv  [read; rendered in the jar_* columns as context, never a gate; 29 stems]

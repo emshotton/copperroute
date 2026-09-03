@@ -153,9 +153,13 @@ impl Polyline {
     ///
     /// This is the normalising constructor that every trace transformation funnels through.
     ///
-    /// Returns [`PolylineError::NormalizationIndexUnderflow`] on the one input class where Java
-    /// throws; every path Java completes normally — including its two "fewer than 3 lines"
-    /// exits, which yield an empty polyline — is an `Ok`.
+    /// Always `Ok` since Plan 9 Task 6 (quirk #22): the input class Java threw on — the
+    /// `tmpArr[-1]` read in [`remove_overlaps`] — is guarded, and normalises to the empty
+    /// polyline like Java's own two "fewer than 3 lines" exits. The `Result` is kept because it
+    /// is this module's normalisation signature, threaded through
+    /// [`Polyline::from_lines_in_place`], [`Polyline::shorten`] and `BoardError::Normalization`
+    /// into three crates; see [`remove_overlaps`] for why collapsing it would be an interface
+    /// change with no behavioural content.
     pub fn from_lines(input_lines: Vec<Line>) -> Result<Polyline, PolylineError> {
         Ok(Polyline::build(input_lines)?.0)
     }

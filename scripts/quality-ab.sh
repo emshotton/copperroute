@@ -879,7 +879,12 @@ if ratios:
 with open(out_path, "w", encoding="utf-8") as fh:
     fh.write(f"# gate-version: {gate}\n")
     fh.write(f"# task: {task}\n")
-    fh.write(f"# port-sha: {sha}\n")
+    # The sha of the tree that was MEASURED, which is by construction an ancestor of the commit
+    # that carries this file — the measurement has to finish before its tsv can be committed, and
+    # a fix round or an amend moves HEAD again afterwards. So `port-sha != HEAD` is expected and
+    # is not staleness; what it must never do is name a commit that does not contain the measured
+    # code, which is what the `-dirty` suffix above is for.
+    fh.write(f"# port-sha: {sha} (the measured tree; an ancestor of the commit carrying this file)\n")
     fh.write(f"# repeats: {repeats}\n")
     if not prev_path:
         fh.write("# port-baseline: (none — this run seeds the rolling baseline)\n")

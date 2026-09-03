@@ -367,14 +367,17 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
                 .dsn_to_board_point(&[coordinate_arr[4 * i + 2], coordinate_arr[4 * i + 3]]);
             lines.push(Line::new(a.round(), b.round()));
         }
-        // totalized: Wiring.readWireScope — Java's `new Polyline(Line[])` (Wiring.java:562)
-        // cannot fail: `Polyline(Line[])` answers an empty `lines` array for anything it cannot
-        // normalise, and `insertTraceWithoutCleaning` then returns `null` for it
-        // (BasicBoard.java:185-187). The port's `Polyline::from_lines` answers
-        // `Err(PolylineError::NormalizationIndexUnderflow)` on the one input class where Java's
-        // constructor *throws* instead (Plan 1: `remove_overlaps`' index underflow), which no
-        // Java caller can observe as a value — so it propagates as `DsnError::Board` and fails
-        // the read rather than silently inserting nothing. See docs/java-quirks.md quirk #109.
+        // Wiring.readWireScope — Java's `new Polyline(Line[])` (Wiring.java:562) cannot fail:
+        // `Polyline(Line[])` answers an empty `lines` array for anything it cannot normalise, and
+        // `insertTraceWithoutCleaning` then returns `null` for it (BasicBoard.java:185-187).
+        //
+        // The port agrees since Plan 9 Task 6 (quirk #22): `remove_overlaps`' `tmpArr[-1]` read —
+        // the one input class where Java's constructor *threw* instead, and which therefore had
+        // to propagate here as `DsnError::Board` — is guarded, and normalises to the empty
+        // polyline like every other unnormalisable input. So this `?` is now unreachable and the
+        // read no longer has a failure mode Java lacks. The `map_err` stays because
+        // `from_lines` keeps its `Result` (see its doc comment). See docs/java-quirks.md quirks
+        // #22 and #109.
         let trace_polyline = Polyline::from_lines(lines).map_err(BoardError::from)?;
         result = board.insert_trace_without_cleaning(
             trace_polyline,
