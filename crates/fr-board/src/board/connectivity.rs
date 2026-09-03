@@ -657,16 +657,21 @@ impl Board {
     }
 
     /// [`Board::connection_items`] under a [`StopCheck`], consulted at the head of the walk
-    /// along the contacts (Item.java:724) — **the loop that does not terminate on a cycle**.
+    /// along the contacts (Item.java:724) — **the loop Java does not terminate in on a cycle**.
     ///
     /// Java's walk has no visited set: `result.add(currentItem)` on a `Set` does not stop it, so
     /// a closed connection with no fork and no non-routable item (a ladder rung ring, which is
     /// exactly what `BasicBoard.removeIfCycle` calls this on, BasicBoard.java:1354) walks round
-    /// it for ever. The port reproduces that faithfully; this overload is how a caller escapes.
+    /// it for ever. Plan 3 Task 10 found that to be the mechanism the four-rung ladder (quirk
+    /// #76) actually hangs in — the port reaches it long before `PolylineTrace.split`'s entry
+    /// re-walk becomes a problem — so ruling 4's `StopCheck` had to reach this far to work at
+    /// all.
     ///
-    /// Plan 3 Task 10 found this to be the mechanism the four-rung ladder (quirk #76) actually
-    /// hangs in — the port reaches it long before `PolylineTrace.split`'s entry re-walk becomes
-    /// a problem — so ruling 4's `StopCheck` has to reach this far to work at all.
+    /// **Plan 9 Task 5 gave the walk the visited set (quirk #106), so it now terminates on its
+    /// own**; the argument that this changes nothing on any input that already terminated is at
+    /// the guard itself. The `StopCheck` stays: it is still the seam a caller uses to bound the
+    /// *other* loops this call sits inside, and `Board::connection_items` is defined in terms of
+    /// it.
     // added in Plan 3: Item.getConnectionItems (plan ruling 4)
     pub fn connection_items_checked(
         &self,
@@ -704,10 +709,57 @@ impl Board {
                 }
             }
             // Item.java:721-777: walk along the contacts until the next fork or non-route item.
+            //
+            // fixed: T5 (#106) — Java's walk has no visited set. `result.add(currentItem)` on a
+            // `Set` does not stop it, so a closed connection with no fork and no non-routable item
+            // — exactly the cycle `BasicBoard.removeIfCycle` (BasicBoard.java:1354) has just
+            // confirmed exists before calling this — is circled for ever. `visited` below is that
+            // set, and it is keyed on the walk's **whole state**, not on the item alone.
+            //
+            // Why the whole state, and why the recorded `result.len()`: the step this loop takes
+            // is a function of `(current_id, prev_contact_point, prev_contact_layer)` and of
+            // `result` — the last only under [`StopConnectionOption::FanoutVia`], whose
+            // `is_fanout_via(current_id, Some(&result))` reads the partially built set. So a
+            // repeat of the triple is a genuine loop **only if nothing was added since the last
+            // time the walk stood there**: if something was, a bigger `result` can send
+            // `is_fanout_via` down a different branch (its `ignore_items` test only ever skips a
+            // contact, so a larger set can only make the answer *less* likely to be `true`) and
+            // the walk may go somewhere it has not been. Breaking on a bare item repeat would
+            // truncate such a walk; breaking only on a no-progress repeat cannot, because a walk
+            // that adds nothing on a full lap adds nothing on any later lap either.
+            //
+            // Termination: `result` is monotone and bounded by the item count, so each state can
+            // be re-entered at most that many times before one re-entry finds `result` unchanged,
+            // and the states are finite. Every input that terminated before still answers exactly
+            // what it answered before — the guard fires only where the walk had already stopped
+            // making progress, i.e. only where Java hangs.
+            //
+            // A `Vec` with a linear scan rather than a map: `Point` is `PartialEq` but neither
+            // `Ord` nor `Hash`, and the walk is short by construction — it stops at the first
+            // fork — so in the terminating case this holds a handful of entries.
+            let mut visited: Vec<(ItemId, Point, i32, usize)> = Vec::new();
             let mut current_id = start_contact;
             loop {
                 if stop() {
                     return Err(BoardError::Stopped);
+                }
+                match visited.iter_mut().find(|(item, point, layer, _)| {
+                    *item == current_id
+                        && *point == prev_contact_point
+                        && *layer == prev_contact_layer
+                }) {
+                    Some((_, _, _, len_when_seen)) => {
+                        if *len_when_seen == result.len() {
+                            break;
+                        }
+                        *len_when_seen = result.len();
+                    }
+                    None => visited.push((
+                        current_id,
+                        prev_contact_point.clone(),
+                        prev_contact_layer,
+                        result.len(),
+                    )),
                 }
                 let Some(current) = self.items.get(&current_id) else {
                     break;

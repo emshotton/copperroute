@@ -890,6 +890,102 @@ fn connection_items_walks_the_contacts_of_a_fork_in_descending_id_order() {
     );
 }
 
+/// **fixed: T5 (#106).** `Item.getConnectionItems`' walk along the contacts (Item.java:721-777)
+/// had no visited set: `result.add(currentItem)` on a `Set` does not stop it, so a closed
+/// connection with no fork and no non-routable item was circled for ever. Its caller
+/// `BasicBoard.removeIfCycle` (BasicBoard.java:1354) reaches it only *after* `Trace.isCycle` has
+/// confirmed a cycle exists, so this was the main path, not a corner case — and Plan 3 Task 10
+/// found it to be where the four-rung ladder (quirk #76) actually hangs.
+///
+/// # The fixture
+///
+/// Four traces on net 2, layer 0, meeting end to end at the corners of a 2000x2000 square:
+/// `(2000,2000) -> (4000,2000) -> (4000,4000) -> (2000,4000) -> (2000,2000)`. Every corner has
+/// exactly two traces on it, so the walk never sees a fork, and every item is routable, so it
+/// never sees a terminal. That is precisely the shape Java cannot leave.
+///
+/// # The literal answer
+///
+/// The connection is the ring itself: all four traces, under every stop option (none of them is a
+/// via, so `Via` and `FanoutVia` cannot differ from `None` here).
+///
+/// # Why this changes nothing that terminated
+///
+/// The guard breaks only on a repeat of the walk's **whole state** — `(current item, previous
+/// contact point, previous contact layer)` — that added nothing to `result` since the last time
+/// the walk stood there. The step is a function of that triple and of `result`, so a
+/// no-progress repeat is a genuine closed loop; a repeat that *did* make progress is allowed to
+/// continue, which is what keeps `StopConnectionOption::FanoutVia`'s feedback through
+/// `is_fanout_via(current, Some(&result))` intact. Measured on the terminating ladders: rungs
+/// 1/2/3 cost 12/22/22 stop-check steps and answer `[4]`, `[5]` and `[6, 5]` **with the guard and
+/// without it** (`tests/trace_normalize.rs`), i.e. the guard fires zero times on a walk that
+/// already ended.
+#[test]
+fn a_cyclic_contact_graph_terminates_with_a_visited_set() {
+    let mut board = p2t11_board();
+    let ring = |board: &mut Board, a: (i32, i32), b: (i32, i32)| {
+        board
+            .insert_trace_without_cleaning(
+                Polyline::from_points(&[Point::new(a.0, a.1), Point::new(b.0, b.1)]),
+                0,
+                30,
+                vec![2],
+                1,
+                FixedState::Unfixed,
+            )
+            .expect("insertTraceWithoutCleaning")
+    };
+    let t9 = ring(&mut board, (2000, 2000), (4000, 2000));
+    let t10 = ring(&mut board, (4000, 2000), (4000, 4000));
+    let t11 = ring(&mut board, (4000, 4000), (2000, 4000));
+    let t12 = ring(&mut board, (2000, 4000), (2000, 2000));
+    assert_eq!(nums([t9, t10, t11, t12]), vec![9, 10, 11, 12]);
+
+    // No fork anywhere: each trace meets exactly one other at each of its two ends.
+    for id in [t9, t10, t11, t12] {
+        assert_eq!(
+            descending(board.normal_contacts(id)).len(),
+            2,
+            "item {id:?} must have exactly two contacts, or the ring has a fork"
+        );
+    }
+
+    // Java walks this for ever. It now answers the ring, from any member and under every stop
+    // option.
+    for id in [t9, t10, t11, t12] {
+        for option in [
+            StopConnectionOption::None,
+            StopConnectionOption::Via,
+            StopConnectionOption::FanoutVia,
+        ] {
+            assert_eq!(
+                descending(board.connection_items(id, option)),
+                vec![12, 11, 10, 9],
+                "connection_items({id:?}, {option:?}) must answer the whole ring and return"
+            );
+        }
+    }
+
+    // And it returns without the `StopCheck` Plan 3 ruling 4 added as the escape hatch: the
+    // budget below is never touched, where before the fix any budget was exhausted.
+    let steps = std::cell::Cell::new(0u64);
+    let stop = || {
+        steps.set(steps.get() + 1);
+        steps.get() > 1_000
+    };
+    assert_eq!(
+        board
+            .connection_items_checked(t9, StopConnectionOption::None, &stop)
+            .map(descending),
+        Ok(vec![12, 11, 10, 9])
+    );
+    assert_eq!(
+        steps.get(),
+        13,
+        "the fixed walk costs 13 steps; the unfixed one costs every budget it is given"
+    );
+}
+
 #[test]
 fn a_trace_with_a_free_end_is_a_tail() {
     // Trace.java:212-219: no contacts at one end is enough.
