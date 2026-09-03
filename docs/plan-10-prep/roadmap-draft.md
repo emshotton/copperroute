@@ -712,6 +712,16 @@ different workstream.
   the name. Renaming must therefore be accompanied by a doc comment stating the contract in its own
   terms (a format's requirement, an IEEE semantic), never "matches Java".
 * **W16**'s hygiene rows (lawful `Ord`, `pub(crate)` fields, the `determinant` rename).
+* **Register rows #42 and #49 — the accessor bounds checks** (`Packages::get`, `LogicalParts::get`,
+  `Components::get`/`get_mut`). Plan 9 Task 6 investigated them and left them `pinned` under
+  **ruling BX(a)**: the fix is `Padstacks::get`'s bounds check, which in Rust means returning
+  `Option` across ~30 call sites in `fr-board`, `fr-dsn` and `fr-router` — a signature change T6's
+  brief forbade, for a crash that is unreachable today (`Components` is append-only, and every
+  argument is a live 1-based id, a `1..=count()` loop index or already range-checked; the one
+  caller with no check of its own is `RoutingBoardExt`'s `fanout_start_pin_name`, whose safety
+  rests on that invariant rather than on a guard). Moving a per-caller convention into a
+  type-level guarantee is exactly a W19 change, and W19 is the first workstream whose blast radius
+  already includes the consuming crates.
 * **W9**'s `Line` identity-counter deletion, if T18 leaves it standing.
 
 **Sequencing and shape.**
