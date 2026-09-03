@@ -915,7 +915,7 @@ fn update_board_rules(
         if let DsnRule::Clearance(current_rule) = current_object
             && set_clearance_rule(
                 current_rule,
-                None,
+                RuleLayerScope::AllLayers,
                 &coordinate_transform,
                 board_rules,
                 &p.string_quote,
@@ -947,7 +947,7 @@ fn update_board_rules(
                 DsnRule::Clearance(current_rule) => {
                     set_clearance_rule(
                         current_rule,
-                        Some(layer_index),
+                        RuleLayerScope::One(layer_index),
                         &coordinate_transform,
                         board_rules,
                         &p.string_quote,
@@ -961,11 +961,34 @@ fn update_board_rules(
     }
 }
 
+/// Which layers a DSN or `.rules` `(rule …)` scope applies to.
+///
+// Java bug: (#112) Java spells this as a bare `int layerIndex` whose `-1` means "every layer",
+// and `RulesReader.applyRules` (RulesReader.java:284-303) reaches the branches below with that
+// `-1` still in place after warning "layer not found" *without returning* — so a `.rules` file
+// naming a layer the board does not have silently overwrites the default trace width and the
+// clearance matrix on the **whole board**. Reachable from any `.rules` written for a different
+// stack-up, which is the ordinary way a rules file goes stale.
+//
+// fixed: T4 (#112) — the sentinel is gone. "All layers" and "one layer" are two variants, so
+// "the name did not resolve" is not a value this type can hold: the resolution happens at the
+// lookup site (`rules_reader::apply_layer_rules`), which drops the scope's rules rather than
+// widening them. The port's earlier `Option<usize>` was exactly Java's `-1` wearing a Rust hat —
+// `None` *was* "all layers" — which is why an enum and not an `Option`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleLayerScope {
+    /// Java's `layerIndex < 0`: the rule applies to every layer of the board.
+    AllLayers,
+    /// Java's `layerIndex >= 0`: the rule applies to that one layer.
+    One(usize),
+}
+
 /// `Structure.setClearanceRule` (Structure.java:672-808): "converts a dsn clearance rule into a
 /// board clearance rule. If layerIndex is negative, the rule is set on all layers. Returns true,
 /// if the string smd_to_turn_gap was found."
 ///
-/// `layer_index` is `None` for Java's negative "all layers".
+/// `scope` is Java's `layerIndex`, with its negative "all layers" spelled as a variant — see
+/// [`RuleLayerScope`].
 ///
 /// **Both `setValue` orders are mandatory.** Java writes `setValue(first, second, …)` *and*
 /// `setValue(second, first, …)` (Structure.java:768-769,785-788) because
@@ -973,7 +996,7 @@ fn update_board_rules(
 /// the symmetric pair is the only thing that keeps a DSN-sourced matrix symmetric.
 pub fn set_clearance_rule(
     rule: &DsnClearanceRule,
-    layer_index: Option<usize>,
+    scope: RuleLayerScope,
     coordinate_transform: &CoordinateTransform,
     board_rules: &mut BoardRules,
     string_quote: &str,
@@ -981,11 +1004,11 @@ pub fn set_clearance_rule(
     let mut result = false;
     let current_clearance = java_round_to_int(coordinate_transform.dsn_to_board(rule.value));
     if rule.clearance_class_pairs.is_empty() {
-        match layer_index {
-            None => board_rules
+        match scope {
+            RuleLayerScope::AllLayers => board_rules
                 .clearance_matrix
                 .set_default_value(current_clearance),
-            Some(layer) => board_rules
+            RuleLayerScope::One(layer) => board_rules
                 .clearance_matrix
                 .set_default_value_on_layer(layer, current_clearance),
         }
@@ -1070,8 +1093,8 @@ pub fn set_clearance_rule(
         let first_class_no = first_class_no.expect("assigned above");
         let second_class_no = second_class_no.expect("assigned above");
 
-        match layer_index {
-            None => {
+        match scope {
+            RuleLayerScope::AllLayers => {
                 board_rules.clearance_matrix.set_value_on_all_layers(
                     first_class_no,
                     second_class_no,
@@ -1083,7 +1106,7 @@ pub fn set_clearance_rule(
                     current_clearance,
                 );
             }
-            Some(layer) => {
+            RuleLayerScope::One(layer) => {
                 board_rules.clearance_matrix.set_value(
                     first_class_no,
                     second_class_no,
