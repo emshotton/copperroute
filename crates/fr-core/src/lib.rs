@@ -70,8 +70,9 @@ pub use summary::{
     BoardSummary, ComponentSummary, LayerSummary, NetSummary, SummaryMetadata, summarise,
 };
 pub use timespan::{
-    GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format,
-    job_timeout_deadline, job_timeout_deadline_from, parse_timespan, parse_timespan_seconds,
+    GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, TimespanError,
+    convert_from_timespan_to_duration_format, job_timeout_deadline, job_timeout_deadline_from,
+    parse_timespan, parse_timespan_seconds, parse_timespan_seconds_java,
 };
 
 // ── Ruling 1's re-export surface ────────────────────────────────────────────────────────────────

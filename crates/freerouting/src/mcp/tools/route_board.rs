@@ -179,9 +179,12 @@ pub fn run(
     // The **transport's** token, with the job deadline attached — never a fresh one, or an
     // inbound `notifications/cancelled` would have nothing to reach. See
     // `CancelToken::with_deadline_from`.
+    // fixed: T1 (#224) — as on the CLI path: an unreadable job timeout is refused, with the
+    // string named, rather than silently running unbounded.
     let cancel = match fr_core::job_timeout_deadline(settings.job_timeout_string.as_deref()) {
-        Some(deadline) => cancel.with_deadline_from(deadline),
-        None => cancel.clone(),
+        Ok(Some(deadline)) => cancel.with_deadline_from(deadline),
+        Ok(None) => cancel.clone(),
+        Err(error) => return Err(RpcError::invalid_params(format!("job_timeout: {error}"))),
     };
     let job_deadline = cancel.clone();
     let sink = progress_sink(progress);
@@ -189,10 +192,12 @@ pub fn run(
         settings: &settings,
         cancel,
         progress: &sink,
-        // The CLI's budget, because this tool is the CLI's other face: `p8t1`'s SES bytes are
-        // what the end-to-end conversation test compares against, and a different budget would
-        // be a different board. Only the parity drivers disable it.
-        budget: fr_core::RouterBudget::default(),
+        // The CLI's budget, arrived at by the CLI's own function, because this tool is the CLI's
+        // other face: `p8t1`'s SES bytes are what the end-to-end conversation test compares
+        // against, and a different budget would be a different board. That includes honouring
+        // `opt_changed_area_ms` when the caller's `settings` payload carries it (#234) — a
+        // setting that worked on one face and not the other would be worse than no setting.
+        budget: crate::commands::route::run_budget(&settings),
     };
     let result = RoutingPipeline::run(&mut board, &ctx).map_err(|error| {
         RpcError::internal(format!(

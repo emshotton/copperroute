@@ -912,8 +912,13 @@ pub fn fanout_pin_can_use_vias(board: &Board, settings: &RouterSettings, net_num
 }
 
 /// Port of `TextManager.parseTimespanString` (util/TextManager.java:83-95) together with
-/// `convertFromTimespanToDurationFormat` (`:103-119`), for the one caller Plan 7 has:
-/// `fanoutBoard:94-99`.
+/// `convertFromTimespanToDurationFormat` (`:103-119`) — **Java's grammar exactly, including the
+/// two spellings its own javadoc promises and it does not accept**.
+///
+/// This is the record of what the jar does. [`parse_timespan_seconds`] is what the port does, and
+/// the difference between them is quirk #224. Nothing on a routing path calls this one; its
+/// callers are [`parse_timespan_seconds`] and the thirty-row transcript
+/// (`crates/fr-core/tests/data/p8t0-timespans.txt`) that pins it against a real JDK 25.
 ///
 /// `fr-settings` deferred the method to Plan 8 (`crates/fr-settings/src/lib.rs`) because the
 /// *settings* path never parses a timeout string — the only reader there is
@@ -950,7 +955,7 @@ pub fn fanout_pin_can_use_vias(board: &Board, settings: &RouterSettings, net_num
 /// `pub` for the same reason [`BatchFanout::fanout_pass`] is: `crates/fr-router/tests/fanout.rs`
 /// pins quirk #224's grammar against a JDK 25 `Duration.parse`, and Java's own method is
 /// `public static` anyway.
-pub fn parse_timespan_seconds(timespan_string: &str) -> Option<i64> {
+pub fn parse_timespan_seconds_java(timespan_string: &str) -> Option<i64> {
     // :84-86 — `null || isBlank()`.
     if timespan_string.trim().is_empty() {
         return None;
@@ -996,6 +1001,140 @@ pub fn parse_timespan_seconds(timespan_string: &str) -> Option<i64> {
         seconds.checked_sub(1)
     } else {
         Some(seconds)
+    }
+}
+
+/// A timeout string the port refuses (#224). Carries the string, because the whole point of the
+/// refusal is that the operator can see which setting they mistyped.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "`{input}` is not a timespan. Accepted: a plain number of seconds (`300`), the colon forms \
+     `mm:ss` and `hh:mm:ss` (`5:00`, `0:05:00`), or unit suffixes (`5m`, `300s`, `1h30m`). Leave \
+     the setting empty for no timeout — an unreadable one is refused rather than silently ignored \
+     (quirk #224)."
+)]
+pub struct TimespanError {
+    /// The string as the settings carried it.
+    pub input: String,
+}
+
+/// The port's timespan parser: **Java's grammar, plus the two spellings Java's own javadoc
+/// promises, and a loud refusal instead of a silent `null`.**
+///
+/// `Ok(None)` is "no timeout", and it is reachable from exactly one input: a blank or absent
+/// string. That is Java's `:84-86` (`null || isBlank()`) and is the CLI's own default — the
+/// deliberate absence of a budget, which stays distinguishable from an unreadable one.
+///
+// Java bug: quirk #224 — `FanoutSettings.timeout`'s own javadoc
+// (`settings/FanoutSettings.java:98-101`) gives `"5m"` and `"300s"` as its example values and
+// `TextManager.parseTimespanString` (`util/TextManager.java:83-119`) parses **neither**:
+// `convertFromTimespanToDurationFormat` splits on `':'` and pastes the parts into an ISO-8601
+// literal, so `"5m"` becomes `PT5mS` and `"300s"` becomes `PT300sS`, both of which
+// `Duration.parse` rejects. The `DateTimeParseException` is swallowed at `:91-93`, the method
+// answers `null`, and `BatchFanout.fanoutBoard:95-99` then leaves `deadlineMs` unset so that
+// `:111-116`/`:396` never fire — the stage runs with **no** timeout at all. `optimizer.timeout`
+// and `jobTimeoutString` go through the same method and have the same hole. Measured on a JDK 25:
+// `"300"`, `"5:00"` and `"0:05:00"` work, the two documented forms do not, and neither does
+// anything else with a unit letter.
+// fixed: T1 (#224) — both halves of the register's suggested fix, because either alone leaves a
+// hole. Accepting the suffixes without the refusal would still swallow a typo; refusing without
+// accepting them would turn the documented examples into hard errors.
+///
+/// # The grammar, in the order it is tried
+///
+/// 1. **blank** → `Ok(None)`, no timeout.
+/// 2. **any `:`** → Java's colon grammar, unchanged and still measured against a real
+///    `Duration.parse` by the thirty-row transcript: `hh:mm:ss`, `mm:ss`, `ss`, components not
+///    range-checked (`"1:60"` is 120 s), only the seconds component fractional, and
+///    `Duration.getSeconds()`'s **floor** on a negative fraction (`"1:-0.5"` is 59). Unparseable
+///    → `Err`, where Java answered `null`.
+/// 3. **unit suffixes** → the javadoc's own spellings: `h`, `m`, `s`, in any combination and in
+///    that order, each with a non-negative integer count. `5m` is 300, `300s` is 300, `1h30m` is
+///    5400. A leading `-` negates the whole sum, so `-5m` is -300 and the colon forms' "a
+///    negative timeout is a deadline in the past" carries over unchanged.
+/// 4. **a bare number** → Java's `PT<s>S`, fraction and all: `300` is 300, `-1.5` is -2.
+/// 5. **anything else** → `Err(TimespanError)`.
+///
+/// Steps 2 and 4 are Java's whole grammar, so **every string the jar accepted still parses to the
+/// same number**. #224 only adds acceptances and converts silent `null`s into errors.
+///
+/// # Why the suffixes are case-sensitive and why there is no `d`
+///
+/// `h`/`m`/`s` are the letters the javadoc writes, in the case it writes them. `M` is minutes
+/// here and months in ISO-8601, and quietly picking one would be a worse defect than the one this
+/// fixes. A day suffix is not offered because nothing in Java's own converter can emit `P…D` —
+/// the register's note that the day form is unreachable — and inventing a unit no Java surface
+/// mentions is not a fix to a documentation-mismatch bug.
+pub fn parse_timespan_seconds(timespan_string: &str) -> Result<Option<i64>, TimespanError> {
+    // 1. `:84-86` — `null || isBlank()`. The one silent "no timeout".
+    if timespan_string.trim().is_empty() {
+        return Ok(None);
+    }
+    let refuse = || TimespanError {
+        input: timespan_string.to_string(),
+    };
+    // 2. Any colon is Java's grammar and is answered by Java's own parser, so the colon forms
+    //    cannot drift from the transcript.
+    if timespan_string.contains(':') {
+        return parse_timespan_seconds_java(timespan_string)
+            .map(Some)
+            .ok_or_else(refuse);
+    }
+    // 3. The javadoc's unit suffixes.
+    if let Some(seconds) = parse_unit_suffixes(timespan_string) {
+        return Ok(Some(seconds));
+    }
+    // 4. A bare number, which is Java's one-part arm — delegated for the same reason as step 2.
+    // 5. …and otherwise refused rather than silently unbounded.
+    parse_timespan_seconds_java(timespan_string)
+        .map(Some)
+        .ok_or_else(refuse)
+}
+
+/// Step 3 of [`parse_timespan_seconds`]: `1h30m`, `5m`, `300s`, and an optional leading sign.
+///
+/// `None` means "not this grammar", never "zero" — the caller falls through to Java's own parser,
+/// and only that parser's refusal is an error.
+fn parse_unit_suffixes(text: &str) -> Option<i64> {
+    let (negative, digits) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.strip_prefix('+').unwrap_or(text)),
+    };
+    if digits.is_empty() {
+        return None;
+    }
+    // `h`, then `m`, then `s`: each at most once and in that order, so `1h30m` parses and
+    // `30m1h` does not. A unit with no digits (`"m"`) and digits with no unit (`"5"`, which is
+    // Java's own one-part arm) both fall through.
+    const UNITS: [(char, i64); 3] = [('h', 3600), ('m', 60), ('s', 1)];
+    let mut total: i64 = 0;
+    let mut rest = digits;
+    let mut next_unit = 0;
+    let mut matched_any = false;
+    while !rest.is_empty() {
+        let count_len = rest.chars().take_while(char::is_ascii_digit).count();
+        if count_len == 0 || count_len == rest.len() {
+            // No digits, or digits with no unit letter after them.
+            return None;
+        }
+        let count: i64 = rest[..count_len].parse().ok()?;
+        let unit = rest[count_len..].chars().next()?;
+        let index = UNITS[next_unit..]
+            .iter()
+            .position(|(letter, _)| *letter == unit)?
+            + next_unit;
+        total = total.checked_add(count.checked_mul(UNITS[index].1)?)?;
+        next_unit = index + 1;
+        matched_any = true;
+        rest = &rest[count_len + unit.len_utf8()..];
+    }
+    if !matched_any {
+        return None;
+    }
+    if negative {
+        total.checked_neg()
+    } else {
+        Some(total)
     }
 }
 
@@ -1120,16 +1259,23 @@ impl<'a> BatchFanout<'a> {
         fanout_instance.progress_throttler = budget.progress_throttler();
         // :90.
         let fanout_start = Instant::now();
-        // :91-100.
+        // :91-100. Java swallows the parse failure at `:91-93` and runs unbounded; the port
+        // refuses, naming the string (#224). `Ok(None)` is the blank/absent case, which is a
+        // deliberate "no timeout" and the CLI's own default.
         if let Some(timeout_string) = settings
             .fanout
             .as_ref()
             .and_then(|fanout| fanout.timeout_string.as_deref())
-            && let Some(timeout_seconds) = parse_timespan_seconds(timeout_string)
         {
-            // :98 — `fanoutStart + timeoutSeconds * 1000`, on the port's monotonic clock.
-            fanout_instance.deadline =
-                instant_offset_ms(fanout_start, timeout_seconds.saturating_mul(1000));
+            // fixed: T1 (#224) — the loud refusal. A fanout stage that was asked for a timeout
+            // and could not be given one must not run as if none had been asked for.
+            if let Some(timeout_seconds) =
+                parse_timespan_seconds(timeout_string).map_err(RouterError::Timespan)?
+            {
+                // :98 — `fanoutStart + timeoutSeconds * 1000`, on the port's monotonic clock.
+                fanout_instance.deadline =
+                    instant_offset_ms(fanout_start, timeout_seconds.saturating_mul(1000));
+            }
         }
         // :101-104.
         let max_passes = settings
