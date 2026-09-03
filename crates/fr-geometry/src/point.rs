@@ -612,26 +612,31 @@ mod cross_representation_tests {
         );
     }
 
-    /// Java quirk, reproduced verbatim: `RationalPoint.perpendicularProjection` (RationalPoint
-    /// .java:262) computes `projY = tmp1.add(tmp2)` where `IntPoint.perpendicularProjection`
-    /// (IntPoint.java:160) computes `projY = tmp1.subtract(tmp2)`. The `IntPoint` version is the
-    /// mathematically correct perpendicular projection; the `RationalPoint` version is not,
-    /// whenever the line does not pass through the origin (i.e. `det != 0`).
+    /// **Java bug:** `RationalPoint.perpendicularProjection` (RationalPoint.java:262) computes
+    /// `projY = tmp1.add(tmp2)` where `IntPoint.perpendicularProjection` (IntPoint.java:160)
+    /// computes `projY = tmp1.subtract(tmp2)`. The `IntPoint` version is the mathematically
+    /// correct perpendicular projection; the `RationalPoint` version was not, whenever the line
+    /// does not pass through the origin (i.e. `det != 0`).
+    ///
+    /// **fixed: T11 (#5)** — this test was `rational_perpendicular_projection_keeps_javas_sign_bug`
+    /// and pinned `(0.5, 0.5)` for the rational arm. It is now the inversion: the same point
+    /// projects to the same place whichever representation holds it.
     #[test]
-    fn rational_perpendicular_projection_keeps_javas_sign_bug() {
+    fn rational_perpendicular_projection_agrees_with_the_int_point_one() {
         use crate::line::Line;
-        // Line y = x + 1 through (0,1) and (1,2): v = (1,1), det = a.determinant(b) = -1.
+        // Line y = x + 1 through (0,1) and (1,2): v = (1,1), det = a.determinant(b) = -1, D = 2.
         let line = Line::from_coords(0, 1, 1, 2);
         let point = IntPoint::new(2, 0);
-        // Correct projection of (2,0) onto y = x + 1 is (0.5, 1.5) = (1, 3, 2).
+        // The projection of (2,0) onto y = x + 1 is (0.5, 1.5) = (1, 3, 2) — and (0.5, 1.5) does
+        // lie on the line, which the old rational answer (0.5, 0.5) did not.
         assert_eq!(
             Point::Int(point).perpendicular_projection(&line),
             Point::Rational(RationalPoint::new(b(1), b(3), b(2)))
         );
-        // The same point in rational form takes Java's buggy branch and lands on (0.5, 0.5).
         assert_eq!(
             Point::Rational(RationalPoint::new(b(2), b(0), b(1))).perpendicular_projection(&line),
-            Point::Rational(RationalPoint::new(b(1), b(1), b(2)))
+            Point::Rational(RationalPoint::new(b(1), b(3), b(2))),
+            "fixed: T11 (#5) — was (1, 1, 2), i.e. (0.5, 0.5), which is off the line"
         );
     }
 }

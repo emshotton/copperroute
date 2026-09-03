@@ -165,12 +165,18 @@ impl RationalPoint {
     /// Returns the nearest point to this point on line. Java
     /// `RationalPoint.perpendicularProjection`.
     ///
-    /// **Java bug, reproduced verbatim.** RationalPoint.java:262 computes
-    /// `projY = tmp1.add(tmp2)` where the otherwise identical `IntPoint.perpendicularProjection`
-    /// (IntPoint.java:160) computes `projY = tmp1.subtract(tmp2)`. The `IntPoint` sign is the
-    /// mathematically correct one, so for any line not through the origin (`det != 0`) this
-    /// method returns a point that is not the perpendicular projection. It is kept as-is for
-    /// behavioural parity; see the test in `point.rs`.
+    /// **Java bug:** RationalPoint.java:262 computes `projY = tmp1.add(tmp2)` where the otherwise
+    /// identical `IntPoint.perpendicularProjection` (IntPoint.java:160) computes
+    /// `projY = tmp1.subtract(tmp2)`. The `IntPoint` sign is the mathematically correct one, so
+    /// for any line not through the origin (`det != 0`) Java returns a point that is not the
+    /// perpendicular projection — the error is exactly `2·det·v.x / D` in `projY`, which vanishes
+    /// iff `det == 0`. That is why every line through the origin agreed and nothing caught it.
+    ///
+    /// **fixed: T11 (#5).** This port subtracts. The projection is the shove **entry point**
+    /// (reachable from `ShapeTraceEntries` via `TileShape.nearestBorderPoint`), so it had to land
+    /// before #7+#68's entry *side*: a right side computed from a wrong point is still wrong.
+    /// `crates/fr-geometry/tests/rational_point.rs` carries the two hand-derived witnesses and
+    /// the generated agreement set.
     ///
     /// The other difference to the `IntPoint` version is real and intentional in Java: this one
     /// guards the demotion to `IntPoint` with `Limits.CRIT_INT_BIG` and falls back to
@@ -197,8 +203,9 @@ impl RationalPoint {
         let tmp2 = &vyvy * &self.y;
         let tmp1 = tmp1 + tmp2;
         let tmp2 = &det * BigInt::from(v.x) * &self.z;
-        // `add`, not `subtract` — see the doc comment above.
-        let mut proj_y = tmp1 + tmp2;
+        // fixed: T11 (#5) — Java's `add` here is a sign error; `subtract` is what
+        // `IntPoint.perpendicularProjection` does and what the geometry requires.
+        let mut proj_y = tmp1 - tmp2;
 
         if !denominator.is_zero() {
             if denominator.is_negative() {
