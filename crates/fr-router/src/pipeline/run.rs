@@ -85,11 +85,15 @@ use fr_board::Board;
 /// port has nothing to call.
 ///
 /// **`runOptimizationStage`** (`:116-129`): skipped when there is no optimizer (`runOptimizer`
-/// was false) **or** the stop flag is `ALL` (`:117-119` — quirk #227's other half, not
-/// `AUTO_ROUTER_ONLY`: an ordinary router run leaves the flag at exactly that value and this
-/// stage still runs, changing nothing, because `BatchOptimizer::run_batch_loop` reads the same
-/// flag the same way). **Java never resets the flag between stages** — `run_pipeline` hands both
-/// stages the identical `stop`, unmutated, which is quirk #227 as this task inherits it.
+/// was false) **or** the stop flag is `ALL` (`:117-119` — not `AUTO_ROUTER_ONLY`: an ordinary
+/// router run leaves the flag at exactly that value and this stage still starts). **Java never
+/// resets the flag between stages**, and that is quirk #227: the stage started, visited every
+/// item and changed nothing, because `BatchAutorouter.autoroutePassesForOptimizingItem`'s loop
+/// head reads `isStopAutoRouterRequested()` — `!= NONE` — and ran zero passes per item.
+///
+// fixed: T9 (#227) — the stage-scoped stop. `run_pipeline` calls
+// [`RouterStop::begin_optimizer_stage`] immediately after `:117`'s `ALL` gate, which lowers
+// `AUTO_ROUTER_ONLY` to `NONE` and leaves `ALL` alone. It is the **only** call site in the tree.
 ///
 /// # Ruling 7's sole new recovery boundary
 ///
@@ -178,6 +182,27 @@ pub fn run_pipeline(
             // `None` ("not configured at all", `RoutingPipeline.java:36`).
             Some(TaskState::Idle)
         } else {
+            // fixed: T9 (#227) — **the stage-scoped stop.** `:117` has just decided the optimizer
+            // may run, which is exactly where the register row asks for the reset. Every ordinary
+            // exit from `AutorouteBatchLoop::run` left `AUTO_ROUTER_ONLY` behind (quirk #214's
+            // five arms), and `BatchAutorouter::autoroute_passes_for_optimizing_item`'s loop head
+            // is `!is_stop_auto_router_requested()` — `!= NONE` — so until this line every
+            // `opt_route_item` in the stage below ripped its connections, ran **zero** autoroute
+            // passes, measured a worse board and was restored from a whole-board deep copy. The
+            // stage visited every item and produced the board it was given.
+            //
+            // [`RouterStop::begin_optimizer_stage`] lowers `AUTO_ROUTER_ONLY` to `NONE` and
+            // nothing else: an `ALL` stop — an operator's cancel, or ruling AI's job deadline —
+            // never reaches this line at all, because the `if` above returns `TaskState::Idle` on
+            // it, and an `ALL` raised *during* the stage still ends it at `:171`. The three-state
+            // stop is therefore preserved rather than collapsed (survey §9.1); see that method's
+            // doc for the writer table that makes the downgrade safe.
+            //
+            // This is the single largest quality change in the catalogue and it **costs time on
+            // every board**: an entire optimization stage begins working, at one whole-board deep
+            // copy per item. Ruling BP4 pre-authorises the `cpu_s` rise and the task's A/B
+            // measures it.
+            stop.begin_optimizer_stage();
             // `:121-128` — `job.stage = OPTIMIZATION`; `beforeOptimization`/`afterOptimization`
             // (module doc); `optimizer.runBatchLoop()`.
             let mut optimizer = BatchOptimizer::new(settings);

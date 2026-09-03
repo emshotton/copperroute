@@ -24,8 +24,8 @@ use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Shape, TileShape};
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink,
-    ProgressSink, RouterBudget, RouterStop, RoutingEvent, TaskState, optimizer_near_perfect_exit,
-    optimizer_route_improved,
+    ProgressSink, RouterBudget, RouterStop, RoutingEvent, StopRequestState, TaskState,
+    optimizer_near_perfect_exit, optimizer_route_improved,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -768,23 +768,30 @@ fn consecutive_failures_break_the_pass() {
     assert_eq!(optimizer.total_items_optimized, 5);
 }
 
-/// **Quirk #227, half two — the seam Task 15 must not flatten.**
+/// **Quirk #227, fixed in Plan 9 Task 9 — the stage begins working.**
 ///
 /// Java shares one `StoppableThread` between the two stages (`RoutingPipeline.java:81-85`) and
 /// **never lowers the flag**: `grep -rn requestStop src/main` finds no writer that does. So after
 /// any ordinary router run the flag is `AUTO_ROUTER_ONLY` (quirk #214), the optimizer stage still
-/// runs (`:171` reads `ALL`), and every `optRouteItem` inside it calls
+/// starts (`:171` reads `ALL`), and every `optRouteItem` inside it calls
 /// `autoroutePassesForOptimizingItem`, whose loop head is `!isStopAutoRouterRequested()`
 /// (`BatchAutorouter.java:268`) — **zero** autoroute passes. Each item rips its connections,
-/// measures a strictly worse board and restores the snapshot.
+/// measures a strictly worse board and restores the snapshot; the stage visited every item and
+/// changed **nothing**, at one whole-board deep copy each.
 ///
-/// The measurable consequence: the stage visits every item and changes **nothing**.
+/// The fix is [`RouterStop::begin_optimizer_stage`], which `run_pipeline` calls at the stage
+/// boundary immediately after `:117`'s `ALL` gate: it lowers `AUTO_ROUTER_ONLY` to `NONE` and
+/// leaves `ALL` alone. This test measures both sides of that one line on the same routed board —
+/// **without** it, Java's inert stage; **with** it, a stage that improves at least one item and
+/// moves the board.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn an_auto_router_only_stop_leaves_every_item_rejected() {
+fn an_auto_router_only_stop_still_runs_the_optimizer() {
     if !parity::require_java_dir() {
         return;
     }
+
+    // ---- Java's seam, unchanged: the flag the router left is still up ------------------------
     let (mut board, mut settings) = routed_rpi();
     optimizer_settings(&mut settings).max_passes = Some(1);
     let before = board.structural_hash();
@@ -804,12 +811,10 @@ fn an_auto_router_only_stop_leaves_every_item_rejected() {
     );
     // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was
     // **6** (`p7t9 <rpi> 1 optimizer-shared 2 all`'s `OPT-RESULT items=6`). Plan 9 Task 2's R1
-    // (#293)/R2 (#294) leave the routed board with **5** items for the reader to offer. What the
-    // test measures — that every offered item is visited and none of them changes the board — is
-    // unchanged. Accepted at M1 (ruling BV).
+    // (#293)/R2 (#294) leave the routed board with **5** items for the reader to offer.
     assert_eq!(
         result.items_optimized, 5,
-        "and it visits every item the reader offers, all of them `improved=false`"
+        "it visits every item the reader offers, all of them `improved=false`"
     );
     assert_eq!(
         board.structural_hash(),
@@ -817,21 +822,100 @@ fn an_auto_router_only_stop_leaves_every_item_rejected() {
         "…and changes not one byte of the board, because every item routed zero passes and was \
          restored from its snapshot"
     );
+    assert!(
+        result
+            .per_pass
+            .iter()
+            .all(|pass| pass.route_improved <= 0.0),
+        "not one item improved: `:306`'s `routeImproved` never left 0 and `:365-368` drove it to -1"
+    );
 
-    // The same board with a clean flag does change, which is what makes the assertion above a
-    // measurement of the seam rather than of an inert optimizer.
-    let (mut board, settings) = routed_rpi();
+    // ---- the fix: one call at the stage boundary, and the stage does work --------------------
+    let (mut board, mut settings) = routed_rpi();
+    optimizer_settings(&mut settings).max_passes = Some(1);
     let mut optimizer = BatchOptimizer::new(&settings);
-    let clean = RouterStop::new();
+    let stop = RouterStop::new();
+    stop.request_stop_auto_router();
+    // fixed: T9 (#227) — what `run_pipeline` now does after `RoutingPipeline.java:117`'s gate.
+    stop.begin_optimizer_stage();
+    assert_eq!(
+        stop.state(),
+        StopRequestState::None,
+        "the routing stage's own ending does not end the optimizer's"
+    );
     let mut sink = NoopProgressSink;
-    optimizer
-        .run_batch_loop(&mut board, &clean, RouterBudget::disabled(), &mut sink)
+    let result = optimizer
+        .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
         .expect("the stage runs");
+
+    assert_eq!(result.items_optimized, 5, "the same five items are visited");
+    assert!(
+        result.per_pass.iter().any(|pass| pass.route_improved > 0.0),
+        "at least one item improved: `optRoutePass:340-348` only writes a positive \
+         `routeImproved` inside `:333`'s `result.improved()` arm, and `:365-368` would have \
+         driven it to -1 had nothing improved — got {:?}",
+        result
+            .per_pass
+            .iter()
+            .map(|p| p.route_improved)
+            .collect::<Vec<_>>()
+    );
     assert_ne!(
         board.structural_hash(),
         before,
-        "with the flag down the optimizer really does move the board"
+        "…and the board shape really changes — the whole point of the stage"
     );
+}
+
+/// **The three-state stop survives the fix.** [`RouterStop::begin_optimizer_stage`] walks one
+/// step down the `NONE < AUTO_ROUTER_ONLY < ALL` lattice and no more, so:
+///
+/// * an `ALL` stop — an operator's cancel, or ruling AI's job deadline — is **untouched**, and
+///   `RoutingPipeline.java:117` still skips the stage on it;
+/// * a `NONE` stop is untouched;
+/// * and the reset cannot leak backwards into the router, because the routing stage has already
+///   returned by the time the one call site runs, and a clock that expires afterwards still
+///   raises `ALL` over the lowered flag.
+#[test]
+fn the_stage_scoped_stop_does_not_leak_into_the_router() {
+    // `ALL` stays `ALL`: a cancellation is a cancellation.
+    let cancelled = RouterStop::new();
+    cancelled.request_stop();
+    cancelled.begin_optimizer_stage();
+    assert_eq!(cancelled.state(), StopRequestState::All);
+    assert!(
+        cancelled.is_stop_requested(),
+        "`:117` still skips the stage"
+    );
+
+    // `NONE` stays `NONE`.
+    let clean = RouterStop::new();
+    clean.begin_optimizer_stage();
+    assert_eq!(clean.state(), StopRequestState::None);
+
+    // `AUTO_ROUTER_ONLY` — and only it — is lowered.
+    let routed = RouterStop::new();
+    routed.request_stop_auto_router();
+    assert!(routed.is_stop_auto_router_requested());
+    routed.begin_optimizer_stage();
+    assert_eq!(routed.state(), StopRequestState::None);
+    assert!(!routed.is_stop_auto_router_requested());
+    assert!(!routed.is_stop_requested());
+
+    // A job deadline that expires *during* the optimizer stage still ends it, because
+    // `poll_deadline` requests `ALL` and `:171` reads `ALL`.
+    let expired = RouterStop::with_deadline(-1);
+    expired.request_stop_auto_router();
+    expired.begin_optimizer_stage();
+    assert_eq!(expired.state(), StopRequestState::None);
+    assert!(expired.poll_deadline());
+    assert!(
+        expired.is_stop_requested(),
+        "the job clock still ends the job"
+    );
+    // …and a second `begin_optimizer_stage` cannot undo it.
+    expired.begin_optimizer_stage();
+    assert_eq!(expired.state(), StopRequestState::All);
 }
 
 /// The whole stage on the routed `rpi_splitter`, pinned field by field.

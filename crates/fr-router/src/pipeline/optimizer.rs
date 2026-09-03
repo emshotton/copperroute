@@ -1052,16 +1052,25 @@ impl BatchOptimizer<'_> {
     /// # The stop flag the loop reads is `ALL`, and the one that matters is not
     ///
     /// `:171` is `isStopRequested()`, so an `AUTO_ROUTER_ONLY` stop does **not** end this loop —
-    /// which is one half of quirk #202. The other half is the half that bites: every ordinary
+    /// which is one half of quirk #202. The other half is the half that bit: every ordinary
     /// exit from `AutorouteBatchLoop.run` raises `AUTO_ROUTER_ONLY` (quirk #214), and
     /// `BatchAutorouter.autoroutePassesForOptimizingItem`'s loop head (`BatchAutorouter.java:268`)
     /// is `!isStopAutoRouterRequested()` — so on a shared flag every `optRouteItem` in this loop
     /// rips its connections, routes **zero** passes, measures a worse board and restores the
-    /// snapshot. The stage runs and changes nothing. **Java has no reset**: `grep -rn requestStop`
+    /// snapshot. The stage ran and changed nothing. **Java has no reset**: `grep -rn requestStop`
     /// over `src/main` answers no writer that lowers the flag, and `RoutingPipeline.run`
-    /// (`:81-85`) hands both stages the one `job.thread`. The port reproduces that — this method
-    /// takes the caller's [`RouterStop`] and does not clear it — and **quirk #227** records the
-    /// consequence with its measurement. `p7t9 optimizer-shared` is the pin; `p7t9 optimizer`
+    /// (`:81-85`) hands both stages the one `job.thread`.
+    ///
+    // fixed: T9 (#227) — **not here.** This method still takes the caller's [`RouterStop`] and
+    // still does not clear it, because Java's own `runBatchLoop` does not either and the reset
+    // belongs at the stage boundary the register row names. [`crate::pipeline::run_pipeline`]
+    // calls [`RouterStop::begin_optimizer_stage`] immediately after `RoutingPipeline.java:117`'s
+    // `ALL` gate, so by the time this loop is entered on an ordinary run the flag is `NONE` and
+    // the per-item autoroute passes below actually run. A caller that hands this method an
+    // `AUTO_ROUTER_ONLY` stop directly — as `p7t9 optimizer-shared` does — still gets Java's
+    // inert stage, which is what keeps that driver an honest transcript of the jar.
+    ///
+    /// `p7t9 optimizer-shared` is the pin for the *unfixed* seam; `p7t9 optimizer`
     /// hands the stage a fresh stop on both sides so that the rest of this method is exercised at
     /// all.
     ///
@@ -1157,7 +1166,8 @@ impl BatchOptimizer<'_> {
         let mut per_pass: Vec<OptimizerPassRecord> = Vec::new();
 
         // :167-171 — `maxPasses`/`maxItems` are `Integer`s, and a `null` is "no limit".
-        // Java bug: `BatchOptimizer.runBatchLoop` (`:171`) — `isStopRequested()` is `ALL`, so an `AUTO_ROUTER_ONLY` stop (which every ordinary end of `AutorouteBatchLoop.run` leaves behind, quirk #214) lets this loop run while `BatchAutorouter.autoroutePassesForOptimizingItem:268` reads `!= NONE` and routes zero passes per item — the stage visits every item, rejects every one and changes nothing, at a whole-board deep copy each (quirk #227). Nothing in `src/main` lowers the flag, so the port must not either.
+        // Java bug: `BatchOptimizer.runBatchLoop` (`:171`) — `isStopRequested()` is `ALL`, so an `AUTO_ROUTER_ONLY` stop (which every ordinary end of `AutorouteBatchLoop.run` leaves behind, quirk #214) lets this loop run while `BatchAutorouter.autoroutePassesForOptimizingItem:268` reads `!= NONE` and routes zero passes per item — the stage visits every item, rejects every one and changes nothing, at a whole-board deep copy each (quirk #227). Nothing in `src/main` lowers the flag.
+        // fixed: T9 (#227) — `pipeline::run_pipeline` lowers `AUTO_ROUTER_ONLY` to `NONE` at the stage boundary (`RouterStop::begin_optimizer_stage`, called right after `RoutingPipeline.java:117`'s `ALL` gate), so on an ordinary run this loop is entered with the flag down and the per-item passes below really run. The transcription here is unchanged: it is the *caller* that scopes the stop, exactly as the register row asks.
         while optimizer
             .max_passes
             .is_none_or(|max_passes| current_pass < max_passes)
