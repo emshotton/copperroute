@@ -534,10 +534,6 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
 /// port answers is recorded here instead, so the jar's number and the port's sit side by side and
 /// a reviewer can see both.
 ///
-/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
-/// port answers is recorded here instead, so the jar's number and the port's sit side by side and
-/// a reviewer can see both.
-///
 /// **Every entry carries the register row that authorizes it.** A divergence with no row behind it
 /// is a regression someone wrote a table entry for, which is the one failure mode this table has;
 /// the comment is what makes that visible in review.
@@ -557,12 +553,35 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
 ///   `NO_UNCONNECTED_NETS` for an item that is already routed. The fifth boundary keeps a
 ///   producer: [`a_panicking_locator_degrades_to_javas_message_less_failure`] still reaches
 ///   `:154-158` and still asserts the empty `details` that distinguishes it.
+/// * **#165 (second half), accepted at plan9-t7t8 (ruling CC)** — `addCompleteRoom`'s `null` path
+///   now calls `detach_all_doors` on the room it abandons, so that room stops being reachable
+///   through its doors. On `buildSimple` the only path from pin 2 to pin 3 ran *through* that
+///   abandoned room, so `find_connection` answers `None` where the jar routed. **Ablation, run at
+///   this wave**: with that one call commented out, mode `plain`'s seven rows and mode
+///   `stopafter`'s row 99 are byte-identical to the jar again and the five `locator` tests and one
+///   `inserter` test pass — 43 of 44 green, the only survivor being mode `maintain` below, which
+///   is a different mechanism. **On the six real router stems `#165` changes nothing**: incomplete
+///   and violation counts are byte-identical with and without the call (Task 8 §6a). The trade was
+///   put to the controller and taken: reachability the fix exists to remove is worth six probe
+///   boards' connection.
+/// * **#165a + #156/#167/#158, accepted at plan9-t7t8 (ruling CC)** — room ids are now **dense**
+///   (an abandoned room hands its id back) and drawn from **one shared counter** across the
+///   engine's room kinds instead of a per-kind one. Every mode-`maintain` row below is a room-id
+///   literal moving under those two mechanisms and nothing else: the **counts** (`n=1`, `n=6`,
+///   `n=5`, `n=2`) and the descending `TreeSet` order the rows are named for are unchanged on
+///   every one, and only the ids inside the brackets differ.
 const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
     // #168 — the connection survives a cancelled drill page and consults the stop flag once more.
+    //
+    // TWO of the four entries this bullet used to carry — rows 77 and 88, `stopCalls=9` and
+    // `stopCalls=13` — were DELETED at the plan9-t7t8 accept wave (ruling CC) because they
+    // HEALED, and this table's own rule is that a healed divergence goes rather than rots. What
+    // healed them is #165's second half, in the opposite direction: on those two blocks the
+    // detached room removes exactly the one extra stop-check #168 had added, so the port answers
+    // the jar's 9 and 13 again. The measurement is `assert_rows_match`'s shortfall assert, which
+    // is what caught them: the table declared 5 for this mode and only 3 still differed.
     ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
-    ("stopafter", 77, "  stopCalls=9", "  stopCalls=10"),
-    ("stopafter", 88, "  stopCalls=13", "  stopCalls=14"),
     // #173 — net 99 no longer throws, so boundary 5 is not reached and `:49-52` answers instead.
     // Three regimes x (the result line, the state line).
     (
@@ -600,6 +619,116 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
         34,
         "  boundary5state=FAILED",
         "  boundary5state=NO_UNCONNECTED_NETS",
+    ),
+    // #165 second half — the abandoned room is detached, so `buildSimple`'s only path from pin 2
+    // to pin 3 is gone: the connection FAILs and no trace is inserted, which shortens the item
+    // dump by one and drops `maxId` from 4 to 3.
+    ("plain", 23, "  result=ROUTED:", "  result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets."),
+    ("plain", 24, "  state=ROUTED", "  state=FAILED"),
+    ("plain", 28, "    maxId=4", "    maxId=3"),
+    (
+        "plain",
+        29,
+        "    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(400,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
+        "    item id=3 type=Pin nets=[1] cl=1 center=(400,0)",
+    ),
+    (
+        "plain",
+        30,
+        "    item id=3 type=Pin nets=[1] cl=1 center=(400,0)",
+        "    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)",
+    ),
+    (
+        "plain",
+        31,
+        "    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)",
+        "    item id=1 type=BoardOutline nets=[] cl=0",
+    ),
+    // The jar's item list is one longer than the port's, so its last row has no counterpart.
+    // `<missing>` is `assert_rows_match`'s own sentinel for that, and pinning it is what keeps a
+    // *third* lost item from passing unnoticed.
+    (
+        "plain",
+        32,
+        "    item id=1 type=BoardOutline nets=[] cl=0",
+        "<missing>",
+    ),
+    // #165 second half — one of the nine regime/limit blocks loses the pop that would have found
+    // the connection, so the run reaches one fewer of ruling 6's stop-check sites. The other 99
+    // rows of mode `stopafter`, the degraded FAILED included, are byte-identical.
+    ("stopafter", 99, "  stopCalls=21", "  stopCalls=20"),
+    // #165a + #156/#167/#158 — dense ids from one shared counter. Counts and order unmoved.
+    (
+        "maintain",
+        11,
+        "  after-connection completeRooms n=1 [1]",
+        "  after-connection completeRooms n=1 [3]",
+    ),
+    (
+        "maintain",
+        12,
+        "  after-connection roomsWithTargetItems n=1 [1]",
+        "  after-connection roomsWithTargetItems n=1 [3]",
+    ),
+    (
+        "maintain",
+        13,
+        "  after-same-net completeRooms n=1 [1]",
+        "  after-same-net completeRooms n=1 [3]",
+    ),
+    (
+        "maintain",
+        14,
+        "  after-same-net roomsWithTargetItems n=1 [1]",
+        "  after-same-net roomsWithTargetItems n=1 [3]",
+    ),
+    (
+        "maintain",
+        28,
+        "  after-connection completeRooms n=6 [1,3,4,5,6,7]",
+        "  after-connection completeRooms n=6 [3,11,12,13,14,15]",
+    ),
+    (
+        "maintain",
+        29,
+        "  after-connection roomsWithTargetItems n=2 [6,1]",
+        "  after-connection roomsWithTargetItems n=2 [14,3]",
+    ),
+    (
+        "maintain",
+        30,
+        "  after-same-net completeRooms n=6 [1,3,4,5,6,7]",
+        "  after-same-net completeRooms n=6 [3,11,12,13,14,15]",
+    ),
+    (
+        "maintain",
+        31,
+        "  after-same-net roomsWithTargetItems n=2 [6,1]",
+        "  after-same-net roomsWithTargetItems n=2 [14,3]",
+    ),
+    (
+        "maintain",
+        45,
+        "  after-connection completeRooms n=5 [1,3,4,6,7]",
+        "  after-connection completeRooms n=5 [3,18,23,29,35]",
+    ),
+    (
+        "maintain",
+        46,
+        "  after-connection roomsWithTargetItems n=2 [6,1]",
+        "  after-connection roomsWithTargetItems n=2 [29,3]",
+    ),
+    (
+        "maintain",
+        47,
+        "  after-same-net completeRooms n=5 [1,3,4,6,7]",
+        "  after-same-net completeRooms n=5 [3,18,23,29,35]",
+    ),
+    (
+        "maintain",
+        48,
+        "  after-same-net roomsWithTargetItems n=2 [6,1]",
+        "  after-same-net roomsWithTargetItems n=2 [29,3]",
     ),
 ];
 
@@ -761,9 +890,16 @@ fn all_regimes(mode: &str, build: fn() -> Board, no_vias: bool, ripup_allowed: b
 // Ruling 1(a)+(b): the state, the ripped set and the inserted geometry
 // =================================================================================================
 
-/// Probe mode `plain`: `ROUTED`, an empty ripped set and one inserted trace, in all three
-/// regimes. The 45-degree run burns ids 4..7 inside `insertForcedTracePolyline` before the
-/// combined trace lands on 8, and that id burn is part of the comparison.
+/// Probe mode `plain`: `ROUTED`, an empty ripped set and one inserted trace. The 45-degree run
+/// burns ids 4..7 inside `insertForcedTracePolyline` before the combined trace lands on 8, and
+/// that id burn is part of the comparison.
+///
+/// **In two of the three regimes, not all three, since #165.** `NINETY_DEGREE` and
+/// `FORTYFIVE_DEGREE` are byte-identical to the jar — the routed state, the id burn and the
+/// inserted polyline all still match. The free-angle `NONE` regime is the one that lost its
+/// connection to #165's second half, and its seven rows are declared in `KNOWN_DIVERGENCES` with
+/// the ablation that attributes them. The name still describes what this test measures, on the
+/// two regimes that still measure it.
 #[test]
 fn a_plain_connection_routes_and_inserts_javas_trace() {
     all_regimes("plain", simple_board, false, false);

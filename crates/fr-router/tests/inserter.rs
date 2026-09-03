@@ -164,6 +164,20 @@ fn simple_board() -> Board {
     board
 }
 
+/// `simple_board` with the board's own angle restriction set to `FORTYFIVE_DEGREE`, which is the
+/// regime the **maze search** runs in — `locate`'s `angle` argument is a separate axis and never
+/// reaches the search.
+///
+/// It exists for #165's second half, `accepted at plan9-t7t8 (ruling CC)`: the free-angle search
+/// on this board no longer finds a connection, so mode `simple` had nothing to insert. `locator.rs`
+/// carries the twin of this function with the fixture matrix and the ablation that attribute it,
+/// and `KNOWN_DIVERGENCES` below carries the nine rows the re-point moves.
+fn simple_board_fortyfive() -> Board {
+    let mut board = simple_board();
+    board.rules.trace_angle_restriction = AngleRestriction::FortyFiveDegree;
+    board
+}
+
 /// `P6T15Probe.buildToTrace` — `simple_board` plus a net-1 trace to route to.
 fn to_trace_board() -> Board {
     let mut board = simple_board();
@@ -397,18 +411,106 @@ fn t15_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
+/// The rows where this port **deliberately** disagrees with the jar, as `(mode, row, jvm, rust)` —
+/// the plan's `KNOWN_DIVERGENCES` convention, the same table `autoroute_connection.rs` carries.
+///
+/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
+/// port answers is recorded here instead, so the jar's row and the port's sit side by side and a
+/// reviewer can see both. **Every entry carries the register row that authorizes it**, and drift
+/// fails in both directions — a port that answers something new lands in `diffs`, and a
+/// divergence that heals is caught by the shortfall assert below and must be deleted rather than
+/// left to rot.
+///
+/// * **#165 (second half), `accepted at plan9-t7t8 (ruling CC)`** — `addCompleteRoom`'s `null`
+///   path now detaches the doors of the room it abandons. On `P6T13Probe.buildSimple` the
+///   free-angle search's only path from pin 2 to pin 3 ran through that room, so
+///   `find_connection` answers `None` and this mode's three regimes had no connection to insert at
+///   all. The search is re-pointed to [`simple_board_fortyfive`] — the same board, the same pins,
+///   the same probe, at the regime `p6t16`'s mode `plain` still matches the jar on byte for byte —
+///   and the nine rows below are the difference between the jar's free-angle search and that one.
+///   **They are port-regression pins from here, not jar-parity pins.** `locator.rs`'s
+///   [`simple_board_fortyfive`] twin carries the fixture-matrix measurement and the ablation
+///   behind the attribution; `the_free_angle_simple_board_search_finds_nothing` there is the pin
+///   that holds the retired arm.
+///
+///   **What this mode is for is unchanged and still asserted on all nine**: the `:171-405` segment
+///   loop still runs once per corner pair and still burns one id per run before the combined trace
+///   lands, the inserted item is still one `PolylineTrace` on layer 0 at half-width 30 between
+///   `(400,0)` and `(-400,0)`, and the free-angle regime still inserts the shortest of the three.
+///   Only the corner counts and the resulting id burn moved with the search.
+const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
+    // #165 second half — 90-degree locator over the 45-degree search: six corners, not five, so
+    // the loop burns 4..7 and the trace lands on 8 rather than 7.
+    (
+        "simple",
+        3,
+        "    [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-132,0) (-400,0)",
+        "    [0] layer=0 corners=6 (400,0) (400,-132) (0,-132) (-132,-132) (-400,-132) (-400,0)",
+    ),
+    ("simple", 6, "    maxId=7", "    maxId=8"),
+    (
+        "simple",
+        7,
+        "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-132,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
+        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(399,-1),(-400,0)->(-401,0),(-400,-132)->(-400,0)] corners=[(400,0),(-400,0)]",
+    ),
+    // …the 45-degree locator, likewise six corners and the same id burn.
+    (
+        "simple",
+        14,
+        "    [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-264,0) (-400,0)",
+        "    [0] layer=0 corners=6 (400,0) (268,-132) (0,-132) (-132,-132) (-268,-132) (-400,0)",
+    ),
+    ("simple", 17, "    maxId=7", "    maxId=8"),
+    (
+        "simple",
+        18,
+        "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-264,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
+        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-400,0)->(-401,0),(-400,0)->(-399,1)] corners=[(400,0),(-400,0)]",
+    ),
+    // …and the free-angle locator, whose list gains its middle corner `(0,-140)`: three corners,
+    // so one extra run of the loop and the trace lands on 5 rather than 4.
+    (
+        "simple",
+        25,
+        "    [0] layer=0 corners=2 (400,0) (-400,0)",
+        "    [0] layer=0 corners=3 (400,0) (0,-140) (-400,0)",
+    ),
+    ("simple", 28, "    maxId=4", "    maxId=5"),
+    (
+        "simple",
+        29,
+        "    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(400,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
+        "    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(400,0)->(407,-20),(400,0)->(0,-140),(0,-140)->(-400,0),(-400,0)->(-393,20)] corners=[(400,0),(0,-140),(-400,0)]",
+    ),
+];
+
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
 /// than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
     let expected = t15_section(mode);
     let mut diffs = Vec::new();
+    let mut accounted = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
-        if want != got {
-            diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+        if want == got {
+            continue;
         }
+        if KNOWN_DIVERGENCES
+            .iter()
+            .any(|(m, row, jvm, rust)| *m == mode && *row == i && *jvm == want && *rust == got)
+        {
+            accounted += 1;
+            continue;
+        }
+        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
+    // The diff assert runs FIRST, and the order is load-bearing — see the same note in
+    // `autoroute_connection.rs`, where the Task 6 reviewer mutation-verified it. A declared row
+    // that *drifts* both fails to match its entry and leaves `accounted` short; with the healed
+    // check first, that drift is reported as "delete the entry" and the real jvm/rust detail is
+    // never printed, which is exactly backwards.
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",
@@ -420,6 +522,16 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .cloned()
             .collect::<Vec<_>>()
             .join("\n")
+    );
+    let declared = KNOWN_DIVERGENCES
+        .iter()
+        .filter(|(m, ..)| *m == mode)
+        .count();
+    assert_eq!(
+        accounted, declared,
+        "mode `{mode}` declares {declared} known divergence(s) from the jar but only {accounted} \
+         of them still differ — a divergence that has healed must be deleted from \
+         KNOWN_DIVERGENCES, not left to rot"
     );
 }
 
@@ -609,15 +721,21 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
 /// trace and `:66`/`:74`'s `insertVia` calls are both the `inputFromLayer == inputToLayer` early
 /// return of `:684-686`.
 ///
-/// The 90-degree and 45-degree regimes route through a five-corner list and therefore run the
-/// `:171-405` segment loop four times, burning ids 4, 5 and 6 before the combined trace lands on
-/// 7; the free-angle regime has two corners and burns only id 4. That id burn is Java's, and it
-/// is what the transcript comparison pins.
+/// The 90-degree and 45-degree regimes route through a **six**-corner list and therefore run the
+/// `:171-405` segment loop five times, burning ids 4, 5, 6 and 7 before the combined trace lands
+/// on 8; the free-angle regime has three corners and burns 4 before landing on 5. That id burn is
+/// what the transcript comparison pins.
+///
+/// **The counts in that paragraph are the port's, not the jar's, since the plan9-t7t8 accept wave
+/// (ruling CC)** — the jar's are five/four/7 and two/one/4, and both sets are written out row by
+/// row in `KNOWN_DIVERGENCES`, which is also where the `#165` attribution and the re-point live.
+/// The *rule* the paragraph states — one run of the segment loop per corner pair, one id burnt per
+/// run — is the jar's and is unchanged; it is what the nine declared rows still measure.
 #[test]
 fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
     let mut rows = Vec::new();
     for regime in REGIMES {
-        let mut board = simple_board();
+        let mut board = simple_board_fortyfive();
         rows.push(format!("=== {}", regime_name(regime)));
         let located = locate(&mut board, regime, &[2], &[3], false);
         rows.extend(t15_insert_and_dump(&mut board, &located));

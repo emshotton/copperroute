@@ -171,6 +171,43 @@ fn simple_board() -> Board {
     board
 }
 
+/// `simple_board` with the board's own angle restriction set to `FORTYFIVE_DEGREE`, which is the
+/// regime the maze search runs in — the locator's `angle` argument is a separate axis and never
+/// reaches the search.
+///
+/// **Why this exists: #165's second half, accepted at plan9-t7t8 (ruling CC).**
+/// `addCompleteRoom`'s `null` path now detaches the doors of the room it abandons, and on
+/// `buildSimple` **in the free-angle regime only** the sole path from pin 2 to pin 3 ran through
+/// that room. Measured at the accept wave, over `{simple, blocked, probe} x {90, 45, free}`:
+/// eight of the nine cells still answer a connection and `simple x free-angle` is the one that
+/// does not. Measured a second way, by ablation: with the one `detach_all_doors` call commented
+/// out, every test below passes again unchanged.
+///
+/// So the fixture, not the subject, is what moved. The search is re-pointed to a regime where the
+/// port and the **jar** still agree byte for byte about this very board — `p6t16`'s mode `plain`
+/// matches the jar on every `FORTYFIVE_DEGREE` row, routed state, the 4..7 id burn and the
+/// inserted polyline included — and the literals each test reads off that search are re-cut to
+/// the port's measured values, with the jar's old value beside each. They are **port-regression
+/// pins** from here, not jar-parity pins, and every one says so at its site.
+///
+/// `FORTYFIVE_DEGREE` and not `NINETY_DEGREE`, and the reason is measured rather than aesthetic.
+/// A 90-degree search collapses this board to a **two-door** backtrack chain and a straight
+/// `(400,0) (-400,0)` connection *in all three locator regimes*, which would silently empty out
+/// [`the_three_regimes_locate_three_different_corner_lists`] (one list, not three), the
+/// three-element door chain [`the_backtrack_walk_reproduces_the_jvms_door_chain`] is named for,
+/// and the unreached door section the `warn`-mode tests need. The 45-degree search keeps all
+/// three: three doors, three genuinely different corner lists, and an orphan section.
+///
+/// What retires with a record, rather than moving: the free-angle `simple_board` `findConnection`
+/// arm. Nothing below asserts it any more, and [`the_free_angle_simple_board_search_finds_nothing`]
+/// is the pin that holds the retirement in place, so the day it starts answering again is a
+/// failure and not a silence.
+fn simple_board_fortyfive() -> Board {
+    let mut board = simple_board();
+    board.rules.trace_angle_restriction = AngleRestriction::FortyFiveDegree;
+    board
+}
+
 /// `P6T14Probe.buildBlocked` — `simple_board` plus the net-2 trace across the channel.
 fn blocked_board() -> Board {
     let mut board = simple_board();
@@ -729,7 +766,7 @@ fn parse_point(text: &str) -> FloatPoint {
 /// (TargetItemExpansionDoor.java:50-53).
 #[test]
 fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
-    let mut board = simple_board();
+    let mut board = simple_board_fortyfive();
     let located = locate(&mut board, AngleRestriction::None, false);
     // Rebuild an engine view for the ids: the locator kept the arena refs, and the ids are what
     // the probe prints.
@@ -764,9 +801,27 @@ fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
 ///
 /// The 90° list visits `(-132,0)` **twice**: `calculateNextTrace`'s rounding loop (`:450-459`)
 /// drops only *consecutive* duplicates, so the spike back and forth survives.
+///
+/// **This corner list is a PORT-REGRESSION PIN, not a jar-parity pin, since the plan9-t7t8 accept
+/// wave (ruling CC).** The search behind it is [`simple_board_fortyfive`]'s, because #165's second
+/// half took the free-angle one away; the jar's transcript above was cut from the free-angle
+/// search and no longer describes what this test runs.
+///
+/// * old (jar-parity, free-angle search): `(400,0) (-132,0) (-132,-132) (-132,0) (-400,0)`
+/// * new (port, 45-degree search): `(400,0) (400,-132) (0,-132) (-132,-132) (-400,-132) (-400,0)`
+/// * `accepted at plan9-t7t8 (ruling CC)`
+///
+/// **What the test is for is unchanged and still asserted**: one `ResultItem`, on layer 0, from
+/// the pin-2 start to the pin-3 target, with nothing ripped. The `(-132,-132)` corner the jar's
+/// rounding loop produces is still in the list, in the same place relative to its neighbours;
+/// what the 45-degree search removes is the *doubled* `(-132,0)`, because its own door chain
+/// enters the room from below rather than head-on. The doubled-corner claim in the paragraph
+/// above therefore no longer has a producer here — [`the_reversed_search_reaches_the_left_turn_corner`]
+/// and the `p6t14` `ripup`/`around`/`reverse` modes, all still on the jar's numbers, are where
+/// `calculateNextTrace`'s rounding is measured now.
 #[test]
 fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
-    let mut board = simple_board();
+    let mut board = simple_board_fortyfive();
     let located = locate(&mut board, AngleRestriction::NinetyDegree, false);
     assert_eq!(located.locator.start_item, Some(ItemId(2)));
     assert_eq!(located.locator.start_layer, 0);
@@ -776,7 +831,14 @@ fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
         items(&located),
         vec![(
             0,
-            vec![(400, 0), (-132, 0), (-132, -132), (-132, 0), (-400, 0)]
+            vec![
+                (400, 0),
+                (400, -132),
+                (0, -132),
+                (-132, -132),
+                (-400, -132),
+                (-400, 0)
+            ]
         )]
     );
     assert!(located.ripped.is_empty());
@@ -784,21 +846,105 @@ fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
 
 /// The same maze result under all three regimes — mode `locate`'s three blocks. This is the
 /// fixed case the brief asks for: one search, three different corner lists.
+///
+/// **All three lists are PORT-REGRESSION PINS since the plan9-t7t8 accept wave (ruling CC)**, for
+/// the reason [`simple_board_fortyfive`] gives: the free-angle search the jar's three blocks were
+/// cut from is what #165's second half removed, and this is the 45-degree search that replaces
+/// it. Row by row, jar-parity value then port value, all `accepted at plan9-t7t8 (ruling CC)`:
+///
+/// | regime | old (jar, free-angle search) | new (port, 45-degree search) |
+/// |---|---|---|
+/// | `NINETY_DEGREE` | `(400,0) (-132,0) (-132,-132) (-132,0) (-400,0)` | `(400,0) (400,-132) (0,-132) (-132,-132) (-400,-132) (-400,0)` |
+/// | `FORTYFIVE_DEGREE` | `(400,0) (-132,0) (-132,-132) (-264,0) (-400,0)` | `(400,0) (268,-132) (0,-132) (-132,-132) (-268,-132) (-400,0)` |
+/// | `NONE` | `(400,0) (-400,0)` | `(400,0) (0,-140) (-400,0)` |
+///
+/// **The claim the test is named for is what had to survive the re-point, and it does — measured,
+/// not assumed.** The three lists are still three *different* lists off one search: 90 degrees
+/// turns square, 45 degrees cuts both corners to `268`/`-268`, and the free-angle locator answers
+/// the shortest three-corner path. A 90-degree *search* was rejected for this re-point precisely
+/// because it collapses all three to the same straight `(400,0) (-400,0)` and would have left the
+/// test passing while measuring nothing.
 #[test]
 fn the_three_regimes_locate_three_different_corner_lists() {
     let expected: [Vec<(i32, i32)>; 3] = [
         // === NINETY_DEGREE
-        vec![(400, 0), (-132, 0), (-132, -132), (-132, 0), (-400, 0)],
+        vec![
+            (400, 0),
+            (400, -132),
+            (0, -132),
+            (-132, -132),
+            (-400, -132),
+            (-400, 0),
+        ],
         // === FORTYFIVE_DEGREE
-        vec![(400, 0), (-132, 0), (-132, -132), (-264, 0), (-400, 0)],
+        vec![
+            (400, 0),
+            (268, -132),
+            (0, -132),
+            (-132, -132),
+            (-268, -132),
+            (-400, 0),
+        ],
         // === NONE
-        vec![(400, 0), (-400, 0)],
+        vec![(400, 0), (0, -140), (-400, 0)],
     ];
+    // Three lists off one search, and they must stay three: a re-point that collapsed them would
+    // leave every assertion below green while the test measured nothing.
+    assert_eq!(
+        expected
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        3,
+        "the three regimes must locate three DIFFERENT corner lists"
+    );
     for (regime, want) in REGIMES.into_iter().zip(expected) {
-        let mut board = simple_board();
+        let mut board = simple_board_fortyfive();
         let located = locate(&mut board, regime, false);
         assert_eq!(items(&located), vec![(0, want)], "regime {regime:?}");
     }
+}
+
+/// **The retirement record for the free-angle `simple_board` `findConnection` arm** (#165's second
+/// half, `accepted at plan9-t7t8 (ruling CC)`).
+///
+/// Until Task 8 this board answered a connection in every regime, and five tests in this file plus
+/// one in `inserter.rs` read their literals off the free-angle one. `addCompleteRoom`'s `null`
+/// path now detaches the doors of the room it abandons, and on this board that room *was* the
+/// free-angle path. The controller took the trade: the reachability #165 exists to remove is worth
+/// six probe boards' connection, and on the six real router stems the call is a measured no-op —
+/// identical incomplete and violation counts with and without it (Task 8 §6a).
+///
+/// This test is what stops the retirement from being a silence. It is not an aspiration that the
+/// search *should* fail; it is a pin on the one cell of the fixture matrix that changed, so the
+/// day it starts answering again — a #165 revert, or anything that hands the abandoned room back
+/// its doors — a test goes red and names the reason.
+#[test]
+fn the_free_angle_simple_board_search_finds_nothing() {
+    let mut board = simple_board();
+    assert_eq!(
+        board.rules.trace_angle_restriction,
+        AngleRestriction::None,
+        "the retired arm is the FREE-ANGLE one"
+    );
+    let mut engine = probe_engine(&mut board, 1);
+    let ctrl = probe_control(&board, 1);
+    let counter = Counter::new();
+    let mut maze = MazeSearchEngine::get_instance(
+        &set_of(&[2]),
+        &set_of(&[3]),
+        &mut engine,
+        &mut board,
+        &ctrl,
+        &|| counter.check(),
+    )
+    .expect("`getInstance` still builds the search: it is `findConnection` that answers None");
+    assert!(
+        maze.find_connection(&mut board, &|| counter.check())
+            .is_none(),
+        "#165's second half detached the abandoned room's doors and this board's free-angle path \
+         ran through it — if this ever answers again, #165 has been undone"
+    );
 }
 
 // =================================================================================================
@@ -1361,7 +1507,7 @@ fn a_null_ripup_cost_map_still_fills_the_ripped_item_set() {
 /// live `backtrackDoor` chain and `start_info.door` is still the start target door.
 #[test]
 fn an_unexpected_destination_door_yields_an_empty_connection_with_the_start_fields_set() {
-    let mut board = simple_board();
+    let mut board = simple_board_fortyfive();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let counter = Counter::new();
@@ -1435,7 +1581,15 @@ fn an_unexpected_destination_door_yields_an_empty_connection_with_the_start_fiel
 /// exactly as the probe does, so both sides pick the same door.
 #[test]
 fn a_start_door_that_is_not_a_target_door_yields_an_all_default_locator() {
-    let mut board = simple_board();
+    // `blocked_board`, not `simple_board`, since the plan9-t7t8 accept wave (ruling CC).
+    // #165's second half took the free-angle `simple_board` search away, and the 45-degree search
+    // [`simple_board_fortyfive`] replaces it with reaches **every** door section, so there is no
+    // orphan left on that board to forge a result from. Measured at the wave over the three
+    // fixtures: `simple` at 45 degrees has none, `blocked` and `probe` both leave one at section
+    // 0. `blocked_board` is `P6T14Probe.buildBlocked`, the jar's own fixture, it still finds its
+    // connection free-angle, and the section number the test asserts is unchanged — so what moves
+    // here is the board the orphan is picked from and nothing the test claims.
+    let mut board = blocked_board();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let counter = Counter::new();
@@ -1592,3 +1746,6 @@ fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {
          connectionItems; a non-empty list is what separates the fanout arm from them"
     );
 }
+
+
+
