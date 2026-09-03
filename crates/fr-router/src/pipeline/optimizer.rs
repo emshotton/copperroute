@@ -503,10 +503,15 @@ impl<'a> BatchOptimizer<'a> {
     /// `BatchAutorouter`'s constructor (`:118-120`), there is **no** `null` fallback here, so a
     /// settings table without the field NPEs in Java. The `expect` reproduces that.
     ///
-    /// # The user-fixed early exit is dead (quirk #226)
+    /// # The user-fixed early exit is dead (quirk #226) and is **not** transcribed
     ///
-    /// `:436-440` is transcribed and can never fire; the marker at the site has the argument.
-    /// `p7t8 item`'s `anyUserFixed` column reads `false` on every item of every corpus stem.
+    /// `:436-440` can never fire; the marker at the site has the argument, and
+    // fixed: T9 (#226) — the loop is deleted as dead code. `p7t8 item`'s `anyUserFixed` column
+    // reads `false` on every item of every corpus stem, and
+    // `optimizer_items.rs::a_user_fixed_contact_never_reaches_the_ripped_connections` pins the
+    // property that makes it so.
+    /// no behaviour changes with it — only the per-item walk over the whole ripped-connection
+    /// set that asked the question.
     ///
     /// # `progress`, which the brief's sketch omits
     ///
@@ -597,23 +602,21 @@ impl<'a> BatchOptimizer<'a> {
         }
 
         // :434-440 — "check if the connections contain user fixed items, which should not be
-        // re-routed". **It cannot fire — quirk #226.** `rippedConnections` is filled from nothing
-        // but `getConnectionItems` (`:428-432`), which adds an item only when `isRoutable()`
+        // re-routed". **It cannot fire.** `rippedConnections` is filled from nothing but
+        // `getConnectionItems` (`:428-432`), which adds an item only when `isRoutable()`
         // (`Item.java:701-703` for the start item, `:723-726` for every step of the walk), and
         // `Trace.isRoutable` (Trace.java:206-208) / `Via.isRoutable` (Via.java:147-149) are both
         // `!isUserFixed() && netCount() > 0` over a base that answers `false`. So every member is
-        // routable, therefore not user-fixed. Transcribed anyway, because the port must read like
-        // the method and because a Java change to `isRoutable` would make it live.
+        // routable, therefore not user-fixed, and `:438`'s early return is unreachable.
         // Java bug: `BatchOptimizer.optRouteItem` (`:434-440`) — the user-fixed guard is dead: `getConnectionItems` only ever collects `isRoutable()` items and neither a user-fixed trace nor a user-fixed via is one, so the fixed geometry it advertises protecting is never in the set (quirk #226).
-        for current_item in ripped_connections.iter().rev() {
-            if board
-                .get_item(*current_item)
-                .is_some_and(Item::is_user_fixed)
-            {
-                // :438.
-                return Ok(ItemRouteResult::unimproved(item));
-            }
-        }
+        // fixed: T9 (#226) — deleted as dead code, with **no behaviour change**: the loop it
+        // replaces walked the whole ripped-connection set once per optimized item to ask a
+        // question whose answer is `false` by construction, and that cost is now saved on every
+        // item of every board. The fixed geometry the comment says it protects is protected by
+        // `getConnectionItems`, which is what `crates/fr-router/tests/optimizer_items.rs`'s
+        // `a_user_fixed_contact_never_reaches_the_ripped_connections` measures — and that test is
+        // what keeps the deletion honest, because it asserts the property the loop relied on
+        // rather than the loop.
 
         // :442-445 — `routingBoard.generateSnapshot()`. Plan-7 ruling 8: the snapshot's *item
         // state* is a clone. Its *side effects* are not: `Board::begin_undo_journal` opens the
@@ -876,9 +879,20 @@ pub struct OptimizerPassRecord {
     pub score_after: f32,
     /// `passImprovement` (`:209-210`) — `(after - before) / before`, or `0` when `before <= 0`.
     pub pass_improvement: f64,
-    /// `scoreImprovement` (`:215`/`:217`) as the arm left it: `-1` when the increased ripup costs
-    /// were dropped this pass, else [`Self::pass_improvement`].
-    pub score_improvement: f64,
+    /// `:212-215`'s decision, as its **own flag** rather than as a magic value of
+    /// [`Self::pass_improvement`].
+    ///
+    /// Java writes `scoreImprovement = -1` at `:215` to mean "do not test the threshold this
+    /// time — the increased ripup costs were just dropped, so spend another pass" and tests
+    /// `scoreImprovement != -1` at `:220`. `:209-210` computes `passImprovement` into the **same
+    /// variable** at `:217`, and that expression is exactly `-1.0` whenever a pass drives a
+    /// positive score to zero — so such a pass would skip the threshold exit on a false reading.
+    ///
+    // Java bug: `BatchOptimizer.runBatchLoop` (`:212-230`) — `-1` is a sentinel a real pass improvement can equal, because `:209-210`'s `(scoreAfterPass - scoreBeforePass) / scoreBeforePass` is `-1.0` for a pass that drives a positive score to hard zero and `:217` assigns it to the variable `:220` tests (quirk #228, latent).
+    // fixed: T9 (#228) — the decision is a `bool` and the number is a number. `:220`'s test is
+    // `!force_another_pass && pass_improvement < threshold`, which agrees with Java on every
+    // input except the collision, and there it takes the exit Java's own comment intends.
+    pub force_another_pass: bool,
     /// `useIncreasedRipupCosts` (`:32`) **after** the pass — cleared either by `optRoutePass`
     /// (`:365-368`, no item improved) or by `:212-215` (the board score did not rise).
     pub use_increased_ripup_costs: bool,
@@ -1231,7 +1245,7 @@ impl BatchOptimizer<'_> {
             let statistics_after = BoardStatistics::new(board);
             let score_after_pass = statistics_after.normalized_score(scoring);
             // :209-218.
-            let (pass_improvement, score_improvement) =
+            let (pass_improvement, force_another_pass) =
                 self.apply_pass_improvement(score_before_pass, score_after_pass);
 
             per_pass.push(OptimizerPassRecord {
@@ -1240,7 +1254,7 @@ impl BatchOptimizer<'_> {
                 score_before: score_before_pass,
                 score_after: score_after_pass,
                 pass_improvement,
-                score_improvement,
+                force_another_pass,
                 use_increased_ripup_costs: self.use_increased_ripup_costs,
                 route_improved,
                 total_items_optimized: self.total_items_optimized,
@@ -1256,7 +1270,9 @@ impl BatchOptimizer<'_> {
 
             // :220-230 — a `double` against a widened `float`.
             // Java bug: `BatchOptimizer.runBatchLoop` (`:220`) — `!= -1` is a **sentinel** test against a value `:209-210` can also produce honestly: a pass that drives a positive score to exactly zero computes `passImprovement = -1.0`, `:217` assigns it, and the threshold exit is then skipped on the false reading "the increased ripup costs were just dropped" (quirk #228, latent — no corpus pass collapses a score, because every item restores its own snapshot on failure).
-            if score_improvement != -1.0 && score_improvement < f64::from(improvement_threshold) {
+            // fixed: T9 (#228) — the sentinel is a `bool` of its own, so the threshold test reads
+            // the improvement it is about. Identical to Java on every input but the collision.
+            if !force_another_pass && pass_improvement < f64::from(improvement_threshold) {
                 break;
             }
         }
@@ -1295,10 +1311,10 @@ impl BatchOptimizer<'_> {
     /// it is the arm that decides whether the optimizer goes round again, and a test cannot reach
     /// it through a board.
     ///
-    /// Answers `(passImprovement, scoreImprovement)` and updates
+    /// Answers `(passImprovement, forceAnotherPass)` and updates
     /// [`BatchOptimizer::use_increased_ripup_costs`] exactly as `:213` does.
     ///
-    /// # `-1` means "keep going"
+    /// # "keep going" is a decision, not a number
     ///
     /// `:214`'s comment is "keep the optimizer going to try with normal ripup costs": the first
     /// pass that fails to raise the score spends the increased ripup costs rather than the
@@ -1306,10 +1322,18 @@ impl BatchOptimizer<'_> {
     /// only ever fire **once**, because `:212`'s first conjunct is then false forever — and
     /// `optRoutePass:365-368` can clear the same flag one step earlier, on the different
     /// condition "no item improved", in which case this arm never fires at all.
+    ///
+    // fixed: T9 (#228) — Java carries that decision in a magic `-1` assigned to the same
+    // `double` `:209-210` computes into, and `:209-210` produces exactly `-1.0` for any pass that
+    // drives a positive score to hard zero. The second element of this tuple is the decision and
+    // the first is the number, so the two can no longer collide. Latent on the corpus, because
+    // reaching `:217` with exactly `-1.0` needs a pass that collapses the board score to zero and
+    // every item restores its own snapshot on failure.
+    ///
     /// `pub` for the reason [`BatchOptimizer::opt_route_pass`] is: this is the arm
     /// `the_increased_ripup_costs_are_dropped_after_one_non_improving_pass` exercises, and
     /// `crates/fr-router/tests/optimizer.rs` is a separate crate.
-    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, f64) {
+    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, bool) {
         // :209-210 — the subtraction is a `float`, the cast and the division are `double`.
         let pass_improvement = if score_before > 0.0 {
             f64::from(score_after - score_before) / f64::from(score_before)
@@ -1317,16 +1341,16 @@ impl BatchOptimizer<'_> {
             0.0
         };
         // :212-218.
-        let score_improvement = if self.use_increased_ripup_costs && score_after <= score_before {
+        let force_another_pass = if self.use_increased_ripup_costs && score_after <= score_before {
             // :213.
             self.use_increased_ripup_costs = false;
-            // :215.
-            -1.0
+            // :215 — Java's `-1`.
+            true
         } else {
             // :217.
-            pass_improvement
+            false
         };
-        (pass_improvement, score_improvement)
+        (pass_improvement, force_another_pass)
     }
 
     /// Port of `optRoutePass(int, boolean)` (`BatchOptimizer.java:279-385`): "tries to reduce the

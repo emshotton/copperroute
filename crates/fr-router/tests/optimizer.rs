@@ -274,27 +274,78 @@ fn the_increased_ripup_costs_are_dropped_after_one_non_improving_pass() {
     optimizer.use_increased_ripup_costs = true;
 
     // A pass that did not raise the score: `scoreAfter <= scoreBefore`.
-    let (pass_improvement, score_improvement) = optimizer.apply_pass_improvement(800.0, 800.0);
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 800.0);
     assert_eq!(pass_improvement, 0.0, "(800 - 800) / 800 is 0");
-    assert_eq!(score_improvement, -1.0, ":215's sentinel");
+    assert!(force_another_pass, ":215's sentinel, as its own bool");
     assert!(!optimizer.use_increased_ripup_costs, ":213 clears the flag");
 
     // The very same pass again: the flag is down, so `:217` answers the real number and `:220`
     // now has something to compare against the threshold.
-    let (pass_improvement, score_improvement) = optimizer.apply_pass_improvement(800.0, 800.0);
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 800.0);
     assert_eq!(pass_improvement, 0.0);
-    assert_eq!(
-        score_improvement, 0.0,
+    assert!(
+        !force_another_pass,
         ":217 — the arm cannot fire twice, so the loop's threshold exit is now reachable"
     );
 
     // And a pass that *did* improve never reaches the arm at all.
     let mut optimizer = BatchOptimizer::new(&settings);
     optimizer.use_increased_ripup_costs = true;
-    let (pass_improvement, score_improvement) = optimizer.apply_pass_improvement(800.0, 808.0);
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 808.0);
     assert!((pass_improvement - 0.01).abs() < 1e-6, "8 / 800 is 1 %");
-    assert_eq!(score_improvement, pass_improvement);
+    assert!(!force_another_pass);
     assert!(optimizer.use_increased_ripup_costs, "still up");
+}
+
+/// **Quirk #228, fixed in Plan 9 Task 9: the improvement flag is a `bool`.**
+///
+/// `BatchOptimizer.java:215` assigns `scoreImprovement = -1` to mean "do not test the threshold
+/// this time — spend another pass", and `:220` tests `scoreImprovement != -1`. But `:209-210`
+/// computes `passImprovement = (scoreAfterPass - scoreBeforePass) / scoreBeforePass` into the
+/// **same variable** at `:217`, and that expression is exactly `-1.0` whenever a pass drives a
+/// positive score to hard zero. Such a pass skips the threshold exit and buys itself another pass
+/// on the reading "the ripup costs were just dropped", which is false.
+///
+/// Latent: the `:212` arm can run only once, so reaching `:217` with exactly `-1.0` needs a pass
+/// that collapses the board score, and no corpus stem does it because every item restores its own
+/// snapshot on failure. The collision is therefore asserted here, on the arithmetic, rather than
+/// on a board.
+#[test]
+fn the_improvement_flag_is_a_bool() {
+    let settings = DefaultSettings::new(&HostEnvironment::detect())
+        .get_settings()
+        .expect("DefaultSettings always answers a table")
+        .clone();
+
+    // **The collision itself.** A pass that drives 800 to 0 computes `-1.0` honestly, and it does
+    // so with the increased-ripup-costs arm already spent — so Java's `:220` would read its own
+    // sentinel out of a number that means "the board collapsed".
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = false;
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 0.0);
+    assert_eq!(
+        pass_improvement, -1.0,
+        ":209-210 — (0 - 800) / 800 is exactly Java's sentinel value"
+    );
+    assert!(
+        !force_another_pass,
+        "fixed: T9 (#228) — the decision is its own bool, so a real -1.0 is not mistaken for \
+         `:215`'s `keep going`"
+    );
+    // …and that is what `:220`'s exit reads: a pass with `pass_improvement == -1.0` and the flag
+    // down takes the threshold exit, where Java's `!= -1` test would have skipped it.
+    let threshold = 0.01_f64;
+    assert!(
+        !force_another_pass && pass_improvement < threshold,
+        "the threshold exit fires, which is what `:214`'s own comment intends"
+    );
+
+    // The two legitimate values of the flag, for completeness — and note that neither of them is
+    // a number any more.
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = true;
+    assert!(optimizer.apply_pass_improvement(800.0, 800.0).1);
+    assert!(!optimizer.apply_pass_improvement(800.0, 800.0).1);
 }
 
 /// `:209-210`'s ternary: a non-positive `scoreBeforePass` answers `0` rather than dividing. That
@@ -381,8 +432,8 @@ fn a_pass_that_improves_nothing_clears_the_increased_ripup_costs_and_ends_the_st
         !pass.use_increased_ripup_costs,
         ":366 cleared the flag inside the pass"
     );
-    assert_eq!(
-        pass.score_improvement, 0.0,
+    assert!(
+        !pass.force_another_pass,
         ":217, not `:215` — `:212`'s first conjunct was already false"
     );
     assert!(!optimizer.use_increased_ripup_costs);
@@ -982,6 +1033,8 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     assert_eq!(pass.record.via_count, 0);
     assert_eq!(pass.record.trace_count, 9);
     assert_eq!(pass.pass_improvement, 1.739_544_245_511_34e-5);
-    assert_eq!(pass.score_improvement, pass.pass_improvement);
+    // fixed: T9 (#228) — `:217`'s arm, as its own bool: the increased ripup costs were not
+    // dropped this pass, so `:220` reads the real improvement.
+    assert!(!pass.force_another_pass);
     assert_eq!(pass.route_improved, 0.412_747_17);
 }

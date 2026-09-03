@@ -1277,7 +1277,7 @@ fn transcribe_optimizer<W: Write>(
         let statistics_after = BoardStatistics::new(board);
         let score_after_pass = statistics_after.normalized_score(scoring);
         // :209-218 — the port's own arm, so the transcription cannot drift from it.
-        let (pass_improvement, score_improvement) =
+        let (pass_improvement, force_another_pass) =
             optimizer.apply_pass_improvement(score_before_pass, score_after_pass);
         writeln!(
             out,
@@ -1288,7 +1288,13 @@ fn transcribe_optimizer<W: Write>(
             java_float_to_string(score_before_pass),
             java_float_to_string(score_after_pass),
             java_double_to_string(pass_improvement),
-            java_double_to_string(score_improvement),
+            // fixed: T9 (#228) — Java's `-1` sentinel is a `bool` here; the transcript keeps
+            // printing the number Java printed so the two sides stay comparable.
+            java_double_to_string(if force_another_pass {
+                -1.0
+            } else {
+                pass_improvement
+            }),
             optimizer.use_increased_ripup_costs,
             java_float_to_string(route_improved),
             optimizer.total_items_optimized,
@@ -1300,11 +1306,11 @@ fn transcribe_optimizer<W: Write>(
         )
         .expect("write");
         // :220-230.
-        if score_improvement != -1.0 && score_improvement < f64::from(threshold) {
+        if !force_another_pass && pass_improvement < f64::from(threshold) {
             writeln!(
                 out,
                 "OPT-STOP reason=threshold pass={current_pass} scoreImprovement={}",
-                java_double_to_string(score_improvement)
+                java_double_to_string(pass_improvement)
             )
             .expect("write");
             break;

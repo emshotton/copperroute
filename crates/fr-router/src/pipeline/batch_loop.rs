@@ -394,6 +394,12 @@ impl AutorouteBatchLoop {
         // neither of which anything can observe. Quirk #216 is the row; there is nothing
         // behavioural to reproduce, and `the_dead_hash_set_is_javas_only_allocation` asserts this
         // very line so it cannot be deleted as noise.
+        // fixed: T9 (#216) — the row's suggested fix is "delete the field, the two `.clear()`
+        // calls and their six lines of comment", and the port has never had them: this
+        // `not ported:` line **is** the deletion, and it stays because it is the record of what
+        // was deleted and why. The alternative the row offers — re-enabling the same-hash stop —
+        // would have to answer `:257-258`'s own ripup-budget objection first and is a product
+        // decision, not a cleanup. **No behaviour change either side.**
 
         // The two pieces of pass-to-pass state Java hangs off objects the port does not have:
         // `board.failureLog` (a `RoutingBoard` field there — see `RoutingFailureLog`'s ownership
@@ -509,22 +515,27 @@ impl AutorouteBatchLoop {
                         break;
                     };
 
-                    // :315. Order-dependent by construction: `restoreBoard` has just sorted
-                    // the list in place and bumped one entry's `restoreCount` (quirk #198),
-                    // so this rank is read off the *post-sort* order.
-                    let board_to_restore_rank = bh.rank(&board_to_restore);
-
-                    // :317-320.
-                    if rank_limit_exceeded(board_to_restore_rank) {
-                        stop.request_stop_auto_router();
-                        // fixed: T9 (#214). Unreachable — quirk #217; the branch itself is
-                        // deleted later in this task.
-                        exit = Some(BatchLoopExit::NoImprovement);
-                        break;
-                    }
-
-                    // :322-334 — **a fall-through, not an `else`**: the three arms above all
-                    // `break`, so reaching here means the restore succeeded.
+                    // :315-320 — `boardToRestoreRank = bh.getRank(boardToRestore)` and the
+                    // `> BOARD_RANK_LIMIT` break it feeds.
+                    //
+                    // Java bug: `AutorouteBatchLoop.java:315-320` — the break cannot fire, because `BOARD_RANK_LIMIT` **is** `BoardHistory.MAX_HISTORY_SIZE` (`BatchAutorouter.java:40`) and `getRank` answers a 1-indexed position in a list `add` caps at that same size, so its range is `{-1} ∪ 1..=30` and `rank > 30` has no solution; the constant's own comment at `:38-39` has the reason exactly backwards (quirk #217).
+                    // fixed: T9 (#217) — **deleted**, which is the decision this task took and
+                    // recorded. The alternative the register offers is to set the limit strictly
+                    // below the cap, and that would make a documented stop reason *reachable* —
+                    // it would stop runs earlier than any freerouting has ever stopped them. That
+                    // is a product decision with its own A/B, not a cleanup, and it is
+                    // deliberately **not** taken here; the register row says so and names what
+                    // enabling it would need. Note that fixing quirk #198's `getRank` stability
+                    // does not make the branch reachable either (survey §10.2).
+                    //
+                    // The `bh.rank(...)` read goes with it: `:315`'s only consumer was `:317`.
+                    // `BoardHistory::rank` keeps its own tests — it is a real method with a real
+                    // ordering contract (quirk #198) — and `the_rank_the_loop_tests_is_read_after_
+                    // restore_boards_reorder` still pins the `:307` -> `:315` composition the loop
+                    // would perform, so deleting the branch does not delete the evidence for it.
+                    //
+                    // :322-334 — with the two arms above (`:306`'s test and `:307`'s failure) the
+                    // only ones that can `break`, reaching here means the restore succeeded.
                     //
                     // `:322-323` is `router.board = boardToRestore; board = router.board`, the
                     // two-field assignment the port collapses into one move.
@@ -725,9 +736,10 @@ impl AutorouteBatchLoop {
 // =================================================================================================
 //
 // Java's `run` is one 552-line method and these four expressions are inside it. They are lifted
-// here — each still called from exactly one place, each carrying its Java range — because they are
-// the four decisions the loop *makes*, and every one of them is either unreachable on the corpus
-// (`final_best_board_swap`, `rank_limit_exceeded`) or reachable only after eight real passes
+// here — each carrying its Java range — because they are the decisions the loop *makes*, and
+// every one of them is either unreachable on the corpus (`final_best_board_swap`) or unreachable
+// anywhere at all (`rank_limit_exceeded`, whose call site quirk #217 deleted) or reachable only
+// after eight real passes
 // (`restore_gate`, `stagnation_guard`). A test that had to route eight passes of a real board to
 // reach a boolean would be a slow test of the router, not a test of the loop. Nothing else moved:
 // `run` reads exactly as Java does with these four names substituted for the expressions.
@@ -756,9 +768,9 @@ pub fn restore_gate(
     size_gate && modulo_gate
 }
 
-/// `:317-320` — the rank break.
+/// `:317-320`'s rank break — **the predicate, kept without its call site.**
 ///
-/// # Java bug (quirk #217): this can never fire
+/// # Java bug (quirk #217): it can never fire
 ///
 /// [`BOARD_RANK_LIMIT`] **is** `BoardHistory::MAX_HISTORY_SIZE` (`BatchAutorouter.java:40`), and
 /// `BoardHistory.getRank` answers a **1-indexed position in a list that `add` caps at
@@ -768,11 +780,16 @@ pub fn restore_gate(
 /// `BatchAutorouter.java:38-39`'s comment on the constant says "Must not exceed
 /// `BoardHistory.MAX_HISTORY_SIZE` **so the check can actually fire**" — which has the direction
 /// backwards. For the check to fire the limit must be *strictly less than* the cap; setting it
-/// equal is precisely the value that makes it dead. `the_rank_limit_can_never_fire` is the pin,
-/// and it also shows the arm is transcribed correctly by exercising it one above the limit.
-// Java bug: `AutorouteBatchLoop.java:317-320` — `boardToRestoreRank > BOARD_RANK_LIMIT` is
-// unreachable, because `BOARD_RANK_LIMIT == BoardHistory.MAX_HISTORY_SIZE` and `getRank` is
-// bounded by the history's own cap (quirk #217).
+/// equal is precisely the value that makes it dead.
+///
+// Java bug: `AutorouteBatchLoop.java:317-320` — `boardToRestoreRank > BOARD_RANK_LIMIT` is unreachable, because `BOARD_RANK_LIMIT == BoardHistory.MAX_HISTORY_SIZE` and `getRank` is bounded by the history's own cap (quirk #217).
+// fixed: T9 (#217) — **the branch is deleted from `run`** and the decision is recorded: enabling
+// the break, by setting the limit strictly below the cap, would make runs stop *earlier* than any
+// freerouting ever has, which is a product decision with its own A/B and not a cleanup. This
+// function survives its call site on purpose. It is the arithmetic the register row is *about*,
+// `the_rank_limit_can_never_fire` is what shows the row is true, and a reader who wants to enable
+// the break has the predicate, its constant and its proof in one place rather than having to
+// reconstruct them. Nothing in the pipeline calls it.
 pub fn rank_limit_exceeded(rank: i32) -> bool {
     rank > i32::try_from(BOARD_RANK_LIMIT).unwrap_or(i32::MAX)
 }

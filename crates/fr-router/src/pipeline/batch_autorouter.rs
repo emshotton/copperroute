@@ -930,6 +930,11 @@ impl<'a> BatchAutorouter<'a> {
     /// omits it.
     ///
     // Java bug: `BatchAutorouter.autoroutePassesForOptimizingItem` (`:271-273`) — an empty `if` body whose `updatedRoutingBoard == null` conjunct is unreachable, because `:256` dereferences the same reference (quirk #225).
+    // fixed: T9 (#225) — the row's suggested fix is "delete the `if`", and the port has never
+    // carried it: the omission **is** the deletion and this marker is its record. The row's
+    // alternative — writing the fanout-recovery body `AutorouteBatchLoop.java:435-439` grew into
+    // it — is a different program and is not taken. **No behaviour change either side**, because
+    // the branch has no body and a guard that cannot pass.
     ///
     /// # The failure log is local, and that is not observable
     ///

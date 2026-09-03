@@ -342,9 +342,9 @@ impl AutoroutePassRunner {
                 // :227-228's `netItemsBefore` is `logTraceRouteComparison`'s only input and is
                 // not computed here; see the method doc.
 
-                // :232, :239 — `currentItem.getNetNumber(i)` in Java; the net the work list
-                // carries here (quirk #213's fix), which is the one that qualified the entry.
-                let route_net_no = route_net_no;
+                // :232, :239 — `currentItem.getNetNumber(i)` in Java; `route_net_no` is the net
+                // the work list carries (quirk #213's fix), which is the one that qualified the
+                // entry, so there is nothing to re-read off the board here.
 
                 // :238-245 -> `BatchAutorouter.autorouteItem` (`:507-514`) -> the whole of
                 // `AutorouteConnectionRouter.route`. A fresh engine per connection, because

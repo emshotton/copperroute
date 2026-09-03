@@ -570,9 +570,16 @@ fn the_restore_gate_needs_eight_entries_and_a_pass_multiple_of_four() {
 /// **so the check can actually fire**". For it to fire the limit must be *strictly less than* the
 /// cap; equal is the one value that guarantees it never does.
 ///
-/// The test does three things: pins the identity, shows a *full* history's ranks are all inside
-/// the limit, and exercises the predicate one above it so the arm's transcription is checked
-/// rather than merely reported dead.
+/// The test does four things: pins the identity, shows a *full* history's ranks are all inside
+/// the limit, exercises the predicate one above it so the arithmetic is checked rather than
+/// merely reported dead, and asserts that **the loop no longer calls it**.
+///
+/// fixed: T9 (#217) — the decision recorded for this row is **delete the branch**. The register
+/// offers two options and the other one — setting the limit strictly below the cap — would make a
+/// documented stop reason reachable and stop runs *earlier* than any freerouting ever has. That
+/// is a product decision with its own A/B, not a cleanup, and it is deliberately not taken here.
+/// The predicate survives its call site so that the row's arithmetic and its proof stay in one
+/// place; the last assertion is what keeps the deletion from silently coming back.
 #[test]
 fn the_rank_limit_can_never_fire() {
     // The identity that makes it dead (`BatchAutorouter.java:40`).
@@ -594,8 +601,24 @@ fn the_rank_limit_can_never_fire() {
         );
     }
 
-    // And the arm itself is transcribed correctly — it just has no input that reaches it.
+    // And the arithmetic itself is right — it just has no input that reaches it.
     assert!(rank_limit_exceeded(BOARD_RANK_LIMIT as i32 + 1));
+
+    // fixed: T9 (#217) — and the loop does not call it any more. Counted on a whitespace-
+    // normalised copy so rustfmt cannot make this pass or fail for the wrong reason; the only
+    // occurrences left in the file are this function's own declaration and its doc.
+    let source = include_str!("../src/pipeline/batch_loop.rs");
+    let flat = source.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(
+        flat.matches("if rank_limit_exceeded(").count(),
+        0,
+        "the rank break is deleted from `run`; re-enabling it is a product decision with its own \
+         A/B, not a cleanup (quirk #217)"
+    );
+    assert!(
+        flat.contains("pub fn rank_limit_exceeded(rank: i32) -> bool"),
+        "…and the predicate survives its call site, so the row's arithmetic stays testable"
+    );
 }
 
 /// The other half of quirk #217's argument, measured rather than reasoned: a history filled to its
@@ -1044,23 +1067,23 @@ fn the_stagnation_report_is_discharged_and_names_task_15() {
     // improve"), `:318-319` (the rank limit), `:474-475` (the pass-local stagnation window) and
     // `:505-506` (the global one). Since Plan 9 Task 9 each of them also **names its door**
     // (`exit = Some(BatchLoopExit::…)`, quirk #214) between the request and the `break`, and the
-    // rank-limit arm is still here at this commit (quirk #217's decision lands later in the same
-    // task) — so the count is **five** requests each followed by a `break`, plus `:252`'s dead
-    // arm, and the two the stub sits between are among them. Counted on a whitespace-normalised
-    // copy so that rustfmt's indentation cannot make the assertion pass or fail for the wrong
-    // reason.
+    // rank-limit arm is **gone** with quirk #217's decision (delete the branch; re-enabling it is
+    // a product decision with its own A/B) — so what is left is **four** requests each followed
+    // by a `break`, plus `:252`'s dead arm, and the two the stub sits between are among them.
+    // Counted on a whitespace-normalised copy so that rustfmt's indentation cannot make the
+    // assertion pass or fail for the wrong reason.
     let flat = source.split_whitespace().collect::<Vec<_>>().join(" ");
     assert_eq!(
         flat.matches("stop.request_stop_auto_router();").count(),
-        // `:252`'s dead arm (quirk #203) is the sixth call and has no `break`.
-        6,
-        "the five `requestStopAutoRouter()` breaks (:271-272, :311-312, :318-319, :474-475, \
-         :505-506) plus `:252`'s dead arm must all be present"
+        // `:252`'s dead arm (quirk #203) is the fifth call and has no `break`.
+        5,
+        "the four `requestStopAutoRouter()` breaks (:271-272, :311-312, :474-475, :505-506) plus \
+         `:252`'s dead arm must all be present"
     );
     assert_eq!(
         flat.matches("exit = Some(BatchLoopExit::").count(),
-        5,
-        "every one of the five breaks names the door it left by — quirk #214's fix"
+        4,
+        "every one of the four breaks names the door it left by — quirk #214's fix"
     );
     // …and the report really is called at both stagnation arms, so Task 15 has two sites to
     // discharge rather than one.
