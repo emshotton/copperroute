@@ -188,16 +188,23 @@ pub fn run(
     };
     let job_deadline = cancel.clone();
     let sink = progress_sink(progress);
+    // The CLI's budget, arrived at by the CLI's own function, because this tool is the CLI's other
+    // face: `p8t1`'s SES bytes are what the end-to-end conversation test compares against, and a
+    // different budget would be a different board. That includes honouring `opt_changed_area_ms`
+    // when the caller's `settings` payload carries it (#234) — a setting that worked on one face
+    // and not the other would be worse than no setting.
+    //
+    // The **failure** is where the two faces part company. `run_budget` answers a `Result` rather
+    // than exiting precisely so that this call site can refuse the request and leave the server
+    // up: a misconfigured `FR_ROUTER_BUDGET` must not kill a stdio server mid-JSON-RPC, which
+    // would take every other in-flight call down with it and bypass the drain
+    // (`the_drain_takes_no_new_work_after_a_write_failure`). The CLI still exits 2.
+    let budget = crate::commands::route::run_budget(&settings).map_err(RpcError::invalid_params)?;
     let ctx = Ctx {
         settings: &settings,
         cancel,
         progress: &sink,
-        // The CLI's budget, arrived at by the CLI's own function, because this tool is the CLI's
-        // other face: `p8t1`'s SES bytes are what the end-to-end conversation test compares
-        // against, and a different budget would be a different board. That includes honouring
-        // `opt_changed_area_ms` when the caller's `settings` payload carries it (#234) — a
-        // setting that worked on one face and not the other would be worse than no setting.
-        budget: crate::commands::route::run_budget(&settings),
+        budget,
     };
     let result = RoutingPipeline::run(&mut board, &ctx).map_err(|error| {
         RpcError::internal(format!(

@@ -268,11 +268,12 @@ pub struct RouterSettings {
     /// The `optChangedArea` pull-tight budget, in milliseconds. **The port's own field: Java has
     /// no counterpart**, and that is the whole point of it.
     ///
-    // Java bug: `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is declared `static final int … = 1000` with
-    // a constant initialiser at all four sites, so `javac` inlines it (`javap -c -p` on the
-    // shipping jar shows `sipush 1000` before every `optChangedArea` call and no `getstatic`);
-    // the fields are dead, reflection cannot reach them, and no flag exists. The only way to
-    // observe or disable the limit in the jar is to recompile — quirk #234.
+    // Java bug: quirk #234 — `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is declared
+    // `static final int … = 1000` with a constant initialiser at all four sites, so `javac`
+    // inlines it (`javap -c -p` on the shipping jar shows `sipush 1000` before every
+    // `optChangedArea` call and no `getstatic`); the fields are dead, reflection cannot reach
+    // them, and no flag exists. The only way to observe or disable the limit in the jar is to
+    // recompile.
     // fixed: T1 (#234) — this field is the register's own suggested fix, "make the limit a
     // settings field so a reproducible run is expressible", and it is why the port's
     // `RouterBudget::default()` may safely be `0`: the 1000 ms behaviour is not deleted, it is

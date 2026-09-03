@@ -512,9 +512,9 @@ pub struct RouterBudget {
     /// `TimeLimit` when `timeLimit > 0` (`board/optimize/TraceTightener.java:73-77`), so the
     /// "off" value needs no port-only branch. See [`RouterBudget::opt_changed_area_limit`].
     ///
-    // Java bug: `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `static final int` with a constant
-    // initialiser at all four declaration sites, so `javac` inlines it and neither a flag nor
-    // reflection can switch it off — quirk #234. The pull-tight is abandoned mid-way on wall
+    // Java bug: quirk #234 — `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `static final int` with a
+    // constant initialiser at all four declaration sites, so `javac` inlines it and neither a flag
+    // nor reflection can switch it off. The pull-tight is abandoned mid-way on wall
     // clock, which makes the jar's own whole-board routing non-reproducible from pass 3
     // (`Issue508-DAC2020_bm01.dsn`: 841.0115 at `-mp 3`, 835.88336 at `-mp 20`, three runs each).
     // fixed: T1 (#234) — the port's [`RouterBudget::default`] sets this field to `0`, which is

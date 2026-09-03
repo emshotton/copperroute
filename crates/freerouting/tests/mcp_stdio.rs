@@ -885,8 +885,20 @@ struct Pipes {
 
 impl Pipes {
     fn start() -> Pipes {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_freerouting"))
-            .arg("mcp")
+        Pipes::start_with_env(&[])
+    }
+
+    /// [`Pipes::start`] with environment variables set on the **child**, which is the only way to
+    /// reach a seam the server reads from its own environment — `FR_ROUTER_BUDGET`. Setting it in
+    /// the test process instead would leak across every other test in this binary, because
+    /// `nextest` runs them in threads of one process per binary.
+    fn start_with_env(env: &[(&str, &str)]) -> Pipes {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_freerouting"));
+        command.arg("mcp");
+        for (key, value) in env {
+            command.env(key, value);
+        }
+        let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -1149,6 +1161,77 @@ fn every_settings_field_is_in_the_schema_and_vice_versa() {
             properties(node)
         );
     }
+}
+
+/// **The seam that must not kill the server** (Plan 9 Task 1 review, S1).
+///
+/// `#234` made the CLI and the MCP tool share one budget function, and that function used to call
+/// `std::process::exit(2)` on an unrecognised `FR_ROUTER_BUDGET`. That was safe while the CLI was
+/// its only caller. It is not safe from a **long-running stdio server**: a misconfigured
+/// environment variable would take the process down mid-JSON-RPC, killing every other in-flight
+/// call with it and bypassing the drain the transport builds for exactly that
+/// (`the_drain_takes_no_new_work_after_a_write_failure`).
+///
+/// So `run_budget` answers a `Result` and the two faces part company at the call site: the CLI
+/// exits 2 (`the_cli_refuses_an_unreadable_router_budget_with_exit_2` in `cli_e2e.rs` is that
+/// half), and this tool answers `invalid_params` and **stays up**. Three things are asserted, and
+/// the third is the one that would have caught the original shape:
+///
+/// 1. the call comes back as an error naming the variable and the bad value;
+/// 2. a later request on the **same** server is answered;
+/// 3. the server exits **0** on EOF, i.e. it was still there to be closed rather than already
+///    dead of `exit(2)`.
+#[test]
+fn an_unreadable_router_budget_is_an_error_and_the_server_survives() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    // `empty_board.dsn` is the corpus's cheapest board (the `router-empty-board` CI stem, a 212 B
+    // session). The budget is resolved **after** the board loads, so the call has to get that far
+    // for this test to be about the budget at all — an empty board is the shortest route there.
+    let board = dsn("fixtures/empty_board.dsn");
+    let mut pipes = Pipes::start_with_env(&[("FR_ROUTER_BUDGET", "banana")]);
+
+    pipes.request(
+        1,
+        "initialize",
+        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}),
+    );
+    pipes.write(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    // 1. the refusal. `Pipes::call` panics on `isError`, so this uses `request` directly.
+    let answer = pipes.request(
+        2,
+        "tools/call",
+        json!({"name": "route_board", "arguments": {"dsn_path": board}}),
+    );
+    assert_eq!(
+        answer["result"]["isError"], true,
+        "an unreadable FR_ROUTER_BUDGET must refuse the call: {answer}"
+    );
+    let message = answer["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(
+        message.contains("FR_ROUTER_BUDGET") && message.contains("banana"),
+        "the refusal must name the variable and the value the operator set: {message}"
+    );
+    assert!(
+        message.contains("disabled"),
+        "…and the values it would have accepted: {message}"
+    );
+
+    // 2. the server is still answering. A `ping` is the cheapest proof, and `tools/list` proves
+    //    the dispatch table survived too.
+    assert_eq!(pipes.request(3, "ping", json!({}))["result"], json!({}));
+    assert_tool_list(&pipes.request(4, "tools/list", json!({}))["result"]["tools"]);
+
+    // 3. and it was alive to be closed. `exit(2)` would have made this `2`, or `-1` on a signal.
+    assert_eq!(
+        pipes.finish(),
+        0,
+        "EOF exits 0 — the server was never killed by the env var"
+    );
 }
 
 /// A JVM checkout is needed for every board-driven test below.
