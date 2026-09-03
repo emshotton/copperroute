@@ -16,7 +16,7 @@
 //! | 2 | `job.setInput` `:101-106` | [`RoutingJob::set_input`] |
 //! | 3 | `job.input == null` `:108-112` | the `Err` arm of step 2 |
 //! | 4 | delete the existing output `:116-121` | **not ported** — quirk #265 is *fixed*; see the roster below |
-//! | 5 | `tryToSetOutputFile`, return discarded `:123` | [`RoutingJob::try_to_set_output_file`] — quirk #268 |
+//! | 5 | `tryToSetOutputFile`, return discarded `:123` | [`RoutingJob::try_to_set_output_file`], **and the return is acted on** — quirk #268 is *fixed* |
 //! | 6 | merge #1's sources `:125-144` | [`SettingsInputs`] |
 //! | 7 | `merger.merge()` `:146` | ↓ |
 //! | 8 | `drcSettings.clone()` `:147` | [`RoutingJob::drc_settings`] |
@@ -170,14 +170,41 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // this function has. `crates/freerouting/tests/cli_e2e.rs::{a_failed_run_leaves_the_previous_result_on_disk,
     // an_empty_output_directory_is_not_unlinked}` are the two halves.
 
-    // ── 5. `tryToSetOutputFile`, return value discarded (`:123`) — quirk #268 (label L) ───────
+    // ── 5. `tryToSetOutputFile` (`:123`) — quirk #268 (label L), **fixed** ───────────────────
     //
-    // Java ignores the `boolean`. `-do out.txt` therefore answers `false`, leaves `job.output` as
-    // the `<input>.ses` `setInputFromFile:441` derived, and `writeCliOutputIfAvailable` then
-    // writes the SES bytes to `out.txt` anyway. `-do out.dsn` answers `true` and sets the format
-    // to `DSN`, which `setJobOutput` cannot serialise — so a 0-byte file is left behind and the
-    // run exits 1. Both are reproduced; `crates/freerouting/tests/cli_e2e.rs` pins them.
-    let _accepted = job.try_to_set_output_file(Some(&args.output));
+    // fixed: T3 (#268) — Java discards the `boolean`, and the two halves of that go in opposite
+    // directions. `-do out.txt` answers **false**, so `job.output` keeps the `<input>.ses`
+    // `setInputFromFile:441` derived, and `writeCliOutputIfAvailable:206` writes to
+    // `globalSettings.initialOutputFile` rather than to `job.output` — so the SES bytes land in
+    // `out.txt` anyway and the run exits 0, having silently ignored what the user asked for.
+    // `-do out.dsn` and `-do out.scr` answer **true** and set `job.output.format` to `DSN`/`SCR`,
+    // which `setJobOutput:274-292` serialises with nothing — so `output.getData()` stays the
+    // empty array, `Files.write` writes **zero bytes**, `Files.size > 0` answers false and the run
+    // exits 1 with an empty file left on disk, over the previous result quirk #265 had already
+    // deleted.
+    //
+    // So the return value is tested here, and it is not the whole test: `true` only means
+    // `tryToSetOutputFile:384-388` recognised the extension, not that anything can fill the file.
+    // The question the CLI actually has to ask is whether [`set_job_output`] can serialise the
+    // resolved format, and [`WRITABLE_OUTPUT_FORMATS`] is that answer in one place, so the guard
+    // and the writer cannot disagree. A path this program cannot write is refused **at the
+    // argument** — before the settings merge, before the board load, before the router — and
+    // **nothing is written and nothing is touched**.
+    let accepted = job.try_to_set_output_file(Some(&args.output));
+    let resolved = job.output.as_ref().map(|output| output.format);
+    if !accepted || !resolved.is_some_and(|format| WRITABLE_OUTPUT_FORMATS.contains(&format)) {
+        // Port-only: there is no `FRLogger` site to key this to, because Java does not refuse.
+        // `crate::logging::MESSAGE_MAP` therefore does not carry it and `parity::normalize_log`
+        // drops it from the comparison — which is what keeps `p8t1`'s `do-out-dsn` row a
+        // comparison of the two exit codes (both 1) rather than of a message only one side has.
+        tracing::error!(
+            "Refusing to route: '{}' is not an output file this program can write. \
+             The -do path must end in .ses (a Specctra session) or .json (a KiCad session JSON). \
+             Nothing was written and nothing on disk was changed.",
+            args.output.display()
+        );
+        return ExitCode::Failure;
+    }
 
     // ── 6. merge #1's sources (`:125-144`) ────────────────────────────────────────────────────
     //
@@ -606,6 +633,16 @@ pub(crate) fn import_session_file(
     }
 }
 
+/// The output formats [`set_job_output`] can actually serialise — `setJobOutput:274-292`'s two
+/// arms, `:275`'s `KICAD_SESSION_JSON` and `:282`'s `SES`, as data.
+///
+/// fixed: T3 (#268) — this exists so that step 5's refusal and the writer's `match` are the same
+/// list. Java has no such list: `tryToSetOutputFile:384-388` accepts `DSN | FRB | SES | SCR |
+/// KICAD_DESIGN_JSON`, `setJobOutput` fills two of those five, and nothing in between notices —
+/// which is how `-do out.dsn` reaches `Files.write` with an empty array. A format added to the
+/// writer must be added here, and a reviewer can check that by reading two adjacent things.
+const WRITABLE_OUTPUT_FORMATS: [FileFormat; 2] = [FileFormat::Ses, FileFormat::KicadSessionJson];
+
 /// `setJobOutput:260-271`'s format resolution, hoisted out of it.
 ///
 /// Java asks the question twice — once inside `setJobOutput`'s `job.output == null` arm and,
@@ -634,9 +671,12 @@ fn resolved_output_format(job: &RoutingJob) -> FileFormat {
 /// label T's first half. `job.output` is still updated, so the manifest and
 /// [`write_cli_output_if_available`] see Java's own object.
 ///
-/// Writes **nothing** for every format that is neither `SES` nor `KICAD_SESSION_JSON` — which is
-/// what leaves `-do out.dsn`/`out.scr` with an empty `output.getData()` and, one step later, a
-/// 0-byte file and exit 1 (quirk #268, label L).
+/// Writes **nothing** for every format that is neither `SES` nor `KICAD_SESSION_JSON`. In Java
+/// that is what leaves `-do out.dsn`/`out.scr` with an empty `output.getData()` and, one step
+/// later, a 0-byte file and exit 1 (quirk #268, label L). The `_ => None` arm is kept, because it
+/// is `setJobOutput`'s own shape and this function is also the MCP tool's writer — but on the CLI
+/// path it is now **unreachable**: step 5 refuses every format outside
+/// [`WRITABLE_OUTPUT_FORMATS`] at the argument, so the CLI never reaches here with one.
 ///
 /// `pre_routing_json` is quirk #289 (label T)'s snapshot: `KiCadJsonWriter.write` on the board as
 /// it stood **before** `RoutingPipeline::run`, which is the board the jar's `-do out.json`
@@ -719,8 +759,13 @@ pub(crate) fn set_job_output(
 ///
 /// The three gates in Java's order: `job.output` present (`:197-199`), a state of `COMPLETED` or
 /// `TIMED_OUT` (`:200-203`), then `Files.write` followed by `Files.exists && size > 0`
-/// (`:205-208`). The last is what makes a 0-byte write answer `false` — **and the empty file is
-/// still left behind**, which is quirk #268's `-do out.dsn` behaviour.
+/// (`:205-208`). The last is what makes a 0-byte write answer `false` — and in Java the empty
+/// file is still left behind, which is quirk #268's `-do out.dsn` behaviour.
+///
+/// fixed: T3 (#268) — **the port never reaches this function with nothing to write.** Step 5
+/// refuses at the argument every format [`set_job_output`] cannot fill, so `data` below is a
+/// serialised board on every path that gets here, and the 0-byte `Files.write` has no caller.
+/// The `size > 0` check is kept as Java's, because it is also how a full disk is caught.
 ///
 // not reachable: Freerouting.writeCliOutputIfAvailable's `routingJob.output.getData() == null`
 // half of the `:197` guard — `BoardFileDetails.dataBytes` is initialised to `new byte[0]`

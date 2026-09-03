@@ -360,8 +360,21 @@ fn refusal_rows(scratch: &Path, against_jar: bool) -> Vec<Row> {
             1,
             &["ERROR Freerouting.java:81"],
         ),
-        // Quirk label L: `-do out.dsn` is accepted by `tryToSetOutputFile` and serialised by
-        // nothing, so a 0-byte file is left behind and the run exits 1.
+        // Quirk label L / register #268, **fixed in Plan 9 Task 3 on the port's side only**.
+        // The jar accepts `-do out.dsn` at `tryToSetOutputFile:384-388`, serialises it with
+        // nothing, writes 0 bytes and exits 1 with the empty file left behind. The port refuses
+        // the extension at the argument and exits 1 having written nothing at all.
+        //
+        // The row's literal is therefore `1` and an **empty** log projection, and it is one of the
+        // few refusal rows where the port-golden expectation and the jar's answer agree for two
+        // different reasons: the exit codes really are both 1, and the port's refusal message is
+        // port-only prose that `MESSAGE_MAP` does not carry, so `parity::normalize_log` drops it
+        // exactly as it drops every message only one program has. `--against-jar` still answers
+        // this row `MATCH` for that reason. What no lane of this row claims is that the two
+        // programs leave the same thing on **disk** — the jar leaves a 0-byte file, the port
+        // leaves nothing;
+        // `crates/freerouting/tests/cli_e2e.rs::an_unsupported_output_extension_is_refused_at_the_argument`
+        // is where that half is pinned.
         (
             "do-out-dsn",
             argv(&[
