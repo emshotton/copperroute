@@ -1869,20 +1869,35 @@ fn reduce_nets_of_route_items_reduces_but_always_reports_false() {
     );
 }
 
+/// **fixed: T5 (#211).** Was `one_visit_reduces_two_nets_because_the_trace_arm_breaks_outside_its_net_loop`,
+/// which asserted `nets(4)=[]` — `P2T11.java` mode 6's second `reduceNetsOfRouteItems` datum, the
+/// jar's own answer.
+///
+/// The via arm's `if (somethingChanged) break;` is at RoutingBoard.java:1310, *inside* the net
+/// loop at `:1302`, so a via loses at most one net per visit. The trace arm's is at `:1341`,
+/// **outside** its net loop at `:1318`, so Java's loop runs to completion and calls
+/// `removeFromNet` once per unsupported net — driving a two-net trace to **zero** nets, a state
+/// `:1296`'s `netNumbers.length <= 1` guard exists to prevent and never gets to re-consult within
+/// a visit.
+///
+/// The trace arm now breaks where the via arm breaks, so the visit removes **one** net, the
+/// `while somethingChanged` restart re-tests `:1296`, and `:1296` then skips the item because it
+/// is down to one net. `nets(4)` is `[2]`.
+///
+/// # The fixture, and why `[2]` and not `[1]`
+///
+/// Trace 4 is put on nets `{1, 2}` and its two start contacts are via 2 (net 1) and the detour
+/// trace 5 (net 2), so each contact carries exactly one of trace 4's nets and lacks the other.
+/// Neither contact is a `Pin`, so `:1330`'s `!pinFound` arm is the one that fires. The net loop
+/// walks `net_nos` in order — `1` first — and via 2's contact does carry net 1 while trace 5's
+/// does not, so net 1 is the first net the loop finds unsupported and the one that goes.
+/// Net 2 stands.
+///
+/// **This is the golden `p2t11` mode 6 moves with.** It is the second of that mode's two
+/// `reduceNetsOfRouteItems` data: `result=false nets(4)=[] nets(5)=[2]` becomes
+/// `result=false nets(4)=[2] nets(5)=[2]`.
 #[test]
-fn one_visit_reduces_two_nets_because_the_trace_arm_breaks_outside_its_net_loop() {
-    // `P2T11.java` mode 6, the second `reduceNetsOfRouteItems` datum: `result=false`,
-    // `nets(4)=[]`, `nets(5)=[2]` — the jar's own answer, not a hand-derivation.
-    //
-    // Quirk #211. The via arm's `if (somethingChanged) break;` is at RoutingBoard.java:1310,
-    // *inside* the net loop at `:1302`, so a via loses at most one net per visit. The trace
-    // arm's is at `:1341`, **outside** its net loop at `:1318`, so the loop runs to completion
-    // and `removeFromNet` is called once per net it finds.
-    //
-    // The fixture makes both nets droppable at once: trace 4 is put on nets {1, 2} and its two
-    // start contacts are via 2 (net 1) and the detour trace 5 (net 2), so each contact carries
-    // exactly one of trace 4's nets and lacks the other. Neither contact is a `Pin`, so `:1330`'s
-    // `!pinFound` arm is the one that fires, for **both** nets.
+fn one_visit_reduces_only_the_visited_net() {
     let (mut board, _) = board_builder::cycle_board();
     board
         .get_item_mut(ItemId(4))
@@ -1901,10 +1916,9 @@ fn one_visit_reduces_two_nets_because_the_trace_arm_breaks_outside_its_net_loop(
     );
     assert_eq!(
         board.get_item(ItemId(4)).expect("a trace").net_nos(),
-        &[] as &[i32],
-        "both nets must go in the one visit — `:1296`'s `netNumbers.length <= 1` guard is not \
-         re-consulted inside a visit, so stopping after the first removal would leave net 2 \
-         standing and the `while somethingChanged` restart would then skip the item"
+        &[2],
+        "one visit removes one net, and `:1296` then refuses to visit the item again — a route \
+         item can no longer be driven to zero nets"
     );
     // The contact that made net 1 droppable is itself untouched: it has one net, so `:1296`
     // skips it.

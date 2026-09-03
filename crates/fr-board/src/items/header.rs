@@ -257,10 +257,20 @@ impl ItemHeader {
     // returned for every `netNumber <= 0`, so that branch is dead code and a negative argument
     // is silently a no-op. Reproduced; see docs/java-quirks.md.
     //
-    // Java bug: for an item that already has more than one net number, Java warns
+    // fixed: T5 (#45b) — for an item that already has more than one net number, Java warns
     // ("unexpected netCount > 1", Item.java:975-977) and then *overwrites only element 0*
-    // (Item.java:978), leaving the other net numbers in place — so the item ends up on
-    // `net_number` **plus** whatever it was on before. Reproduced; see docs/java-quirks.md.
+    // (Item.java:978), leaving the other net numbers in place, so the item ends up on
+    // `net_number` **plus** whatever it was on before. The register's fix is "either replace the
+    // whole array or refuse the call"; this replaces it, which is the reading the method's own
+    // name and doc comment ("assigns it to `net_number`") already promise, and the one that keeps
+    // the method total. The multi-net items the warning is about are made by
+    // `reduceNetsOfRouteItems` (RoutingBoard.java:1283) — the path the register says to check
+    // first, and the one fixed alongside this as #211.
+    //
+    // Note the port never had defect (a): the doc comment's "if netNumber < 0, the net items net
+    // number will be removed" and the `if (netNumber <= 0) netNumbers = new int[0];` body for it
+    // (Item.java:970-971) are dead behind the `Nets.isNormalNetNumber` guard three lines above
+    // (:962-964), and the port writes the guard as the early return it is. Nothing to fix.
     // not ported: `board.itemList.saveForUndo(this)` (Item.java:969) — the one `saveForUndo`
     // call site Plan 7 Task 14c leaves alone, and the reason is that it cannot be reached: this
     // method is on `ItemHeader`, which has no board, and its only caller is `DrillItem::swap`
@@ -274,20 +284,21 @@ impl ItemHeader {
         if net_number > nets.max_net_number() {
             return;
         }
-        if self.net_nos.is_empty() {
-            self.net_nos.push(net_number);
-        } else {
-            self.net_nos[0] = net_number;
-        }
+        self.net_nos.clear();
+        self.net_nos.push(net_number);
     }
 
     /// Port of `Item.removeFromNet` (Item.java:888-915): removes `net_number` from the net
     /// number array, returning false (Java: `false`) if it was not there.
     ///
-    /// Java's search loop has no `break` (Item.java:894-898), so with a duplicated net number it
-    /// removes the **last** occurrence, not the first. Reproduced with `rposition`.
+    // fixed: T5 (#45) — Java's search loop has no `break` (Item.java:894-898), so with a
+    // duplicated net number it removes the **last** occurrence rather than the first: the loop
+    // keeps overwriting the found index. The register's fix is "add the missing `break`", which
+    // is `position` rather than `rposition`. The observable difference is only which of two equal
+    // entries goes, so the array's *contents* are the same either way; the index is not, and
+    // `Item.netsEqual` compares element-wise.
     pub fn remove_from_net(&mut self, net_number: i32) -> bool {
-        match self.net_nos.iter().rposition(|n| *n == net_number) {
+        match self.net_nos.iter().position(|n| *n == net_number) {
             Some(index) => {
                 self.net_nos.remove(index);
                 true
@@ -514,13 +525,26 @@ mod tests {
         assert_eq!(h.net_nos, vec![3]);
     }
 
+    /// **fixed: T5 (#45b).** Was `assign_net_no_on_an_item_with_two_nets_replaces_only_the_first`,
+    /// which asserted `[3, 2]`: Java's `netCount > 1` branch warns ("unexpected netCount > 1",
+    /// Item.java:975-977) and falls straight through to `netNumbers[0] = netNumber`
+    /// (Item.java:978), so the item ends up on the new net **plus** whatever it was on before.
+    /// The method now replaces the whole array, which is what "assigns it to `net_number`"
+    /// promises.
     #[test]
-    fn assign_net_no_on_an_item_with_two_nets_replaces_only_the_first() {
-        // Java bug (Item.java:975-978): the `netCount > 1` branch warns and falls straight
-        // through to `netNumbers[0] = netNumber`, so net 2 survives.
+    fn assign_net_no_replaces_the_whole_array() {
         let mut h = header(vec![1, 2]);
         h.assign_net_no(3, &nets_up_to(3));
-        assert_eq!(h.net_nos, vec![3, 2]);
+        assert_eq!(h.net_nos, vec![3]);
+
+        // Three nets, to show that it is the whole array and not just a second slot.
+        let mut h = header(vec![1, 2, 3]);
+        h.assign_net_no(2, &nets_up_to(3));
+        assert_eq!(h.net_nos, vec![2]);
+
+        // The one-net and no-net cases are unchanged — the two tests above and below this one
+        // assert them, and Java's own `netNumbers[0] = netNumber` already replaced the array
+        // there.
     }
 
     #[test]
@@ -553,13 +577,26 @@ mod tests {
         assert_eq!(h.net_nos, vec![1, 3]);
     }
 
+    /// **fixed: T5 (#45).** Was `remove_from_net_removes_the_last_duplicate`, which asserted
+    /// `[5, 7]`: Java's search loop has no `break` (Item.java:894-898), so `foundIndex` ends on
+    /// the last match and the *last* duplicate is the one removed. With the break — `position`
+    /// rather than `rposition` — the first goes.
+    ///
+    /// The surviving contents are `[5, 7]` either way, since the two entries are equal. What
+    /// moves is the surviving entry's **index**, and `Item.netsEqual` (Item.java:1160-1172)
+    /// compares the arrays element-wise, so the difference is observable wherever a
+    /// multi-net item is compared. The assertion below pins the order the fixed loop leaves.
     #[test]
-    fn remove_from_net_removes_the_last_duplicate() {
-        // Item.java:894-898: the search loop has no `break`, so `foundIndex` ends on the last
-        // match.
+    fn remove_from_net_removes_the_first_duplicate() {
         let mut h = header(vec![5, 7, 5]);
         assert!(h.remove_from_net(5));
-        assert_eq!(h.net_nos, vec![5, 7]);
+        assert_eq!(h.net_nos, vec![7, 5]);
+
+        // The unambiguous case: with the duplicates separated by a distinguishable neighbour on
+        // each side, the index that goes is visible directly.
+        let mut h = header(vec![1, 5, 2, 5, 3]);
+        assert!(h.remove_from_net(5));
+        assert_eq!(h.net_nos, vec![1, 2, 5, 3]);
     }
 
     #[test]

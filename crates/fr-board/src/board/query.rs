@@ -1080,15 +1080,29 @@ impl Board {
     /// in the workspace where the direction *did* matter, because
     /// `TraceTightener45.java:511-515` keeps the last match rather than the first.
     ///
-    /// # The two arms break in different places, and that is Java's
+    /// # The two arms broke in different places, and Task 5 made them agree
     ///
     /// The via arm's `if (somethingChanged) break;` is at **`:1310`, inside** the
     /// `for (int currentNetNumber : currentItem.netNumbers)` loop at `:1302`, so one visit to a
     /// via removes at most **one** net. The trace arm's is at **`:1341`, outside** its net loop
-    /// at `:1318`, so one visit to a trace removes **as many nets as the loop finds** — a two-net
-    /// trace whose contacts support neither net ends the visit with *zero* nets, and `:1296`'s
-    /// `netNumbers.length <= 1` guard is never re-consulted within the visit. Quirk **#211**
-    /// records it; both arms below reproduce their own break placement.
+    /// at `:1318`, so in Java one visit to a trace removes **as many nets as the loop finds** — a
+    /// two-net trace whose contacts support neither net ends the visit with *zero* nets, and
+    /// `:1296`'s `netNumbers.length <= 1` guard is never re-consulted within the visit. Quirk
+    /// **#211**.
+    ///
+    /// **fixed: T5 (#211).** The trace arm now breaks where the via arm breaks. A route item can
+    /// no longer be driven to zero nets, which is what `:1296`'s guard exists to prevent, and the
+    /// `while something_changed` restart re-consults that guard between removals on both arms.
+    ///
+    /// Plan 7 Task 8b's review (S4, ruling AY) is the reason the port ever had Java's placement
+    /// here: it found the port breaking the net loop on the first removal — leaving **one** net
+    /// where Java leaves none — and repaired it *to* Java, pinned by `run.sh p2t11 6`'s
+    /// `reduceNetsOfRouteItems` datum (`result=false nets(4)=[] nets(5)=[2]`). That repair was
+    /// correct parity and is not being undone as a mistake; Plan 9 Task 5 is the post-parity step
+    /// the quirk row always named, so the marker is **re-pointed** rather than deleted: the
+    /// audited fact — that the two arms differ in Java, and that `p2t11` mode 6 is where it is
+    /// visible — is what makes the fix checkable. `p2t11` mode 6's second datum is the golden
+    /// that moves with it, and `nets(4)` now reads `[2]`.
     //
     // Java bug: the method computes `result` but never assigns it (RoutingBoard.java:1285,1355),
     // so it always returns `false` even when it changed something — its doc comment promises
@@ -1133,10 +1147,15 @@ impl Board {
                 } else if item.is_trace() {
                     // RoutingBoard.java:1315-1349.
                     //
-                    // `removed` is a **list**, not an `Option`: the trace arm's
-                    // `if (somethingChanged) break;` is at `:1341`, *outside* the net loop, so
-                    // Java calls `removeFromNet` once per net the loop finds. See the doc
-                    // comment's "The two arms break in different places" and quirk #211.
+                    // fixed: T5 (#211) — `removed` is an `Option`, not a list, because the break
+                    // below now sits **inside** the net loop, where the via arm's is
+                    // (`:1310-1312`). Java's is at `:1341`, after the net loop closes, so Java
+                    // calls `removeFromNet` once per unsupported net and a two-net trace whose
+                    // contacts support neither ends the visit on **zero** nets — a state
+                    // `:1296`'s `netNumbers.length <= 1` guard exists to prevent and is never
+                    // re-consulted within the visit. With the break inside, a visit removes at
+                    // most one net and the `while something_changed` restart re-tests `:1296`
+                    // between removals, exactly as it does for a via.
                     //
                     // Collecting and applying after the loops is exact rather than a
                     // convenience: nothing the loops read depends on this item's own nets — the
@@ -1144,13 +1163,13 @@ impl Board {
                     // `currentContact instanceof Pin`, both about the *contact* — and `contacts`
                     // is only recomputed at `:1344`, which is reached only when nothing was
                     // removed.
-                    let mut removed: Vec<i32> = Vec::new();
+                    let mut removed: Option<i32> = None;
                     let mut contacts = self.trace_start_contacts(id);
                     // :1317.
-                    for end in 0..2 {
-                        // :1318. Java re-reads `currentItem.netNumbers` here, but a removal
-                        // always breaks out of the `end` loop at `:1341`, so the second pass
-                        // only ever sees the original list.
+                    'ends: for end in 0..2 {
+                        // :1318. Java re-reads `currentItem.netNumbers` here; a removal leaves
+                        // the `end` loop immediately either way, so the second pass only ever
+                        // sees the original list.
                         for current_net_number in &net_nos {
                             let mut pin_found = false;
                             // :1320-1329.
@@ -1161,7 +1180,7 @@ impl Board {
                                 };
                                 pin_found = true;
                                 if !contact.contains_net(*current_net_number) {
-                                    removed.push(*current_net_number);
+                                    removed = Some(*current_net_number);
                                     break;
                                 }
                             }
@@ -1175,27 +1194,28 @@ impl Board {
                                     if !matches!(contact, Item::Pin(_))
                                         && !contact.contains_net(*current_net_number)
                                     {
-                                        removed.push(*current_net_number);
+                                        removed = Some(*current_net_number);
                                         break;
                                     }
                                 }
                             }
-                        }
-                        // :1341-1343 — **after** the whole net loop, which is what lets a visit
-                        // remove more than one net.
-                        if !removed.is_empty() {
-                            break;
+                            // fixed: T5 (#211) — the via arm's placement, `:1310-1312`, rather
+                            // than Java's `:1341-1343`. Leaving both loops at once is what
+                            // `:1341`'s `break` plus the `end` loop's exit did.
+                            if removed.is_some() {
+                                break 'ends;
+                            }
                         }
                         // :1344.
                         if end == 0 {
                             contacts = self.trace_end_contacts(id);
                         }
                     }
-                    if !removed.is_empty() {
-                        let target = self.items.get_mut(&id).expect("present");
-                        for net_number in removed {
-                            target.remove_from_net(net_number);
-                        }
+                    if let Some(net_number) = removed {
+                        self.items
+                            .get_mut(&id)
+                            .expect("present")
+                            .remove_from_net(net_number);
                         something_changed = true;
                         break;
                     }
