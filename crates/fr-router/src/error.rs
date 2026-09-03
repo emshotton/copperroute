@@ -38,4 +38,13 @@ pub enum RouterError {
     /// (`AutorouteEngine.isStopRequested`, AutorouteEngine.java:294-304).
     #[error("the routing run was stopped")]
     Stopped,
+
+    /// A `fanout.timeout` or `optimizer.timeout` the port cannot read (#224).
+    ///
+    // fixed: T1 (#224) — Java swallows the `DateTimeParseException` at
+    // `util/TextManager.java:91-93`, answers `null`, and runs the stage with **no** timeout —
+    // which is the opposite of what the operator asked for, and silent. A run that was given a
+    // budget it cannot read stops here instead, with the string named.
+    #[error(transparent)]
+    Timespan(#[from] crate::pipeline::TimespanError),
 }

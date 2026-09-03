@@ -1125,13 +1125,18 @@ impl BatchOptimizer<'_> {
         // :153-160 — the per-stage deadline, from `settings.optimizer.timeoutString`. Ruling AI:
         // this is **not** `RouterStop::poll_deadline`, which would request `ALL` and, through
         // `RoutingPipeline.java:117`, suppress a stage Java leaves running.
-        if let Some(timeout_string) = optimizer.timeout_string.as_deref()
-            && let Some(timeout_seconds) = parse_timespan_seconds(timeout_string)
-        {
-            // :158 — `sessionStartMs + timeoutSeconds * 1000`, on the port's monotonic clock;
-            // `instant_offset_ms` is `BatchFanout.fanoutBoard:98`'s own conversion, shared rather
-            // than transcribed twice.
-            self.deadline = instant_offset_ms(session_start, timeout_seconds.saturating_mul(1000));
+        if let Some(timeout_string) = optimizer.timeout_string.as_deref() {
+            // fixed: T1 (#224) — `optimizer.timeout` goes through the same method as
+            // `fanout.timeout` and had the same hole, so it gets the same refusal.
+            if let Some(timeout_seconds) =
+                parse_timespan_seconds(timeout_string).map_err(RouterError::Timespan)?
+            {
+                // :158 — `sessionStartMs + timeoutSeconds * 1000`, on the port's monotonic clock;
+                // `instant_offset_ms` is `BatchFanout.fanoutBoard:98`'s own conversion, shared
+                // rather than transcribed twice.
+                self.deadline =
+                    instant_offset_ms(session_start, timeout_seconds.saturating_mul(1000));
+            }
         }
 
         // :162-163. The event's pass number (`0`) and board hash are payload the port's

@@ -81,8 +81,8 @@ pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
 pub use fanout::{
     BatchFanout, EscapeStatistics, FanoutComponent, FanoutLoopState, FanoutPassStatus, FanoutPin,
-    FanoutRunSummary, FanoutStop, fanout_pin_can_use_vias, fanout_ripup_costs,
-    parse_timespan_seconds,
+    FanoutRunSummary, FanoutStop, TimespanError, fanout_pin_can_use_vias, fanout_ripup_costs,
+    parse_timespan_seconds, parse_timespan_seconds_java,
 };
 pub use item_route_result::ItemRouteResult;
 pub use optimizer::{

@@ -38,7 +38,7 @@
 
 use fr_core::{
     GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format,
-    job_timeout_deadline_from, parse_timespan, parse_timespan_seconds,
+    job_timeout_deadline_from, parse_timespan, parse_timespan_seconds, parse_timespan_seconds_java,
 };
 
 /// One row of `tests/data/p8t0-timespans.txt`.
@@ -253,16 +253,66 @@ fn the_grammar_matches_the_jar_on_all_thirty_rows() {
 }
 
 /// `parseTimespanString` (`:83-93`), row by row — the exact `Long`/`null` answer.
+///
+/// Against `parse_timespan_seconds_java` since Plan 9 Task 1: #224 fixed the port's own parser
+/// (`5m` and `300s` now work, and an unreadable string is refused rather than silently unbounded),
+/// and this transcript is the record of what the **jar** answers, which did not change. The gap
+/// between the two functions is checked from the other side, row by row, by
+/// [`the_fix_only_adds_acceptances_and_refusals`].
 #[test]
 fn parse_timespan_string_matches_the_jar_on_all_thirty_rows() {
     for row in ROWS {
         assert_eq!(
-            parse_timespan_seconds(row.input),
+            parse_timespan_seconds_java(row.input),
             row.parse,
             "parseTimespanString({:?})",
             row.input
         );
     }
+}
+
+/// #224's blast radius over the whole thirty-row transcript, stated as an invariant rather than
+/// as a list: **for every row, the port either answers exactly what the jar answered, or refuses
+/// a string the jar swallowed into an unbounded run.** It never answers a different number.
+///
+// fixed: T1 (#224) — the transcript is thirty measured JVM answers, which makes it the strongest
+// available check that the fix is additive. Two of the thirty are blank strings, which stay
+// `Ok(None)` — Java's own `isBlank` arm and a deliberate "no timeout".
+#[test]
+fn the_fix_only_adds_acceptances_and_refusals() {
+    let mut refused = 0;
+    for row in ROWS {
+        match (parse_timespan_seconds(row.input), row.parse) {
+            (Ok(ours), theirs) => assert_eq!(
+                ours, theirs,
+                "#224 must not change an answer the jar gave for {:?}",
+                row.input
+            ),
+            (Err(error), theirs) => {
+                assert_eq!(
+                    theirs, None,
+                    "#224 may only refuse where the jar answered null; it refused {:?}, which \
+                     the jar parsed",
+                    row.input
+                );
+                assert_eq!(error.input, row.input);
+                refused += 1;
+            }
+        }
+    }
+    // Not a magic number for its own sake: it is "every row the jar could not read, less the two
+    // blank ones", and it fails if a later edit quietly turns a refusal back into silence.
+    let jar_nulls = ROWS.iter().filter(|r| r.parse.is_none()).count();
+    let blanks = ROWS.iter().filter(|r| r.input.trim().is_empty()).count();
+    assert_eq!(
+        refused,
+        jar_nulls - blanks,
+        "every row the jar answered null for, except the blank ones, must now be a refusal"
+    );
+    assert!(
+        refused > 0,
+        "the transcript must exercise the refusal at all"
+    );
 }
 
 /// `threadAction:43-52`'s ladder, row by row: parse, cap from above, offset from `startedAt`.
@@ -272,13 +322,20 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
     for row in ROWS {
         let deadline = job_timeout_deadline_from(Some(row.input), base);
         match row.capped {
-            None => assert!(
-                deadline.is_none(),
-                "job_timeout_deadline({:?}) should be Java's null timeoutAt",
-                row.input
-            ),
+            // Java's null `timeoutAt` splits in two under #224: a blank string is still a silent
+            // "no job timeout" (`Ok(None)`), and everything else the jar could not read is now a
+            // refusal instead of an unbounded run.
+            None => match deadline {
+                Ok(none) => assert!(
+                    none.is_none() && row.input.trim().is_empty(),
+                    "job_timeout_deadline({:?}) should be Java's null timeoutAt",
+                    row.input
+                ),
+                Err(error) => assert_eq!(error.input, row.input),
+            },
             Some(seconds) => {
                 let deadline = deadline
+                    .unwrap_or_else(|e| panic!("job_timeout_deadline({:?}): {e}", row.input))
                     .unwrap_or_else(|| panic!("job_timeout_deadline({:?}) is None", row.input));
                 // `:51` — `job.startedAt.plusSeconds(timeout)`.
                 let expected_stop = if seconds >= 0 {
@@ -307,7 +364,10 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
 /// what every parity run uses and what `RouterStop::new()` is.
 #[test]
 fn a_null_timeout_string_is_no_deadline() {
-    assert!(job_timeout_deadline_from(None, std::time::Instant::now()).is_none());
+    assert_eq!(
+        job_timeout_deadline_from(None, std::time::Instant::now()),
+        Ok(None)
+    );
 }
 
 /// The two literals are the file's, not the plan's (`RoutingJobSchedulerActionThread.java:24`,
@@ -368,11 +428,13 @@ fn the_duration_view_loses_exactly_the_negatives() {
         Some(std::time::Duration::from_secs(5400))
     );
     assert_eq!(parse_timespan("0"), Some(std::time::Duration::ZERO));
-    assert_eq!(parse_timespan_seconds("-1"), Some(-1));
+    assert_eq!(parse_timespan_seconds("-1"), Ok(Some(-1)));
     assert_eq!(parse_timespan("-1"), None, "Duration is unsigned");
     // …and the ladder, which is the decision path, keeps the sign.
     let base = std::time::Instant::now();
-    let deadline = job_timeout_deadline_from(Some("-1"), base).expect("Java answers -1, not null");
+    let deadline = job_timeout_deadline_from(Some("-1"), base)
+        .expect("`-1` parses")
+        .expect("Java answers -1, not null");
     assert!(
         deadline.stop_at < base,
         "a negative timeout is already expired"

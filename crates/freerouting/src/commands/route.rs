@@ -313,9 +313,18 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // keeps it).
     job.started_at = Some(std::time::Instant::now());
     job.state = RoutingJobState::Running;
+    // fixed: T1 (#224) — `jobTimeoutString` goes through `parseTimespanString`, so a job timeout
+    // the port cannot read stops the run here rather than silently becoming "no timeout". Java
+    // swallows the parse failure (`util/TextManager.java:91-93`) and runs unbounded, which is the
+    // opposite of what the operator asked for.
     let cancel = match fr_core::job_timeout_deadline(settings.job_timeout_string.as_deref()) {
-        Some(deadline) => fr_core::CancelToken::with_deadline(deadline),
-        None => fr_core::CancelToken::new(),
+        Ok(Some(deadline)) => fr_core::CancelToken::with_deadline(deadline),
+        Ok(None) => fr_core::CancelToken::new(),
+        Err(error) => {
+            eprintln!("--router.job_timeout: {error}");
+            tracing::warn!("--router.job_timeout: {error}");
+            return ExitCode::Failure;
+        }
     };
     // A handle on the **job** deadline, kept because the token itself is moved into the `Ctx`
     // below and the state finalisation has to ask it a question no other value can answer — see
@@ -856,7 +865,7 @@ fn result_json_path(job: &RoutingJob, args: &RouteArgs) -> Option<String> {
 /// `FR_ROUTER_BUDGET` value is a hard error rather than a silent fallback: a harness that thinks
 /// it disabled the clock and did not would produce numbers nobody could trust, and that is worse
 /// than a stopped run.
-fn run_budget(settings: &fr_settings::RouterSettings) -> fr_core::RouterBudget {
+pub(crate) fn run_budget(settings: &fr_settings::RouterSettings) -> fr_core::RouterBudget {
     use std::env::VarError;
     match std::env::var("FR_ROUTER_BUDGET").as_deref() {
         // The variable is not set at all: the settings have their say, then the default.

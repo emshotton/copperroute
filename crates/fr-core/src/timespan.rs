@@ -173,7 +173,7 @@ pub fn convert_from_timespan_to_duration_format(timespan_string: &str) -> String
 /// `Duration` cannot carry the answer. Plan 7 reached the same shape independently. See
 /// [`parse_timespan`] for the lossy `Duration` view the plan's §Interfaces block declared, and
 /// why nothing on a decision path reads it.
-pub use fr_router::pipeline::parse_timespan_seconds;
+pub use fr_router::pipeline::{TimespanError, parse_timespan_seconds, parse_timespan_seconds_java};
 
 /// The plan's declared Task-0 interface: [`parse_timespan_seconds`] seen as a
 /// [`std::time::Duration`].
@@ -186,9 +186,12 @@ pub use fr_router::pipeline::parse_timespan_seconds;
 /// string.
 pub fn parse_timespan(timespan_string: &str) -> Option<Duration> {
     match parse_timespan_seconds(timespan_string) {
-        Some(seconds) if seconds >= 0 => Some(Duration::from_secs(seconds as u64)),
-        // Java answers a negative here; `Duration` cannot. See the doc comment.
-        Some(_) | None => None,
+        Ok(Some(seconds)) if seconds >= 0 => Some(Duration::from_secs(seconds as u64)),
+        // Java answers a negative here; `Duration` cannot. See the doc comment. An unreadable
+        // string is `None` for the same reason it always was — this view is for display, and its
+        // callers have no way to report an error. Everything that turns a timespan into
+        // **behaviour** reads `parse_timespan_seconds` and propagates the refusal (#224).
+        Ok(_) | Err(_) => None,
     }
 }
 
@@ -217,21 +220,32 @@ pub fn parse_timespan(timespan_string: &str) -> Option<Duration> {
 pub fn job_timeout_deadline_from(
     timeout_string: Option<&str>,
     base: std::time::Instant,
-) -> Option<Deadline> {
-    // `:44`. Java passes `job.routerSettings.jobTimeoutString`, which may be `null`; the `None`
-    // arm here is that null, and `parse_timespan_seconds` handles the blank one.
-    let mut timeout = parse_timespan_seconds(timeout_string?)?;
+) -> Result<Option<Deadline>, TimespanError> {
+    // `:44`. Java passes `job.routerSettings.jobTimeoutString`, which may be `null`; the outer
+    // `None` here is that null, and `parse_timespan_seconds` handles the blank one.
+    let Some(timeout_string) = timeout_string else {
+        return Ok(None);
+    };
+    // fixed: T1 (#224) — `jobTimeoutString` goes through `parseTimespanString` too, so a job
+    // timeout the port cannot read is refused here rather than silently becoming "no timeout".
+    // Java's `:45` `if (timeout != null)` cannot tell "the operator left it empty" from "the
+    // operator wrote `5m`", and answers the same unbounded run to both.
+    let Some(mut timeout) = parse_timespan_seconds(timeout_string)? else {
+        return Ok(None);
+    };
     // `:47-49`.
     if timeout > MAX_TIMEOUT_SECONDS {
         timeout = MAX_TIMEOUT_SECONDS;
     }
     // `:51`.
-    Some(Deadline::from_base(base, timeout))
+    Ok(Some(Deadline::from_base(base, timeout)))
 }
 
 /// [`job_timeout_deadline_from`] with `base` read from the clock, which is what
 /// `job.startedAt = Instant.now()` (`:38`) is.
-pub fn job_timeout_deadline(timeout_string: Option<&str>) -> Option<Deadline> {
+pub fn job_timeout_deadline(
+    timeout_string: Option<&str>,
+) -> Result<Option<Deadline>, TimespanError> {
     job_timeout_deadline_from(timeout_string, std::time::Instant::now())
 }
 
@@ -275,9 +289,11 @@ mod tests {
     fn the_cap_is_applied_from_above_only() {
         let base = std::time::Instant::now();
         // 25 h -> capped to 24 h.
-        let capped = job_timeout_deadline_from(Some("25:00:00"), base).expect("parses");
+        let capped = job_timeout_deadline_from(Some("25:00:00"), base)
+            .expect("parses")
+            .expect("a deadline");
         assert_eq!(capped.stop_at, base + Duration::from_secs(86_400));
         // A negative is NOT clamped: `:47-49` has no lower arm.
-        assert_eq!(parse_timespan_seconds("-1"), Some(-1));
+        assert_eq!(parse_timespan_seconds("-1"), Ok(Some(-1)));
     }
 }
