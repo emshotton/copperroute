@@ -2052,6 +2052,143 @@ fn the_slow_stems_match_the_jars_reference() {
     climb(false);
 }
 
+// =================================================================================================
+// The two-run identity check — Plan 9 Task 1's successor to `--verify-hash-modes`
+// =================================================================================================
+
+/// **Run every CI stem twice and require byte-identical output.**
+///
+/// # What this replaces, and why it is not the same assertion
+///
+/// `scripts/gen-cli-reference.sh --verify-hash-modes` sweeps the jar over
+/// `-XX:hashCode=0,1,2,3,4` and requires the SES not to move. That is a real question on the JVM,
+/// because `Object.hashCode` feeds `HashMap` iteration order and several of Java's routing
+/// collections are hash-ordered; the sweep is how Plans 5-8 established that a reference is a
+/// property of the board and not of the run that produced it.
+///
+/// **There is no `-XX:hashCode` axis on the Rust side.** The port's collections are `BTreeMap` and
+/// `BTreeSet` by construction, so the analogous sweep has one arm and would be vacuous. What is
+/// left of the question is the part that still has teeth: *does this program answer the same bytes
+/// twice?* Two runs on one machine, plus one run on CI, is that assertion — and it is exactly the
+/// property #234 was about, because a wall-clock budget is the one thing in this program that
+/// could have made the answer depend on how busy the machine was rather than on the board.
+///
+/// # Why it is worth running even though every stem also has a reference
+///
+/// `the_ci_stems_match_the_jars_reference` compares one run against a committed golden, so it
+/// catches a *change*. It cannot catch **non-determinism**: a stem that answers A half the time
+/// and B the other half passes that test whenever it happens to answer A, and the failure looks
+/// like a flake rather than like a defect. This test asks the question the golden cannot, and it
+/// becomes part of G1 for the rest of Plan 9.
+///
+/// # What is compared
+///
+/// The SES bytes, the exit code, and the manifest with the two fields that are *supposed* to
+/// differ removed — `generated_at` is a timestamp and `resource_usage`/`phases` carry durations.
+/// Everything else in the manifest, `normalized_score` and every board statistic included, must be
+/// identical. The log is not compared: it carries wall-clock durations by design and
+/// `parity::normalize_log` exists precisely because of that.
+#[test]
+fn two_runs_of_every_ci_stem_are_byte_identical() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut failures = Vec::new();
+    let mut checked = 0;
+
+    for stem in parity::cli_stems() {
+        if !stem.ci {
+            continue;
+        }
+        checked += 1;
+
+        // Two runs, into two directories, so neither can read the other's leftovers.
+        let mut runs = Vec::new();
+        for pass in 0..2 {
+            let dir = scratch(&format!("identity-{}-{pass}", stem.name));
+            let manifest = dir.join("manifest.json");
+            let mut argv = parity::cli_argv(&stem.name, &dir);
+            argv.push(format!("--router.result_json={}", manifest.display()));
+            let argv_refs: Vec<&str> = argv.iter().map(String::as_str).collect();
+            let (_stdout, stderr, code) = parity::run_port_binary(Path::new(PORT), &argv_refs);
+            let ses = std::fs::read(dir.join("route.ses")).unwrap_or_else(|e| {
+                panic!(
+                    "cli-{} pass {pass} wrote no route.ses: {e}\n{}",
+                    stem.name,
+                    String::from_utf8_lossy(&stderr)
+                )
+            });
+            let manifest = std::fs::read_to_string(&manifest)
+                .unwrap_or_else(|e| panic!("cli-{} pass {pass} wrote no manifest: {e}", stem.name));
+            runs.push((code, ses, stable_manifest(&manifest)));
+        }
+
+        let (code_a, ses_a, manifest_a) = &runs[0];
+        let (code_b, ses_b, manifest_b) = &runs[1];
+
+        if code_a != code_b {
+            failures.push(format!(
+                "cli-{}: exit code {code_a} then {code_b} — the same argv on the same binary",
+                stem.name
+            ));
+        }
+        if ses_a != ses_b {
+            let at = ses_a
+                .iter()
+                .zip(ses_b.iter())
+                .position(|(a, b)| a != b)
+                .unwrap_or_else(|| ses_a.len().min(ses_b.len()));
+            failures.push(format!(
+                "cli-{}: the SES is NOT reproducible — two runs differ at byte {at} ({} B then \
+                 {} B). This is the failure #234 was about: something in the run depends on the \
+                 machine rather than on the board.",
+                stem.name,
+                ses_a.len(),
+                ses_b.len()
+            ));
+        }
+        if manifest_a != manifest_b {
+            failures.push(format!(
+                "cli-{}: the manifest is not reproducible once timestamps and durations are \
+                 removed:\n--- run 1 ---\n{manifest_a}\n--- run 2 ---\n{manifest_b}",
+                stem.name
+            ));
+        }
+    }
+
+    assert!(checked > 0, "no CI stem was checked");
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+/// A manifest with the fields that are *meant* to differ between two runs removed, so that
+/// everything else can be compared byte for byte.
+///
+/// Three top-level keys go: `generated_at` (a timestamp), `phases` (per-stage `duration_seconds`)
+/// and `resource_usage` (CPU and memory samples). Every remaining field — `normalized_score`,
+/// every board statistic, `final_state`, `exit_code`, and the rest of `settings_snapshot` — is a
+/// property of the board and the settings, and a difference in any of them is a defect.
+///
+/// One field inside `settings_snapshot` goes with them: `result_json`, which is the manifest's own
+/// path. The two runs write into two directories precisely so that neither can read the other's
+/// leftovers, so that path differs **by construction of this test** and comparing it would be
+/// comparing the harness to itself. It is dropped by name rather than by rewriting the string,
+/// because a rewrite that missed would fail silently in the direction that passes.
+fn stable_manifest(text: &str) -> String {
+    let mut value: serde_json::Value = serde_json::from_str(text).expect("the manifest is JSON");
+    if let Some(object) = value.as_object_mut() {
+        for volatile in ["generated_at", "phases", "resource_usage"] {
+            object.remove(volatile);
+        }
+        if let Some(settings) = object
+            .get_mut("settings_snapshot")
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            settings.remove("result_json");
+        }
+    }
+    serde_json::to_string_pretty(&value).expect("re-serialises")
+}
+
 /// The provenance guard: every stem of the fixture table has a reference directory, and every
 /// reference directory has a stem. A stem added to the table without a reference would otherwise
 /// be silently skipped by [`climb`].
