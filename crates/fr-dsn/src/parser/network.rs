@@ -2014,7 +2014,14 @@ fn insert_components(p: &mut ReadScopeParameter<'_>) {
     let placement_list = std::mem::take(&mut p.placement_list);
     for next_lib_component in &placement_list {
         for next_component in &next_lib_component.locations {
-            insert_component(next_component, &next_lib_component.lib_name, p);
+            // fixed: T4 (#103) — a rejected component says so on `ReadScopeParameter.warnings`,
+            // the same channel `Wiring.readScope`'s degenerate-wire complaints already use, so a
+            // caller that reports warnings reports this one too.
+            if let Some(diagnostic) =
+                insert_component(next_component, &next_lib_component.lib_name, p)
+            {
+                p.warnings.push(diagnostic);
+            }
         }
     }
     p.placement_list = placement_list;
@@ -2028,7 +2035,16 @@ fn insert_components(p: &mut ReadScopeParameter<'_>) {
 /// (`insertPin`, :1035), then the package keepouts (`insertObstacle`, :1082), the via keepouts
 /// (`insertViaObstacle`, :1093) and the place keepouts (`insertComponentObstacle`, :1104), then
 /// every package outline (`insertComponentOutline`, :1192).
-fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadScopeParameter<'_>) {
+///
+/// `Some(diagnostic)` means the component was **rejected whole** and nothing of it reached the
+/// board — see the `#103` marker on the padstack pre-scan below. `None` is the ordinary path,
+/// including Java's two silent early returns (package not found, component not placed), which
+/// are not this row's business.
+fn insert_component(
+    location: &ComponentLocation,
+    lib_key: &str,
+    p: &mut ReadScopeParameter<'_>,
+) -> Option<String> {
     let coordinate_transform = p.coordinate_transform.expect(TRANSFORM_EXPECTED);
     let netlist = &p.netlist;
     let board = p.board.as_mut().expect(BOARD_EXPECTED);
@@ -2047,8 +2063,41 @@ fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadSco
         (current_front_package, current_back_package)
     else {
         // "component package not found" (Network.java:940-947).
-        return;
+        return None;
     };
+
+    // Java bug: (#103) `Network.insertComponent`'s pin loop `return`s — it does not `continue` —
+    // when a pin names a padstack the library does not have (Network.java:1013-1019). By then
+    // the component has been added and its first *n-1* pins inserted, so the board keeps a
+    // half-built component and loses **all** of its keepouts, via keepouts, place keepouts and
+    // outlines; and because item ids are handed out in insertion order, every later item id on
+    // the board shifts.
+    //
+    // fixed: T4 (#103) — the component is rejected **whole**: the padstacks are checked before
+    // anything is inserted, and a miss returns a diagnostic with the board untouched, so no
+    // later id moves. (The register offers `continue` as an equal alternative; it is not — a
+    // component silently missing one pad is a board that routes to the wrong place.) Hard to
+    // reach from a DSN, because `Library.readScope` refuses the whole file for the same
+    // condition (Library.java:326-331); live for the KiCad-JSON reader, which has no such guard.
+    //
+    // `get_package()` is `on_front ? front : back` (Component.java:237-246) and `on_front` is
+    // `location.is_front`, so this is the same package the pin loop below reads.
+    let package_no = if location.is_front {
+        current_front_package
+    } else {
+        current_back_package
+    };
+    let package = board.library.packages.get(package_no);
+    for i in 0..package.pin_count() {
+        let pin = package.get_pin(i as i32).expect("i < pinCount");
+        if board.library.padstacks.get(pin.padstack_no).is_none() {
+            return Some(format!(
+                "component {}: pin {} of package {lib_key} names padstack {:?}, which the \
+                 library does not have — the whole component is rejected",
+                location.name, pin.name, pin.padstack_no
+            ));
+        }
+    }
 
     let component_location = location
         .coor
@@ -2071,7 +2120,7 @@ fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadSco
 
     let Some(component_location) = component_location else {
         // component is not yet placed.
-        return;
+        return None;
     };
     let component_translation = Point::Int(component_location).difference_by(&Point::ZERO);
     let fixed_state = if location.position_fixed {
@@ -2089,14 +2138,15 @@ fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadSco
             .get_pin(i as i32)
             .expect("i < pinCount")
             .clone();
-        let Some(current_padstack) = board.library.padstacks.get(current_pin.padstack_no) else {
-            // Java bug: Network.insertComponent — "pin padstack not found" `return`s rather than
-            // `continue`s (Network.java:1013-1019), so a package whose *n*th pin names a missing
-            // padstack contributes its first *n-1* pins and none of its keepouts, via keepouts,
-            // place keepouts or outlines — which shifts every later item id on the board. See
-            // `docs/java-quirks.md` #103.
-            return;
-        };
+        let current_padstack = board
+            .library
+            .padstacks
+            .get(current_pin.padstack_no)
+            // fixed: T4 (#103) — Java's "pin padstack not found" `return` (Network.java:1013-1019)
+            // was here. Every pin of this package was checked against the library before the
+            // component was added (see the pre-scan above), and nothing between that check and
+            // this line touches `library.padstacks`, so the miss is not reachable any more.
+            .expect("every pin's padstack was checked before the component was added");
         let padstack_is_smd = current_padstack.from_layer() == current_padstack.to_layer();
         let pin_nets: Vec<(String, i32)> = netlist
             .get_nets(&location.name, &current_pin.name)
@@ -2277,6 +2327,7 @@ fn insert_component(location: &ComponentLocation, lib_key: &str, p: &mut ReadSco
             );
         }
     }
+    None
 }
 
 /// The three-way `k` switch inside `Network.insertComponent`'s keepout loop
@@ -3302,5 +3353,186 @@ mod tests {
         );
         assert_eq!(netlist.get_nets("U1", "2").len(), 1);
         assert!(netlist.get_nets("U1", "3").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod component_rejection_tests {
+    //! #103's directed test. It lives beside the code rather than in `tests/network_scope.rs`
+    //! because `insert_component`/`insert_components` are private and the defect is **not
+    //! reachable through the DSN reader at all**: `Library.readScope` refuses the whole file
+    //! when a package pin names a padstack the library lacks (`library.rs`, "board padstack '…'
+    //! not found"), which is exactly what the register row says makes this branch hard to reach
+    //! from a DSN. The dangling padstack id is therefore installed directly on the board, which
+    //! is the state the KiCad-JSON reader — which has no such guard — can produce.
+
+    use fr_board::{PackagePin, Packages, PadstackId};
+    use fr_geometry::{IntVector, Vector};
+
+    use super::*;
+    use crate::coordinate_transform::CoordinateTransform;
+    use crate::error::BoardReadResult;
+    use crate::parser::placement::{ComponentLocation, ComponentPlacement};
+    use crate::parser::scope_parameter::DsnReadOptions;
+
+    /// A two-layer board with one padstack in its library and no components at all.
+    const DSN: &str = "(pcb t103.dsn\n  (parser\n    (string_quote \")\n  )\n  (resolution um \
+                       10)\n  (unit um)\n  (structure\n    (layer F.Cu (type signal))\n    \
+                       (layer B.Cu (type signal))\n    (boundary\n      (path pcb 0  0 0  \
+                       100000 0  100000 100000  0 100000  0 0)\n    )\n  )\n  (library\n    \
+                       (padstack PAD (shape (circle F.Cu 800)) (shape (circle B.Cu 800)) \
+                       (attach off))\n  )\n)\n";
+
+    fn board_and_transform() -> (Board, CoordinateTransform) {
+        let options = DsnReadOptions::default();
+        match crate::dsn_reader::read_board(DSN.as_bytes(), None, Some("t103"), &options) {
+            BoardReadResult::Success {
+                board,
+                coordinate_transform,
+                ..
+            } => (
+                *board.expect("a board"),
+                coordinate_transform.expect("a transform"),
+            ),
+            other => panic!("the fixture must read cleanly: {other:?}"),
+        }
+    }
+
+    fn pin(name: &str, padstack: PadstackId) -> PackagePin {
+        PackagePin::new(name, padstack, Vector::Int(IntVector::new(0, 0)), 0.0)
+    }
+
+    /// Both sides of one library package, front and back, as `Library.readScope` builds them.
+    ///
+    /// The pins are given in order, so `BAD`'s **second** pin is the one that dangles: Java
+    /// inserts the first before it returns, which is what shifts every later item id.
+    fn package_pair(packages: &mut Packages, name: &str, padstacks: &[PadstackId]) {
+        for is_front in [true, false] {
+            let pins = padstacks
+                .iter()
+                .enumerate()
+                .map(|(i, p)| pin(&(i + 1).to_string(), *p))
+                .collect();
+            packages.add(
+                name,
+                pins,
+                None,
+                None,
+                None,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                is_front,
+            );
+        }
+    }
+
+    fn placed(lib_name: &str, component_name: &str) -> ComponentPlacement {
+        ComponentPlacement {
+            lib_name: lib_name.to_string(),
+            locations: vec![ComponentLocation {
+                name: component_name.to_string(),
+                coor: Some([1000.0, 1000.0]),
+                is_front: true,
+                rotation: 0.0,
+                position_fixed: false,
+                pin_infos: BTreeMap::new(),
+                keepout_infos: BTreeMap::new(),
+                via_keepout_infos: BTreeMap::new(),
+                place_keepout_infos: BTreeMap::new(),
+                part_number: None,
+            }],
+        }
+    }
+
+    struct Outcome {
+        components: Vec<String>,
+        pin_ids: Vec<fr_board::ItemId>,
+        warnings: Vec<String>,
+    }
+
+    /// Runs `insert_components` over `placement_list` on a fresh board whose `BAD` package
+    /// carries `bad_padstack` (a dangling id, in the defect's case) and reports what reached the
+    /// board.
+    fn run(bad_padstack: Option<PadstackId>, placement_list: Vec<ComponentPlacement>) -> Outcome {
+        let (mut board, ct) = board_and_transform();
+        let good = PadstackId(
+            board
+                .library
+                .padstacks
+                .get_by_name("PAD")
+                .expect("the fixture's padstack")
+                .no,
+        );
+        board.library.packages = Packages::new();
+        package_pair(
+            &mut board.library.packages,
+            "BAD",
+            &[good, bad_padstack.unwrap_or(good)],
+        );
+        package_pair(&mut board.library.packages, "GOOD", &[good]);
+
+        let options = DsnReadOptions::default();
+        let mut p = ReadScopeParameter::new(DsnScanner::new("").expect("fits"), &options);
+        p.board = Some(board);
+        p.coordinate_transform = Some(ct);
+        p.placement_list = placement_list;
+        insert_components(&mut p);
+
+        let board = p.board.take().expect("the board");
+        Outcome {
+            components: (0..board.components.count())
+                .map(|i| board.components.get(i as i32 + 1).name.clone())
+                .collect(),
+            pin_ids: board
+                .items
+                .iter()
+                .filter(|(_, item)| matches!(item, Item::Pin(_)))
+                .map(|(id, _)| *id)
+                .collect(),
+            warnings: p.warnings,
+        }
+    }
+
+    /// Java bug #103: `Network.insertComponent` `return`s — not `continue`s — when a pin names a
+    /// padstack the library lacks (Network.java:1013-1019), **after** the component has been
+    /// added and its first *n-1* pins inserted. The board keeps a half-built component, loses all
+    /// of its keepouts and outlines, and — because item ids are handed out in insertion order —
+    /// every later item id shifts.
+    ///
+    /// fixed: T4 (#103): the padstacks are checked before anything is inserted, so a miss rejects
+    /// the component whole, with a diagnostic and with the board untouched.
+    #[test]
+    fn a_component_with_an_absent_padstack_is_rejected_whole() {
+        let both = vec![placed("BAD", "C1"), placed("GOOD", "C2")];
+
+        // The control: nothing wrong with either package. Both components land.
+        let control = run(None, both.clone());
+        assert_eq!(control.components, vec!["C1", "C2"]);
+        assert_eq!(control.pin_ids.len(), 3, "C1's two pins and C2's one");
+        assert!(control.warnings.is_empty());
+
+        // The reference: `C1` simply absent from the placement list. This is what "unshifted"
+        // means — the ids `C2` gets when nothing was inserted before it.
+        let alone = run(None, vec![placed("GOOD", "C2")]);
+        assert_eq!(alone.components, vec!["C2"]);
+
+        // The defect's input: `C1`'s package names a padstack the library does not have.
+        let rejected = run(Some(PadstackId(9999)), both);
+        assert_eq!(
+            rejected.components,
+            vec!["C2"],
+            "the rejected component is not added at all — Java adds it and then abandons it"
+        );
+        assert_eq!(
+            rejected.pin_ids, alone.pin_ids,
+            "the following component's item ids are unshifted"
+        );
+        assert_eq!(rejected.warnings.len(), 1);
+        assert!(
+            rejected.warnings[0].contains("C1") && rejected.warnings[0].contains("rejected"),
+            "the diagnostic names the component: {}",
+            rejected.warnings[0]
+        );
     }
 }
