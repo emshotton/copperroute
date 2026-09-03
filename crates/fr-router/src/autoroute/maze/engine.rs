@@ -424,7 +424,7 @@ impl AutorouteEngine {
         page: PageId,
         attach_smd: bool,
         stop: StopCheck<'_>,
-    ) -> Vec<DrillId> {
+    ) -> std::sync::Arc<Vec<DrillId>> {
         let (i, j) = self.drill_page_array.split(page);
         let mut pages = self.drill_page_array.take_pages();
         let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| {

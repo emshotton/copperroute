@@ -322,8 +322,9 @@ impl MazeExpansionEngine {
                 .engine
                 .drill_page_drills(board, drill_page, attach_smd_allowed, stop);
 
-        // :167.
-        for current_drill in drill_list {
+        // :167. A recompute inside the loop installs a new list on the page and leaves this
+        // iteration on the `Arc` it started with.
+        for current_drill in drill_list.iter().copied() {
             let Some(drill) = search.engine.rooms.drills.get(current_drill.0) else {
                 continue;
             };

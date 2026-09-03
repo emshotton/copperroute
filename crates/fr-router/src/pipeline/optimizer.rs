@@ -1118,7 +1118,7 @@ impl BatchOptimizer<'_> {
         // :135-138. `initialScore`/`initialIncomplete`/`initialViolations` are read only by the
         // `:140-145` and `:256-271` log lines and are dropped with them; the statistics **object**
         // is built, because `getNormalizedScore` is pure but the constructor is not.
-        let _initial_stats = BoardStatistics::new(board);
+        BoardStatistics::compute_side_effects(board, true);
 
         // :148.
         let session_start = std::time::Instant::now();
@@ -1260,7 +1260,7 @@ impl BatchOptimizer<'_> {
         // :237-248 — the session summary's wall clock and its three JMX samplers, rostered.
         // :250-251 — the final statistics. Built for the same reason `:135`'s is, and its score
         // and two counts are dropped with the `:256-271` payload that reads them.
-        let _final_stats = BoardStatistics::new(board);
+        BoardStatistics::compute_side_effects(board, true);
 
         // :252-255 — `completionStatus`, the only place Java tells the three endings apart.
         let state = if self.is_timed_out {
@@ -1459,7 +1459,7 @@ impl BatchOptimizer<'_> {
                 // `equalsTranscript` line is what measures that the difference is inert.
                 if self.progress_throttler.should_update() {
                     // :336.
-                    let _board_statistics_after = BoardStatistics::new(board);
+                    BoardStatistics::compute_side_effects(board, true);
                     // :337.
                     progress.on_event(&RoutingEvent::BoardUpdated {
                         counters: router_counters.clone(),
@@ -1497,7 +1497,7 @@ impl BatchOptimizer<'_> {
 
         // :371 — built for the `:372` event and the `:373-383` log line; the port keeps the
         // construction because the count of `BoardStatistics` constructions is observable.
-        let _board_statistics_after = BoardStatistics::new(board);
+        BoardStatistics::compute_side_effects(board, true);
         // :372 — unthrottled.
         progress.on_event(&RoutingEvent::BoardUpdated {
             counters: router_counters,

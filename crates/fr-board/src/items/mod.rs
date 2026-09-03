@@ -583,6 +583,7 @@ impl Item {
     /// `ConductionArea` (ConductionArea.java:397-400), `ViaObstacleArea`
     /// (ViaObstacleArea.java:99-102) and `ComponentObstacleArea`
     /// (ComponentObstacleArea.java:70-73).
+    #[inline]
     pub fn is_trace_obstacle(&self, net_number: i32) -> bool {
         match self {
             Item::ConductionArea(area) => area.get_is_obstacle() && !self.contains_net(net_number),
@@ -614,6 +615,7 @@ impl Item {
     // -- layers (Item.java:268-275, 313-344, 809-814) ------------------------------------------
 
     /// Port of the abstract `Item.firstLayer` (Item.java:271-272) and its overrides.
+    #[inline]
     pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.first_layer(),
@@ -661,6 +663,7 @@ impl Item {
     /// `Trace` (Trace.java:332-335), `DrillItem` (DrillItem.java:147-154), `ObstacleArea`
     /// (ObstacleArea.java:265-268), `ComponentOutline` (ComponentOutline.java:124-127) and
     /// `BoardOutline` (BoardOutline.java:68-81).
+    #[inline]
     pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Via(i) => i.shape_layer(index, ctx),

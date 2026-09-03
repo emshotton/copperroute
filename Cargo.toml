@@ -22,3 +22,12 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 similar = "2"
+
+# `panic = "abort"` must stay unset: `AutorouteEngine::drill_page_drills` restores the drill-page
+# grid through `catch_unwind` / `resume_unwind`.
+#
+# A `[profile.release]` in a `.cargo/config.toml` silently overrides this block.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+debug = "line-tables-only"

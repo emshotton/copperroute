@@ -181,7 +181,7 @@ impl AutoroutePassRunner {
         // :170-171. `new BoardStatistics(board, null, false)`: no preferred unit, no clearance
         // violations, and the four-argument constructor's `includeConnections` defaulting to
         // `true` — so this is a full incomplete-connection pass, once per autoroute pass.
-        router.progress_statistics = Some(BoardStatistics::with_options(board, None, false));
+        BoardStatistics::compute_side_effects(board, false);
         router.progress_items_since_statistics = 0;
 
         // :176.
@@ -407,10 +407,10 @@ impl AutoroutePassRunner {
 
         // :309 — `board.getStatistics()` is `new BoardStatistics(this)`
         // (`RoutingBoard.java:1410-1412`), i.e. the full three-argument default. Its only reader
-        // is the event fired at `:321`, whose port payload is the counters; it is computed
+        // is the event fired at `:321`, whose port payload is the counters; its DRC pass is run
         // anyway because it is a **full DRC pass** that warms the board's caches, and skipping it
         // would be a different program.
-        let _board_statistics = BoardStatistics::new(board);
+        BoardStatistics::compute_side_effects(board, true);
 
         // :313-320.
         counters.pass_count = Some(pass_no);
@@ -464,7 +464,7 @@ impl AutoroutePassRunner {
             >= BatchAutorouter::PROGRESS_STATISTICS_ITEM_INTERVAL
         {
             // :500-501.
-            router.progress_statistics = Some(BoardStatistics::with_options(board, None, false));
+            BoardStatistics::compute_side_effects(board, false);
             router.progress_items_since_statistics = 0;
         }
 

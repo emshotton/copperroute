@@ -1,6 +1,8 @@
 //! Port of `autoroute.drill.DrillPage` (DrillPage.java:21-193) — one rectangle of the board's
 //! drill grid, and the memoised list of expansion drills on it.
 
+use std::sync::Arc;
+
 use fr_board::{Board, ItemId, StopCheck, TreeObject};
 use fr_geometry::{IntBox, Point, PolylineArea, TileShape};
 
@@ -61,7 +63,10 @@ pub struct DrillPage {
     /// The drills themselves live in
     /// [`ExpansionRoomStore::drills`](crate::autoroute::expansion::ExpansionRoomStore::drills);
     /// this is the ownership Java expresses by holding the objects.
-    drills: Option<Vec<DrillId>>,
+    ///
+    /// Shared so `:64`'s memo hit need not copy the list. `Arc` and not `Rc` because plan-2
+    /// ruling 11 keeps these structures `Send + Sync`.
+    drills: Option<Arc<Vec<DrillId>>>,
     /// `private int netNumber = -1` (`:33`): "the number of the net, for which the drills are
     /// calculated".
     net_number: i32,
@@ -134,10 +139,12 @@ impl DrillPage {
         board: &mut Board,
         attach_smd: bool,
         stop: StopCheck<'_>,
-    ) -> Vec<DrillId> {
+    ) -> Arc<Vec<DrillId>> {
         // :64.
-        if self.drills.is_some() && engine.get_net_number() == self.net_number {
-            return self.drills.clone().unwrap_or_default();
+        if let Some(drills) = &self.drills
+            && engine.get_net_number() == self.net_number
+        {
+            return Arc::clone(drills);
         }
         // :65-66. Java performs both writes *here*, before the work, which is what quirk #168 is
         // about; `// fixed: T6 (#168)` defers them past `:103` and only the net number is read in
@@ -164,7 +171,7 @@ impl DrillPage {
         // after the split succeeds": `self.drills` stays `None`, `self.net_number` stays the old
         // one, and `:64` recomputes on the next call.
         let Some(drill_shapes) = shape_with_holes.split_to_convex(Some(stop)) else {
-            return Vec::new();
+            return Arc::new(Vec::new());
         };
 
         // :65-66, deferred to here. `:66`'s `this.drills = new LinkedList<>()` drops the previous
@@ -173,10 +180,12 @@ impl DrillPage {
         // is safe. Freeing them *after* the split is what keeps a cancelled page consistent: it
         // still owns the drills it is still advertising.
         self.net_number = new_net_number;
-        for old_drill in self.drills.take().into_iter().flatten() {
-            engine.rooms.drills.remove(old_drill.0);
+        if let Some(old_drills) = self.drills.take() {
+            for old_drill in old_drills.iter().copied() {
+                engine.rooms.drills.remove(old_drill.0);
+            }
         }
-        self.drills = Some(Vec::new());
+        self.drills = Some(Arc::new(Vec::new()));
 
         // :105-107. "Use the center points of these drill shapes to try making a via."
         //
@@ -216,11 +225,15 @@ impl DrillPage {
             // that partial list rather than always an empty one.
             if new_drill.calculate_expansion_rooms(engine, board) {
                 let id = DrillId(engine.rooms.drills.insert(new_drill));
-                self.drills.get_or_insert_with(Vec::new).push(id);
+                // A caller still holding an earlier call's `Arc` keeps that snapshot; `:65-66`
+                // has just installed a fresh list, so this does not copy.
+                Arc::make_mut(self.drills.get_or_insert_with(|| Arc::new(Vec::new()))).push(id);
             }
         }
         // :130.
-        self.drills.clone().unwrap_or_default()
+        self.drills
+            .as_ref()
+            .map_or_else(|| Arc::new(Vec::new()), Arc::clone)
     }
 
     /// The obstacle cut-out loop of `getDrills` (DrillPage.java:67-96), as a **view**: the same
@@ -389,7 +402,7 @@ impl DrillPage {
     pub fn reset(&mut self, drills: &mut Arena<ExpansionDrill>) {
         // :156-160.
         if let Some(ids) = &self.drills {
-            for id in ids {
+            for id in ids.iter() {
                 if let Some(drill) = drills.get_mut(id.0) {
                     drill.reset();
                 }
@@ -446,8 +459,10 @@ impl DrillPage {
     /// there; the page is what owns its drill ids, and this is where Java drops them.
     pub fn invalidate(&mut self, drills: &mut Arena<ExpansionDrill>) {
         // :171, plus the collection Java gets for free.
-        for id in self.drills.take().into_iter().flatten() {
-            drills.remove(id.0);
+        if let Some(old_drills) = self.drills.take() {
+            for id in old_drills.iter().copied() {
+                drills.remove(id.0);
+            }
         }
     }
 
@@ -477,7 +492,7 @@ impl DrillPage {
     /// `emitDiagnostics`. This one exists so the port's callers and tests can see the *state*
     /// rather than only the answer.
     pub fn drills(&self) -> Option<&[DrillId]> {
-        self.drills.as_deref()
+        self.drills.as_ref().map(|list| list.as_slice())
     }
 
     /// `netNumber` (`:33`) — the net the memoised list was calculated for, `-1` before the first
