@@ -279,72 +279,102 @@ fn an_empty_output_directory_is_not_unlinked() {
     );
 }
 
-/// **Quirk #268** (label L), half one (`Freerouting.java:123`, `RoutingJob.java:377-397`):
-/// `tryToSetOutputFile`'s return value is discarded, so `-do out.txt` is *rejected* as an output
-/// format, `job.output` keeps the `<input>.ses` `setInputFromFile:441` derived — and
-/// `writeCliOutputIfAvailable` then writes the SES bytes to `out.txt` anyway, because `:206`
-/// writes to `globalSettings.initialOutputFile` and not to `job.output`.
+/// **Quirk #268 (label L), fixed in Plan 9 Task 3** (`Freerouting.java:123`, `:196-213`,
+/// `RoutingJob.java:377-397`, `RoutingJobSchedulerActionThread.java:259-295`).
 ///
-/// **Measured on the HEAD jar**, not inferred:
-/// `java -jar <jar> -de Issue143-rpi_splitter.dsn -do out.txt -mp 1` exits **0** and leaves a
-/// **2 626-byte** `out.txt` beginning `(session "Issue143-r`. The port's is 2 628 bytes and
-/// byte-identical after quirk #92's two keyword literals — checked with
-/// `diff <(sed 's/(host_cad /(hostCad /;s/(host_version /(hostVersion /' port) jar`.
+/// Java discards `tryToSetOutputFile`'s `boolean`, and the two halves of that go in opposite
+/// directions:
+///
+/// * `-do out.txt` is **rejected** by `:384-388` (which accepts `DSN | FRB | SES | SCR |
+///   KICAD_DESIGN_JSON` only), so `job.output` keeps the `<input>.ses` `setInputFromFile:441`
+///   derived — and `writeCliOutputIfAvailable:206` writes to `globalSettings.initialOutputFile`
+///   rather than to `job.output`, so the SES bytes land in `out.txt` anyway and the run exits 0.
+///   *(Measured on the HEAD jar: a 2 626-byte `out.txt` beginning `(session "Issue143-r`.)*
+/// * `-do out.dsn` and `-do out.scr` are **accepted**, so `job.output.format` becomes `DSN`/`SCR`
+///   — which `setJobOutput:274-292` serialises with nothing, so `output.getData()` stays the
+///   empty array `BoardFileDetails.java:53` initialised it to, `Files.write` writes **zero
+///   bytes**, `Files.size > 0` answers false and the run exits 1 with an empty file left on disk,
+///   over the previous result quirk #265 had already deleted. *(Measured on the HEAD jar: exit 1,
+///   a 0-byte `out.dsn`.)*
+///
+/// The port refuses both **at the argument**, naming the two extensions it can write. This test
+/// replaces Plan 8's `do_out_txt_still_receives_ses_bytes` and
+/// `do_out_dsn_writes_zero_bytes_and_exits_1`, both deleted in the same commit.
+///
+/// # "At the argument" is asserted, not asserted-of
+///
+/// The refusal happens at step 5, which is before the settings merge, before the board load and
+/// before the router — and the third case below is what proves it rather than assuming it. The
+/// input is a file named `.dsn` whose bytes are `hello`: `RoutingJob::set_input` sniffs `UNKNOWN`
+/// and `setInputFromFile:433-436` re-derives `DSN` from the extension, so the *job* is valid and
+/// the *board* is not. With `-do out.ses` that run gets as far as the loader and fails there;
+/// with `-do out.dsn` it never gets there at all, and the two stderrs say so.
 #[test]
-fn do_out_txt_still_receives_ses_bytes() {
+fn an_unsupported_output_extension_is_refused_at_the_argument() {
     if !parity::require_java_dir() {
         return;
     }
-    let dir = scratch("do-out-txt");
-    let output = dir.join("out.txt");
-    let (_, _, code) = run(&[
-        "-de",
-        &small_dsn().to_string_lossy(),
-        "-do",
-        &output.to_string_lossy(),
-        "-mp",
-        "1",
-    ]);
-    assert_eq!(code, 0);
-    let bytes = std::fs::read(&output).expect("out.txt was written");
-    assert!(
-        bytes.starts_with(b"(session"),
-        "out.txt holds the SES: {:?}",
-        String::from_utf8_lossy(&bytes[..bytes.len().min(40)])
-    );
-    // And nothing was written beside the input, even though `job.output` names `<input>.ses`.
-    assert!(
-        !parity::fixture("Issue143-rpi_splitter.ses").exists(),
-        "the derived <input>.ses must not be written — `:206` uses the CLI's path"
-    );
-}
+    let dir = scratch("unsupported-output-extension");
+    let dsn = small_dsn().to_string_lossy().into_owned();
 
-/// **Quirk #268**, half two: `-do out.dsn` is *accepted* by `tryToSetOutputFile:384-388`, so
-/// `job.output.format` becomes `DSN` — and `setJobOutput:274-292` serialises only
-/// `KICAD_SESSION_JSON` and `SES`, so `output.getData()` stays the empty array
-/// `BoardFileDetails.java:53` initialised it to. `writeCliOutputIfAvailable` then writes **zero
-/// bytes**, `Files.size > 0` answers false, and the run exits 1 with an empty file left behind.
-///
-/// **Measured on the HEAD jar:** the same command with `-do out.dsn` exits **1** and leaves a
-/// **0-byte** `out.dsn`.
-#[test]
-fn do_out_dsn_writes_zero_bytes_and_exits_1() {
-    if !parity::require_java_dir() {
-        return;
+    // The two halves of quirk L, refused the same way.
+    for name in ["out.dsn", "out.scr", "out.txt", "out.frb"] {
+        let output = dir.join(name);
+        let (_, stderr, code) = run(&["-de", &dsn, "-do", &output.to_string_lossy(), "-mp", "1"]);
+        assert_eq!(code, 1, "-do {name} must be refused");
+        assert!(
+            stderr.contains("is not an output file this program can write")
+                && stderr.contains(".ses")
+                && stderr.contains(".json"),
+            "-do {name}: the refusal must name the accepted formats, got:\n{stderr}"
+        );
+        assert!(
+            !output.exists(),
+            "-do {name}: no file may be created — not even a 0-byte one"
+        );
     }
-    let dir = scratch("do-out-dsn");
-    let output = dir.join("out.dsn");
-    let (_, _, code) = run(&[
+
+    // …and the two it *can* write are still accepted, so the guard is not simply "refuse".
+    for name in ["out.ses", "out.json"] {
+        let output = dir.join(name);
+        let (_, stderr, code) = run(&["-de", &dsn, "-do", &output.to_string_lossy(), "-mp", "1"]);
+        assert_eq!(code, 0, "-do {name} must still work:\n{stderr}");
+        assert!(
+            std::fs::metadata(&output).is_ok_and(|meta| meta.len() > 0),
+            "-do {name} must hold a document"
+        );
+    }
+
+    // The refusal is **before the board load**: the same unloadable input fails in two different
+    // places depending only on the `-do` extension.
+    let broken = dir.join("broken.dsn");
+    std::fs::write(&broken, b"hello").unwrap();
+    let (_, refused, code) = run(&[
         "-de",
-        &small_dsn().to_string_lossy(),
+        &broken.to_string_lossy(),
         "-do",
-        &output.to_string_lossy(),
-        "-mp",
-        "1",
+        &dir.join("late.dsn").to_string_lossy(),
     ]);
-    assert_eq!(code, 1, "`computeCliExitCode:222` — nothing was written");
-    let meta = std::fs::metadata(&output).expect("the empty file is left behind");
-    assert_eq!(meta.len(), 0, "`Files.write` wrote the empty array");
+    assert_eq!(code, 1);
+    assert!(
+        refused.contains("is not an output file this program can write"),
+        "the output extension is refused before anything reads the board:\n{refused}"
+    );
+    let (_, loaded, code) = run(&[
+        "-de",
+        &broken.to_string_lossy(),
+        "-do",
+        &dir.join("late.ses").to_string_lossy(),
+    ]);
+    assert_eq!(code, 1);
+    assert!(
+        !loaded.contains("is not an output file this program can write"),
+        "with a writable -do the same input reaches the loader instead:\n{loaded}"
+    );
+    assert_ne!(
+        refused, loaded,
+        "the two runs must fail in two different places, or this case proves nothing"
+    );
 }
 
 /// **Quirk #289** (label T), the `-do out.json` output path
