@@ -1138,3 +1138,121 @@ fn step_eight_is_a_no_op_when_strict_drc_is_off() {
         "nothing was rolled back"
     );
 }
+
+// =================================================================================================
+// R1 (register row #293) — the airline-distance ordering of the work list
+//
+// `getAutorouteItems` (`:345-409`) builds the list in `board.itemList`'s **descending-id** walk
+// order (quirk #63) and, at HEAD, returns it that way: commit `933d2980` deleted
+// `autorouteItemList.sort(Comparator.comparingDouble(this::calculateItemDistance))`.
+// `benchmark/reports/java-regressions-2026-09.md` §"Regression 1" measures what that cost, and
+// Plan 9 Task 2 restores the sort inside `autoroute_items_with_handled`.
+// =================================================================================================
+
+/// A **user-fixed** trace, which is what makes an item a work-list candidate: `:358` keeps only
+/// items that are not `isRoutable()`, and `Trace.isRoutable` (Trace.java:205-209) is
+/// `!isUserFixed() && netCount() > 0`.
+fn fixed_trace(board: &mut Board, corners: &[Point], net: i32) -> ItemId {
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(corners),
+            0,
+            30,
+            vec![net],
+            1,
+            FixedState::UserFixed,
+        )
+        .expect("a two-corner polyline always inserts")
+}
+
+/// Three nets, each a user-fixed candidate plus one ordinary trace it is not connected to. The
+/// **item ids ascend with insertion**, so `board.itemList`'s descending walk reaches net 3's
+/// candidate first and net 1's last — and the three airline distances are arranged to run the
+/// **other** way, 2000 / 3000 / 8000 in id order.
+///
+/// | net | candidate | its midpoint  | target midpoint | `calculateItemDistance` |
+/// |-----|-----------|---------------|-----------------|-------------------------|
+/// | 1   | `c1`      | (-9000,-8500) | (-9000,-6500)   | 2000                    |
+/// | 2   | `c2`      | (0,-8500)     | (0,-5500)       | 3000                    |
+/// | 3   | `c3`      | (9000,-8500)  | (9000,-500)     | 8000                    |
+///
+/// So the pre-fix answer is `[c3, c2, c1]` and the fixed answer is `[c1, c2, c3]` — the two are
+/// exact reverses, which is what makes this test fail before the fix rather than merely differ.
+#[test]
+fn the_work_list_is_sorted_by_airline_distance() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    add_net(&mut board, "N2", 0);
+    add_net(&mut board, "N3", 0);
+
+    let c1 = fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -7000), p(-9000, -6000)], 0, 30, 1);
+    let c2 = fixed_trace(&mut board, &[p(0, -9000), p(0, -8000)], 2);
+    insert_trace(&mut board, &[p(0, -6000), p(0, -5000)], 0, 30, 2);
+    let c3 = fixed_trace(&mut board, &[p(9000, -9000), p(9000, -8000)], 3);
+    insert_trace(&mut board, &[p(9000, -1000), p(9000, 0)], 0, 30, 3);
+
+    assert!(c1 < c2 && c2 < c3, "ids ascend with insertion order");
+
+    // The keys, hand-checked against `AutorouteAirlineCalculator.java:204-213`'s midpoint rule.
+    for (item, expected) in [(c1, 2000.0), (c2, 3000.0), (c3, 8000.0)] {
+        assert_eq!(
+            fr_router::pipeline::calculate_item_distance(&board, item),
+            expected
+        );
+    }
+
+    let settings = RouterSettings::new();
+    let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    assert_eq!(
+        router.autoroute_items(&board),
+        vec![c1, c2, c3],
+        "R1 (#293): the work list is ascending by calculateItemDistance. Before the fix this \
+         answered [c3, c2, c1] — the descending-id walk (quirk #63), which is exactly the \
+         reverse here."
+    );
+}
+
+/// The stability claim, asserted so a later sort change cannot silently reorder ties.
+///
+/// Java's `List.sort` is a TimSort and keeps equal keys in insertion order, so the deleted line
+/// left ties in the descending-id walk order `getAutorouteItems` built. The port's `sort_by` is
+/// stable for the same reason and must answer the same thing: the restored sort is a
+/// **refinement** of today's order, not a second, independent reordering.
+///
+/// Three nets whose candidate-to-target distance is **exactly 3000** on each, laid out so the
+/// arithmetic is identical rather than merely close — the assertion is on `==`, and a fixture
+/// whose keys differed in the last bit would be asserting the opposite of what it claims.
+#[test]
+fn equal_airline_distances_keep_the_descending_id_tie_order() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    add_net(&mut board, "N2", 0);
+    add_net(&mut board, "N3", 0);
+
+    let c1 = fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -6000), p(-9000, -5000)], 0, 30, 1);
+    let c2 = fixed_trace(&mut board, &[p(0, -9000), p(0, -8000)], 2);
+    insert_trace(&mut board, &[p(0, -6000), p(0, -5000)], 0, 30, 2);
+    let c3 = fixed_trace(&mut board, &[p(9000, -9000), p(9000, -8000)], 3);
+    insert_trace(&mut board, &[p(9000, -6000), p(9000, -5000)], 0, 30, 3);
+
+    let keys: Vec<f64> = [c1, c2, c3]
+        .into_iter()
+        .map(|id| fr_router::pipeline::calculate_item_distance(&board, id))
+        .collect();
+    assert_eq!(
+        keys,
+        vec![3000.0, 3000.0, 3000.0],
+        "the three keys must be bit-identical for this to be a tie test"
+    );
+
+    let settings = RouterSettings::new();
+    let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    assert_eq!(
+        router.autoroute_items(&board),
+        vec![c3, c2, c1],
+        "ties keep the descending-id walk order (quirk #63) — the order `getAutorouteItems` \
+         built and the order Java's stable `List.sort` would have preserved"
+    );
+}

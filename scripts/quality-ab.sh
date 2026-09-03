@@ -426,6 +426,51 @@ print("\t".join(str(x) for x in row))
 PY
 }
 
+# `<ses>` -> the count of routed wire segments narrower than their own net's width, i.e. the
+# **neckdown** count. Ruling BP15 owes this column to Task 14, and Task 2 is where it is first
+# measured, because R2 (#294) is the fix that stops the micro-neckdown fanout fallback emitting
+# sub-minimum traces.
+#
+# **The class width is read off the SES, not the DSN, and that is a deliberate limitation.** A
+# DSN's `(rule (width W))` is in the file's own unit and the net-class table can override it per
+# class and per layer, so recovering the board-unit class width outside the port means
+# re-implementing `Structure.createBoard`'s scale factor and `NetClasses` in a shell script — a
+# second, unvalidated reader of the same file. What this counts instead is self-contained and
+# needs no unit arithmetic: for each net, the **widest** width that net uses in the routed SES is
+# taken as its class width, and every wire narrower than it is one neckdown. On a net the router
+# necked **everywhere** the count reads 0, which is the estimator's one blind spot and is named
+# here rather than hidden; on every other net it is exact, because a neckdown is by construction
+# narrower than the full-width segments beside it.
+neckdown_of() {
+  python3 - "$1" <<'PY'
+import re, sys
+from collections import defaultdict
+
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+
+# `(net <name> (wire (path <layer> <width> …) …) …)` — the SES writer emits one `net` scope per
+# net and every `wire` inside it belongs to that net. Splitting on `(net ` is enough: no width or
+# coordinate token can contain the literal, and a `wire` outside every `net` scope (which the
+# writer never emits) is simply not counted rather than mis-attributed.
+widths = defaultdict(list)
+for chunk in text.split("(net ")[1:]:
+    name = chunk.split(None, 1)[0].strip('"')
+    for m in re.finditer(r"\(path\s+\S+\s+([0-9.eE+-]+)", chunk):
+        try:
+            widths[name].append(float(m.group(1)))
+        except ValueError:
+            pass
+
+necked = 0
+for values in widths.values():
+    if not values:
+        continue
+    full = max(values)
+    necked += sum(1 for v in values if v < full)
+print(necked)
+PY
+}
+
 median_and_spread() {
   python3 - "$@" <<'PY'
 import statistics, sys
@@ -492,6 +537,13 @@ measure_one() {
   local metrics
   metrics="$(metrics_of "$report" "$manifest")"
 
+  # The neckdown column (ruling BP15). A DRC stem routes nothing, so it has no SES of its own and
+  # the cell is `-` rather than 0 — "not measured" and "measured zero" are different claims.
+  local neckdown="-"
+  if [[ "$family" != drc ]]; then
+    neckdown="$(neckdown_of "$ses")"
+  fi
+
   # --- the time lane: the budget in its normal configuration, median of N --------------------
   local times=() i
   for ((i = 0; i < REPEATS; i++)); do
@@ -516,11 +568,13 @@ measure_one() {
   local cpu
   cpu="$(median_and_spread "${times[@]}")"
 
-  printf '%s\t%s\t%s\t%s\t%s\n' "$family" "$stem" "$cap" "$metrics" "$cpu" >> "$ROWS"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$family" "$stem" "$cap" "$metrics" "$neckdown" \
+      "$cpu" >> "$ROWS"
   # shellcheck disable=SC2059
-  printf '   incomplete=%s violations=%s clearance=%s hole_clearance=%s cpu_s=%s (spread %s over %s runs)\n' \
+  printf '   incomplete=%s violations=%s clearance=%s hole_clearance=%s neckdown=%s cpu_s=%s (spread %s over %s runs)\n' \
       "$(cut -f1 <<< "$metrics")" "$(cut -f2 <<< "$metrics")" "$(cut -f3 <<< "$metrics")" \
-      "$(cut -f4 <<< "$metrics")" "$(cut -f1 <<< "$cpu")" "$(cut -f2 <<< "$cpu")" "$REPEATS"
+      "$(cut -f4 <<< "$metrics")" "$neckdown" "$(cut -f1 <<< "$cpu")" "$(cut -f2 <<< "$cpu")" \
+      "$REPEATS"
 }
 
 while IFS='|' read -r family stem board cap rest; do
@@ -565,8 +619,14 @@ noise_floor = float(noise_floor); stem_escalate = float(stem_escalate)
 corpus_escalate = float(corpus_escalate); score_noise = float(score_noise)
 cpu_epsilon = float(cpu_epsilon)
 
-# The 14 measured quality columns, then `cpu_s`/`cpu_spread_s`, then the **jar context columns**,
+# The 12 measured quality columns, then `cpu_s`/`cpu_spread_s`, then the **jar context columns**,
 # then the flag.
+#
+# `neckdown_below_class_width` joined the list at Task 2 (ruling BP15, owed to Task 14): the count
+# of routed wire segments narrower than their own net's widest, read off the port's own SES by
+# `neckdown_of` in the shell half, which documents the estimator. It is **reported and is not a
+# gate** — a neckdown is legitimate behaviour where the design rules allow one, and what R2
+# (#294) fixes is the *sub-minimum* case the referee's DRC document already scores.
 #
 # The jar columns are the second of the two references brief item 6 requires every row to carry:
 # the frozen HEAD numbers Task 1 derives once from the frozen references and writes to
@@ -581,7 +641,8 @@ cpu_epsilon = float(cpu_epsilon)
 # two worlds this tsv was written in. Nothing here ever affirms a reference it did not read.
 QUALITY_COLUMNS = ["incomplete", "violations", "clearance_violations",
                    "hole_clearance_violations", "normalized_score", "trace_length_mm",
-                   "via_total", "via_through", "via_blind", "via_buried", "bend_count"]
+                   "via_total", "via_through", "via_blind", "via_buried", "bend_count",
+                   "neckdown_below_class_width"]
 JAR_COLUMNS = ["jar_incomplete", "jar_violations", "jar_clearance_violations",
                "jar_normalized_score"]
 COLUMNS = (["family", "stem", "mp_cap"] + QUALITY_COLUMNS + ["cpu_s", "cpu_spread_s"]
@@ -676,7 +737,8 @@ for r in rows:
     family, stem, cap = r[0], r[1], r[2]
     inc, viol, clear, hole = r[3], r[4], r[5], r[6]
     score, length, vt, vth, vbl, vbu, bends = r[7:14]
-    cpu, spread = r[14], r[15]
+    neckdown = r[14]
+    cpu, spread = r[15], r[16]
     flag = "ok"
     base = prev.get((family, stem))
 
@@ -779,7 +841,7 @@ for r in rows:
     jbase = jar.get((family, stem))
     jar_cells = [jbase.get(name[len("jar_"):], "-") if jbase else "-" for name in JAR_COLUMNS]
     out.append([family, stem, cap] + [inc, viol, clear, hole, score, length, vt, vth, vbl, vbu,
-                                      bends] + [cpu, spread] + jar_cells + [flag])
+                                      bends, neckdown] + [cpu, spread] + jar_cells + [flag])
 
 corpus_note = ""
 if ratios:

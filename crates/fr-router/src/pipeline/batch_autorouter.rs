@@ -46,6 +46,7 @@ use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
 use crate::autoroute::maze::engine::{AutorouteEngine, route_connection_full};
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
+use crate::pipeline::airline::{ItemDistanceCache, calculate_item_distance_cached};
 use crate::pipeline::board_history::BoardHistory;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::pass_runner::AutoroutePassRunner;
@@ -776,6 +777,46 @@ impl<'a> BatchAutorouter<'a> {
                 // :391-402 is the `FRLogger.debug` payload; not ported.
             }
         }
+
+        // -----------------------------------------------------------------------------------
+        // R1 (register row #293): the shortest-airline-first ordering, restored.
+        //
+        // `:407` returns the list in `board.itemList`'s **descending-id** walk order (quirk #63)
+        // and nothing sorts it, because commit `933d2980` ("Remove useSlowAlgorithm parameter
+        // from autorouter", v2.2.0) deleted
+        // `autorouteItemList.sort(Comparator.comparingDouble(this::calculateItemDistance))` with
+        // the note "Disabled in v2.3 because it negatively impacts convergence compared to v1.9
+        // (natural order)". `benchmark/reports/java-regressions-2026-09.md` §"Regression 1"
+        // measures the note wrong: fully-connected on its small tier drops 0.81 -> 0.75 at
+        // v2.2.0 and never recovers, and restoring the sort alone at HEAD brings it back to
+        // 0.76 -> 0.82 *and is slightly faster*. The three methods the deleted line called are
+        // still in `AutorouteAirlineCalculator.java` with no caller — see
+        // `crate::pipeline::airline`'s module doc.
+        //
+        // **Unconditionally**, because no tier measured worse with it, and **stably**, because
+        // `List.sort` is a TimSort and keeps equal keys in insertion order: ties therefore stay
+        // in the descending-id walk order this loop just built, so the sort is a refinement of
+        // today's order rather than a second, independent reordering. `f64::total_cmp` is
+        // `Double.compare`'s total order — the one `Comparator.comparingDouble` uses — including
+        // its treatment of `Double.MAX_VALUE` (an item on no net, `airline.rs:163-165`) and of
+        // the exact `0` an already-connected item gets (`:172-174`).
+        //
+        // The key is computed **once per element**, over one shared
+        // [`ItemDistanceCache`](crate::pipeline::airline::ItemDistanceCache), and sorted with the
+        // ids — where Java's `comparingDouble` re-extracts it on every comparison and re-walks
+        // the board inside each. `calculateItemDistance` is a pure function of a board this
+        // method does not mutate, so the order is identical and only the bill differs; the
+        // cache's own doc lists the three things it memoises and why each was measured.
+        //
+        // Java bug: `BatchAutorouter.getAutorouteItems` (`:345-409`) — the work list is returned in `board.itemList` descending-id order because `933d2980` deleted the `calculateItemDistance` sort; the commit's own justification is contradicted by measurement (quirk #293).
+        // fixed: T2 (#293) — the sort is restored here, ascending, stable, unconditional.
+        let mut cache = ItemDistanceCache::default();
+        let mut keyed: Vec<(f64, ItemId)> = autoroute_item_list
+            .iter()
+            .map(|id| (calculate_item_distance_cached(board, *id, &mut cache), *id))
+            .collect();
+        keyed.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let autoroute_item_list: Vec<ItemId> = keyed.into_iter().map(|(_, id)| id).collect();
 
         // :407.
         (autoroute_item_list, handled_items)
