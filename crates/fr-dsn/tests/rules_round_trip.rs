@@ -623,7 +623,7 @@ fn re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java() {
 }
 
 // ------------------------------------------------------------------------------------------
-// Java bug #112: an unknown layer name makes a layer rule apply to every layer
+// Java bug #112: an unknown layer name made a layer rule apply to every layer
 // ------------------------------------------------------------------------------------------
 
 /// `RulesReader.applyLayerRules` + `applyRules`' layer-scoped arm (RulesReader.java:284-338) with
@@ -632,15 +632,23 @@ fn re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java() {
 /// trace width on the whole board instead of being dropped (quirk #112).
 ///
 /// JVM-verified with `RProbe dump` against `tools/freerouting-2.3.0.jar`: `Issue029-hw48na.dsn`
-/// alone gives `defaulthw [1016,1016]`; with this rules file it gives `[2500,2500]`.
+/// alone gives `defaulthw [1016,1016]`; with this rules file the jar gives `[2500,2500]`.
+///
+/// fixed: T4 (#112) — renamed from `…_applies_to_every_layer` and inverted: the width does not
+/// move. See `a_rules_file_naming_an_absent_layer_leaves_the_default_width_untouched` for the
+/// survey's own four-layer case.
 #[test]
-fn a_layer_rule_naming_an_unknown_layer_applies_to_every_layer() {
+fn a_layer_rule_naming_an_unknown_layer_is_dropped_not_widened() {
     let (mut board, ct) = load_board("Issue029-hw48na.dsn");
     assert_eq!(default_half_widths(&mut board), [1016, 1016]);
 
     let rules = b"(rules PCB x\n  (layer BOGUS\n    (rule (width 500.0))\n  )\n)\n";
     assert!(rules_reader::read(&rules[..], "x", &mut board, &ct, None).expect("no scanner error"));
-    assert_eq!(default_half_widths(&mut board), [2500, 2500]);
+    assert_eq!(
+        default_half_widths(&mut board),
+        [1016, 1016],
+        "the jar answers [2500,2500] here"
+    );
 }
 
 /// The same scope with a layer the board *does* have, which is the branch quirk #112 is measured
@@ -814,4 +822,78 @@ fn discover_layer_structure_is_insertion_ordered_and_deduplicated() {
         rules_reader::discover_layer_structure("(rules PCB x)").expect("no scanner error");
     let names: Vec<&str> = fallback.layers.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["F.Cu", "B.Cu"]);
+}
+
+/// #112's binding test, the survey's own: a stale `.rules` file naming a layer the board does not
+/// have must leave the board's default trace width alone — on the four-layer board the survey
+/// names, not only on the two-layer one above.
+///
+/// **JAR-VERIFIED** — the jar's behaviour *is* the bug being recorded. `Issue508-DAC2020_bm10.dsn`
+/// is a four-layer board whose copper layers are named `Top`, `Route2`, `Route15` and `Bottom`;
+/// it has no `B.Cu`, which is exactly how a `.rules` file written for a different stack-up goes
+/// stale. Three runs of the pinned 2.3.0 jar over it
+/// (`RProbe dump <dsn> <rules> Issue508-DAC2020_bm10`, the `defaulthw` line):
+///
+/// ```text
+/// no .rules at all                   defaulthw [1000,1000,1000,1000]
+/// (layer B.Cu   (rule (width 500)))  defaulthw [2500,2500,2500,2500]  <- every layer overwritten
+/// (layer Bottom (rule (width 500)))  defaulthw [1000,1000,1000,2500]  <- the control: one layer
+/// ```
+///
+/// `RulesReader.applyRules` warns "layer not found" and does **not** return
+/// (RulesReader.java:286-290), so `layerIndex` stays `-1` — the sentinel the branches below read
+/// as "all layers" — and a rule meant for one absent layer silently rewrites the whole board.
+///
+/// fixed: T4 (#112): the sentinel is unrepresentable (`fr_dsn::RuleLayerScope`), the lookup moved
+/// to the one caller that has a name to resolve, and a name the board does not carry drops that
+/// scope's rules. The control row is what proves the guard did not simply stop applying layer
+/// rules altogether.
+#[test]
+fn a_rules_file_naming_an_absent_layer_leaves_the_default_width_untouched() {
+    const DSN: &str = "Issue508-DAC2020_bm10.dsn";
+    const DESIGN: &str = "Issue508-DAC2020_bm10";
+
+    // The jar's own baseline, with no `.rules` applied.
+    let (mut board, _) = load_board(DSN);
+    let names: Vec<&str> = board
+        .layer_structure()
+        .layers
+        .iter()
+        .map(|l| l.name.as_str())
+        .collect();
+    assert_eq!(
+        names,
+        ["Top", "Route2", "Route15", "Bottom"],
+        "the board this test needs is the four-layer one with no B.Cu"
+    );
+    assert_eq!(
+        default_half_widths(&mut board),
+        [1000, 1000, 1000, 1000],
+        "the jar's `defaulthw` for this board with no rules file"
+    );
+
+    // A `.rules` naming a layer the board does not have.
+    let (mut board, ct) = load_board(DSN);
+    let stale =
+        b"(rules PCB Issue508-DAC2020_bm10\n  (layer B.Cu\n    (rule (width 500))\n  )\n)\n";
+    assert!(
+        rules_reader::read(&stale[..], DESIGN, &mut board, &ct, None).expect("no scan error"),
+        "the read still succeeds — nothing inside a (rules …) scope can fail it"
+    );
+    assert_eq!(
+        default_half_widths(&mut board),
+        [1000, 1000, 1000, 1000],
+        "the jar answers [2500,2500,2500,2500]: an absent layer name meant `all layers`"
+    );
+
+    // The control: the same rule, on a layer the board does have.
+    let (mut board, ct) = load_board(DSN);
+    let good =
+        b"(rules PCB Issue508-DAC2020_bm10\n  (layer Bottom\n    (rule (width 500))\n  )\n)\n";
+    assert!(rules_reader::read(&good[..], DESIGN, &mut board, &ct, None).expect("no scan error"));
+    assert_eq!(
+        default_half_widths(&mut board),
+        [1000, 1000, 1000, 2500],
+        "a resolvable layer name still lands, on that one layer — the jar's own answer"
+    );
 }
