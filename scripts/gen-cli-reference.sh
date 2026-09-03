@@ -34,18 +34,31 @@
 #
 # **This generator needs none of that, and the reason is not that it was forgotten.** What `p8t1`
 # compares is two *whole programs*: `java -jar <jar> -de … -do …` against
-# `freerouting -de … -do …`. The port's CLI runs `fr_core::RouterBudget::default()` — Java's own
-# four literals, 1000 / 10000 / 250 / 1000 — because that is what a user gets, so **both sides run
-# the budget live** and there is nothing to disable on either. No probe, no
+# `freerouting -de … -do …`, each with the budget it really ships with. No probe, no
 # `-Dfreerouting.logging.file.*` plumbing, no trip count. The asymmetry Plan 7 had to argue around
 # does not exist here.
 #
-# The cost is stated plainly: a wall-clock budget that is live on both sides is a *machine-speed*
-# dependency, so a stem whose optimizer genuinely trips the 1000 ms limit could answer different
-# bytes on a slower host. That is a real risk and it is bounded by measurement rather than by
-# hope — the `batch.ses` cross-check below fails loudly if this generator's bare-jar run and Plan
-# 7's `RouterBudget::disabled()`-side reference ever disagree, which is exactly the signal a trip
-# would produce.
+# ## What the two sides' budgets are, and why they stopped being the same (Plan 9 Task 1, #234)
+#
+# Until Task 1 the port's CLI ran `fr_core::RouterBudget::default()` — Java's own four literals,
+# 1000 / 10000 / 250 / 1000 — so both sides ran the same live budget and the paragraph here said
+# so. The cost was stated plainly at the time: a wall-clock budget live on both sides is a
+# *machine-speed* dependency, and a stem whose optimizer genuinely tripped the 1000 ms limit could
+# answer different bytes on a slower host.
+#
+# **#234 removed that risk from the port's side.** `RouterBudget::default()` is now
+# `opt_changed_area_ms = 0` — Java's own "off" value (`TraceTightener.java:73-77`'s `> 0` guard) —
+# so the port's pull-tight always runs to completion and its bytes do not depend on the host. The
+# other three literals are unchanged. The jar cannot be given the same treatment: its constant is
+# `javac`-inlined and no flag or reflection reaches it, which is the whole of quirk #234.
+#
+# Measured, and it is why this was safe to do in the same task as the freeze: **the 1000 ms limit
+# takes 0 trips on all eight whole-board stems** in their reference configuration, with the jar's
+# DEBUG log on (`crates/fr-router/README.md`'s acceptance table), so the two budgets produce the
+# same bytes on this corpus. The Task 1 regeneration re-checked it from the other direction and
+# **no golden moved**. The `batch.ses` cross-check below is still the standing guard: it fails
+# loudly if this generator's bare-jar run and Plan 7's `RouterBudget::disabled()`-side reference
+# ever disagree, which is exactly the signal a trip would produce.
 #
 # ## The `batch.ses` cross-check
 #
@@ -313,13 +326,25 @@ write_meta() {
       echo "hash mode    -XX:hashCode=$HASH_MODE"
     fi
     echo "lane         $lane"
-    echo "budget       LIVE ON BOTH SIDES. Unlike scripts/gen-batch-reference.sh, this generator"
-    echo "             needs no probe and disables nothing: what p8t1 compares is two whole"
-    echo "             programs, and the port's CLI runs fr_core::RouterBudget::default() —"
-    echo "             Java's own 1000/10000/250/1000 literals — because that is what a user"
-    echo "             gets. See this script's header for the full argument and for the risk"
-    echo "             (a live wall clock is a machine-speed dependency) the batch.ses"
-    echo "             cross-check below bounds."
+    if [[ "$LANE" == port ]]; then
+      echo "budget       fr_core::RouterBudget::default() — what a user gets. Since Plan 9"
+      echo "             Task 1 (#234) that is opt_changed_area_ms = 0, Java's own off"
+      echo "             value (TraceTightener.java:73-77), so the pull-tight runs to"
+      echo "             completion and these bytes do not depend on how fast this host"
+      echo "             is. The other three keep Java's literals: fanout_ms_per_pin"
+      echo "             10000, board_update_throttle_ms 250, progress_throttle_ms 1000."
+      echo "             Nothing is disabled — RouterBudget::disabled() is the parity"
+      echo "             drivers' configuration and is stricter than this one."
+    else
+      echo "budget       LIVE. Unlike scripts/gen-batch-reference.sh, this generator needs"
+      echo "             no probe and disables nothing: what it compares is two whole"
+      echo "             programs, and the jar cannot switch its own javac-inlined"
+      echo "             TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP off (quirk #234). So this lane"
+      echo "             runs Java's four literals, 1000/10000/250/1000, live — and the"
+      echo "             machine-speed dependency that implies is bounded by measurement"
+      echo "             (0 trips on all eight whole-board stems) and by the batch.ses"
+      echo "             cross-check below, not by hope. See this script's header."
+    fi
     if [[ "$LANE" == port ]]; then
       printf 'command      freerouting %s\n' "$(portable "${ARGV[*]}")"
       printf 'manifest cmd freerouting %s --router.result_json=<OUT>/manifest.json\n' \
