@@ -827,6 +827,18 @@ needs nothing further — Task 3's re-cut plus the S4 correction stand.
 
 ### Task 10: shove, obstacle and clearance decisions — survey group 10
 
+**Controller note (Plan 9 Task 17, ruling BY): register row #297 owed.** Task 17's #193
+instrumentation found that `MazeSearchEngine.reduceTraceShapesAtTiePins` — the maze search's
+*only* board write — never fires on any of the eight batch stems (`autoroute/maze/MazeSearchEngine.java:157-162`;
+port at `crates/fr-router/src/autoroute/maze/search.rs::reduce_trace_shapes_at_tie_pins`). This
+is not a #193 question (it does not bear on the stale-index guards), and it is not in this
+task's eight-row fix list; it is an open investigation with its own row, **#297**, `candidate`,
+owned by **this task**. Before this task's #50/#179/etc. land, build a directed fixture with a
+genuine multi-net tie pin (a pin on two nets) contacting a foreign-net trace and confirm whether
+the predicate fires: if it does, corpus sparsity explains the zero and the row can close as
+documented; if it does not, `is_tie_pin`/`is_foreign_trace` are mis-ported against `:157-162` and
+need a real fix. Report the answer in this task's report and flip #297's status accordingly.
+
 **Survey §10.1 constraint 15: #231 early, once.** It changes the clearance every committed reference was generated with, so doing it late invalidates every A/B taken before it. It is the first commit of this task. **Recommendation 3 is adopted**: make the option **continuous** and **keep 500 µm as the default**, then measure removing it as its own experiment — changing the semantics and the default in one commit would make the regeneration unreadable.
 
 **Files:** `crates/fr-board/src/board/{shape_trace_entries.rs,trace_normalize.rs,clearance_override.rs,mod.rs}`; `crates/fr-router/src/{shove/trace_shover.rs,autoroute/maze_expand.rs,pipeline/run.rs}`; `crates/fr-board/src/{layer_structure.rs,items/conduction_area.rs}`; `crates/fr-router/src/board_ext/drill_item_mover.rs`; `crates/fr-router/tests/{fixtures.rs,maze_expand.rs,board_ext.rs}`; `crates/fr-board/tests/*`; a **new fixture with a signal-layer pour and a foreign-net trace**.
