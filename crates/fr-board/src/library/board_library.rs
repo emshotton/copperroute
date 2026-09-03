@@ -124,12 +124,19 @@ impl BoardLibrary {
     /// method body.
     ///
     /// Java bug: the real method does not null-check `viaPadstacks` before calling
-    /// `.remove` on it, so calling this before any `addViaPadstack`/`setViaPadstacks` throws a
-    /// `NullPointerException`. The port reproduces that as a panic. See `docs/java-quirks.md`.
+    /// `.remove` on it, so calling this before any `addViaPadstack`/`setViaPadstacks` threw a
+    /// `NullPointerException`. See `docs/java-quirks.md`.
+    ///
+    /// fixed: T6 (#43) — the register suggests initialising `viaPadstacks` to an empty `Vector` in
+    /// both constructors, and this is that fix expressed where the port keeps the null-ness. The
+    /// field stays `Option`, because `getViaPadstackCount` (`:97`) and `getViaPadstack` (`:100`)
+    /// already read it as "null means none" and Plan 6 needs that distinction; what changes is
+    /// that the two methods which dereferenced it unguarded now read it the same way. An absent
+    /// list removes nothing and answers `false`, which is exactly what an empty `Vector` would.
     pub fn remove_via_padstack(&mut self, padstack: PadstackId) -> bool {
-        let list = self.via_padstacks.as_mut().expect(
-            "BoardLibrary.removeViaPadstack: Java NPEs here when viaPadstacks is still null",
-        );
+        let Some(list) = self.via_padstacks.as_mut() else {
+            return false;
+        };
         match list.iter().position(|id| *id == padstack) {
             Some(index) => {
                 list.remove(index);
@@ -145,9 +152,12 @@ impl BoardLibrary {
     /// `toLayer() == layerCount - 1`) mirrors to itself.
     ///
     /// Java bug: when `via_padstack` does not already span the whole board, Java iterates the
-    /// `viaPadstacks` field directly with no null check, so this also `NullPointerException`s on
-    /// an unset via-padstack list. The port reproduces that as a panic. See
-    /// `docs/java-quirks.md`.
+    /// `viaPadstacks` field directly with no null check, so this also `NullPointerException`ed on
+    /// an unset via-padstack list. See `docs/java-quirks.md`.
+    ///
+    /// fixed: T6 (#43) — the same guard as [`Self::remove_via_padstack`]'s. It is the same
+    /// register row and the same field, so fixing one and leaving the other would have left the
+    /// row half true; an absent list has no mirrored via in it, which is `None`.
     pub fn get_mirrored_via_padstack(&self, via_padstack: PadstackId) -> Option<PadstackId> {
         let layer_count = self.padstacks.board_layer_structure.layers.len() as i32;
         let via = self
@@ -159,9 +169,7 @@ impl BoardLibrary {
         }
         let new_from_layer = layer_count - via.to_layer() - 1;
         let new_to_layer = layer_count - via.from_layer() - 1;
-        let list = self.via_padstacks.as_ref().expect(
-            "BoardLibrary.getMirroredViaPadstack: Java NPEs iterating a null viaPadstacks list",
-        );
+        let list = self.via_padstacks.as_ref()?;
         list.iter().copied().find(|id| {
             let candidate = self
                 .padstacks
@@ -304,13 +312,28 @@ mod tests {
         assert_eq!(library.get_via_padstack_by_name("VIA1"), None);
     }
 
+    /// Quirk #43, inverted. `viaPadstacks` is null until the first `addViaPadstack`, and both
+    /// `removeViaPadstack` and `getMirroredViaPadstack` dereferenced it with no check.
     #[test]
-    #[should_panic]
-    fn remove_via_padstack_panics_before_any_via_padstack_was_ever_added() {
-        // Java bug (docs/java-quirks.md): `viaPadstacks` is still null, and
-        // `removeViaPadstack` has no null check before calling `.remove` on it.
+    fn the_via_padstack_list_is_guarded_before_any_via_padstack_was_ever_added() {
         let (mut library, ids) = library_with_padstacks(2, 1);
-        library.remove_via_padstack(ids[0]);
+        assert_eq!(
+            library.via_padstack_count(),
+            0,
+            "the list is still Java's null"
+        );
+
+        // Removing from a list that does not exist removes nothing — what an empty `Vector`,
+        // which is the register's suggested fix, would have answered.
+        assert!(!library.remove_via_padstack(ids[0]));
+        // The same row's other half: iterating a list that does not exist finds no mirror.
+        assert_eq!(library.get_mirrored_via_padstack(ids[0]), None);
+
+        // And the guard did not change the populated answers.
+        library.add_via_padstack(ids[0]);
+        assert_eq!(library.via_padstack_count(), 1);
+        assert!(library.remove_via_padstack(ids[0]));
+        assert!(!library.remove_via_padstack(ids[0]));
     }
 
     #[test]

@@ -351,6 +351,15 @@ impl Polyline {
     ///
     /// Java returns -1 for an empty polyline; `usize` saturates at 0 instead.
     // totalized: cornerCount() of an empty polyline is 0 here, -1 in Java.
+    //
+    // fixed: T6 (#25) — the guard is the `saturating_sub` above, and it was **already here**
+    // before Plan 9: the port has never been able to return Java's -1, because the return type is
+    // `usize`. Task 6 changes no code at this site; it adds this marker, the directed test
+    // `an_empty_polyline_has_no_corners_and_no_negative_array` in
+    // `crates/fr-geometry/tests/polyline.rs`, and the register status — the survey listed the row
+    // as an unguarded site, and it is not one. What Java's -1 flowed into is what the row is
+    // really about: `new IntPoint[cornerCount()]` in `rotateApprox` (`NegativeArraySizeException`)
+    // and `boundingBox(0, -2)`; neither is expressible here.
     pub fn corner_count(&self) -> usize {
         self.lines.len().saturating_sub(1)
     }

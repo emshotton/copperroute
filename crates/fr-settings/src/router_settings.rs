@@ -735,26 +735,33 @@ impl RouterSettings {
     /// or length guard, unlike `getPreferredDirectionTraceCosts` (:781-785) and
     /// `getAgainstPreferredDirectionTraceCosts` (:806-810) immediately above it, which both
     /// answer `1.0` in exactly that situation. A `RouterSettings` with a non-empty `layers` and a
-    /// `scoring` whose cost arrays were never allocated therefore throws
+    /// `scoring` whose cost arrays were never allocated therefore threw
     /// `NullPointerException` here — JVM-verified against the clone-HEAD jar (see
-    /// `task-4-report.md`, probe row `E`). Reproduced as a panic, not softened to `1.0`; see
-    /// `docs/java-quirks.md` #123.
+    /// `task-4-report.md`, probe row `E`). See `docs/java-quirks.md` #123.
+    ///
+    /// fixed: T6 (#123) — the siblings' guard, in the siblings' own shape, so the four accessors
+    /// now differ only in which array they read.
     pub fn get_horizontal_trace_costs(&self, layer: usize) -> f64 {
         if layer >= self.get_layer_count() {
             return 0.0;
         }
-        let scoring = self
-            .scoring
-            .as_ref()
-            .expect("RouterSettings.java:825-827: scoring is dereferenced without a null check");
-        let array = if self.get_preferred_direction_is_horizontal(layer) {
-            scoring.preferred_direction_trace_cost.as_ref()
-        } else {
-            scoring.undesired_direction_trace_cost.as_ref()
-        };
-        array.expect(
-            "RouterSettings.java:825-827: the trace cost array is dereferenced without a null check",
-        )[layer]
+        // fixed: T6 (#123) — the guard the two siblings immediately above already have.
+        // `getPreferredDirectionTraceCosts` (`:781-785`) and
+        // `getAgainstPreferredDirectionTraceCosts` (`:806-810`) answer `1.0` for a null `scoring`,
+        // a null array or a short one; these two threw instead, so the same settings object
+        // answered `1.0` through one pair of accessors and `NullPointerException` through the
+        // other. Written in the siblings' own shape, `and_then(...).unwrap_or(1.0)`, so the four
+        // now differ only in which array they read. The range check stays *above* it, so an
+        // out-of-range layer still answers `0.0` (JVM-verified: `getHorizontalTraceCosts(9)` is
+        // `0.0`, not `1.0`).
+        let array = self.scoring.as_ref().and_then(|scoring| {
+            if self.get_preferred_direction_is_horizontal(layer) {
+                scoring.preferred_direction_trace_cost.as_ref()
+            } else {
+                scoring.undesired_direction_trace_cost.as_ref()
+            }
+        });
+        array.and_then(|a| a.get(layer).copied()).unwrap_or(1.0)
     }
 
     /// `RouterSettings.getVerticalTraceCosts` (`:861-874`): the mirror of
@@ -763,31 +770,33 @@ impl RouterSettings {
     /// Java bug: getVerticalTraceCosts (RouterSettings.java:869-871) has the same unguarded
     /// dereference as its horizontal twin — see [`Self::get_horizontal_trace_costs`] and
     /// `docs/java-quirks.md` #123.
+    ///
+    /// fixed: T6 (#123) — the same guard, on the other array.
     pub fn get_vertical_trace_costs(&self, layer: usize) -> f64 {
         if layer >= self.get_layer_count() {
             return 0.0;
         }
-        let scoring = self
-            .scoring
-            .as_ref()
-            .expect("RouterSettings.java:869-871: scoring is dereferenced without a null check");
-        let array = if self.get_preferred_direction_is_horizontal(layer) {
-            scoring.undesired_direction_trace_cost.as_ref()
-        } else {
-            scoring.preferred_direction_trace_cost.as_ref()
-        };
-        array.expect(
-            "RouterSettings.java:869-871: the trace cost array is dereferenced without a null check",
-        )[layer]
+        // fixed: T6 (#123) — the horizontal twin's guard, on the other array. See
+        // [`Self::get_horizontal_trace_costs`].
+        let array = self.scoring.as_ref().and_then(|scoring| {
+            if self.get_preferred_direction_is_horizontal(layer) {
+                scoring.undesired_direction_trace_cost.as_ref()
+            } else {
+                scoring.preferred_direction_trace_cost.as_ref()
+            }
+        });
+        array.and_then(|a| a.get(layer).copied()).unwrap_or(1.0)
     }
 
     /// `RouterSettings.getTraceCosts` (`:877-889`): one [`ExpansionCostFactor`] per entry of
     /// `scoring.preferredDirectionTraceCost`, empty when `scoring` or that array is absent.
     ///
     /// The guard at `:878-880` only checks `preferredDirectionTraceCost`, so a settings object
-    /// with a populated preferred array and an absent *undesired* array reaches
-    /// [`Self::get_horizontal_trace_costs`]' unguarded dereference and panics — the same Java bug
-    /// one level up.
+    /// with a populated preferred array and an absent *undesired* array reached
+    /// [`Self::get_horizontal_trace_costs`]' unguarded dereference and panicked — the same Java
+    /// bug one level up. fixed: T6 (#123) at the accessor, which is where the defect is: this
+    /// method's own half-guard is unchanged, and the entry it used to die on now carries the
+    /// siblings' `1.0`.
     pub fn get_trace_costs(&self) -> Vec<ExpansionCostFactor> {
         let Some(length) = self
             .scoring
