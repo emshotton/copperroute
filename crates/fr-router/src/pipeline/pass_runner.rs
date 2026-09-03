@@ -293,14 +293,31 @@ impl AutoroutePassRunner {
                     break;
                 }
 
-                // :212-221. `maxItems` reached: log, request an **ALL** stop, and break the net
-                // loop; `:203-205` then breaks the item loop on the next turn.
+                // :212-221. `maxItems` reached: log, request the stop, and break the net loop;
+                // `:203-205` then breaks the item loop on the next turn.
                 //
                 // Java bug: `AutoroutePassRunner.runSingleThread` (`:219`) — `thread.requestStop()` sets `ALL`, not `AUTO_ROUTER_ONLY`, so reaching `--max-items` also silences the optimizer stage at `RoutingPipeline.java:117` (quirk #202).
+                // fixed: T9 (#202) — `request_stop_auto_router()`, which is what the sibling limit
+                // does. `AutorouteBatchLoop.java:271` answers `--max-passes` with
+                // `requestStopAutoRouter()`, so a `--max-passes` run optimises and a
+                // `--max-items` run did not; the log line even says "Stopping auto-router", and
+                // **the optimizer is not the auto-router**. Both limits now mean "stop routing"
+                // and neither silently cancels a stage the caller asked for.
+                //
+                // The **three-state stop is kept**, not collapsed (survey §9.1): this site moves
+                // one step down the lattice, from `ALL` to `AUTO_ROUTER_ONLY`, and `ALL` stays
+                // reserved for what it always meant — an operator's `notifications/cancelled` and
+                // ruling AI's job deadline. Every reader of the flag is unchanged: `:203`/`:208`
+                // and the pass loop head read `!= NONE` and still stop, `:117` reads `ALL` and no
+                // longer skips, and `run_pipeline`'s stage-scoped reset (#227) lowers this state
+                // at the optimizer boundary exactly as it lowers `maxPasses`'.
+                //
+                // **Worth nothing without #227**: before the stage-scoped stop the optimizer would
+                // merely have run and changed nothing, which is what `maxPasses` already did.
                 let max_items = router.settings().max_items;
                 if max_items.is_some_and(|max| max > 0 && router.total_items_routed >= max) {
-                    // :219 — `requestStop`, not `requestStopAutoRouter`.
-                    stop.request_stop();
+                    // :219 — `requestStop` in Java; see the marker above.
+                    stop.request_stop_auto_router();
                     break;
                 }
                 // :222.

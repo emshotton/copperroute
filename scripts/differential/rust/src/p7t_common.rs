@@ -315,7 +315,11 @@ pub fn transcribe_run_single_thread<W: Write>(
                     router.total_items_routed
                 )
                 .expect("write");
-                state.stop.request_stop();
+                // fixed: T9 (#202) — the real `AutoroutePassRunner` calls
+                // `request_stop_auto_router()` here where Java's `:219` calls `requestStop()`, so
+                // the transcription follows it. A `p7t2` MISMATCH confined to what the stop flag
+                // reads after a `maxItems` run is that fix, not the port drifting.
+                state.stop.request_stop_auto_router();
                 break;
             }
             // :222-223.

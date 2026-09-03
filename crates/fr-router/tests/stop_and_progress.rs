@@ -30,7 +30,7 @@ use fr_board::prelude::*;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::pipeline::{
     NamedAlgorithmType, NoopProgressSink, ProgressSink, ProgressThrottler, RouterBudget,
-    RouterCounters, RouterStop, RoutingEvent, StopRequestState, TaskState,
+    RouterCounters, RouterStop, RoutingEvent, StopRequestState, TaskState, run_pipeline,
 };
 use fr_router::route_connection;
 use fr_settings::sources::DefaultSettings;
@@ -218,8 +218,11 @@ fn max_items_stops_all_and_max_passes_stops_the_router_only() {
     );
     assert!(
         !optimizer_stage_would_run(&by_items),
-        "quirk #202: hitting --max-items silently disables the optimizer stage \
-         (RoutingPipeline.java:117 reads isStopRequested, which is ALL-only)"
+        "quirk #202 on the JVM: hitting --max-items silently disables the optimizer stage \
+         (RoutingPipeline.java:117 reads isStopRequested, which is ALL-only). The **port's** own \
+         maxItems site no longer writes ALL — fixed: T9 (#202) — and \
+         `max_items_optimises_like_max_passes` below is the consequence; this test is the jar's \
+         answer, kept on record"
     );
     assert_eq!(
         field(max_items_row, "optimizerStageWouldRun"),
@@ -246,7 +249,133 @@ fn max_items_stops_all_and_max_passes_stops_the_router_only() {
     assert_eq!(
         field(max_passes_row, "optimizerStageWouldRun"),
         "true",
-        "the JVM's word: `{max_passes_row}`"
+        "--max-passes leaves the optimizer stage enabled"
+    );
+}
+
+/// **Quirk #202's fix (Plan 9 Task 9), end to end on a real board.**
+///
+/// The test above keeps the **jar's** answer on record: `AutoroutePassRunner.java:219` writes
+/// `ALL` and `RoutingPipeline.java:117` then skips the optimizer stage, so a `--max-items` run
+/// wrote an unoptimised board while a `--max-passes` run optimised normally. The port's own
+/// `maxItems` site calls `request_stop_auto_router()` instead, and this test is the consequence:
+/// **the two limits now end the same way**.
+///
+/// It is a stronger claim than "the stage was entered", which
+/// `crates/fr-router/tests/pipeline.rs`'s `neither_routing_limit_skips_the_optimizer_stage`
+/// already makes: here the stage has to *do work* on the `--max-items` path, which is only
+/// observable at all because #227 landed with it. `--max-items` on its own is worth nothing.
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn max_items_optimises_like_max_passes() {
+    if !parity::require_java_dir() {
+        return;
+    }
+
+    /// Routes `Issue143-rpi_splitter.dsn` through the whole pipeline with the optimizer on and
+    /// answers `(the flag on the way out, whether the stage ran, the board's hash)`.
+    fn route(max_items: Option<i32>, max_passes: i32) -> (StopRequestState, TaskState, u64) {
+        let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+        let file = std::fs::File::open(&path)
+            .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+        let mut board = match fr_dsn::read_board(
+            file,
+            None,
+            Some("Issue143-rpi_splitter.dsn"),
+            &DsnReadOptions::default(),
+        ) {
+            BoardReadResult::Success { board, .. }
+            | BoardReadResult::OutlineMissing { board, .. } => *board.expect("a board"),
+            other => panic!("did not read: {other:?}"),
+        };
+        let mut settings = build_settings(&board);
+        settings.max_passes = Some(max_passes);
+        settings.max_items = max_items;
+        settings.fanout.get_or_insert_with(Default::default).enabled = Some(false);
+        settings.set_run_router(true);
+        settings.set_run_optimizer(true);
+        settings
+            .optimizer
+            .get_or_insert_with(Default::default)
+            .max_passes = Some(1);
+
+        let stop = RouterStop::new();
+        let mut sink = NoopProgressSink;
+        let result = run_pipeline(
+            &mut board,
+            &settings,
+            &stop,
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("rpi_splitter has a routable signal layer");
+        (
+            stop.state(),
+            result
+                .optimizer_state
+                .expect("run_optimizer is on, so the stage is configured"),
+            board.structural_hash(),
+        )
+    }
+
+    // Two items is well inside `rpi_splitter`'s eight connections, so the `maxItems` gate trips
+    // long before the pass budget does.
+    let (by_items_flag, by_items_state, by_items_hash) = route(Some(2), 8);
+    let (by_passes_flag, by_passes_state, _) = route(None, 1);
+
+    // fixed: T9 (#202) — neither limit writes `ALL`. That is the whole of the quirk: `ALL` is
+    // what `RoutingPipeline.java:117` reads, and it is what silently cancelled the stage.
+    assert_ne!(by_items_flag, StopRequestState::All);
+    assert_ne!(by_passes_flag, StopRequestState::All);
+    // The `--max-passes` path is `NONE` on the way out, because #227's stage boundary lowered
+    // the flag the pass loop raised and nothing raised it again. The `--max-items` path is not,
+    // and that is not the boundary failing: `--max-items` is a **settings** limit, so the fresh
+    // `BatchAutorouter` that `autoroutePassesForOptimizingItem` builds per optimized item reads
+    // the same `settings.max_items` and trips `:212-221` on its own counter, raising the flag
+    // again from inside the stage.
+    assert_eq!(by_passes_flag, StopRequestState::None);
+
+    // Neither reports the "configured but never entered" state.
+    assert_ne!(by_items_state, TaskState::Idle);
+    assert_ne!(by_passes_state, TaskState::Idle);
+
+    // And the `--max-items` run really did optimise: the same run with the optimizer switched
+    // off leaves a different board.
+    let unoptimised = {
+        let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+        let file = std::fs::File::open(&path).expect("cannot open the fixture");
+        let mut board = match fr_dsn::read_board(
+            file,
+            None,
+            Some("Issue143-rpi_splitter.dsn"),
+            &DsnReadOptions::default(),
+        ) {
+            BoardReadResult::Success { board, .. }
+            | BoardReadResult::OutlineMissing { board, .. } => *board.expect("a board"),
+            other => panic!("did not read: {other:?}"),
+        };
+        let mut settings = build_settings(&board);
+        settings.max_passes = Some(8);
+        settings.max_items = Some(2);
+        settings.fanout.get_or_insert_with(Default::default).enabled = Some(false);
+        settings.set_run_router(true);
+        settings.set_run_optimizer(false);
+        let stop = RouterStop::new();
+        let mut sink = NoopProgressSink;
+        run_pipeline(
+            &mut board,
+            &settings,
+            &stop,
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("rpi_splitter has a routable signal layer");
+        board.structural_hash()
+    };
+    assert_ne!(
+        by_items_hash, unoptimised,
+        "a --max-items run must write an OPTIMISED board — that is the whole of quirk #202, and \
+         it is only observable because #227 landed with it"
     );
 }
 

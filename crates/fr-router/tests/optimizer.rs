@@ -388,16 +388,23 @@ fn a_pass_that_improves_nothing_clears_the_increased_ripup_costs_and_ends_the_st
     assert!(!optimizer.use_increased_ripup_costs);
 }
 
-/// Quirk #202's second half, end to end at this stage: `AutoroutePassRunner:219` answers a
-/// `--max-items` limit with `requestStop()`, i.e. **`ALL`**, and `:171` is `isStopRequested()`.
-/// So a `maxItems` router stop disables the optimizer stage outright — zero passes, zero items.
+/// `:167-171`'s `ALL` gate, on its own. An `ALL` stop disables the optimizer stage outright —
+/// zero passes, zero items.
+///
+/// This **was** quirk #202's second half: `AutoroutePassRunner:219` answered a `--max-items`
+/// limit with `requestStop()`, i.e. `ALL`, where the sibling `--max-passes` limit answers
+/// `requestStopAutoRouter()`. `fixed: T9 (#202)` moved that site down the lattice, so no routing
+/// limit reaches this gate any more and the only writers of `ALL` are the ones that always meant
+/// "the job is over" — an operator's cancel and ruling AI's job deadline. The gate itself is
+/// unchanged and is what this test pins.
 #[test]
-fn a_max_items_router_stop_disables_this_stage() {
+fn an_all_stop_disables_this_stage() {
     let mut board = empty_board();
     let settings = build_settings(&board);
     let mut optimizer = BatchOptimizer::new(&settings);
     let stop = RouterStop::new();
-    // `AutoroutePassRunner.java:219`.
+    // What `RouterStop::poll_cancel` and `RouterStop::poll_deadline` write — and, in Java,
+    // `AutoroutePassRunner.java:219` as well.
     stop.request_stop();
     let mut sink = RecordingSink { events: Vec::new() };
     let result = optimizer

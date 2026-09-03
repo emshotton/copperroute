@@ -424,20 +424,24 @@ fn an_empty_item_list_returns_false_without_touching_the_board() {
     );
 }
 
-/// `:212-221` — `maxItems` reached calls `thread.requestStop()`, which is
+/// `:212-221` — `maxItems` reached. Java calls `thread.requestStop()`, which is
 /// `StoppableThread.requestStop` (`StoppableThread.java:20-23`) and sets **`ALL`**, not
-/// `AUTO_ROUTER_ONLY`.
+/// `AUTO_ROUTER_ONLY`; **quirk #202**, because `ALL` is what `RoutingPipeline.java:117` gates the
+/// optimizer stage on, so a run that reached `--max-items` silently lost the optimizer as well as
+/// the router while the sibling `--max-passes` limit did not.
 ///
-/// **Quirk #202.** `ALL` is what `RoutingPipeline.java:117` gates the optimizer stage on, so a run
-/// that reaches `--max-items` silently loses the optimizer as well as the router. The port
-/// reproduces it; this test is the pin, and the `// Java bug:` marker is at the site in
-/// `pass_runner.rs`.
+/// **fixed: T9 (#202)** — the site calls `request_stop_auto_router()`, so both limits mean "stop
+/// routing" and the optimizer stage still runs. This test is the pin for the fixed state: the
+/// flag reaches `AUTO_ROUTER_ONLY` and **not** `ALL`, which is the whole of the difference.
+/// `crates/fr-router/tests/stop_and_progress.rs`'s `max_items_optimises_like_max_passes` measures
+/// the consequence end to end, and `max_items_stops_all_and_max_passes_stops_the_router_only` in
+/// the same file keeps the **jar's** answer on record.
 ///
 /// The guard is `totalItemsRouted >= maxItems` **before** `:222`'s increment, so `maxItems = 1`
 /// routes exactly one item and stops on the second — which is the off-by-one the assertion
 /// records rather than smooths over.
 #[test]
-fn max_items_requests_stop_all() {
+fn max_items_requests_stop_auto_router() {
     let mut board = empty_board();
     add_net(&mut board, "N1", false);
     add_net(&mut board, "N2", false);
@@ -478,12 +482,17 @@ fn max_items_requests_stop_all() {
     );
     assert_eq!(
         stop.state(),
-        StopRequestState::All,
-        "AutoroutePassRunner.java:219 calls requestStop(), not requestStopAutoRouter() — quirk #202"
+        StopRequestState::AutoRouterOnly,
+        "fixed: T9 (#202) — the site calls requestStopAutoRouter(), where Java's `:219` calls \
+         requestStop()"
     );
     assert!(
-        stop.is_stop_requested(),
-        "…and `ALL` is the state RoutingPipeline.java:117 reads to skip the optimizer"
+        stop.is_stop_auto_router_requested(),
+        "the pass loop and the item loop both still stop: they read `!= NONE`"
+    );
+    assert!(
+        !stop.is_stop_requested(),
+        "…and RoutingPipeline.java:117 reads `ALL`, so the optimizer stage is no longer skipped"
     );
 }
 
