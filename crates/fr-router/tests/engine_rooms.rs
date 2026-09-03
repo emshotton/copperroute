@@ -404,7 +404,7 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
     );
 }
 
-/// Quirk #164, named. Probe mode 5, verbatim:
+/// Quirk #164, named — **fixed: T8**. Probe mode 5, verbatim:
 ///
 /// ```text
 /// removing id=1 doors=2
@@ -420,45 +420,106 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
 /// ```
 ///
 /// `removeCompleteExpansionRoom`'s parameter is declared `CompleteFreeSpaceExpansionRoom`, so
-/// `currentDoor.otherRoom(room)` at `:383` binds `ExpansionDoor`'s **narrowing**
-/// `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92) and `:385` skips every
-/// door whose far side is incomplete. Both removals have a 1-dimensional intersection across
-/// every door, and the outcomes differ entirely by neighbour kind:
+/// `currentDoor.otherRoom(room)` at `:383` bound `ExpansionDoor`'s **narrowing**
+/// `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92) and `:385` skipped every
+/// door whose far side is incomplete. `completeNeighbourRooms` casts its argument back to
+/// `(ExpansionRoom)` at `:578` for exactly this reason and says so in a comment; there is no such
+/// cast here, and the port now takes the wide overload as if there were.
 ///
-/// * room 1's two neighbours are **complete** rooms, so both survive `:385` and both regenerate
-///   an incomplete room at `:396-400` — `incomplete` rises 9 → 11.
-/// * room 5's four neighbours are **incomplete**, so all four are skipped and **nothing** is
-///   regenerated; `removeAllDoors` at `:403` then drops all four — `incomplete` falls 11 → 7.
+/// **The two live counts do not move, and that is the finding.** Java's own `:403`
+/// `removeAllDoors` removes every door of the room being removed, drops the incomplete room on
+/// each door's far side, and `removeIncompleteExpansionRoom` recurses into `removeAllDoors` — so
+/// the incomplete room `:396-400` regenerates *for an incomplete neighbour* hangs off a room that
+/// `:403` is about to delete, and goes with it. The regeneration is only permanent for a
+/// **complete** neighbour, which is what the first removal above shows (`incomplete` 9 -> 11).
+/// So the visible effect of the skip was nil and its invisible effect was the crash below.
 ///
-/// A port on the wide overload creates four rooms here instead of none, and in fact never gets
-/// that far: two of the four answer `touchingSides == new int[0]` (`TileShape.java:588-591`,
-/// which Java logs as `touching_side : dir2 not found`) and `:394`'s unchecked
-/// `touchingSides[1]` throws. That is how quirk #164 was found.
+/// What moves is the arena, and that is what these two tests read: two rooms and two doors are
+/// **constructed** for the two incomplete neighbours whose `touchingSides` is not empty, and then
+/// destroyed. `Arena` never reuses an index, so `slot_count()` is the honest record of "this door
+/// was visited".
 #[test]
-fn remove_complete_expansion_room_skips_incomplete_neighbours() {
+fn a_door_onto_an_incomplete_room_is_not_skipped() {
     let (mut board, mut engine) = net_dependent_run(true);
     let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
-    assert_eq!(
-        rooms
-            .iter()
-            .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
-            .collect::<Vec<_>>(),
-        vec![1, 5]
-    );
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 9);
-    assert_eq!(tree_size(&board, &engine), 4);
 
-    // Two complete neighbours: both regenerate.
+    // The first removal's two neighbours are complete rooms; it is the control, and the two rooms
+    // it regenerates survive because nothing deletes a complete neighbour.
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
-    assert_eq!(engine.complete_expansion_rooms().len(), 1);
     assert_eq!(engine.rooms.incomplete_rooms.len(), 11, "9 + 2 regenerated");
-    assert_eq!(tree_size(&board, &engine), 3);
 
-    // Four incomplete neighbours: none regenerates, and `removeAllDoors` drops all four.
+    // The second removal's four neighbours are all incomplete — the doors `:385` used to skip.
+    let room_slots_before = engine.rooms.incomplete_rooms.slot_count();
+    let door_slots_before = engine.rooms.doors.slot_count();
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    assert_eq!(
+        engine.rooms.incomplete_rooms.slot_count() - room_slots_before,
+        2,
+        "the two incomplete neighbours with a non-empty touchingSides each get their \
+         regenerated room built — before the fix the wide overload was never taken and this \
+         difference is 0"
+    );
+    assert_eq!(
+        engine.rooms.doors.slot_count() - door_slots_before,
+        2,
+        "and a door apiece"
+    );
+
+    // The live counts are Java's and do not move: `:403`'s cascade deletes the two regenerated
+    // rooms along with the incomplete neighbours they hang off.
     assert_eq!(engine.complete_expansion_rooms().len(), 0);
     assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "11 - 4, none added");
     assert_eq!(tree_size(&board, &engine), 2);
+}
+
+/// The other half of #164, and the reason it cannot be half-fixed. `:394` indexes
+/// `touchingSides[1]` with nothing guaranteeing the array has two entries;
+/// `TileShape.touchingSides` answers `new int[0]` whenever its search fails
+/// (TileShape.java:588-591, logged as `touching_side : dir2 not found`), and a 1-dimensional
+/// intersection is no guarantee that it will not. **What kept the index in range was the
+/// narrowing overload**: two of the four doors above answer `touchingSides=EMPTY`, and they are
+/// exactly the incomplete neighbours `:385` used to skip. Fixing only the overload turns a silent
+/// skip into an `ArrayIndexOutOfBoundsException`, so both are fixed together.
+///
+/// The port's `touching_sides` answers `Option<[usize; 2]>`, so "length >= 2" is a type-level
+/// guarantee and Java's length check is the `None` arm. A `len() == 1` array is not
+/// representable, and Java's only short answer is `new int[0]`.
+#[test]
+fn touching_sides_is_length_checked() {
+    let (mut board, mut engine) = net_dependent_run(true);
+    let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
+
+    // Four doors onto incomplete rooms, all with a 1-dimensional intersection; two of them answer
+    // an empty `touchingSides`. The pre-fix port could not reach them at all, and a port that
+    // took the wide overload without this check panics here with
+    // "AutorouteEngine.removeCompleteExpansionRoom: a 1-dimensional intersection with no touching
+    // sides — Java throws an ArrayIndexOutOfBoundsException at AutorouteEngine.java:394".
+    let room_ref = fr_router::autoroute::expansion::RoomRef::Complete(rooms[1]);
+    let neighbour_shapes: Vec<_> = engine
+        .rooms
+        .room_doors(room_ref)
+        .to_vec()
+        .into_iter()
+        .filter_map(|door| engine.rooms.door(door)?.other_room(room_ref))
+        .filter_map(|other| engine.rooms.room_shape(other).cloned())
+        .collect();
+    let room_shape = engine
+        .rooms
+        .room_shape(room_ref)
+        .cloned()
+        .expect("the room has a shape");
+    let empty = neighbour_shapes
+        .iter()
+        .filter(|shape| room_shape.touching_sides(shape).is_none())
+        .count();
+    assert_eq!(
+        empty, 2,
+        "the fixture must carry the short-array case, or this test asserts nothing"
+    );
+
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 7);
 }
 
 /// The same run with `maintainDatabase == false`: `:97` gates the whole invalidation, so the two

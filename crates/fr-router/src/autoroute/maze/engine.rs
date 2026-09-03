@@ -664,22 +664,25 @@ impl AutorouteEngine {
         // room's own list, which `:403` clears afterwards — so a snapshot is the same traversal.
         let room_doors: Vec<DoorId> = self.rooms.room_doors(room_ref).to_vec();
         for current_door in room_doors {
-            // :383-386, and **the overload matters**. `room` is declared
+            // :383-386, and **the overload matters**. fixed: T8 (#164). `room` is declared
             // `CompleteFreeSpaceExpansionRoom` here, so `currentDoor.otherRoom(room)` binds the
             // narrowing `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92),
             // which answers `null` for an *incomplete* neighbour — not the
             // `otherRoom(ExpansionRoom)` overload (`:62-72`) that `completeExpansionRoom` and
-            // `removeAllDoors` bind. So every incomplete neighbour is skipped by `:385`, and it
-            // keeps its door to this room until `removeAllDoors` at `:403` — which *does* use the
-            // wide overload — unlinks it and removes the room outright.
+            // `removeAllDoors` bind. So every incomplete neighbour was skipped by `:385` — and on
+            // a freshly completed room **most** doors are onto incomplete rooms, which made the
+            // method a near-no-op: the neighbour kept its door to this room until
+            // `removeAllDoors` at `:403`, which *does* use the wide overload, unlinked it and
+            // removed the room outright rather than regenerating the incomplete room `:396-400`
+            // is there to build.
             //
             // `completeNeighbourRooms` casts its argument back to `(ExpansionRoom)` at `:578` for
-            // exactly this reason and says so in a comment; there is no such cast here.
-            // See `docs/java-quirks.md` #164.
+            // exactly this reason and says so in a comment; there is no such cast here, and the
+            // port now takes the wide overload as if there were.
             let Some(current_neighbour) = self
                 .rooms
                 .door(current_door)
-                .and_then(|d| d.other_complete_room(room_ref))
+                .and_then(|d| d.other_room(room_ref))
             else {
                 continue;
             };
@@ -697,16 +700,23 @@ impl AutorouteEngine {
                 continue;
             }
             // :391-395. "Add a new incomplete room to currentNeighbour."
-            let touching_sides = room_shape
-                .touching_sides(&neighbour_shape)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "AutorouteEngine.removeCompleteExpansionRoom: a 1-dimensional \
-                         intersection with no touching sides — Java throws an \
-                         ArrayIndexOutOfBoundsException at AutorouteEngine.java:394, because \
-                         TileShape.touchingSides answers `new int[0]` (TileShape.java:588-591)"
-                    )
-                });
+            //
+            // fixed: T8 (#164), the second half — and it is not optional. `:394` indexes
+            // `touchingSides[1]` with nothing guaranteeing the array has two entries;
+            // `TileShape.touchingSides` answers `new int[0]` whenever its search fails
+            // (TileShape.java:588-591, which Java logs as "touching_side : dir2 not found"), and
+            // a 1-dimensional intersection is no guarantee that it will not. What kept the index
+            // in range was the narrowing overload above: the doors that reach here with an empty
+            // answer are precisely the incomplete neighbours `:385` used to skip. Fixing only the
+            // overload turns a silent skip into an `ArrayIndexOutOfBoundsException`, so both are
+            // fixed together and the door is skipped instead of indexed.
+            //
+            // The port's `touching_sides` answers `Option<[usize; 2]>`, so "length >= 2" is a
+            // type-level guarantee and the length check is the `None` arm: there is no
+            // representable array of length 1 here, and Java's only short answer is length 0.
+            let Some(touching_sides) = room_shape.touching_sides(&neighbour_shape) else {
+                continue;
+            };
             let border_line = neighbour_shape
                 .border_line(touching_sides[1])
                 .unwrap_or_else(|| {
