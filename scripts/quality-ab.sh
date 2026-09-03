@@ -111,6 +111,31 @@
 # script exits non-zero — so a task that reads only the final line still fails. A task never
 # decides for itself that a flag is acceptable; an `ESCALATE` is a controller ruling.
 #
+# ## The BP12 arm on "incompletes must not rise" (ruling BU(b))
+#
+# **On an escalated task the M-bench is the gate, and this script records.** The rule above was
+# written for the parity era, when a rise in incompletes meant the port had diverged from the jar.
+# Once the port's answer is allowed to be *better* than freerouting's, the rule cannot express a
+# **trade of connectivity for legality** — which is exactly what a fix like R2 (#294) is: a
+# connection that can only be closed with a sub-minimum trace should fail instead of being closed
+# illegally, so the honest incomplete count goes **up** and the board's DRC-clean rate goes up with
+# it.
+#
+# So: when a task has raised a **BP12 escalation** and the controller has adjudicated it against a
+# **milestone bench** (M1/M2/M3 — 605 boards, the frozen `java-278fe14` view), the milestone's
+# verdict is the acceptance decision and this script's flags are **evidence in it**, not a veto
+# over it. Nothing here softens: the flag still prints, the row still names the stem, and the exit
+# code is still non-zero. What changes is only *who decides*, and the answer is never the task —
+# it is the controller, on the bench.
+#
+# Precedent, and the shape to follow: **Plan 9 Task 2**. R1 (#293) + R2 (#294) raised incompletes
+# on 10 of the 21 routed rows over 6 stems (`grep -c INCOMPLETE-ROSE
+# benchmark/baselines/ab/quality-ab-T2.tsv`), against sub-minimum-width traces falling 372 -> 2 and
+# clearance violations staying 0. The task escalated with the numbers rather than deciding for
+# itself; M1 answered corpus clean-pass 0.375 -> 0.550 and small-tier DRC-clean 0.727 -> 0.958; and
+# **ruling BV accepted with the residual gap recorded**. An unescalated task with the same flags is
+# still a stop-and-report — the arm is not a general licence for incompletes to rise.
+#
 # ==================================================================================================
 # 5. The gate version (ruling BP8)
 # ==================================================================================================

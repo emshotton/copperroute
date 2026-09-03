@@ -122,13 +122,31 @@ The reviewer's check is unchanged in substance and gains one clause: every `pend
 
 | metric | source | rule |
 |---|---|---|
-| incomplete connections | the **referee's** DRC, never the manifest (survey §4.1's 45–63 % disagreement) | **must not rise on any stem; must fall on at least one** |
+| incomplete connections | the **referee's** DRC, never the manifest (survey §4.1's 45–63 % disagreement) | **must not rise on any stem; must fall on at least one** — *except on an escalated task; see the BP12 arm below* |
 | clearance violations | referee DRC | **0 on every stem, always** |
 | normalized score | `fr_router::score::normalized_score(&ScoringSettings)` — an `f32` throughout, deliberately (survey §9.1) | must not fall by more than the `f32` noise floor |
 | total trace length | `traces.total_length_mm` | reported; ↓ preferred |
 | via count | `vias.total_count`, split through-hole/blind/buried | reported; ↓ preferred — **I2 is watched here** |
 | bend count | `bends.total_count` | reported |
 | **`cpu_s` per stem** | the driver's own CPU time, **median of 3 repeats**, against `benchmark/baselines/stem-times.tsv` (the **previous task's** number — never the jar's) | **equal-quality: must not be slower.** Quality-winning: tolerated, but **> 2× on a stem** or **> 20 % on the corpus median** escalates to the controller before the task closes. |
+
+**The BP12 arm on "incompletes must not rise" (ruling BU(b)).** **On an escalated task the M-bench
+is the gate, G2 records.** The rule is a parity-era rule: a rise in incompletes used to mean the
+port had diverged from the jar. Once the port's answer is allowed to be *better* than
+freerouting's, the rule cannot express a **trade of connectivity for legality** — which is what R2
+(#294) is, and what several later rows will be: a connection that can only be closed with an
+illegal trace should fail instead of being closed illegally, so the honest incomplete count rises
+and the DRC-clean rate rises with it. So when a task has raised a **BP12 escalation** and the
+controller has adjudicated it against a **milestone bench** (M1/M2/M3, 605 boards, against the
+frozen `java-278fe14` view), the milestone's verdict is the acceptance decision and G2's flags are
+**evidence inside it**, never a veto over it. Nothing is softened: `quality-ab.sh` still prints the
+flag, still names the stem and still exits non-zero, and a task still never decides for itself that
+a flag is acceptable. What the arm settles is only *who decides* — the controller, on the bench.
+**An unescalated task with the same flags is still a stop-and-report**; this is not a general
+licence for incompletes to rise. The precedent is Task 2: 10 rows over 6 stems flagged, 372 → 2
+sub-minimum traces and 0 clearance violations against them, escalated with the numbers, adjudicated
+at M1 (corpus clean-pass 0.375 → 0.550, small-tier DRC-clean 0.727 → 0.958), **accepted with the
+residual gap recorded by ruling BV**.
 
 **Forbidden inputs to G2 until their fix lands:** `traces.total_{vertical,horizontal,angled}_length` (they do not sum to the total — #195, Task 19) and `board.bounding_box.width`/`height` (they hold the lower-left corner — #196, Task 19). `incomplete_count` is itself a fix target (#82, #147 — Task 13): **while those are in flight, report it both ways on the same board**, or the improvement is indistinguishable from the metric moving underneath.
 
@@ -448,12 +466,48 @@ pub enum MaxPasses { Unlimited, Limited(u32) }
 - Drivers touched: `p6t1`, `p7t1`, `p7t2`, `p7t5`, `p7t9`, `p8t1` all re-golden here; none retires.
 
 **Steps:**
-- [ ] Commit 1: R1 — port the three airline methods, re-state the roster greps, sort ascending with the descending-id tie order; three directed tests.
-- [ ] Commit 2: R2 — the rules-minimum guard on the candidate list; three directed tests.
-- [ ] Commit 3: I1/I2 — register rows #295/#296 written with their open questions and their owners (I1 → Task 8, I2 → M1 + Task 18); **no code**.
-- [ ] Commit 4: regenerate B/R/C `--from-port`; the direction checks; the `goldens moved:` line.
-- [ ] Commit 5: **M1** — the workbench build + sha check, `remote-run.sh … --run-id plan9-m1`, the frozen-view compare; `git add -f benchmark/reports/plan9-m1-vs-java-278fe14.{json,md}`, the report appendix, the cpu-ratio line; and, on a miss, the BP12 root-cause report instead.
-- [ ] Register: #293 → `fixed: T2`, #294 → `fixed: T2`, #295/#296 → `candidate` with their owners.
+- [x] Commit 1 (`e4ea4c1`): R1 — port the three airline methods, re-state the roster greps, sort ascending with the descending-id tie order; three directed tests.
+- [x] Commit 2 (`fb1ff6c`): R2 — the rules-minimum guard on the candidate list; three directed tests.
+- [x] Commit 3 (`ebe38e7`): I1/I2 — register rows #295/#296 written with their open questions and their owners (I1 → Task 8, I2 → M1 + Task 18); **no code**.
+- [x] Commit 4 (`bd296d7`): regenerate B/C `--from-port` (the #92 lane switch and the `stats.rs` `hostCad` migration ruling BT pre-resolved); the direction checks; the `goldens moved:` line. Task 2's escalation and its review round landed as `27e1b75` + `5152291`.
+- [x] Commit 5: **M1** — run at `5152291`, results committed at **`a0eb84e`**, adjudicated by **ruling BV: ACCEPT-WITH-GAP** (BP12's third branch). The closure, the artefact table and the accept wave are below.
+- [x] Register: #293 → `fixed: T2, accepted: M1 (BV)`, #294 → same, #295/#296 → `candidate` with their owners; #296 carries M1's via measurement.
+
+**M1 closure (ruling BV, at `a0eb84e`).** The bench ran on `workbench` at the adjudicated head
+`5152291`, `--candidates rs-main` only, against the frozen `java-278fe14` view, 605 `pcbench`
+boards, `seeds 1`, `-mp 10`, `timeout 300`, `threads 1`, `jobs 12` — ruling BN's recipe exactly.
+
+* **Corpus clean pass 0.375 → 0.550** (+17.5 points).
+* **D3-small**: clean 0.587 → **0.755** (bar 0.77), connected 0.755 → **0.783** (bar 0.79),
+  DRC-clean 0.727 → **0.958** (bar 0.95 — **hit**). **D3-large**: clean 0.178 → **0.292**
+  (bar 0.30). Three of the four thresholds are missed by **1–3 boards**, and the port lands within
+  1–3 boards of the jar's own post-fix ablation on every one of them.
+* D3-large connected 0.371 → 0.322 is substantially the legality trade — large DRC-clean goes
+  0.386 → **0.812** across the same boards.
+* **Corpus-median `cpu_s` ratio against the `v1.0.0-rs` run of record: 1.000** (BO/BP4); corpus
+  total `cpu_s` 15 245.2 s → 15 193.3 s, i.e. 0.9966. No drift, and no timing escalation.
+* **Ruling BV** accepts with the residual bar gap attributed to known post-parity deltas
+  (tie-break and friends), files the large-tier R1 attribution question to **Task 18** as a policy
+  row (net-count-gated sort, A/B'd at M3), and does **not** spend BP12's one re-run.
+
+**The M1 artefact table (Task 2's report §SF3), verified at the accept wave:**
+
+| artefact owed | state |
+|---|---|
+| the frozen-view compare, `--runs java-278fe14,plan9-m1`, `git add -f` | **committed at `a0eb84e`** as `benchmark/reports/plan9-m1-vs-java.json` — the name is shorter than SF3's `plan9-m1-vs-java-278fe14.json`, and that is the file that exists |
+| its rendered form, same run pair, `git add -f` | **committed at `a0eb84e`** as `benchmark/reports/plan9-m1-vs-java.md`. The compare also wrote a `.html`, which is **not** committed (`benchmark/.gitignore`'s `reports/*.html`) |
+| `remote-run.sh`'s console output, in full | **not under `benchmark/baselines/`, and it cannot be**: `remote-run.sh:256` rsyncs `results/<run-id>/` back and nothing beside it, so the console log stays on the workbench at `<remote-dir>/results/plan9-m1.remote.log`. What is local is the **full run tree**, `benchmark/results/plan9-m1/` — 11 476 files, `meta.json` plus per-board `stdout.log`, `stderr.log`, `referee.log`, `metrics.json`, `out.ses` and the routed KiCad files — gitignored by `benchmark/.gitignore`'s `results/`, exactly as `v1.0.0-rs` is. **Recorded as located, not as missing** |
+| the workbench sha check | `benchmark/results/plan9-m1/meta.json`'s `candidates[0].sha` is **`5152291b085a`** — the adjudicated head commit, which is what it must equal. The ledger's build line records the fresh binary sha **`2e05308b`** built at that checkout, after the untracked `candidates.rs.toml` that produced a false `REMOTE-READY` was cleared |
+
+**The accept wave (ruling BV), landed on top:** the 14 release-lane jar-parity literals re-cut as
+port-regression pins with provenance at each site; `p8t1` and `p8t7` rungs (a)/(b) converted to
+port-golden comparison with the jar arm behind `--against-jar` and the R1/R2 cause recorded in
+`scripts/differential/README.md`'s "Converted drivers" table; G2's "incompletes must not rise"
+gains ruling BU(b)'s BP12 arm — *on an escalated task the M-bench is the gate, G2 records* — in
+both this plan's G2 section and `scripts/quality-ab.sh`'s header; the register rows above; and I2
+(#296) answered from the corpus: **the via inflation survives R1 + R2** (15 539 → 16 129 vias,
++3.80 % against the port's own pre-fix position), so its bisect branch is now due. `stem-times.tsv`
+needs nothing further — Task 3's re-cut plus the S4 correction stand.
 
 **Commit message (final commit of the task):** `feat(router): repair the two measured Java regressions — R1 (#293) airline-first ordering restored, R2 (#294) micro-neckdown floored at the rules minimum; M1 bench recorded`
 
