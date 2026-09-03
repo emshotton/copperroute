@@ -107,15 +107,27 @@ impl DrillPage {
     /// not consulted here. `splitToConvex` answers `null` when the flag trips
     /// (PolylineArea.java:189-191) and `:108` dereferences it with no check.
     ///
-    /// # Panics
+    /// # The cancelled split, and the memo it used to leave behind
     ///
     /// Java bug: `DrillPage.getDrills` — `:108`'s `drillShapes.length` is an unguarded
     /// dereference of a value `:103` can legitimately answer `null` for, so a cancelled split
     /// throws a `NullPointerException` instead of returning. Worse, `:65-66` has already written
     /// the new net number and installed a fresh **empty** `drills` list, so the page is left
     /// memoised as "no drills on this net" and `:64` sends every later call straight past the
-    /// recomputation. See `docs/java-quirks.md` #168 and
-    /// `crates/fr-router/tests/drill.rs`'s `split_to_convex_stops_when_the_stop_check_trips`.
+    /// recomputation — a page interrupted once answers "no drills here" for the rest of the
+    /// connection, silently removing every via candidate on it.
+    ///
+    /// fixed: T6 (#168) — the register's second option, "install the list only after the split
+    /// succeeds". `:65-66`'s two writes are deferred past `:103`, so a cancelled page is left
+    /// exactly as it was — `drills` still `None`, `net_number` still the old one — and `:64`
+    /// recomputes it on the next call instead of trusting a memo written before the work. The
+    /// throw goes with them: there is nothing left to dereference. See `docs/java-quirks.md` #168
+    /// and `crates/fr-router/tests/drill.rs`'s
+    /// `a_stopped_split_does_not_memoise_an_empty_page`.
+    ///
+    /// The old drills are freed on the same schedule, and that is deliberate rather than
+    /// incidental: freeing them before the split would strand the page holding arena ids it had
+    /// already released if the split were then cancelled.
     pub fn get_drills(
         &mut self,
         engine: &mut AutorouteEngine,
@@ -127,21 +139,15 @@ impl DrillPage {
         if self.drills.is_some() && engine.get_net_number() == self.net_number {
             return self.drills.clone().unwrap_or_default();
         }
-        // :65-66. Both writes happen *before* the work, which is what quirk #168 is about.
-        //
-        // `:66`'s `this.drills = new LinkedList<>()` drops the previous list, and Java's
-        // collector reclaims every `ExpansionDrill` on it. The port's arena has no collector, so
-        // the ids are handed back here — see [`Self::invalidate`] for why that is safe.
-        self.net_number = engine.get_net_number();
-        for old_drill in self.drills.take().into_iter().flatten() {
-            engine.rooms.drills.remove(old_drill.0);
-        }
-        self.drills = Some(Vec::new());
+        // :65-66. Java performs both writes *here*, before the work, which is what quirk #168 is
+        // about; `// fixed: T6 (#168)` defers them past `:103` and only the net number is read in
+        // between. `cutout_shapes` takes it as an argument, so nothing needs the field yet.
+        let new_net_number = engine.get_net_number();
 
         // :67-96.
         let mut trace = Vec::new();
         let cutout_shapes =
-            self.cutout_shapes(engine, board, self.net_number, attach_smd, &mut trace);
+            self.cutout_shapes(engine, board, new_net_number, attach_smd, &mut trace);
 
         // :97-102. Java copies the collection into an array and hands it to `PolylineArea`; the
         // holes are the cut-out shapes in the order the loop produced them.
@@ -150,17 +156,27 @@ impl DrillPage {
             cutout_shapes.into_iter().map(Into::into).collect(),
         );
         // :103 — ruling 6's sixth cancellation site.
-        let drill_shapes = shape_with_holes
-            .split_to_convex(Some(stop))
-            .unwrap_or_else(|| {
-                panic!(
-                    "DrillPage.getDrills: splitToConvex answered null (the stop flag tripped, \
-                 PolylineArea.java:189-191) — Java throws a NullPointerException on \
-                 `drillShapes.length` at DrillPage.java:108, leaving this page memoised with an \
-                 empty drill list on net {}",
-                    self.net_number
-                )
-            });
+        //
+        // fixed: T6 (#168) — a cancelled split now leaves the page untouched. Java's `:108`
+        // dereferenced this null and threw, on a page `:65-66` had already memoised as empty, so
+        // the rest of the connection saw "no drills here" and lost every via candidate on it.
+        // Returning the empty list without installing it is the register's "install the list only
+        // after the split succeeds": `self.drills` stays `None`, `self.net_number` stays the old
+        // one, and `:64` recomputes on the next call.
+        let Some(drill_shapes) = shape_with_holes.split_to_convex(Some(stop)) else {
+            return Vec::new();
+        };
+
+        // :65-66, deferred to here. `:66`'s `this.drills = new LinkedList<>()` drops the previous
+        // list, and Java's collector reclaims every `ExpansionDrill` on it. The port's arena has
+        // no collector, so the ids are handed back here — see [`Self::invalidate`] for why that
+        // is safe. Freeing them *after* the split is what keeps a cancelled page consistent: it
+        // still owns the drills it is still advertising.
+        self.net_number = new_net_number;
+        for old_drill in self.drills.take().into_iter().flatten() {
+            engine.rooms.drills.remove(old_drill.0);
+        }
+        self.drills = Some(Vec::new());
 
         // :105-107. "Use the center points of these drill shapes to try making a via."
         //
