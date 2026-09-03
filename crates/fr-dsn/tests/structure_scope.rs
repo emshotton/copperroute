@@ -364,22 +364,84 @@ fn read_autoroute_settings_scope_reads_costs_and_layer_rules() {
 }
 
 #[test]
-fn an_autoroute_settings_scope_after_a_keepout_is_never_read() {
+fn an_autoroute_settings_scope_after_a_keepout_is_read() {
+    // fixed: T4 (#95) — the inversion of `…_after_a_keepout_is_never_read`, which this test *is*,
+    // renamed rather than deleted.
+    //
     // Java bug (Structure.java:1006-1012): the `AutorouteSettings.readScope` call sits *inside*
     // the `if (scopeParameter.layerStructure == null)` guard, so a `keepout`/`plane`/`via_keepout`
     // scope earlier in the same `structure` scope — which is what creates the layer structure —
-    // makes the whole `autoroute_settings` scope go unread *and* unskipped.
+    // made the whole `autoroute_settings` scope go unread *and* unskipped: the jar answers
+    // `autorouteSettings == null` here and misreads the scope's own closing bracket as the
+    // `structure` scope's. With the call hoisted out of the guard the settings are read.
     let text = synthetic(
         "10",
         "    (boundary\n      (rect pcb 0 0 100000 50000)\n    )\n    (keepout \"\"\n      (rect \
          F.Cu 1000 1000 2000 2000)\n    )\n    (autoroute_settings\n      (via_costs 42)\n    )",
     );
-    read_pcb(&text, |_ok, p| {
-        assert!(
-            p.autoroute_settings.is_none(),
-            "Java never reaches AutorouteSettings.readScope here"
-        );
+    read_pcb(&text, |ok, p| {
+        assert!(ok, "the structure scope still closes on its own bracket");
+        let settings = p
+            .autoroute_settings
+            .as_ref()
+            .expect("the settings after a keepout are read now");
+        assert_eq!(settings.via_costs(), 42);
     });
+}
+
+/// The corpus sweep #95's register row asks for: how many of the 106 corpus boards hand their
+/// file's `(autoroute_settings …)` scope to the reader?
+///
+/// `read_metadata` is the counter because it is the cheap half of the same parse —
+/// `DsnReader.readMetadata` stops at the end of the `(structure …)` scope, the only scope that
+/// can fill `autorouteSettings` — and its `BoardMetadata::router_settings` is exactly the field
+/// #95 decides the fate of.
+///
+/// **Measured, before and after the fix: 2 of 106** — `Issue103-Board-Routed.dsn` and
+/// `Issue187-processor.Z80.dsn`, the corpus's only two files carrying the scope at all. Both
+/// write `autoroute_settings` **before** their first keepout, so neither trips the Java guard and
+/// the fix moves no corpus board — which is why no golden family moves for #95. The names are
+/// asserted, not printed, so a corpus that grows a keepout-first board fails here and is named.
+#[test]
+fn the_corpus_sweep_counts_boards_whose_settings_were_read() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(parity::java_dir().join("fixtures"))
+        .expect("the fixtures directory")
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
+        .collect();
+    files.push(parity::example("tutorial_board/tutorial_board.dsn"));
+    files.sort();
+    assert_eq!(files.len(), 106, "sweep-p3t15.sh's corpus");
+
+    let mut read: Vec<String> = Vec::new();
+    for path in &files {
+        let bytes = std::fs::read(path).expect("readable fixture");
+        if let fr_dsn::BoardReadResult::Success {
+            metadata: Some(metadata),
+            ..
+        } = fr_dsn::read_metadata(bytes.as_slice())
+            && metadata.router_settings.is_some()
+        {
+            read.push(
+                path.file_name()
+                    .expect("a file name")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+    }
+    assert_eq!(
+        read,
+        vec![
+            "Issue103-Board-Routed.dsn".to_string(),
+            "Issue187-processor.Z80.dsn".to_string(),
+        ],
+        "the corpus boards whose (autoroute_settings …) scope reaches the reader"
+    );
 }
 
 // ------------------------------------------------------------------ insertion order / id parity
