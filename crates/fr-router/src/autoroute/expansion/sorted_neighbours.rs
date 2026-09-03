@@ -25,30 +25,43 @@
 //! with `self.net_number`, `&mut self.board`, `&mut self.rooms` and `self.autoroute_search_tree`,
 //! and no signature here changes.
 //!
-//! # Hazard F — the non-transitive comparator (quirk #160)
+//! # Hazard F — the non-transitive comparator (quirk #160) — **fixed: T8**
 //!
-//! [`SortedRoomNeighbour`]'s `Ord` is `compareTo` (`:719-762`) transcribed line for line, and
-//! that comparator is **not** a total order: the `Direction.compareFrom` refinement (`:750-751`)
-//! is a cyclic comparison, and two neighbours whose first corners are *different but equidistant*
-//! fall straight through to the id tie-break while two whose first corners are *equal* are
-//! refined by their last corners first. Elements land in a `TreeSet` (`:54`, inserted at `:408`),
-//! so a comparison that answers `Equal` **drops** the neighbour, and which one is dropped depends
-//! on the container's comparison path.
+//! Java's `compareTo` (`:719-762`) is **not** a total order. Two neighbours whose first corners
+//! are *different but equidistant* fall straight through to the id tie-break, while two whose
+//! first corners are *equal as points* are refined by their last corners first; `c_dist_tolerance`
+//! selects which key answers and then the exact sign of that key is taken; and the
+//! `Direction.compareFrom` refinement (`:750-751`) applies to some pairs and not others.
+//! Elements land in a `TreeSet` (`:54`, inserted at `:408`), so a comparison that answers `Equal`
+//! **drops** the neighbour — a door the room really has is never built.
 //!
-//! **The container is therefore [`JavaTreeSet`], not a `BTreeSet`** (this is the one place the
-//! brief's design had to change, and `p6t3` mode 3 is the evidence): a `BTreeSet` searches a
-//! B-tree node by binary search where `TreeMap` walks a red-black tree from the root, so on this
-//! comparator the two keep *different* elements and iterate the survivors in *different* orders.
-//! With the port on a `BTreeSet` the probe diffed against the HEAD jar in both of those ways; with
-//! `JavaTreeSet` it is byte-for-byte. The insertion order of `calculateNeighbours` (`:204-213`)
-//! is preserved as well, because with a non-transitive comparator it decides the outcome.
+//! [`SortedRoomNeighbour::compare_to`] is now a lexicographic comparison of Java's own keys in
+//! Java's own order, with those three defects removed and the remaining value fields compared past
+//! Java's last key, so `Equal` means "equal as a value". Measured on `p6t3` mode 3's own generator
+//! — reproduced in `crates/fr-router/tests/sorted_neighbours.rs` down to the xorshift stream —
+//! the pre-fix comparator drops **481** of 8 000 neighbours in a `JavaTreeSet` and 482 in a
+//! `BTreeSet`; the post-fix number is **0** in both.
 //!
-//! # Hazard G — the id tie-break crosses two id spaces (quirk #161)
+//! **The container is still [`JavaTreeSet`]** — Task 24 collects the swap to `BTreeSet`, which the
+//! total order now makes sound. The reason it had to be a `JavaTreeSet` was exactly the hazard: a
+//! `BTreeSet` searches a B-tree node by binary search where `TreeMap` walks a red-black tree from
+//! the root, so on a non-transitive comparator the two keep *different* elements and iterate the
+//! survivors in *different* orders. `the_neighbour_comparator_is_a_total_order` asserts that they
+//! now agree, over every pair and every ordered triple of all 2 000 cases.
+//!
+//! # Hazard G — the id tie-break crossed two id spaces (quirk #161) — **fixed: T8**
 //!
 //! `:759` is `this.searchTreeObject.getId() - other.searchTreeObject.getId()`, and the objects in
 //! the tree are board **items** and expansion **rooms**. An item's id comes from the board's
 //! `ItemIdGenerator`; a room's from `AutorouteEngine.expansionRoomInstanceCount`. They start at 1
-//! and collide constantly.
+//! and collide constantly. The comparator now compares the object *kind* before the id, so the two
+//! spaces never meet, and uses `Ord::cmp` rather than a wrapping subtraction.
+//!
+//! One site is deliberately **not** changed: `:203-213`'s pre-sort of the overlapping objects
+//! (below, in [`SortedRoomNeighbours::calculate_neighbours`]) subtracts the same two id spaces.
+//! It is a `List.sort` — a *stable* TimSort — so a collision there loses nothing; both entries
+//! keep the raw tree-query order they arrived in. Changing it would move the neighbour insertion
+//! order on every board for no defect.
 //!
 //! # Hazard: `calculateNewIncompleteRooms` can loop for ever (quirk #162)
 //!
@@ -73,7 +86,7 @@ use fr_board::{
     TreeObject,
 };
 use fr_geometry::polyline_shape::PolylineShapeOps;
-use fr_geometry::{Line, Point, Side, Signum, Simplex, TileShape};
+use fr_geometry::{Line, Point, Side, Simplex, TileShape};
 
 use crate::JavaTreeSet;
 use crate::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
@@ -1195,8 +1208,10 @@ pub fn create_overlap_door(
 // The inner class
 // =================================================================================================
 
-/// `SortedRoomNeighbours.c_dist_tolerance` (SortedRoomNeighbours.java:667).
-const C_DIST_TOLERANCE: f64 = 1.0;
+// not ported: `SortedRoomNeighbours.c_dist_tolerance` (SortedRoomNeighbours.java:667), the
+// `1.0` band `compareTo` used to decide *which* key answers. fixed: T8 (#160) removed the last
+// reader — see `SortedRoomNeighbour::compare_to`'s change 2, where a tolerance that selects a key
+// and then takes the exact sign of it is the reason the relation was not transitive.
 
 /// Port of the private inner class `SortedRoomNeighbours.SortedRoomNeighbour`
 /// (SortedRoomNeighbours.java:665-806): "helper class to sort the doors of an expansion room
@@ -1382,15 +1397,67 @@ impl SortedRoomNeighbour {
     /// function for sorting the neighbours in counterclock sense around the border of the room
     /// shape in ascending order."
     ///
-    /// Transcribed line for line, `Signum.asInt` included. It is **not** a total order — see
-    /// hazard F in the module docs (quirk #160) — and it is not repaired.
+    /// fixed: T8 (#160, #161). Java's version is **not** a total order and the `TreeSet` it feeds
+    /// (`:54`, inserted at `:408`) silently drops every element it calls equal — a door the room
+    /// really has is never built. This is a **lexicographic** comparison of the same keys in the
+    /// same order, with the three defects removed; see [`Self::compare_to`]'s own notes below and
+    /// hazards F and G in the module docs.
+    ///
+    /// # The three changes, each against the line it replaces
+    ///
+    /// **1. `:729-733`'s inner `firstCorner().equals(other.firstCorner())` gate is gone.** Java
+    /// refines by the *last* corner only when the two first corners are the *same point*, which is
+    /// strictly stronger than the distances tying — two different corners equidistant from the
+    /// compare corner (`(300,400)` and `(400,300)` at 500 from `(0,0)`) skip the refinement, keep
+    /// `deltaDistance == 0.0`, and fall through to an id tie-break that answers `0` whenever they
+    /// come from the same object. That is #160's drop, and both corners are real, different places
+    /// on the same wall. The refinement now runs whenever the first-corner distances are equal.
+    ///
+    /// **2. `c_dist_tolerance` no longer gates which key decides.** Java's `<= 1.0` band selects
+    /// *which* key answers and then takes the exact sign of whichever it selected, which is the
+    /// textbook non-transitivity: `a ≈ b` and `b ≈ c` do not give `a ≈ c`, so the relation is not
+    /// a strict weak ordering and a `TreeSet`'s red-black invariants stop meaning anything. The
+    /// keys are compared exactly instead, and "tie" means *equal*. This is strictly a refinement
+    /// of Java's order — every pair Java called a tie either still ties (the distances really are
+    /// equal, and the last corner decides exactly as Java intended) or is separated by a genuine
+    /// difference in where the door starts, which is a legal counterclockwise order either way.
+    /// `c_dist_tolerance` itself has no reader left and is gone with the gate.
+    ///
+    /// **3. `:756-760`'s id subtraction compares the object *kind* first (#161), and does not
+    /// wrap.** `searchTreeObject.getId()` is a `BasicBoard.ItemIdGenerator` number for an item and
+    /// an `AutorouteEngine.expansionRoomInstanceCount` number for a room; both start at 1, they are
+    /// allocated independently, and subtracting one from the other made "item 3" and "room 3" tie
+    /// — one of them dropped. Comparing the kind first (an item before a room, arbitrarily but
+    /// **consistently**) makes the pair total inside each id space. The subtraction also wrapped,
+    /// so two ids more than `i32::MAX` apart ordered backwards; `Ord::cmp` cannot.
+    ///
+    /// # Why there are keys past the id
+    ///
+    /// A set drops an element only when the comparator answers `Equal`, so "no neighbour is lost"
+    /// is exactly "`Equal` implies equal as a value". Two neighbours of the **same object** — one
+    /// item contributing two tree shapes that touch the same side — share every key up to and
+    /// including the id, so the remaining value fields are compared after it. They are Java's
+    /// fields, in Java's declaration order, and they are only ever reached where Java answered
+    /// `0` and lost one of the two.
+    ///
+    /// # The one place a key is skipped rather than compared
+    ///
+    /// `:741-751`'s `Direction.compareFrom` refinement needs a `compareDir` built from
+    /// `this.roomTouchIsCorner` — a field of the **left** operand — so on a pair whose flags
+    /// differ Java's own comparison is asymmetric: `a.compareTo(b)` and `b.compareTo(a)` would
+    /// consult different reference directions. The refinement is therefore taken only when both
+    /// operands agree about it, and the pair falls to the kind/id keys otherwise. `compareFrom`
+    /// itself is a total order on directions for a fixed reference (`IntDirection::compare_from`),
+    /// so where it does run it is sound.
     pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
-        // :721-724. A Java `int` subtraction: `wrapping_sub`, then the sign.
-        let compare_value = self
+        // :721-724. Java subtracts two `int`s and takes the sign; `cmp` is the same answer without
+        // the wrap.
+        match self
             .touching_side_no_of_room
-            .wrapping_sub(other.touching_side_no_of_room);
-        if compare_value != 0 {
-            return compare_value.cmp(&0);
+            .cmp(&other.touching_side_no_of_room)
+        {
+            Ordering::Equal => {}
+            ordering => return ordering,
         }
         // :725-728.
         let compare_corner = self
@@ -1409,59 +1476,160 @@ impl SortedRoomNeighbour {
             });
         let this_distance = self.first_corner().to_float().distance(&compare_corner);
         let other_distance = other.first_corner().to_float().distance(&compare_corner);
-        let mut delta_distance = this_distance - other_distance;
-        // :729-755.
-        if delta_distance.abs() <= C_DIST_TOLERANCE {
-            // "check corners for equality"
-            if self.first_corner() == other.first_corner() {
-                // "in this case compare the last corners"
-                let this_distance2 = self.last_corner().to_float().distance(&compare_corner);
-                let other_distance2 = other.last_corner().to_float().distance(&compare_corner);
-                delta_distance = this_distance2 - other_distance2;
-                if delta_distance.abs() <= C_DIST_TOLERANCE
-                    && self.neighbour_room_touch_is_corner
-                    && other.neighbour_room_touch_is_corner
-                {
-                    // "Otherwise there may be a short 1 dim. touch at a link between 2 trace
-                    // lines. In this case equality is ok, because the 2 intersection pieces with
-                    // the expansion room are identical, so that only 1 obstacle is needed."
-                    let mut compare_line_no = self.touching_side_no_of_room;
-                    if self.room_touch_is_corner {
-                        compare_line_no = self.room_shape.prev_no(index_of(
-                            compare_line_no,
-                            "touchingSideNoOfRoom",
-                            743,
-                        )) as i32;
-                    }
-                    let compare_dir =
-                        border_line_of(&self.room_shape, compare_line_no, "compareLineNo", 745)
-                            .direction()
-                            .opposite();
-                    let this_compare_line = border_line_of(
-                        &self.neighbour_shape,
-                        self.touching_side_no_of_neighbour_room,
-                        "touchingSideNoOfNeighbourRoom",
-                        747,
-                    );
-                    let other_compare_line = border_line_of(
-                        &other.neighbour_shape,
-                        other.touching_side_no_of_neighbour_room,
-                        "touchingSideNoOfNeighbourRoom",
-                        749,
-                    );
-                    delta_distance = ordering_to_int(compare_dir.compare_from(
-                        &this_compare_line.direction(),
-                        &other_compare_line.direction(),
-                    )) as f64;
-                }
+        match this_distance.total_cmp(&other_distance) {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+        // :734-737. "in this case compare the last corners" — now reached whenever the first
+        // corners are equidistant, not only when they are the same point.
+        let this_distance2 = self.last_corner().to_float().distance(&compare_corner);
+        let other_distance2 = other.last_corner().to_float().distance(&compare_corner);
+        match this_distance2.total_cmp(&other_distance2) {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+        // The two corner flags, **before** the refinement they gate. `:738-740` takes the
+        // `Direction.compareFrom` branch only when both neighbours are
+        // `neighbourRoomTouchIsCorner`, and builds its reference direction out of the **left**
+        // operand's `roomTouchIsCorner` — so a conditional key applies to some pairs and not
+        // others, and that alone is enough to destroy transitivity even with every key below it
+        // total: `a` (corner) against `b` (not) falls to the id, `b` against `c` (corner) falls to
+        // the id, and `a` against `c` is decided by direction, which need not agree. Measured on
+        // `p6t3` mode 3's own generator, case 118: `0 <= 1 <= 3` while `0 > 3`.
+        //
+        // Comparing the flags first confines the refinement to one equivalence class, where it is
+        // a genuine total order (`IntDirection::compare_from` is the circular order rotated to
+        // start at the reference, and the reference is then the same for every member of the
+        // class). `false` before `true`, arbitrarily and consistently.
+        match self.room_touch_is_corner.cmp(&other.room_touch_is_corner) {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+        match self
+            .neighbour_room_touch_is_corner
+            .cmp(&other.neighbour_room_touch_is_corner)
+        {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+        // :738-752. "Otherwise there may be a short 1 dim. touch at a link between 2 trace lines.
+        // In this case equality is ok, because the 2 intersection pieces with the expansion room
+        // are identical, so that only 1 obstacle is needed."
+        if self.neighbour_room_touch_is_corner {
+            let mut compare_line_no = self.touching_side_no_of_room;
+            if self.room_touch_is_corner {
+                compare_line_no =
+                    self.room_shape
+                        .prev_no(index_of(compare_line_no, "touchingSideNoOfRoom", 743))
+                        as i32;
+            }
+            let compare_dir =
+                border_line_of(&self.room_shape, compare_line_no, "compareLineNo", 745)
+                    .direction()
+                    .opposite();
+            let this_compare_line = border_line_of(
+                &self.neighbour_shape,
+                self.touching_side_no_of_neighbour_room,
+                "touchingSideNoOfNeighbourRoom",
+                747,
+            );
+            let other_compare_line = border_line_of(
+                &other.neighbour_shape,
+                other.touching_side_no_of_neighbour_room,
+                "touchingSideNoOfNeighbourRoom",
+                749,
+            );
+            match compare_dir.compare_from(
+                &this_compare_line.direction(),
+                &other_compare_line.direction(),
+            ) {
+                Ordering::Equal => {}
+                ordering => return ordering,
             }
         }
-        // :756-761. "Deterministic tie-breaker for identical geometry"
-        let mut res = Signum::as_int_f64(delta_distance);
-        if res == 0 {
-            res = self.object_id.wrapping_sub(other.object_id);
+        // :756-760's tie-break, with the kind ahead of the id (#161) and no wrapping subtraction.
+        match object_kind_rank(self.search_tree_object)
+            .cmp(&object_kind_rank(other.search_tree_object))
+        {
+            Ordering::Equal => {}
+            ordering => return ordering,
         }
-        res.cmp(&0)
+        match self.object_id.cmp(&other.object_id) {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+        // Past Java's last key: the remaining value fields, so that `Equal` means "equal as a
+        // value" and a set can no longer drop a door the room really has.
+        match self
+            .touching_side_no_of_neighbour_room
+            .cmp(&other.touching_side_no_of_neighbour_room)
+        {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+        // The corners themselves, last: two neighbours of the same object that agree on every key
+        // above can still start and end at different places (the two equidistant corners of the
+        // paragraph at the top), and those are two doors, not one.
+        corner_key(self.first_corner())
+            .cmp(&corner_key(other.first_corner()))
+            .then_with(|| corner_key(self.last_corner()).cmp(&corner_key(other.last_corner())))
+            // The neighbour's own shape, last and lazily: one *item* contributes one neighbour per
+            // tree shape and every one of them carries the same object id, so this is the key that
+            // separates two tree shapes of one item which touch the same side at the same corners.
+            // It is reached only when the ten keys above have all tied.
+            .then_with(|| shape_key(&self.neighbour_shape).cmp(&shape_key(&other.neighbour_shape)))
+    }
+}
+
+/// `Item` before `Room` — the object *kind*, which #161's tie-break has to consult before the id
+/// because the two ids come from two independent counters that both start at 1.
+///
+/// The direction is arbitrary and the *consistency* is what matters; `Item` first because that is
+/// the order [`TreeObject`]'s own derived `Ord` uses.
+fn object_kind_rank(object: TreeObject) -> u8 {
+    match object {
+        TreeObject::Item(_) => 0,
+        TreeObject::Room(_) => 1,
+    }
+}
+
+/// A [`Point`] as a totally-ordered key. `Point` is an enum of an `IntPoint` and a
+/// `RationalPoint` and has no `Ord`; its float projection does, through `total_cmp`, and the two
+/// corners this is used on are exact integer corners of tile shapes in every reachable case.
+fn corner_key(point: &Point) -> (OrderedF64, OrderedF64) {
+    let float = point.to_float();
+    (OrderedF64(float.x), OrderedF64(float.y))
+}
+
+/// A [`TileShape`] as a totally-ordered key: its dimension, then its corners. `TileShape` has no
+/// `Ord` and does not need one — this exists only as [`SortedRoomNeighbour::compare_to`]'s last
+/// resort, where every other key has tied.
+fn shape_key(shape: &TileShape) -> (i32, Vec<(OrderedF64, OrderedF64)>) {
+    (
+        shape.dimension(),
+        shape
+            .corner_approx_arr()
+            .iter()
+            .map(|corner| (OrderedF64(corner.x), OrderedF64(corner.y)))
+            .collect(),
+    )
+}
+
+/// An `f64` with a total order (`f64::total_cmp`), so a tuple of two can be `cmp`ed.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct OrderedF64(f64);
+
+impl Eq for OrderedF64 {}
+
+impl PartialOrd for OrderedF64 {
+    fn partial_cmp(&self, other: &OrderedF64) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for OrderedF64 {
+    fn cmp(&self, other: &OrderedF64) -> Ordering {
+        self.0.total_cmp(&other.0)
     }
 }
 
@@ -1595,14 +1763,4 @@ fn border_line_of(shape: &TileShape, no: i32, what: &str, java_line: u32) -> Lin
             shape.border_line_count()
         )
     })
-}
-
-/// `Direction.compareFrom` answers a Java `int` that `:750` assigns to a `double`; the port's
-/// answers an [`Ordering`]. Only the sign survives `Signum.asInt`, so `-1 / 0 / 1` is exact.
-fn ordering_to_int(ordering: Ordering) -> i32 {
-    match ordering {
-        Ordering::Less => -1,
-        Ordering::Equal => 0,
-        Ordering::Greater => 1,
-    }
 }

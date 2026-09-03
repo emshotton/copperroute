@@ -32,7 +32,17 @@ use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 // every `SortedRoomNeighbours::calculate` call below.
 
 // =================================================================================================
-// Hazard F — the non-transitive comparator (quirk #160)
+// Hazard F and hazard G — the comparator that was not a total order (quirks #160, #161)
+//
+// fixed: T8 (#160, #161). `SortedRoomNeighbour::compare_to` is now a lexicographic comparison of
+// Java's own keys in Java's own order, with three defects removed: the last-corner refinement runs
+// whenever the first-corner distances tie (Java needed the two first *corners* to be the same
+// point), `c_dist_tolerance` no longer selects which key answers, and the final tie-break compares
+// the object **kind** before the id. Past Java's last key the remaining value fields are compared,
+// so `Equal` means "equal as a value" and a set can no longer drop a door the room really has.
+//
+// The three tests below used to pin the drops. They now pin their absence, and each one keeps the
+// jar's verbatim transcript beside the port's answer.
 // =================================================================================================
 
 /// One [`SortedRoomNeighbour`] with `roomTouchIsCorner`, which is what makes both corners equal to
@@ -61,11 +71,11 @@ fn corner_neighbour(
 }
 
 #[test]
-fn the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does() {
+fn five_neighbours_at_one_corner_are_all_kept_and_sort() {
     // `run.sh p6t3 3 42 0 2000`, `corner c=520`. Five neighbours of the same room, all with
     // `roomTouchIsCorner`, all touching side 1, so the first two comparison keys tie for every
     // pair and only the `Direction.compareFrom` branch (both `ntc`) and the id difference are
-    // left. Java, verbatim:
+    // left. The jar, verbatim:
     //
     //   corner c=520 room=Box[1730,-384..3188,78] n=5
     //       add[0] added=true size=1 tsr=1 tsn=3 rtc=true ntc=true  obj=cfsr2
@@ -80,11 +90,16 @@ fn the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does() {
     //       [3] tsn=1 ntc=true  obj=cfsr4
     //       [4] tsn=0 ntc=false obj=cfsr5
     //
-    // The survivors are *not* in any consistent order, and `add[4]` is the element a `BTreeSet`
-    // **drops** (its binary search inside the single B-tree node hits an `Equal` Java's
-    // root-to-leaf walk never reaches): with the port on a `BTreeSet` this case read
-    // `add[4] added=false size=4` and `survivors n=4`. That diff is why the container is
-    // `JavaTreeSet`.
+    // **The jar keeps all five and so does the port** — that half never moved. What moved is the
+    // rest of the row: the jar's five survivors are not in any consistent order (an in-order walk
+    // of a red-black tree built by a non-transitive comparator is not a sorted sequence), and a
+    // `BTreeSet` over the same `Ord` used to keep only **four**, because its binary search inside
+    // one B-tree node hits an `Equal` Java's root-to-leaf walk never reaches. That difference is
+    // what made the container a `JavaTreeSet`.
+    //
+    // Post-fix the comparator is total, so both containers keep five and agree on the order, and
+    // the order is genuinely sorted. **KNOWN DIVERGENCE from the jar, authorized by #160**: the
+    // survivor sequence is the port's, and the jar's is kept above so a reader sees both.
     let room = TileShape::Box(IntBox::from_coords(1730, -384, 3188, 78));
     let inputs: [(IntBox, i32, i32, bool, i32); 5] = [
         (
@@ -120,36 +135,15 @@ fn the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does() {
     for (i, neighbour) in built.iter().enumerate() {
         assert!(
             set.add(neighbour.clone()),
-            "Java's add[{i}] answered true and so must the port's"
+            "the jar's add[{i}] answered true and so must the port's"
         );
         assert_eq!(set.len(), i + 1);
     }
     assert_eq!(set.len(), 5);
-    let survivors: Vec<(i32, bool, i32)> = set
-        .iter()
-        .map(|n| {
-            (
-                n.touching_side_no_of_neighbour_room,
-                n.neighbour_room_touch_is_corner,
-                n.object_id,
-            )
-        })
-        .collect();
-    assert_eq!(
-        survivors,
-        vec![
-            (3, false, 1),
-            (2, true, 5),
-            (3, true, 2),
-            (1, true, 4),
-            (0, false, 5),
-        ],
-        "the in-order walk of Java's red-black tree, not a sorted order"
-    );
 
-    // A `BTreeSet` over the same `Ord` really does answer differently — that is the finding, and
-    // pinning it keeps anyone from "simplifying" the container back. (`mutable_key_type` fires
-    // because `SortedRoomNeighbour` memoizes its two corners in `OnceCell`s exactly as Java's
+    // A `BTreeSet` over the same `Ord` now keeps all five too, which is the point of the fix and
+    // is what lets Task 24 collect the `JavaTreeSet`. (`mutable_key_type` fires because
+    // `SortedRoomNeighbour` memoizes its two corners in `OnceCell`s exactly as Java's
     // `precalculatedFirstCorner`/`precalculatedLastCorner` do; neither cell is read by the
     // comparator's keys, only filled by them.)
     #[allow(clippy::mutable_key_type)]
@@ -159,32 +153,56 @@ fn the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does() {
     }
     assert_eq!(
         btree.len(),
-        4,
-        "a BTreeSet drops one of the five; Java's TreeSet keeps all five"
+        5,
+        "a BTreeSet dropped one of the five before the fix; it keeps all five now"
+    );
+    let describe = |n: &SortedRoomNeighbour| {
+        (
+            n.touching_side_no_of_neighbour_room,
+            n.neighbour_room_touch_is_corner,
+            n.object_id,
+        )
+    };
+    assert_eq!(
+        set.iter().map(describe).collect::<Vec<_>>(),
+        btree.iter().map(describe).collect::<Vec<_>>(),
+        "the two containers agree once the comparator is a total order"
     );
 
-    // And the comparator really is non-transitive on this input. `add[3]` and `add[4]` compare
-    // **equal** — both `Signum.asInt` deltas are 0 and their object ids are both 5 — yet they sit
-    // on opposite sides of `add[0]`:
-    //
+    // And the two elements the jar could not order — `add[3]` and `add[4]`, whose `Signum.asInt`
+    // deltas were both 0 and whose object ids were both 5 — are ordered now, consistently with
+    // where they each sit relative to `add[0]`. Before the fix:
     //     built[3] == built[4],  built[0] > built[3],  built[0] < built[4]
-    //
-    // An equivalence would forbid that. It is what lets the two containers disagree: a search
-    // that compares the new element against `built[3]` first finds `Equal` and drops it, one that
-    // compares against `built[0]` first does not.
+    // which no equivalence can permit.
     use std::cmp::Ordering;
-    assert_eq!(built[3].compare_to(&built[4]), Ordering::Equal);
-    assert_eq!(built[4].compare_to(&built[3]), Ordering::Equal);
-    assert_eq!(built[0].compare_to(&built[3]), Ordering::Greater);
-    assert_eq!(built[0].compare_to(&built[4]), Ordering::Less);
+    assert_ne!(
+        built[3].compare_to(&built[4]),
+        Ordering::Equal,
+        "two neighbours with different touching sides are two doors"
+    );
+    assert_eq!(
+        built[3].compare_to(&built[4]).reverse(),
+        built[4].compare_to(&built[3]),
+        "antisymmetry"
+    );
+    for (a, b, c) in [(0usize, 3usize, 4usize), (3, 4, 0), (4, 0, 3)] {
+        let (ab, bc, ac) = (
+            built[a].compare_to(&built[b]),
+            built[b].compare_to(&built[c]),
+            built[a].compare_to(&built[c]),
+        );
+        if ab == Ordering::Less && bc == Ordering::Less {
+            assert_eq!(ac, Ordering::Less, "transitivity on ({a}, {b}, {c})");
+        }
+    }
 }
 
 #[test]
-fn a_tie_on_geometry_falls_back_to_the_object_id() {
-    // `run.sh p6t3 3 42 0 2000`, `corner c=521`: four neighbours, and `add[3]` is the one Java's
-    // `TreeSet` silently drops, because it compares `Equal` to `add[1]` — same touching side,
-    // same (corner) first and last corners, neither is a `neighbourRoomTouchIsCorner` pair, and
-    // the two objects carry the **same id**. Java, verbatim:
+fn a_tie_on_geometry_no_longer_drops_the_neighbour() {
+    // `run.sh p6t3 3 42 0 2000`, `corner c=521`: four neighbours, and `add[3]` is the one the
+    // jar's `TreeSet` silently drops, because it compares `Equal` to `add[1]` — same touching
+    // side, same (corner) first and last corners, neither is a `neighbourRoomTouchIsCorner` pair,
+    // and the two objects carry the **same id**. The jar, verbatim:
     //
     //   corner c=521 room=Box[656,685..1281,2671] n=4
     //       add[0] added=true  size=1 tsr=1 tsn=1 rtc=true ntc=true  obj=cfsr4
@@ -192,6 +210,10 @@ fn a_tie_on_geometry_falls_back_to_the_object_id() {
     //       add[2] added=true  size=3 tsr=0 tsn=2 rtc=true ntc=true  obj=cfsr3
     //       add[3] added=false size=3 tsr=3 tsn=1 rtc=true ntc=false obj=cfsr2
     //     survivors n=3
+    //
+    // **KNOWN DIVERGENCE from the jar, authorized by #160**: `add[3]` now answers `true` and the
+    // set holds **four**. The two are separated at `touchingSideNoOfNeighbourRoom` — 3 against 1,
+    // two different sides of two different neighbour boxes, which is to say two different doors.
     let room = TileShape::Box(IntBox::from_coords(656, 685, 1281, 2671));
     let mut set = JavaTreeSet::new();
     assert!(set.add(corner_neighbour(
@@ -219,7 +241,7 @@ fn a_tie_on_geometry_falls_back_to_the_object_id() {
         3
     )));
     assert!(
-        !set.add(corner_neighbour(
+        set.add(corner_neighbour(
             &room,
             IntBox::from_coords(-2824, -2164, -2591, -1506),
             3,
@@ -227,17 +249,21 @@ fn a_tie_on_geometry_falls_back_to_the_object_id() {
             false,
             2
         )),
-        "the id tie-break answered 0 and the TreeSet dropped it"
+        "the jar's id tie-break answered 0 and its TreeSet dropped this neighbour; \
+         the port keeps it"
     );
-    assert_eq!(set.len(), 3);
+    assert_eq!(set.len(), 4);
 }
 
 #[test]
-fn room_and_item_ids_are_compared_across_id_spaces() {
+fn a_room_id_is_never_subtracted_from_an_item_id() {
     // quirk #161. `:759` is `this.searchTreeObject.getId() - other.searchTreeObject.getId()`, and
     // the two objects can be a board item and an expansion room — a `BasicBoard.ItemIdGenerator`
     // number against an `AutorouteEngine.expansionRoomInstanceCount` number. Both start at 1, so
-    // "item 3" and "room 3" tie, and the `TreeSet` drops one of them.
+    // "item 3" and "room 3" tied and the `TreeSet` dropped one of them.
+    //
+    // fixed: T8 (#161) — the object **kind** is compared before the id, so the two id spaces never
+    // meet. `Item` before `Room`; the direction is arbitrary, the consistency is not.
     let room = TileShape::Box(IntBox::from_coords(0, 0, 1000, 1000));
     let neighbour = IntBox::from_coords(-500, -500, -100, -100);
     let neighbour_shape = TileShape::Box(neighbour);
@@ -259,20 +285,197 @@ fn room_and_item_ids_are_compared_across_id_spaces() {
     let as_room = make(TreeObject::Room(RoomId(0)), 3);
     assert_eq!(
         as_item.compare_to(&as_room),
-        std::cmp::Ordering::Equal,
-        "an item id and a room id are subtracted from one another"
+        std::cmp::Ordering::Less,
+        "an item sorts before a room; the two ids are never subtracted from one another"
+    );
+    assert_eq!(
+        as_room.compare_to(&as_item),
+        std::cmp::Ordering::Greater,
+        "and the relation is antisymmetric"
     );
     let mut set = JavaTreeSet::new();
     assert!(set.add(as_item));
     assert!(
-        !set.add(as_room),
-        "the room is dropped for colliding with the item"
+        set.add(as_room),
+        "the room is no longer dropped for colliding with the item"
     );
-    assert_eq!(set.len(), 1);
-    // A different room id separates them again, in the id's own direction.
+    assert_eq!(set.len(), 2);
+    // A different room id still separates them, in the id's own direction, inside the room space.
     let as_room_4 = make(TreeObject::Room(RoomId(0)), 4);
     assert!(set.add(as_room_4));
-    assert_eq!(set.len(), 2);
+    assert_eq!(set.len(), 3);
+}
+
+// =================================================================================================
+// The total-order property, over `p6t3` mode 3's own 2 000 cases
+//
+// BL7: `p6t2` retires with this task and `p6t3` mode 3's Java half is not needed to keep this
+// assertion alive — the generator is reproduced here from `scripts/differential/java/P6T3.java`'s
+// own source (the xorshift64 stream at `:132-141`, `randomBox` at `:147-153` and
+// `cornerTouchProbe` at `:1084-1136`), so the 2 000 cases this asserts over are the same 2 000
+// cases the jar was measured on.
+// =================================================================================================
+
+/// `P6T3.next()` (`:132-137`) — xorshift64, seeded exactly as `:204` seeds it.
+struct Xorshift64(u64);
+
+impl Xorshift64 {
+    fn new(seed: u64) -> Xorshift64 {
+        Xorshift64(if seed == 0 {
+            0x9E37_79B9_7F4A_7C15
+        } else {
+            seed
+        })
+    }
+
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
+    /// `P6T3.rnd(int)` (`:139-141`): `Long.remainderUnsigned(next(), bound)`.
+    fn rnd(&mut self, bound: u64) -> i32 {
+        (self.next() % bound) as i32
+    }
+
+    /// `P6T3.randCoord(int)` (`:143-145`).
+    fn coord(&mut self, range: i32) -> i32 {
+        self.rnd(2 * range as u64 + 1) - range
+    }
+
+    /// `P6T3.randomBox(int, int, int)` (`:147-153`).
+    fn box_(&mut self, range: i32, min_size: i32, max_size: i32) -> IntBox {
+        let w = min_size + self.rnd((max_size - min_size + 1) as u64);
+        let h = min_size + self.rnd((max_size - min_size + 1) as u64);
+        let x = self.coord(range);
+        let y = self.coord(range);
+        IntBox::from_coords(x, y, x + w, y + h)
+    }
+}
+
+#[test]
+fn the_neighbour_comparator_is_a_total_order() {
+    // `run.sh p6t3 3 42 0 2000` — 2 000 rooms, each with 3 to 5 neighbours that all carry
+    // `roomTouchIsCorner`, so both corners collapse onto the room's own corner and every distance
+    // delta is exactly 0. What is left to decide the order is `Direction.compareFrom` (reached
+    // only when *both* neighbours are `neighbourRoomTouchIsCorner`) and the id — the narrowest
+    // hazard-F probe there is, and the one the **481 drops in 2 000 cases** headline was measured
+    // on.
+    //
+    // Three assertions, and the first is the headline:
+    //
+    //   1. **0 drops.** A `JavaTreeSet` and a `BTreeSet` both hold exactly as many elements as
+    //      there are distinct *values*, so no door a room really has is lost. Before the fix this
+    //      run drops 481 of 6 991 neighbours across the 2 000 cases.
+    //   2. **Antisymmetry**, over every pair of every case.
+    //   3. **Transitivity**, over every ordered triple of every case.
+    let mut rng = Xorshift64::new(42);
+    let mut drops_java = 0usize;
+    let mut case_520_room = None;
+    let mut drops_btree = 0usize;
+    let mut neighbours_built = 0usize;
+    for case in 0..2000 {
+        let room_box = rng.box_(2000, 400, 2000);
+        if case == 520 {
+            case_520_room = Some(room_box);
+        }
+        let room = TileShape::Box(room_box);
+        let count = 3 + rng.rnd(3);
+        let mut built = Vec::new();
+        for _ in 0..count {
+            let neighbour_box = rng.box_(3000, 100, 1500);
+            let tsr = rng.rnd(4);
+            let tsn = rng.rnd(4);
+            let ntc = rng.rnd(2) == 0;
+            let object_id = 1 + rng.rnd(5);
+            built.push(corner_neighbour(
+                &room,
+                neighbour_box,
+                tsr,
+                tsn,
+                ntc,
+                object_id,
+            ));
+        }
+        neighbours_built += built.len();
+
+        // "Distinct as a value" is the full constructor argument list: everything
+        // `cornerTouchProbe` varies, plus the two flags it fixes.
+        let value_of = |n: &SortedRoomNeighbour| {
+            (
+                n.touching_side_no_of_room,
+                n.touching_side_no_of_neighbour_room,
+                n.room_touch_is_corner,
+                n.neighbour_room_touch_is_corner,
+                n.object_id,
+                {
+                    let b = n.neighbour_shape.bounding_box();
+                    (b.ll.x, b.ll.y, b.ur.x, b.ur.y)
+                },
+            )
+        };
+        let distinct: std::collections::BTreeSet<_> = built.iter().map(value_of).collect();
+
+        let mut java = JavaTreeSet::new();
+        for neighbour in &built {
+            java.add(neighbour.clone());
+        }
+        drops_java += distinct.len() - java.len();
+
+        #[allow(clippy::mutable_key_type)]
+        let mut btree = std::collections::BTreeSet::new();
+        for neighbour in &built {
+            btree.insert(neighbour.clone());
+        }
+        drops_btree += distinct.len() - btree.len();
+
+        // Antisymmetry over every pair, transitivity over every ordered triple.
+        use std::cmp::Ordering;
+        for i in 0..built.len() {
+            for j in 0..built.len() {
+                assert_eq!(
+                    built[i].compare_to(&built[j]).reverse(),
+                    built[j].compare_to(&built[i]),
+                    "case {case}: compare_to({i}, {j}) is not antisymmetric"
+                );
+                for k in 0..built.len() {
+                    let (ij, jk) = (
+                        built[i].compare_to(&built[j]),
+                        built[j].compare_to(&built[k]),
+                    );
+                    if ij != Ordering::Greater && jk != Ordering::Greater {
+                        assert_ne!(
+                            built[i].compare_to(&built[k]),
+                            Ordering::Greater,
+                            "case {case}: {i} <= {j} <= {k} but {i} > {k}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+    // Provenance: the stream really is the jar's. `corner c=520` printed
+    // `room=Box[1730,-384..3188,78]` and `n=5`, and this reproduction draws the same box at the
+    // same index — so the 2 000 cases asserted over are the 2 000 the jar was measured on, and
+    // `five_neighbours_at_one_corner_are_all_kept_and_sort`'s five literals are case 520's.
+    assert_eq!(
+        case_520_room,
+        Some(IntBox::from_coords(1730, -384, 3188, 78)),
+        "the xorshift stream must reproduce the jar's `corner c=520 room=`"
+    );
+    assert_eq!(
+        neighbours_built, 8000,
+        "3 + rnd(3) over 2 000 cases; the jar's own draw split 665/670/665"
+    );
+    assert_eq!(
+        (drops_java, drops_btree),
+        (0, 0),
+        "the pre-fix tree drops 481 of the 8 000 in a JavaTreeSet and 482 in a BTreeSet — \
+         measured, by stashing the comparator and running this same test; the post-fix number \
+         is 0 in both, which is what makes the JavaTreeSet replaceable"
+    );
 }
 
 // =================================================================================================

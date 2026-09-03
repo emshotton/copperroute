@@ -897,7 +897,7 @@ fn the_ninety_degree_fixture_routes_and_every_segment_is_axis_aligned() {
         let _width = tokens.next();
         let coords: Vec<f64> = tokens.filter_map(|t| t.parse().ok()).collect();
         assert!(
-            coords.len() >= 4 && coords.len() % 2 == 0,
+            coords.len() >= 4 && coords.len().is_multiple_of(2),
             "a path has corners"
         );
         let points: Vec<&[f64]> = coords.chunks_exact(2).collect();

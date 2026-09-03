@@ -1188,19 +1188,22 @@ the five services they read off it (net number, tree id,
 `generateRoomIdNo`, `removeAllDoors`, `addIncompleteExpansionRoom`), so Task 6's
 engine can call it without any signature here changing.
 
-**Plan-6 ruling 4 says the neighbour set is a `BTreeSet`. It cannot be.**
-`SortedRoomNeighbour.compareTo` is not a total order, and on such a comparator
-`std`'s `BTreeSet` and Java's `TreeSet` keep *different* elements and iterate
-the survivors in *different* orders — both measured, against the HEAD jar, by
+**Plan-6 ruling 4 says the neighbour set is a `BTreeSet`. It could not be, and
+Plan 9 Task 8 is what makes it possible again.** `SortedRoomNeighbour.compareTo`
+was not a total order, and on such a comparator `std`'s `BTreeSet` and Java's
+`TreeSet` keep *different* elements and iterate the survivors in *different*
+orders — both measured, against the HEAD jar, by
 `scripts/differential/run.sh p6t3 3`. The container is therefore
 `crates/fr-router/src/java_tree_set.rs`'s `JavaTreeSet`, a transcription of
 `java.util.TreeMap`'s red-black `put`, `fixAfterInsertion` and in-order
-traversal. Quirk row #160 records the measurement; the test
-`the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does` pins
-both the Java answer and the `BTreeSet` answer so the choice cannot be
-"simplified" away. **Task 8's `MazeListElement` queue should re-check the same
-question** before reusing `BTreeSet`: ruling 4 also prescribes one there, and its
-comparator has a documented five-way `Equal` (quirk #156).
+traversal. Quirk row #160 records the measurement.
+
+**Task 8 (#160 + #161) made the comparator a total order** — see that row — so
+the two containers now keep the same elements in the same order, which
+`the_neighbour_comparator_is_a_total_order` asserts over 2 000 generated cases
+in both. The `JavaTreeSet` **stays** here until Task 24 collects the swap; the
+obstacle to it is gone, not the container. **Task 8's `MazeListElement` queue
+answers the same question in the same commit series** (quirk #171).
 
 `scripts/differential/run.sh p6t3` covers the class in ten modes: `0`/`4` are
 `calculateNeighbours` over a random board (`4` snaps the obstacles to a grid,
