@@ -15,7 +15,7 @@
 //! | 1 | the input/output guard `:80-86` | `// not reachable:` below — clap and `legacy::rewrite` both guarantee both slots |
 //! | 2 | `job.setInput` `:101-106` | [`RoutingJob::set_input`] |
 //! | 3 | `job.input == null` `:108-112` | the `Err` arm of step 2 |
-//! | 4 | delete the existing output `:116-121` | [`delete_existing_output`] — quirk #265 |
+//! | 4 | delete the existing output `:116-121` | **not ported** — quirk #265 is *fixed*; see the roster below |
 //! | 5 | `tryToSetOutputFile`, return discarded `:123` | [`RoutingJob::try_to_set_output_file`] — quirk #268 |
 //! | 6 | merge #1's sources `:125-144` | [`SettingsInputs`] |
 //! | 7 | `merger.merge()` `:146` | ↓ |
@@ -69,6 +69,11 @@
 //   (rostered in `crates/fr-core/src/lib.rs` §1) and the `shortName` log prefix. The port builds
 //   the [`RoutingJob`] directly; [`RoutingJob::new`] still derives the `<session6>\<job6>` short
 //   name, so a host that wants the prefix has it.
+// not ported: Freerouting.initializeCli's delete-before-run (:116-121) — quirk #265, and the one
+//   `// not ported:` line in this roster that is a **fix** rather than a scope decision. The
+//   `desiredOutputFile.delete()` and its warn-only failure arm are gone; `crate::logging::MESSAGE_MAP`
+//   still carries `Freerouting.java:119`'s "Couldn't delete the file '{}'" because the map is the
+//   **jar's** message set and `parity::normalize_log` reads it from both sides. See step 4.
 // not ported: Freerouting.initializeCli's blocking wait (:151-158) — `while
 //   (!isCliTerminalState(job.state)) Thread.sleep(500)`. There is no scheduler thread to wait
 //   for; the pipeline runs on this stack. Plan ruling 7 also *totalises* the predicate: `INVALID`
@@ -152,8 +157,18 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // one from the same two arguments for the merger. Dead in Java; the port builds the one the
     // merge uses, below.
 
-    // ── 4. delete the existing output file (`:116-121`) — quirk #265 ─────────────────────────
-    delete_existing_output(&args.output);
+    // ── 4. delete the existing output file (`:116-121`) — quirk #265, **not ported** ─────────
+    //
+    // fixed: T3 (#265) — Java's `:117-121` deletes the desired output file here, before
+    // `job.setInput` has been validated for loadability, before both settings merges, before the
+    // board load and before the router. A run that then fails, hangs (quirk #244), times out
+    // without producing bytes or is refused by `BoardLoader` has therefore **destroyed the
+    // previous result and written nothing in its place** — and `File.delete()` unlinks an empty
+    // *directory* too, so `-do <an empty dir>` silently removes it. The delete serves nothing the
+    // write does not already serve: `writeCliOutputIfAvailable`'s `Files.write` at `:206`
+    // truncates. So the port deletes nothing, and the previous result survives every failure path
+    // this function has. `crates/freerouting/tests/cli_e2e.rs::{a_failed_run_leaves_the_previous_result_on_disk,
+    // an_empty_output_directory_is_not_unlinked}` are the two halves.
 
     // ── 5. `tryToSetOutputFile`, return value discarded (`:123`) — quirk #268 (label L) ───────
     //
@@ -485,31 +500,6 @@ fn finish(
 ) -> ExitCode {
     write_cli_result_manifest_if_requested(job, args, output_written, exit_code, stats);
     exit_code
-}
-
-/// `Freerouting.initializeCli:116-121` — **quirk #265**: the desired output file is deleted before
-/// anything is routed, and a delete that fails is only warned about.
-///
-/// A run that then hangs, is killed, or fails has destroyed the previous result and written
-/// nothing in its place.
-fn delete_existing_output(output: &Path) {
-    // `:117` — `(desiredOutputFile != null) && desiredOutputFile.exists()`. `File.exists()` is
-    // false for a broken symlink and for a path the process cannot stat, which is why the port
-    // uses `Path::exists` (the same `stat`-and-swallow) rather than `symlink_metadata`.
-    if !output.exists() {
-        return;
-    }
-    // `:118` — `desiredOutputFile.delete()`, whose `boolean` is the whole error channel.
-    // `File.delete()` removes an **empty directory** too; `std::fs::remove_file` does not, so the
-    // directory case is retried with `remove_dir` to keep the predicate Java's.
-    if std::fs::remove_file(output).is_ok() {
-        return;
-    }
-    if output.is_dir() && std::fs::remove_dir(output).is_ok() {
-        return;
-    }
-    // `:119` — `FRLogger.warn("Couldn't delete the file '" + … + "'")`.
-    tracing::warn!("Couldn't delete the file '{}'", output.display());
 }
 
 /// `RoutingJobScheduler.java:113-152` — the `.rules` **the scheduler** resolved, as bytes.

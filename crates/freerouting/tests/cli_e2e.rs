@@ -197,27 +197,34 @@ const QUIRK_T_JAR_JSON: &str = r#"{
 // The behaviour tests
 // =================================================================================================
 
-/// **Quirk #265** (`Freerouting.java:116-121`): the desired output file is deleted **before**
-/// anything is routed, so a run that then fails or is killed has destroyed the previous result
-/// and written nothing in its place.
+/// **Quirk #265, fixed in Plan 9 Task 3** (`Freerouting.java:116-121`).
 ///
-/// Asserted by failing *after* the delete: the input is a `.ses`, which `BoardLoader.java:31-37`
-/// refuses, so the run exits 1 having deleted the pre-existing output and written no replacement.
+/// The jar deletes the desired output file **before** the run starts — before `job.setInput` has
+/// been validated for loadability, before both settings merges, before the board load and before
+/// the router — so a run that then fails, hangs, times out without producing bytes or is refused
+/// by `BoardLoader` has destroyed the previous result and written nothing in its place. The port
+/// deletes nothing: `write_cli_output_if_available`'s `std::fs::write` truncates, so the file on
+/// disk is replaced only when there are bytes to replace it with.
+///
+/// This is the **inverse** of Plan 8's `an_existing_output_file_is_deleted_before_routing`, which
+/// this test replaces. The run is made to fail the same way that one did — the input is named
+/// `.dsn` but holds a session, which `BoardLoader.java:31-37` refuses, so the run cannot reach
+/// the writer — and the assertion is turned around: the sentinel must survive **byte for byte**.
+///
+/// It needs no JDK: what it pins is the port's own behaviour on a path where the jar's is
+/// recorded in `docs/java-quirks.md` #265 and is deliberately no longer matched.
 #[test]
-fn an_existing_output_file_is_deleted_before_routing() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let dir = scratch("delete-before-routing");
-    // The input is named `.dsn` but **contains a session**: `RoutingJob::set_input` sniffs the
-    // bytes first (`RoutingJob.java:431`), so `job.input.format` is `SES` and
-    // `BoardLoader.java:31-37` refuses it — the run cannot reach the writer. The name has to end
-    // `.dsn`, because the `-de` classifier routes a `.ses` argument to `designSessionFilename`
-    // instead (`GlobalSettings.java:622-628`), which would leave no input file at all.
+fn a_failed_run_leaves_the_previous_result_on_disk() {
+    let dir = scratch("failed-run-keeps-previous");
+    // The name has to end `.dsn`: the `-de` classifier routes a `.ses` argument to
+    // `designSessionFilename` instead (`GlobalSettings.java:622-628`), which would leave no input
+    // file at all. `RoutingJob::set_input` sniffs the **bytes** first (`RoutingJob.java:431`), so
+    // `job.input.format` is `SES` and the board load refuses it.
     let input = dir.join("board.dsn");
     std::fs::write(&input, b"(session previous)\n").unwrap();
     let output = dir.join("out.ses");
-    std::fs::write(&output, b"PREVIOUS RESULT").unwrap();
+    const SENTINEL: &[u8] = b"PREVIOUS RESULT";
+    std::fs::write(&output, SENTINEL).unwrap();
 
     let (_, _, code) = run(&[
         "-de",
@@ -227,9 +234,48 @@ fn an_existing_output_file_is_deleted_before_routing() {
     ]);
 
     assert_eq!(code, 1, "a SES input is `BoardLoader.java:33`'s refusal");
+    assert_eq!(
+        std::fs::read(&output).expect("the previous result is still there"),
+        SENTINEL,
+        "a failed run must leave the previous result byte for byte where it was"
+    );
+}
+
+/// **Quirk #265, fixed in Plan 9 Task 3** — the directory half.
+///
+/// `File.delete()` removes an empty **directory** as well as a file, so the jar's `:118` unlinks
+/// `-do <an empty dir>` before doing anything else — before the input has even been validated;
+/// the port's `delete_existing_output` had to retry with `remove_dir` to reproduce that, because
+/// `std::fs::remove_file` does not.
+///
+/// The run below fails at the board load, exactly as the test above does, and that is the point:
+/// the jar would already have unlinked the directory by then. With the delete gone nothing on
+/// this path touches the path at all, so it is still there and still empty.
+#[test]
+fn an_empty_output_directory_is_not_unlinked() {
+    let dir = scratch("empty-output-dir");
+    let input = dir.join("board.dsn");
+    std::fs::write(&input, b"(session previous)\n").unwrap();
+    // An **empty** directory, which is the only shape `File.delete()` would have removed.
+    let output = dir.join("out.ses");
+    std::fs::create_dir(&output).unwrap();
+
+    let (_, _, code) = run(&[
+        "-de",
+        &input.to_string_lossy(),
+        "-do",
+        &output.to_string_lossy(),
+    ]);
+
+    assert_eq!(code, 1);
     assert!(
-        !output.exists(),
-        "the previous result must be gone: `:118`'s delete runs before the load"
+        output.is_dir(),
+        "the empty directory must still be there: nothing deletes it now"
+    );
+    assert_eq!(
+        std::fs::read_dir(&output).unwrap().count(),
+        0,
+        "and nothing was written into it either"
     );
 }
 
@@ -483,7 +529,7 @@ fn de_a_ses_exits_1_instead_of_hanging() {
     }
     let dir = scratch("de-a-ses");
     // Session bytes under a `.dsn` name — see
-    // [`an_existing_output_file_is_deleted_before_routing`] for why the extension has to be
+    // [`a_failed_run_leaves_the_previous_result_on_disk`] for why the extension has to be
     // `.dsn` and the *content* is what makes the format `SES`.
     let input = dir.join("board.dsn");
     std::fs::write(&input, b"(session previous)\n").unwrap();
