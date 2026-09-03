@@ -270,20 +270,43 @@ Byte-identical SES, equal exit code, equal `parity::normalize_log`, on the same
 `scripts/differential/run.sh p8t1` rungs every DSN stem uses. There is no
 `--kicad-json` gap left on either form.
 
-**The output half landed in Plan 8 Task 10.** `-do out.json` is accepted by
-`tryToSetOutputFile:384-388` (a `.json` extension classifies as
-`KICAD_DESIGN_JSON`, which `:391` rewrites to `KICAD_SESSION_JSON`), so unlike
-`-do out.dsn`/`out.scr` it really is serialised and the run exits 0. What it
-serialises is **quirk #289 (label T)**: `setJobOutput` is both a board-updated
-listener and a once-only call after the pipeline, and only the *first* of those
-calls ever writes, because `setData` re-sniffs the JSON back to
-`KICAD_DESIGN_JSON` and every later call then matches neither branch. Measured
-on three boards at the pinned jar — see the register row — the file therefore
-holds the board **as loaded, before any routing**. The port reproduces that
-exactly: `commands/route.rs` takes the `fr_dsn::kicad::write` snapshot before
-`RoutingPipeline::run`, and
-`crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_pre_routing_board`
-pins the jar's own 1 540 bytes as a literal.
+**The output half landed in Plan 8 Task 10 and was fixed in Plan 9 Task 3.**
+`-do out.json` is accepted by `tryToSetOutputFile:384-388` (a `.json` extension
+classifies as `KICAD_DESIGN_JSON`, which `:391` rewrites to
+`KICAD_SESSION_JSON`) and really is serialised, so the run exits 0 on both
+programs. What the **jar** serialises is **quirk #289 (label T)**:
+`setJobOutput` is both a board-updated listener and a once-only call after the
+pipeline, and only the *first* of those calls ever writes, because `setData`
+re-sniffs the JSON back to `KICAD_DESIGN_JSON` and every later call then matches
+neither branch. Measured on three boards at the pinned jar — see the register
+row — the jar's file therefore holds the board **as loaded, before any
+routing**, which makes `-do out.json` silently useless there.
+
+**The port no longer reproduces it.** Plan 9 Task 3 deleted the pre-routing
+snapshot, gave `BoardFileDetails::set_data` the format as a parameter instead of
+re-sniffing it, and left one serialisation — after the pipeline, on the board
+`RoutingPipeline::run` finished with, exactly where the SES arm always
+serialised. So the port's `-do out.json` carries the **routed** board.
+`crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_routed_board` is
+the gate, and it pins a relationship rather than a pasted document: the JSON's
+`traces` count must equal the `(wire ` count of the SES from the identical argv.
+`scripts/differential/run.sh p8t7`'s rung (c) measures both programs and is an
+**XDIFF** — the divergence is deliberate and is recorded in the register at
+#289.
+
+**The other `-do` extensions are refused at the argument.** `setJobOutput`
+serialises `SES` and `KICAD_SESSION_JSON` and nothing else, but
+`tryToSetOutputFile:384-388` accepts `DSN | FRB | SES | SCR |
+KICAD_DESIGN_JSON` and `Freerouting.java:123` discards its return value
+altogether — so in the jar `-do out.dsn` and `-do out.scr` leave a **0-byte
+file** and exit 1, while `-do out.txt`, `-do out` and every other unrecognised
+spelling silently receive the SES bytes and exit 0 at a path the user did not
+ask for. That is **quirk #268 (label L)**, and Plan 9 Task 3 fixed it too: the
+port tests the return value *and* whether the resolved format is one it can
+actually write, and refuses anything else **before** the settings merge, the
+board load and the router, naming `.ses` and `.json`, creating nothing and
+touching nothing. So on the port `-do` takes `.ses` or `.json`; every other
+spelling — extension or none — is an argument error with exit 1.
 
 **The `.json` *session* slot landed with it.** A second `.json` on a `-de` line
 (`GlobalSettings.java:609-621`) is the previous session, and its `.json` arm now
