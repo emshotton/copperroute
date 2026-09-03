@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use fr_board::{Board, ItemId, StopCheck, TreeObject};
 use fr_geometry::{IntBox, Point, PolylineArea, TileShape};
 
@@ -21,7 +23,7 @@ pub struct DrillPage {
     pub shape: IntBox,
     id_no: i32,
     maze_search_elements: Vec<MazeSearchElement>,
-    drills: Option<Vec<DrillId>>,
+    drills: Option<Arc<Vec<DrillId>>>,
     net_number: i32,
 }
 
@@ -42,9 +44,11 @@ impl DrillPage {
         board: &mut Board,
         attach_smd: bool,
         stop: StopCheck<'_>,
-    ) -> Vec<DrillId> {
-        if self.drills.is_some() && engine.get_net_number() == self.net_number {
-            return self.drills.clone().unwrap_or_default();
+    ) -> Arc<Vec<DrillId>> {
+        if let Some(drills) = &self.drills
+            && engine.get_net_number() == self.net_number
+        {
+            return Arc::clone(drills);
         }
         let new_net_number = engine.get_net_number();
 
@@ -57,14 +61,16 @@ impl DrillPage {
             cutout_shapes.into_iter().map(Into::into).collect(),
         );
         let Some(drill_shapes) = shape_with_holes.split_to_convex(Some(stop)) else {
-            return Vec::new();
+            return Arc::new(Vec::new());
         };
 
         self.net_number = new_net_number;
-        for old_drill in self.drills.take().into_iter().flatten() {
-            engine.rooms.drills.remove(old_drill.0);
+        if let Some(old_drills) = self.drills.take() {
+            for old_drill in old_drills.iter().copied() {
+                engine.rooms.drills.remove(old_drill.0);
+            }
         }
-        self.drills = Some(Vec::new());
+        self.drills = Some(Arc::new(Vec::new()));
 
         let drill_first_layer = 0usize;
         let drill_last_layer = board.get_layer_count() - 1;
@@ -88,10 +94,14 @@ impl DrillPage {
             );
             if new_drill.calculate_expansion_rooms(engine, board) {
                 let id = DrillId(engine.rooms.drills.insert(new_drill));
-                self.drills.get_or_insert_with(Vec::new).push(id);
+                // A caller still holding an earlier call's `Arc` keeps that snapshot; `:65-66`
+                // has just installed a fresh list, so this does not copy.
+                Arc::make_mut(self.drills.get_or_insert_with(|| Arc::new(Vec::new()))).push(id);
             }
         }
-        self.drills.clone().unwrap_or_default()
+        self.drills
+            .as_ref()
+            .map_or_else(|| Arc::new(Vec::new()), Arc::clone)
     }
 
     pub fn obstacle_cutout_trace(
@@ -213,7 +223,7 @@ impl DrillPage {
 
     pub fn reset(&mut self, drills: &mut Arena<ExpansionDrill>) {
         if let Some(ids) = &self.drills {
-            for id in ids {
+            for id in ids.iter() {
                 if let Some(drill) = drills.get_mut(id.0) {
                     drill.reset();
                 }
@@ -225,8 +235,10 @@ impl DrillPage {
     }
 
     pub fn invalidate(&mut self, drills: &mut Arena<ExpansionDrill>) {
-        for id in self.drills.take().into_iter().flatten() {
-            drills.remove(id.0);
+        if let Some(old_drills) = self.drills.take() {
+            for id in old_drills.iter().copied() {
+                drills.remove(id.0);
+            }
         }
     }
 
@@ -245,7 +257,7 @@ impl DrillPage {
     }
 
     pub fn drills(&self) -> Option<&[DrillId]> {
-        self.drills.as_deref()
+        self.drills.as_ref().map(|list| list.as_slice())
     }
 
     pub fn net_number(&self) -> i32 {

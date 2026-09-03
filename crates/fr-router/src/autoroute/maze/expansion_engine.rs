@@ -204,7 +204,7 @@ impl MazeExpansionEngine {
                 .engine
                 .drill_page_drills(board, drill_page, attach_smd_allowed, stop);
 
-        for current_drill in drill_list {
+        for current_drill in drill_list.iter().copied() {
             let Some(drill) = search.engine.rooms.drills.get(current_drill.0) else {
                 continue;
             };

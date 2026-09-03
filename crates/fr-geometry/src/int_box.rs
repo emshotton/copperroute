@@ -285,6 +285,7 @@ impl IntBox {
     }
 
     /// Returns true, if this box intersects with other (touching counts as intersecting).
+    #[inline]
     pub fn intersects(&self, other: &IntBox) -> bool {
         if other.ll.x > self.ur.x {
             return false;
@@ -597,6 +598,7 @@ impl IntBox {
         result.to_vec()
     }
 
+    #[inline]
     pub fn to_int_octagon(&self) -> IntOctagon {
         IntOctagon::new(
             self.ll.x,
@@ -610,6 +612,7 @@ impl IntBox {
         )
     }
 
+    #[inline]
     pub fn bounding_octagon(&self) -> IntOctagon {
         self.to_int_octagon()
     }
@@ -622,6 +625,7 @@ impl IntBox {
         other.intersection(&self.to_int_octagon())
     }
 
+    #[inline]
     pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         other.intersects_octagon(&self.to_int_octagon())
     }

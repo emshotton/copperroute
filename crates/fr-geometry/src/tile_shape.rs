@@ -218,6 +218,7 @@ impl TileShape {
     }
 
     /// Returns the smallest axis-parallel box containing this shape.
+    #[inline]
     pub fn bounding_box(&self) -> IntBox {
         match self {
             TileShape::Box(b) => b.bounding_box(),
@@ -226,6 +227,7 @@ impl TileShape {
         }
     }
 
+    #[inline]
     pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             TileShape::Box(b) => Some(b.bounding_octagon()),
@@ -373,6 +375,7 @@ impl TileShape {
         }
     }
 
+    #[inline]
     pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         match self {
             TileShape::Box(b) => b.intersects_octagon(other),

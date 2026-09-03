@@ -86,6 +86,7 @@ impl IntOctagon {
     }
 
     /// Returns the smallest `IntBox` containing this octagon.
+    #[inline]
     pub fn bounding_box(&self) -> IntBox {
         IntBox::from_coords(self.left_x, self.bottom_y, self.right_x, self.top_y)
     }
@@ -341,6 +342,7 @@ impl IntOctagon {
         )
     }
 
+    #[inline]
     pub fn union_box(&self, other: &IntBox) -> IntOctagon {
         self.union(&other.to_int_octagon())
     }
@@ -545,11 +547,13 @@ impl IntOctagon {
             && self.upper_right_diagonal_x <= other.upper_right_diagonal_x
     }
 
+    #[inline]
     pub fn intersects_box(&self, other: &IntBox) -> bool {
         self.intersects_octagon(&other.to_int_octagon())
     }
 
     /// Checks if two normalized octagons intersect (touching counts as intersecting).
+    #[inline]
     pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         let is_lx = other.left_x.max(self.left_x);
         let is_rx = other.right_x.min(self.right_x);
@@ -580,6 +584,7 @@ impl IntOctagon {
 
     /// Returns true if this octagon intersects with `other` and the intersection is
     /// 2-dimensional.
+    #[inline]
     pub fn overlaps(&self, other: &IntOctagon) -> bool {
         let is_lx = other.left_x.max(self.left_x);
         let is_rx = other.right_x.min(self.right_x);

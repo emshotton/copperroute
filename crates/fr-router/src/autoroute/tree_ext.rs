@@ -207,6 +207,75 @@ fn item_of(items: &impl ItemLookup, id: fr_board::ItemId) -> &fr_board::Item {
     })
 }
 
+/// Resolves a [`TreeObject`] once so a single leaf visit answers all three questions
+/// (`is_trace_obstacle`, `shape_layer`, `tree_shape`) without three separate arena probes.
+///
+/// The three free helpers above answer the same three questions from a key and remain the
+/// definition of what the methods here must answer; [`complete_shape_base`] and
+/// [`complete_shape_90`] use those, [`complete_shape_45`] uses this.
+enum ResolvedTreeObject<'a> {
+    Item(fr_board::ItemId, &'a fr_board::Item),
+    Room(
+        fr_board::RoomId,
+        &'a crate::autoroute::expansion::CompleteFreeSpaceExpansionRoom,
+    ),
+}
+
+impl<'a> ResolvedTreeObject<'a> {
+    fn resolve(
+        object: TreeObject,
+        items: &'a impl ItemLookup,
+        rooms: &'a ExpansionRoomStore,
+    ) -> ResolvedTreeObject<'a> {
+        match object {
+            TreeObject::Item(id) => ResolvedTreeObject::Item(id, item_of(items, id)),
+            TreeObject::Room(id) => ResolvedTreeObject::Room(id, room_of(rooms, id)),
+        }
+    }
+
+    fn is_trace_obstacle(&self, net_no: i32) -> bool {
+        match self {
+            ResolvedTreeObject::Item(_, item) => item.is_trace_obstacle(net_no),
+            ResolvedTreeObject::Room(_, _) => true,
+        }
+    }
+
+    fn shape_layer(&self, shape_index: usize, ctx: &ItemCtx<'_>) -> usize {
+        match self {
+            ResolvedTreeObject::Item(_, item) => item.shape_layer(shape_index, ctx),
+            ResolvedTreeObject::Room(_, room) => room.get_layer(),
+        }
+    }
+
+    fn tree_shape(
+        &self,
+        tree: &ShapeSearchTree,
+        shape_index: usize,
+        ctx: &ItemCtx<'_>,
+    ) -> TileShape {
+        match self {
+            ResolvedTreeObject::Item(id, item) => tree
+                .get_tree_shape(item, shape_index, ctx)
+                .map(std::borrow::Cow::into_owned)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "ShapeSearchTree.completeShape: item {id} has a leaf for shape \
+                         {shape_index} but no shape for it — Java NPEs here too"
+                    )
+                }),
+            ResolvedTreeObject::Room(id, room) => room
+                .get_shape()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "ShapeSearchTree.completeShape: expansion room {id:?} has a tree leaf but \
+                         no shape — Java NPEs here too"
+                    )
+                })
+                .clone(),
+        }
+    }
+}
+
 fn room_of(
     rooms: &ExpansionRoomStore,
     id: fr_board::RoomId,
@@ -517,6 +586,8 @@ fn complete_shape_45(
         Some(TileShape::Octagon(shape_to_be_contained)),
     )];
     let mut node_stack: Vec<NodeId> = vec![root];
+    // `:186`'s per-obstacle list, hoisted so it and `result` can swap at `:263-264`.
+    let mut new_result: Vec<IncompleteFreeSpaceExpansionRoom> = Vec::new();
 
     while let Some(current_node) = node_stack.pop() {
         let node = *tree.tree().node(current_node);
@@ -544,23 +615,23 @@ fn complete_shape_45(
             Node::Free { .. } => unreachable!("ShapeTree::node rejects freed slots"),
         };
 
-        let is_obstacle = object_is_trace_obstacle(current_object, net_number, items);
-        let same_layer =
-            object_shape_layer(current_object, shape_index, items, rooms, ctx) == room_layer;
-        let ignored_object = Some(current_object) == ignore_object;
-        if !(is_obstacle && same_layer && !ignored_object) {
+        let resolved = ResolvedTreeObject::resolve(current_object, items, rooms);
+        if !(resolved.is_trace_obstacle(net_number)
+            && resolved.shape_layer(shape_index, ctx) == room_layer
+            && Some(current_object) != ignore_object)
+        {
             continue;
         }
 
-        let current_object_shape =
-            object_tree_shape(tree, current_object, shape_index, items, rooms, ctx)
-                .bounding_octagon()
-                .unwrap_or_else(|| {
-                    panic!(
-                        "ShapeSearchTree45Degree.completeShape: an obstacle shape with no \
-                         bounding octagon — Java NPEs at ShapeSearchTree45Degree.java:191"
-                    )
-                });
+        let current_object_shape = resolved
+            .tree_shape(tree, shape_index, ctx)
+            .bounding_octagon()
+            .unwrap_or_else(|| {
+                panic!(
+                    "ShapeSearchTree45Degree.completeShape: an obstacle shape with no \
+                     bounding octagon — Java NPEs at ShapeSearchTree45Degree.java:191"
+                )
+            });
         if p7t14b_cs_ledger() {
             let kind = match current_object {
                 TreeObject::Room(_) => "CompleteFreeSpaceExpansionRoom",
@@ -581,7 +652,7 @@ fn complete_shape_45(
             }
             eprintln!("{line}");
         }
-        let mut new_result: Vec<IncompleteFreeSpaceExpansionRoom> = Vec::new();
+        new_result.clear();
         let mut new_bounding_shape = IntOctagon::EMPTY;
         for current_room in &result {
             let current_shape = match current_room.get_shape() {
@@ -610,8 +681,13 @@ fn complete_shape_45(
                     continue;
                 }
             }
+            // `IntOctagon::union` is per-coordinate `min`/`max` over a field-wise
+            // [`IntOctagon::new`] — no normalisation — hence idempotent, commutative and
+            // associative, and everything below `appended_from` is already in
+            // `new_bounding_shape`, so folding only the tail reaches the same octagon.
+            let appended_from = new_result.len();
             new_result.extend(restrain_shape_45(current_room, &current_object_shape));
-            for tmp_shape in &new_result {
+            for tmp_shape in &new_result[appended_from..] {
                 new_bounding_shape = new_bounding_shape.union_box(
                     &tmp_shape
                         .get_shape()
@@ -620,7 +696,7 @@ fn complete_shape_45(
                 );
             }
         }
-        result = new_result;
+        std::mem::swap(&mut result, &mut new_result);
         bounding_shape = new_bounding_shape;
     }
 

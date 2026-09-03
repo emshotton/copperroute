@@ -343,6 +343,7 @@ impl Item {
         !self.contains_net(net_number)
     }
 
+    #[inline]
     pub fn is_trace_obstacle(&self, net_number: i32) -> bool {
         match self {
             Item::ConductionArea(area) => area.get_is_obstacle() && !self.contains_net(net_number),
@@ -366,6 +367,9 @@ impl Item {
         }
     }
 
+    // -- layers ----------------------------------------------------------------------------------
+
+    #[inline]
     pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.first_layer(),
@@ -403,6 +407,7 @@ impl Item {
         }
     }
 
+    #[inline]
     pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Via(i) => i.shape_layer(index, ctx),
