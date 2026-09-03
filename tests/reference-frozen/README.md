@@ -67,9 +67,9 @@ thing from the other end.
 
 ## Why it is read-only
 
-`chmod -R a-w tests/reference-frozen/java-head-2026-09/`, applied after the tsv was written. From
-Plan 9 Task 1 onwards `tests/reference/` is regenerated **from the port** and byte parity with the
-jar may break wherever a fix lands. This directory is the only surviving record of where the jar
+`chmod -R a-w tests/reference-frozen/java-head-2026-09/`, applied after the tsv was written. Over
+the rest of Plan 9 `tests/reference/` is regenerated **from the port**, family by family, each time
+a fix actually moves one (ruling BT), and byte parity with the jar may break wherever a fix lands. This directory is the only surviving record of where the jar
 stood, it cannot be recut once the differential drivers are retired, and a write into it would
 destroy something nothing can restore. To read a file here, just read it. To change one: don't.
 

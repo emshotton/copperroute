@@ -55,8 +55,9 @@
 # Measured, and it is why this was safe to do in the same task as the freeze: **the 1000 ms limit
 # takes 0 trips on all eight whole-board stems** in their reference configuration, with the jar's
 # DEBUG log on (`crates/fr-router/README.md`'s acceptance table), so the two budgets produce the
-# same bytes on this corpus. The Task 1 regeneration re-checked it from the other direction and
-# **no golden moved**. The `batch.ses` cross-check below is still the standing guard: it fails
+# same bytes on this corpus. Task 1 re-checked it from the other direction — it ran the whole
+# regeneration, and **no golden moved**: every SES was byte-identical bar quirk #92's two head
+# tokens. That measurement is why ruling BT deferred the regeneration itself. The `batch.ses` cross-check below is still the standing guard: it fails
 # loudly if this generator's bare-jar run and Plan 7's `RouterBudget::disabled()`-side reference
 # ever disagree, which is exactly the signal a trip would produce.
 #
@@ -381,9 +382,11 @@ write_meta() {
         # *decision* (HEAD's own lexer cannot read HEAD's own output back). Every port-vs-jar SES
         # comparison in the tree runs through `parity::normalize_ses_head_tokens` for that reason,
         # and this cross-check does the same. It is only ever reached while the two families sit
-        # in **different** lanes — a port-cut `route.ses` against a jar-cut `batch.ses` — which is
-        # exactly the state between Plan 9 Task 0 and the Task 1 regeneration. Once both are
-        # port-cut the normalisation is a no-op and the plain `cmp` above answers first.
+        # in **different** lanes — a port-cut `route.ses` against a jar-cut `batch.ses` — which
+        # is the state from Plan 9 Task 0 until the first fix that moves one of the two families
+        # (ruling BT: a family regenerates on measured movement, not on a schedule, so the two can
+        # sit in different lanes for several tasks). Once both are port-cut the normalisation is a
+        # no-op and the plain `cmp` above answers first.
         echo "batch cross-check  identical to tests/reference/$stem/batch.ses after quirk-#92"
         echo "                   head-token normalisation (this lane is $LANE and that reference"
         echo "                   was cut in the other one)"

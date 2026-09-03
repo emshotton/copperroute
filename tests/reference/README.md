@@ -6,8 +6,12 @@
 > the Java jar, and byte parity with the jar was the port's acceptance test. **Plan 9 reverses
 > that.** The port fixes 121 catalogued defects, byte parity with the jar may break wherever a fix
 > lands, and the evidence moves from "the jar agrees" to "the port's own golden did not move
-> unexplained, and the routing got better on 605 real boards". From Plan 9 Task 1 on, everything
-> here is **regenerated from the port** and is the port's own golden.
+> unexplained, and the routing got better on 605 real boards". Everything here becomes
+> **regenerated from the port** and the port's own golden — but **per family, and only when a fix
+> actually moves that family** (ruling BT). Task 1 was originally to re-cut all five families at
+> once; it measured that none of its three fixes moved a single routed byte, so there was nothing
+> to re-cut, and re-cutting anyway would have been a bare lane switch. A family therefore stays
+> jar-cut until the first fix that moves it, and that task carries the switch with it.
 >
 > ### The freeze
 >
@@ -39,7 +43,7 @@
 > | flag | drives | what it is for |
 > |---|---|---|
 > | `--jar` (**the default**) | the jar, exactly as before | the frozen baseline, and **triage**: when a port-cut golden churns for a reason nobody can name, this answers "did the jar move, did the port move, or did the reference?" |
-> | `--from-port` | the port — its CLI, or its own `p6t1` / `p7t9` / `refwriter` twin | what regenerates the committed references from Task 1 on |
+> | `--from-port` | the port — its CLI, or its own `p6t1` / `p7t9` / `refwriter` twin | what regenerates a committed family, the first time a Plan 9 fix moves it (ruling BT) |
 >
 > A `--from-port` run writes three provenance lines into the stem's `meta.txt`: **the port's git
 > sha, the Plan 9 task at that sha, and the `RouterBudget` in force**. That line exists so that a

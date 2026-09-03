@@ -11,7 +11,8 @@
 #                 name, this is what it gets compared against.
 #   --from-port   the **port**, through `scripts/differential/rust/src/bin/refwriter.rs` — the
 #                 Rust twin of `RefWriter.java`, same three arguments, same two outputs. This is
-#                 the lane that regenerates the committed references from Plan 9 Task 1 on, when
+#                 the lane that regenerates a committed family the first time a Plan 9 fix moves
+#                 it (ruling BT — per family, on measured movement, never on a schedule), when
 #                 the port's answer is allowed to be better than the jar's.
 #
 # **Byte parity with the jar may break from Plan 9 on, and that is the point.** The `--jar` lane
