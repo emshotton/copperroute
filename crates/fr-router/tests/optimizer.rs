@@ -665,10 +665,16 @@ fn the_multithreaded_optimizer_is_rostered_not_ported() {
 // The routed-board half — release only (`optimizer_items.rs`' convention)
 // =================================================================================================
 
-/// `:182-193` on a real board. `p7t9 router-only` leaves `Issue143-rpi_splitter` at `799.98267`
-/// after one pass, so a threshold of `0.5` puts `score * 1.5` over the 1000 ceiling and the
-/// optimizer exits **before** the first pass runs — but **after** `:177` has counted it, which is
-/// why `passes_run` is 1 while `per_pass` is empty and no item was touched.
+/// `:182-193` on a real board. `router-only` leaves `Issue143-rpi_splitter` at `599.9854` after
+/// one pass, so a threshold of `0.7` puts `score * 1.7` over the 1000 ceiling and the optimizer
+/// exits **before** the first pass runs — but **after** `:177` has counted it, which is why
+/// `passes_run` is 1 while `per_pass` is empty and no item was touched.
+///
+/// PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity setup was a
+/// threshold of **0.5** against `p7t9`'s post-pass score of **799.982 67**. Plan 9 Task 2's R1
+/// (#293) and R2 (#294) leave the same board at **599.985 4**, where `599.9854 * 1.5 = 899.98` is
+/// under the ceiling and the exit no longer fires — so the *threshold*, not the assertion, is
+/// what was re-cut: `0.7` reproduces the arm this test exists for. Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_near_perfect_board_exits_before_the_first_pass() {
@@ -676,7 +682,7 @@ fn a_near_perfect_board_exits_before_the_first_pass() {
         return;
     }
     let (mut board, mut settings) = routed_rpi();
-    optimizer_settings(&mut settings).optimization_improvement_threshold = Some(0.5);
+    optimizer_settings(&mut settings).optimization_improvement_threshold = Some(0.7);
     let before = board.structural_hash();
 
     let mut optimizer = BatchOptimizer::new(&settings);
@@ -701,10 +707,15 @@ fn a_near_perfect_board_exits_before_the_first_pass() {
 
 /// `:349-361` — `maxConsecutiveFailures` consecutive unimproved items end the pass early.
 ///
-/// The literals are `p7t8 <rpi> item 1 all`'s, which is the JVM transcript this file's sibling
-/// pins at 10/10 MATCH: item 0 (`id=43`, a via) improves and item 1 (`id=49`) does not. With the
-/// limit set to **1**, that single failure ends the pass — so exactly two items are visited,
-/// where the unbounded walk visits seven.
+/// Item 0 (`id=86`, a via) improves and item 1 (`id=92`) does not. With the limit set to **1**,
+/// that single failure ends the pass — so exactly two items are visited, where the unbounded walk
+/// visits five.
+///
+/// PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The unbounded walk's count was
+/// the JVM's **7** (`p7t8 <rpi> item 1 all`'s `ITEMS-END count=7`); Plan 9 Task 2's R1 (#293)
+/// re-orders the work list and R2 (#294) removes a sub-minimum fanout trace, so the routed board
+/// the optimizer is handed now offers **5** items. The limit-of-1 half is **2** on both sides —
+/// it counts the break, not the board. Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn consecutive_failures_break_the_pass() {
@@ -738,8 +749,8 @@ fn consecutive_failures_break_the_pass() {
         "`p7t8 item` improves item 0 and fails item 1; one failure is the limit"
     );
 
-    // The same pass with Java's default limit walks the board to exhaustion — seven items, which
-    // is `p7t8`'s `ITEMS-END count=7`.
+    // The same pass with Java's default limit walks the board to exhaustion — five items on the
+    // port's own routed board (the JVM's was seven; see the pin above).
     let (mut board, settings) = routed_rpi();
     let mut optimizer = BatchOptimizer::new(&settings);
     optimizer.use_increased_ripup_costs = true;
@@ -754,7 +765,7 @@ fn consecutive_failures_break_the_pass() {
             &mut sink,
         )
         .expect("the pass runs");
-    assert_eq!(optimizer.total_items_optimized, 7);
+    assert_eq!(optimizer.total_items_optimized, 5);
 }
 
 /// **Quirk #227, half two — the seam Task 15 must not flatten.**
@@ -791,10 +802,14 @@ fn an_auto_router_only_stop_leaves_every_item_rejected() {
         result.passes_run, 1,
         "the stage is not disabled — `:171` reads `ALL`"
     );
+    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was
+    // **6** (`p7t9 <rpi> 1 optimizer-shared 2 all`'s `OPT-RESULT items=6`). Plan 9 Task 2's R1
+    // (#293)/R2 (#294) leave the routed board with **5** items for the reader to offer. What the
+    // test measures — that every offered item is visited and none of them changes the board — is
+    // unchanged. Accepted at M1 (ruling BV).
     assert_eq!(
-        result.items_optimized, 6,
-        "and it visits every item the reader offers — `p7t9 <rpi> 1 optimizer-shared 2 all`'s \
-         `OPT-RESULT items=6`, all six `improved=false`"
+        result.items_optimized, 5,
+        "and it visits every item the reader offers, all of them `improved=false`"
     );
     assert_eq!(
         board.structural_hash(),
@@ -819,14 +834,23 @@ fn an_auto_router_only_stop_leaves_every_item_rejected() {
     );
 }
 
-/// The whole stage against the JVM: the literals are `p7t9 <rpi> 1 optimizer`'s `OPT-PASS` and
-/// `OPT-RESULT` lines, i.e. the transcript the differential harness compares byte for byte.
+/// The whole stage on the routed `rpi_splitter`, pinned field by field.
 ///
 /// It is here as well as in the harness because a driver can be edited and a test cannot be
 /// forgotten: if `run_batch_loop`'s termination condition drifts, this fails without a JVM.
+///
+/// PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV), and renamed with its literals
+/// (`the_optimizer_stage_matches_the_jvm`). The whole block below was `p7t9 <rpi> 1 optimizer`'s
+/// `OPT-PASS`/`OPT-RESULT` lines — `passesRun=2 items=7 … finalScore=999.986`, over a pass that
+/// took the board from `799.982 67` to `999.986` with 2 vias and 14 traces and no incomplete
+/// connection left. Plan 9 Task 2's R1 (#293) and R2 (#294) route that board differently: the
+/// stage now runs **one** pass over **five** items, from `599.985 4` to `599.995 85`, and stops
+/// because the pass improved too little rather than because `:182-193` fired on a near-perfect
+/// board. Every literal below is the **port's** measurement; the jar's are quoted above so the
+/// move is legible. Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn the_optimizer_stage_matches_the_jvm() {
+fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     if !parity::require_java_dir() {
         return;
     }
@@ -838,37 +862,35 @@ fn the_optimizer_stage_matches_the_jvm() {
         .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
         .expect("the stage runs");
 
-    // `p7t9 <rpi> 1 optimizer 2 all`, the `OPT-RESULT` line:
-    //   `state=FINISHED passesRun=2 items=7 timedOut=false useIncreasedRipupCosts=true
-    //    finalScore=999.986`.
+    // The stage's own result line: `state=FINISHED passesRun=1 items=5 timedOut=false
+    // useIncreasedRipupCosts=true finalScore=599.99585`.
     assert_eq!(result.state, TaskState::Finished);
     assert_eq!(
-        result.passes_run, 2,
-        "`:177` counted pass 2, `:182-193` abandoned it"
+        result.passes_run, 1,
+        "one pass ran and `:365-368`'s unimproved arm ended the loop"
     );
-    assert_eq!(result.items_optimized, 7);
+    assert_eq!(result.items_optimized, 5);
     assert!(!result.timed_out);
     assert!(
         optimizer.use_increased_ripup_costs,
         "pass 1 improved, so neither `:365-368` nor `:212-215` fired"
     );
 
-    // …and its single `OPT-PASS` line — pass 2 never completed, because `:182-193` fired on a
-    // board that pass 1 had taken to 999.986 (`999.986 * 1.01 >= 1000`).
+    // …and its single completed pass.
     assert_eq!(result.per_pass.len(), 1);
     let pass = result.per_pass[0];
     assert_eq!(pass.pass, 1);
     assert!(pass.with_preferred_directions, ":200 — pass 1 is odd");
-    assert_eq!(pass.score_before, 799.982_67);
-    assert_eq!(pass.score_after, 999.986);
-    assert_eq!(pass.total_items_optimized, 7);
-    assert_eq!(pass.record.incomplete_count, 0);
+    assert_eq!(pass.score_before, 599.985_4);
+    assert_eq!(pass.score_after, 599.995_85);
+    assert_eq!(pass.total_items_optimized, 5);
+    // Two connections stay open — R2 (#294) refuses the sub-minimum fanout that used to close
+    // them — and the two vias that carried them are gone with the traces they fed.
+    assert_eq!(pass.record.incomplete_count, 2);
     assert_eq!(pass.record.clearance_violations, 0);
-    assert_eq!(pass.record.via_count, 2);
-    assert_eq!(pass.record.trace_count, 14);
-    // `OPT-PASS … passImprovement=0.25000961324540416 scoreImprovement=0.25000961324540416
-    //  routeImproved=0.063065656`.
-    assert_eq!(pass.pass_improvement, 0.250_009_613_245_404_16);
+    assert_eq!(pass.record.via_count, 0);
+    assert_eq!(pass.record.trace_count, 9);
+    assert_eq!(pass.pass_improvement, 1.739_544_245_511_34e-5);
     assert_eq!(pass.score_improvement, pass.pass_improvement);
-    assert_eq!(pass.route_improved, 0.063_065_656);
+    assert_eq!(pass.route_improved, 0.412_747_17);
 }

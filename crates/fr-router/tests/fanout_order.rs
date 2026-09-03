@@ -746,13 +746,17 @@ fn the_four_target_strategy_carries_the_ripped_set_into_the_second_attempt() {
     );
 }
 
-/// `RoutingBoard.fanout` end to end on the corpus board, in `p7t5 pin`'s own walk order. The
-/// literals are the HEAD jar's, from `run.sh p7t5 <rpi> 0 outer_first pin`.
+/// `RoutingBoard.fanout` end to end on the corpus board, in `p7t5 pin`'s own walk order.
+///
+/// The walk order and the ten escape states are still the HEAD jar's, from
+/// `run.sh p7t5 <rpi> 0 outer_first pin`. **The trace count is not**: it was re-cut from the port
+/// at the M1 accept wave (ruling BV), and the test lost its `_like_the_jvm` suffix with it —
+/// see the pin beside the assertion.
 ///
 /// Release-only: it routes ten escapes through the real maze.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn fanout_escapes_every_smd_pin_of_the_corpus_board_like_the_jvm() {
+fn fanout_escapes_every_smd_pin_of_the_corpus_board() {
     use fr_board::TimeLimit;
     use fr_board::datastructures::StopCheck;
     use fr_router::AutorouteAttemptState;
@@ -809,7 +813,13 @@ fn fanout_escapes_every_smd_pin_of_the_corpus_board_like_the_jvm() {
         ]
     );
     assert_eq!(board.get_vias().len(), 9);
-    assert_eq!(board.get_traces().len(), 11);
+    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was
+    // **11**; the port lays **10** since Plan 9 Task 2's R2 (#294) floored the micro-neckdown
+    // fanout fallback at the board's minimum track width, so the one escape that needed a
+    // sub-minimum trace no longer gets it. The via count and every escape state above are
+    // unchanged, which is what says this is R2's single trace and not a re-ordering. Accepted at
+    // M1 (ruling BV).
+    assert_eq!(board.get_traces().len(), 10);
 }
 
 // =================================================================================================

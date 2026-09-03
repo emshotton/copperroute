@@ -540,20 +540,32 @@ fn dac2020_bm01_pipeline_first_151_nets_leaves_at_most_126_incompletes() {
     check_job("Issue508-DAC2020_bm01.dsn", &result, 126, 0);
 }
 
-/// `issue508Bm01FirstPassOnly` (`:98-112`): the whole board at `maxPasses(1)`,
-/// `maxIncompleteConnections(56)`.
+/// `issue508Bm01FirstPassOnly` (`:98-112`): the whole board at `maxPasses(1)`, with Java's
+/// `maxIncompleteConnections(56)` **replaced by the port's own bound**.
+///
+/// PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity bound was
+/// **56**, transcribed from `Dac2020BenchmarkRoutingTest`; the port leaves **69** since Plan 9
+/// Task 2's R1 (#293) restored the airline-first work-list order. This is R1's cost on the
+/// corpus's hardest board and it is the sharpest single number Task 2 produced — the same change
+/// takes the 605-board corpus's clean-pass rate from 0.375 to 0.550 (M1, `plan9-m1` vs
+/// `java-278fe14`), which is why ruling BV accepts it with the gap recorded rather than reverting.
+/// The test was renamed with its literal (`…_at_most_56_…` -> `…_at_most_69_…`).
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
-fn dac2020_bm01_pipeline_one_pass_leaves_at_most_56_incompletes() {
+fn dac2020_bm01_pipeline_one_pass_leaves_at_most_69_incompletes() {
     if !parity::require_java_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, None, false);
-    check_job("Issue508-DAC2020_bm01.dsn", &result, 56, 0);
+    check_job("Issue508-DAC2020_bm01.dsn", &result, 69, 0);
 }
 
-/// `issue508Bm01First2PassesOnly` (`:114-128`): the whole board at `maxPasses(2)`,
-/// `maxIncompleteConnections(28)`.
+/// `issue508Bm01First2PassesOnly` (`:114-128`): the whole board at `maxPasses(2)`, with Java's
+/// `maxIncompleteConnections(28)` **replaced by the port's own bound**.
+///
+/// PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity bound was
+/// **28**; the port leaves **37**, for the reason the one-pass row above states. Renamed with its
+/// literal (`…_at_most_28_…` -> `…_at_most_37_…`).
 ///
 /// This is `tests/reference/router-dac2020-bm01`'s configuration except for one setting, and the
 /// difference is worth stating because it is the whole reason the two disagree: the reference
@@ -563,12 +575,12 @@ fn dac2020_bm01_pipeline_one_pass_leaves_at_most_56_incompletes() {
 /// same board, same two passes — a 500 µm board-edge keep-out is the only thing between them.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
-fn dac2020_bm01_pipeline_two_passes_leave_at_most_28_incompletes() {
+fn dac2020_bm01_pipeline_two_passes_leave_at_most_37_incompletes() {
     if !parity::require_java_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 2, None, false);
-    check_job("Issue508-DAC2020_bm01.dsn", &result, 28, 0);
+    check_job("Issue508-DAC2020_bm01.dsn", &result, 37, 0);
 }
 
 // --- J2ReferenceRoutingTest.java --------------------------------------------------------------

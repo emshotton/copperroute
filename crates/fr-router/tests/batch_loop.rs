@@ -53,6 +53,24 @@ use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSour
 /// connections), and the one every `p7t*` driver defaults to.
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 
+/// `Issue649-kicad_ecc83-pp_input_board_v1.dsn` — a corpus board the port still routes to
+/// **completion**.
+///
+/// It is here because of the M1 accept wave (ruling BV). Plan 9 Task 2's R1 (#293) and R2 (#294)
+/// leave `rpi_splitter` with two connections that no pass can close, so its loop now ends at the
+/// stagnation detector — `CANCELLED` — and it can no longer witness the `FINISHED` arm. This board
+/// can: `maxPasses = 0` runs two passes, routes every connection and leaves the stop flag down.
+const ECC83: &str = "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn";
+
+/// `Issue103-Board-Unrouted.dsn` — a corpus board whose score still **rises on three consecutive
+/// passes** (0 -> 562.671 26 -> 725.060 85 -> 811.951 7).
+///
+/// Also here because of the accept wave. The two `BoardHistory` tests below need three or four
+/// *distinct* boards out of consecutive passes; after R1/R2 `rpi_splitter` converges after pass 1
+/// and every later pass hands back a structurally identical board, which `BoardHistory::add`
+/// deduplicates — so the fixture, not the assertion, is what stopped working.
+const BOARD103: &str = "fixtures/Issue103-Board-Unrouted.dsn";
+
 fn load_board(rel_path: &str) -> Board {
     let path: PathBuf = parity::java_dir().join(rel_path);
     let file = std::fs::File::open(&path)
@@ -253,7 +271,7 @@ fn an_active_non_signal_layer_is_not_routable() {
 /// `requestStopAutoRouter()` has already raised the flag `:571` tests.
 ///
 /// The run did exactly what it was asked to do and nothing went wrong — one pass of
-/// `rpi_splitter` takes it from five incomplete connections to one. An API consumer watching
+/// `rpi_splitter` takes it from five incomplete connections to two. An API consumer watching
 /// `TaskStateChangedEvent` cannot tell that from a user cancellation.
 ///
 /// Its companion below shows the *only* path that does reach `FINISHED`.
@@ -293,9 +311,14 @@ fn a_normal_finish_reports_cancelled_not_finished() {
         vec![TaskState::Started, TaskState::Running, TaskState::Cancelled]
     );
     // And the pass really did route: one pass of rpi_splitter takes the board from five
-    // incomplete connections to one. The point of the quirk is that this is a *successful* run.
+    // incomplete connections to two. The point of the quirk is that this is a *successful* run.
+    //
+    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was **1** — the JVM's, via `p7t9`. The port answers **2** since Plan 9 Task 2's
+    // R1 (#293, the airline-first work list) and R2 (#294, the micro-neckdown floor): on this
+    // board the pair trades one connection for legality. Accepted at M1 (ruling BV), so this
+    // literal is now the **port's** own regression pin, not a jar-parity pin.
     assert_eq!(result.per_pass.len(), 1);
-    assert_eq!(result.per_pass[0].incomplete_count, 1);
+    assert_eq!(result.per_pass[0].incomplete_count, 2);
     assert!(
         result.per_pass[0].score > 0.0,
         "the CANCELLED run routed a board: {:?}",
@@ -308,13 +331,21 @@ fn a_normal_finish_reports_cancelled_not_finished() {
 /// that routed and failed nothing.
 ///
 /// `maxPasses = 0` is what lets the loop get there, which is the next test's subject.
+///
+/// PORT-REGRESSION PIN — the **board** was re-cut at the M1 accept wave (ruling BV), not a
+/// number. The jar-parity fixture was `rpi_splitter`, which
+/// reached `FINISHED` in two passes on the pre-R1/R2 port. It no longer can: R1 (#293) and R2
+/// (#294) leave two connections that every pass fails, so the loop runs to the stagnation
+/// detector and reports `CANCELLED` (measured: 18 passes, `incomplete_count` 2 throughout). The
+/// **claim** — that `FINISHED` is reachable, and only that way — is unchanged and is measured on
+/// [`ECC83`], which still routes to completion. Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn only_a_pass_that_routes_nothing_reaches_finished() {
     if !parity::require_java_dir() {
         return;
     }
-    let mut board = load_board(RPI);
+    let mut board = load_board(ECC83);
     let settings = build_settings(&board, 0);
     let stop = RouterStop::new();
     let mut sink = Recorder::default();
@@ -326,7 +357,7 @@ fn only_a_pass_that_routes_nothing_reaches_finished() {
         RouterBudget::disabled(),
         &mut sink,
     )
-    .expect("rpi_splitter has two signal layers");
+    .expect("the ecc83 board has two signal layers");
 
     assert_eq!(result.state, TaskState::Finished);
     assert!(
@@ -382,9 +413,16 @@ fn max_passes_zero_is_unlimited() {
         unlimited.per_pass.len(),
         one.per_pass.len()
     );
-    // And it stopped because the board was done, not because anything raised the flag — which is
-    // what distinguishes "unlimited" from "the stagnation detector caught it".
-    assert_eq!(unlimited.state, TaskState::Finished);
+    // …and here it is the stagnation detector that stops it, not the board being done.
+    //
+    // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was **`Finished`** — on the pre-R1/R2 port
+    // `rpi_splitter` closed every connection and the `while` head fell out on its own. R1 (#293)
+    // and R2 (#294) leave two connections no pass can route, so the run walks 18 passes at a flat
+    // `incomplete_count` of 2 and the stagnation guard raises the flag: `CANCELLED`. Accepted at
+    // M1 (ruling BV). The *unlimited* claim above — strictly more passes than `maxPasses = 1` —
+    // is what this test is for and is untouched; the `FINISHED` arm is measured by
+    // [`only_a_pass_that_routes_nothing_reaches_finished`], on a board that still completes.
+    assert_eq!(unlimited.state, TaskState::Cancelled);
 
     // The negative case, which is the other side of `:221-223`'s `>= 0`: the router is disabled,
     // so `continueAutorouting` starts false and the `while` head never runs a pass.
@@ -498,13 +536,21 @@ fn the_rank_limit_can_never_fire() {
 /// about the number 30, and building thirty distinct real boards would test the router instead.
 /// `add`'s eviction is what enforces it (`BoardHistory.java:53-76`) and it does not depend on the
 /// cap's value.
+///
+/// PORT-REGRESSION PIN — the **board** was re-cut at the M1 accept wave (ruling BV), not a
+/// number. The jar-parity fixture was `rpi_splitter`, whose unrouted board plus three
+/// passes were four distinct boards. After R1 (#293) and R2 (#294) that board converges after
+/// pass 1, so passes 2 and 3 hand back a structurally identical board, `add` deduplicates them
+/// and the list never reaches its cap — `bh.size()` answered **2** against the cap of 3. The
+/// eviction claim is unchanged; the fixture that can still exercise it is [`BOARD103`], whose
+/// unrouted board and first three passes are four distinct boards. Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_full_history_never_ranks_a_board_past_its_cap() {
     if !parity::require_java_dir() {
         return;
     }
-    let mut board = load_board(RPI);
+    let mut board = load_board(BOARD103);
     let settings = build_settings(&board, 1);
     let scoring = scoring_of(&settings);
     let cap = 3usize;
@@ -556,13 +602,20 @@ fn a_full_history_never_ranks_a_board_past_its_cap() {
 ///
 /// The fixture makes the two orders disagree: three boards are inserted in *ascending* score, so
 /// the descending sort reverses them and every rank moves.
+///
+/// PORT-REGRESSION PIN — the **board** was re-cut at the M1 accept wave (ruling BV), not a
+/// number. The jar-parity fixture was `rpi_splitter`, whose unrouted / after-pass-1 /
+/// after-pass-2 scores were strictly increasing. After R1 (#293) and R2 (#294) they are
+/// `0 / 599.985 4 / 599.985 4` — the board is at its ceiling after one pass — so the fixture, not
+/// the assertion, stopped working. [`BOARD103`] still gives three strictly increasing scores
+/// (`0 / 562.671 26 / 725.060 85`). Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_rank_the_loop_tests_is_read_after_restore_boards_reorder() {
     if !parity::require_java_dir() {
         return;
     }
-    let mut board = load_board(RPI);
+    let mut board = load_board(BOARD103);
     let settings = build_settings(&board, 1);
     let scoring = scoring_of(&settings);
 
