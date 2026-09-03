@@ -1,0 +1,6 @@
+{"$schema": "https://schemas.kicad.org/drc.v1.json", "coordinate_units": "mm",
+ "unconnected_items": [{"description": "Missing connection between U1-1 and R1-1", "items": []}],
+ "violations": [
+  {"description": "Clearance violation", "severity": "error", "type": "clearance", "items": []},
+  {"description": "Hole clearance violation", "severity": "error", "type": "hole_clearance", "items": []}
+ ], "schematic_parity": []}

@@ -1,0 +1,16 @@
+results/
+# reports/ holds generated, machine/timestamp-specific compare output; it's
+# not meant to be checked in wholesale. To share a specific report anyway,
+# add it deliberately with `git add -f reports/<name>.*`.
+reports/*.html
+reports/*.json
+reports/*.md
+corpus/dsn/
+corpus/pcbench/
+corpus/kicad/
+.venv/
+__pycache__/
+binaries/
+# Host-specific config (BENCH_REMOTE_HOST, local tool paths, ...) -- copy .env.example to
+# .env and fill in your own values; .env itself must never be committed.
+.env

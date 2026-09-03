@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "app_version": "fake-1.0",
+  "git_sha": "fake",
+  "phases": {
+    "fanout": {"duration_seconds": 0.0, "passes_completed": 0},
+    "autorouter": {"duration_seconds": 0.5, "passes_completed": 3},
+    "optimizer": {"duration_seconds": 0.1, "passes_completed": 1}
+  },
+  "board_statistics": {
+    "connections": {"maximum_count": 10, "incomplete_count": 0},
+    "traces": {"total_count": 8, "total_length_mm": 123.4},
+    "vias": {"total_count": 4},
+    "bends": {"total_count": 6},
+    "clearance_violations": {"total_count": 0}
+  },
+  "normalized_score": 990.0,
+  "final_state": "COMPLETED",
+  "exit_code": 0,
+  "output_written": true
+}

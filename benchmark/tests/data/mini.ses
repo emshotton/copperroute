@@ -1,0 +1,15 @@
+(session mini.ses
+  (base_design mini.dsn)
+  (routes
+    (resolution um 10)
+    (parser (host_cad "KiCad's Pcbnew"))
+    (network_out
+      (net GND
+        (via "Via[0-1]_800:400_um" 500000 500000)
+        (via "Via[0-1]_800:400_um" 600000 500000)
+        (wire (path F.Cu 2500 0 0 100000 0))
+        (wire (path B.Cu 2500 100000 0 200000 0 200000 200000))
+      )
+    )
+  )
+)

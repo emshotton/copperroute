@@ -1,0 +1,57 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>bench plot: {% for e in exports %}{{ cand_label(e) }}{% if not loop.last %} vs {% endif %}{% endfor %}</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:2rem;color:#222;background:#fff}
+h1,h2,h3{margin-top:2rem}
+.file-hdr{border:1px solid #ddd;border-radius:6px;padding:.6rem 1rem;margin-bottom:.5rem;font-size:13px}
+.swatch{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:middle;border-radius:2px}
+.grid{display:flex;gap:1.5rem;flex-wrap:wrap}
+.chart{border:1px solid #eee;border-radius:6px;padding:.5rem}
+code{background:#f5f5f5;padding:0 4px;font-size:12px}
+</style></head><body>
+<h1>Benchmark plots</h1>
+
+<h2>Sources</h2>
+{% for e in exports %}
+<div class="file-hdr">
+<span class="swatch" style="background:{{ color_map[cand_label(e)] }}"></span>
+<b>{{ cand_label(e) }}</b> <code>{{ e.candidate.sha }}</code>{% if e.candidate.version %} ({{ e.candidate.version }}){% endif %}
+&mdash; run <code>{{ e.run }}</code>
+{% if e.host %} &middot; host {{ e.host.node }}{% endif %}
+{% if e.config %} &middot; seeds={{ e.config.seeds }} max_passes={{ e.config.max_passes }} timeout={{ e.config.timeout_s }}s jobs={{ e.config.jobs }} tier={{ e.config.tier }}{% endif %}
+&middot; exported {{ e.exported_at }}{% if e.corpus_commit %} &middot; corpus@{{ e.corpus_commit }}{% endif %}
+&middot; {{ e.rows|length }} board(s)
+</div>
+{% endfor %}
+
+<h2>Legend</h2>
+<p>{% for name, color in color_map.items() %}<span class="swatch" style="background:{{ color }}"></span>{{ name }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</p>
+
+<h2>CPU time vs score</h2>
+<p>Point radius &prop; &radic;nets.</p>
+<div class="chart">{{ cpu_vs_score|safe }}</div>
+
+<h2>Board size vs resource use</h2>
+<div class="grid">
+<div class="chart">{{ nets_vs_rss|safe }}</div>
+<div class="chart">{{ nets_vs_cpu|safe }}</div>
+</div>
+
+{% if paired %}
+<h2>{{ paired.label_a }} vs {{ paired.label_b }} &mdash; {{ paired.n }} shared board(s)</h2>
+<div class="grid">
+{% for p in paired.plots %}
+<div class="chart">
+<h3>{{ p.field }}{% if p.median_ratio is not none %} <small>(median {{ paired.label_a }} / {{ paired.label_b }} ratio {{ '%.3g'|format(p.median_ratio) }}&times;, n={{ p.n }}{% if p.n != p.total %} of {{ p.total }}{% endif %})</small>{% endif %}</h3>
+{{ p.svg|safe }}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<h2>Per-tier rates</h2>
+<p>clean-pass / connected (unrouted = 0) / zero-DRC (violations = 0), by candidate.</p>
+<div class="chart">{{ tier_svg|safe }}</div>
+
+</body></html>

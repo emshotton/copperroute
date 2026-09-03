@@ -1,0 +1,21 @@
+(pcb mini.dsn
+  (parser (string_quote ") (space_in_quoted_tokens on) (host_cad "KiCad's Pcbnew"))
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (boundary (rect pcb 0 0 100000 100000))
+    (via "Via[0-1]_800:400_um")
+    (rule (width 250) (clearance 200))
+  )
+  (placement)
+  (library)
+  (network
+    (net GND (pins U1-1 R1-1))
+    (net "Net-(R1-Pad2)" (pins U1-2 R1-2))
+    (net VCC (pins U1-3))
+    (class kicad_default "" GND "Net-(R1-Pad2)" VCC (circuit (use_via Via[0-1]_800:400_um)) (rule (width 250) (clearance 200)))
+  )
+  (wiring)
+)

@@ -1,0 +1,97 @@
+# Router candidates. `exec` paths are relative to this file.
+# Both kinds are invoked with identical Java legacy flags (see spec §3).
+
+[candidates.java-current]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "../../freerouting/build/libs/freerouting-current-executable.jar"]
+sha_from = "../../freerouting"
+
+[candidates."java-2.3.0"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.3.0.jar"]
+sha = "v2.3.0"
+version = "2.3.0"
+
+[candidates.rs-main]
+kind = "rust"
+exec = ["../target/release/freerouting"]
+sha_from = ".."
+# NOTE: uncomment once the fork builds
+
+[candidates."java-2.1.0"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.1.0.jar"]
+sha = "v2.1.0"
+version = "2.1.0"
+
+[candidates."java-1.9.0"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-1.9.0.jar"]
+sha = "v1.9.0"
+version = "1.9.0"
+
+[candidates."java-2.0.1"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.0.1.jar"]
+sha = "v2.0.1"
+version = "2.0.1"
+
+[candidates."java-2.2.4"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.2.4.jar"]
+sha = "v2.2.4"
+version = "2.2.4"
+
+[candidates."java-2.2.0"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.2.0.jar"]
+sha = "v2.2.0"
+version = "2.2.0"
+
+[candidates."java-2.2.1"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.2.1.jar"]
+sha = "v2.2.1"
+version = "2.2.1"
+
+[candidates."java-2.2.2"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.2.2.jar"]
+sha = "v2.2.2"
+version = "2.2.2"
+
+[candidates."java-2.2.3"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-2.2.3.jar"]
+sha = "v2.2.3"
+version = "2.2.3"
+
+[candidates."java-head-noneck"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-head-noneck.jar"]
+sha = "278fe141+noneck"
+version = "2.3.1-ablation-noneck"
+
+[candidates."java-head-noviatol"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-head-noviatol.jar"]
+sha = "278fe141+noviatol"
+version = "2.3.1-ablation-noviatol"
+
+[candidates."java-head-both"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-head-both.jar"]
+sha = "278fe141+both"
+version = "2.3.1-ablation-both"
+
+[candidates."java-head-sort"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-head-sort.jar"]
+sha = "278fe141+sort"
+version = "2.3.1-ablation-sort"
+
+[candidates."java-head-noneck-sort"]
+kind = "java"
+exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-head-noneck-sort.jar"]
+sha = "278fe141+noneck-sort"
+version = "2.3.1-ablation-noneck-sort"
