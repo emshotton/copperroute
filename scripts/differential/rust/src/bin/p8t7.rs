@@ -2,17 +2,31 @@
 //!
 //! Spec §1 is the port's reason to exist: *a KiCad-exported board goes in, a session KiCad can
 //! import comes out.* Every other driver in this directory proves a piece of that; this one
-//! proves the sentence, on three rungs, against the jar.
-//!
-//! ```text
-//! scripts/differential/run.sh p8t7
-//! ```
+//! proves the sentence, on three rungs.
 //!
 //! | rung | what |
 //! |---|---|
-//! | (a) | a **KiCad-exported DSN** routed to a SES that is byte-identical to the jar's **and that `fr_dsn::ses_reader::read` reads back without error** |
-//! | (b) | Task 9's `-de board.json -do out.ses`: the same physical board as a KiCad *design* JSON, through the port's own JSON reader, against the jar on the same argv |
+//! | (a) | a **KiCad-exported DSN** routed to a SES that is byte-identical to `tests/reference/cli-router-ecc83-input/route.ses` **and that `fr_dsn::ses_reader::read` reads back without error** |
+//! | (b) | Task 9's `-de board.json -do out.ses`: the same physical board as a KiCad *design* JSON, through the port's own JSON reader, against `tests/reference/cli-kicad-ecc83-json/route.ses` |
 //! | (c) | Task 10's quirk **T**: `-do out.json` writes the board **as loaded**, so the document does not depend on how many passes ran — measured on **both** programs |
+//!
+//! # Rungs (a) and (b) compare against the committed golden (Plan 9 M1 accept wave, ruling BV)
+//!
+//! They compared against a **live jar** until Plan 9 Task 2 fixed two measured Java regressions —
+//! R1 (#293), the deleted shortest-airline-first work-list ordering, and R2 (#294), the
+//! micro-neckdown fanout fallback that ignored the board's minimum track width. The port now routes
+//! this board deliberately differently, so both rungs went `DIFF` (@1755 and @2335) and stayed
+//! there. Survey §7.3's transition applies: the **jar arm is retired from the default lane, not
+//! deleted** — `run.sh --against-jar` exports `AGAINST_JAR=1` and puts it back — and the default
+//! right-hand side is `tests/reference/cli-<stem>/{route.ses,route.exit}`, which Task 2 regenerated
+//! from the port at `bd296d7`.
+//!
+//! **Rung (c) keeps its live jar in both lanes, deliberately.** What it measures is a *jar* quirk
+//! (label T, register #289) on **both** programs at two pass counts; a committed golden cannot
+//! express "the jar and the port answer the same document", so retiring the jar there would retire
+//! the measurement rather than move it. It is also not affected by the conversion's cause: it was
+//! `MATCH` before R1/R2 and it is `MATCH` after. Plan 9 Task 3 rewrites this rung for #289, at
+//! which point it becomes an `XDIFF` with the divergence named.
 //!
 //! # Why rung (a) reads its own output back
 //!
@@ -26,9 +40,14 @@
 //!
 //! # Why there is no `P8T7.java`
 //!
-//! `p8t1`'s reason, unchanged: what is under test is the **jar as a program**, run on the argv of
-//! a `tests/reference/cli-*` stem, and a Java class could only re-implement `normalize_log` and
+//! `p8t1`'s reason, unchanged: what is under test is a **whole program**, run on the argv of a
+//! `tests/reference/cli-*` stem, and a Java class could only re-implement `normalize_log` and
 //! `normalize_ses_head_tokens` a second time in a second language. `rust_only=1` in `run.sh`.
+//!
+//! ```text
+//! scripts/differential/run.sh p8t7                 # rungs (a)/(b) port vs golden, (c) both programs
+//! scripts/differential/run.sh --against-jar p8t7   # the retired arm: (a)/(b) against a live jar
+//! ```
 
 use std::path::{Path, PathBuf};
 
@@ -39,16 +58,30 @@ struct Row {
     detail: String,
 }
 
+/// `run.sh` exports `AGAINST_JAR=1` for `--against-jar`; anything else is the default lane, where
+/// rungs (a) and (b) compare against the committed golden. Rung (c) does not read it — see the
+/// header for why it keeps its live jar in both lanes.
+fn against_jar() -> bool {
+    std::env::var("AGAINST_JAR").is_ok_and(|value| value == "1")
+}
+
 fn main() {
     let scratch = std::env::temp_dir().join("p8t7");
     let _ = std::fs::remove_dir_all(&scratch);
 
+    let against_jar = against_jar();
     let mut rows = Vec::new();
-    rows.push(rung_a(&scratch));
-    rows.push(rung_b(&scratch));
+    rows.push(rung_a(&scratch, against_jar));
+    rows.push(rung_b(&scratch, against_jar));
     rows.push(rung_c(&scratch));
 
     println!("== p8t7: spec §1 end to end — a KiCad board in, a session KiCad can import out");
+    if against_jar {
+        println!(
+            "   --against-jar (the retired arm): rungs (a)/(b) run a live jar. R1 (#293) and R2 \
+             (#294) make the port route this board differently, so both are EXPECTED to DIFF."
+        );
+    }
     println!("{:<28} {:<7} {}", "rung", "verdict", "detail");
     for row in &rows {
         println!("{:<28} {:<7} {}", row.rung, row.verdict, row.detail);
@@ -67,45 +100,59 @@ fn dir(scratch: &Path, name: &str) -> PathBuf {
     dir
 }
 
-/// The two programs on one `cli-fixtures.txt` stem: the SES bytes and the exit code.
+/// One `cli-fixtures.txt` stem through the port: the SES bytes and the exit code, against the
+/// committed golden — or, behind `--against-jar`, against a live jar run on the same argv.
 ///
-/// The jar's side is normalised by [`parity::normalize_ses_head_tokens`] — quirk #92's four
+/// The reference side is normalised by [`parity::normalize_ses_head_tokens`] — quirk #92's four
 /// `(parser …)` keyword literals, the same rewrite `p8t1` and `cli_e2e.rs` apply, and the **only**
-/// one either side gets.
-fn route_both(stem: &str, scratch: &Path) -> Result<(String, PathBuf), String> {
-    let jar_dir = dir(scratch, &format!("{stem}-jar"));
+/// one either side gets. It is a no-op on the committed golden, which Task 2 cut from the port at
+/// `bd296d7`; it is applied unconditionally so the two lanes run one comparison rather than two.
+fn route_both(stem: &str, scratch: &Path, against_jar: bool) -> Result<(String, PathBuf), String> {
     let port_dir = dir(scratch, &format!("{stem}-port"));
-    let jar_argv = parity::cli_argv(stem, &jar_dir);
     let port_argv = parity::cli_argv(stem, &port_dir);
-    let jar_refs: Vec<&str> = jar_argv.iter().map(String::as_str).collect();
     let port_refs: Vec<&str> = port_argv.iter().map(String::as_str).collect();
-
-    let (_, jar_err, jar_code) = parity::run_jar(&jar_refs);
     let (_, port_err, port_code) = parity::run_port(&port_refs);
-    if jar_code != port_code {
+
+    let (want_code, want_ses, side) = if against_jar {
+        let jar_dir = dir(scratch, &format!("{stem}-jar"));
+        let jar_argv = parity::cli_argv(stem, &jar_dir);
+        let jar_refs: Vec<&str> = jar_argv.iter().map(String::as_str).collect();
+        let (_, _, jar_code) = parity::run_jar(&jar_refs);
+        let jar_ses = std::fs::read_to_string(jar_dir.join("route.ses"))
+            .map_err(|e| format!("the jar wrote no route.ses: {e}"))?;
+        (jar_code, jar_ses, "jar")
+    } else {
+        let code: i32 = std::fs::read_to_string(parity::cli_reference(stem, "route.exit"))
+            .map_err(|e| format!("route.exit: {e}"))?
+            .trim()
+            .parse()
+            .map_err(|e| format!("route.exit is not a number: {e}"))?;
+        let ses = std::fs::read_to_string(parity::cli_reference(stem, "route.ses"))
+            .map_err(|e| format!("route.ses: {e}"))?;
+        (code, ses, "golden")
+    };
+
+    if want_code != port_code {
         return Err(format!(
-            "exit {port_code} != the jar's {jar_code}: {}",
+            "exit {port_code} != the {side}'s {want_code}: {}",
             String::from_utf8_lossy(&port_err).lines().last().unwrap_or_default()
         ));
     }
-    let _ = jar_err;
 
-    let jar_ses = std::fs::read_to_string(jar_dir.join("route.ses"))
-        .map_err(|e| format!("the jar wrote no route.ses: {e}"))?;
-    let jar_ses = parity::normalize_ses_head_tokens(&jar_ses);
+    let want_ses = parity::normalize_ses_head_tokens(&want_ses);
     let port_path = port_dir.join("route.ses");
     let port_ses = std::fs::read_to_string(&port_path)
         .map_err(|e| format!("the port wrote no route.ses: {e}"))?;
-    if port_ses != jar_ses {
+    if port_ses != want_ses {
         let at = port_ses
             .bytes()
-            .zip(jar_ses.bytes())
+            .zip(want_ses.bytes())
             .position(|(a, b)| a != b)
-            .unwrap_or_else(|| port_ses.len().min(jar_ses.len()));
+            .unwrap_or_else(|| port_ses.len().min(want_ses.len()));
         return Err(format!(
-            "SES differs at byte {at} (port {} B, jar {} B)",
+            "SES differs at byte {at} (port {} B, {side} {} B)",
             port_ses.len(),
-            jar_ses.len()
+            want_ses.len()
         ));
     }
     Ok((port_ses, port_path))
@@ -142,9 +189,9 @@ fn read_back(board_source: &Path, ses: &str) -> Result<String, String> {
 ///
 /// `router-ecc83-input` is `fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn`, the smallest
 /// KiCad export in the corpus, with a `(plane …)` net and a copper pour on a signal layer.
-fn rung_a(scratch: &Path) -> Row {
+fn rung_a(scratch: &Path, against_jar: bool) -> Row {
     let stem = "router-ecc83-input";
-    match route_both(stem, scratch) {
+    match route_both(stem, scratch, against_jar) {
         Err(detail) => Row {
             rung: "a: KiCad DSN -> SES",
             verdict: "DIFF",
@@ -161,7 +208,11 @@ fn rung_a(scratch: &Path) -> Row {
                 Ok(summary) => Row {
                     rung: "a: KiCad DSN -> SES",
                     verdict: "MATCH",
-                    detail: format!("{} B, byte-identical to the jar; read back: {summary}", ses.len()),
+                    detail: format!(
+                        "{} B, byte-identical to the {}; read back: {summary}",
+                        ses.len(),
+                        if against_jar { "jar" } else { "golden" }
+                    ),
                 },
             }
         }
@@ -170,9 +221,9 @@ fn rung_a(scratch: &Path) -> Row {
 
 /// Rung (b): Task 9's `-de board.json -do out.ses` — the same physical board as a KiCad *design*
 /// JSON, through `fr_dsn::kicad`'s reader.
-fn rung_b(scratch: &Path) -> Row {
+fn rung_b(scratch: &Path, against_jar: bool) -> Row {
     let stem = "kicad-ecc83-json";
-    match route_both(stem, scratch) {
+    match route_both(stem, scratch, against_jar) {
         Err(detail) => Row {
             rung: "b: KiCad JSON -> SES",
             verdict: "DIFF",
@@ -189,7 +240,11 @@ fn rung_b(scratch: &Path) -> Row {
                 Ok(summary) => Row {
                     rung: "b: KiCad JSON -> SES",
                     verdict: "MATCH",
-                    detail: format!("{} B, byte-identical to the jar; read back: {summary}", ses.len()),
+                    detail: format!(
+                        "{} B, byte-identical to the {}; read back: {summary}",
+                        ses.len(),
+                        if against_jar { "jar" } else { "golden" }
+                    ),
                 },
             }
         }
@@ -208,6 +263,11 @@ fn rung_b(scratch: &Path) -> Row {
 /// Task 10 measured that on the jar. This rung measures it on **both**, at two pass counts, and
 /// requires all four documents to be the same bytes — which is the strongest form of the claim: if
 /// the port ever started writing the routed board, or the jar stopped, one of the four moves.
+///
+/// **This rung keeps its live jar in both lanes** (Plan 9 M1 accept wave, ruling BV). The claim is
+/// about the two programs agreeing on a *jar* quirk; a committed golden cannot express it, so
+/// retiring the jar here would retire the measurement rather than move it. R1/R2 do not reach it —
+/// it was `MATCH` before them and is `MATCH` after. Plan 9 Task 3 rewrites it for #289.
 fn rung_c(scratch: &Path) -> Row {
     let dsn = parity::java_dir().join("fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn");
     let dir = dir(scratch, "quirk-t");

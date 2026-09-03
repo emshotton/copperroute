@@ -196,7 +196,9 @@ two rows show it stood in for nothing the jar does, so ruling BG removed that de
 `--settings <file>` on the native form is now the whole surface.
 
 Pinned by `cli_e2e.rs::a_settings_file_reaches_the_run` (five runs across both forms) and by
-`p8t1`'s `settings-on-legacy` row, which compares the two warnings against the **live jar**.
+`p8t1`'s `settings-on-legacy` row, which pins the two warnings — against the port's own literal in
+the default lane since Plan 9's M1 accept wave, and against the **live jar** under
+`run.sh --against-jar p8t1`, where it still MATCHes.
 
 ---
 
@@ -298,11 +300,22 @@ prefix, **last** occurrence wins), and an unrecognised name silently means `INFO
 
 ## `route`: the acceptance table (Plan 8 Task 6, controller ruling AV)
 
+> **Plan 9 note (M1 accept wave, ruling BV).** The tables in this section are Plan 8's acceptance
+> record — the port against the **jar**, which is what `run.sh --against-jar p8t1` still runs. Plan 9
+> Task 2's R1 (#293) and R2 (#294) make the port route every board deliberately differently, so in
+> that arm `router-rpi-splitter`, `router-j2-reference`, `router-ecc83-input` and `kicad-ecc83-json`
+> now DIFF **by design** and the arm is a triage tool, never a gate. `p8t1`'s **default** lane was
+> converted to port-golden comparison and answers **10 rows, 10 MATCH, 0 XDIFF** on the `ci` set:
+> the five stems against their committed `tests/reference/cli-*` outputs, the five argv rows against
+> the driver's own literals — `invalid-input-java-hangs` included, because with no jar in the lane
+> there is nothing left to hang. See `scripts/differential/README.md`'s "Converted drivers".
+
 `freerouting route` is measured against the **HEAD jar as a whole program**, not against a method.
 Two harnesses, one comparison:
 
-* `scripts/differential/run.sh p8t1 [all]` runs `java -jar <jar> <argv>` and `freerouting <argv>`
-  live, on the argv recorded in each `tests/reference/cli-<stem>/argv.txt`;
+* `scripts/differential/run.sh --against-jar p8t1 [all]` runs `java -jar <jar> <argv>` and
+  `freerouting <argv>` live, on the argv recorded in each `tests/reference/cli-<stem>/argv.txt`
+  (before Plan 9's conversion this was the plain `run.sh p8t1`, which the table below records);
 * `crates/freerouting/tests/cli_e2e.rs` runs the port against the **committed** outputs of the
   same jar runs (`scripts/gen-cli-reference.sh`), so a machine with no JDK checks the same thing.
 
@@ -452,13 +465,13 @@ one driver that does not exist, which is recorded rather than quietly dropped.)*
 
 | driver | what it pins | mode(s) | result on the committed tree |
 |---|---|---|---|
-| **`p8t1`** | the headline gate: SES **bytes**, exit code, `normalize_log`, two whole programs on one argv | `run.sh p8t1` (CI stems + the five argv rows), `p8t1 all` (adds the slow stems), `p8t1probe` | **`all`: 18 rows — 17 MATCH, 1 XDIFF, 0 DIFF. `ci`: 10 rows — 9 MATCH, 1 XDIFF, 0 DIFF.** The invariant, which is what to read if the counts move again: **every board stem MATCHes, and there is exactly one XDIFF in the whole driver** — `invalid-input-java-hangs`, quirk #244, plan ruling 7, ledgered and never run against the jar. `p8t1probe`: MATCH (162 lines) |
+| **`p8t1`** | the headline gate: SES **bytes**, exit code, `normalize_log` — the port against its committed golden since Plan 9's M1 accept wave, and against the live jar under `--against-jar` | `run.sh p8t1` (CI stems + the five argv rows), `p8t1 all` (adds the slow stems), `p8t1probe` | **Default lane, `ci`: 10 rows — 10 MATCH, 0 XDIFF, 0 DIFF.** The invariant, which is what to read if the counts move: **every row MATCHes**, and a DIFF is now a change in the port, not a divergence from the jar. Plan 8's jar-parity figures were `all`: 18 rows — 17 MATCH, 1 XDIFF; `ci`: 10 rows — 9 MATCH, 1 XDIFF (`invalid-input-java-hangs`, quirk #244, never run against the jar); `--against-jar` reproduces them minus the four routed stems R1/R2 move. `p8t1probe`: MATCH (162 lines) |
 | **`p8t2`** | the result manifest, field for field after `normalize_manifest`; the `settings_snapshot` inside it is also the **resolved settings** through the binary | `run.sh p8t2` (Task 4's shape mode), `p8t2 e2e [all]`, `p8t2probe` | shape mode MATCH (762 lines); `e2e all` **13 rows: 13 MATCH, 0 DIFF** — one row per stem of `cli-fixtures.txt`, so this count follows that file |
 | **`p8t3`** | the DRC report bytes after `normalize_drc_json`, the computed `quality_score`, the exit code and the log — plus the DSN → `.rules` → SES **load order** | `run.sh p8t3` (the merge driver, Java vs Rust), `p8t3 e2e` | merge: MATCH (25 lines). `e2e`: **14 rows: 13 MATCH, 1 XDIFF, 0 DIFF** — the XDIFF is quirk #146, where the jar does not match itself |
 | **`p8t4`** | **does not exist, and this is the record of why.** The plan asked for "the resolved `RouterSettings` dumped as JSON from both sides — `p4t1`'s 64-case matrix re-run through the binary". Task 6 discharged that rung with the two artefacts that already existed rather than building a third: Plan 4's **`p4t1`** still runs the 64-case matrix against the JVM (MATCH, 5 728 lines), and the *through-the-binary* half is the manifest's `settings_snapshot`, which `p8t2 e2e` compares field for field on **every** stem of `cli-fixtures.txt` (13 today) and which `cli_e2e.rs::a_settings_file_reaches_the_run` reads on five more runs (its cases are labelled A-E). A separate `p8t4` would have re-derived `p4t1`'s matrix and compared the same numbers a second time | — | `p4t1` MATCH (5 728 lines); rung reached |
 | **`p8t5`** | the legacy surface: slot classification, `LegacyBridge` fields, warnings and the exit code — **not routing** | `run.sh p8t5`, `sweep-p8t5.sh` | `run.sh`: MATCH (**2 124** lines — 2 096 until ruling BJ's row landed in the matrix). `sweep`: **87 rows: 87 MATCH, 0 XDIFF, 0 DIFF, 0 SKIP** — 86 until ruling BJ added `set-on-legacy`. Both counts follow `matrix/p8t5-argv.tsv`; the invariant is **every row MATCHes, no XDIFF, no SKIP** |
 | **`p8t6`** | the **documented-delta** driver (ruling AO): the eleven-row MCP table above, asserted to be exactly itself | `run.sh p8t6` | **MATCH** — eighteen observations, thirteen required to differ (rows 1-10) and five required to agree. A `NEW` or `GONE` row fails it |
-| **`p8t7`** | spec §1's acceptance: KiCad DSN → route → SES → re-read by `fr_dsn::ses_reader::read`; `-de board.json -do out.ses`; and quirk #289 (label T)'s measurement | `run.sh p8t7` | **MATCH** |
+| **`p8t7`** | spec §1's acceptance: KiCad DSN → route → SES → re-read by `fr_dsn::ses_reader::read`; `-de board.json -do out.ses`; and quirk #289 (label T)'s measurement. Rungs (a)/(b) are port-golden since Plan 9's M1 accept wave; rung (c) keeps its live jar in both lanes | `run.sh p8t7` | **3 rungs, 3 MATCH** (under `--against-jar`, rungs (a)/(b) DIFF by design — R1/R2) |
 
 **One thing every `p8t*` header states, and it is not a tolerance.** Plan 7's drivers run the port
 with `RouterBudget::disabled()` against a jar whose four

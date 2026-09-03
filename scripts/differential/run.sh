@@ -18,13 +18,23 @@
 # and a `DIFF` from it is a *finding to explain*, never a failure to fix — the port is expected to
 # diverge from the jar wherever Plan 9 has fixed something.
 #
-# **At Task 0 the flag is accepted and is a no-op**, because the conversion has not happened yet:
-# every driver here still runs the jar live, so "against the jar" is what the script already does.
-# The flag lands now so that the tasks that convert a driver have a name to put the old behaviour
-# behind, and so that no converted driver has to grow its own private spelling of it.
+# **Converted so far** (Plan 9 Task 2's M1 accept wave, ruling BV):
 #
-#   scripts/differential/run.sh --against-jar p6t1 [args...]
-#   scripts/differential/run.sh p6t1 --against-jar [args...]
+#   * `p8t1` — all five `ci` stems and all five refusal rows. Default lane: the port against
+#     `tests/reference/cli-<stem>/{route.ses,route.exit,route.log}`. `--against-jar` restores the
+#     live jar, where four of the five stems are EXPECTED to DIFF (R1 #293 and R2 #294 route every
+#     board differently by design).
+#   * `p8t7` — rungs (a) and (b), the same way. Rung (c) keeps its live jar in **both** lanes,
+#     deliberately: it measures a *jar* quirk (label T, #289) on both programs at two pass counts,
+#     and a committed golden cannot express "the two programs agree". It is unaffected by R1/R2 —
+#     MATCH before and after — and Plan 9 Task 3 rewrites it for #289.
+#
+# Every other driver here still runs the jar live, so for those the flag remains a no-op: "against
+# the jar" is what the script already does. It exists so that each task converting a driver has a
+# name to put the old behaviour behind, and so that no converted driver grows its own spelling.
+#
+#   scripts/differential/run.sh --against-jar p8t1 [args...]
+#   scripts/differential/run.sh p8t1 --against-jar [args...]
 set -euo pipefail
 
 DIFF_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -786,13 +796,18 @@ case "$driver" in
     if [[ "${1:-}" == "e2e" ]]; then rust_only=1; fi
     ;;
   p8t1)
-    # Plan 8 Task 6, controller ruling AV — **the plan's headline gate**. The HEAD jar and the
-    # port, run as two whole programs on the argv recorded in each
-    # `tests/reference/cli-<stem>/argv.txt`, compared on three rungs: byte-identical SES (after
-    # quirk #92's four `(parser …)` keyword literals are rewritten on the jar side, the same
-    # normalisation `batch_parity.rs` applies), equal exit code, equal `parity::normalize_log`.
-    # No tolerance: a divergence is an `XDIFF` row in `crates/freerouting/README.md` with the
-    # first differing byte and a one-line root cause.
+    # Plan 8 Task 6, controller ruling AV — **the plan's headline gate**, **converted to
+    # port-golden comparison at Plan 9's M1 accept wave (ruling BV)**. The port, run as a whole
+    # program on the argv recorded in each `tests/reference/cli-<stem>/argv.txt`, compared against
+    # that stem's committed reference on three rungs: byte-identical SES (after quirk #92's four
+    # `(parser …)` keyword literals are rewritten on the reference side, the same normalisation
+    # `batch_parity.rs` applies), equal exit code, equal `parity::normalize_log`. No tolerance: a
+    # divergence is an `XDIFF` row in `crates/freerouting/README.md` with the first differing byte
+    # and a one-line root cause.
+    #
+    # The jar arm is retired from this lane, **not deleted**: `--against-jar` restores it, and
+    # four of the five `ci` stems are expected to DIFF there — R1 (#293) and R2 (#294) make the
+    # port route every board deliberately differently. See the driver's own header.
     #
     # `rust_only=1` — see the flag's own comment above for why there is no `P8T1.java`.
     #
@@ -904,13 +919,17 @@ case "$driver" in
     default_args=()
     ;;
   p8t7)
-    # Plan 8 Task 12 — **the KiCad end-to-end acceptance of spec §1**, on three rungs:
+    # Plan 8 Task 12 — **the KiCad end-to-end acceptance of spec §1**, on three rungs. Rungs (a)
+    # and (b) were **converted to port-golden comparison at Plan 9's M1 accept wave (ruling BV)**;
+    # rung (c) keeps its live jar in both lanes, deliberately (see the driver's header).
     #
-    #   (a) a KiCad-exported DSN -> `route` -> SES, byte-identical to the jar's, and the SES
-    #       **read back by `fr_dsn::ses_reader::read`** without error — a document the port writes
-    #       and cannot read would satisfy every byte comparison in the suite and still be broken;
+    #   (a) a KiCad-exported DSN -> `route` -> SES, byte-identical to
+    #       `tests/reference/cli-router-ecc83-input/route.ses`, and the SES **read back by
+    #       `fr_dsn::ses_reader::read`** without error — a document the port writes and cannot read
+    #       would satisfy every byte comparison in the suite and still be broken;
     #   (b) Task 9's `-de board.json -do out.ses` rung: the same board as a KiCad *design* JSON,
-    #       through the port's own JSON reader, against the jar on the same argv;
+    #       through the port's own JSON reader, against
+    #       `tests/reference/cli-kicad-ecc83-json/route.ses`;
     #   (c) Task 10's quirk-T measurement: `-do out.json` writes the board **as loaded**, before
     #       any routing, so the file is byte-identical for `-mp 1` and `-mp 8` and carries no
     #       trace the router produced.
@@ -938,8 +957,9 @@ export AGAINST_JAR
 if [[ "$AGAINST_JAR" -eq 1 ]]; then
   echo "== --against-jar: this run compares the port against a LIVE jar. It is a triage tool," >&2
   echo "   never a gate (Plan 9 Task 0) — a DIFF here is a finding to explain, not a failure." >&2
-  echo "   At Task 0 the flag changes nothing: every driver still runs the jar live, so this is" >&2
-  echo "   already what the harness does. AGAINST_JAR=1 is exported for the converted drivers." >&2
+  echo "   Converted drivers (p8t1; p8t7 rungs a/b) switch their right-hand side back to the jar" >&2
+  echo "   and are EXPECTED to be red: R1 (#293) and R2 (#294) route every board differently." >&2
+  echo "   Every other driver still runs the jar live, so for those the flag changes nothing." >&2
 fi
 
 if [[ "$needs_jar_230" -eq 1 ]]; then
