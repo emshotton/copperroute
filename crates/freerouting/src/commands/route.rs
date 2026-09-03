@@ -190,6 +190,21 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
     // argument** — before the settings merge, before the board load, before the router — and
     // **nothing is written and nothing is touched**.
     //
+    // **The refused set is wider than the register's two examples, and deliberately so.** It is
+    // *every* spelling outside `.ses` and `.json`, which is three groups:
+    //
+    //   * `.dsn`, `.frb`, `.scr` — `try_to_set_output_file` answers `true` and the writer cannot
+    //     fill them. Java's 0-byte file and exit 1.
+    //   * `.txt`, `.rules`, and any other extension — `try_to_set_output_file` answers `false`.
+    //     Java writes the SES bytes to that path anyway and exits **0**, so the user silently gets
+    //     a session under a name that does not say so.
+    //   * **a path with no extension at all**, `-do out`: `FileFormat::from_path` answers
+    //     `Unknown`, so it is the second group's silent-SES-at-exit-0 case. It is called out
+    //     separately because the register's text names only `out.txt` and a reader could take the
+    //     refusal to be extension-keyed; it is not — it is keyed on what the writer can produce.
+    //
+    // `an_unsupported_output_extension_is_refused_at_the_argument` enumerates all three.
+    //
     // One consequence of #265's fix belongs here rather than in a report, because this is the
     // line it lands on. `tryToSetOutputFile:389` builds a `BoardFileDetails(File)`, which
     // **reads the file** if it exists (`BoardFileDetails.java:58-67`) — and in Java it never

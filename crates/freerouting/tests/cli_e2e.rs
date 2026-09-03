@@ -219,6 +219,20 @@ fn an_empty_output_directory_is_not_unlinked() {
 /// replaces Plan 8's `do_out_txt_still_receives_ses_bytes` and
 /// `do_out_dsn_writes_zero_bytes_and_exits_1`, both deleted in the same commit.
 ///
+/// # The refused set is wider than the register's two examples
+///
+/// The guard is keyed on **what `set_job_output` can produce**, not on a list of bad extensions,
+/// so it refuses every spelling outside `.ses` and `.json` — in three groups, all enumerated
+/// below:
+///
+/// * `.dsn`, `.frb`, `.scr` — accepted by `tryToSetOutputFile:384-388`, fillable by nothing;
+///   Java's 0-byte file and exit 1;
+/// * `.txt`, `.rules` and any other extension — rejected by `:384-388`, and Java writes the SES
+///   bytes to that path anyway at exit **0**;
+/// * **a path with no extension at all**, `-do out` — `FileFormat::from_path` answers `Unknown`,
+///   so it is the second group's silent-SES case. It is asserted separately because the register's
+///   text names only `out.txt`, and a reader could take the refusal to be extension-keyed.
+///
 /// # "At the argument" is asserted, not asserted-of
 ///
 /// The refusal happens at step 5, which is before the settings merge, before the board load and
@@ -237,8 +251,18 @@ fn an_unsupported_output_extension_is_refused_at_the_argument() {
     let dir = scratch("unsupported-output-extension");
     let dsn = small_dsn().to_string_lossy().into_owned();
 
-    // The two halves of quirk L, refused the same way.
-    for name in ["out.dsn", "out.scr", "out.txt", "out.frb"] {
+    // Every group refused the same way: `tryToSetOutputFile` says yes and the writer cannot fill
+    // it (`.dsn`, `.scr`, `.frb`); it says no and Java writes the SES there anyway (`.txt`,
+    // `.rules`); and the no-extension case, `-do out`, which is the second group and is spelled
+    // out because the register's text names only `out.txt`.
+    for name in [
+        "out.dsn",
+        "out.scr",
+        "out.frb",
+        "out.txt",
+        "out.rules",
+        "out",
+    ] {
         let output = dir.join(name);
         let (_, stderr, code) = run(&["-de", &dsn, "-do", &output.to_string_lossy(), "-mp", "1"]);
         assert_eq!(code, 1, "-do {name} must be refused");

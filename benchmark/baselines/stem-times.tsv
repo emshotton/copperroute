@@ -16,14 +16,32 @@
 # the corpus-level position every milestone's cpu ratio is taken against.
 # v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2
 #   (quoted -- benchmark/results/ is gitignored and this checkout has no copy)
+#
+# NOTE (Plan 9 Task 3, controller ruling in the Task 3 review): TWO ROWS BELOW HAVE A
+# DIFFERENT PROVENANCE FROM THE OTHER 27, and it is stated here rather than left for a
+# later task to trip over.
+#   batch/router-j2-reference     1.048  0.024
+#   batch/router-strict-drc-cnh   9.458  0.708
+# Every other row is the median of 3 from `scripts/quality-ab.sh T3 --update-baseline`.
+# These two are the median of **5** from a targeted re-run on a quiet machine
+# (`quality-ab.sh T3 --repeats 5 router-j2-reference router-strict-drc-cnh`), because the
+# 3-repeat sweep caught them under concurrent load and recorded 1.196 (spread 0.056) and
+# 11.427 (spread 1.984) -- 14 % and 21 % high. The proof they were noise and not a code
+# path is that the SAME BOARD in the cli lane, same binary and same argv shape, measured
+# 1.021 (spread 0.007) and 9.345 (spread 0.219) in that same sweep; the re-run brings the
+# batch rows to 1.042x and 0.986x of Task 2's numbers, i.e. inside the 1.05 floor.
+# Committing the inflated pair would hand the next task a reference 14 %/21 % high and let
+# a real regression hide under it, which is the one thing a rolling baseline must not do.
+# The 29-row artefact `benchmark/baselines/ab/quality-ab-T3.tsv` is NOT edited: it is the
+# record of what that sweep measured, and a record is not corrected by rewriting it.
 # cols:family	stem	cpu_s	cpu_spread_s
 batch	router-rpi-splitter	0.054	0.001
 batch	router-dac2020-bm01	14.731	2.387
-batch	router-j2-reference	1.196	0.056
+batch	router-j2-reference	1.048	0.024
 batch	router-tutorial-board	6.897	0.118
 batch	router-ecc83-input	0.026	0.001
 batch	router-fanout-bm11	2.609	0.098
-batch	router-strict-drc-cnh	11.427	1.984
+batch	router-strict-drc-cnh	9.458	0.708
 batch	router-empty-board	0.005	0.000
 cli	router-rpi-splitter	0.055	0.001
 cli	router-j2-reference	1.021	0.007

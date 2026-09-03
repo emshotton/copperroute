@@ -27,11 +27,19 @@
 //! The named tests after the two replays pin, as literals, what the task brief calls out by name.
 //!
 //! **One of the brief's tests is not here.** The quirk-#289 (label T) decision test is
-//! `crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_pre_routing_board`: the quirk is a
-//! CLI-path behaviour — `setJobOutput` fires as a board-updated listener before the router runs —
-//! so the assertion has to be the **binary**'s output file, and the test pastes the jar's own
-//! 1 540 bytes as a literal. `fr-dsn` has no binary and no pipeline, so it cannot host it. What
-//! *this* file pins is the writer that quirk produces the bytes with.
+//! `crates/freerouting/tests/cli_e2e.rs::do_out_json_writes_the_routed_board`: the quirk is a
+//! CLI-path behaviour — in the jar `setJobOutput` fires as a board-updated listener before the
+//! router runs, and only that first call ever writes — so the assertion has to be the
+//! **binary**'s output file. `fr-dsn` has no binary and no pipeline, so it cannot host it. What
+//! *this* file pins is the writer that produces the bytes either way.
+//!
+//! **Plan 9 Task 3 fixed the quirk and changed what that test asserts.** It used to be
+//! `do_out_json_writes_the_pre_routing_board` and it pasted the jar's own 1 540 bytes in as a
+//! literal; the port now serialises **once, after the pipeline**, so `-do out.json` carries the
+//! routed board and the test cross-checks the document's `traces` count against the `(wire `
+//! count of the SES from the identical argv instead of against a pasted document. Nothing in
+//! *this* file moved with it: `write` is called with whichever board its caller hands it, and
+//! Task 3 changed only which board that is.
 
 use std::fmt::Write as _;
 

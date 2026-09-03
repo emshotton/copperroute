@@ -136,7 +136,8 @@ impl BoardFileDetails {
     /// The register's own suggested fix is *"give `BoardFileDetails` a `setData(byte[],
     /// FileFormat)` that does not re-sniff"*, and this is that. The sniff itself has not been
     /// deleted — it has moved to the callers that actually want it, one line each, where it is
-    /// visible:
+    /// visible. **Four callers, five call expressions** (`set_rules` and `set_rules_bytes` are two
+    /// sites of one behaviour and share a row):
     ///
     /// | caller | format it passes | why |
     /// |---|---|---|
