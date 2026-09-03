@@ -816,15 +816,37 @@ fn a_virgin_engine_yields_thirteen_drills() {
         13,
         "mode 2's seeded count, now reached without seeding — the fix's headline, 0 -> 13"
     );
-    assert_eq!(
-        drill_rows(&engine, &drills),
-        drill_rows(&engine, &drills),
-        "the rows are read back through the same arena the drills were built in"
-    );
     assert!(
         engine.rooms.incomplete_list_created(),
         "`ExpansionDrill.calculateExpansionRooms` now goes through addIncompleteExpansionRoom, \
          so the list exists by the time the first drill is built"
+    );
+
+    // The count alone would be satisfied by thirteen *different* drills, so compare the rows
+    // themselves against the derived expectation: what a **seeded** engine — the state every other
+    // test in this file warms into, and the one mode 2's literals were read off — builds on the
+    // same board and the same page. `0 -> 13` is only the headline if they are the same thirteen.
+    let mut seeded_board = probe_board(BOUNDING_BOX);
+    let mut seeded_engine = engine_on(&mut seeded_board, 1);
+    let mut seeded_page = component_page(&seeded_board);
+    let seeded_drills = seeded_page.get_drills(&mut seeded_engine, &mut seeded_board, false, NEVER);
+    assert_eq!(seeded_drills.len(), 13);
+    assert_eq!(
+        drill_rows(&engine, &drills),
+        drill_rows(&seeded_engine, &seeded_drills),
+        "a virgin engine now builds the same thirteen drills a seeded one does — same locations, \
+         same layers, same getId() hashes, same shapes"
+    );
+    // And those rows are mode 2's, so this is anchored to the jar and not just to the port
+    // agreeing with itself: the three that `an_smd_pin_is_cut_out_unless_attach_smd_and_drill_
+    // allowed` reads off the probe.
+    assert_eq!(
+        drill_rows(&engine, &drills)[10..],
+        [
+            (-481, -206, 0, 1, -14527436, (-576, -240, -409, -150)),
+            (-327, -173, 0, 1, -9907909, (-409, -240, -260, -91)),
+            (-294, -19, 0, 1, -8776812, (-350, -91, -260, 76)),
+        ]
     );
 
     // The two controls, on their own **cold** engines — mode 8 measured them on a tree that
