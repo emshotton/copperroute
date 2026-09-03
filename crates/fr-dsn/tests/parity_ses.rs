@@ -78,6 +78,8 @@ fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
             coordinate_transform
                 .unwrap_or_else(|| panic!("{} produced no coordinate transform", path.display())),
         ),
+        // fixed: T4 (#91) — a committed fixture is never truncated.
+        BoardReadResult::Partial { diagnostic, .. } => panic!("truncated: {diagnostic}"),
         BoardReadResult::ParseError { location, detail } => {
             panic!("parse error at {location}: {detail}")
         }

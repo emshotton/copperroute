@@ -260,23 +260,32 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
                     let _ = read_plane_scope(p)?;
                 }
                 Token::Kw(Keyword::AutorouteSettings) => {
-                    // Java bug: Structure.readScope (Structure.java:1006-1012) puts the
+                    // Java bug: (#95) Structure.readScope (Structure.java:1006-1012) puts the
                     // `AutorouteSettings.readScope` call **inside** the
                     // `if (scopeParameter.layerStructure == null)` guard that every sibling
                     // branch uses only to *create* the layer structure. Any `keepout`,
                     // `via_keepout`, `place_keepout` or `plane` scope earlier in the same
-                    // `structure` scope has already created it, and then the whole
-                    // `autoroute_settings` scope is neither read nor skipped: its body is
-                    // re-tokenised by this loop (each `(autoroute …)`/`(via_costs …)` falls to
-                    // `skipScope`) and its closing bracket ends the `structure` scope one scope
-                    // early. Reproduced verbatim — see `docs/java-quirks.md`.
-                    if p.layer_structure.is_none() {
-                        p.layer_structure = Some(DsnLayerStructure::new(info.layer_info.clone()));
-                        let layer_structure =
-                            p.layer_structure.clone().expect("just assigned above");
-                        p.autoroute_settings =
-                            read_autoroute_settings_scope(&mut p.scanner, &layer_structure)?;
-                    }
+                    // `structure` scope has already created it, and the jar then neither reads
+                    // nor skips the whole `autoroute_settings` scope: **Java's** own token loop
+                    // re-tokenises the body (each `(autoroute …)`/`(via_costs …)` falling to
+                    // `skipScope`) and the scope's closing bracket ends the `structure` scope one
+                    // level early. See `docs/java-quirks.md` row 95. **The port no longer does
+                    // any of this** — the paragraph below is what it does instead.
+                    //
+                    // fixed: T4 (#95) — the `AutorouteSettings.readScope` call is hoisted out of
+                    // the guard, which now does only what its four sibling branches use it for:
+                    // create the DSN layer structure on demand. `ensure_layer_structure` is that
+                    // guard, verbatim; the read then happens on every `(autoroute_settings …)`
+                    // scope, whatever came before it in the same `structure` scope. Exporters
+                    // conventionally write keepouts first, so this is the branch that decides
+                    // whether a real file's router settings reach the board at all.
+                    ensure_layer_structure(p, &info);
+                    let layer_structure = p
+                        .layer_structure
+                        .clone()
+                        .expect("ensure_layer_structure assigned it");
+                    p.autoroute_settings =
+                        read_autoroute_settings_scope(&mut p.scanner, &layer_structure)?;
                 }
                 Token::Kw(Keyword::Control) => {
                     read_ok = read_control_scope(p)?;
@@ -907,7 +916,7 @@ fn update_board_rules(
         if let DsnRule::Clearance(current_rule) = current_object
             && set_clearance_rule(
                 current_rule,
-                None,
+                RuleLayerScope::AllLayers,
                 &coordinate_transform,
                 board_rules,
                 &p.string_quote,
@@ -939,7 +948,7 @@ fn update_board_rules(
                 DsnRule::Clearance(current_rule) => {
                     set_clearance_rule(
                         current_rule,
-                        Some(layer_index),
+                        RuleLayerScope::One(layer_index),
                         &coordinate_transform,
                         board_rules,
                         &p.string_quote,
@@ -953,11 +962,34 @@ fn update_board_rules(
     }
 }
 
+/// Which layers a DSN or `.rules` `(rule …)` scope applies to.
+///
+// Java bug: (#112) Java spells this as a bare `int layerIndex` whose `-1` means "every layer",
+// and `RulesReader.applyRules` (RulesReader.java:284-303) reaches the branches below with that
+// `-1` still in place after warning "layer not found" *without returning* — so a `.rules` file
+// naming a layer the board does not have silently overwrites the default trace width and the
+// clearance matrix on the **whole board**. Reachable from any `.rules` written for a different
+// stack-up, which is the ordinary way a rules file goes stale.
+//
+// fixed: T4 (#112) — the sentinel is gone. "All layers" and "one layer" are two variants, so
+// "the name did not resolve" is not a value this type can hold: the resolution happens at the
+// lookup site (`rules_reader::apply_layer_rules`), which drops the scope's rules rather than
+// widening them. The port's earlier `Option<usize>` was exactly Java's `-1` wearing a Rust hat —
+// `None` *was* "all layers" — which is why an enum and not an `Option`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleLayerScope {
+    /// Java's `layerIndex < 0`: the rule applies to every layer of the board.
+    AllLayers,
+    /// Java's `layerIndex >= 0`: the rule applies to that one layer.
+    One(usize),
+}
+
 /// `Structure.setClearanceRule` (Structure.java:672-808): "converts a dsn clearance rule into a
 /// board clearance rule. If layerIndex is negative, the rule is set on all layers. Returns true,
 /// if the string smd_to_turn_gap was found."
 ///
-/// `layer_index` is `None` for Java's negative "all layers".
+/// `scope` is Java's `layerIndex`, with its negative "all layers" spelled as a variant — see
+/// [`RuleLayerScope`].
 ///
 /// **Both `setValue` orders are mandatory.** Java writes `setValue(first, second, …)` *and*
 /// `setValue(second, first, …)` (Structure.java:768-769,785-788) because
@@ -965,7 +997,7 @@ fn update_board_rules(
 /// the symmetric pair is the only thing that keeps a DSN-sourced matrix symmetric.
 pub fn set_clearance_rule(
     rule: &DsnClearanceRule,
-    layer_index: Option<usize>,
+    scope: RuleLayerScope,
     coordinate_transform: &CoordinateTransform,
     board_rules: &mut BoardRules,
     string_quote: &str,
@@ -973,11 +1005,11 @@ pub fn set_clearance_rule(
     let mut result = false;
     let current_clearance = java_round_to_int(coordinate_transform.dsn_to_board(rule.value));
     if rule.clearance_class_pairs.is_empty() {
-        match layer_index {
-            None => board_rules
+        match scope {
+            RuleLayerScope::AllLayers => board_rules
                 .clearance_matrix
                 .set_default_value(current_clearance),
-            Some(layer) => board_rules
+            RuleLayerScope::One(layer) => board_rules
                 .clearance_matrix
                 .set_default_value_on_layer(layer, current_clearance),
         }
@@ -1062,8 +1094,8 @@ pub fn set_clearance_rule(
         let first_class_no = first_class_no.expect("assigned above");
         let second_class_no = second_class_no.expect("assigned above");
 
-        match layer_index {
-            None => {
+        match scope {
+            RuleLayerScope::AllLayers => {
                 board_rules.clearance_matrix.set_value_on_all_layers(
                     first_class_no,
                     second_class_no,
@@ -1075,7 +1107,7 @@ pub fn set_clearance_rule(
                     current_clearance,
                 );
             }
-            Some(layer) => {
+            RuleLayerScope::One(layer) => {
                 board_rules.clearance_matrix.set_value(
                     first_class_no,
                     second_class_no,
@@ -1280,7 +1312,7 @@ fn create_board(
     p.layer_structure = Some(DsnLayerStructure::new(info.layer_info.clone()));
 
     // Calculate an approximate scaling between dsn coordinates and board coordinates.
-    let mut scale_factor: i32 = p.resolution.max(1);
+    let mut scale_factor = f64::from(p.resolution.max(1));
 
     let mut max_coor = 0.0_f64;
     for coordinate in bounding_box.coor {
@@ -1292,22 +1324,33 @@ fn create_board(
     }
     // make scalefactor smaller, if there is a danger of integer overflow.
     //
-    // Java bug: Structure.createBoard — `scaleFactor` is an `int` and `/= 10` is **integer** division
-    // (Structure.java:1199-1203), so it truncates to 0 as soon as the loop runs more times than
-    // the resolution has decimal digits — which happens for any board whose boundary reaches
-    // `CRIT_INT / 5 == 6_710_886` in DSN units, whatever the resolution. `CoordinateTransform`
-    // then divides by zero and every DSN coordinate written back out is `Infinity`/`NaN`
-    // (quirk #89). Reproduced exactly; do not widen to `f64`.
+    // Java bug: (#94) Structure.createBoard — `scaleFactor` is an `int` and `/= 10` is **integer**
+    // division (Structure.java:1199-1203), so it truncates to 0 as soon as the loop runs more
+    // times than the resolution has decimal digits — which happens for any board whose boundary
+    // reaches `CRIT_INT / 5 == 6_710_886` in DSN units, whatever the resolution.
+    // `CoordinateTransform` then divides by zero and every DSN coordinate written back out is
+    // `Infinity`/`NaN` while every one read collapses to `0` (quirk #89), with the read still
+    // reported as `Success`.
     //
-    // This loop is also what makes quirk #82's Delaunay `positionLocate` unreachable for
-    // imported boards: it keeps `5 * maxCoor` below `Limits.CRIT_INT` (2^25), so an imported
-    // board's coordinates never reach the bounding triangle's corners.
+    // fixed: T4 (#94) — `scale_factor` is an `f64`, so the loop scales rather than truncates and
+    // can never reach zero. It agrees with Java's `int` arithmetic on every board where the `int`
+    // division was exact (`resolution / 10^n` integral), which is every board the loop touches
+    // in the corpus, and disagrees exactly where Java lost the value.
+    //
+    // The loop's own purpose is unchanged, and so is its side effect: it keeps `5 * maxCoor`
+    // below `Limits.CRIT_INT` (2^25), which is what makes quirk #82's Delaunay `positionLocate`
+    // unreachable for imported boards — an imported board's coordinates never reach the bounding
+    // triangle's corners.
     while 5.0 * max_coor >= CRIT_INT {
-        scale_factor /= 10;
+        scale_factor /= 10.0;
         max_coor /= 10.0;
     }
 
-    let coordinate_transform = CoordinateTransform::new(f64::from(scale_factor), 0.0, 0.0);
+    // `scale_factor` starts at `max(resolution, 1) >= 1` and is only ever divided by ten, so it
+    // is finite and strictly positive here and the constructor cannot refuse it — see #89's
+    // marker on `CoordinateTransform::new`, which is the guard that makes that a fact rather
+    // than a hope.
+    let coordinate_transform = CoordinateTransform::new(scale_factor, 0.0, 0.0)?;
     p.coordinate_transform = Some(coordinate_transform);
 
     let Shape::Tile(TileShape::Box(bounds)) =
@@ -1877,7 +1920,7 @@ mod tests {
     use crate::lexer::DsnScanner;
 
     fn scan(input: &str) -> DsnScanner {
-        DsnScanner::new(input).expect("fits the buffer")
+        DsnScanner::new(input)
     }
 
     #[test]

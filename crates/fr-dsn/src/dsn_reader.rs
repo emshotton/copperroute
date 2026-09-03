@@ -44,6 +44,7 @@ const PCB: &str = "(pcb";
 /// | Java | here |
 /// |---|---|
 /// | `readScope` true | [`BoardReadResult::Success`], with **`metadata: None`** — only [`read_metadata`] fills it (:146) |
+/// | `readScope` true, but the input ended inside an unclosed scope | [`BoardReadResult::Partial`] — quirk #91, fixed by Plan 9 Task 4. Java has no such row: it answers `Success` here too |
 /// | `readScope` false, `boardOutlineOk` false | [`BoardReadResult::OutlineMissing`] (:147-157) |
 /// | `readScope` false, `boardOutlineOk` true | [`BoardReadResult::ParseError`], detail `"DSN structure parsing failed"` (:159) |
 /// | header check failed | [`BoardReadResult::ParseError`], detail `"Not a Specctra DSN file: expected '(pcb <name>' header"` (:106-107) |
@@ -74,10 +75,7 @@ pub fn read_board(
         Ok(text) => text,
         Err(error) => return BoardReadResult::IoError(error),
     };
-    let scanner = match DsnScanner::new(&text) {
-        Ok(scanner) => scanner,
-        Err(error) => return parse_error(&error),
-    };
+    let scanner = DsnScanner::new(&text);
     let mut p = ReadScopeParameter::new(scanner, options);
     p.id_generator = id_generator.unwrap_or_default();
 
@@ -114,6 +112,19 @@ pub fn read_board(
         {
             return parse_error(&error);
         }
+        // fixed: T4 (#91) — Java has no branch here: `readScope` answered `true` and
+        // `readBoard` returns `Success` whether or not the file actually ended. The port asks
+        // the reader whether it ran out of input inside an unclosed scope (see
+        // `read_scope_generic`) and says so, without withholding the board.
+        if let Some(diagnostic) = p.truncation.take() {
+            return BoardReadResult::Partial {
+                board: board.map(Box::new),
+                metadata: None,
+                warnings,
+                coordinate_transform,
+                diagnostic,
+            };
+        }
         // DsnReader.java:146: `metadata` is **null** on this path.
         BoardReadResult::Success {
             board: board.map(Box::new),
@@ -148,6 +159,14 @@ pub fn read_board(
 /// Java answers a whole [`BoardReadResult`], not a bare metadata record — a `Success` whose
 /// `board` may be `None` (no valid outline) and whose `metadata` is always `Some`.
 ///
+/// **This function never answers [`BoardReadResult::Partial`]**, and that is deliberate rather
+/// than an oversight. #91's truncation flag is set by `read_scope_generic`'s end-of-file branch,
+/// and this loop does not use `read_scope_generic` at all: it is the hand-written PCB-level loop
+/// above, whose whole point is to `break` at the end of the `(structure …)` scope with most of
+/// the file **deliberately** unread. "The input ended early" and "we stopped early on purpose"
+/// would be indistinguishable here, so a `Partial` from this path would say nothing. A caller
+/// that needs to know whether the file is whole reads it with [`read_board`].
+///
 /// `layer_count` prefers `layerStructure.layers.length` and falls back to
 /// `board.getLayerCount()` (:261-266); with neither it stays 0.
 pub fn read_metadata(input: impl Read) -> BoardReadResult {
@@ -156,10 +175,7 @@ pub fn read_metadata(input: impl Read) -> BoardReadResult {
         Ok(text) => text,
         Err(error) => return BoardReadResult::IoError(error),
     };
-    let scanner = match DsnScanner::new(&text) {
-        Ok(scanner) => scanner,
-        Err(error) => return parse_error(&error),
-    };
+    let scanner = DsnScanner::new(&text);
     let mut p = ReadScopeParameter::new(scanner, &options);
 
     // DsnReader.java:194-214 — the same three-token check as `readBoard`.

@@ -504,7 +504,7 @@ fn smd_pins_are_classified_as_holes() {
     }
 
     let coords = DrcCoordinates {
-        transform: CoordinateTransform::new(1.0, 0.0, 0.0),
+        transform: CoordinateTransform::new(1.0, 0.0, 0.0).expect("a unit scale"),
         board_unit: Unit::Um,
     };
     let report =

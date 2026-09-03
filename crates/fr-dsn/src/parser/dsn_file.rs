@@ -31,54 +31,121 @@ pub fn read_on_off_scope(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
 /// `DsnFile.readIntegerScope` (DsnFile.java:134-160): reads one integer token followed by the
 /// closing bracket.
 ///
-/// **Java-wins ruling (fix round 1):** the brief's own test predicted this should error on a
-/// non-integer token (e.g. `(x 5.0)`); Java does not — `AutorouteSettings.java:53,55,57` feed
-/// this straight into `RouterSettings.setViaCosts`/`setPlaneViaCosts`/`setStartRipupCosts`,
-/// values later written back out by `AutorouteSettings.writeScope` and carried on
-/// `BoardMetadata`, i.e. Java's totalized `0` is observable, not merely internal. So: a
-/// non-`Int` first token totalizes to `Ok(0)` exactly where Java's `else` branch warns and
-/// returns `0`, **without reading a second token** — reproducing Java's desync verbatim: the
-/// closing bracket this scope never consumed is left for whatever reads the next token, which
-/// (per DSN's flat, depth-unaware `ScopeKeyword`/`AutorouteSettings` reader loops) then misreads
-/// it as ending its *own* enclosing scope one field early. See `docs/java-quirks.md` ("a
-/// non-integer `via_costs`/`plane_via_costs`/`start_ripup_costs` value silently becomes `0` and
-/// desyncs the parse"). Only a genuine scanner error (`DsnScanner::next_token`'s `Err`)
-/// propagates as `Err` here; Java's dropped `FRLogger.warn` calls are simply not ported (no
-/// `tracing` in `fr-dsn`).
-pub fn read_integer_scope(scanner: &mut DsnScanner) -> Result<i32, DsnError> {
+/// `None` is "this scope named no usable value" — the caller leaves its field alone.
+///
+// Java bug: (#90) DsnFile.readIntegerScope warns and returns `0` for a token of the wrong kind,
+// and its *first* failure branch (DsnFile.java:141-146) returns without reading a second token,
+// so the scope's own closing bracket is left unread. Two observable consequences, both repaired
+// here. (a) `AutorouteSettings.java:53,55,57` feed the totalized `0` straight into
+// `RouterSettings.setViaCosts`/`setPlaneViaCosts`/`setStartRipupCosts`, which
+// `AutorouteSettings.writeScope` writes back out and `BoardMetadata` carries — a malformed field
+// silently becomes a *decision*, and one that outranks every lower-priority settings source.
+// (b) The unread bracket desyncs `AutorouteSettings.readScope`'s flat, depth-unaware loop, which
+// misreads it as ending its own scope one field early. (Java's *second* failure branch,
+// :150-154, has already consumed the offending token, so the asymmetry is Java's, not a porting
+// artefact.)
+//
+// fixed: T4 (#90) — both failure branches now consume the rest of the scope through its own
+// matching closing bracket (see [`skip_rest_of_scope`]), and the value becomes `Option`: a
+// malformed scope reports "no value", so the field keeps whatever a higher-priority settings
+// source put there instead of being overwritten with `0`. The caller-side half of this repair is
+// in `read_autoroute_settings_scope`/`read_layer_rule`, which land in the same commit — see the
+// note there for why one without the other is not a fix.
+///
+/// Only a genuine scanner error (`DsnScanner::next_token`'s `Err`) propagates as `Err` here;
+/// Java's dropped `FRLogger.warn` calls are simply not ported (no `tracing` in `fr-dsn`).
+pub fn read_integer_scope(scanner: &mut DsnScanner) -> Result<Option<i32>, DsnError> {
     let value = match scanner.next_token()? {
         Some(Token::Int(i)) => i as i32,
         // Java: `FRLogger.warn(...); return 0;` (DsnFile.java:141-146) — no second token read.
-        _ => return Ok(0),
+        Some(offending) => {
+            skip_rest_of_scope(scanner, &offending)?;
+            return Ok(None);
+        }
+        None => return Ok(None),
     };
     match scanner.next_token()? {
-        Some(Token::Close) => {}
+        Some(Token::Close) => Ok(Some(value)),
         // Java: `FRLogger.warn(...); return 0;` (DsnFile.java:150-154) — the wrong token here
         // has already been consumed, unlike the branch above.
-        _ => return Ok(0),
+        Some(offending) => {
+            skip_rest_of_scope(scanner, &offending)?;
+            Ok(None)
+        }
+        None => Ok(None),
     }
-    Ok(value)
+}
+
+/// Consumes the rest of a malformed scalar scope — `(via_costs …)` and its siblings — given the
+/// token that made it malformed, which the caller has **already read**.
+///
+/// [`skip_scope`] starts its bracket count at `1`, because `ScopeKeyword.skipScope`'s contract is
+/// "the caller has consumed `(` and the scope keyword, and nothing else". The scalar readers
+/// break that contract by one token, and how much is still outstanding depends on what that
+/// token was:
+///
+/// | offending token | brackets still open | why |
+/// |---|---|---|
+/// | `)` | **0** | it *was* this scope's closing bracket; nothing is left to skip |
+/// | `(` | **2** | it opened a nested scope, so that one and this one are both open |
+/// | anything else | **1** | just this scope, which is [`skip_scope`]'s own assumption |
+///
+/// Getting this wrong is the same class of defect as #90 itself. A plain `skip_scope` for all
+/// three would leave the outer bracket behind on `(via_costs (5))` — desyncing the caller exactly
+/// as the unfixed Java does — and would *over*-consume on `(via_costs)`, eating the sibling scope
+/// that follows.
+///
+/// Note the one sibling this does **not** cover: [`read_on_off_scope`] calls `skip_scope`
+/// unconditionally after its own single token, so `(vias (on))` leaves a bracket behind there.
+/// That is `DsnFile.readOnOffScope` reproduced verbatim (Java calls `ScopeKeyword.skipScope` at
+/// the same place), it is outside register row 90 — which names `readIntegerScope` and
+/// `readFloatScope` — and it is deliberately left alone rather than fixed silently under another
+/// row's marker.
+fn skip_rest_of_scope(scanner: &mut DsnScanner, offending: &Token) -> Result<(), DsnError> {
+    match offending {
+        Token::Close => {}
+        Token::Open => {
+            // The nested scope the offending `(` opened, then this scope's own bracket.
+            skip_scope(scanner)?;
+            skip_scope(scanner)?;
+        }
+        _ => {
+            skip_scope(scanner)?;
+        }
+    }
+    Ok(())
 }
 
 /// `DsnFile.readFloatScope` (DsnFile.java:162-188): reads one numeric token followed by the
 /// closing bracket, **widening an `Int` token to `f64`** — the direction [`read_integer_scope`]
-/// does not accept. Totalizes to `Ok(0.0)` on a non-numeric token or a missing closing bracket,
-/// exactly as Java does — see [`read_integer_scope`]'s docs for why totalizing (not erroring) is
-/// the Java-wins ruling here, and for the token-consumption asymmetry between the two failure
-/// branches.
-pub fn read_float_scope(scanner: &mut DsnScanner) -> Result<f64, DsnError> {
+/// does not accept.
+///
+// Java bug: (#90) the float twin of `readIntegerScope`'s failure branches (DsnFile.java:171-175,
+// :179-183): a non-numeric token warns and returns `0.0` without consuming the scope's closing
+// bracket.
+//
+// fixed: T4 (#90) — same repair, same commit, through the same [`skip_rest_of_scope`]: the scope
+// is consumed to its own matching bracket and the answer is `None`, so a malformed
+// `(preferred_direction_trace_costs …)` leaves the layer's cost at whatever it already was
+// rather than zeroing it.
+pub fn read_float_scope(scanner: &mut DsnScanner) -> Result<Option<f64>, DsnError> {
     let value = match scanner.next_token()? {
         Some(Token::Float(f)) => f,
         Some(Token::Int(i)) => i as f64,
-        // Java: `FRLogger.warn(...); return 0;` (DsnFile.java:171-175) — no second token read.
-        _ => return Ok(0.0),
+        Some(offending) => {
+            skip_rest_of_scope(scanner, &offending)?;
+            return Ok(None);
+        }
+        None => return Ok(None),
     };
     match scanner.next_token()? {
-        Some(Token::Close) => {}
-        // Java: `FRLogger.warn(...); return 0;` (DsnFile.java:179-183).
-        _ => return Ok(0.0),
+        Some(Token::Close) => Ok(Some(value)),
+        Some(offending) => {
+            skip_rest_of_scope(scanner, &offending)?;
+            Ok(None)
+        }
+        None => Ok(None),
     }
-    Ok(value)
 }
 
 /// `DsnFile.readStringScope` (DsnFile.java:183-203): reads one bypass-lexed string, then
@@ -261,7 +328,7 @@ mod tests {
     use crate::lexer::DsnScanner;
 
     fn scan(input: &str) -> DsnScanner {
-        DsnScanner::new(input).expect("fits the buffer")
+        DsnScanner::new(input)
     }
 
     #[test]
@@ -284,42 +351,106 @@ mod tests {
     #[test]
     fn read_integer_scope_reads_an_integer() {
         let mut scanner = scan("5)");
-        assert_eq!(read_integer_scope(&mut scanner).expect("integer"), 5);
+        assert_eq!(read_integer_scope(&mut scanner).expect("integer"), Some(5));
     }
 
     #[test]
-    fn read_integer_scope_totalizes_a_float_to_zero() {
-        // Java-wins ruling (fix round 1): `AutorouteSettings.java` feeds this straight into
-        // `RouterSettings`, so Java's totalized `0` — not an error — is what a caller observes.
+    fn read_integer_scope_reports_no_value_for_a_float() {
+        // fixed: T4 (#90) — the jar answers `0` here and writes it back out; the port answers
+        // "no value read", which leaves the field for a higher-priority settings source.
         let mut scanner = scan("5.0)");
-        assert_eq!(read_integer_scope(&mut scanner).expect("no scan error"), 0);
+        assert_eq!(
+            read_integer_scope(&mut scanner).expect("no scan error"),
+            None
+        );
     }
 
     #[test]
-    fn read_integer_scope_does_not_consume_a_second_token_after_a_bad_first_one() {
-        // DsnFile.java:141-146 returns `0` immediately without reading the closing bracket —
-        // reproduced verbatim (the desync this leaves for the caller is documented on
-        // `read_integer_scope`, not fixed).
-        let mut scanner = scan("5.0)");
-        assert_eq!(read_integer_scope(&mut scanner).expect("no scan error"), 0);
-        assert_eq!(scanner.next_token().unwrap(), Some(Token::Close));
+    fn read_integer_scope_consumes_the_closing_bracket_after_a_bad_first_token() {
+        // fixed: T4 (#90) — DsnFile.java:141-146 returns `0` immediately, leaving the scope's own
+        // `)` for the caller's loop to misread as the end of *its* scope. The scope is now
+        // consumed to its matching bracket, so nothing is left behind.
+        let mut scanner = scan("5.0) tail");
+        assert_eq!(
+            read_integer_scope(&mut scanner).expect("no scan error"),
+            None
+        );
+        assert_eq!(
+            scanner.next_token().unwrap(),
+            Some(Token::Str("tail".to_string()))
+        );
+    }
+
+    #[test]
+    fn read_integer_scope_consumes_a_nested_scope_in_a_malformed_body() {
+        // A malformed body carrying its own `(...)` is consumed whole rather than leaving two
+        // brackets behind.
+        let mut scanner = scan("5.0 (junk 1 2)) tail");
+        assert_eq!(
+            read_integer_scope(&mut scanner).expect("no scan error"),
+            None
+        );
+        assert_eq!(
+            scanner.next_token().unwrap(),
+            Some(Token::Str("tail".to_string()))
+        );
+    }
+
+    /// Every shape a malformed scalar scope comes in, for both readers, checked by where the
+    /// scanner is left — see [`skip_rest_of_scope`]'s table. The `(` and `)` rows are the fix
+    /// round's own cases: resynchronising all of them with a bare `skip_scope` leaves the outer
+    /// bracket behind on a nested scope and over-consumes on an empty one.
+    #[test]
+    fn a_malformed_scalar_scope_is_resynchronised_whatever_the_offending_token() {
+        // Each body is what follows `(via_costs` / `(preferred_direction_trace_costs`, with the
+        // scope's own `)` included and a `tail` token after it that must survive.
+        for body in [
+            "5.0) tail",          // wrong kind: one bracket outstanding
+            "(5)) tail",          // a nested scope: two brackets outstanding
+            ") tail",             // empty scope: the bracket is already consumed
+            "on) tail",           // a keyword where a number belongs
+            "5 junk) tail",       // good value, stray token: one bracket outstanding
+            "5 (junk 1)) tail",   // good value, nested scope: two brackets outstanding
+            "5 (a (b c)) ) tail", // good value, deeper nesting
+        ] {
+            let mut scanner = scan(body);
+            let integer = read_integer_scope(&mut scanner).expect("no scan error");
+            assert_eq!(
+                scanner.next_token().unwrap(),
+                Some(Token::Str("tail".to_string())),
+                "read_integer_scope({body:?}) left the scanner in the wrong place (value {integer:?})"
+            );
+
+            let mut scanner = scan(body);
+            let float = read_float_scope(&mut scanner).expect("no scan error");
+            assert_eq!(
+                scanner.next_token().unwrap(),
+                Some(Token::Str("tail".to_string())),
+                "read_float_scope({body:?}) left the scanner in the wrong place (value {float:?})"
+            );
+        }
     }
 
     #[test]
     fn read_float_scope_widens_an_integer() {
         let mut scanner = scan("5)");
-        assert_eq!(read_float_scope(&mut scanner).expect("number"), 5.0);
+        assert_eq!(read_float_scope(&mut scanner).expect("number"), Some(5.0));
     }
 
     #[test]
     fn read_float_scope_reads_a_float() {
         let mut scanner = scan("5.5)");
-        assert_eq!(read_float_scope(&mut scanner).expect("number"), 5.5);
+        assert_eq!(read_float_scope(&mut scanner).expect("number"), Some(5.5));
     }
 
     #[test]
-    fn read_float_scope_totalizes_a_non_numeric_token_to_zero() {
-        let mut scanner = scan("on)");
-        assert_eq!(read_float_scope(&mut scanner).expect("no scan error"), 0.0);
+    fn read_float_scope_reports_no_value_for_a_non_numeric_token() {
+        // fixed: T4 (#90) — was Java's totalized `0.0`, and the `)` stayed unread.
+        let mut scanner = scan("on) tail");
+        assert_eq!(read_float_scope(&mut scanner).expect("no scan error"), None);
+        assert_eq!(
+            scanner.next_token().unwrap(),
+            Some(Token::Str("tail".to_string()))
+        );
     }
 }

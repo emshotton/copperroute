@@ -17,13 +17,10 @@ pub fn dump(out: &mut impl Write, path: &str) {
     // UTF-8 since JDK 18 and maps malformed input to U+FFFD, exactly like `from_utf8_lossy`.
     let text = String::from_utf8_lossy(&bytes);
 
-    let mut scanner = match DsnScanner::new(&text) {
-        Ok(scanner) => scanner,
-        Err(e) => {
-            writeln!(out, "0 ERROR {e}").expect("write");
-            return;
-        }
-    };
+    // fixed: T4 (#86) — the constructor had a 16 MiB ceiling and could answer `Err`; it is
+    // infallible now, so the `0 ERROR …` line that reported it is gone. No corpus fixture ever
+    // reached it (all 106 are far under the ceiling), so no sweep row changes because of this.
+    let mut scanner = DsnScanner::new(&text);
 
     let mut index = 0u64;
     loop {

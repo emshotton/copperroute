@@ -38,7 +38,7 @@ use fr_geometry::{Circle, IntPoint, Point, Shape, Vector};
 /// enclosing `pcb` scope's generic loop does.
 fn read_placement<T>(text: &str, f: impl FnOnce(bool, &[ComponentPlacement]) -> T) -> T {
     let options = DsnReadOptions::default();
-    let scanner = DsnScanner::new(text).expect("fits the lexer buffer");
+    let scanner = DsnScanner::new(text);
     let mut p = ReadScopeParameter::new(scanner, &options);
     assert_eq!(p.scanner.next_token().expect("scan"), Some(Token::Open));
     assert_eq!(
@@ -260,7 +260,7 @@ fn write_placement(
 ) -> String {
     let text = fixture("empty_board.dsn");
     let options = DsnReadOptions::default();
-    let scanner = DsnScanner::new(&text).expect("fits the lexer buffer");
+    let scanner = DsnScanner::new(&text);
     let mut p = ReadScopeParameter::new(scanner, &options);
     assert_eq!(p.scanner.next_token().expect("scan"), Some(Token::Open));
     assert_eq!(
@@ -268,7 +268,7 @@ fn write_placement(
         Some(Token::Kw(Keyword::PcbScope))
     );
     assert!(read_scope(ScopeKeyword::Pcb, &mut p).expect("no scan error"));
-    let coordinate_transform = CoordinateTransform::new(10.0, 0.0, 0.0);
+    let coordinate_transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
     let mut board = p.board.take().expect("board built");
     board
         .components

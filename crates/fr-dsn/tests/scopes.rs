@@ -8,7 +8,9 @@
 
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, LexicalState, Token};
+use fr_dsn::parser::autoroute_settings::read_autoroute_settings_scope;
 use fr_dsn::parser::dsn_file::{read_float_scope, read_integer_scope, read_on_off_scope};
+use fr_dsn::parser::geometry::{DsnLayer, DsnLayerStructure};
 use fr_dsn::parser::scope_parameter::{DsnReadOptions, ReadScopeParameter, read_scope, skip_scope};
 
 #[test]
@@ -77,7 +79,7 @@ fn scope_keyword_from_keyword_round_trips() {
 /// leaves the following token untouched.
 #[test]
 fn skip_scope_consumes_exactly_the_matching_bracket() {
-    let mut scanner = DsnScanner::new("(foo (bar 1 2) baz) tail").expect("fits the buffer");
+    let mut scanner = DsnScanner::new("(foo (bar 1 2) baz) tail");
     assert_eq!(scanner.next_token().unwrap(), Some(Token::Open));
     assert_eq!(
         scanner.next_token().unwrap(),
@@ -109,8 +111,7 @@ fn skip_scope_handles_glued_digit_letter_tokens_throughout() {
     // have consumed before ever calling `skip_scope` (see the `ScopeKeyword.readScope` docs);
     // everything from `123abc` onward is the scope's body, which is what `skip_scope` itself
     // reads, each token preceded by its own `yybegin(NAME)`.
-    let mut scanner =
-        DsnScanner::new("(foo 123abc (456def 1) 789ghi) tail").expect("fits the buffer");
+    let mut scanner = DsnScanner::new("(foo 123abc (456def 1) 789ghi) tail");
     assert_eq!(scanner.next_token().unwrap(), Some(Token::Open));
     assert_eq!(
         scanner.next_token().unwrap(),
@@ -132,14 +133,14 @@ fn skip_scope_handles_glued_digit_letter_tokens_throughout() {
 /// `skip_scope` sets before every read), the whole run is one `Str`.
 #[test]
 fn name_state_lexes_a_leading_digit_run_as_one_string() {
-    let mut initial = DsnScanner::new("123abc").expect("fits the buffer");
+    let mut initial = DsnScanner::new("123abc");
     assert_eq!(
         initial.next_token().unwrap(),
         Some(Token::Int(123)),
         "YyInitial splits the digits off as their own token"
     );
 
-    let mut name = DsnScanner::new("123abc").expect("fits the buffer");
+    let mut name = DsnScanner::new("123abc");
     name.yybegin(LexicalState::Name);
     assert_eq!(
         name.next_token().unwrap(),
@@ -150,57 +151,189 @@ fn name_state_lexes_a_leading_digit_run_as_one_string() {
 
 #[test]
 fn read_on_off_scope_reads_on_and_off() {
-    let mut on = DsnScanner::new("on)").expect("fits");
+    let mut on = DsnScanner::new("on)");
     assert!(read_on_off_scope(&mut on).expect("no scan error"));
 
-    let mut off = DsnScanner::new("off)").expect("fits");
+    let mut off = DsnScanner::new("off)");
     assert!(!read_on_off_scope(&mut off).expect("no scan error"));
 }
 
 #[test]
-fn read_integer_scope_accepts_an_integer_and_totalizes_a_float_to_zero() {
-    // Java-wins ruling (fix round 1): `DsnFile.readIntegerScope` (DsnFile.java:134-160) warns
-    // and returns `0` for a non-integer token — it does not throw, and
-    // `AutorouteSettings.java:53,55,57` feeds that `0` straight into `RouterSettings`, which is
-    // written back out and carried on `BoardMetadata`, so this must not become an `Err`.
-    let mut int_scanner = DsnScanner::new("5)").expect("fits");
-    assert_eq!(read_integer_scope(&mut int_scanner).expect("integer"), 5);
+fn read_integer_scope_accepts_an_integer_and_reports_no_value_for_a_float() {
+    // fixed: T4 (#90) — `DsnFile.readIntegerScope` (DsnFile.java:134-160) warns and returns `0`
+    // for a non-integer token, and `AutorouteSettings.java:53,55,57` feeds that `0` straight into
+    // `RouterSettings`, where it is written back out and carried on `BoardMetadata`. The port now
+    // answers "no value read" so the caller leaves its field alone.
+    let mut int_scanner = DsnScanner::new("5)");
+    assert_eq!(
+        read_integer_scope(&mut int_scanner).expect("integer"),
+        Some(5)
+    );
 
-    let mut float_scanner = DsnScanner::new("5.0)").expect("fits");
+    let mut float_scanner = DsnScanner::new("5.0)");
     assert_eq!(
         read_integer_scope(&mut float_scanner).expect("no scan error"),
-        0
+        None
     );
 }
 
 #[test]
 fn read_float_scope_widens_an_integer_token() {
-    let mut scanner = DsnScanner::new("5)").expect("fits");
-    assert_eq!(read_float_scope(&mut scanner).expect("number"), 5.0_f64);
+    let mut scanner = DsnScanner::new("5)");
+    assert_eq!(
+        read_float_scope(&mut scanner).expect("number"),
+        Some(5.0_f64)
+    );
 }
 
-/// `ScopeKeyword.readScope`'s own end-of-file check (ScopeKeyword.java:55-58) fires even when
-/// the file was truncated *inside* a nested, unrecognised scope that `skip_scope` could not
-/// close: `skip_scope` answers `Ok(false)` at end of file (mirroring Java's `false`, fix round
-/// 1), the caller discards that, and the very next `next_token()` call — now genuinely at end of
-/// file — is what makes the generic loop return `Ok(true)`. `ScopeKeyword::Pcb` dispatches
-/// straight to that generic loop (`Keyword.PCB_SCOPE` has no Java subclass), so it stands in for
-/// it here. See `docs/java-quirks.md` row 91: this is why a DSN file truncated mid-file reads as
-/// `Success` with a partial board, not a parse error.
+/// #90's binding test: a malformed integer scope must not end its caller's scope.
+///
+/// The jar's answer for this exact input, from `DsnFile.readIntegerScope`'s first failure branch
+/// (DsnFile.java:141-146) plus `AutorouteSettings.readScope`'s flat loop: `via_costs` totalizes
+/// to `0`, the `)` that closes `(via_costs 5.0)` is read as the end of the **whole**
+/// `autoroute_settings` scope, and everything after it — here `(vias off)` and
+/// `(start_ripup_costs 13)` — is never seen by this reader at all. So the jar reports
+/// `viasAllowed = true` (the default) and `startRipupCosts = 1` (the default), with
+/// `viaCosts = 0`.
+///
+/// fixed: T4 (#90): the scope is consumed to its own bracket, `via_costs` keeps its unset state
+/// (`via_costs_raw() == None`, so a higher-priority settings source still wins the merge), and
+/// the two fields after it are read.
+///
+/// # The three shapes a malformed scalar scope comes in
+///
+/// The offending token is already consumed by the time the scope has to be resynchronised, and
+/// how many brackets are still open depends on **what** it was — `)` closed this scope, `(`
+/// opened a nested one, anything else left just this one. All three are exercised here; the
+/// `(via_costs (5))` row is the fix round's own case (a first cut resynchronised all three as if
+/// they were the third, which left the outer bracket behind on the second and over-consumed on
+/// the first).
 #[test]
-fn read_scope_generic_returns_ok_true_when_truncated_inside_an_unknown_scope() {
+fn a_malformed_integer_scope_does_not_desync_its_caller() {
+    let layer_structure = DsnLayerStructure::new(vec![
+        DsnLayer::new("F.Cu".to_string(), 0, true),
+        DsnLayer::new("B.Cu".to_string(), 1, true),
+    ]);
+
+    // `malformed` is the whole `(via_costs …)` scope, ill-formed in three different ways; the two
+    // well-formed fields after it are what a desync would swallow.
+    for malformed in [
+        "(via_costs 5.0)",        // a value of the wrong kind: one bracket still open
+        "(via_costs (5))",        // a nested scope where a scalar belongs: two brackets still open
+        "(via_costs)",            // no value at all: the scope's bracket already consumed
+        "(via_costs 5 junk)",     // a good value, then a stray token: one bracket still open
+        "(via_costs 5 (junk 1))", // a good value, then a nested scope: two brackets still open
+    ] {
+        let text = format!("{malformed} (vias off) (start_ripup_costs 13)) tail");
+        let mut scanner = DsnScanner::new(&text);
+        let settings = read_autoroute_settings_scope(&mut scanner, &layer_structure)
+            .expect("no scan error")
+            .unwrap_or_else(|| panic!("{malformed}: the scope must close on its own bracket"));
+
+        assert_eq!(
+            settings.via_costs_raw(),
+            None,
+            "{malformed}: a malformed value leaves the field unset instead of writing Java's 0"
+        );
+        assert!(
+            !settings.vias_allowed(),
+            "{malformed}: (vias off) is past the desync and is read now"
+        );
+        assert_eq!(
+            settings.start_ripup_costs(),
+            13,
+            "{malformed}: (start_ripup_costs 13) is past the desync and is read now"
+        );
+        assert_eq!(
+            scanner.next_token().unwrap(),
+            Some(Token::Str("tail".to_string())),
+            "{malformed}: the scope ended on its own closing bracket, not one field early"
+        );
+    }
+}
+
+/// fixed: T4 (#91) — replaces
+/// `read_scope_generic_returns_ok_true_when_truncated_inside_an_unknown_scope`.
+///
+/// `ScopeKeyword.readScope`'s own end-of-file check (ScopeKeyword.java:55-58) fires even when
+/// the file was truncated *inside* a nested, unrecognised scope that `skipScope` could not
+/// close: `skipScope` answers `false` at end of file (:32-33), the caller discards that, and the
+/// very next `nextToken()` call — now genuinely at end of file — is what makes the generic loop
+/// return `true`. So `DsnReader.readBoard` reports a truncated file as a **`Success`** carrying a
+/// partial board, indistinguishable from a complete read.
+///
+/// The `Ok(true)` stays: a caller may well want whatever routing data survived, and the roadmap's
+/// correction of the register's binary framing says the honest answer is a third state rather
+/// than a refusal. What changes is that the reader now *records* the truncation, and `read_board`
+/// answers `BoardReadResult::Partial` with the board **and** the diagnostic. `ScopeKeyword::Pcb`
+/// dispatches straight to the generic loop (`Keyword.PCB_SCOPE` has no Java subclass), so it
+/// stands in for it here.
+#[test]
+fn a_truncation_inside_an_unknown_scope_reports_partial() {
     // `(foo 1 2` — an unrecognised nested scope keyword ("foo" is not a DSN keyword) whose body
     // is never closed before the input simply ends.
-    let scanner = DsnScanner::new("(foo 1 2").expect("fits the buffer");
+    let scanner = DsnScanner::new("(foo 1 2");
     let options = DsnReadOptions::default();
     let mut p = ReadScopeParameter::new(scanner, &options);
-    assert!(matches!(read_scope(ScopeKeyword::Pcb, &mut p), Ok(true)));
+    assert!(
+        matches!(read_scope(ScopeKeyword::Pcb, &mut p), Ok(true)),
+        "still Java's `true`: the surviving board is handed over, not withheld"
+    );
+    let truncation = p.truncation.as_deref().expect("the truncation is recorded");
+    assert!(
+        truncation.contains("(pcb)") && truncation.contains("end of file"),
+        "the diagnostic names the scope left open: {truncation}"
+    );
+
+    // A complete file records nothing, so the flag is evidence and not noise.
+    let scanner = DsnScanner::new("(foo 1 2))");
+    let mut complete = ReadScopeParameter::new(scanner, &options);
+    assert!(matches!(
+        read_scope(ScopeKeyword::Pcb, &mut complete),
+        Ok(true)
+    ));
+    assert_eq!(complete.truncation, None);
+}
+
+/// The whole-reader half of #91: `read_board` on a DSN truncated inside an unrecognised scope
+/// answers `Partial`, not `Success`.
+///
+/// The jar's answer for this input is `Success` with the same partial board — that is the bug.
+#[test]
+fn a_truncated_dsn_reads_as_partial_not_success() {
+    let text = "(pcb truncated.dsn\n  (parser\n    (string_quote \")\n  )\n  (resolution um \
+                10)\n  (unit um)\n  (structure\n    (layer F.Cu\n      (type signal)\n    )\n    \
+                (layer B.Cu\n      (type signal)\n    )\n    (boundary\n      (rect pcb 0 0 \
+                100000 50000)\n    )\n  )\n  (some_unknown_scope 1 2";
+    let options = DsnReadOptions::default();
+    let result = fr_dsn::read_board(text.as_bytes(), None, Some("truncated"), &options);
+    let fr_dsn::BoardReadResult::Partial {
+        board, diagnostic, ..
+    } = result
+    else {
+        panic!("a truncated DSN must not read as Success");
+    };
+    assert!(
+        board.is_some(),
+        "the board the file did contain is still handed over — this is not a refusal"
+    );
+    assert!(
+        diagnostic.contains("end of file"),
+        "diagnostic: {diagnostic}"
+    );
+
+    // The control: the same file, closed. `Success`, not `Partial`.
+    let closed = format!("{text})\n)\n");
+    assert!(matches!(
+        fr_dsn::read_board(closed.as_bytes(), None, Some("truncated"), &options),
+        fr_dsn::BoardReadResult::Success { .. }
+    ));
 }
 
 /// Direct pin of `skip_scope`'s own end-of-file answer (fix round 1: `Ok(false)`, not `Err`,
 /// mirroring `ScopeKeyword.skipScope`'s `false` — ScopeKeyword.java:32-33).
 #[test]
 fn skip_scope_returns_ok_false_at_end_of_file() {
-    let mut scanner = DsnScanner::new("no closing bracket here").expect("fits the buffer");
+    let mut scanner = DsnScanner::new("no closing bracket here");
     assert!(matches!(skip_scope(&mut scanner), Ok(false)));
 }

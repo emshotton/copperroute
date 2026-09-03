@@ -35,6 +35,8 @@ fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
             coordinate_transform
                 .unwrap_or_else(|| panic!("{} produced no coordinate transform", path.display())),
         ),
+        // fixed: T4 (#91) — a committed fixture is never truncated.
+        BoardReadResult::Partial { diagnostic, .. } => panic!("truncated: {diagnostic}"),
         BoardReadResult::ParseError { location, detail } => {
             panic!("parse error at {location}: {detail}")
         }
@@ -241,6 +243,8 @@ fn roundtrip_preserves_layer_count() {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.expect("re-read must produce a board")
         }
+        // fixed: T4 (#91) — the writer never emits an unclosed scope.
+        BoardReadResult::Partial { diagnostic, .. } => panic!("re-read truncated: {diagnostic}"),
         BoardReadResult::ParseError { location, detail } => {
             panic!("re-read failed at {location}: {detail}")
         }

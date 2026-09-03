@@ -350,6 +350,21 @@ pub fn parse_board_result(result: BoardReadResult) -> Result<ParsedBoard, Error>
             warnings,
             coordinate_transform,
         } => (board, metadata, warnings, coordinate_transform),
+        // fixed: T4 (#91) — the reader ran out of input inside an unclosed scope. Java cannot
+        // say so (it answers `Success`), and the roadmap's correction of the register's binary
+        // framing says this must **not** become a refusal: the board that survived the
+        // truncation is handed over exactly as `Success`'s is, with the diagnostic appended to
+        // the warnings the caller already surfaces.
+        BoardReadResult::Partial {
+            board,
+            metadata,
+            mut warnings,
+            coordinate_transform,
+            diagnostic,
+        } => {
+            warnings.push(diagnostic);
+            (board, metadata, warnings, coordinate_transform)
+        }
         // :720-732 — Java logs and returns the result; the port carries the same two messages.
         BoardReadResult::IoError(error) => {
             return Err(Error::Load(format!(

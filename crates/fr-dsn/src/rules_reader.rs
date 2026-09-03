@@ -55,7 +55,7 @@ use crate::parser::network::{
     read_via_rule,
 };
 use crate::parser::scope_parameter::skip_scope;
-use crate::parser::structure::{read_snap_angle, set_clearance_rule};
+use crate::parser::structure::{RuleLayerScope, read_snap_angle, set_clearance_rule};
 
 /// `RulesReader.read(InputStream, String, BasicBoard, RouterSettings)`
 /// (RulesReader.java:65-170): reads `input` and applies its rules to `board`.
@@ -109,7 +109,7 @@ pub fn read(
 ) -> Result<bool, DsnError> {
     let _ = design_name;
     let text = read_to_string(input)?;
-    let mut scanner = DsnScanner::new(&text)?;
+    let mut scanner = DsnScanner::new(&text);
 
     // The "(rules PCB <name>" header (RulesReader.java:80-110). The name token is consumed but
     // never validated — a mismatch is non-fatal in Java too.
@@ -138,7 +138,13 @@ pub fn read(
             match next_token {
                 Token::Kw(Keyword::Rule) => {
                     let rules = read_rule_scope(&mut scanner)?;
-                    apply_rules(rules.as_deref(), board, ct, &string_quote, None);
+                    apply_rules(
+                        rules.as_deref(),
+                        board,
+                        ct,
+                        &string_quote,
+                        RuleLayerScope::AllLayers,
+                    );
                 }
                 Token::Kw(Keyword::Layer) => {
                     apply_layer_rules(&mut scanner, board, ct, &string_quote)?;
@@ -197,7 +203,7 @@ pub fn read_router_settings(input: impl Read) -> Result<Option<DsnRouterSettings
 
     // The pre-pass over the whole buffer, then a second scan of the same bytes (:198-199).
     let layer_structure = discover_layer_structure(&text)?;
-    let mut scanner = DsnScanner::new(&text)?;
+    let mut scanner = DsnScanner::new(&text);
     if !read_rules_header(&mut scanner)? {
         return Ok(None);
     }
@@ -244,7 +250,7 @@ pub fn read_router_settings(input: impl Read) -> Result<Option<DsnRouterSettings
 // wider visibility.
 pub fn discover_layer_structure(text: &str) -> Result<DsnLayerStructure, DsnError> {
     let mut layer_names: Vec<String> = Vec::new();
-    let mut scanner = DsnScanner::new(text)?;
+    let mut scanner = DsnScanner::new(text);
     let mut prev_was_open = false;
     loop {
         let Some(token) = scanner.next_token()? else {
@@ -307,45 +313,47 @@ fn read_rules_header(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
 /// `RulesReader.applyRules(Collection<Rule>, BasicBoard, String)` (RulesReader.java:280-306):
 /// turns one `(rule …)` scope's width and clearance entries into board rules.
 ///
-/// `layer_name` is `None` for the file-level `(rule …)`, which applies to every layer.
+/// `scope` says which layers the rules land on. It is [`RuleLayerScope::AllLayers`] for the
+/// file-level `(rule …)`, which genuinely applies to every layer, and
+/// [`RuleLayerScope::One`] for a `(layer <name> (rule …))` whose name the board carries.
 ///
-/// **Java bug reproduced:** a `(layer <name> (rule …))` whose layer the board does not have
-/// leaves `layerIndex` at `-1` (RulesReader.java:286-289 warns but does not return), so the rule
-/// is applied to **all** layers instead of being dropped. `None` here is that same `-1`.
+// Java bug: (#112) `RulesReader.applyRules` resolves the layer name itself and, when the board
+// does not have that layer, warns "layer not found" and **does not return** (:286-290): the
+// `int layerIndex` stays `-1`, which is exactly the sentinel the two branches below read as
+// "all layers", so a stale `.rules` file silently overwrites the default trace width and the
+// clearance matrix on the whole board.
+//
+// fixed: T4 (#112) — this function no longer resolves anything and cannot represent the
+// failure: it takes a [`RuleLayerScope`], whose two variants are "all layers" and "this one".
+// The lookup moved to [`apply_layer_rules`], the one caller that has a name to resolve, and a
+// name the board does not carry makes it drop that scope's rules instead of widening them.
 // renamed: RulesReader.applyRules -> apply_rules.
 fn apply_rules(
     rules: Option<&[DsnRule]>,
     board: &mut Board,
     ct: &CoordinateTransform,
     string_quote: &str,
-    layer_name: Option<&str>,
+    scope: RuleLayerScope,
 ) {
     let Some(rules) = rules else {
         // `rules == null` (RulesReader.java:281-283).
         return;
     };
-    // Java bug: RulesReader.applyRules — an unresolvable layer name falls through with
-    // `layerIndex == -1`, i.e. "all layers", rather than being skipped (:286-290).
-    let layer_index = layer_name.and_then(|name| board.layer_structure().get_no(name));
     for rule in rules {
         match rule {
             DsnRule::Width(value) => {
                 let trace_half_width = java_round_to_int(ct.dsn_to_board(*value) / 2.0);
-                match layer_index {
-                    None => board.rules.set_default_trace_half_widths(trace_half_width),
-                    Some(layer) => board
+                match scope {
+                    RuleLayerScope::AllLayers => {
+                        board.rules.set_default_trace_half_widths(trace_half_width);
+                    }
+                    RuleLayerScope::One(layer) => board
                         .rules
                         .set_default_trace_half_width(layer, trace_half_width),
                 }
             }
             DsnRule::Clearance(clearance_rule) => {
-                set_clearance_rule(
-                    clearance_rule,
-                    layer_index,
-                    ct,
-                    &mut board.rules,
-                    string_quote,
-                );
+                set_clearance_rule(clearance_rule, scope, ct, &mut board.rules, string_quote);
             }
         }
     }
@@ -359,6 +367,11 @@ fn apply_rules(
 /// the scope, which leaves the outer loop mid-scope; reproduced verbatim, because the outer loop
 /// then reads the stray tokens as top-level ones and is what makes a mangled `.rules` file still
 /// answer `true`.
+///
+/// This is where the layer name is resolved (quirk #112, fixed in Plan 9 Task 4): a name the
+/// board does not carry drops this scope's rules. The scope is still read to its end, so a stale
+/// `.rules` file is still a `true` read of everything else in it — the rules that named a real
+/// layer, the padstacks, the via rules and the net classes all land as before.
 // renamed: RulesReader.applyLayerRules -> apply_layer_rules.
 fn apply_layer_rules(
     scanner: &mut DsnScanner,
@@ -370,6 +383,13 @@ fn apply_layer_rules(
         // "String expected" (RulesReader.java:311-317).
         return Ok(());
     };
+    // fixed: T4 (#112) — the resolution that Java left to `applyRules`, where a miss became
+    // "all layers". `None` here means the board has no such layer, and every `(rule …)` inside
+    // this scope is then read (so the outer loop stays in sync) and **dropped**.
+    let layer_scope = board
+        .layer_structure()
+        .get_no(&layer_string)
+        .map(RuleLayerScope::One);
     let mut next_token = scanner.next_token()?;
     while next_token != Some(Token::Close) {
         if next_token != Some(Token::Open) {
@@ -379,13 +399,9 @@ fn apply_layer_rules(
         next_token = scanner.next_token()?;
         if next_token == Some(Token::Kw(Keyword::Rule)) {
             let rules = read_rule_scope(scanner)?;
-            apply_rules(
-                rules.as_deref(),
-                board,
-                ct,
-                string_quote,
-                Some(&layer_string),
-            );
+            if let Some(scope) = layer_scope {
+                apply_rules(rules.as_deref(), board, ct, string_quote, scope);
+            }
         } else {
             skip_scope(scanner)?;
         }

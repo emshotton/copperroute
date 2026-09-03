@@ -68,6 +68,13 @@ fn main() {
                 return;
             }
         },
+        // fixed: T4 (#91) — the port's fifth variant. Java has no counterpart, so a fixture that
+        // reached it would print a line the Java side cannot, i.e. it would show up as a DIFF in
+        // `sweep-p3t15.sh` rather than pass silently.
+        BoardReadResult::Partial { diagnostic, .. } => {
+            writeln!(out, "RESULT Partial | {diagnostic}").expect("write");
+            return;
+        }
         BoardReadResult::ParseError { location, detail } => {
             writeln!(out, "RESULT ParseError {location} | {detail}").expect("write");
             return;

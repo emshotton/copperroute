@@ -18,20 +18,6 @@ pub enum DsnError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    /// The input does not fit Java's fixed 16 MiB lexer buffer.
-    ///
-    /// Java allocates `zzBuffer` once as a `char[16 * 1024 * 1024]`
-    /// (`SpecctraDsnStreamReader.java:40`) and its hand-rolled `nextString` indexes that buffer
-    /// with no refill, so a larger file is mis-lexed rather than rejected; the port refuses it
-    /// instead (see [`crate::lexer::DsnScanner::new`]).
-    #[error("input is {units} UTF-16 code units, which exceeds the {limit}-unit lexer buffer")]
-    InputTooLarge {
-        /// The input's length in UTF-16 code units.
-        units: usize,
-        /// `ZZ_BUFFERSIZE`.
-        limit: usize,
-    },
-
     /// The scanner could not match the input, or a numeric literal did not fit its Java type.
     ///
     /// Java throws here — `Error("Error: could not match input")` from `zzScanError`
@@ -71,6 +57,20 @@ pub enum DsnError {
     UnsplittableConductionArea {
         /// The conduction area whose `Area::split_to_convex` returned `None`.
         item: ItemId,
+    },
+
+    /// A [`CoordinateTransform`] was asked for with a scale factor that is zero, infinite or
+    /// `NaN`.
+    ///
+    /// Java builds `new CoordinateTransform(0, 0, 0)` without complaint whenever
+    /// `Structure.createBoard`'s overflow loop truncates its `int` scale factor to zero (quirks
+    /// #94/#89), and the read still reports `Success` while every written coordinate is
+    /// `Infinity`/`NaN`. Plan 9 Task 4 makes that state unrepresentable instead; this is the
+    /// loud refusal it becomes.
+    #[error("a coordinate transform needs a finite, non-zero scale factor, not {scale_factor}")]
+    InvalidScaleFactor {
+        /// The refused scale factor.
+        scale_factor: f64,
     },
 
     /// `KiCadJsonReader.importSession` (KiCadJsonReader.java:757-855) threw.
@@ -135,8 +135,10 @@ pub struct BoardMetadata {
 }
 
 /// Sealed result type for all outcomes of a board read operation (DSN, JSON, or any other
-/// format) — `io/BoardReadResult.java`, ported as a Rust `enum` verbatim (its Java `sealed
-/// interface` + four `record` permits become the four variants below).
+/// format) — `io/BoardReadResult.java`, ported as a Rust `enum` (its Java `sealed interface` +
+/// four `record` permits are the four variants `Success`, `OutlineMissing`, `ParseError` and
+/// `IoError`; [`BoardReadResult::Partial`] is a **fifth**, added by Plan 9 Task 4 for quirk #91
+/// — Java has no way to say "this board is what a truncated file contained").
 ///
 /// `Success.metadata` is `Option` because `DsnReader.readBoard` returns `Success` with a
 /// **`null`** metadata — only `readMetadata` populates it. Both variants' `board` is `Option`
@@ -178,6 +180,35 @@ pub enum BoardReadResult {
         /// The transform `Structure.createBoard` built between DSN and board coordinates; `None`
         /// if it never ran. Added by the port — see the type's doc comment.
         coordinate_transform: Option<CoordinateTransform>,
+    },
+    /// The input ran out **before** a scope's closing bracket, so the board is only the part of
+    /// the design the file held up to the truncation.
+    ///
+    // Java bug: (#91) `ScopeKeyword.skipScope` answers `false` at end of file, every caller
+    // discards it, and `ScopeKeyword.readScope`'s own end-of-file check then returns `true`
+    // (ScopeKeyword.java:32-33, :55-58) — so `DsnReader.readBoard` reports a truncated file as
+    // `Success` with a partial board, indistinguishable from a complete read.
+    //
+    // fixed: T4 (#91) — this variant. Deliberately **not** a hard failure: a caller may well
+    // want whatever routing data survived, and the roadmap's correction of the register's binary
+    // framing says the honest answer is a third state, not a refusal. It carries the same four
+    // payload fields as [`BoardReadResult::Success`] — an amendment to the task brief's
+    // two-field sketch (`Partial { board, diagnostic }`), because a `Partial` with no
+    // `coordinate_transform` cannot be loaded by `fr_core::load::parse_board_result` at all and
+    // would be a hard failure wearing a softer name.
+    Partial {
+        /// The board as far as the file got; `None` when the truncation came before one existed.
+        board: Option<Box<Board>>,
+        /// Header/structure metadata; `None` on the [`crate::read_board`] path, as for `Success`.
+        metadata: Option<BoardMetadata>,
+        /// Non-fatal issues encountered during loading. May be empty; the truncation itself is
+        /// in `diagnostic`, not here.
+        warnings: Vec<String>,
+        /// The transform `Structure.createBoard` built between DSN and board coordinates; `None`
+        /// if it never ran.
+        coordinate_transform: Option<CoordinateTransform>,
+        /// What was truncated, and where: the scope whose closing bracket never arrived.
+        diagnostic: String,
     },
     /// The input did not conform to the expected grammar/format.
     ParseError {
