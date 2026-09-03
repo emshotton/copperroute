@@ -1617,12 +1617,16 @@ methods with dozens of branches.
   `./scripts/differential/run.sh p8t5` — 2096 lines, MATCH.
 
 - `p8t1` — **Plan 8 Task 6: `freerouting route` end to end. The plan's headline gate
-  (controller ruling AV).** The HEAD jar and the port, run as **two whole programs** on the argv
-  recorded in each `tests/reference/cli-<stem>/argv.txt`, compared on three rungs: byte-identical
-  SES (after quirk #92's four `(parser …)` keyword literals are rewritten on the jar side — the
-  same closed set `crates/fr-router/tests/batch_parity.rs` rewrites), equal exit code, equal
-  `parity::normalize_log`. Plus four **refusal rows** with no fixture stem, because every stem
-  succeeds and a successful run emits no message `freerouting::logging::MESSAGE_MAP` names.
+  (controller ruling AV)** — **converted to port-golden comparison at Plan 9's M1 accept wave
+  (ruling BV); see "Converted drivers" below.** The port, run as a whole program on the argv
+  recorded in each `tests/reference/cli-<stem>/argv.txt`, compared against that stem's committed
+  reference on three rungs: byte-identical SES (after quirk #92's four `(parser …)` keyword
+  literals are rewritten on the reference side — the same closed set
+  `crates/fr-router/tests/batch_parity.rs` rewrites), equal exit code, equal
+  `parity::normalize_log`. Plus five **refusal rows** with no fixture stem, because every stem
+  succeeds and a successful run emits no message `freerouting::logging::MESSAGE_MAP` names; their
+  expectation is a literal in the driver, since four of the five write no SES and so have no
+  `tests/reference/cli-*` directory to point at.
 
   **It has no `P8T1.java`, and that is deliberate.** Every other driver here is a pair because the
   thing under test is a Java *method* that has to be called from inside a JVM. Here it is the jar:
@@ -1639,8 +1643,25 @@ methods with dozens of branches.
   can switch off. `scripts/gen-cli-reference.sh`'s header states the difference and what bounds
   the machine-speed risk it imports.
 
-  `./scripts/differential/run.sh p8t1` — the four `ci` stems plus the four refusal rows.
-  `run.sh p8t1 all` — **11 stems, 11 MATCH**, about four minutes. `run.sh p8t1 <stem> …` for one.
+  `./scripts/differential/run.sh p8t1` — the five `ci` stems plus the five refusal rows,
+  **10 rows, 10 MATCH**. `run.sh p8t1 all` runs every stem of `cli-fixtures.txt`, about four
+  minutes; `run.sh p8t1 <stem> …` for one. `run.sh --against-jar p8t1` is the retired arm and is
+  expected to be red — see below.
+
+- `p8t7` — **Plan 8 Task 12: the KiCad end-to-end acceptance of spec §1**, on three rungs:
+  (a) a KiCad-exported DSN routed to a SES that matches
+  `tests/reference/cli-router-ecc83-input/route.ses` **and that `fr_dsn::ses_reader::read` reads
+  back with zero errors**; (b) the same physical board as a KiCad *design* JSON, against
+  `tests/reference/cli-kicad-ecc83-json/route.ses`; (c) quirk **T** (#289) — `-do out.json` writes
+  the board *as loaded*, so the document does not depend on how many passes ran, measured on both
+  programs at `-mp 1` and `-mp 8` and required to be four identical documents.
+
+  Rungs (a) and (b) were **converted to port-golden comparison at the M1 accept wave**; rung (c)
+  keeps its live jar in **both** lanes, deliberately — the claim is that the two *programs* agree
+  about a jar quirk, which a committed golden cannot express, and R1/R2 do not reach it (MATCH
+  before and after). `rust_only`, for `p8t1`'s reason.
+
+  `./scripts/differential/run.sh p8t7` — **3 rungs, 3 MATCH**.
 
 - `p8t2 e2e` — **Plan 8 Task 6's manifest half.** The same argv plus
   `--router.result_json=<f>`, through both whole programs, with the two manifests compared
@@ -2930,6 +2951,20 @@ covers.
 | `crates/fr-dsn/src/format/double.rs` shadows `point` twice (`:148` `i32`, `:154` `usize`) | Deliberate — the first is signed so the "value below 1" branch can subtract, the second is the index the layout loop needs — but two bindings of one name in twelve lines is easy to misread. A rename (`point_signed` / `point`) is a safe, mechanical change nobody has had a reason to make yet. | Plan 3 Task 2 review |
 | `JavaRandom` is copied into four driver binaries | `t15`, `t16r`, `p2t13` and `p3t2` each carry their own transcription of `java.util.Random`'s LCG. They agree today (every driver that uses one is zero-diff), but four copies is four chances to drift. The package has had a shared module since Plan 3 Task 15 (`src/token_dump.rs`, included with `#[path]`); the same mechanism would collapse these four. | Plan 3 Task 2 review |
 
+## Converted drivers — the port-golden lane (survey §7.3, ruling BV)
+
+Plan 9 retires byte parity with the jar as the acceptance test. The drivers below therefore stopped
+comparing against a running jar and started comparing against the **committed port golden** in
+`tests/reference/`; `run.sh --against-jar` puts the old arm back for triage and is **never a gate**.
+No arm was deleted, and each row records why the one behind the hatch was retired.
+
+| driver | arm retired | default right-hand side | why it was retired | what `--against-jar` shows today |
+|---|---|---|---|---|
+| `p8t1` (5 `ci` stems) | live jar vs live port | `tests/reference/cli-<stem>/{route.ses,route.exit,route.log}`, regenerated from the port at `bd296d7` | **R1 (#293) + R2 (#294)** (Plan 9 Task 2). Restoring the shortest-airline-first work-list order and flooring the micro-neckdown fanout at the rules minimum change what gets routed on every board, by design; `router-rpi-splitter` @889, `router-j2-reference` @742, `router-ecc83-input` @1755 and `kicad-ecc83-json` @2335 went `DIFF` and would stay red for the rest of the plan. Accepted at M1, ruling BV. | `MATCH 5 · XDIFF 1 · DIFF 4` — the four stems above, expected |
+| `p8t1` (5 refusal rows) | live jar vs live port | literals in the driver (exit code + `normalize_log` projection) | no board is routed, so R1/R2 cannot reach them — they were `MATCH` throughout. Converted with the rest of the driver so one lane, not two, decides the verdict; there is no `tests/reference/cli-*` directory for them because four of the five write no SES. | `MATCH 4 · XDIFF 1` — `invalid-input-java-hangs` is not run, because the jar hangs on it (quirk #244) |
+| `p8t7` rungs (a), (b) | live jar vs live port | `tests/reference/cli-router-ecc83-input/route.ses` and `tests/reference/cli-kicad-ecc83-json/route.ses` | the same R1/R2 divergence, on the same two boards (@1755 and @2335) | `DIFF 2` — both rungs, expected |
+| `p8t7` rung (c) | **nothing — kept live in both lanes** | the jar and the port, four documents | the claim is that the two *programs* agree about a jar quirk (label T, #289) at two pass counts; a committed golden cannot express it, so retiring the jar would retire the measurement. R1/R2 do not reach it. Plan 9 Task 3 rewrites this rung for #289. | `MATCH` — unchanged |
+
 ## Known, expected diffs
 
 Verified at HEAD, default smoke-run arguments, JDK 23 — except `p2t10`,
@@ -3011,6 +3046,10 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p5t2` (mode 2, all 112 rows) | 4-1540 | 0 unexpected | 50 MATCH + 62 `XDIFF` — the counters are strict everywhere but one listed row; the `AL` block is graded against `sweep-p5t2.sh`'s recorded budget, because the port's seed order and the jar's are two different inputs to the same triangulation (ruling 4) |
 | `p5t2` (mode 3, all 112 rows) | 4-1540 | **0** | exact match on every row — the ratsnest with the seed order pinned identically on both sides: `MAXCONN`, `INCOMPLETE`, every `NET` line, `ALCOUNT` **and every airline endpoint** |
 | `p5t2` (mode 4, all 112 rows) | 2 | 0 | exact match on every row — `TRANSCRIPTION equal 0`, i.e. mode 3's transcription reproduces the jar's own `getAllAirlines()` when seeded the jar's way |
+| `p8t1` (default, port-golden) | 10 rows | 0 | `MATCH 10` — five `ci` stems against `tests/reference/cli-*`, five refusal rows against the driver's literals |
+| `p8t1 --against-jar` | 10 rows | 4 | **Expected, and not a gate.** `router-rpi-splitter` @889, `router-j2-reference` @742, `router-ecc83-input` @1755, `kicad-ecc83-json` @2335 — R1 (#293) and R2 (#294) route every board differently by design (ruling BV). Plus the standing `invalid-input-java-hangs` XDIFF. |
+| `p8t7` (default, port-golden) | 3 rungs | 0 | `MATCH 3` — rungs (a)/(b) against `tests/reference/cli-*`, rung (c) against the live jar (kept, see above) |
+| `p8t7 --against-jar` | 3 rungs | 2 | **Expected, and not a gate.** Rungs (a) @1755 and (b) @2335, the same R1/R2 divergence. |
 
 Every diff line traces to an already-documented, deliberate divergence in
 `docs/java-quirks.md`'s `pinned`/`totalized` tables, plus one purely cosmetic
