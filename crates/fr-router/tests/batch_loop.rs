@@ -62,14 +62,22 @@ const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 /// can: `maxPasses = 0` runs two passes, routes every connection and leaves the stop flag down.
 const ECC83: &str = "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn";
 
-/// `Issue103-Board-Unrouted.dsn` — a corpus board whose score still **rises on three consecutive
-/// passes** (0 -> 562.671 26 -> 725.060 85 -> 811.951 7).
+/// `Issue026-J2_reference.dsn` — a corpus board whose score still **rises on two consecutive
+/// passes** (0 -> 848.476 7 -> 909.082 46), giving the two `BoardHistory` tests below **three**
+/// distinct boards out of the unrouted board plus two real passes.
 ///
-/// Also here because of the accept wave. The two `BoardHistory` tests below need three or four
-/// *distinct* boards out of consecutive passes; after R1/R2 `rpi_splitter` converges after pass 1
-/// and every later pass hands back a structurally identical board, which `BoardHistory::add`
-/// deduplicates — so the fixture, not the assertion, is what stopped working.
-const BOARD103: &str = "fixtures/Issue103-Board-Unrouted.dsn";
+/// Here because of the M1 accept wave. Those two tests need *distinct* boards out of consecutive
+/// passes, and after R1 (#293) / R2 (#294) `rpi_splitter` converges after pass 1: every later pass
+/// hands back a structurally identical board, which `BoardHistory::add` deduplicates — so the
+/// fixture, not the assertion, is what stopped working.
+///
+/// **Why this board and not a bigger one.** The wave first re-pointed both tests at
+/// `Issue103-Board-Unrouted.dsn`, which also works and costs **196 s** and **141 s** in the
+/// release lane against `rpi_splitter`'s 0.125 s and 0.078 s — 337 s that every later task in the
+/// plan would pay, and enough to trip nextest's `SLOW` threshold twice. Both test bodies were then
+/// re-run verbatim against this board: **0.20 s** and **0.18 s**, every assertion holding. Pick
+/// the smallest fixture that still makes the two orders disagree.
+const J2: &str = "fixtures/Issue026-J2_reference.dsn";
 
 fn load_board(rel_path: &str) -> Board {
     let path: PathBuf = parity::java_dir().join(rel_path);
@@ -542,22 +550,31 @@ fn the_rank_limit_can_never_fire() {
 /// passes were four distinct boards. After R1 (#293) and R2 (#294) that board converges after
 /// pass 1, so passes 2 and 3 hand back a structurally identical board, `add` deduplicates them
 /// and the list never reaches its cap — `bh.size()` answered **2** against the cap of 3. The
-/// eviction claim is unchanged; the fixture that can still exercise it is [`BOARD103`], whose
-/// unrouted board and first three passes are four distinct boards. Accepted at M1 (ruling BV).
+/// eviction claim is unchanged; the fixture that can still exercise it is [`J2`], whose unrouted
+/// board and first two passes are **three** distinct boards. Accepted at M1 (ruling BV).
+///
+/// **The cap is 2 here, not 3, and the difference is the whole assertion.** Three distinct boards
+/// against a cap of 3 would leave `size() == cap` for the wrong reason — `add` deduplicating the
+/// identical later board rather than evicting a distinct one — and this test's message says
+/// *eviction*. At `cap = 2` the third distinct board must push one out, so the equality below is
+/// the eviction it claims to be. The cap's *value* was never the subject: the doc above says so,
+/// and `BoardHistory.java:53-76` does not branch on it.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_full_history_never_ranks_a_board_past_its_cap() {
     if !parity::require_java_dir() {
         return;
     }
-    let mut board = load_board(BOARD103);
+    let mut board = load_board(J2);
     let settings = build_settings(&board, 1);
     let scoring = scoring_of(&settings);
-    let cap = 3usize;
+    let cap = 2usize;
     let mut bh = BoardHistory::with_capacity(&scoring, cap);
 
-    // Four distinct boards: the unrouted board, then the board after each of three real passes.
-    // Each pass changes the trace set, so each is a distinct `structural_hash`.
+    // Three distinct boards out of the first two passes — the unrouted board, then the board after
+    // each pass; each pass changes the trace set, so each is a distinct `structural_hash`. The
+    // third pass is run too and is *expected* to be a duplicate: `add` drops it, and the list is
+    // held at the cap by the eviction that already happened.
     bh.add(&mut board);
     let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
@@ -607,15 +624,15 @@ fn a_full_history_never_ranks_a_board_past_its_cap() {
 /// number. The jar-parity fixture was `rpi_splitter`, whose unrouted / after-pass-1 /
 /// after-pass-2 scores were strictly increasing. After R1 (#293) and R2 (#294) they are
 /// `0 / 599.985 4 / 599.985 4` — the board is at its ceiling after one pass — so the fixture, not
-/// the assertion, stopped working. [`BOARD103`] still gives three strictly increasing scores
-/// (`0 / 562.671 26 / 725.060 85`). Accepted at M1 (ruling BV).
+/// the assertion, stopped working. [`J2`] still gives three strictly increasing scores
+/// (`0 / 848.476 7 / 909.082 46`). Accepted at M1 (ruling BV).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_rank_the_loop_tests_is_read_after_restore_boards_reorder() {
     if !parity::require_java_dir() {
         return;
     }
-    let mut board = load_board(BOARD103);
+    let mut board = load_board(J2);
     let settings = build_settings(&board, 1);
     let scoring = scoring_of(&settings);
 
