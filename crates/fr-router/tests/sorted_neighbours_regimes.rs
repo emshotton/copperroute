@@ -492,7 +492,22 @@ fn flags(values: &[bool]) -> String {
     out
 }
 
+/// Compares one produced script with the expected one, line by line.
+///
+/// `FR_DUMP_SCRIPT=1` prints what was actually produced, prefixed `DUMP|`, instead of only saying
+/// which line differs. It exists because these scripts are re-cut by hand whenever an authorized
+/// divergence moves one, and doing that from a first-differing-line message is how a re-cut goes
+/// wrong. Added at Plan 9 Task 8 (it cut `an_eight_sided_obstacle_room_gets_eight_doors`); named
+/// for what it does rather than for the task, because the next re-cut will want it too.
+///
+/// It is a **read** — it prints and changes no assertion — so an unset variable and a set one
+/// compare exactly the same thing.
 fn assert_script(actual: &[String], expected: &str) {
+    if std::env::var_os("FR_DUMP_SCRIPT").is_some() {
+        for line in actual {
+            eprintln!("DUMP|{line}");
+        }
+    }
     let expected: Vec<&str> = expected.trim_matches('\n').lines().collect();
     for (i, line) in expected.iter().enumerate() {
         assert_eq!(
@@ -674,25 +689,44 @@ fn an_own_net_object_becomes_a_target_door_inside_the_neighbour_loop() {
 }
 
 // =================================================================================================
-// Quirk #163 — `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom` skips its last side
+// Quirk #163 — `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom` skipped its last side
 // =================================================================================================
 
 #[test]
-fn an_obstacle_room_with_no_neighbours_skips_the_last_side_of_its_octagon() {
-    // `run.sh p6t3 8 42 20 1000`, `call i=4`, verbatim — the whole of
+fn an_eight_sided_obstacle_room_gets_eight_doors() {
+    // `run.sh p6t3 8 42 20 1000`, `call i=4` — the whole of
     // `Sorted45DegreeRoomNeighbours.calculate` for an obstacle room over the second trace's first
     // segment. Its shape has **eight distinct corners** and no touching neighbour at all, so
-    // `calculate:73` runs `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom(0, 7)` — which
-    // produces **seven** incomplete rooms, not eight.
+    // `calculate:73` runs `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom(0, 7)` — which in
+    // the jar produces **seven** incomplete rooms, not eight.
     //
     // That is quirk #163: `:264` computes `currentCorner = roomShape.corner(fromSideIndex)` and
     // the loop body never reassigns it, so the `!currentCorner.equals(nextCorner)` guard at `:269`
     // compares each side's *end* corner against the corner the walk started at rather than against
     // the side's own start corner. On a full 0..7 walk that is true for every side but the last,
-    // whose end corner **is** `corner(0)`. The doors below run round sides 0..6 —
+    // whose end corner **is** `corner(0)`. The jar's doors run round sides 0..6 —
     // `(-1024,-240)→(-576,-240)`, `…→(-260,76)`, `…→(-260,1124)`, `…→(-576,1440)`,
     // `…→(-1024,1440)`, `…→(-1340,1124)`, `…→(-1340,76)` — and the eighth side,
-    // `(-1340,76)→(-1024,-240)`, gets no room at all.
+    // `(-1340,76)→(-1024,-240)`, got no room at all.
+    //
+    // **fixed: T8 (#163)** — `currentCorner = nextCorner` at the foot of the loop. **7 -> 8**
+    // incomplete rooms and **8 -> 9** doors (the extra one beside the dimension-2 door to
+    // `obs5/1`). This is a **KNOWN DIVERGENCE from the jar authorized by #163**: the jar's script
+    // said `doors n=8` / `incompleteRooms n=7` and its seven room literals are the seven below,
+    // unchanged; `doors[8]` and `incompleteRooms[7]` are the port's, and they are the two shapes
+    // `docs/plan-9-prep/fixtures/task-8/expected-outcomes.md` derives **by hand** from the
+    // octagon's own geometry, without the jar:
+    //
+    //     eighth door  Oct[-1340,-240,-1024,76,-1416,-784,-1264,-1264]   dim 1
+    //     eighth room  Oct[-10000,-10000,8736,8736,-18736,18736,-20000,-1264]
+    //
+    // Both match the port to the unit, which is an independent confirmation of the fix rather
+    // than a re-cut of its output.
+    //
+    // The invariant behind the literal, so a future octagon needs no new derivation: an obstacle
+    // expansion room whose octagon has **k distinct corners** and no touching neighbour gets **k**
+    // edge incomplete rooms, one per side, and each side's door is that side's segment. No side of
+    // a non-degenerate octagon is unreachable. `k -> k`; `7 -> 8` is this instance.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &RANDOM_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, RANDOM_SEED_ROOMS);
     let obstacle = {
@@ -723,7 +757,7 @@ fn an_obstacle_room_with_no_neighbours_skips_the_last_side_of_its_octagon() {
         &actual,
         r#"
   result=obs5/0 shape=Oct[-1340,-240,-260,1440,-2464,-336,-1264,864] corners=(-1024.0,-240.0;-576.0,-240.0;-260.0,76.0;-260.0,1124.0;-576.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,76.0)
-  doors n=8
+  doors n=9
     [0] first=obs5/0 second=obs5/1 dim=2 shape=Oct[-1340,360,-260,1440,-2464,-620,-664,864] corners=(-1024.0,360.0;-260.0,360.0;-260.0,360.0;-260.0,1124.0;-576.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,676.0)
     [1] first=obs5/0 second=inc-475676864 dim=1 shape=Oct[-1024,-240,-576,-240,-784,-336,-1264,-816] corners=(-1024.0,-240.0;-576.0,-240.0;-576.0,-240.0;-576.0,-240.0;-576.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0)
     [2] first=obs5/0 second=inc943169552 dim=1 shape=Oct[-576,-240,-260,76,-336,-336,-816,-184] corners=(-576.0,-240.0;-576.0,-240.0;-260.0,76.0;-260.0,76.0;-260.0,76.0;-260.0,76.0;-576.0,-240.0;-576.0,-240.0)
@@ -732,8 +766,9 @@ fn an_obstacle_room_with_no_neighbours_skips_the_last_side_of_its_octagon() {
     [5] first=obs5/0 second=inc-1656480944 dim=1 shape=Oct[-1024,1440,-576,1440,-2464,-2016,416,864] corners=(-1024.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0)
     [6] first=obs5/0 second=inc184106368 dim=1 shape=Oct[-1340,1124,-1024,1440,-2464,-2464,-216,416] corners=(-1340.0,1124.0;-1340.0,1124.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,1124.0)
     [7] first=obs5/0 second=inc-1738579036 dim=1 shape=Oct[-1340,76,-1340,1124,-2464,-1416,-1264,-216] corners=(-1340.0,76.0;-1340.0,76.0;-1340.0,76.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,76.0)
+    [8] first=obs5/0 second=inc-1129576944 dim=1 shape=Oct[-1340,-240,-1024,76,-1416,-784,-1264,-1264] corners=(-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1340.0,76.0;-1340.0,76.0;-1340.0,76.0;-1340.0,76.0)
   targetDoors n=0
-  incompleteRooms n=7
+  incompleteRooms n=8
     [0] layer=0 shape=Oct[-10000,-10000,10000,-240,-9760,20000,-20000,9760] corners=(-10000.0,-10000.0;10000.0,-10000.0;10000.0,-10000.0;10000.0,-240.0;10000.0,-240.0;-10000.0,-240.0;-10000.0,-240.0;-10000.0,-10000.0) contained=Oct[-1024,-240,-576,-240,-784,-336,-1264,-816] doors=1
     [1] layer=0 shape=Oct[-10000,-10000,10000,10000,-336,20000,-20000,20000] corners=(-10000.0,-10000.0;10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;10000.0,10000.0;9664.0,10000.0;-10000.0,-9664.0;-10000.0,-10000.0) contained=Oct[-576,-240,-260,76,-336,-336,-816,-184] doors=1
     [2] layer=0 shape=Oct[-260,-10000,10000,10000,-10260,20000,-10260,20000] corners=(-260.0,-10000.0;10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;10000.0,10000.0;-260.0,10000.0;-260.0,10000.0;-260.0,-10000.0) contained=Oct[-260,76,-260,1124,-1384,-336,-184,864] doors=1
@@ -741,7 +776,27 @@ fn an_obstacle_room_with_no_neighbours_skips_the_last_side_of_its_octagon() {
     [4] layer=0 shape=Oct[-10000,1440,10000,10000,-20000,8560,-8560,20000] corners=(-10000.0,1440.0;10000.0,1440.0;10000.0,1440.0;10000.0,10000.0;10000.0,10000.0;-10000.0,10000.0;-10000.0,10000.0;-10000.0,1440.0) contained=Oct[-1024,1440,-576,1440,-2464,-2016,416,864] doors=1
     [5] layer=0 shape=Oct[-10000,-7536,7536,10000,-20000,-2464,-17536,17536] corners=(-10000.0,-7536.0;-10000.0,-7536.0;7536.0,10000.0;7536.0,10000.0;7536.0,10000.0;-10000.0,10000.0;-10000.0,10000.0;-10000.0,-7536.0) contained=Oct[-1340,1124,-1024,1440,-2464,-2464,-216,416] doors=1
     [6] layer=0 shape=Oct[-10000,-10000,-1340,10000,-20000,8660,-20000,8660] corners=(-10000.0,-10000.0;-1340.0,-10000.0;-1340.0,-10000.0;-1340.0,10000.0;-1340.0,10000.0;-10000.0,10000.0;-10000.0,10000.0;-10000.0,-10000.0) contained=Oct[-1340,76,-1340,1124,-2464,-1416,-1264,-216] doors=1
+    [7] layer=0 shape=Oct[-10000,-10000,8736,8736,-18736,18736,-20000,-1264] corners=(-10000.0,-10000.0;8736.0,-10000.0;8736.0,-10000.0;8736.0,-10000.0;-10000.0,8736.0;-10000.0,8736.0;-10000.0,8736.0;-10000.0,-10000.0) contained=Oct[-1340,-240,-1024,76,-1416,-784,-1264,-1264] doors=1
 "#,
+    );
+
+    // The invariant, asserted rather than only described.
+    let shape = rooms.room_shape(result).expect("a shape").clone();
+    let distinct: std::collections::BTreeSet<(u64, u64)> = shape
+        .corner_approx_arr()
+        .iter()
+        .map(|corner| (corner.x.to_bits(), corner.y.to_bits()))
+        .collect();
+    assert_eq!(distinct.len(), 8, "a non-degenerate octagon");
+    let edge_doors = rooms
+        .room_doors(result)
+        .iter()
+        .filter(|door| rooms.door(**door).is_some_and(|door| door.dimension == 1))
+        .count();
+    assert_eq!(
+        edge_doors,
+        distinct.len(),
+        "k distinct corners -> k edge doors; the jar answers k - 1"
     );
 }
 

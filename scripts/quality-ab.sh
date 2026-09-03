@@ -380,9 +380,30 @@ if [[ "$DRY_RUN" -eq 1 && "$UPDATE_BASELINE" -eq 1 && -f "$BASELINES/stem-times.
   exit 1
 fi
 TASK_N="${TASK#T}"
+# The port baseline is "the previous task's own tsv". Taken **literally** as `T<n-1>` that silently
+# disables the whole quality comparison whenever a task lands out of numeric order: with the file
+# absent, `read_tsv` answers an empty table, every row is scored `seed`, no rise is detected and no
+# fall is detected — the gate quietly not gating, which is the exact failure mode `read_tsv`'s own
+# `# cols:` note is written against.
+#
+# Task 8 is the standing case: it landed while Task 7 was still in flight, so `quality-ab-T7.tsv`
+# does not exist and its first two runs compared against nothing at all. So the baseline is the
+# **newest committed tsv at or below `n-1`**, and the header records which file that was. When
+# `T<n-1>` exists this is bit-for-bit the old behaviour; it can only engage where the old code
+# compared against nothing.
 PREV_TSV=""
+PREV_TSV_NOTE=""
 if [[ "$TASK_N" =~ ^[0-9]+$ && "$TASK_N" -gt 0 ]]; then
   PREV_TSV="$AB_DIR/quality-ab-T$((TASK_N - 1)).tsv"
+  if [[ ! -f "$PREV_TSV" ]]; then
+    for (( n = TASK_N - 2; n >= 0; n-- )); do
+      if [[ -f "$AB_DIR/quality-ab-T$n.tsv" ]]; then
+        PREV_TSV="$AB_DIR/quality-ab-T$n.tsv"
+        PREV_TSV_NOTE="  [T$((TASK_N - 1)) has not landed; this is the newest committed tsv at or below it]"
+        break
+      fi
+    done
+  fi
 fi
 TSV="$AB_DIR/quality-ab-$TASK.tsv"
 CONSOLE="$OUT_DIR/quality-ab-$TASK.txt"
@@ -408,7 +429,11 @@ if command -v timeout >/dev/null 2>&1; then
 elif command -v gtimeout >/dev/null 2>&1; then
   TIMEOUT=(gtimeout "$TIMEOUT_SECONDS")
 else
-  echo "warning: no timeout(1) on PATH; a quirk-#162 hang will not be bounded" >&2
+  # Quirk #162 is FIXED in the port at Plan 9 Task 8, so the port half of this bound is no
+  # longer load-bearing. The **jar** half is: the HEAD jar still walks a simplex it derives
+  # after the side numbers, and `calculateNewIncompleteRooms` still allocates a room per turn
+  # until the JVM dies. The bound therefore stays until a Java-side fix lands.
+  echo "warning: no timeout(1) on PATH; the jar's quirk-#162 hang will not be bounded" >&2
 fi
 
 mkdir -p "$AB_DIR" "$OUT_DIR"
@@ -843,12 +868,13 @@ done < "$STEMS"
 set +e
 python3 - "$TSV" "$ROWS" "$GATE_VERSION" "$TASK" "$PORT_SHA" "$PREV_TSV" "$JAR_TSV" \
     "$STEM_TIMES" "$CPU_NOISE_FLOOR" "$CPU_STEM_ESCALATE" "$CPU_CORPUS_ESCALATE" \
-    "$SCORE_NOISE" "$REPEATS" "$ROOT" "$CPU_EPSILON_S" "$CLAIMS_CONNECTIVITY" <<'PY'
+    "$SCORE_NOISE" "$REPEATS" "$ROOT" "$CPU_EPSILON_S" "$CLAIMS_CONNECTIVITY" \
+    "$PREV_TSV_NOTE" <<'PY'
 import statistics, sys, os
 
 (out_path, rows_path, gate, task, sha, prev_path, jar_path, times_path,
  noise_floor, stem_escalate, corpus_escalate, score_noise, repeats, root,
- cpu_epsilon, claims_connectivity) = sys.argv[1:]
+ cpu_epsilon, claims_connectivity, prev_note) = sys.argv[1:]
 
 # Ruling BZ(a). The "must fall on at least one stem" half of G2's connectivity rule binds only a
 # task that DECLARES a connectivity claim, because most tasks fix things that do not touch
@@ -1104,18 +1130,28 @@ if ratios:
 with open(out_path, "w", encoding="utf-8") as fh:
     fh.write(f"# gate-version: {gate}\n")
     fh.write(f"# task: {task}\n")
-    # The sha of the tree that was MEASURED, which is by construction an ancestor of the commit
-    # that carries this file — the measurement has to finish before its tsv can be committed, and
-    # a fix round or an amend moves HEAD again afterwards. So `port-sha != HEAD` is expected and
-    # is not staleness; what it must never do is name a commit that does not contain the measured
-    # code, which is what the `-dirty` suffix above is for.
-    fh.write(f"# port-sha: {sha} (the measured tree; an ancestor of the commit carrying this file)\n")
+    # The sha of the tree that was MEASURED. It is **not** in general an ancestor of the commit
+    # that carries this file, and an earlier version of this line claimed it was "by
+    # construction". It is not: the measurement has to finish before its tsv can be committed, and
+    # the commit that then carries it is routinely `--amend`ed or rebased — which **rewrites** the
+    # measured commit, leaving the sha recorded here pointing at a dangling object that is an
+    # ancestor of nothing. Plan 9 Task 8 is the standing case: three of its A/B runs were stamped
+    # with shas its own fix round and rebase rewrote away.
+    #
+    # What the field actually promises is narrower and is the useful thing: **this is the tree the
+    # numbers came out of.** It may since have been rewritten; `git cat-file -p <sha>` finds it
+    # while the object survives, and `+uncommitted-changes-under-crates` above is what says the
+    # tree was not even that commit. What it must never do is name a commit that does *not*
+    # contain the measured code.
+    fh.write(f"# port-sha: {sha} (the tree the numbers came out of; it may since have been "
+             f"rewritten by an amend or a rebase, so it is not necessarily an ancestor of the "
+             f"commit carrying this file)\n")
     fh.write(f"# repeats: {repeats}\n")
     if not prev_path:
         fh.write("# port-baseline: (none — this run seeds the rolling baseline)\n")
     else:
         fh.write(f"# port-baseline: {rel(prev_path)}"
-                 f"{'' if os.path.exists(prev_path) else '  [absent]'}\n")
+                 f"{'' if os.path.exists(prev_path) else '  [absent]'}{prev_note}\n")
     if os.path.exists(jar_path):
         fh.write(f"# jar-baseline: {rel(jar_path)}  [read; rendered in the jar_* columns as"
                  f" context, never a gate; {len(jar)} stem"
@@ -1132,10 +1168,17 @@ with open(out_path, "w", encoding="utf-8") as fh:
              " board.bounding_box.width/height (#196)\n")
     fh.write("# quality-lane-budget: RouterBudget::disabled() (ruling AI);"
              " cpu_s lane: RouterBudget::default()\n")
+    # Both branches cite the ruling, and the ARMED branch cites it too: BZ(a) is what defines
+    # *both* halves of the scoping, not just the waiver. A reader of an armed tsv was previously
+    # given no ruling reference at all, which made the armed state look like an ungoverned choice
+    # by the task rather than the rule BZ(a) actually writes down.
     fh.write("# connectivity-claim: "
-             + ("DECLARED (--claims-connectivity) — the must-fall rule was armed"
+             + ("DECLARED (--claims-connectivity) — the must-fall rule was ARMED "
+                "(ruling BZ(a): it binds a task that declares a connectivity claim)"
                 if claims_connectivity else
-                "not declared — the must-fall rule was a NOTE (ruling BZ(a))") + "\n")
+                "not declared — the must-fall rule was a NOTE "
+                "(ruling BZ(a): it binds only a task that declares a connectivity claim)")
+             + "\n")
     fh.write("# cols:" + "\t".join(COLUMNS) + "\n")
     for row in out:
         fh.write("\t".join(str(c) for c in row) + "\n")

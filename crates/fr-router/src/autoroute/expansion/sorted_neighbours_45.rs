@@ -432,15 +432,19 @@ impl Sorted45DegreeRoomNeighbours {
     /// (Sorted45DegreeRoomNeighbours.java:255-310): "calculates an incomplete room for each edge
     /// side from fromSideIndex to toSideIndex."
     ///
-    // Java bug: Sorted45DegreeRoomNeighbours.calculateEdgeIncompleteRoomsOfObstacleExpansionRoom
-    // never advances `currentCorner` (quirk #163). `:264` sets it to
+    // fixed: T8 (#163). Java never advances `currentCorner`: `:264` sets it to
     // `roomShape.corner(fromSideIndex)` and the loop body (`:266-309`) never reassigns it, so the
     // `!currentCorner.equals(nextCorner)` guard at `:269` — plainly meant to skip a *degenerate*
     // side, whose two corners coincide — instead compares every side's end corner with the
     // **start** corner of the walk. On an octagon with a degenerate side the room for that side
-    // is built anyway, and the side whose end corner happens to equal `corner(fromSideIndex)`
-    // (normally the last one of a full 0..7 walk) is skipped although it is not degenerate.
-    // Reproduced.
+    // is built anyway, and the side whose end corner happens to equal `corner(fromSideIndex)` is
+    // skipped although it is not degenerate — which on a full `0..7` walk is *always* the last
+    // side, because `corner((7 + 1) % 8) == corner(0)`. An eight-sided obstacle room therefore
+    // got seven doors, every time.
+    //
+    // The fix is `currentCorner = nextCorner` at the foot of the loop. The invariant it restores
+    // is `k distinct corners -> k edge rooms`: no side of a non-degenerate octagon is
+    // unreachable, and a degenerate side is still skipped because its own two corners coincide.
     fn calculate_edge_incomplete_rooms_of_obstacle_expansion_room(
         &self,
         from_side_index: usize,
@@ -455,7 +459,7 @@ impl Sorted45DegreeRoomNeighbours {
         // :263.
         let board_bounding_oct = board.get_bounding_box().bounding_octagon();
         // :264-265.
-        let current_corner = self.room_shape.corner(from_side_index);
+        let mut current_corner = self.room_shape.corner(from_side_index);
         let mut current_side_index = from_side_index;
         // :266-309.
         loop {
@@ -502,6 +506,8 @@ impl Sorted45DegreeRoomNeighbours {
                 break;
             }
             current_side_index = next_side_no;
+            // fixed: T8 (#163). The one line Java is missing.
+            current_corner = next_corner;
         }
     }
 

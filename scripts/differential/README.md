@@ -305,7 +305,7 @@ methods with dozens of branches.
     through steps 1-5 of `AutorouteConnectionRouter.route` (Plan 6 Task 17,
     plan-6 ruling 2's seam). Twin: `p6t1`. It declares `package
     app.freerouting.autoroute.maze;` and is compiled and run against the clone's
-    HEAD jar with a **JDK 25**, like `p6t2`/`p6t3`. It is also the driver behind
+    HEAD jar with a **JDK 25**, like `p6t3`. It is also the driver behind
     `scripts/gen-router-reference.sh`, so the committed
     `tests/reference/router-*/router.jsonl` references and this differential can
     never describe different runs.
@@ -333,9 +333,10 @@ methods with dozens of branches.
     `java -version` goes to stderr.
 
     `run.sh` bounds **both** sides with `timeout(1)` (`P6T1_TIMEOUT`, default
-    900 s): quirk #162's non-termination is unguarded in Java and in the port
-    alike, so a corpus connection can hang on both sides and the harness has to
-    report rather than hang.
+    900 s). Quirk #162's non-termination is **fixed in the port** at Plan 9 Task
+    8 and still unguarded in Java, so a corpus connection can hang on the jar
+    side and the harness has to report rather than hang. The bound stays until a
+    Java-side fix lands; it is no longer load-bearing for the port half.
 
     **Plan 7 Task 8 added a fifth and sixth argument**, so the full usage is
     `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]`:
@@ -391,7 +392,7 @@ methods with dozens of branches.
     report's `router-dac2020-bm01` XDIFF was localised with.
 
   - `P6T2.java` — `ShapeSearchTree.completeShape` and `divideLargeRoom` in all
-    three angle regimes (Plan 6 Task 3). Twin: `p6t2`. **This closes the gap
+    three angle regimes (Plan 6 Task 3). Twin: **retired at Plan 9 Task 8**. **This closes the gap
     `p2t10` documents**: `p2t10`'s eight modes reach "every public
     `ShapeSearchTree` method except `completeShape`/`divideLargeRoom`", and
     those two are the pair this driver covers. It declares `package
@@ -417,7 +418,7 @@ methods with dozens of branches.
     `calculate` consumes the instance and returns only the completed room, and
     every method above `calculateNeighbours` needs an `AutorouteEngine`, which
     the port does not have until Task 6. Compiled and run against the clone's
-    HEAD jar with a **JDK 25**, like `p6t2`, with `FRLogger.disableLogging()`
+    HEAD jar with a **JDK 25**, like `p6t3`, with `FRLogger.disableLogging()`
     first.
   - `P7T7.java` — `core/scoring/BoardStatistics`' score subset (Plan 7 Task 1).
     Twin: `p7t7`. It declares `package app.freerouting.autoroute.maze;` — **not**
@@ -474,7 +475,7 @@ methods with dozens of branches.
     `isNaN(tmp) && isInfinite(simpleSum)` arm; `K4` is the empty stream.
 
     Compiled and run against the clone's HEAD jar with a **JDK 25**, like
-    `p6t1`/`p6t2`/`p6t3`, under the `p5t*` flag set, so `P5T_HASH_MODE=0..4` sweeps
+    `p6t1`/`p6t3`, under the `p5t*` flag set, so `P5T_HASH_MODE=0..4` sweeps
     it: `BoardStatistics` builds two `DesignRulesChecker`s and that class iterates
     `HashSet<Item>` over a type with no `hashCode` override (plan-5 rulings 3 and 4).
 
@@ -513,7 +514,15 @@ methods with dozens of branches.
       `toSimplex()` does**: that is quirk #162, an unterminating loop in
       `calculateNewIncompleteRooms` that kills the JVM with an
       `OutOfMemoryError` (seed 42 reaches it at `i=124`), and it is skipped
-      rather than tolerated. It costs 4 of 1 000 completions.
+      rather than tolerated. On `5 42 20 1000` it costs **56** of 1 000 calls.
+
+      **Plan 9 Task 8 fixed #162 in the port, and the skip stays anyway** —
+      because the *jar* is unfixed and this is a differential: the two sides
+      have to refuse the same calls. `P9T8_NO_SKIP=1` runs them on the port
+      side alone, which is #162's port-side acceptance measurement: mode 5 goes
+      from 906 executed calls with 56 skips to **962 executed calls with 0
+      skips**, and terminates. There is no Java half to compare that run
+      against, which is why it is a switch and not the default.
     - `1`, `2`, `3` — the hazard-F probes, which build `SortedRoomNeighbour`s
       through the inner class's constructor and insert them into a `TreeSet`
       with no board in the way. `1` is random touches on all four sides; `2`
@@ -1786,10 +1795,10 @@ methods with dozens of branches.
   package's own `[workspace]` table). It depends on `fr-geometry` and
   `fr-board` by path and builds one `[[bin]]` per twin: `t14`, `t15`, `t16r`,
   `e15`, `d17`, `p2t3`, `p2t3r`, `p2t10`, `p2t11`, `p2t13`, `p2t15`, `p3t2`,
-  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t2`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t5`, `p7t6`, `p7t7`, `p7t9`, `p7t10`. Since Plan 3 it also depends on
+  `p3t3`, `p3t15`, `p4t1`, `p5t1`, `p5t2`, `p6t1`, `p6t3`, `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t5`, `p7t6`, `p7t7`, `p7t9`, `p7t10`. Since Plan 3 it also depends on
   `fr-dsn` by path (for `p3t2`, `p3t3` and `p3t15`), since Plan 4 on
   `fr-settings` (for `p4t1`), since Plan 5 on `fr-drc` (for `p5t1`/`p5t2`) and
-  since Plan 6 on `fr-router` (for `p6t1`, `p6t2`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t5`, `p7t6`, `p7t7`, `p7t9` and `p7t10`).
+  since Plan 6 on `fr-router` (for `p6t1`, `p6t3` and Plan 7's `p7t1`, `p7t2`, `p7t3`, `p7t4`, `p7t5`, `p7t6`, `p7t7`, `p7t9` and `p7t10`).
   `p3t3` and `p3t15` share the token dump through `src/token_dump.rs`, included
   by both with `#[path]` — the Java side of mode 4 delegates to `P3T3.main`, so
   the two dumps must stay identical; `p5t1` and `p5t2` share the argument
@@ -1841,7 +1850,7 @@ Requirements:
   `geometry/planar` sources like the other source-path drivers, but on the JDK
   the shipping jar targets, because its ground truth includes `java.util.Random`
   and `java.util.Collections.shuffle`.
-- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t2`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t5`/`p7t6`/`p7t7`/`p7t9`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
+- For `p2t10`/`p2t11`/`p2t15`/`p3t2`/`p6t1`/`p6t3`/`p7t1`/`p7t2`/`p7t3`/`p7t4`/`p7t5`/`p7t6`/`p7t7`/`p7t9`/`p7t10` only: a **JDK 25** (`JAVA25_HOME`) and the clone's built jar at
   `../freerouting/build/libs/freerouting-current-executable.jar`
   (`FREEROUTING_JAR`). Run `./gradlew build` in the clone if it is missing.
 - For `p3t3`/`p3t15` only: a **JDK 25** (`JAVA25_HOME`) and the pinned release jar at
@@ -1931,7 +1940,7 @@ the driver expects, or none at all.
   outline whose edges run in none of the trees' directions (so the line bands
   are `Simplex`es the 45-degree override has to regularise). Run **all eight**:
   between them they reach every public `ShapeSearchTree` method except
-  `completeShape`/`divideLargeRoom`, which `p6t2` covers (Plan 6 Task 3 — the
+  `completeShape`/`divideLargeRoom`, which `p6t2` covered until Plan 9 Task 8 retired it (Plan 6 Task 3 — the
   gap this sentence has documented since Plan 2 is closed). Modes 0-2 differ only in which
   subclass `getAutorouteTree` builds, which is the whole point of the
   angle-parameterised port.
@@ -2184,25 +2193,29 @@ the driver expects, or none at all.
   `crates/fr-router/tests/data/p7t0-ruling-h-match.txt`, background in
   `crates/fr-router/README.md`.
 
-- `p6t2 <seed> <n> <rooms>` — `AutorouteSearchTreeExt::{complete_shape,
-  divide_large_room}` against `ShapeSearchTree.completeShape`/`divideLargeRoom`
-  (Plan 6 Task 3). Defaults `42 20 2000`: 20 random obstacle areas on the
-  `P2T10.java` board and 2 000 random seed rooms **per angle regime**, so one
-  run is 6 000 `completeShape` calls and 6 000 `divideLargeRoom` calls. Each
-  seed room draws its shape as a null (the whole plane), an `IntBox` or a
-  clipped `IntOctagon`, so every regime sees both the shapes it accepts and the
-  ones its `instanceof` guard rejects; the ignored object is drawn from
-  `{null, one of the three seed rooms, one of the three pins}` and the ignore
-  shape from `{null, a random box, one of the three seed rooms grown by a random
-  margin}` — the last of those is what makes `ignoreShape.contains(intersection)`,
-  the only branch of the three `completeShape`s that reads `ignoreShape` at all,
-  fire often rather than never.
+- **`p6t2` RETIRED at Plan 9 Task 8 (ruling BL7).** It covered
+  `AutorouteSearchTreeExt::{complete_shape, divide_large_room}` in all three
+  angle regimes against the HEAD jar, and it had done its work: 26 979 lines,
+  0 diffs, across seed 42/7/123/999/20260829/0/5 and boards from n=5 to n=120.
+  Task 8's **#159** fix makes the 90-degree regime deliberately disagree with the
+  jar, so a byte differential over that regime can no longer be a gate.
 
-  ```sh
-  ./scripts/differential/run.sh p6t2            # 42 20 2000 — 26 979 lines, 0 diffs
-  ./scripts/differential/run.sh p6t2 7 40 2000  # a denser board
-  ./scripts/differential/run.sh p6t2 5 5 2000   # a sparser one
-  ```
+  **The final run, recorded here as the retirement evidence** (`p6t2 42 20 2000`,
+  the committed default):
+
+      jar   26 979 lines
+      port  27 061 lines
+      41 diff hunks, **every one of them in `regime=1 angle=NINETY_DEGREE`**
+      every hunk is `completeShape n=0` / `divideLargeRoom n=0` on the jar's side
+      against `n=1` / `n=1` on the port's — the room #159 restores, and nothing
+      else
+      `regime=0 angle=NONE` and `regime=2 angle=FORTYFIVE_DEGREE`: **byte-identical**
+
+  So 41 of 2 000 90-degree completions (2.05 %) lost their room to #159, and the
+  other two regimes were never affected. The Rust half's coverage is kept as
+  `crates/fr-router/tests/tree_ext.rs`'s three `p6t2` scripts, which are the jar's
+  own output transcribed as literals and therefore survive the driver's deletion,
+  and as `the_ninety_degree_override_keeps_the_room_it_ignores_by_shape`.
 
 - `p6t3 <mode> <seed> <n> <rooms>` — the three neighbour sorters against their
   Java originals, and the comparators behind them (Plan 6 Tasks 4 and 5).
@@ -3009,16 +3022,13 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p2t13` (mode 0, 50 points) | 141 | 0 | exact match |
 | `p2t13` (modes 1-7, `30 7 <mode>`) | 7-172 | 0 | exact match (square, collinear triple, duplicates, two-corner objects, grid, tiny range, circle) |
 | `p2t15` (seed 42, n=30, default) | 521 | 0 | exact match |
-| `p6t2` (seed 42, n=20, 2000 rooms) | 26979 | 0 | exact match (6 000 `completeShape` + 6 000 `divideLargeRoom` calls, 2 000 per angle regime) |
-| `p6t2` (seeds 7/123/999/20260829, n=40) | 26433-26933 | 0 | exact match |
-| `p6t2` (seed 0 n=60, seed 42 n=120, seed 5 n=5) | 12809-29588 | 0 | exact match (denser and sparser boards) |
 | `p6t3` mode 0 (seed 42, n=20, 1000 rooms) | 7597 | 0 | exact match (`calculateNeighbours`, its sorted set and its doors) |
 | `p6t3` mode 0 (seeds 7/123/999/20260829/0/5) | 7135-20110 | 0 | exact match |
 | `p6t3` mode 4 (grid obstacles, seeds 42/7/999/20260829) | 8192-17951 | 0 | exact match — the only mode that reaches the dimension-0 corner-touch branch |
 | `p6t3` mode 1 (20 000 comparator probes) | 179296 | 0 | exact match (250 silent `TreeSet` drops, all the same ones) |
 | `p6t3` mode 2 (30 000 same-side probes) | 262021 | 0 | exact match (8 374 drops) |
 | `p6t3` mode 3 (30 000 corner-touch probes, seeds 20260829/7) | 292682, 293041 | 0 | exact match — **with `JavaTreeSet`**; on a `BTreeSet` this mode diffs (quirk #160) |
-| `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the ~0.4 % of calls quirk #162 makes non-terminating |
+| `p6t3` mode 5 (the whole of `complete`, seeds 42/7/999/20260829/0) | 25740-30317 | 0 | exact match (`tryRemoveEdge`, `calculateNewIncompleteRooms`, `calculateTargetDoors`), minus the calls quirk #162 makes non-terminating **in the jar** — 56 of 1 000 on seed 42. `P9T8_NO_SKIP=1` runs them on the port side (962 executed, 0 skipped, terminating) now that Plan 9 Task 8 has fixed #162 there |
 | `p6t3` mode 6 (45-degree `calculateNeighbours`, seeds 42/7/999/20260829) | 8817-21050 | 0 | exact match (`Sorted45DegreeRoomNeighbours`, its own inner class, `edgeInteriorTouchesObstacle` and the `overlap` probe's computed `dim=2` door) |
 | `p6t3` mode 7 (orthogonal `calculateNeighbours`, seeds 42/7/999/20260829) | 9166-21501 | 0 | exact match (`SortedOrthogonalRoomNeighbours`, likewise) |
 | `p6t3` mode 8 (the whole of `complete` on a 45-degree tree, seeds 42/7/999/20260829) | 45661-53791 | 0 | exact match — and the mode that found quirk #163 |

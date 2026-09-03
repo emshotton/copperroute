@@ -1,6 +1,6 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p6t1.rs)
-port sha     817b7f1ab5ef
-plan 9 task  T5
+port sha     82557712427b
+plan 9 task  T8
 budget       RouterBudget::disabled() (ruling AI — scripts/differential/rust/src/bin/p6t1.rs)
 jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
 jar size     63288652 bytes

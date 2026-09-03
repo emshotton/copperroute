@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T06:47:16.587941Z",
+  "generated_at": "2026-09-03T20:58:33.803302Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -61,7 +61,7 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 1.305,
+      "duration_seconds": 1.043,
       "passes_completed": 1
     },
     "optimizer": {}

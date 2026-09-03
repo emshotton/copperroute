@@ -97,6 +97,25 @@ fn complete_rooms(engine: &AutorouteEngine) -> Vec<RoomRow> {
         .collect()
 }
 
+/// The `CompleteFreeSpaceExpansionRoom`s the autoroute tree holds, as a set — the other half of
+/// quirk #165's I1 invariant, which is set equality against `completeExpansionRooms`.
+fn tree_rooms(board: &Board, engine: &AutorouteEngine) -> std::collections::BTreeSet<RoomId> {
+    let tree = board
+        .trees
+        .trees()
+        .find(|tree| tree.id() == engine.tree)
+        .expect("the autoroute tree");
+    let ctx = board.ctx();
+    let probe = TileShape::Box(board.get_bounding_box());
+    tree.overlapping_tree_entries_with_rooms(&probe, None, &[], &board.items, &engine.rooms, &ctx)
+        .into_iter()
+        .filter_map(|entry| match entry.object {
+            fr_board::ids::TreeObject::Room(id) => Some(id),
+            fr_board::ids::TreeObject::Item(_) => None,
+        })
+        .collect()
+}
+
 fn tree_size(board: &Board, engine: &AutorouteEngine) -> usize {
     board
         .trees
@@ -404,7 +423,7 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
     );
 }
 
-/// Quirk #164, named. Probe mode 5, verbatim:
+/// Quirk #164, named — **fixed: T8**. Probe mode 5, verbatim:
 ///
 /// ```text
 /// removing id=1 doors=2
@@ -420,45 +439,131 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
 /// ```
 ///
 /// `removeCompleteExpansionRoom`'s parameter is declared `CompleteFreeSpaceExpansionRoom`, so
-/// `currentDoor.otherRoom(room)` at `:383` binds `ExpansionDoor`'s **narrowing**
-/// `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92) and `:385` skips every
-/// door whose far side is incomplete. Both removals have a 1-dimensional intersection across
-/// every door, and the outcomes differ entirely by neighbour kind:
+/// `currentDoor.otherRoom(room)` at `:383` bound `ExpansionDoor`'s **narrowing**
+/// `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92) and `:385` skipped every
+/// door whose far side is incomplete. `completeNeighbourRooms` casts its argument back to
+/// `(ExpansionRoom)` at `:578` for exactly this reason and says so in a comment; there is no such
+/// cast here, and the port now takes the wide overload as if there were.
 ///
-/// * room 1's two neighbours are **complete** rooms, so both survive `:385` and both regenerate
-///   an incomplete room at `:396-400` — `incomplete` rises 9 → 11.
-/// * room 5's four neighbours are **incomplete**, so all four are skipped and **nothing** is
-///   regenerated; `removeAllDoors` at `:403` then drops all four — `incomplete` falls 11 → 7.
+/// **The two live counts do not move, and that is the finding.** Java's own `:403`
+/// `removeAllDoors` removes every door of the room being removed, drops the incomplete room on
+/// each door's far side, and `removeIncompleteExpansionRoom` recurses into `removeAllDoors` — so
+/// the incomplete room `:396-400` regenerates *for an incomplete neighbour* hangs off a room that
+/// `:403` is about to delete, and goes with it. The regeneration is only permanent for a
+/// **complete** neighbour, which is what the first removal above shows (`incomplete` 9 -> 11).
+/// So the visible effect of the skip was nil and its invisible effect was the crash below.
 ///
-/// A port on the wide overload creates four rooms here instead of none, and in fact never gets
-/// that far: two of the four answer `touchingSides == new int[0]` (`TileShape.java:588-591`,
-/// which Java logs as `touching_side : dir2 not found`) and `:394`'s unchecked
-/// `touchingSides[1]` throws. That is how quirk #164 was found.
+/// What moves is the arena, and that is what these two tests read: two rooms and two doors are
+/// **constructed** for the two incomplete neighbours whose `touchingSides` is not empty, and then
+/// destroyed. `Arena` never reuses an index, so `slot_count()` is the honest record of "this door
+/// was visited".
 #[test]
-fn remove_complete_expansion_room_skips_incomplete_neighbours() {
+fn a_door_onto_an_incomplete_room_is_not_skipped() {
+    // **Re-cut at Plan 9 Task 8's fix round, and the numbers below are the PORT's — not one of
+    // them is a jar number.** `net_dependent_run` is a hand-built board with no jar transcript
+    // behind it, and every literal here is a count of the port's own arena. What moved them is
+    // this task's own commit 10 (#156 + #167 + #158): the expandable ids became one shared
+    // counter, that counter feeds `MazeListElement`'s third sort key, and this fixture's room set
+    // changed with it.
     let (mut board, mut engine) = net_dependent_run(true);
     let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
-    assert_eq!(
-        rooms
-            .iter()
-            .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
-            .collect::<Vec<_>>(),
-        vec![1, 5]
-    );
     assert_eq!(engine.rooms.incomplete_rooms.len(), 9);
-    assert_eq!(tree_size(&board, &engine), 4);
 
-    // Two complete neighbours: both regenerate.
+    // The first removal **was** the control — two complete neighbours, two regenerated rooms that
+    // survive because nothing deletes a complete neighbour. After the ids moved, that room has no
+    // doors at all on this fixture, so there is nothing to regenerate and nothing to control
+    // against. Asserted rather than deleted, so the disappearance is visible rather than implied
+    // by an unmoved number.
+    assert!(
+        engine
+            .rooms
+            .room_doors(RoomRef::Complete(rooms[0]))
+            .is_empty(),
+        "the first room's door list is empty on this fixture since the ids moved"
+    );
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
-    assert_eq!(engine.complete_expansion_rooms().len(), 1);
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 11, "9 + 2 regenerated");
-    assert_eq!(tree_size(&board, &engine), 3);
+    assert_eq!(
+        engine.rooms.incomplete_rooms.len(),
+        9,
+        "no doors, so nothing regenerated and nothing cascaded"
+    );
 
-    // Four incomplete neighbours: none regenerates, and `removeAllDoors` drops all four.
+    // The second removal is the one this test exists for: its four neighbours are all incomplete
+    // rooms — the doors `:385` used to skip.
+    let room_slots_before = engine.rooms.incomplete_rooms.slot_count();
+    let door_slots_before = engine.rooms.doors.slot_count();
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    assert_eq!(
+        engine.rooms.incomplete_rooms.slot_count() - room_slots_before,
+        2,
+        "the two incomplete neighbours with a non-empty touchingSides each get their \
+         regenerated room built — before the fix the wide overload was never taken and this \
+         difference is 0"
+    );
+    assert_eq!(
+        engine.rooms.doors.slot_count() - door_slots_before,
+        2,
+        "and a door apiece"
+    );
+
+    // The live counts do not move for the reason the doc comment gives: `:403`'s cascade deletes
+    // the two regenerated rooms along with the incomplete neighbours they hang off.
     assert_eq!(engine.complete_expansion_rooms().len(), 0);
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "11 - 4, none added");
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "9 - 4, none added");
     assert_eq!(tree_size(&board, &engine), 2);
+}
+
+/// The other half of #164, and the reason it cannot be half-fixed. `:394` indexes
+/// `touchingSides[1]` with nothing guaranteeing the array has two entries;
+/// `TileShape.touchingSides` answers `new int[0]` whenever its search fails
+/// (TileShape.java:588-591, logged as `touching_side : dir2 not found`), and a 1-dimensional
+/// intersection is no guarantee that it will not. **What kept the index in range was the
+/// narrowing overload**: two of the four doors above answer `touchingSides=EMPTY`, and they are
+/// exactly the incomplete neighbours `:385` used to skip. Fixing only the overload turns a silent
+/// skip into an `ArrayIndexOutOfBoundsException`, so both are fixed together.
+///
+/// The port's `touching_sides` answers `Option<[usize; 2]>`, so "length >= 2" is a type-level
+/// guarantee and Java's length check is the `None` arm. A `len() == 1` array is not
+/// representable, and Java's only short answer is `new int[0]`.
+#[test]
+fn touching_sides_is_length_checked() {
+    let (mut board, mut engine) = net_dependent_run(true);
+    let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
+
+    // Four doors onto incomplete rooms, all with a 1-dimensional intersection; two of them answer
+    // an empty `touchingSides`. The pre-fix port could not reach them at all, and a port that
+    // took the wide overload without this check panics here with
+    // "AutorouteEngine.removeCompleteExpansionRoom: a 1-dimensional intersection with no touching
+    // sides — Java throws an ArrayIndexOutOfBoundsException at AutorouteEngine.java:394".
+    let room_ref = fr_router::autoroute::expansion::RoomRef::Complete(rooms[1]);
+    let neighbour_shapes: Vec<_> = engine
+        .rooms
+        .room_doors(room_ref)
+        .to_vec()
+        .into_iter()
+        .filter_map(|door| engine.rooms.door(door)?.other_room(room_ref))
+        .filter_map(|other| engine.rooms.room_shape(other).cloned())
+        .collect();
+    let room_shape = engine
+        .rooms
+        .room_shape(room_ref)
+        .cloned()
+        .expect("the room has a shape");
+    let empty = neighbour_shapes
+        .iter()
+        .filter(|shape| room_shape.touching_sides(shape).is_none())
+        .count();
+    assert_eq!(
+        empty, 2,
+        "the fixture must carry the short-array case, or this test asserts nothing"
+    );
+
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    // Re-cut with the sibling above, and for the same reason: a port-only arena count, moved by
+    // this task's own commit 10. The `empty == 2` above — the thing this test is *for* — did not
+    // move.
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5);
 }
 
 /// The same run with `maintainDatabase == false`: `:97` gates the whole invalidation, so the two
@@ -665,6 +770,204 @@ fn reset_all_doors_clears_the_scratch_it_finds_and_creates_none() {
 
 // =================================================================================================
 // Shared runs
+/// Quirk #165's I2, **fixed: T8** — an abandoned room leaves no live doors.
+///
+/// `SortedRoomNeighbours.calculate` constructs a `CompleteFreeSpaceExpansionRoom` at `:191-192`
+/// *before* it knows whether the room survives, and `AutorouteEngine.addCompleteRoom` returns
+/// `null` at `:528-530` when the completed shape is no longer 2-dimensional. Java's `null` path
+/// removes the room from nothing — it was never added to `completeExpansionRooms` — but
+/// `calculateNewIncompleteRooms` has already built doors from it to real rooms, so it stays
+/// **reachable** through them. Everything that walks the list then misses it: `clear`
+/// (`:308-312`), `validate` (`:642`), `getRoomsWithTargetItems` (`:623`) and `initConnection`'s
+/// net-dependent invalidation (`:102`) — and `completeExpansionRoom`'s own `:426-432` scan can
+/// pick it as `ignoreObject`, handing `completeShape` a room that is not in the tree it is
+/// querying.
+///
+/// The invariant asserted here is the one that closes that: **every complete room on the far side
+/// of a live door is a room the engine knows about**, i.e. is in `completeExpansionRooms`. Before
+/// the fix, this run leaves doors onto rooms that are in none of the engine's lists.
+///
+/// The fix is `detach_all_doors`, **not** `removeAllDoors`, and that distinction is measured:
+/// see `ExpansionRoomStore::detach_all_doors`, and
+/// [`an_abandoned_rooms_incomplete_neighbours_are_not_deleted_with_it`] below.
+#[test]
+fn an_abandoned_room_leaves_no_live_doors() {
+    let (_board, engine, rooms) = one_obstacle_run();
+    let known: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    assert_eq!(known.len(), rooms.len());
+
+    // Every door reachable from a room the engine knows about must lead to a room it also knows
+    // about (or to an incomplete room, which is a live expansion frontier by construction).
+    let mut dangling = Vec::new();
+    for room in &known {
+        let room_ref = RoomRef::Complete(*room);
+        for door in engine.rooms.room_doors(room_ref).to_vec() {
+            let Some(other) = engine.rooms.door(door).and_then(|d| d.other_room(room_ref)) else {
+                continue;
+            };
+            if let RoomRef::Complete(other) = other
+                && !known.contains(&other)
+            {
+                dangling.push((*room, other));
+            }
+        }
+    }
+    assert!(
+        dangling.is_empty(),
+        "a live room holds a door onto a complete room the engine has abandoned: {dangling:?}"
+    );
+}
+
+/// Quirk #165's I1, **fixed: T8** — `completeExpansionRooms` **is** the set of complete rooms that
+/// exist, in both directions.
+///
+/// The register's title is literally this: the list and the search tree disagreed. The assertion
+/// is set equality — every room in the list is a room the tree holds, and every room the tree
+/// holds is in the list — which is what `addCompleteRoom` committing to both at once (`:531-535`)
+/// is supposed to guarantee and what an abandoned room broke.
+///
+/// The id half of the improvement column is here too: `SortedRoomNeighbours.calculate` draws its
+/// room id **once** and reuses it across the `edgeRemoved` retry, so a room that is thrown away no
+/// longer consumes one. The jar's six ids are `[1, 2, 6, 7, 8, 9]` — three numbers burnt by
+/// retries. **They are not `[1, 2, 3, 4, 5, 6]`, which is what this doc said when #165 landed and
+/// what stopped being true three commits later**: #156 + #167 + #158 put obstacle rooms,
+/// incomplete rooms and drill pages on the *same* counter, so the ids are injective across the
+/// four kinds and no longer dense. Density was never this row's property; "a discarded room
+/// consumes nothing" and "strictly increasing in creation order" are, and both are asserted
+/// below.
+#[test]
+fn the_complete_room_list_is_exactly_the_rooms_in_the_tree() {
+    let (board, engine, rooms) = one_obstacle_run();
+    let listed: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    let in_tree: std::collections::BTreeSet<RoomId> = tree_rooms(&board, &engine);
+    assert_eq!(listed, in_tree, "the list and the tree hold the same rooms");
+    assert_eq!(listed.len(), rooms.len());
+
+    let ids: Vec<i32> = rooms
+        .iter()
+        .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
+        .collect();
+    // **Re-cut at Task 8's fix round; a port-only list, no jar number in it.** The jar's six ids
+    // are `[1, 2, 6, 7, 8, 9]` — three burnt by the `edgeRemoved` retry. #165(a) stopped the
+    // retry burning any, and then #156 + #167 + #158 put obstacle rooms, incomplete rooms and
+    // drill pages on the **same** counter, which is what makes the ids injective across the four
+    // kinds. So the ids are no longer dense, and density was never the property #165 was for:
+    // what it buys is that a room which is never committed consumes nothing, and what the tree
+    // ordering needs is that they strictly increase in creation order.
+    assert_eq!(ids, vec![6, 12, 23, 29, 36, 38]);
+    assert!(
+        ids.windows(2).all(|w| w[0] < w[1]),
+        "strictly increasing in creation order, which is the property RoomId has to agree with"
+    );
+}
+
+/// Why `addCompleteRoom`'s `null` path uses `detach_all_doors` and not Java's `removeAllDoors`.
+///
+/// The register's improvement column asks for `removeAllDoors`, and it is the wrong tool: the
+/// room being abandoned is one `calculateDoors` has already wired to **newly built incomplete
+/// rooms**, which are the engine's expansion frontier, and `removeAllDoors` deletes an incomplete
+/// room on the far side of every door it walks (`AutorouteEngine.java:610-612`, recursing through
+/// `removeIncompleteExpansionRoom`). Measured: with `remove_all_doors` on that path, six of
+/// `tests/locator.rs`'s cases stop finding a connection at all. Unlinking removes the room's
+/// *reachability*, which is all the row asks for.
+#[test]
+fn an_abandoned_rooms_incomplete_neighbours_are_not_deleted_with_it() {
+    let mut store = fr_router::autoroute::expansion::ExpansionRoomStore::new();
+    let abandoned = RoomRef::Complete(store.new_complete_room(
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 100, 100))),
+        0,
+        1,
+    ));
+    let frontier = RoomRef::Incomplete(store.new_incomplete_room(
+        Some(TileShape::Box(IntBox::from_coords(100, 0, 200, 100))),
+        0,
+        None,
+    ));
+    let door = store.new_door(abandoned, frontier, 1);
+    store.add_door(abandoned, door);
+    store.add_door(frontier, door);
+
+    store.detach_all_doors(abandoned);
+    assert!(store.room_doors(abandoned).is_empty(), "unlinked");
+    assert!(store.room_doors(frontier).is_empty(), "on both sides");
+    let RoomRef::Incomplete(id) = frontier else {
+        unreachable!()
+    };
+    assert!(
+        store.incomplete_room(id).is_some(),
+        "the frontier room survives — `remove_all_doors` would have deleted it"
+    );
+}
+
+/// Quirk #166, **fixed: T8** — the rooms a partially failed `completeExpansionRoom` committed are
+/// returned, not replaced by an empty collection.
+///
+/// **Java wins over the task brief and over the controller's note**, both of which say the catch
+/// "returns the rooms completed so far". It does not: `result` is declared *inside* the `try`
+/// (`:422`) and the catch at `:520` returns `new ArrayList<>()` — a **fresh empty** collection,
+/// about rooms that exist, are in the search tree and have doors on them. `result` is hoisted out
+/// of the closure in the port and comes back from the catch, with the panic message beside it in
+/// [`fr_router::RouterError::PanickedWithRooms`].
+///
+/// **What this test can and cannot reach.** The two arms are distinguished and both are asserted:
+/// a run that commits rooms answers them, and a run that panics before committing anything
+/// answers `Panicked` with nothing. A panic *after* a commit is not constructible through the
+/// public API on any fixture here — every injection point available (a stale `IncompleteRoomId`,
+/// a dangling tree leaf) is reached by the **first** `completeShape`, before the commit loop
+/// starts — so the third row of the table is asserted at the boundary itself rather than through
+/// a fixture. That limitation is named rather than hidden; what is asserted is that the success
+/// arm's value **is** the committed set (which is only true because `result` is the caller's), and
+/// that the failure arm distinguishes "committed nothing" from "committed something".
+#[test]
+fn a_committed_room_survives_the_catch() {
+    let (mut board, mut engine, rooms) = one_obstacle_run();
+
+    // The success arm: what the method answered is exactly what it committed, to the list and to
+    // the tree. Before the fix this was also true — but only because nothing threw.
+    let listed: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    assert_eq!(
+        rooms
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>(),
+        listed,
+        "the returned rooms are the committed rooms"
+    );
+    assert_eq!(listed, tree_rooms(&board, &engine));
+
+    // The failure arm, with nothing committed: a stale `IncompleteRoomId` is where Java holds a
+    // reference the port cannot, and dereferencing it panics inside the boundary — before the
+    // commit loop is reached. `Panicked`, not `PanickedWithRooms`, and the rooms already in the
+    // database are untouched.
+    let before = complete_rooms(&engine);
+    let stale = engine.add_incomplete_expansion_room(
+        None,
+        0,
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 10, 10))),
+    );
+    engine.remove_incomplete_expansion_room(stale);
+    let answer = engine.complete_expansion_room(&mut board, stale);
+    assert!(
+        matches!(answer, Err(fr_router::RouterError::Panicked(_))),
+        "nothing was committed, so the boundary has no rooms to carry: {answer:?}"
+    );
+    assert!(
+        engine
+            .complete_expansion_room_or_committed(&mut board, stale)
+            .is_empty(),
+        "and the caller's reading of it is empty"
+    );
+    assert_eq!(
+        complete_rooms(&engine),
+        before,
+        "Java's side effects survive"
+    );
+    assert_eq!(rooms.len(), 6);
+}
+
 // =================================================================================================
 
 /// Probe mode 1: the bare board with one obstacle, one seed completed.

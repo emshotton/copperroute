@@ -24,6 +24,28 @@ pub enum RouterError {
     #[error("a ported geometry operation panicked: {0}")]
     Panicked(String),
 
+    /// The same boundary, when the throw arrived **after** rooms had already been committed to
+    /// the database — quirk #166, fixed at Plan 9 Task 8.
+    ///
+    /// `AutorouteEngine.completeExpansionRoom` declares its `result` inside the `try` (`:422`)
+    /// and its `catch` answers `new ArrayList<>()` (`:520`), so a partially failed call is told
+    /// "no rooms were completed" about rooms that exist, are in the search tree and have doors on
+    /// them. `result` is hoisted out of the `try` in the port and comes back here, with the panic
+    /// message beside it: the run really was degraded and a caller may want to say so, but the
+    /// rooms are not lost. [`AutorouteEngine::complete_expansion_room_or_committed`] is how every
+    /// caller reads it.
+    ///
+    /// [`AutorouteEngine::complete_expansion_room_or_committed`]:
+    ///     crate::autoroute::maze::AutorouteEngine::complete_expansion_room_or_committed
+    #[error("a ported geometry operation panicked after committing {n} room(s): {message}", n = rooms.len())]
+    PanickedWithRooms {
+        /// The panic message, as [`RouterError::Panicked`] carries it.
+        message: String,
+        /// The rooms `addCompleteRoom` had already appended to `completeExpansionRooms` and
+        /// inserted into the autoroute search tree before the throw.
+        rooms: Vec<fr_board::RoomId>,
+    },
+
     /// `AutorouteBatchLoop.run`'s `anyRoutable` check (`AutorouteBatchLoop.java:44-56`) found no
     /// layer that is both active in the settings and a signal layer, and Java throws
     /// `IllegalArgumentException("Cannot start autorouter: all layers are disabled.")` at `:55`.

@@ -181,11 +181,13 @@ impl AutorouteEngine {
             .get_default_via_diameter(&board.library.padstacks);
         let max_drill_page_width = ((5.0 * default_via_diameter) as i32).max(10_000);
 
-        // AutorouteEngine.java:91.
-        let drill_page_array = DrillPageArray::new(board, max_drill_page_width);
+        // AutorouteEngine.java:91. fixed: T8 (#167) — the store is built first so the page grid
+        // can draw its ids from the same counter every other expandable object uses.
+        let mut rooms = ExpansionRoomStore::new();
+        let drill_page_array = DrillPageArray::new(board, max_drill_page_width, &mut rooms);
 
         AutorouteEngine {
-            rooms: ExpansionRoomStore::new(),
+            rooms,
             complete_expansion_rooms: Vec::new(),
             connections: Arena::new(),
             tree,
@@ -664,22 +666,25 @@ impl AutorouteEngine {
         // room's own list, which `:403` clears afterwards — so a snapshot is the same traversal.
         let room_doors: Vec<DoorId> = self.rooms.room_doors(room_ref).to_vec();
         for current_door in room_doors {
-            // :383-386, and **the overload matters**. `room` is declared
+            // :383-386, and **the overload matters**. fixed: T8 (#164). `room` is declared
             // `CompleteFreeSpaceExpansionRoom` here, so `currentDoor.otherRoom(room)` binds the
             // narrowing `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92),
             // which answers `null` for an *incomplete* neighbour — not the
             // `otherRoom(ExpansionRoom)` overload (`:62-72`) that `completeExpansionRoom` and
-            // `removeAllDoors` bind. So every incomplete neighbour is skipped by `:385`, and it
-            // keeps its door to this room until `removeAllDoors` at `:403` — which *does* use the
-            // wide overload — unlinks it and removes the room outright.
+            // `removeAllDoors` bind. So every incomplete neighbour was skipped by `:385` — and on
+            // a freshly completed room **most** doors are onto incomplete rooms, which made the
+            // method a near-no-op: the neighbour kept its door to this room until
+            // `removeAllDoors` at `:403`, which *does* use the wide overload, unlinked it and
+            // removed the room outright rather than regenerating the incomplete room `:396-400`
+            // is there to build.
             //
             // `completeNeighbourRooms` casts its argument back to `(ExpansionRoom)` at `:578` for
-            // exactly this reason and says so in a comment; there is no such cast here.
-            // See `docs/java-quirks.md` #164.
+            // exactly this reason and says so in a comment; there is no such cast here, and the
+            // port now takes the wide overload as if there were.
             let Some(current_neighbour) = self
                 .rooms
                 .door(current_door)
-                .and_then(|d| d.other_complete_room(room_ref))
+                .and_then(|d| d.other_room(room_ref))
             else {
                 continue;
             };
@@ -697,16 +702,23 @@ impl AutorouteEngine {
                 continue;
             }
             // :391-395. "Add a new incomplete room to currentNeighbour."
-            let touching_sides = room_shape
-                .touching_sides(&neighbour_shape)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "AutorouteEngine.removeCompleteExpansionRoom: a 1-dimensional \
-                         intersection with no touching sides — Java throws an \
-                         ArrayIndexOutOfBoundsException at AutorouteEngine.java:394, because \
-                         TileShape.touchingSides answers `new int[0]` (TileShape.java:588-591)"
-                    )
-                });
+            //
+            // fixed: T8 (#164), the second half — and it is not optional. `:394` indexes
+            // `touchingSides[1]` with nothing guaranteeing the array has two entries;
+            // `TileShape.touchingSides` answers `new int[0]` whenever its search fails
+            // (TileShape.java:588-591, which Java logs as "touching_side : dir2 not found"), and
+            // a 1-dimensional intersection is no guarantee that it will not. What kept the index
+            // in range was the narrowing overload above: the doors that reach here with an empty
+            // answer are precisely the incomplete neighbours `:385` used to skip. Fixing only the
+            // overload turns a silent skip into an `ArrayIndexOutOfBoundsException`, so both are
+            // fixed together and the door is skipped instead of indexed.
+            //
+            // The port's `touching_sides` answers `Option<[usize; 2]>`, so "length >= 2" is a
+            // type-level guarantee and the length check is the `None` arm: there is no
+            // representable array of length 1 here, and Java's only short answer is length 0.
+            let Some(touching_sides) = room_shape.touching_sides(&neighbour_shape) else {
+                continue;
+            };
             let border_line = neighbour_shape
                 .border_line(touching_sides[1])
                 .unwrap_or_else(|| {
@@ -787,23 +799,70 @@ impl AutorouteEngine {
         room: IncompleteRoomId,
     ) -> Result<Vec<RoomId>, RouterError> {
         // AutorouteEngine.java:421 / :518-521.
+        //
+        // fixed: T8 (#166), by the improvement column's first option — `result` is hoisted out of
+        // the `try` and returned from the `catch`. Java declares it inside (`:422`) and the catch
+        // answers `new ArrayList<>()`, so a caller that partially fails is told "no rooms were
+        // completed" about rooms that **exist, are in the tree and have doors**: every
+        // `addCompleteRoom` before the throw has already appended to `completeExpansionRooms` and
+        // inserted into the autoroute search tree (`:534-535`), and the input room was removed at
+        // `:469`. That is silent data loss, and the register calls the third option — leaving
+        // them in the tree while reporting an empty list — the worst of the three.
+        //
+        // The port's `result` is a `Vec<RoomId>` the closure fills through `&mut`, so what the
+        // `catch` returns is what the `try` had built when it threw. `RouterError` is kept beside
+        // it — the degraded run is still a degraded run and the caller may want to know — and
+        // every caller's `unwrap_or_default()` is replaced by the rooms themselves through
+        // [`Self::complete_expansion_room_or_committed`].
+        let mut result: Vec<RoomId> = Vec::new();
         match std::panic::catch_unwind(AssertUnwindSafe(|| {
-            self.complete_expansion_room_inner(board, room)
+            self.complete_expansion_room_inner(board, room, &mut result)
         })) {
-            Ok(rooms) => Ok(rooms),
-            Err(payload) => Err(RouterError::Panicked(panic_message(&payload))),
+            Ok(()) => Ok(result),
+            Err(payload) => {
+                let message = panic_message(&payload);
+                if result.is_empty() {
+                    Err(RouterError::Panicked(message))
+                } else {
+                    Err(RouterError::PanickedWithRooms {
+                        message,
+                        rooms: result,
+                    })
+                }
+            }
         }
     }
 
-    /// The body of the `try` at AutorouteEngine.java:421-517.
-    fn complete_expansion_room_inner(
+    /// [`Self::complete_expansion_room`] read the way every caller has to read it: the rooms the
+    /// method **committed to the database**, whether or not it finished.
+    ///
+    /// fixed: T8 (#166). This replaces `complete_expansion_room(..).unwrap_or_default()`, which
+    /// was Java's `:520` — an empty collection for rooms that are in the tree with doors on them.
+    /// The obligation the old form carried ("never with `?`") is discharged by construction here:
+    /// there is nothing to propagate.
+    pub fn complete_expansion_room_or_committed(
         &mut self,
         board: &mut Board,
         room: IncompleteRoomId,
     ) -> Vec<RoomId> {
+        match self.complete_expansion_room(board, room) {
+            Ok(rooms) => rooms,
+            Err(RouterError::PanickedWithRooms { rooms, .. }) => rooms,
+            Err(_) => Vec::new(),
+        }
+    }
+
+    /// The body of the `try` at AutorouteEngine.java:421-517.
+    ///
+    /// fixed: T8 (#166): `result` is the caller's, passed by `&mut`, so the rooms committed
+    /// before a throw are the caller's too. Java's `:422` declares it inside the `try`.
+    fn complete_expansion_room_inner(
+        &mut self,
+        board: &mut Board,
+        room: IncompleteRoomId,
+        result: &mut Vec<RoomId>,
+    ) {
         let room_ref = RoomRef::Incomplete(room);
-        // :422.
-        let mut result: Vec<RoomId> = Vec::new();
 
         // :423-434. The first door to an existing **complete free-space** room whose dimension is
         // 2 supplies both `fromDoorShape` and `ignoreObject`; the loop breaks on it.
@@ -911,8 +970,7 @@ impl AutorouteEngine {
                 }
             }
         }
-        // :517.
-        result
+        // :517. `result` is the caller's; see the note on this method.
     }
 
     /// `this.autorouteSearchTree.completeShape(room, this.netNumber, ignoreObject, fromDoorShape)`
@@ -974,17 +1032,45 @@ impl AutorouteEngine {
 
         // :528-530. Java's cast to `CompleteFreeSpaceExpansionRoom` cannot fail here: the input is
         // an incomplete room, so `calculateNeighbours` took the `:190-193` branch.
-        let RoomRef::Complete(completed_room) = completed_room? else {
-            return None;
+        //
+        // fixed: T8 (#165), the improvement column's second half — "give `addCompleteRoom`'s
+        // `null` path a `removeAllDoors` so an abandoned room leaves no doors behind". Java's
+        // `return null` at `:530` walks away from a `CompleteFreeSpaceExpansionRoom` that
+        // `calculateNewIncompleteRooms` has already wired to real incomplete rooms, and because
+        // the room was never added to `completeExpansionRooms` nothing ever removes it: `clear`
+        // (`:308-312`), `validate` (`:642`), `getRoomsWithTargetItems` (`:623`) and
+        // `initConnection`'s net-dependent invalidation (`:102`) all walk that list. The room
+        // stays **reachable through its doors**, and `completeExpansionRoom`'s own `:426-432`
+        // scan can then pick it as `ignoreObject` — handing `completeShape` a room that is not in
+        // the tree it is querying.
+        let completed_room = completed_room?;
+        // `detach_all_doors`, not `remove_all_doors`: the abandoned room's doors lead to newly
+        // built **incomplete** rooms which are the engine's expansion frontier, and Java's
+        // `removeAllDoors` would delete them with it. Measured — see that method's own note.
+        let abandon = |engine: &mut Self| {
+            engine.rooms.detach_all_doors(completed_room);
+            // …and the id it drew goes back, so a room that is never committed does not consume
+            // one — the other half of #165's improvement column.
+            if let Some(id_no) = engine.rooms.room_id_no(completed_room) {
+                engine.rooms.release_room_id_no(id_no);
+            }
+            None
+        };
+        let RoomRef::Complete(completed_room_id) = completed_room else {
+            return abandon(self);
         };
         let dimension = self
             .rooms
-            .complete_room(completed_room)
+            .complete_room(completed_room_id)
             .and_then(|r| r.get_shape())
-            .map(TileShape::dimension)?;
+            .map(TileShape::dimension);
+        let Some(dimension) = dimension else {
+            return abandon(self);
+        };
         if dimension != 2 {
-            return None;
+            return abandon(self);
         }
+        let completed_room = completed_room_id;
 
         // :531-534.
         self.complete_expansion_rooms.push(completed_room);

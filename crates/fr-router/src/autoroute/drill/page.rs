@@ -48,6 +48,9 @@ pub struct DrillPage {
     /// `public final IntBox shape` (`:24`): "the shape of the page". Public, as Java's is —
     /// `DrillPageArray.overlappingPages:90` and `MazeExpansionEngine` both read it directly.
     pub shape: IntBox,
+    /// The engine's own id for this page — fixed: T8 (#167), see [`Self::get_id`]. No Java field:
+    /// Java hashes the page's shape and its **mutable** `netNumber` on every call.
+    id_no: i32,
     /// `private final MazeSearchElement[] mazeSearchElements` (`:26`), one per board layer
     /// (`:39`).
     maze_search_elements: Vec<MazeSearchElement>,
@@ -73,9 +76,13 @@ impl DrillPage {
     /// Java keeps the board as a field (`:27`) and reads `getLayerCount()` from it again at
     /// `:107`; the port takes the board per call instead (plan-2 ruling 11 — the back-pointer is
     /// a cycle), so the layer count is captured here, where the array is sized.
-    pub fn new(shape: IntBox, board: &Board) -> DrillPage {
+    ///
+    /// fixed: T8 (#167): `id_no` is the engine's own counter, drawn once when the page grid is
+    /// built and never again — see [`get_id`](Self::get_id).
+    pub fn new(shape: IntBox, board: &Board, id_no: i32) -> DrillPage {
         DrillPage {
             shape,
+            id_no,
             // :39-42.
             maze_search_elements: vec![MazeSearchElement::default(); board.get_layer_count()],
             // :30, :33 — the field initialisers.
@@ -458,13 +465,23 @@ impl DrillPage {
 
     /// Port of `getId()` (DrillPage.java:189-193): `31 * shape.getId() + netNumber`.
     ///
-    /// A Java `int` hash, so it wraps — and it is **not stable**, because `netNumber` moves. See
-    /// the type docs and `docs/java-quirks.md` #167.
+    /// fixed: T8 (#167). Half of Java's hash is `netNumber`, which `getDrills` **overwrites** at
+    /// `:65` — the first statement of the recomputation — so a page that is already an element of
+    /// the maze's `TreeSet<MazeListElement>` changes the sort key it is stored under while it
+    /// sits in the tree. That is worse than a collision: a `TreeSet` cannot find an element whose
+    /// sort key moved under it. JVM-pinned as live on the HEAD jar
+    /// (`id = -29760001 -> -29759999 -> -29759998` across two `getDrills` calls).
+    ///
+    /// It is the engine's own counter now: drawn once when the page grid is built, never written
+    /// again, and shared with every other expandable object the engine owns so that no two of
+    /// them can answer the same id.
     pub fn get_id(&self) -> i32 {
-        // Java bug: `DrillPage.getId` — half of this hash is `netNumber`, which
-        // `getDrills` overwrites at `:65`, so a page that is already an element of the maze's
-        // `TreeSet<MazeListElement>` changes the sort key it is stored under (plan-6 ruling 4,
-        // hazard B). Reproduced, not fixed: quirk #167.
+        self.id_no
+    }
+
+    /// **Java's** `getId` arithmetic, kept so the moving key #167 fixed can be pinned. Nothing in
+    /// the port reads it.
+    pub fn java_id(&self) -> i32 {
         31i32
             .wrapping_mul(self.shape.get_id())
             .wrapping_add(self.net_number)
@@ -530,16 +547,20 @@ mod tests {
     /// The `getId()` of an untouched page: `31 * shape.getId() + (-1)`. `P6T7Probe` mode 7,
     /// `fresh netNumber=-1 id=-29760001 shapeId=-960000`.
     #[test]
-    fn a_fresh_pages_id_hashes_the_minus_one_net() {
+    fn a_fresh_pages_id_is_the_engine_counter_and_javas_hashes_the_minus_one_net() {
+        // fixed: T8 (#167): `get_id` is the id the page grid drew; `java_id` is the hash it
+        // replaced, kept so the moving key stays pinned.
         let shape = IntBox::from_coords(-1000, -1000, 1000, 1000);
         assert_eq!(shape.get_id(), -960_000);
         let page = DrillPage {
+            id_no: 1,
             shape,
             maze_search_elements: vec![MazeSearchElement::default(); 2],
             drills: None,
             net_number: -1,
         };
-        assert_eq!(page.get_id(), -29_760_001);
+        assert_eq!(page.get_id(), 1);
+        assert_eq!(page.java_id(), -29_760_001);
         assert_eq!(page.net_number(), -1);
         assert_eq!(page.drills(), None);
         assert_eq!(page.get_dimension(), 2);

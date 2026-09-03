@@ -182,10 +182,10 @@ impl ExpansionDrill {
                         engine
                             .rooms
                             .new_incomplete_room(None, layer, Some(search_shape.clone()));
-                    // :78-79.
-                    let new_rooms = engine
-                        .complete_expansion_room(board, new_incomplete_room)
-                        .unwrap_or_default();
+                    // :78-79. fixed: T8 (#166) — the rooms committed before a throw are
+                    // returned rather than replaced by Java's empty collection.
+                    let new_rooms =
+                        engine.complete_expansion_room_or_committed(board, new_incomplete_room);
                     // :80-83. "The size may be 0 because of an obstacle in the compensated tree
                     // at this.location."
                     if new_rooms.len() != 1 {

@@ -345,12 +345,12 @@ impl<'a> MazeSearchEngine<'a> {
             if self.engine.is_stop_requested(stop) {
                 return false;
             }
-            // :1038-1039. `Err` is Java's `return new ArrayList<>()` (quirk #166), never a
-            // failure to propagate.
+            // :1038-1039. Java's `catch` answers `new ArrayList<>()` here (quirk #166) about
+            // rooms it has already put in the tree; fixed: T8, so this takes the rooms that were
+            // committed, whether or not the call finished. Never a failure to propagate.
             let current_completed_rooms = self
                 .engine
-                .complete_expansion_room(board, current_room)
-                .unwrap_or_default();
+                .complete_expansion_room_or_committed(board, current_room);
             completed_start_rooms.extend(current_completed_rooms);
         }
 
@@ -447,16 +447,21 @@ impl<'a> MazeSearchEngine<'a> {
                     already_checked: false,
                     ripup_cost: 0,
                 };
-                self.push(new_list_element, board);
-                // Java bug: `MazeSearchEngine.init`
+                // fixed: T8 (#178). `:1079-1080` is `mazeExpansionList.add(newListElement);` on
+                // one line and `startOk = true;` on the next — the `boolean` the overridden `add`
+                // (`:86-124`) just answered is discarded. Under a fanout control whose escape
+                // window refuses every seeded element, `init` therefore succeeded with an
+                // **empty** queue and `getInstance` handed back an engine whose `findConnection`
+                // can only answer `null`: the caller pays for a whole engine construction, a
+                // `reduceTraceShapesAtTiePins` pass and a full round of room completion to learn
+                // that the queue was empty.
                 //
-                // `:1080` sets `startOk = true` **unconditionally**, ignoring the `boolean` the
-                // overridden `add` (`:86-124`) just answered. Under a fanout control whose escape
-                // window refuses every seeded element, `init` therefore succeeds with an **empty**
-                // queue and `getInstance` hands back an engine whose `findConnection` can only
-                // answer `null`. `docs/java-quirks.md` #178, JVM-pinned by `P6T11Probe` mode
-                // `fanout` (`instance=ok`, `queue n=0`).
-                start_ok = true;
+                // `startOk` is now exactly what `add` answered on at least one element, which is
+                // what "initialisation failed" means. Java's own `:1083-1102` reads `startOk` for
+                // precisely this decision.
+                if self.push(new_list_element, board) {
+                    start_ok = true;
+                }
             }
         }
         // :1083-1102.

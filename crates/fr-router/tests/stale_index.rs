@@ -18,11 +18,17 @@
 //!   and it is the reason the instrumentation is a plain module behind an environment variable
 //!   rather than anything the guards read.
 //!
-//! # T17: these are characterisation pins, not fix markers
+//! # T17: these are characterisation pins, not fix markers — and T8 flipped them
 //!
-//! Task 17 fixes nothing. [`MEASURED`] records the current, *stale*, behaviour. A Task 8 row that
-//! changes a guard's fire count is expected to update the table and say which row moved it; that
-//! is the flip, and the `// T17:` breadcrumbs at the guard sites point back here.
+//! Task 17 fixes nothing. [`MEASURED`] recorded the behaviour at that task. A Task 8 row that
+//! changes a guard's count is expected to update the table and say which row moved it; that is
+//! the flip, and the `// T17:` breadcrumbs at the guard sites point back here.
+//!
+//! **Plan 9 Task 8 performed that flip.** No **fire** count moved — every one is still zero, which
+//! is #193's whole finding — but the **visit** counts moved on four of the eight stems, and the
+//! `// T8:` comments on each row of [`MEASURED`] name the commit and the fix that moved them,
+//! bisected commit by commit rather than inferred. The denominator went from 1 101 064 guard
+//! evaluations to 1 160 973.
 //!
 //! # Why the counts are asserted exactly, and per stem
 //!
@@ -151,54 +157,93 @@ struct Expected {
     visits: [u64; 5],
 }
 
-/// The measured table, from the release run recorded in
-/// `.superpowers/sdd/2026-09-03-plan-9-post-parity/task-17-report.md`.
+/// The measured table. Originally the release run recorded in
+/// `.superpowers/sdd/2026-09-03-plan-9-post-parity/task-17-report.md`; **flipped at Plan 9 Task
+/// 8**, which is the flip that report's "these are characterisation pins, not fix markers" note
+/// anticipated.
 ///
-/// **Every fire count is zero, across 1 101 064 guard evaluations on eight boards.** That is the
-/// finding, and the plan asked for it in those words: *"if a guard never fires, that is the
-/// finding and the report says so."*
+/// **Every fire count is still zero — now across 1 160 973 guard evaluations on eight boards.**
+/// #193's finding is untouched by Task 8: what moved is the *denominator*, i.e. how many times
+/// the router walks the guard sites, which is a routing change and exactly what a fix task is
+/// expected to produce. No guard started or stopped tripping.
+///
+/// # T8: which fix moved which row — bisected, not inferred
+///
+/// Every commit of Task 8 was checked out in turn and the probe re-run, on the CI stems for all
+/// ten and on the `FR_SLOW_PARITY` stems at the six commits that bracket a move. Three rows moved
+/// the counts and the other seven moved nothing:
+///
+/// | commit | fix | what moved |
+/// |---|---|---|
+/// | `cc6c210` | **#163** | the eighth door of an obstacle room. `dac2020` G1a 13210 -> 13161, G2 336 796 -> 343 469, G3 39 896 -> 41 377; `fanout-bm11` G2 73 088 -> 73 080, G3 5 461 -> 5 455; `strict-drc-cnh` G1a 3 665 -> 3 667, G2 60 219 -> 60 206, G3 7 353 -> 7 333 |
+/// | `e860a26` | **#171 + #170** | the maze queue keeps both paths at a tie, so `expandToTargetDoors` runs more rounds — this is the **G1a/G1b** mover and the largest: `j2` 2 587 -> 3 177, `dac2020` 13 161 -> 13 631, `fanout-bm11` 14 952 -> 17 445, `strict-drc-cnh` 3 667 -> 3 669 |
+/// | `c39d844` | **#156 + #167 + #158** | the expandable ids become one counter, which reorders `MazeListElement`'s third key and moves the **G2/G3** room-slot walk: `j2` G2 17 843 -> 17 854, `dac2020` G2 353 561 -> 353 444, `fanout-bm11` G2 80 849 -> 80 853, `strict-drc-cnh` G2 60 206 -> 60 180 and G3 7 333 -> 7 356 |
+///
+/// `router-rpi-splitter`, `router-ecc83-input`, `router-tutorial-board` and `router-empty-board`
+/// are **unchanged by every one of the ten commits**. #159 (`9fea49e`) cannot move any of these:
+/// it is a 90-degree-only defect and every corpus board declares `fortyfive_degree`. #160/#161,
+/// #162, #164, #165/#166 and #178 moved no count on any stem.
 const MEASURED: &[Expected] = &[
     Expected {
         stem: "router-rpi-splitter",
         fires: [0, 0, 0, 0, 0],
+        // T8: unchanged by all ten commits.
         visits: [76, 76, 1042, 1042, 111],
     },
     Expected {
         stem: "router-dac2020-bm01",
         fires: [0, 0, 0, 0, 0],
-        visits: [13210, 13210, 336_796, 336_796, 39896],
+        // T8: was [13210, 13210, 336_796, 336_796, 39896].
+        // #163 (cc6c210) -> [13161, 13161, 343_469, 343_469, 41377];
+        // #171+#170 (e860a26) -> [13631, 13631, 353_561, 353_561, 43337];
+        // #156+#167+#158 (c39d844) -> below.
+        visits: [13630, 13630, 353_444, 353_444, 43337],
     },
     Expected {
         stem: "router-j2-reference",
         fires: [0, 0, 0, 0, 0],
-        visits: [2587, 2587, 17843, 17843, 1053],
+        // T8: was [2587, 2587, 17843, 17843, 1053].
+        // #171+#170 (e860a26) moved G1a/G1b 2587 -> 3177;
+        // #156+#167+#158 (c39d844) moved G2 17843 -> 17854. #163 moved nothing here.
+        visits: [3177, 3177, 17854, 17854, 1053],
     },
     Expected {
         // 438 empty `@:no_net_N` nets, so no item has an unconnected set and nothing routes —
         // `router-fixtures.txt`'s own note. The zero visits are that board, not a missing probe.
         stem: "router-tutorial-board",
         fires: [0, 0, 0, 0, 0],
+        // T8: unchanged — this board routes nothing.
         visits: [0, 0, 0, 0, 0],
     },
     Expected {
         stem: "router-ecc83-input",
         fires: [0, 0, 0, 0, 0],
+        // T8: unchanged by all ten commits.
         visits: [26, 26, 89, 89, 4],
     },
     Expected {
         stem: "router-fanout-bm11",
         fires: [0, 0, 0, 0, 0],
-        visits: [14952, 14952, 73088, 73088, 5461],
+        // T8: was [14952, 14952, 73088, 73088, 5461].
+        // #163 (cc6c210) -> [14952, 14952, 73080, 73080, 5455];
+        // #171+#170 (e860a26) -> [17445, 17445, 80849, 80849, 6142];
+        // #156+#167+#158 (c39d844) -> below.
+        visits: [17445, 17445, 80853, 80853, 6142],
     },
     Expected {
         stem: "router-strict-drc-cnh",
         fires: [0, 0, 0, 0, 0],
-        visits: [3665, 3665, 60219, 60219, 7353],
+        // T8: was [3665, 3665, 60219, 60219, 7353].
+        // #163 (cc6c210) -> [3667, 3667, 60206, 60206, 7333];
+        // #171+#170 (e860a26) -> [3669, 3669, 60206, 60206, 7333];
+        // #156+#167+#158 (c39d844) -> below.
+        visits: [3669, 3669, 60180, 60180, 7356],
     },
     Expected {
         // Nothing to route (plan-7 ruling 7's `NoRoutableLayer` board).
         stem: "router-empty-board",
         fires: [0, 0, 0, 0, 0],
+        // T8: unchanged — this board has no routable signal layer.
         visits: [0, 0, 0, 0, 0],
     },
 ];

@@ -13,22 +13,28 @@
 //!
 //! # Is the comparator a total order?
 //!
-//! Almost. On non-NaN inputs the chain `sortingValue`, `expansionValue`, `door.getId()`,
-//! `sectionNoOfDoor` is a lexicographic order on four totally ordered keys, so it *is* total
-//! there — antisymmetric and transitive — and `Equal` really does mean "the same door section at
-//! the same cost". Two things break it anyway, and both are load-bearing:
+//! **It is now** (fixed: T8, #170 + #171); it was not. On non-NaN inputs the chain
+//! `sortingValue`, `expansionValue`, `door.getId()`, `sectionNoOfDoor` is a lexicographic order
+//! on four totally ordered keys, so it was total *there* — but three things broke it, and each
+//! has been answered:
 //!
 //! 1. **NaN** (quirk #170). `a.sortingValue = NaN`, `b.sortingValue = 1.0`,
 //!    `a.expansionValue < b.expansionValue` gives `a < b`; swap the expansion values and the same
 //!    pair gives `a > b` — the relation is decided by a key Java only meant as a tie-break, and
-//!    with three elements it is not transitive.
-//! 2. **`door.getId()` moves.** `DrillPage.getId` hashes the page's `netNumber`, which
+//!    with three elements it is not transitive. **Answered at [`MazeQueue::push`]**, which refuses
+//!    a non-finite `sortingValue` rather than ordering it: a NaN cost is an upstream bug.
+//! 2. **The full tie** (quirk #171). Four keys, and eight fields they do not cover — including
+//!    `backtrackDoor`, which is the whole path. `TreeMap.put` dropped the newcomer whole.
+//!    **Answered in [`MazeListElement::compare_to`]**, which continues past Java's `:110-112`
+//!    through the remaining fields, so `Equal` means equal as a value.
+//! 3. **`door.getId()` moves.** `DrillPage.getId` hashes the page's `netNumber`, which
 //!    `DrillPage.getDrills` overwrites (`DrillPage.java:65`, quirk #167), so an element already
-//!    in the tree can change its third key. No comparator-based container is defined on that.
+//!    in the tree could change its third key. No comparator-based container is defined on that.
+//!    **Answered by #156/#167/#158** in the same task, which make every expandable id a stable
+//!    per-engine counter.
 //!
-//! So the container has to be the one whose *undefined* behaviour matches Java's, which is
-//! `JavaTreeSet` — including `TreeMap.put`'s tie-drop, which is quirk #171 and is reachable
-//! without any NaN at all.
+//! The container is still a `JavaTreeSet`: with the order total, `BTreeSet` becomes safe here,
+//! and Task 24 is where the swap is collected rather than being smuggled into a fix commit.
 
 use fr_board::Board;
 use fr_board::structure::Unit;
@@ -82,6 +88,34 @@ impl MazeQueue {
         engine: &AutorouteEngine,
         board: &Board,
     ) -> bool {
+        // fixed: T8 (#170). **A non-finite cost is an upstream bug, not a thing to sort.**
+        // `MazeListElement.compareTo:81-93` compares two `double`s with raw `<` and `>`, so a
+        // `NaN` makes both false and the comparison falls through to the next key instead of
+        // ordering — and the relation then is not a strict weak ordering, on which a red-black
+        // tree's invariants mean nothing. `sortingValue` is
+        // `expansionValue + destinationDistance.calculate(…)` and a degenerate
+        // `IntBox.weightedDistance` can produce a NaN, so it is reachable in principle.
+        //
+        // The element is **refused**, not ordered. `total_cmp` would be the wrong fix: it sorts
+        // NaN last and keeps the bug alive, silently expanding a path whose cost is not a number.
+        // This is the port's single `add` site — Java has three (`MazeSearchEngine.java:547`,
+        // `:964`, `:1079`) plus `MazeExpansionEngine`'s `:101`, `:142` and `:373`, and all six go
+        // through this container's overridden `add` — so one guard covers them all.
+        //
+        // `false` is exactly what Java's own `:104`/`:120` fanout refusals answer, so no caller
+        // learns a new outcome; what changes is that after #178 an engine whose *only* start
+        // element had a non-finite cost now answers `None` from `getInstance` instead of running
+        // a whole search on an empty queue.
+        // The register's third option — "panics in debug" — is deliberately **not** taken. A
+        // `debug_assert!` here turns an upstream arithmetic defect into an abort in exactly the
+        // builds the whole test suite and every developer run use, which is a worse failure than
+        // the one it reports. The caller already learns the answer: `push` returns `false`, and
+        // after #178 an engine whose only start element carried a non-finite cost answers `None`
+        // from `getInstance` rather than running a search on an empty queue — which is where the
+        // condition becomes visible, with a message, instead of killing the process.
+        if !element.sorting_value.is_finite() {
+            return false;
+        }
         // :87
         if ctrl.is_fanout
             && let Some(pin_center) = ctrl.fanout_start_pin_center.as_ref()

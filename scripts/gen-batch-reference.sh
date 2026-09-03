@@ -235,7 +235,11 @@ if command -v timeout >/dev/null 2>&1; then
 elif command -v gtimeout >/dev/null 2>&1; then
   TIMEOUT=(gtimeout "$TIMEOUT_SECONDS")
 else
-  echo "warning: no timeout(1) on PATH; a quirk-#162 hang will not be bounded" >&2
+  # Quirk #162 is FIXED in the port at Plan 9 Task 8, so the port half of this bound is no
+  # longer load-bearing. The **jar** half is: the HEAD jar still walks a simplex it derives
+  # after the side numbers, and `calculateNewIncompleteRooms` still allocates a room per turn
+  # until the JVM dies. The bound therefore stays until a Java-side fix lands.
+  echo "warning: no timeout(1) on PATH; the jar's quirk-#162 hang will not be bounded" >&2
 fi
 
 # One directory per invocation (see `CLASSES` above) and one scratch tree per invocation, both

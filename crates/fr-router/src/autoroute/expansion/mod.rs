@@ -168,9 +168,47 @@ impl ExpansionRoomStore {
     /// differs from Java's: `audit-port.sh` scopes `AutorouteEngine` to
     /// `autoroute/maze/engine.rs`, so the obligation to write the engine method stays open
     /// until Task 6 writes it there, rather than being discharged from this file.
+    ///
+    /// fixed: T8 (#165) — the improvement column's first half, "have `SortedRoomNeighbours.
+    /// calculate` take the room id *after* it commits". `calculate` now draws one id per call and
+    /// reuses it across the `edgeRemoved` retry, and [`Self::release_room_id_no`] gives it back on
+    /// the `addCompleteRoom` `null` path, so a room that is never committed no longer consumes
+    /// one. The ids remain strictly increasing in creation order, which is the property
+    /// [`RoomId`] — the arena index — has to agree with.
     pub fn next_room_id_no(&mut self) -> i32 {
         self.room_instance_count = self.room_instance_count.wrapping_add(1);
         self.room_instance_count
+    }
+
+    /// Hand back the id [`Self::next_room_id_no`] last produced, if `id_no` is it.
+    ///
+    /// fixed: T8 (#165). No Java counterpart: Java's `expansionRoomInstanceCount` only ever
+    /// increments, and `generateRoomIdNo()` being an *argument* is exactly why an abandoned room
+    /// burns a number. Rewinding is conditional on purpose — it is a no-op unless the id being
+    /// released is the newest, so it can never hand the same number to two rooms that both
+    /// survive, and a caller that releases out of order simply leaves the gap Java would have.
+    /// # T8: `clear` and this counter open an alias window that the drill pages sit in
+    ///
+    /// `AutorouteEngine.clear` (`:306-317`) resets `expansionRoomInstanceCount` to 0, and since
+    /// #156/#167/#158 that counter is shared by **every** expandable object — including the drill
+    /// pages, which draw their ids once when the page grid is built and keep them for the life of
+    /// the engine. `clear` does **not** touch the page grid (it is `drillPageArray`, which Java's
+    /// `clear` deliberately leaves alone — see [`Self::drills`]), so after a `clear` the counter
+    /// re-issues numbers that live pages still hold, and a page and a room can answer the same
+    /// id.
+    ///
+    /// **Not reachable today, and named here so it is not discovered by accident.** The two ids
+    /// meet only in `MazeListElement::compare_to`'s third key, through
+    /// `AutorouteEngine::expandable_id_no`, and a page id and a room id reach it only from the
+    /// same maze queue — which belongs to one connection, inside one `initConnection`/`clear`
+    /// cycle. Java has the same shape and the same reset, so this is not a divergence; it is a
+    /// property of sharing one counter that the pre-T8 hashes did not have, and the fix for it if
+    /// it ever becomes reachable is that `clear` must not reset a counter whose consumers outlive
+    /// it. Task 24 owns the `clear`/page-grid lifetime question.
+    pub fn release_room_id_no(&mut self, id_no: i32) {
+        if self.room_instance_count == id_no {
+            self.room_instance_count = self.room_instance_count.wrapping_sub(1);
+        }
     }
 
     /// `AutorouteEngine.clear` (AutorouteEngine.java:306-317) minus its last line: **take every
@@ -294,14 +332,12 @@ impl ExpansionRoomStore {
         layer: usize,
         contained_shape: Option<TileShape>,
     ) -> IncompleteRoomId {
-        IncompleteRoomId(
-            self.incomplete_rooms
-                .insert(IncompleteFreeSpaceExpansionRoom::new(
-                    shape,
-                    layer,
-                    contained_shape,
-                )),
-        )
+        // fixed: T8 (#158): the arena is where a room becomes something the engine can name, so
+        // it is where the engine's own id is drawn — one counter for every expandable object,
+        // which is what makes the ids injective across the four kinds.
+        let mut room = IncompleteFreeSpaceExpansionRoom::new(shape, layer, contained_shape);
+        room.set_id_no(self.next_room_id_no());
+        IncompleteRoomId(self.incomplete_rooms.insert(room))
     }
 
     /// Whether `AutorouteEngine.incompleteExpansionRooms` (`:71`) is non-null — see the field.
@@ -324,7 +360,9 @@ impl ExpansionRoomStore {
         index_in_item: usize,
         tree: TreeId,
     ) -> ObstacleRoomId {
-        let room = ObstacleExpansionRoom::new(board, item, index_in_item, tree);
+        // fixed: T8 (#156): the engine's own counter, not `(itemId << 10) | indexInItem`.
+        let id_no = self.next_room_id_no();
+        let room = ObstacleExpansionRoom::new(board, item, index_in_item, tree, id_no);
         ObstacleRoomId(self.obstacle_rooms.insert(room))
     }
 
@@ -767,6 +805,35 @@ impl ExpansionRoomStore {
         self.clear_doors(room);
     }
 
+    /// [`Self::remove_all_doors`] **without** the incomplete-room cascade: every door of `room` is
+    /// unlinked from the room on its other side and from `room` itself, and nothing else is
+    /// removed.
+    ///
+    /// fixed: T8 (#165). Java has no such method, and the register's improvement column asks for
+    /// `removeAllDoors` on `addCompleteRoom`'s `null` path. **`removeAllDoors` is the wrong tool
+    /// there, and that is measured**: the room `addCompleteRoom` abandons is one
+    /// `calculateDoors` has already wired to *newly built* incomplete rooms, and those rooms are
+    /// the engine's expansion frontier — Java leaks them into `incompleteExpansionRooms` and the
+    /// maze search then expands through them. Deleting them with the room removes real frontier:
+    /// with `remove_all_doors` on that path, six `tests/locator.rs` cases stop finding a
+    /// connection at all (`findConnection answers a result`), which is a connectivity regression
+    /// and the opposite of what this row is for.
+    ///
+    /// What the row actually asks for is that an abandoned room "leaves no doors behind" — that
+    /// it stops being **reachable**, so that `completeExpansionRoom`'s `:426-432` scan cannot pick
+    /// it as `ignoreObject` and hand `completeShape` a room that is not in the tree it is
+    /// querying. Unlinking does exactly that and nothing more.
+    pub fn detach_all_doors(&mut self, room: RoomRef) {
+        let doors: Vec<DoorId> = self.room_doors(room).to_vec();
+        for door in doors {
+            let Some(other) = self.doors.get(door.0).and_then(|d| d.other_room(room)) else {
+                continue;
+            };
+            self.remove_door(other, ExpandableRef::Door(door));
+        }
+        self.clear_doors(room);
+    }
+
     /// The room-list half of `AutorouteEngine.removeIncompleteExpansionRoom`
     /// (AutorouteEngine.java:368-371): `removeAllDoors(room)` and then drop it from the
     /// incomplete list.
@@ -993,12 +1060,20 @@ mod tests {
             RoomRef::Complete(store.new_complete_room(Some(boxed(0, 0, 4, 4)), 2, counter));
         assert_eq!(store.room_id_no(complete), Some(counter));
 
+        // fixed: T8 (#158): an incomplete room's id is the same counter, not
+        // `31 * shape.getId() + layer` — the shape is mutable and nullable, and the id is a sort
+        // key. `java_id` keeps the formula.
         let shape = boxed(1, 1, 5, 5);
         let incomplete =
             RoomRef::Incomplete(store.new_incomplete_room(Some(shape.clone()), 3, None));
+        assert_eq!(store.room_id_no(incomplete), Some(counter + 1));
+        let RoomRef::Incomplete(id) = incomplete else {
+            unreachable!()
+        };
         assert_eq!(
-            store.room_id_no(incomplete),
-            Some(shape.get_id().wrapping_mul(31).wrapping_add(3))
+            store.incomplete_room(id).unwrap().java_id(),
+            shape.get_id().wrapping_mul(31).wrapping_add(3),
+            "Java's formula, kept pinned"
         );
     }
 }

@@ -1,5 +1,5 @@
 # gate-version: g1
-# task: T6-wb
+# task: T8
 # The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
 # never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s
 # column and rewrites it in place at each task's close, in the same commit as
@@ -17,32 +17,32 @@
 # v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2
 #   (quoted -- benchmark/results/ is gitignored and this checkout has no copy)
 # cols:family	stem	cpu_s	cpu_spread_s
-batch	router-rpi-splitter	0.065	0.002
-batch	router-dac2020-bm01	18.085	0.152
-batch	router-j2-reference	1.287	0.023
-batch	router-tutorial-board	9.185	0.031
-batch	router-ecc83-input	0.030	0.001
-batch	router-fanout-bm11	3.390	0.027
-batch	router-strict-drc-cnh	11.626	0.108
-batch	router-empty-board	0.002	0.000
-cli	router-rpi-splitter	0.066	0.002
-cli	router-j2-reference	1.284	0.008
-cli	router-ecc83-input	0.031	0.001
-cli	router-empty-board	0.002	0.000
-cli	router-dac2020-bm01	18.098	0.145
-cli	router-tutorial-board	9.165	0.026
-cli	router-fanout-bm11	3.378	0.054
-cli	router-strict-drc-cnh	11.723	0.099
-cli	tutorial_board	9.174	0.004
-cli	Issue026-J2_reference	1.283	0.006
-cli	large-outline	5.526	0.066
-cli	kicad-ecc83-json	0.377	0.010
-cli	kicad-complex-hierarchy-json	6.656	0.093
-drc	drc-dev-board	0.053	0.001
-drc	drc-bbd-mars-64	0.063	0.001
-drc	drc-natural-tone-preamp	0.143	0.001
-drc	drc-issue593-rules	0.010	0.000
-drc	drc-issue593-ses	0.030	0.000
-drc	drc-issue753-cpu85	0.155	0.002
-drc	drc-issue110-relay	0.011	0.000
-drc	drc-tutorial-board	1.079	0.006
+batch	router-rpi-splitter	0.058	0.001
+batch	router-dac2020-bm01	16.750	0.081
+batch	router-j2-reference	1.048	0.001
+batch	router-tutorial-board	7.036	0.010
+batch	router-ecc83-input	0.028	0.001
+batch	router-fanout-bm11	2.795	0.025
+batch	router-strict-drc-cnh	9.849	0.066
+batch	router-empty-board	0.007	0.000
+cli	router-rpi-splitter	0.057	0.000
+cli	router-j2-reference	1.046	0.002
+cli	router-ecc83-input	0.028	0.001
+cli	router-empty-board	0.006	0.001
+cli	router-dac2020-bm01	16.686	0.064
+cli	router-tutorial-board	7.046	0.069
+cli	router-fanout-bm11	2.792	0.067
+cli	router-strict-drc-cnh	9.672	0.149
+cli	tutorial_board	7.022	0.040
+cli	Issue026-J2_reference	1.040	0.008
+cli	large-outline	4.219	0.023
+cli	kicad-ecc83-json	0.288	0.001
+cli	kicad-complex-hierarchy-json	5.476	0.035
+drc	drc-dev-board	0.047	0.001
+drc	drc-bbd-mars-64	0.054	0.001
+drc	drc-natural-tone-preamp	0.124	0.001
+drc	drc-issue593-rules	0.013	0.001
+drc	drc-issue593-ses	0.029	0.000
+drc	drc-issue753-cpu85	0.126	0.001
+drc	drc-issue110-relay	0.014	0.001
+drc	drc-tutorial-board	0.848	0.004
