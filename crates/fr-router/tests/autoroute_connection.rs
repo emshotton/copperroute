@@ -528,21 +528,66 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
+/// The rows where this port **deliberately** disagrees with the jar, as `(mode, row, jvm, rust)`.
+///
+/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
+/// port answers is recorded here instead, so the jar's number and the port's sit side by side and
+/// a reviewer can see both.
+///
+/// Plan 9 Task 6, quirk #168. `DrillPage.getDrills` used to throw on a cancelled `splitToConvex`
+/// (`:108` dereferencing the null `drillShapes`), which ended the connection right there; the fix
+/// installs the drill list only after the split succeeds, so a cancelled page answers "no drills"
+/// and the connection **continues** — and reaches one more of ruling 6's six stop-check sites
+/// before it ends. Hence `stopCalls` one higher, on exactly the four of nine regime/limit blocks
+/// whose stop trips inside a drill page.
+///
+/// What the test is named for does not move: `:207-213`'s degraded FAILED, the board dumps and
+/// the item lists are byte-identical on all 100 rows. Only these four counters differ, and only
+/// by one.
+const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
+    ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
+    ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
+    ("stopafter", 77, "  stopCalls=9", "  stopCalls=10"),
+    ("stopafter", 88, "  stopCalls=13", "  stopCalls=14"),
+];
+
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
 /// than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
     let expected = t16_section(mode);
     let mut diffs = Vec::new();
+    let mut accounted = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual
             .get(i)
             .map(|row| row.trim_end())
             .unwrap_or("<missing>");
-        if want != got {
-            diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+        if want == got {
+            continue;
         }
+        // A row this plan has deliberately moved away from the jar still has to match the jar on
+        // the left and the port on the right — a divergence that drifts is a new difference, not
+        // a known one.
+        if KNOWN_DIVERGENCES
+            .iter()
+            .any(|(m, row, jvm, rust)| *m == mode && *row == i && *jvm == want && *rust == got)
+        {
+            accounted += 1;
+            continue;
+        }
+        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
+    let declared = KNOWN_DIVERGENCES
+        .iter()
+        .filter(|(m, ..)| *m == mode)
+        .count();
+    assert_eq!(
+        accounted, declared,
+        "mode `{mode}` declares {declared} known divergence(s) from the jar but only {accounted} \
+         of them still differ — a divergence that has healed must be deleted from \
+         KNOWN_DIVERGENCES, not left to rot"
+    );
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",

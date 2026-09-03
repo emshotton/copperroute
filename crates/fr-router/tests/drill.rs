@@ -599,7 +599,9 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
     assert_eq!(page.get_id(), -29_759_998);
 }
 
-/// Probe mode 6, verbatim:
+/// Quirk #168, inverted — the probe's mode 6 is what the fix deletes.
+///
+/// Mode 6 on the HEAD jar reads, verbatim:
 ///
 /// ```text
 /// threw java.lang.NullPointerException
@@ -611,39 +613,55 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
 /// This is ruling 6's sixth and last cancellation site: `:103` passes
 /// `autorouteEngine.stoppableThread` — the raw flag, **not** `isStopRequested()`, so the time
 /// limit is not consulted here — to `PolylineArea.splitToConvex`, which returns `null` when the
-/// flag trips (PolylineArea.java:189-191). `:108` then dereferences `drillShapes.length` with no
-/// null check and throws.
+/// flag trips (PolylineArea.java:189-191). `:108` then dereferenced `drillShapes.length` with no
+/// null check and threw.
 ///
-/// The damage outlives the throw, which is quirk #168: `:65-66` has already written the new net
-/// number and installed a **fresh empty** `drills` list, so the memo now says "this page has no
-/// drills on net 1" and `:64`'s guard sends every later call straight past the recomputation.
+/// The damage outlived the throw, and that is the half worth fixing: `:65-66` had already written
+/// the new net number and installed a **fresh empty** `drills` list, so the memo said "this page
+/// has no drills on net 1" and `:64`'s guard sent every later call straight past the
+/// recomputation. **A page interrupted once answered "no drills here" for the rest of the
+/// connection**, silently removing every via candidate on it — the third line above is that, and
+/// note it is measured with the stop flag already *cleared*.
+///
+/// Task 6 installs the list only after the split succeeds. The three lines above become: no
+/// throw, the page untouched, and a second call that recomputes and finds all thirteen.
 #[test]
-fn split_to_convex_stops_when_the_stop_check_trips() {
+fn a_stopped_split_does_not_memoise_an_empty_page() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = engine_on(&mut board, 1);
     let mut page = component_page(&board);
 
-    let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        page.get_drills(&mut engine, &mut board, false, ALWAYS)
-    }));
-    let payload = caught.expect_err("Java throws a NullPointerException at DrillPage.java:108");
-    let message = payload
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| payload.downcast_ref::<&str>().copied())
-        .unwrap_or("");
+    // A page that has never been computed, so there is a memo to protect.
+    assert_eq!(page.drills(), None);
+    let before = page.net_number();
+
+    // `ALWAYS` trips `:103`'s raw stop flag, which is what makes `splitToConvex` answer null.
+    let cancelled = page.get_drills(&mut engine, &mut board, false, ALWAYS);
     assert!(
-        message.contains("DrillPage.java:108"),
-        "the panic must name Java's throw site, got {message:?}"
+        cancelled.is_empty(),
+        "a cancelled page has no drills to report"
     );
 
-    // The page is left memoised as empty on the new net, and the next call trusts the memo.
-    assert_eq!(page.net_number(), 1);
-    assert_eq!(page.drills(), Some(&[][..]));
-    assert!(
-        page.get_drills(&mut engine, &mut board, false, NEVER)
-            .is_empty()
+    // The page is left exactly as it was — this is the whole fix. `drills` is still `None`, not
+    // `Some([])`, so `:64` cannot mistake it for a computed answer.
+    assert_eq!(
+        page.drills(),
+        None,
+        "`:65-66`'s writes are deferred past `:103`, so a cancelled split memoises nothing"
     );
+    assert_eq!(
+        page.net_number(),
+        before,
+        "the net number is written with the list, not before the work"
+    );
+
+    // And the recomputation the memo used to suppress now happens, with the flag cleared.
+    assert_eq!(
+        page.get_drills(&mut engine, &mut board, false, NEVER).len(),
+        13,
+        "the page recomputes instead of answering the memo — mode 2's count"
+    );
+    assert_eq!(page.net_number(), 1);
 }
 
 // =================================================================================================
