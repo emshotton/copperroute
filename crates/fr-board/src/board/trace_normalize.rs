@@ -432,8 +432,9 @@ impl Board {
     /// `BasicBoard.removeIfCycle` -> [`Board::connection_items`], whose walk along the contacts
     /// has no visited set and circles a closed connection for ever (quirk #106).
     //
-    // fixed: T5 (#76) — by the two fixes above and in `connectivity.rs`, in that order and with
-    // that division of labour. Measured: #71's re-read fix alone changes **nothing** on the
+    // fixed: T5 (#76) — by two fixes in two files, in this order: #71's, in `split_trace_checked`
+    // below, and then #106's, in `connectivity.rs`'s `connection_items_checked`. The division of
+    // labour between them is not even. Measured: #71's re-read fix alone changes **nothing** on the
     // four-rung ladder (identical step counts, timings and surviving traces at budgets of 500,
     // 50 000 and 5 000 000, with the fix and without it), because the walk never reaches its
     // second re-read; adding #106's visited set makes the same call return in **80** stop-check

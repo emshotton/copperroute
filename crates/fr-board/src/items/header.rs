@@ -257,7 +257,7 @@ impl ItemHeader {
     // returned for every `netNumber <= 0`, so that branch is dead code and a negative argument
     // is silently a no-op. Reproduced; see docs/java-quirks.md.
     //
-    // fixed: T5 (#45b) — for an item that already has more than one net number, Java warns
+    // fixed: T5 (#45), defect (b) — for an item that already has more than one net number, Java warns
     // ("unexpected netCount > 1", Item.java:975-977) and then *overwrites only element 0*
     // (Item.java:978), leaving the other net numbers in place, so the item ends up on
     // `net_number` **plus** whatever it was on before. The register's fix is "either replace the
@@ -290,7 +290,7 @@ impl ItemHeader {
 
     /// Port of `Item.removeFromNet` (Item.java:888-915): removes `net_number` from the net
     /// number array, returning false (Java: `false`) if it was not there.
-    ///
+    //
     // fixed: T5 (#45) — Java's search loop has no `break` (Item.java:894-898), so with a
     // duplicated net number it removes the **last** occurrence rather than the first: the loop
     // keeps overwriting the found index. The register's fix is "add the missing `break`", which
@@ -525,7 +525,8 @@ mod tests {
         assert_eq!(h.net_nos, vec![3]);
     }
 
-    /// **fixed: T5 (#45b).** Was `assign_net_no_on_an_item_with_two_nets_replaces_only_the_first`,
+    /// **fixed: T5 (#45), defect (b).** Was
+    /// `assign_net_no_on_an_item_with_two_nets_replaces_only_the_first`,
     /// which asserted `[3, 2]`: Java's `netCount > 1` branch warns ("unexpected netCount > 1",
     /// Item.java:975-977) and falls straight through to `netNumbers[0] = netNumber`
     /// (Item.java:978), so the item ends up on the new net **plus** whatever it was on before.

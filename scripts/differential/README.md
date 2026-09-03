@@ -1975,7 +1975,10 @@ the driver expects, or none at all.
   count here, it does not fold traces together). Also re-verified that this
   sweep does not regress `p2t10` (all 9 modes), `p2t11` (all 11 modes
   reached by the differential driver — mode 11's one documented divergence
-  unchanged) or `p2t13` (mode 0).
+  unchanged) or `p2t13` (mode 0). **Two `p2t11` modes carry a documented
+  divergence at HEAD** and neither is this driver's doing: mode 11's
+  `treeArraysEqual` (Task 12) and, since Plan 9 Task 5, mode 6's `nets(4)`
+  (quirk #211 — see the expected-diffs table).
 
 - `p3t2 <count> <seed> <mode>` — Java number formatting (Plan 3 Task 2), the
   randomised counterpart of `crates/fr-dsn/tests/number_format.rs`. One line
@@ -2997,7 +3000,7 @@ pinned `tools/freerouting-2.3.0.jar`, not the clone's HEAD build (ruling 10).
 | `p2t11` (mode 3) | 41 | 0 | exact match (changed area, conduction latch, `moveBy`, the cold shape cache, net queries) |
 | `p2t11` (mode 4) | 20 | 0 | exact match (host-CAD section width, clearance compensation, 90-degree checks) |
 | `p2t11` (mode 5) | 31 | 0 | exact match (`ShapeTraceEntries`, `ShapeEntrySide`, `ShapeAndEntrySide`) |
-| `p2t11` (mode 6) | 24 | 0 | exact match (cycles/overlaps, `removeIfCycle`, the remaining inserters) |
+| `p2t11` (mode 6) | 28 | 1 | `nets(4)` only — **expected**, and authorized by `docs/java-quirks.md` row **#211** (`fixed: T5`). Java `nets(4)=[]`, port `nets(4)=[2]`. `RoutingBoard.reduceNetsOfRouteItems`' trace arm breaks *outside* its net loop (`:1341`) where the via arm's breaks inside it (`:1310`), so one Java visit strips **every** unsupported net from a route item and drives a two-net trace to zero nets — a state `:1296`'s `netNumbers.length <= 1` guard exists to prevent and never gets to re-consult. Plan 9 Task 5 gave the trace arm the via arm's placement, so a visit removes one net and the restart re-tests the guard: net 1 goes, net 2 stands. Every other line of the mode — cycles/overlaps, `removeIfCycle`, `nets(5)=[2]`, the remaining inserters — matches. Ablation: **0 diff lines with pre-T5 sources**, this one line with them. Never "fixed" by changing the port. |
 | `p2t11` (mode 7) | 35 | 0 | exact match (`PolylineTrace.combine`, both halves, both orders, every refusal) |
 | `p2t11` (mode 8) | 49 | 0 | exact match (`split(IntOctagon)`, `change`, `normalize`, quirk #22 out of `combineAtStart`, and quirk #74's value-equal-but-fresh `change`) |
 | `p2t11` (mode 9) | 35 | 0 | exact match (`combineTraces`/`normalizeTraces`/`normalizeAllTraces`/`splitTraces` and the five callers that end in one of them) |
@@ -3299,7 +3302,9 @@ differential driver reaches) and `p2t13` (mode 0) alongside this sweep
 confirms Task 15 did not regress any earlier driver; `p2t11` mode 11's one
 pre-existing, documented `treeArraysEqual` divergence (the
 tree-rebuild-vs-clone question, see the `p2t11` section above) is
-unchanged.
+unchanged. Mode 6's `nets(4)` divergence is **not** one of Task 15's: it
+arrived with Plan 9 Task 5's quirk-#211 fix and is pinned in the
+expected-diffs table.
 
 Coverage this driver deliberately does not claim (a reviewer's finding,
 recorded here so it is not mistaken for a gap that slipped through): the

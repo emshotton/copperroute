@@ -1280,6 +1280,17 @@ fn the_via_net_number_fixture_routes_instead_of_hanging() {
         "the port must route the jar's hang fixture: {stderr}"
     );
 
+    // The literal is kept rather than derived — it is the regression pin, and a test that
+    // computed it would assert nothing. **How to re-derive it** (Plan 9 Task 5's review, SF5):
+    //
+    //   cargo build --release -p freerouting
+    //   ./target/release/freerouting -de crates/fr-dsn/tests/data/p8t13-via-net-numbers.dsn \
+    //       -do /tmp/via.ses && wc -c /tmp/via.ses
+    //
+    // and the `2 024` beside it the same way with `read_via_scope`'s `// fixed: T5 (#105)` loop
+    // reverted to writing slot 0. Neither number is a jar number: the jar never finishes this
+    // file. The rows below are the second half of the derivation — they say *what* those bytes
+    // are, so a future change that moves the count has to move a named row with it.
     let bytes = std::fs::read(&ses).expect("the run must write a .ses");
     assert_eq!(
         bytes.len(),

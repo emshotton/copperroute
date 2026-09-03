@@ -1594,20 +1594,31 @@ fn overlapping_tree_entries_returns_a_fresh_collection() {
          appended to the first call's"
     );
 
-    // And the caller's own collection is untouched: Java's signature makes
-    // `overlappingTreeEntries(shape, layer, mine)` grow `mine`; here there is no such parameter,
-    // so the only way to accumulate is for the caller to ask for it.
-    let mut mine: Vec<_> = Vec::new();
-    let third = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
-    assert!(
-        mine.is_empty(),
-        "the call cannot reach a collection the caller did not hand it"
-    );
-    mine.extend(third);
+    // The **observable** half, and the one that is not vacuous: mutate the vector the call handed
+    // back, then call again. Java's `overlappingTreeEntries(shape, layer, mine)` writes into a
+    // collection the caller owns and keeps handing back, which is exactly how `split`'s walk ends
+    // up re-reading its own retired entries; if this answer aliased anything the tree owns, or if
+    // the tree remembered it, the damage below would show up in the next call.
+    let mut mutated = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
+    let stolen = mutated[0];
+    mutated.clear();
+    mutated.extend(std::iter::repeat_n(stolen, 99));
+    let after = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
     assert_eq!(
-        mine.len(),
-        first.len(),
-        "one call's worth of entries is one call's worth"
+        after, first,
+        "clearing one answer and stuffing it with 99 copies of one entry must not reach the tree \
+         or any later call"
+    );
+
+    // And the consumer's half, end to end: `split_trace` re-reads this query after every found
+    // trace it splits, and with Java's appending collection each re-read left the retired entries
+    // in front of the fresh ones. The ladder tests below are what measure that; here it is enough
+    // that a walk over two successive answers sees each entry once per answer and not twice.
+    let walked: usize = [&first, &second].iter().map(|e| e.len()).sum();
+    assert_eq!(
+        walked,
+        2 * first.len(),
+        "two reads are two reads' worth of entries, not one read's plus a growing list"
     );
 }
 
