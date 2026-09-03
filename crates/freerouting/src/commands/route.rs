@@ -337,7 +337,7 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         // the CLI must not, because `tests/reference/cli-*` compares two whole programs and the
         // jar cannot switch its own (javac-inlined) budget off either. See
         // `scripts/gen-cli-reference.sh`'s header.
-        budget: fr_core::RouterBudget::default(),
+        budget: harness_budget(),
     };
     // ── 12b. **quirk #289 (label T)**: the board `-do out.json` actually writes ───────────────
     //
@@ -805,4 +805,48 @@ fn result_json_path(job: &RoutingJob, args: &RouteArgs) -> Option<String> {
             .as_deref()
             .map(|path| path.to_string_lossy().into_owned())
     })
+}
+
+/// The router's wall-clock budget for this run: **Java's four literals**, unless the harness
+/// variable `FR_ROUTER_BUDGET` says otherwise.
+///
+/// # Why a knob exists at all
+///
+/// Ruling AI's rule is that *time is out of every quality measurement*: a wall-clock budget makes
+/// the answer depend on how fast the machine is, so a comparison taken with the clock live is a
+/// comparison of two machines as much as of two programs. Every parity driver therefore runs
+/// [`fr_router::pipeline::RouterBudget::disabled`], and Plan 9's per-task quality A/B
+/// (`scripts/quality-ab.sh`) must do the same — but that harness drives **the CLI**, as a whole
+/// program, because that is what its 29 stems are references of.
+///
+/// # Why it is an environment variable and not a flag
+///
+/// A `--router.budget` flag would be a *user-visible setting the Java program does not have*, and
+/// the settings surface is a wire contract several Plan 9 tasks are busy making predictable. An
+/// environment variable read at exactly one site is not part of that surface: it cannot be set by
+/// a settings file, it cannot be merged, it does not appear in the manifest's
+/// `settings_snapshot`, and `EnvironmentVariablesSource` cannot see it (that source reads only
+/// `FREEROUTING__ROUTER__*`, `settings/sources/EnvironmentVariablesSource.java:59-61`, and this
+/// name deliberately does not start with that prefix).
+///
+/// # What it does not change
+///
+/// **Unset — the case every user, every test and every committed golden is in — this is exactly
+/// `RouterBudget::default()`**, i.e. the four Java literals, and the CLI behaves as it did before
+/// the knob existed. An unrecognised value is a hard error rather than a silent fallback: a
+/// harness that thinks it disabled the clock and did not would produce numbers nobody could
+/// trust, and that is worse than a stopped run.
+fn harness_budget() -> fr_core::RouterBudget {
+    match std::env::var("FR_ROUTER_BUDGET").as_deref() {
+        Err(_) | Ok("") | Ok("default") => fr_core::RouterBudget::default(),
+        Ok("disabled") => fr_core::RouterBudget::disabled(),
+        Ok(other) => {
+            eprintln!(
+                "FR_ROUTER_BUDGET={other:?} is not a budget; use `default` (Java's four \
+                 literals) or `disabled` (ruling AI's every-clock-off, what the parity drivers \
+                 and scripts/quality-ab.sh run)"
+            );
+            std::process::exit(2);
+        }
+    }
 }

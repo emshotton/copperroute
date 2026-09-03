@@ -57,13 +57,32 @@
 # `cli-<stem>/route.ses == <stem>/batch.ses` and records the verdict in `meta.txt`. A mismatch is
 # a **failure**, not a note: it means either the jar's answer moved or the argv drifted.
 #
+# ## Two lanes (Plan 9 Task 0)
+#
+#   --jar         `java -jar <jar> -de … -do …`. The historical lane and still the **default**.
+#                 It cut the frozen baseline (`tests/reference-frozen/`, Task 1) and it is the
+#                 triage lane for a port-cut golden nobody can explain.
+#   --from-port   `target/release/freerouting` with **the same argv**. This is the whole lane
+#                 switch: what `p8t1` compares is two whole programs on one command line, so
+#                 cutting the reference from the port is a one-word substitution — the argv, the
+#                 `-mp` cap, the two runs per stem and the `batch.ses` cross-check are unchanged.
+#
+# Byte parity with the jar may break from Plan 9 on, and that is the point; the `--jar` lane is a
+# diagnosis, not a gate. **The `batch.ses` cross-check keeps its meaning in both lanes and stays a
+# failure**: within a lane the two generators must still agree, and a lane switch that broke that
+# agreement would mean the two families had drifted apart rather than moved together.
+#
 # ## Usage
 #
-#   scripts/gen-cli-reference.sh [stem ...]          generate all stems, or just the named
+#   scripts/gen-cli-reference.sh [--jar] [stem ...]   generate all stems, or just the named
 #   scripts/gen-cli-reference.sh --force [stem ...]  regenerate even where outputs exist (without
 #                                                    it the run is resumable: a stem whose
 #                                                    route.ses and route.exit are both present is
 #                                                    skipped)
+#   scripts/gen-cli-reference.sh --from-port [--task T<n>] [stem ...]
+#                                                    the same, driven by the port; meta.txt then
+#                                                    carries the port's git sha, the Plan 9 task
+#                                                    at that sha and the RouterBudget in force
 #   scripts/gen-cli-reference.sh --meta-only [stem ...]
 #                                                    rewrite meta.txt from the existing outputs
 #   scripts/gen-cli-reference.sh --verify-hash-modes [stem ...]
@@ -74,7 +93,10 @@
 #
 # ## Environment
 #
-# FREEROUTING_JAVA_DIR (default ../freerouting), FREEROUTING_JAR, JAVA, CLI_HASH_MODE, CLI_TIMEOUT.
+# FREEROUTING_JAVA_DIR (default ../freerouting), FREEROUTING_JAR, JAVA, CLI_HASH_MODE, CLI_TIMEOUT,
+# PLAN9_TASK, REFERENCE_OUT_ROOT (default tests/reference — point it at a scratch tree to generate
+# without touching the committed references; the fixture tables and the `batch.ses` cross-check
+# are always read from tests/reference).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -83,6 +105,9 @@ JAR="${FREEROUTING_JAR:-$JAVA_DIR/build/libs/freerouting-current-executable.jar}
 JAVA_BIN="${JAVA:-/opt/homebrew/opt/openjdk@25/bin/java}"
 REF="$ROOT/tests/reference"
 FIXTURES="$REF/cli-fixtures.txt"
+# Outputs may be redirected to a scratch tree; inputs and the cross-check never are.
+OUT_ROOT="${REFERENCE_OUT_ROOT:-$REF}"
+PORT_BIN="$ROOT/target/release/freerouting"
 
 # `-XX:hashCode=2`, `gen-batch-reference.sh`'s constant-hash mode and the same argument for it:
 # the router's own containers are `TreeSet`/`TreeMap`/`LinkedHashMap` throughout (plan-6 ruling 4),
@@ -94,31 +119,51 @@ LOCALE_FLAGS=(-Djava.awt.headless=true -Duser.language=en -Duser.country=US)
 
 MODE=generate
 FORCE=0
+LANE=jar
+TASK="${PLAN9_TASK:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --verify-hash-modes) MODE=sweep; shift ;;
     --meta-only) MODE=meta; shift ;;
     --force) FORCE=1; shift ;;
+    --jar) LANE=jar; shift ;;
+    --from-port) LANE=port; shift ;;
+    --task) TASK="${2:?--task needs a task id, e.g. T1}"; shift 2 ;;
+    --task=*) TASK="${1#--task=}"; shift ;;
     --*) echo "error: unknown option $1" >&2; exit 1 ;;
     *) break ;;
   esac
 done
 WANTED=("$@")
+if [[ "$LANE" == port && "$MODE" == sweep ]]; then
+  echo "error: --verify-hash-modes is a JVM sweep and has no meaning in --from-port mode" >&2
+  exit 1
+fi
 
 # --- preflight -----------------------------------------------------------------------------------
-if [[ ! -f "$JAR" ]]; then
-  echo "error: HEAD jar not found at $JAR" >&2
-  echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
-  exit 1
-fi
-if [[ ! -x "$JAVA_BIN" ]]; then
-  echo "error: java not found at $JAVA_BIN (need JDK >= 25; set JAVA)" >&2
-  exit 1
-fi
-ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
-if [[ "${ver:-0}" -lt 25 ]]; then
-  echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
-  exit 1
+if [[ "$LANE" == jar ]]; then
+  if [[ ! -f "$JAR" ]]; then
+    echo "error: HEAD jar not found at $JAR" >&2
+    echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
+    exit 1
+  fi
+  if [[ ! -x "$JAVA_BIN" ]]; then
+    echo "error: java not found at $JAVA_BIN (need JDK >= 25; set JAVA)" >&2
+    exit 1
+  fi
+  ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
+  if [[ "${ver:-0}" -lt 25 ]]; then
+    echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
+    exit 1
+  fi
+else
+  echo "== building the port's binary (release)"
+  (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+  PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+  PORT_DIRTY=""
+  if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
+    PORT_DIRTY=" +uncommitted-changes-under-crates"
+  fi
 fi
 if [[ ! -f "$FIXTURES" ]]; then
   echo "error: $FIXTURES not found" >&2
@@ -190,9 +235,13 @@ run_jar() {
   # `< /dev/null`, and it is load-bearing: `each_row` drives the fixture table through a
   # `while read` loop whose stdin is the file, and a JVM that reads stdin eats the rest of the
   # table. Measured — the first invocation without it swallowed every row after `tutorial_board`.
-  "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
-      -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
-      -jar "$JAR" "$@" > "$log" 2>&1 < /dev/null
+  if [[ "$LANE" == port ]]; then
+    "${TIMEOUT[@]}" "$PORT_BIN" "$@" > "$log" 2>&1 < /dev/null
+  else
+    "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
+        -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
+        -jar "$JAR" "$@" > "$log" 2>&1 < /dev/null
+  fi
 }
 
 # The jar's stdout and stderr, separately, so `route.log` can carry them in that order. The jar
@@ -201,9 +250,13 @@ run_jar() {
 run_jar_split() {
   local out="$1" err="$2" hash="$3"
   shift 3
-  "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
-      -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
-      -jar "$JAR" "$@" > "$out" 2> "$err" < /dev/null
+  if [[ "$LANE" == port ]]; then
+    "${TIMEOUT[@]}" "$PORT_BIN" "$@" > "$out" 2> "$err" < /dev/null
+  else
+    "${TIMEOUT[@]}" "$JAVA_BIN" "${LOCALE_FLAGS[@]}" \
+        -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$hash" \
+        -jar "$JAR" "$@" > "$out" 2> "$err" < /dev/null
+  fi
 }
 
 # Make a log committable: replace every machine-specific prefix, exactly as `portable` does for
@@ -219,22 +272,46 @@ commit_log() {
 # The `|| true` is not decoration: without it the `[[ -f … ]]` answers 1 for a stem with no batch
 # reference, `batch="$(batch_dir_of …)"` inherits that status, and `set -e` kills the script
 # mid-table — which is exactly what the first full run did, silently, after `tutorial_board`.
+# `parity::normalize_ses_head_tokens`, in `sed`: the four `(head …)`-vs-`(specctra …)` spellings
+# `io/specctra/parser/Parser.java:102-135` differs on between the clone's HEAD and the 2.3.0 jar.
+# Kept to those four and anchored to the token's own opening paren, so it can only ever rewrite a
+# head token and never a net name or a component id.
+ses_equal_mod_head_tokens() {
+  local norm='s/(hostCad /(host_cad /; s/(hostVersion /(host_version /; s/(stringQuote /(string_quote /; s/(writeResolution /(write_resolution /'
+  diff -q <(sed "$norm" "$1") <(sed "$norm" "$2") > /dev/null
+}
+
 batch_ses_of() {
   local stem="$1"
   { [[ -f "$REF/$stem/batch.ses" ]] && printf '%s' "$REF/$stem/batch.ses"; } || true
 }
 
 write_meta() {
-  local stem="$1" dsn="$2" extra="$3" lane="$4" out="$REF/cli-$1"
+  local stem="$1" dsn="$2" extra="$3" lane="$4" out="$OUT_ROOT/cli-$1"
   build_argv "<OUT>/route.ses" "$dsn" "$extra"
   {
-    echo "jar          $(portable "$JAR")"
-    echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
-    echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
-    echo "jar revision $(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null \
-        | tr -d '\r' | sed -n 's/^Build-Revision: *//p' | head -1)"
-    echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
-    echo "hash mode    -XX:hashCode=$HASH_MODE"
+    if [[ "$LANE" == port ]]; then
+      # The three provenance lines a port-cut golden carries (Plan 9 Task 0). A golden cut before
+      # a later fix must be *loudly* invalid, and this is what makes it so.
+      echo "generated by port (target/release/freerouting)"
+      echo "port sha     ${PORT_SHA}${PORT_DIRTY}"
+      if [[ -n "$TASK" ]]; then
+        echo "plan 9 task  $TASK"
+      else
+        echo "plan 9 task  UNKNOWN — this golden names no task and is therefore INVALID as a"
+        echo "             reference; re-cut it with --task T<n>. See this script's header."
+      fi
+      echo "java         n/a (no JVM runs in this lane)"
+      echo "hash mode    n/a (the port has no Object.hashCode)"
+    else
+      echo "jar          $(portable "$JAR")"
+      echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
+      echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
+      echo "jar revision $(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null \
+          | tr -d '\r' | sed -n 's/^Build-Revision: *//p' | head -1)"
+      echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
+      echo "hash mode    -XX:hashCode=$HASH_MODE"
+    fi
     echo "lane         $lane"
     echo "budget       LIVE ON BOTH SIDES. Unlike scripts/gen-batch-reference.sh, this generator"
     echo "             needs no probe and disables nothing: what p8t1 compares is two whole"
@@ -243,10 +320,16 @@ write_meta() {
     echo "             gets. See this script's header for the full argument and for the risk"
     echo "             (a live wall clock is a machine-speed dependency) the batch.ses"
     echo "             cross-check below bounds."
-    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar> %s\n' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "${ARGV[*]}")"
-    printf 'manifest cmd java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar> %s --router.result_json=<OUT>/manifest.json\n' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "${ARGV[*]}")"
+    if [[ "$LANE" == port ]]; then
+      printf 'command      freerouting %s\n' "$(portable "${ARGV[*]}")"
+      printf 'manifest cmd freerouting %s --router.result_json=<OUT>/manifest.json\n' \
+          "$(portable "${ARGV[*]}")"
+    else
+      printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar> %s\n' \
+          "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "${ARGV[*]}")"
+      printf 'manifest cmd java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar> %s --router.result_json=<OUT>/manifest.json\n' \
+          "${LOCALE_FLAGS[*]}" "$HASH_MODE" "$(portable "${ARGV[*]}")"
+    fi
     echo "exit code    $(cat "$out/route.exit")"
     echo "ses bytes    $(wc -c < "$out/route.ses" | tr -d ' ')"
     echo "ses sha256   $(shasum -a 256 < "$out/route.ses" | cut -d' ' -f1)"
@@ -255,6 +338,18 @@ write_meta() {
     if [[ -n "$batch" ]]; then
       if cmp -s "$out/route.ses" "$batch"; then
         echo "batch cross-check  identical to tests/reference/$stem/batch.ses"
+      elif ses_equal_mod_head_tokens "$out/route.ses" "$batch"; then
+        # Quirk #92: HEAD's writer spells four `(session (base_design …))` head tokens in
+        # camelCase and the port's writes 2.3.0's snake_case, which survey §9.1 keeps as a
+        # *decision* (HEAD's own lexer cannot read HEAD's own output back). Every port-vs-jar SES
+        # comparison in the tree runs through `parity::normalize_ses_head_tokens` for that reason,
+        # and this cross-check does the same. It is only ever reached while the two families sit
+        # in **different** lanes — a port-cut `route.ses` against a jar-cut `batch.ses` — which is
+        # exactly the state between Plan 9 Task 0 and the Task 1 regeneration. Once both are
+        # port-cut the normalisation is a no-op and the plain `cmp` above answers first.
+        echo "batch cross-check  identical to tests/reference/$stem/batch.ses after quirk-#92"
+        echo "                   head-token normalisation (this lane is $LANE and that reference"
+        echo "                   was cut in the other one)"
       else
         echo "batch cross-check  **DIFFERS** from tests/reference/$stem/batch.ses — FAILURE"
         echo "                   $(cmp "$out/route.ses" "$batch" 2>&1 | head -1 || true)"
@@ -266,7 +361,7 @@ write_meta() {
 }
 
 generate_one() {
-  local stem="$1" dsn="$2" extra="$3" lane="$4" out="$REF/cli-$1"
+  local stem="$1" dsn="$2" extra="$3" lane="$4" out="$OUT_ROOT/cli-$1"
   mkdir -p "$out"
   if [[ "$FORCE" -eq 0 && -s "$out/route.ses" && -f "$out/route.exit" ]]; then
     echo "== cli-$stem (already generated; --force to redo)"
@@ -280,7 +375,7 @@ generate_one() {
   local exit_code=0
   run_jar_split "$jout" "$jerr" "$HASH_MODE" "${ARGV[@]}" || exit_code=$?
   if [[ ! -f "$ses" ]]; then
-    echo "   the jar wrote no SES for $stem (exit $exit_code); see $jout" >&2
+    echo "   the $LANE lane wrote no SES for $stem (exit $exit_code); see $jout" >&2
     STATUS=1
     return 0
   fi
@@ -295,7 +390,7 @@ generate_one() {
   run_jar "$SCRATCH/$stem.manifest.log" "$HASH_MODE" \
       "${ARGV[@]}" "--router.result_json=$manifest" || true
   if [[ ! -s "$manifest" ]]; then
-    echo "   the jar wrote no manifest for $stem; see $SCRATCH/$stem.manifest.log" >&2
+    echo "   the $LANE lane wrote no manifest for $stem; see $SCRATCH/$stem.manifest.log" >&2
     STATUS=1
     return 0
   fi
@@ -321,7 +416,7 @@ generate_one() {
 }
 
 meta_one() {
-  local stem="$1" dsn="$2" extra="$3" lane="$4" out="$REF/cli-$1"
+  local stem="$1" dsn="$2" extra="$3" lane="$4" out="$OUT_ROOT/cli-$1"
   echo "== cli-$stem"
   if [[ ! -s "$out/route.ses" ]]; then
     echo "   no route.ses to describe; run without --meta-only first" >&2

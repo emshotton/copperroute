@@ -1,0 +1,2 @@
+# The per-task G2 A/B tsvs (ruling BP15). See ../.gitkeep for what lives here and why it is
+# committed rather than gitignored like benchmark/results/.

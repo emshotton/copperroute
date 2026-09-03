@@ -2,6 +2,29 @@
 # Compile and run one Java-vs-Rust differential driver pair, then diff their
 # stdout. See README.md for what each driver covers, its default arguments,
 # and how the harness works.
+#
+# ## `--against-jar` — a triage tool, never a gate (Plan 9 Task 0)
+#
+# Plan 9 retires byte parity with the jar as the acceptance test: once the port's answer is
+# allowed to be *better* than freerouting's, a live jar diff turns red for every fix, and a
+# harness that is red by design is a harness nobody reads. Survey §7.3's converted drivers —
+# `p6t1`, `p7t9`, `p8t1`, `p8t2 e2e`, `p8t3 e2e` — therefore stop comparing against a running
+# jar and start comparing against the **committed port golden** in `tests/reference/`.
+#
+# `--against-jar` is the escape hatch that keeps the old comparison available for as long as a
+# jar is buildable. It is how a surprising golden churn gets triaged: "did the jar move, did the
+# port move, or did the reference?" is a question a live jar answers in one command, and it costs
+# nothing to keep. **It is not a gate.** No task's acceptance may cite it, no CI job may run it,
+# and a `DIFF` from it is a *finding to explain*, never a failure to fix — the port is expected to
+# diverge from the jar wherever Plan 9 has fixed something.
+#
+# **At Task 0 the flag is accepted and is a no-op**, because the conversion has not happened yet:
+# every driver here still runs the jar live, so "against the jar" is what the script already does.
+# The flag lands now so that the tasks that convert a driver have a name to put the old behaviour
+# behind, and so that no converted driver has to grow its own private spelling of it.
+#
+#   scripts/differential/run.sh --against-jar p6t1 [args...]
+#   scripts/differential/run.sh p6t1 --against-jar [args...]
 set -euo pipefail
 
 DIFF_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -29,7 +52,7 @@ BUILD="$DIFF_ROOT/build"
 OUT="$BUILD/classes"
 
 usage() {
-  echo "usage: $0 <driver> [args...]" >&2
+  echo "usage: $0 [--against-jar] <driver> [args...]" >&2
   echo "  drivers: t14, t15, t16r, e15, d17, p2t3, p2t3r, p2t10, p2t11, p2t13, p2t15, p3t2," >&2
   echo "           p3t3, p3t15, p4t1, p5t1, p5t2, p6t1, p6t2, p6t3, p7t3, p7t4," >&2
   echo "           p7t5, p7t6, p7t7, p7t8, p7t10, p7t1, p7t2, p7t9, p8t0, p8t1probe," >&2
@@ -38,6 +61,19 @@ usage() {
   echo "  own (e.g. iteration count, seed, mode) to override them entirely." >&2
   exit 1
 }
+
+# `--against-jar` may appear before the driver or anywhere in its argument list; it is stripped
+# out of both so no driver ever sees it. See the header for what it means and what it does not.
+AGAINST_JAR=0
+argv=()
+for token in "$@"; do
+  if [[ "$token" == "--against-jar" ]]; then
+    AGAINST_JAR=1
+  else
+    argv+=("$token")
+  fi
+done
+set -- ${argv+"${argv[@]}"}
 
 driver="${1:-}"
 [[ -n "$driver" ]] || usage
@@ -891,6 +927,12 @@ if [[ $# -gt 0 ]]; then
   args=("$@")
 else
   args=("${default_args[@]}")
+fi
+
+if [[ "$AGAINST_JAR" -eq 1 ]]; then
+  echo "== --against-jar: this run compares the port against a LIVE jar. It is a triage tool," >&2
+  echo "   never a gate (Plan 9 Task 0) — a DIFF here is a finding to explain, not a failure." >&2
+  echo "   At Task 0 the flag changes nothing: every driver still runs the jar live." >&2
 fi
 
 if [[ "$needs_jar_230" -eq 1 ]]; then

@@ -1,0 +1,47 @@
+# gate-version: g1
+# task: T0
+# The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
+# never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s
+# column and rewrites it in place at each task's close, in the same commit as
+# benchmark/baselines/ab/quality-ab-<task>.tsv.
+#
+# SEEDING, and why the per-stem numbers are measured rather than copied.
+# The plan seeds this file from the v1.0.0-rs run of record's per-board cpu_s. That
+# run is the port's measured pre-fix position and is the right provenance -- but its
+# 605 boards are the `pcbench` corpus (`pcbench-*`), and this file's 29 rows are the
+# `tests/reference/` stems. The two sets are disjoint: not one stem is a pcbench
+# board, so there is no per-stem number in that run to copy. The seed is therefore
+# Task 0's own median-of-3 measurement of the same binary generation (the branch's
+# base commit is what produced v1.0.0-rs), and the run of record is recorded here as
+# the corpus-level position every milestone's cpu ratio is taken against.
+# v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2
+#family	stem	cpu_s	cpu_spread_s
+batch	router-rpi-splitter	0.075	0.002
+batch	router-dac2020-bm01	15.241	0.049
+batch	router-j2-reference	0.326	0.003
+batch	router-tutorial-board	6.947	0.025
+batch	router-ecc83-input	0.029	0.002
+batch	router-fanout-bm11	5.653	0.027
+batch	router-strict-drc-cnh	11.406	0.468
+batch	router-empty-board	0.007	0.002
+cli	router-rpi-splitter	0.077	0.001
+cli	router-j2-reference	0.338	0.006
+cli	router-ecc83-input	0.028	0.002
+cli	router-empty-board	0.007	0.000
+cli	router-dac2020-bm01	15.642	0.513
+cli	router-tutorial-board	7.201	0.167
+cli	router-fanout-bm11	6.055	0.186
+cli	router-strict-drc-cnh	11.519	0.257
+cli	tutorial_board	7.064	0.196
+cli	Issue026-J2_reference	0.325	0.003
+cli	large-outline	5.029	0.038
+cli	kicad-ecc83-json	0.306	0.001
+cli	kicad-complex-hierarchy-json	2.754	0.028
+drc	drc-dev-board	0.046	0.005
+drc	drc-bbd-mars-64	0.055	0.001
+drc	drc-natural-tone-preamp	0.125	0.002
+drc	drc-issue593-rules	0.012	0.001
+drc	drc-issue593-ses	0.029	0.005
+drc	drc-issue753-cpu85	0.126	0.002
+drc	drc-issue110-relay	0.014	0.001
+drc	drc-tutorial-board	0.863	0.011

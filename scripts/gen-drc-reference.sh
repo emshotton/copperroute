@@ -28,8 +28,25 @@
 # `double` is re-rendered. `scripts/normalize-drc.py` is the Python twin used by
 # `--verify-hash-modes` only.
 #
+# ## Two lanes (Plan 9 Task 0)
+#
+#   --jar         the clone's HEAD jar, `java -jar <jar> -de … -drc <out>`. The historical lane
+#                 and still the **default**, so every invocation that predates Plan 9 means what
+#                 it meant before. It cut the frozen baseline (`tests/reference-frozen/`, Task 1)
+#                 and it is the triage lane for a port-cut golden nobody can explain.
+#   --from-port   `target/release/freerouting` with **the same argv**. `-drc` is the one mode
+#                 where the two programs take literally the same command line, so this lane is a
+#                 one-word substitution and nothing else about the run changes.
+#
+# Byte parity with the jar may break from Plan 9 on, and that is the point; the `--jar` lane is a
+# diagnosis, not a gate.
+#
 # Usage:
-#   scripts/gen-drc-reference.sh [stem ...]        regenerate all stems, or just the named ones
+#   scripts/gen-drc-reference.sh [--jar] [stem ...]  regenerate all stems, or just the named ones
+#   scripts/gen-drc-reference.sh --from-port [--task T<n>] [stem ...]
+#                                                  the same, driven by the port; drc.meta.txt then
+#                                                  carries the port's git sha, the Plan 9 task at
+#                                                  that sha and the RouterBudget in force
 #   scripts/gen-drc-reference.sh --meta-only [stem ...]
 #                                                  rewrite drc.meta.txt from the existing
 #                                                  drc.json without running the jar — for when
@@ -40,9 +57,13 @@
 #                                                  -XX:hashCode=0..4 into a scratch dir and
 #                                                  report how many distinct normalised documents
 #                                                  come out; writes nothing under
-#                                                  tests/reference/
+#                                                  tests/reference/  (`--jar` only: the port has
+#                                                  no `Object.hashCode` and no mode to sweep)
 #
-# Environment: FREEROUTING_JAVA_DIR (default ../freerouting), FREEROUTING_JAR, JAVA, DRC_HASH_MODE.
+# Environment: FREEROUTING_JAVA_DIR (default ../freerouting), FREEROUTING_JAR, JAVA, DRC_HASH_MODE,
+#              PLAN9_TASK, REFERENCE_OUT_ROOT (default tests/reference — point it at a scratch
+#              tree to generate without touching the committed references; the fixture table is
+#              always read from tests/reference).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -51,6 +72,9 @@ JAR="${FREEROUTING_JAR:-$JAVA_DIR/build/libs/freerouting-current-executable.jar}
 JAVA_BIN="${JAVA:-/opt/homebrew/opt/openjdk@25/bin/java}"
 REF="$ROOT/tests/reference"
 FIXTURES="$REF/drc-fixtures.txt"
+# Outputs may be redirected to a scratch tree; inputs never are.
+OUT_ROOT="${REFERENCE_OUT_ROOT:-$REF}"
+PORT_BIN="$ROOT/target/release/freerouting"
 
 # `-XX:hashCode=2` is the constant-hash mode: the only `Object.hashCode` source in the JVM that
 # reproduces run to run *and* is not derived from an object address. Modes 0 and 5 are PRNG-
@@ -66,23 +90,49 @@ HASH_MODE="${DRC_HASH_MODE:-2}"
 LOCALE_FLAGS=(-Djava.awt.headless=true -Duser.language=en -Duser.country=US)
 
 MODE=generate
-case "${1:-}" in
-  --verify-hash-modes) MODE=sweep; shift ;;
-  --meta-only) MODE=meta; shift ;;
-esac
+LANE=jar
+TASK="${PLAN9_TASK:-}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --verify-hash-modes) MODE=sweep; shift ;;
+    --meta-only) MODE=meta; shift ;;
+    --jar) LANE=jar; shift ;;
+    --from-port) LANE=port; shift ;;
+    --task) TASK="${2:?--task needs a task id, e.g. T1}"; shift 2 ;;
+    --task=*) TASK="${1#--task=}"; shift ;;
+    --*) echo "error: unknown option $1" >&2; exit 1 ;;
+    *) break ;;
+  esac
+done
 WANTED=("$@")
-
-# --- preflight ---------------------------------------------------------------------------------
-if [[ ! -f "$JAR" ]]; then
-  echo "error: HEAD jar not found at $JAR" >&2
-  echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
+if [[ "$LANE" == port && "$MODE" == sweep ]]; then
+  echo "error: --verify-hash-modes is a JVM sweep and has no meaning in --from-port mode" >&2
   exit 1
 fi
-ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
-if [[ "${ver:-0}" -lt 25 ]]; then
-  echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
-  echo "       then: export JAVA=/opt/homebrew/opt/openjdk@25/bin/java" >&2
-  exit 1
+
+# --- preflight ---------------------------------------------------------------------------------
+if [[ "$LANE" == jar ]]; then
+  if [[ ! -f "$JAR" ]]; then
+    echo "error: HEAD jar not found at $JAR" >&2
+    echo "       build it in the Java clone (./gradlew build) or set FREEROUTING_JAR" >&2
+    exit 1
+  fi
+  ver="$("$JAVA_BIN" -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')"
+  if [[ "${ver:-0}" -lt 25 ]]; then
+    echo "error: Java 25+ required (found ${ver:-none}). On macOS: brew install openjdk@25" >&2
+    echo "       then: export JAVA=/opt/homebrew/opt/openjdk@25/bin/java" >&2
+    exit 1
+  fi
+else
+  # The port's own binary, in release: a debug DRC over a wide board is minutes rather than
+  # seconds, and every consumer of these references runs the release build.
+  echo "== building the port's binary (release)"
+  (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+  PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+  PORT_DIRTY=""
+  if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
+    PORT_DIRTY=" +uncommitted-changes-under-crates"
+  fi
 fi
 
 # Fills the global ARGS array with the CLI argv for one row.
@@ -113,8 +163,16 @@ wanted() {
 run_drc() {
   local log="$1" mode="$2"
   shift 2
-  "$JAVA_BIN" "${LOCALE_FLAGS[@]}" -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
-      -jar "$JAR" "$@" > "$log" 2>&1
+  if [[ "$LANE" == port ]]; then
+    # The same argv, and only the program in front of it changes. `-drc` is the one mode where
+    # that substitution is the whole difference: no JVM flags to translate, no driver to compile,
+    # no `-Xmx`. `< /dev/null` for `run_jar`'s reason — `each_row` drives the fixture table
+    # through a `while read` whose stdin is the file.
+    "$PORT_BIN" "$@" > "$log" 2>&1 < /dev/null
+  else
+    "$JAVA_BIN" "${LOCALE_FLAGS[@]}" -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
+        -jar "$JAR" "$@" > "$log" 2>&1 < /dev/null
+  fi
 }
 
 # Machine-independent rendering of a path: the two prefixes that differ between checkouts become
@@ -126,18 +184,44 @@ portable() {
   printf '%s' "$p"
 }
 
+# The three provenance lines a **port-cut** golden carries (Plan 9 Task 0). A golden cut before a
+# later fix must be *loudly* invalid, and this is what makes it so: a reader who finds `task
+# UNKNOWN`, or a task number older than the fix they are chasing, knows the reference is stale
+# without re-deriving it.
+port_meta_lines() {
+  echo "lane         port"
+  echo "port sha     ${PORT_SHA}${PORT_DIRTY}"
+  if [[ -n "$TASK" ]]; then
+    echo "plan 9 task  $TASK"
+  else
+    echo "plan 9 task  UNKNOWN — this golden names no task and is therefore INVALID as a"
+    echo "             reference; re-cut it with --task T<n>. See this script's header."
+  fi
+  # The DRC path never constructs a `RouterBudget` — `-drc` reads a board and checks it — so the
+  # line says that rather than naming a budget that was not in force. It is written anyway, in the
+  # shape every other generator writes it, because what a reader checks is that the line is there.
+  echo "budget       n/a — the -drc path checks a board and never enters the router, so no"
+  echo "             RouterBudget is constructed on this path."
+}
+
 write_meta() {
   local out="$1"
   shift
   {
-    echo "jar          $(portable "$JAR")"
-    echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
-    echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
-    echo "jar version  $(grep -o 'Freerouting [0-9][^"]*' "$out/drc.json" | head -1)"
-    echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
-    echo "hash mode    -XX:hashCode=$HASH_MODE"
-    printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar>' \
-        "${LOCALE_FLAGS[*]}" "$HASH_MODE"
+    if [[ "$LANE" == port ]]; then
+      port_meta_lines
+      echo "version      $(grep -o 'Freerouting [0-9][^"]*' "$out/drc.json" | head -1)"
+      printf 'command      target/release/freerouting'
+    else
+      echo "jar          $(portable "$JAR")"
+      echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"
+      echo "jar mtime    $(date -r "$JAR" '+%Y-%m-%d %H:%M:%S %z')"
+      echo "jar version  $(grep -o 'Freerouting [0-9][^"]*' "$out/drc.json" | head -1)"
+      echo "java         $("$JAVA_BIN" -version 2>&1 | head -1)"
+      echo "hash mode    -XX:hashCode=$HASH_MODE"
+      printf 'command      java %s -XX:+UnlockExperimentalVMOptions -XX:hashCode=%s -jar <jar>' \
+          "${LOCALE_FLAGS[*]}" "$HASH_MODE"
+    fi
     local arg
     for arg in "$@"; do printf ' %s' "$(portable "$arg")"; done
     printf '\n'
@@ -154,14 +238,26 @@ each_row() {
   done < "$FIXTURES"
 }
 
+# The jar's document spells its keys `unconnectedItems` / `qualityScore`; the port's spells them
+# `unconnected_items` / `quality_score`, because the port writes 2.3.0's snake_case throughout
+# (quirk #92 — HEAD's camelCase writer produces files HEAD's own lexer cannot read back, and
+# survey §9.1 keeps the port's spelling as a decision). Both are read here so one summary line
+# serves both lanes; `parity::normalize_drc_json` is what reconciles them where it matters.
 report_counts() {
   python3 - "$1" <<'EOF'
 import collections, json, sys
 report = json.load(open(sys.argv[1], encoding="utf-8"))
-kinds = collections.Counter(v["type"] for v in report["violations"])
-print("   violations %d %s, unconnectedItems %d, qualityScore %r"
-      % (len(report["violations"]), dict(sorted(kinds.items())),
-         len(report["unconnectedItems"]), report.get("qualityScore")))
+def pick(*names):
+    for n in names:
+        if n in report:
+            return report[n]
+    return []
+violations = pick("violations")
+kinds = collections.Counter(v["type"] for v in violations)
+print("   violations %d %s, unconnected %d, qualityScore %r"
+      % (len(violations), dict(sorted(kinds.items())),
+         len(pick("unconnectedItems", "unconnected_items")),
+         pick("qualityScore", "quality_score") or None))
 EOF
 }
 
@@ -169,7 +265,7 @@ EOF
 STATUS=0
 
 generate_one() {
-  local stem="$1" out="$REF/$1" tmp
+  local stem="$1" out="$OUT_ROOT/$1" tmp
   mkdir -p "$out"
   tmp="$out/drc.json.tmp"
   echo "== $stem"
@@ -181,8 +277,10 @@ generate_one() {
   # its meta are untouched, together.
   rm -f "$tmp"
   drc_args "$2" "$3" "$4" "$tmp"
-  if ! run_drc "$out/java.log" "$HASH_MODE" "${ARGS[@]}" || [[ ! -s "$tmp" ]]; then
-    echo "   the jar failed for $stem; see $out/java.log (drc.json left untouched)" >&2
+  local runlog="java.log"
+  [[ "$LANE" == port ]] && runlog="port.log"
+  if ! run_drc "$out/$runlog" "$HASH_MODE" "${ARGS[@]}" || [[ ! -s "$tmp" ]]; then
+    echo "   the $LANE lane failed for $stem; see $out/$runlog (drc.json left untouched)" >&2
     rm -f "$tmp"
     STATUS=1
     return 0
@@ -196,7 +294,7 @@ generate_one() {
 }
 
 meta_one() {
-  local stem="$1" out="$REF/$1"
+  local stem="$1" out="$OUT_ROOT/$1"
   echo "== $stem"
   if [[ ! -f "$out/drc.json" ]]; then
     echo "   no drc.json to describe; run without --meta-only first" >&2
@@ -255,7 +353,7 @@ case "$MODE" in
     ;;
   generate)
     each_row generate_one
-    echo "done. DRC references in $REF"
+    echo "done. DRC references in $OUT_ROOT"
     ;;
 esac
 exit "$STATUS"
