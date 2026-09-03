@@ -1041,26 +1041,38 @@ fn the_necked_retry_fires_and_spends_item_ids() {
     );
 }
 
-/// **Quirk #208's pin**: `retryConnectionNecked` receives `route`'s own `TimeLimit`
+/// **Quirk #208's fix, pinned** (Plan 9 Task 1): the necked retry gets a **fresh** `TimeLimit`,
+/// not the one the failed first attempt already spent.
+///
+/// Java's `retryConnectionNecked` receives `route`'s own `TimeLimit`
 /// (`AutorouteConnectionRouter.java:171`) and hands it straight to the second `initAutoroute`
-/// (`:209`), so the retry's budget is what the *first* attempt left of it.
+/// (`:209`). `TimeLimit` keeps its construction instant and its limit as two never-reset fields
+/// (`datastructures/TimeLimit.java:8-15`), so the retry's budget is the original minus everything
+/// the first attempt spent — and the connections the retry exists for are exactly the ones where
+/// the first attempt ran long, so the remaining budget is smallest precisely where the retry is
+/// wanted.
 ///
 /// The observation point is the engine the call leaves behind — after a retry that fired, that is
 /// the **retry's** engine, and [`AutorouteEngine::time_limit`] is the budget it was initialised
 /// with. Java's limit for `ripupPassNo = 1` is `(int) min(100000 * 2^0, Integer.MAX_VALUE)` =
-/// 100 000 ms (`route:71-74`), which both branches share; the only thing that separates "reused"
-/// from "freshly minted" is **when the clock started**:
+/// 100 000 ms (`route:71-74`), and the fix does **not** change it: what separates the two shapes
+/// is only **when the clock started**.
 ///
-/// * reused -> the deadline is `t_call_start + 100 000 ms` plus the microseconds it takes to
-///   build an `AutorouteControl`;
-/// * fresh  -> the deadline is that **plus the whole duration of the failed first attempt**.
+/// * reused (the Java bug) -> the deadline is `t_call_start + 100 000 ms` plus the microseconds
+///   it takes to build an `AutorouteControl`;
+/// * fresh (the fix)       -> that **plus the whole duration of the failed first attempt**.
 ///
-/// So the assertion is that the deadline sits within 5 ms of `t_call_start + 100 000 ms`, and the
-/// test only makes it when the call itself took more than 50 ms — otherwise the first attempt is
-/// too cheap to tell the two apart and the test says so instead of pretending. A debug build of
-/// `rpi_splitter`'s second connection is comfortably past that bar.
+/// So the assertion is inverted from what it was before this task: the deadline must sit *at
+/// least* most of the connection's own duration past `t_call_start + 100 000 ms`. Measured
+/// RED/GREEN on `rpi_splitter`'s connection 2 at `neckWidthUm = 100`: **81 ms of a 96 ms call**.
+/// The test only makes the discriminating assertion when the call took more than 20 ms —
+/// otherwise the first attempt is too cheap to tell the two shapes apart, and it says so instead
+/// of pretending.
+///
+/// The budget itself is asserted unconditionally, because the fix must not quietly hand the retry
+/// a *different* limit: same `100000 * 2^(ripupPassNo - 1)`, new clock.
 #[test]
-fn the_necked_retry_reuses_the_exhausted_time_limit() {
+fn the_necked_retry_gets_a_fresh_time_limit() {
     if !parity::require_java_dir() {
         return;
     }
@@ -1076,7 +1088,8 @@ fn the_necked_retry_reuses_the_exhausted_time_limit() {
     assert_eq!(
         100_000,
         time_limit.limit_ms(),
-        "route:71-74 — 100000 * 2^(ripupPassNo - 1) at pass 1"
+        "route:71-74 — 100000 * 2^(ripupPassNo - 1) at pass 1. #208's fix changes the clock, \
+         never the budget"
     );
 
     if call_duration < Duration::from_millis(20) {
@@ -1094,10 +1107,10 @@ fn the_necked_retry_reuses_the_exhausted_time_limit() {
     let offset = deadline.duration_since(call_start);
     let slack = offset - Duration::from_millis(100_000);
     assert!(
-        slack < call_duration / 4,
-        "quirk #208: the retry's TimeLimit must be the one `route:74` built at the top of this \
-         connection — its deadline is {slack:?} past `call_start + 100 s`, while a fresh one \
-         minted at `:209` would be most of the connection's own {call_duration:?} past it"
+        slack > call_duration / 2,
+        "#208: the retry's TimeLimit must be minted at `:209`, not inherited from `route:74` — \
+         its deadline is only {slack:?} past `call_start + 100 s`, and the failed first attempt \
+         alone accounts for most of this connection's {call_duration:?}"
     );
 }
 

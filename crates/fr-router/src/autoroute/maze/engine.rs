@@ -1787,9 +1787,12 @@ struct RouteContext {
     route_start_set: BTreeSet<ItemId>,
     /// `routeDestSet` (`:64`/`:67`), likewise.
     route_dest_set: BTreeSet<ItemId>,
-    /// `timeLimit` (`:74`) — **the same object** `:81` and `:209` both pass to `initAutoroute`.
-    /// See [`retry_connection_necked`] for why that is a Java bug the port reproduces.
-    time_limit: TimeLimit,
+    // fixed: T1 (#208) — Java's `timeLimit` (`:74`) was carried here so the necked retry could be
+    // handed the same part-spent object `:81` already gave the first attempt. The retry now mints
+    // its own from [`connection_time_limit`], so there is nothing left to carry and the field is
+    // gone. This is the brief's "the parameter then disappears", in the shape the port has it:
+    // Java passes a `TimeLimit` argument to `retryConnectionNecked`, the port passed a
+    // `RouteContext` field, and both are the same aliasing.
     /// `maxItemIdBeforeRoute` (`:83`).
     max_item_id_before_route: ItemId,
     /// `strictDrcBoardSnapshot` (`:84-85`) — `isStrictDrc() ? board.serialize(false) : null`,
@@ -1810,6 +1813,28 @@ enum Steps1To5 {
         /// The locals `:95-153` read.
         context: Box<RouteContext>,
     },
+}
+
+/// `AutorouteConnectionRouter.route:71-74`'s per-connection budget:
+/// `(int) Math.min(100000 * Math.pow(2, ripupPassNo - 1), Integer.MAX_VALUE)` milliseconds, as a
+/// clock started **now**.
+///
+/// `Math.min` runs before the `(int)` cast, so the product saturates at `Integer.MAX_VALUE`
+/// rather than wrapping.
+///
+/// # Why this is a function and not two copies of an expression (#208)
+///
+/// It has two callers — the first attempt at `:76-82` and the necked retry at `:204-210` — and
+/// the whole of quirk #208 is that Java's second caller does not evaluate it. Naming the
+/// expression once is what makes "the retry gets the same **budget**, on a fresh **clock**" a
+/// property of the code rather than a claim in a comment: both callers get
+/// `100000 * 2^(ripupPassNo - 1)`, and neither can drift from the other.
+fn connection_time_limit(ripup_pass_no: i32) -> TimeLimit {
+    let max_milliseconds = java_min(
+        100_000.0 * f64::powf(2.0, f64::from(ripup_pass_no - 1)),
+        f64::from(i32::MAX),
+    );
+    TimeLimit::new(max_milliseconds as i32)
 }
 
 /// The body of [`route_connection`], i.e. `AutorouteConnectionRouter.route:36-90` inside its
@@ -1898,21 +1923,17 @@ fn route_connection_steps_1_to_5(
         (unconnected_set, connected_set)
     };
 
-    // :71-74. `Math.min` before the `(int)` cast, so the product saturates at `Integer.MAX_VALUE`
-    // rather than wrapping.
-    let max_milliseconds = java_min(
-        100_000.0 * f64::powf(2.0, f64::from(ripup_pass_no - 1)),
-        f64::from(i32::MAX),
-    );
-    let time_limit = TimeLimit::new(max_milliseconds as i32);
+    // :71-74, via [`connection_time_limit`] so that the necked retry can mint its own from the
+    // same expression rather than inheriting this one (#208).
+    let time_limit = connection_time_limit(ripup_pass_no);
 
     // :76-82. The write to `RoutingBoard.autorouteEngine` happens here, before the connection
     // runs, so it survives an unwind exactly as Java's field assignment survives a throw.
     //
-    // `time_limit` is `Copy`, and that is the port of Java's aliasing rather than a departure
-    // from it: `TimeLimit` is written only by its constructor and by `multiply`, which nothing on
-    // this path calls, so every holder of a copy reads the same `start` instant and the same
-    // limit. `:209` hands the retry the same value, which is the whole of quirk #208.
+    // This limit belongs to **this** attempt and travels no further. Java's `:209` hands the very
+    // same object to the necked retry, whose clock is therefore already part-spent (quirk #208);
+    // the port's retry calls [`connection_time_limit`] again instead — see
+    // [`retry_connection_necked`].
     *engine = Some(board.init_autoroute(
         engine.take(),
         net_no,
@@ -1957,7 +1978,6 @@ fn route_connection_steps_1_to_5(
             current_via_costs,
             route_start_set,
             route_dest_set,
-            time_limit,
             max_item_id_before_route,
             strict_drc_board_snapshot,
         }),
@@ -2196,20 +2216,31 @@ fn route_connection_steps_1_to_8(
 /// `:188-190` when no active layer is wider than the neck, and `:218-220` when the second attempt
 /// did not end `ROUTED`.
 ///
-/// # Java bug (quirk #208): the retry inherits the first attempt's exhausted budget
+/// # The retry's budget, and the Java bug it no longer inherits
 ///
-/// `:171` receives the **same** `TimeLimit` object `route:74` built and `:81` already handed to
-/// the first `initAutoroute`, and `:209` hands that same object to the second one. `TimeLimit`
-/// keeps its construction instant (`TimeLimit.java:8,15`) and is never reset, so the retry's
-/// budget is `maxMilliseconds` minus everything the first attempt spent. On the connections the
-/// retry exists for — the hard ones, where the first attempt ran long and failed — the remaining
-/// budget is smallest, so `AutorouteEngine.autorouteConnection` can trip `limitExceeded()`
-/// immediately and the retry becomes a no-op precisely where it is wanted. A fresh
-/// `new TimeLimit((int) maxMilliseconds)` at `:171` would be the fix. Reproduced verbatim:
-/// [`RouteContext::time_limit`] is `Copy`, which preserves the `start` instant, and the port
-/// hands the same value to both `init_autoroute` calls.
-/// `crates/fr-router/tests/batch_autorouter.rs`'s
-/// `the_necked_retry_reuses_the_exhausted_time_limit` is the pin.
+// Java bug: quirk #208 — `AutorouteConnectionRouter.retryConnectionNecked` reuses `route`'s
+// `TimeLimit` (`:74`, `:81`, `:171`, `:209`). `:171` receives the **same** object `route:74` built and
+// `:81` already handed to the first `initAutoroute`, and `:209` hands that same object to the
+// second one. `TimeLimit` keeps its construction instant and its limit as two never-reset fields
+// (`datastructures/TimeLimit.java:8-15`), so the retry's budget is `maxMilliseconds` minus
+// everything the first attempt spent — and `AutorouteEngine.autorouteConnection` tests
+// `timeLimit.limitExceeded()` on every expansion (`AutorouteEngine.java:295-296`).
+//
+// The connections the retry exists for are exactly the ones where the first attempt ran long and
+// failed, so the remaining budget is **smallest precisely where the retry is wanted**, and on a
+// hard board the second attempt can be a no-op. `retryConnectionNecked` has no other clock: it
+// does not build a `TimeLimit`, and the parameter has no other use.
+//
+// fixed: T1 (#208) — the retry calls [`connection_time_limit`] and gets a fresh clock with the
+// same limit. The register's alternative ("subtract nothing and say in a comment that the retry
+// is deliberately time-boxed by what is left") is not taken, and is not a fix: nothing in Java
+// chooses that budget, it is whatever the first attempt happened to leave, and a comment cannot
+// make a machine-speed remainder into a policy.
+///
+/// Measured RED/GREEN on `rpi_splitter`'s connection 2 at `neckWidthUm = 100`: reusing the spent
+/// limit put the retry's deadline within a hair of `call_start + 100 s`, while a fresh one sits
+/// **81 ms of a 96 ms call** later. `crates/fr-router/tests/batch_autorouter.rs`'s
+/// `the_necked_retry_gets_a_fresh_time_limit` is the pin, and it asserts the fresh shape.
 #[allow(clippy::too_many_arguments)]
 fn retry_connection_necked(
     board: &mut Board,
@@ -2282,14 +2313,16 @@ fn retry_connection_necked(
             neck_control.trace_half_width[i] + compensation;
     }
 
-    // :204-210. The second `initAutoroute`, with the neck control's clearance class and — the
-    // quirk — the **same** `TimeLimit` the first attempt already spent.
+    // :204-210. The second `initAutoroute`, with the neck control's clearance class and — where
+    // Java hands over the `TimeLimit` the first attempt already spent — a fresh clock carrying
+    // the same limit.
     *engine = Some(board.init_autoroute(
         engine.take(),
         route_net_no,
         neck_control.trace_clearance_class_index,
-        // Java bug: `AutorouteConnectionRouter.retryConnectionNecked` reuses `route`'s `TimeLimit` (`:171`, `:209`) — quirk #208
-        Some(context.time_limit),
+        // fixed: T1 (#208) — `connection_time_limit(ripup_pass_no)`, not `context.time_limit`.
+        // Same budget, `100000 * 2^(ripupPassNo - 1)`; new start instant.
+        Some(connection_time_limit(ripup_pass_no)),
         BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE,
     ));
     let neck_engine = engine
