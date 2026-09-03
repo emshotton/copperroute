@@ -7,7 +7,8 @@
 //! `fr-router` poll seam, which controller ruling BB assigns to Task 11** — the seam's first
 //! consumer, whose own `a_cancelled_tool_stops_mid_flight` is this same assertion one layer up
 //! (Task 12's `cancelling_route_board_mid_run_…` is the second consumer). (Scan ruling R3:
-//! the committed tree has exactly one `poll_deadline` site, `RouterStop` is `Cell`-based with
+//! the committed tree had exactly one `poll_deadline` site — two since the post-merge
+//! deadline-latency fix, both job-level — `RouterStop` is `Cell`-based with
 //! private fields, and `run_pipeline` offers no closure hook, so ruling AP's "add a poll, never a
 //! lock" escape applies and the *addition* is an additive-and-wrapped `fr-router` change).
 //! Until **Task 11** lands it, a cancel that arrives **after** `run_pipeline` is entered is not

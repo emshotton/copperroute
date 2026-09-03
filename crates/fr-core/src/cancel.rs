@@ -14,8 +14,11 @@
 //!
 //! # Scan ruling R3: this task builds the token and its contract; the poll seam is a later task
 //!
-//! The plan draft assumed six `poll_deadline` call sites the adapter could join at. The committed
-//! tree has **one** (`crates/fr-router/src/pipeline/batch_loop.rs:303`), `RouterStop` is
+//! The plan draft assumed six `poll_deadline` call sites the adapter could join at. The tree had
+//! **one** at Task 0 (`crates/fr-router/src/pipeline/batch_loop.rs`) and has **two** since the
+//! post-merge deadline-latency fix added the second job-level site,
+//! `crates/fr-router/src/pipeline/pass_runner.rs`; neither is a seam the token can join at, so
+//! ruling R3's reasoning is unchanged. `RouterStop` is
 //! [`std::cell::Cell`]-based (`!Sync`) with private fields, and
 //! [`fr_router::pipeline::run_pipeline`] takes `&RouterStop` and offers no closure hook. Ruling
 //! AP's own escape — *"if a poll site turns out to be missed, add a poll, never a lock"* —

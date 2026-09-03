@@ -63,12 +63,21 @@
 //! Java leaves running. Only Task 10 (`AutorouteBatchLoop.run`) and Task 9
 //! (`AutoroutePassRunner.runPass`) read the job-level flag through this type.
 //!
-//! **Status at the close of Plan 7 (Task 17).** Tasks 11-14 have all landed and none of them
-//! flattened the distinction: `grep -rn "poll_deadline" crates/fr-router/src` finds **exactly one
-//! production call site**, `pipeline/batch_loop.rs:303` — the job-level row of the table above
-//! (`AutorouteBatchLoop:251`, quirk #203's dead arm) — and nothing else but doc comments in
-//! `fanout.rs` and `optimizer.rs` saying, at each of the four per-stage sites, that this method is
-//! deliberately *not* the one being called there.
+//! **Status.** Tasks 11-14 all landed without flattening the distinction, and the post-merge
+//! outlier investigation then took the **second** job-level site. `grep -rn "poll_deadline"
+//! crates/fr-router/src` finds **exactly two production call sites**, and both are job-level rows
+//! of the table above:
+//!
+//! * `pipeline/batch_loop.rs` — `AutorouteBatchLoop:251`, quirk #203's dead arm;
+//! * `pipeline/pass_runner.rs` — the top of `AutoroutePassRunner`'s item loop, `:203`.
+//!
+//! Everything else is doc comments in `fanout.rs` and `optimizer.rs` saying, at each of the four
+//! per-stage sites, that this method is deliberately *not* the one being called there. The second
+//! site was added because the first alone observes the deadline only at **pass boundaries**: on
+//! `zx-sizif-512-ext` a 300 s budget finished at 341 s, +41 s, where the jar finished at +8 s
+//! (`.superpowers/sdd/2026-09-01-plan-8-core-cli-mcp/outlier-investigation.md` §4). Java's monitor
+//! thread has no such gap. Its cost on an untimed run is nil: `deadline: None` makes
+//! [`RouterStop::poll_deadline`] a constant `false`.
 //! Every parity run uses [`RouterStop::new`] (deadline `None`) and
 //! [`RouterBudget::disabled`], so the deadline is invisible to the ladder by construction —
 //! which is the point: it is Plan 8's CLI `--job-timeout` that will first make it observable, and
@@ -398,7 +407,9 @@ impl RouterStop {
     /// # Which of ruling AI's six sites may call this
     ///
     /// **Two only** — `AutorouteBatchLoop:251` (Task 10) and the top of `AutoroutePassRunner`'s
-    /// item loop at `:203` (Task 9). Those are the job-level flag's readers.
+    /// item loop at `:203` (Task 9). Those are the job-level flag's readers, and both are now
+    /// live: `pipeline/batch_loop.rs` and `pipeline/pass_runner.rs`. A **third** call site is a
+    /// bug unless it too is a job-level one.
     ///
     /// The other four — `BatchFanout:111` and `:396`, `BatchOptimizer:172` and `:308` — read a
     /// **per-stage** `deadlineMs` (`BatchFanout.java:94-99` from `settings.fanout.timeoutString`,
