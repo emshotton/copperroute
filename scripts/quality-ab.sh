@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The Plan 9 tier-G2 harness: the per-task stem quality **and time** A/B.
 #
-#   scripts/quality-ab.sh T<n> [--dry-run] [--repeats N] [stem ...]
+#   scripts/quality-ab.sh T<n> [--dry-run] [--repeats N] [--jobs N]
+#                             [--claims-connectivity] [--update-baseline] [stem ...]
 #
 # It runs the port over the 29 reference stems — **8 batch + 13 CLI + 8 DRC** — at each stem's
 # own committed `-mp` cap, and writes one row per stem to
@@ -94,6 +95,8 @@
 # ==================================================================================================
 #
 #   incomplete connections   referee DRC   must not rise on any stem; must fall on at least one
+#                                          **when the task declares a connectivity claim**
+#                                          (`--claims-connectivity`) — ruling BZ, below
 #   clearance violations     referee DRC   0 on every routed stem, always (a DRC stem routes
 #                                          nothing and one routed stem's board arrives dirty —
 #                                          see PRE_EXISTING in the scorer)
@@ -136,6 +139,39 @@
 # **ruling BV accepted with the residual gap recorded**. An unescalated task with the same flags is
 # still a stop-and-report — the arm is not a general licence for incompletes to rise.
 #
+# ## The scope of "must fall on at least one" (ruling BZ(a))
+#
+# The other half of that rule — *incompletes must fall on at least one stem* — is **not a property
+# of every task**, and applying it to every task was a bug in the gate rather than a strict
+# reading of it. Most of the plan's 25 tasks fix things that do not touch connectivity at all: a
+# parser field, a DTO's spelling, a statistics counter. For such a task **bit-identical quality is
+# the correct outcome**, and a gate that demands a connectivity win from it is demanding that the
+# task change something it was written not to change.
+#
+# **Task 5 is the standing case.** Six fixes (#71/#106/#76/#211/#45/#105), none of them claiming a
+# connectivity win; its A/B came back with every quality cell equal to Task 4's — exactly right —
+# and the must-fall line fired anyway. Ruling BZ(a) granted the waiver and scoped the rule:
+#
+#   **The must-fall rule binds only a task that DECLARES a connectivity claim.**
+#
+# The declaration is this script's `--claims-connectivity` flag, and it is **off by default**:
+#
+# * **without the flag** the absence of a fall prints a `NOTE:` and changes nothing — not the flag
+#   column, not the exit code. The task's fix list did not promise a connectivity win, so there is
+#   nothing here for the gate to falsify.
+# * **with the flag** the absence of a fall is a `REGRESSION:` and the script exits non-zero. A task
+#   that claims a connectivity win and cannot show one on 29 stems has not shown it, and that is
+#   precisely the case the rule was written for.
+#
+# **A task passes `--claims-connectivity` when its own fix list claims a connectivity win** —
+# Task 8 (rooms/doors, in flight as this lands) is one, and the plan's acceptance text names the
+# others as they come ("incompletes must fall on at least one stem": Tasks 7, 10 and the R-family
+# groups). The flag is a *declaration by the task*, not a judgement by the script: the script
+# cannot read a fix list, and a task that quietly omits the flag on a connectivity fix has
+# mis-declared its own work — which is a review finding, exactly like a missing `goldens moved:`
+# line. Nothing else about the rule moves: **rises are still gated unconditionally**, on every
+# task, flag or no flag, subject only to the BP12 arm above.
+#
 # ==================================================================================================
 # 5. The gate version (ruling BP8)
 # ==================================================================================================
@@ -160,7 +196,53 @@
 # to be seeding.
 #
 # ==================================================================================================
-# 7. Environment
+# 7. `--jobs`: the quality+referee lanes fan out, the timing lane never does (W17)
+# ==================================================================================================
+#
+# The multithreading survey's item 2 (`docs/plan-9-prep/multithreading-survey.md` §4.1). Per stem
+# this script performs 1 quality run + 1 referee DRC + `REPEATS`(=3) timed runs, so a sweep is
+# roughly 4x the corpus's 111 s of CPU. The run is therefore split into **two phases**:
+#
+# * **the quality phase — parallel.** The quality route, the referee DRC, `metrics_of` and
+#   `neckdown_of`, one worker **process** per stem, `--jobs` of them at a time.
+# * **the timing phase — strictly sequential, and it always will be.** `cpu_s` is a *measurement*,
+#   and a measurement taken while N other routes fight this one for the same cores is not a
+#   measurement of the stem. This phase also does all the printing and all the row-appending.
+#
+# That split is what caps the prize at **~1.25x**, and the cap is structural rather than an
+# implementation shortfall: 3 of the 4 corpus-passes are the timing lane and stay serial, so the
+# best possible outcome is collapsing the remaining pass to its longest stem. This is a harness
+# convenience, not a speed result — do not quote it as one.
+#
+# **Why this is safe, and the assertion that keeps it safe.** Survey §4.1's determinism argument
+# has three legs and each is a fact about this script rather than a hope:
+#
+#  1. **Separate processes with per-stem scratch paths.** Every artefact a stem writes is already
+#     named `$SCRATCH/$family-$stem.*`; no two stems share a path, and the workers share no state.
+#  2. **Canonical merge order.** Rows are not appended by the workers at all. Each worker writes
+#     `$SCRATCH/parts/<family>-<stem>.part` (its metrics) and `.msg` (anything it had to say), and
+#     the sequential phase walks the stem table in its own fixed order, replays each `.msg` and
+#     appends each row. So the tsv **and the console log** come out in `(family, stem)` order at
+#     any `--jobs`, and `--jobs 1` reproduces the serial run's bytes line for line.
+#  3. **The quality lane's budget is disabled.** §3.1's contention hazard — `fanout_ms_per_pin`
+#     being a *wall-clock* per-pin budget, so N concurrent routes lengthen each other's fanout and
+#     a board that trips the limit under load routes differently — **cannot fire on a lane whose
+#     budget is `disabled`** (`i32::MAX` per pin). This lane sets `FR_ROUTER_BUDGET=disabled`
+#     already, for ruling AI's reasons, and W17 rides on that.
+#
+# Leg 3 is load-bearing, so the survey asks for it as **an assertion and not a comment**, and
+# `QUALITY_LANE_BUDGET` below is it: it is the value the quality route is actually launched with,
+# and `--jobs > 1` refuses to run unless it reads `disabled`. Anyone who later makes this lane run
+# a live budget gets a refusal at the top of the script rather than a board that routes differently
+# on a loaded machine. **The generators (`gen-*-reference.sh`) do not have this protection** and
+# are survey item 3's separate problem — they run the *default* budget on purpose.
+#
+# Default: `min(4, cores / 2)`, floor 1. Half the machine, because the timing phase that follows
+# wants a quiet one and because a stem's route is itself allowed to grow threads later; capped at 4
+# because the win is bounded by the longest stem (~20 s) long before the core count is.
+#
+# ==================================================================================================
+# 8. Environment
 # ==================================================================================================
 #
 # FREEROUTING_JAVA_DIR (default ../freerouting) — where the stems' input boards live.
@@ -216,20 +298,53 @@ CPU_CORPUS_ESCALATE="1.20"
 # 7 significant digits and well below any score change a routing fix produces.
 SCORE_NOISE="0.00001"
 
+# The quality lane's budget, as a value rather than as a literal at the call site: the `--jobs`
+# preflight below asserts on it (header §7, leg 3). `disabled` is ruling AI; nothing but Task 24
+# may change it, and changing it to anything else makes `--jobs > 1` refuse rather than silently
+# measure a board that routed differently because the machine was busy.
+QUALITY_LANE_BUDGET="disabled"
+
+# `min(4, cores / 2)`, floor 1 — header §7. `nproc` is coreutils and is not on a stock macOS;
+# `sysctl -n hw.ncpu` is, and `getconf` is the last resort.
+detect_cores() {
+  local n=""
+  if command -v nproc >/dev/null 2>&1; then
+    n="$(nproc 2>/dev/null || true)"
+  elif command -v sysctl >/dev/null 2>&1; then
+    n="$(sysctl -n hw.ncpu 2>/dev/null || true)"
+  fi
+  [[ "$n" =~ ^[0-9]+$ ]] || n="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+  [[ "$n" =~ ^[0-9]+$ && "$n" -gt 0 ]] || n=1
+  printf '%s' "$n"
+}
+default_jobs() {
+  local cores half
+  cores="$(detect_cores)"
+  half=$(( cores / 2 ))
+  [[ "$half" -lt 1 ]] && half=1
+  [[ "$half" -gt 4 ]] && half=4
+  printf '%s' "$half"
+}
+
 # Saved before the parse loop consumes it, for the `tee` re-exec below.
 ORIGINAL_ARGV=("$@")
 
 TASK=""
 DRY_RUN=0
 UPDATE_BASELINE=0
+CLAIMS_CONNECTIVITY=0
 REPEATS=3
+JOBS=""
 WANTED=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
     --update-baseline) UPDATE_BASELINE=1; shift ;;
+    --claims-connectivity) CLAIMS_CONNECTIVITY=1; shift ;;
     --repeats) REPEATS="${2:?--repeats needs a count}"; shift 2 ;;
     --repeats=*) REPEATS="${1#--repeats=}"; shift ;;
+    --jobs) JOBS="${2:?--jobs needs a count}"; shift 2 ;;
+    --jobs=*) JOBS="${1#--jobs=}"; shift ;;
     -h|--help) sed -n '2,10p' "$0" >&2; exit 0 ;;
     --*) echo "error: unknown option $1" >&2; exit 1 ;;
     T[0-9]*) if [[ -z "$TASK" ]]; then TASK="$1"; else WANTED+=("$1"); fi; shift ;;
@@ -237,7 +352,24 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 if [[ -z "$TASK" ]]; then
-  echo "usage: $0 T<n> [--dry-run] [--repeats N] [--update-baseline] [stem ...]" >&2
+  echo "usage: $0 T<n> [--dry-run] [--repeats N] [--jobs N] [--claims-connectivity]" >&2
+  echo "          [--update-baseline] [stem ...]" >&2
+  exit 1
+fi
+[[ -n "$JOBS" ]] || JOBS="$(default_jobs)"
+if ! [[ "$JOBS" =~ ^[0-9]+$ ]] || [[ "$JOBS" -lt 1 ]]; then
+  echo "error: --jobs takes a positive integer, not '$JOBS'" >&2
+  exit 1
+fi
+# Header §7, leg 3, as an assertion rather than a comment (survey §4.1's own instruction). The
+# quality lane is parallelisable *because* its budget is disabled; a live `fanout_ms_per_pin` is a
+# wall-clock per-pin budget and N concurrent routes would change each other's boards.
+if [[ "$JOBS" -gt 1 && "$QUALITY_LANE_BUDGET" != "disabled" ]]; then
+  echo "error: --jobs $JOBS asks for a parallel quality lane, but that lane's budget is" >&2
+  echo "       '$QUALITY_LANE_BUDGET' and not 'disabled'. A live fanout_ms_per_pin is a" >&2
+  echo "       wall-clock per-pin budget: concurrent routes lengthen each other's fanout and a" >&2
+  echo "       board that trips the limit under load routes differently from one that did not" >&2
+  echo "       (survey §3.1). Run with --jobs 1, or restore the disabled budget." >&2
   exit 1
 fi
 if [[ "$DRY_RUN" -eq 1 && "$UPDATE_BASELINE" -eq 1 && -f "$BASELINES/stem-times.tsv" ]]; then
@@ -359,6 +491,12 @@ done < "$REF/drc-fixtures.txt"
 
 TOTAL="$(wc -l < "$STEMS" | tr -d ' ')"
 echo "== $TOTAL stems (8 batch + 13 CLI + 8 DRC), gate-version $GATE_VERSION, task $TASK"
+echo "== quality+referee lanes: $JOBS worker process(es); timing lane: sequential, $REPEATS repeats"
+if [[ "$CLAIMS_CONNECTIVITY" -eq 1 ]]; then
+  echo "== --claims-connectivity: the must-fall rule is ARMED for this task (ruling BZ)"
+else
+  echo "== --claims-connectivity not given: the must-fall rule is a NOTE for this task (ruling BZ)"
+fi
 if [[ "$TOTAL" -ne 29 && ${#WANTED[@]} -eq 0 ]]; then
   echo "error: the three fixture tables yield $TOTAL stems, not the 29 the G2 tier is defined" >&2
   echo "       over. A stem was added or removed; that is a plan amendment, not a local fix." >&2
@@ -508,54 +646,76 @@ ROWS="$SCRATCH/rows.tsv"
 : > "$ROWS"
 STATUS=0
 
-measure_one() {
-  local family="$1" stem="$2" key="$family/$2"
+# The quality phase's hand-off to the timing phase (header §7, leg 2). One `.part` per stem —
+# `metrics<TAB>neckdown`, written last and only on success, so its **presence** is the worker's
+# success signal — and one `.msg`, anything the worker had to say, replayed by the timing phase in
+# canonical order so a parallel run's console log reads exactly like a serial one's.
+PARTS="$SCRATCH/parts"
+mkdir -p "$PARTS"
+
+# The referee's argv for a stem. Both phases need it (the DRC family times the referee run itself),
+# and it is a pure function of the fixture row, so it is rebuilt rather than passed between them.
+referee_argv_for() {
+  local family="$1" stem="$2" board="$3" rules="$4" sesfile="$5"
+  REFEREE_ARGV=(-de "$JAVA_DIR/$board")
+  if [[ "$family" == drc ]]; then
+    [[ -n "$sesfile" ]] && REFEREE_ARGV+=("$JAVA_DIR/$sesfile")
+    [[ -n "$rules" ]] && REFEREE_ARGV+=(-dr "$JAVA_DIR/$rules")
+  else
+    REFEREE_ARGV+=("$SCRATCH/$family-$stem.ses")
+  fi
+  # Explicit, and load-bearing under `set -e`: the DRC branch's last statement is a `[[ … ]] && …`
+  # that is legitimately false whenever a fixture's `rules` column is empty (`drc-issue593-ses`),
+  # and a function whose last command is that test returns 1 and takes the whole script with it.
+  return 0
+}
+
+# --------------------------------------------------------------------------------------------------
+# Phase 1: the quality lane and the referee. **This is the phase `--jobs` fans out** (header §7).
+# It runs in a worker process per stem, writes only to that stem's own paths, prints nothing, and
+# never touches `$ROWS` or `$STATUS` — everything it has to report leaves through `.part`/`.msg`.
+# --------------------------------------------------------------------------------------------------
+quality_phase() {
+  local family="$1" stem="$2" board="$3" key="$1/$2"
+  local rules="$4" sesfile="$5" extra_args="$6"
   local ses="$SCRATCH/$family-$stem.ses"
   local manifest="$SCRATCH/$family-$stem.manifest.json"
   local report="$SCRATCH/$family-$stem.drc.json"
   local qlog="$SCRATCH/$family-$stem.quality.log"
   local rlog="$SCRATCH/$family-$stem.referee.log"
-  local -a route_argv=() referee_argv=()
-  local cap="$3"
-  shift 3
+  local msg="$PARTS/$family-$stem.msg"
+  local part="$PARTS/$family-$stem.part"
+  : > "$msg"
+  rm -f "$part"
 
-  if [[ "$family" == drc ]]; then
-    local rules="$1" sesfile="$2"
-    referee_argv=(-de "$JAVA_DIR/${STEM_BOARD}")
-    [[ -n "$sesfile" ]] && referee_argv+=("$JAVA_DIR/$sesfile")
-    [[ -n "$rules" ]] && referee_argv+=(-dr "$JAVA_DIR/$rules")
-    manifest="-"
-  else
-    # shellcheck disable=SC2206  -- the fixture's extra_args is a space-separated argv fragment
-    local extra=($1)
-    route_argv=(-de "$JAVA_DIR/${STEM_BOARD}" -do "$ses" ${extra+"${extra[@]}"}
-                "--router.result_json=$manifest")
-    referee_argv=(-de "$JAVA_DIR/${STEM_BOARD}" "$ses")
-  fi
-
-  printf '== %-38s cap=%s\n' "$key" "$cap"
+  referee_argv_for "$family" "$stem" "$board" "$rules" "$sesfile"
 
   # --- the quality lane: the clock off (ruling AI) -------------------------------------------
   if [[ "$family" != drc ]]; then
-    if ! FR_ROUTER_BUDGET=disabled "${TIMEOUT[@]}" "$PORT_BIN" "${route_argv[@]}" \
+    # shellcheck disable=SC2206  -- the fixture's extra_args is a space-separated argv fragment
+    local extra=($extra_args)
+    local -a route_argv=(-de "$JAVA_DIR/$board" -do "$ses" ${extra+"${extra[@]}"}
+                         "--router.result_json=$manifest")
+    if ! FR_ROUTER_BUDGET="$QUALITY_LANE_BUDGET" "${TIMEOUT[@]}" "$PORT_BIN" "${route_argv[@]}" \
         > "$qlog" 2>&1 < /dev/null || [[ ! -s "$ses" ]]; then
-      echo "   FAILED: the quality run wrote no SES; see $qlog" >&2
-      STATUS=1
+      echo "   FAILED: the quality run wrote no SES; see $qlog" >> "$msg"
       return 0
     fi
     if [[ ! -s "$manifest" ]]; then
-      echo "   FAILED: the quality run wrote no manifest; see $qlog" >&2
-      STATUS=1
+      echo "   FAILED: the quality run wrote no manifest; see $qlog" >> "$msg"
       return 0
     fi
+  else
+    manifest="-"
   fi
 
   # --- the referee: the DRC document, and no fallback to the manifest ------------------------
-  if ! run_referee "$report" "$rlog" "${referee_argv[@]}"; then
-    echo "   FAILED: the referee DRC wrote no document for $key; see $rlog." >&2
-    echo "           This row has NO fallback: the manifest's own incomplete and violation" >&2
-    echo "           counts are not a legal input to this gate (survey §4.1)." >&2
-    STATUS=1
+  if ! run_referee "$report" "$rlog" "${REFEREE_ARGV[@]}"; then
+    {
+      echo "   FAILED: the referee DRC wrote no document for $key; see $rlog."
+      echo "           This row has NO fallback: the manifest's own incomplete and violation"
+      echo "           counts are not a legal input to this gate (survey §4.1)."
+    } >> "$msg"
     return 0
   fi
 
@@ -569,16 +729,54 @@ measure_one() {
     neckdown="$(neckdown_of "$ses")"
   fi
 
+  printf '%s\t%s\n' "$metrics" "$neckdown" > "$part"
+  return 0
+}
+
+# --------------------------------------------------------------------------------------------------
+# Phase 2: the printing, the timing lane and the row. **Strictly sequential, always** — `cpu_s` is
+# a measurement and a measurement taken under contention is not one (header §7). It walks the stem
+# table in its own fixed order, so the console log and `$ROWS` are `(family, stem)`-canonical at
+# every `--jobs`.
+# --------------------------------------------------------------------------------------------------
+timing_phase() {
+  local family="$1" stem="$2" board="$3" cap="$4" key="$1/$2"
+  local rules="$5" sesfile="$6" extra_args="$7"
+  local msg="$PARTS/$family-$stem.msg"
+  local part="$PARTS/$family-$stem.part"
+
+  printf '== %-38s cap=%s\n' "$key" "$cap"
+  [[ -s "$msg" ]] && cat "$msg" >&2
+  if [[ ! -f "$part" ]]; then
+    if [[ ! -s "$msg" ]]; then
+      echo "   FAILED: the quality phase produced no result for $key and said nothing — its" >&2
+      echo "           worker died. See $SCRATCH/$family-$stem.*.log." >&2
+    fi
+    STATUS=1
+    return 0
+  fi
+
+  # The worker wrote `metrics<TAB>neckdown` on one line; `neckdown` is the last field and the
+  # metrics are everything before it. No field of either can contain a tab.
+  local partline metrics neckdown
+  partline="$(cat "$part")"
+  neckdown="${partline##*$'\t'}"
+  metrics="${partline%$'\t'*}"
+
+  referee_argv_for "$family" "$stem" "$board" "$rules" "$sesfile"
+
   # --- the time lane: the budget in its normal configuration, median of N --------------------
   local times=() i
   for ((i = 0; i < REPEATS; i++)); do
     if [[ "$family" == drc ]]; then
-      times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" "$PORT_BIN" "${referee_argv[@]}" \
+      times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" "$PORT_BIN" "${REFEREE_ARGV[@]}" \
           -drc "$SCRATCH/$family-$stem.t$i.json")")
     else
+      # shellcheck disable=SC2206
+      local time_extra=($extra_args)
       times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" "$PORT_BIN" \
-          -de "$JAVA_DIR/${STEM_BOARD}" -do "$SCRATCH/$family-$stem.t$i.ses" \
-          ${TIME_EXTRA+"${TIME_EXTRA[@]}"})")
+          -de "$JAVA_DIR/$board" -do "$SCRATCH/$family-$stem.t$i.ses" \
+          ${time_extra+"${time_extra[@]}"})")
     fi
   done
   local failed=0 t
@@ -602,18 +800,38 @@ measure_one() {
       "$REPEATS"
 }
 
+# `<family>|<stem>|<board>|<cap>|<rest>` -> the five positional arguments both phases take. The DRC
+# family's `rest` is `rules|ses`; every other family's is a space-separated argv fragment.
+split_row() {
+  ROW_RULES=""; ROW_SES=""; ROW_EXTRA=""
+  if [[ "$1" == drc ]]; then
+    IFS='|' read -r ROW_RULES ROW_SES <<< "$2"
+  else
+    ROW_EXTRA="$2"
+  fi
+  return 0
+}
+
+# --- phase 1, fanned out over `$JOBS` worker processes ------------------------------------------
 while IFS='|' read -r family stem board cap rest; do
   wanted "$family/$stem" || continue
-  STEM_BOARD="$board"
-  TIME_EXTRA=()
-  if [[ "$family" == drc ]]; then
-    IFS='|' read -r rules sesfile <<< "$rest"
-    measure_one "$family" "$stem" "$cap" "$rules" "$sesfile"
+  split_row "$family" "$rest"
+  if [[ "$JOBS" -le 1 ]]; then
+    quality_phase "$family" "$stem" "$board" "$ROW_RULES" "$ROW_SES" "$ROW_EXTRA"
   else
-    # shellcheck disable=SC2206
-    TIME_EXTRA=($rest)
-    measure_one "$family" "$stem" "$cap" "$rest"
+    # bash 3.2 has no `wait -n`, and this script must keep running on a stock macOS, so the
+    # throttle polls. 50 ms against a stem that takes seconds is not a cost.
+    while [[ "$(jobs -pr | wc -l | tr -d ' ')" -ge "$JOBS" ]]; do sleep 0.05; done
+    quality_phase "$family" "$stem" "$board" "$ROW_RULES" "$ROW_SES" "$ROW_EXTRA" &
   fi
+done < "$STEMS"
+wait
+
+# --- phase 2, sequential, in the stem table's own order -----------------------------------------
+while IFS='|' read -r family stem board cap rest; do
+  wanted "$family/$stem" || continue
+  split_row "$family" "$rest"
+  timing_phase "$family" "$stem" "$board" "$cap" "$ROW_RULES" "$ROW_SES" "$ROW_EXTRA"
 done < "$STEMS"
 
 # --------------------------------------------------------------------------------------------------
@@ -625,12 +843,19 @@ done < "$STEMS"
 set +e
 python3 - "$TSV" "$ROWS" "$GATE_VERSION" "$TASK" "$PORT_SHA" "$PREV_TSV" "$JAR_TSV" \
     "$STEM_TIMES" "$CPU_NOISE_FLOOR" "$CPU_STEM_ESCALATE" "$CPU_CORPUS_ESCALATE" \
-    "$SCORE_NOISE" "$REPEATS" "$ROOT" "$CPU_EPSILON_S" <<'PY'
+    "$SCORE_NOISE" "$REPEATS" "$ROOT" "$CPU_EPSILON_S" "$CLAIMS_CONNECTIVITY" <<'PY'
 import statistics, sys, os
 
 (out_path, rows_path, gate, task, sha, prev_path, jar_path, times_path,
  noise_floor, stem_escalate, corpus_escalate, score_noise, repeats, root,
- cpu_epsilon) = sys.argv[1:]
+ cpu_epsilon, claims_connectivity) = sys.argv[1:]
+
+# Ruling BZ(a). The "must fall on at least one stem" half of G2's connectivity rule binds only a
+# task that DECLARES a connectivity claim, because most tasks fix things that do not touch
+# connectivity and for those bit-identical quality is the correct answer, not a gate failure.
+# See the shell header's "The scope of `must fall on at least one`". Armed: a REGRESSION and a
+# non-zero exit. Unarmed: a NOTE that changes nothing.
+claims_connectivity = claims_connectivity == "1"
 
 
 def rel(p):
@@ -907,6 +1132,10 @@ with open(out_path, "w", encoding="utf-8") as fh:
              " board.bounding_box.width/height (#196)\n")
     fh.write("# quality-lane-budget: RouterBudget::disabled() (ruling AI);"
              " cpu_s lane: RouterBudget::default()\n")
+    fh.write("# connectivity-claim: "
+             + ("DECLARED (--claims-connectivity) — the must-fall rule was armed"
+                if claims_connectivity else
+                "not declared — the must-fall rule was a NOTE (ruling BZ(a))") + "\n")
     fh.write("# cols:" + "\t".join(COLUMNS) + "\n")
     for row in out:
         fh.write("\t".join(str(c) for c in row) + "\n")
@@ -916,9 +1145,18 @@ print(f"wrote {rel(out_path)} ({len(out)} rows, gate-version {gate})")
 if corpus_note:
     print(f"corpus-median cpu ratio against the previous task: {corpus_note}")
 if prev and not fell_somewhere and not regressions:
-    print("NOTE: no stem's incomplete count fell. G2's rule is that incompletes must not rise on "
-          "any stem AND must fall on at least one; a task whose fix list claims a connectivity "
-          "win and shows no fall has not shown it.")
+    if claims_connectivity:
+        regressions.append(
+            "REGRESSION: no stem's incomplete count fell, and this run was invoked with "
+            "--claims-connectivity. G2's rule is that incompletes must not rise on any stem AND "
+            "must fall on at least one; a task whose fix list claims a connectivity win and shows "
+            "no fall on 29 stems has not shown it (ruling BZ(a) scopes the rule to declaring "
+            "tasks — this task declared).")
+    else:
+        print("NOTE: no stem's incomplete count fell. Ruling BZ(a) scopes G2's must-fall rule to "
+              "tasks that DECLARE a connectivity claim (--claims-connectivity), and this run did "
+              "not, so an unmoved incomplete column is a legitimate outcome and this line is a "
+              "note rather than a gate. Incompletes RISING is still gated, on every task.")
 for line in regressions:
     print(line)
 for line in escalations:

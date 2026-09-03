@@ -122,7 +122,7 @@ The reviewer's check is unchanged in substance and gains one clause: every `pend
 
 | metric | source | rule |
 |---|---|---|
-| incomplete connections | the **referee's** DRC, never the manifest (survey §4.1's 45–63 % disagreement) | **must not rise on any stem; must fall on at least one** — *except on an escalated task; see the BP12 arm below* |
+| incomplete connections | the **referee's** DRC, never the manifest (survey §4.1's 45–63 % disagreement) | **must not rise on any stem** — *except on an escalated task; see the BP12 arm below*; **and must fall on at least one stem when the task declares a connectivity claim** — see the BZ(a) scope below |
 | clearance violations | referee DRC | **0 on every stem, always** |
 | normalized score | `fr_router::score::normalized_score(&ScoringSettings)` — an `f32` throughout, deliberately (survey §9.1) | must not fall by more than the `f32` noise floor |
 | total trace length | `traces.total_length_mm` | reported; ↓ preferred |
@@ -147,6 +147,36 @@ licence for incompletes to rise. The precedent is Task 2: 10 rows over 6 stems f
 sub-minimum traces and 0 clearance violations against them, escalated with the numbers, adjudicated
 at M1 (corpus clean-pass 0.375 → 0.550, small-tier DRC-clean 0.727 → 0.958), **accepted with the
 residual gap recorded by ruling BV**.
+
+**The scope of "must fall on at least one stem" (ruling BZ(a)).** The other half of the
+connectivity rule **binds only a task that DECLARES a connectivity claim**. Most of the 25 tasks
+fix a parser field, a DTO spelling or a statistics counter and touch connectivity not at all; for
+those **bit-identical quality is the correct outcome**, and a gate demanding a connectivity win
+from them is demanding that they change something they were written not to change. **Task 5 is the
+case that produced the ruling** — six fixes, none claiming a connectivity win, every quality cell
+equal to Task 4's, and the must-fall line fired anyway; BZ(a) granted the waiver and scoped the
+rule. The declaration is `scripts/quality-ab.sh`'s **`--claims-connectivity` flag, off by
+default**: without it the absence of a fall prints a `NOTE:` and touches neither the flag column
+nor the exit code; with it the absence of a fall is a `REGRESSION:` and the script exits non-zero.
+**A task passes the flag when its own fix list claims a connectivity win** — Task 8 is the first,
+and each acceptance block below that reads "incompletes must fall on at least one stem" is a task
+that passes it. The flag is a declaration *by the task*, not a judgement by the script: a
+connectivity fix that quietly omits it has mis-declared its own work, and that is a review finding
+exactly like a missing `goldens moved:` line. **Rises stay gated unconditionally**, on every task,
+flag or no flag, subject only to the BP12 arm above.
+
+**The harness fans out (`--jobs`, survey item W17).** `quality-ab.sh` runs the **quality route and
+the referee DRC in one worker process per stem**, `min(4, cores/2)` at a time by default, while the
+**`cpu_s` timing lane stays strictly sequential** — a CPU-time measurement taken under contention
+is not a measurement. This is safe on the quality lane and only there, because that lane pins
+`FR_ROUTER_BUDGET=disabled` (ruling AI) and so cannot trip survey §3.1's wall-clock
+`fanout_ms_per_pin` contention hazard; the script **asserts** that rather than commenting it and
+refuses `--jobs > 1` if the lane's budget is ever anything else. Rows and console lines are merged
+in `(family, stem)` order at every setting, so the tsv is order-canonical and `--jobs 1` reproduces
+a serial run byte for byte. Measured on the mini-task's own 29-stem A/B: **469 s → 394 s (1.19×)**,
+with **580 of 580 quality cells and all 29 flags identical** between `--jobs 1` and `--jobs 4`. The
+timing lane is 3 of the 4 corpus passes, so ~1.25× is the structural ceiling — this is a harness
+convenience, not a speed result.
 
 **Forbidden inputs to G2 until their fix lands:** `traces.total_{vertical,horizontal,angled}_length` (they do not sum to the total — #195, Task 19) and `board.bounding_box.width`/`height` (they hold the lower-left corner — #196, Task 19). `incomplete_count` is itself a fix target (#82, #147 — Task 13): **while those are in flight, report it both ways on the same board**, or the improvement is indistinguishable from the metric moving underneath.
 

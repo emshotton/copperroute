@@ -265,6 +265,14 @@ written — merge order is already canonical. The quality lane sets `FR_ROUTER_B
 there. That conditional is load-bearing: parallelising a lane that runs the *default* budget would
 be a correctness bug, not a speedup. Encode it as an assertion in the script, not a comment.
 
+**LANDED** (Plan 9 tail, harness mini-task). `scripts/quality-ab.sh --jobs N`, default
+`min(4, cores/2)`; the timing lane stays sequential; `QUALITY_LANE_BUDGET` is the assertion this
+section asks for and `--jobs > 1` refuses unless it reads `disabled`. Rows and console lines are
+merged by the sequential phase in `(family, stem)` order, so `--jobs 1` reproduces a serial run
+byte for byte. **Measured over the 29 stems: 469 s → 394 s = 1.19×**, against the 1.25× predicted
+here — the estimate held. Proof: `--jobs 1` vs `--jobs 4`, **580/580 quality cells and 29/29 flags
+identical**, only `cpu_s`/`cpu_spread_s` moving.
+
 ### 4.2 Harness: reference regeneration — S, one real trap
 
 | | |
@@ -412,7 +420,7 @@ Recommendation: **`std::thread::scope` + an in-tree splitmix64. No new dependenc
 | # | item | site | class | determinism | size | where |
 |---|---|---|---|---|---|---|
 | 1 | **Deterministic variant portfolio** — N seeded pass variants on independent board clones, `argmax(score, ‑index)` | `pipeline/pass_runner.rs:151`, `pipeline/batch_loop.rs:174` | **quality**, N-way wider search at ~1× wall-clock | provable; `pass_variants=1` default is today's bytes → **no golden moves** | L | Plan 10 (plumbing could ride group 18) |
-| 2 | **`quality-ab.sh` quality+referee fan-out** | `scripts/quality-ab.sh:511-560` | ~1.25× (capped by the sequential timing lane) | nil — separate processes, canonical merge, `FR_ROUTER_BUDGET=disabled` already set | S | **Plan 9 tail** |
+| 2 | **`quality-ab.sh` quality+referee fan-out** | `scripts/quality-ab.sh:511-560` | ~1.25× (capped by the sequential timing lane) — **measured 1.19×** | nil — separate processes, canonical merge, `FR_ROUTER_BUDGET=disabled` already set | S | **LANDED** (Plan 9 tail; `--jobs`, §4.1) |
 | 3 | **Reference-generator fan-out** (`gen-cli`, `gen-batch`, `--verify-two-runs`) | `gen-cli-reference.sh:541`, `gen-batch-reference.sh:511` | near-linear to core count | safe **only** once the fanout budget is work-bounded, or with a per-core cap + serial verify | S | **Plan 9 tail**, gated |
 | 4 | **Optimizer speculative per-item eval, sequential commit** | `pipeline/optimizer.rs:437, ~560-660` | ≈ K-way over the ~90 % of items that are rejected | byte-identical to the sequential post-#227 golden by construction → **no separate goldens** | L | Plan 10, after group 9 |
 | 5 | **Per-layer via feasibility in `expand_to_other_layers`** | `autoroute/maze/expansion_engine.rs:379, :680` | 8-10 % wall | achievable — needs `&Board` refactor + returning `shove_failing_obstacle` instead of writing it | L | Plan 10, **lowest confidence; would not fight for it** |
