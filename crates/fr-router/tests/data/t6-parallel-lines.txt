@@ -1,0 +1,92 @@
+Plan 9 Task 6 — synthetic fixture for quirk #181
+================================================
+
+`FoundConnectionLocatorAnyAngle.calculateNextTraceCorners` builds
+`new FloatLine(this.currentFromPoint, resultCorner)` at `:287` with no null test and dereferences
+it at `:293`; `:329` guards the same value. `resultCorner`'s two producers, `rightTurnNextCorner`
+(`:365-383`) and `leftTurnNextCorner` (`:391-408`), both end in `firstLine.intersection(secondLine)`,
+and `FloatLine.intersection` answers `null` for two parallel lines (FloatLine.java:53-55 — the port's
+`det == 0.0` early return, `crates/fr-geometry/src/float_line.rs:51`).
+
+The register records that no fixture in `crates/fr-router/tests/locator.rs` reaches it: the five
+`P6T14Probe` locate modes never produce a null `resultCorner`. This file is the input class that
+does — the two parallel lines, with the arithmetic that makes them *exactly* parallel rather than
+nearly so, which matters because the port's parallel test is an exact `det == 0.0`.
+
+The construction
+----------------
+
+`rightTurnNextCorner(fromCorner, dist, toCorner, nextCorner)` builds
+
+  firstLine  = FloatLine(fromCorner, fromCorner.leftTangentialPoint(toCorner, dist))
+  secondLine = FloatLine(toCorner, toCorner.rightTangentialPoint(nextCorner, 2*dist + 1)).translate(dist)
+
+Both lines are tangent to the circle of radius `dist` around `toCorner`, so they are parallel
+exactly when the two tangents coincide. Pick the geometry so that each tangent point sits directly
+"above" its own from-point — a tangent point `T` with `T.x == fromPoint.x` exists whenever the
+circle's centre is at `(fromPoint.x + r, y)` for the tangent radius `r`, because then `T - from`
+and `T - centre` are the axes of a right angle:
+
+  fromCorner = (0, 0)     dist = 30
+  toCorner   = (30, 100)              -> 30 = 0 + dist,        so leftTangentialPoint  = (0, 100)
+  nextCorner = (-31, 200)             -> -31 = 30 - (2*30+1),  so rightTangentialPoint = (30, 200)
+
+Measured (`FloatPoint::left_tangential_point` / `right_tangential_point`, FloatPoint.java:420-431):
+
+  fromCorner.leftTangentialPoint(toCorner, 30)       = (0, 100)
+  toCorner.rightTangentialPoint(nextCorner, 61)      = (30, 200)
+  firstLine                                          = (0,0) -> (0,100)
+  FloatLine((30,100), (30,200)).translate(30)        = (0,100) -> (0,200)
+  firstLine.intersection(secondLine)                 = null      <- quirk #181's null resultCorner
+
+Both direction vectors are exactly `(0, 100)`, so `d2x*d1y - d2y*d1x` is `0.0 * 100.0 - 100.0 * 0.0`
+= `0.0` with no rounding involved at all.
+
+The mirror, for `leftTurnNextCorner`, is the same construction reflected in the y axis:
+
+  fromCorner = (0, 0)     dist = 30
+  toCorner   = (-30, 100)
+  nextCorner = (31, 200)
+
+  fromCorner.rightTangentialPoint(toCorner, 30)      = (0, 100)
+  toCorner.leftTangentialPoint(nextCorner, 61)       = (-30, 200)
+  firstLine                                          = (0,0) -> (0,100)
+  FloatLine((-30,100), (-30,200)).translate(-30)     = (0,100) -> (0,200)
+  firstLine.intersection(secondLine)                 = null
+
+The control rows, one perturbation away, which must stay non-null (otherwise the fixture would be
+pinning "parallel" rather than "parallel *here*"):
+
+  nextCorner = (91, 200)   right turn -> intersection (0, 118.3)
+  nextCorner = (-91, 200)  left  turn -> intersection (0, 118.3)
+
+What the two sides answer
+-------------------------
+
+  before the fix    `:287`'s `new FloatLine(currentFromPoint, resultCorner)` stores the null and
+                    `:293`'s `checkLine.segmentDistance(currentLeftCorner)` throws a
+                    NullPointerException, which `AutorouteEngine.autorouteConnection:189-194`
+                    catches and degrades to FAILED — the whole connection, not one corner. In the
+                    port that is the panic
+
+                      FoundConnectionLocatorAnyAngle.calculateNextTraceCorners: resultCorner is
+                      null at :287 — Java throws a NullPointerException at :293
+                      (docs/java-quirks.md #181)
+
+  after the fix     `:329`'s `resultCorner != null` test, hoisted to `:287`, skips the whole
+                    `:284-326` correction block. `correctedResult` stays null, `:323-326` does not
+                    fire, and `:328-331` runs exactly as it does for any other null `resultCorner`
+                    — `currentToDoorIndex = newDoorInd` and no corner appended. The loop cannot
+                    improve a corner that does not exist, so skipping it is the whole fix.
+
+Reachability, honestly
+----------------------
+
+The two parallel lines above are producible — that is what this file measures — but no board in
+this repository routes a connection whose door geometry produces them, and none was constructed:
+the door corners `calculateNextTraceCorners` feeds to `rightTurnNextCorner` come from
+`calcDoorLeftCorner`/`calcDoorRightCorner` off the maze backtrack, and steering those to an exact
+`det == 0.0` through a real search is not something this task found a way to do. So the directed
+test below pins the *input class* the guard exists for, not an end-to-end connection that survives
+where it used to fail. The register row keeps its "not reachable from any fixture" sentence for
+that reason.

@@ -1,0 +1,117 @@
+Plan 9 Task 6 — synthetic fixture for quirk #185
+================================================
+
+`RoutingBoard.insertForcedTracePolyline` dereferences a possibly-`null` `newTrace` at
+`board/facade/RoutingBoard.java:756` and guards the **same variable** 35 lines later at `:791`.
+The register (docs/java-quirks.md #185) records the defect as *latent* on every row of
+`p6t15b-insert-forced.txt`: 1 621 insertions, none of which resamples a polyline into a shape
+`insertTraceWithoutCleaning` refuses. This file is the resample that does.
+
+Unlike the other fixtures in this directory it is **not** a JVM probe transcript. Java's
+`:756` throw is what the port already reproduced, so there is nothing new to read off the jar;
+what had to be constructed is an *input* that reaches it. Every number below is derived from the
+Java sources named beside it and re-derived by the port's own arithmetic — the derivation is
+executable, and `crates/fr-router/tests/insert_forced.rs` is where it executes.
+
+The board
+---------
+
+  layers                two signal layers, "front" and "back"
+  clearance matrix      `ClearanceMatrix::get_default_instance(layers, 200)` plus a "wide" class
+                          (2,1) = 600, (2,2) = 800
+  angle restriction     NONE (any angle)
+  nets                  N1 (net 1), N2 (net 2), both on the default net class
+  trace A               net 2, layer 0, half width 30, (-5000,-5000) -> (-5000,-4000)
+  trace B               net 2, layer 0, half width 30, (400,-429) -> (400,771)
+
+Trace A exists only to set `BasicBoard.minTraceHalfWidth` (BasicBoard.java:197-200) to **30**,
+which is what makes `sampleWidth = 2 * getMinTraceHalfWidth() = 60` at RoutingBoard.java:641-644.
+Trace B is the obstacle that fails the shove; it crosses the second segment of the inserted
+polyline and nothing else.
+
+The insertion
+-------------
+
+  polyline              (55,24) -> (0,0) -> (700,300) -> (700,1000)
+  half width            30
+  layer                 0
+  net numbers           [1]
+  clearance class       1
+  recursion depths      0 / 0 / 0      (max, via, spring-over)
+  tidy width            Integer.MAX_VALUE
+  pull tight accuracy   500
+  with check            true
+  time limit            none
+
+The derivation
+--------------
+
+`Polyline(Point[])` (Polyline.java:28-52) gives **5** lines for 4 corners: a perpendicular cap at
+each end plus the three segments. So
+
+  newPolyline.lines.length            = 5
+  combinedPolyline                    = newPolyline           (nothing is picked at fromCorner)
+  startShapeNo (`:554-559`)           = 0
+  traceShapes.length (`:558`)         = 5 - 0 - 2 = 3         (Polyline.java:354-511)
+
+The three shapes are the three segments: 0 = (55,24)->(0,0), 1 = (0,0)->(700,300),
+2 = (700,300)->(700,1000). Trace B blocks shape **1** and nothing else, and the recursion depth
+is 0, so `TraceShover.check` refuses to shove it aside:
+
+  lastShapeNo (`:562-619`)            = 1
+
+`:634-746` then resamples:
+
+  sampleWidth (`:641-644`)            = 2 * 30 = 60
+  lastSegmentLength (`:642-643`)      = |(700,300) - (0,0)| = 761.5773105863908
+                                        > 60 and <= 100 * 60 = 6000, so `:658` fires
+  newLineCount (`:659-661`)           = 5 - (3 - 1 - 1) = 4
+
+`Polyline.shorten(4, 60.0)` (Polyline.java:912-936) keeps `lines[0..2]` and rebuilds the last two
+lines around
+
+  newLastCorner = corner(1).changeLength(corner(2), 60).round()
+                = (0,0) + 60 * (700,300)/761.5773105863908
+                = (55.14806..., 23.63488...).round()
+                = (55, 24)
+
+which **is corner(0)** — the resample has brought the polyline's two ends together. The direction
+(7,3) was chosen for exactly that: 60 * (7,3)/|(7,3)| = (55.148, 23.635) rounds to (55,24), and
+(55,24) is *not* on the line through (0,0) and (700,300) (55*3 = 165, 24*7 = 168), so the polyline
+is a legal three-corner one rather than a collapsed collinear one.
+
+The shortened polyline is
+
+  [ Line((55,24),(79,-31)), Line((55,24),(0,0)), Line((55,24),(79,-31)) ]
+  firstCorner = lastCorner = (55,24)        cornerCount = 2
+
+`:662-690` accepts it (the last corner is an IntPoint, the recombined polyline still has 3 lines,
+`offsetShape(compensatedHalfWidth, 0)` is non-null) and `:692-745`'s retry check and insert both
+succeed, because the resampled shove distance is zero-length. `:751-754` then calls
+
+  insertTraceWithoutCleaning(newPolyline, ...)
+
+and `BasicBoard.java:191-195` refuses it — `firstCorner().equals(lastCorner())` on a trace below
+`USER_FIXED` — so `newTrace` is **null**.
+
+What the two sides answer
+-------------------------
+
+  before the fix    `:756`'s `newTrace.combine()` throws a NullPointerException. No `catch`
+                    covers it (this method's only `try` opens at `:787`), so the nearest handler
+                    is `AutorouteConnectionRouter.route:155-158`'s bare FAILED and the whole
+                    connection is abandoned. In the port that is the panic
+
+                      RoutingBoard.insertForcedTracePolyline:756: newTrace.combine() on a null
+                      trace — Java throws a NullPointerException here (quirk #185)
+
+  after the fix     `:791`'s null test, moved up to `:756`, skips the combine. The method runs on
+                    through `:773-875` — where every remaining `newTrace` use is already guarded —
+                    and answers
+
+                      Ok(Some(Point::Int((55, 24))))
+
+                    i.e. `newCorner`: the segment was skipped and the caller keeps the connection.
+                    No trace is added to the board (the closed polyline was refused at `:751-754`,
+                    which is Java's own decision and is not what the fix changes), so the board
+                    holds exactly the two net-2 traces it started with.
