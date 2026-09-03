@@ -1505,9 +1505,20 @@ impl AutorouteEngine {
         // in principle because `removeItem` refuses a deletion-forbidden item and the survivors'
         // contacts change as the loop runs.
         board.remove_items(ripped_connections.iter().rev().copied());
+        // T17: #193's second mutation source — a ripup deletes items the search's rooms and doors
+        // still hold ids for.
+        if !ripped_connections.is_empty() {
+            crate::autoroute::instrument::note_mutation(
+                crate::autoroute::instrument::Mutation::RipupRemoveItems,
+            );
+        }
 
         // :262-263, over `changedNets`' ascending `TreeSet<Integer>` order.
         for current_net_number in &changed_nets {
+            // T17: #193's third mutation source — a tail removal rewrites a surviving trace.
+            crate::autoroute::instrument::note_mutation(
+                crate::autoroute::instrument::Mutation::RemoveTraceTails,
+            );
             if let Err(error) =
                 board.remove_trace_tails(*current_net_number, stop_connection_option)
             {
@@ -2116,6 +2127,12 @@ fn route_connection_steps_1_to_8(
     // `maxItemIdAfterOpt` they format are dropped with the rest of `FRLogger`; the
     // `isBenchmarkProfileEnabled` timers at `:102` and `:110-112` are the benchmark profile.
     if autoroute_result.state == AutorouteAttemptState::Routed {
+        // T17: #193's fifth mutation source — the post-insert pull-tight sweep, which rewrites
+        // every trace in the changed area. Like the inserter's, it lands after this connection's
+        // search, so it explains the *next* one's fires.
+        crate::autoroute::instrument::note_mutation(
+            crate::autoroute::instrument::Mutation::OptChangedArea,
+        );
         // :103-109.
         board
             .opt_changed_area(
@@ -2346,6 +2363,10 @@ fn retry_connection_necked(
     }
 
     // :223-229. Step 6's sweep again, but with the **neck** control's trace costs.
+    // T17: the neck path's copy of the same mutation tag.
+    crate::autoroute::instrument::note_mutation(
+        crate::autoroute::instrument::Mutation::OptChangedArea,
+    );
     board
         .opt_changed_area(
             engine.as_mut(),

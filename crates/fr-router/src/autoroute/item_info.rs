@@ -124,7 +124,18 @@ where
 
     let existing = {
         let info = board.get_item_mut(item)?.get_autoroute_info();
-        prepare_room_slot(info, current_shape_count, index)?
+        // T17: #193's G2. `prepare_room_slot` is the whole of ItemAutorouteInfo.java:57-76, so the
+        // recorder has to see the array *before* it is resized; `item` is not in scope down there.
+        let previous_len = info.expansion_rooms.len();
+        let slot = prepare_room_slot(info, current_shape_count, index);
+        record_g2(
+            item,
+            index,
+            previous_len,
+            current_shape_count,
+            slot.is_none(),
+        );
+        slot?
     };
     if existing.is_some() {
         // ItemAutorouteInfo.java:77-80: only a null slot is filled.
@@ -168,6 +179,49 @@ where
     };
     for room in rooms {
         reset_room_doors(board, room);
+    }
+}
+
+/// T17: the #193 G2 recorder, split out of [`get_expansion_room`] so the guard body stays the
+/// verbatim transcription it was.
+///
+/// The **resize** row counts only a resize over a live array (`previous_len > 0`): Java's `:57`
+/// treats a `null` array separately from a length mismatch, and a `Vec` cannot tell a fresh
+/// zero-length array from a `null` one, so a first allocation from length 0 is *not* staleness and
+/// is not counted. A shrink to 0 from a non-empty array is counted, which is the right side of the
+/// ambiguity — that is an item whose shapes have gone.
+///
+/// A resize is judged **recoverable**: the surviving prefix is `System.arraycopy`d across, so the
+/// rooms below `min(old, new)` still name the shapes they named. The out-of-range `null` is judged
+/// recoverable only when the item still has shapes to derive a fresh index from.
+fn record_g2(
+    item: ItemId,
+    index: usize,
+    previous_len: usize,
+    current_shape_count: usize,
+    out_of_range: bool,
+) {
+    use crate::autoroute::instrument::{Guard, record_guard, record_visit};
+    // T17: both denominators. Every `getExpansionRoom` call evaluates both tests.
+    record_visit(Guard::G2RoomArrayResized);
+    record_visit(Guard::G2RoomIndexOutOfRange);
+    if previous_len > 0 && previous_len != current_shape_count {
+        record_guard(
+            Guard::G2RoomArrayResized,
+            u64::from(item.0),
+            previous_len,
+            current_shape_count,
+            true,
+        );
+    }
+    if out_of_range {
+        record_guard(
+            Guard::G2RoomIndexOutOfRange,
+            u64::from(item.0),
+            index,
+            current_shape_count,
+            current_shape_count > 0,
+        );
     }
 }
 
