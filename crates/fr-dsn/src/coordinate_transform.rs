@@ -6,6 +6,7 @@
 
 use fr_geometry::{Circle, FloatPoint, IntBox, Line, Shape, ShapeOps, TileShape, Vector};
 
+use crate::error::DsnError;
 use crate::parser::geometry::{DsnCircle, DsnLayer, DsnPolygon, DsnRectangle, DsnShape};
 
 /// "Computes transformations between board coordinates and external coordinates, such as
@@ -25,13 +26,35 @@ pub struct CoordinateTransform {
 
 impl CoordinateTransform {
     /// `CoordinateTransform(double, double, double)` (CoordinateTransform.java:27-31).
-    #[must_use]
-    pub fn new(scale_factor: f64, base_x: f64, base_y: f64) -> CoordinateTransform {
-        CoordinateTransform {
+    ///
+    // Java bug: (#89) the constructor accepts any `double` — a `0`, an infinity, a `NaN` — and
+    // says nothing. `Structure.createBoard` builds `new CoordinateTransform(0, 0, 0)` for real
+    // (quirk #94), and from then on every coordinate the DSN/SES writers emit is
+    // `Infinity`/`NaN` while every coordinate the reader transforms collapses to `0`, with the
+    // whole read still reported as `Success`. JVM-verified.
+    //
+    // fixed: T4 (#89) — a scale factor that is not finite and non-zero is refused here, loudly.
+    // Every arithmetic method on this type divides or multiplies by it, so this is the one place
+    // that can make the silent-`Infinity` state unrepresentable rather than merely unlikely; #94
+    // (the `f64` scale-factor loop) is what stops `createBoard` reaching for it in the first
+    // place, and the two land in the same commit.
+    ///
+    /// # Errors
+    ///
+    /// [`DsnError::InvalidScaleFactor`] when `scale_factor` is zero, infinite or `NaN`.
+    pub fn new(
+        scale_factor: f64,
+        base_x: f64,
+        base_y: f64,
+    ) -> Result<CoordinateTransform, DsnError> {
+        if !scale_factor.is_finite() || scale_factor == 0.0 {
+            return Err(DsnError::InvalidScaleFactor { scale_factor });
+        }
+        Ok(CoordinateTransform {
             scale_factor,
             base_x,
             base_y,
-        }
+        })
     }
 
     /// `CoordinateTransform.scaleFactor` (CoordinateTransform.java:22).
@@ -61,9 +84,11 @@ impl CoordinateTransform {
     /// `boardToDsn(double)` (CoordinateTransform.java:34-36): "scales a value from the board to
     /// the external coordinate system".
     //
-    // Java bug: CoordinateTransform.boardToDsn with a `scaleFactor` of 0 yields `±Infinity` (or
-    // `NaN` for a value of 0) rather than throwing, because `/` on `double`s is IEEE division.
-    // Reproduced exactly — see docs/java-quirks.md.
+    // Java bug: (#89) CoordinateTransform.boardToDsn with a `scaleFactor` of 0 yields
+    // `±Infinity` (or `NaN` for a value of 0) rather than throwing, because `/` on `double`s is
+    // IEEE division. // fixed: T4 (#89) — not here, but at the constructor: a `CoordinateTransform`
+    // whose scale factor is zero or non-finite cannot be built any more, so this division has
+    // nothing left to divide by.
     #[must_use]
     pub fn board_to_dsn(&self, value: f64) -> f64 {
         value / self.scale_factor
@@ -258,14 +283,14 @@ mod tests {
 
     #[test]
     fn board_to_dsn_vector_ignores_the_base_offsets() {
-        let transform = CoordinateTransform::new(10.0, 100.0, 200.0);
+        let transform = CoordinateTransform::new(10.0, 100.0, 200.0).expect("a valid scale");
         let vector = Vector::Int(fr_geometry::IntVector::new(100, 200));
         assert_eq!(transform.board_to_dsn_vector(&vector), [10.0, 20.0]);
     }
 
     #[test]
     fn board_to_dsn_lines_writes_four_numbers_per_line() {
-        let transform = CoordinateTransform::new(10.0, 0.0, 0.0);
+        let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
         let line = Line::new(IntPoint::new(0, 10), IntPoint::new(20, 30));
         assert_eq!(
             transform.board_to_dsn_lines(std::slice::from_ref(&line)),
@@ -275,7 +300,7 @@ mod tests {
 
     #[test]
     fn board_to_dsn_shape_of_a_circle_doubles_the_radius_into_a_diameter() {
-        let transform = CoordinateTransform::new(10.0, 1.0, 2.0);
+        let transform = CoordinateTransform::new(10.0, 1.0, 2.0).expect("a valid scale");
         let shape = Shape::Circle(Circle::new(IntPoint::new(100, 200), 50));
         let Some(DsnShape::Circle(circle)) =
             transform.board_to_dsn_shape(&shape, DsnLayer::signal())

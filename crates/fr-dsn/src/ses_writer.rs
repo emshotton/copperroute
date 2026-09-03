@@ -70,7 +70,7 @@ pub fn write<W: Write>(
         &mut output_file,
         &session_name,
         design_name,
-    );
+    )?;
     output_file.flush()
 }
 
@@ -82,10 +82,16 @@ fn write_session_scope<W: Write>(
     file: &mut IndentFileWriter<W>,
     session_name: &str,
     design_name: &str,
-) {
+) -> io::Result<()> {
     // SesWriter.java:80-82. See the module docs for why `ct` is a parameter here.
     let scale_factor = ct.dsn_to_board(1.0) / f64::from(board.communication.resolution);
-    let coordinate_transform = CoordinateTransform::new(scale_factor, 0.0, 0.0);
+    // The incoming `ct`'s own scale factor is finite and non-zero (`CoordinateTransform::new`
+    // refuses anything else — quirk #89), so the only way this quotient is not is a board whose
+    // `communication.resolution` is `0`, which no `(resolution …)` scope the reader accepts can
+    // produce. Answered rather than unwrapped because the constructor has an error channel and a
+    // writer that emitted `Infinity` coordinates is precisely what #89 is about.
+    let coordinate_transform =
+        CoordinateTransform::new(scale_factor, 0.0, 0.0).map_err(io::Error::other)?;
     file.start_scope(false);
     file.write("session ");
     identifier_type.write(session_name, file);
@@ -97,6 +103,7 @@ fn write_session_scope<W: Write>(
     write_was_is(board, identifier_type, file);
     write_routes(board, identifier_type, &coordinate_transform, file);
     file.end_scope();
+    Ok(())
 }
 
 /// `SesWriter.writePlacement` (SesWriter.java:96-114).

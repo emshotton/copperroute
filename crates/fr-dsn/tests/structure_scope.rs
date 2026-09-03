@@ -106,15 +106,32 @@ fn a_degenerate_bounding_box_clears_board_outline_ok_and_builds_no_board() {
     });
 }
 
+/// fixed: T4 (#94 + #89) — replaces
+/// `the_overflow_loop_drives_scale_factor_to_zero_by_integer_division`, whose assertions were the
+/// jar's, recorded from a JVM probe: `ct.boardToDsn(1) == Infinity` and a board whose whole
+/// outline had degenerated to `boundingBox = -1000,-1000 .. 1000,1000`, with the read still
+/// reported as `Success`.
+///
+/// Hand-computed expectation for this exact file — `(resolution um 10)` and
+/// `(boundary (rect pcb 0 0 10000000 10000000))`:
+///
+/// * `scaleFactor` starts at `max(resolution, 1) == 10`; `maxCoor = 10 000 000 * 10 = 1e8`.
+/// * `CRIT_INT = 2^25 = 33 554 432`. The loop runs while `5 * maxCoor >= CRIT_INT`:
+///   `5e8 >= 3.36e7` -> `scale 1`, `maxCoor 1e7`; `5e7 >= 3.36e7` -> `scale 0.1`,
+///   `maxCoor 1e6`; `5e6 < 3.36e7` -> stop. **Two iterations, `scaleFactor = 0.1`.**
+///   Java's `int` division gives `10 / 10 / 10 == 0` at the same point.
+/// * `board_to_dsn(1) == 1 / 0.1 == 10` (exact in IEEE double).
+/// * The outline corner transforms to `10 000 000 * 0.1 == 1 000 000` board units, and
+///   `createBoard` offsets the box by 1000, so `bounds = -1000,-1000 .. 1 001 000,1 001 000`.
+///
+/// The board keeps its size instead of collapsing to the bare offset box, which is the whole
+/// point: a 6.71 M-unit design is routable rather than silently a 2000x2000 stub.
+///
+/// **The threshold, and why #93 is in the same commit:** the loop starts truncating at
+/// `maxCoor >= CRIT_INT / 5 == 6 710 886` DSN units, and a `(circle …)` outline reached it at
+/// *half* that coordinate because `Circle.boundingBox` doubled the box (#93). Both are gone.
 #[test]
-fn the_overflow_loop_drives_scale_factor_to_zero_by_integer_division() {
-    // Java bug (quirk: `scaleFactor` is an `int` and `/= 10` truncates). Probe on a board whose
-    // boundary reaches 10,000,000 at resolution 10 prints `ct.boardToDsn(1)=Infinity`.
-    //
-    // NOTE (Java wins over the plan): the plan's own datum — `resolution = 10_000_000` with a
-    // coordinate of `10_000` — does *not* reach zero; the JVM answers `0.01` (scale factor 100)
-    // for it. Reaching zero needs `5 * |coor| >= CRIT_INT`, i.e. a coordinate above 6,710,886,
-    // whatever the resolution.
+fn a_six_point_seven_million_unit_outline_keeps_its_scale() {
     let text = synthetic(
         "10",
         "    (boundary\n      (rect pcb 0 0 10000000 10000000)\n    )",
@@ -122,11 +139,17 @@ fn the_overflow_loop_drives_scale_factor_to_zero_by_integer_division() {
     read_pcb(&text, |ok, p| {
         assert!(ok);
         let ct = p.coordinate_transform.expect("coordinate transform set");
-        assert_eq!(ct.board_to_dsn(1.0), f64::INFINITY);
-        // Java's board for the same file: boundingBox=-1000,-1000 .. 1000,1000.
+        assert!(
+            (ct.scale_factor() - 0.1).abs() < 1e-15,
+            "two divisions by ten from 10, in f64: {}",
+            ct.scale_factor()
+        );
+        assert_eq!(ct.board_to_dsn(1.0), 10.0);
         let board = p.board.as_ref().expect("board built");
         assert_eq!(board.bounding_box.ll.x, -1000);
-        assert_eq!(board.bounding_box.ur.y, 1000);
+        assert_eq!(board.bounding_box.ll.y, -1000);
+        assert_eq!(board.bounding_box.ur.x, 1_001_000);
+        assert_eq!(board.bounding_box.ur.y, 1_001_000);
     });
 }
 

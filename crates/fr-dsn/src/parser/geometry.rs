@@ -296,8 +296,9 @@ impl DsnRectangle {
 /// Java's own comment calls `coor[0]` "the radius" (Circle.java:15-18) but its producers and
 /// consumers treat it as a diameter — `transformToBoard`/`transformToBoardRel` halve it
 /// (Circle.java:40,48) and `CoordinateTransform.boardToDsn(Shape, Layer)` fills it with `2 *
-/// boardToDsn(radius)` (CoordinateTransform.java:99). [`DsnCircle::bounding_box`] is the one
-/// place that follows the comment instead of the code, and is wrong because of it.
+/// boardToDsn(radius)` (CoordinateTransform.java:99). `Circle.boundingBox` was the one place that
+/// followed the comment instead of the code, and was 2x too wide and tall because of it — quirk
+/// #93, fixed by Plan 9 Task 4; see [`DsnCircle::bounding_box`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnCircle {
     /// `Shape.layer`.
@@ -334,26 +335,33 @@ impl DsnCircle {
         Shape::Circle(Circle::new(IntPoint::new(x, y), radius))
     }
 
-    /// `Circle.boundingBox` (Circle.java:56-64) — **twice** the box the circle actually needs.
+    /// `Circle.boundingBox` (Circle.java:56-64) — the centre plus and minus the **radius**, which
+    /// is half of `coor[0]`.
     //
-    // Java bug: Circle.boundingBox treats `coor[0]` as a radius (`coor[1] ± coor[0]`) while
+    // Java bug: (#93) Circle.boundingBox treats `coor[0]` as a radius (`coor[1] ± coor[0]`) while
     // every other user of the field treats it as a diameter — `Circle.transformToBoard` halves
     // it (`dsnToBoard(coor[0]) / 2`, Circle.java:40), `transformToBoardRel` halves it
     // (:48), and `CoordinateTransform.boardToDsn(Shape, Layer)` fills it with `2 *
-    // boardToDsn(radius)` (CoordinateTransform.java:99). So this box is 2x too wide and 2x too
+    // boardToDsn(radius)` (CoordinateTransform.java:99). So Java's box is 2x too wide and 2x too
     // tall. Reachable: `Structure.createBoard` unions the outline shapes' `boundingBox()` and
     // derives the board size and DSN scale factor from the result (Structure.java:1161-1167), so
-    // a circular board outline is sized from a doubled box. Reproduced verbatim — see
-    // docs/java-quirks.md.
+    // a circular board outline is sized from a doubled box — and a doubled box halves the
+    // coordinate at which quirk #94's overflow loop starts truncating.
+    //
+    // fixed: T4 (#93) — `coor[0] / 2` on all four bounds, which is the reading the rest of the
+    // class already follows. Circle.java:15-18's javadoc ("coor[0] is the radius") is the odd one
+    // out and is what the old box followed; the type's own doc comment above records both
+    // readings.
     #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
+        let radius = self.coor[0] / 2.0;
         DsnRectangle::new(
             self.layer.clone(),
             [
-                self.coor[1] - self.coor[0],
-                self.coor[2] - self.coor[0],
-                self.coor[1] + self.coor[0],
-                self.coor[2] + self.coor[0],
+                self.coor[1] - radius,
+                self.coor[2] - radius,
+                self.coor[1] + radius,
+                self.coor[2] + radius,
             ],
         )
     }
@@ -1402,7 +1410,7 @@ mod tests {
     #[test]
     fn polyline_path_transforms_are_javas_unimplemented_nulls() {
         let path = DsnPolylinePath::new(DsnLayer::pcb(), 1.0, vec![0.0, 0.0, 1.0, 1.0]);
-        let transform = CoordinateTransform::new(1.0, 0.0, 0.0);
+        let transform = CoordinateTransform::new(1.0, 0.0, 0.0).expect("a valid scale");
         assert!(path.transform_to_board(&transform).is_none());
         assert!(path.transform_to_board_rel(&transform).is_none());
         assert!(path.bounding_box().is_none());

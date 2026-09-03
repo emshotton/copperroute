@@ -268,7 +268,7 @@ fn write_placement(
         Some(Token::Kw(Keyword::PcbScope))
     );
     assert!(read_scope(ScopeKeyword::Pcb, &mut p).expect("no scan error"));
-    let coordinate_transform = CoordinateTransform::new(10.0, 0.0, 0.0);
+    let coordinate_transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
     let mut board = p.board.take().expect("board built");
     board
         .components

@@ -1288,7 +1288,7 @@ fn create_board(
     p.layer_structure = Some(DsnLayerStructure::new(info.layer_info.clone()));
 
     // Calculate an approximate scaling between dsn coordinates and board coordinates.
-    let mut scale_factor: i32 = p.resolution.max(1);
+    let mut scale_factor = f64::from(p.resolution.max(1));
 
     let mut max_coor = 0.0_f64;
     for coordinate in bounding_box.coor {
@@ -1300,22 +1300,33 @@ fn create_board(
     }
     // make scalefactor smaller, if there is a danger of integer overflow.
     //
-    // Java bug: Structure.createBoard — `scaleFactor` is an `int` and `/= 10` is **integer** division
-    // (Structure.java:1199-1203), so it truncates to 0 as soon as the loop runs more times than
-    // the resolution has decimal digits — which happens for any board whose boundary reaches
-    // `CRIT_INT / 5 == 6_710_886` in DSN units, whatever the resolution. `CoordinateTransform`
-    // then divides by zero and every DSN coordinate written back out is `Infinity`/`NaN`
-    // (quirk #89). Reproduced exactly; do not widen to `f64`.
+    // Java bug: (#94) Structure.createBoard — `scaleFactor` is an `int` and `/= 10` is **integer**
+    // division (Structure.java:1199-1203), so it truncates to 0 as soon as the loop runs more
+    // times than the resolution has decimal digits — which happens for any board whose boundary
+    // reaches `CRIT_INT / 5 == 6_710_886` in DSN units, whatever the resolution.
+    // `CoordinateTransform` then divides by zero and every DSN coordinate written back out is
+    // `Infinity`/`NaN` while every one read collapses to `0` (quirk #89), with the read still
+    // reported as `Success`.
     //
-    // This loop is also what makes quirk #82's Delaunay `positionLocate` unreachable for
-    // imported boards: it keeps `5 * maxCoor` below `Limits.CRIT_INT` (2^25), so an imported
-    // board's coordinates never reach the bounding triangle's corners.
+    // fixed: T4 (#94) — `scale_factor` is an `f64`, so the loop scales rather than truncates and
+    // can never reach zero. It agrees with Java's `int` arithmetic on every board where the `int`
+    // division was exact (`resolution / 10^n` integral), which is every board the loop touches
+    // in the corpus, and disagrees exactly where Java lost the value.
+    //
+    // The loop's own purpose is unchanged, and so is its side effect: it keeps `5 * maxCoor`
+    // below `Limits.CRIT_INT` (2^25), which is what makes quirk #82's Delaunay `positionLocate`
+    // unreachable for imported boards — an imported board's coordinates never reach the bounding
+    // triangle's corners.
     while 5.0 * max_coor >= CRIT_INT {
-        scale_factor /= 10;
+        scale_factor /= 10.0;
         max_coor /= 10.0;
     }
 
-    let coordinate_transform = CoordinateTransform::new(f64::from(scale_factor), 0.0, 0.0);
+    // `scale_factor` starts at `max(resolution, 1) >= 1` and is only ever divided by ten, so it
+    // is finite and strictly positive here and the constructor cannot refuse it — see #89's
+    // marker on `CoordinateTransform::new`, which is the guard that makes that a fact rather
+    // than a hope.
+    let coordinate_transform = CoordinateTransform::new(scale_factor, 0.0, 0.0)?;
     p.coordinate_transform = Some(coordinate_transform);
 
     let Shape::Tile(TileShape::Box(bounds)) =
