@@ -464,6 +464,22 @@ pub fn read_autoroute_settings_scope(
     let mut with_autoroute = true;
     let mut with_postroute = true;
 
+    // Java bug: (#90) Java's loop is flat and depth-unaware — it breaks on the *first* closing
+    // bracket it sees, whatever nesting level that bracket actually belongs to. Paired with
+    // `DsnFile.readIntegerScope`'s failure branch, which returns without consuming its own
+    // scope's closing bracket, a single malformed `(via_costs 5.0)` ends the whole
+    // `autoroute_settings` scope one field early and every field after it is read by the
+    // enclosing `structure` loop instead.
+    //
+    // fixed: T4 (#90) — the loop counts brackets. `depth` is the nesting level *inside* this
+    // scope: an `(` raises it, a `)` at depth 0 ends the scope and a `)` above it closes an inner
+    // bracket that no sub-reader claimed. Every dispatch arm below consumes its sub-scope through
+    // that sub-scope's own closing bracket, so each dispatch lowers `depth` by the one its `(`
+    // raised. This is the caller half of #90's repair: the reader half (`read_integer_scope` /
+    // `read_float_scope` consuming to their matching bracket) is what stops the desync happening
+    // in the first place, and this is what stops a bracket left behind by *any* sub-reader from
+    // being mistaken for the end of this scope.
+    let mut depth: u32 = 0;
     let mut prev_was_open = false;
     loop {
         let Some(next_token) = scanner.next_token()? else {
@@ -471,10 +487,19 @@ pub fn read_autoroute_settings_scope(
             return Ok(None);
         };
         if next_token == Token::Close {
-            // end of scope
-            break;
+            let Some(outer) = depth.checked_sub(1) else {
+                // end of scope
+                break;
+            };
+            depth = outer;
+            prev_was_open = false;
+            continue;
         }
-        let is_open = next_token == Token::Open;
+        if next_token == Token::Open {
+            depth += 1;
+            prev_was_open = true;
+            continue;
+        }
         if prev_was_open {
             match next_token {
                 Token::Kw(Keyword::Fanout) => {
@@ -484,12 +509,20 @@ pub fn read_autoroute_settings_scope(
                 Token::Kw(Keyword::Autoroute) => with_autoroute = read_on_off_scope(scanner)?,
                 Token::Kw(Keyword::Postroute) => with_postroute = read_on_off_scope(scanner)?,
                 Token::Kw(Keyword::Vias) => result.set_vias_allowed(read_on_off_scope(scanner)?),
-                Token::Kw(Keyword::ViaCosts) => result.set_via_costs(read_integer_scope(scanner)?),
+                Token::Kw(Keyword::ViaCosts) => {
+                    if let Some(value) = read_integer_scope(scanner)? {
+                        result.set_via_costs(value);
+                    }
+                }
                 Token::Kw(Keyword::PlaneViaCosts) => {
-                    result.set_plane_via_costs(read_integer_scope(scanner)?);
+                    if let Some(value) = read_integer_scope(scanner)? {
+                        result.set_plane_via_costs(value);
+                    }
                 }
                 Token::Kw(Keyword::StartRipupCosts) => {
-                    result.set_start_ripup_costs(read_integer_scope(scanner)?);
+                    if let Some(value) = read_integer_scope(scanner)? {
+                        result.set_start_ripup_costs(value);
+                    }
                 }
                 Token::Kw(Keyword::LayerRule) => {
                     match read_layer_rule(scanner, layer_structure, result)? {
@@ -501,8 +534,14 @@ pub fn read_autoroute_settings_scope(
                     let _ = skip_scope(scanner)?;
                 }
             }
+            // Every arm above consumed its sub-scope's own closing bracket, so the `(` that
+            // opened it is closed and no longer counts towards this scope's nesting.
+            // `prev_was_open` is only ever set by the `Token::Open` arm above, which raises
+            // `depth` first, so this cannot underflow; `saturating_sub` keeps a future edit to
+            // that invariant from wrapping the counter in a release build.
+            depth = depth.saturating_sub(1);
         }
-        prev_was_open = is_open;
+        prev_was_open = false;
     }
     result.set_run_router(with_autoroute);
     result.set_run_optimizer(with_postroute);
@@ -528,6 +567,11 @@ pub fn read_layer_rule(
 
     // Java seeds `prevToken` from the layer-name token, which is a `String`, so the first
     // iteration's `prevToken == OPEN_BRACKET` test is false either way.
+    //
+    // Java bug: (#90) the same flat, depth-unaware loop as `readScope`'s, reading the same
+    // under-consuming scalar helper (`DsnFile.readFloatScope`, AutorouteSettings.java:141,147).
+    // fixed: T4 (#90) — bracket-counted the same way; see `read_autoroute_settings_scope`.
+    let mut depth: u32 = 0;
     let mut prev_was_open = false;
     loop {
         let Some(next_token) = scanner.next_token()? else {
@@ -535,10 +579,19 @@ pub fn read_layer_rule(
             return Ok(None);
         };
         if next_token == Token::Close {
-            // end of scope
-            break;
+            let Some(outer) = depth.checked_sub(1) else {
+                // end of scope
+                break;
+            };
+            depth = outer;
+            prev_was_open = false;
+            continue;
         }
-        let is_open = next_token == Token::Open;
+        if next_token == Token::Open {
+            depth += 1;
+            prev_was_open = true;
+            continue;
+        }
         if prev_was_open {
             match next_token {
                 Token::Kw(Keyword::Active) => {
@@ -560,23 +613,23 @@ pub fn read_layer_rule(
                     }
                 }
                 Token::Kw(Keyword::PreferredDirectionTraceCosts) => {
-                    settings.set_preferred_direction_trace_costs(
-                        layer_index,
-                        read_float_scope(scanner)?,
-                    );
+                    if let Some(value) = read_float_scope(scanner)? {
+                        settings.set_preferred_direction_trace_costs(layer_index, value);
+                    }
                 }
                 Token::Kw(Keyword::AgainstPreferredDirectionTraceCosts) => {
-                    settings.set_against_preferred_direction_trace_costs(
-                        layer_index,
-                        read_float_scope(scanner)?,
-                    );
+                    if let Some(value) = read_float_scope(scanner)? {
+                        settings.set_against_preferred_direction_trace_costs(layer_index, value);
+                    }
                 }
                 _ => {
                     let _ = skip_scope(scanner)?;
                 }
             }
+            // See `read_autoroute_settings_scope`: every arm consumed its own closing bracket.
+            depth = depth.saturating_sub(1);
         }
-        prev_was_open = is_open;
+        prev_was_open = false;
     }
     Ok(Some(settings))
 }
