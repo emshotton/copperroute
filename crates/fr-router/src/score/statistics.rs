@@ -366,11 +366,14 @@ impl BoardStatistics {
                 continue;
             }
             total_pins += 1;
-            let net_number = board
-                .get_item(pin)
-                .expect("the pin was just read")
-                .get_net_number(0);
-            if board.unconnected_set(pin, net_number).is_empty() {
+            let connected_on_every_net = (0..net_count).all(|net_index| {
+                let net_number = board
+                    .get_item(pin)
+                    .expect("the pin was just read")
+                    .get_net_number(net_index);
+                board.unconnected_set(pin, net_number).is_empty()
+            });
+            if connected_on_every_net {
                 already_connected += 1;
             }
             if BoardStatistics::is_pin_escaped(board, pin) {

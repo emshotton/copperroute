@@ -26,6 +26,23 @@ fn load_board(rel_path: &str) -> Board {
     }
 }
 
+fn load_test_board(rel_path: &str) -> Board {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel_path);
+    let file = std::fs::File::open(&path)
+        .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+    let design_name = path
+        .file_name()
+        .expect("a file name")
+        .to_string_lossy()
+        .into_owned();
+    match fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default()) {
+        BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
+            *board.unwrap_or_else(|| panic!("{design_name} produced no board"))
+        }
+        other => panic!("{design_name} did not read: {other:?}"),
+    }
+}
+
 fn build_settings(board: &Board) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -482,65 +499,13 @@ fn an_empty_board_scores_zero_not_nan() {
 }
 
 #[test]
-fn a_multi_net_smd_pin_is_counted_on_net_index_zero_only() {
-    let mut board = board_of("fixtures/Issue143-rpi_splitter.dsn", 8);
-    let before = BoardStatistics::new(&mut board).fanout;
-    assert_eq!(before.total_smd_pins, 10);
-    assert_eq!(before.pins_to_escape, 4);
+fn a_pin_unconnected_on_its_second_net_needs_an_escape() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let fanout = BoardStatistics::new(&mut board).fanout;
 
-    let connected_pin = board
-        .get_smd_pins()
-        .into_iter()
-        .find(|pin| {
-            let item = board.get_item(*pin).expect("a listed pin");
-            item.net_count() > 0
-                && board
-                    .unconnected_set(*pin, item.get_net_number(0))
-                    .is_empty()
-        })
-        .expect("the routed board has an already-connected SMD pin");
-    let first_net = board
-        .get_item(connected_pin)
-        .expect("the pin")
-        .get_net_number(0);
-
-    let mut second_net = None;
-    for candidate in 1..=board.rules.nets.max_net_number() {
-        if candidate == first_net {
-            continue;
-        }
-        board
-            .get_item_mut(connected_pin)
-            .expect("the pin")
-            .header_mut()
-            .net_nos
-            .push(candidate);
-        if board.unconnected_set(connected_pin, candidate).is_empty() {
-            board
-                .get_item_mut(connected_pin)
-                .expect("the pin")
-                .header_mut()
-                .net_nos
-                .pop();
-            continue;
-        }
-        second_net = Some(candidate);
-        break;
-    }
-    let second_net = second_net.expect("a second net the pin is unconnected on");
-
-    let pin = board.get_item(connected_pin).expect("the pin");
-    assert_eq!(pin.net_count(), 2);
-    assert_eq!(pin.get_net_number(0), first_net);
-    assert_eq!(pin.get_net_number(1), second_net);
-    assert!(!board.unconnected_set(connected_pin, second_net).is_empty());
-
-    let after = BoardStatistics::new(&mut board).fanout;
-    assert_eq!(
-        after.pins_to_escape, before.pins_to_escape,
-        "`:415` reads net index 0, so the second net cannot move the count"
-    );
-    assert_eq!(after.total_smd_pins, before.total_smd_pins);
+    assert_eq!(fanout.total_smd_pins, 4);
+    assert_eq!(fanout.pins_to_escape, 3);
+    assert_eq!(fanout.escaped_count, 2);
 }
 
 #[test]
