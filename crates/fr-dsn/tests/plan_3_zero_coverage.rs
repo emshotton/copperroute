@@ -79,8 +79,9 @@ fn every_plan_3_zero_coverage_path_has_a_directed_test() {
             row.test
         );
         assert!(
-            row.source.contains(&format!("p8t13-{}.dsn", row.path)),
-            "{}: {} must name its fixture `p8t13-{}.dsn` in the test's doc comment",
+            row.source
+                .contains(&format!("read_directed(\"{}\")", row.path)),
+            "{}: {} must load its directed fixture through `{}`",
             row.java,
             row.suite,
             row.path
@@ -105,8 +106,9 @@ fn every_plan_3_zero_coverage_path_has_a_directed_test() {
             row.java
         );
         assert!(
-            row.source.contains(&format!("p8t13-{control}.dsn")),
-            "{}: {} must name the control fixture `p8t13-{control}.dsn` in the test's doc comment",
+            row.source
+                .contains(&format!("read_directed(\"{control}\")")),
+            "{}: {} must load the `{control}` control fixture",
             row.java,
             row.suite
         );
