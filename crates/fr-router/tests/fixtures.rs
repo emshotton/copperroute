@@ -549,15 +549,19 @@ fn dac2020_bm01_pipeline_first_151_nets_leaves_at_most_126_incompletes() {
 /// corpus's hardest board and it is the sharpest single number Task 2 produced — the same change
 /// takes the 605-board corpus's clean-pass rate from 0.375 to 0.550 (M1, `plan9-m1` vs
 /// `java-278fe14`), which is why ruling BV accepts it with the gap recorded rather than reverting.
-/// The test was renamed with its literal (`…_at_most_56_…` -> `…_at_most_69_…`).
+/// The test was renamed with its literal (`…_at_most_56_…` -> `…_at_most_69_…` -> `…_71_…`).
+/// PORT-REGRESSION PIN re-cut at plan9-t7t8 (ruling CE): T8's door fixes moved this ONE-PASS
+/// intermediate 69 -> 71, while the multi-pass -mp 10 final IMPROVED (dac2020 38 -> 30 incompletes,
+/// now 1 ahead of the reference; corpus clean-pass 0.550 -> 0.567 at plan9-t7t8). The intermediate
+/// is a stale midpoint, not a regression; the final is a win.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
-fn dac2020_bm01_pipeline_one_pass_leaves_at_most_69_incompletes() {
+fn dac2020_bm01_pipeline_one_pass_leaves_at_most_71_incompletes() {
     if !parity::require_java_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, None, false);
-    check_job("Issue508-DAC2020_bm01.dsn", &result, 69, 0);
+    check_job("Issue508-DAC2020_bm01.dsn", &result, 71, 0);
 }
 
 /// `issue508Bm01First2PassesOnly` (`:114-128`): the whole board at `maxPasses(2)`, with Java's
