@@ -74,7 +74,13 @@ fn settings_for(board: &Board, sorting_order: &str) -> RouterSettings {
     settings
 }
 
-fn pin(id: u32, pin_index: i32, to_centre: f64, to_closest_on_net: f64, density: i32) -> FanoutPin {
+fn pin(
+    id: u32,
+    pin_index: i32,
+    to_centre: f64,
+    to_closest_on_net: Option<f64>,
+    density: i32,
+) -> FanoutPin {
     FanoutPin {
         pin: ItemId(id),
         pin_index,
@@ -135,9 +141,9 @@ fn two_components_collapse_only_if_they_share_a_pin_count_and_an_id() {
 
 #[test]
 fn pins_sort_by_the_selected_double_then_pin_index() {
-    let a = pin(10, 3, 100.0, 900.0, 2);
-    let b = pin(20, 1, 300.0, 100.0, 7);
-    let c = pin(30, 2, 200.0, 500.0, 7);
+    let a = pin(10, 3, 100.0, Some(900.0), 2);
+    let b = pin(20, 1, 300.0, Some(100.0), 7);
+    let c = pin(30, 2, 200.0, Some(500.0), 7);
 
     let pins = [a.clone(), b.clone(), c.clone()];
     assert_eq!(pin_ids(&tree_of(&pins, Some("inner_first"))), [10, 30, 20]);
@@ -154,8 +160,8 @@ fn pins_sort_by_the_selected_double_then_pin_index() {
 
 #[test]
 fn a_tie_on_the_selected_key_falls_through_to_pin_index_on_every_branch() {
-    let low = pin(11, 1, 500.0, 500.0, 4);
-    let high = pin(22, 0, 500.0, 500.0, 4);
+    let low = pin(11, 1, 500.0, Some(500.0), 4);
+    let high = pin(22, 0, 500.0, Some(500.0), 4);
     for order in [
         "inner_first",
         "outer_first",
@@ -173,9 +179,9 @@ fn a_tie_on_the_selected_key_falls_through_to_pin_index_on_every_branch() {
 #[test]
 fn an_unrecognised_sorting_order_falls_back_to_pin_index() {
     let pins = [
-        pin(10, 2, 100.0, 900.0, 1),
-        pin(20, 0, 300.0, 100.0, 9),
-        pin(30, 1, 200.0, 500.0, 5),
+        pin(10, 2, 100.0, Some(900.0), 1),
+        pin(20, 0, 300.0, Some(100.0), 9),
+        pin(30, 1, 200.0, Some(500.0), 5),
     ];
     assert_eq!(
         pin_ids(&tree_of(&pins, Some("not_a_sorting_order"))),
@@ -186,8 +192,8 @@ fn an_unrecognised_sorting_order_falls_back_to_pin_index() {
 
 #[test]
 fn an_unrecognised_sorting_order_collapses_pins_with_equal_pin_index() {
-    let first = pin(10, 4, 100.0, 100.0, 1);
-    let second = pin(20, 4, 999.0, 999.0, 9);
+    let first = pin(10, 4, 100.0, Some(100.0), 1);
+    let second = pin(20, 4, 999.0, Some(999.0), 9);
     let set = tree_of(&[first, second], Some("not_a_sorting_order"));
     assert_eq!(set.len(), 1, "the second add answered false");
     assert_eq!(pin_ids(&set), [10], "the tree keeps the element it had");
@@ -203,7 +209,10 @@ fn equal_pin_index_and_an_equal_key_collapse_under_every_sorting_order() {
         "not_a_sorting_order",
     ] {
         let set = tree_of(
-            &[pin(10, 4, 500.0, 500.0, 3), pin(20, 4, 500.0, 500.0, 3)],
+            &[
+                pin(10, 4, 500.0, Some(500.0), 3),
+                pin(20, 4, 500.0, Some(500.0), 3),
+            ],
             Some(order),
         );
         assert_eq!(set.len(), 1, "{order}");
@@ -212,11 +221,15 @@ fn equal_pin_index_and_an_equal_key_collapse_under_every_sorting_order() {
 }
 
 #[test]
-fn two_pins_alone_on_their_nets_tie_and_fall_through_to_pin_index() {
-    let pins = [pin(10, 1, 7.0, f64::MAX, 1), pin(20, 0, 3.0, f64::MAX, 1)];
+fn a_pin_alone_on_its_net_sorts_explicitly() {
+    let pins = [
+        pin(10, 0, 7.0, None, 1),
+        pin(20, 1, 3.0, Some(100.0), 1),
+        pin(30, 2, 9.0, None, 1),
+    ];
     assert_eq!(
         pin_ids(&tree_of(&pins, Some("distanceToClosestOnNet"))),
-        [20, 10]
+        [20, 10, 30]
     );
 }
 
@@ -251,7 +264,7 @@ fn the_constructor_orders_a_real_boards_components_and_pins_like_the_jvm() {
 }
 
 #[test]
-fn a_net_with_one_pin_gets_double_max_value() {
+fn a_net_with_one_pin_has_no_closest_distance() {
     let board = load_board(RPI);
     let settings = settings_for(&board, "outer_first");
     let fanout = BatchFanout::new(&board, &settings);
@@ -262,13 +275,13 @@ fn a_net_with_one_pin_gets_double_max_value() {
         .flat_map(|c| c.smd_pins.iter())
         .find(|p| p.pin == ItemId(29))
         .expect("J3-VBUS is an SMD pin with a net");
-    assert_eq!(lonely.distance_to_closest_on_net, f64::MAX);
+    assert_eq!(lonely.distance_to_closest_on_net, None);
 
     let maxed = fanout
         .sorted_components
         .iter()
         .flat_map(|c| c.smd_pins.iter())
-        .filter(|p| p.distance_to_closest_on_net == f64::MAX)
+        .filter(|p| p.distance_to_closest_on_net.is_none())
         .count();
     assert_eq!(maxed, 1);
 }
@@ -556,7 +569,8 @@ fn a_successful_retry_does_not_destroy_the_first_attempts_rips() {
         "the retry starts without the abandoned attempt's requested rips"
     );
     assert_eq!(
-        body.matches("ripped_item_list.extend(retry_ripped_item_list)").count(),
+        body.matches("ripped_item_list.extend(retry_ripped_item_list)")
+            .count(),
         1,
         "a routed retry reports its own rips back to the caller"
     );

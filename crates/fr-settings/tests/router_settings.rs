@@ -549,6 +549,25 @@ fn validate_matrix() {
 }
 
 #[test]
+fn an_unrecognised_pin_sorting_order_is_refused() {
+    let mut settings = validatable();
+    settings
+        .fanout
+        .get_or_insert_with(Default::default)
+        .pin_sorting_order = Some("not_an_order".to_string());
+
+    settings.validate(&host());
+
+    assert_eq!(
+        settings
+            .fanout
+            .as_ref()
+            .and_then(|fanout| fanout.pin_sorting_order.as_deref()),
+        Some("outer_first")
+    );
+}
+
+#[test]
 fn set_max_threads_normalizes_and_mirrors() {
     for (input, expected) in [
         (None, 3),

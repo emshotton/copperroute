@@ -239,7 +239,7 @@ fn ripup_costs_scale_with_the_pass_number() {
 }
 
 #[test]
-fn a_null_net_pin_skips_the_via_gate() {
+fn a_pin_whose_net_does_not_resolve_cannot_use_vias() {
     if !parity::require_java_dir() {
         return;
     }
@@ -248,11 +248,8 @@ fn a_null_net_pin_skips_the_via_gate() {
 
     assert!(board.rules.nets.get(0).is_none());
     assert!(board.rules.nets.get(9_999).is_none());
-    assert!(
-        fanout_pin_can_use_vias(&board, &settings, 0),
-        "the gate is skipped, so the pin is fanned out"
-    );
-    assert!(fanout_pin_can_use_vias(&board, &settings, 9_999));
+    assert!(!fanout_pin_can_use_vias(&board, &settings, 0));
+    assert!(!fanout_pin_can_use_vias(&board, &settings, 9_999));
 
     assert!(board.rules.nets.get(1).is_some());
     assert!(fanout_pin_can_use_vias(&board, &settings, 1));
@@ -271,10 +268,7 @@ fn a_null_net_pin_skips_the_via_gate() {
         !fanout_pin_can_use_vias(&board, &settings, 1),
         "`:251` — no rule vias and no fallback"
     );
-    assert!(
-        fanout_pin_can_use_vias(&board, &settings, 9_999),
-        "and the pin whose net does not exist is still not checked"
-    );
+    assert!(!fanout_pin_can_use_vias(&board, &settings, 9_999));
 
     settings
         .fanout

@@ -512,6 +512,20 @@ impl RouterSettings {
         if accuracy < 1 {
             self.trace_pull_tight_accuracy = Some(500);
         }
+
+        if let Some(fanout) = self.fanout.as_mut()
+            && fanout.pin_sorting_order.as_deref().is_some_and(|order| {
+                !matches!(
+                    order,
+                    "inner_first"
+                        | "outer_first"
+                        | "distanceToClosestOnNet"
+                        | "surroundingsDensity"
+                )
+            })
+        {
+            fanout.pin_sorting_order = Some("outer_first".to_string());
+        }
     }
 }
 

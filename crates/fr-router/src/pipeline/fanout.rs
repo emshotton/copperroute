@@ -73,7 +73,7 @@ pub struct FanoutPin {
     pub pin: ItemId,
     pub pin_index: i32,
     pub distance_to_component_center: f64,
-    pub distance_to_closest_on_net: f64,
+    pub distance_to_closest_on_net: Option<f64>,
     pub surroundings_density: i32,
 }
 
@@ -93,7 +93,7 @@ impl FanoutPin {
         let pin_location = pin.get_center(&ctx).to_float();
         let distance_to_component_center = pin_location.distance(gravity_center);
 
-        let mut min_distance = f64::MAX;
+        let mut min_distance = None;
         let net_number = if pin_item.net_count() > 0 {
             pin_item.get_net_number(0)
         } else {
@@ -107,8 +107,8 @@ impl FanoutPin {
                         continue;
                     };
                     let dist = pin_location.distance(&other_pin.get_center(&ctx).to_float());
-                    if dist < min_distance {
-                        min_distance = dist;
+                    if min_distance.is_none_or(|current| dist < current) {
+                        min_distance = Some(dist);
                     }
                 }
             }
@@ -159,12 +159,19 @@ impl FanoutPin {
                 result = 1;
             }
         } else if order == "distanceToClosestOnNet" {
-            let delta = self.distance_to_closest_on_net - other.distance_to_closest_on_net;
-            if delta > 0.0 {
-                result = 1;
-            } else if delta < 0.0 {
-                result = -1;
-            }
+            result = match (
+                self.distance_to_closest_on_net,
+                other.distance_to_closest_on_net,
+            ) {
+                (Some(left), Some(right)) => match left.total_cmp(&right) {
+                    std::cmp::Ordering::Less => -1,
+                    std::cmp::Ordering::Equal => 0,
+                    std::cmp::Ordering::Greater => 1,
+                },
+                (Some(_), None) => -1,
+                (None, Some(_)) => 1,
+                (None, None) => 0,
+            };
         } else if order == "surroundingsDensity" {
             let delta = other.surroundings_density - self.surroundings_density;
             if delta > 0 {
@@ -420,7 +427,7 @@ pub fn fanout_ripup_costs(settings: &RouterSettings, pass_no: i32) -> i32 {
 #[must_use]
 pub fn fanout_pin_can_use_vias(board: &Board, settings: &RouterSettings, net_number: i32) -> bool {
     let Some(net) = board.rules.nets.get(net_number) else {
-        return true;
+        return false;
     };
     let via_count = board
         .rules
@@ -635,9 +642,7 @@ impl<'a> BatchFanout<'a> {
             completed_passes += 1;
             let is_timed_out = fanout_instance.is_timed_out;
             if loop_state
-                .after_pass(routed_count, is_timed_out, || {
-                    board.structural_hash()
-                })
+                .after_pass(routed_count, is_timed_out, || board.structural_hash())
                 .is_some()
             {
                 break;
