@@ -2488,10 +2488,17 @@ fn store_items_refuses_a_non_shovable_item_of_a_foreign_net() {
     assert_eq!(entries.get_found_obstacle(), Some(area));
 }
 
+/// Quirk #65's *other* arm. **Renamed at Plan 9 Task 10**, because its old name
+/// (`a_component_keepout_is_skipped_by_store_items_whatever_the_pad_check_says`) described the
+/// defect while the body only ever built a `ViaObstacleArea` — the arm the `&&` legitimately
+/// bound to, and the one the fix leaves exactly where it was. The component-keepout half the old
+/// name claimed is `crates/fr-board/tests/shape_trace_entries.rs::a_component_keepout_blocks_a_via`,
+/// which now asserts the opposite of what the old name said.
 #[test]
-fn a_component_keepout_is_skipped_by_store_items_whatever_the_pad_check_says() {
-    // quirk #65: `!isPadCheck && a || b` means a `ComponentObstacleArea` is skipped
-    // unconditionally, while a `ViaObstacleArea` is skipped only when this is not a pad check.
+fn a_via_keepout_is_skipped_by_store_items_outside_a_pad_check() {
+    // `ShapeTraceEntries.java:180-183`, post-#65: `!isPadCheck && (viaObstacle ||
+    // componentObstacle)`. A `ViaObstacleArea` is skipped outside a pad check and blocks inside
+    // one, which is what Java's `&&` already did for this arm.
     let mut board = board_builder::shove_board();
     let via_keepout = board.insert_via_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(

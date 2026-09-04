@@ -152,7 +152,16 @@ impl ShapeTraceEntries {
     // ComponentObstacleArea)` (ShapeTraceEntries.java:180-183). `&&` binds tighter than `||`, so
     // a `ComponentObstacleArea` is skipped **unconditionally**, while a `ViaObstacleArea` is only
     // skipped when this is not a pad check — almost certainly not what the author meant
-    // (`!isPadCheck && (a || b)`). Reproduced; see docs/java-quirks.md.
+    // (`!isPadCheck && (a || b)`). See docs/java-quirks.md #65.
+    //
+    // fixed: T10 (#65) — parenthesised as `!is_pad_check && (a || b)`, which is what the
+    // comment, the sibling call sites and every reading of the intent all say. The consequence
+    // of the precedence was that a `ComponentObstacleArea` was skipped even during a **pad
+    // check**, so **a component keepout could never block a via placement**: on a KiCad board
+    // that is the difference between a via landing inside a footprint's courtyard keepout and
+    // not. The `ViaObstacleArea` half is unchanged — it was already `!isPadCheck`-gated — so
+    // this fix strictly *adds* obstacles during a pad check and can only refuse placements
+    // Java accepted, never the reverse.
     pub fn store_items(
         &mut self,
         board: &Board,
@@ -165,9 +174,13 @@ impl ShapeTraceEntries {
             let Some(item) = board.get_item(*id) else {
                 continue;
             };
-            // ShapeTraceEntries.java:180-183, precedence reproduced.
-            if (!is_pad_check && matches!(item, Item::ViaObstacleArea(_)))
-                || matches!(item, Item::ComponentObstacleArea(_))
+            // ShapeTraceEntries.java:180-183, parenthesised — see the `// fixed: T10 (#65)`
+            // note on this method.
+            if !is_pad_check
+                && matches!(
+                    item,
+                    Item::ViaObstacleArea(_) | Item::ComponentObstacleArea(_)
+                )
             {
                 continue;
             }
