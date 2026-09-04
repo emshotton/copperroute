@@ -153,97 +153,45 @@ fn zero_routed_pins_ends_the_loop() {
 }
 
 #[test]
-fn three_identical_board_states_end_the_loop() {
+fn two_passes_escaping_different_pins_are_not_oscillation() {
     let mut state = FanoutLoopState::new(1);
-    let mut hash = 1_u64;
-    let mut next_hash = || {
-        hash += 1;
-        hash
-    };
-
-    assert_eq!(state.after_pass(5, 3, false, &mut next_hash), None);
-    assert_eq!(state.identical_passes, 0);
-    assert_eq!(state.after_pass(5, 3, false, &mut next_hash), None);
-    assert_eq!(state.identical_passes, 1);
-    assert_eq!(state.after_pass(5, 3, false, &mut next_hash), None);
-    assert_eq!(state.identical_passes, 2);
-    assert_eq!(
-        state.after_pass(5, 3, false, &mut next_hash),
-        Some(FanoutStop::Stagnated),
-        ":135-145 — `identicalPasses >= stagnationPassLimit`"
-    );
+    assert_eq!(state.after_pass(1, false, || 2), None);
+    assert_eq!(state.after_pass(1, false, || 3), None);
+    assert_eq!(state.identical_repeats, 0);
 }
 
 #[test]
-fn the_stagnation_limit_is_a_repeat_count_so_it_takes_four_identical_passes() {
+fn the_oscillation_break_fires_on_the_named_repeat_count() {
     let mut state = FanoutLoopState::new(1);
-    let mut hash = 1_u64;
-    let mut next_hash = || {
-        hash += 1;
-        hash
-    };
-    let mut identical_passes_seen = 0;
-    loop {
-        identical_passes_seen += 1;
-        if state.after_pass(2, 7, false, &mut next_hash).is_some() {
-            break;
-        }
-        assert!(identical_passes_seen < 10, "the detector must fire");
+    for repeat in 1..FanoutLoopState::STAGNATION_REPEAT_LIMIT {
+        assert_eq!(state.after_pass(2, false, || 1), None);
+        assert_eq!(state.identical_repeats, repeat);
     }
     assert_eq!(
-        identical_passes_seen, 4,
-        "three repeats after the seeding pass, not three passes in total"
+        state.after_pass(2, false, || 1),
+        Some(FanoutStop::Stagnated)
+    );
+    assert_eq!(
+        state.identical_repeats,
+        FanoutLoopState::STAGNATION_REPEAT_LIMIT
     );
 }
 
 #[test]
-fn the_board_state_packs_the_routed_count_above_the_via_count() {
-    assert_eq!(FanoutLoopState::board_state(0, 0), 0);
-    assert_eq!(FanoutLoopState::board_state(1, 0), 1 << 32);
-    assert_eq!(FanoutLoopState::board_state(9, 9), (9_i64 << 32) ^ 9);
-    assert_eq!(
-        FanoutLoopState::board_state(4, 12),
-        FanoutLoopState::board_state(4, 12)
-    );
-    assert_eq!(
-        FanoutLoopState::board_state(0, 0x8000_0000),
-        i64::from(i32::MIN)
-    );
-}
-
-#[test]
-fn an_unchanged_hash_ends_the_loop() {
-    let mut state = FanoutLoopState::new(0xDEAD_BEEF);
-    assert_eq!(
-        state.after_pass(3, 1, false, || 0xDEAD_BEEF),
-        Some(FanoutStop::UnchangedHash)
-    );
-
-    let mut state = FanoutLoopState::new(0xDEAD_BEEF);
-    assert_eq!(state.after_pass(3, 1, false, || 0x0BAD_F00D), None);
-    assert_eq!(state.last_board_hash, 0x0BAD_F00D);
-    assert_eq!(
-        state.after_pass(4, 2, false, || 0x0BAD_F00D),
-        Some(FanoutStop::UnchangedHash),
-        "the second pass compares against the first pass's hash, not the initial one"
-    );
-}
-
-#[test]
-fn the_four_stops_are_tested_in_javas_order() {
+fn the_stops_are_tested_in_order() {
     let mut state = FanoutLoopState::new(1);
     assert_eq!(
-        state.after_pass(0, 0, true, || 1),
+        state.after_pass(0, true, || 1),
         Some(FanoutStop::NothingRouted)
     );
     assert_eq!(
-        state.identical_passes, 0,
+        state.identical_repeats, 0,
         "the detector is not even consulted"
     );
 
     let mut state = FanoutLoopState::new(7);
     let mut hash_taken = false;
-    let stop = state.after_pass(1, 0, true, || {
+    let stop = state.after_pass(1, true, || {
         hash_taken = true;
         7
     });

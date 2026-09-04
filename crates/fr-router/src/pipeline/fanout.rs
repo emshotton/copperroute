@@ -359,61 +359,45 @@ pub enum FanoutStop {
     NothingRouted,
     Stagnated,
     TimedOut,
-    UnchangedHash,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FanoutLoopState {
-    pub previous_board_state: i64,
-    pub identical_passes: i32,
+    pub identical_repeats: i32,
     pub last_board_hash: u64,
 }
 
 impl FanoutLoopState {
-    pub const STAGNATION_PASS_LIMIT: i32 = 3;
+    pub const STAGNATION_REPEAT_LIMIT: i32 = 3;
 
     #[must_use]
     pub fn new(initial_board_hash: u64) -> FanoutLoopState {
         FanoutLoopState {
-            previous_board_state: i64::MIN,
-            identical_passes: 0,
+            identical_repeats: 0,
             last_board_hash: initial_board_hash,
         }
-    }
-
-    #[must_use]
-    pub fn board_state(routed_count: i32, via_count: usize) -> i64 {
-        let packed = i64::from(routed_count).wrapping_shl(32);
-        let via_count = i64::from(via_count as i32);
-        packed ^ via_count
     }
 
     pub fn after_pass<F: FnOnce() -> u64>(
         &mut self,
         routed_count: i32,
-        via_count: usize,
         is_timed_out: bool,
         board_hash: F,
     ) -> Option<FanoutStop> {
         if routed_count == 0 {
             return Some(FanoutStop::NothingRouted);
         }
-        let board_state = FanoutLoopState::board_state(routed_count, via_count);
-        if board_state == self.previous_board_state {
-            self.identical_passes += 1;
-            if self.identical_passes >= FanoutLoopState::STAGNATION_PASS_LIMIT {
-                return Some(FanoutStop::Stagnated);
-            }
-        } else {
-            self.identical_passes = 0;
-            self.previous_board_state = board_state;
-        }
         if is_timed_out {
             return Some(FanoutStop::TimedOut);
         }
         let current_board_hash = board_hash();
         if current_board_hash == self.last_board_hash {
-            return Some(FanoutStop::UnchangedHash);
+            self.identical_repeats += 1;
+            if self.identical_repeats >= FanoutLoopState::STAGNATION_REPEAT_LIMIT {
+                return Some(FanoutStop::Stagnated);
+            }
+        } else {
+            self.identical_repeats = 0;
         }
         self.last_board_hash = current_board_hash;
         None
@@ -649,10 +633,9 @@ impl<'a> BatchFanout<'a> {
             }
             let routed_count = fanout_instance.fanout_pass(board, i, stop, budget, progress)?;
             completed_passes += 1;
-            let via_count = board.get_vias().len();
             let is_timed_out = fanout_instance.is_timed_out;
             if loop_state
-                .after_pass(routed_count, via_count, is_timed_out, || {
+                .after_pass(routed_count, is_timed_out, || {
                     board.structural_hash()
                 })
                 .is_some()
