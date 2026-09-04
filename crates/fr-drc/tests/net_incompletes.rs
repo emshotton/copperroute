@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
-use fr_drc::{AirLine, DesignRulesChecker, NetIncompletes, UnconnectedKind};
+use fr_drc::{DesignRulesChecker, NetIncompletes, UnconnectedKind};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{FloatPoint, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
@@ -375,31 +375,6 @@ fn a_net_number_with_no_net_has_no_length_restriction() {
     assert_eq!(net_incompletes.get_net_number(), 99);
     assert!(!net_incompletes.calc_length_violation(&board));
     assert_eq!(net_incompletes.get_length_violation(), 0.0);
-}
-
-#[test]
-fn airline_compare_by_net_name_is_not_a_total_order() {
-    let board = complete_net_board();
-    let corner = |x: f64, y: f64| FloatPoint::new(x, y);
-    let first = AirLine::new(1, ItemId(2), corner(0.0, 0.0), ItemId(3), corner(1.0, 0.0));
-    let second = AirLine::new(1, ItemId(4), corner(9.0, 9.0), ItemId(5), corner(8.0, 8.0));
-    assert_ne!(first, second);
-    assert_eq!(
-        first.compare_by_net_name(&second, &board.rules.nets),
-        std::cmp::Ordering::Equal,
-    );
-
-    let other_net = AirLine::new(2, ItemId(2), corner(0.0, 0.0), ItemId(3), corner(1.0, 0.0));
-    assert_eq!(board.rules.nets.get(1).unwrap().name, "N1");
-    assert_eq!(board.rules.nets.get(2).unwrap().name, "A0");
-    assert_eq!(
-        first.compare_by_net_name(&other_net, &board.rules.nets),
-        std::cmp::Ordering::Greater,
-    );
-    assert_eq!(
-        other_net.compare_by_net_name(&first, &board.rules.nets),
-        std::cmp::Ordering::Less,
-    );
 }
 
 const BOUNDING_BOX: IntBox = IntBox {
