@@ -1290,10 +1290,7 @@ fn the_default_via_rule_owns_the_registered_via_info() {
     let rule = &board.rules.via_rules[0];
     assert_eq!(rule.name, "default");
     assert_eq!(rule.via_count(), 1);
-    assert!(
-        rule.get_via(0).is_same_object(registered),
-        "Java's `viaRule.appendVia(viaInfo)` shares the object `viaInfos.add(viaInfo)` registered"
-    );
+    assert_eq!(rule.get_via(0), registered);
     let default_class = board.rules.net_classes.get(NetClassId(0));
     assert_eq!(
         default_class.get_via_rule().map(|r| r.name.as_str()),
